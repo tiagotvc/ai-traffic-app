@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-bg: #0f111a;
+  --brand: #7c3aed;
+  --surface: #f4f6f9;
+  --card: #ffffff;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-[#f4f6f9] text-slate-900 antialiased;
+}
+
+@layer components {
+  .ui-card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-sm;
+  }
+
+  .ui-input,
+  .ui-select,
+  .ui-textarea {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20;
+  }
+
+  .ui-textarea {
+    @apply resize-none;
+  }
+
+  .ui-label {
+    @apply text-xs font-medium text-slate-600;
+  }
+
+  .ui-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-50;
+  }
+
+  .ui-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50;
+  }
+
+  .ui-btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50;
+  }
+
+  .ui-alert-warning {
+    @apply rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800;
+  }
+
+  .ui-alert-info {
+    @apply rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800;
+  }
+
+  .sidebar-nav {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .sidebar-nav::-webkit-scrollbar {
+    display: none;
+  }
+}

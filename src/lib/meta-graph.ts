@@ -1,0 +1,392 @@
+import { metaFetchWithRateLimit } from "@/lib/meta-rate-limit";
+
+const GRAPH_BASE = "https://graph.facebook.com/v20.0";
+
+export type MetaAdAccount = {
+  id: string;
+  name?: string;
+};
+
+export type MetaFacebookPage = {
+  id: string;
+  name?: string;
+};
+
+export type MetaCustomAudience = {
+  id: string;
+  name?: string;
+  subtype?: string;
+  approximate_count?: number;
+  lookalike_spec?: unknown;
+};
+
+export type MetaInsightRow = {
+  date_start: string;
+  spend?: string;
+  impressions?: string;
+  clicks?: string;
+  ctr?: string;
+  cpc?: string;
+  reach?: string;
+  actions?: Array<{ action_type: string; value: string }>;
+  purchase_roas?: Array<{ value: string }>;
+};
+
+export type MetaCampaignInsightRow = MetaInsightRow & {
+  campaign_id?: string;
+  campaign_name?: string;
+};
+
+export type MetaAdImage = { id: string; hash?: string; name?: string; url?: string };
+
+export type MetaCampaign = {
+  id: string;
+  name?: string;
+  status?: string;
+  daily_budget?: string;
+};
+
+export type MetaAdSet = {
+  id: string;
+  name?: string;
+  status?: string;
+  daily_budget?: string;
+  campaign_id?: string;
+};
+
+export type MetaAd = {
+  id: string;
+  name?: string;
+  status?: string;
+  adset_id?: string;
+};
+
+async function metaFetch<T>(path: string, accessToken: string): Promise<T> {
+  const url = new URL(`${GRAPH_BASE}${path}`);
+  url.searchParams.set("access_token", accessToken);
+  const { data } = await metaFetchWithRateLimit<T>(url.toString());
+  return data;
+}
+
+export async function metaPost<T>(path: string, accessToken: string, body: Record<string, string>): Promise<T> {
+  const url = new URL(`${GRAPH_BASE}${path}`);
+  url.searchParams.set("access_token", accessToken);
+  const { data } = await metaFetchWithRateLimit<T>(url.toString(), {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(body).toString()
+  });
+  return data;
+}
+
+export async function fetchMyBusinesses(accessToken: string): Promise<MetaAdAccount[]> {
+  const data = await metaFetch<{ data: MetaAdAccount[] }>(
+    "/me/businesses?fields=id,name",
+    accessToken
+  );
+  return data.data ?? [];
+}
+
+async function fetchBusinessEdge<T extends { id: string; name?: string }>(
+  accessToken: string,
+  businessId: string,
+  edge: "owned_ad_accounts" | "client_ad_accounts" | "owned_pages" | "client_pages"
+): Promise<T[]> {
+  try {
+    const data = await metaFetch<{ data: T[] }>(
+      `/${encodeURIComponent(businessId)}/${edge}?fields=id,name&limit=100`,
+      accessToken
+    );
+    return data.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchBusinessAdAccounts(
+  accessToken: string,
+  businessId: string
+): Promise<MetaAdAccount[]> {
+  const owned = await fetchBusinessEdge<MetaAdAccount>(accessToken, businessId, "owned_ad_accounts");
+  if (owned.length) return owned;
+  return fetchBusinessEdge<MetaAdAccount>(accessToken, businessId, "client_ad_accounts");
+}
+
+export async function fetchBusinessPages(
+  accessToken: string,
+  businessId: string
+): Promise<MetaFacebookPage[]> {
+  const owned = await fetchBusinessEdge<MetaFacebookPage>(accessToken, businessId, "owned_pages");
+  if (owned.length) return owned;
+  return fetchBusinessEdge<MetaFacebookPage>(accessToken, businessId, "client_pages");
+}
+
+export async function fetchMyAdAccounts(accessToken: string): Promise<MetaAdAccount[]> {
+  const data = await metaFetch<{ data: MetaAdAccount[] }>("/me/adaccounts?fields=id,name", accessToken);
+  return data.data ?? [];
+}
+
+export async function fetchUserPages(accessToken: string): Promise<MetaFacebookPage[]> {
+  const data = await metaFetch<{ data: MetaFacebookPage[] }>("/me/accounts?fields=id,name", accessToken);
+  return data.data ?? [];
+}
+
+export async function fetchCustomAudiences(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaCustomAudience[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const fields = ["id", "name", "subtype", "approximate_count", "lookalike_spec"].join(",");
+  const data = await metaFetch<{ data: MetaCustomAudience[] }>(
+    `/${encodeURIComponent(act)}/customaudiences?fields=${encodeURIComponent(fields)}&limit=100`,
+    accessToken
+  );
+  return data.data ?? [];
+}
+
+export async function createLookalikeAudience(
+  accessToken: string,
+  adAccountId: string,
+  input: {
+    name: string;
+    originAudienceId: string;
+    ratio: number;
+    country: string;
+  }
+): Promise<{ id: string }> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  return metaPost(`/${encodeURIComponent(act)}/customaudiences`, accessToken, {
+    name: input.name,
+    subtype: "LOOKALIKE",
+    origin_audience_id: input.originAudienceId,
+    lookalike_spec: JSON.stringify({
+      type: "similarity",
+      ratio: input.ratio,
+      country: input.country
+    })
+  });
+}
+
+export async function uploadAdImage(
+  accessToken: string,
+  adAccountId: string,
+  imageUrl: string,
+  name: string
+): Promise<{ images: Record<string, { hash: string }> }> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  return metaPost(`/${encodeURIComponent(act)}/adimages`, accessToken, {
+    url: imageUrl,
+    name
+  });
+}
+
+export async function fetchAccountInsightsDaily(accessToken: string, adAccountId: string): Promise<MetaInsightRow[]> {
+  const fields = ["spend", "impressions", "clicks", "ctr", "cpc", "actions", "purchase_roas", "date_start"].join(",");
+  const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d`;
+  const data = await metaFetch<{ data: MetaInsightRow[] }>(path, accessToken);
+  return data.data ?? [];
+}
+
+export async function fetchCampaignInsightsDaily(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaCampaignInsightRow[]> {
+  const fields = [
+    "campaign_id",
+    "campaign_name",
+    "spend",
+    "impressions",
+    "clicks",
+    "ctr",
+    "cpc",
+    "actions",
+    "purchase_roas",
+    "date_start"
+  ].join(",");
+  const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d`;
+  const data = await metaFetch<{ data: MetaCampaignInsightRow[] }>(path, accessToken);
+  return data.data ?? [];
+}
+
+export async function fetchAdImages(accessToken: string, adAccountId: string): Promise<MetaAdImage[]> {
+  const fields = ["id", "hash", "name", "url"].join(",");
+  const path = `/${encodeURIComponent(adAccountId)}/adimages?fields=${encodeURIComponent(fields)}&limit=50`;
+  const data = await metaFetch<{ data: MetaAdImage[] }>(path, accessToken);
+  return data.data ?? [];
+}
+
+const LEAD_ACTIONS = new Set([
+  "lead",
+  "offsite_conversion.fb_pixel_lead",
+  "offsite_conversion.lead"
+]);
+
+export function pickLeads(actions?: Array<{ action_type: string; value: string }>): number {
+  if (!actions?.length) return 0;
+  let sum = 0;
+  for (const a of actions) {
+    if (LEAD_ACTIONS.has(a.action_type)) sum += Number(a.value) || 0;
+  }
+  return sum;
+}
+
+export function pickConversions(actions?: Array<{ action_type: string; value: string }>): number {
+  if (!actions?.length) return 0;
+  const preferred = new Set([
+    "lead",
+    "offsite_conversion.fb_pixel_lead",
+    "offsite_conversion.lead",
+    "purchase",
+    "offsite_conversion.fb_pixel_purchase"
+  ]);
+
+  let sum = 0;
+  for (const a of actions) {
+    if (preferred.has(a.action_type)) {
+      sum += Number(a.value) || 0;
+    }
+  }
+  if (sum > 0) return sum;
+
+  for (const a of actions) sum += Number(a.value) || 0;
+  return sum;
+}
+
+export async function fetchCampaigns(accessToken: string, adAccountId: string): Promise<MetaCampaign[]> {
+  const fields = ["id", "name", "status", "daily_budget"].join(",");
+  const path = `/${encodeURIComponent(adAccountId)}/campaigns?fields=${encodeURIComponent(fields)}&limit=100`;
+  const data = await metaFetch<{ data: MetaCampaign[] }>(path, accessToken);
+  return data.data ?? [];
+}
+
+export async function fetchCampaign(accessToken: string, campaignId: string): Promise<MetaCampaign> {
+  const fields = ["id", "name", "status", "daily_budget"].join(",");
+  return metaFetch<MetaCampaign>(`/${encodeURIComponent(campaignId)}?fields=${encodeURIComponent(fields)}`, accessToken);
+}
+
+export async function fetchAdSetsForCampaign(
+  accessToken: string,
+  campaignId: string
+): Promise<MetaAdSet[]> {
+  const fields = ["id", "name", "status", "daily_budget", "campaign_id"].join(",");
+  const path = `/${encodeURIComponent(campaignId)}/adsets?fields=${encodeURIComponent(fields)}&limit=50`;
+  const data = await metaFetch<{ data: MetaAdSet[] }>(path, accessToken);
+  return data.data ?? [];
+}
+
+export async function fetchAdsForAdSet(accessToken: string, adSetId: string): Promise<MetaAd[]> {
+  const fields = ["id", "name", "status", "adset_id"].join(",");
+  const path = `/${encodeURIComponent(adSetId)}/ads?fields=${encodeURIComponent(fields)}&limit=50`;
+  const data = await metaFetch<{ data: MetaAd[] }>(path, accessToken);
+  return data.data ?? [];
+}
+
+export type MetaAdSetInsight = {
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  reach: number;
+  conversions: number;
+  roas: number;
+};
+
+function parseInsightActions(actions?: Array<{ action_type: string; value: string }>) {
+  let conversions = 0;
+  for (const a of actions ?? []) {
+    if (
+      a.action_type === "purchase" ||
+      a.action_type === "offsite_conversion.fb_pixel_purchase" ||
+      a.action_type === "lead"
+    ) {
+      conversions += Number(a.value) || 0;
+    }
+  }
+  return conversions;
+}
+
+export async function fetchAdSetInsights(
+  accessToken: string,
+  adSetId: string
+): Promise<MetaAdSetInsight | null> {
+  try {
+    const fields = ["spend", "impressions", "clicks", "ctr", "reach", "actions", "purchase_roas"].join(",");
+    const data = await metaFetch<{ data: MetaInsightRow[] }>(
+      `/${encodeURIComponent(adSetId)}/insights?fields=${encodeURIComponent(fields)}&date_preset=last_7d`,
+      accessToken
+    );
+    const row = data.data?.[0];
+    if (!row) return null;
+    const spend = Number(row.spend) || 0;
+    const conversions = parseInsightActions(row.actions);
+    const roasRaw = row.purchase_roas?.[0]?.value;
+    const roas = roasRaw != null ? Number(roasRaw) : spend > 0 && conversions > 0 ? spend / conversions : 0;
+    return {
+      spend,
+      impressions: Number(row.impressions) || 0,
+      clicks: Number(row.clicks) || 0,
+      ctr: Number(row.ctr) || 0,
+      reach: Number(row.reach) || 0,
+      conversions,
+      roas: Number.isFinite(roas) ? roas : 0
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function updateEntityStatus(
+  accessToken: string,
+  entityId: string,
+  status: "ACTIVE" | "PAUSED"
+) {
+  return metaPost(`/${encodeURIComponent(entityId)}`, accessToken, { status });
+}
+
+export async function pauseAd(accessToken: string, adId: string) {
+  return updateEntityStatus(accessToken, adId, "PAUSED");
+}
+
+export async function activateAd(accessToken: string, adId: string) {
+  return updateEntityStatus(accessToken, adId, "ACTIVE");
+}
+
+export async function pauseCampaign(accessToken: string, campaignId: string) {
+  return updateEntityStatus(accessToken, campaignId, "PAUSED");
+}
+
+export async function activateCampaign(accessToken: string, campaignId: string) {
+  return updateEntityStatus(accessToken, campaignId, "ACTIVE");
+}
+
+export async function pauseAdSet(accessToken: string, adSetId: string) {
+  return updateEntityStatus(accessToken, adSetId, "PAUSED");
+}
+
+export async function activateAdSet(accessToken: string, adSetId: string) {
+  return updateEntityStatus(accessToken, adSetId, "ACTIVE");
+}
+
+export async function updateCampaignDailyBudget(
+  accessToken: string,
+  campaignId: string,
+  dailyBudgetMinorUnits: number
+) {
+  return metaPost(`/${encodeURIComponent(campaignId)}`, accessToken, {
+    daily_budget: String(Math.max(0, Math.round(dailyBudgetMinorUnits)))
+  });
+}
+
+export async function updateAdSetDailyBudget(
+  accessToken: string,
+  adSetId: string,
+  dailyBudgetMinorUnits: number
+) {
+  return metaPost(`/${encodeURIComponent(adSetId)}`, accessToken, {
+    daily_budget: String(Math.max(0, Math.round(dailyBudgetMinorUnits)))
+  });
+}
+
+export async function renameEntity(accessToken: string, entityId: string, name: string) {
+  return metaPost(`/${encodeURIComponent(entityId)}`, accessToken, { name });
+}
