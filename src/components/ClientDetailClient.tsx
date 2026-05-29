@@ -201,10 +201,10 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
               <div className="mt-1 text-xs text-slate-500">{t("active")}</div>
             </div>
             <Link
-              href={`/campaigns?publish=1&client=${encodeURIComponent(data.slug)}`}
-              className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500"
+              href={`/campaigns?client=${encodeURIComponent(data.slug)}`}
+              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
-              {t("newCampaign")}
+              {t("viewCampaigns")}
             </Link>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -418,73 +418,6 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
           </div>
         </div>
 
-        <div className="ui-card p-4">
-          <div className="text-sm font-semibold">{t("campaigns")}</div>
-          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
-            <div className="grid grid-cols-12 gap-2 bg-white p-3 text-xs text-slate-500">
-              <div className="col-span-4">{t("colName")}</div>
-              <div className="col-span-2">{t("colStatus")}</div>
-              <div className="col-span-2 text-right">{t("colSpend")}</div>
-              <div className="col-span-4 text-right">{t("colActions")}</div>
-            </div>
-            {data.campaigns.length ? (
-              data.campaigns.map((r) => (
-                <div
-                  key={r.id}
-                  className={`grid grid-cols-12 gap-2 border-t border-slate-200 p-3 text-sm ${
-                    r.hasAlert ? "bg-red-50/50" : "bg-white"
-                  }`}
-                >
-                  <div className="col-span-4 font-medium">{r.name}</div>
-                  <div className="col-span-2 text-xs text-slate-600">{r.status}</div>
-                  <div className="col-span-2 text-right text-xs text-slate-600">{r.spend}</div>
-                  <div className="col-span-4 flex justify-end gap-1">
-                    <Link
-                      href={`/campaigns/${r.id}?client=${encodeURIComponent(data.slug)}`}
-                      className="rounded-lg border border-violet-800 px-2 py-1 text-[10px] text-violet-300 hover:bg-violet-950"
-                    >
-                      {t("manage")}
-                    </Link>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-slate-200 px-2 py-1 text-[10px] text-slate-600 hover:bg-slate-50"
-                      onClick={() => {
-                        startTransition(async () => {
-                          await fetch(`/api/campaigns/${encodeURIComponent(r.id)}/actions`, {
-                            method: "POST",
-                            headers: { "content-type": "application/json" },
-                            body: JSON.stringify({ action: "activate" })
-                          });
-                          reload();
-                        });
-                      }}
-                    >
-                      {t("activate")}
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-slate-200 px-2 py-1 text-[10px] text-slate-600 hover:bg-slate-50"
-                      onClick={() => {
-                        startTransition(async () => {
-                          await fetch(`/api/campaigns/${encodeURIComponent(r.id)}/actions`, {
-                            method: "POST",
-                            headers: { "content-type": "application/json" },
-                            body: JSON.stringify({ action: "pause" })
-                          });
-                          reload();
-                        });
-                      }}
-                    >
-                      {t("pause")}
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-xs text-slate-500">{t("noCampaigns")}</div>
-            )}
-          </div>
-        </div>
       </section>
 
       <aside className="space-y-3">

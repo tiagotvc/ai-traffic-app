@@ -1,6 +1,7 @@
 import "server-only";
 
 import { repositories } from "@/db/repositories";
+import { formatMetaAdAccountLabel } from "@/lib/meta-account-label";
 import {
   fetchBusinessAdAccounts,
   fetchBusinessPages,
@@ -73,12 +74,12 @@ export async function runMetaDiscover(
             tenantId,
             metaAdAccountId: acc.id,
             metaBusinessId: bm.id,
-            label: acc.name ?? null,
+            label: formatMetaAdAccountLabel(acc),
             isDemo
           });
         } else {
           inv.metaBusinessId = bm.id;
-          inv.label = acc.name ?? inv.label;
+          inv.label = formatMetaAdAccountLabel(acc);
           inv.isDemo = isDemo;
         }
         await inventoryRepo.save(inv);
@@ -126,11 +127,11 @@ export async function runMetaDiscover(
         tenantId,
         metaAdAccountId: acc.id,
         metaBusinessId: null,
-        label: acc.name ?? null,
+        label: formatMetaAdAccountLabel(acc),
         isDemo
       });
     } else {
-      inv.label = acc.name ?? inv.label;
+      inv.label = formatMetaAdAccountLabel(acc);
       inv.isDemo = isDemo;
     }
     await inventoryRepo.save(inv);

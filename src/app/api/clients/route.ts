@@ -4,23 +4,57 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, listClientsForTenant, slugify } from "@/lib/app-context";
+import { applyClientMetaSettings, linkClientMetaAccounts } from "@/lib/link-client-meta";
 
 const CreateClientSchema = z.object({
-  name: z.string().min(1).max(120)
+  name: z.string().min(1).max(120),
+  metaBusinessId: z.string().optional(),
+  metaAdAccountIds: z.array(z.string().min(1)).optional(),
+  metaPageId: z.string().optional(),
+  metaPixelId: z.string().optional(),
+  metaLinkUrl: z.string().max(500).optional()
 });
 
 export async function POST(req: Request) {
-  const { tenant } = await getAppContext();
+  const { tenant, metaAccessToken } = await getAppContext();
   const body = CreateClientSchema.parse(await req.json().catch(() => ({})));
   const { client: clientRepo, clientGoal: goalRepo } = await repositories();
 
   const saved = await clientRepo.save(
-    clientRepo.create({ tenantId: tenant.id, name: body.name.trim() })
+    clientRepo.create({
+      tenantId: tenant.id,
+      name: body.name.trim(),
+      metaPageId: body.metaPageId?.trim() || null,
+      metaLinkUrl: body.metaLinkUrl?.trim() || null
+    })
   );
 
   await goalRepo.save(
     goalRepo.create({ clientId: saved.id, objective: "leads", enabled: false, windowDays: 1 })
   );
+
+  const metaIds = body.metaAdAccountIds ?? [];
+  if (metaIds.length > 0) {
+    await linkClientMetaAccounts({
+      tenantId: tenant.id,
+      clientId: saved.id,
+      metaAdAccountIds: metaIds,
+      metaAccessToken,
+      metaBusinessId:
+        body.metaBusinessId && body.metaBusinessId !== "unassigned"
+          ? body.metaBusinessId
+          : null
+    });
+  }
+
+  const defaultAdAccountId = metaIds[0] ?? null;
+  await applyClientMetaSettings({
+    client: saved,
+    metaPageId: body.metaPageId ?? saved.metaPageId,
+    metaLinkUrl: body.metaLinkUrl ?? saved.metaLinkUrl,
+    metaPixelId: body.metaPixelId ?? null,
+    defaultAdAccountId
+  });
 
   return NextResponse.json({
     ok: true,

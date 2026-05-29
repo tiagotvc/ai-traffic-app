@@ -107,6 +107,7 @@ export function MetaAssetsHubClient({
           <p className="text-xs font-medium text-slate-500">{t("breadcrumb")}</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("title")}</h1>
           <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
+          <p className="mt-2 text-xs text-violet-800">{t("discoverFixHint")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button

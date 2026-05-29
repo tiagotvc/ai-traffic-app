@@ -1,8 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
+import { CreateClientWizard } from "@/components/CreateClientWizard";
 import { Link } from "@/i18n/navigation";
 
 type ClientRow = {
@@ -16,11 +17,7 @@ type ClientRow = {
 
 export function ClientsHubClient() {
   const t = useTranslations("clientsHub");
-  const tCommon = useTranslations("common");
   const [clients, setClients] = useState<ClientRow[]>([]);
-  const [name, setName] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
 
   function reload() {
     fetch("/api/clients")
@@ -37,38 +34,9 @@ export function ClientsHubClient() {
       <div className="ui-card p-4">
         <div className="text-lg font-bold text-slate-900">{t("title")}</div>
         <div className="text-sm text-slate-500">{t("subtitle")}</div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("newClientPlaceholder")}
-            className="ui-input min-w-[200px] flex-1"
-          />
-          <button
-            disabled={isPending || !name.trim()}
-            onClick={() => {
-              startTransition(async () => {
-                setMessage(null);
-                const res = await fetch("/api/clients", {
-                  method: "POST",
-                  headers: { "content-type": "application/json" },
-                  body: JSON.stringify({ name: name.trim() })
-                });
-                const j = await res.json();
-                if (!res.ok) {
-                  setMessage(j.error ?? t("createFailed"));
-                  return;
-                }
-                setName("");
-                reload();
-              });
-            }}
-            className="ui-btn-primary disabled:opacity-60"
-          >
-            {isPending ? tCommon("sending") : t("addClient")}
-          </button>
+        <div className="mt-4">
+          <CreateClientWizard onCreated={reload} />
         </div>
-        {message ? <div className="mt-2 text-xs text-slate-500">{message}</div> : null}
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">

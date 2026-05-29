@@ -5,6 +5,13 @@ const GRAPH_BASE = "https://graph.facebook.com/v20.0";
 export type MetaAdAccount = {
   id: string;
   name?: string;
+  /** Graph API: 1 = ACTIVE, 2 = DISABLED, etc. */
+  account_status?: number;
+};
+
+export type MetaPixel = {
+  id: string;
+  name?: string;
 };
 
 export type MetaFacebookPage = {
@@ -87,18 +94,58 @@ export async function fetchMyBusinesses(accessToken: string): Promise<MetaAdAcco
   return data.data ?? [];
 }
 
+const GRAPH_EDGE_MAX_ITEMS = 500;
+
+type GraphPaged<T> = { data?: T[]; paging?: { next?: string } };
+
+async function fetchGraphPaged<T>(
+  firstUrl: string,
+  accessToken: string,
+  maxItems = GRAPH_EDGE_MAX_ITEMS
+): Promise<T[]> {
+  const out: T[] = [];
+  let url: string | null = firstUrl;
+
+  while (url && out.length < maxItems) {
+    const page: GraphPaged<T> = url.startsWith("http")
+      ? (await metaFetchWithRateLimit<GraphPaged<T>>(url)).data
+      : await metaFetch<GraphPaged<T>>(url, accessToken);
+
+    const batch = page.data ?? [];
+    out.push(...batch);
+    url = page.paging?.next ?? null;
+    if (!batch.length) break;
+  }
+
+  return out.slice(0, maxItems);
+}
+
+function mergeById<T extends { id: string; name?: string }>(lists: T[][]): T[] {
+  const map = new Map<string, T>();
+  for (const list of lists) {
+    for (const item of list) {
+      if (!map.has(item.id)) map.set(item.id, item);
+    }
+  }
+  return [...map.values()].sort((a, b) =>
+    (a.name ?? a.id).localeCompare(b.name ?? b.id, undefined, { sensitivity: "base" })
+  );
+}
+
 async function fetchBusinessEdge<T extends { id: string; name?: string }>(
   accessToken: string,
   businessId: string,
-  edge: "owned_ad_accounts" | "client_ad_accounts" | "owned_pages" | "client_pages"
+  edge: "owned_ad_accounts" | "client_ad_accounts" | "owned_pages" | "client_pages",
+  fields = "id,name"
 ): Promise<T[]> {
   try {
-    const data = await metaFetch<{ data: T[] }>(
-      `/${encodeURIComponent(businessId)}/${edge}?fields=id,name&limit=100`,
-      accessToken
-    );
-    return data.data ?? [];
-  } catch {
+    const path = `/${encodeURIComponent(businessId)}/${edge}?fields=${encodeURIComponent(fields)}&limit=100`;
+    const first = `${GRAPH_BASE}${path}`;
+    return fetchGraphPaged<T>(first, accessToken);
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[meta-graph] ${edge} for ${businessId}:`, err);
+    }
     return [];
   }
 }
@@ -107,23 +154,44 @@ export async function fetchBusinessAdAccounts(
   accessToken: string,
   businessId: string
 ): Promise<MetaAdAccount[]> {
-  const owned = await fetchBusinessEdge<MetaAdAccount>(accessToken, businessId, "owned_ad_accounts");
-  if (owned.length) return owned;
-  return fetchBusinessEdge<MetaAdAccount>(accessToken, businessId, "client_ad_accounts");
+  const fields = "id,name,account_status";
+  const [owned, client] = await Promise.all([
+    fetchBusinessEdge<MetaAdAccount>(accessToken, businessId, "owned_ad_accounts", fields),
+    fetchBusinessEdge<MetaAdAccount>(accessToken, businessId, "client_ad_accounts", fields)
+  ]);
+  return mergeById([owned, client]);
 }
 
 export async function fetchBusinessPages(
   accessToken: string,
   businessId: string
 ): Promise<MetaFacebookPage[]> {
-  const owned = await fetchBusinessEdge<MetaFacebookPage>(accessToken, businessId, "owned_pages");
-  if (owned.length) return owned;
-  return fetchBusinessEdge<MetaFacebookPage>(accessToken, businessId, "client_pages");
+  const [owned, client] = await Promise.all([
+    fetchBusinessEdge<MetaFacebookPage>(accessToken, businessId, "owned_pages"),
+    fetchBusinessEdge<MetaFacebookPage>(accessToken, businessId, "client_pages")
+  ]);
+  return mergeById([owned, client]);
 }
 
 export async function fetchMyAdAccounts(accessToken: string): Promise<MetaAdAccount[]> {
-  const data = await metaFetch<{ data: MetaAdAccount[] }>("/me/adaccounts?fields=id,name", accessToken);
-  return data.data ?? [];
+  const first = `${GRAPH_BASE}/me/adaccounts?fields=id,name,account_status&limit=100`;
+  return fetchGraphPaged<MetaAdAccount>(first, accessToken);
+}
+
+export async function fetchAdAccountPixels(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaPixel[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  try {
+    const first = `${GRAPH_BASE}/${encodeURIComponent(act)}/adspixels?fields=id,name&limit=100`;
+    return fetchGraphPaged<MetaPixel>(first, accessToken);
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[meta-graph] adspixels for ${act}:`, err);
+    }
+    return [];
+  }
 }
 
 export async function fetchUserPages(accessToken: string): Promise<MetaFacebookPage[]> {
