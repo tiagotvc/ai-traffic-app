@@ -3,12 +3,6 @@ import { DataSource } from "typeorm";
 
 import { typeOrmEntities, Tenant } from "./entities/registry";
 import { postgresOptionsFromUrl } from "./pg-config";
-import { Init1735689600000 } from "./migrations/0001-Init";
-import { UserPasswordHash1735689700000 } from "./migrations/0002-UserPasswordHash";
-import { GoalsAndCampaignMetrics1735690000000 } from "./migrations/0003-GoalsAndCampaignMetrics";
-import { ClientMetaPublish1735690100000 } from "./migrations/0004-ClientMetaPublish";
-import { AgencyPlatform1735690200000 } from "./migrations/0005-AgencyPlatform";
-import { MetaBusinessAssets1735690300000 } from "./migrations/0006-MetaBusinessAssets";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -18,22 +12,16 @@ declare global {
 function buildDataSource() {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    throw new Error("DATABASE_URL is required");
+    throw new Error(
+      "DATABASE_URL is required. On Vercel, set it to the Supabase pooler URL (port 6543, ?pgbouncer=true)."
+    );
   }
 
   return new DataSource({
     ...postgresOptionsFromUrl(url),
     entities: [...typeOrmEntities],
-    migrations: [
-      Init1735689600000,
-      UserPasswordHash1735689700000,
-      GoalsAndCampaignMetrics1735690000000,
-      ClientMetaPublish1735690100000,
-      AgencyPlatform1735690200000,
-      MetaBusinessAssets1735690300000
-    ],
     synchronize: false,
-    logging: false
+    logging: process.env.NODE_ENV === "development"
   });
 }
 
@@ -48,11 +36,16 @@ export async function getDataSource(): Promise<DataSource> {
   const existing = globalThis.__appDataSource;
 
   if (existing?.isInitialized && dataSourceHasEntities(existing)) {
-    return existing;
-  }
-
-  if (existing?.isInitialized) {
+    try {
+      await existing.query("SELECT 1");
+      return existing;
+    } catch {
+      await existing.destroy().catch(() => undefined);
+      globalThis.__appDataSource = undefined;
+    }
+  } else if (existing?.isInitialized) {
     await existing.destroy().catch(() => undefined);
+    globalThis.__appDataSource = undefined;
   }
 
   const ds = buildDataSource();

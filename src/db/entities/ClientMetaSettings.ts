@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, OneToOne } from "typeorm";
-import type { Client } from "./Client";
+import { Client } from "./Client";
 
 export type ClientTargeting = {
   countries: string[];
@@ -15,7 +15,7 @@ export class ClientMetaSettings {
   @Column({ type: "uuid", primary: true })
   clientId!: string;
 
-  @OneToOne("Client", { onDelete: "CASCADE" })
+  @OneToOne(() => Client, { onDelete: "CASCADE" })
   @JoinColumn({ name: "clientId" })
   client!: Client;
 

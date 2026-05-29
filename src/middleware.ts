@@ -19,7 +19,7 @@ export default auth((req) => {
   const path = req.nextUrl.pathname;
 
   if (path.startsWith("/api")) {
-    if (!isLoggedIn && !path.startsWith("/api/auth")) {
+    if (!isLoggedIn && !path.startsWith("/api/auth") && !path.startsWith("/api/health")) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.next();
