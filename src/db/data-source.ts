@@ -1,8 +1,10 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 
-import { typeOrmEntities, Tenant } from "./entities/registry";
+import { typeOrmEntities } from "./entities/registry";
 import { postgresOptionsFromUrl } from "./pg-config";
+
+const EXPECTED_ENTITY_COUNT = typeOrmEntities.length;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -27,8 +29,9 @@ function buildDataSource() {
 
 function dataSourceHasEntities(ds: DataSource): boolean {
   if (!ds.isInitialized || ds.entityMetadatas.length === 0) return false;
-  return ds.entityMetadatas.some(
-    (m) => m.target === Tenant || m.name === "Tenant" || m.tableName === "tenants"
+  return (
+    ds.entityMetadatas.length >= EXPECTED_ENTITY_COUNT &&
+    ds.entityMetadatas.some((m) => m.name === "Tenant" && m.tableName === "tenants")
   );
 }
 
