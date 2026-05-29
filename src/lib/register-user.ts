@@ -1,6 +1,7 @@
 import { repositories } from "@/db/repositories";
 import type { User } from "@/db/entities/User";
 import { hashPassword } from "@/lib/password";
+import { resolveTenantName } from "@/lib/tenant-name";
 
 export type RegisterResult =
   | { ok: true; userId: string }
@@ -24,8 +25,7 @@ export async function registerUser(args: {
     return { ok: false, error: "EMAIL_TAKEN" };
   }
 
-  const domain = email.split("@")[1] ?? "local";
-  const tenantName = domain === "local" ? "Tenant Local" : `Tenant ${domain}`;
+  const tenantName = resolveTenantName(email);
 
   let tenant = await tenantRepo.findOne({ where: { name: tenantName } });
   if (!tenant) {

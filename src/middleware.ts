@@ -37,7 +37,10 @@ export default auth((req) => {
   }
 
   if (isLoggedIn && pathWithoutLocale === "/login") {
-    return NextResponse.redirect(new URL(`/${locale}/dashboard`, req.nextUrl.origin));
+    const switchAccount = req.nextUrl.searchParams.get("switch") === "1";
+    if (!switchAccount) {
+      return NextResponse.redirect(new URL(`/${locale}/dashboard`, req.nextUrl.origin));
+    }
   }
 
   return intlMiddleware(req);

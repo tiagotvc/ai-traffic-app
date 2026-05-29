@@ -43,8 +43,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const token = authConfig.callbacks?.jwt
         ? await authConfig.callbacks.jwt(params)
         : params.token;
-      if (params.user?.id) token.userId = params.user.id;
-      if (params.user?.email) token.email = params.user.email;
+
+      if (params.account?.provider === "credentials") {
+        if (params.user?.id) token.userId = params.user.id;
+        if (params.user?.email) token.email = params.user.email;
+      }
+
       return token;
     },
     async session(params) {

@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
+import { auth } from "@/auth";
 import { LoginForm } from "@/components/LoginForm";
 import { StripOAuthHash } from "@/components/StripOAuthHash";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
@@ -9,11 +10,14 @@ export default async function LoginPage({
   searchParams
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; switch?: string }>;
 }) {
   const { locale } = await params;
-  const { callbackUrl } = await searchParams;
+  const { callbackUrl, switch: switchParam } = await searchParams;
   const tCommon = await getTranslations("common");
+  const session = await auth();
+  const switchAccount = switchParam === "1";
+  const currentUserEmail = session?.user?.email ?? null;
 
   const redirectTo =
     callbackUrl && callbackUrl.startsWith("/")
@@ -37,6 +41,8 @@ export default async function LoginPage({
           locale={locale}
           callbackUrl={redirectTo}
           metaOAuthConfigured={isMetaOAuthConfigured()}
+          switchAccount={switchAccount}
+          currentUserEmail={currentUserEmail}
         />
       </div>
     </div>

@@ -15,7 +15,8 @@ export async function ConnectMetaButton({
 }) {
   const t = await getTranslations("settings");
   const configured = isMetaOAuthConfigured();
-  const target = redirectTo ?? `/${locale}/onboarding/meta?from=settings`;
+  const target =
+    redirectTo ?? `/${locale}/settings?from=meta_reconnect`;
 
   if (!configured) {
     return (

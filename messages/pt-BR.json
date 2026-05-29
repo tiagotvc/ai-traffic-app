@@ -358,6 +358,9 @@
       "INVALID_INPUT": "Preencha email e senha (mín. 6 caracteres).",
       "REGISTER_LOGIN_FAILED": "Conta criada, mas falhou ao entrar. Tente fazer login."
     },
+    "switchAccountTitle": "Trocar de conta",
+    "switchAccountBody": "Você está conectado como {email}. Entre com outra conta para abrir um workspace separado.",
+    "switchAccountHint": "Ao entrar com Facebook, a sessão atual será encerrada automaticamente.",
     "metaOAuth": {
       "connecting": "Conectando…",
       "popupBlocked": "O navegador bloqueou a janela. Permita popups para este site e tente de novo.",
@@ -780,6 +783,7 @@
     "metaAssetsLink": "Ver hub de ativos Meta →",
     "metaSetupRequired": "Configure o app Meta no .env antes de conectar.",
     "metaErrorMissingApp": "App Meta não configurado. Preencha META_APP_ID e META_APP_SECRET e reinicie o servidor.",
+    "metaErrorProfileMismatch": "A conta Meta escolhida é diferente da sessão atual. Saia e entre com a conta correta, ou use a mesma conta Meta vinculada.",
     "metaSetupTitle": "Configurar app Meta (obrigatório para conectar)",
     "metaSetupIntro": "O erro \"ID do app inválido\" acontece quando META_APP_ID está vazio no arquivo .env.",
     "metaSetupStep1": "Crie um app em",

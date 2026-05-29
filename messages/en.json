@@ -358,6 +358,9 @@
       "INVALID_INPUT": "Enter email and password (min. 6 characters).",
       "REGISTER_LOGIN_FAILED": "Account created but sign-in failed. Try logging in."
     },
+    "switchAccountTitle": "Switch account",
+    "switchAccountBody": "You are signed in as {email}. Sign in with another account to open a separate workspace.",
+    "switchAccountHint": "Signing in with Facebook will end your current session automatically.",
     "metaOAuth": {
       "connecting": "Connecting…",
       "popupBlocked": "The browser blocked the popup. Allow popups for this site and try again.",
@@ -780,6 +783,7 @@
     "metaAssetsLink": "Open Meta assets hub →",
     "metaSetupRequired": "Configure the Meta app in .env before connecting.",
     "metaErrorMissingApp": "Meta app not configured. Set META_APP_ID and META_APP_SECRET, then restart the server.",
+    "metaErrorProfileMismatch": "The Meta account selected differs from your current session. Sign out and sign in with the correct account, or reconnect using the same linked Meta account.",
     "metaSetupTitle": "Set up Meta app (required to connect)",
     "metaSetupIntro": "The \"Invalid App ID\" error means META_APP_ID is empty in your .env file.",
     "metaSetupStep1": "Create an app at",

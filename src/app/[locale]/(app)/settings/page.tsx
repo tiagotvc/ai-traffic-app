@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
+import { auth } from "@/auth";
 import { ConnectMetaButton } from "@/components/ConnectMetaButton";
 import { MetaSetupCallout } from "@/components/MetaSetupCallout";
 import { SettingsClient } from "@/components/SettingsClient";
@@ -13,6 +14,10 @@ export default async function SettingsPage({
   const { locale } = await params;
   const t = await getTranslations("settings");
   const metaOAuthConfigured = isMetaOAuthConfigured();
+  const session = await auth();
+  const metaOAuthError =
+    (session as { metaOAuthError?: string } | null)?.metaOAuthError ?? null;
+
   return (
     <div className="space-y-5">
       <div>
@@ -24,6 +29,7 @@ export default async function SettingsPage({
       <SettingsClient
         locale={locale}
         metaOAuthConfigured={metaOAuthConfigured}
+        metaOAuthError={metaOAuthError}
         connectMetaSlot={<ConnectMetaButton locale={locale} />}
       />
     </div>

@@ -15,11 +15,15 @@ const initialState: AuthFormState = {};
 export function LoginForm({
   locale,
   callbackUrl,
-  metaOAuthConfigured
+  metaOAuthConfigured,
+  switchAccount = false,
+  currentUserEmail = null
 }: {
   locale: string;
   callbackUrl: string;
   metaOAuthConfigured: boolean;
+  switchAccount?: boolean;
+  currentUserEmail?: string | null;
 }) {
   const t = useTranslations("auth");
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -34,9 +38,18 @@ export function LoginForm({
 
   const error = mode === "login" ? loginState.error : registerState.error;
   const pending = mode === "login" ? loginPending : registerPending;
+  const showSwitchBanner = switchAccount && currentUserEmail;
 
   return (
     <div className="ui-card p-6 shadow-cardHover">
+      {showSwitchBanner ? (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <div className="font-semibold">{t("switchAccountTitle")}</div>
+          <p className="mt-1">{t("switchAccountBody", { email: currentUserEmail })}</p>
+          <p className="mt-2 text-amber-800">{t("switchAccountHint")}</p>
+        </div>
+      ) : null}
+
       <div className="flex gap-1 rounded-xl border border-surface-line bg-slate-50 p-1 text-xs">
         <button
           type="button"
@@ -83,6 +96,7 @@ export function LoginForm({
         <form action={loginAction} className="mt-4 space-y-3">
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
+          {showSwitchBanner ? <input type="hidden" name="switchAccount" value="1" /> : null}
           <Field label={t("email")} name="email" type="email" autoComplete="email" />
           <Field
             label={t("password")}
@@ -130,7 +144,11 @@ export function LoginForm({
       {metaOAuthConfigured ? (
         <form action={loginWithFacebook}>
           <input type="hidden" name="locale" value={locale} />
-          <input type="hidden" name="callbackUrl" value={`/${locale}/onboarding/meta`} />
+          <input
+            type="hidden"
+            name="callbackUrl"
+            value={callbackUrl || `/${locale}/onboarding/meta`}
+          />
           <button type="submit" className="ui-btn-primary w-full">
             {t("loginButtonRecommended")}
           </button>

@@ -6,6 +6,7 @@ import { repositories } from "@/db/repositories";
 import type { Client } from "@/db/entities/Client";
 import type { Repository } from "typeorm";
 import { getStoredMetaAccessToken, persistMetaAuth } from "@/lib/meta-auth-store";
+import { resolveTenantName } from "@/lib/tenant-name";
 import { isUuid } from "@/lib/uuid";
 
 export async function getAppContext() {
@@ -19,8 +20,9 @@ export async function getAppContext() {
 
   const email = session.user.email.toLowerCase();
 
-  const domain = email.split("@")[1] ?? "local";
-  const tenantName = domain === "local" ? "Tenant Local" : `Tenant ${domain}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const metaProfileId = (session as any).meta?.profileId as string | undefined;
+  const tenantName = resolveTenantName(email, metaProfileId);
 
   let tenant = await tenantRepo.findOne({ where: { name: tenantName } });
   if (!tenant) {

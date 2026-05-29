@@ -2,7 +2,7 @@
 
 import { AuthError } from "next-auth";
 
-import { signIn } from "@/auth";
+import { signIn, signOut } from "@/auth";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
 import { registerUser } from "@/lib/register-user";
 
@@ -18,6 +18,11 @@ export async function loginWithCredentials(
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const callbackUrl = String(formData.get("callbackUrl") ?? `/${locale}/dashboard`);
+  const switchAccount = formData.get("switchAccount") === "1";
+
+  if (switchAccount) {
+    await signOut({ redirect: false });
+  }
 
   try {
     await signIn("credentials", {
@@ -69,5 +74,13 @@ export async function loginWithFacebook(formData: FormData) {
   const locale = String(formData.get("locale") ?? "pt-BR");
   const callbackUrl = String(formData.get("callbackUrl") ?? `/${locale}/onboarding/meta`);
   if (!isMetaOAuthConfigured()) return;
-  await signIn("facebook", { redirectTo: callbackUrl });
+
+  await signOut({ redirect: false });
+
+  await signIn("facebook", {
+    redirectTo: callbackUrl,
+    authorizationParams: {
+      auth_type: "reauthenticate"
+    }
+  });
 }

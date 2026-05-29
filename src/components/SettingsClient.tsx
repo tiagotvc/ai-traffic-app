@@ -9,10 +9,12 @@ import { Link } from "@/i18n/navigation";
 export function SettingsClient({
   locale,
   metaOAuthConfigured,
+  metaOAuthError,
   connectMetaSlot
 }: {
   locale: string;
   metaOAuthConfigured: boolean;
+  metaOAuthError?: string | null;
   connectMetaSlot: ReactNode;
 }) {
   const t = useTranslations("settings");
@@ -45,13 +47,16 @@ export function SettingsClient({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("meta") === "connected") {
+    if (params.get("from") === "meta_reconnect" && metaOAuthError !== "PROFILE_MISMATCH") {
       setMetaConnected(true);
     }
     if (params.get("metaError") === "missing_app_config") {
       setMessage(t("metaErrorMissingApp"));
     }
-  }, [locale, t]);
+    if (metaOAuthError === "PROFILE_MISMATCH") {
+      setMessage(t("metaErrorProfileMismatch"));
+    }
+  }, [locale, t, metaOAuthError]);
 
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
