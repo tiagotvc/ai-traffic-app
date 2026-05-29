@@ -6,7 +6,7 @@ import { loadMetricRows, parseDashboardSearchParams, resolveDashboardScope } fro
 export async function GET(req: Request) {
   const { tenant } = await getAppContext();
   const url = new URL(req.url);
-  const { clientId, adAccountId } = parseDashboardSearchParams(url);
+  const { clientId, adAccountId, days } = parseDashboardSearchParams(url);
 
   const { accountIds, adAccounts } = await resolveDashboardScope(tenant.id, clientId, adAccountId);
 
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     });
   }
 
-  const allRows = await loadMetricRows(accountIds, 30);
+  const allRows = await loadMetricRows(accountIds, days);
 
   let spend = 0;
   let impressions = 0;

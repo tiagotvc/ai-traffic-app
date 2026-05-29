@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/Badge";
@@ -45,6 +45,18 @@ type SeriesPoint = { day: string; spend: number; conversions: number; roas: numb
 
 type ViewMode = "campaigns" | "clients" | "accounts";
 type AlertFilter = "all" | "critical" | "warning" | "info";
+type PeriodDays = 7 | 14 | 30;
+type OpenMenu = "date" | "client" | "filters" | null;
+
+type ClientOption = { slug: string; name: string };
+
+function formatPeriodRange(days: PeriodDays, locale: string) {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - (days - 1));
+  const fmt = new Intl.DateTimeFormat(locale, { month: "short", day: "2-digit", year: "numeric" });
+  return `${fmt.format(start)} → ${fmt.format(end)}`;
+}
 
 function trendFromSeries(values: number[]) {
   if (values.length < 2) return { label: "—", positive: true, pct: 0 };
@@ -78,7 +90,6 @@ function MetaIcon() {
 
 export function CommandCenterClient() {
   const t = useTranslations("command");
-  const tCommon = useTranslations("common");
   const locale = useLocale();
 
   const [rows, setRows] = useState<CampaignRow[]>([]);
@@ -93,6 +104,12 @@ export function CommandCenterClient() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [periodDays, setPeriodDays] = useState<PeriodDays>(7);
+  const [clientFilter, setClientFilter] = useState("");
+  const [onlyAlerts, setOnlyAlerts] = useState(false);
+  const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const filterBarRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
 
   const pageSize = 10;
@@ -100,6 +117,14 @@ export function CommandCenterClient() {
   const load = useCallback(() => {
     const qs = new URLSearchParams();
     if (q) qs.set("q", q);
+    if (clientFilter) qs.set("clientId", clientFilter);
+    if (onlyAlerts) qs.set("onlyAlerts", "1");
+    qs.set("days", String(periodDays));
+
+    const dashQs = new URLSearchParams();
+    dashQs.set("days", String(periodDays));
+    if (clientFilter) dashQs.set("clientId", clientFilter);
+
     fetch(`/api/command-center/campaigns?${qs}`)
       .then((r) => r.json())
       .then((j) => {
@@ -109,15 +134,15 @@ export function CommandCenterClient() {
     fetch("/api/command-center/alerts?limit=50")
       .then((r) => r.json())
       .then((j) => setAlerts(j.alerts ?? []));
-    fetch("/api/dashboard/summary")
+    fetch(`/api/dashboard/summary?${dashQs}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.summary) setSummary(j.summary);
       });
-    fetch("/api/dashboard/timeseries")
+    fetch(`/api/dashboard/timeseries?${dashQs}`)
       .then((r) => r.json())
       .then((j) => setSeries(j.series ?? []));
-  }, [q]);
+  }, [q, clientFilter, onlyAlerts, periodDays]);
 
   useEffect(() => {
     load();
@@ -127,6 +152,38 @@ export function CommandCenterClient() {
     const tmr = setTimeout(() => setQ(searchInput), 300);
     return () => clearTimeout(tmr);
   }, [searchInput]);
+
+  useEffect(() => {
+    fetch("/api/clients")
+      .then((r) => r.json())
+      .then((j) => {
+        const list = (j.clients ?? []) as Array<{ name: string; slug?: string }>;
+        setClients(
+          list.map((c) => ({
+            name: c.name,
+            slug: c.slug ?? c.name.toLowerCase().replace(/\s+/g, "-")
+          }))
+        );
+      })
+      .catch(() => setClients([]));
+  }, []);
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!filterBarRef.current?.contains(e.target as Node)) {
+        setOpenMenu(null);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const periodLabel = formatPeriodRange(periodDays, locale);
+  const clientLabel =
+    clientFilter === ""
+      ? t("allClients")
+      : clients.find((c) => c.slug === clientFilter)?.name ?? t("allClients");
+  const filtersActive = onlyAlerts;
 
   const spendSeries = series.map((s) => s.spend);
   const convSeries = series.map((s) => s.conversions);
@@ -283,19 +340,127 @@ export function CommandCenterClient() {
       </div>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-          <span className="text-slate-400">📅</span>
-          <span>{tCommon("dateRange")}</span>
-          <span className="text-slate-400">▾</span>
+      <div ref={filterBarRef} className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setOpenMenu((m) => (m === "date" ? null : "date"))}
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
+            aria-expanded={openMenu === "date"}
+          >
+            <span className="text-slate-400">📅</span>
+            <span>{periodLabel}</span>
+            <span className="text-slate-400">▾</span>
+          </button>
+          {openMenu === "date" ? (
+            <div className="absolute left-0 top-full z-30 mt-1 min-w-[200px] rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+              {([7, 14, 30] as PeriodDays[]).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => {
+                    setPeriodDays(d);
+                    setPage(1);
+                    setOpenMenu(null);
+                  }}
+                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
+                    periodDays === d ? "font-semibold text-violet-700" : "text-slate-700"
+                  }`}
+                >
+                  {t(`period${d}` as "period7")}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-          <span>{t("allClients")}</span>
-          <span className="text-slate-400">▾</span>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setOpenMenu((m) => (m === "client" ? null : "client"))}
+            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
+            aria-expanded={openMenu === "client"}
+          >
+            <span>{clientLabel}</span>
+            <span className="text-slate-400">▾</span>
+          </button>
+          {openMenu === "client" ? (
+            <div className="absolute left-0 top-full z-30 mt-1 max-h-64 min-w-[220px] overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+              <button
+                type="button"
+                onClick={() => {
+                  setClientFilter("");
+                  setPage(1);
+                  setOpenMenu(null);
+                }}
+                className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
+                  !clientFilter ? "font-semibold text-violet-700" : "text-slate-700"
+                }`}
+              >
+                {t("allClients")}
+              </button>
+              {clients.map((c) => (
+                <button
+                  key={c.slug}
+                  type="button"
+                  onClick={() => {
+                    setClientFilter(c.slug);
+                    setPage(1);
+                    setOpenMenu(null);
+                  }}
+                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
+                    clientFilter === c.slug ? "font-semibold text-violet-700" : "text-slate-700"
+                  }`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
-        <button type="button" className="ui-btn-secondary text-sm">
-          {t("filters")}
-        </button>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setOpenMenu((m) => (m === "filters" ? null : "filters"))}
+            className={`ui-btn-secondary text-sm ${filtersActive ? "border-violet-300 bg-violet-50 text-violet-800" : ""}`}
+            aria-expanded={openMenu === "filters"}
+          >
+            {t("filters")}
+            {filtersActive ? " · 1" : ""}
+          </button>
+          {openMenu === "filters" ? (
+            <div className="absolute left-0 top-full z-30 mt-1 min-w-[240px] rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+              <div className="text-xs font-semibold text-slate-700">{t("filterPanelTitle")}</div>
+              <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={onlyAlerts}
+                  onChange={(e) => {
+                    setOnlyAlerts(e.target.checked);
+                    setPage(1);
+                  }}
+                  className="accent-violet-600"
+                />
+                {t("filterOnlyAlerts")}
+              </label>
+              {filtersActive ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOnlyAlerts(false);
+                    setPage(1);
+                    setOpenMenu(null);
+                  }}
+                  className="mt-3 text-xs font-medium text-violet-600 underline"
+                >
+                  {t("clearFilters")}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
         <div className="min-w-[220px] flex-1">
           <input
             value={searchInput}

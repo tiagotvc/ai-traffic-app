@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 
 import { typeOrmEntities, Tenant } from "./entities/registry";
+import { postgresOptionsFromUrl } from "./pg-config";
 import { Init1735689600000 } from "./migrations/0001-Init";
 import { UserPasswordHash1735689700000 } from "./migrations/0002-UserPasswordHash";
 import { GoalsAndCampaignMetrics1735690000000 } from "./migrations/0003-GoalsAndCampaignMetrics";
@@ -21,8 +22,7 @@ function buildDataSource() {
   }
 
   return new DataSource({
-    type: "postgres",
-    url,
+    ...postgresOptionsFromUrl(url),
     entities: [...typeOrmEntities],
     migrations: [
       Init1735689600000,

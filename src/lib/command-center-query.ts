@@ -19,6 +19,7 @@ export async function queryCommandCenterCampaigns(input: {
   onlyAlerts?: boolean;
   onlyActive?: boolean;
   tag?: string;
+  days?: number;
   limit?: number;
   offset?: number;
 }) {
@@ -30,7 +31,7 @@ export async function queryCommandCenterCampaigns(input: {
     clientTag: tagRepo
   } = await repositories();
 
-  const since = dateNDaysAgo(7);
+  const since = dateNDaysAgo(input.days ?? 7);
   const today = new Date().toISOString().slice(0, 10);
 
   let clients = await clientRepo.find({ where: { tenantId: input.tenantId }, order: { name: "ASC" } });

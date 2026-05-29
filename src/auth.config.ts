@@ -1,24 +1,19 @@
 import type { NextAuthConfig } from "next-auth";
-import FacebookProvider from "next-auth/providers/facebook";
 
 import { getAuthSecret } from "@/lib/auth-secret";
+import { MetaFacebookProvider } from "@/lib/meta-facebook-provider";
 import { getMetaAppId, getMetaAppSecret } from "@/lib/meta-env";
 
 /**
  * Config compartilhada — sem imports de DB/TypeORM (compatível com Edge Middleware).
  */
 export const authConfig = {
+  trustHost: true,
   session: { strategy: "jwt" },
   providers: [
-    FacebookProvider({
+    MetaFacebookProvider({
       clientId: getMetaAppId(),
-      clientSecret: getMetaAppSecret(),
-      authorization: {
-        params: {
-          scope:
-            "public_profile,email,ads_read,ads_management,business_management,pages_show_list,pages_read_engagement"
-        }
-      }
+      clientSecret: getMetaAppSecret()
     })
   ],
   secret: getAuthSecret(),

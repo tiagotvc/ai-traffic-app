@@ -41,9 +41,12 @@ export async function resolveDashboardScope(
 export function parseDashboardSearchParams(url: URL) {
   const clientId = url.searchParams.get("clientId");
   const adAccountId = url.searchParams.get("adAccountId");
+  const daysRaw = Number(url.searchParams.get("days") ?? "7");
+  const days = Number.isFinite(daysRaw) ? Math.min(90, Math.max(1, daysRaw)) : 7;
   return {
     clientId: clientId || null,
-    adAccountId: adAccountId || null
+    adAccountId: adAccountId || null,
+    days
   };
 }
 
