@@ -78,7 +78,7 @@ pnpm dev
 
 (Se `pnpm` não funcionar, troque por `.\pnpm.ps1` nos comandos acima.)
 
-Abra [http://localhost:3000/pt-BR](http://localhost:3000/pt-BR) ou `/en` → login com Facebook.
+Abra [http://localhost:3008/pt-BR](http://localhost:3008/pt-BR) ou `/en` → login com Facebook.
 
 Troque o idioma no seletor da sidebar.
 

@@ -98,6 +98,19 @@ const GRAPH_EDGE_MAX_ITEMS = 500;
 
 type GraphPaged<T> = { data?: T[]; paging?: { next?: string } };
 
+function graphUrlWithToken(pathOrUrl: string, accessToken: string): string {
+  if (!accessToken?.trim()) {
+    throw new Error("Meta access token is required");
+  }
+
+  const url = pathOrUrl.startsWith("http")
+    ? new URL(pathOrUrl)
+    : new URL(`${GRAPH_BASE}${pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`}`);
+
+  url.searchParams.set("access_token", accessToken);
+  return url.toString();
+}
+
 async function fetchGraphPaged<T>(
   firstUrl: string,
   accessToken: string,
@@ -107,9 +120,9 @@ async function fetchGraphPaged<T>(
   let url: string | null = firstUrl;
 
   while (url && out.length < maxItems) {
-    const page: GraphPaged<T> = url.startsWith("http")
-      ? (await metaFetchWithRateLimit<GraphPaged<T>>(url)).data
-      : await metaFetch<GraphPaged<T>>(url, accessToken);
+    const page: GraphPaged<T> = (
+      await metaFetchWithRateLimit<GraphPaged<T>>(graphUrlWithToken(url, accessToken))
+    ).data;
 
     const batch = page.data ?? [];
     out.push(...batch);
@@ -140,8 +153,7 @@ async function fetchBusinessEdge<T extends { id: string; name?: string }>(
 ): Promise<T[]> {
   try {
     const path = `/${encodeURIComponent(businessId)}/${edge}?fields=${encodeURIComponent(fields)}&limit=100`;
-    const first = `${GRAPH_BASE}${path}`;
-    return fetchGraphPaged<T>(first, accessToken);
+    return fetchGraphPaged<T>(path, accessToken);
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
       console.warn(`[meta-graph] ${edge} for ${businessId}:`, err);
@@ -174,7 +186,7 @@ export async function fetchBusinessPages(
 }
 
 export async function fetchMyAdAccounts(accessToken: string): Promise<MetaAdAccount[]> {
-  const first = `${GRAPH_BASE}/me/adaccounts?fields=id,name,account_status&limit=100`;
+  const first = `/me/adaccounts?fields=id,name,account_status&limit=100`;
   return fetchGraphPaged<MetaAdAccount>(first, accessToken);
 }
 
@@ -184,7 +196,7 @@ export async function fetchAdAccountPixels(
 ): Promise<MetaPixel[]> {
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
   try {
-    const first = `${GRAPH_BASE}/${encodeURIComponent(act)}/adspixels?fields=id,name&limit=100`;
+    const first = `/${encodeURIComponent(act)}/adspixels?fields=id,name&limit=100`;
     return fetchGraphPaged<MetaPixel>(first, accessToken);
   } catch (err) {
     if (process.env.NODE_ENV === "development") {

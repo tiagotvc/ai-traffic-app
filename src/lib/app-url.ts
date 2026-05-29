@@ -19,7 +19,8 @@ export function getAppBaseUrl(): string {
     return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}`;
   }
 
-  return "http://localhost:3000";
+  const port = process.env.PORT?.trim() || "3008";
+  return `http://localhost:${port}`;
 }
 
 export function getMetaOAuthRedirectUri(): string {

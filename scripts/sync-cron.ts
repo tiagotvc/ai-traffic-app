@@ -4,7 +4,7 @@
  */
 import "dotenv/config";
 
-const base = process.env.CRON_BASE_URL ?? "http://localhost:3000";
+const base = process.env.CRON_BASE_URL ?? "http://localhost:3008";
 const cookie = process.env.CRON_SESSION_COOKIE;
 
 async function main() {
