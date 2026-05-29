@@ -1,7 +1,7 @@
-import type { PostgresConnectionOptions } from "typeorm/driver/postgres/PostgresConnectionOptions";
+import type { DataSourceOptions } from "typeorm";
 
 /** Parse Supabase/local Postgres URL into TypeORM options (SSL fix for Node). */
-export function postgresOptionsFromUrl(url: string): PostgresConnectionOptions {
+export function postgresOptionsFromUrl(url: string): DataSourceOptions {
   const normalized = url.replace(/^postgresql:\/\//, "postgres://");
   const parsed = new URL(normalized);
   const isSupabase = parsed.hostname.includes("supabase.com");
