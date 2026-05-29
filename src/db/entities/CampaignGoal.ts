@@ -1,7 +1,7 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 import { AppBaseEntity } from "./_shared";
-import { AdAccount } from "./AdAccount";
-import { Client } from "./Client";
+import type { AdAccount } from "./AdAccount";
+import type { Client } from "./Client";
 
 @Entity({ name: "campaign_goals" })
 @Index(["clientId", "metaCampaignId"], { unique: true })
@@ -9,14 +9,14 @@ export class CampaignGoal extends AppBaseEntity {
   @Column({ type: "uuid" })
   clientId!: string;
 
-  @ManyToOne(() => Client, { onDelete: "CASCADE" })
+  @ManyToOne("Client", { onDelete: "CASCADE" })
   @JoinColumn({ name: "clientId" })
   client!: Client;
 
   @Column({ type: "uuid" })
   adAccountId!: string;
 
-  @ManyToOne(() => AdAccount, { onDelete: "CASCADE" })
+  @ManyToOne("AdAccount", { onDelete: "CASCADE" })
   @JoinColumn({ name: "adAccountId" })
   adAccount!: AdAccount;
 

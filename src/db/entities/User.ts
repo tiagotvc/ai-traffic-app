@@ -1,6 +1,6 @@
 import { Column, Entity, ManyToOne, JoinColumn } from "typeorm";
 import { AppBaseEntity } from "./_shared";
-import { Tenant } from "./Tenant";
+import type { Tenant } from "./Tenant";
 
 @Entity({ name: "users" })
 export class User extends AppBaseEntity {
@@ -16,7 +16,7 @@ export class User extends AppBaseEntity {
   @Column({ type: "uuid" })
   tenantId!: string;
 
-  @ManyToOne(() => Tenant, { onDelete: "CASCADE" })
+  @ManyToOne("Tenant", { onDelete: "CASCADE" })
   @JoinColumn({ name: "tenantId" })
   tenant!: Tenant;
 }

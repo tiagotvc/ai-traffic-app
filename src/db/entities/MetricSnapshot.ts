@@ -1,6 +1,6 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 import { AppBaseEntity } from "./_shared";
-import { AdAccount } from "./AdAccount";
+import type { AdAccount } from "./AdAccount";
 
 @Entity({ name: "metric_snapshots" })
 @Index(["adAccountId", "day"], { unique: true })
@@ -8,7 +8,7 @@ export class MetricSnapshot extends AppBaseEntity {
   @Column({ type: "uuid" })
   adAccountId!: string;
 
-  @ManyToOne(() => AdAccount, { onDelete: "CASCADE" })
+  @ManyToOne("AdAccount", { onDelete: "CASCADE" })
   @JoinColumn({ name: "adAccountId" })
   adAccount!: AdAccount;
 

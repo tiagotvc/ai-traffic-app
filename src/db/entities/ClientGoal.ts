@@ -1,6 +1,6 @@
 import { Column, Entity, JoinColumn, OneToOne } from "typeorm";
 import { AppBaseEntity } from "./_shared";
-import { Client } from "./Client";
+import type { Client } from "./Client";
 
 export type GoalObjective = "leads" | "sales" | "traffic";
 
@@ -9,7 +9,7 @@ export class ClientGoal extends AppBaseEntity {
   @Column({ type: "uuid", unique: true })
   clientId!: string;
 
-  @OneToOne(() => Client, { onDelete: "CASCADE" })
+  @OneToOne("Client", { onDelete: "CASCADE" })
   @JoinColumn({ name: "clientId" })
   client!: Client;
 

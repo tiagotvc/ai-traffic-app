@@ -1,6 +1,6 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from "typeorm";
 import { AppBaseEntity } from "./_shared";
-import { AdAccount } from "./AdAccount";
+import type { AdAccount } from "./AdAccount";
 
 @Entity({ name: "campaign_metric_snapshots" })
 @Index(["adAccountId", "metaCampaignId", "day"], { unique: true })
@@ -8,7 +8,7 @@ export class CampaignMetricSnapshot extends AppBaseEntity {
   @Column({ type: "uuid" })
   adAccountId!: string;
 
-  @ManyToOne(() => AdAccount, { onDelete: "CASCADE" })
+  @ManyToOne("AdAccount", { onDelete: "CASCADE" })
   @JoinColumn({ name: "adAccountId" })
   adAccount!: AdAccount;
 

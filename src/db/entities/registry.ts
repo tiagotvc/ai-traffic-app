@@ -30,6 +30,7 @@ import { CampaignTemplate } from "./CampaignTemplate";
 import { CreativeAsset } from "./CreativeAsset";
 import { AutomationRule } from "./AutomationRule";
 import { UserClient } from "./UserClient";
+import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
   Tenant,
@@ -65,6 +66,37 @@ export {
 export type { AlertType, AlertSeverity } from "./Alert";
 export type { GoalObjective } from "./ClientGoal";
 export type { ClientTargeting, SyncPriority } from "./ClientMetaSettings";
+
+stabilizeTypeOrmEntityNames([
+  { ctor: Tenant, name: "Tenant" },
+  { ctor: User, name: "User" },
+  { ctor: Client, name: "Client" },
+  { ctor: AdAccount, name: "AdAccount" },
+  { ctor: MetaAuth, name: "MetaAuth" },
+  { ctor: MetaBusiness, name: "MetaBusiness" },
+  { ctor: MetaPage, name: "MetaPage" },
+  { ctor: MetaAdAccountInventory, name: "MetaAdAccountInventory" },
+  { ctor: MetricSnapshot, name: "MetricSnapshot" },
+  { ctor: CampaignMetricSnapshot, name: "CampaignMetricSnapshot" },
+  { ctor: ClientGoal, name: "ClientGoal" },
+  { ctor: CampaignGoal, name: "CampaignGoal" },
+  { ctor: Alert, name: "Alert" },
+  { ctor: AiRecommendation, name: "AiRecommendation" },
+  { ctor: AuditLog, name: "AuditLog" },
+  { ctor: NotificationState, name: "NotificationState" },
+  { ctor: ClientMetaSettings, name: "ClientMetaSettings" },
+  { ctor: SyncRun, name: "SyncRun" },
+  { ctor: SyncQueueJob, name: "SyncQueueJob" },
+  { ctor: TenantSyncState, name: "TenantSyncState" },
+  { ctor: SavedView, name: "SavedView" },
+  { ctor: ClientTag, name: "ClientTag" },
+  { ctor: MetaAudienceCache, name: "MetaAudienceCache" },
+  { ctor: LookalikeJob, name: "LookalikeJob" },
+  { ctor: CampaignTemplate, name: "CampaignTemplate" },
+  { ctor: CreativeAsset, name: "CreativeAsset" },
+  { ctor: AutomationRule, name: "AutomationRule" },
+  { ctor: UserClient, name: "UserClient" }
+]);
 
 export const typeOrmEntities = [
   Tenant,
