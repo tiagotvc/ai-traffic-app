@@ -19,6 +19,17 @@ export type MetaFacebookPage = {
   name?: string;
 };
 
+export type MetaBusinessRef = {
+  id: string;
+  name?: string;
+};
+
+export type MetaBusinessUser = {
+  id: string;
+  role?: string;
+  business?: MetaBusinessRef;
+};
+
 export type MetaCustomAudience = {
   id: string;
   name?: string;
@@ -87,11 +98,31 @@ export async function metaPost<T>(path: string, accessToken: string, body: Recor
 }
 
 export async function fetchMyBusinesses(accessToken: string): Promise<MetaAdAccount[]> {
-  const data = await metaFetch<{ data: MetaAdAccount[] }>(
-    "/me/businesses?fields=id,name",
+  return fetchGraphPaged<MetaAdAccount>("/me/businesses?fields=id,name&limit=100", accessToken);
+}
+
+export async function fetchMyBusinessUsers(accessToken: string): Promise<MetaBusinessUser[]> {
+  return fetchGraphPaged<MetaBusinessUser>(
+    "/me/business_users?fields=id,role,business{id,name}&limit=100",
     accessToken
   );
-  return data.data ?? [];
+}
+
+export async function fetchBusinessUserAssignedAdAccounts(
+  accessToken: string,
+  businessUserId: string
+): Promise<MetaAdAccount[]> {
+  try {
+    return fetchGraphPaged<MetaAdAccount>(
+      `/${encodeURIComponent(businessUserId)}/assigned_ad_accounts?fields=id,name,account_status&limit=100`,
+      accessToken
+    );
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[meta-graph] assigned_ad_accounts for ${businessUserId}:`, err);
+    }
+    return [];
+  }
 }
 
 const GRAPH_EDGE_MAX_ITEMS = 500;
@@ -174,6 +205,40 @@ export async function fetchBusinessAdAccounts(
   return mergeById([owned, client]);
 }
 
+/** Une /me/adaccounts, contas do BM (owned+client) e assigned_ad_accounts do usuário no BM. */
+export async function fetchAllAccessibleAdAccounts(
+  accessToken: string
+): Promise<Map<string, MetaAdAccount & { metaBusinessId: string | null }>> {
+  const map = new Map<string, MetaAdAccount & { metaBusinessId: string | null }>();
+
+  const add = (acc: MetaAdAccount, metaBusinessId: string | null) => {
+    const prev = map.get(acc.id);
+    map.set(acc.id, {
+      ...acc,
+      name: acc.name ?? prev?.name,
+      account_status: acc.account_status ?? prev?.account_status,
+      metaBusinessId: metaBusinessId ?? prev?.metaBusinessId ?? null
+    });
+  };
+
+  for (const acc of await fetchMyAdAccounts(accessToken)) {
+    add(acc, null);
+  }
+
+  for (const bu of await fetchMyBusinessUsers(accessToken)) {
+    const bmId = bu.business?.id ?? null;
+    const assigned = await fetchBusinessUserAssignedAdAccounts(accessToken, bu.id);
+    for (const acc of assigned) add(acc, bmId);
+  }
+
+  for (const bm of await fetchMyBusinesses(accessToken)) {
+    const accounts = await fetchBusinessAdAccounts(accessToken, bm.id);
+    for (const acc of accounts) add(acc, bm.id);
+  }
+
+  return map;
+}
+
 export async function fetchBusinessPages(
   accessToken: string,
   businessId: string
@@ -207,8 +272,7 @@ export async function fetchAdAccountPixels(
 }
 
 export async function fetchUserPages(accessToken: string): Promise<MetaFacebookPage[]> {
-  const data = await metaFetch<{ data: MetaFacebookPage[] }>("/me/accounts?fields=id,name", accessToken);
-  return data.data ?? [];
+  return fetchGraphPaged<MetaFacebookPage>("/me/accounts?fields=id,name&limit=100", accessToken);
 }
 
 export async function fetchCustomAudiences(

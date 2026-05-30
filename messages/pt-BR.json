@@ -836,7 +836,7 @@
     "refreshing": "Atualizando…",
     "refreshOk": "Atualizado: {businesses} BM(s), {accounts} conta(s), {pages} página(s).",
     "refreshFailed": "Falha ao atualizar ativos Meta.",
-    "discoverFixHint": "Se faltarem contas ativas de clientes, clique em Atualizar do Facebook — agora importamos contas próprias e de clientes do BM.",
+    "discoverFixHint": "Se faltarem contas ativas de clientes: reconecte o Facebook e marque todos os Business Managers e contas de anúncio no popup da Meta; depois clique em Atualizar do Facebook.",
     "reconnect": "Reconectar Facebook",
     "totalsTitle": "Resumo",
     "totals": "{businesses} Business Manager(s) · {accounts} conta(s) · {pages} página(s)",

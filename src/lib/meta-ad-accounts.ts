@@ -1,6 +1,6 @@
 import "server-only";
 
-import { fetchMyAdAccounts } from "@/lib/meta-graph";
+import { fetchAllAccessibleAdAccounts } from "@/lib/meta-graph";
 import { listTenantInventory } from "@/lib/meta-discover";
 
 export type MetaAdAccountOption = {
@@ -43,13 +43,18 @@ export async function listMetaAdAccountOptions(input: {
 
   if (!input.metaAccessToken) return [];
 
-  const live = await fetchMyAdAccounts(input.metaAccessToken);
+  let live = [...(await fetchAllAccessibleAdAccounts(input.metaAccessToken)).values()];
+  if (input.metaBusinessId === "unassigned") {
+    live = live.filter((a) => !a.metaBusinessId);
+  } else if (input.metaBusinessId) {
+    live = live.filter((a) => a.metaBusinessId === input.metaBusinessId);
+  }
   return live.map((a) => {
     const isDemo = a.id.includes("demo");
     return {
       metaAdAccountId: a.id,
       label: formatLabel(a.name?.trim() || a.id, isDemo),
-      metaBusinessId: null,
+      metaBusinessId: a.metaBusinessId,
       metaBusinessName: null,
       isDemo
     };

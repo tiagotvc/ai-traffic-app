@@ -3,9 +3,8 @@ import "server-only";
 import { repositories } from "@/db/repositories";
 import { formatMetaAdAccountLabel } from "@/lib/meta-account-label";
 import {
-  fetchBusinessAdAccounts,
+  fetchAllAccessibleAdAccounts,
   fetchBusinessPages,
-  fetchMyAdAccounts,
   fetchMyBusinesses,
   fetchUserPages
 } from "@/lib/meta-graph";
@@ -24,6 +23,32 @@ export type MetaDiscoverResult = {
   }>;
 };
 
+async function upsertAdAccountInventory(
+  tenantId: string,
+  acc: { id: string; name?: string; account_status?: number },
+  metaBusinessId: string | null,
+  inventoryRepo: Awaited<ReturnType<typeof repositories>>["metaAdAccountInventory"]
+) {
+  const isDemo = acc.id === DEMO_ACCOUNT_ID || acc.id === `act_${DEMO_ACCOUNT_ID}` || acc.id.includes("demo");
+  let inv = await inventoryRepo.findOne({
+    where: { tenantId, metaAdAccountId: acc.id }
+  });
+  if (!inv) {
+    inv = inventoryRepo.create({
+      tenantId,
+      metaAdAccountId: acc.id,
+      metaBusinessId,
+      label: formatMetaAdAccountLabel(acc),
+      isDemo
+    });
+  } else {
+    if (metaBusinessId) inv.metaBusinessId = metaBusinessId;
+    inv.label = formatMetaAdAccountLabel(acc);
+    inv.isDemo = isDemo;
+  }
+  await inventoryRepo.save(inv);
+}
+
 export async function runMetaDiscover(
   tenantId: string,
   metaAccessToken: string
@@ -36,18 +61,17 @@ export async function runMetaDiscover(
 
   const now = new Date();
   const businesses = await fetchMyBusinesses(metaAccessToken);
-
   const accountKeys = new Set<string>();
   const pageKeys = new Set<string>();
-  const businessRows: MetaDiscoverResult["businessRows"] = [];
+
+  const accessibleAccounts = await fetchAllAccessibleAdAccounts(metaAccessToken);
+  for (const [id, acc] of accessibleAccounts) {
+    accountKeys.add(id);
+    await upsertAdAccountInventory(tenantId, acc, acc.metaBusinessId, inventoryRepo);
+  }
 
   if (businesses.length) {
     for (const bm of businesses) {
-      const [accounts, pages] = await Promise.all([
-        fetchBusinessAdAccounts(metaAccessToken, bm.id),
-        fetchBusinessPages(metaAccessToken, bm.id)
-      ]);
-
       let row = await businessRepo.findOne({
         where: { tenantId, metaBusinessId: bm.id }
       });
@@ -63,78 +87,26 @@ export async function runMetaDiscover(
       row.lastSyncedAt = now;
       await businessRepo.save(row);
 
-      for (const acc of accounts) {
-        accountKeys.add(acc.id);
-        const isDemo = acc.id === DEMO_ACCOUNT_ID || acc.id === `act_${DEMO_ACCOUNT_ID}`;
-        let inv = await inventoryRepo.findOne({
-          where: { tenantId, metaAdAccountId: acc.id }
-        });
-        if (!inv) {
-          inv = inventoryRepo.create({
-            tenantId,
-            metaAdAccountId: acc.id,
-            metaBusinessId: bm.id,
-            label: formatMetaAdAccountLabel(acc),
-            isDemo
-          });
-        } else {
-          inv.metaBusinessId = bm.id;
-          inv.label = formatMetaAdAccountLabel(acc);
-          inv.isDemo = isDemo;
-        }
-        await inventoryRepo.save(inv);
-      }
-
+      const pages = await fetchBusinessPages(metaAccessToken, bm.id);
       for (const pg of pages) {
         pageKeys.add(pg.id);
-        let row = await pageRepo.findOne({
+        let pageRow = await pageRepo.findOne({
           where: { tenantId, metaPageId: pg.id }
         });
-        if (!row) {
-          row = pageRepo.create({
+        if (!pageRow) {
+          pageRow = pageRepo.create({
             tenantId,
             metaPageId: pg.id,
             metaBusinessId: bm.id,
             name: pg.name ?? pg.id
           });
         } else {
-          row.metaBusinessId = bm.id;
-          row.name = pg.name ?? row.name;
+          pageRow.metaBusinessId = bm.id;
+          pageRow.name = pg.name ?? pageRow.name;
         }
-        await pageRepo.save(row);
+        await pageRepo.save(pageRow);
       }
-
-      businessRows.push({
-        metaBusinessId: bm.id,
-        name: bm.name ?? bm.id,
-        adAccountCount: accounts.length,
-        pageCount: pages.length
-      });
     }
-  }
-
-  // Fallback: flat /me/adaccounts + /me/accounts when BM list empty or partial
-  const flatAccounts = await fetchMyAdAccounts(metaAccessToken);
-  for (const acc of flatAccounts) {
-    if (accountKeys.has(acc.id)) continue;
-    accountKeys.add(acc.id);
-    const isDemo = acc.id === DEMO_ACCOUNT_ID || acc.id.includes("demo");
-    let inv = await inventoryRepo.findOne({
-      where: { tenantId, metaAdAccountId: acc.id }
-    });
-    if (!inv) {
-      inv = inventoryRepo.create({
-        tenantId,
-        metaAdAccountId: acc.id,
-        metaBusinessId: null,
-        label: formatMetaAdAccountLabel(acc),
-        isDemo
-      });
-    } else {
-      inv.label = formatMetaAdAccountLabel(acc);
-      inv.isDemo = isDemo;
-    }
-    await inventoryRepo.save(inv);
   }
 
   const flatPages = await fetchUserPages(metaAccessToken);
@@ -157,39 +129,38 @@ export async function runMetaDiscover(
     await pageRepo.save(row);
   }
 
-  // Remove inventory entries no longer returned (except demo seed)
-  const allInv = await inventoryRepo.find({ where: { tenantId } });
-  for (const inv of allInv) {
-    if (inv.isDemo && inv.metaAdAccountId === DEMO_ACCOUNT_ID) continue;
-    if (!accountKeys.has(inv.metaAdAccountId)) {
-      await inventoryRepo.remove(inv);
-    }
+  const businessRows: MetaDiscoverResult["businessRows"] = [];
+  const inv = await inventoryRepo.find({ where: { tenantId } });
+  const pages = await pageRepo.find({ where: { tenantId } });
+
+  for (const bm of businesses) {
+    businessRows.push({
+      metaBusinessId: bm.id,
+      name: bm.name ?? bm.id,
+      adAccountCount: inv.filter((a) => a.metaBusinessId === bm.id).length,
+      pageCount: pages.filter((p) => p.metaBusinessId === bm.id).length
+    });
   }
 
-  const stalePages = await pageRepo.find({ where: { tenantId } });
-  for (const pg of stalePages) {
-    if (!pageKeys.has(pg.metaPageId)) {
-      await pageRepo.remove(pg);
-    }
+  const unassignedAccounts = inv.filter((a) => !a.metaBusinessId).length;
+  const unassignedPages = pages.filter((p) => !p.metaBusinessId).length;
+  if (unassignedAccounts > 0 || unassignedPages > 0) {
+    businessRows.push({
+      metaBusinessId: "unassigned",
+      name: "Sem BM (acesso direto)",
+      adAccountCount: unassignedAccounts,
+      pageCount: unassignedPages
+    });
   }
 
-  if (!businesses.length) {
-    const orphanAccounts = await inventoryRepo.count({ where: { tenantId } });
-    const orphanPages = await pageRepo.count({ where: { tenantId } });
-    if (orphanAccounts > 0 || orphanPages > 0) {
-      businessRows.push({
-        metaBusinessId: "unassigned",
-        name: "Sem BM (acesso direto)",
-        adAccountCount: orphanAccounts,
-        pageCount: orphanPages
-      });
-    }
+  if (!businesses.length && (unassignedAccounts > 0 || unassignedPages > 0)) {
+    // já coberto por unassigned row acima
   }
 
   return {
     businesses: businesses.length || (businessRows.length ? 1 : 0),
     adAccounts: accountKeys.size,
-    pages: pageKeys.size,
+    pages: pageKeys.size || pages.length,
     businessRows
   };
 }

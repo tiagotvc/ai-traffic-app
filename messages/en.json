@@ -836,7 +836,7 @@
     "refreshing": "Refreshing…",
     "refreshOk": "Updated: {businesses} BM(s), {accounts} account(s), {pages} page(s).",
     "refreshFailed": "Failed to refresh Meta assets.",
-    "discoverFixHint": "If active client ad accounts are missing, click Refresh from Facebook — we now import both owned and client BM accounts.",
+    "discoverFixHint": "If active client ad accounts are missing: reconnect Facebook and select all Business Managers and ad accounts in Meta's permission dialog; then click Refresh from Facebook.",
     "reconnect": "Reconnect Facebook",
     "totalsTitle": "Summary",
     "totals": "{businesses} Business Manager(s) · {accounts} account(s) · {pages} page(s)",
