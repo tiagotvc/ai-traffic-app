@@ -24,5 +24,9 @@ export class Client extends AppBaseEntity {
   /** URL de destino dos anúncios deste cliente */
   @Column({ type: "text", nullable: true })
   metaLinkUrl?: string | null;
+
+  /** Business Manager principal deste cliente (filtra contas/páginas no app) */
+  @Column({ type: "text", nullable: true })
+  metaBusinessId?: string | null;
 }
 

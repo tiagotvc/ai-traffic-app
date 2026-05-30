@@ -16,6 +16,7 @@ export async function GET(req: Request) {
   const userClientIds = await listClientIdsForUser(tenant.id, user.id);
   const clientParam = url.searchParams.get("clientId");
   let clientIds = userClientIds;
+  let metaBusinessId: string | null = null;
 
   if (clientParam) {
     const client = await getClientBySlugOrId(tenant.id, clientParam);
@@ -26,11 +27,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, rows: [], total: 0 });
     }
     clientIds = [client.id];
+    metaBusinessId = client.metaBusinessId?.trim() || null;
   }
 
   const result = await queryCommandCenterCampaigns({
     tenantId: tenant.id,
     clientIds,
+    metaBusinessId,
     q: url.searchParams.get("q") ?? undefined,
     onlyAlerts: url.searchParams.get("onlyAlerts") === "1",
     tag: url.searchParams.get("tag") ?? undefined,

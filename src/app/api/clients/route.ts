@@ -25,7 +25,11 @@ export async function POST(req: Request) {
       tenantId: tenant.id,
       name: body.name.trim(),
       metaPageId: body.metaPageId?.trim() || null,
-      metaLinkUrl: body.metaLinkUrl?.trim() || null
+      metaLinkUrl: body.metaLinkUrl?.trim() || null,
+      metaBusinessId:
+        body.metaBusinessId && body.metaBusinessId !== "unassigned"
+          ? body.metaBusinessId
+          : null
     })
   );
 

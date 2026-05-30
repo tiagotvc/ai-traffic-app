@@ -4,6 +4,7 @@ import { Between, In } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import { slugify } from "@/lib/app-context";
+import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { num } from "@/lib/goal-types";
 
 function dateNDaysAgo(n: number) {
@@ -22,6 +23,7 @@ export async function queryCommandCenterCampaigns(input: {
   days?: number;
   limit?: number;
   offset?: number;
+  metaBusinessId?: string | null;
 }) {
   const {
     client: clientRepo,
@@ -53,7 +55,11 @@ export async function queryCommandCenterCampaigns(input: {
   const clientIds = clients.map((c) => c.id);
   if (!clientIds.length) return { rows: [], total: 0 };
 
-  const accounts = await adRepo.find({ where: { clientId: In(clientIds) } });
+  let accounts = await adRepo.find({ where: { clientId: In(clientIds) } });
+  const clientBm = input.metaBusinessId?.trim() || null;
+  if (clientBm) {
+    accounts = accounts.filter((a) => matchesClientBusinessScope(a.metaBusinessId, clientBm));
+  }
   const accountIds = accounts.map((a) => a.id);
   if (!accountIds.length) return { rows: [], total: 0 };
 

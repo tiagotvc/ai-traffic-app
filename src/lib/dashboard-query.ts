@@ -4,6 +4,7 @@ import { Between, In } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import { getClientBySlugOrId, listClientsForTenant } from "@/lib/app-context";
+import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 export async function resolveDashboardScope(
   tenantId: string,
   clientIdParam?: string | null,
@@ -12,9 +13,13 @@ export async function resolveDashboardScope(
   const { adAccount: adAccountRepo } = await repositories();
 
   let clientIds: string[] | null = null;
+  let clientBm: string | null = null;
   if (clientIdParam) {
     const client = await getClientBySlugOrId(tenantId, clientIdParam);
-    if (client) clientIds = [client.id];
+    if (client) {
+      clientIds = [client.id];
+      clientBm = client.metaBusinessId?.trim() || null;
+    }
   } else {
     const clients = await listClientsForTenant(tenantId);
     clientIds = clients.map((c) => c.id);
@@ -25,6 +30,10 @@ export async function resolveDashboardScope(
   }
 
   let accounts = await adAccountRepo.find({ where: { clientId: In(clientIds) } });
+
+  if (clientBm) {
+    accounts = accounts.filter((a) => matchesClientBusinessScope(a.metaBusinessId, clientBm));
+  }
 
   if (adAccountIdParam) {
     accounts = accounts.filter(

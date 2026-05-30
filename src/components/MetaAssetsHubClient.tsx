@@ -37,6 +37,7 @@ export function MetaAssetsHubClient({
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [totals, setTotals] = useState({ businesses: 0, adAccounts: 0, pages: 0 });
   const [selectedBm, setSelectedBm] = useState<string>("");
+  const [bmSearch, setBmSearch] = useState("");
   const [accounts, setAccounts] = useState<AssetAccount[]>([]);
   const [pages, setPages] = useState<AssetPage[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -78,6 +79,15 @@ export function MetaAssetsHubClient({
   useEffect(() => {
     loadAssets(selectedBm);
   }, [selectedBm, loadAssets]);
+
+  const filteredBusinesses = businesses.filter((bm) => {
+    if (!bmSearch.trim()) return true;
+    const needle = bmSearch.trim().toLowerCase();
+    return (
+      bm.name.toLowerCase().includes(needle) ||
+      bm.metaBusinessId.toLowerCase().includes(needle)
+    );
+  });
 
   const refresh = () => {
     setMessage(null);
@@ -142,7 +152,15 @@ export function MetaAssetsHubClient({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="ui-card p-4 lg:col-span-1">
           <div className="text-sm font-semibold">{t("bmList")}</div>
-          <div className="mt-3 space-y-1">
+          <p className="mt-1 text-[10px] text-slate-500">{t("bmFilterHint")}</p>
+          <input
+            type="search"
+            value={bmSearch}
+            onChange={(e) => setBmSearch(e.target.value)}
+            placeholder={t("bmSearchPlaceholder")}
+            className="mt-2 w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs"
+          />
+          <div className="mt-3 max-h-[420px] space-y-1 overflow-y-auto">
             <button
               type="button"
               onClick={() => setSelectedBm("")}
@@ -152,7 +170,7 @@ export function MetaAssetsHubClient({
             >
               {t("allBm")}
             </button>
-            {businesses.map((bm) => (
+            {filteredBusinesses.map((bm) => (
               <button
                 key={bm.metaBusinessId}
                 type="button"

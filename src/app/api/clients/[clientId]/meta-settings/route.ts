@@ -7,6 +7,8 @@ import {
   getResolvedClientMeta,
   patchClientMetaSettings
 } from "@/lib/client-meta-settings";
+import { repositories } from "@/db/repositories";
+import { resolveClientMetaBusinessId } from "@/lib/client-meta-business";
 import { listTenantPages } from "@/lib/meta-discover";
 import { fetchUserPages } from "@/lib/meta-graph";
 
@@ -50,11 +52,17 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
   }
 
-  const { clientTag: tagRepo } = await import("@/db/repositories").then((m) => m.repositories());
+  const { clientTag: tagRepo, adAccount: adAccountRepo } = await repositories();
   const tags = await tagRepo.find({ where: { clientId: resolved.settings.clientId } });
 
+  const client = await getClientBySlugOrId(tenant.id, clientId);
+  const linked = client
+    ? await adAccountRepo.find({ where: { clientId: client.id } })
+    : [];
+  const clientBm = client ? resolveClientMetaBusinessId(client, linked) : null;
+
   let availablePages: Array<{ id: string; name: string; metaBusinessId?: string | null }> =
-    (await listTenantPages(tenant.id)).map((p) => ({
+    (await listTenantPages(tenant.id, clientBm ?? undefined)).map((p) => ({
       id: p.metaPageId,
       name: p.name,
       metaBusinessId: p.metaBusinessId
@@ -72,7 +80,6 @@ export async function GET(
     }
   }
 
-  const client = await getClientBySlugOrId(tenant.id, clientId);
   return NextResponse.json({
     ok: true,
     settings: resolved.settings,
@@ -82,7 +89,8 @@ export async function GET(
     },
     client: {
       metaPageId: client?.metaPageId ?? null,
-      metaLinkUrl: client?.metaLinkUrl ?? null
+      metaLinkUrl: client?.metaLinkUrl ?? null,
+      metaBusinessId: clientBm
     },
     tags: tags.map((t) => t.tag),
     availablePages

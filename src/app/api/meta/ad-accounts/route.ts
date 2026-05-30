@@ -9,17 +9,18 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const clientIdParam = url.searchParams.get("clientId");
 
-    let _clientId: string | undefined;
+    let metaBusinessId: string | undefined;
     if (clientIdParam) {
       const client = await getClientBySlugOrId(tenant.id, clientIdParam);
       if (!client) {
         return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
       }
-      _clientId = client.id;
+      metaBusinessId = client.metaBusinessId?.trim() || undefined;
     }
 
     const accounts = await listMetaAdAccountOptions({
       tenantId: tenant.id,
+      metaBusinessId,
       metaAccessToken,
       hideDemoWhenRealExists: true
     });

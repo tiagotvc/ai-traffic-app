@@ -63,6 +63,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
   const [goals, setGoals] = useState<Goals>({ enabled: true, windowDays: 1, objective: "leads" });
   const [availableAccounts, setAvailableAccounts] = useState<AccountOption[]>([]);
   const [businesses, setBusinesses] = useState<BusinessOption[]>([]);
+  const [clientMetaBusinessId, setClientMetaBusinessId] = useState<string>("");
   const [bmFilter, setBmFilter] = useState<string>("");
   const [linkedMetaIds, setLinkedMetaIds] = useState<string[]>([]);
   const [metaPageId, setMetaPageId] = useState("");
@@ -114,6 +115,9 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
         setAvailableAccounts(j.available ?? []);
         setBusinesses(j.businesses ?? []);
         setLinkedMetaIds(j.linkedMetaIds ?? []);
+        const bm = (j.clientMetaBusinessId as string | null) ?? "";
+        setClientMetaBusinessId(bm);
+        setBmFilter(bm);
       });
     fetch(`/api/clients/${encodeURIComponent(clientId)}/meta-settings`)
       .then((r) => r.json())
@@ -127,15 +131,16 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
       });
   }, [clientId, reload]);
 
-  const filteredAccounts = bmFilter
+  const effectiveBm = bmFilter || clientMetaBusinessId;
+  const filteredAccounts = effectiveBm
     ? availableAccounts.filter((a) =>
-        bmFilter === "unassigned" ? !a.metaBusinessId : a.metaBusinessId === bmFilter
+        effectiveBm === "unassigned" ? !a.metaBusinessId : a.metaBusinessId === effectiveBm
       )
     : availableAccounts;
 
-  const filteredPages = bmFilter
+  const filteredPages = effectiveBm
     ? availablePages.filter((p) =>
-        bmFilter === "unassigned" ? !p.metaBusinessId : p.metaBusinessId === bmFilter
+        effectiveBm === "unassigned" ? !p.metaBusinessId : p.metaBusinessId === effectiveBm
       )
     : availablePages;
 
@@ -342,19 +347,23 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
           <p className="mt-1 text-xs text-slate-500">{t("adAccountsHint")}</p>
           {businesses.length > 0 ? (
             <div className="mt-3">
-              <div className="text-xs text-slate-500">{t("bmFilter")}</div>
+              <div className="text-xs text-slate-500">{t("clientBmLabel")}</div>
               <select
                 value={bmFilter}
                 onChange={(e) => setBmFilter(e.target.value)}
                 className="mt-1 w-full max-w-md rounded-xl ui-input text-sm"
               >
-                <option value="">{t("allBusinessManagers")}</option>
-                {businesses.map((bm) => (
-                  <option key={bm.metaBusinessId} value={bm.metaBusinessId}>
-                    {bm.name} ({bm.adAccountCount})
-                  </option>
-                ))}
+                <option value="">{t("selectBmPlaceholder")}</option>
+                <option value="unassigned">{t("unassignedBm")}</option>
+                {businesses
+                  .filter((bm) => bm.metaBusinessId !== "unassigned")
+                  .map((bm) => (
+                    <option key={bm.metaBusinessId} value={bm.metaBusinessId}>
+                      {bm.name} ({bm.adAccountCount})
+                    </option>
+                  ))}
               </select>
+              <p className="mt-1 text-[10px] text-slate-500">{t("clientBmHint")}</p>
             </div>
           ) : null}
           <div className="mt-3 space-y-2">
@@ -403,11 +412,23 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                     {
                       method: "PATCH",
                       headers: { "content-type": "application/json" },
-                      body: JSON.stringify({ metaAdAccountIds: linkedMetaIds })
+                      body: JSON.stringify({
+                        metaAdAccountIds: linkedMetaIds,
+                        metaBusinessId: bmFilter || null
+                      })
                     }
                   );
                   const j = await res.json();
-                  if (j.ok) reload();
+                  if (j.ok) {
+                    if (bmFilter) setClientMetaBusinessId(bmFilter);
+                    reload();
+                    fetch(`/api/clients/${encodeURIComponent(clientId)}/ad-accounts`)
+                      .then((r) => r.json())
+                      .then((j2) => {
+                        setAvailableAccounts(j2.available ?? []);
+                        setLinkedMetaIds(j2.linkedMetaIds ?? []);
+                      });
+                  }
                   notify(j.ok ? "success" : "error", j.ok ? t("accountsSaved") : j.error ?? t("loadError"));
                 });
               }}

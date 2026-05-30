@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { In } from "typeorm";
 
 import { repositories } from "@/db/repositories";
-import { getAppContext, slugify } from "@/lib/app-context";
+import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
+import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
 import { queryCommandCenterCampaigns } from "@/lib/command-center-query";
 import { fetchCampaigns } from "@/lib/meta-graph";
@@ -10,14 +11,21 @@ import { fetchCampaigns } from "@/lib/meta-graph";
 export async function GET(req: Request) {
   const { tenant, user, metaAccessToken } = await getAppContext();
   const url = new URL(req.url);
-  const clientIds = await listClientIdsForUser(tenant.id, user.id);
+  let clientIds = await listClientIdsForUser(tenant.id, user.id);
+  const clientSlug = url.searchParams.get("clientId")?.trim();
+  let scopeClient: Awaited<ReturnType<typeof getClientBySlugOrId>> = null;
+  if (clientSlug) {
+    scopeClient = await getClientBySlugOrId(tenant.id, clientSlug);
+    if (scopeClient) clientIds = [scopeClient.id];
+  }
 
   const cc = await queryCommandCenterCampaigns({
     tenantId: tenant.id,
     clientIds,
+    metaBusinessId: scopeClient?.metaBusinessId ?? null,
     q: url.searchParams.get("q") ?? undefined,
     onlyAlerts: url.searchParams.get("onlyAlerts") === "1",
-    limit: 200
+    limit: 500
   });
 
   const byId = new Map(
@@ -30,9 +38,14 @@ export async function GET(req: Request) {
     const allowed = new Set(
       clientIds?.length ? clientIds : clients.map((c) => c.id)
     );
-    const accounts = await adRepo.find({
+    let accounts = await adRepo.find({
       where: { clientId: In([...allowed]) }
     });
+
+    const clientBm = scopeClient?.metaBusinessId?.trim() || null;
+    if (clientBm) {
+      accounts = accounts.filter((a) => matchesClientBusinessScope(a.metaBusinessId, clientBm));
+    }
 
     const clientById = new Map(clients.map((c) => [c.id, c]));
 
