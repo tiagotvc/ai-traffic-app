@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
@@ -46,6 +47,9 @@ type AdSetRow = {
 
 type SeriesPoint = { day: string; spend: number; conversions: number; cpa: number | null; roas: number };
 type PrevPeriod = { spend: number; conversions: number; cpa: number | null; roas: number };
+type DetailTab = "overview" | "adsets" | "ads" | "creatives" | "events";
+
+const CHART_HEIGHT = 140;
 
 export type CampaignSeedRow = {
   metaCampaignId: string;
@@ -141,6 +145,98 @@ function Sparkline({ values, color }: { values: number[]; color: string }) {
   );
 }
 
+function CampaignDetailSkeleton({ compact }: { compact?: boolean }) {
+  return (
+    <div className="space-y-4">
+      {!compact ? (
+        <>
+          <Skeleton className="h-8 w-2/3 max-w-md" />
+          <div className="flex flex-wrap gap-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+        </>
+      ) : null}
+      <div className="flex gap-1 border-b border-slate-200 pb-2">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Skeleton key={n} className="h-8 w-20" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((n) => (
+          <Skeleton key={n} className="h-24 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Skeleton className="h-56 rounded-xl lg:col-span-2" />
+        <Skeleton className="h-56 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+function PerformanceChart({
+  series,
+  loading,
+  noDataLabel,
+  spendLabel,
+  conversionsLabel,
+  title,
+  metricsLabel
+}: {
+  series: SeriesPoint[];
+  loading: boolean;
+  noDataLabel: string;
+  spendLabel: string;
+  conversionsLabel: string;
+  title: string;
+  metricsLabel: string;
+}) {
+  const maxSpend = Math.max(...series.map((s) => s.spend), 1);
+  const maxConv = Math.max(...series.map((s) => s.conversions), 1);
+
+  return (
+    <div className="ui-card p-4 lg:col-span-2">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+        <span className="text-xs text-slate-400">{metricsLabel}</span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-3 text-[10px]">
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-violet-500" /> {spendLabel}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-blue-500" /> {conversionsLabel}
+        </span>
+      </div>
+      {loading ? (
+        <Skeleton className="mt-4 h-44 w-full rounded-lg" />
+      ) : series.length ? (
+        <div className="mt-4 flex items-end gap-1" style={{ height: CHART_HEIGHT + 20 }}>
+          {series.map((p) => {
+            const spendH = Math.max(4, (p.spend / maxSpend) * CHART_HEIGHT);
+            const convH = Math.max(4, (p.conversions / maxConv) * CHART_HEIGHT);
+            return (
+              <div key={p.day} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                <div className="flex w-full items-end justify-center gap-0.5" style={{ height: CHART_HEIGHT }}>
+                  <div className="w-1/2 rounded-t bg-violet-500/90" style={{ height: spendH }} />
+                  <div className="w-1/2 rounded-t bg-blue-400/80" style={{ height: convH }} />
+                </div>
+                <span className="text-[9px] text-slate-400">
+                  {p.day.slice(8, 10)}/{p.day.slice(5, 7)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-4 text-xs text-slate-500">{noDataLabel}</p>
+      )}
+    </div>
+  );
+}
+
 function DeltaBadge({ value, invert }: { value: number; invert?: boolean }) {
   const good = invert ? value < 0 : value > 0;
   const cls = good ? "text-emerald-600" : value === 0 ? "text-slate-400" : "text-rose-600";
@@ -181,10 +277,20 @@ export function CampaignManagerClient({
   const [message, setMessage] = useState<string | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [activeTab, setActiveTab] = useState<DetailTab>(tab);
+  const [refreshing, setRefreshing] = useState(false);
+  const [chartLoading, setChartLoading] = useState(true);
+
+  useEffect(() => {
+    setActiveTab(embedded ? "overview" : tab);
+  }, [metaCampaignId, embedded, tab]);
 
   const reload = useCallback(() => {
     const qs = buildDetailQuery(periodQuery, seedRow);
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${qs}`)
+    setRefreshing(true);
+    setChartLoading(true);
+
+    const detailPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${qs}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.campaign) {
@@ -192,7 +298,8 @@ export function CampaignManagerClient({
           rememberCampaign(metaCampaignId, j.campaign.clientSlug || clientSlug);
         }
       });
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${qs}`)
+
+    const adsetsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${qs}`)
       .then((r) => r.json())
       .then(async (j) => {
         const list = (j.adsets ?? []) as AdSetRow[];
@@ -210,12 +317,18 @@ export function CampaignManagerClient({
         setAdsCount(totalAds);
       })
       .catch(() => setAdsets([]));
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries${qs}`)
+
+    const timeseriesPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries${qs}`)
       .then((r) => r.json())
       .then((j) => {
         setSeries(j.series ?? []);
         setPrevious(j.previous ?? null);
-      });
+      })
+      .finally(() => setChartLoading(false));
+
+    void Promise.all([detailPromise, adsetsPromise, timeseriesPromise]).finally(() => {
+      setRefreshing(false);
+    });
   }, [metaCampaignId, clientSlug, periodQuery, seedRow]);
 
   useEffect(() => {
@@ -278,26 +391,31 @@ export function CampaignManagerClient({
   };
 
   if (!campaign) {
-    return <div className="p-8 text-center text-sm text-slate-500">{t("loading")}</div>;
+    return <CampaignDetailSkeleton compact={embedded} />;
   }
 
   const slug = campaign.clientSlug || clientSlug;
-  const tabs = [
+  const tabs: Array<{ id: DetailTab; href?: string; label: string; disabled?: boolean }> = [
     {
-      id: "overview" as const,
-      href: embedded
-        ? undefined
-        : `/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`,
+      id: "overview",
+      href: embedded ? undefined : `/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`,
       label: t("tabOverview")
     },
     {
-      id: "adsets" as const,
-      href: `/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`,
+      id: "adsets",
+      href: embedded
+        ? undefined
+        : `/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`,
       label: t("tabAdsets", { count: adsets.length })
     },
-    { id: "ads" as const, href: "#", label: t("tabAds", { count: adsCount }) },
-    { id: "creatives" as const, href: `/creatives`, label: t("tabCreatives") },
-    { id: "events" as const, href: "#", label: t("tabEvents") }
+    { id: "ads", href: embedded ? undefined : "#", label: t("tabAds", { count: adsCount }), disabled: true },
+    {
+      id: "creatives",
+      href: embedded ? undefined : "/creatives",
+      label: t("tabCreatives"),
+      disabled: embedded
+    },
+    { id: "events", href: embedded ? undefined : "#", label: t("tabEvents"), disabled: true }
   ];
 
   const prev = previous ?? { spend: 0, conversions: 0, cpa: null, roas: 0 };
@@ -311,7 +429,7 @@ export function CampaignManagerClient({
           </Link>
           {" › "}
           <span className="text-slate-700">{campaign.name}</span>
-          {tab === "adsets" ? ` › ${t("adsetsTitle")}` : null}
+          {activeTab === "adsets" ? ` › ${t("adsetsTitle")}` : null}
         </p>
       ) : null}
 
@@ -405,113 +523,93 @@ export function CampaignManagerClient({
       </div>
 
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
-        {tabs.map((item) =>
-          item.href && item.href !== "#" ? (
-            <Link
-              key={item.id}
-              href={item.href}
-              className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
-                tab === item.id || (embedded && item.id === "overview" && tab === "overview")
-                  ? "border-violet-600 text-violet-600"
-                  : "border-transparent text-slate-500"
-              }`}
-            >
+        {tabs.map((item) => {
+          const isActive = activeTab === item.id;
+          const tabClass = `whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
+            isActive
+              ? "border-violet-600 text-violet-600"
+              : item.disabled
+                ? "border-transparent text-slate-300"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+          }`;
+
+          if (embedded || !item.href || item.href === "#") {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                disabled={item.disabled}
+                onClick={() => {
+                  if (!item.disabled) setActiveTab(item.id);
+                }}
+                className={tabClass}
+              >
+                {item.label}
+              </button>
+            );
+          }
+
+          return (
+            <Link key={item.id} href={item.href} className={tabClass}>
               {item.label}
             </Link>
-          ) : (
-            <span
-              key={item.id}
-              className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
-                tab === item.id
-                  ? "border-violet-600 text-violet-600"
-                  : "border-transparent text-slate-400"
-              }`}
-            >
-              {item.label}
-            </span>
-          )
-        )}
+          );
+        })}
       </div>
 
       {message ? <div className="text-xs text-emerald-700">{message}</div> : null}
 
-      {tab === "overview" ? (
+      {activeTab === "overview" ? (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_360px]">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <KpiCard
-                label={t("kpiSpend")}
-                value={formatBRL(campaign.kpis.spend, locale)}
-                delta={pctDelta(campaign.kpis.spend, prev.spend)}
-                series={spendSeries}
-                color="#7c3aed"
-              />
-              <KpiCard
-                label={t("kpiConversions")}
-                value={formatNumber(campaign.kpis.conversions, locale)}
-                delta={pctDelta(campaign.kpis.conversions, prev.conversions)}
-                series={convSeries}
-                color="#2563eb"
-              />
-              <KpiCard
-                label={t("kpiCpa")}
-                value={campaign.kpis.cpa != null ? formatBRL(campaign.kpis.cpa, locale) : "—"}
-                delta={pctDelta(campaign.kpis.cpa ?? 0, prev.cpa ?? 0)}
-                series={cpaSeries}
-                color="#ea580c"
-                invertDelta
-              />
-              <KpiCard
-                label={t("kpiRoas")}
-                value={formatRoas(campaign.kpis.roas, locale)}
-                delta={pctDelta(campaign.kpis.roas, prev.roas)}
-                series={roasSeries}
-                color="#059669"
-              />
+              {refreshing && !spendSeries.length ? (
+                [1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-24 rounded-xl" />)
+              ) : (
+                <>
+                  <KpiCard
+                    label={t("kpiSpend")}
+                    value={formatBRL(campaign.kpis.spend, locale)}
+                    delta={pctDelta(campaign.kpis.spend, prev.spend)}
+                    series={spendSeries}
+                    color="#7c3aed"
+                  />
+                  <KpiCard
+                    label={t("kpiConversions")}
+                    value={formatNumber(campaign.kpis.conversions, locale)}
+                    delta={pctDelta(campaign.kpis.conversions, prev.conversions)}
+                    series={convSeries}
+                    color="#2563eb"
+                  />
+                  <KpiCard
+                    label={t("kpiCpa")}
+                    value={campaign.kpis.cpa != null ? formatBRL(campaign.kpis.cpa, locale) : "—"}
+                    delta={pctDelta(campaign.kpis.cpa ?? 0, prev.cpa ?? 0)}
+                    series={cpaSeries}
+                    color="#ea580c"
+                    invertDelta
+                  />
+                  <KpiCard
+                    label={t("kpiRoas")}
+                    value={formatRoas(campaign.kpis.roas, locale)}
+                    delta={pctDelta(campaign.kpis.roas, prev.roas)}
+                    series={roasSeries}
+                    color="#059669"
+                  />
+                </>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <div className="ui-card p-4 lg:col-span-2">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-slate-900">{t("chartTitle")}</h2>
-                  <span className="text-xs text-slate-400">{t("metrics")}</span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-3 text-[10px]">
-                  <span className="flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-violet-500" /> {t("legendSpend")}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-blue-500" /> {t("legendConversions")}
-                  </span>
-                </div>
-                <div className="mt-4 flex h-44 items-end gap-1">
-                  {series.length ? (
-                    series.map((p) => {
-                      const max = Math.max(...series.map((s) => s.spend), 1);
-                      const h = Math.max(12, (p.spend / max) * 100);
-                      return (
-                        <div key={p.day} className="flex flex-1 flex-col items-center gap-1">
-                          <div className="flex w-full flex-1 items-end gap-0.5">
-                            <div
-                              className="flex-1 rounded-t bg-violet-500/90"
-                              style={{ height: `${h}%` }}
-                            />
-                            <div
-                              className="flex-1 rounded-t bg-blue-400/80"
-                              style={{
-                                height: `${Math.max(8, (p.conversions / Math.max(...series.map((s) => s.conversions), 1)) * 100)}%`
-                              }}
-                            />
-                          </div>
-                          <span className="text-[9px] text-slate-400">{p.day.slice(8, 10)}/{p.day.slice(5, 7)}</span>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-xs text-slate-500">{t("noChartData")}</p>
-                  )}
-                </div>
-              </div>
+              <PerformanceChart
+                series={series}
+                loading={chartLoading}
+                title={t("chartTitle")}
+                metricsLabel={t("metrics")}
+                spendLabel={t("legendSpend")}
+                conversionsLabel={t("legendConversions")}
+                noDataLabel={t("noChartData")}
+              />
 
               <div className="ui-card p-4">
                 <h2 className="text-sm font-semibold">{t("statusCard")}</h2>
@@ -575,12 +673,22 @@ export function CampaignManagerClient({
           <aside className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-900">{t("adsetsSidebar")}</h2>
-              <Link
-                href={`/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`}
-                className="text-xs font-medium text-violet-600"
-              >
-                {t("viewAdsets")}
-              </Link>
+              {embedded ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("adsets")}
+                  className="text-xs font-medium text-violet-600 hover:underline"
+                >
+                  {t("viewAdsets")}
+                </button>
+              ) : (
+                <Link
+                  href={`/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`}
+                  className="text-xs font-medium text-violet-600"
+                >
+                  {t("viewAdsets")}
+                </Link>
+              )}
               <button
                 type="button"
                 onClick={() => openPanel({ clientSlug: slug })}
@@ -589,7 +697,10 @@ export function CampaignManagerClient({
                 + {t("newAdset")}
               </button>
             </div>
-            {adsets.map((a) => (
+            {refreshing && !adsets.length ? (
+              [1, 2].map((n) => <Skeleton key={n} className="h-32 rounded-xl" />)
+            ) : (
+              adsets.map((a) => (
               <div key={a.id} className="ui-card p-4 text-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div className="font-semibold text-slate-900">{a.name ?? a.id}</div>
@@ -607,12 +718,22 @@ export function CampaignManagerClient({
                   {t("dailyBudget")}: {a.dailyBudget != null ? formatBRL(a.dailyBudget, locale) : "—"}
                 </div>
                 <div className="mt-3 flex gap-3 border-t border-slate-100 pt-2 text-[11px]">
-                  <Link
-                    href={`/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`}
-                    className="font-medium text-violet-600"
-                  >
-                    {t("viewDetail")}
-                  </Link>
+                  {embedded ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("adsets")}
+                      className="font-medium text-violet-600 hover:underline"
+                    >
+                      {t("viewDetail")}
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`}
+                      className="font-medium text-violet-600"
+                    >
+                      {t("viewDetail")}
+                    </Link>
+                  )}
                   <button
                     type="button"
                     disabled={isPending}
@@ -623,8 +744,9 @@ export function CampaignManagerClient({
                   </button>
                 </div>
               </div>
-            ))}
-            {!adsets.length ? <p className="text-xs text-slate-500">{t("noAdsets")}</p> : null}
+            ))
+            )}
+            {!refreshing && !adsets.length ? <p className="text-xs text-slate-500">{t("noAdsets")}</p> : null}
 
             {adsets.length > 0 ? (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
@@ -650,18 +772,27 @@ export function CampaignManagerClient({
             ) : null}
           </aside>
         </div>
+      ) : activeTab === "adsets" ? (
+        refreshing && !adsets.length ? (
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full max-w-md rounded-lg" />
+            <Skeleton className="h-64 w-full rounded-xl" />
+          </div>
+        ) : (
+          <AdsetsTable
+            filteredAdsets={filteredAdsets}
+            search={search}
+            setSearch={setSearch}
+            metaCampaignId={metaCampaignId}
+            slug={slug}
+            locale={locale}
+            t={t}
+            isPending={isPending}
+            adsetAction={adsetAction}
+          />
+        )
       ) : (
-        <AdsetsTable
-          filteredAdsets={filteredAdsets}
-          search={search}
-          setSearch={setSearch}
-          metaCampaignId={metaCampaignId}
-          slug={slug}
-          locale={locale}
-          t={t}
-          isPending={isPending}
-          adsetAction={adsetAction}
-        />
+        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("comingSoon")}</div>
       )}
 
       <p className="text-[10px] text-slate-400">{t("dataNote")}</p>

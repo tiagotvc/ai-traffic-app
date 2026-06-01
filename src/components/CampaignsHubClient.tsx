@@ -8,6 +8,7 @@ import { CampaignManagerClient } from "@/components/CampaignManagerClient";
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
 import {
@@ -69,7 +70,6 @@ export function CampaignsHubClient() {
   const [pageSize, setPageSize] = useState<number>(50);
   const [page, setPage] = useState(1);
   const [columns, setColumns] = useState<CampaignColumnId[]>(() => loadCampaignColumns());
-  const [detailTab, setDetailTab] = useState<"overview" | "adsets">("overview");
   const [loading, setLoading] = useState(true);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -134,7 +134,7 @@ export function CampaignsHubClient() {
   useEffect(() => {
     if (!selectedId || !detailRef.current) return;
     detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [selectedId, detailTab]);
+  }, [selectedId]);
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
@@ -455,11 +455,15 @@ export function CampaignsHubClient() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={visibleColumns.length} className="px-4 py-8 text-center text-slate-500">
-                    {t("loading")}
-                  </td>
-                </tr>
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i} className="border-t border-slate-100">
+                    {visibleColumns.map((col) => (
+                      <td key={col} className="px-3 py-3 first:pl-4">
+                        <Skeleton className="h-4 w-full max-w-[120px]" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={visibleColumns.length} className="px-4 py-8 text-center text-slate-500">
@@ -525,38 +529,18 @@ export function CampaignsHubClient() {
         <div ref={detailRef} className="space-y-2 scroll-mt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-slate-800">{t("detailTitle")}</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-lg border border-slate-200 p-0.5 text-xs">
-                {(
-                  [
-                    ["overview", t("tabOverview")],
-                    ["adsets", t("tabAdsets")]
-                  ] as const
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setDetailTab(key)}
-                    className={`rounded-md px-2 py-1 font-medium ${
-                      detailTab === key ? "bg-violet-100 text-violet-700" : "text-slate-500"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <Link
-                href={`/campaigns/${selectedId}?client=${encodeURIComponent(selectedSlug)}`}
-                className="text-xs font-medium text-violet-600 underline"
-              >
-                {t("openFullPage")}
-              </Link>
-            </div>
+            <Link
+              href={`/campaigns/${selectedId}?client=${encodeURIComponent(selectedSlug)}`}
+              className="text-xs font-medium text-violet-600 underline"
+            >
+              {t("openFullPage")}
+            </Link>
           </div>
           <CampaignManagerClient
+            key={selectedId}
             metaCampaignId={selectedId}
             clientSlug={selectedSlug}
-            tab={detailTab}
+            tab="overview"
             embedded
             seedRow={selectedRow ?? undefined}
             periodQuery={(() => {

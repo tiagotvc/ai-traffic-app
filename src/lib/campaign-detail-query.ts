@@ -262,7 +262,12 @@ export async function getCampaignTimeseries(input: {
     };
   });
 
-  if (!series.length) {
+  const snapshotSpend = series.reduce((a, b) => a + b.spend, 0);
+  const snapshotConversions = series.reduce((a, b) => a + b.conversions, 0);
+  const needsLiveDaily =
+    !series.length || (snapshotSpend === 0 && snapshotConversions === 0);
+
+  if (needsLiveDaily) {
     for (const token of [input.metaAccessToken, input.fallbackMetaToken]) {
       if (!token) continue;
       try {

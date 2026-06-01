@@ -303,6 +303,7 @@
     "kpiRoas": "ROAS",
     "chartTitle": "Desempenho dos últimos 7 dias",
     "noChartData": "Sem dados de série — rode a sincronização de métricas.",
+    "comingSoon": "Esta seção estará disponível em breve.",
     "statusCard": "Status da campanha",
     "statusLabel": "Status",
     "viewAdsets": "Ver conjuntos",

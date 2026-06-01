@@ -305,6 +305,7 @@
     "kpiRoas": "ROAS",
     "chartTitle": "Performance — last 7 days",
     "noChartData": "No time series data — run metric sync.",
+    "comingSoon": "This section is coming soon.",
     "statusCard": "Campaign status",
     "statusLabel": "Status",
     "viewAdsets": "View ad sets",
