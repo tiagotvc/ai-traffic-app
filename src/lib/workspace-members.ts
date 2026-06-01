@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "crypto";
 import { IsNull, MoreThan } from "typeorm";
 
+import type { TenantInvite } from "@/db/entities/TenantInvite";
 import type { User } from "@/db/entities/User";
 import { repositories } from "@/db/repositories";
 
@@ -27,9 +28,37 @@ export async function isWorkspaceAdmin(tenantId: string, userId: string) {
   return count === 0;
 }
 
+export async function getUserWorkspaceMembership(userId: string) {
+  const { tenantMember: memberRepo } = await repositories();
+  return memberRepo.findOne({
+    where: { userId },
+    order: { createdAt: "DESC" }
+  });
+}
+
+async function joinUserToInvite(user: User, invite: TenantInvite) {
+  const { tenantInvite: inviteRepo, tenantMember: memberRepo, user: userRepo } = await repositories();
+
+  await memberRepo.delete({ userId: user.id });
+
+  user.tenantId = invite.tenantId;
+  await userRepo.save(user);
+
+  await memberRepo.save(
+    memberRepo.create({
+      tenantId: invite.tenantId,
+      userId: user.id,
+      role: invite.role
+    })
+  );
+
+  invite.acceptedAt = new Date();
+  await inviteRepo.save(invite);
+}
+
 export async function acceptPendingInviteForEmail(user: User, email: string) {
   const normalized = email.toLowerCase().trim();
-  const { tenantInvite: inviteRepo, tenantMember: memberRepo, user: userRepo } = await repositories();
+  const { tenantInvite: inviteRepo } = await repositories();
 
   const invite = await inviteRepo.findOne({
     where: {
@@ -42,56 +71,22 @@ export async function acceptPendingInviteForEmail(user: User, email: string) {
 
   if (!invite) return false;
 
-  user.tenantId = invite.tenantId;
-  await userRepo.save(user);
-
-  const existingMember = await memberRepo.findOne({
-    where: { tenantId: invite.tenantId, userId: user.id }
-  });
-  if (!existingMember) {
-    await memberRepo.save(
-      memberRepo.create({
-        tenantId: invite.tenantId,
-        userId: user.id,
-        role: invite.role
-      })
-    );
-  }
-
-  invite.acceptedAt = new Date();
-  await inviteRepo.save(invite);
+  await joinUserToInvite(user, invite);
   return true;
 }
 
 export async function acceptInviteByToken(user: User, token: string) {
-  const { tenantInvite: inviteRepo, tenantMember: memberRepo, user: userRepo } = await repositories();
+  const { tenantInvite: inviteRepo } = await repositories();
 
   const invite = await inviteRepo.findOne({
     where: { token: token.trim(), acceptedAt: IsNull() }
   });
-  if (!invite || invite.expiresAt < new Date()) return { ok: false as const, error: "invalid_or_expired" };
-  if (invite.email !== user.email.toLowerCase()) {
-    return { ok: false as const, error: "email_mismatch" };
+  if (!invite || invite.expiresAt < new Date()) {
+    return { ok: false as const, error: "invalid_or_expired" as const };
   }
 
-  user.tenantId = invite.tenantId;
-  await userRepo.save(user);
-
-  const existingMember = await memberRepo.findOne({
-    where: { tenantId: invite.tenantId, userId: user.id }
-  });
-  if (!existingMember) {
-    await memberRepo.save(
-      memberRepo.create({
-        tenantId: invite.tenantId,
-        userId: user.id,
-        role: invite.role
-      })
-    );
-  }
-
-  invite.acceptedAt = new Date();
-  await inviteRepo.save(invite);
+  // Token no link é a prova de posse — login Meta nem sempre usa o mesmo e-mail do convite.
+  await joinUserToInvite(user, invite);
   return { ok: true as const };
 }
 
@@ -121,4 +116,16 @@ export async function createWorkspaceInvite(input: {
 export function buildInviteUrl(token: string, origin?: string, locale = "pt-BR") {
   const base = origin ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   return `${base.replace(/\/$/, "")}/${locale}/invite?token=${encodeURIComponent(token)}`;
+}
+
+export async function getInvitePreview(token: string) {
+  const { tenantInvite: inviteRepo, tenant: tenantRepo } = await repositories();
+  const invite = await inviteRepo.findOne({ where: { token: token.trim(), acceptedAt: IsNull() } });
+  if (!invite || invite.expiresAt < new Date()) return null;
+  const tenant = await tenantRepo.findOne({ where: { id: invite.tenantId } });
+  return {
+    email: invite.email,
+    role: invite.role,
+    workspaceName: tenant?.brandName ?? tenant?.name ?? "Workspace"
+  };
 }

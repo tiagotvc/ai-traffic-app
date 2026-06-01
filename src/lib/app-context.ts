@@ -10,7 +10,8 @@ import { resolveTenantName } from "@/lib/tenant-name";
 import { isUuid } from "@/lib/uuid";
 import {
   acceptPendingInviteForEmail,
-  ensureTenantMember
+  ensureTenantMember,
+  getUserWorkspaceMembership
 } from "@/lib/workspace-members";
 import { IsNull, MoreThan } from "typeorm";
 
@@ -21,8 +22,13 @@ export async function getAppContext() {
   }
 
   const ds = await getDataSource();
-  const { tenant: tenantRepo, user: userRepo, client: clientRepo, tenantInvite: inviteRepo } =
-    await repositories();
+  const {
+    tenant: tenantRepo,
+    user: userRepo,
+    client: clientRepo,
+    tenantInvite: inviteRepo,
+    tenantMember: memberRepo
+  } = await repositories();
 
   const email = session.user.email.toLowerCase();
 
@@ -30,45 +36,68 @@ export async function getAppContext() {
   const metaProfileId = (session as any).meta?.profileId as string | undefined;
 
   let user = await userRepo.findOne({ where: { email } });
+  let tenant;
 
-  const pendingInvite = await inviteRepo.findOne({
-    where: { email, acceptedAt: IsNull(), expiresAt: MoreThan(new Date()) },
-    order: { createdAt: "DESC" }
-  });
+  const existingMembership = user ? await getUserWorkspaceMembership(user.id) : null;
 
-  if (pendingInvite) {
-    if (!user) {
-      user = userRepo.create({
-        email,
-        name: session.user.name ?? null,
-        tenantId: pendingInvite.tenantId
-      });
-      await userRepo.save(user);
-    }
-    await acceptPendingInviteForEmail(user, email);
-    user = (await userRepo.findOne({ where: { email } }))!;
-  } else {
-    const tenantName = resolveTenantName(email, metaProfileId);
-    let tenant = await tenantRepo.findOne({ where: { name: tenantName } });
+  if (existingMembership) {
+    tenant = await tenantRepo.findOne({ where: { id: existingMembership.tenantId } });
     if (!tenant) {
-      tenant = tenantRepo.create({ name: tenantName, brandName: tenantName });
-      await tenantRepo.save(tenant);
-    }
-
-    if (!user) {
-      user = userRepo.create({
-        email,
-        name: session.user.name ?? null,
-        tenantId: tenant.id
-      });
-      await userRepo.save(user);
-    } else if (user.tenantId !== tenant.id) {
+      await memberRepo.delete({ userId: user!.id });
+    } else if (user && user.tenantId !== tenant.id) {
       user.tenantId = tenant.id;
       await userRepo.save(user);
     }
   }
 
-  let tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
+  if (!tenant) {
+    const pendingInvite = await inviteRepo.findOne({
+      where: { email, acceptedAt: IsNull(), expiresAt: MoreThan(new Date()) },
+      order: { createdAt: "DESC" }
+    });
+
+    if (pendingInvite) {
+      if (!user) {
+        user = userRepo.create({
+          email,
+          name: session.user.name ?? null,
+          tenantId: pendingInvite.tenantId
+        });
+        await userRepo.save(user);
+      }
+      await acceptPendingInviteForEmail(user, email);
+      user = (await userRepo.findOne({ where: { email } }))!;
+      tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
+    } else {
+      const tenantName = resolveTenantName(email, metaProfileId);
+      let metaTenant = await tenantRepo.findOne({ where: { name: tenantName } });
+      if (!metaTenant) {
+        metaTenant = tenantRepo.create({ name: tenantName, brandName: tenantName });
+        await tenantRepo.save(metaTenant);
+      }
+
+      if (!user) {
+        user = userRepo.create({
+          email,
+          name: session.user.name ?? null,
+          tenantId: metaTenant.id
+        });
+        await userRepo.save(user);
+      } else if (user.tenantId !== metaTenant.id) {
+        user.tenantId = metaTenant.id;
+        await userRepo.save(user);
+      }
+      tenant = metaTenant;
+    }
+  }
+
+  if (!user) {
+    user = (await userRepo.findOne({ where: { email } }))!;
+  }
+
+  if (!tenant) {
+    tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
+  }
   if (!tenant) {
     const tenantName = resolveTenantName(email, metaProfileId);
     tenant = tenantRepo.create({ name: tenantName, brandName: tenantName });

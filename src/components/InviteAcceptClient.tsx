@@ -2,9 +2,20 @@
 
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
+
+const TOKEN_STORAGE_KEY = "traffic-invite-token";
+
+function readStoredToken() {
+  if (typeof window === "undefined") return "";
+  try {
+    return sessionStorage.getItem(TOKEN_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
 
 export function InviteAcceptClient({
   isLoggedIn,
@@ -14,10 +25,36 @@ export function InviteAcceptClient({
   locale: string;
 }) {
   const t = useTranslations("invite");
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  const urlToken = searchParams.get("token") ?? "";
+
+  const token = useMemo(() => urlToken || readStoredToken(), [urlToken]);
+
   const [status, setStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ workspaceName: string; email: string } | null>(null);
+
+  useEffect(() => {
+    if (!urlToken) return;
+    try {
+      sessionStorage.setItem(TOKEN_STORAGE_KEY, urlToken);
+    } catch {
+      /* ignore */
+    }
+  }, [urlToken]);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`/api/workspace/invites/preview?token=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok && j.preview) {
+          setPreview({ workspaceName: j.preview.workspaceName, email: j.preview.email });
+        }
+      })
+      .catch(() => {});
+  }, [token]);
 
   useEffect(() => {
     if (!isLoggedIn || !token) return;
@@ -30,7 +67,13 @@ export function InviteAcceptClient({
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) {
+          try {
+            sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+          } catch {
+            /* ignore */
+          }
           setStatus("ok");
+          router.refresh();
         } else {
           setStatus("error");
           setError(j.error ?? "unknown");
@@ -40,19 +83,60 @@ export function InviteAcceptClient({
         setStatus("error");
         setError("network");
       });
-  }, [isLoggedIn, token]);
+  }, [isLoggedIn, token, router]);
 
   if (!token) {
-    return <p className="text-sm text-slate-600">{t("missingToken")}</p>;
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-slate-600">{t("missingToken")}</p>
+        <p className="text-xs text-slate-500">{t("missingTokenHint")}</p>
+      </div>
+    );
+  }
+
+  if (preview) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-slate-700">
+          {t("preview", { workspace: preview.workspaceName, email: preview.email })}
+        </p>
+        {!isLoggedIn ? (
+          <>
+            <p className="text-sm text-slate-600">{t("loginRequired")}</p>
+            <Link
+              href={`/login?callbackUrl=${encodeURIComponent(`/${locale}/invite?token=${encodeURIComponent(token)}`)}`}
+              className="ui-btn-primary inline-block text-center"
+            >
+              {t("loginCta")}
+            </Link>
+          </>
+        ) : status === "loading" || status === "idle" ? (
+          <p className="text-sm text-slate-600">{t("accepting")}</p>
+        ) : status === "ok" ? (
+          <div className="space-y-3">
+            <p className="text-sm text-emerald-700">{t("accepted")}</p>
+            <Link href="/command-center" className="ui-btn-primary inline-block text-center">
+              {t("goToApp")}
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-red-700">{t("failed", { error: error ?? "" })}</p>
+            <Link href="/settings" className="text-sm font-medium text-violet-600 underline">
+              {t("settingsLink")}
+            </Link>
+          </div>
+        )}
+      </div>
+    );
   }
 
   if (!isLoggedIn) {
-    const callbackUrl = `/${locale}/invite?token=${encodeURIComponent(token)}`;
     return (
       <div className="space-y-4">
         <p className="text-sm text-slate-600">{t("loginRequired")}</p>
         <Link
-          href={`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+          href={`/login?callbackUrl=${encodeURIComponent(`/${locale}/invite?token=${encodeURIComponent(token)}`)}`}
           className="ui-btn-primary inline-block text-center"
         >
           {t("loginCta")}
