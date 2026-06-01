@@ -5,6 +5,7 @@ import { Between, In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import { getClientBySlugOrId, listClientsForTenant } from "@/lib/app-context";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
+import { parsePeriodFromSearchParams } from "@/lib/report-period";
 export async function resolveDashboardScope(
   tenantId: string,
   clientIdParam?: string | null,
@@ -50,12 +51,12 @@ export async function resolveDashboardScope(
 export function parseDashboardSearchParams(url: URL) {
   const clientId = url.searchParams.get("clientId");
   const adAccountId = url.searchParams.get("adAccountId");
-  const daysRaw = Number(url.searchParams.get("days") ?? "7");
-  const days = Number.isFinite(daysRaw) ? Math.min(90, Math.max(1, daysRaw)) : 7;
+  const period = parsePeriodFromSearchParams(url);
   return {
     clientId: clientId || null,
     adAccountId: adAccountId || null,
-    days
+    days: period.days ?? 7,
+    period
   };
 }
 
@@ -65,14 +66,45 @@ export function dateNDaysAgo(n: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export async function loadMetricRows(accountIds: string[], days = 30) {
-  const { metricSnapshot: metricsRepo } = await repositories();
+export async function loadMetricRows(
+  accountIds: string[],
+  days = 30,
+  opts?: { since?: string | null; until?: string | null; allTime?: boolean }
+) {
+  const { metricSnapshot: metricsRepo, campaignMetricSnapshot: campRepo } = await repositories();
   if (!accountIds.length) return [];
 
-  const start = dateNDaysAgo(days);
-  const end = new Date().toISOString().slice(0, 10);
-  return metricsRepo.find({
+  if (opts?.allTime) {
+    return metricsRepo.find({
+      where: { adAccountId: In(accountIds) },
+      order: { day: "ASC" }
+    });
+  }
+
+  const end = opts?.until?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+  const start = opts?.since?.slice(0, 10) ?? dateNDaysAgo(days);
+
+  const accountRows = await metricsRepo.find({
     where: { adAccountId: In(accountIds), day: Between(start, end) },
     order: { day: "ASC" }
   });
+
+  if (accountRows.length > 0) return accountRows;
+
+  const campRows = await campRepo.find({
+    where: { adAccountId: In(accountIds), day: Between(start, end) },
+    order: { day: "ASC" }
+  });
+
+  return campRows.map((c) => ({
+    adAccountId: c.adAccountId,
+    day: c.day,
+    spend: c.spend,
+    impressions: c.impressions,
+    clicks: c.clicks,
+    ctr: c.ctr,
+    cpc: c.cpc,
+    conversions: c.conversions,
+    roas: c.roas
+  }));
 }

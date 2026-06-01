@@ -91,9 +91,13 @@ export function AlertsClient() {
     return alerts;
   }, [alerts, filter]);
 
-  function dismiss(id: string) {
+  function patchAlert(id: string, action: "dismiss" | "snooze" | "acknowledge") {
     startTransition(async () => {
-      await fetch(`/api/alerts/${id}/dismiss`, { method: "PATCH" });
+      await fetch(`/api/alerts/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action, snoozeHours: 24 })
+      });
       load();
       router.refresh();
     });
@@ -230,7 +234,23 @@ export function AlertsClient() {
                   <button
                     type="button"
                     disabled={isPending}
-                    onClick={() => dismiss(a.id)}
+                    onClick={() => patchAlert(a.id, "snooze")}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {t("snooze")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => patchAlert(a.id, "acknowledge")}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    {t("acknowledge")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => patchAlert(a.id, "dismiss")}
                     className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                   >
                     {t("dismiss")}

@@ -19,8 +19,12 @@ export async function queryCommandCenterCampaigns(input: {
   q?: string;
   onlyAlerts?: boolean;
   onlyActive?: boolean;
+  statusFilter?: "ACTIVE" | "PAUSED" | "INACTIVE" | "ALL";
   tag?: string;
   days?: number;
+  since?: string | null;
+  until?: string | null;
+  allTime?: boolean;
   limit?: number;
   offset?: number;
   metaBusinessId?: string | null;
@@ -33,8 +37,14 @@ export async function queryCommandCenterCampaigns(input: {
     clientTag: tagRepo
   } = await repositories();
 
-  const since = dateNDaysAgo(input.days ?? 7);
   const today = new Date().toISOString().slice(0, 10);
+  const since =
+    input.allTime || !input.since
+      ? input.allTime
+        ? "1970-01-01"
+        : dateNDaysAgo(input.days ?? 7)
+      : input.since.slice(0, 10);
+  const until = input.until?.slice(0, 10) ?? today;
 
   let clients = await clientRepo.find({ where: { tenantId: input.tenantId }, order: { name: "ASC" } });
   if (input.clientIds?.length) {
@@ -63,9 +73,11 @@ export async function queryCommandCenterCampaigns(input: {
   const accountIds = accounts.map((a) => a.id);
   if (!accountIds.length) return { rows: [], total: 0 };
 
-  const snaps = await campRepo.find({
-    where: { adAccountId: In(accountIds), day: Between(since, today) }
-  });
+  const snaps = input.allTime
+    ? await campRepo.find({ where: { adAccountId: In(accountIds) } })
+    : await campRepo.find({
+        where: { adAccountId: In(accountIds), day: Between(since, until) }
+      });
 
   const openAlerts = await alertRepo.find({
     where: { tenantId: input.tenantId, dismissed: false }
@@ -79,6 +91,13 @@ export async function queryCommandCenterCampaigns(input: {
   const clientById = new Map(clients.map((c) => [c.id, c]));
   const accountById = new Map(accounts.map((a) => [a.id, a]));
 
+  const statusByCampaign = new Map<string, string>();
+  for (const s of snaps) {
+    if (s.campaignStatus && !statusByCampaign.has(s.metaCampaignId)) {
+      statusByCampaign.set(s.metaCampaignId, s.campaignStatus);
+    }
+  }
+
   const agg = new Map<
     string,
     {
@@ -91,6 +110,12 @@ export async function queryCommandCenterCampaigns(input: {
       leads: number;
       roasSum: number;
       roasN: number;
+      impressions: number;
+      clicks: number;
+      ctrSum: number;
+      ctrN: number;
+      cpcSum: number;
+      cpcN: number;
       status?: string;
     }
   >();
@@ -109,17 +134,35 @@ export async function queryCommandCenterCampaigns(input: {
         conversions: 0,
         leads: 0,
         roasSum: 0,
-        roasN: 0
+        roasN: 0,
+        impressions: 0,
+        clicks: 0,
+        ctrSum: 0,
+        ctrN: 0,
+        cpcSum: 0,
+        cpcN: 0
       };
       agg.set(key, row);
     }
     row.spend += num(s.spend);
     row.conversions += num(s.conversions);
     row.leads += num(s.leads);
+    row.impressions += num(s.impressions);
+    row.clicks += num(s.clicks);
     const roas = num(s.roas);
     if (roas > 0) {
       row.roasSum += roas;
       row.roasN += 1;
+    }
+    const ctr = num(s.ctr);
+    if (ctr > 0) {
+      row.ctrSum += ctr;
+      row.ctrN += 1;
+    }
+    const cpc = num(s.cpc);
+    if (cpc > 0) {
+      row.cpcSum += cpc;
+      row.cpcN += 1;
     }
   }
 
@@ -152,10 +195,28 @@ export async function queryCommandCenterCampaigns(input: {
       cpl: r.leads > 0 ? r.spend / r.leads : null,
       cpa: r.conversions > 0 ? r.spend / r.conversions : null,
       roas: r.roasN ? r.roasSum / r.roasN : 0,
+      impressions: r.impressions,
+      clicks: r.clicks,
+      ctr: r.ctrN ? r.ctrSum / r.ctrN : r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0,
+      cpc: r.cpcN ? r.cpcSum / r.cpcN : r.clicks > 0 ? r.spend / r.clicks : 0,
+      cpm: r.impressions > 0 ? (r.spend / r.impressions) * 1000 : 0,
+      status: statusByCampaign.get(r.metaCampaignId) ?? "UNKNOWN",
       alertCount,
       hasAlert: alertCount > 0
     };
   });
+
+  const statusFilter = input.statusFilter ?? "ALL";
+  if (statusFilter === "ACTIVE") {
+    rows = rows.filter((r) => (r as { status?: string }).status === "ACTIVE");
+  } else if (statusFilter === "PAUSED") {
+    rows = rows.filter((r) => (r as { status?: string }).status === "PAUSED");
+  } else if (statusFilter === "INACTIVE") {
+    rows = rows.filter((r) => {
+      const st = (r as { status?: string }).status ?? "UNKNOWN";
+      return st !== "ACTIVE";
+    });
+  }
 
   if (input.onlyAlerts) rows = rows.filter((r) => r.hasAlert);
 

@@ -29,6 +29,7 @@ import { LookalikeJob } from "./LookalikeJob";
 import { CampaignTemplate } from "./CampaignTemplate";
 import { CreativeAsset } from "./CreativeAsset";
 import { AutomationRule } from "./AutomationRule";
+import { ReportSchedule } from "./ReportSchedule";
 import { UserClient } from "./UserClient";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
@@ -60,6 +61,7 @@ export {
   CampaignTemplate,
   CreativeAsset,
   AutomationRule,
+  ReportSchedule,
   UserClient
 };
 
@@ -95,6 +97,7 @@ stabilizeTypeOrmEntityNames([
   { ctor: CampaignTemplate, name: "CampaignTemplate" },
   { ctor: CreativeAsset, name: "CreativeAsset" },
   { ctor: AutomationRule, name: "AutomationRule" },
+  { ctor: ReportSchedule, name: "ReportSchedule" },
   { ctor: UserClient, name: "UserClient" }
 ]);
 
@@ -126,5 +129,6 @@ export const typeOrmEntities = [
   CampaignTemplate,
   CreativeAsset,
   AutomationRule,
+  ReportSchedule,
   UserClient
 ] as const;

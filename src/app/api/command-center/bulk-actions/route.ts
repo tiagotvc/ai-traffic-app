@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
-import { pauseCampaign, updateCampaignDailyBudget } from "@/lib/meta-graph";
+import { formatMetaGraphError } from "@/lib/meta-error";
+import {
+  activateCampaign,
+  fetchCampaign,
+  pauseCampaign,
+  updateCampaignDailyBudget
+} from "@/lib/meta-graph";
 
 const BodySchema = z.object({
-  action: z.enum(["pause", "budget_delta_percent"]),
+  action: z.enum(["pause", "activate", "budget_delta_percent", "budget_set_minor"]),
   metaCampaignIds: z.array(z.string()).min(1).max(50),
-  deltaPercent: z.number().optional()
+  deltaPercent: z.number().optional(),
+  budgetMinor: z.number().int().positive().optional()
 });
 
 export async function POST(req: Request) {
@@ -24,14 +31,37 @@ export async function POST(req: Request) {
       if (body.action === "pause") {
         await pauseCampaign(metaAccessToken, id);
         results.push({ id, ok: true });
-      } else if (body.action === "budget_delta_percent" && body.deltaPercent) {
-        // Budget delta requires current budget from Meta — skip if unavailable
+      } else if (body.action === "activate") {
+        await activateCampaign(metaAccessToken, id);
         results.push({ id, ok: true });
+      } else if (body.action === "budget_set_minor" && body.budgetMinor) {
+        await updateCampaignDailyBudget(metaAccessToken, id, body.budgetMinor);
+        results.push({ id, ok: true });
+      } else if (body.action === "budget_delta_percent" && body.deltaPercent) {
+        const camp = await fetchCampaign(metaAccessToken, id);
+        const current = Number(camp.daily_budget ?? 0);
+        if (!current) {
+          results.push({ id, ok: false, error: "Campanha sem orçamento diário definido" });
+          continue;
+        }
+        const next = Math.max(
+          100,
+          Math.round(current * (1 + body.deltaPercent / 100))
+        );
+        await updateCampaignDailyBudget(metaAccessToken, id, next);
+        results.push({ id, ok: true });
+      } else {
+        results.push({ id, ok: false, error: "Ação inválida ou parâmetros ausentes" });
       }
     } catch (e) {
-      results.push({ id, ok: false, error: e instanceof Error ? e.message : "failed" });
+      results.push({ id, ok: false, error: formatMetaGraphError(e) });
     }
   }
 
-  return NextResponse.json({ ok: true, results });
+  const okCount = results.filter((r) => r.ok).length;
+  return NextResponse.json({
+    ok: okCount > 0,
+    results,
+    message: `${okCount}/${results.length} campanhas atualizadas`
+  });
 }

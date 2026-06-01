@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
@@ -15,6 +15,27 @@ type Rule = {
   action: { type?: string };
   createdAt: string;
 };
+
+const TEMPLATES = [
+  {
+    id: "cpl",
+    name: "CPL acima da meta",
+    condition: { metric: "cpl", op: "gt", value: 50, minSpend: 30 },
+    action: { type: "pause_campaign" }
+  },
+  {
+    id: "spend",
+    name: "Gasto sem conversão",
+    condition: { metric: "spend", op: "gt", value: 100, minSpend: 50 },
+    action: { type: "pause_campaign" }
+  },
+  {
+    id: "alert",
+    name: "Só alertar (CPL alto)",
+    condition: { metric: "cpl", op: "gt", value: 40 },
+    action: { type: "alert_only" }
+  }
+] as const;
 
 function formatCondition(c: Rule["condition"]) {
   const metric = (c.metric ?? "metric").toUpperCase();
@@ -36,6 +57,15 @@ export function AutomationsClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"all" | "active" | "paused">("all");
+  const [showForm, setShowForm] = useState(false);
+  const [formName, setFormName] = useState("");
+  const [formMetric, setFormMetric] = useState<"cpl" | "spend" | "conversions">("cpl");
+  const [formOp, setFormOp] = useState<"gt" | "lt" | "gte">("gt");
+  const [formValue, setFormValue] = useState(50);
+  const [formMinSpend, setFormMinSpend] = useState(30);
+  const [formAction, setFormAction] = useState<"pause_campaign" | "alert_only">("pause_campaign");
+  const [message, setMessage] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const load = useCallback(() => {
     fetch("/api/automation/rules")
@@ -72,6 +102,63 @@ export function AutomationsClient() {
 
   const selected = rules.find((r) => r.id === selectedId) ?? filtered[0] ?? null;
 
+  function applyTemplate(tpl: (typeof TEMPLATES)[number]) {
+    setFormName(tpl.name);
+    setFormMetric(tpl.condition.metric as "cpl" | "spend" | "conversions");
+    setFormOp(tpl.condition.op as "gt" | "lt" | "gte");
+    setFormValue(tpl.condition.value);
+    setFormMinSpend("minSpend" in tpl.condition ? tpl.condition.minSpend ?? 0 : 0);
+    setFormAction(tpl.action.type as "pause_campaign" | "alert_only");
+    setShowForm(true);
+  }
+
+  function createRule() {
+    startTransition(async () => {
+      const res = await fetch("/api/automation/rules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: formName.trim() || "Nova regra",
+          condition: {
+            metric: formMetric,
+            op: formOp,
+            value: formValue,
+            minSpend: formMinSpend > 0 ? formMinSpend : undefined
+          },
+          action: { type: formAction }
+        })
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        setMessage(j.error ?? t("saveFailed"));
+        return;
+      }
+      setMessage(t("saved"));
+      setShowForm(false);
+      load();
+    });
+  }
+
+  function toggleRule(rule: Rule) {
+    startTransition(async () => {
+      await fetch(`/api/automation/rules/${rule.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled: !rule.enabled })
+      });
+      load();
+    });
+  }
+
+  function deleteRule(rule: Rule) {
+    if (!confirm(t("confirmDelete"))) return;
+    startTransition(async () => {
+      await fetch(`/api/automation/rules/${rule.id}`, { method: "DELETE" });
+      load();
+      setSelectedId(null);
+    });
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -79,24 +166,80 @@ export function AutomationsClient() {
         subtitle={t("subtitle")}
         breadcrumbs={t("breadcrumb")}
         actions={
-          <>
-            <button type="button" className="ui-btn-secondary">
-              {t("executionLogs")}
-            </button>
-            <button type="button" className="ui-btn-primary">
-              {t("newRule")}
-            </button>
-          </>
+          <button type="button" className="ui-btn-primary" onClick={() => setShowForm(true)}>
+            {t("newRule")}
+          </button>
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <KpiCard label={t("kpiActive")} value={String(stats.active)} />
         <KpiCard label={t("kpiPaused")} value={String(stats.paused)} />
         <KpiCard label={t("kpiTotal")} value={String(rules.length)} />
-        <KpiCard label={t("kpiToday")} value="—" />
-        <KpiCard label={t("kpiActions")} value="—" />
       </div>
+
+      {showForm ? (
+        <div className="ui-card space-y-3 p-4">
+          <div className="text-sm font-semibold">{t("formTitle")}</div>
+          <div className="flex flex-wrap gap-2">
+            {TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.id}
+                type="button"
+                onClick={() => applyTemplate(tpl)}
+                className="rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-xs text-violet-800"
+              >
+                {tpl.name}
+              </button>
+            ))}
+          </div>
+          <input
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            placeholder={t("ruleName")}
+            className="ui-input w-full"
+          />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <select value={formMetric} onChange={(e) => setFormMetric(e.target.value as typeof formMetric)} className="ui-input">
+              <option value="cpl">CPL</option>
+              <option value="spend">Gasto</option>
+              <option value="conversions">Conversões</option>
+            </select>
+            <select value={formOp} onChange={(e) => setFormOp(e.target.value as typeof formOp)} className="ui-input">
+              <option value="gt">&gt;</option>
+              <option value="gte">≥</option>
+              <option value="lt">&lt;</option>
+            </select>
+            <input
+              type="number"
+              value={formValue}
+              onChange={(e) => setFormValue(Number(e.target.value))}
+              className="ui-input"
+            />
+            <input
+              type="number"
+              value={formMinSpend}
+              onChange={(e) => setFormMinSpend(Number(e.target.value))}
+              placeholder={t("minSpend")}
+              className="ui-input"
+            />
+          </div>
+          <select value={formAction} onChange={(e) => setFormAction(e.target.value as typeof formAction)} className="ui-input max-w-xs">
+            <option value="pause_campaign">{t("actionPause")}</option>
+            <option value="alert_only">{t("actionAlert")}</option>
+          </select>
+          <div className="flex gap-2">
+            <button type="button" disabled={isPending} onClick={createRule} className="ui-btn-primary">
+              {t("saveRule")}
+            </button>
+            <button type="button" onClick={() => setShowForm(false)} className="ui-btn-secondary">
+              {t("cancel")}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
@@ -148,14 +291,6 @@ export function AutomationsClient() {
                     {rule.enabled ? t("statusActive") : t("statusPaused")}
                   </Badge>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-[11px] text-slate-600">
-                    {formatCondition(rule.condition)}
-                  </span>
-                  <span className="rounded-lg bg-violet-50 px-2 py-1 text-[11px] text-violet-700">
-                    {formatAction(rule.action)}
-                  </span>
-                </div>
               </button>
             ))}
             {filtered.length === 0 ? (
@@ -174,21 +309,20 @@ export function AutomationsClient() {
                   {selected.enabled ? t("statusActive") : t("statusPaused")}
                 </Badge>
               </div>
-              <section>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {t("sectionCondition")}
-                </div>
-                <p className="mt-1 text-slate-700">{formatCondition(selected.condition)}</p>
-              </section>
-              <section>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {t("sectionAction")}
-                </div>
-                <p className="mt-1 text-slate-700">{formatAction(selected.action)}</p>
-              </section>
-              <button type="button" className="ui-btn-secondary w-full">
-                {selected.enabled ? t("pauseRule") : t("activateRule")}
-              </button>
+              <p className="text-slate-700">{formatCondition(selected.condition)}</p>
+              <p className="text-violet-700">{formatAction(selected.action)}</p>
+              <div className="flex flex-col gap-2">
+                <button type="button" className="ui-btn-secondary w-full" onClick={() => toggleRule(selected)}>
+                  {selected.enabled ? t("pauseRule") : t("activateRule")}
+                </button>
+                <button
+                  type="button"
+                  className="ui-btn-secondary w-full text-red-600"
+                  onClick={() => deleteRule(selected)}
+                >
+                  {t("deleteRule")}
+                </button>
+              </div>
             </div>
           ) : (
             <p className="mt-4 text-xs text-slate-500">{t("selectRule")}</p>

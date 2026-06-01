@@ -57,4 +57,13 @@ export class Alert extends AppBaseEntity {
 
   @Column({ type: "bool", default: false })
   dismissed!: boolean;
+
+  @Column({ type: "timestamptz", nullable: true })
+  snoozedUntil?: Date | null;
+
+  @Column({ type: "timestamptz", nullable: true })
+  acknowledgedAt?: Date | null;
+
+  @Column({ type: "text", nullable: true })
+  acknowledgedBy?: string | null;
 }

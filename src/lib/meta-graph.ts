@@ -61,6 +61,7 @@ export type MetaCampaign = {
   id: string;
   name?: string;
   status?: string;
+  objective?: string;
   daily_budget?: string;
 };
 
@@ -352,6 +353,29 @@ export async function fetchCampaignInsightsDaily(
   return data.data ?? [];
 }
 
+export async function fetchCampaignInsightsForRange(
+  accessToken: string,
+  adAccountId: string,
+  since: string,
+  until: string
+): Promise<MetaCampaignInsightRow[]> {
+  const fields = [
+    "campaign_id",
+    "campaign_name",
+    "spend",
+    "impressions",
+    "clicks",
+    "ctr",
+    "cpc",
+    "actions",
+    "purchase_roas"
+  ].join(",");
+  const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
+  const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_range=${encodeURIComponent(timeRange)}`;
+  const data = await metaFetch<{ data: MetaCampaignInsightRow[] }>(path, accessToken);
+  return data.data ?? [];
+}
+
 export async function fetchAdImages(accessToken: string, adAccountId: string): Promise<MetaAdImage[]> {
   const fields = ["id", "hash", "name", "url"].join(",");
   const path = `/${encodeURIComponent(adAccountId)}/adimages?fields=${encodeURIComponent(fields)}&limit=50`;
@@ -397,7 +421,7 @@ export function pickConversions(actions?: Array<{ action_type: string; value: st
 }
 
 export async function fetchCampaigns(accessToken: string, adAccountId: string): Promise<MetaCampaign[]> {
-  const fields = ["id", "name", "status", "daily_budget"].join(",");
+  const fields = ["id", "name", "status", "objective", "daily_budget"].join(",");
   const path = `/${encodeURIComponent(adAccountId)}/campaigns?fields=${encodeURIComponent(fields)}&limit=100`;
   const data = await metaFetch<{ data: MetaCampaign[] }>(path, accessToken);
   return data.data ?? [];

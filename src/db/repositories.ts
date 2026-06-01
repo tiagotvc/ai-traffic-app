@@ -20,6 +20,7 @@ import type { MetaBusiness } from "@/db/entities/MetaBusiness";
 import type { MetaPage } from "@/db/entities/MetaPage";
 import type { MetricSnapshot } from "@/db/entities/MetricSnapshot";
 import type { NotificationState } from "@/db/entities/NotificationState";
+import type { ReportSchedule } from "@/db/entities/ReportSchedule";
 import type { SavedView } from "@/db/entities/SavedView";
 import type { SyncQueueJob } from "@/db/entities/SyncQueueJob";
 import type { SyncRun } from "@/db/entities/SyncRun";
@@ -59,6 +60,7 @@ const ENTITY = {
   CampaignTemplate: "CampaignTemplate",
   CreativeAsset: "CreativeAsset",
   AutomationRule: "AutomationRule",
+  ReportSchedule: "ReportSchedule",
   UserClient: "UserClient"
 } as const;
 
@@ -109,6 +111,7 @@ export async function repositories() {
     campaignTemplate: repositoryFor<CampaignTemplate>(ds, ENTITY.CampaignTemplate),
     creativeAsset: repositoryFor<CreativeAsset>(ds, ENTITY.CreativeAsset),
     automationRule: repositoryFor<AutomationRule>(ds, ENTITY.AutomationRule),
+    reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient)
   };
 }

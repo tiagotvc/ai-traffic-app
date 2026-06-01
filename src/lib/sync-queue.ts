@@ -22,6 +22,8 @@ export async function enqueueTenantSync(input: {
   defaultClientId: string;
   metaAccessToken: string;
   manual?: boolean;
+  clientId?: string;
+  adAccountIds?: string[];
 }) {
   const {
     syncRun: runRepo,
@@ -47,9 +49,17 @@ export async function enqueueTenantSync(input: {
       : [];
   const settingsByClient = new Map(settingsRows.map((s) => [s.clientId, s]));
 
-  const accounts = await adRepo.find({
+  let accounts = await adRepo.find({
     where: clientIds.length ? { clientId: In(clientIds) } : { clientId: input.defaultClientId }
   });
+
+  if (input.clientId) {
+    accounts = accounts.filter((a) => a.clientId === input.clientId);
+  }
+  if (input.adAccountIds?.length) {
+    const set = new Set(input.adAccountIds);
+    accounts = accounts.filter((a) => set.has(a.id));
+  }
 
   const eligible = accounts.filter((a) => {
     const s = settingsByClient.get(a.clientId);
@@ -130,7 +140,8 @@ export async function processSyncQueue(input: {
     } catch (e) {
       job.status = "failed";
       job.attempts += 1;
-      job.lastError = e instanceof Error ? e.message : "sync failed";
+      const { formatMetaGraphError } = await import("@/lib/meta-error");
+      job.lastError = formatMetaGraphError(e);
       job.processedAt = new Date();
       run.lastError = job.lastError;
     }

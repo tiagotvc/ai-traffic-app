@@ -4,6 +4,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { ClientMetaExtras } from "@/components/ClientMetaExtras";
+import { ClientReadinessChecklist } from "@/components/ClientReadinessChecklist";
+import { SyncNowButton } from "@/components/SyncNowButton";
+import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { Link } from "@/i18n/navigation";
 import { formatBRL, formatRoas } from "@/lib/format";
 
@@ -199,18 +202,24 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
           </div>
         ) : null}
 
+        <ClientReadinessChecklist clientId={clientId} />
+        <SyncStatusBanner clientId={clientId} />
+
         <div className="ui-card p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold">{data.name}</div>
               <div className="mt-1 text-xs text-slate-500">{t("active")}</div>
             </div>
-            <Link
-              href={`/campaigns?client=${encodeURIComponent(data.slug)}`}
-              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              {t("viewCampaigns")}
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <SyncNowButton clientId={clientId} compact />
+              <Link
+                href={`/campaigns?client=${encodeURIComponent(data.slug)}`}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                {t("viewCampaigns")}
+              </Link>
+            </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             <Kpi label={t("spend")} value={formatBRL(data.kpis.spend, locale)} />

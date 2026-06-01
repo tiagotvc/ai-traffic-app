@@ -10,6 +10,7 @@ import { ClientMetaPublish1735690100000 } from "./migrations/0004-ClientMetaPubl
 import { AgencyPlatform1735690200000 } from "./migrations/0005-AgencyPlatform";
 import { MetaBusinessAssets1735690300000 } from "./migrations/0006-MetaBusinessAssets";
 import { ClientMetaBusiness1735690400000 } from "./migrations/0007-ClientMetaBusiness";
+import { ManagerFeatures1735690500000 } from "./migrations/0008-ManagerFeatures";
 
 async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
@@ -27,7 +28,8 @@ async function main() {
       ClientMetaPublish1735690100000,
       AgencyPlatform1735690200000,
       MetaBusinessAssets1735690300000,
-      ClientMetaBusiness1735690400000
+      ClientMetaBusiness1735690400000,
+      ManagerFeatures1735690500000
     ],
     synchronize: false,
     logging: true

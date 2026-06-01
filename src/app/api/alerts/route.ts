@@ -12,6 +12,7 @@ export async function GET(req: Request) {
 
   const { alert: alertRepo, client: clientRepo } = await repositories();
 
+  const now = new Date();
   const alerts = await alertRepo.find({
     where: {
       tenantId: tenant.id,
@@ -19,13 +20,15 @@ export async function GET(req: Request) {
       ...(severity === "critical" || severity === "warning" ? { severity } : {})
     },
     order: { createdAt: "DESC" },
-    take: limit
+    take: limit * 2
   });
+
+  const active = alerts.filter((a) => !a.snoozedUntil || a.snoozedUntil <= now).slice(0, limit);
 
   const clients = await clientRepo.find({ where: { tenantId: tenant.id } });
   const clientMap = new Map(clients.map((c) => [c.id, c]));
 
-  const rows = alerts
+  const rows = active
     .map((a) => {
       const c = a.clientId ? clientMap.get(a.clientId) : null;
       return {
@@ -42,7 +45,10 @@ export async function GET(req: Request) {
         actualValue: a.actualValue != null ? Number(a.actualValue) : null,
         thresholdValue: a.thresholdValue != null ? Number(a.thresholdValue) : null,
         metricKey: a.metricKey,
-        createdAt: a.createdAt.toISOString()
+        createdAt: a.createdAt.toISOString(),
+        acknowledgedAt: a.acknowledgedAt?.toISOString() ?? null,
+        acknowledgedBy: a.acknowledgedBy ?? null,
+        snoozedUntil: a.snoozedUntil?.toISOString() ?? null
       };
     })
     .filter((a) => {

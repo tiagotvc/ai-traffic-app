@@ -73,6 +73,7 @@ export async function runMetaSyncForAccount(input: {
   const budgetByCampaign = new Map(
     campaigns.map((c) => [c.id, c.daily_budget ? String(Number(c.daily_budget) / 100) : null])
   );
+  const statusByCampaign = new Map(campaigns.map((c) => [c.id, c.status ?? null]));
 
   const campRows = await fetchCampaignInsightsDaily(input.metaAccessToken, input.metaAdAccountId);
 
@@ -94,6 +95,7 @@ export async function runMetaSyncForAccount(input: {
       where: { adAccountId: input.adAccountId, metaCampaignId, day }
     });
     const dailyBudget = budgetByCampaign.get(metaCampaignId) ?? null;
+    const campaignStatus = statusByCampaign.get(metaCampaignId) ?? null;
 
     if (existing) {
       existing.campaignName = r.campaign_name ?? existing.campaignName;
@@ -106,6 +108,7 @@ export async function runMetaSyncForAccount(input: {
       existing.leads = leads;
       existing.roas = roas;
       existing.dailyBudget = dailyBudget;
+      existing.campaignStatus = campaignStatus;
       await campRepo.save(existing);
     } else {
       await campRepo.save(
@@ -122,7 +125,8 @@ export async function runMetaSyncForAccount(input: {
           conversions,
           leads,
           roas,
-          dailyBudget
+          dailyBudget,
+          campaignStatus
         })
       );
     }

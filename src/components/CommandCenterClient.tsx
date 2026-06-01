@@ -7,6 +7,8 @@ import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SyncNowButton } from "@/components/SyncNowButton";
+import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
+import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 
 type CampaignRow = {
@@ -23,6 +25,7 @@ type CampaignRow = {
   roas: number;
   alertCount: number;
   hasAlert: boolean;
+  status?: string;
 };
 
 type AlertRow = {
@@ -43,20 +46,11 @@ type Summary = {
 
 type SeriesPoint = { day: string; spend: number; conversions: number; roas: number };
 
-type ViewMode = "campaigns" | "clients" | "accounts";
+type ViewMode = "campaigns" | "clients";
 type AlertFilter = "all" | "critical" | "warning" | "info";
-type PeriodDays = 7 | 14 | 30;
-type OpenMenu = "date" | "client" | "filters" | null;
+type OpenMenu = "client" | "filters" | null;
 
 type ClientOption = { slug: string; name: string };
-
-function formatPeriodRange(days: PeriodDays, locale: string) {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(end.getDate() - (days - 1));
-  const fmt = new Intl.DateTimeFormat(locale, { month: "short", day: "2-digit", year: "numeric" });
-  return `${fmt.format(start)} → ${fmt.format(end)}`;
-}
 
 function trendFromSeries(values: number[]) {
   if (values.length < 2) return { label: "—", positive: true, pct: 0 };
@@ -99,13 +93,14 @@ export function CommandCenterClient() {
   const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [q, setQ] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("campaigns");
+  const [viewMode, setViewMode] = useState<ViewMode>("clients");
   const [alertFilter, setAlertFilter] = useState<AlertFilter>("all");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [periodDays, setPeriodDays] = useState<PeriodDays>(7);
+  const [period, setPeriod] = useState<PeriodState>({ preset: "last7", since: "", until: "" });
   const [clientFilter, setClientFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
   const [onlyAlerts, setOnlyAlerts] = useState(false);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
   const [clients, setClients] = useState<ClientOption[]>([]);
@@ -119,10 +114,11 @@ export function CommandCenterClient() {
     if (q) qs.set("q", q);
     if (clientFilter) qs.set("clientId", clientFilter);
     if (onlyAlerts) qs.set("onlyAlerts", "1");
-    qs.set("days", String(periodDays));
+    if (statusFilter !== "ALL") qs.set("status", statusFilter);
+    const periodQs = periodStateToQuery(period);
+    periodQs.forEach((v, k) => qs.set(k, v));
 
-    const dashQs = new URLSearchParams();
-    dashQs.set("days", String(periodDays));
+    const dashQs = new URLSearchParams(periodQs);
     if (clientFilter) dashQs.set("clientId", clientFilter);
 
     fetch(`/api/command-center/campaigns?${qs}`)
@@ -142,7 +138,7 @@ export function CommandCenterClient() {
     fetch(`/api/dashboard/timeseries?${dashQs}`)
       .then((r) => r.json())
       .then((j) => setSeries(j.series ?? []));
-  }, [q, clientFilter, onlyAlerts, periodDays]);
+  }, [q, clientFilter, onlyAlerts, period, statusFilter]);
 
   useEffect(() => {
     load();
@@ -178,7 +174,12 @@ export function CommandCenterClient() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  const periodLabel = formatPeriodRange(periodDays, locale);
+  const spendColLabel =
+    period.preset === "all"
+      ? t("colSpendAll")
+      : period.preset === "today"
+        ? t("colSpendToday")
+        : t("colSpendPeriod");
   const clientLabel =
     clientFilter === ""
       ? t("allClients")
@@ -243,33 +244,7 @@ export function CommandCenterClient() {
     return [...map.values()].sort((a, b) => b.spend - a.spend);
   }, [rows]);
 
-  const accountRows = useMemo(() => {
-    const map = new Map<
-      string,
-      { key: string; label: string; metaId: string; spend: number; cpl: number | null; cpa: number | null; roas: number; alertCount: number; campaigns: number }
-    >();
-    for (const r of rows) {
-      const key = r.metaAdAccountId || r.accountLabel;
-      const cur = map.get(key) ?? {
-        key,
-        label: r.accountLabel,
-        metaId: r.metaAdAccountId,
-        spend: 0,
-        cpl: null,
-        cpa: null,
-        roas: 0,
-        alertCount: 0,
-        campaigns: 0
-      };
-      cur.spend += r.spend;
-      cur.campaigns += 1;
-      cur.alertCount += r.alertCount;
-      map.set(key, cur);
-    }
-    return [...map.values()].sort((a, b) => b.spend - a.spend);
-  }, [rows]);
-
-  const tableRows = viewMode === "clients" ? clientRows : viewMode === "accounts" ? accountRows : rows;
+  const tableRows = viewMode === "clients" ? clientRows : rows;
   const pageCount = Math.max(1, Math.ceil(tableRows.length / pageSize));
   const pagedRows = tableRows.slice((page - 1) * pageSize, page * pageSize);
 
@@ -288,7 +263,10 @@ export function CommandCenterClient() {
     return (r as { key: string }).key;
   }
 
-  function bulkAction(action: "pause" | "budget_delta_percent", deltaPercent?: number) {
+  function bulkAction(
+    action: "pause" | "activate" | "budget_delta_percent",
+    deltaPercent?: number
+  ) {
     if (!campaignSelectedIds.length) return;
     startTransition(async () => {
       const res = await fetch("/api/command-center/bulk-actions", {
@@ -297,7 +275,33 @@ export function CommandCenterClient() {
         body: JSON.stringify({ action, metaCampaignIds: campaignSelectedIds, deltaPercent })
       });
       const j = await res.json();
-      setMessage(j.ok ? t("bulkDone", { count: campaignSelectedIds.length }) : j.error);
+      setMessage(
+        j.ok ? (j.message ?? t("bulkDone", { count: campaignSelectedIds.length })) : j.error
+      );
+      load();
+    });
+  }
+
+  function saveCurrentView() {
+    const name = prompt(t("viewNamePrompt"));
+    if (!name?.trim()) return;
+    fetch("/api/saved-views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: name.trim(),
+        filters: { clientFilter, statusFilter, onlyAlerts, period, viewMode }
+      })
+    }).then((r) => r.json()).then((j) => setMessage(j.ok ? t("viewSaved") : j.error));
+  }
+
+  function alertAction(alertId: string, action: "dismiss" | "snooze" | "acknowledge") {
+    startTransition(async () => {
+      await fetch(`/api/alerts/${alertId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action, snoozeHours: 24 })
+      });
       load();
     });
   }
@@ -332,48 +336,37 @@ export function CommandCenterClient() {
               </span>
             ) : null}
           </button>
-          <SyncNowButton />
+          <SyncNowButton clientId={clientFilter || undefined} />
           <Link href="/campaigns?publish=1" className="ui-btn-primary whitespace-nowrap">
             {t("newCampaign")}
           </Link>
         </div>
       </div>
 
+      <SyncStatusBanner clientId={clientFilter || undefined} />
+
       {/* Filter bar */}
       <div ref={filterBarRef} className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setOpenMenu((m) => (m === "date" ? null : "date"))}
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
-            aria-expanded={openMenu === "date"}
-          >
-            <span className="text-slate-400">📅</span>
-            <span>{periodLabel}</span>
-            <span className="text-slate-400">▾</span>
-          </button>
-          {openMenu === "date" ? (
-            <div className="absolute left-0 top-full z-30 mt-1 min-w-[200px] rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-              {([7, 14, 30] as PeriodDays[]).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => {
-                    setPeriodDays(d);
-                    setPage(1);
-                    setOpenMenu(null);
-                  }}
-                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
-                    periodDays === d ? "font-semibold text-violet-700" : "text-slate-700"
-                  }`}
-                >
-                  {t(`period${d}` as "period7")}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        <PeriodFilter
+          value={period}
+          onChange={(next) => {
+            setPeriod(next);
+            setPage(1);
+          }}
+        />
 
+        <select
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value as typeof statusFilter);
+            setPage(1);
+          }}
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+        >
+          <option value="ALL">{t("statusAll")}</option>
+          <option value="ACTIVE">{t("statusActive")}</option>
+          <option value="INACTIVE">{t("statusInactive")}</option>
+        </select>
         <div className="relative">
           <button
             type="button"
@@ -538,9 +531,8 @@ export function CommandCenterClient() {
           <div className="flex flex-wrap items-center gap-1 border-b border-slate-100 px-4 pt-3">
             {(
               [
-                ["campaigns", t("viewCampaigns")],
                 ["clients", t("viewClients")],
-                ["accounts", t("viewAccounts")]
+                ["campaigns", t("viewCampaigns")]
               ] as const
             ).map(([key, label]) => (
               <button
@@ -574,8 +566,9 @@ export function CommandCenterClient() {
             </button>
             <button
               type="button"
-              disabled
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-400"
+              disabled={isPending || !campaignSelectedIds.length}
+              onClick={() => bulkAction("activate")}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
             >
               {t("bulkActivate")}
             </button>
@@ -595,7 +588,11 @@ export function CommandCenterClient() {
             >
               {t("bulkBudgetUp")}
             </button>
-            <button type="button" className="rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:text-violet-600">
+            <button
+              type="button"
+              onClick={saveCurrentView}
+              className="rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:text-violet-600"
+            >
               {t("saveView")}
             </button>
             {message ? <span className="text-xs text-slate-500">{message}</span> : null}
@@ -632,8 +629,9 @@ export function CommandCenterClient() {
                       <th className="px-3 py-3">{t("colAccount")}</th>
                     </>
                   ) : null}
-                  <th className="px-3 py-3">{t("colSpend")}</th>
+                  <th className="px-3 py-3">{spendColLabel}</th>
                   {viewMode === "campaigns" ? <th className="px-3 py-3">CPL</th> : null}
+                  {viewMode === "clients" ? <th className="px-3 py-3">{t("colCampaignsCount")}</th> : null}
                   <th className="px-3 py-3">CPA</th>
                   <th className="px-3 py-3">ROAS</th>
                   <th className="px-3 py-3">{t("colStatus")}</th>
@@ -684,13 +682,19 @@ export function CommandCenterClient() {
                         </td>
                         <td className="px-3 py-3 text-slate-600">{formatRoas(r.roas, locale)}</td>
                         <td className="px-3 py-3">
-                          <Badge variant={statusVariant(r)}>
-                            {r.hasAlert
-                              ? r.alertCount >= 2
-                                ? t("statusCritical")
-                                : t("statusAttention")
-                              : t("statusActive")}
-                          </Badge>
+                          {r.status === "PAUSED" ? (
+                            <Badge variant="neutral">{t("statusPaused")}</Badge>
+                          ) : r.status === "ACTIVE" ? (
+                            <Badge variant="success">{t("deliveryActive")}</Badge>
+                          ) : (
+                            <Badge variant={statusVariant(r)}>
+                              {r.hasAlert
+                                ? r.alertCount >= 2
+                                  ? t("statusCritical")
+                                  : t("statusAttention")
+                                : t("statusActive")}
+                            </Badge>
+                          )}
                         </td>
                         <td className="px-3 py-3">
                           {r.alertCount > 0 ? (
@@ -707,12 +711,12 @@ export function CommandCenterClient() {
                   : (pagedRows as Array<{
                       key: string;
                       name?: string;
-                      label?: string;
                       slug?: string;
                       spend: number;
                       cpa: number | null;
                       roas: number;
                       alertCount: number;
+                      campaigns: number;
                     }>).map((r) => (
                       <tr key={r.key} className="border-t border-slate-100 hover:bg-slate-50/80">
                         <td className="px-4 py-3">
@@ -729,10 +733,11 @@ export function CommandCenterClient() {
                               {r.name}
                             </Link>
                           ) : (
-                            (r.name ?? r.label)
+                            r.name
                           )}
                         </td>
                         <td className="px-3 py-3 font-medium">{formatBRL(r.spend, locale)}</td>
+                        <td className="px-3 py-3 text-slate-600">{r.campaigns}</td>
                         <td className="px-3 py-3 text-slate-600">
                           {r.cpa != null ? formatBRL(r.cpa, locale) : "—"}
                         </td>
@@ -854,14 +859,40 @@ export function CommandCenterClient() {
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-semibold text-slate-900">{a.title}</div>
                       <div className="mt-0.5 line-clamp-2 text-[11px] text-slate-600">{a.message}</div>
-                      {a.clientSlug && a.metaCampaignId ? (
-                        <Link
-                          href={`/campaigns/${a.metaCampaignId}?client=${encodeURIComponent(a.clientSlug)}`}
-                          className="mt-1 inline-block text-[11px] font-medium text-violet-600"
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {a.clientSlug && a.metaCampaignId ? (
+                          <Link
+                            href={`/campaigns/${a.metaCampaignId}?client=${encodeURIComponent(a.clientSlug)}`}
+                            className="text-[11px] font-medium text-violet-600"
+                          >
+                            {t("open")}
+                          </Link>
+                        ) : null}
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => alertAction(a.id, "snooze")}
+                          className="text-[11px] text-slate-500 hover:text-violet-600"
                         >
-                          {t("open")}
-                        </Link>
-                      ) : null}
+                          {t("snooze")}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => alertAction(a.id, "acknowledge")}
+                          className="text-[11px] text-slate-500 hover:text-violet-600"
+                        >
+                          {t("acknowledge")}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => alertAction(a.id, "dismiss")}
+                          className="text-[11px] text-slate-500 hover:text-violet-600"
+                        >
+                          {t("dismiss")}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

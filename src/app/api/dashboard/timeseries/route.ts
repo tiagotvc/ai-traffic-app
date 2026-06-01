@@ -6,12 +6,16 @@ import { loadMetricRows, parseDashboardSearchParams, resolveDashboardScope } fro
 export async function GET(req: Request) {
   const { tenant } = await getAppContext();
   const url = new URL(req.url);
-  const { clientId, adAccountId, days } = parseDashboardSearchParams(url);
+  const { clientId, adAccountId, days, period } = parseDashboardSearchParams(url);
 
   const { accountIds } = await resolveDashboardScope(tenant.id, clientId, adAccountId);
   if (!accountIds.length) return NextResponse.json({ ok: true, series: [] });
 
-  const rows = await loadMetricRows(accountIds, days);
+  const rows = await loadMetricRows(accountIds, days, {
+    since: period.since,
+    until: period.until,
+    allTime: period.allTime
+  });
 
   const byDay = new Map<
     string,

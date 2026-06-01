@@ -1,9 +1,21 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useEffect, useState, useTransition } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 type ClientOption = { id: string; slug: string; name: string };
+
+type ScheduleRow = {
+  id: string;
+  name: string;
+  clientId: string | null;
+  clientName: string | null;
+  format: string;
+  frequency: string;
+  recipients: string[];
+  enabled: boolean;
+  nextRunAt: string | null;
+};
 
 const READY_REPORTS = [
   { id: "performance", icon: "📊", pages: 8 },
@@ -13,15 +25,25 @@ const READY_REPORTS = [
   { id: "alerts", icon: "🔔", pages: 3 }
 ] as const;
 
-const SCHEDULED = [
-  { id: "1", clientKey: "acme", freqKey: "weekly", recipients: 2, next: "Seg, 09:00", on: true },
-  { id: "2", clientKey: "educa", freqKey: "monthly", recipients: 1, next: "01/06, 08:00", on: true },
-  { id: "3", clientKey: "all", freqKey: "daily", recipients: 3, next: "Amanhã, 07:30", on: false }
-] as const;
+function formatNextRun(iso: string | null, locale: string) {
+  if (!iso) return "—";
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
 
 export function ReportsClient() {
   const t = useTranslations("reports");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [isPending, startTransition] = useTransition();
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [selectedClients, setSelectedClients] = useState<Record<string, boolean>>({});
@@ -31,6 +53,17 @@ export function ReportsClient() {
   const [whatsText, setWhatsText] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [clientQ, setClientQ] = useState("");
+  const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [scheduleName, setScheduleName] = useState("");
+  const [scheduleFreq, setScheduleFreq] = useState<"daily" | "weekly" | "monthly">("weekly");
+  const [scheduleEmail, setScheduleEmail] = useState("");
+  const loadSchedules = useCallback(() => {
+    fetch("/api/report-schedules")
+      .then((r) => r.json())
+      .then((j) => setSchedules(j.schedules ?? []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/clients")
@@ -39,23 +72,39 @@ export function ReportsClient() {
         const list = j.clients ?? [];
         setClients(list);
         const sel: Record<string, boolean> = {};
-        list.slice(0, 2).forEach((c) => {
-          sel[c.id] = true;
-        });
+        if (list[0]) sel[list[0].id] = true;
         setSelectedClients(sel);
       })
       .catch(() => {});
-  }, []);
+    loadSchedules();
+  }, [loadSchedules]);
 
   const filteredClients = clients.filter((c) =>
     c.name.toLowerCase().includes(clientQ.toLowerCase())
   );
 
+  const selectedClientIds = Object.entries(selectedClients)
+    .filter(([, on]) => on)
+    .map(([id]) => id);
+
+  const primaryClient = clients.find((c) => selectedClients[c.id]) ?? clients[0];
+
   function generateReport() {
     setMessage(null);
+    const clientId =
+      scope === "client" && primaryClient
+        ? primaryClient.slug
+        : selectedClientIds[0]
+          ? clients.find((c) => c.id === selectedClientIds[0])?.slug
+          : undefined;
+
     startTransition(async () => {
       if (format === "whatsapp") {
-        const res = await fetch("/api/reports/whatsapp", { method: "POST" });
+        const res = await fetch("/api/reports/whatsapp", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ clientId, days: 7 })
+        });
         const json = (await res.json().catch(() => null)) as {
           ok?: boolean;
           text?: string;
@@ -69,19 +118,75 @@ export function ReportsClient() {
         setMessage(t("whatsappGenerated"));
         return;
       }
-      const res = await fetch("/api/reports/pdf", { method: "POST" });
+      const res = await fetch("/api/reports/pdf", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clientId, days: 7 })
+      });
       if (!res.ok) {
-        setMessage(t("pdfFailed"));
+        const j = await res.json().catch(() => null);
+        setMessage((j as { error?: string })?.error ?? t("pdfFailed"));
         return;
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "relatorio.pdf";
+      a.download = `relatorio-${primaryClient?.slug ?? "cliente"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setMessage(t("pdfDownloaded"));
+    });
+  }
+
+  function createSchedule() {
+    if (!scheduleName.trim() || !scheduleEmail.trim()) {
+      setMessage(t("scheduleFieldsRequired"));
+      return;
+    }
+    startTransition(async () => {
+      const res = await fetch("/api/report-schedules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: scheduleName.trim(),
+          clientId: primaryClient?.slug ?? primaryClient?.id ?? null,
+          format,
+          frequency: scheduleFreq,
+          hourUtc: 12,
+          recipients: [scheduleEmail.trim()],
+          enabled: true
+        })
+      });
+      const j = await res.json();
+      if (!res.ok) {
+        setMessage(j.error ?? t("scheduleFailed"));
+        return;
+      }
+      setMessage(t("scheduleCreated"));
+      setShowScheduleForm(false);
+      setScheduleName("");
+      setScheduleEmail("");
+      loadSchedules();
+    });
+  }
+
+  function toggleSchedule(id: string, enabled: boolean) {
+    startTransition(async () => {
+      await fetch(`/api/report-schedules/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled: !enabled })
+      });
+      loadSchedules();
+    });
+  }
+
+  function deleteSchedule(id: string) {
+    if (!confirm(t("confirmDeleteSchedule"))) return;
+    startTransition(async () => {
+      await fetch(`/api/report-schedules/${id}`, { method: "DELETE" });
+      loadSchedules();
     });
   }
 
@@ -108,7 +213,6 @@ export function ReportsClient() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-6">
-          {/* Relatórios prontos */}
           <section>
             <h2 className="text-sm font-semibold text-slate-900">{t("readyTitle")}</h2>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -141,14 +245,45 @@ export function ReportsClient() {
             </div>
           </section>
 
-          {/* Agendados */}
           <section className="ui-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <h2 className="text-sm font-semibold text-slate-900">{t("scheduledTitle")}</h2>
-              <button type="button" className="text-xs font-medium text-violet-600 hover:underline">
+              <button
+                type="button"
+                onClick={() => setShowScheduleForm((v) => !v)}
+                className="text-xs font-medium text-violet-600 hover:underline"
+              >
                 {t("scheduleNew")}
               </button>
             </div>
+            {showScheduleForm ? (
+              <div className="space-y-2 border-b border-slate-100 px-4 py-3">
+                <input
+                  value={scheduleName}
+                  onChange={(e) => setScheduleName(e.target.value)}
+                  placeholder={t("scheduleNamePlaceholder")}
+                  className="ui-input w-full"
+                />
+                <input
+                  value={scheduleEmail}
+                  onChange={(e) => setScheduleEmail(e.target.value)}
+                  placeholder={t("scheduleEmailPlaceholder")}
+                  className="ui-input w-full"
+                />
+                <select
+                  value={scheduleFreq}
+                  onChange={(e) => setScheduleFreq(e.target.value as typeof scheduleFreq)}
+                  className="ui-select w-full"
+                >
+                  <option value="daily">{t("freq.daily")}</option>
+                  <option value="weekly">{t("freq.weekly")}</option>
+                  <option value="monthly">{t("freq.monthly")}</option>
+                </select>
+                <button type="button" onClick={createSchedule} disabled={isPending} className="ui-btn-primary text-sm">
+                  {t("scheduleSave")}
+                </button>
+              </div>
+            ) : null}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
@@ -158,36 +293,62 @@ export function ReportsClient() {
                     <th className="px-4 py-3">{t("colRecipients")}</th>
                     <th className="px-4 py-3">{t("colNext")}</th>
                     <th className="px-4 py-3">{t("colStatus")}</th>
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody>
-                  {SCHEDULED.map((row) => (
-                    <tr key={row.id} className="border-t border-slate-100">
-                      <td className="px-4 py-3 font-medium text-slate-900">
-                        {t(`scheduled.${row.clientKey}`)}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{t(`freq.${row.freqKey}`)}</td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {t("recipients", { count: row.recipients })}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{row.next}</td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                            row.on ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
-                          }`}
-                        >
-                          {row.on ? t("statusActive") : t("statusPaused")}
-                        </span>
+                  {schedules.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                        {t("scheduledEmpty")}
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    schedules.map((row) => (
+                      <tr key={row.id} className="border-t border-slate-100">
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          {row.name}
+                          {row.clientName ? (
+                            <div className="text-xs font-normal text-slate-500">{row.clientName}</div>
+                          ) : (
+                            <div className="text-xs font-normal text-slate-500">{t("allClients")}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{t(`freq.${row.frequency}`)}</td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {t("recipients", { count: row.recipients.length })}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {formatNextRun(row.nextRunAt, locale)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleSchedule(row.id, row.enabled)}
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                              row.enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {row.enabled ? t("statusActive") : t("statusPaused")}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => deleteSchedule(row.id)}
+                            className="text-xs text-red-600 hover:underline"
+                          >
+                            {t("scheduleDelete")}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </section>
 
-          {/* Modelos white-label */}
           <section>
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-900">{t("templatesTitle")}</h2>
@@ -218,7 +379,6 @@ export function ReportsClient() {
           </section>
         </div>
 
-        {/* Painel direito — Gerar relatório */}
         <aside className="space-y-4">
           <div className="ui-card p-4">
             <h2 className="text-sm font-semibold text-slate-900">{t("generatePanelTitle")}</h2>
@@ -319,7 +479,7 @@ export function ReportsClient() {
 
             <button
               type="button"
-              disabled={isPending}
+              disabled={isPending || (scope === "client" && !primaryClient)}
               onClick={generateReport}
               className="ui-btn-primary mt-4 w-full"
             >
@@ -329,37 +489,13 @@ export function ReportsClient() {
             {message ? <p className="mt-2 text-xs text-slate-500">{message}</p> : null}
 
             {format === "whatsapp" && whatsText ? (
-              <textarea
-                readOnly
-                value={whatsText}
-                className="ui-textarea mt-3 h-28 text-xs"
-              />
+              <textarea readOnly value={whatsText} className="ui-textarea mt-3 h-28 text-xs" />
             ) : null}
           </div>
 
           <div className="ui-card p-4">
             <h3 className="text-sm font-semibold text-slate-900">{t("recentTitle")}</h3>
-            <ul className="mt-3 space-y-2">
-              {[1, 2, 3].map((i) => (
-                <li
-                  key={i}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-xs font-medium text-slate-800">
-                      {t("recentItem", { n: i })}
-                    </div>
-                    <div className="text-[10px] text-slate-500">{t("recentMeta")}</div>
-                  </div>
-                  <button type="button" className="text-slate-400 hover:text-violet-600">
-                    ⬇
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <button type="button" className="mt-3 w-full text-center text-xs font-medium text-violet-600 hover:underline">
-              {t("viewAllReports")}
-            </button>
+            <p className="mt-2 text-xs text-slate-500">{t("recentHint")}</p>
           </div>
         </aside>
       </div>

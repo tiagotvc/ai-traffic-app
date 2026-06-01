@@ -242,7 +242,20 @@ async function upsertAlert(
     existing.dismissed = false;
     await alertRepo.save(existing);
   } else {
-    await alertRepo.save(payload);
+    const saved = await alertRepo.save(payload);
+    if (saved.severity === "critical") {
+      const { client: clientRepo, tenant: tenantRepo } = await repositories();
+      const [client, tenant] = await Promise.all([
+        clientRepo.findOne({ where: { id: clientId } }),
+        tenantRepo.findOne({ where: { id: tenantId } })
+      ]);
+      const { notifyCriticalAlert } = await import("@/lib/alert-notify");
+      await notifyCriticalAlert({
+        alert: saved,
+        client,
+        tenantName: tenant?.brandName ?? tenant?.name ?? "Traffic AI"
+      });
+    }
   }
 }
 

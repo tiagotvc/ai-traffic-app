@@ -1,41 +1,30 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
-import { getAppContext } from "@/lib/app-context";
-import { geminiGenerateRecommendations } from "@/lib/gemini";
+import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { buildClientWhatsappSummary } from "@/lib/report-generate";
 
-export async function POST() {
+const BodySchema = z.object({
+  clientId: z.string().optional()
+});
+
+export async function POST(req: Request) {
   const { tenant, defaultClient } = await getAppContext();
-
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({
-      ok: true,
-      text:
-        `📊 Relatório — ${defaultClient.name}\n\n` +
-        `• Gastos: (sincronize para preencher)\n` +
-        `• Conversões: —\n` +
-        `• CPA: —\n` +
-        `• ROAS: —\n\n` +
-        `✅ Destaques:\n- Placeholder do MVP\n\n` +
-        `Atenciosamente,\n${tenant.brandName ?? tenant.name}`
-    });
+  let body: z.infer<typeof BodySchema> = {};
+  try {
+    body = BodySchema.parse(await req.json().catch(() => ({})));
+  } catch {
+    /* empty */
   }
 
-  const prompt = [
-    "Gere um resumo curto para WhatsApp em PT-BR.",
-    "Formato: blocos com quebras de linha, pronto para copiar/colar.",
-    "Use emojis moderadamente.",
-    "Contexto do cliente (JSON):",
-    JSON.stringify(defaultClient.aiContext ?? {}, null, 2)
-  ].join("\n");
+  const client =
+    body.clientId != null
+      ? await getClientBySlugOrId(tenant.id, body.clientId)
+      : defaultClient;
+  if (!client) {
+    return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
+  }
 
-  // Reuso simples do gerador: retornamos como 1 recomendação e aproveitamos justification como texto.
-  // (No próximo passo, trocaremos por um endpoint dedicado de geração de texto.)
-  const res = await geminiGenerateRecommendations({ apiKey, prompt });
-  const text =
-    res.recommendations.map((r) => `• ${r.actionType}: ${r.justification}`).join("\n") ||
-    "Resumo indisponível.";
-
-  return NextResponse.json({ ok: true, text });
+  const text = await buildClientWhatsappSummary({ tenant, client });
+  return NextResponse.json({ ok: true, text, clientId: client.id, clientName: client.name });
 }
-

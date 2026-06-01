@@ -6,7 +6,7 @@ import { getAppContext } from "@/lib/app-context";
 
 const BodySchema = z.object({
   name: z.string().min(1),
-  filters: z.record(z.string(), z.unknown())
+  filters: z.record(z.string(), z.unknown()).optional()
 });
 
 export async function GET() {
@@ -16,25 +16,21 @@ export async function GET() {
     where: { tenantId: tenant.id },
     order: { createdAt: "DESC" }
   });
-  return NextResponse.json({
-    ok: true,
-    views: views.filter((v) => !v.userId || v.userId === user.id)
-  });
+  const mine = views.filter((v) => !v.userId || v.userId === user.id);
+  return NextResponse.json({ ok: true, views: mine });
 }
 
 export async function POST(req: Request) {
   const { tenant, user } = await getAppContext();
   const body = BodySchema.parse(await req.json().catch(() => ({})));
   const { savedView: repo } = await repositories();
-
   const view = await repo.save(
     repo.create({
       tenantId: tenant.id,
       userId: user.id,
       name: body.name,
-      filters: body.filters
+      filters: body.filters ?? {}
     })
   );
-
   return NextResponse.json({ ok: true, view });
 }

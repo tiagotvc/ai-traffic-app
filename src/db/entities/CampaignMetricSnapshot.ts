@@ -47,4 +47,7 @@ export class CampaignMetricSnapshot extends AppBaseEntity {
 
   @Column({ type: "numeric", precision: 18, scale: 2, nullable: true })
   dailyBudget?: string | null;
+
+  @Column({ type: "text", nullable: true })
+  campaignStatus?: string | null;
 }

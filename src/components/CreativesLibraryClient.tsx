@@ -130,7 +130,8 @@ export function CreativesLibraryClient() {
       .then((j) => {
         const apiRows = (j.rows ?? []) as CreativeRow[];
         if (apiRows.length) {
-          setRows([...apiRows, ...DEMO_ROWS.filter((d) => !apiRows.some((a) => a.id === d.id))]);
+          setRows(apiRows);
+          setSelectedId(apiRows[0]?.id ?? null);
         }
       })
       .catch(() => {});
