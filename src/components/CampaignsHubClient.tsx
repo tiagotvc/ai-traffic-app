@@ -23,6 +23,7 @@ type CampaignRow = {
   clientName: string;
   clientSlug: string;
   accountLabel: string;
+  metaAdAccountId?: string;
   spend: number;
   conversions: number;
   leads: number;
@@ -73,6 +74,7 @@ export function CampaignsHubClient() {
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSlug, setSelectedSlug] = useState("");
+  const [selectedRow, setSelectedRow] = useState<CampaignRow | null>(null);
   const detailRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -112,6 +114,7 @@ export function CampaignsHubClient() {
         if (selectedId && list.some((r) => r.metaCampaignId === selectedId)) return;
         setSelectedId(null);
         setSelectedSlug("");
+        setSelectedRow(null);
       })
       .finally(() => setLoading(false));
   }, [clientFilter, q, onlyAlerts, statusFilter, objectiveFilter, period, page, pageSize]);
@@ -138,6 +141,7 @@ export function CampaignsHubClient() {
   const pickCampaign = (r: CampaignRow) => {
     setSelectedId(r.metaCampaignId);
     setSelectedSlug(r.clientSlug);
+    setSelectedRow(r);
     rememberCampaign(r.metaCampaignId, r.clientSlug);
   };
 
@@ -338,6 +342,7 @@ export function CampaignsHubClient() {
             onChange={(e) => {
               setClientFilter(e.target.value);
               setSelectedId(null);
+              setSelectedRow(null);
               setPage(1);
             }}
             className="mt-1 min-w-[200px] rounded-xl ui-select"
@@ -407,6 +412,7 @@ export function CampaignsHubClient() {
               setPage(1);
             }}
             className="mt-1 min-w-[100px] rounded-xl ui-select"
+            title={t("pageSizeHint")}
           >
             {PAGE_SIZES.map((n) => (
               <option key={n} value={n}>
@@ -552,6 +558,7 @@ export function CampaignsHubClient() {
             clientSlug={selectedSlug}
             tab={detailTab}
             embedded
+            seedRow={selectedRow ?? undefined}
             periodQuery={(() => {
               const qs = periodStateToQuery(period).toString();
               return qs ? `?${qs}` : "";

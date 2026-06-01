@@ -3,7 +3,7 @@ import "server-only";
 import { Between } from "typeorm";
 
 import { repositories } from "@/db/repositories";
-import { slugify } from "@/lib/app-context";
+import { getClientBySlugOrId, slugify } from "@/lib/app-context";
 import { num } from "@/lib/goal-types";
 import {
   fetchCampaign,
@@ -14,6 +14,19 @@ import {
 } from "@/lib/meta-graph";
 import type { ParsedPeriod } from "@/lib/report-period";
 import { rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
+
+export type CampaignDetailHints = {
+  metaAdAccountId?: string;
+  clientSlug?: string;
+  campaignName?: string;
+  status?: string;
+  objective?: string;
+  spend?: number;
+  conversions?: number;
+  leads?: number;
+  roas?: number;
+  cpa?: number | null;
+};
 
 function resolveSinceUntil(period: ParsedPeriod) {
   if (period.allTime) {
@@ -28,10 +41,48 @@ function resolveSinceUntil(period: ParsedPeriod) {
   };
 }
 
+async function fetchCampaignLive(
+  metaCampaignId: string,
+  primaryToken?: string | null,
+  fallbackToken?: string | null
+) {
+  for (const token of [primaryToken, fallbackToken]) {
+    if (!token) continue;
+    try {
+      return await fetchCampaign(token, metaCampaignId);
+    } catch {
+      /* try next token */
+    }
+  }
+  return null;
+}
+
+async function fetchInsightLive(
+  metaCampaignId: string,
+  since: string,
+  until: string,
+  primaryToken?: string | null,
+  fallbackToken?: string | null
+) {
+  for (const token of [primaryToken, fallbackToken]) {
+    if (!token) continue;
+    try {
+      const insight = await fetchCampaignInsightForRange(token, metaCampaignId, since, until);
+      if (insight) return insight;
+    } catch {
+      /* try next token */
+    }
+  }
+  return null;
+}
+
 export async function getCampaignDetail(input: {
   metaCampaignId: string;
   period: ParsedPeriod;
+  tenantId: string;
   metaAccessToken?: string | null;
+  fallbackMetaToken?: string | null;
+  hints?: CampaignDetailHints;
 }) {
   const { campaignMetricSnapshot: campRepo, adAccount: adRepo, client: clientRepo, clientMetaSettings: settingsRepo } =
     await repositories();
@@ -65,69 +116,103 @@ export async function getCampaignDetail(input: {
     }
   }
 
-  const latest = snaps.sort((a, b) => b.day.localeCompare(a.day))[0];
-  let clientSlug = "";
+  let clientSlug = input.hints?.clientSlug ?? "";
   let clientName = "—";
   let accountLabel = "—";
-  let metaAdAccountId = "";
-  let objective = "leads";
+  let metaAdAccountId = input.hints?.metaAdAccountId ?? "";
+  let objective = input.hints?.objective ?? "leads";
+  let status = input.hints?.status ?? "UNKNOWN";
 
-  if (latest?.adAccountId) {
-    const acc = await adRepo.findOne({ where: { id: latest.adAccountId } });
-    if (acc) {
-      metaAdAccountId = acc.metaAdAccountId;
-      accountLabel = acc.label ?? acc.metaAdAccountId;
-      const client = await clientRepo.findOne({ where: { id: acc.clientId } });
-      if (client) {
-        clientName = client.name;
-        clientSlug = slugify(client.name);
-        const settings = await settingsRepo.findOne({ where: { clientId: client.id } });
-        if (settings?.defaultObjective) objective = settings.defaultObjective;
-      }
+  async function applyAccount(acc: Awaited<ReturnType<typeof adRepo.findOne>>) {
+    if (!acc) return;
+    metaAdAccountId = acc.metaAdAccountId;
+    accountLabel = acc.label ?? acc.metaAdAccountId;
+    const client = await clientRepo.findOne({ where: { id: acc.clientId } });
+    if (client) {
+      clientName = client.name;
+      clientSlug = slugify(client.name);
+      const settings = await settingsRepo.findOne({ where: { clientId: client.id } });
+      if (settings?.defaultObjective) objective = settings.defaultObjective;
     }
   }
 
-  let live = null;
-  if (input.metaAccessToken) {
-    try {
-      live = await fetchCampaign(input.metaAccessToken, input.metaCampaignId);
-    } catch {
-      live = null;
+  if (metaAdAccountId) {
+    await applyAccount(await adRepo.findOne({ where: { metaAdAccountId } }));
+  }
+
+  if (!metaAdAccountId && input.hints?.clientSlug) {
+    const client = await getClientBySlugOrId(input.tenantId, input.hints.clientSlug);
+    if (client) {
+      clientName = client.name;
+      clientSlug = slugify(client.name);
+      const acc = await adRepo.findOne({ where: { clientId: client.id } });
+      if (acc) await applyAccount(acc);
     }
   }
 
-  if (input.metaAccessToken && (spend === 0 || conversions === 0)) {
-    try {
-      const insight = await fetchCampaignInsightForRange(
-        input.metaAccessToken,
-        input.metaCampaignId,
-        since,
-        until
-      );
-      if (insight) {
-        spend = Number(insight.spend) || spend;
-        conversions = pickResults(insight) || conversions;
-        leads = pickLeads(insight.actions) || leads;
-        impressions = Number(insight.impressions) || impressions;
-        clicks = Number(insight.clicks) || clicks;
-        const roas = Number(insight.purchase_roas?.[0]?.value);
-        if (roas > 0) {
-          roasSum = roas;
-          roasN = 1;
-        }
-      }
-    } catch {
-      /* keep snapshot */
+  const latestInPeriod = snaps.sort((a, b) => b.day.localeCompare(a.day))[0];
+  if (latestInPeriod?.adAccountId) {
+    await applyAccount(await adRepo.findOne({ where: { id: latestInPeriod.adAccountId } }));
+  }
+
+  if (!metaAdAccountId) {
+    const anySnap = await campRepo.findOne({
+      where: { metaCampaignId: input.metaCampaignId },
+      order: { day: "DESC" }
+    });
+    if (anySnap?.adAccountId) {
+      await applyAccount(await adRepo.findOne({ where: { id: anySnap.adAccountId } }));
+    }
+  }
+
+  const live = await fetchCampaignLive(
+    input.metaCampaignId,
+    input.metaAccessToken,
+    input.fallbackMetaToken
+  );
+  if (live) {
+    status = live.status ?? status;
+    if (live.objective) objective = live.objective;
+  }
+
+  const insight = await fetchInsightLive(
+    input.metaCampaignId,
+    since,
+    until,
+    input.metaAccessToken,
+    input.fallbackMetaToken
+  );
+  if (insight) {
+    spend = Number(insight.spend) || spend;
+    conversions = pickResults(insight) || conversions;
+    leads = pickLeads(insight.actions) || leads;
+    impressions = Number(insight.impressions) || impressions;
+    clicks = Number(insight.clicks) || clicks;
+    const roas = Number(insight.purchase_roas?.[0]?.value);
+    if (roas > 0) {
+      roasSum = roas;
+      roasN = 1;
+    }
+  } else if (spend === 0 && conversions === 0 && input.hints) {
+    spend = num(input.hints.spend);
+    conversions = num(input.hints.conversions);
+    leads = num(input.hints.leads);
+    if (input.hints.roas && input.hints.roas > 0) {
+      roasSum = input.hints.roas;
+      roasN = 1;
     }
   }
 
   const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+  const cpaHint = input.hints?.cpa;
+  const cpa =
+    conversions > 0 ? spend / conversions : cpaHint != null && cpaHint > 0 ? cpaHint : null;
 
   return {
     campaign: {
       id: input.metaCampaignId,
-      name: live?.name ?? snaps[0]?.campaignName ?? input.metaCampaignId,
-      status: live?.status ?? "UNKNOWN",
+      name: live?.name ?? input.hints?.campaignName ?? latestInPeriod?.campaignName ?? input.metaCampaignId,
+      status: live?.status ?? status,
       dailyBudget: live?.daily_budget ? Number(live.daily_budget) / 100 : null,
       clientSlug,
       clientName,
@@ -141,9 +226,9 @@ export async function getCampaignDetail(input: {
         impressions,
         clicks,
         ctr,
-        roas: roasN ? roasSum / roasN : 0,
+        roas: roasN ? roasSum / roasN : input.hints?.roas ?? 0,
         cpl: leads > 0 ? spend / leads : null,
-        cpa: conversions > 0 ? spend / conversions : null
+        cpa
       }
     }
   };
@@ -153,6 +238,7 @@ export async function getCampaignTimeseries(input: {
   metaCampaignId: string;
   period: ParsedPeriod;
   metaAccessToken?: string | null;
+  fallbackMetaToken?: string | null;
 }) {
   const { campaignMetricSnapshot: campRepo } = await repositories();
   const { since, until } = resolveSinceUntil(input.period);
@@ -176,29 +262,35 @@ export async function getCampaignTimeseries(input: {
     };
   });
 
-  if (!series.length && input.metaAccessToken) {
-    try {
-      const daily = await fetchCampaignInsightsDailyForCampaign(
-        input.metaAccessToken,
-        input.metaCampaignId,
-        since,
-        until
-      );
-      series = daily
-        .filter((r) => r.date_start)
-        .map((r) => {
-          const spend = Number(r.spend) || 0;
-          const conversions = pickResults(r);
-          return {
-            day: r.date_start,
-            spend,
-            conversions,
-            cpa: conversions > 0 ? spend / conversions : null,
-            roas: Number(r.purchase_roas?.[0]?.value) || 0
-          };
-        });
-    } catch {
-      /* empty */
+  if (!series.length) {
+    for (const token of [input.metaAccessToken, input.fallbackMetaToken]) {
+      if (!token) continue;
+      try {
+        const daily = await fetchCampaignInsightsDailyForCampaign(
+          token,
+          input.metaCampaignId,
+          since,
+          until
+        );
+        if (daily.length) {
+          series = daily
+            .filter((r) => r.date_start)
+            .map((r) => {
+              const spend = Number(r.spend) || 0;
+              const conversions = pickResults(r);
+              return {
+                day: r.date_start,
+                spend,
+                conversions,
+                cpa: conversions > 0 ? spend / conversions : null,
+                roas: Number(r.purchase_roas?.[0]?.value) || 0
+              };
+            });
+          break;
+        }
+      } catch {
+        /* try fallback token */
+      }
     }
   }
 

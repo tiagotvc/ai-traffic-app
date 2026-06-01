@@ -464,13 +464,13 @@ export function pickConversions(actions?: Array<{ action_type: string; value: st
 
 export async function fetchCampaigns(accessToken: string, adAccountId: string): Promise<MetaCampaign[]> {
   const fields = ["id", "name", "status", "objective", "daily_budget"].join(",");
-  const path = `/${encodeURIComponent(adAccountId)}/campaigns?fields=${encodeURIComponent(fields)}&limit=100`;
-  const data = await metaFetch<{ data: MetaCampaign[] }>(path, accessToken);
-  return data.data ?? [];
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const first = `/${encodeURIComponent(act)}/campaigns?fields=${encodeURIComponent(fields)}&limit=100`;
+  return fetchGraphPaged<MetaCampaign>(first, accessToken);
 }
 
 export async function fetchCampaign(accessToken: string, campaignId: string): Promise<MetaCampaign> {
-  const fields = ["id", "name", "status", "daily_budget"].join(",");
+  const fields = ["id", "name", "status", "objective", "daily_budget"].join(",");
   return metaFetch<MetaCampaign>(`/${encodeURIComponent(campaignId)}?fields=${encodeURIComponent(fields)}`, accessToken);
 }
 
@@ -479,9 +479,8 @@ export async function fetchAdSetsForCampaign(
   campaignId: string
 ): Promise<MetaAdSet[]> {
   const fields = ["id", "name", "status", "daily_budget", "campaign_id"].join(",");
-  const path = `/${encodeURIComponent(campaignId)}/adsets?fields=${encodeURIComponent(fields)}&limit=50`;
-  const data = await metaFetch<{ data: MetaAdSet[] }>(path, accessToken);
-  return data.data ?? [];
+  const first = `/${encodeURIComponent(campaignId)}/adsets?fields=${encodeURIComponent(fields)}&limit=100`;
+  return fetchGraphPaged<MetaAdSet>(first, accessToken);
 }
 
 export async function fetchAdsForAdSet(accessToken: string, adSetId: string): Promise<MetaAd[]> {

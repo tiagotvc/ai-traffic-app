@@ -47,6 +47,62 @@ type AdSetRow = {
 type SeriesPoint = { day: string; spend: number; conversions: number; cpa: number | null; roas: number };
 type PrevPeriod = { spend: number; conversions: number; cpa: number | null; roas: number };
 
+export type CampaignSeedRow = {
+  metaCampaignId: string;
+  campaignName: string;
+  clientName: string;
+  clientSlug: string;
+  accountLabel: string;
+  metaAdAccountId?: string;
+  status?: string;
+  objective?: string | null;
+  spend: number;
+  conversions: number;
+  leads?: number;
+  roas: number;
+  cpa: number | null;
+};
+
+function buildDetailQuery(periodQuery: string, seed?: CampaignSeedRow) {
+  const raw = periodQuery.startsWith("?") ? periodQuery.slice(1) : periodQuery;
+  const params = new URLSearchParams(raw);
+  if (seed?.metaAdAccountId) params.set("metaAdAccountId", seed.metaAdAccountId);
+  if (seed?.clientSlug) params.set("clientSlug", seed.clientSlug);
+  if (seed?.campaignName) params.set("campaignName", seed.campaignName);
+  if (seed?.status) params.set("status", seed.status);
+  if (seed?.objective) params.set("objective", seed.objective);
+  if (seed?.spend != null) params.set("spend", String(seed.spend));
+  if (seed?.conversions != null) params.set("conversions", String(seed.conversions));
+  if (seed?.leads != null) params.set("leads", String(seed.leads));
+  if (seed?.roas != null) params.set("roas", String(seed.roas));
+  if (seed?.cpa != null) params.set("cpa", String(seed.cpa));
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+function campaignFromSeed(seed: CampaignSeedRow, metaCampaignId: string): Campaign {
+  return {
+    id: metaCampaignId,
+    name: seed.campaignName,
+    status: seed.status ?? "ACTIVE",
+    dailyBudget: null,
+    clientSlug: seed.clientSlug,
+    clientName: seed.clientName,
+    accountLabel: seed.accountLabel,
+    metaAdAccountId: seed.metaAdAccountId ?? "",
+    objective: seed.objective ?? "leads",
+    kpis: {
+      spend: seed.spend,
+      conversions: seed.conversions,
+      cpa: seed.cpa,
+      roas: seed.roas,
+      ctr: 0,
+      impressions: 0,
+      clicks: 0
+    }
+  };
+}
+
 function statusVariant(status: string) {
   if (status === "ACTIVE") return "success" as const;
   if (status === "PAUSED") return "warning" as const;
@@ -102,7 +158,8 @@ export function CampaignManagerClient({
   clientSlug,
   tab,
   embedded = false,
-  periodQuery = ""
+  periodQuery = "",
+  seedRow
 }: {
   metaCampaignId: string;
   clientSlug: string;
@@ -110,6 +167,7 @@ export function CampaignManagerClient({
   embedded?: boolean;
   /** Query string from PeriodFilter, e.g. `?period=last7` */
   periodQuery?: string;
+  seedRow?: CampaignSeedRow;
 }) {
   const t = useTranslations("campaignManager");
   const locale = useLocale();
@@ -125,7 +183,7 @@ export function CampaignManagerClient({
   const [isPending, startTransition] = useTransition();
 
   const reload = useCallback(() => {
-    const qs = periodQuery || "";
+    const qs = buildDetailQuery(periodQuery, seedRow);
     fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${qs}`)
       .then((r) => r.json())
       .then((j) => {
@@ -158,7 +216,13 @@ export function CampaignManagerClient({
         setSeries(j.series ?? []);
         setPrevious(j.previous ?? null);
       });
-  }, [metaCampaignId, clientSlug, periodQuery]);
+  }, [metaCampaignId, clientSlug, periodQuery, seedRow]);
+
+  useEffect(() => {
+    if (seedRow && seedRow.metaCampaignId === metaCampaignId) {
+      setCampaign(campaignFromSeed(seedRow, metaCampaignId));
+    }
+  }, [seedRow, metaCampaignId]);
 
   useEffect(() => {
     reload();
