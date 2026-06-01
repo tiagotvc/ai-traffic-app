@@ -407,9 +407,57 @@ export async function fetchAdImages(accessToken: string, adAccountId: string): P
 
 const LEAD_ACTIONS = new Set([
   "lead",
+  "onsite_conversion.lead_grouped",
   "offsite_conversion.fb_pixel_lead",
   "offsite_conversion.lead"
 ]);
+
+const CONVERSION_ACTIONS = new Set([
+  ...LEAD_ACTIONS,
+  "purchase",
+  "offsite_conversion.fb_pixel_purchase",
+  "omni_purchase",
+  "complete_registration",
+  "submit_application",
+  "contact",
+  "subscribe"
+]);
+
+/** Indicators Meta returns in the `results` array — exclude clicks, views, etc. */
+const RESULT_INDICATOR_PATTERNS = [
+  /lead/i,
+  /purchase/i,
+  /offsite_conversion/i,
+  /onsite_conversion/i,
+  /complete_registration/i,
+  /submit_application/i,
+  /subscribe/i,
+  /contact/i,
+  /app_install/i,
+  /messaging/i
+];
+
+function isResultIndicator(indicator: string) {
+  return RESULT_INDICATOR_PATTERNS.some((rx) => rx.test(indicator));
+}
+
+function firstIndicatorValue(values?: Array<{ value: string }>) {
+  const n = Number(values?.[0]?.value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function pickResultsFromArray(
+  raw: Array<{ indicator?: string; values?: Array<{ value: string }> }>
+): number {
+  let best = 0;
+  for (const entry of raw) {
+    const indicator = entry.indicator ?? "";
+    const val = firstIndicatorValue(entry.values);
+    if (val <= 0 || !isResultIndicator(indicator)) continue;
+    if (val > best) best = val;
+  }
+  return best;
+}
 
 export function pickLeads(actions?: Array<{ action_type: string; value: string }>): number {
   if (!actions?.length) return 0;
@@ -425,16 +473,11 @@ export function pickResults(row: Pick<MetaInsightRow, "results" | "actions">): n
   if (raw != null) {
     if (typeof raw === "string" || typeof raw === "number") {
       const n = Number(raw);
-      if (Number.isFinite(n) && n > 0) return n;
+      if (Number.isFinite(n) && n >= 0) return n;
     }
-    if (Array.isArray(raw)) {
-      let sum = 0;
-      for (const entry of raw) {
-        if (entry.values?.length) {
-          for (const v of entry.values) sum += Number(v.value) || 0;
-        }
-      }
-      if (sum > 0) return sum;
+    if (Array.isArray(raw) && raw.length) {
+      const fromArray = pickResultsFromArray(raw);
+      if (fromArray > 0) return fromArray;
     }
   }
   return pickConversions(row.actions);
@@ -442,23 +485,22 @@ export function pickResults(row: Pick<MetaInsightRow, "results" | "actions">): n
 
 export function pickConversions(actions?: Array<{ action_type: string; value: string }>): number {
   if (!actions?.length) return 0;
-  const preferred = new Set([
-    "lead",
-    "offsite_conversion.fb_pixel_lead",
-    "offsite_conversion.lead",
-    "purchase",
-    "offsite_conversion.fb_pixel_purchase"
-  ]);
-
   let sum = 0;
   for (const a of actions) {
-    if (preferred.has(a.action_type)) {
+    if (CONVERSION_ACTIONS.has(a.action_type)) {
+      sum += Number(a.value) || 0;
+      continue;
+    }
+    const type = a.action_type;
+    if (
+      type.includes("lead") ||
+      type.includes("purchase") ||
+      type.includes("complete_registration") ||
+      type.includes("submit_application")
+    ) {
       sum += Number(a.value) || 0;
     }
   }
-  if (sum > 0) return sum;
-
-  for (const a of actions) sum += Number(a.value) || 0;
   return sum;
 }
 
