@@ -145,6 +145,12 @@ export function CommandCenterClient() {
   }, [load]);
 
   useEffect(() => {
+    const onSync = () => load();
+    window.addEventListener("traffic-sync-done", onSync);
+    return () => window.removeEventListener("traffic-sync-done", onSync);
+  }, [load]);
+
+  useEffect(() => {
     const tmr = setTimeout(() => setQ(searchInput), 300);
     return () => clearTimeout(tmr);
   }, [searchInput]);

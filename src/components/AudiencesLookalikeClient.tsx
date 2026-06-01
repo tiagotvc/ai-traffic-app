@@ -258,25 +258,32 @@ export function AudiencesLookalikeClient() {
         <div className="space-y-4">
           <div className="ui-card p-5">
             <h2 className="text-lg font-semibold text-slate-900">{t("wizardTitle")}</h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {steps.map((s) => (
-                <button
-                  key={s.n}
-                  type="button"
-                  onClick={() => setStep(s.n)}
-                  className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${
-                    step === s.n ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
-                      step >= s.n ? "bg-white/20" : ""
-                    }`}
+            <div className="mt-4 flex items-center gap-0 overflow-x-auto pb-1">
+              {steps.map((s, idx) => (
+                <div key={s.n} className="flex min-w-0 flex-1 items-center">
+                  <button
+                    type="button"
+                    onClick={() => step >= s.n && setStep(s.n)}
+                    className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${
+                      step === s.n ? "bg-violet-600 text-white" : step > s.n ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-600"
+                    } ${step >= s.n ? "cursor-pointer" : "cursor-default"}`}
                   >
-                    {s.n}
-                  </span>
-                  {s.label}
-                </button>
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+                        step >= s.n ? "bg-white/20" : "bg-slate-200"
+                      }`}
+                    >
+                      {s.n}
+                    </span>
+                    <span className="whitespace-nowrap">{s.label}</span>
+                  </button>
+                  {idx < steps.length - 1 ? (
+                    <div
+                      className={`mx-1 h-0.5 min-w-[1rem] flex-1 ${step > s.n ? "bg-violet-400" : "bg-slate-200"}`}
+                      aria-hidden
+                    />
+                  ) : null}
+                </div>
               ))}
             </div>
 

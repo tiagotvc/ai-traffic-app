@@ -8,6 +8,11 @@ import type { Repository } from "typeorm";
 import { getStoredMetaAccessToken, persistMetaAuth } from "@/lib/meta-auth-store";
 import { resolveTenantName } from "@/lib/tenant-name";
 import { isUuid } from "@/lib/uuid";
+import {
+  acceptPendingInviteForEmail,
+  ensureTenantMember
+} from "@/lib/workspace-members";
+import { IsNull, MoreThan } from "typeorm";
 
 export async function getAppContext() {
   const session = await auth();
@@ -16,32 +21,63 @@ export async function getAppContext() {
   }
 
   const ds = await getDataSource();
-  const { tenant: tenantRepo, user: userRepo, client: clientRepo } = await repositories();
+  const { tenant: tenantRepo, user: userRepo, client: clientRepo, tenantInvite: inviteRepo } =
+    await repositories();
 
   const email = session.user.email.toLowerCase();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const metaProfileId = (session as any).meta?.profileId as string | undefined;
-  const tenantName = resolveTenantName(email, metaProfileId);
-
-  let tenant = await tenantRepo.findOne({ where: { name: tenantName } });
-  if (!tenant) {
-    tenant = tenantRepo.create({ name: tenantName, brandName: tenantName });
-    await tenantRepo.save(tenant);
-  }
 
   let user = await userRepo.findOne({ where: { email } });
-  if (!user) {
-    user = userRepo.create({
-      email,
-      name: session.user.name ?? null,
-      tenantId: tenant.id
-    });
-    await userRepo.save(user);
-  } else if (user.tenantId !== tenant.id) {
+
+  const pendingInvite = await inviteRepo.findOne({
+    where: { email, acceptedAt: IsNull(), expiresAt: MoreThan(new Date()) },
+    order: { createdAt: "DESC" }
+  });
+
+  if (pendingInvite) {
+    if (!user) {
+      user = userRepo.create({
+        email,
+        name: session.user.name ?? null,
+        tenantId: pendingInvite.tenantId
+      });
+      await userRepo.save(user);
+    }
+    await acceptPendingInviteForEmail(user, email);
+    user = (await userRepo.findOne({ where: { email } }))!;
+  } else {
+    const tenantName = resolveTenantName(email, metaProfileId);
+    let tenant = await tenantRepo.findOne({ where: { name: tenantName } });
+    if (!tenant) {
+      tenant = tenantRepo.create({ name: tenantName, brandName: tenantName });
+      await tenantRepo.save(tenant);
+    }
+
+    if (!user) {
+      user = userRepo.create({
+        email,
+        name: session.user.name ?? null,
+        tenantId: tenant.id
+      });
+      await userRepo.save(user);
+    } else if (user.tenantId !== tenant.id) {
+      user.tenantId = tenant.id;
+      await userRepo.save(user);
+    }
+  }
+
+  let tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
+  if (!tenant) {
+    const tenantName = resolveTenantName(email, metaProfileId);
+    tenant = tenantRepo.create({ name: tenantName, brandName: tenantName });
+    await tenantRepo.save(tenant);
     user.tenantId = tenant.id;
     await userRepo.save(user);
   }
+
+  await ensureTenantMember(tenant.id, user.id);
 
   let defaultClient = await clientRepo.findOne({
     where: { tenantId: tenant.id, name: "Default" }

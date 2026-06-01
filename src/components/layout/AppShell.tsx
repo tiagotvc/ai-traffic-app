@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { PublishPanelHost } from "@/components/publish/PublishPanelHost";
 import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AutoSyncOnLogin } from "@/components/AutoSyncOnLogin";
 
 const STORAGE_KEY = "traffic-ai-sidebar-collapsed";
 
@@ -60,6 +61,7 @@ export function AppShell({
       <Suspense fallback={null}>
         <PublishPanelHost onPublished={() => window.dispatchEvent(new Event("traffic:campaigns-reload"))} />
       </Suspense>
+      <AutoSyncOnLogin />
     </PublishPanelProvider>
   );
 }

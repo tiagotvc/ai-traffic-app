@@ -28,6 +28,11 @@ export function SignOutButton({
       disabled={isPending}
       onClick={() =>
         startTransition(async () => {
+          try {
+            sessionStorage.removeItem("traffic-auto-sync-done");
+          } catch {
+            /* ignore */
+          }
           await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
           router.replace("/login");
         })

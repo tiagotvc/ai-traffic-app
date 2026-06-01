@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 
 import { Link } from "@/i18n/navigation";
+import { WorkspaceTeamSection } from "@/components/WorkspaceTeamSection";
 
 export function SettingsClient({
   locale,
@@ -102,6 +103,9 @@ export function SettingsClient({
           </button>
         </div>
         {message ? <div className="mt-2 text-xs text-slate-500">{message}</div> : null}
+        <div className="mt-4">
+          <WorkspaceTeamSection />
+        </div>
       </section>
 
       <aside className="space-y-3">

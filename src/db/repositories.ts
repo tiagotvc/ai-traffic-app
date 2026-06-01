@@ -28,6 +28,8 @@ import type { Tenant } from "@/db/entities/Tenant";
 import type { TenantSyncState } from "@/db/entities/TenantSyncState";
 import type { User } from "@/db/entities/User";
 import type { UserClient } from "@/db/entities/UserClient";
+import type { TenantMember } from "@/db/entities/TenantMember";
+import type { TenantInvite } from "@/db/entities/TenantInvite";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -61,7 +63,9 @@ const ENTITY = {
   CreativeAsset: "CreativeAsset",
   AutomationRule: "AutomationRule",
   ReportSchedule: "ReportSchedule",
-  UserClient: "UserClient"
+  UserClient: "UserClient",
+  TenantMember: "TenantMember",
+  TenantInvite: "TenantInvite"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -112,6 +116,8 @@ export async function repositories() {
     creativeAsset: repositoryFor<CreativeAsset>(ds, ENTITY.CreativeAsset),
     automationRule: repositoryFor<AutomationRule>(ds, ENTITY.AutomationRule),
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
-    userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient)
+    userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),
+    tenantMember: repositoryFor<TenantMember>(ds, ENTITY.TenantMember),
+    tenantInvite: repositoryFor<TenantInvite>(ds, ENTITY.TenantInvite)
   };
 }

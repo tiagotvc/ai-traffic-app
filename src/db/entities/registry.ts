@@ -31,6 +31,8 @@ import { CreativeAsset } from "./CreativeAsset";
 import { AutomationRule } from "./AutomationRule";
 import { ReportSchedule } from "./ReportSchedule";
 import { UserClient } from "./UserClient";
+import { TenantMember } from "./TenantMember";
+import { TenantInvite } from "./TenantInvite";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
@@ -62,7 +64,9 @@ export {
   CreativeAsset,
   AutomationRule,
   ReportSchedule,
-  UserClient
+  UserClient,
+  TenantMember,
+  TenantInvite
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -98,7 +102,9 @@ stabilizeTypeOrmEntityNames([
   { ctor: CreativeAsset, name: "CreativeAsset" },
   { ctor: AutomationRule, name: "AutomationRule" },
   { ctor: ReportSchedule, name: "ReportSchedule" },
-  { ctor: UserClient, name: "UserClient" }
+  { ctor: UserClient, name: "UserClient" },
+  { ctor: TenantMember, name: "TenantMember" },
+  { ctor: TenantInvite, name: "TenantInvite" }
 ]);
 
 export const typeOrmEntities = [
@@ -130,5 +136,7 @@ export const typeOrmEntities = [
   CreativeAsset,
   AutomationRule,
   ReportSchedule,
-  UserClient
+  UserClient,
+  TenantMember,
+  TenantInvite
 ] as const;

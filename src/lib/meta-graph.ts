@@ -48,6 +48,8 @@ export type MetaInsightRow = {
   reach?: string;
   actions?: Array<{ action_type: string; value: string }>;
   purchase_roas?: Array<{ value: string }>;
+  /** Meta Ads Manager "Resultados" — objective-aligned outcomes */
+  results?: Array<{ indicator?: string; values?: Array<{ value: string }> }> | string;
 };
 
 export type MetaCampaignInsightRow = MetaInsightRow & {
@@ -325,8 +327,21 @@ export async function uploadAdImage(
   });
 }
 
+const INSIGHT_METRIC_FIELDS = [
+  "spend",
+  "impressions",
+  "clicks",
+  "ctr",
+  "cpc",
+  "reach",
+  "actions",
+  "results",
+  "purchase_roas",
+  "date_start"
+];
+
 export async function fetchAccountInsightsDaily(accessToken: string, adAccountId: string): Promise<MetaInsightRow[]> {
-  const fields = ["spend", "impressions", "clicks", "ctr", "cpc", "actions", "purchase_roas", "date_start"].join(",");
+  const fields = INSIGHT_METRIC_FIELDS.join(",");
   const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d`;
   const data = await metaFetch<{ data: MetaInsightRow[] }>(path, accessToken);
   return data.data ?? [];
@@ -336,18 +351,7 @@ export async function fetchCampaignInsightsDaily(
   accessToken: string,
   adAccountId: string
 ): Promise<MetaCampaignInsightRow[]> {
-  const fields = [
-    "campaign_id",
-    "campaign_name",
-    "spend",
-    "impressions",
-    "clicks",
-    "ctr",
-    "cpc",
-    "actions",
-    "purchase_roas",
-    "date_start"
-  ].join(",");
+  const fields = ["campaign_id", "campaign_name", ...INSIGHT_METRIC_FIELDS].join(",");
   const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d`;
   const data = await metaFetch<{ data: MetaCampaignInsightRow[] }>(path, accessToken);
   return data.data ?? [];
@@ -359,19 +363,37 @@ export async function fetchCampaignInsightsForRange(
   since: string,
   until: string
 ): Promise<MetaCampaignInsightRow[]> {
-  const fields = [
-    "campaign_id",
-    "campaign_name",
-    "spend",
-    "impressions",
-    "clicks",
-    "ctr",
-    "cpc",
-    "actions",
-    "purchase_roas"
-  ].join(",");
+  const fields = ["campaign_id", "campaign_name", ...INSIGHT_METRIC_FIELDS.filter((f) => f !== "date_start")].join(
+    ","
+  );
   const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
   const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_range=${encodeURIComponent(timeRange)}`;
+  const data = await metaFetch<{ data: MetaCampaignInsightRow[] }>(path, accessToken);
+  return data.data ?? [];
+}
+
+export async function fetchCampaignInsightForRange(
+  accessToken: string,
+  metaCampaignId: string,
+  since: string,
+  until: string
+): Promise<MetaCampaignInsightRow | null> {
+  const fields = [...INSIGHT_METRIC_FIELDS.filter((f) => f !== "date_start")].join(",");
+  const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
+  const path = `/${encodeURIComponent(metaCampaignId)}/insights?fields=${encodeURIComponent(fields)}&time_range=${encodeURIComponent(timeRange)}`;
+  const data = await metaFetch<{ data: MetaCampaignInsightRow[] }>(path, accessToken);
+  return data.data?.[0] ?? null;
+}
+
+export async function fetchCampaignInsightsDailyForCampaign(
+  accessToken: string,
+  metaCampaignId: string,
+  since: string,
+  until: string
+): Promise<MetaCampaignInsightRow[]> {
+  const fields = [...INSIGHT_METRIC_FIELDS].join(",");
+  const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
+  const path = `/${encodeURIComponent(metaCampaignId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&time_range=${encodeURIComponent(timeRange)}`;
   const data = await metaFetch<{ data: MetaCampaignInsightRow[] }>(path, accessToken);
   return data.data ?? [];
 }
@@ -396,6 +418,26 @@ export function pickLeads(actions?: Array<{ action_type: string; value: string }
     if (LEAD_ACTIONS.has(a.action_type)) sum += Number(a.value) || 0;
   }
   return sum;
+}
+
+export function pickResults(row: Pick<MetaInsightRow, "results" | "actions">): number {
+  const raw = row.results;
+  if (raw != null) {
+    if (typeof raw === "string" || typeof raw === "number") {
+      const n = Number(raw);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    if (Array.isArray(raw)) {
+      let sum = 0;
+      for (const entry of raw) {
+        if (entry.values?.length) {
+          for (const v of entry.values) sum += Number(v.value) || 0;
+        }
+      }
+      if (sum > 0) return sum;
+    }
+  }
+  return pickConversions(row.actions);
 }
 
 export function pickConversions(actions?: Array<{ action_type: string; value: string }>): number {
@@ -459,34 +501,28 @@ export type MetaAdSetInsight = {
   roas: number;
 };
 
-function parseInsightActions(actions?: Array<{ action_type: string; value: string }>) {
-  let conversions = 0;
-  for (const a of actions ?? []) {
-    if (
-      a.action_type === "purchase" ||
-      a.action_type === "offsite_conversion.fb_pixel_purchase" ||
-      a.action_type === "lead"
-    ) {
-      conversions += Number(a.value) || 0;
-    }
-  }
-  return conversions;
-}
-
 export async function fetchAdSetInsights(
   accessToken: string,
-  adSetId: string
+  adSetId: string,
+  since?: string,
+  until?: string
 ): Promise<MetaAdSetInsight | null> {
   try {
-    const fields = ["spend", "impressions", "clicks", "ctr", "reach", "actions", "purchase_roas"].join(",");
-    const data = await metaFetch<{ data: MetaInsightRow[] }>(
-      `/${encodeURIComponent(adSetId)}/insights?fields=${encodeURIComponent(fields)}&date_preset=last_7d`,
-      accessToken
+    const fields = ["spend", "impressions", "clicks", "ctr", "reach", "actions", "results", "purchase_roas"].join(
+      ","
     );
+    let path = `/${encodeURIComponent(adSetId)}/insights?fields=${encodeURIComponent(fields)}`;
+    if (since && until) {
+      const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
+      path += `&time_range=${encodeURIComponent(timeRange)}`;
+    } else {
+      path += "&date_preset=last_7d";
+    }
+    const data = await metaFetch<{ data: MetaInsightRow[] }>(path, accessToken);
     const row = data.data?.[0];
     if (!row) return null;
     const spend = Number(row.spend) || 0;
-    const conversions = parseInsightActions(row.actions);
+    const conversions = pickResults(row);
     const roasRaw = row.purchase_roas?.[0]?.value;
     const roas = roasRaw != null ? Number(roasRaw) : spend > 0 && conversions > 0 ? spend / conversions : 0;
     return {

@@ -76,7 +76,13 @@ export async function getTenantSyncStatus(tenantId: string, clientSlug?: string 
   });
 
   const run = lastRun[0];
+  const hasSyncedAccount = accountStatuses.some((a) => a.status === "ok" || a.lastSyncedAt);
+  const staleMs = 6 * 60 * 60 * 1000;
+  const lastFinished = run?.finishedAt?.getTime() ?? state?.lastManualSyncAt?.getTime() ?? 0;
+  const needsAutoSync = !hasSyncedAccount || Date.now() - lastFinished > staleMs;
+
   return {
+    needsAutoSync,
     lastManualSyncAt: state?.lastManualSyncAt?.toISOString() ?? null,
     activeSyncRunId: state?.activeSyncRunId ?? null,
     lastRun: run

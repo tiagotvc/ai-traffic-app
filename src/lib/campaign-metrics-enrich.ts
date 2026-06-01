@@ -1,6 +1,6 @@
 import "server-only";
 
-import { fetchCampaignInsightsForRange, pickConversions, pickLeads } from "@/lib/meta-graph";
+import { fetchCampaignInsightsForRange, pickLeads, pickResults } from "@/lib/meta-graph";
 import { num } from "@/lib/goal-types";
 
 export type CampaignMetricRow = {
@@ -68,7 +68,7 @@ export async function enrichCampaignRowsFromMeta(input: {
         if (existing.metaAdAccountId !== acc.metaAdAccountId) continue;
 
         const spend = num(row.spend);
-        const conversions = pickConversions(row.actions);
+        const conversions = pickResults(row);
         const leads = pickLeads(row.actions);
         const impressions = num(row.impressions);
         const clicks = num(row.clicks);

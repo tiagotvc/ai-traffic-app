@@ -101,12 +101,15 @@ export function CampaignManagerClient({
   metaCampaignId,
   clientSlug,
   tab,
-  embedded = false
+  embedded = false,
+  periodQuery = ""
 }: {
   metaCampaignId: string;
   clientSlug: string;
   tab: "overview" | "adsets";
   embedded?: boolean;
+  /** Query string from PeriodFilter, e.g. `?period=last7` */
+  periodQuery?: string;
 }) {
   const t = useTranslations("campaignManager");
   const locale = useLocale();
@@ -122,7 +125,8 @@ export function CampaignManagerClient({
   const [isPending, startTransition] = useTransition();
 
   const reload = useCallback(() => {
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}`)
+    const qs = periodQuery || "";
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${qs}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.campaign) {
@@ -130,7 +134,7 @@ export function CampaignManagerClient({
           rememberCampaign(metaCampaignId, j.campaign.clientSlug || clientSlug);
         }
       });
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets`)
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${qs}`)
       .then((r) => r.json())
       .then(async (j) => {
         const list = (j.adsets ?? []) as AdSetRow[];
@@ -148,13 +152,13 @@ export function CampaignManagerClient({
         setAdsCount(totalAds);
       })
       .catch(() => setAdsets([]));
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries`)
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries${qs}`)
       .then((r) => r.json())
       .then((j) => {
         setSeries(j.series ?? []);
         setPrevious(j.previous ?? null);
       });
-  }, [metaCampaignId, clientSlug]);
+  }, [metaCampaignId, clientSlug, periodQuery]);
 
   useEffect(() => {
     reload();

@@ -8,7 +8,8 @@ import { enqueueTenantSync } from "@/lib/sync-queue";
 
 const BodySchema = z.object({
   clientId: z.string().optional(),
-  adAccountIds: z.array(z.string().uuid()).optional()
+  adAccountIds: z.array(z.string().uuid()).optional(),
+  auto: z.boolean().optional()
 });
 
 export async function POST(req: Request) {
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
       tenantId: tenant.id,
       defaultClientId: defaultClient.id,
       metaAccessToken,
-      manual: true,
+      manual: !body.auto,
       clientId,
       adAccountIds: body.adAccountIds
     });

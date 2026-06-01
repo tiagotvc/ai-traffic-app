@@ -113,8 +113,13 @@ export function CampaignsHubClient() {
   useEffect(() => {
     load();
     const onReload = () => load();
+    const onSync = () => load();
     window.addEventListener("traffic:campaigns-reload", onReload);
-    return () => window.removeEventListener("traffic:campaigns-reload", onReload);
+    window.addEventListener("traffic-sync-done", onSync);
+    return () => {
+      window.removeEventListener("traffic:campaigns-reload", onReload);
+      window.removeEventListener("traffic-sync-done", onSync);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -480,6 +485,10 @@ export function CampaignsHubClient() {
             clientSlug={selectedSlug}
             tab={detailTab}
             embedded
+            periodQuery={(() => {
+              const qs = periodStateToQuery(period).toString();
+              return qs ? `?${qs}` : "";
+            })()}
           />
         </div>
       ) : total > 0 ? (

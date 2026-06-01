@@ -5,8 +5,8 @@ import {
   fetchAccountInsightsDaily,
   fetchCampaignInsightsDaily,
   fetchCampaigns,
-  pickConversions,
-  pickLeads
+  pickLeads,
+  pickResults
 } from "@/lib/meta-graph";
 import { repositories } from "@/db/repositories";
 import { runAlertEngine } from "@/lib/alert-engine";
@@ -31,7 +31,7 @@ export async function runMetaSyncForAccount(input: {
     const clicks = r.clicks ?? "0";
     const ctr = r.ctr ?? "0";
     const cpc = r.cpc ?? "0";
-    const conversions = String(pickConversions(r.actions));
+    const conversions = String(pickResults(r));
     const roas = r.purchase_roas?.[0]?.value ?? "0";
 
     const existing = await metricsRepo.findOne({
@@ -87,7 +87,7 @@ export async function runMetaSyncForAccount(input: {
     const clicks = r.clicks ?? "0";
     const ctr = r.ctr ?? "0";
     const cpc = r.cpc ?? "0";
-    const conversions = String(pickConversions(r.actions));
+    const conversions = String(pickResults(r));
     const leads = String(pickLeads(r.actions));
     const roas = r.purchase_roas?.[0]?.value ?? "0";
 
