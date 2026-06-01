@@ -37,9 +37,11 @@ export async function getUserWorkspaceMembership(userId: string) {
 }
 
 async function joinUserToInvite(user: User, invite: TenantInvite) {
-  const { tenantInvite: inviteRepo, tenantMember: memberRepo, user: userRepo } = await repositories();
+  const { tenantInvite: inviteRepo, tenantMember: memberRepo, user: userRepo, userClient: ucRepo } =
+    await repositories();
 
   await memberRepo.delete({ userId: user.id });
+  await ucRepo.delete({ userId: user.id });
 
   user.tenantId = invite.tenantId;
   await userRepo.save(user);

@@ -141,7 +141,7 @@ export async function GET(req: Request) {
       accounts: accountsForEnrich.map((a) => ({ id: a.id, metaAdAccountId: a.metaAdAccountId })),
       since,
       until,
-      skipIfHasSpend: true
+      skipIfHasSpend: false
     });
     rows = enriched.rows as ListRow[];
     enrichError = enriched.enrichError;
@@ -170,12 +170,20 @@ export async function GET(req: Request) {
   }
 
   const total = rows.length;
+  const totals = {
+    spend: rows.reduce((s, r) => s + (r.spend ?? 0), 0),
+    conversions: rows.reduce((s, r) => s + (r.conversions ?? 0), 0),
+    leads: rows.reduce((s, r) => s + (r.leads ?? 0), 0),
+    impressions: rows.reduce((s, r) => s + (r.impressions ?? 0), 0),
+    clicks: rows.reduce((s, r) => s + (r.clicks ?? 0), 0)
+  };
   rows = rows.slice(offset, offset + limit);
 
   return NextResponse.json({
     ok: true,
     rows,
     total,
+    totals,
     enrichError: enrichError ?? null,
     period: { preset: period.preset, since: period.since, until: period.until }
   });

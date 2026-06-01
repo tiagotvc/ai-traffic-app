@@ -45,13 +45,6 @@ export async function enrichCampaignRowsFromMeta(input: {
   let enrichError: string | undefined;
 
   for (const acc of input.accounts) {
-    const needsEnrich = [...byCampaign.values()].some(
-      (r) =>
-        r.metaAdAccountId === acc.metaAdAccountId &&
-        (!input.skipIfHasSpend || r.spend === 0)
-    );
-    if (!needsEnrich) continue;
-
     try {
       const insights = await fetchCampaignInsightsForRange(
         input.metaAccessToken,
@@ -74,11 +67,11 @@ export async function enrichCampaignRowsFromMeta(input: {
         const clicks = num(row.clicks);
         const roas = num(row.purchase_roas?.[0]?.value);
 
-        if (input.skipIfHasSpend && existing.spend > 0 && spend === 0) continue;
+        if (spend > 0 || !input.skipIfHasSpend) existing.spend = spend;
+        else if (existing.spend === 0) existing.spend = spend;
 
-        existing.spend = spend || existing.spend;
-        existing.conversions = conversions || existing.conversions;
-        existing.leads = leads || existing.leads;
+        existing.conversions = conversions;
+        existing.leads = leads;
         existing.cpl = existing.leads > 0 ? existing.spend / existing.leads : null;
         existing.cpa = existing.conversions > 0 ? existing.spend / existing.conversions : null;
         existing.roas = roas || existing.roas;

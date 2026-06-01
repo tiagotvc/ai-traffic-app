@@ -233,6 +233,7 @@
     "colAlerts": "Alertas",
     "statusInactive": "Inativa",
     "pageSizeLabel": "Exibir",
+    "rowTotal": "Total",
     "pagination": "Mostrando {from}–{to} de {total}",
     "columns": "Colunas",
     "columnsTitle": "Personalizar colunas",

@@ -53,6 +53,11 @@ export function CampaignsHubClient() {
   const { openPanel } = usePublishPanel();
   const [rows, setRows] = useState<CampaignRow[]>([]);
   const [total, setTotal] = useState(0);
+  const [totals, setTotals] = useState<{ spend: number; conversions: number; leads: number }>({
+    spend: 0,
+    conversions: 0,
+    leads: 0
+  });
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [clientFilter, setClientFilter] = useState("");
   const [q, setQ] = useState("");
@@ -102,6 +107,7 @@ export function CampaignsHubClient() {
         const list = (j.rows ?? []) as CampaignRow[];
         setRows(list);
         setTotal(j.total ?? list.length);
+        setTotals(j.totals ?? { spend: 0, conversions: 0, leads: 0 });
         setEnrichError(j.enrichError ?? null);
         if (selectedId && list.some((r) => r.metaCampaignId === selectedId)) return;
         setSelectedId(null);
@@ -142,7 +148,11 @@ export function CampaignsHubClient() {
 
   const visibleColumns = useMemo(() => {
     const hideClient = !!clientFilter;
-    return columns.filter((c) => !(hideClient && c === "client"));
+    let cols = columns.filter((c) => !(hideClient && c === "client"));
+    if (cols.includes("status")) {
+      cols = ["status", ...cols.filter((c) => c !== "status")];
+    }
+    return cols;
   }, [columns, clientFilter]);
 
   const spendLabel =
@@ -245,6 +255,56 @@ export function CampaignsHubClient() {
     }
   }
 
+  function renderTotalCell(col: CampaignColumnId, labelCol: CampaignColumnId) {
+    if (col === labelCol) {
+      return (
+        <td key={col} className="px-4 py-3 font-semibold text-slate-800">
+          {t("rowTotal")} ({total})
+        </td>
+      );
+    }
+    switch (col) {
+      case "spend":
+        return (
+          <td key={col} className="px-3 py-3 font-semibold text-slate-900">
+            {formatBRL(totals.spend, locale)}
+          </td>
+        );
+      case "conversions":
+        return (
+          <td key={col} className="px-3 py-3 font-semibold">
+            {Math.round(totals.conversions)}
+          </td>
+        );
+      case "leads":
+        return (
+          <td key={col} className="px-3 py-3 font-semibold">
+            {Math.round(totals.leads)}
+          </td>
+        );
+      case "cpa":
+        return (
+          <td key={col} className="px-3 py-3 font-semibold">
+            {totals.conversions > 0 ? formatBRL(totals.spend / totals.conversions, locale) : "—"}
+          </td>
+        );
+      case "cpl":
+        return (
+          <td key={col} className="px-3 py-3 font-semibold">
+            {totals.leads > 0 ? formatBRL(totals.spend / totals.leads, locale) : "—"}
+          </td>
+        );
+      default:
+        return (
+          <td key={col} className="px-3 py-3 text-slate-400">
+            —
+          </td>
+        );
+    }
+  }
+
+  const totalLabelCol = visibleColumns.includes("campaign") ? "campaign" : visibleColumns[0];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -271,13 +331,6 @@ export function CampaignsHubClient() {
       {enrichError ? <p className="text-xs text-amber-700">{enrichError}</p> : null}
 
       <div className="flex flex-wrap items-end gap-3 ui-card p-4">
-        <PeriodFilter
-          value={period}
-          onChange={(next) => {
-            setPeriod(next);
-            setPage(1);
-          }}
-        />
         <div>
           <div className="text-xs text-slate-500">{t("filterClient")}</div>
           <select
@@ -287,7 +340,7 @@ export function CampaignsHubClient() {
               setSelectedId(null);
               setPage(1);
             }}
-            className="mt-1 rounded-xl ui-input min-w-[200px]"
+            className="mt-1 min-w-[200px] rounded-xl ui-select"
           >
             <option value="">{t("allClients")}</option>
             {clients.map((c) => (
@@ -315,7 +368,7 @@ export function CampaignsHubClient() {
               setStatusFilter(e.target.value as StatusFilter);
               setPage(1);
             }}
-            className="mt-1 rounded-xl ui-input min-w-[140px]"
+            className="mt-1 min-w-[140px] rounded-xl ui-select"
           >
             <option value="ALL">{t("statusAll")}</option>
             <option value="ACTIVE">{t("statusActive")}</option>
@@ -330,7 +383,7 @@ export function CampaignsHubClient() {
               setObjectiveFilter(e.target.value as ObjectiveFilter);
               setPage(1);
             }}
-            className="mt-1 rounded-xl ui-input min-w-[140px]"
+            className="mt-1 min-w-[140px] rounded-xl ui-select"
           >
             <option value="ALL">{t("objectiveAll")}</option>
             <option value="leads">{t("objectiveLeads")}</option>
@@ -338,6 +391,13 @@ export function CampaignsHubClient() {
             <option value="traffic">{t("objectiveTraffic")}</option>
           </select>
         </div>
+        <PeriodFilter
+          value={period}
+          onChange={(next) => {
+            setPeriod(next);
+            setPage(1);
+          }}
+        />
         <div>
           <div className="text-xs text-slate-500">{t("pageSizeLabel")}</div>
           <select
@@ -346,7 +406,7 @@ export function CampaignsHubClient() {
               setPageSize(Number(e.target.value));
               setPage(1);
             }}
-            className="mt-1 rounded-xl ui-input min-w-[100px]"
+            className="mt-1 min-w-[100px] rounded-xl ui-select"
           >
             {PAGE_SIZES.map((n) => (
               <option key={n} value={n}>
@@ -414,6 +474,13 @@ export function CampaignsHubClient() {
                 ))
               )}
             </tbody>
+            {!loading && rows.length > 0 ? (
+              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+                <tr>
+                  {visibleColumns.map((col) => renderTotalCell(col, totalLabelCol))}
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">

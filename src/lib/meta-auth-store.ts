@@ -36,3 +36,36 @@ export async function getStoredMetaAccessToken(userId: string): Promise<string |
 
   return row.accessToken;
 }
+
+/** Token Meta de qualquer admin/membro do workspace (convidados herdam acesso aos dados). */
+export async function getTenantMetaAccessToken(
+  tenantId: string,
+  preferredUserId?: string
+): Promise<string | undefined> {
+  if (preferredUserId) {
+    const own = await getStoredMetaAccessToken(preferredUserId);
+    if (own) return own;
+  }
+
+  const { tenantMember: memberRepo, user: userRepo } = await repositories();
+  const members = await memberRepo.find({ where: { tenantId } });
+  const orderedUserIds = [
+    ...members.filter((m) => m.role === "admin").map((m) => m.userId),
+    ...members.filter((m) => m.role !== "admin").map((m) => m.userId)
+  ];
+
+  for (const uid of orderedUserIds) {
+    if (uid === preferredUserId) continue;
+    const token = await getStoredMetaAccessToken(uid);
+    if (token) return token;
+  }
+
+  const users = await userRepo.find({ where: { tenantId }, select: { id: true } });
+  for (const u of users) {
+    if (orderedUserIds.includes(u.id)) continue;
+    const token = await getStoredMetaAccessToken(u.id);
+    if (token) return token;
+  }
+
+  return undefined;
+}

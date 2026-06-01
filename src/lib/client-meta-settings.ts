@@ -70,12 +70,16 @@ export function priorityToNumber(p: string): number {
 
 export async function listClientIdsForUser(tenantId: string, userId: string): Promise<string[] | null> {
   const { userClient: ucRepo, client: clientRepo } = await repositories();
+  const allInTenant = await clientRepo.find({ where: { tenantId }, select: { id: true } });
+  const tenantIds = allInTenant.map((c) => c.id);
+  if (!tenantIds.length) return [];
+
   const links = await ucRepo.find({ where: { userId } });
-  if (links.length === 0) {
-    const all = await clientRepo.find({ where: { tenantId }, select: { id: true } });
-    return all.map((c) => c.id);
-  }
-  return links.map((l) => l.clientId);
+  if (links.length === 0) return tenantIds;
+
+  const tenantSet = new Set(tenantIds);
+  const scoped = links.map((l) => l.clientId).filter((id) => tenantSet.has(id));
+  return scoped.length > 0 ? scoped : tenantIds;
 }
 
 export type ClientMetaSettingsPatch = Partial<{

@@ -5,7 +5,7 @@ import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import type { Client } from "@/db/entities/Client";
 import type { Repository } from "typeorm";
-import { getStoredMetaAccessToken, persistMetaAuth } from "@/lib/meta-auth-store";
+import { getStoredMetaAccessToken, getTenantMetaAccessToken, persistMetaAuth } from "@/lib/meta-auth-store";
 import { resolveTenantName } from "@/lib/tenant-name";
 import { isUuid } from "@/lib/uuid";
 import {
@@ -138,6 +138,9 @@ export async function getAppContext() {
   let metaAccessToken = meta?.accessToken;
   if (!metaAccessToken) {
     metaAccessToken = await getStoredMetaAccessToken(user.id);
+  }
+  if (!metaAccessToken) {
+    metaAccessToken = await getTenantMetaAccessToken(tenant.id, user.id);
   } else {
     await persistMetaAuth(user.id, {
       access_token: metaAccessToken,

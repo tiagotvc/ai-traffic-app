@@ -19,6 +19,7 @@ export type CampaignColumnId =
   | "budget";
 
 export const DEFAULT_CAMPAIGN_COLUMNS: CampaignColumnId[] = [
+  "status",
   "campaign",
   "client",
   "account",
@@ -26,7 +27,6 @@ export const DEFAULT_CAMPAIGN_COLUMNS: CampaignColumnId[] = [
   "conversions",
   "cpa",
   "roas",
-  "status",
   "alerts"
 ];
 
@@ -81,7 +81,11 @@ export function loadCampaignColumns(): CampaignColumnId[] {
     if (!raw) return DEFAULT_CAMPAIGN_COLUMNS;
     const parsed = JSON.parse(raw) as CampaignColumnId[];
     if (!Array.isArray(parsed) || !parsed.length) return DEFAULT_CAMPAIGN_COLUMNS;
-    return parsed.filter((c) => ALL_CAMPAIGN_COLUMNS.includes(c));
+    const cols = parsed.filter((c) => ALL_CAMPAIGN_COLUMNS.includes(c));
+    if (cols.includes("status")) {
+      return ["status", ...cols.filter((c) => c !== "status")];
+    }
+    return cols;
   } catch {
     return DEFAULT_CAMPAIGN_COLUMNS;
   }

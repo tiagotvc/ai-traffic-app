@@ -260,6 +260,7 @@
     "tabAdsets": "Ad sets & ads",
     "statusInactive": "Inactive",
     "pageSizeLabel": "Show",
+    "rowTotal": "Total",
     "pagination": "Showing {from}–{to} of {total}",
     "columns": "Columns",
     "columnsTitle": "Customize columns",
