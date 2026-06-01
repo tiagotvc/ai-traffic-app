@@ -5,7 +5,12 @@ import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import type { Client } from "@/db/entities/Client";
 import type { Repository } from "typeorm";
-import { getStoredMetaAccessToken, getTenantMetaAccessToken, persistMetaAuth } from "@/lib/meta-auth-store";
+import {
+  getTenantMetaAccessToken,
+  isMetaPermissionError,
+  persistMetaAuth,
+  resolveWorkspaceMetaAccessToken
+} from "@/lib/meta-auth-store";
 import { resolveTenantName } from "@/lib/tenant-name";
 import { isUuid } from "@/lib/uuid";
 import {
@@ -135,20 +140,17 @@ export async function getAppContext() {
       }
     | undefined;
 
-  let metaAccessToken = meta?.accessToken;
-  if (!metaAccessToken) {
-    metaAccessToken = await getStoredMetaAccessToken(user.id);
-  }
-  if (!metaAccessToken) {
-    metaAccessToken = await getTenantMetaAccessToken(tenant.id, user.id);
-  } else {
+  const sessionToken = meta?.accessToken;
+  if (sessionToken) {
     await persistMetaAuth(user.id, {
-      access_token: metaAccessToken,
+      access_token: sessionToken,
       token_type: meta?.tokenType ?? null,
       scope: meta?.scopes ?? null,
       expires_at: meta?.expiresAt ?? null
     });
   }
+
+  let metaAccessToken = await resolveWorkspaceMetaAccessToken(tenant.id, user.id, sessionToken);
 
   return { session, ds, tenant, user, defaultClient, metaAccessToken };
 }

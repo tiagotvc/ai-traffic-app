@@ -6,12 +6,7 @@ import { repositories } from "@/db/repositories";
 import { slugify } from "@/lib/app-context";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { num } from "@/lib/goal-types";
-
-function dateNDaysAgo(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}
+import { rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
 
 export async function queryCommandCenterCampaigns(input: {
   tenantId: string;
@@ -37,14 +32,14 @@ export async function queryCommandCenterCampaigns(input: {
     clientTag: tagRepo
   } = await repositories();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const defaultRange = rollingDaysEndingYesterday(input.days ?? 7);
   const since =
     input.allTime || !input.since
       ? input.allTime
         ? "1970-01-01"
-        : dateNDaysAgo(input.days ?? 7)
+        : defaultRange.since
       : input.since.slice(0, 10);
-  const until = input.until?.slice(0, 10) ?? today;
+  const until = input.until?.slice(0, 10) ?? (input.allTime ? yesterdayIso() : defaultRange.until);
 
   let clients = await clientRepo.find({ where: { tenantId: input.tenantId }, order: { name: "ASC" } });
   if (input.clientIds?.length) {

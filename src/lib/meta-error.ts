@@ -16,7 +16,9 @@ export function formatMetaGraphError(err: unknown): string {
         const code = e.code != null ? ` (código ${e.code})` : "";
         if (e.code === 190) return `Token Meta expirado ou inválido. Reconecte em Configurações.${code}`;
         if (e.code === 104) return `Sessão Meta inválida. Reconecte o Facebook.${code}`;
-        if (e.code === 200) return `${e.message}${code}`;
+        if (e.code === 200) {
+          return `Sem permissão ads_read/ads_management nesta conta Meta. Membros do workspace usam a conexão Meta do administrador — peça para reconectar em Configurações.${code}`;
+        }
         if (e.code === 17 || e.code === 613) return `Limite de requisições Meta atingido. Tente em alguns minutos.${code}`;
         return `${e.message}${code}`;
       }

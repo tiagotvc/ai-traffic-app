@@ -13,17 +13,18 @@ import {
   pickResults
 } from "@/lib/meta-graph";
 import type { ParsedPeriod } from "@/lib/report-period";
+import { rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
 
 function resolveSinceUntil(period: ParsedPeriod) {
-  const today = new Date().toISOString().slice(0, 10);
   if (period.allTime) {
     const since = new Date();
     since.setFullYear(since.getFullYear() - 2);
-    return { since: since.toISOString().slice(0, 10), until: today };
+    return { since: since.toISOString().slice(0, 10), until: yesterdayIso() };
   }
+  const fallback = rollingDaysEndingYesterday(7);
   return {
-    since: period.since ?? today,
-    until: period.until ?? today
+    since: period.since ?? fallback.since,
+    until: period.until ?? fallback.until
   };
 }
 

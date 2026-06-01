@@ -7,13 +7,19 @@ import { enrichCampaignRowsFromMeta } from "@/lib/campaign-metrics-enrich";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
 import { queryCommandCenterCampaigns } from "@/lib/command-center-query";
+import {
+  getTenantMetaAccessToken,
+  isMetaPermissionError
+} from "@/lib/meta-auth-store";
 import { fetchCampaigns } from "@/lib/meta-graph";
-import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { parsePeriodFromSearchParams, rollingDaysEndingYesterday } from "@/lib/report-period";
 
 export async function GET(req: Request) {
   const { tenant, user, metaAccessToken } = await getAppContext();
   const url = new URL(req.url);
   const period = parsePeriodFromSearchParams(url);
+  const tenantToken = await getTenantMetaAccessToken(tenant.id, user.id);
+  let tokenForMeta = metaAccessToken ?? tenantToken;
 
   let clientIds = await listClientIdsForUser(tenant.id, user.id);
   const clientSlug = url.searchParams.get("clientId")?.trim();
@@ -57,7 +63,7 @@ export async function GET(req: Request) {
 
   const accountsForEnrich: Array<{ id: string; metaAdAccountId: string; clientId: string }> = [];
 
-  if (metaAccessToken) {
+  if (tokenForMeta) {
     const { adAccount: adRepo, client: clientRepo } = await repositories();
     const clients = await clientRepo.find({ where: { tenantId: tenant.id } });
     const allowed = new Set(clientIds?.length ? clientIds : clients.map((c) => c.id));
@@ -76,50 +82,59 @@ export async function GET(req: Request) {
 
     const clientById = new Map(clients.map((c) => [c.id, c]));
 
-    for (const acc of accounts) {
-      try {
-        const camps = await fetchCampaigns(metaAccessToken, acc.metaAdAccountId);
-        const client = clientById.get(acc.clientId);
-        for (const c of camps) {
-          if (!c.id || byId.has(c.id)) {
-            if (c.id && byId.has(c.id)) {
-              const row = byId.get(c.id)!;
-              row.status = c.status ?? row.status;
-              row.objective = c.objective ?? row.objective;
+    async function loadCampaignsFromMeta(accessToken: string, retried = false) {
+      for (const acc of accounts) {
+        try {
+          const camps = await fetchCampaigns(accessToken, acc.metaAdAccountId);
+          const client = clientById.get(acc.clientId);
+          for (const c of camps) {
+            if (!c.id || byId.has(c.id)) {
+              if (c.id && byId.has(c.id)) {
+                const row = byId.get(c.id)!;
+                row.status = c.status ?? row.status;
+                row.objective = c.objective ?? row.objective;
+              }
+              continue;
             }
-            continue;
+            byId.set(c.id, {
+              metaCampaignId: c.id,
+              campaignName: c.name ?? c.id,
+              clientId: acc.clientId,
+              clientName: client?.name ?? "—",
+              clientSlug: client ? slugify(client.name) : "",
+              clientTag: "",
+              adAccountId: acc.id,
+              accountLabel: acc.label ?? acc.metaAdAccountId,
+              metaAdAccountId: acc.metaAdAccountId,
+              spend: 0,
+              conversions: 0,
+              leads: 0,
+              cpl: null,
+              cpa: null,
+              roas: 0,
+              impressions: 0,
+              clicks: 0,
+              ctr: 0,
+              cpc: 0,
+              cpm: 0,
+              alertCount: 0,
+              hasAlert: false,
+              status: c.status ?? "UNKNOWN",
+              objective: c.objective ?? null
+            });
           }
-          byId.set(c.id, {
-            metaCampaignId: c.id,
-            campaignName: c.name ?? c.id,
-            clientId: acc.clientId,
-            clientName: client?.name ?? "—",
-            clientSlug: client ? slugify(client.name) : "",
-            clientTag: "",
-            adAccountId: acc.id,
-            accountLabel: acc.label ?? acc.metaAdAccountId,
-            metaAdAccountId: acc.metaAdAccountId,
-            spend: 0,
-            conversions: 0,
-            leads: 0,
-            cpl: null,
-            cpa: null,
-            roas: 0,
-            impressions: 0,
-            clicks: 0,
-            ctr: 0,
-            cpc: 0,
-            cpm: 0,
-            alertCount: 0,
-            hasAlert: false,
-            status: c.status ?? "UNKNOWN",
-            objective: c.objective ?? null
-          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (!retried && isMetaPermissionError(msg) && tenantToken && tenantToken !== accessToken) {
+            tokenForMeta = tenantToken;
+            await loadCampaignsFromMeta(tenantToken, true);
+            return;
+          }
         }
-      } catch {
-        /* skip account */
       }
     }
+
+    await loadCampaignsFromMeta(tokenForMeta);
   }
 
   let rows = [...byId.values()].sort((a, b) =>
@@ -130,19 +145,35 @@ export async function GET(req: Request) {
     period.since ??
     (period.allTime
       ? new Date(new Date().setFullYear(new Date().getFullYear() - 2)).toISOString().slice(0, 10)
-      : new Date(new Date().setDate(new Date().getDate() - 6)).toISOString().slice(0, 10));
-  const until = period.until ?? new Date().toISOString().slice(0, 10);
+      : rollingDaysEndingYesterday(7).since);
+  const until = period.until ?? rollingDaysEndingYesterday(7).until;
 
   let enrichError: string | undefined;
-  if (metaAccessToken && accountsForEnrich.length) {
-    const enriched = await enrichCampaignRowsFromMeta({
+  if (tokenForMeta && accountsForEnrich.length) {
+    let enriched = await enrichCampaignRowsFromMeta({
       rows: rows as Parameters<typeof enrichCampaignRowsFromMeta>[0]["rows"],
-      metaAccessToken,
+      metaAccessToken: tokenForMeta,
       accounts: accountsForEnrich.map((a) => ({ id: a.id, metaAdAccountId: a.metaAdAccountId })),
       since,
       until,
       skipIfHasSpend: false
     });
+    if (
+      enriched.enrichError &&
+      isMetaPermissionError(enriched.enrichError) &&
+      tenantToken &&
+      tenantToken !== tokenForMeta
+    ) {
+      tokenForMeta = tenantToken;
+      enriched = await enrichCampaignRowsFromMeta({
+        rows: rows as Parameters<typeof enrichCampaignRowsFromMeta>[0]["rows"],
+        metaAccessToken: tenantToken,
+        accounts: accountsForEnrich.map((a) => ({ id: a.id, metaAdAccountId: a.metaAdAccountId })),
+        since,
+        until,
+        skipIfHasSpend: false
+      });
+    }
     rows = enriched.rows as ListRow[];
     enrichError = enriched.enrichError;
   }

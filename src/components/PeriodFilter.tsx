@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   formatPeriodLabel,
+  rollingDaysEndingYesterday,
   type ParsedPeriod,
   type PeriodPreset,
   periodToSearchParams
@@ -17,10 +18,7 @@ export type PeriodState = {
 };
 
 function defaultCustomRange() {
-  const until = new Date().toISOString().slice(0, 10);
-  const since = new Date();
-  since.setDate(since.getDate() - 6);
-  return { since: since.toISOString().slice(0, 10), until };
+  return rollingDaysEndingYesterday(7);
 }
 
 export function PeriodFilter({

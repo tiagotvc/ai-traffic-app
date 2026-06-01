@@ -37,16 +37,11 @@ export async function getStoredMetaAccessToken(userId: string): Promise<string |
   return row.accessToken;
 }
 
-/** Token Meta de qualquer admin/membro do workspace (convidados herdam acesso aos dados). */
+/** Token Meta de outro usuário do workspace (admin primeiro). */
 export async function getTenantMetaAccessToken(
   tenantId: string,
-  preferredUserId?: string
+  excludeUserId?: string
 ): Promise<string | undefined> {
-  if (preferredUserId) {
-    const own = await getStoredMetaAccessToken(preferredUserId);
-    if (own) return own;
-  }
-
   const { tenantMember: memberRepo, user: userRepo } = await repositories();
   const members = await memberRepo.find({ where: { tenantId } });
   const orderedUserIds = [
@@ -55,17 +50,47 @@ export async function getTenantMetaAccessToken(
   ];
 
   for (const uid of orderedUserIds) {
-    if (uid === preferredUserId) continue;
+    if (excludeUserId && uid === excludeUserId) continue;
     const token = await getStoredMetaAccessToken(uid);
     if (token) return token;
   }
 
   const users = await userRepo.find({ where: { tenantId }, select: { id: true } });
   for (const u of users) {
-    if (orderedUserIds.includes(u.id)) continue;
+    if (orderedUserIds.includes(u.id) || u.id === excludeUserId) continue;
     const token = await getStoredMetaAccessToken(u.id);
     if (token) return token;
   }
 
   return undefined;
+}
+
+/**
+ * Token para ler contas de anúncio do workspace.
+ * Membros convidados usam o token do admin; admins usam o próprio.
+ */
+export async function resolveWorkspaceMetaAccessToken(
+  tenantId: string,
+  userId: string,
+  sessionToken?: string
+): Promise<string | undefined> {
+  const { tenantMember: memberRepo } = await repositories();
+  const member = await memberRepo.findOne({ where: { tenantId, userId } });
+  const tenantToken = await getTenantMetaAccessToken(tenantId, userId);
+  const ownToken = sessionToken ?? (await getStoredMetaAccessToken(userId));
+
+  if (member?.role === "member") {
+    return tenantToken ?? ownToken;
+  }
+
+  return ownToken ?? tenantToken;
+}
+
+export function isMetaPermissionError(message: string): boolean {
+  return (
+    message.includes("ads_management") ||
+    message.includes("ads_read") ||
+    message.includes("(#200)") ||
+    message.includes("OAuthException")
+  );
 }

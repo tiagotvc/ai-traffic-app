@@ -25,6 +25,18 @@ function daysAgoIso(n: number) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Meta "últimos N dias" não inclui hoje — intervalo fecha em ontem. */
+export function yesterdayIso() {
+  return daysAgoIso(1);
+}
+
+export function rollingDaysEndingYesterday(days: number) {
+  return {
+    since: daysAgoIso(days),
+    until: daysAgoIso(1)
+  };
+}
+
 export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
   const period = url.searchParams.get("period")?.trim() as PeriodPreset | undefined;
   const sinceParam = url.searchParams.get("since")?.trim();
@@ -47,30 +59,33 @@ export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
   }
 
   if (period === "last14") {
+    const range = rollingDaysEndingYesterday(14);
     return {
       preset: "last14",
-      since: daysAgoIso(13),
-      until: todayIso(),
+      since: range.since,
+      until: range.until,
       days: 14,
       allTime: false
     };
   }
 
   if (period === "last30") {
+    const range = rollingDaysEndingYesterday(30);
     return {
       preset: "last30",
-      since: daysAgoIso(29),
-      until: todayIso(),
+      since: range.since,
+      until: range.until,
       days: 30,
       allTime: false
     };
   }
 
   if (period === "last7") {
+    const range = rollingDaysEndingYesterday(7);
     return {
       preset: "last7",
-      since: daysAgoIso(6),
-      until: todayIso(),
+      since: range.since,
+      until: range.until,
       days: 7,
       allTime: false
     };
@@ -78,19 +93,21 @@ export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
 
   if (Number.isFinite(daysRaw) && daysRaw >= 1) {
     const days = Math.min(90, Math.max(1, Math.floor(daysRaw)));
+    const range = rollingDaysEndingYesterday(days);
     return {
       preset: days === 14 ? "last14" : days === 30 ? "last30" : "last7",
-      since: daysAgoIso(days - 1),
-      until: todayIso(),
+      since: range.since,
+      until: range.until,
       days,
       allTime: false
     };
   }
 
+  const defaultRange = rollingDaysEndingYesterday(7);
   return {
     preset: "last7",
-    since: daysAgoIso(6),
-    until: todayIso(),
+    since: defaultRange.since,
+    until: defaultRange.until,
     days: 7,
     allTime: false
   };
