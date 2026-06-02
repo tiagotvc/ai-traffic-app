@@ -23,73 +23,6 @@ type CreativeRow = {
   createdAt: string;
 };
 
-const DEMO_ROWS: CreativeRow[] = [
-  {
-    id: "demo-1",
-    title: "Promoção Fone Pink",
-    description: "Aproveite 30% OFF no fone bluetooth...",
-    type: "image",
-    format: "Imagem",
-    clientName: "Acme Fitness",
-    clientSlug: "acme-fitness",
-    campaignName: "Black Friday 2024",
-    status: "active",
-    performance: "high",
-    metricLabel: "ROAS 4,32",
-    usageAds: 8,
-    usageCampaigns: 3,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "demo-2",
-    title: "Treino em qualquer lugar",
-    description: "Vídeo 15s — treino funcional",
-    type: "video",
-    format: "Vídeo",
-    clientName: "Acme Fitness",
-    clientSlug: "acme-fitness",
-    campaignName: "Always On",
-    status: "active",
-    performance: "very_high",
-    metricLabel: "ROAS 5,12",
-    usageAds: 4,
-    usageCampaigns: 2,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "demo-3",
-    title: "Copy — Oferta Especial",
-    description: "Texto principal do anúncio de conversão",
-    type: "copy",
-    format: "Copy",
-    clientName: "Educa+",
-    clientSlug: "educa",
-    campaignName: "Leads Q2",
-    status: "testing",
-    performance: "medium",
-    metricLabel: "CTR 1,8%",
-    usageAds: 2,
-    usageCampaigns: 1,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "demo-4",
-    title: "Headline — Transforme seu corpo",
-    description: "Título para teste A/B",
-    type: "headline",
-    format: "Headline",
-    clientName: "Odonto Plus",
-    clientSlug: "odonto-plus",
-    campaignName: "Remarketing",
-    status: "paused",
-    performance: "low",
-    metricLabel: "CTR 0,9%",
-    usageAds: 1,
-    usageCampaigns: 1,
-    createdAt: new Date().toISOString()
-  }
-];
-
 const STAT_KEYS = ["total", "images", "videos", "carousels", "copy", "headlines", "descriptions"] as const;
 
 function typeIcon(type: CreativeRow["type"]) {
@@ -117,8 +50,8 @@ function perfLabel(p: CreativeRow["performance"], t: (k: string) => string) {
 export function CreativesLibraryClient() {
   const t = useTranslations("creatives");
   const locale = useLocale();
-  const [rows, setRows] = useState<CreativeRow[]>(DEMO_ROWS);
-  const [selectedId, setSelectedId] = useState<string | null>("demo-1");
+  const [rows, setRows] = useState<CreativeRow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "active" | "testing" | "paused" | "archived">("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
@@ -129,10 +62,8 @@ export function CreativesLibraryClient() {
       .then((r) => r.json())
       .then((j) => {
         const apiRows = (j.rows ?? []) as CreativeRow[];
-        if (apiRows.length) {
-          setRows(apiRows);
-          setSelectedId(apiRows[0]?.id ?? null);
-        }
+        setRows(apiRows);
+        setSelectedId(apiRows[0]?.id ?? null);
       })
       .catch(() => {});
   }, []);

@@ -10,14 +10,23 @@ type Asset = { id: string; label: string; url?: string | null };
 type AdAccountOption = { metaAdAccountId: string; label: string };
 type ClientOption = { id: string; slug: string; name: string };
 
+export type AdsCreatorFooterState = {
+  publish: () => void;
+  publishDisabled: boolean;
+  isPending: boolean;
+};
+
 export function AdsCreatorClient({
   initialClientSlug,
   embedded = false,
-  onPublished
+  onPublished,
+  onFooterState
 }: {
   initialClientSlug?: string;
   embedded?: boolean;
   onPublished?: () => void;
+  /** When embedded, reports publish action for a fixed footer in the parent drawer. */
+  onFooterState?: (state: AdsCreatorFooterState) => void;
 }) {
   const t = useTranslations("ads");
   const tCommon = useTranslations("common");
@@ -93,8 +102,10 @@ export function AdsCreatorClient({
         setPublishReady(!!publishJson.resolved?.ready);
 
         if (!accountsRes.ok || !accountsJson.ok) {
-          setMessage(accountsJson.error ?? t("adAccountsLoadFailed"));
+          setAdAccountId("");
           setAccounts([]);
+          setAssets([]);
+          setMessage(accountsJson.error ?? t("adAccountsLoadFailed"));
           return;
         }
 
@@ -109,6 +120,9 @@ export function AdsCreatorClient({
           await loadAssets("");
         }
       } catch {
+        setAdAccountId("");
+        setAccounts([]);
+        setAssets([]);
         setMessage(t("adAccountsLoadFailed"));
       } finally {
         setAccountsLoading(false);
@@ -136,7 +150,7 @@ export function AdsCreatorClient({
 
   const selectedIds = useMemo(() => Object.keys(selected).filter((k) => selected[k]), [selected]);
 
-  const handlePublish = () => {
+  const handlePublish = useCallback(() => {
     setMessage(null);
     setPublishConfigError(false);
     startTransition(async () => {
@@ -173,10 +187,46 @@ export function AdsCreatorClient({
       );
       onPublished?.();
     });
-  };
+  }, [
+    adAccountId,
+    campaignName,
+    clientSlug,
+    dailyBudget,
+    descriptions,
+    objective,
+    onPublished,
+    selectedIds,
+    t,
+    titles
+  ]);
 
   const publishDisabled =
     isPending || selectedIds.length === 0 || !adAccountId || !clientSlug || !publishReady;
+
+  useEffect(() => {
+    if (!embedded || !onFooterState) return;
+    onFooterState({ publish: handlePublish, publishDisabled, isPending });
+  }, [embedded, onFooterState, handlePublish, publishDisabled, isPending]);
+
+  const adAccountsErrorBlock =
+    message && !accountsLoading && accounts.length === 0 ? (
+      <div className="ui-alert-warning space-y-2">
+        <p>{message}</p>
+        <p className="text-xs">
+          <Link href="/settings" className="font-medium text-violet-700 underline">
+            {t("adAccountsSettingsLink")}
+          </Link>
+          {clientSlug ? (
+            <>
+              {" · "}
+              <Link href={`/clients/${clientSlug}`} className="font-medium text-violet-700 underline">
+                {t("adAccountsClientLink")}
+              </Link>
+            </>
+          ) : null}
+        </p>
+      </div>
+    ) : null;
 
   const formFields = (
     <>
@@ -189,7 +239,7 @@ export function AdsCreatorClient({
         </div>
       ) : null}
 
-      {message ? (
+      {message && !(embedded && !accountsLoading && accounts.length === 0) ? (
         <div className={publishConfigError ? "ui-alert-warning" : "ui-alert-info"}>
           {message}
           {publishConfigError && clientSlug ? (
@@ -202,6 +252,8 @@ export function AdsCreatorClient({
           ) : null}
         </div>
       ) : null}
+
+      {adAccountsErrorBlock}
 
       {embedded ? (
         <p className="rounded-lg bg-violet-50 px-3 py-2 text-[11px] text-violet-800">{t("hierarchyHint")}</p>
@@ -328,19 +380,7 @@ export function AdsCreatorClient({
   );
 
   if (embedded) {
-    return (
-      <div className="space-y-4 pb-4">
-        {formFields}
-        <button
-          type="button"
-          disabled={publishDisabled}
-          onClick={handlePublish}
-          className="ui-btn-primary sticky bottom-0 w-full disabled:opacity-60"
-        >
-          {isPending ? tCommon("sending") : t("publishCampaign")}
-        </button>
-      </div>
-    );
+    return <div className="space-y-4">{formFields}</div>;
   }
 
   return (

@@ -1,14 +1,19 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
-import { AdsCreatorClient } from "@/components/AdsCreatorClient";
+import {
+  AdsCreatorClient,
+  type AdsCreatorFooterState
+} from "@/components/AdsCreatorClient";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 
 export function PublishCampaignSidebar({ onPublished }: { onPublished?: () => void }) {
   const t = useTranslations("ads");
+  const tCommon = useTranslations("common");
   const { open, options, closePanel } = usePublishPanel();
+  const [footer, setFooter] = useState<AdsCreatorFooterState | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -48,12 +53,23 @@ export function PublishCampaignSidebar({ onPublished }: { onPublished?: () => vo
           <AdsCreatorClient
             embedded
             initialClientSlug={options.clientSlug}
+            onFooterState={setFooter}
             onPublished={() => {
               onPublished?.();
               closePanel();
             }}
           />
         </div>
+        <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-4">
+          <button
+            type="button"
+            disabled={footer?.publishDisabled ?? true}
+            onClick={() => footer?.publish()}
+            className="ui-btn-primary w-full disabled:opacity-60"
+          >
+            {footer?.isPending ? tCommon("sending") : t("publishCampaign")}
+          </button>
+        </footer>
       </aside>
     </>
   );

@@ -3,6 +3,10 @@ import { In } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
+import {
+  filterCampaignListRows,
+  hydrateCampaignAlerts
+} from "@/lib/campaign-list-filters";
 import { enrichCampaignRowsFromMeta } from "@/lib/campaign-metrics-enrich";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
@@ -38,13 +42,16 @@ export async function GET(req: Request) {
       ? statusRaw
       : "ALL";
 
+  const searchQ = url.searchParams.get("q")?.trim() ?? "";
+  const onlyAlerts = url.searchParams.get("onlyAlerts") === "1";
+
   const cc = await queryCommandCenterCampaigns({
     tenantId: tenant.id,
     clientIds,
     metaBusinessId: scopeClient?.metaBusinessId ?? null,
     statusFilter,
-    q: url.searchParams.get("q") ?? undefined,
-    onlyAlerts: url.searchParams.get("onlyAlerts") === "1",
+    q: undefined,
+    onlyAlerts: false,
     days: period.days ?? undefined,
     since: period.since,
     until: period.until,
@@ -53,7 +60,10 @@ export async function GET(req: Request) {
     offset: 0
   });
 
-  type ListRow = (typeof cc.rows)[number] & { objective?: string | null };
+  type ListRow = (typeof cc.rows)[number] & {
+    objective?: string | null;
+    dailyBudget?: number | null;
+  };
   const byId = new Map<string, ListRow>(
     cc.rows.map((r) => [
       r.metaCampaignId,
@@ -88,11 +98,13 @@ export async function GET(req: Request) {
           const camps = await fetchCampaigns(accessToken, acc.metaAdAccountId);
           const client = clientById.get(acc.clientId);
           for (const c of camps) {
+            const budgetFromMeta = c.daily_budget ? Number(c.daily_budget) / 100 : null;
             if (!c.id || byId.has(c.id)) {
               if (c.id && byId.has(c.id)) {
                 const row = byId.get(c.id)!;
                 row.status = c.status ?? row.status;
                 row.objective = c.objective ?? row.objective;
+                if (budgetFromMeta != null) row.dailyBudget = budgetFromMeta;
               }
               continue;
             }
@@ -119,6 +131,7 @@ export async function GET(req: Request) {
               cpm: 0,
               alertCount: 0,
               hasAlert: false,
+              dailyBudget: budgetFromMeta,
               status: c.status ?? "UNKNOWN",
               objective: c.objective ?? null
             });
@@ -199,6 +212,18 @@ export async function GET(req: Request) {
       return o.includes("TRAFFIC") || o.includes("LINK_CLICK") || o.includes("REACH");
     });
   }
+
+  const { alert: alertRepo } = await repositories();
+  const openAlerts = await alertRepo.find({
+    where: { tenantId: tenant.id, dismissed: false }
+  });
+  const alertsByCampaign = new Map<string, number>();
+  for (const a of openAlerts) {
+    if (!a.metaCampaignId) continue;
+    alertsByCampaign.set(a.metaCampaignId, (alertsByCampaign.get(a.metaCampaignId) ?? 0) + 1);
+  }
+  rows = hydrateCampaignAlerts(rows, alertsByCampaign);
+  rows = filterCampaignListRows(rows, { q: searchQ, onlyAlerts });
 
   const total = rows.length;
   const totals = {

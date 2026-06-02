@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
+import { BudgetEditDrawer } from "@/components/campaign/BudgetEditDrawer";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
@@ -352,6 +353,7 @@ export function CampaignManagerClient({
   const [activeTab, setActiveTab] = useState<DetailTab>(tab);
   const [refreshing, setRefreshing] = useState(false);
   const [chartLoading, setChartLoading] = useState(true);
+  const [budgetDrawerOpen, setBudgetDrawerOpen] = useState(false);
 
   useEffect(() => {
     setActiveTab(embedded ? "overview" : tab);
@@ -708,7 +710,11 @@ export function CampaignManagerClient({
                 </dl>
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <QuickAction icon="⏸" label={t("pause")} onClick={() => campaignAction("pause")} />
-                  <QuickAction icon="✏️" label={t("editBudget")} href={`/clients/${slug}`} />
+                  <QuickAction
+                    icon="✏️"
+                    label={t("editBudget")}
+                    onClick={() => setBudgetDrawerOpen(true)}
+                  />
                   <QuickAction icon="📋" label={t("duplicate")} onClick={() => openPanel({ clientSlug: slug })} />
                   <QuickAction
                     icon="↗"
@@ -720,31 +726,10 @@ export function CampaignManagerClient({
               </div>
             </div>
 
-            <div className="ui-card p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold">{t("topCreatives")}</h2>
-                <Link href="/creatives" className="text-xs font-medium text-violet-600">
-                  {t("viewAll")}
-                </Link>
-              </div>
-              <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
-                {[1, 2, 3, 4].map((n) => (
-                  <div
-                    key={n}
-                    className="w-28 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
-                  >
-                    <div className="flex h-24 items-center justify-center text-2xl text-slate-400">🖼</div>
-                    <div className="bg-white px-2 py-1.5 text-[10px] text-slate-500">
-                      CTR {formatPercent(2 + n * 0.3, 2, locale)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
-          <aside className="space-y-3">
-            <div className="flex items-center justify-between">
+          <aside className="flex max-h-[min(720px,70vh)] flex-col gap-3 overflow-hidden xl:max-h-[calc(100vh-14rem)]">
+            <div className="flex shrink-0 items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-900">{t("adsetsSidebar")}</h2>
               {embedded ? (
                 <button
@@ -770,6 +755,7 @@ export function CampaignManagerClient({
                 + {t("newAdset")}
               </button>
             </div>
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
             {refreshing && !adsets.length ? (
               [1, 2].map((n) => <Skeleton key={n} className="h-32 rounded-xl" />)
             ) : (
@@ -820,9 +806,10 @@ export function CampaignManagerClient({
             ))
             )}
             {!refreshing && !adsets.length ? <p className="text-xs text-slate-500">{t("noAdsets")}</p> : null}
+            </div>
 
             {adsets.length > 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+              <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <div className="font-semibold text-slate-700">{t("adsetsSummary")}</div>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <span>
@@ -869,6 +856,16 @@ export function CampaignManagerClient({
       )}
 
       <p className="text-[10px] text-slate-400">{t("dataNote")}</p>
+
+      <BudgetEditDrawer
+        open={budgetDrawerOpen}
+        metaCampaignId={metaCampaignId}
+        campaignName={campaign.name}
+        currentBudget={campaign.dailyBudget}
+        locale={locale}
+        onClose={() => setBudgetDrawerOpen(false)}
+        onSaved={reload}
+      />
     </div>
   );
 }

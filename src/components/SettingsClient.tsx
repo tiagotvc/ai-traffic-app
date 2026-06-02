@@ -24,7 +24,9 @@ export function SettingsClient({
   const [logoUrl, setLogoUrl] = useState("");
   const [metaConnected, setMetaConnected] = useState<boolean | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [purgeMessage, setPurgeMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [purgePending, startPurgeTransition] = useTransition();
 
   useEffect(() => {
     fetch("/api/settings/tenant")
@@ -153,6 +155,39 @@ export function SettingsClient({
           >
             {t("publishClientsLink")}
           </Link>
+        </section>
+
+        <section className="ui-card p-4">
+          <div className="text-sm font-semibold">{t("demoDataTitle")}</div>
+          <p className="mt-2 text-xs text-slate-500">{t("demoDataHint")}</p>
+          <p className="mt-1 text-[11px] text-slate-400">{t("demoDataNames")}</p>
+          {purgeMessage ? <p className="mt-2 text-xs text-slate-600">{purgeMessage}</p> : null}
+          <button
+            type="button"
+            disabled={purgePending}
+            onClick={() => {
+              if (!window.confirm(t("demoDataConfirm"))) return;
+              setPurgeMessage(null);
+              startPurgeTransition(async () => {
+                const res = await fetch("/api/workspace/purge-demo", { method: "POST" });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok || !json.ok) {
+                  setPurgeMessage(String(json.error ?? t("demoDataFailed")));
+                  return;
+                }
+                setPurgeMessage(
+                  t("demoDataDone", {
+                    clients: json.removedClients ?? 0,
+                    accounts: json.removedAdAccounts ?? 0
+                  })
+                );
+                window.dispatchEvent(new Event("traffic:campaigns-reload"));
+              });
+            }}
+            className="mt-3 w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+          >
+            {purgePending ? tCommon("loading") : t("demoDataAction")}
+          </button>
         </section>
 
         <section className="ui-card p-4">

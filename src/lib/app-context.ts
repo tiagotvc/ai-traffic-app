@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import type { Client } from "@/db/entities/Client";
-import type { Repository } from "typeorm";
+import { isDemoClient } from "@/lib/demo-data";
 import {
   getTenantMetaAccessToken,
   isMetaPermissionError,
@@ -127,8 +127,6 @@ export async function getAppContext() {
     await clientRepo.save(defaultClient);
   }
 
-  await ensureDemoClients(tenant.id, clientRepo);
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const meta = (session as any).meta as
     | {
@@ -155,9 +153,11 @@ export async function getAppContext() {
   return { session, ds, tenant, user, defaultClient, metaAccessToken };
 }
 
-export async function listClientsForTenant(tenantId: string) {
+export async function listClientsForTenant(tenantId: string, opts?: { includeDemo?: boolean }) {
   const { client } = await repositories();
-  return client.find({ where: { tenantId }, order: { name: "ASC" } });
+  const rows = await client.find({ where: { tenantId }, order: { name: "ASC" } });
+  if (opts?.includeDemo) return rows;
+  return rows.filter((c) => !isDemoClient(c));
 }
 
 export async function getClientBySlugOrId(tenantId: string, clientIdOrSlug: string) {
@@ -175,30 +175,6 @@ export async function getClientBySlugOrId(tenantId: string, clientIdOrSlug: stri
     all.find((c) => slugify(c.name) === clientIdOrSlug) ??
     null
   );
-}
-
-async function ensureDemoClients(tenantId: string, clientRepo: Repository<Client>) {
-  const demoNames = ["Odonto Plus", "Loja Fitness", "Clínica Bella"];
-  for (const name of demoNames) {
-    const exists = await clientRepo.findOne({ where: { tenantId, name } });
-    if (!exists) {
-      await clientRepo.save(
-        clientRepo.create({
-          tenantId,
-          name,
-          aiContext:
-            name === "Odonto Plus"
-              ? {
-                  niche: "Odontologia",
-                  audience: "Mulheres 30-50",
-                  cpaGoal: 45,
-                  objective: "Leads"
-                }
-              : { note: `Cliente demo ${name}` }
-        })
-      );
-    }
-  }
 }
 
 export function slugify(value: string) {

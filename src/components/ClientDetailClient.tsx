@@ -7,7 +7,7 @@ import { ClientMetaExtras } from "@/components/ClientMetaExtras";
 import { ClientReadinessChecklist } from "@/components/ClientReadinessChecklist";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { SyncStatusBanner } from "@/components/SyncStatusBanner";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { formatBRL, formatRoas } from "@/lib/format";
 
 type Goals = {
@@ -59,9 +59,14 @@ type Feedback = { type: "success" | "error"; text: string };
 
 const ONBOARDING_KEY = "traffic-ai-client-onboarding-dismissed";
 
+function isProtectedClient(name: string, slug: string) {
+  return name === "Default" || slug === "default";
+}
+
 export function ClientDetailClient({ clientId }: { clientId: string }) {
   const t = useTranslations("client");
   const locale = useLocale();
+  const router = useRouter();
   const [data, setData] = useState<ClientData | null>(null);
   const [goals, setGoals] = useState<Goals>({ enabled: true, windowDays: 1, objective: "leads" });
   const [availableAccounts, setAvailableAccounts] = useState<AccountOption[]>([]);
@@ -83,6 +88,25 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
     setFeedback({ type, text });
     window.setTimeout(() => setFeedback(null), 6000);
   }, []);
+
+  const handleDeleteClient = useCallback(() => {
+    if (!data) return;
+    if (isProtectedClient(data.name, data.slug)) {
+      notify("error", t("cannotDeleteDefault"));
+      return;
+    }
+    if (!window.confirm(t("deleteConfirm", { name: data.name }))) return;
+    startTransition(async () => {
+      const res = await fetch(`/api/clients/${encodeURIComponent(clientId)}`, { method: "DELETE" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) {
+        notify("error", String(j.error ?? t("deleteFailed")));
+        return;
+      }
+      window.dispatchEvent(new Event("traffic:campaigns-reload"));
+      router.push("/clients");
+    });
+  }, [clientId, data, notify, router, t]);
 
   useEffect(() => {
     try {
@@ -219,6 +243,16 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
               >
                 {t("viewCampaigns")}
               </Link>
+              {!isProtectedClient(data.name, data.slug) ? (
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={handleDeleteClient}
+                  className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+                >
+                  {t("deleteClient")}
+                </button>
+              ) : null}
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -447,6 +481,21 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
             </button>
           </div>
         </div>
+
+        {!isProtectedClient(data.name, data.slug) ? (
+          <div className="ui-card border border-rose-100 bg-rose-50/40 p-4">
+            <div className="text-sm font-semibold text-rose-900">{t("deleteZoneTitle")}</div>
+            <p className="mt-1 text-xs text-slate-600">{t("deleteHint")}</p>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={handleDeleteClient}
+              className="mt-3 rounded-xl border border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-60"
+            >
+              {isPending ? "…" : t("deleteClient")}
+            </button>
+          </div>
+        ) : null}
 
       </section>
 

@@ -62,6 +62,7 @@ export function CampaignsHubClient() {
   });
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [clientFilter, setClientFilter] = useState("");
+  const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [onlyAlerts, setOnlyAlerts] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -76,6 +77,14 @@ export function CampaignsHubClient() {
   const [selectedSlug, setSelectedSlug] = useState("");
   const [selectedRow, setSelectedRow] = useState<CampaignRow | null>(null);
   const detailRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setQ(qInput);
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [qInput]);
 
   useEffect(() => {
     fetch("/api/clients")
@@ -358,9 +367,8 @@ export function CampaignsHubClient() {
         <div className="min-w-[200px] flex-1">
           <div className="text-xs text-slate-500">{t("search")}</div>
           <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load()}
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
             placeholder={t("search")}
             className="mt-1 w-full rounded-xl ui-input"
           />
@@ -493,31 +501,33 @@ export function CampaignsHubClient() {
             ) : null}
           </table>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
-          <span>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3">
+          <span className="text-sm font-medium text-slate-700">
             {t("pagination", {
               from: total ? (page - 1) * pageSize + 1 : 0,
               to: Math.min(page * pageSize, total),
               total
             })}
           </span>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded border px-2 py-1 disabled:opacity-40"
+              className="ui-btn-secondary min-w-[2.25rem] px-3 py-1.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label={t("pagePrev")}
             >
               ‹
             </button>
-            <span className="px-2 py-1">
+            <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm">
               {page} / {pageCount}
             </span>
             <button
               type="button"
               disabled={page >= pageCount}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded border px-2 py-1 disabled:opacity-40"
+              className="ui-btn-secondary min-w-[2.25rem] px-3 py-1.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label={t("pageNext")}
             >
               ›
             </button>

@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { listMetaAdAccountOptions } from "@/lib/meta-ad-accounts";
+import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
 
 export async function GET(req: Request) {
   try {
-    const { tenant, metaAccessToken } = await getAppContext();
+    const { tenant, user, metaAccessToken } = await getAppContext();
+    const tenantToken = await getTenantMetaAccessToken(tenant.id, user.id);
+    const tokenForMeta = metaAccessToken ?? tenantToken;
     const url = new URL(req.url);
     const clientIdParam = url.searchParams.get("clientId");
 
@@ -21,7 +24,7 @@ export async function GET(req: Request) {
     const accounts = await listMetaAdAccountOptions({
       tenantId: tenant.id,
       metaBusinessId,
-      metaAccessToken,
+      metaAccessToken: tokenForMeta,
       hideDemoWhenRealExists: true
     });
 
