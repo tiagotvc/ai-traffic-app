@@ -510,6 +510,7 @@
       "back": "Voltar",
       "pickBm": "Escolha o Business Manager para vincular",
       "bmCounts": "{accounts} conta(s) · {pages} página(s)",
+      "bmConfirm": "Todas as {accounts} conta(s) e {pages} página(s) desta BM serão vinculadas a este cliente.",
       "pickAccount": "Selecione a conta de anúncios",
       "noAccounts": "Nenhuma conta nesta BM. Atualize o inventário em Ativos Meta.",
       "pickPage": "Selecione a página do Facebook",

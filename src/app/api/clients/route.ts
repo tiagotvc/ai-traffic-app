@@ -4,7 +4,12 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, listClientsForTenant, slugify } from "@/lib/app-context";
-import { applyClientMetaSettings, linkClientMetaAccounts } from "@/lib/link-client-meta";
+import {
+  applyClientMetaSettings,
+  linkAllBmAccountsToClient,
+  linkClientMetaAccounts
+} from "@/lib/link-client-meta";
+import { listTenantPages } from "@/lib/meta-discover";
 
 const CreateClientSchema = z.object({
   name: z.string().min(1).max(120),
@@ -12,7 +17,9 @@ const CreateClientSchema = z.object({
   metaAdAccountIds: z.array(z.string().min(1)).optional(),
   metaPageId: z.string().optional(),
   metaPixelId: z.string().optional(),
-  metaLinkUrl: z.string().max(500).optional()
+  metaLinkUrl: z.string().max(500).optional(),
+  /** Fluxo simplificado: ao vincular a BM, puxa automaticamente todos os ativos dela. */
+  linkAllBmAssets: z.boolean().optional()
 });
 
 export async function POST(req: Request) {
@@ -37,24 +44,45 @@ export async function POST(req: Request) {
     goalRepo.create({ clientId: saved.id, objective: "leads", enabled: false, windowDays: 1 })
   );
 
-  const metaIds = body.metaAdAccountIds ?? [];
-  if (metaIds.length > 0) {
+  const normalizedBm =
+    body.metaBusinessId && body.metaBusinessId !== "unassigned" ? body.metaBusinessId : null;
+  const explicitIds = body.metaAdAccountIds ?? [];
+
+  // Fluxo simplificado: BM definida e sem seleção manual de contas → puxa todas as contas da BM.
+  const pullAllFromBm = !!normalizedBm && (body.linkAllBmAssets || explicitIds.length === 0);
+
+  let defaultAdAccountId: string | null = null;
+  let autoMetaPageId: string | null = null;
+
+  if (pullAllFromBm && normalizedBm) {
+    const { linked, accountOptions } = await linkAllBmAccountsToClient({
+      tenantId: tenant.id,
+      clientId: saved.id,
+      metaBusinessId: normalizedBm,
+      metaAccessToken
+    });
+    defaultAdAccountId =
+      accountOptions[0]?.metaAdAccountId ?? linked[0]?.metaAdAccountId ?? null;
+
+    // Página: se a BM tem exatamente uma, vincula direto; com várias, escolhe na criação do anúncio.
+    const bmPages = await listTenantPages(tenant.id, normalizedBm);
+    if (bmPages.length === 1) {
+      autoMetaPageId = bmPages[0].metaPageId;
+    }
+  } else if (explicitIds.length > 0) {
     await linkClientMetaAccounts({
       tenantId: tenant.id,
       clientId: saved.id,
-      metaAdAccountIds: metaIds,
+      metaAdAccountIds: explicitIds,
       metaAccessToken,
-      metaBusinessId:
-        body.metaBusinessId && body.metaBusinessId !== "unassigned"
-          ? body.metaBusinessId
-          : null
+      metaBusinessId: normalizedBm
     });
+    defaultAdAccountId = explicitIds[0] ?? null;
   }
 
-  const defaultAdAccountId = metaIds[0] ?? null;
   await applyClientMetaSettings({
     client: saved,
-    metaPageId: body.metaPageId ?? saved.metaPageId,
+    metaPageId: body.metaPageId ?? autoMetaPageId ?? saved.metaPageId,
     metaLinkUrl: body.metaLinkUrl ?? saved.metaLinkUrl,
     metaPixelId: body.metaPixelId ?? null,
     defaultAdAccountId

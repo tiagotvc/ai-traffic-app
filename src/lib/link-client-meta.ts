@@ -70,6 +70,36 @@ export async function linkClientMetaAccounts(input: {
   return adAccountRepo.find({ where: { clientId: input.clientId } });
 }
 
+/**
+ * Vincula ao cliente TODAS as contas de anúncio da BM informada (fluxo simplificado:
+ * Criar Cliente → Nome → BM → puxa todos os ativos da BM). Retorna as contas vinculadas
+ * e a lista de páginas da BM (para auto-seleção de página quando houver apenas uma).
+ */
+export async function linkAllBmAccountsToClient(input: {
+  tenantId: string;
+  clientId: string;
+  metaBusinessId: string;
+  metaAccessToken?: string;
+}) {
+  const options = await listMetaAdAccountOptions({
+    tenantId: input.tenantId,
+    metaBusinessId: input.metaBusinessId,
+    metaAccessToken: input.metaAccessToken,
+    hideDemoWhenRealExists: true
+  });
+  const metaAdAccountIds = options.map((a) => a.metaAdAccountId);
+
+  const linked = await linkClientMetaAccounts({
+    tenantId: input.tenantId,
+    clientId: input.clientId,
+    metaAdAccountIds,
+    metaAccessToken: input.metaAccessToken,
+    metaBusinessId: input.metaBusinessId
+  });
+
+  return { linked, accountOptions: options };
+}
+
 export async function applyClientMetaSettings(input: {
   client: Client;
   metaPageId?: string | null;
