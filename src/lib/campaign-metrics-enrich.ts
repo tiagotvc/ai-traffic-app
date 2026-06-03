@@ -1,6 +1,8 @@
 import "server-only";
 
+import { formatMetaGraphError } from "@/lib/meta-error";
 import { fetchCampaignInsightsForRange, pickLeads, pickResults } from "@/lib/meta-graph";
+import { isMetaRateLimitMessage, isMetaRateLimitPayload } from "@/lib/meta-rate-limit";
 import { num } from "@/lib/goal-types";
 
 export type CampaignMetricRow = {
@@ -33,6 +35,10 @@ export type CampaignMetricRow = {
 
 type AccountRef = { id: string; metaAdAccountId: string };
 
+function accountHasCampaignRows(rows: CampaignMetricRow[], metaAdAccountId: string) {
+  return rows.some((r) => r.metaAdAccountId === metaAdAccountId);
+}
+
 export async function enrichCampaignRowsFromMeta(input: {
   rows: CampaignMetricRow[];
   metaAccessToken: string;
@@ -40,11 +46,23 @@ export async function enrichCampaignRowsFromMeta(input: {
   since: string;
   until: string;
   skipIfHasSpend?: boolean;
-}): Promise<{ rows: CampaignMetricRow[]; enrichError?: string }> {
+}): Promise<{ rows: CampaignMetricRow[]; enrichError?: string; rateLimited?: boolean }> {
   const byCampaign = new Map(input.rows.map((r) => [r.metaCampaignId, { ...r }]));
   let enrichError: string | undefined;
+  let rateLimited = false;
 
-  for (const acc of input.accounts) {
+  const accounts = input.accounts.filter((a) => accountHasCampaignRows(input.rows, a.metaAdAccountId));
+
+  for (const acc of accounts) {
+    if (rateLimited) break;
+
+    if (input.skipIfHasSpend) {
+      const rowsForAcc = input.rows.filter((r) => r.metaAdAccountId === acc.metaAdAccountId);
+      if (rowsForAcc.length > 0 && rowsForAcc.every((r) => (r.spend ?? 0) > 0)) {
+        continue;
+      }
+    }
+
     try {
       const insights = await fetchCampaignInsightsForRange(
         input.metaAccessToken,
@@ -84,9 +102,21 @@ export async function enrichCampaignRowsFromMeta(input: {
         byCampaign.set(id, existing);
       }
     } catch (e) {
-      enrichError = e instanceof Error ? e.message : String(e);
+      enrichError = formatMetaGraphError(e);
+      const raw = e instanceof Error ? e.message : "";
+      let payloadRateLimit = false;
+      const jsonStart = raw.indexOf("{");
+      if (jsonStart >= 0) {
+        try {
+          payloadRateLimit = isMetaRateLimitPayload(JSON.parse(raw.slice(jsonStart)));
+        } catch {
+          /* ignore */
+        }
+      }
+      rateLimited = payloadRateLimit || isMetaRateLimitMessage(enrichError) || isMetaRateLimitMessage(raw);
+      if (rateLimited) break;
     }
   }
 
-  return { rows: [...byCampaign.values()], enrichError };
+  return { rows: [...byCampaign.values()], enrichError, rateLimited };
 }

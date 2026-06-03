@@ -14,11 +14,19 @@ export function formatMetaGraphError(err: unknown, context?: MetaErrorContext): 
   if (jsonStart >= 0) {
     try {
       const parsed = JSON.parse(raw.slice(jsonStart)) as {
-        error?: { message?: string; code?: number; error_subcode?: number; type?: string };
+        error?: {
+          message?: string;
+          code?: number;
+          error_subcode?: number;
+          type?: string;
+          error_user_msg?: string;
+          error_user_title?: string;
+        };
       };
       const e = parsed.error;
       if (e?.message) {
         const code = e.code != null ? ` (código ${e.code})` : "";
+        const userHint = e.error_user_msg?.trim();
         if (e.code === 190) return `Token Meta expirado ou inválido. Reconecte em Configurações.${code}`;
         if (e.code === 104) return `Sessão Meta inválida. Reconecte o Facebook.${code}`;
         if (e.code === 200) {
@@ -31,7 +39,15 @@ export function formatMetaGraphError(err: unknown, context?: MetaErrorContext): 
           }
           return `Permissão negada na Meta (${detail}). Reconecte em Configurações ou verifique o acesso à conta no Gerenciador de Anúncios.${code}`;
         }
-        if (e.code === 17 || e.code === 613) return `Limite de requisições Meta atingido. Tente em alguns minutos.${code}`;
+        if (e.code === 4 || e.code === 17 || e.code === 32 || e.code === 613) {
+          const title = e.error_user_title?.trim();
+          const base =
+            userHint ||
+            title ||
+            "A Meta limitou temporariamente as consultas deste app. Aguarde alguns minutos e tente de novo.";
+          return `${base}${code}`;
+        }
+        if (userHint) return `${userHint}${code}`;
         return `${e.message}${code}`;
       }
     } catch {

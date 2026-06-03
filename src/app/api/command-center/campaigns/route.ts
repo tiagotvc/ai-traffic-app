@@ -54,8 +54,9 @@ export async function GET(req: Request) {
 
   let rows = result.rows;
   let enrichError: string | undefined;
+  const live = url.searchParams.get("live") === "1";
 
-  if (metaAccessToken && period.since && period.until && !period.allTime) {
+  if (live && metaAccessToken && period.since && period.until && !period.allTime) {
     const { adAccount: adRepo } = await repositories();
     const accountIds = [...new Set(rows.map((r) => r.adAccountId))];
     const accounts =
@@ -69,11 +70,11 @@ export async function GET(req: Request) {
       accounts: accounts.map((a) => ({ id: a.id, metaAdAccountId: a.metaAdAccountId })),
       since: period.since,
       until: period.until,
-      skipIfHasSpend: false
+      skipIfHasSpend: true
     });
     rows = enriched.rows as typeof rows;
     enrichError = enriched.enrichError;
-  } else if (metaAccessToken && period.allTime) {
+  } else if (live && metaAccessToken && period.allTime) {
     const until = new Date().toISOString().slice(0, 10);
     const since = new Date();
     since.setFullYear(since.getFullYear() - 2);
@@ -89,7 +90,7 @@ export async function GET(req: Request) {
       accounts: accounts.map((a) => ({ id: a.id, metaAdAccountId: a.metaAdAccountId })),
       since: since.toISOString().slice(0, 10),
       until,
-      skipIfHasSpend: false
+      skipIfHasSpend: true
     });
     rows = enriched.rows as typeof rows;
     enrichError = enriched.enrichError;
@@ -99,6 +100,7 @@ export async function GET(req: Request) {
     ok: true,
     rows,
     total: result.total,
+    metricsSource: live ? "live" : "db",
     enrichError: enrichError ?? null,
     period: { preset: period.preset, since: period.since, until: period.until }
   });

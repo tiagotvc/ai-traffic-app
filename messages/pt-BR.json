@@ -222,6 +222,8 @@
     "search": "Buscar campanha ou cliente…",
     "onlyAlerts": "Somente com alertas",
     "refresh": "Atualizar",
+    "metricsFromDb": "Métricas da última sincronização. Use «Atualizar» para buscar valores ao vivo na Meta.",
+    "enrichRateLimitHint": "Se o erro persistir, aguarde 2–5 minutos antes de atualizar de novo.",
     "loading": "Carregando…",
     "empty": "Nenhuma campanha com métricas no período. Sincronize a Meta ou vincule contas.",
     "colCampaign": "Campanha",

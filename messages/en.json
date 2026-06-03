@@ -222,6 +222,8 @@
     "search": "Search campaign or client…",
     "onlyAlerts": "Alerts only",
     "refresh": "Refresh",
+    "metricsFromDb": "Metrics from the last sync. Use Refresh to fetch live values from Meta.",
+    "enrichRateLimitHint": "If this persists, wait 2–5 minutes before refreshing again.",
     "loading": "Loading…",
     "empty": "No campaigns with metrics in this period. Sync Meta or link ad accounts.",
     "colCampaign": "Campaign",

@@ -44,6 +44,7 @@ export async function GET(req: Request) {
 
   const searchQ = url.searchParams.get("q")?.trim() ?? "";
   const onlyAlerts = url.searchParams.get("onlyAlerts") === "1";
+  const live = url.searchParams.get("live") === "1";
 
   const cc = await queryCommandCenterCampaigns({
     tenantId: tenant.id,
@@ -73,7 +74,7 @@ export async function GET(req: Request) {
 
   const accountsForEnrich: Array<{ id: string; metaAdAccountId: string; clientId: string }> = [];
 
-  if (tokenForMeta) {
+  if (tokenForMeta && live) {
     const { adAccount: adRepo, client: clientRepo } = await repositories();
     const clients = await clientRepo.find({ where: { tenantId: tenant.id } });
     const allowed = new Set(clientIds?.length ? clientIds : clients.map((c) => c.id));
@@ -162,14 +163,16 @@ export async function GET(req: Request) {
   const until = period.until ?? rollingDaysEndingYesterday(7).until;
 
   let enrichError: string | undefined;
-  if (tokenForMeta && accountsForEnrich.length) {
+  let metricsSource: "db" | "live" = "db";
+  if (tokenForMeta && accountsForEnrich.length && live) {
+    metricsSource = "live";
     let enriched = await enrichCampaignRowsFromMeta({
       rows: rows as Parameters<typeof enrichCampaignRowsFromMeta>[0]["rows"],
       metaAccessToken: tokenForMeta,
       accounts: accountsForEnrich.map((a) => ({ id: a.id, metaAdAccountId: a.metaAdAccountId })),
       since,
       until,
-      skipIfHasSpend: false
+      skipIfHasSpend: true
     });
     if (
       enriched.enrichError &&
@@ -184,7 +187,7 @@ export async function GET(req: Request) {
         accounts: accountsForEnrich.map((a) => ({ id: a.id, metaAdAccountId: a.metaAdAccountId })),
         since,
         until,
-        skipIfHasSpend: false
+        skipIfHasSpend: true
       });
     }
     rows = enriched.rows as ListRow[];
@@ -241,6 +244,7 @@ export async function GET(req: Request) {
     total,
     totals,
     enrichError: enrichError ?? null,
+    metricsSource,
     period: { preset: period.preset, since: period.since, until: period.until }
   });
 }

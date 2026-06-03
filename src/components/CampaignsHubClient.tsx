@@ -73,6 +73,7 @@ export function CampaignsHubClient() {
   const [columns, setColumns] = useState<CampaignColumnId[]>(() => loadCampaignColumns());
   const [loading, setLoading] = useState(true);
   const [enrichError, setEnrichError] = useState<string | null>(null);
+  const [metricsSource, setMetricsSource] = useState<"db" | "live">("db");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSlug, setSelectedSlug] = useState("");
   const [selectedRow, setSelectedRow] = useState<CampaignRow | null>(null);
@@ -101,7 +102,7 @@ export function CampaignsHubClient() {
       });
   }, []);
 
-  const load = useCallback(() => {
+  const load = useCallback((opts?: { live?: boolean }) => {
     setLoading(true);
     const params = new URLSearchParams(periodStateToQuery(period));
     if (clientFilter) params.set("clientId", clientFilter);
@@ -109,6 +110,7 @@ export function CampaignsHubClient() {
     if (onlyAlerts) params.set("onlyAlerts", "1");
     if (statusFilter !== "ALL") params.set("status", statusFilter);
     if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
+    if (opts?.live) params.set("live", "1");
     params.set("limit", String(pageSize));
     params.set("offset", String((page - 1) * pageSize));
 
@@ -120,6 +122,7 @@ export function CampaignsHubClient() {
         setTotal(j.total ?? list.length);
         setTotals(j.totals ?? { spend: 0, conversions: 0, leads: 0 });
         setEnrichError(j.enrichError ?? null);
+        setMetricsSource(j.metricsSource === "live" ? "live" : "db");
         if (selectedId && list.some((r) => r.metaCampaignId === selectedId)) return;
         setSelectedId(null);
         setSelectedSlug("");
@@ -131,7 +134,7 @@ export function CampaignsHubClient() {
   useEffect(() => {
     load();
     const onReload = () => load();
-    const onSync = () => load();
+    const onSync = () => load({ live: true });
     window.addEventListener("traffic:campaigns-reload", onReload);
     window.addEventListener("traffic-sync-done", onSync);
     return () => {
@@ -328,7 +331,11 @@ export function CampaignsHubClient() {
         </div>
         <div className="flex flex-wrap gap-2">
           <CampaignColumnsPicker onChange={setColumns} />
-          <button type="button" onClick={load} className="ui-btn-secondary text-sm">
+          <button
+            type="button"
+            onClick={() => load({ live: true })}
+            className="ui-btn-secondary text-sm"
+          >
             {t("refresh")}
           </button>
           <button
@@ -341,7 +348,14 @@ export function CampaignsHubClient() {
         </div>
       </div>
 
-      {enrichError ? <p className="text-xs text-amber-700">{enrichError}</p> : null}
+      {enrichError ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <p>{enrichError}</p>
+          <p className="mt-1 text-amber-800">{t("enrichRateLimitHint")}</p>
+        </div>
+      ) : metricsSource === "db" ? (
+        <p className="text-xs text-slate-500">{t("metricsFromDb")}</p>
+      ) : null}
 
       <div className="flex flex-wrap items-end gap-3 ui-card p-4">
         <div>
@@ -571,7 +585,9 @@ export function CampaignsHubClient() {
             </button>
             <button
               type="button"
-              onClick={() => fetch("/api/sync/run", { method: "POST" }).then(load)}
+              onClick={() =>
+                fetch("/api/sync/run", { method: "POST" }).then(() => load({ live: true }))
+              }
               className="ui-btn-secondary"
             >
               {t("syncNow")}
