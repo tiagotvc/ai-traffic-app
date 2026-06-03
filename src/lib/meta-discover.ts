@@ -65,9 +65,28 @@ export async function runMetaDiscover(
   const pageKeys = new Set<string>();
 
   const accessibleAccounts = await fetchAllAccessibleAdAccounts(metaAccessToken);
+  // BMs inferidos a partir das contas (acc.business) — cobrem BMs que /me/businesses não retorna.
+  const bmFromAccounts = new Map<string, string>();
   for (const [id, acc] of accessibleAccounts) {
     accountKeys.add(id);
     await upsertAdAccountInventory(tenantId, acc, acc.metaBusinessId, inventoryRepo);
+    if (acc.metaBusinessId) {
+      bmFromAccounts.set(acc.metaBusinessId, acc.metaBusinessName ?? acc.metaBusinessId);
+    }
+  }
+
+  // Garante uma linha MetaBusiness para cada BM dono de conta (mesmo fora de /me/businesses).
+  const businessesFromApi = new Set(businesses.map((b) => b.id));
+  for (const [bmId, bmName] of bmFromAccounts) {
+    if (businessesFromApi.has(bmId)) continue;
+    let row = await businessRepo.findOne({ where: { tenantId, metaBusinessId: bmId } });
+    if (!row) {
+      row = businessRepo.create({ tenantId, metaBusinessId: bmId, name: bmName });
+    } else {
+      row.name = bmName || row.name;
+    }
+    row.lastSyncedAt = now;
+    await businessRepo.save(row);
   }
 
   if (businesses.length) {
@@ -132,13 +151,15 @@ export async function runMetaDiscover(
   const businessRows: MetaDiscoverResult["businessRows"] = [];
   const inv = await inventoryRepo.find({ where: { tenantId } });
   const pages = await pageRepo.find({ where: { tenantId } });
+  // Lê todos os BMs persistidos (de /me/businesses + os inferidos das contas).
+  const allBusinesses = await businessRepo.find({ where: { tenantId } });
 
-  for (const bm of businesses) {
+  for (const bm of allBusinesses) {
     businessRows.push({
-      metaBusinessId: bm.id,
-      name: bm.name ?? bm.id,
-      adAccountCount: inv.filter((a) => a.metaBusinessId === bm.id).length,
-      pageCount: pages.filter((p) => p.metaBusinessId === bm.id).length
+      metaBusinessId: bm.metaBusinessId,
+      name: bm.name,
+      adAccountCount: inv.filter((a) => a.metaBusinessId === bm.metaBusinessId).length,
+      pageCount: pages.filter((p) => p.metaBusinessId === bm.metaBusinessId).length
     });
   }
 
@@ -157,8 +178,10 @@ export async function runMetaDiscover(
     // já coberto por unassigned row acima
   }
 
+  const realBusinessCount = businessRows.filter((r) => r.metaBusinessId !== "unassigned").length;
+
   return {
-    businesses: businesses.length || (businessRows.length ? 1 : 0),
+    businesses: realBusinessCount,
     adAccounts: accountKeys.size,
     pages: pageKeys.size || pages.length,
     businessRows

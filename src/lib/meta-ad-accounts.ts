@@ -55,7 +55,7 @@ export async function listMetaAdAccountOptions(input: {
       metaAdAccountId: a.id,
       label: formatLabel(a.name?.trim() || a.id, isDemo),
       metaBusinessId: a.metaBusinessId,
-      metaBusinessName: null,
+      metaBusinessName: a.metaBusinessName ?? null,
       isDemo
     };
   });

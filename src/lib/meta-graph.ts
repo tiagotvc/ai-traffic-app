@@ -7,6 +7,8 @@ export type MetaAdAccount = {
   name?: string;
   /** Graph API: 1 = ACTIVE, 2 = DISABLED, etc. */
   account_status?: number;
+  /** Business Manager dono da conta (quando o token tem business_management). */
+  business?: { id: string; name?: string } | null;
 };
 
 export type MetaPixel = {
@@ -208,35 +210,47 @@ export async function fetchBusinessAdAccounts(
   return mergeById([owned, client]);
 }
 
+export type AccessibleAdAccount = MetaAdAccount & {
+  metaBusinessId: string | null;
+  metaBusinessName: string | null;
+};
+
 /** Une /me/adaccounts, contas do BM (owned+client) e assigned_ad_accounts do usuário no BM. */
 export async function fetchAllAccessibleAdAccounts(
   accessToken: string
-): Promise<Map<string, MetaAdAccount & { metaBusinessId: string | null }>> {
-  const map = new Map<string, MetaAdAccount & { metaBusinessId: string | null }>();
+): Promise<Map<string, AccessibleAdAccount>> {
+  const map = new Map<string, AccessibleAdAccount>();
 
-  const add = (acc: MetaAdAccount, metaBusinessId: string | null) => {
+  const add = (
+    acc: MetaAdAccount,
+    metaBusinessId: string | null,
+    metaBusinessName: string | null = null
+  ) => {
     const prev = map.get(acc.id);
     map.set(acc.id, {
       ...acc,
       name: acc.name ?? prev?.name,
       account_status: acc.account_status ?? prev?.account_status,
-      metaBusinessId: metaBusinessId ?? prev?.metaBusinessId ?? null
+      metaBusinessId: metaBusinessId ?? prev?.metaBusinessId ?? null,
+      metaBusinessName: metaBusinessName ?? prev?.metaBusinessName ?? null
     });
   };
 
+  // /me/adaccounts já traz o BM dono em acc.business — usar para não cair em "Sem BM".
   for (const acc of await fetchMyAdAccounts(accessToken)) {
-    add(acc, null);
+    add(acc, acc.business?.id ?? null, acc.business?.name ?? null);
   }
 
   for (const bu of await fetchMyBusinessUsers(accessToken)) {
     const bmId = bu.business?.id ?? null;
+    const bmName = bu.business?.name ?? null;
     const assigned = await fetchBusinessUserAssignedAdAccounts(accessToken, bu.id);
-    for (const acc of assigned) add(acc, bmId);
+    for (const acc of assigned) add(acc, bmId, bmName);
   }
 
   for (const bm of await fetchMyBusinesses(accessToken)) {
     const accounts = await fetchBusinessAdAccounts(accessToken, bm.id);
-    for (const acc of accounts) add(acc, bm.id);
+    for (const acc of accounts) add(acc, bm.id, bm.name ?? null);
   }
 
   return map;
@@ -254,7 +268,7 @@ export async function fetchBusinessPages(
 }
 
 export async function fetchMyAdAccounts(accessToken: string): Promise<MetaAdAccount[]> {
-  const first = `/me/adaccounts?fields=id,name,account_status&limit=100`;
+  const first = `/me/adaccounts?fields=id,name,account_status,business{id,name}&limit=100`;
   return fetchGraphPaged<MetaAdAccount>(first, accessToken);
 }
 
