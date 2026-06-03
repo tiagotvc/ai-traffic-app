@@ -5,7 +5,8 @@ import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
 import {
   fetchMyAdAccounts,
   fetchMyBusinesses,
-  fetchMyBusinessUsers
+  fetchMyBusinessUsers,
+  fetchMyPermissions
 } from "@/lib/meta-graph";
 
 /**
@@ -30,7 +31,8 @@ export async function GET() {
     }
   };
 
-  const [adAccounts, businesses, businessUsers] = await Promise.all([
+  const [permissions, adAccounts, businesses, businessUsers] = await Promise.all([
+    safe("me/permissions", () => fetchMyPermissions(token)),
     safe("me/adaccounts", () => fetchMyAdAccounts(token)),
     safe("me/businesses", () => fetchMyBusinesses(token)),
     safe("me/business_users", () => fetchMyBusinessUsers(token))
@@ -47,9 +49,21 @@ export async function GET() {
         }))
       : adAccounts;
 
+  // Destaque: business_management foi concedido? (causa comum de "Sem BM")
+  const permList =
+    permissions.ok && Array.isArray(permissions.data) ? permissions.data : [];
+  const permStatus = (name: string) =>
+    permList.find((p) => p.permission === name)?.status ?? "missing";
+
   return NextResponse.json({
     ok: true,
     tenantId: tenant.id,
+    permissionsCheck: {
+      business_management: permStatus("business_management"),
+      ads_read: permStatus("ads_read"),
+      ads_management: permStatus("ads_management")
+    },
+    permissions: permissions.ok ? permissions.data : permissions,
     counts: {
       adAccounts: adAccounts.ok && Array.isArray(adAccounts.data) ? adAccounts.data.length : null,
       businesses: businesses.ok && Array.isArray(businesses.data) ? businesses.data.length : null,

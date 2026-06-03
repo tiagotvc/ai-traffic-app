@@ -106,6 +106,13 @@ export async function fetchMyBusinesses(accessToken: string): Promise<MetaAdAcco
   return fetchGraphPaged<MetaAdAccount>("/me/businesses?fields=id,name&limit=100", accessToken);
 }
 
+export type MetaPermission = { permission: string; status: "granted" | "declined" | string };
+
+/** Lista permissões concedidas/recusadas do token (/me/permissions). */
+export async function fetchMyPermissions(accessToken: string): Promise<MetaPermission[]> {
+  return fetchGraphPaged<MetaPermission>("/me/permissions?limit=100", accessToken);
+}
+
 export async function fetchMyBusinessUsers(accessToken: string): Promise<MetaBusinessUser[]> {
   return fetchGraphPaged<MetaBusinessUser>(
     "/me/business_users?fields=id,role,business{id,name}&limit=100",
