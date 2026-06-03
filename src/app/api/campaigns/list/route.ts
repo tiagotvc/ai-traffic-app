@@ -175,8 +175,7 @@ export async function GET(req: Request) {
       skipIfHasSpend: true
     });
     if (
-      enriched.enrichError &&
-      isMetaPermissionError(enriched.enrichError) &&
+      enriched.permissionDenied &&
       tenantToken &&
       tenantToken !== tokenForMeta
     ) {

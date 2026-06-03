@@ -1,9 +1,10 @@
 import "server-only";
 
-import { formatMetaGraphError } from "@/lib/meta-error";
 import { fetchCampaignInsightsForRange, pickLeads, pickResults } from "@/lib/meta-graph";
 import { isMetaRateLimitMessage, isMetaRateLimitPayload } from "@/lib/meta-rate-limit";
 import { num } from "@/lib/goal-types";
+import { formatMetaGraphError } from "@/lib/meta-error";
+import { isMetaPermissionError } from "@/lib/meta-auth-store";
 
 export type CampaignMetricRow = {
   metaCampaignId: string;
@@ -46,10 +47,16 @@ export async function enrichCampaignRowsFromMeta(input: {
   since: string;
   until: string;
   skipIfHasSpend?: boolean;
-}): Promise<{ rows: CampaignMetricRow[]; enrichError?: string; rateLimited?: boolean }> {
+}): Promise<{
+  rows: CampaignMetricRow[];
+  enrichError?: string;
+  rateLimited?: boolean;
+  permissionDenied?: boolean;
+}> {
   const byCampaign = new Map(input.rows.map((r) => [r.metaCampaignId, { ...r }]));
   let enrichError: string | undefined;
   let rateLimited = false;
+  let permissionDenied = false;
 
   const accounts = input.accounts.filter((a) => accountHasCampaignRows(input.rows, a.metaAdAccountId));
 
@@ -102,8 +109,17 @@ export async function enrichCampaignRowsFromMeta(input: {
         byCampaign.set(id, existing);
       }
     } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+
+      // Erro de permissão é POR CONTA: o token vê a conta mas não tem ads_read/
+      // ads_management nela. Pula a conta silenciosamente (sinaliza p/ fallback de
+      // token) em vez de contaminar a tela com o 403 cru.
+      if (isMetaPermissionError(raw)) {
+        permissionDenied = true;
+        continue;
+      }
+
       enrichError = formatMetaGraphError(e);
-      const raw = e instanceof Error ? e.message : "";
       let payloadRateLimit = false;
       const jsonStart = raw.indexOf("{");
       if (jsonStart >= 0) {
@@ -118,5 +134,5 @@ export async function enrichCampaignRowsFromMeta(input: {
     }
   }
 
-  return { rows: [...byCampaign.values()], enrichError, rateLimited };
+  return { rows: [...byCampaign.values()], enrichError, rateLimited, permissionDenied };
 }
