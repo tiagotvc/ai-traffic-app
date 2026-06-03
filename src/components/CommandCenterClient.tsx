@@ -313,7 +313,7 @@ export function CommandCenterClient() {
   }
 
   const shortcuts = [
-    { label: t("shortcutNewCampaign"), href: "/campaigns?publish=1", color: "bg-violet-50 text-violet-600" },
+    { label: t("shortcutNewCampaign"), href: "/ads/new", color: "bg-violet-50 text-violet-600" },
     { label: t("shortcutAudience"), href: "/audiences", color: "bg-emerald-50 text-emerald-600" },
     { label: t("shortcutLookalike"), href: "/audiences", color: "bg-amber-50 text-amber-600" },
     { label: t("shortcutReport"), href: "/reports", color: "bg-pink-50 text-pink-600" },
@@ -343,7 +343,7 @@ export function CommandCenterClient() {
             ) : null}
           </button>
           <SyncNowButton clientId={clientFilter || undefined} />
-          <Link href="/campaigns?publish=1" className="ui-btn-primary whitespace-nowrap">
+          <Link href="/ads/new" className="ui-btn-primary whitespace-nowrap">
             {t("newCampaign")}
           </Link>
         </div>
