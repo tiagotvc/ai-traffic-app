@@ -1,9 +1,19 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { CampaignColumnsPicker } from "@/components/CampaignColumnsPicker";
+import { CampaignHeaderCell } from "@/components/CampaignHeaderCell";
 import { CampaignManagerClient } from "@/components/CampaignManagerClient";
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
@@ -14,7 +24,11 @@ import { Link } from "@/i18n/navigation";
 import {
   COLUMN_I18N_KEYS,
   loadCampaignColumns,
-  type CampaignColumnId
+  loadCampaignColumnWidths,
+  saveCampaignColumns,
+  saveCampaignColumnWidths,
+  type CampaignColumnId,
+  type CampaignColumnWidths
 } from "@/lib/campaign-table-columns";
 import { formatBRL, formatPercent, formatRoas } from "@/lib/format";
 
@@ -71,6 +85,10 @@ export function CampaignsHubClient() {
   const [pageSize, setPageSize] = useState<number>(50);
   const [page, setPage] = useState(1);
   const [columns, setColumns] = useState<CampaignColumnId[]>(() => loadCampaignColumns());
+  const [columnWidths, setColumnWidths] = useState<CampaignColumnWidths>(() => loadCampaignColumnWidths());
+  const [sortKey, setSortKey] = useState<CampaignColumnId | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const resizing = useRef<{ col: CampaignColumnId; startX: number; startW: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -109,6 +127,10 @@ export function CampaignsHubClient() {
     if (onlyAlerts) params.set("onlyAlerts", "1");
     if (statusFilter !== "ALL") params.set("status", statusFilter);
     if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
+    if (sortKey) {
+      params.set("sort", sortKey);
+      params.set("dir", sortDir);
+    }
     params.set("limit", String(pageSize));
     params.set("offset", String((page - 1) * pageSize));
 
@@ -126,7 +148,7 @@ export function CampaignsHubClient() {
         setSelectedRow(null);
       })
       .finally(() => setLoading(false));
-  }, [clientFilter, q, onlyAlerts, statusFilter, objectiveFilter, period, page, pageSize]);
+  }, [clientFilter, q, onlyAlerts, statusFilter, objectiveFilter, period, page, pageSize, sortKey, sortDir]);
 
   useEffect(() => {
     load();
@@ -154,6 +176,64 @@ export function CampaignsHubClient() {
     rememberCampaign(r.metaCampaignId, r.clientSlug);
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const onDragEndColumns = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setColumns((prev) => {
+      const from = prev.indexOf(active.id as CampaignColumnId);
+      const to = prev.indexOf(over.id as CampaignColumnId);
+      if (from < 0 || to < 0) return prev;
+      const next = arrayMove(prev, from, to);
+      saveCampaignColumns(next);
+      return next;
+    });
+  };
+
+  const onSortColumn = (col: CampaignColumnId) => {
+    setPage(1);
+    if (sortKey !== col) {
+      setSortKey(col);
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
+      setSortDir("asc");
+    } else {
+      setSortKey(null);
+    }
+  };
+
+  const onResizeStart = useCallback(
+    (col: CampaignColumnId, e: ReactPointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const th = (e.currentTarget as HTMLElement).closest("th");
+      const startW = columnWidths[col] ?? th?.getBoundingClientRect().width ?? 160;
+      resizing.current = { col, startX: e.clientX, startW: Math.round(startW) };
+
+      const onMove = (ev: PointerEvent) => {
+        if (!resizing.current) return;
+        const delta = ev.clientX - resizing.current.startX;
+        const w = Math.max(80, Math.round(resizing.current.startW + delta));
+        setColumnWidths((prev) => ({ ...prev, [resizing.current!.col]: w }));
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        resizing.current = null;
+        setColumnWidths((prev) => {
+          saveCampaignColumnWidths(prev);
+          return prev;
+        });
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [columnWidths]
+  );
+
   const clientLabel =
     clientFilter === ""
       ? t("allClients")
@@ -161,11 +241,9 @@ export function CampaignsHubClient() {
 
   const visibleColumns = useMemo(() => {
     const hideClient = !!clientFilter;
-    let cols = columns.filter((c) => !(hideClient && c === "client"));
-    if (cols.includes("status")) {
-      cols = ["status", ...cols.filter((c) => c !== "status")];
-    }
-    return cols;
+    // Respeita a ordem definida pelo usuário (arrasta-e-solta), só ocultando "client"
+    // quando há um cliente filtrado.
+    return columns.filter((c) => !(hideClient && c === "client"));
   }, [columns, clientFilter]);
 
   const spendLabel =
@@ -452,13 +530,35 @@ export function CampaignsHubClient() {
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
+            <colgroup>
+              {visibleColumns.map((col) => (
+                <col
+                  key={col}
+                  style={columnWidths[col] ? { width: `${columnWidths[col]}px` } : undefined}
+                />
+              ))}
+            </colgroup>
             <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
               <tr>
-                {visibleColumns.map((col) => (
-                  <th key={col} className="px-3 py-3 first:pl-4">
-                    {col === "spend" ? spendLabel : t(COLUMN_I18N_KEYS[col] as "colCampaign")}
-                  </th>
-                ))}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={onDragEndColumns}
+                >
+                  <SortableContext items={visibleColumns} strategy={horizontalListSortingStrategy}>
+                    {visibleColumns.map((col) => (
+                      <CampaignHeaderCell
+                        key={col}
+                        col={col}
+                        label={col === "spend" ? spendLabel : t(COLUMN_I18N_KEYS[col] as "colCampaign")}
+                        sortActive={sortKey === col}
+                        sortDir={sortDir}
+                        onSort={onSortColumn}
+                        onResizeStart={onResizeStart}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               </tr>
             </thead>
             <tbody>

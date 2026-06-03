@@ -225,6 +225,49 @@ export async function GET(req: Request) {
   rows = hydrateCampaignAlerts(rows, alertsByCampaign);
   rows = filterCampaignListRows(rows, { q: searchQ, onlyAlerts });
 
+  // Ordenação server-side (sobre todo o conjunto, antes de paginar).
+  const sortKey = url.searchParams.get("sort");
+  const sortDir = url.searchParams.get("dir") === "asc" ? "asc" : "desc";
+  if (sortKey) {
+    const NUMERIC: Record<string, (r: ListRow) => number | null> = {
+      spend: (r) => r.spend ?? 0,
+      conversions: (r) => r.conversions ?? 0,
+      leads: (r) => r.leads ?? 0,
+      cpl: (r) => r.cpl ?? null,
+      cpa: (r) => r.cpa ?? null,
+      roas: (r) => r.roas ?? 0,
+      impressions: (r) => r.impressions ?? 0,
+      clicks: (r) => r.clicks ?? 0,
+      ctr: (r) => r.ctr ?? 0,
+      cpc: (r) => r.cpc ?? 0,
+      cpm: (r) => r.cpm ?? 0,
+      budget: (r) => r.dailyBudget ?? null,
+      alerts: (r) => r.alertCount ?? 0
+    };
+    const TEXT: Record<string, (r: ListRow) => string> = {
+      campaign: (r) => r.campaignName ?? "",
+      campaignId: (r) => r.metaCampaignId ?? "",
+      client: (r) => r.clientName ?? "",
+      account: (r) => r.accountLabel ?? "",
+      status: (r) => r.status ?? ""
+    };
+    const dirMul = sortDir === "asc" ? 1 : -1;
+    if (NUMERIC[sortKey]) {
+      const get = NUMERIC[sortKey];
+      rows = [...rows].sort((a, b) => {
+        const av = get(a);
+        const bv = get(b);
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1; // nulos sempre por último
+        if (bv == null) return -1;
+        return (av - bv) * dirMul;
+      });
+    } else if (TEXT[sortKey]) {
+      const get = TEXT[sortKey];
+      rows = [...rows].sort((a, b) => get(a).localeCompare(get(b)) * dirMul);
+    }
+  }
+
   const total = rows.length;
   const totals = {
     spend: rows.reduce((s, r) => s + (r.spend ?? 0), 0),

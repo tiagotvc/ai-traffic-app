@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { listMetaAdAccountOptions } from "@/lib/meta-ad-accounts";
 import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
@@ -12,18 +13,30 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const clientIdParam = url.searchParams.get("clientId");
 
-    let metaBusinessId: string | undefined;
+    // Com cliente: retorna SOMENTE as contas vinculadas a ele (as que o usuário
+    // escolheu na configuração), não todas as contas da BM.
     if (clientIdParam) {
       const client = await getClientBySlugOrId(tenant.id, clientIdParam);
       if (!client) {
         return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
       }
-      metaBusinessId = client.metaBusinessId?.trim() || undefined;
+      const { adAccount: adAccountRepo } = await repositories();
+      const linked = await adAccountRepo.find({ where: { clientId: client.id } });
+      const accounts = linked.map((a) => ({
+        metaAdAccountId: a.metaAdAccountId,
+        label: a.label ?? a.metaAdAccountId,
+        metaBusinessId: a.metaBusinessId ?? null
+      }));
+      return NextResponse.json({
+        ok: true,
+        accounts,
+        defaultAdAccountId: accounts[0]?.metaAdAccountId ?? null
+      });
     }
 
+    // Sem cliente (uso genérico): lista por inventário/BM.
     const accounts = await listMetaAdAccountOptions({
       tenantId: tenant.id,
-      metaBusinessId,
       metaAccessToken: tokenForMeta,
       hideDemoWhenRealExists: true
     });
