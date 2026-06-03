@@ -299,6 +299,59 @@ export async function fetchUserPages(accessToken: string): Promise<MetaFacebookP
   return fetchGraphPaged<MetaFacebookPage>("/me/accounts?fields=id,name&limit=100", accessToken);
 }
 
+// ---- Targeting search (/search) ----
+
+export type MetaInterest = { id: string; name: string; audienceSize?: number; path?: string[] };
+
+export async function searchAdInterests(accessToken: string, q: string): Promise<MetaInterest[]> {
+  if (!q.trim()) return [];
+  const path = `/search?type=adinterest&limit=25&q=${encodeURIComponent(q.trim())}`;
+  const data = await metaFetch<{
+    data: Array<{ id: string; name: string; audience_size_lower_bound?: number; path?: string[] }>;
+  }>(path, accessToken);
+  return (data.data ?? []).map((d) => ({
+    id: d.id,
+    name: d.name,
+    audienceSize: d.audience_size_lower_bound,
+    path: d.path
+  }));
+}
+
+export type MetaGeoLocation = {
+  key: string;
+  name: string;
+  type: string;
+  countryCode?: string;
+  region?: string;
+};
+
+export async function searchGeoLocations(accessToken: string, q: string): Promise<MetaGeoLocation[]> {
+  if (!q.trim()) return [];
+  const locationTypes = encodeURIComponent(JSON.stringify(["city", "region", "country"]));
+  const path = `/search?type=adgeolocation&location_types=${locationTypes}&limit=25&q=${encodeURIComponent(
+    q.trim()
+  )}`;
+  const data = await metaFetch<{
+    data: Array<{ key: string; name: string; type: string; country_code?: string; region?: string }>;
+  }>(path, accessToken);
+  return (data.data ?? []).map((d) => ({
+    key: d.key,
+    name: d.name,
+    type: d.type,
+    countryCode: d.country_code,
+    region: d.region
+  }));
+}
+
+export type MetaLocale = { key: number; name: string };
+
+export async function searchAdLocales(accessToken: string, q: string): Promise<MetaLocale[]> {
+  if (!q.trim()) return [];
+  const path = `/search?type=adlocale&limit=25&q=${encodeURIComponent(q.trim())}`;
+  const data = await metaFetch<{ data: Array<{ key: number; name: string }> }>(path, accessToken);
+  return (data.data ?? []).map((d) => ({ key: d.key, name: d.name }));
+}
+
 export type MetaInstagramAccount = { id: string; username?: string };
 
 /** Contas do Instagram utilizáveis por uma conta de anúncio. */
