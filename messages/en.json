@@ -541,7 +541,10 @@
     "failed": "Sync failed",
     "lastUpdate": "Last update",
     "accountsSynced": "accounts synced",
-    "autoOnLogin": "Importing metrics from Meta"
+    "autoOnLogin": "Importing metrics from Meta",
+    "hintMemberNoWorkspaceMeta": "You are a workspace member: sync uses the administrator's Meta connection. Ask them to connect or reconnect Facebook in Settings.",
+    "hintAdminReconnectMeta": "Connect or reconnect Facebook in Settings to sync ad accounts.",
+    "hintMemberAccountAccess": "As a member you don't need to connect your own Meta — but the administrator must still have access to the linked ad account in Ads Manager."
   },
   "welcome": {
     "title": "While you were away",

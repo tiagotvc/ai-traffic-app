@@ -65,9 +65,73 @@ export async function getTenantMetaAccessToken(
   return undefined;
 }
 
+export type MetaConnectionInfo = {
+  role: "admin" | "member";
+  tokenSource: "workspace" | "own" | null;
+  hasWorkspaceToken: boolean;
+  hasEffectiveToken: boolean;
+  /** Código para hint na UI (sync banner). */
+  hintCode: "member_no_workspace_meta" | "admin_reconnect_meta" | null;
+};
+
+export async function hasWorkspaceMetaConnected(tenantId: string): Promise<boolean> {
+  const { tenantMember: memberRepo } = await repositories();
+  const members = await memberRepo.find({ where: { tenantId } });
+  for (const m of members) {
+    const token = await getStoredMetaAccessToken(m.userId);
+    if (token) return true;
+  }
+  return false;
+}
+
+export async function getMetaConnectionInfo(
+  tenantId: string,
+  userId: string,
+  sessionToken?: string
+): Promise<MetaConnectionInfo> {
+  const { tenantMember: memberRepo } = await repositories();
+  const member = await memberRepo.findOne({ where: { tenantId, userId } });
+  const role: MetaConnectionInfo["role"] = member?.role === "member" ? "member" : "admin";
+  const tenantToken = await getTenantMetaAccessToken(tenantId, userId);
+  const ownToken = sessionToken ?? (await getStoredMetaAccessToken(userId));
+  const hasWorkspaceToken = await hasWorkspaceMetaConnected(tenantId);
+
+  let tokenSource: MetaConnectionInfo["tokenSource"] = null;
+  let hasEffectiveToken = false;
+
+  if (role === "member") {
+    if (tenantToken) {
+      tokenSource = "workspace";
+      hasEffectiveToken = true;
+    }
+  } else if (tenantToken) {
+    tokenSource = "workspace";
+    hasEffectiveToken = true;
+  } else if (ownToken) {
+    tokenSource = "own";
+    hasEffectiveToken = true;
+  }
+
+  let hintCode: MetaConnectionInfo["hintCode"] = null;
+  if (role === "member" && !hasWorkspaceToken) {
+    hintCode = "member_no_workspace_meta";
+  } else if (role === "admin" && !hasEffectiveToken) {
+    hintCode = "admin_reconnect_meta";
+  }
+
+  return {
+    role,
+    tokenSource,
+    hasWorkspaceToken,
+    hasEffectiveToken,
+    hintCode
+  };
+}
+
 /**
  * Token para ler contas de anúncio do workspace.
- * Membros convidados usam o token do admin; admins usam o próprio.
+ * Membros usam só o token de um admin (nunca o Facebook pessoal do login).
+ * Admins preferem token compartilhado do workspace, depois o próprio.
  */
 export async function resolveWorkspaceMetaAccessToken(
   tenantId: string,
@@ -80,10 +144,10 @@ export async function resolveWorkspaceMetaAccessToken(
   const ownToken = sessionToken ?? (await getStoredMetaAccessToken(userId));
 
   if (member?.role === "member") {
-    return tenantToken ?? ownToken;
+    return tenantToken;
   }
 
-  return ownToken ?? tenantToken;
+  return tenantToken ?? ownToken;
 }
 
 export function isMetaPermissionError(message: string): boolean {

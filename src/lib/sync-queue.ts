@@ -24,6 +24,7 @@ export async function enqueueTenantSync(input: {
   manual?: boolean;
   clientId?: string;
   adAccountIds?: string[];
+  triggeredByUserId?: string;
 }) {
   const {
     syncRun: runRepo,
@@ -99,7 +100,8 @@ export async function enqueueTenantSync(input: {
   await processSyncQueue({
     tenantId: input.tenantId,
     syncRunId: run.id,
-    metaAccessToken: input.metaAccessToken
+    metaAccessToken: input.metaAccessToken,
+    triggeredByUserId: input.triggeredByUserId
   });
 
   return run;
@@ -109,10 +111,19 @@ export async function processSyncQueue(input: {
   tenantId: string;
   syncRunId: string;
   metaAccessToken: string;
+  triggeredByUserId?: string;
 }) {
   const { syncRun: runRepo, syncQueueJob: jobRepo } = await repositories();
   const run = await runRepo.findOne({ where: { id: input.syncRunId } });
   if (!run) return;
+
+  const { getMetaConnectionInfo } = await import("@/lib/meta-auth-store");
+  const metaCtx = input.triggeredByUserId
+    ? await getMetaConnectionInfo(input.tenantId, input.triggeredByUserId)
+    : null;
+  const errorContext = metaCtx
+    ? { isWorkspaceMember: metaCtx.role === "member", tokenSource: metaCtx.tokenSource }
+    : undefined;
 
   run.status = "running";
   run.startedAt = new Date();
@@ -141,7 +152,7 @@ export async function processSyncQueue(input: {
       job.status = "failed";
       job.attempts += 1;
       const { formatMetaGraphError } = await import("@/lib/meta-error");
-      job.lastError = formatMetaGraphError(e);
+      job.lastError = formatMetaGraphError(e, errorContext);
       job.processedAt = new Date();
       run.lastError = job.lastError;
     }

@@ -1,7 +1,15 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+type MetaConnectionPayload = {
+  role: "admin" | "member";
+  tokenSource: "workspace" | "own" | null;
+  hasWorkspaceToken: boolean;
+  hasEffectiveToken: boolean;
+  hintCode: "member_no_workspace_meta" | "admin_reconnect_meta" | null;
+};
 
 type SyncStatusPayload = {
   lastManualSyncAt: string | null;
@@ -19,6 +27,7 @@ type SyncStatusPayload = {
     lastSyncedAt: string | null;
     status: string;
   }>;
+  metaConnection?: MetaConnectionPayload;
 };
 
 function formatRelative(iso: string | null, locale: string) {
@@ -55,6 +64,15 @@ export function SyncStatusBanner({ clientId }: { clientId?: string }) {
     return () => window.removeEventListener("traffic-sync-done", onDone);
   }, [load]);
 
+  const contextHint = useMemo(() => {
+    const mc = data?.metaConnection;
+    if (!mc) return null;
+    if (mc.hintCode === "member_no_workspace_meta") return t("hintMemberNoWorkspaceMeta");
+    if (mc.hintCode === "admin_reconnect_meta") return t("hintAdminReconnectMeta");
+    if (mc.role === "member" && data?.lastRun?.lastError) return t("hintMemberAccountAccess");
+    return null;
+  }, [data, t]);
+
   if (!data) return null;
 
   const latestAccount = data.accounts
@@ -77,6 +95,7 @@ export function SyncStatusBanner({ clientId }: { clientId?: string }) {
         </span>
       ) : null}
       {err ? <div className="mt-1 text-red-600">{err}</div> : null}
+      {contextHint ? <div className="mt-1 text-slate-600">{contextHint}</div> : null}
     </div>
   );
 }

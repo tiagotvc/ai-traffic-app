@@ -1,7 +1,12 @@
 import "server-only";
 
+export type MetaErrorContext = {
+  isWorkspaceMember?: boolean;
+  tokenSource?: "workspace" | "own" | null;
+};
+
 /** Mensagem legível para erros da Meta Graph API. */
-export function formatMetaGraphError(err: unknown): string {
+export function formatMetaGraphError(err: unknown, context?: MetaErrorContext): string {
   if (!(err instanceof Error)) return "Erro desconhecido na Meta.";
 
   const raw = err.message;
@@ -17,7 +22,14 @@ export function formatMetaGraphError(err: unknown): string {
         if (e.code === 190) return `Token Meta expirado ou inválido. Reconecte em Configurações.${code}`;
         if (e.code === 104) return `Sessão Meta inválida. Reconecte o Facebook.${code}`;
         if (e.code === 200) {
-          return `Sem permissão ads_read/ads_management nesta conta Meta. Membros do workspace usam a conexão Meta do administrador — peça para reconectar em Configurações.${code}`;
+          const detail = e.message?.trim() || "Permissão negada";
+          if (context?.isWorkspaceMember) {
+            return `A conexão Meta do administrador do workspace não tem acesso a esta conta de anúncios (${detail}). Peça ao administrador para reconectar em Configurações ou confirmar que a conta ainda está compartilhada no Gerenciador de Anúncios.${code}`;
+          }
+          if (context?.tokenSource === "workspace") {
+            return `Sem acesso a esta conta de anúncios com a conexão Meta do workspace (${detail}). Reconecte em Configurações ou verifique se o cliente ainda compartilhou a conta no Gerenciador de Anúncios.${code}`;
+          }
+          return `Permissão negada na Meta (${detail}). Reconecte em Configurações ou verifique o acesso à conta no Gerenciador de Anúncios.${code}`;
         }
         if (e.code === 17 || e.code === 613) return `Limite de requisições Meta atingido. Tente em alguns minutos.${code}`;
         return `${e.message}${code}`;

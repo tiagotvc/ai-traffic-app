@@ -539,7 +539,10 @@
     "failed": "Falha ao sincronizar",
     "lastUpdate": "Última atualização",
     "accountsSynced": "contas sincronizadas",
-    "autoOnLogin": "Importando métricas da Meta"
+    "autoOnLogin": "Importando métricas da Meta",
+    "hintMemberNoWorkspaceMeta": "Você é membro deste workspace: a sincronização usa a Meta do administrador. Peça para ele conectar ou reconectar o Facebook em Configurações.",
+    "hintAdminReconnectMeta": "Conecte ou reconecte o Facebook em Configurações para sincronizar as contas.",
+    "hintMemberAccountAccess": "Como membro, você não precisa conectar sua Meta — mas o administrador precisa ter acesso à conta de anúncios vinculada no Gerenciador de Anúncios."
   },
   "welcome": {
     "title": "Na sua ausência",

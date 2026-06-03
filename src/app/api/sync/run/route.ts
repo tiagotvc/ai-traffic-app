@@ -4,6 +4,7 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { formatMetaGraphError } from "@/lib/meta-error";
+import { getMetaConnectionInfo } from "@/lib/meta-auth-store";
 import { enqueueTenantSync } from "@/lib/sync-queue";
 
 const BodySchema = z.object({
@@ -16,20 +17,23 @@ export async function POST(req: Request) {
   const { tenant, defaultClient, metaAccessToken, user } = await getAppContext();
   const { auditLog: auditRepo } = await repositories();
 
+  const metaConnection = await getMetaConnectionInfo(tenant.id, user.id);
+
   if (!metaAccessToken) {
+    const noMetaMsg =
+      metaConnection.hintCode === "member_no_workspace_meta"
+        ? "O administrador do workspace ainda não conectou a Meta. Peça para ele entrar em Configurações e conectar o Facebook."
+        : "Meta não conectada. Reconecte em Configurações.";
     await auditRepo.save(
       auditRepo.create({
         tenantId: tenant.id,
         clientId: defaultClient.id,
         kind: "SYNC",
         success: false,
-        errorMessage: "Missing Meta access token"
+        errorMessage: noMetaMsg
       })
     );
-    return NextResponse.json(
-      { ok: false, error: "Meta não conectada. Reconecte em Configurações." },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: noMetaMsg, metaConnection }, { status: 400 });
   }
 
   let body: z.infer<typeof BodySchema> = {};
@@ -56,7 +60,8 @@ export async function POST(req: Request) {
       metaAccessToken,
       manual: !body.auto,
       clientId,
-      adAccountIds: body.adAccountIds
+      adAccountIds: body.adAccountIds,
+      triggeredByUserId: user.id
     });
 
     await auditRepo.save(
