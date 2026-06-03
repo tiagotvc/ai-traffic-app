@@ -6,6 +6,7 @@ import { repositories } from "@/db/repositories";
 import type { Client } from "@/db/entities/Client";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
 import { listMetaAdAccountOptions } from "@/lib/meta-ad-accounts";
+import { runMetaDiscoverForBusiness } from "@/lib/meta-discover";
 
 export async function linkClientMetaAccounts(input: {
   tenantId: string;
@@ -79,8 +80,24 @@ export async function linkAllBmAccountsToClient(input: {
   tenantId: string;
   clientId: string;
   metaBusinessId: string;
+  metaBusinessName?: string | null;
   metaAccessToken?: string;
 }) {
+  // Descoberta sob demanda: persiste os ativos desta BM antes de vincular (rápido,
+  // sem depender da sincronização pesada de todos os BMs).
+  if (input.metaAccessToken) {
+    try {
+      await runMetaDiscoverForBusiness(
+        input.tenantId,
+        input.metaAccessToken,
+        input.metaBusinessId,
+        input.metaBusinessName
+      );
+    } catch {
+      // Se a descoberta da BM falhar, segue com o que houver no inventário.
+    }
+  }
+
   const options = await listMetaAdAccountOptions({
     tenantId: input.tenantId,
     metaBusinessId: input.metaBusinessId,

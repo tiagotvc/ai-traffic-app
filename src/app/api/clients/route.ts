@@ -11,9 +11,13 @@ import {
 } from "@/lib/link-client-meta";
 import { listTenantPages } from "@/lib/meta-discover";
 
+// Criar cliente faz descoberta sob demanda da BM (poucas chamadas Meta) — dá folga.
+export const maxDuration = 30;
+
 const CreateClientSchema = z.object({
   name: z.string().min(1).max(120),
   metaBusinessId: z.string().optional(),
+  metaBusinessName: z.string().optional(),
   metaAdAccountIds: z.array(z.string().min(1)).optional(),
   metaPageId: z.string().optional(),
   metaPixelId: z.string().optional(),
@@ -59,6 +63,7 @@ export async function POST(req: Request) {
       tenantId: tenant.id,
       clientId: saved.id,
       metaBusinessId: normalizedBm,
+      metaBusinessName: body.metaBusinessName,
       metaAccessToken
     });
     defaultAdAccountId =

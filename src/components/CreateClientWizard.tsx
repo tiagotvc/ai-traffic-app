@@ -51,6 +51,7 @@ export function CreateClientWizard({ onCreated }: { onCreated: () => void }) {
 
   const submit = (bmId: string) => {
     setError(null);
+    const bmName = businesses.find((b) => b.metaBusinessId === bmId)?.name;
     startTransition(async () => {
       const res = await fetch("/api/clients", {
         method: "POST",
@@ -58,6 +59,7 @@ export function CreateClientWizard({ onCreated }: { onCreated: () => void }) {
         body: JSON.stringify({
           name: name.trim(),
           metaBusinessId: bmId || undefined,
+          metaBusinessName: bmName || undefined,
           linkAllBmAssets: true
         })
       });
@@ -143,19 +145,18 @@ export function CreateClientWizard({ onCreated }: { onCreated: () => void }) {
                 }`}
               >
                 <div className="font-medium text-slate-900">{bm.name}</div>
-                <div className="text-slate-500">
-                  {t("bmCounts", { accounts: bm.adAccountCount, pages: bm.pageCount })}
-                </div>
+                {bm.adAccountCount > 0 || bm.pageCount > 0 ? (
+                  <div className="text-slate-500">
+                    {t("bmCounts", { accounts: bm.adAccountCount, pages: bm.pageCount })}
+                  </div>
+                ) : null}
               </button>
             ))}
           </div>
 
           {selectedBmRow ? (
             <p className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-[11px] text-violet-800">
-              {t("bmConfirm", {
-                accounts: selectedBmRow.adAccountCount,
-                pages: selectedBmRow.pageCount
-              })}
+              {t("bmConfirm")}
             </p>
           ) : null}
 

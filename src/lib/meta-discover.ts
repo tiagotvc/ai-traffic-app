@@ -4,6 +4,7 @@ import { repositories } from "@/db/repositories";
 import { formatMetaAdAccountLabel } from "@/lib/meta-account-label";
 import {
   fetchAllAccessibleAdAccounts,
+  fetchBusinessAdAccounts,
   fetchBusinessPages,
   fetchMyAdAccounts,
   fetchMyBusinesses,
@@ -202,6 +203,77 @@ export async function runMetaDiscover(
     pages: pageKeys.size || pages.length,
     businessRows
   };
+}
+
+/**
+ * Descoberta sob demanda de UMA BM: busca e persiste apenas os ativos daquela BM
+ * (contas de anúncio + páginas). Rápido (poucas chamadas), evita o timeout da
+ * descoberta completa. Usado ao criar/vincular cliente por BM.
+ */
+export async function runMetaDiscoverForBusiness(
+  tenantId: string,
+  metaAccessToken: string,
+  metaBusinessId: string,
+  metaBusinessName?: string | null
+): Promise<{ adAccountCount: number; pageCount: number }> {
+  const {
+    metaBusiness: businessRepo,
+    metaPage: pageRepo,
+    metaAdAccountInventory: inventoryRepo
+  } = await repositories();
+  const now = new Date();
+
+  // Linha do BM (cria/atualiza nome).
+  let bmRow = await businessRepo.findOne({ where: { tenantId, metaBusinessId } });
+  if (!bmRow) {
+    bmRow = businessRepo.create({
+      tenantId,
+      metaBusinessId,
+      name: metaBusinessName?.trim() || metaBusinessId
+    });
+  } else if (metaBusinessName?.trim()) {
+    bmRow.name = metaBusinessName.trim();
+  }
+  bmRow.lastSyncedAt = now;
+  await businessRepo.save(bmRow);
+
+  // Contas da BM: une o edge da BM (owned+client) com /me/adaccounts filtrado por business.
+  const [fromBm, fromMe] = await Promise.all([
+    fetchBusinessAdAccounts(metaAccessToken, metaBusinessId),
+    fetchMyAdAccounts(metaAccessToken)
+  ]);
+  const byId = new Map<string, { id: string; name?: string; account_status?: number }>();
+  for (const a of [...fromBm, ...fromMe.filter((x) => x.business?.id === metaBusinessId)]) {
+    const prev = byId.get(a.id);
+    byId.set(a.id, {
+      id: a.id,
+      name: a.name ?? prev?.name,
+      account_status: a.account_status ?? prev?.account_status
+    });
+  }
+  for (const acc of byId.values()) {
+    await upsertAdAccountInventory(tenantId, acc, metaBusinessId, inventoryRepo);
+  }
+
+  // Páginas da BM.
+  const pages = await fetchBusinessPages(metaAccessToken, metaBusinessId);
+  for (const pg of pages) {
+    let pageRow = await pageRepo.findOne({ where: { tenantId, metaPageId: pg.id } });
+    if (!pageRow) {
+      pageRow = pageRepo.create({
+        tenantId,
+        metaPageId: pg.id,
+        metaBusinessId,
+        name: pg.name ?? pg.id
+      });
+    } else {
+      pageRow.metaBusinessId = metaBusinessId;
+      pageRow.name = pg.name ?? pageRow.name;
+    }
+    await pageRepo.save(pageRow);
+  }
+
+  return { adAccountCount: byId.size, pageCount: pages.length };
 }
 
 export async function listTenantBusinessesWithCounts(tenantId: string) {

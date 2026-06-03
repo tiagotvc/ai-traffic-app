@@ -512,7 +512,7 @@
       "back": "Back",
       "pickBm": "Choose the Business Manager to link",
       "bmCounts": "{accounts} account(s) · {pages} page(s)",
-      "bmConfirm": "All {accounts} account(s) and {pages} page(s) from this BM will be linked to this client.",
+      "bmConfirm": "On create, all accounts and pages from this BM will be linked automatically to this client.",
       "pickAccount": "Select ad account",
       "noAccounts": "No accounts in this BM. Refresh inventory in Meta Assets.",
       "pickPage": "Select Facebook page",
