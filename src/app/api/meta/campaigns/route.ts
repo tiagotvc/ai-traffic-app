@@ -15,7 +15,12 @@ const BodySchema = z.object({
   dailyBudget: z.number().positive(),
   titles: z.array(z.string().min(1)).min(1),
   descriptions: z.array(z.string().min(1)).min(1),
-  assetIds: z.array(z.string().min(1)).min(1)
+  assetIds: z.array(z.string().min(1)).min(1),
+  // Overrides escolhidos na criação do anúncio (por conta de anúncio).
+  metaPageId: z.string().nullable().optional(),
+  metaLinkUrl: z.string().nullable().optional(),
+  metaPixelId: z.string().nullable().optional(),
+  instagramActorId: z.string().nullable().optional()
 });
 
 export async function POST(req: Request) {
@@ -27,16 +32,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
   }
 
+  // Página e URL: usa o que foi escolhido na criação do anúncio; senão cai no
+  // cliente/env. Pixel e Instagram idem (sobrescrevem as settings do cliente).
+  const overridePage = body.metaPageId?.trim();
+  const overrideLink = body.metaLinkUrl?.trim();
+
+  if (overrideLink) {
+    try {
+      new URL(overrideLink);
+    } catch {
+      return NextResponse.json({ ok: false, error: "URL de destino inválida" }, { status: 400 });
+    }
+  }
+
   let publish;
   try {
-    publish = requireMetaPublishConfig(client);
+    publish = requireMetaPublishConfig({
+      metaPageId: overridePage || client.metaPageId,
+      metaLinkUrl: overrideLink || client.metaLinkUrl
+    });
   } catch {
     return NextResponse.json(
       {
         ok: false,
         error: "CLIENT_PUBLISH_CONFIG_REQUIRED",
         message:
-          "Configure a Página Meta e a URL de destino nas configurações do cliente antes de publicar."
+          "Selecione a Página Meta e a URL de destino do anúncio (ou configure no perfil do cliente)."
       },
       { status: 400 }
     );
@@ -52,6 +73,13 @@ export async function POST(req: Request) {
   const { auditLog: auditRepo } = await repositories();
 
   const settings = await getOrCreateClientMetaSettings(client.id);
+  // Overrides por anúncio (não persistidos — valem só para esta publicação).
+  if (body.metaPixelId !== undefined) {
+    settings.metaPixelId = body.metaPixelId?.trim() || null;
+  }
+  if (body.instagramActorId !== undefined) {
+    settings.instagramActorId = body.instagramActorId?.trim() || null;
+  }
 
   try {
     const result = await createFullMetaCampaign({

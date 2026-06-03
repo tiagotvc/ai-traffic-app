@@ -9,6 +9,9 @@ import { FormField } from "@/components/ui/FormField";
 type Asset = { id: string; label: string; url?: string | null };
 type AdAccountOption = { metaAdAccountId: string; label: string };
 type ClientOption = { id: string; slug: string; name: string };
+type AssetPage = { metaPageId: string; name: string };
+type IgAccount = { id: string; username: string };
+type Pixel = { id: string; name: string };
 
 export type AdsCreatorFooterState = {
   publish: () => void;
@@ -55,6 +58,13 @@ export function AdsCreatorClient({
   const [dailyBudget, setDailyBudget] = useState("150");
   const [objective, setObjective] = useState<"leads" | "sales" | "traffic">("leads");
   const [adAccountId, setAdAccountId] = useState("");
+  const [pages, setPages] = useState<AssetPage[]>([]);
+  const [instagramAccounts, setInstagramAccounts] = useState<IgAccount[]>([]);
+  const [pixels, setPixels] = useState<Pixel[]>([]);
+  const [selectedPageId, setSelectedPageId] = useState("");
+  const [selectedInstagramId, setSelectedInstagramId] = useState("");
+  const [selectedPixelId, setSelectedPixelId] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [publishConfigError, setPublishConfigError] = useState(false);
 
@@ -63,12 +73,21 @@ export function AdsCreatorClient({
     const res = await fetch(`/api/meta/assets${qs}`);
     const j = (await res.json()) as {
       assets?: Asset[];
-      adAccountId?: string | null;
-      accounts?: AdAccountOption[];
+      pages?: AssetPage[];
+      instagramAccounts?: IgAccount[];
+      pixels?: Pixel[];
     };
-    if (j.accounts?.length) setAccounts(j.accounts);
-    if (j.adAccountId) setAdAccountId(j.adAccountId);
     setAssets(j.assets ?? []);
+    const pg = j.pages ?? [];
+    const ig = j.instagramAccounts ?? [];
+    const px = j.pixels ?? [];
+    setPages(pg);
+    setInstagramAccounts(ig);
+    setPixels(px);
+    // Só mostramos seletor quando há mais de uma opção; com uma só, já seleciona.
+    setSelectedPageId(pg.length === 1 ? pg[0].metaPageId : "");
+    setSelectedInstagramId(ig.length === 1 ? ig[0].id : "");
+    setSelectedPixelId(px.length === 1 ? px[0].id : "");
   }, []);
 
   const loadForClient = useCallback(
@@ -97,9 +116,12 @@ export function AdsCreatorClient({
           defaultAdAccountId?: string | null;
           error?: string;
         };
-        const publishJson = (await publishRes.json()) as { resolved?: { ready?: boolean } };
+        const publishJson = (await publishRes.json()) as {
+          resolved?: { ready?: boolean; linkUrl?: string | null };
+        };
 
         setPublishReady(!!publishJson.resolved?.ready);
+        setLinkUrl(publishJson.resolved?.linkUrl ?? "");
 
         if (!accountsRes.ok || !accountsJson.ok) {
           setAdAccountId("");
@@ -165,7 +187,11 @@ export function AdsCreatorClient({
           dailyBudget: Number(dailyBudget),
           titles: titles.split("\n").map((s) => s.trim()).filter(Boolean),
           descriptions: descriptions.split("\n").map((s) => s.trim()).filter(Boolean),
-          assetIds: selectedIds
+          assetIds: selectedIds,
+          metaPageId: selectedPageId || undefined,
+          metaLinkUrl: linkUrl.trim() || undefined,
+          metaPixelId: selectedPixelId || undefined,
+          instagramActorId: selectedInstagramId || undefined
         })
       });
       const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
@@ -196,12 +222,19 @@ export function AdsCreatorClient({
     objective,
     onPublished,
     selectedIds,
+    selectedPageId,
+    selectedInstagramId,
+    selectedPixelId,
+    linkUrl,
     t,
     titles
   ]);
 
+  // Publicação habilitada quando o cliente já tem página+URL OU quando o usuário
+  // escolheu página + URL de destino aqui na criação do anúncio.
+  const hasPublishTarget = publishReady || (!!selectedPageId && !!linkUrl.trim());
   const publishDisabled =
-    isPending || selectedIds.length === 0 || !adAccountId || !clientSlug || !publishReady;
+    isPending || selectedIds.length === 0 || !adAccountId || !clientSlug || !hasPublishTarget;
 
   useEffect(() => {
     if (!embedded || !onFooterState) return;
@@ -230,7 +263,7 @@ export function AdsCreatorClient({
 
   const formFields = (
     <>
-      {clientSlug && !publishReady ? (
+      {clientSlug && !hasPublishTarget ? (
         <div className="ui-alert-warning">
           {t("publishNotReady")}{" "}
           <Link href={`/clients/${clientSlug}`} className="font-medium underline">
@@ -322,6 +355,72 @@ export function AdsCreatorClient({
             <option value="traffic">{t("objectiveTraffic")}</option>
           </select>
         </FormField>
+      </div>
+
+      <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">{t("publishTarget")}</h2>
+        <p className="mt-1 text-xs text-slate-500">{t("publishTargetHint")}</p>
+        <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+          {pages.length > 1 ? (
+            <FormField label={t("page")}>
+              <select
+                value={selectedPageId}
+                onChange={(e) => setSelectedPageId(e.target.value)}
+                className="ui-select"
+              >
+                <option value="">{t("selectPage")}</option>
+                {pages.map((p) => (
+                  <option key={p.metaPageId} value={p.metaPageId}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          ) : null}
+
+          {instagramAccounts.length > 1 ? (
+            <FormField label={t("instagram")}>
+              <select
+                value={selectedInstagramId}
+                onChange={(e) => setSelectedInstagramId(e.target.value)}
+                className="ui-select"
+              >
+                <option value="">{t("instagramNone")}</option>
+                {instagramAccounts.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    @{i.username}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          ) : null}
+
+          {pixels.length > 1 ? (
+            <FormField label={t("pixel")}>
+              <select
+                value={selectedPixelId}
+                onChange={(e) => setSelectedPixelId(e.target.value)}
+                className="ui-select"
+              >
+                <option value="">{t("pixelNone")}</option>
+                {pixels.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          ) : null}
+
+          <FormField label={t("destinationUrl")}>
+            <input
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="https://"
+              className="ui-input"
+            />
+          </FormField>
+        </div>
       </div>
 
       <FormField label={t("dailyBudget")}>

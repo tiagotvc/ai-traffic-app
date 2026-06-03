@@ -299,6 +299,25 @@ export async function fetchUserPages(accessToken: string): Promise<MetaFacebookP
   return fetchGraphPaged<MetaFacebookPage>("/me/accounts?fields=id,name&limit=100", accessToken);
 }
 
+export type MetaInstagramAccount = { id: string; username?: string };
+
+/** Contas do Instagram utilizáveis por uma conta de anúncio. */
+export async function fetchInstagramAccountsForAdAccount(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaInstagramAccount[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  try {
+    const first = `/${encodeURIComponent(act)}/instagram_accounts?fields=id,username&limit=100`;
+    return await fetchGraphPaged<MetaInstagramAccount>(first, accessToken);
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[meta-graph] instagram_accounts for ${act}:`, err);
+    }
+    return [];
+  }
+}
+
 export async function fetchCustomAudiences(
   accessToken: string,
   adAccountId: string
