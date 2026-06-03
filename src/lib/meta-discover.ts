@@ -5,6 +5,7 @@ import { formatMetaAdAccountLabel } from "@/lib/meta-account-label";
 import {
   fetchAllAccessibleAdAccounts,
   fetchBusinessPages,
+  fetchMyAdAccounts,
   fetchMyBusinesses,
   fetchUserPages
 } from "@/lib/meta-graph";
@@ -64,10 +65,25 @@ export async function runMetaDiscover(
   const accountKeys = new Set<string>();
   const pageKeys = new Set<string>();
 
-  const accessibleAccounts = await fetchAllAccessibleAdAccounts(metaAccessToken);
   // BMs inferidos a partir das contas (acc.business) — cobrem BMs que /me/businesses não retorna.
   const bmFromAccounts = new Map<string, string>();
+
+  // 1) RÁPIDO: /me/adaccounts já traz o BM dono (business) numa única chamada.
+  //    Grava o inventário primeiro para que o vínculo conta→BM fique salvo mesmo
+  //    se os loops mais pesados (abaixo) demorarem ou estourarem o timeout.
+  for (const acc of await fetchMyAdAccounts(metaAccessToken)) {
+    accountKeys.add(acc.id);
+    await upsertAdAccountInventory(tenantId, acc, acc.business?.id ?? null, inventoryRepo);
+    if (acc.business?.id) {
+      bmFromAccounts.set(acc.business.id, acc.business.name ?? acc.business.id);
+    }
+  }
+
+  // 2) ENRIQUECIMENTO (mais lento): contas acessíveis via BM/business_users que
+  //    não vieram em /me/adaccounts. Pula as já gravadas acima.
+  const accessibleAccounts = await fetchAllAccessibleAdAccounts(metaAccessToken);
   for (const [id, acc] of accessibleAccounts) {
+    if (accountKeys.has(id)) continue;
     accountKeys.add(id);
     await upsertAdAccountInventory(tenantId, acc, acc.metaBusinessId, inventoryRepo);
     if (acc.metaBusinessId) {

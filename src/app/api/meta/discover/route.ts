@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 import { getAppContext } from "@/lib/app-context";
 import { runMetaDiscover } from "@/lib/meta-discover";
 
+// Descoberta percorre muitos BMs/contas — dá folga ao tempo de execução no Vercel.
+export const maxDuration = 60;
+
 export async function POST() {
   const { tenant, metaAccessToken } = await getAppContext();
   if (!metaAccessToken) {
