@@ -8,13 +8,12 @@ import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
 export async function GET(req: Request) {
   try {
     const { tenant, user, metaAccessToken } = await getAppContext();
-    const tenantToken = await getTenantMetaAccessToken(tenant.id, user.id);
-    const tokenForMeta = metaAccessToken ?? tenantToken;
     const url = new URL(req.url);
     const clientIdParam = url.searchParams.get("clientId");
 
     // Com cliente: retorna SOMENTE as contas vinculadas a ele (as que o usuário
-    // escolheu na configuração), não todas as contas da BM.
+    // escolheu na configuração), lidas do banco — NÃO depende do token do Meta
+    // (assim o seletor funciona mesmo com token expirado).
     if (clientIdParam) {
       const client = await getClientBySlugOrId(tenant.id, clientIdParam);
       if (!client) {
@@ -34,7 +33,9 @@ export async function GET(req: Request) {
       });
     }
 
-    // Sem cliente (uso genérico): lista por inventário/BM.
+    // Sem cliente (uso genérico): lista por inventário/BM (usa o token, se houver).
+    const tenantToken = await getTenantMetaAccessToken(tenant.id, user.id);
+    const tokenForMeta = metaAccessToken ?? tenantToken;
     const accounts = await listMetaAdAccountOptions({
       tenantId: tenant.id,
       metaAccessToken: tokenForMeta,
