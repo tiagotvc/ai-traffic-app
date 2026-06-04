@@ -27,7 +27,11 @@ export function MetaFacebookProvider(options: {
     authorization: {
       url: "https://www.facebook.com/v19.0/dialog/oauth",
       params: {
-        scope: META_FACEBOOK_SCOPES
+        scope: META_FACEBOOK_SCOPES,
+        // Força o Facebook a reexibir o diálogo de autorização (incluindo a seleção
+        // de empresas/contas de anúncio) em vez de reaproveitar uma concessão antiga
+        // e limitada. Essencial para reconectar e (re)conceder os ativos das BMs.
+        auth_type: "reauthorize"
       }
     },
     token: "https://graph.facebook.com/oauth/access_token",
