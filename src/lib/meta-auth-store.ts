@@ -37,12 +37,23 @@ export async function getStoredMetaAccessToken(userId: string): Promise<string |
   return row.accessToken;
 }
 
-/** Token Meta de outro usuário do workspace (admin primeiro). */
+/**
+ * Token Meta do workspace.
+ * Se há uma conexão oficial definida (`tenant.metaConnectionUserId`), retorna SOMENTE
+ * o token do usuário designado — ignora `excludeUserId` (é a conexão do workspace, não
+ * "o token de outra pessoa"). Sem conexão oficial, cai no legado: 1º admin com token.
+ */
 export async function getTenantMetaAccessToken(
   tenantId: string,
   excludeUserId?: string
 ): Promise<string | undefined> {
-  const { tenantMember: memberRepo, user: userRepo } = await repositories();
+  const { tenant: tenantRepo, tenantMember: memberRepo, user: userRepo } = await repositories();
+
+  const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
+  if (tenant?.metaConnectionUserId) {
+    return getStoredMetaAccessToken(tenant.metaConnectionUserId);
+  }
+
   const members = await memberRepo.find({ where: { tenantId } });
   const orderedUserIds = [
     ...members.filter((m) => m.role === "admin").map((m) => m.userId),
@@ -72,10 +83,24 @@ export type MetaConnectionInfo = {
   hasEffectiveToken: boolean;
   /** Código para hint na UI (sync banner). */
   hintCode: "member_no_workspace_meta" | "admin_reconnect_meta" | null;
+  /** Usuário dono da conexão Meta oficial (null se ainda não definida). */
+  workspaceConnectionUserId: string | null;
+  /** Nome do dono da conexão oficial (para exibir na UI). */
+  workspaceConnectionName: string | null;
+  /** O usuário atual é o dono da conexão oficial. */
+  isOwner: boolean;
+  /** O usuário atual pode definir/trocar/desconectar a conexão oficial. */
+  canManage: boolean;
 };
 
 export async function hasWorkspaceMetaConnected(tenantId: string): Promise<boolean> {
-  const { tenantMember: memberRepo } = await repositories();
+  const { tenant: tenantRepo, tenantMember: memberRepo } = await repositories();
+
+  const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
+  if (tenant?.metaConnectionUserId) {
+    return !!(await getStoredMetaAccessToken(tenant.metaConnectionUserId));
+  }
+
   const members = await memberRepo.find({ where: { tenantId } });
   for (const m of members) {
     const token = await getStoredMetaAccessToken(m.userId);
@@ -89,12 +114,26 @@ export async function getMetaConnectionInfo(
   userId: string,
   sessionToken?: string
 ): Promise<MetaConnectionInfo> {
-  const { tenantMember: memberRepo } = await repositories();
+  const { tenant: tenantRepo, tenantMember: memberRepo, user: userRepo } = await repositories();
   const member = await memberRepo.findOne({ where: { tenantId, userId } });
   const role: MetaConnectionInfo["role"] = member?.role === "member" ? "member" : "admin";
   const tenantToken = await getTenantMetaAccessToken(tenantId, userId);
   const ownToken = sessionToken ?? (await getStoredMetaAccessToken(userId));
   const hasWorkspaceToken = await hasWorkspaceMetaConnected(tenantId);
+
+  const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
+  const connectionUserId = tenant?.metaConnectionUserId ?? null;
+  const isOwner = !!connectionUserId && connectionUserId === userId;
+  let connectionName: string | null = null;
+  let ownerTokenValid = false;
+  if (connectionUserId) {
+    const owner = await userRepo.findOne({ where: { id: connectionUserId } });
+    connectionName = owner?.name ?? null;
+    ownerTokenValid = !!(await getStoredMetaAccessToken(connectionUserId));
+  }
+  // Admin pode gerenciar quando: não há dono ainda, ele é o dono, ou o token do dono
+  // atual está ausente/expirado (escape para destravar um workspace com conexão quebrada).
+  const canManage = role === "admin" && (!connectionUserId || isOwner || !ownerTokenValid);
 
   let tokenSource: MetaConnectionInfo["tokenSource"] = null;
   let hasEffectiveToken = false;
@@ -124,7 +163,11 @@ export async function getMetaConnectionInfo(
     tokenSource,
     hasWorkspaceToken,
     hasEffectiveToken,
-    hintCode
+    hintCode,
+    workspaceConnectionUserId: connectionUserId,
+    workspaceConnectionName: connectionName,
+    isOwner,
+    canManage
   };
 }
 
@@ -138,7 +181,16 @@ export async function resolveWorkspaceMetaAccessToken(
   userId: string,
   sessionToken?: string
 ): Promise<string | undefined> {
-  const { tenantMember: memberRepo } = await repositories();
+  const { tenant: tenantRepo, tenantMember: memberRepo } = await repositories();
+
+  // Conexão oficial: token do dono para todos. Se o próprio dono está logado,
+  // aceita o token de sessão (mais fresco) antes de cair no armazenado.
+  const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
+  if (tenant?.metaConnectionUserId) {
+    if (tenant.metaConnectionUserId === userId && sessionToken) return sessionToken;
+    return getStoredMetaAccessToken(tenant.metaConnectionUserId);
+  }
+
   const member = await memberRepo.findOne({ where: { tenantId, userId } });
   const tenantToken = await getTenantMetaAccessToken(tenantId, userId);
   const ownToken = sessionToken ?? (await getStoredMetaAccessToken(userId));

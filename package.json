@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "next dev -p 3008",
     "build": "next build",
+    "vercel-build": "tsx src/db/run-migrations.ts && next build",
     "start": "next start -p 3008",
     "lint": "next lint",
     "db:migrate": "tsx src/db/run-migrations.ts",
