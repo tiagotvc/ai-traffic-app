@@ -134,6 +134,7 @@ export function CampaignsHubClient() {
     }
     params.set("limit", String(pageSize));
     params.set("offset", String((page - 1) * pageSize));
+    if (opts?.live) params.set("live", "1");
 
     fetch(`/api/campaigns/list?${params.toString()}`)
       .then((r) => r.json())
