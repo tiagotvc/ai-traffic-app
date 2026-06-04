@@ -149,6 +149,44 @@ export function CommandCenterClient() {
     return () => window.removeEventListener("traffic-sync-done", onSync);
   }, [load]);
 
+  // Auto-sync ao acessar, com intervalo: se o último sync foi há mais de 15 min
+  // (e nenhum está rodando), dispara um sync automático e recarrega ao terminar.
+  // Mantém o Command Center fresco sem clicar, sem sobrecarregar a Meta.
+  const autoSyncTried = useRef(false);
+  useEffect(() => {
+    if (autoSyncTried.current) return;
+    autoSyncTried.current = true;
+    const STALE_MS = 15 * 60 * 1000;
+    fetch("/api/sync/status")
+      .then((r) => r.json())
+      .then((j) => {
+        const status = j?.lastRun?.status as string | undefined;
+        if (status === "running" || status === "queued") return;
+        const times: number[] = [];
+        const push = (iso?: string | null) => {
+          if (!iso) return;
+          const ts = Date.parse(iso);
+          if (!Number.isNaN(ts)) times.push(ts);
+        };
+        push(j?.lastRun?.finishedAt);
+        push(j?.lastManualSyncAt);
+        for (const a of j?.accounts ?? []) push(a?.lastSyncedAt);
+        const latest = times.length ? Math.max(...times) : 0;
+        if (Date.now() - latest < STALE_MS) return;
+        fetch("/api/sync/run", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ auto: true })
+        })
+          .then((res) => (res.ok ? res.json().catch(() => null) : null))
+          .then((res) => {
+            if (res?.ok) window.dispatchEvent(new Event("traffic-sync-done"));
+          })
+          .catch(() => {});
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     const tmr = setTimeout(() => setQ(searchInput), 300);
     return () => clearTimeout(tmr);
