@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import type { Client } from "@/db/entities/Client";
-import { isDemoClient } from "@/lib/demo-data";
+import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
 import {
   getTenantMetaAccessToken,
   isMetaPermissionError,
@@ -157,7 +157,10 @@ export async function listClientsForTenant(tenantId: string, opts?: { includeDem
   const { client } = await repositories();
   const rows = await client.find({ where: { tenantId }, order: { name: "ASC" } });
   if (opts?.includeDemo) return rows;
-  return rows.filter((c) => !isDemoClient(c));
+  const real = rows.filter((c) => !isDemoClient(c));
+  // Oculta o cliente "Default" (scaffolding) quando já há clientes reais.
+  const nonDefault = real.filter((c) => !isSystemDefaultClient(c));
+  return nonDefault.length > 0 ? nonDefault : real;
 }
 
 export async function getClientBySlugOrId(tenantId: string, clientIdOrSlug: string) {

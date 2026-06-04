@@ -17,6 +17,18 @@ export function isDemoClient(client: Pick<Client, "name" | "aiContext">): boolea
   return note.includes("cliente demo");
 }
 
+/**
+ * Cliente "Default" criado automaticamente no onboarding (scaffolding do MVP).
+ * Não é um cliente real cadastrado pelo usuário; deve ser ocultado das listas
+ * quando já existem clientes reais.
+ */
+export function isSystemDefaultClient(client: Pick<Client, "name" | "aiContext">): boolean {
+  if (client.name !== "Default") return false;
+  const ctx = client.aiContext as { note?: string } | null | undefined;
+  const note = typeof ctx?.note === "string" ? ctx.note.toLowerCase() : "";
+  return note.includes("criado automaticamente");
+}
+
 export function isDemoAdAccountId(metaAdAccountId: string): boolean {
   const id = metaAdAccountId.toLowerCase();
   return id === "act_demo" || id.includes("demo");
