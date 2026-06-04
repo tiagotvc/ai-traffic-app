@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 
 import { typeOrmEntities } from "./entities/registry";
+import { appMigrations } from "./migrations";
 import { postgresOptionsFromUrl } from "./pg-config";
 
 const EXPECTED_ENTITY_COUNT = typeOrmEntities.length;
@@ -22,6 +23,11 @@ function buildDataSource() {
   return new DataSource({
     ...postgresOptionsFromUrl(url),
     entities: [...typeOrmEntities],
+    migrations: [...appMigrations],
+    // Aplica migrações pendentes na inicialização. Garante que o schema acompanha o
+    // código em produção sem depender do build do Vercel (que não roda o db:migrate).
+    // As migrações são idempotentes (IF NOT EXISTS) e transacionais.
+    migrationsRun: true,
     synchronize: false,
     logging: process.env.NODE_ENV === "development"
   });
