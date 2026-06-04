@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
-import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 
 type CampaignRow = {
@@ -348,8 +347,6 @@ export function CommandCenterClient() {
           </Link>
         </div>
       </div>
-
-      <SyncStatusBanner clientId={clientFilter || undefined} />
 
       {/* Filter bar */}
       <div ref={filterBarRef} className="flex flex-wrap items-center gap-2">

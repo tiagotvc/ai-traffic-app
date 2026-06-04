@@ -68,12 +68,6 @@ export function CampaignsHubClient() {
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
   const [rows, setRows] = useState<CampaignRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [totals, setTotals] = useState<{ spend: number; conversions: number; leads: number }>({
-    spend: 0,
-    conversions: 0,
-    leads: 0
-  });
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [clientFilter, setClientFilter] = useState("");
   const [qInput, setQInput] = useState("");
@@ -120,38 +114,38 @@ export function CampaignsHubClient() {
       });
   }, []);
 
-  const load = useCallback((opts?: { live?: boolean }) => {
-    setLoading(true);
-    const params = new URLSearchParams(periodStateToQuery(period));
-    if (clientFilter) params.set("clientId", clientFilter);
-    if (q.trim()) params.set("q", q.trim());
-    if (onlyAlerts) params.set("onlyAlerts", "1");
-    if (statusFilter !== "ALL") params.set("status", statusFilter);
-    if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
-    if (sortKey) {
-      params.set("sort", sortKey);
-      params.set("dir", sortDir);
-    }
-    params.set("limit", String(pageSize));
-    params.set("offset", String((page - 1) * pageSize));
-    if (opts?.live) params.set("live", "1");
+  // Busca o conjunto completo de campanhas do cliente/período UMA vez. Filtro,
+  // ordenação e paginação são feitos no cliente (instantâneos, sem refetch — assim os
+  // dados não somem ao filtrar/ordenar). Ao selecionar um cliente, busca AO VIVO
+  // automaticamente (sem precisar clicar em Atualizar); em "todos os clientes" usa o
+  // banco (evita varrer dezenas de contas ao vivo a cada acesso).
+  const load = useCallback(
+    (opts?: { live?: boolean }) => {
+      setLoading(true);
+      const live = opts?.live || !!clientFilter;
+      const params = new URLSearchParams(periodStateToQuery(period));
+      if (clientFilter) params.set("clientId", clientFilter);
+      params.set("limit", "1000");
+      params.set("offset", "0");
+      if (live) params.set("live", "1");
 
-    fetch(`/api/campaigns/list?${params.toString()}`)
-      .then((r) => r.json())
-      .then((j) => {
-        const list = (j.rows ?? []) as CampaignRow[];
-        setRows(list);
-        setTotal(j.total ?? list.length);
-        setTotals(j.totals ?? { spend: 0, conversions: 0, leads: 0 });
-        setEnrichError(j.enrichError ?? null);
-        setMetricsSource(j.metricsSource === "live" ? "live" : "db");
-        if (selectedId && list.some((r) => r.metaCampaignId === selectedId)) return;
-        setSelectedId(null);
-        setSelectedSlug("");
-        setSelectedRow(null);
-      })
-      .finally(() => setLoading(false));
-  }, [clientFilter, q, onlyAlerts, statusFilter, objectiveFilter, period, page, pageSize, sortKey, sortDir]);
+      fetch(`/api/campaigns/list?${params.toString()}`)
+        .then((r) => r.json())
+        .then((j) => {
+          const list = (j.rows ?? []) as CampaignRow[];
+          setRows(list);
+          setEnrichError(j.enrichError ?? null);
+          setMetricsSource(j.metricsSource === "live" ? "live" : "db");
+          if (selectedId && list.some((r) => r.metaCampaignId === selectedId)) return;
+          setSelectedId(null);
+          setSelectedSlug("");
+          setSelectedRow(null);
+        })
+        .finally(() => setLoading(false));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clientFilter, period]
+  );
 
   useEffect(() => {
     load();
@@ -170,7 +164,90 @@ export function CampaignsHubClient() {
     detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [selectedId]);
 
+  // Filtro + ordenação no cliente (instantâneo, não refaz a requisição).
+  const processed = useMemo(() => {
+    let list = rows;
+    const s = q.trim().toLowerCase();
+    if (s) {
+      list = list.filter(
+        (r) =>
+          (r.campaignName ?? "").toLowerCase().includes(s) ||
+          (r.clientName ?? "").toLowerCase().includes(s) ||
+          (r.accountLabel ?? "").toLowerCase().includes(s)
+      );
+    }
+    if (onlyAlerts) list = list.filter((r) => r.hasAlert);
+    if (statusFilter === "ACTIVE") list = list.filter((r) => r.status === "ACTIVE");
+    else if (statusFilter === "INACTIVE") list = list.filter((r) => r.status !== "ACTIVE");
+    if (objectiveFilter !== "ALL") {
+      list = list.filter((r) => {
+        const o = (r.objective ?? "").toUpperCase();
+        if (objectiveFilter === "leads") return o.includes("LEAD");
+        if (objectiveFilter === "sales")
+          return o.includes("SALES") || o.includes("CONVERSION") || o.includes("PURCHASE");
+        return o.includes("TRAFFIC") || o.includes("LINK_CLICK") || o.includes("REACH");
+      });
+    }
+    if (sortKey) {
+      const numeric: Partial<Record<CampaignColumnId, (r: CampaignRow) => number | null>> = {
+        spend: (r) => r.spend ?? 0,
+        conversions: (r) => r.conversions ?? 0,
+        leads: (r) => r.leads ?? 0,
+        cpl: (r) => r.cpl,
+        cpa: (r) => r.cpa,
+        roas: (r) => r.roas ?? 0,
+        impressions: (r) => r.impressions ?? 0,
+        clicks: (r) => r.clicks ?? 0,
+        ctr: (r) => r.ctr ?? 0,
+        cpc: (r) => r.cpc ?? 0,
+        cpm: (r) => r.cpm ?? 0,
+        budget: (r) => r.dailyBudget ?? null,
+        alerts: (r) => r.alertCount ?? 0
+      };
+      const text: Partial<Record<CampaignColumnId, (r: CampaignRow) => string>> = {
+        campaign: (r) => r.campaignName ?? "",
+        campaignId: (r) => r.metaCampaignId ?? "",
+        client: (r) => r.clientName ?? "",
+        account: (r) => r.accountLabel ?? "",
+        status: (r) => r.status ?? ""
+      };
+      const mul = sortDir === "asc" ? 1 : -1;
+      const getNum = numeric[sortKey];
+      const getText = text[sortKey];
+      if (getNum) {
+        list = [...list].sort((a, b) => {
+          const av = getNum(a);
+          const bv = getNum(b);
+          if (av == null && bv == null) return 0;
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          return (av - bv) * mul;
+        });
+      } else if (getText) {
+        list = [...list].sort((a, b) => getText(a).localeCompare(getText(b)) * mul);
+      }
+    }
+    return list;
+  }, [rows, q, onlyAlerts, statusFilter, objectiveFilter, sortKey, sortDir]);
+
+  const total = processed.length;
+  const totals = useMemo(
+    () => ({
+      spend: processed.reduce((sum, r) => sum + (r.spend ?? 0), 0),
+      conversions: processed.reduce((sum, r) => sum + (r.conversions ?? 0), 0),
+      leads: processed.reduce((sum, r) => sum + (r.leads ?? 0), 0)
+    }),
+    [processed]
+  );
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const pageRows = useMemo(
+    () => processed.slice((page - 1) * pageSize, page * pageSize),
+    [processed, page, pageSize]
+  );
+
+  useEffect(() => {
+    if (page > pageCount) setPage(1);
+  }, [page, pageCount]);
 
   const pickCampaign = (r: CampaignRow) => {
     setSelectedId(r.metaCampaignId);
@@ -586,14 +663,14 @@ export function CampaignsHubClient() {
                     ))}
                   </tr>
                 ))
-              ) : rows.length === 0 ? (
+              ) : processed.length === 0 ? (
                 <tr>
                   <td colSpan={visibleColumns.length} className="px-4 py-8 text-center text-slate-500">
                     {t("empty")}
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => (
+                pageRows.map((r) => (
                   <tr
                     key={r.metaCampaignId}
                     className={`cursor-pointer border-t border-slate-100 hover:bg-violet-50/40 ${
@@ -606,7 +683,7 @@ export function CampaignsHubClient() {
                 ))
               )}
             </tbody>
-            {!loading && rows.length > 0 ? (
+            {!loading && processed.length > 0 ? (
               <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
                 <tr>
                   {visibleColumns.map((col) => renderTotalCell(col, totalLabelCol))}
