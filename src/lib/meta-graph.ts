@@ -435,9 +435,8 @@ const INSIGHT_METRIC_FIELDS = [
 
 export async function fetchAccountInsightsDaily(accessToken: string, adAccountId: string): Promise<MetaInsightRow[]> {
   const fields = INSIGHT_METRIC_FIELDS.join(",");
-  const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d`;
-  const data = await metaFetch<{ data: MetaInsightRow[] }>(path, accessToken);
-  return data.data ?? [];
+  const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d&limit=500`;
+  return fetchGraphPaged<MetaInsightRow>(path, accessToken);
 }
 
 export async function fetchCampaignInsightsDaily(
@@ -445,9 +444,8 @@ export async function fetchCampaignInsightsDaily(
   adAccountId: string
 ): Promise<MetaCampaignInsightRow[]> {
   const fields = ["campaign_id", "campaign_name", ...INSIGHT_METRIC_FIELDS].join(",");
-  const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d`;
-  const data = await metaFetch<{ data: MetaCampaignInsightRow[] }>(path, accessToken);
-  return data.data ?? [];
+  const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d&limit=500`;
+  return fetchGraphPaged<MetaCampaignInsightRow>(path, accessToken);
 }
 
 export async function fetchCampaignInsightsForRange(
@@ -460,9 +458,8 @@ export async function fetchCampaignInsightsForRange(
     ","
   );
   const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
-  const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_range=${encodeURIComponent(timeRange)}`;
-  const data = await metaFetch<{ data: MetaCampaignInsightRow[] }>(path, accessToken);
-  return data.data ?? [];
+  const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_range=${encodeURIComponent(timeRange)}&limit=500`;
+  return fetchGraphPaged<MetaCampaignInsightRow>(path, accessToken);
 }
 
 export async function fetchCampaignInsightForRange(
@@ -486,9 +483,8 @@ export async function fetchCampaignInsightsDailyForCampaign(
 ): Promise<MetaCampaignInsightRow[]> {
   const fields = [...INSIGHT_METRIC_FIELDS].join(",");
   const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
-  const path = `/${encodeURIComponent(metaCampaignId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&time_range=${encodeURIComponent(timeRange)}`;
-  const data = await metaFetch<{ data: MetaCampaignInsightRow[] }>(path, accessToken);
-  return data.data ?? [];
+  const path = `/${encodeURIComponent(metaCampaignId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&time_range=${encodeURIComponent(timeRange)}&limit=500`;
+  return fetchGraphPaged<MetaCampaignInsightRow>(path, accessToken);
 }
 
 export async function fetchAdImages(accessToken: string, adAccountId: string): Promise<MetaAdImage[]> {

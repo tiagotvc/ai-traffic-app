@@ -160,8 +160,12 @@ export function CampaignsHubClient() {
   }, [load]);
 
   useEffect(() => {
-    if (!selectedId || !detailRef.current) return;
-    detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!selectedId) return;
+    // Espera o detalhe (renderizado condicionalmente) entrar no DOM antes de rolar.
+    const raf = requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(raf);
   }, [selectedId]);
 
   // Filtro + ordenação no cliente (instantâneo, não refaz a requisição).

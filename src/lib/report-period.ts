@@ -1,7 +1,9 @@
 export type PeriodPreset =
   | "today"
+  | "yesterday"
   | "last7"
   | "last14"
+  | "last15"
   | "last30"
   | "custom"
   | "all";
@@ -52,6 +54,16 @@ export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
     return { preset: "today", since: t, until: t, days: 1, allTime: false };
   }
 
+  if (period === "yesterday") {
+    const y = yesterdayIso();
+    return { preset: "yesterday", since: y, until: y, days: 1, allTime: false };
+  }
+
+  if (period === "last15") {
+    const range = rollingDaysEndingYesterday(15);
+    return { preset: "last15", since: range.since, until: range.until, days: 15, allTime: false };
+  }
+
   if (period === "custom" && sinceParam && untilParam) {
     const since = sinceParam.slice(0, 10);
     const until = untilParam.slice(0, 10);
@@ -95,7 +107,14 @@ export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
     const days = Math.min(90, Math.max(1, Math.floor(daysRaw)));
     const range = rollingDaysEndingYesterday(days);
     return {
-      preset: days === 14 ? "last14" : days === 30 ? "last30" : "last7",
+      preset:
+        days === 14
+          ? "last14"
+          : days === 15
+            ? "last15"
+            : days === 30
+              ? "last30"
+              : "last7",
       since: range.since,
       until: range.until,
       days,
@@ -127,6 +146,8 @@ export function periodToSearchParams(period: {
     qs.set("days", "7");
   } else if (period.preset === "last14") {
     qs.set("days", "14");
+  } else if (period.preset === "last15") {
+    qs.set("days", "15");
   } else if (period.preset === "last30") {
     qs.set("days", "30");
   }
@@ -138,8 +159,10 @@ export function formatPeriodLabel(
   locale: string,
   labels: {
     today: string;
+    yesterday: string;
     last7: string;
     last14: string;
+    last15: string;
     last30: string;
     custom: string;
     all: string;
@@ -147,8 +170,10 @@ export function formatPeriodLabel(
 ): string {
   if (period.allTime) return labels.all;
   if (period.preset === "today") return labels.today;
+  if (period.preset === "yesterday") return labels.yesterday;
   if (period.preset === "last7") return labels.last7;
   if (period.preset === "last14") return labels.last14;
+  if (period.preset === "last15") return labels.last15;
   if (period.preset === "last30") return labels.last30;
   if (period.preset === "custom" && period.since && period.until) {
     const fmt = new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" });
