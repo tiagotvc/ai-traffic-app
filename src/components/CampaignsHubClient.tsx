@@ -79,6 +79,7 @@ export function CampaignsHubClient() {
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [onlyAlerts, setOnlyAlerts] = useState(false);
+  const [showZeroActivity, setShowZeroActivity] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveFilter>("ALL");
   const [period, setPeriod] = useState<PeriodState>({ preset: "last7", since: "", until: "" });
@@ -96,6 +97,10 @@ export function CampaignsHubClient() {
   const [selectedSlug, setSelectedSlug] = useState("");
   const [selectedRow, setSelectedRow] = useState<CampaignRow | null>(null);
   const detailRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+  const selectedIdRef = useRef<string | null>(null);
+  selectedIdRef.current = selectedId;
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -121,13 +126,22 @@ export function CampaignsHubClient() {
   }, []);
 
   const load = useCallback((opts?: { live?: boolean }) => {
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const reqId = ++requestIdRef.current;
+
     setLoading(true);
+    setRows([]);
+
     const params = new URLSearchParams(periodStateToQuery(period));
     if (clientFilter) params.set("clientId", clientFilter);
     if (q.trim()) params.set("q", q.trim());
     if (onlyAlerts) params.set("onlyAlerts", "1");
+    if (showZeroActivity) params.set("showZero", "1");
     if (statusFilter !== "ALL") params.set("status", statusFilter);
     if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
+    if (opts?.live) params.set("live", "1");
     if (sortKey) {
       params.set("sort", sortKey);
       params.set("dir", sortDir);
@@ -135,22 +149,46 @@ export function CampaignsHubClient() {
     params.set("limit", String(pageSize));
     params.set("offset", String((page - 1) * pageSize));
 
-    fetch(`/api/campaigns/list?${params.toString()}`)
+    fetch(`/api/campaigns/list?${params.toString()}`, { signal: ac.signal })
       .then((r) => r.json())
       .then((j) => {
+        if (reqId !== requestIdRef.current) return;
+        if (j.ok === false) {
+          setRows([]);
+          setTotal(0);
+          setEnrichError(typeof j.error === "string" ? j.error : null);
+          return;
+        }
         const list = (j.rows ?? []) as CampaignRow[];
         setRows(list);
         setTotal(j.total ?? list.length);
         setTotals(j.totals ?? { spend: 0, conversions: 0, leads: 0 });
         setEnrichError(j.enrichError ?? null);
         setMetricsSource(j.metricsSource === "live" ? "live" : "db");
-        if (selectedId && list.some((r) => r.metaCampaignId === selectedId)) return;
+        if (selectedIdRef.current && list.some((r) => r.metaCampaignId === selectedIdRef.current)) return;
         setSelectedId(null);
         setSelectedSlug("");
         setSelectedRow(null);
       })
-      .finally(() => setLoading(false));
-  }, [clientFilter, q, onlyAlerts, statusFilter, objectiveFilter, period, page, pageSize, sortKey, sortDir]);
+      .catch((err: unknown) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      })
+      .finally(() => {
+        if (reqId === requestIdRef.current) setLoading(false);
+      });
+  }, [
+    clientFilter,
+    q,
+    onlyAlerts,
+    showZeroActivity,
+    statusFilter,
+    objectiveFilter,
+    period,
+    page,
+    pageSize,
+    sortKey,
+    sortDir
+  ]);
 
   useEffect(() => {
     load();
@@ -520,6 +558,18 @@ export function CampaignsHubClient() {
             ))}
           </select>
         </div>
+        <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={showZeroActivity}
+            onChange={(e) => {
+              setShowZeroActivity(e.target.checked);
+              setPage(1);
+            }}
+            className="accent-violet-600"
+          />
+          {t("showZeroActivity")}
+        </label>
         <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
           <input
             type="checkbox"

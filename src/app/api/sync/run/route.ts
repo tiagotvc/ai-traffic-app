@@ -5,7 +5,7 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { formatMetaGraphError } from "@/lib/meta-error";
 import { getMetaConnectionInfo } from "@/lib/meta-auth-store";
-import { enqueueTenantSync } from "@/lib/sync-queue";
+import { enqueueTenantSync, SyncCooldownError } from "@/lib/sync-queue";
 
 const BodySchema = z.object({
   clientId: z.string().optional(),
@@ -81,6 +81,17 @@ export async function POST(req: Request) {
       status: run.status
     });
   } catch (err) {
+    if (err instanceof SyncCooldownError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          errorCode: err.code,
+          retryAfterSec: err.retryAfterSec,
+          error: err.message
+        },
+        { status: 429 }
+      );
+    }
     const msg = formatMetaGraphError(err);
     await auditRepo.save(
       auditRepo.create({

@@ -6,7 +6,25 @@ import { repositories } from "@/db/repositories";
 import { priorityToNumber } from "@/lib/client-meta-settings";
 import { runMetaSyncForAccount } from "@/lib/sync-meta";
 
-const MANUAL_COOLDOWN_MS = 10 * 60 * 1000;
+const MANUAL_COOLDOWN_MS = 3 * 60 * 1000;
+
+export function formatSyncCooldownMessage(retryAfterSec: number): string {
+  const mins = Math.max(1, Math.ceil(retryAfterSec / 60));
+  return mins === 1
+    ? "Sincronização disponível em cerca de 1 min."
+    : `Sincronização disponível em cerca de ${mins} min.`;
+}
+
+export class SyncCooldownError extends Error {
+  readonly code = "sync_cooldown" as const;
+  readonly retryAfterSec: number;
+
+  constructor(retryAfterSec: number) {
+    super(formatSyncCooldownMessage(retryAfterSec));
+    this.name = "SyncCooldownError";
+    this.retryAfterSec = retryAfterSec;
+  }
+}
 
 export async function canManualSync(tenantId: string): Promise<{ ok: boolean; retryAfterSec?: number }> {
   const { tenantSyncState: stateRepo } = await repositories();
@@ -38,7 +56,7 @@ export async function enqueueTenantSync(input: {
   if (input.manual) {
     const gate = await canManualSync(input.tenantId);
     if (!gate.ok) {
-      throw new Error(`Aguarde ${gate.retryAfterSec}s antes de sincronizar novamente.`);
+      throw new SyncCooldownError(gate.retryAfterSec ?? 60);
     }
   }
 

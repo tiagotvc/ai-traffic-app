@@ -222,8 +222,9 @@
     "search": "Search campaign or client…",
     "onlyAlerts": "Alerts only",
     "refresh": "Refresh",
-    "metricsFromDb": "Metrics from the last sync. Use Refresh to fetch live values from Meta.",
+    "metricsFromDb": "Data from last sync — Refresh fetches live values from Meta.",
     "enrichRateLimitHint": "If this persists, wait 2–5 minutes before refreshing again.",
+    "showZeroActivity": "Show without activity",
     "loading": "Loading…",
     "empty": "No campaigns with metrics in this period. Sync Meta or link ad accounts.",
     "colCampaign": "Campaign",
@@ -263,7 +264,7 @@
     "tabAdsets": "Ad sets & ads",
     "statusInactive": "Inactive",
     "pageSizeLabel": "Show per page",
-    "pageSizeHint": "Local pagination — Meta is fetched in full per ad account.",
+    "pageSizeHint": "Server-side pagination — page changes are fast.",
     "rowTotal": "Total",
     "pagination": "Showing {from}–{to} of {total}",
     "pagePrev": "Previous page",
@@ -546,7 +547,9 @@
     "autoOnLogin": "Importing metrics from Meta",
     "hintMemberNoWorkspaceMeta": "You are a workspace member: sync uses the administrator's Meta connection. Ask them to connect or reconnect Facebook in Settings.",
     "hintAdminReconnectMeta": "Connect or reconnect Facebook in Settings to sync ad accounts.",
-    "hintMemberAccountAccess": "As a member you don't need to connect your own Meta — but the administrator must still have access to the linked ad account in Ads Manager."
+    "hintMemberAccountAccess": "As a member you don't need to connect your own Meta — but the administrator must still have access to the linked ad account in Ads Manager.",
+    "cooldownHint": "Sync available in about {minutes} min.",
+    "cooldownButton": "Wait {minutes} min"
   },
   "welcome": {
     "title": "While you were away",

@@ -1,12 +1,312 @@
 import "server-only";
 
-import { Between, In } from "typeorm";
+import { In } from "typeorm";
 
+import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import { slugify } from "@/lib/app-context";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
-import { num } from "@/lib/goal-types";
 import { rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
+
+export type CommandCenterCampaignRow = {
+  metaCampaignId: string;
+  campaignName: string;
+  clientId: string;
+  clientName: string;
+  clientSlug: string;
+  clientTag: string | null;
+  adAccountId: string;
+  accountLabel: string;
+  metaAdAccountId: string;
+  spend: number;
+  conversions: number;
+  leads: number;
+  cpl: number | null;
+  cpa: number | null;
+  roas: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  status: string;
+  alertCount: number;
+  hasAlert: boolean;
+  dailyBudget?: number | null;
+};
+
+export type CommandCenterTotals = {
+  spend: number;
+  conversions: number;
+  leads: number;
+  impressions: number;
+  clicks: number;
+};
+
+type AggRow = {
+  metaCampaignId: string;
+  adAccountId: string;
+  campaign_name: string | null;
+  spend: string | number;
+  conversions: string | number;
+  leads: string | number;
+  impressions: string | number;
+  clicks: string | number;
+  roas: string | number;
+  campaign_status: string | null;
+  daily_budget: string | number | null;
+  clientId: string;
+  metaAdAccountId: string;
+  account_label: string | null;
+  client_name: string;
+  alert_count: string | number;
+};
+
+const SORT_SQL: Record<string, string> = {
+  spend: "sub.spend",
+  conversions: "sub.conversions",
+  leads: "sub.leads",
+  roas: "sub.roas",
+  impressions: "sub.impressions",
+  clicks: "sub.clicks",
+  ctr: "sub.ctr",
+  cpc: "sub.cpc",
+  cpm: "sub.cpm",
+  budget: "sub.daily_budget",
+  alerts: "sub.alert_count",
+  cpl: "sub.cpl",
+  cpa: "sub.cpa",
+  campaign: "sub.campaign_name",
+  campaignId: 'sub."metaCampaignId"',
+  client: "sub.client_name",
+  account: "sub.account_label",
+  status: "sub.campaign_status"
+};
+
+function num(v: string | number | null | undefined): number {
+  if (v == null) return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function mapAggRow(r: AggRow, clientTag: string | null): CommandCenterCampaignRow {
+  const spend = num(r.spend);
+  const conversions = num(r.conversions);
+  const leads = num(r.leads);
+  const impressions = num(r.impressions);
+  const clicks = num(r.clicks);
+  const alertCount = num(r.alert_count);
+  return {
+    metaCampaignId: r.metaCampaignId,
+    campaignName: r.campaign_name ?? r.metaCampaignId,
+    clientId: r.clientId,
+    clientName: r.client_name ?? "—",
+    clientSlug: r.client_name ? slugify(r.client_name) : "",
+    clientTag,
+    adAccountId: r.adAccountId,
+    accountLabel: r.account_label ?? r.metaAdAccountId ?? "—",
+    metaAdAccountId: r.metaAdAccountId ?? "",
+    spend,
+    conversions,
+    leads,
+    cpl: leads > 0 ? spend / leads : null,
+    cpa: conversions > 0 ? spend / conversions : null,
+    roas: num(r.roas),
+    impressions,
+    clicks,
+    ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+    cpc: clicks > 0 ? spend / clicks : 0,
+    cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+    status: r.campaign_status ?? "UNKNOWN",
+    alertCount,
+    hasAlert: alertCount > 0,
+    dailyBudget: r.daily_budget != null ? num(r.daily_budget) : null
+  };
+}
+
+function buildFilteredSubquery(input: {
+  accountIds: string[];
+  since: string;
+  until: string;
+  tenantId: string;
+  statusFilter: string;
+  onlyAlerts: boolean;
+  hideZeroActivity: boolean;
+  searchQ: string;
+}): { sql: string; params: unknown[] } {
+  const params: unknown[] = [
+    input.accountIds,
+    input.since,
+    input.until,
+    input.tenantId,
+    `%${input.searchQ.toLowerCase()}%`
+  ];
+
+  let statusClause = "";
+  if (input.statusFilter === "ACTIVE") {
+    statusClause = ` AND agg.campaign_status = 'ACTIVE'`;
+  } else if (input.statusFilter === "PAUSED") {
+    statusClause = ` AND agg.campaign_status = 'PAUSED'`;
+  } else if (input.statusFilter === "INACTIVE") {
+    statusClause = ` AND COALESCE(agg.campaign_status, 'UNKNOWN') <> 'ACTIVE'`;
+  }
+
+  const alertsClause = input.onlyAlerts ? ` AND COALESCE(al.cnt, 0) > 0` : "";
+
+  const zeroClause = input.hideZeroActivity
+    ? ` AND (
+        agg.spend > 0 OR agg.conversions > 0 OR agg.impressions > 0
+        OR COALESCE(al.cnt, 0) > 0
+        OR (agg.campaign_status = 'ACTIVE' AND COALESCE(agg.daily_budget, 0) > 0)
+      )`
+    : "";
+
+  const searchClause =
+    input.searchQ.length > 0
+      ? ` AND (
+          LOWER(COALESCE(agg.campaign_name, '')) LIKE $5
+          OR LOWER(c.name) LIKE $5
+          OR LOWER(COALESCE(a.label, a."metaAdAccountId", '')) LIKE $5
+          OR LOWER(agg."metaCampaignId") LIKE $5
+        )`
+      : "";
+
+  const sql = `
+    WITH agg AS (
+      SELECT
+        s."metaCampaignId",
+        s."adAccountId",
+        MAX(s."campaignName") AS campaign_name,
+        COALESCE(SUM(s.spend::numeric), 0) AS spend,
+        COALESCE(SUM(s.conversions::bigint), 0) AS conversions,
+        COALESCE(SUM(s.leads::bigint), 0) AS leads,
+        COALESCE(SUM(s.impressions::bigint), 0) AS impressions,
+        COALESCE(SUM(s.clicks::bigint), 0) AS clicks,
+        CASE
+          WHEN SUM(CASE WHEN s.roas::numeric > 0 THEN 1 ELSE 0 END) > 0
+          THEN AVG(CASE WHEN s.roas::numeric > 0 THEN s.roas::numeric ELSE NULL END)
+          ELSE 0
+        END AS roas,
+        MAX(s."campaignStatus") AS campaign_status,
+        MAX(s."dailyBudget"::numeric) AS daily_budget
+      FROM campaign_metric_snapshots s
+      WHERE s."adAccountId" = ANY($1::uuid[])
+        AND s.day >= $2::date
+        AND s.day <= $3::date
+      GROUP BY s."metaCampaignId", s."adAccountId"
+    )
+    SELECT
+      agg."metaCampaignId",
+      agg."adAccountId",
+      agg.campaign_name,
+      agg.spend,
+      agg.conversions,
+      agg.leads,
+      agg.impressions,
+      agg.clicks,
+      agg.roas,
+      agg.campaign_status,
+      agg.daily_budget,
+      a."clientId",
+      a."metaAdAccountId",
+      COALESCE(a.label, a."metaAdAccountId") AS account_label,
+      c.name AS client_name,
+      COALESCE(al.cnt, 0) AS alert_count,
+      CASE WHEN agg.leads > 0 THEN agg.spend / agg.leads ELSE NULL END AS cpl,
+      CASE WHEN agg.conversions > 0 THEN agg.spend / agg.conversions ELSE NULL END AS cpa,
+      CASE WHEN agg.impressions > 0 THEN (agg.clicks::numeric / agg.impressions) * 100 ELSE 0 END AS ctr,
+      CASE WHEN agg.clicks > 0 THEN agg.spend / agg.clicks ELSE 0 END AS cpc,
+      CASE WHEN agg.impressions > 0 THEN (agg.spend / agg.impressions) * 1000 ELSE 0 END AS cpm
+    FROM agg
+    JOIN ad_accounts a ON a.id = agg."adAccountId"
+    JOIN clients c ON c.id = a."clientId"
+    LEFT JOIN (
+      SELECT "metaCampaignId", COUNT(*)::int AS cnt
+      FROM alerts
+      WHERE "tenantId" = $4 AND dismissed = false AND "metaCampaignId" IS NOT NULL
+      GROUP BY "metaCampaignId"
+    ) al ON al."metaCampaignId" = agg."metaCampaignId"
+    WHERE c."tenantId" = $4
+    ${statusClause}
+    ${alertsClause}
+    ${zeroClause}
+    ${searchClause}
+  `;
+
+  return { sql, params };
+}
+
+async function queryAggregatedCampaigns(input: {
+  accountIds: string[];
+  since: string;
+  until: string;
+  tenantId: string;
+  statusFilter: string;
+  onlyAlerts: boolean;
+  hideZeroActivity: boolean;
+  searchQ: string;
+  sort?: string | null;
+  sortDir?: "asc" | "desc";
+  limit: number;
+  offset: number;
+  clientTagsByClientId: Map<string, string[]>;
+}): Promise<{ rows: CommandCenterCampaignRow[]; total: number; totals: CommandCenterTotals }> {
+  const ds = await getDataSource();
+  const { sql: baseSql, params } = buildFilteredSubquery({
+    accountIds: input.accountIds,
+    since: input.since,
+    until: input.until,
+    tenantId: input.tenantId,
+    statusFilter: input.statusFilter,
+    onlyAlerts: input.onlyAlerts,
+    hideZeroActivity: input.hideZeroActivity,
+    searchQ: input.searchQ
+  });
+
+  const countRows = await ds.query(
+    `SELECT COUNT(*)::int AS cnt FROM (${baseSql}) sub`,
+    params
+  );
+  const total = num(countRows[0]?.cnt);
+
+  const sumRows = await ds.query(
+    `SELECT
+      COALESCE(SUM(sub.spend), 0) AS spend,
+      COALESCE(SUM(sub.conversions), 0) AS conversions,
+      COALESCE(SUM(sub.leads), 0) AS leads,
+      COALESCE(SUM(sub.impressions), 0) AS impressions,
+      COALESCE(SUM(sub.clicks), 0) AS clicks
+    FROM (${baseSql}) sub`,
+    params
+  );
+
+  const totals: CommandCenterTotals = {
+    spend: num(sumRows[0]?.spend),
+    conversions: num(sumRows[0]?.conversions),
+    leads: num(sumRows[0]?.leads),
+    impressions: num(sumRows[0]?.impressions),
+    clicks: num(sumRows[0]?.clicks)
+  };
+
+  const sortCol = input.sort && SORT_SQL[input.sort] ? SORT_SQL[input.sort] : null;
+  const dir = input.sortDir === "asc" ? "ASC" : "DESC";
+  const nulls = input.sortDir === "asc" ? "NULLS FIRST" : "NULLS LAST";
+  const orderBy = sortCol
+    ? `${sortCol} ${dir} ${nulls}, sub.alert_count DESC, sub.spend DESC`
+    : "sub.alert_count DESC, sub.spend DESC, sub.campaign_name ASC";
+
+  const pageRows = (await ds.query(
+    `SELECT * FROM (${baseSql}) sub ORDER BY ${orderBy} LIMIT $6 OFFSET $7`,
+    [...params, input.limit, input.offset]
+  )) as AggRow[];
+
+  const rows = pageRows.map((r) => {
+    const tags = input.clientTagsByClientId.get(r.clientId) ?? [];
+    return mapAggRow(r, tags[0] ?? null);
+  });
+
+  return { rows, total, totals };
+}
 
 export async function queryCommandCenterCampaigns(input: {
   tenantId: string;
@@ -23,12 +323,18 @@ export async function queryCommandCenterCampaigns(input: {
   limit?: number;
   offset?: number;
   metaBusinessId?: string | null;
-}) {
+  sort?: string | null;
+  sortDir?: "asc" | "desc";
+  hideZeroActivity?: boolean;
+  includeTotals?: boolean;
+}): Promise<{
+  rows: CommandCenterCampaignRow[];
+  total: number;
+  totals?: CommandCenterTotals;
+}> {
   const {
     client: clientRepo,
     adAccount: adRepo,
-    campaignMetricSnapshot: campRepo,
-    alert: alertRepo,
     clientTag: tagRepo
   } = await repositories();
 
@@ -58,7 +364,9 @@ export async function queryCommandCenterCampaigns(input: {
   }
 
   const clientIds = clients.map((c) => c.id);
-  if (!clientIds.length) return { rows: [], total: 0 };
+  if (!clientIds.length) {
+    return { rows: [], total: 0, totals: emptyTotals() };
+  }
 
   let accounts = await adRepo.find({ where: { clientId: In(clientIds) } });
   const clientBm = input.metaBusinessId?.trim() || null;
@@ -66,160 +374,44 @@ export async function queryCommandCenterCampaigns(input: {
     accounts = accounts.filter((a) => matchesClientBusinessScope(a.metaBusinessId, clientBm));
   }
   const accountIds = accounts.map((a) => a.id);
-  if (!accountIds.length) return { rows: [], total: 0 };
-
-  const snaps = input.allTime
-    ? await campRepo.find({ where: { adAccountId: In(accountIds) } })
-    : await campRepo.find({
-        where: { adAccountId: In(accountIds), day: Between(since, until) }
-      });
-
-  const openAlerts = await alertRepo.find({
-    where: { tenantId: input.tenantId, dismissed: false }
-  });
-  const alertsByCampaign = new Map<string, number>();
-  for (const a of openAlerts) {
-    if (!a.metaCampaignId) continue;
-    alertsByCampaign.set(a.metaCampaignId, (alertsByCampaign.get(a.metaCampaignId) ?? 0) + 1);
-  }
-
-  const clientById = new Map(clients.map((c) => [c.id, c]));
-  const accountById = new Map(accounts.map((a) => [a.id, a]));
-
-  const statusByCampaign = new Map<string, string>();
-  for (const s of snaps) {
-    if (s.campaignStatus && !statusByCampaign.has(s.metaCampaignId)) {
-      statusByCampaign.set(s.metaCampaignId, s.campaignStatus);
-    }
-  }
-
-  const agg = new Map<
-    string,
-    {
-      metaCampaignId: string;
-      campaignName: string;
-      adAccountId: string;
-      clientId: string;
-      spend: number;
-      conversions: number;
-      leads: number;
-      roasSum: number;
-      roasN: number;
-      impressions: number;
-      clicks: number;
-      ctrSum: number;
-      ctrN: number;
-      cpcSum: number;
-      cpcN: number;
-      status?: string;
-    }
-  >();
-
-  for (const s of snaps) {
-    const key = s.metaCampaignId;
-    let row = agg.get(key);
-    if (!row) {
-      const acc = accountById.get(s.adAccountId);
-      row = {
-        metaCampaignId: key,
-        campaignName: s.campaignName ?? key,
-        adAccountId: s.adAccountId,
-        clientId: acc?.clientId ?? "",
-        spend: 0,
-        conversions: 0,
-        leads: 0,
-        roasSum: 0,
-        roasN: 0,
-        impressions: 0,
-        clicks: 0,
-        ctrSum: 0,
-        ctrN: 0,
-        cpcSum: 0,
-        cpcN: 0
-      };
-      agg.set(key, row);
-    }
-    row.spend += num(s.spend);
-    row.conversions += num(s.conversions);
-    row.leads += num(s.leads);
-    row.impressions += num(s.impressions);
-    row.clicks += num(s.clicks);
-    const roas = num(s.roas);
-    if (roas > 0) {
-      row.roasSum += roas;
-      row.roasN += 1;
-    }
-    const ctr = num(s.ctr);
-    if (ctr > 0) {
-      row.ctrSum += ctr;
-      row.ctrN += 1;
-    }
-    const cpc = num(s.cpc);
-    if (cpc > 0) {
-      row.cpcSum += cpc;
-      row.cpcN += 1;
-    }
+  if (!accountIds.length) {
+    return { rows: [], total: 0, totals: emptyTotals() };
   }
 
   const tags = await tagRepo.find({ where: { clientId: In(clientIds) } });
-  const tagsByClient = new Map<string, string[]>();
+  const clientTagsByClientId = new Map<string, string[]>();
   for (const tag of tags) {
-    const list = tagsByClient.get(tag.clientId) ?? [];
+    const list = clientTagsByClientId.get(tag.clientId) ?? [];
     list.push(tag.tag);
-    tagsByClient.set(tag.clientId, list);
+    clientTagsByClientId.set(tag.clientId, list);
   }
 
-  let rows = [...agg.values()].map((r) => {
-    const client = clientById.get(r.clientId);
-    const acc = accountById.get(r.adAccountId);
-    const alertCount = alertsByCampaign.get(r.metaCampaignId) ?? 0;
-    const clientTags = tagsByClient.get(r.clientId) ?? [];
-    return {
-      metaCampaignId: r.metaCampaignId,
-      campaignName: r.campaignName,
-      clientId: r.clientId,
-      clientName: client?.name ?? "—",
-      clientSlug: client ? slugify(client.name) : "",
-      clientTag: clientTags[0] ?? null,
-      adAccountId: r.adAccountId,
-      accountLabel: acc?.label ?? acc?.metaAdAccountId ?? "—",
-      metaAdAccountId: acc?.metaAdAccountId ?? "",
-      spend: r.spend,
-      conversions: r.conversions,
-      leads: r.leads,
-      cpl: r.leads > 0 ? r.spend / r.leads : null,
-      cpa: r.conversions > 0 ? r.spend / r.conversions : null,
-      roas: r.roasN ? r.roasSum / r.roasN : 0,
-      impressions: r.impressions,
-      clicks: r.clicks,
-      ctr: r.ctrN ? r.ctrSum / r.ctrN : r.impressions > 0 ? (r.clicks / r.impressions) * 100 : 0,
-      cpc: r.cpcN ? r.cpcSum / r.cpcN : r.clicks > 0 ? r.spend / r.clicks : 0,
-      cpm: r.impressions > 0 ? (r.spend / r.impressions) * 1000 : 0,
-      status: statusByCampaign.get(r.metaCampaignId) ?? "UNKNOWN",
-      alertCount,
-      hasAlert: alertCount > 0
-    };
+  let statusFilter = input.statusFilter ?? "ALL";
+  if (input.onlyActive) statusFilter = "ACTIVE";
+
+  const result = await queryAggregatedCampaigns({
+    accountIds,
+    since,
+    until,
+    tenantId: input.tenantId,
+    statusFilter,
+    onlyAlerts: input.onlyAlerts ?? false,
+    hideZeroActivity: input.hideZeroActivity ?? false,
+    searchQ: input.q?.trim() ?? "",
+    sort: input.sort,
+    sortDir: input.sortDir,
+    limit: input.limit ?? 100,
+    offset: input.offset ?? 0,
+    clientTagsByClientId
   });
 
-  const statusFilter = input.statusFilter ?? "ALL";
-  if (statusFilter === "ACTIVE") {
-    rows = rows.filter((r) => (r as { status?: string }).status === "ACTIVE");
-  } else if (statusFilter === "PAUSED") {
-    rows = rows.filter((r) => (r as { status?: string }).status === "PAUSED");
-  } else if (statusFilter === "INACTIVE") {
-    rows = rows.filter((r) => {
-      const st = (r as { status?: string }).status ?? "UNKNOWN";
-      return st !== "ACTIVE";
-    });
-  }
+  return {
+    rows: result.rows,
+    total: result.total,
+    totals: input.includeTotals !== false ? result.totals : undefined
+  };
+}
 
-  if (input.onlyAlerts) rows = rows.filter((r) => r.hasAlert);
-
-  rows.sort((a, b) => b.alertCount - a.alertCount || b.spend - a.spend);
-  const total = rows.length;
-  const offset = input.offset ?? 0;
-  const limit = input.limit ?? 100;
-  rows = rows.slice(offset, offset + limit);
-
-  return { rows, total };
+function emptyTotals(): CommandCenterTotals {
+  return { spend: 0, conversions: 0, leads: 0, impressions: 0, clicks: 0 };
 }
