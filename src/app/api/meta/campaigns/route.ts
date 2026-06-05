@@ -20,7 +20,29 @@ const BodySchema = z.object({
   metaPageId: z.string().nullable().optional(),
   metaLinkUrl: z.string().nullable().optional(),
   metaPixelId: z.string().nullable().optional(),
-  instagramActorId: z.string().nullable().optional()
+  instagramActorId: z.string().nullable().optional(),
+  // Segmentação (Público) escolhida no criador — sobrescreve os defaults do cliente.
+  targeting: z
+    .object({
+      countries: z.array(z.string()).optional(),
+      cities: z
+        .array(
+          z.object({
+            key: z.string(),
+            radius: z.number().optional(),
+            distanceUnit: z.enum(["mile", "kilometer"]).optional()
+          })
+        )
+        .optional(),
+      ageMin: z.number().min(13).max(65).optional(),
+      ageMax: z.number().min(13).max(65).optional(),
+      genders: z.array(z.number()).optional(),
+      locales: z.array(z.number()).optional(),
+      interests: z.array(z.object({ id: z.string(), name: z.string().optional() })).optional(),
+      customAudienceIds: z.array(z.string()).optional(),
+      excludedAudienceIds: z.array(z.string()).optional()
+    })
+    .optional()
 });
 
 export async function POST(req: Request) {
@@ -94,7 +116,8 @@ export async function POST(req: Request) {
       pageId: publish.metaPageId,
       linkUrl: publish.metaLinkUrl,
       settings,
-      callToAction: settings.defaultCta
+      callToAction: settings.defaultCta,
+      targeting: body.targeting
     });
 
     await auditRepo.save(

@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
-import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 
 type CampaignRow = {
@@ -149,6 +148,44 @@ export function CommandCenterClient() {
     window.addEventListener("traffic-sync-done", onSync);
     return () => window.removeEventListener("traffic-sync-done", onSync);
   }, [load]);
+
+  // Auto-sync ao acessar, com intervalo: se o último sync foi há mais de 15 min
+  // (e nenhum está rodando), dispara um sync automático e recarrega ao terminar.
+  // Mantém o Command Center fresco sem clicar, sem sobrecarregar a Meta.
+  const autoSyncTried = useRef(false);
+  useEffect(() => {
+    if (autoSyncTried.current) return;
+    autoSyncTried.current = true;
+    const STALE_MS = 15 * 60 * 1000;
+    fetch("/api/sync/status")
+      .then((r) => r.json())
+      .then((j) => {
+        const status = j?.lastRun?.status as string | undefined;
+        if (status === "running" || status === "queued") return;
+        const times: number[] = [];
+        const push = (iso?: string | null) => {
+          if (!iso) return;
+          const ts = Date.parse(iso);
+          if (!Number.isNaN(ts)) times.push(ts);
+        };
+        push(j?.lastRun?.finishedAt);
+        push(j?.lastManualSyncAt);
+        for (const a of j?.accounts ?? []) push(a?.lastSyncedAt);
+        const latest = times.length ? Math.max(...times) : 0;
+        if (Date.now() - latest < STALE_MS) return;
+        fetch("/api/sync/run", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ auto: true })
+        })
+          .then((res) => (res.ok ? res.json().catch(() => null) : null))
+          .then((res) => {
+            if (res?.ok) window.dispatchEvent(new Event("traffic-sync-done"));
+          })
+          .catch(() => {});
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const tmr = setTimeout(() => setQ(searchInput), 300);
@@ -313,7 +350,7 @@ export function CommandCenterClient() {
   }
 
   const shortcuts = [
-    { label: t("shortcutNewCampaign"), href: "/campaigns?publish=1", color: "bg-violet-50 text-violet-600" },
+    { label: t("shortcutNewCampaign"), href: "/ads/new", color: "bg-violet-50 text-violet-600" },
     { label: t("shortcutAudience"), href: "/audiences", color: "bg-emerald-50 text-emerald-600" },
     { label: t("shortcutLookalike"), href: "/audiences", color: "bg-amber-50 text-amber-600" },
     { label: t("shortcutReport"), href: "/reports", color: "bg-pink-50 text-pink-600" },
@@ -343,13 +380,11 @@ export function CommandCenterClient() {
             ) : null}
           </button>
           <SyncNowButton clientId={clientFilter || undefined} />
-          <Link href="/campaigns?publish=1" className="ui-btn-primary whitespace-nowrap">
+          <Link href="/ads/new" className="ui-btn-primary whitespace-nowrap">
             {t("newCampaign")}
           </Link>
         </div>
       </div>
-
-      <SyncStatusBanner clientId={clientFilter || undefined} />
 
       {/* Filter bar */}
       <div ref={filterBarRef} className="flex flex-wrap items-center gap-2">

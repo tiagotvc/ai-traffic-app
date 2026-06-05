@@ -125,73 +125,80 @@ export function CampaignsHubClient() {
       });
   }, []);
 
-  const load = useCallback((opts?: { live?: boolean }) => {
-    abortRef.current?.abort();
-    const ac = new AbortController();
-    abortRef.current = ac;
-    const reqId = ++requestIdRef.current;
+  // Paginação e filtros no servidor (rápido com «todos os clientes»).
+  // Ao selecionar um cliente, busca ao vivo automaticamente; «Atualizar» força live.
+  const load = useCallback(
+    (opts?: { live?: boolean }) => {
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+      const reqId = ++requestIdRef.current;
 
-    setLoading(true);
-    setRows([]);
+      setLoading(true);
+      setRows([]);
 
-    const params = new URLSearchParams(periodStateToQuery(period));
-    if (clientFilter) params.set("clientId", clientFilter);
-    if (q.trim()) params.set("q", q.trim());
-    if (onlyAlerts) params.set("onlyAlerts", "1");
-    if (showZeroActivity) params.set("showZero", "1");
-    if (statusFilter !== "ALL") params.set("status", statusFilter);
-    if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
-    if (opts?.live) params.set("live", "1");
-    if (sortKey) {
-      params.set("sort", sortKey);
-      params.set("dir", sortDir);
-    }
-    params.set("limit", String(pageSize));
-    params.set("offset", String((page - 1) * pageSize));
+      const live = opts?.live ?? !!clientFilter;
+      const params = new URLSearchParams(periodStateToQuery(period));
+      if (clientFilter) params.set("clientId", clientFilter);
+      if (q.trim()) params.set("q", q.trim());
+      if (onlyAlerts) params.set("onlyAlerts", "1");
+      if (showZeroActivity) params.set("showZero", "1");
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
+      if (live) params.set("live", "1");
+      if (sortKey) {
+        params.set("sort", sortKey);
+        params.set("dir", sortDir);
+      }
+      params.set("limit", String(pageSize));
+      params.set("offset", String((page - 1) * pageSize));
 
-    fetch(`/api/campaigns/list?${params.toString()}`, { signal: ac.signal })
-      .then((r) => r.json())
-      .then((j) => {
-        if (reqId !== requestIdRef.current) return;
-        if (j.ok === false) {
-          setRows([]);
-          setTotal(0);
-          setEnrichError(typeof j.error === "string" ? j.error : null);
-          return;
-        }
-        const list = (j.rows ?? []) as CampaignRow[];
-        setRows(list);
-        setTotal(j.total ?? list.length);
-        setTotals(j.totals ?? { spend: 0, conversions: 0, leads: 0 });
-        setEnrichError(j.enrichError ?? null);
-        setMetricsSource(j.metricsSource === "live" ? "live" : "db");
-        if (selectedIdRef.current && list.some((r) => r.metaCampaignId === selectedIdRef.current)) return;
-        setSelectedId(null);
-        setSelectedSlug("");
-        setSelectedRow(null);
-      })
-      .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-      })
-      .finally(() => {
-        if (reqId === requestIdRef.current) setLoading(false);
-      });
-  }, [
-    clientFilter,
-    q,
-    onlyAlerts,
-    showZeroActivity,
-    statusFilter,
-    objectiveFilter,
-    period,
-    page,
-    pageSize,
-    sortKey,
-    sortDir
-  ]);
+      fetch(`/api/campaigns/list?${params.toString()}`, { signal: ac.signal })
+        .then((r) => r.json())
+        .then((j) => {
+          if (reqId !== requestIdRef.current) return;
+          if (j.ok === false) {
+            setRows([]);
+            setTotal(0);
+            setEnrichError(typeof j.error === "string" ? j.error : null);
+            return;
+          }
+          const list = (j.rows ?? []) as CampaignRow[];
+          setRows(list);
+          setTotal(j.total ?? list.length);
+          setTotals(j.totals ?? { spend: 0, conversions: 0, leads: 0 });
+          setEnrichError(j.enrichError ?? null);
+          setMetricsSource(j.metricsSource === "live" ? "live" : "db");
+          if (selectedIdRef.current && list.some((r) => r.metaCampaignId === selectedIdRef.current)) {
+            return;
+          }
+          setSelectedId(null);
+          setSelectedSlug("");
+          setSelectedRow(null);
+        })
+        .catch((err: unknown) => {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+        })
+        .finally(() => {
+          if (reqId === requestIdRef.current) setLoading(false);
+        });
+    },
+    [
+      clientFilter,
+      q,
+      onlyAlerts,
+      showZeroActivity,
+      statusFilter,
+      objectiveFilter,
+      period,
+      page,
+      pageSize,
+      sortKey,
+      sortDir
+    ]
+  );
 
-  useEffect(() => {
-    load();
+  useEffect(() => {    load();
     const onReload = () => load();
     const onSync = () => load({ live: true });
     window.addEventListener("traffic:campaigns-reload", onReload);
@@ -203,14 +210,21 @@ export function CampaignsHubClient() {
   }, [load]);
 
   useEffect(() => {
-    if (!selectedId || !detailRef.current) return;
-    detailRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!selectedId) return;
+    // Espera o detalhe (renderizado condicionalmente) entrar no DOM antes de rolar.
+    const raf = requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(raf);
   }, [selectedId]);
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
-  const pickCampaign = (r: CampaignRow) => {
-    setSelectedId(r.metaCampaignId);
+  useEffect(() => {
+    if (page > pageCount) setPage(1);
+  }, [page, pageCount]);
+
+  const pickCampaign = (r: CampaignRow) => {    setSelectedId(r.metaCampaignId);
     setSelectedSlug(r.clientSlug);
     setSelectedRow(r);
     rememberCampaign(r.metaCampaignId, r.clientSlug);
@@ -642,8 +656,7 @@ export function CampaignsHubClient() {
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => (
-                  <tr
+                rows.map((r) => (                  <tr
                     key={r.metaCampaignId}
                     className={`cursor-pointer border-t border-slate-100 hover:bg-violet-50/40 ${
                       selectedId === r.metaCampaignId ? "bg-violet-50/60" : ""
@@ -655,8 +668,7 @@ export function CampaignsHubClient() {
                 ))
               )}
             </tbody>
-            {!loading && rows.length > 0 ? (
-              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+            {!loading && rows.length > 0 ? (              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
                 <tr>
                   {visibleColumns.map((col) => renderTotalCell(col, totalLabelCol))}
                 </tr>

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
+import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 
 type Campaign = {
@@ -125,6 +126,13 @@ export type CampaignSeedRow = {
   roas: number;
   cpa: number | null;
 };
+
+function periodStateFromQuery(periodQuery: string): PeriodState {
+  const raw = periodQuery.startsWith("?") ? periodQuery.slice(1) : periodQuery;
+  const p = new URLSearchParams(raw);
+  const preset = (p.get("period") as PeriodState["preset"]) || "last7";
+  return { preset, since: p.get("since") ?? "", until: p.get("until") ?? "" };
+}
 
 function buildDetailQuery(periodQuery: string, seed?: CampaignSeedRow) {
   const raw = periodQuery.startsWith("?") ? periodQuery.slice(1) : periodQuery;
@@ -354,13 +362,21 @@ export function CampaignManagerClient({
   const [refreshing, setRefreshing] = useState(false);
   const [chartLoading, setChartLoading] = useState(true);
   const [budgetDrawerOpen, setBudgetDrawerOpen] = useState(false);
+  const [detailPeriod, setDetailPeriod] = useState<PeriodState>(() =>
+    periodStateFromQuery(periodQuery)
+  );
 
   useEffect(() => {
     setActiveTab(embedded ? "overview" : tab);
   }, [metaCampaignId, embedded, tab]);
 
+  // Acompanha o período vindo da lista (hub) como padrão; o usuário pode trocar aqui.
+  useEffect(() => {
+    setDetailPeriod(periodStateFromQuery(periodQuery));
+  }, [periodQuery]);
+
   const reload = useCallback(() => {
-    const qs = buildDetailQuery(periodQuery, seedRow);
+    const qs = buildDetailQuery(`?${periodStateToQuery(detailPeriod).toString()}`, seedRow);
     setRefreshing(true);
     setChartLoading(true);
 
@@ -403,7 +419,7 @@ export function CampaignManagerClient({
     void Promise.all([detailPromise, adsetsPromise, timeseriesPromise]).finally(() => {
       setRefreshing(false);
     });
-  }, [metaCampaignId, clientSlug, periodQuery, seedRow]);
+  }, [metaCampaignId, clientSlug, detailPeriod, seedRow]);
 
   useEffect(() => {
     if (seedRow && seedRow.metaCampaignId === metaCampaignId) {
@@ -541,12 +557,7 @@ export function CampaignManagerClient({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-            {t("dateRange")}
-          </div>
-          <button type="button" className="ui-btn-secondary text-xs">
-            {t("comparePeriod")}
-          </button>
+          <PeriodFilter value={detailPeriod} onChange={setDetailPeriod} />
           <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm" title={t("refresh")}>
             ↻
           </button>

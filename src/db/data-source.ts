@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 
 import { typeOrmEntities } from "./entities/registry";
+import { appMigrations } from "./migrations";
 import { postgresOptionsFromUrl } from "./pg-config";
 
 const EXPECTED_ENTITY_COUNT = typeOrmEntities.length;
@@ -22,6 +23,7 @@ function buildDataSource() {
   return new DataSource({
     ...postgresOptionsFromUrl(url),
     entities: [...typeOrmEntities],
+    migrations: [...appMigrations],
     synchronize: false,
     logging: process.env.NODE_ENV === "development"
   });
@@ -53,6 +55,29 @@ export async function getDataSource(): Promise<DataSource> {
 
   const ds = buildDataSource();
   await ds.initialize();
+  await runPendingMigrations(ds);
   globalThis.__appDataSource = ds;
   return ds;
+}
+
+/**
+ * Aplica migrações pendentes na inicialização, garantindo que o schema acompanhe o
+ * código em produção sem depender do build do Vercel (que não roda o db:migrate).
+ * Migrações são idempotentes (IF NOT EXISTS) e transacionais. Em caso de falha,
+ * loga e segue — não derruba o app (uma proxima inicialização tenta de novo).
+ */
+async function runPendingMigrations(ds: DataSource): Promise<void> {
+  try {
+    const applied = await ds.runMigrations({ transaction: "each" });
+    if (applied.length) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[migrations] aplicadas ${applied.length}:`,
+        applied.map((m) => m.name).join(", ")
+      );
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[migrations] falha ao aplicar (seguindo sem derrubar o app):", err);
+  }
 }

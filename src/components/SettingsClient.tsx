@@ -2,10 +2,18 @@
 
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { WorkspaceTeamSection } from "@/components/WorkspaceTeamSection";
+
+type WorkspaceMetaInfo = {
+  ok: true;
+  workspaceConnectionUserId: string | null;
+  workspaceConnectionName: string | null;
+  isOwner: boolean;
+  canManage: boolean;
+};
 
 export function SettingsClient({
   locale,
@@ -27,6 +35,18 @@ export function SettingsClient({
   const [purgeMessage, setPurgeMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [purgePending, startPurgeTransition] = useTransition();
+  const [wsMeta, setWsMeta] = useState<WorkspaceMetaInfo | null>(null);
+  const [wsMetaMessage, setWsMetaMessage] = useState<string | null>(null);
+  const [wsMetaPending, startWsMetaTransition] = useTransition();
+
+  const loadWorkspaceMeta = useCallback(() => {
+    fetch("/api/settings/workspace-meta")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setWsMeta(j as WorkspaceMetaInfo);
+      })
+      .catch(() => setWsMeta(null));
+  }, []);
 
   useEffect(() => {
     fetch("/api/settings/tenant")
@@ -45,7 +65,28 @@ export function SettingsClient({
         if (j.ok) setMetaConnected(!!j.connected);
       })
       .catch(() => setMetaConnected(false));
-  }, [t]);
+
+    loadWorkspaceMeta();
+  }, [t, loadWorkspaceMeta]);
+
+  function runWorkspaceMetaAction(body: Record<string, unknown>, successKey: string) {
+    setWsMetaMessage(null);
+    startWsMetaTransition(async () => {
+      const res = await fetch("/api/settings/workspace-meta", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        setWsMetaMessage(t("workspaceMetaActionFailed"));
+        return;
+      }
+      setWsMeta(json as WorkspaceMetaInfo);
+      setWsMetaMessage(t(successKey));
+      if (body.action === "disconnect") setMetaConnected(false);
+    });
+  }
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -142,6 +183,63 @@ export function SettingsClient({
               {t("metaAssetsLink")}
             </Link>
           </div>
+
+          {wsMeta ? (
+            <div className="mt-4 border-t border-slate-100 pt-3">
+              <div className="text-xs font-semibold text-slate-700">
+                {t("workspaceMetaTitle")}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-500">{t("workspaceMetaHint")}</p>
+              <p className="mt-2 text-xs text-slate-600">
+                {wsMeta.workspaceConnectionName
+                  ? t("workspaceMetaResponsible", { name: wsMeta.workspaceConnectionName })
+                  : t("workspaceMetaNone")}
+              </p>
+
+              {wsMeta.canManage ? (
+                <div className="mt-3 flex flex-col gap-2">
+                  {!wsMeta.isOwner ? (
+                    <button
+                      type="button"
+                      disabled={wsMetaPending}
+                      onClick={() => {
+                        if (!metaConnected) {
+                          setWsMetaMessage(t("workspaceMetaClaimNeedsToken"));
+                          return;
+                        }
+                        runWorkspaceMetaAction({ action: "claim" }, "workspaceMetaClaimed");
+                      }}
+                      className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+                    >
+                      {t("workspaceMetaClaim")}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={wsMetaPending}
+                    onClick={() => {
+                      if (!window.confirm(t("workspaceMetaDisconnectConfirm"))) return;
+                      runWorkspaceMetaAction(
+                        { action: "disconnect" },
+                        "workspaceMetaDisconnected"
+                      );
+                    }}
+                    className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+                  >
+                    {t("workspaceMetaDisconnect")}
+                  </button>
+                </div>
+              ) : wsMeta.workspaceConnectionName ? (
+                <p className="mt-2 text-[11px] text-slate-400">
+                  {t("workspaceMetaManagedBy", { name: wsMeta.workspaceConnectionName })}
+                </p>
+              ) : null}
+
+              {wsMetaMessage ? (
+                <p className="mt-2 text-[11px] text-slate-500">{wsMetaMessage}</p>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <section className="ui-card p-4">

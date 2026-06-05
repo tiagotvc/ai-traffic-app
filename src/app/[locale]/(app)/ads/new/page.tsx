@@ -1,20 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { useRouter } from "@/i18n/navigation";
+import { AdsCreatorClient } from "@/components/AdsCreatorClient";
 
-export default function AdsNewRedirectPage() {
-  const router = useRouter();
+export default function AdsNewPage() {
   const searchParams = useSearchParams();
-  const client = searchParams.get("client");
+  const client = searchParams.get("client") ?? undefined;
 
-  useEffect(() => {
-    const qs = new URLSearchParams({ publish: "1" });
-    if (client) qs.set("client", client);
-    router.replace(`/campaigns?${qs.toString()}`);
-  }, [router, client]);
-
-  return null;
+  // Página cheia (não-embedded) — substitui o antigo drawer lateral.
+  return <AdsCreatorClient initialClientSlug={client} />;
 }

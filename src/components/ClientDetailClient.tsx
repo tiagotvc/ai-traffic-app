@@ -6,7 +6,6 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { ClientMetaExtras } from "@/components/ClientMetaExtras";
 import { ClientReadinessChecklist } from "@/components/ClientReadinessChecklist";
 import { SyncNowButton } from "@/components/SyncNowButton";
-import { SyncStatusBanner } from "@/components/SyncStatusBanner";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatBRL, formatRoas } from "@/lib/format";
 
@@ -227,7 +226,6 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
         ) : null}
 
         <ClientReadinessChecklist clientId={clientId} />
-        <SyncStatusBanner clientId={clientId} />
 
         <div className="ui-card p-4">
           <div className="flex items-start justify-between gap-3">

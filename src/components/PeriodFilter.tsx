@@ -52,18 +52,22 @@ export function PeriodFilter({
         ? 7
         : value.preset === "last14"
           ? 14
-          : value.preset === "last30"
-            ? 30
-            : value.preset === "today"
-              ? 1
-              : null,
+          : value.preset === "last15"
+            ? 15
+            : value.preset === "last30"
+              ? 30
+              : value.preset === "today" || value.preset === "yesterday"
+                ? 1
+                : null,
     allTime: value.preset === "all"
   };
 
   const label = formatPeriodLabel(parsed, locale, {
     today: t("today"),
+    yesterday: t("yesterday"),
     last7: t("last7"),
     last14: t("last14"),
+    last15: t("last15"),
     last30: t("last30"),
     custom: t("custom"),
     all: t("all")
@@ -100,8 +104,9 @@ export function PeriodFilter({
           {(
             [
               ["today", t("today")],
+              ["yesterday", t("yesterday")],
               ["last7", t("last7")],
-              ["last14", t("last14")],
+              ["last15", t("last15")],
               ["last30", t("last30")],
               ["all", t("all")]
             ] as const

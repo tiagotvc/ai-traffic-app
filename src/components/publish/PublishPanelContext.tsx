@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 
+import { useRouter } from "@/i18n/navigation";
+
 export type PublishPanelOptions = {
   clientSlug?: string;
 };
@@ -16,13 +18,18 @@ type PublishPanelContextValue = {
 const PublishPanelContext = createContext<PublishPanelContextValue | null>(null);
 
 export function PublishPanelProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<PublishPanelOptions>({});
 
-  const openPanel = useCallback((opts?: PublishPanelOptions) => {
-    setOptions(opts ?? {});
-    setOpen(true);
-  }, []);
+  // O criador de campanhas agora é uma página cheia (/ads/new) em vez de drawer.
+  const openPanel = useCallback(
+    (opts?: PublishPanelOptions) => {
+      const qs = opts?.clientSlug ? `?client=${encodeURIComponent(opts.clientSlug)}` : "";
+      router.push(`/ads/new${qs}`);
+    },
+    [router]
+  );
 
   const closePanel = useCallback(() => {
     setOpen(false);

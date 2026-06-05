@@ -119,7 +119,7 @@ export function CreativesLibraryClient() {
           <button type="button" className="ui-btn-secondary">
             {t("export")}
           </button>
-          <Link href="/campaigns?publish=1" className="ui-btn-primary">
+          <Link href="/ads/new" className="ui-btn-primary">
             {t("newCreative")}
           </Link>
         </div>

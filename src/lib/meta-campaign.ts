@@ -16,6 +16,20 @@ const OPTIMIZATION_MAP: Record<CampaignObjectiveKey, string> = {
   traffic: "LINK_CLICKS"
 };
 
+/** Segmentação escolhida na criação do anúncio (sobrescreve os defaults do cliente). */
+export type CampaignTargetingInput = {
+  countries?: string[];
+  cities?: { key: string; radius?: number; distanceUnit?: "mile" | "kilometer" }[];
+  ageMin?: number;
+  ageMax?: number;
+  /** [1] = masculino, [2] = feminino; omitido/vazio = todos. */
+  genders?: number[];
+  locales?: number[];
+  interests?: { id: string; name?: string }[];
+  customAudienceIds?: string[];
+  excludedAudienceIds?: string[];
+};
+
 export type CreateFullCampaignInput = {
   accessToken: string;
   adAccountId: string;
@@ -29,7 +43,37 @@ export type CreateFullCampaignInput = {
   linkUrl: string;
   settings?: ClientMetaSettings;
   callToAction?: string;
+  targeting?: CampaignTargetingInput;
 };
+
+function buildTargetingFromInput(t: CampaignTargetingInput): Record<string, unknown> {
+  const geo: Record<string, unknown> = {};
+  if (t.countries?.length) geo.countries = t.countries;
+  if (t.cities?.length) {
+    geo.cities = t.cities.map((c) => ({
+      key: c.key,
+      radius: c.radius ?? 10,
+      distance_unit: c.distanceUnit ?? "kilometer"
+    }));
+  }
+  const targeting: Record<string, unknown> = {
+    geo_locations: Object.keys(geo).length ? geo : { countries: ["BR"] },
+    age_min: t.ageMin ?? 18,
+    age_max: t.ageMax ?? 65
+  };
+  if (t.genders?.length) targeting.genders = t.genders;
+  if (t.locales?.length) targeting.locales = t.locales;
+  if (t.interests?.length) {
+    targeting.flexible_spec = [{ interests: t.interests.map((i) => ({ id: i.id, name: i.name })) }];
+  }
+  if (t.customAudienceIds?.length) {
+    targeting.custom_audiences = t.customAudienceIds.map((id) => ({ id }));
+  }
+  if (t.excludedAudienceIds?.length) {
+    targeting.excluded_custom_audiences = t.excludedAudienceIds.map((id) => ({ id }));
+  }
+  return targeting;
+}
 
 export type CreateFullCampaignResult = {
   campaignId: string;
@@ -66,11 +110,15 @@ export async function createFullMetaCampaign(
   });
 
   const startTime = Math.floor(Date.now() / 1000) + 3600;
-  const targeting = settings ? buildTargetingFromSettings(settings) : {
-    geo_locations: { countries: ["BR"] },
-    age_min: 18,
-    age_max: 65
-  };
+  const targeting = input.targeting
+    ? buildTargetingFromInput(input.targeting)
+    : settings
+      ? buildTargetingFromSettings(settings)
+      : {
+          geo_locations: { countries: ["BR"] },
+          age_min: 18,
+          age_max: 65
+        };
 
   const adsetBody: Record<string, string> = {
     name: `${campaignName} — Ad Set`,

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 
 import { Link } from "@/i18n/navigation";
 import { FormField } from "@/components/ui/FormField";
+import { MetaTargetingSelect, type TargetingItem } from "@/components/MetaTargetingSelect";
 
 type Asset = { id: string; label: string; url?: string | null };
 type AdAccountOption = { metaAdAccountId: string; label: string };
@@ -68,6 +69,25 @@ export function AdsCreatorClient({
   const [message, setMessage] = useState<string | null>(null);
   const [publishConfigError, setPublishConfigError] = useState(false);
 
+  // Público (segmentação)
+  const [locations, setLocations] = useState<TargetingItem[]>([]);
+  const [ageMin, setAgeMin] = useState("18");
+  const [ageMax, setAgeMax] = useState("65");
+  const [gender, setGender] = useState<"all" | "male" | "female">("all");
+  const [interests, setInterests] = useState<TargetingItem[]>([]);
+  const [locales, setLocales] = useState<TargetingItem[]>([]);
+  const [audiences, setAudiences] = useState<{ id: string; name: string }[]>([]);
+  const [includeAud, setIncludeAud] = useState<string[]>([]);
+  const [excludeAud, setExcludeAud] = useState<string[]>([]);
+
+  const regionNames = useMemo(() => {
+    try {
+      return new Intl.DisplayNames([locale], { type: "region" });
+    } catch {
+      return null;
+    }
+  }, [locale]);
+
   const loadAssets = useCallback(async (accountId: string) => {
     const qs = accountId ? `?adAccountId=${encodeURIComponent(accountId)}` : "";
     const res = await fetch(`/api/meta/assets${qs}`);
@@ -88,6 +108,25 @@ export function AdsCreatorClient({
     setSelectedPageId(pg.length === 1 ? pg[0].metaPageId : "");
     setSelectedInstagramId(ig.length === 1 ? ig[0].id : "");
     setSelectedPixelId(px.length === 1 ? px[0].id : "");
+
+    // Públicos personalizados/lookalike desta conta de anúncio.
+    if (accountId) {
+      try {
+        const aud = await fetch(`/api/meta/audiences?adAccountId=${encodeURIComponent(accountId)}`).then(
+          (r) => r.json()
+        );
+        setAudiences(
+          ((aud.audiences ?? []) as Array<{ id: string; name?: string }>).map((a) => ({
+            id: a.id,
+            name: a.name?.trim() || a.id
+          }))
+        );
+      } catch {
+        setAudiences([]);
+      }
+    } else {
+      setAudiences([]);
+    }
   }, []);
 
   const loadForClient = useCallback(
@@ -105,9 +144,10 @@ export function AdsCreatorClient({
       setPublishConfigError(false);
 
       try {
-        const [accountsRes, publishRes] = await Promise.all([
+        const [accountsRes, publishRes, settingsRes] = await Promise.all([
           fetch(`/api/meta/ad-accounts?clientId=${encodeURIComponent(slug)}`),
-          fetch(`/api/clients/${encodeURIComponent(slug)}/publish-config`)
+          fetch(`/api/clients/${encodeURIComponent(slug)}/publish-config`),
+          fetch(`/api/clients/${encodeURIComponent(slug)}/meta-settings`)
         ]);
 
         const accountsJson = (await accountsRes.json()) as {
@@ -122,6 +162,35 @@ export function AdsCreatorClient({
 
         setPublishReady(!!publishJson.resolved?.ready);
         setLinkUrl(publishJson.resolved?.linkUrl ?? "");
+
+        // Pré-preenche o Público com os defaults do cliente (países, idade, públicos).
+        try {
+          const sj = (await settingsRes.json()) as {
+            settings?: {
+              targeting?: { countries?: string[]; age_min?: number; age_max?: number };
+              defaultCustomAudienceIds?: string[];
+              defaultExcludedAudienceIds?: string[];
+            };
+          };
+          const s = sj.settings;
+          const countries = s?.targeting?.countries ?? [];
+          setLocations(
+            countries.map((code) => ({
+              value: code,
+              label: regionNames?.of(code) ?? code,
+              meta: { type: "country", countryCode: code }
+            }))
+          );
+          if (s?.targeting?.age_min) setAgeMin(String(s.targeting.age_min));
+          if (s?.targeting?.age_max) setAgeMax(String(s.targeting.age_max));
+          setIncludeAud(s?.defaultCustomAudienceIds ?? []);
+          setExcludeAud(s?.defaultExcludedAudienceIds ?? []);
+          setInterests([]);
+          setLocales([]);
+          setGender("all");
+        } catch {
+          /* mantém o que estiver */
+        }
 
         if (!accountsRes.ok || !accountsJson.ok) {
           setAdAccountId("");
@@ -150,7 +219,7 @@ export function AdsCreatorClient({
         setAccountsLoading(false);
       }
     },
-    [loadAssets, t]
+    [loadAssets, t, regionNames]
   );
 
   useEffect(() => {
@@ -175,6 +244,25 @@ export function AdsCreatorClient({
   const handlePublish = useCallback(() => {
     setMessage(null);
     setPublishConfigError(false);
+
+    const countries = locations
+      .filter((l) => l.meta?.type === "country")
+      .map((l) => l.meta?.countryCode || l.value);
+    const cities = locations
+      .filter((l) => l.meta?.type && l.meta.type !== "country")
+      .map((l) => ({ key: l.value }));
+    const targeting = {
+      countries: countries.length ? countries : undefined,
+      cities: cities.length ? cities : undefined,
+      ageMin: Number(ageMin) || undefined,
+      ageMax: Number(ageMax) || undefined,
+      genders: gender === "male" ? [1] : gender === "female" ? [2] : undefined,
+      locales: locales.length ? locales.map((l) => Number(l.value)).filter(Boolean) : undefined,
+      interests: interests.length ? interests.map((i) => ({ id: i.value, name: i.label })) : undefined,
+      customAudienceIds: includeAud.length ? includeAud : undefined,
+      excludedAudienceIds: excludeAud.length ? excludeAud : undefined
+    };
+
     startTransition(async () => {
       const res = await fetch("/api/meta/campaigns", {
         method: "POST",
@@ -191,7 +279,8 @@ export function AdsCreatorClient({
           metaPageId: selectedPageId || undefined,
           metaLinkUrl: linkUrl.trim() || undefined,
           metaPixelId: selectedPixelId || undefined,
-          instagramActorId: selectedInstagramId || undefined
+          instagramActorId: selectedInstagramId || undefined,
+          targeting
         })
       });
       const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
@@ -226,6 +315,14 @@ export function AdsCreatorClient({
     selectedInstagramId,
     selectedPixelId,
     linkUrl,
+    locations,
+    ageMin,
+    ageMax,
+    gender,
+    locales,
+    interests,
+    includeAud,
+    excludeAud,
     t,
     titles
   ]);
@@ -430,6 +527,114 @@ export function AdsCreatorClient({
           className="ui-input"
         />
       </FormField>
+
+      <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">{t("audienceTitle")}</h2>
+        <p className="mt-1 text-xs text-slate-500">{t("audienceHint")}</p>
+
+        <div className="mt-3 grid grid-cols-1 gap-4">
+          <FormField label={t("locations")}>
+            <MetaTargetingSelect
+              type="geo"
+              placeholder={t("locationsPlaceholder")}
+              selected={locations}
+              onAdd={(item) => setLocations((prev) => [...prev, item])}
+              onRemove={(value) => setLocations((prev) => prev.filter((p) => p.value !== value))}
+            />
+          </FormField>
+
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <FormField label={t("ageMin")}>
+              <input
+                type="number"
+                min={13}
+                max={65}
+                value={ageMin}
+                onChange={(e) => setAgeMin(e.target.value)}
+                className="ui-input"
+              />
+            </FormField>
+            <FormField label={t("ageMax")}>
+              <input
+                type="number"
+                min={13}
+                max={65}
+                value={ageMax}
+                onChange={(e) => setAgeMax(e.target.value)}
+                className="ui-input"
+              />
+            </FormField>
+            <FormField label={t("gender")}>
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value as typeof gender)}
+                className="ui-select"
+              >
+                <option value="all">{t("genderAll")}</option>
+                <option value="male">{t("genderMale")}</option>
+                <option value="female">{t("genderFemale")}</option>
+              </select>
+            </FormField>
+          </div>
+
+          <FormField label={t("interests")}>
+            <MetaTargetingSelect
+              type="interest"
+              placeholder={t("interestsPlaceholder")}
+              selected={interests}
+              onAdd={(item) => setInterests((prev) => [...prev, item])}
+              onRemove={(value) => setInterests((prev) => prev.filter((p) => p.value !== value))}
+            />
+          </FormField>
+
+          <FormField label={t("languages")}>
+            <MetaTargetingSelect
+              type="locale"
+              placeholder={t("languagesPlaceholder")}
+              selected={locales}
+              onAdd={(item) => setLocales((prev) => [...prev, item])}
+              onRemove={(value) => setLocales((prev) => prev.filter((p) => p.value !== value))}
+            />
+          </FormField>
+
+          {audiences.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField label={t("audienceInclude")}>
+                <select
+                  multiple
+                  value={includeAud}
+                  onChange={(e) =>
+                    setIncludeAud(Array.from(e.target.selectedOptions, (o) => o.value))
+                  }
+                  className="ui-select h-28"
+                >
+                  {audiences.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label={t("audienceExclude")}>
+                <select
+                  multiple
+                  value={excludeAud}
+                  onChange={(e) =>
+                    setExcludeAud(Array.from(e.target.selectedOptions, (o) => o.value))
+                  }
+                  className="ui-select h-28"
+                >
+                  {audiences.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
         <h2 className="text-sm font-semibold text-slate-900">{t("dynamicCreatives")}</h2>
