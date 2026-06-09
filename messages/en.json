@@ -320,9 +320,7 @@
     "colCtr": "CTR",
     "colCpc": "CPC",
     "colCpm": "CPM",
-    "colBudget": "Daily budget",
-    "colSpendAll": "Spend (all time)",
-    "colSpendToday": "Spend (today)"
+    "colBudget": "Daily budget"
   },
   "campaignManager": {
     "loading": "Loading campaign…",
@@ -971,10 +969,22 @@
     "tipTitle": "Tip:",
     "tipBody": "Smaller lookalikes (1%–3%) are more precise. Start at 1% and scale with results.",
     "source": {
-      "pixel": { "title": "Pixel", "desc": "People who interacted on your site." },
-      "customer_list": { "title": "Customer list", "desc": "Your customer / lead base." },
-      "engagement": { "title": "Engagement", "desc": "People who engaged with your content." },
-      "app": { "title": "App", "desc": "Events from your mobile app." }
+      "pixel": {
+        "title": "Pixel",
+        "desc": "People who interacted on your site."
+      },
+      "customer_list": {
+        "title": "Customer list",
+        "desc": "Your customer / lead base."
+      },
+      "engagement": {
+        "title": "Engagement",
+        "desc": "People who engaged with your content."
+      },
+      "app": {
+        "title": "App",
+        "desc": "Events from your mobile app."
+      }
     },
     "kind": {
       "lookalike": "Lookalike",
@@ -1053,7 +1063,16 @@
     "teamCopied": "Link copied",
     "teamRemove": "Remove",
     "teamOnlyAdmin": "Only admins can invite members.",
-    "teamNoPending": "No pending invites."
+    "teamNoPending": "No pending invites.",
+    "teamInviteCta": "Invite members",
+    "teamTabTeam": "Team",
+    "teamTabPending": "Pending",
+    "teamColActions": "Actions",
+    "teamYou": "You",
+    "teamCancel": "Cancel",
+    "teamWorkspaceCol": "Workspace",
+    "teamEmptyMembers": "No members yet. Invite your team to collaborate.",
+    "roleOwner": "Owner"
   },
   "invite": {
     "title": "Workspace invite",

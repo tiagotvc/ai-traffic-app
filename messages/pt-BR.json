@@ -969,10 +969,22 @@
     "tipTitle": "Dica:",
     "tipBody": "Lookalikes menores (1% a 3%) são mais precisos. Comece com 1% e escale conforme os resultados.",
     "source": {
-      "pixel": { "title": "Pixel", "desc": "Pessoas que interagiram no seu site." },
-      "customer_list": { "title": "Lista de clientes", "desc": "Sua base de clientes / leads." },
-      "engagement": { "title": "Engajamento", "desc": "Quem engajou com seu conteúdo." },
-      "app": { "title": "App", "desc": "Eventos do seu aplicativo." }
+      "pixel": {
+        "title": "Pixel",
+        "desc": "Pessoas que interagiram no seu site."
+      },
+      "customer_list": {
+        "title": "Lista de clientes",
+        "desc": "Sua base de clientes / leads."
+      },
+      "engagement": {
+        "title": "Engajamento",
+        "desc": "Quem engajou com seu conteúdo."
+      },
+      "app": {
+        "title": "App",
+        "desc": "Eventos do seu aplicativo."
+      }
     },
     "kind": {
       "lookalike": "Lookalike",
@@ -1051,7 +1063,16 @@
     "teamCopied": "Link copiado",
     "teamRemove": "Remover",
     "teamOnlyAdmin": "Apenas administradores podem convidar membros.",
-    "teamNoPending": "Nenhum convite pendente."
+    "teamNoPending": "Nenhum convite pendente.",
+    "teamInviteCta": "Convidar membros",
+    "teamTabTeam": "Equipe",
+    "teamTabPending": "Pendentes",
+    "teamColActions": "Ações",
+    "teamYou": "Você",
+    "teamCancel": "Cancelar",
+    "teamWorkspaceCol": "Workspace",
+    "teamEmptyMembers": "Nenhum membro ainda. Convide seu time para colaborar.",
+    "roleOwner": "Owner"
   },
   "invite": {
     "title": "Convite para o workspace",

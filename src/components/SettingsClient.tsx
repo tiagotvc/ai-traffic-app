@@ -146,12 +146,13 @@ export function SettingsClient({
           </button>
         </div>
         {message ? <div className="mt-2 text-xs text-slate-500">{message}</div> : null}
-        <div className="mt-4">
-          <WorkspaceTeamSection />
-        </div>
       </section>
 
-      <aside className="space-y-3">
+      <div className="lg:col-span-2 lg:row-start-2">
+        <WorkspaceTeamSection workspaceName={brandName} />
+      </div>
+
+      <aside className="space-y-3 lg:row-span-2 lg:row-start-1 lg:col-start-3">
         <section className="ui-card p-4">
           <div className="text-sm font-semibold">{t("metaTitle")}</div>
           <p className="mt-2 text-xs text-slate-500">{t("metaHint")}</p>
