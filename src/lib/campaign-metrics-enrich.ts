@@ -1,6 +1,15 @@
 import "server-only";
 
-import { fetchCampaignInsightsForRange, pickLeads, pickResults } from "@/lib/meta-graph";
+import {
+  fetchCampaignInsightsForRange,
+  pickLeads,
+  pickResults,
+  type MetaCampaignInsightRow
+} from "@/lib/meta-graph";
+import {
+  getCachedCampaignInsights,
+  setCachedCampaignInsights
+} from "@/lib/meta-insights-cache";
 import { isMetaRateLimitMessage, isMetaRateLimitPayload } from "@/lib/meta-rate-limit";
 import { num } from "@/lib/goal-types";
 import { formatMetaGraphError } from "@/lib/meta-error";
@@ -47,16 +56,22 @@ export async function enrichCampaignRowsFromMeta(input: {
   since: string;
   until: string;
   skipIfHasSpend?: boolean;
+  tenantId?: string;
+  refresh?: boolean;
 }): Promise<{
   rows: CampaignMetricRow[];
   enrichError?: string;
   rateLimited?: boolean;
   permissionDenied?: boolean;
+  fromCache?: boolean;
+  cachedAt?: string | null;
 }> {
   const byCampaign = new Map(input.rows.map((r) => [r.metaCampaignId, { ...r }]));
   let enrichError: string | undefined;
   let rateLimited = false;
   let permissionDenied = false;
+  let fromCache = false;
+  let latestCachedAt: number | null = null;
 
   const accounts = input.accounts.filter((a) => accountHasCampaignRows(input.rows, a.metaAdAccountId));
 
@@ -71,12 +86,38 @@ export async function enrichCampaignRowsFromMeta(input: {
     }
 
     try {
-      const insights = await fetchCampaignInsightsForRange(
-        input.metaAccessToken,
-        acc.metaAdAccountId,
-        input.since,
-        input.until
-      );
+      let insights: MetaCampaignInsightRow[] | undefined;
+      const tenantId = input.tenantId?.trim();
+      if (tenantId && !input.refresh) {
+        const cached = getCachedCampaignInsights(
+          tenantId,
+          acc.metaAdAccountId,
+          input.since,
+          input.until
+        );
+        if (cached) {
+          insights = cached.insights;
+          fromCache = true;
+          latestCachedAt = Math.max(latestCachedAt ?? 0, cached.cachedAt);
+        }
+      }
+      if (!insights) {
+        insights = await fetchCampaignInsightsForRange(
+          input.metaAccessToken,
+          acc.metaAdAccountId,
+          input.since,
+          input.until
+        );
+        if (tenantId) {
+          setCachedCampaignInsights(
+            tenantId,
+            acc.metaAdAccountId,
+            input.since,
+            input.until,
+            insights
+          );
+        }
+      }
 
       for (const row of insights) {
         const id = row.campaign_id;
@@ -134,5 +175,12 @@ export async function enrichCampaignRowsFromMeta(input: {
     }
   }
 
-  return { rows: [...byCampaign.values()], enrichError, rateLimited, permissionDenied };
+  return {
+    rows: [...byCampaign.values()],
+    enrichError,
+    rateLimited,
+    permissionDenied,
+    fromCache: fromCache || undefined,
+    cachedAt: latestCachedAt ? new Date(latestCachedAt).toISOString() : null
+  };
 }

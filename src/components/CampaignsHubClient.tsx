@@ -79,7 +79,7 @@ export function CampaignsHubClient() {
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [onlyAlerts, setOnlyAlerts] = useState(false);
-  const [showZeroActivity, setShowZeroActivity] = useState(false);
+  const [showZeroActivity, setShowZeroActivity] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveFilter>("ALL");
   const [period, setPeriod] = useState<PeriodState>({ preset: "last7", since: "", until: "" });
@@ -92,7 +92,7 @@ export function CampaignsHubClient() {
   const resizing = useRef<{ col: CampaignColumnId; startX: number; startW: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrichError, setEnrichError] = useState<string | null>(null);
-  const [metricsSource, setMetricsSource] = useState<"db" | "live">("db");
+  const [metricsSource, setMetricsSource] = useState<"db" | "live" | "live-cached">("db");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSlug, setSelectedSlug] = useState("");
   const [selectedRow, setSelectedRow] = useState<CampaignRow | null>(null);
@@ -125,10 +125,9 @@ export function CampaignsHubClient() {
       });
   }, []);
 
-  // Paginação e filtros no servidor (rápido com «todos os clientes»).
-  // Ao selecionar um cliente, busca ao vivo automaticamente; «Atualizar» força live.
+  // Paginação e filtros no servidor. Período «hoje» busca ao vivo na Meta; histórico usa banco.
   const load = useCallback(
-    (opts?: { live?: boolean }) => {
+    (opts?: { live?: boolean; refresh?: boolean }) => {
       abortRef.current?.abort();
       const ac = new AbortController();
       abortRef.current = ac;
@@ -137,15 +136,16 @@ export function CampaignsHubClient() {
       setLoading(true);
       setRows([]);
 
-      const live = opts?.live ?? !!clientFilter;
+      const live = opts?.live ?? period.preset === "today";
       const params = new URLSearchParams(periodStateToQuery(period));
       if (clientFilter) params.set("clientId", clientFilter);
       if (q.trim()) params.set("q", q.trim());
       if (onlyAlerts) params.set("onlyAlerts", "1");
-      if (showZeroActivity) params.set("showZero", "1");
+      if (!showZeroActivity) params.set("showZero", "0");
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
       if (live) params.set("live", "1");
+      if (opts?.refresh) params.set("refresh", "1");
       if (sortKey) {
         params.set("sort", sortKey);
         params.set("dir", sortDir);
@@ -168,7 +168,10 @@ export function CampaignsHubClient() {
           setTotal(j.total ?? list.length);
           setTotals(j.totals ?? { spend: 0, conversions: 0, leads: 0 });
           setEnrichError(j.enrichError ?? null);
-          setMetricsSource(j.metricsSource === "live" ? "live" : "db");
+          const src = j.metricsSource as string;
+          setMetricsSource(
+            src === "live-cached" ? "live-cached" : src === "live" ? "live" : "db"
+          );
           if (selectedIdRef.current && list.some((r) => r.metaCampaignId === selectedIdRef.current)) {
             return;
           }
@@ -200,7 +203,7 @@ export function CampaignsHubClient() {
 
   useEffect(() => {    load();
     const onReload = () => load();
-    const onSync = () => load({ live: true });
+    const onSync = () => load({ live: period.preset === "today", refresh: true });
     window.addEventListener("traffic:campaigns-reload", onReload);
     window.addEventListener("traffic-sync-done", onSync);
     return () => {
@@ -462,10 +465,10 @@ export function CampaignsHubClient() {
           <CampaignColumnsPicker onChange={setColumns} />
           <button
             type="button"
-            onClick={() => load({ live: true })}
+            onClick={() => load({ live: true, refresh: true })}
             className="ui-btn-secondary text-sm"
           >
-            {t("refresh")}
+            {t("refreshLive")}
           </button>
           <button
             type="button"
@@ -477,14 +480,41 @@ export function CampaignsHubClient() {
         </div>
       </div>
 
+      {loading && period.preset === "today" ? (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">
+          {t("loadingMetaToday")}
+        </div>
+      ) : null}
+
       {enrichError ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <p>{enrichError}</p>
           <p className="mt-1 text-amber-800">{t("enrichRateLimitHint")}</p>
         </div>
-      ) : metricsSource === "db" ? (
-        <p className="text-xs text-slate-500">{t("metricsFromDb")}</p>
       ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+            metricsSource === "live" || metricsSource === "live-cached"
+              ? "bg-emerald-50 text-emerald-700"
+              : "bg-slate-100 text-slate-600"
+          }`}
+          title={
+            metricsSource === "live-cached"
+              ? t("metricsLiveCachedHint")
+              : metricsSource === "live"
+                ? t("metricsLiveHint")
+                : t("metricsDbHint")
+          }
+        >
+          {metricsSource === "live-cached"
+            ? t("metricsLiveCached")
+            : metricsSource === "live"
+              ? t("metricsLive")
+              : t("metricsDb")}
+        </span>
+      </div>
 
       <div className="flex flex-wrap items-end gap-3 ui-card p-4">
         <div>
@@ -668,7 +698,18 @@ export function CampaignsHubClient() {
                 ))
               )}
             </tbody>
-            {!loading && rows.length > 0 ? (              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+            {loading ? (
+              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+                <tr>
+                  {visibleColumns.map((col) => (
+                    <td key={col} className="px-3 py-3 first:pl-4">
+                      <Skeleton className="h-4 w-full max-w-[80px]" />
+                    </td>
+                  ))}
+                </tr>
+              </tfoot>
+            ) : rows.length > 0 ? (
+              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
                 <tr>
                   {visibleColumns.map((col) => renderTotalCell(col, totalLabelCol))}
                 </tr>

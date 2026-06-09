@@ -17,17 +17,25 @@ export type ParsedPeriod = {
   allTime: boolean;
 };
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+/** Data local do navegador/servidor (evita “hoje” vazio por desvio UTC). */
+function localDateIso(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function daysAgoIso(n: number) {
   const d = new Date();
   d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  return localDateIso(d);
 }
 
 /** Meta "últimos N dias" não inclui hoje — intervalo fecha em ontem. */
+export function todayIso() {
+  return localDateIso();
+}
+
 export function yesterdayIso() {
   return daysAgoIso(1);
 }

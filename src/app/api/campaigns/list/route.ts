@@ -31,100 +31,102 @@ function filterByObjective<T extends { objective?: string | null }>(
 }
 
 export async function GET(req: Request) {
-  const { tenant, user, metaAccessToken } = await getAppContext();
-  const url = new URL(req.url);
-  const period = parsePeriodFromSearchParams(url);
-  const tenantToken = await getTenantMetaAccessToken(tenant.id, user.id);
-  let tokenForMeta = metaAccessToken ?? tenantToken;
+  try {
+    const { tenant, user, metaAccessToken } = await getAppContext();
+    const url = new URL(req.url);
+    const period = parsePeriodFromSearchParams(url);
+    const tenantToken = await getTenantMetaAccessToken(tenant.id, user.id);
+    let tokenForMeta = metaAccessToken ?? tenantToken;
 
-  const allowedClientIds = await listClientIdsForUser(tenant.id, user.id);
-  let clientIds = allowedClientIds;
-  const clientSlug = url.searchParams.get("clientId")?.trim();
-  let scopeClient: Awaited<ReturnType<typeof getClientBySlugOrId>> = null;
+    const allowedClientIds = await listClientIdsForUser(tenant.id, user.id);
+    let clientIds = allowedClientIds;
+    const clientSlug = url.searchParams.get("clientId")?.trim();
+    let scopeClient: Awaited<ReturnType<typeof getClientBySlugOrId>> = null;
 
-  if (clientSlug) {
-    scopeClient = await getClientBySlugOrId(tenant.id, clientSlug);
-    if (!scopeClient) {
-      return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
+    if (clientSlug) {
+      scopeClient = await getClientBySlugOrId(tenant.id, clientSlug);
+      if (!scopeClient) {
+        return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
+      }
+      if (allowedClientIds?.length && !allowedClientIds.includes(scopeClient.id)) {
+        return NextResponse.json({ ok: false, error: "Sem acesso a este cliente" }, { status: 403 });
+      }
+      clientIds = [scopeClient.id];
     }
-    if (allowedClientIds?.length && !allowedClientIds.includes(scopeClient.id)) {
-      return NextResponse.json({ ok: false, error: "Sem acesso a este cliente" }, { status: 403 });
+
+    const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? "50")));
+    const offset = Math.max(0, Number(url.searchParams.get("offset") ?? "0"));
+
+    const statusRaw = url.searchParams.get("status");
+    const statusFilter =
+      statusRaw === "ACTIVE" || statusRaw === "PAUSED" || statusRaw === "INACTIVE"
+        ? statusRaw
+        : "ALL";
+
+    const searchQ = url.searchParams.get("q")?.trim() ?? "";
+    const onlyAlerts = url.searchParams.get("onlyAlerts") === "1";
+    const showZero = url.searchParams.get("showZero") !== "0";
+    const live = url.searchParams.get("live") === "1";
+    const refresh = url.searchParams.get("refresh") === "1";
+    const sortKey = url.searchParams.get("sort");
+    const sortDir = url.searchParams.get("dir") === "asc" ? "asc" : "desc";
+    const objectiveRaw = url.searchParams.get("objective");
+
+    const since =
+      period.since ??
+      (period.allTime
+        ? new Date(new Date().setFullYear(new Date().getFullYear() - 2)).toISOString().slice(0, 10)
+        : rollingDaysEndingYesterday(7).since);
+    const until = period.until ?? rollingDaysEndingYesterday(7).until;
+
+    if (!live) {
+      const cc = await queryCommandCenterCampaigns({
+        tenantId: tenant.id,
+        clientIds,
+        metaBusinessId: scopeClient?.metaBusinessId ?? null,
+        statusFilter,
+        q: searchQ,
+        onlyAlerts,
+        hideZeroActivity: !showZero,
+        days: period.days ?? undefined,
+        since: period.since,
+        until: period.until,
+        allTime: period.allTime,
+        limit,
+        offset,
+        sort: sortKey,
+        sortDir,
+        includeTotals: true
+      });
+
+      type ListRow = (typeof cc.rows)[number] & { objective?: string | null };
+      let rows = cc.rows as ListRow[];
+      let total = cc.total;
+
+      if (objectiveRaw === "leads" || objectiveRaw === "sales" || objectiveRaw === "traffic") {
+        rows = filterByObjective(rows, objectiveRaw);
+        total = rows.length;
+      }
+
+      return NextResponse.json({
+        ok: true,
+        rows,
+        total,
+        totals: cc.totals ?? {
+          spend: 0,
+          conversions: 0,
+          leads: 0,
+          impressions: 0,
+          clicks: 0
+        },
+        enrichError: null,
+        metricsSource: "db" as const,
+        period: { preset: period.preset, since: period.since, until: period.until }
+      });
     }
-    clientIds = [scopeClient.id];
-  }
 
-  const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? "50")));
-  const offset = Math.max(0, Number(url.searchParams.get("offset") ?? "0"));
-
-  const statusRaw = url.searchParams.get("status");
-  const statusFilter =
-    statusRaw === "ACTIVE" || statusRaw === "PAUSED" || statusRaw === "INACTIVE"
-      ? statusRaw
-      : "ALL";
-
-  const searchQ = url.searchParams.get("q")?.trim() ?? "";
-  const onlyAlerts = url.searchParams.get("onlyAlerts") === "1";
-  const showZero = url.searchParams.get("showZero") === "1";
-  const live = url.searchParams.get("live") === "1";
-  const sortKey = url.searchParams.get("sort");
-  const sortDir = url.searchParams.get("dir") === "asc" ? "asc" : "desc";
-  const objectiveRaw = url.searchParams.get("objective");
-
-  const since =
-    period.since ??
-    (period.allTime
-      ? new Date(new Date().setFullYear(new Date().getFullYear() - 2)).toISOString().slice(0, 10)
-      : rollingDaysEndingYesterday(7).since);
-  const until = period.until ?? rollingDaysEndingYesterday(7).until;
-
-  if (!live) {
+    // Modo ao vivo (Atualizar): busca mais linhas, enriquece na Meta, pagina depois.
     const cc = await queryCommandCenterCampaigns({
-      tenantId: tenant.id,
-      clientIds,
-      metaBusinessId: scopeClient?.metaBusinessId ?? null,
-      statusFilter,
-      q: searchQ,
-      onlyAlerts,
-      hideZeroActivity: !showZero,
-      days: period.days ?? undefined,
-      since: period.since,
-      until: period.until,
-      allTime: period.allTime,
-      limit,
-      offset,
-      sort: sortKey,
-      sortDir,
-      includeTotals: true
-    });
-
-    type ListRow = (typeof cc.rows)[number] & { objective?: string | null };
-    let rows = cc.rows as ListRow[];
-    let total = cc.total;
-
-    if (objectiveRaw === "leads" || objectiveRaw === "sales" || objectiveRaw === "traffic") {
-      rows = filterByObjective(rows, objectiveRaw);
-      total = rows.length;
-    }
-
-    return NextResponse.json({
-      ok: true,
-      rows,
-      total,
-      totals: cc.totals ?? {
-        spend: 0,
-        conversions: 0,
-        leads: 0,
-        impressions: 0,
-        clicks: 0
-      },
-      enrichError: null,
-      metricsSource: "db" as const,
-      period: { preset: period.preset, since: period.since, until: period.until }
-    });
-  }
-
-  // Modo ao vivo (Atualizar): busca mais linhas, enriquece na Meta, pagina depois.
-  const cc = await queryCommandCenterCampaigns({
     tenantId: tenant.id,
     clientIds,
     metaBusinessId: scopeClient?.metaBusinessId ?? null,
@@ -232,15 +234,22 @@ export async function GET(req: Request) {
 
   let rows = [...byId.values()];
   let enrichError: string | undefined;
+  let metricsSource: "live" | "live-cached" = "live";
+  let cachedAt: string | null = null;
 
-  if (tokenForMeta && accountsForEnrich.length) {
+  if (!tokenForMeta) {
+    enrichError = "Conecte a Meta em Configurações para ver métricas de hoje ao vivo.";
+    metricsSource = "live";
+  } else if (accountsForEnrich.length) {
     let enriched = await enrichCampaignRowsFromMeta({
       rows: rows as Parameters<typeof enrichCampaignRowsFromMeta>[0]["rows"],
       metaAccessToken: tokenForMeta,
       accounts: accountsForEnrich.map((a) => ({ id: a.id, metaAdAccountId: a.metaAdAccountId })),
       since,
       until,
-      skipIfHasSpend: true
+      skipIfHasSpend: period.preset !== "today",
+      tenantId: tenant.id,
+      refresh
     });
     if (
       enriched.permissionDenied &&
@@ -253,11 +262,15 @@ export async function GET(req: Request) {
         accounts: accountsForEnrich.map((a) => ({ id: a.id, metaAdAccountId: a.metaAdAccountId })),
         since,
         until,
-        skipIfHasSpend: true
+        skipIfHasSpend: period.preset !== "today",
+        tenantId: tenant.id,
+        refresh
       });
     }
     rows = enriched.rows as ListRow[];
     enrichError = enriched.enrichError;
+    metricsSource = enriched.fromCache ? "live-cached" : "live";
+    cachedAt = enriched.cachedAt ?? null;
   }
 
   if (objectiveRaw === "leads" || objectiveRaw === "sales" || objectiveRaw === "traffic") {
@@ -280,7 +293,13 @@ export async function GET(req: Request) {
     total,
     totals,
     enrichError: enrichError ?? null,
-    metricsSource: "live" as const,
+    metricsSource,
+    cachedAt,
     period: { preset: period.preset, since: period.since, until: period.until }
   });
+  } catch (err) {
+    console.error("[campaigns/list]", err);
+    const message = err instanceof Error ? err.message : "Erro ao listar campanhas";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
 }

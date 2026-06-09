@@ -6,9 +6,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
+import { todayIso, yesterdayIso } from "@/lib/report-period";
 
 type CampaignRow = {
   metaCampaignId: string;
@@ -19,6 +21,7 @@ type CampaignRow = {
   accountLabel: string;
   metaAdAccountId: string;
   spend: number;
+  conversions: number;
   cpl: number | null;
   cpa: number | null;
   roas: number;
@@ -47,9 +50,41 @@ type SeriesPoint = { day: string; spend: number; conversions: number; roas: numb
 
 type ViewMode = "campaigns" | "clients";
 type AlertFilter = "all" | "critical" | "warning" | "info";
-type OpenMenu = "client" | "filters" | null;
+type OpenMenu = "filters" | null;
+type ComparePreset = "today_yesterday" | "custom";
 
-type ClientOption = { slug: string; name: string };
+type CompareRow = {
+  metaCampaignId: string;
+  campaignName: string;
+  clientName: string;
+  clientSlug: string;
+  spendA: number;
+  spendB: number;
+  conversionsA: number;
+  conversionsB: number;
+  leadsA: number;
+  leadsB: number;
+  cpaA: number | null;
+  cpaB: number | null;
+  roasA: number;
+  roasB: number;
+};
+
+function pctDelta(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? null : 100;
+  return ((current - previous) / previous) * 100;
+}
+
+function DeltaCell({ delta, higherIsBetter }: { delta: number | null; higherIsBetter: boolean }) {
+  if (delta == null) return <span className="text-slate-400">—</span>;
+  if (Math.abs(delta) < 0.05) return <span className="text-slate-400">→ 0%</span>;
+  const improved = higherIsBetter ? delta > 0 : delta < 0;
+  return (
+    <span className={improved ? "font-medium text-emerald-600" : "font-medium text-red-600"}>
+      {delta > 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(1).replace(".", ",")}%
+    </span>
+  );
+}
 
 function trendFromSeries(values: number[]) {
   if (values.length < 2) return { label: "—", positive: true, pct: 0 };
@@ -97,115 +132,170 @@ export function CommandCenterClient() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [period, setPeriod] = useState<PeriodState>({ preset: "last7", since: "", until: "" });
+  const [period, setPeriod] = useState<PeriodState>({ preset: "today", since: "", until: "" });
   const [clientFilter, setClientFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
   const [onlyAlerts, setOnlyAlerts] = useState(false);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
-  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [metricsSource, setMetricsSource] = useState<"db" | "live" | "live-cached">("db");
+  const [enrichError, setEnrichError] = useState<string | null>(null);
+  const [loadingTable, setLoadingTable] = useState(true);
+  const [loadingKpis, setLoadingKpis] = useState(true);
+  const [loadingCompare, setLoadingCompare] = useState(true);
+  const [loadingAlerts, setLoadingAlerts] = useState(true);
+  const [compareRows, setCompareRows] = useState<CompareRow[]>([]);
+  const [comparePreset, setComparePreset] = useState<ComparePreset>("today_yesterday");
+  const [compareSinceA, setCompareSinceA] = useState(todayIso());
+  const [compareUntilA, setCompareUntilA] = useState(todayIso());
+  const [compareSinceB, setCompareSinceB] = useState(yesterdayIso());
+  const [compareUntilB, setCompareUntilB] = useState(yesterdayIso());
+  const [compareLabelA, setCompareLabelA] = useState("");
+  const [compareLabelB, setCompareLabelB] = useState("");
   const filterBarRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
 
   const pageSize = 10;
 
-  const load = useCallback(() => {
+  const load = useCallback((opts?: { live?: boolean; refresh?: boolean }) => {
+    const useLive = opts?.live ?? period.preset === "today";
     const qs = new URLSearchParams();
     if (q) qs.set("q", q);
     if (clientFilter) qs.set("clientId", clientFilter);
     if (onlyAlerts) qs.set("onlyAlerts", "1");
     if (statusFilter !== "ALL") qs.set("status", statusFilter);
+    if (useLive) qs.set("live", "1");
+    if (opts?.refresh) qs.set("refresh", "1");
     const periodQs = periodStateToQuery(period);
     periodQs.forEach((v, k) => qs.set(k, v));
 
     const dashQs = new URLSearchParams(periodQs);
     if (clientFilter) dashQs.set("clientId", clientFilter);
 
+    setLoadingTable(true);
+    setLoadingKpis(true);
+
     fetch(`/api/command-center/campaigns?${qs}`)
       .then((r) => r.json())
       .then((j) => {
-        setRows(j.rows ?? []);
-        setTotal(j.total ?? j.rows?.length ?? 0);
+        if (j.ok === false) {
+          setRows([]);
+          setTotal(0);
+          setEnrichError(typeof j.error === "string" ? j.error : null);
+          return;
+        }
+        const list = (j.rows ?? []) as CampaignRow[];
+        setRows(list);
+        setTotal(j.total ?? list.length);
+        const src = j.metricsSource as string;
+        setMetricsSource(
+          src === "live-cached" ? "live-cached" : src === "live" ? "live" : "db"
+        );
+        setEnrichError(j.enrichError ?? null);
+
+        if (period.preset === "today" && (src === "live" || src === "live-cached")) {
+          const spend = list.reduce((s, r) => s + (r.spend ?? 0), 0);
+          const conversions = list.reduce((s, r) => s + (r.conversions ?? 0), 0);
+          const roasWeighted = list.filter((r) => r.roas > 0);
+          const roas =
+            roasWeighted.length > 0
+              ? roasWeighted.reduce((s, r) => s + r.roas, 0) / roasWeighted.length
+              : 0;
+          setSummary({
+            spend,
+            conversions,
+            cpa: conversions > 0 ? spend / conversions : 0,
+            roas
+          });
+          setSeries([{ day: todayIso(), spend, conversions, roas }]);
+        }
+      })
+      .finally(() => {
+        setLoadingTable(false);
+        if (period.preset === "today") setLoadingKpis(false);
       });
+
+    if (period.preset !== "today") {
+      fetch(`/api/dashboard/summary?${dashQs}`)
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.summary) setSummary(j.summary);
+        })
+        .finally(() => setLoadingKpis(false));
+      fetch(`/api/dashboard/timeseries?${dashQs}`)
+        .then((r) => r.json())
+        .then((j) => setSeries(j.series ?? []));
+    }
+
+    setLoadingAlerts(true);
     fetch("/api/command-center/alerts?limit=50")
       .then((r) => r.json())
-      .then((j) => setAlerts(j.alerts ?? []));
-    fetch(`/api/dashboard/summary?${dashQs}`)
+      .then((j) => setAlerts(j.alerts ?? []))
+      .finally(() => setLoadingAlerts(false));
+  }, [q, clientFilter, onlyAlerts, period, statusFilter]);
+
+  const loadCompare = useCallback((opts?: { refresh?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (clientFilter) qs.set("clientId", clientFilter);
+    if (q) qs.set("q", q);
+    if (comparePreset === "today_yesterday") {
+      qs.set("compare", "today_yesterday");
+      qs.set("liveA", "1");
+    } else {
+      qs.set("compare", "custom");
+      qs.set("sinceA", compareSinceA);
+      qs.set("untilA", compareUntilA);
+      qs.set("sinceB", compareSinceB);
+      qs.set("untilB", compareUntilB);
+      if (compareSinceA === todayIso() && compareUntilA === todayIso()) {
+        qs.set("liveA", "1");
+      }
+    }
+    if (opts?.refresh) qs.set("refresh", "1");
+
+    setLoadingCompare(true);
+    fetch(`/api/command-center/compare?${qs}`)
       .then((r) => r.json())
       .then((j) => {
-        if (j.summary) setSummary(j.summary);
-      });
-    fetch(`/api/dashboard/timeseries?${dashQs}`)
-      .then((r) => r.json())
-      .then((j) => setSeries(j.series ?? []));
-  }, [q, clientFilter, onlyAlerts, period, statusFilter]);
+        if (j.ok === false) {
+          setCompareRows([]);
+          return;
+        }
+        setCompareRows(j.rows ?? []);
+        if (j.periodA) {
+          setCompareLabelA(
+            `${j.periodA.since}${j.periodA.until !== j.periodA.since ? ` → ${j.periodA.until}` : ""}`
+          );
+        }
+        if (j.periodB) {
+          setCompareLabelB(
+            `${j.periodB.since}${j.periodB.until !== j.periodB.since ? ` → ${j.periodB.until}` : ""}`
+          );
+        }
+        if (typeof j.enrichError === "string" && j.enrichError) {
+          setEnrichError(j.enrichError);
+        }
+      })
+      .finally(() => setLoadingCompare(false));
+  }, [clientFilter, q, comparePreset, compareSinceA, compareUntilA, compareSinceB, compareUntilB]);
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadCompare();
+  }, [load, loadCompare]);
 
   useEffect(() => {
-    const onSync = () => load();
+    const onSync = () => {
+      load({ live: period.preset === "today", refresh: true });
+      loadCompare({ refresh: true });
+    };
     window.addEventListener("traffic-sync-done", onSync);
     return () => window.removeEventListener("traffic-sync-done", onSync);
-  }, [load]);
-
-  // Auto-sync ao acessar, com intervalo: se o último sync foi há mais de 15 min
-  // (e nenhum está rodando), dispara um sync automático e recarrega ao terminar.
-  // Mantém o Command Center fresco sem clicar, sem sobrecarregar a Meta.
-  const autoSyncTried = useRef(false);
-  useEffect(() => {
-    if (autoSyncTried.current) return;
-    autoSyncTried.current = true;
-    const STALE_MS = 15 * 60 * 1000;
-    fetch("/api/sync/status")
-      .then((r) => r.json())
-      .then((j) => {
-        const status = j?.lastRun?.status as string | undefined;
-        if (status === "running" || status === "queued") return;
-        const times: number[] = [];
-        const push = (iso?: string | null) => {
-          if (!iso) return;
-          const ts = Date.parse(iso);
-          if (!Number.isNaN(ts)) times.push(ts);
-        };
-        push(j?.lastRun?.finishedAt);
-        push(j?.lastManualSyncAt);
-        for (const a of j?.accounts ?? []) push(a?.lastSyncedAt);
-        const latest = times.length ? Math.max(...times) : 0;
-        if (Date.now() - latest < STALE_MS) return;
-        fetch("/api/sync/run", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ auto: true })
-        })
-          .then((res) => (res.ok ? res.json().catch(() => null) : null))
-          .then((res) => {
-            if (res?.ok) window.dispatchEvent(new Event("traffic-sync-done"));
-          })
-          .catch(() => {});
-      })
-      .catch(() => {});
-  }, []);
+  }, [load, loadCompare]);
 
   useEffect(() => {
     const tmr = setTimeout(() => setQ(searchInput), 300);
     return () => clearTimeout(tmr);
   }, [searchInput]);
-
-  useEffect(() => {
-    fetch("/api/clients")
-      .then((r) => r.json())
-      .then((j) => {
-        const list = (j.clients ?? []) as Array<{ name: string; slug?: string }>;
-        setClients(
-          list.map((c) => ({
-            name: c.name,
-            slug: c.slug ?? c.name.toLowerCase().replace(/\s+/g, "-")
-          }))
-        );
-      })
-      .catch(() => setClients([]));
-  }, []);
 
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
@@ -226,7 +316,7 @@ export function CommandCenterClient() {
   const clientLabel =
     clientFilter === ""
       ? t("allClients")
-      : clients.find((c) => c.slug === clientFilter)?.name ?? t("allClients");
+      : rows.find((r) => r.clientSlug === clientFilter)?.clientName ?? clientFilter;
   const filtersActive = onlyAlerts;
 
   const spendSeries = series.map((s) => s.spend);
@@ -290,6 +380,13 @@ export function CommandCenterClient() {
   const tableRows = viewMode === "clients" ? clientRows : rows;
   const pageCount = Math.max(1, Math.ceil(tableRows.length / pageSize));
   const pagedRows = tableRows.slice((page - 1) * pageSize, page * pageSize);
+
+  function filterByClient(slug: string) {
+    setClientFilter(slug);
+    setViewMode("campaigns");
+    setPage(1);
+    setSelected({});
+  }
 
   const selectedIds = Object.keys(selected).filter((k) => selected[k]);
   const campaignSelectedIds =
@@ -380,6 +477,16 @@ export function CommandCenterClient() {
             ) : null}
           </button>
           <SyncNowButton clientId={clientFilter || undefined} />
+          <button
+            type="button"
+            onClick={() => {
+              load({ live: true, refresh: true });
+              loadCompare({ refresh: true });
+            }}
+            className="ui-btn-secondary whitespace-nowrap text-sm"
+          >
+            {t("refreshLive")}
+          </button>
           <Link href="/ads/new" className="ui-btn-primary whitespace-nowrap">
             {t("newCampaign")}
           </Link>
@@ -387,129 +494,146 @@ export function CommandCenterClient() {
       </div>
 
       {/* Filter bar */}
-      <div ref={filterBarRef} className="flex flex-wrap items-center gap-2">
-        <PeriodFilter
-          value={period}
-          onChange={(next) => {
-            setPeriod(next);
-            setPage(1);
-          }}
-        />
-
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as typeof statusFilter);
-            setPage(1);
-          }}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-        >
-          <option value="ALL">{t("statusAll")}</option>
-          <option value="ACTIVE">{t("statusActive")}</option>
-          <option value="INACTIVE">{t("statusInactive")}</option>
-        </select>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setOpenMenu((m) => (m === "client" ? null : "client"))}
-            className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
-            aria-expanded={openMenu === "client"}
-          >
-            <span>{clientLabel}</span>
-            <span className="text-slate-400">▾</span>
-          </button>
-          {openMenu === "client" ? (
-            <div className="absolute left-0 top-full z-30 mt-1 max-h-64 min-w-[220px] overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-              <button
-                type="button"
-                onClick={() => {
-                  setClientFilter("");
-                  setPage(1);
-                  setOpenMenu(null);
-                }}
-                className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
-                  !clientFilter ? "font-semibold text-violet-700" : "text-slate-700"
-                }`}
-              >
-                {t("allClients")}
-              </button>
-              {clients.map((c) => (
-                <button
-                  key={c.slug}
-                  type="button"
-                  onClick={() => {
-                    setClientFilter(c.slug);
-                    setPage(1);
-                    setOpenMenu(null);
-                  }}
-                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 ${
-                    clientFilter === c.slug ? "font-semibold text-violet-700" : "text-slate-700"
-                  }`}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setOpenMenu((m) => (m === "filters" ? null : "filters"))}
-            className={`ui-btn-secondary text-sm ${filtersActive ? "border-violet-300 bg-violet-50 text-violet-800" : ""}`}
-            aria-expanded={openMenu === "filters"}
-          >
-            {t("filters")}
-            {filtersActive ? " · 1" : ""}
-          </button>
-          {openMenu === "filters" ? (
-            <div className="absolute left-0 top-full z-30 mt-1 min-w-[240px] rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
-              <div className="text-xs font-semibold text-slate-700">{t("filterPanelTitle")}</div>
-              <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={onlyAlerts}
-                  onChange={(e) => {
-                    setOnlyAlerts(e.target.checked);
-                    setPage(1);
-                  }}
-                  className="accent-violet-600"
-                />
-                {t("filterOnlyAlerts")}
-              </label>
-              {filtersActive ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOnlyAlerts(false);
-                    setPage(1);
-                    setOpenMenu(null);
-                  }}
-                  className="mt-3 text-xs font-medium text-violet-600 underline"
-                >
-                  {t("clearFilters")}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="min-w-[220px] flex-1">
-          <input
-            value={searchInput}
-            onChange={(e) => {
-              setSearchInput(e.target.value);
+      <div ref={filterBarRef} className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <PeriodFilter
+            value={period}
+            onChange={(next) => {
+              setPeriod(next);
               setPage(1);
             }}
-            placeholder={t("searchCampaign")}
-            className="ui-input w-full shadow-sm"
           />
+
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as typeof statusFilter);
+              setPage(1);
+            }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+          >
+            <option value="ALL">{t("statusAll")}</option>
+            <option value="ACTIVE">{t("statusActive")}</option>
+            <option value="INACTIVE">{t("statusInactive")}</option>
+          </select>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setOpenMenu((m) => (m === "filters" ? null : "filters"))}
+              className={`ui-btn-secondary text-sm ${filtersActive ? "border-violet-300 bg-violet-50 text-violet-800" : ""}`}
+              aria-expanded={openMenu === "filters"}
+            >
+              {t("filters")}
+              {filtersActive ? " · 1" : ""}
+            </button>
+            {openMenu === "filters" ? (
+              <div className="absolute left-0 top-full z-30 mt-1 min-w-[240px] rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                <div className="text-xs font-semibold text-slate-700">{t("filterPanelTitle")}</div>
+                <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={onlyAlerts}
+                    onChange={(e) => {
+                      setOnlyAlerts(e.target.checked);
+                      setPage(1);
+                    }}
+                    className="accent-violet-600"
+                  />
+                  {t("filterOnlyAlerts")}
+                </label>
+                {filtersActive ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOnlyAlerts(false);
+                      setPage(1);
+                      setOpenMenu(null);
+                    }}
+                    className="mt-3 text-xs font-medium text-violet-600 underline"
+                  >
+                    {t("clearFilters")}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="min-w-[220px] flex-1">
+            <input
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setPage(1);
+              }}
+              placeholder={t("searchCampaign")}
+              className="ui-input w-full shadow-sm"
+            />
+          </div>
+
+          <span
+            className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+              metricsSource === "live" || metricsSource === "live-cached"
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-slate-100 text-slate-600"
+            }`}
+            title={
+              metricsSource === "live-cached"
+                ? t("metricsLiveCachedHint")
+                : metricsSource === "live"
+                  ? t("metricsLiveHint")
+                  : t("metricsDbHint")
+            }
+          >
+            {metricsSource === "live-cached"
+              ? t("metricsLiveCached")
+              : metricsSource === "live"
+                ? t("metricsLive")
+                : t("metricsDb")}
+          </span>
         </div>
+
+        {loadingTable && period.preset === "today" ? (
+          <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">
+            {t("loadingMetaToday")}
+          </div>
+        ) : null}
+
+        {clientFilter ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900">
+            <span>{t("filteredClient", { name: clientLabel })}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setClientFilter("");
+                setPage(1);
+              }}
+              className="text-xs font-semibold text-violet-700 underline hover:text-violet-900"
+            >
+              {t("clearClientFilter")}
+            </button>
+          </div>
+        ) : null}
+
+        {enrichError ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            {enrichError}
+          </div>
+        ) : null}
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {loadingKpis ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="mt-3 h-8 w-32" />
+              <Skeleton className="mt-2 h-3 w-20" />
+            </div>
+          ))
+        ) : (
+          <>
         <KpiCard
           label={t("kpiSpend")}
           value={formatBRL(summary.spend, locale)}
@@ -563,6 +687,136 @@ export function CommandCenterClient() {
             </>
           }
         />
+          </>
+        )}
+      </div>
+
+      {/* Comparativo — sempre visível abaixo dos KPIs */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-100 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">{t("compareTitle")}</h2>
+            <p className="mt-0.5 text-xs text-slate-500">{t("compareSubtitle")}</p>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <div className="text-xs text-slate-500">{t("comparePreset")}</div>
+              <select
+                value={comparePreset}
+                onChange={(e) => {
+                  setComparePreset(e.target.value as ComparePreset);
+                  if (e.target.value === "today_yesterday") {
+                    setCompareSinceA(todayIso());
+                    setCompareUntilA(todayIso());
+                    setCompareSinceB(yesterdayIso());
+                    setCompareUntilB(yesterdayIso());
+                  }
+                }}
+                className="mt-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+              >
+                <option value="today_yesterday">{t("compareTodayYesterday")}</option>
+                <option value="custom">{t("compareCustom")}</option>
+              </select>
+            </div>
+            {comparePreset === "custom" ? (
+              <>
+                <div>
+                  <div className="text-xs text-slate-500">{t("comparePeriodA")}</div>
+                  <div className="mt-1 flex gap-1">
+                    <input type="date" value={compareSinceA} onChange={(e) => setCompareSinceA(e.target.value)} className="ui-input text-xs" />
+                    <input type="date" value={compareUntilA} onChange={(e) => setCompareUntilA(e.target.value)} className="ui-input text-xs" />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500">{t("comparePeriodB")}</div>
+                  <div className="mt-1 flex gap-1">
+                    <input type="date" value={compareSinceB} onChange={(e) => setCompareSinceB(e.target.value)} className="ui-input text-xs" />
+                    <input type="date" value={compareUntilB} onChange={(e) => setCompareUntilB(e.target.value)} className="ui-input text-xs" />
+                  </div>
+                </div>
+              </>
+            ) : null}
+            <button type="button" onClick={() => loadCompare()} className="ui-btn-secondary text-sm">
+              {t("compareApply")}
+            </button>
+          </div>
+        </div>
+        {compareLabelA && compareLabelB ? (
+          <p className="border-b border-slate-50 px-4 py-2 text-xs text-slate-500">
+            {t("compareLegend", { periodA: compareLabelA, periodB: compareLabelB })}
+          </p>
+        ) : null}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">{t("colCampaign")}</th>
+                <th className="px-3 py-3">{t("colClient")}</th>
+                <th className="px-3 py-3">{t("compareColSpendA")}</th>
+                <th className="px-3 py-3">{t("compareColSpendB")}</th>
+                <th className="px-3 py-3">{t("compareColDelta")}</th>
+                <th className="px-3 py-3">{t("compareColResultsA")}</th>
+                <th className="px-3 py-3">{t("compareColResultsB")}</th>
+                <th className="px-3 py-3">{t("compareColDelta")}</th>
+                <th className="px-3 py-3">CPA A</th>
+                <th className="px-3 py-3">CPA B</th>
+                <th className="px-3 py-3">{t("compareColDelta")}</th>
+                <th className="px-3 py-3">ROAS A</th>
+                <th className="px-3 py-3">ROAS B</th>
+                <th className="px-3 py-3">{t("compareColDelta")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingCompare
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <tr key={i} className="border-t border-slate-100">
+                      <td className="px-4 py-3"><Skeleton className="h-4 w-40" /></td>
+                      <td className="px-3 py-3"><Skeleton className="h-4 w-24" /></td>
+                      <td className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>
+                      <td className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>
+                      <td className="px-3 py-3"><Skeleton className="h-4 w-12" /></td>
+                      <td colSpan={9} className="px-3 py-3"><Skeleton className="h-4 w-full max-w-[200px]" /></td>
+                    </tr>
+                  ))
+                : null}
+              {!loadingCompare &&
+              compareRows.map((r) => (
+                <tr key={r.metaCampaignId} className="border-t border-slate-100 hover:bg-slate-50/80">
+                  <td className="px-4 py-3 font-medium text-slate-900">{r.campaignName}</td>
+                  <td className="px-3 py-3">
+                    <button type="button" onClick={() => filterByClient(r.clientSlug)} className="text-violet-700 hover:underline">
+                      {r.clientName}
+                    </button>
+                  </td>
+                  <td className="px-3 py-3">{formatBRL(r.spendA, locale)}</td>
+                  <td className="px-3 py-3">{formatBRL(r.spendB, locale)}</td>
+                  <td className="px-3 py-3"><DeltaCell delta={pctDelta(r.spendA, r.spendB)} higherIsBetter /></td>
+                  <td className="px-3 py-3">{formatNumber(r.conversionsA, locale)}</td>
+                  <td className="px-3 py-3">{formatNumber(r.conversionsB, locale)}</td>
+                  <td className="px-3 py-3"><DeltaCell delta={pctDelta(r.conversionsA, r.conversionsB)} higherIsBetter /></td>
+                  <td className="px-3 py-3">{r.cpaA != null ? formatBRL(r.cpaA, locale) : "—"}</td>
+                  <td className="px-3 py-3">{r.cpaB != null ? formatBRL(r.cpaB, locale) : "—"}</td>
+                  <td className="px-3 py-3">
+                    <DeltaCell delta={r.cpaA != null && r.cpaB != null && r.cpaB > 0 ? pctDelta(r.cpaA, r.cpaB) : null} higherIsBetter={false} />
+                  </td>
+                  <td className="px-3 py-3">{formatRoas(r.roasA, locale)}</td>
+                  <td className="px-3 py-3">{formatRoas(r.roasB, locale)}</td>
+                  <td className="px-3 py-3"><DeltaCell delta={pctDelta(r.roasA, r.roasB)} higherIsBetter /></td>
+                </tr>
+              ))}
+              {!loadingCompare && compareRows.length === 0 ? (
+                <tr>
+                  <td colSpan={14} className="px-4 py-8 text-center text-sm text-slate-500">
+                    {t("compareEmpty")}
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+        <div className="border-t border-slate-100 px-4 py-2 text-xs text-slate-500">
+          {t("compareRowCount", { count: compareRows.length })}
+        </div>
       </div>
 
       {/* Main grid */}
@@ -658,11 +912,7 @@ export function CommandCenterClient() {
                     />
                   </th>
                   <th className="px-3 py-3">
-                    {viewMode === "campaigns"
-                      ? t("colCampaign")
-                      : viewMode === "clients"
-                        ? t("colClient")
-                        : t("colAccount")}
+                    {viewMode === "campaigns" ? t("colCampaign") : t("colClient")}
                   </th>
                   {viewMode === "campaigns" ? (
                     <>
@@ -681,7 +931,32 @@ export function CommandCenterClient() {
                 </tr>
               </thead>
               <tbody>
-                {viewMode === "campaigns"
+                {loadingTable
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <tr key={i} className="border-t border-slate-100">
+                        <td className="px-4 py-3"><Skeleton className="h-4 w-4" /></td>
+                        <td className="px-3 py-3"><Skeleton className="h-4 w-40" /></td>
+                        {viewMode === "campaigns" ? (
+                          <>
+                            <td className="px-3 py-3"><Skeleton className="h-4 w-24" /></td>
+                            <td className="px-3 py-3"><Skeleton className="h-4 w-20" /></td>
+                          </>
+                        ) : null}
+                        <td className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>
+                        {viewMode === "campaigns" ? (
+                          <td className="px-3 py-3"><Skeleton className="h-4 w-12" /></td>
+                        ) : (
+                          <td className="px-3 py-3"><Skeleton className="h-4 w-8" /></td>
+                        )}
+                        <td className="px-3 py-3"><Skeleton className="h-4 w-12" /></td>
+                        <td className="px-3 py-3"><Skeleton className="h-4 w-12" /></td>
+                        <td className="px-3 py-3"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                        <td className="px-3 py-3"><Skeleton className="h-4 w-6" /></td>
+                        <td className="px-3 py-3"><Skeleton className="h-4 w-4" /></td>
+                      </tr>
+                    ))
+                  : null}
+                {!loadingTable && viewMode === "campaigns"
                   ? (pagedRows as CampaignRow[]).map((r) => (
                       <tr key={r.metaCampaignId} className="border-t border-slate-100 hover:bg-slate-50/80">
                         <td className="px-4 py-3">
@@ -749,7 +1024,9 @@ export function CommandCenterClient() {
                         <td className="px-3 py-3 text-slate-400">⋮</td>
                       </tr>
                     ))
-                  : (pagedRows as Array<{
+                  : null}
+                {!loadingTable && viewMode === "clients"
+                  ? (pagedRows as Array<{
                       key: string;
                       name?: string;
                       slug?: string;
@@ -759,8 +1036,14 @@ export function CommandCenterClient() {
                       alertCount: number;
                       campaigns: number;
                     }>).map((r) => (
-                      <tr key={r.key} className="border-t border-slate-100 hover:bg-slate-50/80">
-                        <td className="px-4 py-3">
+                      <tr
+                        key={r.key}
+                        className={`border-t border-slate-100 hover:bg-slate-50/80 ${
+                          clientFilter === r.slug ? "bg-violet-50/60" : ""
+                        } ${r.slug ? "cursor-pointer" : ""}`}
+                        onClick={() => r.slug && filterByClient(r.slug)}
+                      >
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={!!selected[r.key]}
@@ -769,13 +1052,10 @@ export function CommandCenterClient() {
                           />
                         </td>
                         <td className="px-3 py-3 font-medium text-slate-900">
+                          <span className="hover:text-violet-600">{r.name}</span>
                           {r.slug ? (
-                            <Link href={`/clients/${r.slug}`} className="hover:text-violet-600">
-                              {r.name}
-                            </Link>
-                          ) : (
-                            r.name
-                          )}
+                            <span className="ml-2 text-[10px] font-normal text-violet-600">{t("clickToFilter")}</span>
+                          ) : null}
                         </td>
                         <td className="px-3 py-3 font-medium">{formatBRL(r.spend, locale)}</td>
                         <td className="px-3 py-3 text-slate-600">{r.campaigns}</td>
@@ -799,8 +1079,9 @@ export function CommandCenterClient() {
                         </td>
                         <td className="px-3 py-3 text-slate-400">⋮</td>
                       </tr>
-                    ))}
-                {pagedRows.length === 0 ? (
+                    ))
+                  : null}
+                {!loadingTable && pagedRows.length === 0 ? (
                   <tr>
                     <td colSpan={12} className="px-4 py-12 text-center text-sm text-slate-500">
                       {t("empty")}
@@ -884,7 +1165,17 @@ export function CommandCenterClient() {
               ))}
             </div>
             <div className="mt-3 max-h-[340px] space-y-2 overflow-y-auto">
-              {filteredAlerts.map((a) => (
+              {loadingAlerts
+                ? Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                      <Skeleton className="h-3 w-3/4" />
+                      <Skeleton className="mt-2 h-3 w-full" />
+                      <Skeleton className="mt-2 h-3 w-1/2" />
+                    </div>
+                  ))
+                : null}
+              {!loadingAlerts &&
+              filteredAlerts.map((a) => (
                 <div
                   key={a.id}
                   className={`rounded-xl border p-3 ${
@@ -938,7 +1229,7 @@ export function CommandCenterClient() {
                   </div>
                 </div>
               ))}
-              {filteredAlerts.length === 0 ? (
+              {!loadingAlerts && filteredAlerts.length === 0 ? (
                 <p className="py-6 text-center text-xs text-slate-500">{t("inboxEmpty")}</p>
               ) : null}
             </div>
