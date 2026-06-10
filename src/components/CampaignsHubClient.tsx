@@ -108,8 +108,10 @@ export function CampaignsHubClient() {
   const tPresets = useTranslations("campaignPresets");
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
-  const [groupByType, setGroupByType] = useState(false);
+  const [groupByType, setGroupByType] = useState(true);
   const [presets, setPresets] = useState<Record<string, string>>({});
+  const [groupSortKey, setGroupSortKey] = useState<MetricKey | "name" | "client" | null>(null);
+  const [groupSortDir, setGroupSortDir] = useState<"asc" | "desc">("desc");
   const [rows, setRows] = useState<CampaignRow[]>([]);
   const [total, setTotal] = useState(0);
   const [totals, setTotals] = useState<{ spend: number; conversions: number; leads: number }>({
@@ -160,6 +162,35 @@ export function CampaignsHubClient() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ metaCampaignId, preset })
+    });
+  }
+
+  function toggleGroupSort(key: MetricKey | "name" | "client") {
+    if (groupSortKey === key) {
+      setGroupSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setGroupSortKey(key);
+      setGroupSortDir("desc");
+    }
+  }
+
+  function sortGroupRows(list: CampaignRow[], metrics: MetricKey[]): CampaignRow[] {
+    const key = groupSortKey;
+    if (!key) return list;
+    if (key !== "name" && key !== "client" && !metrics.includes(key)) return list;
+    const val = (r: CampaignRow): number | string => {
+      if (key === "name") return r.campaignName?.toLowerCase() ?? "";
+      if (key === "client") return r.clientName?.toLowerCase() ?? "";
+      return campaignMetricValue(r, key);
+    };
+    return [...list].sort((a, b) => {
+      const va = val(a);
+      const vb = val(b);
+      if (typeof va === "number" && typeof vb === "number") {
+        return groupSortDir === "asc" ? va - vb : vb - va;
+      }
+      const cmp = String(va).localeCompare(String(vb));
+      return groupSortDir === "asc" ? cmp : -cmp;
     });
   }
 
@@ -727,6 +758,7 @@ export function CampaignsHubClient() {
               );
               if (!list.length) return null;
               const metrics = presetMetricsFor(preset);
+              const sorted = sortGroupRows(list, metrics);
               return (
                 <div key={preset} className="ui-card overflow-hidden">
                   <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
@@ -739,18 +771,47 @@ export function CampaignsHubClient() {
                     <table className="w-full min-w-[680px] text-left text-sm">
                       <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                         <tr>
-                          <th className="px-4 py-2">{t("colCampaign")}</th>
-                          <th className="px-3 py-2">{t("colClient")}</th>
+                          <th className="px-4 py-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleGroupSort("name")}
+                              className="hover:text-slate-700"
+                            >
+                              {t("colCampaign")}
+                              {groupSortKey === "name" ? (groupSortDir === "asc" ? " ▲" : " ▼") : ""}
+                            </button>
+                          </th>
+                          <th className="px-3 py-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleGroupSort("client")}
+                              className="hover:text-slate-700"
+                            >
+                              {t("colClient")}
+                              {groupSortKey === "client"
+                                ? groupSortDir === "asc"
+                                  ? " ▲"
+                                  : " ▼"
+                                : ""}
+                            </button>
+                          </th>
                           <th className="px-3 py-2">{tPresets("label")}</th>
                           {metrics.map((m) => (
                             <th key={m} className="px-3 py-2 text-right">
-                              {tMetrics(METRIC_BY_KEY[m].label)}
+                              <button
+                                type="button"
+                                onClick={() => toggleGroupSort(m)}
+                                className="hover:text-slate-700"
+                              >
+                                {tMetrics(METRIC_BY_KEY[m].label)}
+                                {groupSortKey === m ? (groupSortDir === "asc" ? " ▲" : " ▼") : ""}
+                              </button>
                             </th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {list.map((r) => (
+                        {sorted.map((r) => (
                           <tr
                             key={r.metaCampaignId}
                             className="border-t border-slate-100 hover:bg-violet-50/40"
