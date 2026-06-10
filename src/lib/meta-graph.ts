@@ -282,6 +282,23 @@ export async function fetchMyAdAccounts(accessToken: string): Promise<MetaAdAcco
   return fetchGraphPaged<MetaAdAccount>(first, accessToken);
 }
 
+/** Gasto dos últimos 30 dias por conta (best-effort, em 1 chamada via subcampo insights). */
+export async function fetchMyAdAccountsSpendLast30d(
+  accessToken: string
+): Promise<Map<string, number>> {
+  const path = `/me/adaccounts?fields=id,insights.date_preset(last_30d){spend}&limit=200`;
+  const rows = await fetchGraphPaged<{
+    id: string;
+    insights?: { data?: Array<{ spend?: string }> };
+  }>(path, accessToken);
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    const spend = Number(r.insights?.data?.[0]?.spend ?? 0);
+    if (Number.isFinite(spend)) map.set(r.id, spend);
+  }
+  return map;
+}
+
 export async function fetchAdAccountPixels(
   accessToken: string,
   adAccountId: string

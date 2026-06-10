@@ -1,9 +1,10 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { Link } from "@/i18n/navigation";
+import { formatBRL } from "@/lib/format";
 
 type BusinessRow = {
   metaBusinessId: string;
@@ -12,17 +13,30 @@ type BusinessRow = {
   pageCount: number;
 };
 
-type Step = "name" | "bm";
+type AccountOption = {
+  metaAdAccountId: string;
+  label: string;
+  metaBusinessId: string | null;
+  metaBusinessName: string | null;
+  spendLast30d: number | null;
+};
+
+type Step = "name" | "bm" | "accounts";
 
 export function CreateClientWizard({ onCreated }: { onCreated: () => void }) {
   const t = useTranslations("clientsHub.createWizard");
   const tHub = useTranslations("clientsHub");
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("name");
   const [name, setName] = useState("");
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [selectedBm, setSelectedBm] = useState("");
   const [inventoryEmpty, setInventoryEmpty] = useState(false);
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -30,6 +44,9 @@ export function CreateClientWizard({ onCreated }: { onCreated: () => void }) {
     setStep("name");
     setName("");
     setSelectedBm("");
+    setAccounts([]);
+    setSelected(new Set());
+    setQuery("");
     setError(null);
   };
 
@@ -42,143 +59,285 @@ export function CreateClientWizard({ onCreated }: { onCreated: () => void }) {
           setBusinesses(rows);
           setInventoryEmpty(rows.length === 0 && (j.totals?.adAccounts ?? 0) === 0);
         }
-      });
+      })
+      .catch(() => {});
+  }, []);
+
+  // Carrega APENAS as contas da BM selecionada (não lista todas as contas).
+  const loadAccounts = useCallback((bmId: string) => {
+    setLoadingAccounts(true);
+    setAccounts([]);
+    const qs = bmId ? `?metaBusinessId=${encodeURIComponent(bmId)}` : "";
+    fetch(`/api/meta/account-options${qs}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setAccounts(j.accounts ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingAccounts(false));
   }, []);
 
   useEffect(() => {
     if (open) loadBusinesses();
   }, [open, loadBusinesses]);
 
-  const submit = (bmId: string) => {
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") close();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return accounts;
+    return accounts.filter(
+      (a) => a.label.toLowerCase().includes(q) || a.metaAdAccountId.toLowerCase().includes(q)
+    );
+  }, [accounts, query]);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function close() {
+    setOpen(false);
+    reset();
+  }
+
+  function goToAccounts(bmId: string) {
+    setSelectedBm(bmId);
+    setSelected(new Set());
+    setQuery("");
+    setStep("accounts");
+    loadAccounts(bmId);
+  }
+
+  function create() {
     setError(null);
-    const bmName = businesses.find((b) => b.metaBusinessId === bmId)?.name;
+    const bmName = businesses.find((b) => b.metaBusinessId === selectedBm)?.name;
     startTransition(async () => {
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          metaBusinessId: bmId || undefined,
+          metaBusinessId: selectedBm || undefined,
           metaBusinessName: bmName || undefined,
-          linkAllBmAssets: true
+          metaAdAccountIds: [...selected]
         })
       });
-      const j = await res.json();
-      if (!res.ok || !j.ok) {
-        setError(j.error ?? tHub("createFailed"));
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) {
+        setError(j?.error ?? tHub("createFailed"));
         return;
       }
       setOpen(false);
       reset();
       onCreated();
     });
-  };
+  }
 
-  if (!open) {
-    return (
+  const headerTitle =
+    step === "accounts" ? t("chooseAccounts") : step === "bm" ? t("pickBm") : t("title");
+
+  return (
+    <>
       <button type="button" onClick={() => setOpen(true)} className="ui-btn-primary">
         {t("openButton")}
       </button>
-    );
-  }
 
-  const selectedBmRow = businesses.find((b) => b.metaBusinessId === selectedBm) ?? null;
-
-  return (
-    <div className="ui-card p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-sm font-semibold text-slate-900">{t("title")}</div>
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(false);
-            reset();
-          }}
-          className="text-xs text-slate-500 hover:text-slate-800"
+      {open ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onMouseDown={close}
         >
-          {t("cancel")}
-        </button>
-      </div>
-
-      {inventoryEmpty ? (
-        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          {t("emptyInventory")}{" "}
-          <Link href="/settings/meta-assets" className="font-medium text-violet-700 underline">
-            {t("goMetaAssets")}
-          </Link>
-        </div>
-      ) : null}
-
-      {step === "name" ? (
-        <div className="mt-4 space-y-3">
-          <label className="block text-xs text-slate-600">{t("clientName")}</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="ui-input w-full"
-            placeholder={tHub("newClientPlaceholder")}
-          />
-          <button
-            type="button"
-            disabled={!name.trim()}
-            onClick={() => setStep("bm")}
-            className="ui-btn-primary w-full disabled:opacity-60"
+          <div
+            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            {t("next")}
-          </button>
-        </div>
-      ) : null}
-
-      {step === "bm" ? (
-        <div className="mt-4 space-y-3">
-          <div className="text-xs text-slate-600">{t("pickBm")}</div>
-          <div className="max-h-48 space-y-1 overflow-y-auto">
-            {businesses.map((bm) => (
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div className="text-base font-semibold text-slate-900">{headerTitle}</div>
               <button
-                key={bm.metaBusinessId}
                 type="button"
-                onClick={() => setSelectedBm(bm.metaBusinessId)}
-                className={`w-full rounded-xl border px-3 py-2 text-left text-xs ${
-                  selectedBm === bm.metaBusinessId
-                    ? "border-violet-400 bg-violet-50"
-                    : "border-slate-200 hover:bg-slate-50"
-                }`}
+                onClick={close}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label={t("cancel")}
               >
-                <div className="font-medium text-slate-900">{bm.name}</div>
-                {bm.adAccountCount > 0 || bm.pageCount > 0 ? (
-                  <div className="text-slate-500">
-                    {t("bmCounts", { accounts: bm.adAccountCount, pages: bm.pageCount })}
+                ✕
+              </button>
+            </div>
+
+            {/* Etapa 1: nome */}
+            {step === "name" ? (
+              <div className="space-y-3 px-5 py-5">
+                {inventoryEmpty ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    {t("emptyInventory")}{" "}
+                    <Link
+                      href="/settings/meta-assets"
+                      className="font-medium text-violet-700 underline"
+                    >
+                      {t("goMetaAssets")}
+                    </Link>
                   </div>
                 ) : null}
-              </button>
-            ))}
+                <label className="block text-xs text-slate-600">{t("clientName")}</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="ui-input w-full"
+                  placeholder={tHub("newClientPlaceholder")}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && name.trim()) setStep("bm");
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={!name.trim()}
+                  onClick={() => setStep("bm")}
+                  className="ui-btn-primary w-full disabled:opacity-60"
+                >
+                  {t("next")}
+                </button>
+              </div>
+            ) : null}
+
+            {/* Etapa 2: escolher BM */}
+            {step === "bm" ? (
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <div className="flex-1 space-y-1 overflow-y-auto px-5 py-4">
+                  {businesses.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-slate-500">
+                      {t("noAvailableAccounts")}{" "}
+                      <Link
+                        href="/settings/meta-assets"
+                        className="font-medium text-violet-600 underline"
+                      >
+                        {t("goMetaAssets")}
+                      </Link>
+                    </div>
+                  ) : (
+                    businesses.map((bm) => (
+                      <button
+                        key={bm.metaBusinessId}
+                        type="button"
+                        onClick={() => goToAccounts(bm.metaBusinessId)}
+                        className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-left hover:border-violet-300 hover:bg-violet-50/40"
+                      >
+                        <span className="text-sm font-medium text-slate-800">{bm.name}</span>
+                        <span className="text-xs text-slate-500">
+                          {t("bmCounts", { accounts: bm.adAccountCount, pages: bm.pageCount })}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+                <div className="border-t border-slate-100 px-5 py-3">
+                  <button type="button" onClick={() => setStep("name")} className="ui-btn-secondary">
+                    {t("back")}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Etapa 3: contas da BM selecionada (estilo Birch) */}
+            {step === "accounts" ? (
+              <>
+                <div className="px-5 pt-4">
+                  <p className="text-xs text-slate-500">{t("chooseAccountsHint")}</p>
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={t("searchAccounts")}
+                    className="ui-input mt-3 w-full"
+                  />
+                  <div className="mt-2 flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    <span>{t("selectedCount", { count: selected.size })}</span>
+                    <span>{t("spentLast30d")}</span>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-5">
+                  {loadingAccounts ? (
+                    <div className="py-8 text-center text-sm text-slate-500">
+                      {t("loadingAccounts")}
+                    </div>
+                  ) : filtered.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-slate-500">
+                      {t("noAvailableAccounts")}{" "}
+                      <Link
+                        href="/settings/meta-assets"
+                        className="font-medium text-violet-600 underline"
+                      >
+                        {t("goMetaAssets")}
+                      </Link>
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-slate-100">
+                      {filtered.map((acc) => {
+                        const checked = selected.has(acc.metaAdAccountId);
+                        return (
+                          <li key={acc.metaAdAccountId}>
+                            <label className="flex cursor-pointer items-center gap-3 py-2.5 hover:bg-slate-50/60">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggle(acc.metaAdAccountId)}
+                                className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-medium text-slate-800">
+                                  {acc.label}
+                                </div>
+                                <div className="truncate text-xs text-slate-400">
+                                  ID: {acc.metaAdAccountId}
+                                </div>
+                              </div>
+                              <div className="shrink-0 text-sm font-semibold text-slate-700">
+                                {acc.spendLast30d != null ? formatBRL(acc.spendLast30d, locale) : "—"}
+                              </div>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                {error ? (
+                  <div className="mx-5 mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                    {error}
+                  </div>
+                ) : null}
+
+                <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-5 py-3">
+                  <button type="button" onClick={() => setStep("bm")} className="ui-btn-secondary">
+                    {t("back")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isPending || selected.size === 0}
+                    onClick={create}
+                    className="ui-btn-primary disabled:opacity-60"
+                  >
+                    {isPending ? t("creating") : t("create")}
+                  </button>
+                </div>
+              </>
+            ) : null}
           </div>
-
-          {selectedBmRow ? (
-            <p className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-[11px] text-violet-800">
-              {t("bmConfirm")}
-            </p>
-          ) : null}
-
-          {error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-              {error}
-            </div>
-          ) : null}
-
-          <button
-            type="button"
-            disabled={isPending || !selectedBm}
-            onClick={() => submit(selectedBm)}
-            className="ui-btn-primary w-full disabled:opacity-60"
-          >
-            {isPending ? t("creating") : t("create")}
-          </button>
-          <button type="button" onClick={() => setStep("name")} className="ui-btn-secondary w-full">
-            {t("back")}
-          </button>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

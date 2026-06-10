@@ -579,7 +579,14 @@
       "create": "Create client",
       "creating": "Creating…",
       "emptyInventory": "No Meta assets imported yet.",
-      "goMetaAssets": "Go to Meta Assets and click Refresh from Facebook"
+      "goMetaAssets": "Go to Meta Assets and click Refresh from Facebook",
+      "chooseAccounts": "Choose your ad accounts",
+      "chooseAccountsHint": "Connect the accounts this client will manage.",
+      "searchAccounts": "Search account…",
+      "spentLast30d": "Spent · last 30 days",
+      "selectedCount": "{count} selected",
+      "loadingAccounts": "Loading accounts…",
+      "noAvailableAccounts": "No accounts available. Connect or refresh your Meta assets."
     }
   },
   "period": {

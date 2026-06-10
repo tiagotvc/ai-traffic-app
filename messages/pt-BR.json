@@ -579,7 +579,14 @@
       "create": "Criar cliente",
       "creating": "Criando…",
       "emptyInventory": "Nenhum ativo Meta importado.",
-      "goMetaAssets": "Ir para Ativos Meta e clicar em Atualizar do Facebook"
+      "goMetaAssets": "Ir para Ativos Meta e clicar em Atualizar do Facebook",
+      "chooseAccounts": "Escolha as contas de anúncio",
+      "chooseAccountsHint": "Conecte as contas que este cliente vai gerenciar.",
+      "searchAccounts": "Buscar conta…",
+      "spentLast30d": "Gasto · últimos 30 dias",
+      "selectedCount": "{count} selecionada(s)",
+      "loadingAccounts": "Carregando contas…",
+      "noAvailableAccounts": "Nenhuma conta disponível. Conecte ou atualize seus ativos Meta."
     }
   },
   "period": {
