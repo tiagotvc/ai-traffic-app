@@ -437,7 +437,7 @@ export function DashboardClient() {
             <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-3 lg:grid-cols-5">
               <SupportStat label={t("impressions")} value={formatNumber(summary.impressions ?? 0, locale)} />
               <SupportStat label={t("clicks")} value={formatNumber(summary.clicks ?? 0, locale)} />
-              <SupportStat label={t("ctr")} value={formatPercent(summary.ctr ?? 0, 1, locale)} />
+              <SupportStat label={t("ctr")} value={formatPercent(summary.ctr ?? 0, 2, locale)} />
               <SupportStat label={t("avgCpc")} value={formatBRL(summary.cpc ?? 0, locale)} />
               <SupportStat
                 label={t("cpa")}

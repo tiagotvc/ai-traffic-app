@@ -427,7 +427,7 @@ export function CampaignsHubClient() {
       case "ctr":
         return (
           <td key={col} className="px-3 py-3">
-            {r.ctr != null ? formatPercent(r.ctr, 1, locale) : "—"}
+            {r.ctr != null ? formatPercent(r.ctr, 2, locale) : "—"}
           </td>
         );
       case "cpc":
