@@ -71,6 +71,14 @@ type AdAccountOpt = {
   label: string;
   timezone?: string | null;
 };
+type VariationLite = {
+  id: string;
+  metric: MetricKey;
+  deltaPct: number;
+  direction: "up" | "down";
+  severity: "critical" | "warning" | "positive";
+  entityName: string | null;
+};
 
 function DeltaBadge({
   delta,
@@ -196,7 +204,7 @@ export function DashboardClient() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [variations, setVariations] = useState<VariationLite[]>([]);
   const [criticalAlerts, setCriticalAlerts] = useState<AlertItem[]>([]);
   const [clients, setClients] = useState<ClientCard[]>([]);
   const [adAccounts, setAdAccounts] = useState<AdAccountOpt[]>([]);
@@ -220,7 +228,7 @@ export function DashboardClient() {
       const [sRes, tRes, aRes, critRes, pRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
         fetch(`/api/dashboard/timeseries?${curQ}`),
-        fetch("/api/alerts?limit=8"),
+        fetch("/api/alerts/variations?level=general&days=30"),
         fetch("/api/alerts?severity=critical&limit=8"),
         previous
           ? fetch(`/api/dashboard/summary?${buildQuery(clientFilter, accountFilter, previous)}`)
@@ -236,7 +244,7 @@ export function DashboardClient() {
       setSummary(sJson.summary);
       setPrevSummary(pJson?.summary ?? null);
       setSeries(tJson.series ?? []);
-      setAlerts(aJson.alerts ?? []);
+      setVariations(aJson.items ?? []);
       setCriticalAlerts(critJson.alerts ?? []);
       setAdAccounts(sJson.adAccounts ?? []);
       setNote(null);
@@ -562,22 +570,41 @@ export function DashboardClient() {
             </div>
 
             <div className="ui-card p-4">
-              <div className="text-sm font-semibold">{t("alertsTitle")}</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-semibold">{t("alertsTitle")}</div>
+                <Link
+                  href="/alerts"
+                  className="text-xs font-semibold text-violet-600 hover:text-violet-500"
+                >
+                  {t("viewAllAlerts")}
+                </Link>
+              </div>
               <div className="mt-3 space-y-2">
-                {alerts.length ? (
-                  alerts.map((a) => (
-                    <div
-                      key={a.id}
-                      className={`rounded-xl border p-3 ${
-                        a.severity === "critical"
-                          ? "border-rose-200 bg-rose-50"
-                          : "border-slate-200 bg-white"
-                      }`}
-                    >
-                      <div className="text-xs font-semibold text-slate-700">{a.title}</div>
-                      <div className="mt-1 text-xs text-slate-500">{a.description}</div>
-                    </div>
-                  ))
+                {variations.length ? (
+                  variations.slice(0, 6).map((v) => {
+                    const good = v.severity === "positive";
+                    const color = good
+                      ? "text-emerald-600"
+                      : v.severity === "critical"
+                        ? "text-rose-600"
+                        : "text-amber-600";
+                    return (
+                      <div key={v.id} className="rounded-xl border border-slate-200 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-slate-700">
+                            {tMetrics(METRIC_BY_KEY[v.metric].label)}
+                          </span>
+                          <span className={`text-xs font-semibold ${color}`}>
+                            {v.direction === "up" ? "▲" : "▼"} {Math.abs(v.deltaPct).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-slate-400">
+                          {v.entityName ? `${v.entityName} · ` : ""}
+                          {t("vsPrevPeriod")}
+                        </div>
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="text-xs text-slate-500">{t("noAlerts")}</div>
                 )}

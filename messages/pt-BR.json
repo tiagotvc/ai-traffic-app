@@ -555,7 +555,8 @@
     "metricsSelected": "{count}/3 selecionadas",
     "apply": "Aplicar",
     "cancel": "Cancelar",
-    "clientMetricLabel": "Métrica"
+    "clientMetricLabel": "Métrica",
+    "viewAllAlerts": "Ver todos"
   },
   "clientsHub": {
     "title": "Hub de clientes",

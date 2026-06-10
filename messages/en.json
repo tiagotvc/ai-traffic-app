@@ -555,7 +555,8 @@
     "metricsSelected": "{count}/3 selected",
     "apply": "Apply",
     "cancel": "Cancel",
-    "clientMetricLabel": "Metric"
+    "clientMetricLabel": "Metric",
+    "viewAllAlerts": "View all"
   },
   "clientsHub": {
     "title": "Client hub",
