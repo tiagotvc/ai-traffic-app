@@ -97,6 +97,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const t = useTranslations("clientOverview");
   const tMetrics = useTranslations("metrics");
   const tPresets = useTranslations("campaignPresets");
+  const tCampaigns = useTranslations("campaignsPage");
   const locale = useLocale();
 
   const [name, setName] = useState("");
@@ -371,7 +372,13 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
                         </Link>
                       </td>
                       <td className="px-3 py-3">
-                        <Badge variant={statusVariant(c.status)}>{c.status ?? "—"}</Badge>
+                        <Badge variant={statusVariant(c.status)}>
+                        {c.status === "ACTIVE"
+                          ? tCampaigns("statusActive")
+                          : c.status === "PAUSED"
+                            ? tCampaigns("statusPaused")
+                            : tCampaigns("statusInactive")}
+                      </Badge>
                       </td>
                       <td className="px-3 py-3">
                         <select

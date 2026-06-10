@@ -101,6 +101,12 @@ type ObjectiveFilter = "ALL" | "leads" | "sales" | "traffic";
 
 const PAGE_SIZES = [25, 50, 100, 200] as const;
 
+function statusVariant(status?: string): "success" | "warning" | "neutral" {
+  if (status === "ACTIVE") return "success";
+  if (status === "PAUSED") return "warning";
+  return "neutral";
+}
+
 export function CampaignsHubClient() {
   const t = useTranslations("campaignsPage");
   const tMetrics = useTranslations("metrics");
@@ -162,6 +168,12 @@ export function CampaignsHubClient() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ metaCampaignId, preset })
     });
+  }
+
+  function statusLabel(status?: string) {
+    if (status === "ACTIVE") return t("statusActive");
+    if (status === "PAUSED") return t("statusPaused");
+    return t("statusInactive");
   }
 
   function toggleGroupSort(key: MetricKey | "name" | "client") {
@@ -782,6 +794,7 @@ export function CampaignsHubClient() {
                                 : ""}
                             </button>
                           </th>
+                          <th className="px-3 py-2">{t("colStatus")}</th>
                           <th className="px-3 py-2">{tPresets("label")}</th>
                           {metrics.map((m) => (
                             <th key={m} className="px-3 py-2 text-right">
@@ -813,6 +826,11 @@ export function CampaignsHubClient() {
                               </button>
                             </td>
                             <td className="px-3 py-2.5 text-slate-600">{r.clientName}</td>
+                            <td className="px-3 py-2.5">
+                              <Badge variant={statusVariant(r.status)}>
+                                {statusLabel(r.status)}
+                              </Badge>
+                            </td>
                             <td className="px-3 py-2.5">
                               <select
                                 value={presets[r.metaCampaignId] ?? "default"}
