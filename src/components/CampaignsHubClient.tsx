@@ -17,6 +17,7 @@ import { CampaignHeaderCell } from "@/components/CampaignHeaderCell";
 import { CampaignManagerClient } from "@/components/CampaignManagerClient";
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
+import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
@@ -461,7 +462,8 @@ export function CampaignsHubClient() {
           <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("title")}</h1>
           <p className="mt-1 text-sm text-slate-500">{t("subtitleList")}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <SyncRefreshButton />
           <CampaignColumnsPicker onChange={setColumns} />
           <button
             type="button"
