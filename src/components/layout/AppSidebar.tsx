@@ -31,6 +31,8 @@ function NavIcon({ d }: { d: string }) {
 }
 
 const icons = {
+  highlights:
+    "M3 13.5l4.5-4.5 3 3 6-6M21 6h-4M21 6v4M4 20h16",
   command:
     "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z",
   clients:
@@ -68,6 +70,7 @@ export function AppSidebar({
   const pathname = usePathname();
 
   const items: NavItem[] = [
+    { id: "highlights", href: "/dashboard", label: t("highlights"), icon: <NavIcon d={icons.highlights} /> },
     { id: "command", href: "/command", label: t("command"), icon: <NavIcon d={icons.command} /> },
     { id: "clients", href: "/clients", label: t("clients"), icon: <NavIcon d={icons.clients} /> },
     { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <NavIcon d={icons.campaigns} /> },
@@ -87,6 +90,7 @@ export function AppSidebar({
 
   function isActive(item: NavItem) {
     const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
+    if (item.id === "highlights") return base === "/dashboard" || base.startsWith("/dashboard/");
     if (item.id === "command") return base === "/command" || base === "/";
     if (item.id === "campaigns")
       return base === "/campaigns" || base.startsWith("/campaigns/");

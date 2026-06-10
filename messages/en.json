@@ -50,7 +50,8 @@
     "expandSidebar": "Expand menu",
     "adsets": "Ad sets",
     "audiences": "Audiences",
-    "creatives": "Creatives"
+    "creatives": "Creatives",
+    "highlights": "Highlights"
   },
   "command": {
     "title": "Command Center",
@@ -517,7 +518,14 @@
     "clientsSubtitle": "Active accounts",
     "viewAllClients": "View all",
     "loadingMetrics": "Loading metrics…",
-    "loadError": "Failed to load dashboard. Check Postgres and run pnpm run db:migrate."
+    "loadError": "Failed to load dashboard. Check Postgres and run pnpm run db:migrate.",
+    "highlightsSubtitle": "Performance summary for the last 30 days",
+    "currencyLabel": "Currency",
+    "vsPrevPeriod": "vs. previous period",
+    "noPrevData": "no prior baseline",
+    "supportingTitle": "Period metrics",
+    "clicks": "Clicks",
+    "cpa": "Cost per conversion"
   },
   "clientsHub": {
     "title": "Client hub",

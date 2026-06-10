@@ -50,7 +50,8 @@
     "expandSidebar": "Expandir menu",
     "adsets": "Conjuntos",
     "audiences": "Públicos",
-    "creatives": "Criativos"
+    "creatives": "Criativos",
+    "highlights": "Destaques"
   },
   "command": {
     "title": "Command Center",
@@ -517,7 +518,14 @@
     "clientsSubtitle": "Ativos acompanhados",
     "viewAllClients": "Ver todos",
     "loadingMetrics": "Carregando métricas…",
-    "loadError": "Erro ao carregar dashboard. Verifique o Postgres e rode pnpm run db:migrate."
+    "loadError": "Erro ao carregar dashboard. Verifique o Postgres e rode pnpm run db:migrate.",
+    "highlightsSubtitle": "Resumo de desempenho dos últimos 30 dias",
+    "currencyLabel": "Moeda",
+    "vsPrevPeriod": "vs. período anterior",
+    "noPrevData": "sem base anterior",
+    "supportingTitle": "Métricas do período",
+    "clicks": "Cliques",
+    "cpa": "Custo por conversão"
   },
   "clientsHub": {
     "title": "Hub de clientes",
