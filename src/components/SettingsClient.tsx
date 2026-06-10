@@ -178,6 +178,12 @@ export function SettingsClient({
             </span>
             {connectMetaSlot}
             <Link
+              href="/onboarding/connect"
+              className="text-xs font-medium text-violet-400 underline hover:text-violet-300"
+            >
+              {t("connectPlatformLink")}
+            </Link>
+            <Link
               href="/settings/meta-assets"
               className="text-xs font-medium text-violet-400 underline hover:text-violet-300"
             >

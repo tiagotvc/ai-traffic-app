@@ -1093,7 +1093,8 @@
     "teamCancel": "Cancelar",
     "teamWorkspaceCol": "Workspace",
     "teamEmptyMembers": "Nenhum membro ainda. Convide seu time para colaborar.",
-    "roleOwner": "Owner"
+    "roleOwner": "Owner",
+    "connectPlatformLink": "Conectar plataforma de anúncios"
   },
   "invite": {
     "title": "Convite para o workspace",
@@ -1162,5 +1163,24 @@
     "performance": "Desempenho",
     "results": "Resultados",
     "costs": "Custos"
+  },
+  "connectPlatform": {
+    "breadcrumb": "Onboarding",
+    "title": "Conectar plataforma de anúncios",
+    "subtitle": "Comece escolhendo sua plataforma principal — você conecta as outras depois.",
+    "metaAds": "Meta Ads",
+    "metaHint": "Facebook e Instagram Ads",
+    "metaConnect": "Conectar Meta Ads",
+    "metaUnavailable": "Conexão com a Meta indisponível no momento. Configure as credenciais nas configurações.",
+    "otherPlatforms": "Outras plataformas",
+    "comingSoon": "Em breve",
+    "google": "Google Ads",
+    "tiktok": "TikTok Ads",
+    "snapchat": "Snapchat Ads",
+    "connectLater": "Conectar depois",
+    "sellingTitle": "Escale mais rápido",
+    "selling1": "Insights detalhados das suas campanhas",
+    "selling2": "Gerencie anúncios com o mínimo de esforço",
+    "selling3": "Crie e teste novas campanhas"
   }
 }

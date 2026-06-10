@@ -1093,7 +1093,8 @@
     "teamCancel": "Cancel",
     "teamWorkspaceCol": "Workspace",
     "teamEmptyMembers": "No members yet. Invite your team to collaborate.",
-    "roleOwner": "Owner"
+    "roleOwner": "Owner",
+    "connectPlatformLink": "Connect ad platform"
   },
   "invite": {
     "title": "Workspace invite",
@@ -1162,5 +1163,24 @@
     "performance": "Performance",
     "results": "Results",
     "costs": "Costs"
+  },
+  "connectPlatform": {
+    "breadcrumb": "Onboarding",
+    "title": "Connect ad platform",
+    "subtitle": "Start by selecting your primary ad platform — connect the others later.",
+    "metaAds": "Meta Ads",
+    "metaHint": "Facebook & Instagram Ads",
+    "metaConnect": "Connect Meta Ads",
+    "metaUnavailable": "Meta connection unavailable right now. Configure credentials in settings.",
+    "otherPlatforms": "Other platforms",
+    "comingSoon": "Coming soon",
+    "google": "Google Ads",
+    "tiktok": "TikTok Ads",
+    "snapchat": "Snapchat Ads",
+    "connectLater": "Connect later",
+    "sellingTitle": "Scale faster",
+    "selling1": "Detailed campaign insights",
+    "selling2": "Manage ads with minimal effort",
+    "selling3": "Launch and test new campaigns"
   }
 }
