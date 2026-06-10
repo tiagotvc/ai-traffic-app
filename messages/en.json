@@ -160,7 +160,7 @@
     "breadcrumb": "Alerts",
     "automationsLink": "Automation rules",
     "kpiTotal": "Open alerts",
-    "kpiTotalHint": "Not dismissed",
+    "kpiTotalHint": "Fired in the period",
     "kpiCritical": "Critical",
     "kpiCriticalHint": "Immediate action recommended",
     "kpiWarning": "Warning",
@@ -194,7 +194,10 @@
       "CONVERSION_DROP": "Conversion drop",
       "ROAS_ABOVE_TARGET": "ROAS above target",
       "OTHER": "Other"
-    }
+    },
+    "periodDays": "{days} days",
+    "vsPrevious": "vs. previous",
+    "periodCompareTitle": "Period comparison"
   },
   "automations": {
     "title": "Automation rules",

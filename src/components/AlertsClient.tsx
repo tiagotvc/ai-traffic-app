@@ -27,10 +27,28 @@ type AlertRow = {
 
 type AlertFilter = "all" | "critical" | "warning";
 
+type StatBucket = { total: number; critical: number; warning: number };
+type AlertStats = { days: number; current: StatBucket; previous: StatBucket } | null;
+const PERIOD_OPTIONS = [7, 15, 30] as const;
+
 function severityVariant(severity: string): "danger" | "warning" | "neutral" {
   if (severity === "critical") return "danger";
   if (severity === "warning") return "warning";
   return "neutral";
+}
+
+function buildDelta(
+  cur: number,
+  prev: number,
+  vsLabel: string
+): { text?: string; positive: boolean } {
+  const diff = cur - prev;
+  if (diff === 0) return { positive: true };
+  const pct = prev > 0 ? Math.round((Math.abs(diff) / prev) * 100) : null;
+  const pctStr = pct != null ? ` (${pct}%)` : "";
+  const sign = diff > 0 ? "+" : "−";
+  // Menos alertas = melhor (verde); mais alertas = pior (vermelho).
+  return { text: `${sign}${Math.abs(diff)}${pctStr} ${vsLabel}`, positive: diff < 0 };
 }
 
 function formatWhen(iso: string, locale: string) {
@@ -55,7 +73,22 @@ export function AlertsClient() {
   const [filter, setFilter] = useState<AlertFilter>("all");
   const [searchInput, setSearchInput] = useState("");
   const [q, setQ] = useState("");
+  const [days, setDays] = useState<number>(30);
+  const [stats, setStats] = useState<AlertStats>(null);
   const [isPending, startTransition] = useTransition();
+
+  const loadStats = useCallback(() => {
+    fetch(`/api/alerts/stats?days=${days}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setStats({ days: j.days, current: j.current, previous: j.previous });
+      })
+      .catch(() => {});
+  }, [days]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -124,24 +157,58 @@ export function AlertsClient() {
         }
       />
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-slate-700">{t("periodCompareTitle")}</div>
+        <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5 shadow-sm">
+          {PERIOD_OPTIONS.map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDays(d)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                days === d ? "bg-violet-100 text-violet-700" : "text-slate-500 hover:bg-slate-50"
+              }`}
+            >
+              {t("periodDays", { days: d })}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard
-          label={t("kpiTotal")}
-          value={String(counts.all)}
-          footer={<p className="mt-1 text-xs text-slate-500">{t("kpiTotalHint")}</p>}
-        />
-        <KpiCard
-          label={t("kpiCritical")}
-          value={String(counts.critical)}
-          delta={counts.critical > 0 ? t("needsAction") : undefined}
-          deltaPositive={false}
-          footer={<p className="mt-1 text-xs text-slate-500">{t("kpiCriticalHint")}</p>}
-        />
-        <KpiCard
-          label={t("kpiWarning")}
-          value={String(counts.warning)}
-          footer={<p className="mt-1 text-xs text-slate-500">{t("kpiWarningHint")}</p>}
-        />
+        {(() => {
+          const cur = stats?.current;
+          const prev = stats?.previous;
+          const vs = t("vsPrevious");
+          const dTotal = cur && prev ? buildDelta(cur.total, prev.total, vs) : { positive: true };
+          const dCrit = cur && prev ? buildDelta(cur.critical, prev.critical, vs) : { positive: true };
+          const dWarn = cur && prev ? buildDelta(cur.warning, prev.warning, vs) : { positive: true };
+          return (
+            <>
+              <KpiCard
+                label={t("kpiTotal")}
+                value={cur ? String(cur.total) : "—"}
+                delta={dTotal.text}
+                deltaPositive={dTotal.positive}
+                footer={<p className="mt-1 text-xs text-slate-500">{t("kpiTotalHint")}</p>}
+              />
+              <KpiCard
+                label={t("kpiCritical")}
+                value={cur ? String(cur.critical) : "—"}
+                delta={dCrit.text}
+                deltaPositive={dCrit.positive}
+                footer={<p className="mt-1 text-xs text-slate-500">{t("kpiCriticalHint")}</p>}
+              />
+              <KpiCard
+                label={t("kpiWarning")}
+                value={cur ? String(cur.warning) : "—"}
+                delta={dWarn.text}
+                deltaPositive={dWarn.positive}
+                footer={<p className="mt-1 text-xs text-slate-500">{t("kpiWarningHint")}</p>}
+              />
+            </>
+          );
+        })()}
       </div>
 
       <div className="ui-card overflow-hidden">

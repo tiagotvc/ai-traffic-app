@@ -160,7 +160,7 @@
     "breadcrumb": "Alertas",
     "automationsLink": "Regras de automação",
     "kpiTotal": "Alertas abertos",
-    "kpiTotalHint": "Não dispensados",
+    "kpiTotalHint": "Disparados no período",
     "kpiCritical": "Críticos",
     "kpiCriticalHint": "Ação imediata recomendada",
     "kpiWarning": "Atenção",
@@ -194,7 +194,10 @@
       "CONVERSION_DROP": "Queda de conversões",
       "ROAS_ABOVE_TARGET": "ROAS acima da meta",
       "OTHER": "Outro"
-    }
+    },
+    "periodDays": "{days} dias",
+    "vsPrevious": "vs. anterior",
+    "periodCompareTitle": "Comparativo de período"
   },
   "automations": {
     "title": "Regras de automação",
