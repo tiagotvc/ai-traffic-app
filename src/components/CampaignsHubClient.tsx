@@ -12,7 +12,6 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 
-import { CampaignColumnsPicker } from "@/components/CampaignColumnsPicker";
 import { CampaignHeaderCell } from "@/components/CampaignHeaderCell";
 import { CampaignManagerClient } from "@/components/CampaignManagerClient";
 import { rememberCampaign } from "@/components/CampaignsListClient";
@@ -108,7 +107,7 @@ export function CampaignsHubClient() {
   const tPresets = useTranslations("campaignPresets");
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
-  const [groupByType, setGroupByType] = useState(true);
+  const groupByType = true;
   const [presets, setPresets] = useState<Record<string, string>>({});
   const [groupSortKey, setGroupSortKey] = useState<MetricKey | "name" | "client" | null>(null);
   const [groupSortDir, setGroupSortDir] = useState<"asc" | "desc">("desc");
@@ -562,18 +561,6 @@ export function CampaignsHubClient() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SyncRefreshButton />
-          <button
-            type="button"
-            onClick={() => setGroupByType((v) => !v)}
-            className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
-              groupByType
-                ? "border-violet-300 bg-violet-100 text-violet-700"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {t("groupByType")}
-          </button>
-          {!groupByType ? <CampaignColumnsPicker onChange={setColumns} /> : null}
           <button
             type="button"
             onClick={() => load({ live: true, refresh: true })}

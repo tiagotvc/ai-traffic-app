@@ -157,6 +157,7 @@ function HighlightCard({
                   fontSize: 11
                 }}
                 labelStyle={{ color: "#64748b" }}
+                formatter={(value) => [formatMetricValue(dataKey as MetricKey, Number(value), locale), label]}
               />
               <Area
                 type="monotone"
