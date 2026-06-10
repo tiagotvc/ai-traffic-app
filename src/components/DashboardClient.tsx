@@ -71,6 +71,13 @@ function pctDelta(cur: number, prev: number): number | null {
   return ((cur - prev) / prev) * 100;
 }
 
+/** Rótulo de data do eixo: dia/mês (padrão BR), ou mês/dia em inglês. */
+function formatDayLabel(day: string, locale: string): string {
+  const [, mm, dd] = day.split("-");
+  if (!mm || !dd) return day;
+  return locale === "en" ? `${mm}/${dd}` : `${dd}/${mm}`;
+}
+
 /** Resolve a janela atual e a janela equivalente anterior (para o delta). */
 function resolveRanges(
   p: PeriodState,
@@ -317,7 +324,7 @@ export function DashboardClient() {
 
   const insights = useMemo(() => {
     const spark = series.map((p) => ({
-      label: p.day.slice(5),
+      label: formatDayLabel(p.day, locale),
       spend: p.spend ?? 0,
       conversions: p.conversions ?? 0,
       roas: p.roas ?? 0
@@ -338,9 +345,9 @@ export function DashboardClient() {
         delta: prevSummary ? pctDelta(cur?.roas ?? 0, prevSummary.roas) : null
       }
     };
-  }, [series, summary, prevSummary]);
+  }, [series, summary, prevSummary, locale]);
 
-  const chartData = series.map((p) => ({ ...p, label: p.day.slice(5) }));
+  const chartData = series.map((p) => ({ ...p, label: formatDayLabel(p.day, locale) }));
   const vsLabel = t("vsPrevPeriod");
   const noPrev = t("noPrevData");
 
