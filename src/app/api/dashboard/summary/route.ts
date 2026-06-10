@@ -70,6 +70,7 @@ export async function GET(req: Request) {
   const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
   const cpc = clicks > 0 ? spend / clicks : 0;
   const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+  const cpmsg = messages > 0 ? spend / messages : 0;
   const frequency = reach > 0 ? impressions / reach : 0;
   const roas = roasCount > 0 ? roasSum / roasCount : 0;
   const cpa = conversions > 0 ? spend / conversions : 0;
@@ -88,6 +89,7 @@ export async function GET(req: Request) {
       conversions,
       reach,
       messages,
+      cpmsg,
       frequency,
       roas,
       cpa,

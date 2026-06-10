@@ -1,6 +1,7 @@
 export type PeriodPreset =
   | "today"
   | "yesterday"
+  | "thisWeek"
   | "last7"
   | "last14"
   | "last15"
@@ -64,6 +65,23 @@ export function rollingDaysEndingYesterday(days: number) {
   };
 }
 
+/** Início da semana (segunda-feira) no fuso configurado. */
+export function startOfWeekIso(timeZone = DEFAULT_REPORT_TZ) {
+  const today = todayIso(timeZone);
+  const dow = new Date(`${today}T12:00:00Z`).getUTCDay(); // 0=domingo .. 6=sábado
+  const backToMonday = (dow + 6) % 7;
+  return addDaysIso(today, -backToMonday);
+}
+
+/** Esta semana: de segunda-feira até hoje (inclusive). */
+export function thisWeekRange(timeZone = DEFAULT_REPORT_TZ) {
+  const since = startOfWeekIso(timeZone);
+  const until = todayIso(timeZone);
+  const days =
+    Math.round((Date.parse(until) - Date.parse(since)) / 86_400_000) + 1;
+  return { since, until, days };
+}
+
 export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
   const period = url.searchParams.get("period")?.trim() as PeriodPreset | undefined;
   const sinceParam = url.searchParams.get("since")?.trim();
@@ -82,6 +100,11 @@ export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
   if (period === "yesterday") {
     const y = yesterdayIso();
     return { preset: "yesterday", since: y, until: y, days: 1, allTime: false };
+  }
+
+  if (period === "thisWeek") {
+    const r = thisWeekRange();
+    return { preset: "thisWeek", since: r.since, until: r.until, days: r.days, allTime: false };
   }
 
   if (period === "last15") {
@@ -164,6 +187,10 @@ export function periodToSearchParams(period: {
 }): URLSearchParams {
   const qs = new URLSearchParams();
   qs.set("period", period.preset);
+  if (period.preset === "thisWeek") {
+    // server recomputa a partir do preset (segunda → hoje)
+    return qs;
+  }
   if (period.preset === "custom" && period.since && period.until) {
     qs.set("since", period.since);
     qs.set("until", period.until);
@@ -185,6 +212,7 @@ export function formatPeriodLabel(
   labels: {
     today: string;
     yesterday: string;
+    thisWeek: string;
     last7: string;
     last14: string;
     last15: string;
@@ -196,6 +224,7 @@ export function formatPeriodLabel(
   if (period.allTime) return labels.all;
   if (period.preset === "today") return labels.today;
   if (period.preset === "yesterday") return labels.yesterday;
+  if (period.preset === "thisWeek") return labels.thisWeek;
   if (period.preset === "last7") return labels.last7;
   if (period.preset === "last14") return labels.last14;
   if (period.preset === "last15") return labels.last15;

@@ -13,7 +13,7 @@ export const CAMPAIGN_PRESETS: CampaignPresetKey[] = [
 /** Métricas mais importantes por tipo de campanha. */
 export const PRESET_METRICS: Record<CampaignPresetKey, MetricKey[]> = {
   default: ["spend", "conversions", "ctr", "roas"],
-  lead_whatsapp: ["messages", "cpc", "ctr", "spend"],
+  lead_whatsapp: ["messages", "cpmsg", "ctr", "spend"],
   lead_site: ["conversions", "cpa", "ctr", "spend"],
   sales: ["roas", "conversions", "cpa", "spend"],
   reach: ["reach", "impressions", "cpm", "frequency"]

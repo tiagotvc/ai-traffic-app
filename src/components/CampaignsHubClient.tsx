@@ -81,6 +81,8 @@ function campaignMetricValue(r: CampaignRow, key: MetricKey): number {
       return r.cpm ?? 0;
     case "messages":
       return r.messages ?? 0;
+    case "cpmsg":
+      return (r.messages ?? 0) > 0 ? r.spend / (r.messages ?? 1) : 0;
     case "reach":
       return r.reach ?? 0;
     case "impressions":

@@ -192,7 +192,7 @@ export function DashboardClient() {
   const t = useTranslations("dashboard");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
-  const [period, setPeriod] = useState<PeriodState>({ preset: "today", since: "", until: "" });
+  const [period, setPeriod] = useState<PeriodState>({ preset: "thisWeek", since: "", until: "" });
   const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(["spend", "conversions"]);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [clientMetric, setClientMetric] = useState<MetricKey>("roas");

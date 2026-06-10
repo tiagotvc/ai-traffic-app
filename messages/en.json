@@ -608,7 +608,7 @@
       "loadingAccounts": "Loading accounts…",
       "noAvailableAccounts": "No accounts available. Connect or refresh your Meta assets."
     },
-    "todaySummary": "Today summary",
+    "todaySummary": "This week",
     "edit": "Edit"
   },
   "period": {
@@ -620,7 +620,8 @@
     "last30": "Last 30 days",
     "custom": "Custom range",
     "all": "All time",
-    "apply": "Apply"
+    "apply": "Apply",
+    "thisWeek": "This week"
   },
   "sync": {
     "now": "Sync now",
@@ -1186,7 +1187,8 @@
     "conversions": "Conversions",
     "cpa": "Cost per conversion",
     "messages": "Messages",
-    "roas": "ROAS"
+    "roas": "ROAS",
+    "cpmsg": "Cost per message"
   },
   "metricsCat": {
     "performance": "Performance",

@@ -165,6 +165,7 @@ export async function GET(req: Request) {
         cpc: clicks > 0 ? spend / clicks : 0,
         cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
         cpa: conversions > 0 ? spend / conversions : 0,
+        cpmsg: messages > 0 ? spend / messages : 0,
         frequency: reach > 0 ? impressions / reach : 0,
         roas
       };

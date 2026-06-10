@@ -12,6 +12,7 @@ export type MetricKey =
   | "conversions"
   | "cpa"
   | "messages"
+  | "cpmsg"
   | "roas";
 
 type MetricFormat = "currency" | "number" | "percent" | "ratio" | "multiplier";
@@ -36,6 +37,7 @@ export const METRIC_CATALOG: MetricDef[] = [
   { key: "conversions", label: "conversions", format: "number", category: "results", color: "#10b981" },
   { key: "messages", label: "messages", format: "number", category: "results", color: "#ec4899" },
   { key: "roas", label: "roas", format: "multiplier", category: "results", color: "#22c55e" },
+  { key: "cpmsg", label: "cpmsg", format: "currency", category: "costs", color: "#db2777" },
   { key: "spend", label: "spend", format: "currency", category: "costs", color: "#7c3aed" },
   { key: "cpc", label: "cpc", format: "currency", category: "costs", color: "#ef4444" },
   { key: "cpm", label: "cpm", format: "currency", category: "costs", color: "#f97316" },

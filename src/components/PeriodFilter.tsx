@@ -65,6 +65,7 @@ export function PeriodFilter({
   const label = formatPeriodLabel(parsed, locale, {
     today: t("today"),
     yesterday: t("yesterday"),
+    thisWeek: t("thisWeek"),
     last7: t("last7"),
     last14: t("last14"),
     last15: t("last15"),
@@ -105,6 +106,7 @@ export function PeriodFilter({
             [
               ["today", t("today")],
               ["yesterday", t("yesterday")],
+              ["thisWeek", t("thisWeek")],
               ["last7", t("last7")],
               ["last15", t("last15")],
               ["last30", t("last30")],

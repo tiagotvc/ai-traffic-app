@@ -79,6 +79,8 @@ function campaignMetric(row: CampaignRow, key: MetricKey): number {
       return row.cpm;
     case "messages":
       return row.messages;
+    case "cpmsg":
+      return row.messages > 0 ? row.spend / row.messages : 0;
     case "reach":
       return row.reach;
     case "impressions":
@@ -105,7 +107,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const locale = useLocale();
 
   const [name, setName] = useState("");
-  const [period, setPeriod] = useState<PeriodState>({ preset: "today", since: "", until: "" });
+  const [period, setPeriod] = useState<PeriodState>({ preset: "thisWeek", since: "", until: "" });
   const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(["spend", "conversions"]);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [summary, setSummary] = useState<Summary | null>(null);

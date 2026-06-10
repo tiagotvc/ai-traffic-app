@@ -73,6 +73,7 @@ export async function GET(req: Request) {
       cpc: d.clicks > 0 ? d.spend / d.clicks : 0,
       cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0,
       cpa: d.conversions > 0 ? d.spend / d.conversions : 0,
+      cpmsg: d.messages > 0 ? d.spend / d.messages : 0,
       frequency: d.reach > 0 ? d.impressions / d.reach : 0,
       roas: d.roasCount ? d.roas / d.roasCount : 0
     }));

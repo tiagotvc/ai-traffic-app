@@ -44,8 +44,8 @@ export function ClientsHubClient() {
     deletableClients.length > 0 && deletableClients.every((c) => selected[c.id]);
 
   const reload = useCallback(() => {
-    // period=today: o card mostra o resumo do dia do cliente.
-    fetch("/api/clients?period=today")
+    // period=thisWeek: o card mostra o resumo da semana (segunda → hoje).
+    fetch("/api/clients?period=thisWeek")
       .then((r) => r.json())
       .then((j) => setClients(j.clients ?? []));
   }, []);
