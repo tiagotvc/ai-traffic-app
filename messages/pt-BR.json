@@ -1223,6 +1223,15 @@
     "colCampaign": "Campanha",
     "colStatus": "Status",
     "noCampaigns": "Nenhuma campanha ativa no período.",
-    "loading": "Carregando…"
+    "loading": "Carregando…",
+    "keyMetrics": "Métricas-chave"
+  },
+  "campaignPresets": {
+    "label": "Tipo",
+    "default": "Geral",
+    "lead_whatsapp": "Lead WhatsApp",
+    "lead_site": "Lead no site",
+    "sales": "Vendas",
+    "reach": "Alcance"
   }
 }

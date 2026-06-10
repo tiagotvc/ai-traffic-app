@@ -6,6 +6,7 @@ import type { AuditLog } from "@/db/entities/AuditLog";
 import type { AutomationRule } from "@/db/entities/AutomationRule";
 import type { CampaignGoal } from "@/db/entities/CampaignGoal";
 import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
+import type { CampaignPreset } from "@/db/entities/CampaignPreset";
 import type { CampaignTemplate } from "@/db/entities/CampaignTemplate";
 import type { Client } from "@/db/entities/Client";
 import type { ClientGoal } from "@/db/entities/ClientGoal";
@@ -47,6 +48,7 @@ const ENTITY = {
   CampaignMetricSnapshot: "CampaignMetricSnapshot",
   ClientGoal: "ClientGoal",
   CampaignGoal: "CampaignGoal",
+  CampaignPreset: "CampaignPreset",
   Alert: "Alert",
   AiRecommendation: "AiRecommendation",
   AuditLog: "AuditLog",
@@ -100,6 +102,7 @@ export async function repositories() {
     ),
     clientGoal: repositoryFor<ClientGoal>(ds, ENTITY.ClientGoal),
     campaignGoal: repositoryFor<CampaignGoal>(ds, ENTITY.CampaignGoal),
+    campaignPreset: repositoryFor<CampaignPreset>(ds, ENTITY.CampaignPreset),
     alert: repositoryFor<Alert>(ds, ENTITY.Alert),
     aiRecommendation: repositoryFor<AiRecommendation>(ds, ENTITY.AiRecommendation),
     auditLog: repositoryFor<AuditLog>(ds, ENTITY.AuditLog),

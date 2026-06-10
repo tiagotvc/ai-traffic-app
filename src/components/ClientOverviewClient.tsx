@@ -28,6 +28,7 @@ import {
   type MetricKey
 } from "@/lib/dashboard-metrics";
 import { buildQuery, formatDayLabel, pctDelta, resolveRanges } from "@/lib/dashboard-ranges";
+import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
 
 type Summary = {
   spend: number;
@@ -48,9 +49,48 @@ type CampaignRow = {
   conversions: number;
   cpa: number | null;
   roas: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  reach: number;
+  messages: number;
+  frequency: number;
   status?: string;
   alertCount?: number;
 };
+
+function campaignMetric(row: CampaignRow, key: MetricKey): number {
+  switch (key) {
+    case "spend":
+      return row.spend;
+    case "conversions":
+      return row.conversions;
+    case "roas":
+      return row.roas;
+    case "cpa":
+      return row.cpa ?? 0;
+    case "ctr":
+      return row.ctr;
+    case "cpc":
+      return row.cpc;
+    case "cpm":
+      return row.cpm;
+    case "messages":
+      return row.messages;
+    case "reach":
+      return row.reach;
+    case "impressions":
+      return row.impressions;
+    case "clicks":
+      return row.clicks;
+    case "frequency":
+      return row.frequency;
+    default:
+      return 0;
+  }
+}
 
 function statusVariant(status?: string): "success" | "warning" | "neutral" {
   if (status === "ACTIVE") return "success";
@@ -61,6 +101,7 @@ function statusVariant(status?: string): "success" | "warning" | "neutral" {
 export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const t = useTranslations("clientOverview");
   const tMetrics = useTranslations("metrics");
+  const tPresets = useTranslations("campaignPresets");
   const locale = useLocale();
 
   const [name, setName] = useState("");
@@ -71,7 +112,26 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
+  const [presets, setPresets] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/campaign-presets")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setPresets(j.presets ?? {});
+      })
+      .catch(() => {});
+  }, []);
+
+  function changePreset(metaCampaignId: string, preset: string) {
+    setPresets((prev) => ({ ...prev, [metaCampaignId]: preset }));
+    void fetch("/api/campaign-presets", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ metaCampaignId, preset })
+    });
+  }
 
   useEffect(() => {
     fetch("/api/clients")
@@ -302,40 +362,57 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
                 <tr className="text-left text-[11px] font-medium uppercase tracking-wide text-slate-400">
                   <th className="px-4 py-2 font-medium">{t("colCampaign")}</th>
                   <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{tMetrics("spend")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{tMetrics("conversions")}</th>
-                  <th className="px-3 py-2 text-right font-medium">{tMetrics("cpa")}</th>
-                  <th className="px-4 py-2 text-right font-medium">{tMetrics("roas")}</th>
+                  <th className="px-3 py-2 font-medium">{tPresets("label")}</th>
+                  <th className="px-4 py-2 font-medium">{t("keyMetrics")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {campaigns.map((c) => (
-                  <tr key={c.metaCampaignId} className="hover:bg-slate-50/60">
-                    <td className="px-4 py-2.5">
-                      <Link
-                        href={`/campaigns/${c.metaCampaignId}?client=${encodeURIComponent(c.clientSlug || clientId)}`}
-                        className="font-medium text-slate-800 hover:text-violet-700 hover:underline"
-                      >
-                        {c.campaignName}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <Badge variant={statusVariant(c.status)}>{c.status ?? "—"}</Badge>
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
-                      {formatBRL(c.spend, locale)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
-                      {formatNumber(c.conversions, locale)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
-                      {c.cpa != null && c.cpa > 0 ? formatBRL(c.cpa, locale) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-emerald-600">
-                      {c.roas > 0 ? formatRoas(c.roas, locale) : "—"}
-                    </td>
-                  </tr>
-                ))}
+                {campaigns.map((c) => {
+                  const preset = presets[c.metaCampaignId] ?? "default";
+                  const metrics = presetMetricsFor(preset);
+                  return (
+                    <tr key={c.metaCampaignId} className="align-top hover:bg-slate-50/60">
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/campaigns/${c.metaCampaignId}?client=${encodeURIComponent(c.clientSlug || clientId)}`}
+                          className="font-medium text-slate-800 hover:text-violet-700 hover:underline"
+                        >
+                          {c.campaignName}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-3">
+                        <Badge variant={statusVariant(c.status)}>{c.status ?? "—"}</Badge>
+                      </td>
+                      <td className="px-3 py-3">
+                        <select
+                          value={preset}
+                          onChange={(e) => changePreset(c.metaCampaignId, e.target.value)}
+                          className="ui-select !w-auto !py-1.5 text-xs"
+                        >
+                          {CAMPAIGN_PRESETS.map((p) => (
+                            <option key={p} value={p}>
+                              {tPresets(p)}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1">
+                          {metrics.map((key) => (
+                            <div key={key} className="min-w-[64px]">
+                              <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                                {tMetrics(METRIC_BY_KEY[key].label)}
+                              </div>
+                              <div className="text-sm font-semibold tabular-nums text-slate-800">
+                                {formatMetricValue(key, campaignMetric(c, key), locale)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

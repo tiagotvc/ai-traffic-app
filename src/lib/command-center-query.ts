@@ -29,6 +29,9 @@ export type CommandCenterCampaignRow = {
   ctr: number;
   cpc: number;
   cpm: number;
+  reach: number;
+  messages: number;
+  frequency: number;
   status: string;
   alertCount: number;
   hasAlert: boolean;
@@ -52,6 +55,8 @@ type AggRow = {
   leads: string | number;
   impressions: string | number;
   clicks: string | number;
+  reach: string | number;
+  messages: string | number;
   roas: string | number;
   campaign_status: string | null;
   daily_budget: string | number | null;
@@ -95,6 +100,8 @@ function mapAggRow(r: AggRow, clientTag: string | null): CommandCenterCampaignRo
   const leads = num(r.leads);
   const impressions = num(r.impressions);
   const clicks = num(r.clicks);
+  const reach = num(r.reach);
+  const messages = num(r.messages);
   const alertCount = num(r.alert_count);
   return {
     metaCampaignId: r.metaCampaignId,
@@ -117,6 +124,9 @@ function mapAggRow(r: AggRow, clientTag: string | null): CommandCenterCampaignRo
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
     cpc: clicks > 0 ? spend / clicks : 0,
     cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+    reach,
+    messages,
+    frequency: reach > 0 ? impressions / reach : 0,
     status: r.campaign_status ?? "UNKNOWN",
     alertCount,
     hasAlert: alertCount > 0,
@@ -178,6 +188,8 @@ function buildFilteredSubquery(input: {
         COALESCE(SUM(s.leads::bigint), 0) AS leads,
         COALESCE(SUM(s.impressions::bigint), 0) AS impressions,
         COALESCE(SUM(s.clicks::bigint), 0) AS clicks,
+        COALESCE(SUM(s.reach::bigint), 0) AS reach,
+        COALESCE(SUM(s.messages::bigint), 0) AS messages,
         CASE
           WHEN SUM(CASE WHEN s.roas::numeric > 0 THEN 1 ELSE 0 END) > 0
           THEN AVG(CASE WHEN s.roas::numeric > 0 THEN s.roas::numeric ELSE NULL END)
@@ -200,6 +212,8 @@ function buildFilteredSubquery(input: {
       agg.leads,
       agg.impressions,
       agg.clicks,
+      agg.reach,
+      agg.messages,
       agg.roas,
       agg.campaign_status,
       agg.daily_budget,
