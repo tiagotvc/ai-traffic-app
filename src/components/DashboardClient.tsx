@@ -18,6 +18,7 @@ import {
 import { Link } from "@/i18n/navigation";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
 import { PeriodFilter, type PeriodState } from "@/components/PeriodFilter";
+import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import {
   MAX_CHART_METRICS,
@@ -346,6 +347,7 @@ export function DashboardClient() {
           <p className="mt-1 text-sm text-slate-500">{t("highlightsSubtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <SyncRefreshButton />
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
             {t("currencyLabel")}: BRL
           </span>

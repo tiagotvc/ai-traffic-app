@@ -604,7 +604,8 @@
     "hintAdminReconnectMeta": "Connect or reconnect Facebook in Settings to sync ad accounts.",
     "hintMemberAccountAccess": "As a member you don't need to connect your own Meta — but the administrator must still have access to the linked ad account in Ads Manager.",
     "cooldownHint": "Sync available in about {minutes} min.",
-    "cooldownButton": "Wait {minutes} min"
+    "cooldownButton": "Wait {minutes} min",
+    "updated": "Updated"
   },
   "welcome": {
     "title": "While you were away",
