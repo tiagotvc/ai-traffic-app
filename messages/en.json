@@ -197,7 +197,22 @@
     },
     "periodDays": "{days} days",
     "vsPrevious": "vs. previous",
-    "periodCompareTitle": "Period comparison"
+    "periodCompareTitle": "Period comparison",
+    "variationsSubtitle": "Notable changes vs. the previous period",
+    "levelGeneral": "General",
+    "levelClient": "By client",
+    "levelCampaign": "By campaign",
+    "filterClientAll": "All clients",
+    "kpiVariations": "Variations",
+    "kpiWorse": "Worse",
+    "kpiBetter": "Better",
+    "rose": "rose",
+    "fell": "fell",
+    "fromTo": "from {prev} to {cur}",
+    "emptyVariations": "No relevant variations in the period.",
+    "severityPositive": "Better",
+    "levelLabel": "Level",
+    "clientLabelFilter": "Client"
   },
   "automations": {
     "title": "Automation rules",

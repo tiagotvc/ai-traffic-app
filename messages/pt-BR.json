@@ -197,7 +197,22 @@
     },
     "periodDays": "{days} dias",
     "vsPrevious": "vs. anterior",
-    "periodCompareTitle": "Comparativo de período"
+    "periodCompareTitle": "Comparativo de período",
+    "variationsSubtitle": "Mudanças relevantes vs. o período anterior",
+    "levelGeneral": "Geral",
+    "levelClient": "Por cliente",
+    "levelCampaign": "Por campanha",
+    "filterClientAll": "Todos os clientes",
+    "kpiVariations": "Variações",
+    "kpiWorse": "Pioras",
+    "kpiBetter": "Melhoras",
+    "rose": "subiu",
+    "fell": "caiu",
+    "fromTo": "de {prev} para {cur}",
+    "emptyVariations": "Nenhuma variação relevante no período.",
+    "severityPositive": "Melhora",
+    "levelLabel": "Nível",
+    "clientLabelFilter": "Cliente"
   },
   "automations": {
     "title": "Regras de automação",
