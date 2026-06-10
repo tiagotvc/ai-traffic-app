@@ -8,6 +8,7 @@ import { ClientMetaBusiness1735690400000 } from "./0007-ClientMetaBusiness";
 import { ManagerFeatures1735690500000 } from "./0008-ManagerFeatures";
 import { WorkspaceMembers1735690600000 } from "./0009-WorkspaceMembers";
 import { TenantMetaConnection1735690700000 } from "./0010-TenantMetaConnection";
+import { AdAccountTimezone1735690800000 } from "./0011-AdAccountTimezone";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -20,5 +21,6 @@ export const appMigrations = [
   ClientMetaBusiness1735690400000,
   ManagerFeatures1735690500000,
   WorkspaceMembers1735690600000,
-  TenantMetaConnection1735690700000
+  TenantMetaConnection1735690700000,
+  AdAccountTimezone1735690800000
 ];

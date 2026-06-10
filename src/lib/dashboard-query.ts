@@ -48,6 +48,13 @@ export async function resolveDashboardScope(
   };
 }
 
+/** Mapa metaAdAccountId → IANA timezone, lido do inventário Meta (sincronizado). */
+export async function inventoryTimezoneMap(tenantId: string) {
+  const { metaAdAccountInventory } = await repositories();
+  const rows = await metaAdAccountInventory.find({ where: { tenantId } });
+  return new Map<string, string | null>(rows.map((r) => [r.metaAdAccountId, r.timezone ?? null]));
+}
+
 export function parseDashboardSearchParams(url: URL) {
   const clientId = url.searchParams.get("clientId");
   const adAccountId = url.searchParams.get("adAccountId");

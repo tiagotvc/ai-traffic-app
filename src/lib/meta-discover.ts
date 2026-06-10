@@ -27,7 +27,7 @@ export type MetaDiscoverResult = {
 
 async function upsertAdAccountInventory(
   tenantId: string,
-  acc: { id: string; name?: string; account_status?: number },
+  acc: { id: string; name?: string; account_status?: number; timezone_name?: string },
   metaBusinessId: string | null,
   inventoryRepo: Awaited<ReturnType<typeof repositories>>["metaAdAccountInventory"]
 ) {
@@ -41,11 +41,13 @@ async function upsertAdAccountInventory(
       metaAdAccountId: acc.id,
       metaBusinessId,
       label: formatMetaAdAccountLabel(acc),
+      timezone: acc.timezone_name ?? null,
       isDemo
     });
   } else {
     if (metaBusinessId) inv.metaBusinessId = metaBusinessId;
     inv.label = formatMetaAdAccountLabel(acc);
+    if (acc.timezone_name) inv.timezone = acc.timezone_name;
     inv.isDemo = isDemo;
   }
   await inventoryRepo.save(inv);
@@ -242,13 +244,17 @@ export async function runMetaDiscoverForBusiness(
     fetchBusinessAdAccounts(metaAccessToken, metaBusinessId),
     fetchMyAdAccounts(metaAccessToken)
   ]);
-  const byId = new Map<string, { id: string; name?: string; account_status?: number }>();
+  const byId = new Map<
+    string,
+    { id: string; name?: string; account_status?: number; timezone_name?: string }
+  >();
   for (const a of [...fromBm, ...fromMe.filter((x) => x.business?.id === metaBusinessId)]) {
     const prev = byId.get(a.id);
     byId.set(a.id, {
       id: a.id,
       name: a.name ?? prev?.name,
-      account_status: a.account_status ?? prev?.account_status
+      account_status: a.account_status ?? prev?.account_status,
+      timezone_name: a.timezone_name ?? prev?.timezone_name
     });
   }
   for (const acc of byId.values()) {
@@ -348,6 +354,7 @@ export async function listTenantInventory(
     label: a.label ?? a.metaAdAccountId,
     metaBusinessId: a.metaBusinessId,
     metaBusinessName: a.metaBusinessId ? bmName.get(a.metaBusinessId) ?? null : null,
+    timezone: a.timezone ?? null,
     isDemo: a.isDemo
   }));
 }

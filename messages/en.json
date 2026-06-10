@@ -525,7 +525,9 @@
     "noPrevData": "no prior baseline",
     "supportingTitle": "Period metrics",
     "clicks": "Clicks",
-    "cpa": "Cost per conversion"
+    "cpa": "Cost per conversion",
+    "timezoneLabel": "Timezone",
+    "timezoneHint": "Timezone used to define \"today\". When an account is selected, uses the timezone configured for it on Meta."
   },
   "clientsHub": {
     "title": "Client hub",

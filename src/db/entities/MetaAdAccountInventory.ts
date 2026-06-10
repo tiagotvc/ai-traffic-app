@@ -16,6 +16,10 @@ export class MetaAdAccountInventory extends AppBaseEntity {
   @Column({ type: "text", nullable: true })
   label?: string | null;
 
+  /** IANA tz da conta na Meta (ex.: America/Sao_Paulo). Define o "hoje" dos relatórios. */
+  @Column({ type: "text", nullable: true })
+  timezone?: string | null;
+
   @Column({ type: "bool", default: false })
   isDemo!: boolean;
 }

@@ -7,6 +7,8 @@ export type MetaAdAccount = {
   name?: string;
   /** Graph API: 1 = ACTIVE, 2 = DISABLED, etc. */
   account_status?: number;
+  /** IANA tz configurado na conta (ex.: America/Sao_Paulo). */
+  timezone_name?: string;
   /** Business Manager dono da conta (quando o token tem business_management). */
   business?: { id: string; name?: string } | null;
 };
@@ -126,7 +128,7 @@ export async function fetchBusinessUserAssignedAdAccounts(
 ): Promise<MetaAdAccount[]> {
   try {
     return fetchGraphPaged<MetaAdAccount>(
-      `/${encodeURIComponent(businessUserId)}/assigned_ad_accounts?fields=id,name,account_status&limit=100`,
+      `/${encodeURIComponent(businessUserId)}/assigned_ad_accounts?fields=id,name,account_status,timezone_name&limit=100`,
       accessToken
     );
   } catch (err) {
@@ -209,7 +211,7 @@ export async function fetchBusinessAdAccounts(
   accessToken: string,
   businessId: string
 ): Promise<MetaAdAccount[]> {
-  const fields = "id,name,account_status";
+  const fields = "id,name,account_status,timezone_name";
   const [owned, client] = await Promise.all([
     fetchBusinessEdge<MetaAdAccount>(accessToken, businessId, "owned_ad_accounts", fields),
     fetchBusinessEdge<MetaAdAccount>(accessToken, businessId, "client_ad_accounts", fields)
@@ -238,6 +240,7 @@ export async function fetchAllAccessibleAdAccounts(
       ...acc,
       name: acc.name ?? prev?.name,
       account_status: acc.account_status ?? prev?.account_status,
+      timezone_name: acc.timezone_name ?? prev?.timezone_name,
       metaBusinessId: metaBusinessId ?? prev?.metaBusinessId ?? null,
       metaBusinessName: metaBusinessName ?? prev?.metaBusinessName ?? null
     });
@@ -275,7 +278,7 @@ export async function fetchBusinessPages(
 }
 
 export async function fetchMyAdAccounts(accessToken: string): Promise<MetaAdAccount[]> {
-  const first = `/me/adaccounts?fields=id,name,account_status,business{id,name}&limit=100`;
+  const first = `/me/adaccounts?fields=id,name,account_status,timezone_name,business{id,name}&limit=100`;
   return fetchGraphPaged<MetaAdAccount>(first, accessToken);
 }
 

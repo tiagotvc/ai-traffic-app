@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { getAppContext } from "@/lib/app-context";
-import { loadMetricRows, parseDashboardSearchParams, resolveDashboardScope } from "@/lib/dashboard-query";
+import {
+  inventoryTimezoneMap,
+  loadMetricRows,
+  parseDashboardSearchParams,
+  resolveDashboardScope
+} from "@/lib/dashboard-query";
 
 export async function GET(req: Request) {
   const { tenant } = await getAppContext();
@@ -58,13 +63,16 @@ export async function GET(req: Request) {
   const roas = roasCount > 0 ? roasSum / roasCount : 0;
   const cpa = conversions > 0 ? spend / conversions : 0;
 
+  const tzMap = await inventoryTimezoneMap(tenant.id);
+
   return NextResponse.json({
     ok: true,
     summary: { spend, impressions, clicks, ctr, cpc, conversions, roas, cpa, cpl: 0 },
     adAccounts: adAccounts.map((a) => ({
       id: a.id,
       metaAdAccountId: a.metaAdAccountId,
-      label: a.label ?? a.metaAdAccountId
+      label: a.label ?? a.metaAdAccountId,
+      timezone: tzMap.get(a.metaAdAccountId) ?? null
     }))
   });
 }

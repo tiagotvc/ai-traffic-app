@@ -525,7 +525,9 @@
     "noPrevData": "sem base anterior",
     "supportingTitle": "Métricas do período",
     "clicks": "Cliques",
-    "cpa": "Custo por conversão"
+    "cpa": "Custo por conversão",
+    "timezoneLabel": "Fuso",
+    "timezoneHint": "Fuso horário usado para definir \"hoje\". Quando uma conta é selecionada, usa o fuso configurado nela na Meta."
   },
   "clientsHub": {
     "title": "Hub de clientes",

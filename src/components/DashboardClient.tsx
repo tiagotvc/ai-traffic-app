@@ -18,7 +18,7 @@ import {
 import { Link } from "@/i18n/navigation";
 import { PeriodFilter, type PeriodState } from "@/components/PeriodFilter";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
-import { addDaysIso, todayIso } from "@/lib/report-period";
+import { DEFAULT_REPORT_TZ, addDaysIso, todayIso } from "@/lib/report-period";
 
 type Summary = {
   spend: number;
@@ -41,7 +41,12 @@ type AlertItem = {
   metaCampaignId?: string | null;
 };
 type ClientCard = { id: string; slug: string; name: string; roas: number; alertCount?: number };
-type AdAccountOpt = { id: string; metaAdAccountId: string; label: string };
+type AdAccountOpt = {
+  id: string;
+  metaAdAccountId: string;
+  label: string;
+  timezone?: string | null;
+};
 type Range = { since: string; until: string };
 
 function pctDelta(cur: number, prev: number): number | null {
@@ -50,9 +55,12 @@ function pctDelta(cur: number, prev: number): number | null {
 }
 
 /** Resolve a janela atual e a janela equivalente anterior (para o delta). */
-function resolveRanges(p: PeriodState): { current: Range | null; previous: Range | null } {
+function resolveRanges(
+  p: PeriodState,
+  timeZone?: string
+): { current: Range | null; previous: Range | null } {
   if (p.preset === "all") return { current: null, previous: null };
-  const today = todayIso();
+  const today = todayIso(timeZone);
   let since: string;
   let until: string;
   if (p.preset === "today") {
@@ -213,10 +221,17 @@ export function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
 
+  // Fuso da conta selecionada (vindo da Meta). Sem conta específica → fuso padrão.
+  const selectedTz = useMemo(() => {
+    if (!accountFilter) return undefined;
+    return adAccounts.find((a) => a.id === accountFilter)?.timezone || undefined;
+  }, [accountFilter, adAccounts]);
+  const activeTz = selectedTz ?? DEFAULT_REPORT_TZ;
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { current, previous } = resolveRanges(period);
+      const { current, previous } = resolveRanges(period, selectedTz);
       const curQ = buildQuery(clientFilter, accountFilter, current);
       const [sRes, tRes, aRes, cRes, critRes, pRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
@@ -249,7 +264,7 @@ export function DashboardClient() {
     } finally {
       setLoading(false);
     }
-  }, [clientFilter, accountFilter, period, t]);
+  }, [clientFilter, accountFilter, period, selectedTz, t]);
 
   useEffect(() => {
     void load();
@@ -301,6 +316,12 @@ export function DashboardClient() {
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
             {t("currencyLabel")}: BRL
+          </span>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200"
+            title={t("timezoneHint")}
+          >
+            {t("timezoneLabel")}: {activeTz}
           </span>
           <PeriodFilter value={period} onChange={setPeriod} />
         </div>
