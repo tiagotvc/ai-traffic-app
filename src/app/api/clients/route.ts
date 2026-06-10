@@ -104,8 +104,13 @@ export async function GET(req: Request) {
   const { tenant } = await getAppContext();
   const clients = await listClientsForTenant(tenant.id);
 
-  const { adAccount: adAccountRepo, metricSnapshot: metricsRepo, alert: alertRepo } =
-    await repositories();
+  const {
+    adAccount: adAccountRepo,
+    metricSnapshot: metricsRepo,
+    campaignMetricSnapshot: campRepo,
+    campaignPreset: presetRepo,
+    alert: alertRepo
+  } = await repositories();
 
   // Período opcional (since/until/all) — para que os cards reflitam uma data clara.
   const period = parsePeriodFromSearchParams(new URL(req.url));
@@ -123,6 +128,43 @@ export async function GET(req: Request) {
   const metrics = accountIds.length
     ? await metricsRepo.find({ where: { adAccountId: In(accountIds), ...dayFilter } })
     : [];
+
+  // Tipo dominante por cliente (define quais métricas a "prévia da semana" exibe).
+  const presetRows = await presetRepo.find({ where: { tenantId: tenant.id } });
+  const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));
+  const accountToClient = new Map(accounts.map((a) => [a.id, a.clientId]));
+  const campRows = accountIds.length
+    ? await campRepo.find({ where: { adAccountId: In(accountIds), ...dayFilter } })
+    : [];
+  const clientCampaigns = new Map<string, Set<string>>();
+  for (const r of campRows) {
+    const cid = accountToClient.get(r.adAccountId);
+    if (!cid) continue;
+    let set = clientCampaigns.get(cid);
+    if (!set) {
+      set = new Set();
+      clientCampaigns.set(cid, set);
+    }
+    set.add(r.metaCampaignId);
+  }
+  function dominantPreset(clientId: string): string {
+    const ids = clientCampaigns.get(clientId);
+    if (!ids || ids.size === 0) return "default";
+    const counts = new Map<string, number>();
+    for (const id of ids) {
+      const p = presetByCampaign.get(id) ?? "default";
+      counts.set(p, (counts.get(p) ?? 0) + 1);
+    }
+    let best = "default";
+    let bestN = -1;
+    for (const [p, n] of counts) {
+      if (n > bestN) {
+        best = p;
+        bestN = n;
+      }
+    }
+    return best;
+  }
 
   const result = await Promise.all(
     clients.map(async (c) => {
@@ -180,6 +222,7 @@ export async function GET(req: Request) {
         name: c.name,
         roas,
         metrics: metricsAgg,
+        dominantPreset: dominantPreset(c.id),
         accounts: clientAccounts.length,
         alertCount: openAlerts
       };

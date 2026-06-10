@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 
 import { CreateClientWizard } from "@/components/CreateClientWizard";
 import { Link } from "@/i18n/navigation";
-import { formatBRL, formatNumber, formatRoas } from "@/lib/format";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { presetMetricsFor } from "@/lib/campaign-presets";
 
 type ClientRow = {
   id: string;
@@ -14,7 +15,8 @@ type ClientRow = {
   roas: number;
   accounts: number;
   alertCount: number;
-  metrics?: { spend?: number; conversions?: number; roas?: number };
+  metrics?: Partial<Record<MetricKey, number>>;
+  dominantPreset?: string;
 };
 
 function isProtectedClient(name: string, slug: string) {
@@ -208,7 +210,7 @@ export function ClientsHubClient() {
                 ) : null}
               </div>
 
-              {/* Resumo do dia */}
+              {/* Prévia da semana — métricas do tipo dominante das campanhas do cliente */}
               <Link
                 href={`/clients/${c.slug}`}
                 className="mt-3 block rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 hover:bg-slate-100"
@@ -217,24 +219,18 @@ export function ClientsHubClient() {
                   {t("todaySummary")}
                 </div>
                 <div className="mt-1.5 grid grid-cols-3 gap-2">
-                  <div>
-                    <div className="text-[10px] text-slate-500">{tMetrics("spend")}</div>
-                    <div className="text-sm font-semibold text-slate-800">
-                      {formatBRL(c.metrics?.spend ?? 0, locale)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-500">{tMetrics("conversions")}</div>
-                    <div className="text-sm font-semibold text-slate-800">
-                      {formatNumber(c.metrics?.conversions ?? 0, locale)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-500">{tMetrics("roas")}</div>
-                    <div className="text-sm font-semibold text-emerald-600">
-                      {(c.metrics?.roas ?? 0) > 0 ? formatRoas(c.metrics?.roas ?? 0, locale) : "—"}
-                    </div>
-                  </div>
+                  {presetMetricsFor(c.dominantPreset)
+                    .slice(0, 3)
+                    .map((key) => (
+                      <div key={key}>
+                        <div className="text-[10px] text-slate-500">
+                          {tMetrics(METRIC_BY_KEY[key].label)}
+                        </div>
+                        <div className="text-sm font-semibold text-slate-800">
+                          {formatMetricValue(key, c.metrics?.[key] ?? 0, locale)}
+                        </div>
+                      </div>
+                    ))}
                 </div>
               </Link>
 
