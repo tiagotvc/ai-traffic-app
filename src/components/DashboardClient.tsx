@@ -36,17 +36,11 @@ import {
   resolveRanges,
   type Range
 } from "@/lib/dashboard-ranges";
+import { presetMetricsFor } from "@/lib/campaign-presets";
 
-type Summary = {
-  spend: number;
-  impressions: number;
-  clicks: number;
-  ctr: number;
-  cpc: number;
-  conversions: number;
-  roas: number;
-  cpa?: number;
-};
+const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
+
+type Summary = Partial<Record<MetricKey, number>>;
 
 type SeriesPoint = { day: string } & Partial<Record<MetricKey, number>>;
 type AlertItem = {
@@ -63,6 +57,7 @@ type ClientCard = {
   name: string;
   roas: number;
   metrics?: Partial<Record<MetricKey, number>>;
+  dominantPreset?: string;
   alertCount?: number;
 };
 type AdAccountOpt = {
@@ -129,7 +124,7 @@ function HighlightCard({
   value: string;
   delta: number | null;
   goodWhen: "up" | "neutral";
-  data: Array<{ label: string } & Record<string, number | string>>;
+  data: Array<{ label: string } & Record<string, number | string | undefined>>;
   dataKey: string;
   color: string;
   vsLabel: string;
@@ -285,34 +280,28 @@ export function DashboardClient() {
     return () => window.removeEventListener("traffic-sync-done", onSync);
   }, [load, loadClients]);
 
-  const insights = useMemo(() => {
-    const spark = series.map((p) => ({
-      label: formatDayLabel(p.day, locale),
-      spend: p.spend ?? 0,
-      conversions: p.conversions ?? 0,
-      roas: p.roas ?? 0
-    }));
-    const cur = summary;
-    return {
-      spark,
-      spend: {
-        cur: cur?.spend ?? 0,
-        delta: prevSummary ? pctDelta(cur?.spend ?? 0, prevSummary.spend) : null
-      },
-      conversions: {
-        cur: cur?.conversions ?? 0,
-        delta: prevSummary ? pctDelta(cur?.conversions ?? 0, prevSummary.conversions) : null
-      },
-      roas: {
-        cur: cur?.roas ?? 0,
-        delta: prevSummary ? pctDelta(cur?.roas ?? 0, prevSummary.roas) : null
-      }
-    };
-  }, [series, summary, prevSummary, locale]);
+  const spark = useMemo(
+    () => series.map((p) => ({ ...p, label: formatDayLabel(p.day, locale) })),
+    [series, locale]
+  );
+
+  // Métricas de destaque conforme o tipo dominante do cliente selecionado.
+  const heroMetrics = useMemo(() => {
+    const dominant = clientFilter
+      ? clients.find((c) => c.slug === clientFilter)?.dominantPreset
+      : undefined;
+    return presetMetricsFor(dominant).slice(0, 3);
+  }, [clientFilter, clients]);
 
   const chartData = series.map((p) => ({ ...p, label: formatDayLabel(p.day, locale) }));
   const vsLabel = t("vsPrevPeriod");
   const noPrev = t("noPrevData");
+
+  function heroDelta(key: MetricKey): number | null {
+    const prev = prevSummary?.[key];
+    if (prev == null || prev <= 0) return null;
+    return pctDelta(summary?.[key] ?? 0, prev);
+  }
 
   function toggleChartMetric(key: MetricKey) {
     setChartMetrics((cur) =>
@@ -420,47 +409,24 @@ export function DashboardClient() {
         <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loadingMetrics")}</div>
       ) : (
         <>
-          {/* Hero highlight cards */}
+          {/* Hero highlight cards — adaptam ao tipo dominante do cliente */}
           <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <HighlightCard
-              id="spend"
-              label={t("totalSpend")}
-              value={formatBRL(insights.spend.cur, locale)}
-              delta={insights.spend.delta}
-              goodWhen="neutral"
-              data={insights.spark}
-              dataKey="spend"
-              color="#7c3aed"
-              vsLabel={vsLabel}
-              noPrevLabel={noPrev}
-              locale={locale}
-            />
-            <HighlightCard
-              id="conv"
-              label={t("conversions")}
-              value={formatNumber(insights.conversions.cur, locale)}
-              delta={insights.conversions.delta}
-              goodWhen="up"
-              data={insights.spark}
-              dataKey="conversions"
-              color="#10b981"
-              vsLabel={vsLabel}
-              noPrevLabel={noPrev}
-              locale={locale}
-            />
-            <HighlightCard
-              id="roas"
-              label={t("roas")}
-              value={formatRoas(insights.roas.cur, locale)}
-              delta={insights.roas.delta}
-              goodWhen="up"
-              data={insights.spark}
-              dataKey="roas"
-              color="#0ea5e9"
-              vsLabel={vsLabel}
-              noPrevLabel={noPrev}
-              locale={locale}
-            />
+            {heroMetrics.map((key) => (
+              <HighlightCard
+                key={key}
+                id={key}
+                label={tMetrics(METRIC_BY_KEY[key].label)}
+                value={formatMetricValue(key, summary[key] ?? 0, locale)}
+                delta={heroDelta(key)}
+                goodWhen={COST_METRICS.has(key) ? "neutral" : "up"}
+                data={spark}
+                dataKey={key}
+                color={METRIC_BY_KEY[key].color}
+                vsLabel={vsLabel}
+                noPrevLabel={noPrev}
+                locale={locale}
+              />
+            ))}
           </section>
 
           {/* Supporting metrics strip */}
@@ -469,10 +435,10 @@ export function DashboardClient() {
               {t("supportingTitle")}
             </div>
             <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-3 lg:grid-cols-5">
-              <SupportStat label={t("impressions")} value={formatNumber(summary.impressions, locale)} />
-              <SupportStat label={t("clicks")} value={formatNumber(summary.clicks, locale)} />
-              <SupportStat label={t("ctr")} value={formatPercent(summary.ctr, 1, locale)} />
-              <SupportStat label={t("avgCpc")} value={formatBRL(summary.cpc, locale)} />
+              <SupportStat label={t("impressions")} value={formatNumber(summary.impressions ?? 0, locale)} />
+              <SupportStat label={t("clicks")} value={formatNumber(summary.clicks ?? 0, locale)} />
+              <SupportStat label={t("ctr")} value={formatPercent(summary.ctr ?? 0, 1, locale)} />
+              <SupportStat label={t("avgCpc")} value={formatBRL(summary.cpc ?? 0, locale)} />
               <SupportStat
                 label={t("cpa")}
                 value={summary.cpa && summary.cpa > 0 ? formatBRL(summary.cpa, locale) : "—"}

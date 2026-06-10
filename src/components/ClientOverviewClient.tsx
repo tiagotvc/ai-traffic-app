@@ -30,16 +30,9 @@ import {
 import { buildQuery, formatDayLabel, pctDelta, resolveRanges } from "@/lib/dashboard-ranges";
 import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
 
-type Summary = {
-  spend: number;
-  impressions: number;
-  clicks: number;
-  ctr: number;
-  cpc: number;
-  conversions: number;
-  roas: number;
-  cpa?: number;
-};
+const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
+
+type Summary = Partial<Record<MetricKey, number>>;
 type SeriesPoint = { day: string } & Partial<Record<MetricKey, number>>;
 type CampaignRow = {
   metaCampaignId: string;
@@ -107,6 +100,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const locale = useLocale();
 
   const [name, setName] = useState("");
+  const [dominantPreset, setDominantPreset] = useState<string>("default");
   const [period, setPeriod] = useState<PeriodState>({ preset: "thisWeek", since: "", until: "" });
   const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(["spend", "conversions"]);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
@@ -140,7 +134,10 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
       .then((r) => r.json())
       .then((j) => {
         const c = (j.clients ?? []).find((x: { slug: string }) => x.slug === clientId);
-        if (c) setName(c.name);
+        if (c) {
+          setName(c.name);
+          setDominantPreset(c.dominantPreset ?? "default");
+        }
       })
       .catch(() => {});
   }, [clientId]);
@@ -188,14 +185,15 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
 
   const chartData = series.map((p) => ({ ...p, label: formatDayLabel(p.day, locale) }));
   const metricSeries = (key: MetricKey) => series.map((p) => Number(p[key] ?? 0));
+  const heroMetrics = presetMetricsFor(dominantPreset).slice(0, 3);
 
-  function kpiDelta(key: "spend" | "conversions" | "roas") {
+  function kpiDelta(key: MetricKey) {
     const cur = summary?.[key] ?? 0;
     const prev = prevSummary?.[key];
     if (prev == null) return {};
     const d = pctDelta(cur, prev);
     if (d == null) return {};
-    const positive = key === "spend" ? d <= 0 : d >= 0;
+    const positive = COST_METRICS.has(key) ? d <= 0 : d >= 0;
     const text = `${d >= 0 ? "▲" : "▼"} ${formatPercent(Math.abs(d), 1, locale)} ${t("vsPrev")}`;
     return { delta: text, deltaPositive: positive };
   }
@@ -233,28 +231,18 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs — adaptam ao tipo dominante das campanhas do cliente */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <KpiCard
-          label={tMetrics("spend")}
-          value={formatBRL(summary?.spend ?? 0, locale)}
-          sparkline={metricSeries("spend")}
-          {...kpiDelta("spend")}
-        />
-        <KpiCard
-          label={tMetrics("conversions")}
-          value={formatNumber(summary?.conversions ?? 0, locale)}
-          sparkline={metricSeries("conversions")}
-          sparkColor="#10b981"
-          {...kpiDelta("conversions")}
-        />
-        <KpiCard
-          label={tMetrics("roas")}
-          value={formatRoas(summary?.roas ?? 0, locale)}
-          sparkline={metricSeries("roas")}
-          sparkColor="#0ea5e9"
-          {...kpiDelta("roas")}
-        />
+        {heroMetrics.map((key) => (
+          <KpiCard
+            key={key}
+            label={tMetrics(METRIC_BY_KEY[key].label)}
+            value={formatMetricValue(key, summary?.[key] ?? 0, locale)}
+            sparkline={metricSeries(key)}
+            sparkColor={METRIC_BY_KEY[key].color}
+            {...kpiDelta(key)}
+          />
+        ))}
       </div>
 
       {/* Performance chart */}
