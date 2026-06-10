@@ -1,0 +1,154 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
+
+import { rememberCampaign } from "@/components/CampaignsListClient";
+import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
+import { CreativesLibraryView } from "@/components/creatives/CreativesLibraryView";
+import { Badge } from "@/components/ui/Badge";
+import { Link } from "@/i18n/navigation";
+
+type Campaign = {
+  id: string;
+  name: string;
+  status: string;
+  clientSlug: string;
+  clientName: string;
+  accountLabel: string;
+  objective: string;
+};
+
+function statusVariant(status: string) {
+  if (status === "ACTIVE") return "success" as const;
+  if (status === "PAUSED") return "warning" as const;
+  return "neutral" as const;
+}
+
+function statusLabel(status: string, t: (k: string) => string) {
+  if (status === "ACTIVE") return t("statusActive");
+  if (status === "PAUSED") return t("statusPaused");
+  return status;
+}
+
+export function CampaignCreativesClient({
+  metaCampaignId,
+  clientSlug,
+  embedded = false
+}: {
+  metaCampaignId: string;
+  clientSlug: string;
+  embedded?: boolean;
+}) {
+  const t = useTranslations("creativesPage");
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [adsetsCount, setAdsetsCount] = useState<number | null>(null);
+  const [adsCount, setAdsCount] = useState<number | null>(null);
+  const [creativesCount, setCreativesCount] = useState<number | null>(null);
+  const [countsLoading, setCountsLoading] = useState(true);
+
+  const reload = useCallback(() => {
+    setCountsLoading(true);
+
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.campaign) {
+          setCampaign(j.campaign);
+          rememberCampaign(metaCampaignId, j.campaign.clientSlug || clientSlug);
+        }
+      });
+
+    const adsetsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets`)
+      .then((r) => r.json())
+      .then((j) => setAdsetsCount((j.adsets ?? []).length))
+      .catch(() => setAdsetsCount(0));
+
+    const adsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads`)
+      .then((r) => r.json())
+      .then((j) => setAdsCount(j.total ?? (j.ads ?? []).length))
+      .catch(() => setAdsCount(0));
+
+    void Promise.all([adsetsPromise, adsPromise]).finally(() => setCountsLoading(false));
+  }, [metaCampaignId, clientSlug]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  if (!campaign) {
+    return <div className="p-8 text-center text-sm text-slate-500">{t("loading")}</div>;
+  }
+
+  const slug = campaign.clientSlug || clientSlug;
+
+  return (
+    <div className="space-y-4">
+      {!embedded ? (
+        <p className="text-xs text-slate-500">
+          <Link href="/campaigns" className="hover:text-violet-600">
+            {t("navCampaigns")}
+          </Link>
+          {" › "}
+          <Link
+            href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
+            className="hover:text-violet-600"
+          >
+            {campaign.name}
+          </Link>
+          {" › "}
+          <span className="text-slate-700">{t("title")}</span>
+        </p>
+      ) : null}
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
+          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
+        </div>
+        <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
+          ↻
+        </button>
+      </div>
+
+      <div className="ui-card flex flex-wrap items-center gap-3 p-4">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
+          f
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-slate-900">{campaign.name}</span>
+            <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-slate-500">
+            <span>ID: {campaign.id}</span>
+            <span>
+              {t("client")}: {campaign.clientName}
+            </span>
+            <span>
+              {t("account")}: {campaign.accountLabel}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <CampaignDetailTabs
+        metaCampaignId={metaCampaignId}
+        clientSlug={slug}
+        activeTab="creatives"
+        adsetsCount={countsLoading ? null : adsetsCount}
+        adsCount={countsLoading ? null : adsCount}
+        creativesCount={creativesCount}
+        embedded={embedded}
+        translationNs="creativesPage"
+      />
+
+      <CreativesLibraryView
+        fetchUrl={`/api/campaigns/${encodeURIComponent(metaCampaignId)}/creatives`}
+        translationNs="creativesPage"
+        lockedCampaignName={campaign.name}
+        onTotalChange={setCreativesCount}
+      />
+    </div>
+  );
+}

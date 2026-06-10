@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { BudgetEditDrawer } from "@/components/campaign/BudgetEditDrawer";
+import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
@@ -353,7 +354,10 @@ export function CampaignManagerClient({
   const [adsets, setAdsets] = useState<AdSetRow[]>([]);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [previous, setPrevious] = useState<PrevPeriod | null>(null);
-  const [adsCount, setAdsCount] = useState(0);
+  const [adsCount, setAdsCount] = useState<number | null>(null);
+  const [adsCountLoading, setAdsCountLoading] = useState(true);
+  const [creativesCount, setCreativesCount] = useState<number | null>(null);
+  const [creativesCountLoading, setCreativesCountLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -391,22 +395,22 @@ export function CampaignManagerClient({
 
     const adsetsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${qs}`)
       .then((r) => r.json())
-      .then(async (j) => {
-        const list = (j.adsets ?? []) as AdSetRow[];
-        setAdsets(list);
-        let totalAds = 0;
-        for (const a of list.slice(0, 8)) {
-          try {
-            const ar = await fetch(`/api/adsets/${encodeURIComponent(a.id)}/ads`);
-            const aj = await ar.json();
-            totalAds += (aj.ads ?? []).length;
-          } catch {
-            /* skip */
-          }
-        }
-        setAdsCount(totalAds);
-      })
+      .then((j) => setAdsets((j.adsets ?? []) as AdSetRow[]))
       .catch(() => setAdsets([]));
+
+    setAdsCountLoading(true);
+    setCreativesCountLoading(true);
+    const adsCountPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads`)
+      .then((r) => r.json())
+      .then((j) => setAdsCount(j.total ?? (j.ads ?? []).length))
+      .catch(() => setAdsCount(0))
+      .finally(() => setAdsCountLoading(false));
+
+    const creativesCountPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/creatives`)
+      .then((r) => r.json())
+      .then((j) => setCreativesCount(j.total ?? (j.rows ?? []).length))
+      .catch(() => setCreativesCount(0))
+      .finally(() => setCreativesCountLoading(false));
 
     const timeseriesPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries${qs}`)
       .then((r) => r.json())
@@ -416,7 +420,7 @@ export function CampaignManagerClient({
       })
       .finally(() => setChartLoading(false));
 
-    void Promise.all([detailPromise, adsetsPromise, timeseriesPromise]).finally(() => {
+    void Promise.all([detailPromise, adsetsPromise, adsCountPromise, creativesCountPromise, timeseriesPromise]).finally(() => {
       setRefreshing(false);
     });
   }, [metaCampaignId, clientSlug, detailPeriod, seedRow]);
@@ -485,29 +489,6 @@ export function CampaignManagerClient({
   }
 
   const slug = campaign.clientSlug || clientSlug;
-  const tabs: Array<{ id: DetailTab; href?: string; label: string; disabled?: boolean }> = [
-    {
-      id: "overview",
-      href: embedded ? undefined : `/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`,
-      label: t("tabOverview")
-    },
-    {
-      id: "adsets",
-      href: embedded
-        ? undefined
-        : `/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`,
-      label: t("tabAdsets", { count: adsets.length })
-    },
-    { id: "ads", href: embedded ? undefined : "#", label: t("tabAds", { count: adsCount }), disabled: true },
-    {
-      id: "creatives",
-      href: embedded ? undefined : "/creatives",
-      label: t("tabCreatives"),
-      disabled: embedded
-    },
-    { id: "events", href: embedded ? undefined : "#", label: t("tabEvents"), disabled: true }
-  ];
-
   const prev = previous ?? { spend: 0, conversions: 0, cpa: null, roas: 0 };
 
   return (
@@ -607,40 +588,16 @@ export function CampaignManagerClient({
         </div>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
-        {tabs.map((item) => {
-          const isActive = activeTab === item.id;
-          const tabClass = `whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
-            isActive
-              ? "border-violet-600 text-violet-600"
-              : item.disabled
-                ? "border-transparent text-slate-300"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-          }`;
-
-          if (embedded || !item.href || item.href === "#") {
-            return (
-              <button
-                key={item.id}
-                type="button"
-                disabled={item.disabled}
-                onClick={() => {
-                  if (!item.disabled) setActiveTab(item.id);
-                }}
-                className={tabClass}
-              >
-                {item.label}
-              </button>
-            );
-          }
-
-          return (
-            <Link key={item.id} href={item.href} className={tabClass}>
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
+      <CampaignDetailTabs
+        metaCampaignId={metaCampaignId}
+        clientSlug={slug}
+        activeTab={activeTab}
+        adsetsCount={adsets.length}
+        adsCount={adsCountLoading ? null : adsCount}
+        creativesCount={creativesCountLoading ? null : creativesCount}
+        embedded={embedded}
+        onTabClick={(tabId) => setActiveTab(tabId)}
+      />
 
       {message ? <div className="text-xs text-emerald-700">{message}</div> : null}
 

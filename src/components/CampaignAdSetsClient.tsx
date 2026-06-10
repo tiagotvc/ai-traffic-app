@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
+import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
@@ -80,6 +81,9 @@ export function CampaignAdSetsClient({
   const { openPanel } = usePublishPanel();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [adsets, setAdsets] = useState<AdSetRow[]>([]);
+  const [adsCount, setAdsCount] = useState<number | null>(null);
+  const [creativesCount, setCreativesCount] = useState<number | null>(null);
+  const [countsLoading, setCountsLoading] = useState(true);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -103,6 +107,16 @@ export function CampaignAdSetsClient({
     fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries`)
       .then((r) => r.json())
       .then((j) => setSeries(j.series ?? []));
+    setCountsLoading(true);
+    const adsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads`)
+      .then((r) => r.json())
+      .then((j) => setAdsCount(j.total ?? (j.ads ?? []).length))
+      .catch(() => setAdsCount(0));
+    const creativesPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/creatives`)
+      .then((r) => r.json())
+      .then((j) => setCreativesCount(j.total ?? (j.rows ?? []).length))
+      .catch(() => setCreativesCount(0));
+    void Promise.all([adsPromise, creativesPromise]).finally(() => setCountsLoading(false));
   }, [metaCampaignId, clientSlug]);
 
   useEffect(() => {
@@ -249,23 +263,16 @@ export function CampaignAdSetsClient({
         </div>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
-        <Link
-          href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
-          className="whitespace-nowrap border-b-2 border-transparent px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700"
-        >
-          {t("tabOverview")}
-        </Link>
-        <span className="whitespace-nowrap border-b-2 border-violet-600 px-4 py-2 text-sm font-medium text-violet-600">
-          {t("tabAdsets", { count: adsets.length })}
-        </span>
-        <span className="whitespace-nowrap border-b-2 border-transparent px-4 py-2 text-sm text-slate-400">
-          {t("tabAds")}
-        </span>
-        <Link href="/creatives" className="whitespace-nowrap border-b-2 border-transparent px-4 py-2 text-sm text-slate-500">
-          {t("tabCreatives")}
-        </Link>
-      </div>
+      <CampaignDetailTabs
+        metaCampaignId={metaCampaignId}
+        clientSlug={slug}
+        activeTab="adsets"
+        adsetsCount={adsets.length}
+        adsCount={countsLoading ? null : adsCount}
+        creativesCount={countsLoading ? null : creativesCount}
+        embedded={embedded}
+        translationNs="adsetsPage"
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <input

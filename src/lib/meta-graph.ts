@@ -79,11 +79,93 @@ export type MetaAdSet = {
   campaign_id?: string;
 };
 
+export type MetaAdCreative = {
+  id?: string;
+  name?: string;
+  thumbnail_url?: string;
+  object_story_spec?: Record<string, unknown>;
+  asset_feed_spec?: Record<string, unknown>;
+};
+
 export type MetaAd = {
   id: string;
   name?: string;
   status?: string;
   adset_id?: string;
+  creative?: MetaAdCreative | string;
+};
+
+export type CreativeAssetType = "image" | "video" | "carousel" | "copy" | "headline" | "description";
+
+export type ResolvedAdCreative = {
+  id: string;
+  name?: string;
+  thumbnailUrl?: string;
+  imageHash?: string;
+  type: CreativeAssetType;
+};
+
+export function inferCreativeTypeFromStorySpec(spec?: Record<string, unknown>): CreativeAssetType {
+  if (!spec) return "image";
+
+  if (spec.video_data) return "video";
+
+  const linkData = spec.link_data as Record<string, unknown> | undefined;
+  if (linkData?.child_attachments) return "carousel";
+
+  if (spec.photo_data) return "image";
+
+  if (linkData) {
+    if (linkData.image_hash || linkData.picture) return "image";
+    if (typeof linkData.name === "string" && linkData.name.trim()) return "headline";
+    if (typeof linkData.description === "string" && linkData.description.trim()) return "description";
+    if (typeof linkData.message === "string" && linkData.message.trim()) return "copy";
+  }
+
+  const feed = spec.asset_feed_spec as Record<string, unknown> | undefined;
+  if (feed?.images || feed?.videos) return "carousel";
+
+  return "image";
+}
+
+const AD_CREATIVE_FIELDS = "creative{id,name,thumbnail_url,object_story_spec,asset_feed_spec}";
+const AD_LIST_FIELDS = ["id", "name", "status", "adset_id", AD_CREATIVE_FIELDS].join(",");
+
+export function extractImageHashFromStorySpec(spec?: Record<string, unknown>): string | undefined {
+  if (!spec) return undefined;
+  const linkData = spec.link_data as Record<string, unknown> | undefined;
+  if (typeof linkData?.image_hash === "string") return linkData.image_hash;
+  const photoData = spec.photo_data as Record<string, unknown> | undefined;
+  if (typeof photoData?.image_hash === "string") return photoData.image_hash;
+  const videoData = spec.video_data as Record<string, unknown> | undefined;
+  if (typeof videoData?.image_hash === "string") return videoData.image_hash;
+  return undefined;
+}
+
+export function resolveCreativeFromAd(ad: MetaAd): ResolvedAdCreative | null {
+  const raw = ad.creative;
+  if (!raw) return null;
+
+  if (typeof raw === "string") {
+    return { id: raw, name: ad.name, type: "image" };
+  }
+
+  const imageHash = extractImageHashFromStorySpec(raw.object_story_spec);
+  const thumbnailUrl = raw.thumbnail_url;
+  const name = raw.name ?? ad.name;
+  const type = raw.asset_feed_spec
+    ? inferCreativeTypeFromStorySpec({ asset_feed_spec: raw.asset_feed_spec })
+    : inferCreativeTypeFromStorySpec(raw.object_story_spec);
+  const id = raw.id ?? (thumbnailUrl ? `thumb:${thumbnailUrl}` : imageHash ? `hash:${imageHash}` : undefined);
+
+  if (!id) return null;
+
+  return { id, name, thumbnailUrl, imageHash, type };
+}
+
+export type CampaignAdRow = MetaAd & {
+  adsetId: string;
+  adsetName?: string;
 };
 
 async function metaFetch<T>(path: string, accessToken: string): Promise<T> {
@@ -654,10 +736,53 @@ export async function fetchAdSetsForCampaign(
 }
 
 export async function fetchAdsForAdSet(accessToken: string, adSetId: string): Promise<MetaAd[]> {
-  const fields = ["id", "name", "status", "adset_id"].join(",");
-  const path = `/${encodeURIComponent(adSetId)}/ads?fields=${encodeURIComponent(fields)}&limit=50`;
-  const data = await metaFetch<{ data: MetaAd[] }>(path, accessToken);
-  return data.data ?? [];
+  const path = `/${encodeURIComponent(adSetId)}/ads?fields=${encodeURIComponent(AD_LIST_FIELDS)}&limit=100`;
+  return fetchGraphPaged<MetaAd>(path, accessToken);
+}
+
+async function mapAdsWithAdsetNames(
+  accessToken: string,
+  campaignId: string,
+  ads: MetaAd[]
+): Promise<CampaignAdRow[]> {
+  const adsets = await fetchAdSetsForCampaign(accessToken, campaignId);
+  const adsetMap = new Map(adsets.map((a) => [a.id, a.name]));
+  return ads.map((ad) => ({
+    ...ad,
+    adsetId: ad.adset_id ?? "",
+    adsetName: adsetMap.get(ad.adset_id ?? "") ?? ad.adset_id
+  }));
+}
+
+export async function fetchAdsForCampaign(
+  accessToken: string,
+  campaignId: string
+): Promise<CampaignAdRow[]> {
+  const campaignPath = `/${encodeURIComponent(campaignId)}/ads?fields=${encodeURIComponent(AD_LIST_FIELDS)}&limit=100`;
+  try {
+    const direct = await fetchGraphPaged<MetaAd>(campaignPath, accessToken);
+    if (direct.length > 0) {
+      return mapAdsWithAdsetNames(accessToken, campaignId, direct);
+    }
+  } catch {
+    /* fallback via ad sets */
+  }
+
+  const adsets = await fetchAdSetsForCampaign(accessToken, campaignId);
+  const rows: CampaignAdRow[] = [];
+
+  for (const adset of adsets) {
+    const ads = await fetchAdsForAdSet(accessToken, adset.id);
+    for (const ad of ads) {
+      rows.push({
+        ...ad,
+        adsetId: adset.id,
+        adsetName: adset.name
+      });
+    }
+  }
+
+  return rows;
 }
 
 export type MetaAdSetInsight = {
