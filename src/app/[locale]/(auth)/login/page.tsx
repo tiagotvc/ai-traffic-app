@@ -22,7 +22,7 @@ export default async function LoginPage({
   const redirectTo =
     callbackUrl && callbackUrl.startsWith("/")
       ? callbackUrl
-      : `/${locale}/command`;
+      : `/${locale}/dashboard`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-50 via-slate-50 to-white">

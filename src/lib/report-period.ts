@@ -17,23 +17,40 @@ export type ParsedPeriod = {
   allTime: boolean;
 };
 
-/** Data local do navegador/servidor (evita “hoje” vazio por desvio UTC). */
-function localDateIso(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+/**
+ * Fuso padrão usado para resolver "hoje"/períodos relativos.
+ * Idealmente seria o fuso configurado na conta de anúncios (a Meta agrega as
+ * insights pelo timezone da conta). Como ainda não sincronizamos esse campo,
+ * usamos um padrão configurável por env (default: Brasil), evitando que o
+ * "hoje" seja calculado no fuso do servidor (UTC na Vercel).
+ */
+export const DEFAULT_REPORT_TZ =
+  (typeof process !== "undefined" && process.env?.REPORT_TIMEZONE?.trim()) || "America/Sao_Paulo";
+
+/** Data (YYYY-MM-DD) no fuso informado. en-CA produz o formato ISO de data. */
+function localDateIso(date = new Date(), timeZone = DEFAULT_REPORT_TZ) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
 }
 
-function daysAgoIso(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return localDateIso(d);
+/** Soma/subtrai dias a uma data ISO ancorando ao meio-dia UTC (evita borda de DST). */
+export function addDaysIso(iso: string, delta: number) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = Date.UTC(y, (m ?? 1) - 1, d ?? 1, 12) + delta * 86_400_000;
+  return new Date(t).toISOString().slice(0, 10);
+}
+
+function daysAgoIso(n: number, timeZone = DEFAULT_REPORT_TZ) {
+  return addDaysIso(localDateIso(new Date(), timeZone), -n);
 }
 
 /** Meta "últimos N dias" não inclui hoje — intervalo fecha em ontem. */
-export function todayIso() {
-  return localDateIso();
+export function todayIso(timeZone = DEFAULT_REPORT_TZ) {
+  return localDateIso(new Date(), timeZone);
 }
 
 export function yesterdayIso() {

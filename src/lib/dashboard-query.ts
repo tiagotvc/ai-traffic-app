@@ -5,7 +5,7 @@ import { Between, In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import { getClientBySlugOrId, listClientsForTenant } from "@/lib/app-context";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
-import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { addDaysIso, parsePeriodFromSearchParams, todayIso } from "@/lib/report-period";
 export async function resolveDashboardScope(
   tenantId: string,
   clientIdParam?: string | null,
@@ -61,9 +61,7 @@ export function parseDashboardSearchParams(url: URL) {
 }
 
 export function dateNDaysAgo(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  return addDaysIso(todayIso(), -n);
 }
 
 export async function loadMetricRows(
@@ -81,7 +79,7 @@ export async function loadMetricRows(
     });
   }
 
-  const end = opts?.until?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+  const end = opts?.until?.slice(0, 10) ?? todayIso();
   const start = opts?.since?.slice(0, 10) ?? dateNDaysAgo(days);
 
   const accountRows = await metricsRepo.find({

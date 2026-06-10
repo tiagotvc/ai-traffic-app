@@ -519,7 +519,7 @@
     "viewAllClients": "View all",
     "loadingMetrics": "Loading metrics…",
     "loadError": "Failed to load dashboard. Check Postgres and run pnpm run db:migrate.",
-    "highlightsSubtitle": "Performance summary for the last 30 days",
+    "highlightsSubtitle": "Performance summary of your campaigns",
     "currencyLabel": "Currency",
     "vsPrevPeriod": "vs. previous period",
     "noPrevData": "no prior baseline",

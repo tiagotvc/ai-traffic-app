@@ -71,7 +71,6 @@ export function AppSidebar({
 
   const items: NavItem[] = [
     { id: "highlights", href: "/dashboard", label: t("highlights"), icon: <NavIcon d={icons.highlights} /> },
-    { id: "command", href: "/command", label: t("command"), icon: <NavIcon d={icons.command} /> },
     { id: "clients", href: "/clients", label: t("clients"), icon: <NavIcon d={icons.clients} /> },
     { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <NavIcon d={icons.campaigns} /> },
     { id: "audiences", href: "/audiences", label: t("audiences"), icon: <NavIcon d={icons.audiences} /> },
@@ -90,8 +89,8 @@ export function AppSidebar({
 
   function isActive(item: NavItem) {
     const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
-    if (item.id === "highlights") return base === "/dashboard" || base.startsWith("/dashboard/");
-    if (item.id === "command") return base === "/command" || base === "/";
+    if (item.id === "highlights")
+      return base === "/dashboard" || base.startsWith("/dashboard/") || base === "/";
     if (item.id === "campaigns")
       return base === "/campaigns" || base.startsWith("/campaigns/");
     if (item.id === "alerts") return base === "/alerts" || base.startsWith("/alerts/");

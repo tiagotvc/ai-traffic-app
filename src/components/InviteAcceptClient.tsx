@@ -115,7 +115,7 @@ export function InviteAcceptClient({
         ) : status === "ok" ? (
           <div className="space-y-3">
             <p className="text-sm text-emerald-700">{t("accepted")}</p>
-            <Link href="/command-center" className="ui-btn-primary inline-block text-center">
+            <Link href="/dashboard" className="ui-btn-primary inline-block text-center">
               {t("goToApp")}
             </Link>
           </div>
@@ -153,7 +153,7 @@ export function InviteAcceptClient({
     return (
       <div className="space-y-3">
         <p className="text-sm text-emerald-700">{t("accepted")}</p>
-        <Link href="/command-center" className="ui-btn-primary inline-block text-center">
+        <Link href="/dashboard" className="ui-btn-primary inline-block text-center">
           {t("goToApp")}
         </Link>
       </div>

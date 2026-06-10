@@ -16,7 +16,9 @@ import {
 } from "recharts";
 
 import { Link } from "@/i18n/navigation";
+import { PeriodFilter, type PeriodState } from "@/components/PeriodFilter";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
+import { addDaysIso, todayIso } from "@/lib/report-period";
 
 type Summary = {
   spend: number;
@@ -40,20 +42,51 @@ type AlertItem = {
 };
 type ClientCard = { id: string; slug: string; name: string; roas: number; alertCount?: number };
 type AdAccountOpt = { id: string; metaAdAccountId: string; label: string };
-
-function sumBy(rows: SeriesPoint[], key: "spend" | "conversions") {
-  return rows.reduce((acc, r) => acc + (Number(r[key]) || 0), 0);
-}
-
-function avgRoas(rows: SeriesPoint[]) {
-  const valid = rows.filter((r) => Number(r.roas) > 0);
-  if (!valid.length) return 0;
-  return valid.reduce((acc, r) => acc + Number(r.roas), 0) / valid.length;
-}
+type Range = { since: string; until: string };
 
 function pctDelta(cur: number, prev: number): number | null {
   if (!prev || prev <= 0) return null;
   return ((cur - prev) / prev) * 100;
+}
+
+/** Resolve a janela atual e a janela equivalente anterior (para o delta). */
+function resolveRanges(p: PeriodState): { current: Range | null; previous: Range | null } {
+  if (p.preset === "all") return { current: null, previous: null };
+  const today = todayIso();
+  let since: string;
+  let until: string;
+  if (p.preset === "today") {
+    since = today;
+    until = today;
+  } else if (p.preset === "yesterday") {
+    since = addDaysIso(today, -1);
+    until = since;
+  } else if (p.preset === "custom" && p.since && p.until) {
+    since = p.since;
+    until = p.until;
+  } else {
+    const n = p.preset === "last7" ? 7 : p.preset === "last14" ? 14 : p.preset === "last15" ? 15 : 30;
+    since = addDaysIso(today, -n);
+    until = addDaysIso(today, -1);
+  }
+  const len = Math.round((Date.parse(until) - Date.parse(since)) / 86_400_000) + 1;
+  const prevUntil = addDaysIso(since, -1);
+  const prevSince = addDaysIso(prevUntil, -(len - 1));
+  return { current: { since, until }, previous: { since: prevSince, until: prevUntil } };
+}
+
+function buildQuery(clientId: string, accountId: string, range: Range | null) {
+  const p = new URLSearchParams();
+  if (clientId) p.set("clientId", clientId);
+  if (accountId) p.set("adAccountId", accountId);
+  if (range) {
+    p.set("period", "custom");
+    p.set("since", range.since);
+    p.set("until", range.until);
+  } else {
+    p.set("period", "all");
+  }
+  return p.toString();
 }
 
 function DeltaBadge({
@@ -121,7 +154,7 @@ function HighlightCard({
       <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</div>
       <div className="mt-0.5 text-[11px] text-slate-400">{vsLabel}</div>
       <div className="mt-3 h-16">
-        {data.length ? (
+        {data.length > 1 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
               <defs>
@@ -164,18 +197,12 @@ function SupportStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function queryString(clientId: string, adAccountId: string, extra?: Record<string, string>) {
-  const p = new URLSearchParams(extra);
-  if (clientId) p.set("clientId", clientId);
-  if (adAccountId) p.set("adAccountId", adAccountId);
-  const s = p.toString();
-  return s ? `?${s}` : "";
-}
-
 export function DashboardClient() {
   const t = useTranslations("dashboard");
   const locale = useLocale();
+  const [period, setPeriod] = useState<PeriodState>({ preset: "today", since: "", until: "" });
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [criticalAlerts, setCriticalAlerts] = useState<AlertItem[]>([]);
@@ -189,14 +216,17 @@ export function DashboardClient() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const sQs = queryString(clientFilter, accountFilter, { days: "30" });
-      const tQs = queryString(clientFilter, accountFilter, { days: "60" });
-      const [sRes, tRes, aRes, cRes, critRes] = await Promise.all([
-        fetch(`/api/dashboard/summary${sQs}`),
-        fetch(`/api/dashboard/timeseries${tQs}`),
+      const { current, previous } = resolveRanges(period);
+      const curQ = buildQuery(clientFilter, accountFilter, current);
+      const [sRes, tRes, aRes, cRes, critRes, pRes] = await Promise.all([
+        fetch(`/api/dashboard/summary?${curQ}`),
+        fetch(`/api/dashboard/timeseries?${curQ}`),
         fetch("/api/alerts?limit=8"),
         fetch("/api/clients"),
-        fetch("/api/alerts?severity=critical&limit=8")
+        fetch("/api/alerts?severity=critical&limit=8"),
+        previous
+          ? fetch(`/api/dashboard/summary?${buildQuery(clientFilter, accountFilter, previous)}`)
+          : Promise.resolve<Response | null>(null)
       ]);
 
       const sJson = await sRes.json();
@@ -204,8 +234,10 @@ export function DashboardClient() {
       const aJson = await aRes.json();
       const cJson = await cRes.json();
       const critJson = await critRes.json();
+      const pJson = pRes ? await pRes.json() : null;
 
       setSummary(sJson.summary);
+      setPrevSummary(pJson?.summary ?? null);
       setSeries(tJson.series ?? []);
       setAlerts(aJson.alerts ?? []);
       setCriticalAlerts(critJson.alerts ?? []);
@@ -217,7 +249,7 @@ export function DashboardClient() {
     } finally {
       setLoading(false);
     }
-  }, [clientFilter, accountFilter, t]);
+  }, [clientFilter, accountFilter, period, t]);
 
   useEffect(() => {
     void load();
@@ -230,21 +262,31 @@ export function DashboardClient() {
   }, [load]);
 
   const insights = useMemo(() => {
-    const last30 = series.slice(-30);
-    const prev30 = series.slice(-60, -30);
-    const spendCur = sumBy(last30, "spend");
-    const convCur = sumBy(last30, "conversions");
-    const roasCur = avgRoas(last30);
-    const spark = last30.map((p) => ({ label: p.day.slice(5), spend: p.spend, conversions: p.conversions, roas: p.roas }));
+    const spark = series.map((p) => ({
+      label: p.day.slice(5),
+      spend: p.spend,
+      conversions: p.conversions,
+      roas: p.roas
+    }));
+    const cur = summary;
     return {
       spark,
-      spend: { cur: spendCur, delta: pctDelta(spendCur, sumBy(prev30, "spend")) },
-      conversions: { cur: convCur, delta: pctDelta(convCur, sumBy(prev30, "conversions")) },
-      roas: { cur: roasCur, delta: pctDelta(roasCur, avgRoas(prev30)) }
+      spend: {
+        cur: cur?.spend ?? 0,
+        delta: prevSummary ? pctDelta(cur?.spend ?? 0, prevSummary.spend) : null
+      },
+      conversions: {
+        cur: cur?.conversions ?? 0,
+        delta: prevSummary ? pctDelta(cur?.conversions ?? 0, prevSummary.conversions) : null
+      },
+      roas: {
+        cur: cur?.roas ?? 0,
+        delta: prevSummary ? pctDelta(cur?.roas ?? 0, prevSummary.roas) : null
+      }
     };
-  }, [series]);
+  }, [series, summary, prevSummary]);
 
-  const chartData = series.slice(-30).map((p) => ({ ...p, label: p.day.slice(5) }));
+  const chartData = series.map((p) => ({ ...p, label: p.day.slice(5) }));
   const vsLabel = t("vsPrevPeriod");
   const noPrev = t("noPrevData");
 
@@ -260,9 +302,7 @@ export function DashboardClient() {
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
             {t("currencyLabel")}: BRL
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-            {t("last30Days")}
-          </span>
+          <PeriodFilter value={period} onChange={setPeriod} />
         </div>
       </div>
 
@@ -400,12 +440,9 @@ export function DashboardClient() {
           {/* Performance chart + alerts */}
           <section className="grid grid-cols-1 gap-3 lg:grid-cols-3">
             <div className="lg:col-span-2 ui-card p-4">
-              <div>
-                <div className="text-sm font-semibold">{t("performance")}</div>
-                <div className="text-xs text-slate-500">{t("last30Days")}</div>
-              </div>
+              <div className="text-sm font-semibold">{t("performance")}</div>
               <div className="mt-4 h-56">
-                {chartData.length ? (
+                {chartData.length > 1 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" />
