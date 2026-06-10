@@ -123,15 +123,43 @@ export async function GET() {
         clientAccounts.some((a) => a.id === m.adAccountId)
       );
 
+      let spend = 0;
+      let impressions = 0;
+      let clicks = 0;
+      let conversions = 0;
+      let reach = 0;
+      let messages = 0;
       let roasSum = 0;
       let roasCount = 0;
       for (const m of clientMetrics) {
+        spend += Number(m.spend) || 0;
+        impressions += Number(m.impressions) || 0;
+        clicks += Number(m.clicks) || 0;
+        conversions += Number(m.conversions) || 0;
+        reach += Number(m.reach) || 0;
+        messages += Number(m.messages) || 0;
         const roas = Number(m.roas);
         if (!Number.isNaN(roas) && roas > 0) {
           roasSum += roas;
           roasCount += 1;
         }
       }
+
+      const roas = roasCount ? roasSum / roasCount : 0;
+      const metricsAgg = {
+        spend,
+        impressions,
+        clicks,
+        conversions,
+        reach,
+        messages,
+        ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+        cpc: clicks > 0 ? spend / clicks : 0,
+        cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+        cpa: conversions > 0 ? spend / conversions : 0,
+        frequency: reach > 0 ? impressions / reach : 0,
+        roas
+      };
 
       const openAlerts = await alertRepo.count({
         where: { tenantId: tenant.id, clientId: c.id, dismissed: false }
@@ -141,7 +169,8 @@ export async function GET() {
         id: c.id,
         slug: slugify(c.name),
         name: c.name,
-        roas: roasCount ? roasSum / roasCount : 0,
+        roas,
+        metrics: metricsAgg,
         accounts: clientAccounts.length,
         alertCount: openAlerts
       };

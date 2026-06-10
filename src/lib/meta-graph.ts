@@ -569,6 +569,16 @@ export function pickLeads(actions?: Array<{ action_type: string; value: string }
   return sum;
 }
 
+/** Conversas de mensagens iniciadas (Messenger/Instagram/WhatsApp). */
+export function pickMessages(actions?: Array<{ action_type: string; value: string }>): number {
+  if (!actions?.length) return 0;
+  let sum = 0;
+  for (const a of actions) {
+    if (a.action_type.includes("messaging_conversation_started")) sum += Number(a.value) || 0;
+  }
+  return sum;
+}
+
 export function pickResults(row: Pick<MetaInsightRow, "results" | "actions">): number {
   const raw = row.results;
   if (raw != null) {

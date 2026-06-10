@@ -110,6 +110,8 @@ export async function loadMetricRows(
     ctr: c.ctr,
     cpc: c.cpc,
     conversions: c.conversions,
+    reach: c.reach,
+    messages: c.messages,
     roas: c.roas
   }));
 }

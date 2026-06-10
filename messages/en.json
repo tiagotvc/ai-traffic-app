@@ -528,7 +528,16 @@
     "cpa": "Cost per conversion",
     "timezoneLabel": "Timezone",
     "timezoneHint": "Timezone used to define \"today\". When an account is selected, uses the timezone configured for it on Meta.",
-    "highlights": "Highlights"
+    "highlights": "Highlights",
+    "metricsChartTitle": "Overall performance",
+    "seeMore": "See more",
+    "metricsModalTitle": "Select metrics",
+    "metricsModalHint": "Pick up to 3 metrics to compare on the chart.",
+    "metricsSearch": "Search metric…",
+    "metricsSelected": "{count}/3 selected",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "clientMetricLabel": "Metric"
   },
   "clientsHub": {
     "title": "Client hub",
@@ -1133,5 +1142,24 @@
     "emptyAccounts": "No accounts in this filter.",
     "emptyPages": "No pages in this filter.",
     "linkClients": "Link accounts to clients →"
+  },
+  "metrics": {
+    "spend": "Spend",
+    "impressions": "Impressions",
+    "reach": "Reach",
+    "frequency": "Frequency",
+    "clicks": "Clicks",
+    "ctr": "CTR",
+    "cpc": "CPC",
+    "cpm": "CPM",
+    "conversions": "Conversions",
+    "cpa": "Cost per conversion",
+    "messages": "Messages",
+    "roas": "ROAS"
+  },
+  "metricsCat": {
+    "performance": "Performance",
+    "results": "Results",
+    "costs": "Costs"
   }
 }

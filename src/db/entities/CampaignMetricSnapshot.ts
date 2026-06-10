@@ -42,6 +42,12 @@ export class CampaignMetricSnapshot extends AppBaseEntity {
   @Column({ type: "bigint", default: 0 })
   leads!: string;
 
+  @Column({ type: "bigint", default: 0 })
+  reach!: string;
+
+  @Column({ type: "bigint", default: 0 })
+  messages!: string;
+
   @Column({ type: "numeric", precision: 18, scale: 4, default: 0 })
   roas!: string;
 

@@ -16,8 +16,17 @@ import {
 } from "recharts";
 
 import { Link } from "@/i18n/navigation";
+import { MetricPickerModal } from "@/components/MetricPickerModal";
 import { PeriodFilter, type PeriodState } from "@/components/PeriodFilter";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
+import {
+  MAX_CHART_METRICS,
+  METRIC_BY_KEY,
+  METRIC_CATALOG,
+  QUICK_METRICS,
+  formatMetricValue,
+  type MetricKey
+} from "@/lib/dashboard-metrics";
 import { DEFAULT_REPORT_TZ, addDaysIso, todayIso } from "@/lib/report-period";
 
 type Summary = {
@@ -31,7 +40,7 @@ type Summary = {
   cpa?: number;
 };
 
-type SeriesPoint = { day: string; spend: number; conversions: number; roas: number };
+type SeriesPoint = { day: string } & Partial<Record<MetricKey, number>>;
 type AlertItem = {
   id: string;
   title: string;
@@ -40,7 +49,14 @@ type AlertItem = {
   clientId?: string | null;
   metaCampaignId?: string | null;
 };
-type ClientCard = { id: string; slug: string; name: string; roas: number; alertCount?: number };
+type ClientCard = {
+  id: string;
+  slug: string;
+  name: string;
+  roas: number;
+  metrics?: Partial<Record<MetricKey, number>>;
+  alertCount?: number;
+};
 type AdAccountOpt = {
   id: string;
   metaAdAccountId: string;
@@ -207,8 +223,12 @@ function SupportStat({ label, value }: { label: string; value: string }) {
 
 export function DashboardClient() {
   const t = useTranslations("dashboard");
+  const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [period, setPeriod] = useState<PeriodState>({ preset: "today", since: "", until: "" });
+  const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(["spend", "conversions"]);
+  const [metricsModalOpen, setMetricsModalOpen] = useState(false);
+  const [clientMetric, setClientMetric] = useState<MetricKey>("roas");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
@@ -279,9 +299,9 @@ export function DashboardClient() {
   const insights = useMemo(() => {
     const spark = series.map((p) => ({
       label: p.day.slice(5),
-      spend: p.spend,
-      conversions: p.conversions,
-      roas: p.roas
+      spend: p.spend ?? 0,
+      conversions: p.conversions ?? 0,
+      roas: p.roas ?? 0
     }));
     const cur = summary;
     return {
@@ -304,6 +324,18 @@ export function DashboardClient() {
   const chartData = series.map((p) => ({ ...p, label: p.day.slice(5) }));
   const vsLabel = t("vsPrevPeriod");
   const noPrev = t("noPrevData");
+
+  function toggleChartMetric(key: MetricKey) {
+    setChartMetrics((cur) =>
+      cur.includes(key)
+        ? cur.length > 1
+          ? cur.filter((k) => k !== key)
+          : cur
+        : cur.length >= MAX_CHART_METRICS
+          ? cur
+          : [...cur, key]
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -461,19 +493,57 @@ export function DashboardClient() {
           {/* Performance chart + alerts */}
           <section className="grid grid-cols-1 gap-3 lg:grid-cols-3">
             <div className="lg:col-span-2 ui-card p-4">
-              <div className="text-sm font-semibold">{t("performance")}</div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-semibold">{t("metricsChartTitle")}</div>
+                <button
+                  type="button"
+                  onClick={() => setMetricsModalOpen(true)}
+                  className="text-xs font-semibold text-violet-600 hover:text-violet-500"
+                >
+                  + {t("seeMore")}
+                </button>
+              </div>
+
+              {/* Quick metric chips (até 3) */}
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {QUICK_METRICS.map((key) => {
+                  const def = METRIC_BY_KEY[key];
+                  const active = chartMetrics.includes(key);
+                  const disabled = !active && chartMetrics.length >= MAX_CHART_METRICS;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => toggleChartMetric(key)}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                        active
+                          ? "border-transparent text-white"
+                          : disabled
+                            ? "cursor-not-allowed border-slate-200 text-slate-300"
+                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
+                      style={active ? { background: def.color } : undefined}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: active ? "rgba(255,255,255,0.85)" : def.color }}
+                      />
+                      {tMetrics(def.label)}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="mt-4 h-56">
-                {chartData.length > 1 ? (
+                {chartData.length >= 1 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
                       <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" />
                       <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 10 }} />
-                      <YAxis yAxisId="left" tick={{ fill: "#94a3b8", fontSize: 10 }} />
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        tick={{ fill: "#94a3b8", fontSize: 10 }}
-                      />
+                      {chartMetrics.map((key) => (
+                        <YAxis key={key} yAxisId={key} hide domain={["auto", "auto"]} />
+                      ))}
                       <Tooltip
                         contentStyle={{
                           background: "#ffffff",
@@ -482,26 +552,27 @@ export function DashboardClient() {
                           fontSize: 12
                         }}
                         labelStyle={{ color: "#64748b" }}
+                        formatter={(value, _name, item) => {
+                          const key = (item?.dataKey as MetricKey) ?? "spend";
+                          return [
+                            formatMetricValue(key, Number(value), locale),
+                            tMetrics(METRIC_BY_KEY[key].label)
+                          ];
+                        }}
                       />
                       <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="spend"
-                        name={t("chartSpend")}
-                        stroke="#7c3aed"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="conversions"
-                        name={t("chartConversions")}
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        dot={false}
-                      />
+                      {chartMetrics.map((key) => (
+                        <Line
+                          key={key}
+                          yAxisId={key}
+                          type="monotone"
+                          dataKey={key}
+                          name={tMetrics(METRIC_BY_KEY[key].label)}
+                          stroke={METRIC_BY_KEY[key].color}
+                          strokeWidth={2}
+                          dot={chartData.length === 1}
+                        />
+                      ))}
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
@@ -538,43 +609,73 @@ export function DashboardClient() {
 
           {/* Clients */}
           <section className="ui-card p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="text-sm font-semibold">{t("clientsTitle")}</div>
                 <div className="text-xs text-slate-500">{t("clientsSubtitle")}</div>
               </div>
-              <Link
-                href="/clients"
-                className="text-xs font-semibold text-violet-600 hover:text-violet-500"
-              >
-                {t("viewAllClients")}
-              </Link>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">{t("clientMetricLabel")}:</span>
+                <select
+                  value={clientMetric}
+                  onChange={(e) => setClientMetric(e.target.value as MetricKey)}
+                  className="ui-select !w-auto !py-1.5 text-xs"
+                >
+                  {METRIC_CATALOG.map((m) => (
+                    <option key={m.key} value={m.key}>
+                      {tMetrics(m.label)}
+                    </option>
+                  ))}
+                </select>
+                <Link
+                  href="/clients"
+                  className="text-xs font-semibold text-violet-600 hover:text-violet-500"
+                >
+                  {t("viewAllClients")}
+                </Link>
+              </div>
             </div>
             <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4">
-              {clients.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/clients/${c.slug}`}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-violet-300 hover:shadow-sm"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-sm font-semibold text-slate-800">{c.name}</div>
-                    {(c.alertCount ?? 0) > 0 ? (
-                      <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                        {c.alertCount}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="mt-2 text-xs text-slate-500">{t("roas")}</div>
-                  <div className="text-lg font-semibold text-emerald-600">
-                    {c.roas > 0 ? formatRoas(c.roas, locale) : "—"}
-                  </div>
-                </Link>
-              ))}
+              {clients.map((c) => {
+                const raw =
+                  clientMetric === "roas" ? c.roas : c.metrics?.[clientMetric] ?? 0;
+                return (
+                  <Link
+                    key={c.id}
+                    href={`/clients/${c.slug}`}
+                    className="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-violet-300 hover:shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm font-semibold text-slate-800">{c.name}</div>
+                      {(c.alertCount ?? 0) > 0 ? (
+                        <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                          {c.alertCount}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-2 text-xs text-slate-500">
+                      {tMetrics(METRIC_BY_KEY[clientMetric].label)}
+                    </div>
+                    <div className="text-lg font-semibold text-slate-900">
+                      {raw ? formatMetricValue(clientMetric, raw, locale) : "—"}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         </>
       )}
+
+      <MetricPickerModal
+        open={metricsModalOpen}
+        selected={chartMetrics}
+        onApply={(next) => {
+          setChartMetrics(next);
+          setMetricsModalOpen(false);
+        }}
+        onClose={() => setMetricsModalOpen(false)}
+      />
     </div>
   );
 }

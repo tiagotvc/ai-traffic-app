@@ -6,6 +6,7 @@ import {
   fetchCampaignInsightsDaily,
   fetchCampaigns,
   pickLeads,
+  pickMessages,
   pickResults
 } from "@/lib/meta-graph";
 import { repositories } from "@/db/repositories";
@@ -37,6 +38,8 @@ export async function runMetaSyncForAccount(input: {
     const ctr = r.ctr ?? "0";
     const cpc = r.cpc ?? "0";
     const conversions = String(pickResults(r));
+    const reach = r.reach ?? "0";
+    const messages = String(pickMessages(r.actions));
     const roas = r.purchase_roas?.[0]?.value ?? "0";
 
     const existing = await metricsRepo.findOne({
@@ -49,6 +52,8 @@ export async function runMetaSyncForAccount(input: {
       existing.ctr = ctr;
       existing.cpc = cpc;
       existing.conversions = conversions;
+      existing.reach = reach;
+      existing.messages = messages;
       existing.roas = roas;
       await metricsRepo.save(existing);
     } else {
@@ -62,6 +67,8 @@ export async function runMetaSyncForAccount(input: {
           ctr,
           cpc,
           conversions,
+          reach,
+          messages,
           roas
         })
       );
@@ -98,6 +105,8 @@ export async function runMetaSyncForAccount(input: {
     const cpc = r.cpc ?? "0";
     const conversions = String(pickResults(r));
     const leads = String(pickLeads(r.actions));
+    const reach = r.reach ?? "0";
+    const messages = String(pickMessages(r.actions));
     const roas = r.purchase_roas?.[0]?.value ?? "0";
 
     const existing = await campRepo.findOne({
@@ -115,6 +124,8 @@ export async function runMetaSyncForAccount(input: {
       existing.cpc = cpc;
       existing.conversions = conversions;
       existing.leads = leads;
+      existing.reach = reach;
+      existing.messages = messages;
       existing.roas = roas;
       existing.dailyBudget = dailyBudget;
       existing.campaignStatus = campaignStatus;
@@ -133,6 +144,8 @@ export async function runMetaSyncForAccount(input: {
           cpc,
           conversions,
           leads,
+          reach,
+          messages,
           roas,
           dailyBudget,
           campaignStatus

@@ -24,7 +24,11 @@ export async function GET(req: Request) {
         clicks: 0,
         ctr: 0,
         cpc: 0,
+        cpm: 0,
         conversions: 0,
+        reach: 0,
+        messages: 0,
+        frequency: 0,
         roas: 0,
         cpa: 0,
         cpl: 0
@@ -43,14 +47,19 @@ export async function GET(req: Request) {
   let impressions = 0;
   let clicks = 0;
   let conversions = 0;
+  let reach = 0;
+  let messages = 0;
   let roasSum = 0;
   let roasCount = 0;
 
   for (const r of allRows) {
+    const row = r as typeof r & { reach?: string | number; messages?: string | number };
     spend += Number(r.spend) || 0;
     impressions += Number(r.impressions) || 0;
     clicks += Number(r.clicks) || 0;
     conversions += Number(r.conversions) || 0;
+    reach += Number(row.reach) || 0;
+    messages += Number(row.messages) || 0;
     const roas = Number(r.roas);
     if (!Number.isNaN(roas) && roas > 0) {
       roasSum += roas;
@@ -60,6 +69,8 @@ export async function GET(req: Request) {
 
   const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
   const cpc = clicks > 0 ? spend / clicks : 0;
+  const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+  const frequency = reach > 0 ? impressions / reach : 0;
   const roas = roasCount > 0 ? roasSum / roasCount : 0;
   const cpa = conversions > 0 ? spend / conversions : 0;
 
@@ -67,7 +78,21 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    summary: { spend, impressions, clicks, ctr, cpc, conversions, roas, cpa, cpl: 0 },
+    summary: {
+      spend,
+      impressions,
+      clicks,
+      ctr,
+      cpc,
+      cpm,
+      conversions,
+      reach,
+      messages,
+      frequency,
+      roas,
+      cpa,
+      cpl: 0
+    },
     adAccounts: adAccounts.map((a) => ({
       id: a.id,
       metaAdAccountId: a.metaAdAccountId,

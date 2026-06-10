@@ -33,6 +33,12 @@ export class MetricSnapshot extends AppBaseEntity {
   @Column({ type: "bigint", default: 0 })
   conversions!: string;
 
+  @Column({ type: "bigint", default: 0 })
+  reach!: string;
+
+  @Column({ type: "bigint", default: 0 })
+  messages!: string;
+
   @Column({ type: "numeric", precision: 18, scale: 4, default: 0 })
   roas!: string;
 }

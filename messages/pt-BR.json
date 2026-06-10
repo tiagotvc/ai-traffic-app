@@ -528,7 +528,16 @@
     "cpa": "Custo por conversão",
     "timezoneLabel": "Fuso",
     "timezoneHint": "Fuso horário usado para definir \"hoje\". Quando uma conta é selecionada, usa o fuso configurado nela na Meta.",
-    "highlights": "Destaques"
+    "highlights": "Destaques",
+    "metricsChartTitle": "Performance Geral",
+    "seeMore": "Ver mais",
+    "metricsModalTitle": "Selecionar métricas",
+    "metricsModalHint": "Escolha até 3 métricas para comparar no gráfico.",
+    "metricsSearch": "Buscar métrica…",
+    "metricsSelected": "{count}/3 selecionadas",
+    "apply": "Aplicar",
+    "cancel": "Cancelar",
+    "clientMetricLabel": "Métrica"
   },
   "clientsHub": {
     "title": "Hub de clientes",
@@ -1133,5 +1142,24 @@
     "emptyAccounts": "Nenhuma conta neste filtro.",
     "emptyPages": "Nenhuma página neste filtro.",
     "linkClients": "Vincular contas a clientes →"
+  },
+  "metrics": {
+    "spend": "Gasto",
+    "impressions": "Impressões",
+    "reach": "Alcance",
+    "frequency": "Frequência",
+    "clicks": "Cliques",
+    "ctr": "CTR",
+    "cpc": "CPC",
+    "cpm": "CPM",
+    "conversions": "Conversões",
+    "cpa": "Custo por conversão",
+    "messages": "Mensagens",
+    "roas": "ROAS"
+  },
+  "metricsCat": {
+    "performance": "Desempenho",
+    "results": "Resultados",
+    "costs": "Custos"
   }
 }
