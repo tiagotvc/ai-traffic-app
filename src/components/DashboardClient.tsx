@@ -17,7 +17,7 @@ import {
 
 import { Link } from "@/i18n/navigation";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
-import { PeriodFilter, type PeriodState } from "@/components/PeriodFilter";
+import { PeriodFilter, type PeriodState, periodStateToQuery } from "@/components/PeriodFilter";
 import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import {
@@ -230,6 +230,11 @@ export function DashboardClient() {
   const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(["spend", "conversions"]);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [clientMetric, setClientMetric] = useState<MetricKey>("roas");
+  const [clientsPeriod, setClientsPeriod] = useState<PeriodState>({
+    preset: "last30",
+    since: "",
+    until: ""
+  });
   const [summary, setSummary] = useState<Summary | null>(null);
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
@@ -254,11 +259,10 @@ export function DashboardClient() {
     try {
       const { current, previous } = resolveRanges(period, selectedTz);
       const curQ = buildQuery(clientFilter, accountFilter, current);
-      const [sRes, tRes, aRes, cRes, critRes, pRes] = await Promise.all([
+      const [sRes, tRes, aRes, critRes, pRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
         fetch(`/api/dashboard/timeseries?${curQ}`),
         fetch("/api/alerts?limit=8"),
-        fetch("/api/clients"),
         fetch("/api/alerts?severity=critical&limit=8"),
         previous
           ? fetch(`/api/dashboard/summary?${buildQuery(clientFilter, accountFilter, previous)}`)
@@ -268,7 +272,6 @@ export function DashboardClient() {
       const sJson = await sRes.json();
       const tJson = await tRes.json();
       const aJson = await aRes.json();
-      const cJson = await cRes.json();
       const critJson = await critRes.json();
       const pJson = pRes ? await pRes.json() : null;
 
@@ -277,7 +280,6 @@ export function DashboardClient() {
       setSeries(tJson.series ?? []);
       setAlerts(aJson.alerts ?? []);
       setCriticalAlerts(critJson.alerts ?? []);
-      setClients(cJson.clients ?? []);
       setAdAccounts(sJson.adAccounts ?? []);
       setNote(null);
     } catch {
@@ -287,15 +289,31 @@ export function DashboardClient() {
     }
   }, [clientFilter, accountFilter, period, selectedTz, t]);
 
+  // Clientes têm filtro de data próprio (a seção fica embaixo, com período explícito).
+  const loadClients = useCallback(() => {
+    const qs = periodStateToQuery(clientsPeriod).toString();
+    fetch(`/api/clients?${qs}`)
+      .then((r) => r.json())
+      .then((j) => setClients(j.clients ?? []))
+      .catch(() => {});
+  }, [clientsPeriod]);
+
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
-    const onSync = () => void load();
+    loadClients();
+  }, [loadClients]);
+
+  useEffect(() => {
+    const onSync = () => {
+      void load();
+      loadClients();
+    };
     window.addEventListener("traffic-sync-done", onSync);
     return () => window.removeEventListener("traffic-sync-done", onSync);
-  }, [load]);
+  }, [load, loadClients]);
 
   const insights = useMemo(() => {
     const spark = series.map((p) => ({
@@ -616,7 +634,8 @@ export function DashboardClient() {
                 <div className="text-sm font-semibold">{t("clientsTitle")}</div>
                 <div className="text-xs text-slate-500">{t("clientsSubtitle")}</div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <PeriodFilter value={clientsPeriod} onChange={setClientsPeriod} />
                 <span className="text-xs text-slate-500">{t("clientMetricLabel")}:</span>
                 <select
                   value={clientMetric}

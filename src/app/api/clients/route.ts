@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { In } from "typeorm";
+import { Between, In } from "typeorm";
 import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
@@ -10,6 +10,7 @@ import {
   linkClientMetaAccounts
 } from "@/lib/link-client-meta";
 import { listTenantPages } from "@/lib/meta-discover";
+import { parsePeriodFromSearchParams } from "@/lib/report-period";
 
 // Criar cliente faz descoberta sob demanda da BM (poucas chamadas Meta) — dá folga.
 export const maxDuration = 30;
@@ -99,12 +100,15 @@ export async function POST(req: Request) {
   });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const { tenant } = await getAppContext();
   const clients = await listClientsForTenant(tenant.id);
 
   const { adAccount: adAccountRepo, metricSnapshot: metricsRepo, alert: alertRepo } =
     await repositories();
+
+  // Período opcional (since/until/all) — para que os cards reflitam uma data clara.
+  const period = parsePeriodFromSearchParams(new URL(req.url));
 
   const clientIds = clients.map((c) => c.id);
   const accounts = clientIds.length
@@ -112,8 +116,12 @@ export async function GET() {
     : [];
 
   const accountIds = accounts.map((a) => a.id);
+  const dayFilter =
+    !period.allTime && period.since && period.until
+      ? { day: Between(period.since, period.until) }
+      : {};
   const metrics = accountIds.length
-    ? await metricsRepo.find({ where: { adAccountId: In(accountIds) } })
+    ? await metricsRepo.find({ where: { adAccountId: In(accountIds), ...dayFilter } })
     : [];
 
   const result = await Promise.all(
