@@ -339,7 +339,8 @@
     "colCtr": "CTR",
     "colCpc": "CPC",
     "colCpm": "CPM",
-    "colBudget": "Daily budget"
+    "colBudget": "Daily budget",
+    "groupByType": "Group by type"
   },
   "campaignManager": {
     "loading": "Loading campaign…",

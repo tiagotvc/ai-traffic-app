@@ -32,6 +32,8 @@ import {
   type CampaignColumnWidths
 } from "@/lib/campaign-table-columns";
 import { formatBRL, formatPercent, formatRoas } from "@/lib/format";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
 
 type CampaignRow = {
   metaCampaignId: string;
@@ -51,12 +53,46 @@ type CampaignRow = {
   ctr?: number;
   cpc?: number;
   cpm?: number;
+  reach?: number;
+  messages?: number;
+  frequency?: number;
   dailyBudget?: number | null;
   alertCount: number;
   hasAlert: boolean;
   status?: string;
   objective?: string | null;
 };
+
+function campaignMetricValue(r: CampaignRow, key: MetricKey): number {
+  switch (key) {
+    case "spend":
+      return r.spend;
+    case "conversions":
+      return r.conversions;
+    case "roas":
+      return r.roas;
+    case "cpa":
+      return r.cpa ?? 0;
+    case "ctr":
+      return r.ctr ?? 0;
+    case "cpc":
+      return r.cpc ?? 0;
+    case "cpm":
+      return r.cpm ?? 0;
+    case "messages":
+      return r.messages ?? 0;
+    case "reach":
+      return r.reach ?? 0;
+    case "impressions":
+      return r.impressions ?? 0;
+    case "clicks":
+      return r.clicks ?? 0;
+    case "frequency":
+      return r.frequency ?? 0;
+    default:
+      return 0;
+  }
+}
 
 type ClientOption = { id: string; slug: string; name: string };
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
@@ -66,8 +102,12 @@ const PAGE_SIZES = [25, 50, 100, 200] as const;
 
 export function CampaignsHubClient() {
   const t = useTranslations("campaignsPage");
+  const tMetrics = useTranslations("metrics");
+  const tPresets = useTranslations("campaignPresets");
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
+  const [groupByType, setGroupByType] = useState(false);
+  const [presets, setPresets] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<CampaignRow[]>([]);
   const [total, setTotal] = useState(0);
   const [totals, setTotals] = useState<{ spend: number; conversions: number; leads: number }>({
@@ -102,6 +142,24 @@ export function CampaignsHubClient() {
   const requestIdRef = useRef(0);
   const selectedIdRef = useRef<string | null>(null);
   selectedIdRef.current = selectedId;
+
+  useEffect(() => {
+    fetch("/api/campaign-presets")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setPresets(j.presets ?? {});
+      })
+      .catch(() => {});
+  }, []);
+
+  function changePreset(metaCampaignId: string, preset: string) {
+    setPresets((prev) => ({ ...prev, [metaCampaignId]: preset }));
+    void fetch("/api/campaign-presets", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ metaCampaignId, preset })
+    });
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -151,8 +209,14 @@ export function CampaignsHubClient() {
         params.set("sort", sortKey);
         params.set("dir", sortDir);
       }
-      params.set("limit", String(pageSize));
-      params.set("offset", String((page - 1) * pageSize));
+      // Agrupado por tipo: traz todas as campanhas (sem paginação) para agrupar.
+      if (groupByType) {
+        params.set("limit", "500");
+        params.set("offset", "0");
+      } else {
+        params.set("limit", String(pageSize));
+        params.set("offset", String((page - 1) * pageSize));
+      }
 
       fetch(`/api/campaigns/list?${params.toString()}`, { signal: ac.signal })
         .then((r) => r.json())
@@ -198,7 +262,8 @@ export function CampaignsHubClient() {
       page,
       pageSize,
       sortKey,
-      sortDir
+      sortDir,
+      groupByType
     ]
   );
 
@@ -464,7 +529,18 @@ export function CampaignsHubClient() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SyncRefreshButton />
-          <CampaignColumnsPicker onChange={setColumns} />
+          <button
+            type="button"
+            onClick={() => setGroupByType((v) => !v)}
+            className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+              groupByType
+                ? "border-violet-300 bg-violet-100 text-violet-700"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {t("groupByType")}
+          </button>
+          {!groupByType ? <CampaignColumnsPicker onChange={setColumns} /> : null}
           <button
             type="button"
             onClick={() => load({ live: true, refresh: true })}
@@ -636,6 +712,89 @@ export function CampaignsHubClient() {
         </p>
       ) : null}
 
+      {groupByType ? (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
+          ) : rows.length === 0 ? (
+            <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
+          ) : (
+            CAMPAIGN_PRESETS.map((preset) => {
+              const list = rows.filter(
+                (r) => (presets[r.metaCampaignId] ?? "default") === preset
+              );
+              if (!list.length) return null;
+              const metrics = presetMetricsFor(preset);
+              return (
+                <div key={preset} className="ui-card overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                    <div className="text-sm font-semibold text-slate-800">
+                      {tPresets(preset)}{" "}
+                      <span className="font-normal text-slate-400">({list.length})</span>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[680px] text-left text-sm">
+                      <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                        <tr>
+                          <th className="px-4 py-2">{t("colCampaign")}</th>
+                          <th className="px-3 py-2">{t("colClient")}</th>
+                          <th className="px-3 py-2">{tPresets("label")}</th>
+                          {metrics.map((m) => (
+                            <th key={m} className="px-3 py-2 text-right">
+                              {tMetrics(METRIC_BY_KEY[m].label)}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map((r) => (
+                          <tr
+                            key={r.metaCampaignId}
+                            className="border-t border-slate-100 hover:bg-violet-50/40"
+                          >
+                            <td className="px-4 py-2.5">
+                              <button
+                                type="button"
+                                onClick={() => pickCampaign(r)}
+                                className="text-left font-medium text-slate-800 hover:text-violet-700 hover:underline"
+                              >
+                                {r.campaignName}
+                              </button>
+                            </td>
+                            <td className="px-3 py-2.5 text-slate-600">{r.clientName}</td>
+                            <td className="px-3 py-2.5">
+                              <select
+                                value={presets[r.metaCampaignId] ?? "default"}
+                                onChange={(e) => changePreset(r.metaCampaignId, e.target.value)}
+                                className="ui-select !w-auto !py-1.5 text-xs"
+                              >
+                                {CAMPAIGN_PRESETS.map((p) => (
+                                  <option key={p} value={p}>
+                                    {tPresets(p)}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            {metrics.map((m) => (
+                              <td
+                                key={m}
+                                className="px-3 py-2.5 text-right tabular-nums text-slate-700"
+                              >
+                                {formatMetricValue(m, campaignMetricValue(r, m), locale)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
@@ -752,6 +911,7 @@ export function CampaignsHubClient() {
           </div>
         </div>
       </div>
+      )}
 
       {selectedId ? (
         <div ref={detailRef} className="space-y-2 scroll-mt-4">

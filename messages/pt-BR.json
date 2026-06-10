@@ -339,7 +339,8 @@
     "objectiveTraffic": "Tráfego",
     "colStatus": "Status",
     "tabOverview": "Visão geral",
-    "tabAdsets": "Conjuntos e anúncios"
+    "tabAdsets": "Conjuntos e anúncios",
+    "groupByType": "Agrupar por tipo"
   },
   "campaignManager": {
     "loading": "Carregando campanha…",
