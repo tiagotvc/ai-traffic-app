@@ -228,7 +228,11 @@ export function DashboardClient() {
       const [sRes, tRes, aRes, critRes, pRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
         fetch(`/api/dashboard/timeseries?${curQ}`),
-        fetch("/api/alerts/variations?level=general&days=30"),
+        fetch(
+          `/api/alerts/variations?level=client&days=30${
+            clientFilter ? `&clientId=${encodeURIComponent(clientFilter)}` : ""
+          }`
+        ),
         fetch("/api/alerts?severity=critical&limit=8"),
         previous
           ? fetch(`/api/dashboard/summary?${buildQuery(clientFilter, accountFilter, previous)}`)
@@ -591,16 +595,15 @@ export function DashboardClient() {
                     return (
                       <div key={v.id} className="rounded-xl border border-slate-200 p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-slate-700">
-                            {tMetrics(METRIC_BY_KEY[v.metric].label)}
+                          <span className="truncate text-xs font-semibold text-slate-800">
+                            {v.entityName ?? tMetrics(METRIC_BY_KEY[v.metric].label)}
                           </span>
-                          <span className={`text-xs font-semibold ${color}`}>
+                          <span className={`shrink-0 text-xs font-semibold ${color}`}>
                             {v.direction === "up" ? "▲" : "▼"} {Math.abs(v.deltaPct).toFixed(0)}%
                           </span>
                         </div>
                         <div className="mt-0.5 text-[11px] text-slate-400">
-                          {v.entityName ? `${v.entityName} · ` : ""}
-                          {t("vsPrevPeriod")}
+                          {tMetrics(METRIC_BY_KEY[v.metric].label)} · {t("vsPrevPeriod")}
                         </div>
                       </div>
                     );

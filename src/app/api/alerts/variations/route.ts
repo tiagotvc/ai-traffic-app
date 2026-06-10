@@ -162,10 +162,14 @@ export async function GET(req: Request) {
 
   const clients = await listClientsForTenant(tenant.id);
   const clientById = new Map(clients.map((c) => [c.id, c]));
+  // Aceita id OU slug do cliente (o Destaques passa o slug).
+  const filterClient = clientIdFilter
+    ? clients.find((c) => c.id === clientIdFilter || slugify(c.name) === clientIdFilter)
+    : null;
   let accounts = clients.length
     ? await adAccountRepo.find({ where: { clientId: In(clients.map((c) => c.id)) } })
     : [];
-  if (clientIdFilter) accounts = accounts.filter((a) => a.clientId === clientIdFilter);
+  if (clientIdFilter) accounts = accounts.filter((a) => a.clientId === filterClient?.id);
 
   const accountIds = accounts.map((a) => a.id);
   const accountToClient = new Map(accounts.map((a) => [a.id, a.clientId]));

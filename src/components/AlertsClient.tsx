@@ -43,7 +43,7 @@ export function AlertsClient() {
   const locale = useLocale();
 
   const [days, setDays] = useState<number>(30);
-  const [level, setLevel] = useState<Level>("general");
+  const [level, setLevel] = useState<Level>("client");
   const [clientId, setClientId] = useState("");
   const [items, setItems] = useState<VariationItem[]>([]);
   const [counts, setCounts] = useState({ total: 0, worse: 0, better: 0 });
