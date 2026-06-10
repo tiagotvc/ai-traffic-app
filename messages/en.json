@@ -527,7 +527,8 @@
     "clicks": "Clicks",
     "cpa": "Cost per conversion",
     "timezoneLabel": "Timezone",
-    "timezoneHint": "Timezone used to define \"today\". When an account is selected, uses the timezone configured for it on Meta."
+    "timezoneHint": "Timezone used to define \"today\". When an account is selected, uses the timezone configured for it on Meta.",
+    "highlights": "Highlights"
   },
   "clientsHub": {
     "title": "Client hub",

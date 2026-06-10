@@ -527,7 +527,8 @@
     "clicks": "Cliques",
     "cpa": "Custo por conversão",
     "timezoneLabel": "Fuso",
-    "timezoneHint": "Fuso horário usado para definir \"hoje\". Quando uma conta é selecionada, usa o fuso configurado nela na Meta."
+    "timezoneHint": "Fuso horário usado para definir \"hoje\". Quando uma conta é selecionada, usa o fuso configurado nela na Meta.",
+    "highlights": "Destaques"
   },
   "clientsHub": {
     "title": "Hub de clientes",

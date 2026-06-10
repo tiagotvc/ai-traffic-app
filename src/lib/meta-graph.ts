@@ -436,18 +436,27 @@ const INSIGHT_METRIC_FIELDS = [
   "date_start"
 ];
 
-export async function fetchAccountInsightsDaily(accessToken: string, adAccountId: string): Promise<MetaInsightRow[]> {
+/**
+ * `last_30d` da Meta NÃO inclui o dia de hoje. Para enxergar o dia corrente,
+ * sincronizamos também com `date_preset=today` (a Meta resolve no fuso da conta).
+ */
+export async function fetchAccountInsightsDaily(
+  accessToken: string,
+  adAccountId: string,
+  datePreset = "last_30d"
+): Promise<MetaInsightRow[]> {
   const fields = INSIGHT_METRIC_FIELDS.join(",");
-  const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d&limit=500`;
+  const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=${datePreset}&limit=500`;
   return fetchGraphPaged<MetaInsightRow>(path, accessToken);
 }
 
 export async function fetchCampaignInsightsDaily(
   accessToken: string,
-  adAccountId: string
+  adAccountId: string,
+  datePreset = "last_30d"
 ): Promise<MetaCampaignInsightRow[]> {
   const fields = ["campaign_id", "campaign_name", ...INSIGHT_METRIC_FIELDS].join(",");
-  const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=last_30d&limit=500`;
+  const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=${datePreset}&limit=500`;
   return fetchGraphPaged<MetaCampaignInsightRow>(path, accessToken);
 }
 

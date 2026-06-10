@@ -21,7 +21,12 @@ export async function runMetaSyncForAccount(input: {
 }) {
   const { metricSnapshot: metricsRepo, campaignMetricSnapshot: campRepo } = await repositories();
 
-  const rows = await fetchAccountInsightsDaily(input.metaAccessToken, input.metaAdAccountId);
+  // last_30d (histórico, exclui hoje) + today (dia corrente no fuso da conta).
+  const [historyRows, todayRows] = await Promise.all([
+    fetchAccountInsightsDaily(input.metaAccessToken, input.metaAdAccountId),
+    fetchAccountInsightsDaily(input.metaAccessToken, input.metaAdAccountId, "today").catch(() => [])
+  ]);
+  const rows = [...historyRows, ...todayRows];
   for (const r of rows) {
     const day = r.date_start;
     if (!day) continue;
@@ -75,7 +80,11 @@ export async function runMetaSyncForAccount(input: {
   );
   const statusByCampaign = new Map(campaigns.map((c) => [c.id, c.status ?? null]));
 
-  const campRows = await fetchCampaignInsightsDaily(input.metaAccessToken, input.metaAdAccountId);
+  const [campHistory, campToday] = await Promise.all([
+    fetchCampaignInsightsDaily(input.metaAccessToken, input.metaAdAccountId),
+    fetchCampaignInsightsDaily(input.metaAccessToken, input.metaAdAccountId, "today").catch(() => [])
+  ]);
+  const campRows = [...campHistory, ...campToday];
 
   for (const r of campRows) {
     const day = r.date_start;
