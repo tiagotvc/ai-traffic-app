@@ -605,7 +605,9 @@
       "selectedCount": "{count} selecionada(s)",
       "loadingAccounts": "Carregando contas…",
       "noAvailableAccounts": "Nenhuma conta disponível. Conecte ou atualize seus ativos Meta."
-    }
+    },
+    "todaySummary": "Resumo de hoje",
+    "edit": "Editar"
   },
   "period": {
     "today": "Hoje",
@@ -1207,5 +1209,19 @@
     "selling1": "Insights detalhados das suas campanhas",
     "selling2": "Gerencie anúncios com o mínimo de esforço",
     "selling3": "Crie e teste novas campanhas"
+  },
+  "clientOverview": {
+    "breadcrumb": "Clientes",
+    "client": "Cliente",
+    "editButton": "Editar",
+    "vsPrev": "vs. anterior",
+    "performance": "Performance Geral",
+    "seeMore": "Ver mais",
+    "noChartData": "Sem dados no período",
+    "campaignsTitle": "Campanhas ativas",
+    "colCampaign": "Campanha",
+    "colStatus": "Status",
+    "noCampaigns": "Nenhuma campanha ativa no período.",
+    "loading": "Carregando…"
   }
 }

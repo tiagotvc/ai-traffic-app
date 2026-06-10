@@ -1,10 +1,11 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { CreateClientWizard } from "@/components/CreateClientWizard";
 import { Link } from "@/i18n/navigation";
+import { formatBRL, formatNumber, formatRoas } from "@/lib/format";
 
 type ClientRow = {
   id: string;
@@ -13,6 +14,7 @@ type ClientRow = {
   roas: number;
   accounts: number;
   alertCount: number;
+  metrics?: { spend?: number; conversions?: number; roas?: number };
 };
 
 function isProtectedClient(name: string, slug: string) {
@@ -21,6 +23,8 @@ function isProtectedClient(name: string, slug: string) {
 
 export function ClientsHubClient() {
   const t = useTranslations("clientsHub");
+  const tMetrics = useTranslations("metrics");
+  const locale = useLocale();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -40,7 +44,8 @@ export function ClientsHubClient() {
     deletableClients.length > 0 && deletableClients.every((c) => selected[c.id]);
 
   const reload = useCallback(() => {
-    fetch("/api/clients")
+    // period=today: o card mostra o resumo do dia do cliente.
+    fetch("/api/clients?period=today")
       .then((r) => r.json())
       .then((j) => setClients(j.clients ?? []));
   }, []);
@@ -201,6 +206,45 @@ export function ClientsHubClient() {
                     {t("deleteClient")}
                   </button>
                 ) : null}
+              </div>
+
+              {/* Resumo do dia */}
+              <Link
+                href={`/clients/${c.slug}`}
+                className="mt-3 block rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 hover:bg-slate-100"
+              >
+                <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                  {t("todaySummary")}
+                </div>
+                <div className="mt-1.5 grid grid-cols-3 gap-2">
+                  <div>
+                    <div className="text-[10px] text-slate-500">{tMetrics("spend")}</div>
+                    <div className="text-sm font-semibold text-slate-800">
+                      {formatBRL(c.metrics?.spend ?? 0, locale)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500">{tMetrics("conversions")}</div>
+                    <div className="text-sm font-semibold text-slate-800">
+                      {formatNumber(c.metrics?.conversions ?? 0, locale)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500">{tMetrics("roas")}</div>
+                    <div className="text-sm font-semibold text-emerald-600">
+                      {(c.metrics?.roas ?? 0) > 0 ? formatRoas(c.metrics?.roas ?? 0, locale) : "—"}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              <div className="mt-2 flex justify-end">
+                <Link
+                  href={`/clients/${c.slug}/settings`}
+                  className="text-xs font-medium text-violet-600 hover:text-violet-500"
+                >
+                  {t("edit")}
+                </Link>
               </div>
             </div>
           );

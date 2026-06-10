@@ -605,7 +605,9 @@
       "selectedCount": "{count} selected",
       "loadingAccounts": "Loading accounts…",
       "noAvailableAccounts": "No accounts available. Connect or refresh your Meta assets."
-    }
+    },
+    "todaySummary": "Today summary",
+    "edit": "Edit"
   },
   "period": {
     "today": "Today",
@@ -1207,5 +1209,19 @@
     "selling1": "Detailed campaign insights",
     "selling2": "Manage ads with minimal effort",
     "selling3": "Launch and test new campaigns"
+  },
+  "clientOverview": {
+    "breadcrumb": "Clients",
+    "client": "Client",
+    "editButton": "Edit",
+    "vsPrev": "vs. previous",
+    "performance": "Overall performance",
+    "seeMore": "See more",
+    "noChartData": "No data in the period",
+    "campaignsTitle": "Active campaigns",
+    "colCampaign": "Campaign",
+    "colStatus": "Status",
+    "noCampaigns": "No active campaigns in the period.",
+    "loading": "Loading…"
   }
 }
