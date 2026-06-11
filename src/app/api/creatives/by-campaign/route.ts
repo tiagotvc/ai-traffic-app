@@ -91,6 +91,7 @@ export async function GET(req: Request) {
 
   const byCampaign = new Map<string, CampAgg>();
   const diag: Array<Record<string, unknown>> = [];
+  const warnings: Array<{ account: string; label: string }> = [];
 
   for (const acc of accounts) {
     const { ads, ok, errors } = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
@@ -100,6 +101,9 @@ export async function GET(req: Request) {
           until: period.until
         })
       : new Map();
+    if (!ok && errors > 0) {
+      warnings.push({ account: acc.metaAdAccountId, label: acc.label ?? acc.metaAdAccountId });
+    }
     if (debug) {
       diag.push({
         account: acc.metaAdAccountId,
@@ -206,5 +210,5 @@ export async function GET(req: Request) {
     .filter((c) => c.creatives.length > 0)
     .sort((a, b) => b.spend - a.spend);
 
-  return NextResponse.json({ ok: true, campaigns, ...(debug ? { diag } : {}) });
+  return NextResponse.json({ ok: true, campaigns, warnings, ...(debug ? { diag } : {}) });
 }

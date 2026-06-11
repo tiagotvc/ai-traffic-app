@@ -1387,6 +1387,8 @@
     "usageTab": "Onde é usado",
     "usageEmpty": "Não foi possível localizar onde este criativo é usado.",
     "usageAdsets": "Conjuntos",
-    "usageAds": "Anúncios"
+    "usageAds": "Anúncios",
+    "accessWarningTitle": "Sem acesso a uma ou mais contas na Meta",
+    "accessWarningBody": "Os criativos destas contas não aparecem até liberar o acesso na Meta:"
   }
 }

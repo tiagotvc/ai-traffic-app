@@ -44,6 +44,7 @@ export function CreativesByCampaignView({
   const tCampaigns = useTranslations("campaignsPage");
   const locale = useLocale();
   const [campaigns, setCampaigns] = useState<CampaignBlock[]>([]);
+  const [warnings, setWarnings] = useState<Array<{ account: string; label: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [previewing, setPreviewing] = useState<CreativeItem | null>(null);
 
@@ -56,7 +57,10 @@ export function CreativesByCampaignView({
     fetch(`/api/creatives/by-campaign?clientId=${encodeURIComponent(clientId)}&${periodQuery}`)
       .then((r) => r.json())
       .then((j) => {
-        if (j.ok) setCampaigns(j.campaigns ?? []);
+        if (j.ok) {
+          setCampaigns(j.campaigns ?? []);
+          setWarnings(j.warnings ?? []);
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -84,12 +88,29 @@ export function CreativesByCampaignView({
   if (loading) {
     return <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />;
   }
+
+  const banner =
+    warnings.length > 0 ? (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p className="font-medium">{t("accessWarningTitle")}</p>
+        <p className="mt-0.5 text-xs">
+          {t("accessWarningBody")} {warnings.map((w) => w.label).join(", ")}
+        </p>
+      </div>
+    ) : null;
+
   if (!campaigns.length) {
-    return <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>;
+    return (
+      <div className="space-y-4">
+        {banner}
+        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-5">
+      {banner}
       {campaigns.map((camp) => {
         const metrics = presetMetricsFor(camp.preset);
         return (

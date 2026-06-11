@@ -1387,6 +1387,8 @@
     "usageTab": "Where used",
     "usageEmpty": "Could not locate where this creative is used.",
     "usageAdsets": "Ad sets",
-    "usageAds": "Ads"
+    "usageAds": "Ads",
+    "accessWarningTitle": "No access to one or more ad accounts on Meta",
+    "accessWarningBody": "Creatives from these accounts will not show until access is granted on Meta:"
   }
 }
