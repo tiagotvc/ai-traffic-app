@@ -76,6 +76,26 @@ export async function getTenantMetaAccessToken(
   return undefined;
 }
 
+/**
+ * TODOS os tokens Meta disponíveis no workspace (sessão + de cada usuário que
+ * conectou). Usado em leitura de criativos para alcançar contas que só um dos
+ * usuários conectados tem acesso. Ordem: sessão primeiro (mais fresco).
+ */
+export async function getAllTenantMetaTokens(
+  tenantId: string,
+  sessionToken?: string | null
+): Promise<string[]> {
+  const { user: userRepo } = await repositories();
+  const users = await userRepo.find({ where: { tenantId }, select: { id: true } });
+  const tokens: string[] = [];
+  if (sessionToken) tokens.push(sessionToken);
+  for (const u of users) {
+    const token = await getStoredMetaAccessToken(u.id);
+    if (token) tokens.push(token);
+  }
+  return [...new Set(tokens)];
+}
+
 export type MetaConnectionInfo = {
   role: "admin" | "member";
   tokenSource: "workspace" | "own" | null;

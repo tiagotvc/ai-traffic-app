@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, slugify } from "@/lib/app-context";
-import { resolveMetaTokensForApi } from "@/lib/campaign-detail-api";
+import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { fetchAdRef } from "@/lib/meta-graph";
 import { fetchAdsForAccountAnyToken } from "@/lib/creatives-data";
 
@@ -13,13 +13,8 @@ export async function GET(
   { params }: { params: Promise<{ metaAdId: string }> }
 ) {
   const { metaAdId } = await params;
-  const { tenant, user, metaAccessToken: ctxToken } = await getAppContext();
-  const { metaAccessToken, fallbackMetaToken } = await resolveMetaTokensForApi(
-    tenant.id,
-    user.id,
-    ctxToken
-  );
-  const tokens = [metaAccessToken, fallbackMetaToken].filter(Boolean) as string[];
+  const { tenant, metaAccessToken: ctxToken } = await getAppContext();
+  const tokens = await getAllTenantMetaTokens(tenant.id, ctxToken);
   if (!tokens.length) return NextResponse.json({ ok: true, campaigns: [], clientSlug: "" });
 
   let ref = { accountId: null as string | null, creativeId: null as string | null };

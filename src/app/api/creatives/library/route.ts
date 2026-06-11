@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
-import { resolveMetaTokensForApi } from "@/lib/campaign-detail-api";
+import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { type AdInsightMetrics, type CreativeAssetType } from "@/lib/meta-graph";
 import {
   fetchAdsForAccountAnyToken,
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const clientIdParam = url.searchParams.get("clientId");
   const period = parsePeriodFromSearchParams(url);
-  const { tenant, user, metaAccessToken: ctxToken } = await getAppContext();
+  const { tenant, metaAccessToken: ctxToken } = await getAppContext();
 
   if (!clientIdParam) return NextResponse.json({ ok: true, rows: [], total: 0 });
   const client = await getClientBySlugOrId(tenant.id, clientIdParam);
@@ -57,12 +57,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
   }
 
-  const { metaAccessToken, fallbackMetaToken } = await resolveMetaTokensForApi(
-    tenant.id,
-    user.id,
-    ctxToken
-  );
-  const tokens = [metaAccessToken, fallbackMetaToken].filter(Boolean) as string[];
+  const tokens = await getAllTenantMetaTokens(tenant.id, ctxToken);
   if (!tokens.length) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
