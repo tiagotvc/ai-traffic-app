@@ -1349,6 +1349,15 @@
     "colCampaigns": "Used in campaigns",
     "view": "View",
     "download": "Download",
-    "close": "Close"
+    "close": "Close",
+    "fmtAd": "Ad",
+    "fmtImage": "Image",
+    "fmtMobile": "Mobile feed",
+    "fmtDesktop": "Desktop feed",
+    "fmtInstagram": "Instagram",
+    "fmtStory": "Stories",
+    "previewLoading": "Generating preview…",
+    "previewUnavailable": "Preview unavailable",
+    "exportPdf": "Export PDF"
   }
 }

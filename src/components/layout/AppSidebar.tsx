@@ -105,7 +105,7 @@ export function AppSidebar({
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col bg-[#0f111a] text-slate-400 transition-[width] duration-200 ease-in-out ${
+      className={`flex h-full shrink-0 flex-col bg-[#0f111a] text-slate-400 transition-[width] duration-200 ease-in-out print:hidden ${
         collapsed ? "w-[72px]" : "w-[260px]"
       }`}
     >

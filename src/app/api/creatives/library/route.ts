@@ -11,6 +11,7 @@ import {
 } from "@/lib/meta-graph";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
+import { parsePeriodFromSearchParams } from "@/lib/report-period";
 
 export const maxDuration = 60;
 
@@ -29,6 +30,7 @@ type Agg = {
   type: CreativeAssetType;
   thumbnailUrl?: string;
   imageUrl?: string;
+  firstAdId?: string;
   spend: number;
   impressions: number;
   clicks: number;
@@ -44,7 +46,9 @@ type Agg = {
 };
 
 export async function GET(req: Request) {
-  const clientIdParam = new URL(req.url).searchParams.get("clientId");
+  const url = new URL(req.url);
+  const clientIdParam = url.searchParams.get("clientId");
+  const period = parsePeriodFromSearchParams(url);
   const { tenant, user, metaAccessToken: ctxToken } = await getAppContext();
 
   if (!clientIdParam) return NextResponse.json({ ok: true, rows: [], total: 0 });
@@ -76,7 +80,10 @@ export async function GET(req: Request) {
     try {
       [ads, insights] = await Promise.all([
         fetchAdsWithUsageForAccount(token, acc.metaAdAccountId),
-        fetchAdInsightsForAccount(token, acc.metaAdAccountId)
+        fetchAdInsightsForAccount(token, acc.metaAdAccountId, {
+          since: period.since,
+          until: period.until
+        })
       ]);
     } catch {
       continue;
@@ -112,6 +119,7 @@ export async function GET(req: Request) {
       }
       if (!agg.thumbnailUrl && ad.thumbnailUrl) agg.thumbnailUrl = ad.thumbnailUrl;
       if (!agg.imageUrl && ad.imageUrl) agg.imageUrl = ad.imageUrl;
+      if (!agg.firstAdId || ad.status === "ACTIVE") agg.firstAdId = ad.id;
       agg.ads.add(ad.id);
       if (ad.campaignId) {
         agg.campaigns.add(ad.campaignName ?? ad.campaignId);
@@ -197,6 +205,7 @@ export async function GET(req: Request) {
       usageCampaigns: a.campaigns.size,
       thumbnailUrl: a.thumbnailUrl ?? null,
       imageUrl: a.imageUrl ?? a.thumbnailUrl ?? null,
+      adId: a.firstAdId ?? null,
       dominantPreset,
       metrics
     };

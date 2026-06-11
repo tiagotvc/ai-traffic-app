@@ -1349,6 +1349,15 @@
     "colCampaigns": "Campanhas onde é usado",
     "view": "Ver",
     "download": "Baixar",
-    "close": "Fechar"
+    "close": "Fechar",
+    "fmtAd": "Anúncio",
+    "fmtImage": "Imagem",
+    "fmtMobile": "Feed mobile",
+    "fmtDesktop": "Feed desktop",
+    "fmtInstagram": "Instagram",
+    "fmtStory": "Stories",
+    "previewLoading": "Gerando preview…",
+    "previewUnavailable": "Preview indisponível",
+    "exportPdf": "Exportar PDF"
   }
 }

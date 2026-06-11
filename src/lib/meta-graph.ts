@@ -941,12 +941,18 @@ const AD_INSIGHT_FIELDS =
 export async function fetchAdInsightsForAccount(
   accessToken: string,
   adAccountId: string,
-  datePreset = "last_30d"
+  opts?: { datePreset?: string; since?: string | null; until?: string | null }
 ): Promise<Map<string, AdInsightMetrics>> {
   const map = new Map<string, AdInsightMetrics>();
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const range =
+    opts?.since && opts?.until
+      ? `time_range=${encodeURIComponent(
+          JSON.stringify({ since: opts.since.slice(0, 10), until: opts.until.slice(0, 10) })
+        )}`
+      : `date_preset=${opts?.datePreset ?? "last_30d"}`;
   try {
-    const path = `/${encodeURIComponent(act)}/insights?level=ad&fields=${encodeURIComponent(AD_INSIGHT_FIELDS)}&date_preset=${datePreset}&limit=500`;
+    const path = `/${encodeURIComponent(act)}/insights?level=ad&fields=${encodeURIComponent(AD_INSIGHT_FIELDS)}&${range}&limit=500`;
     const rows = await fetchGraphPaged<MetaInsightRow & { ad_id?: string }>(path, accessToken);
     for (const row of rows) {
       const entry = parseAdInsightRow(row);
@@ -956,6 +962,26 @@ export async function fetchAdInsightsForAccount(
     /* sem insights */
   }
   return map;
+}
+
+/** Preview real do anúncio (iframe renderizado pela Meta). Retorna a URL do iframe. */
+export async function fetchAdPreview(
+  accessToken: string,
+  adId: string,
+  format = "MOBILE_FEED_STANDARD"
+): Promise<string | null> {
+  try {
+    const data = await metaFetch<{ data?: Array<{ body?: string }> }>(
+      `/${encodeURIComponent(adId)}/previews?ad_format=${encodeURIComponent(format)}`,
+      accessToken
+    );
+    const body = data.data?.[0]?.body;
+    if (!body) return null;
+    const match = body.match(/src=["']([^"']+)["']/i);
+    return match ? match[1].replace(/&amp;/g, "&") : null;
+  } catch {
+    return null;
+  }
 }
 
 export type AdUsageRow = {

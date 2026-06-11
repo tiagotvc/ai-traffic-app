@@ -8,11 +8,13 @@ import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
 
 type CreativeItem = {
   name: string;
   type: string;
   status: string;
+  adId: string | null;
   adsCount: number;
   thumbnailUrl: string | null;
   imageUrl: string | null;
@@ -29,10 +31,12 @@ type CampaignBlock = {
 
 export function CreativesByCampaignView({
   clientId,
-  clientSlug
+  clientSlug,
+  periodQuery = ""
 }: {
   clientId: string;
   clientSlug?: string;
+  periodQuery?: string;
 }) {
   const t = useTranslations("creativesPerf");
   const tMetrics = useTranslations("metrics");
@@ -41,7 +45,7 @@ export function CreativesByCampaignView({
   const locale = useLocale();
   const [campaigns, setCampaigns] = useState<CampaignBlock[]>([]);
   const [loading, setLoading] = useState(false);
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState<CreativeItem | null>(null);
 
   const load = useCallback(() => {
     if (!clientId) {
@@ -49,14 +53,14 @@ export function CreativesByCampaignView({
       return;
     }
     setLoading(true);
-    fetch(`/api/creatives/by-campaign?clientId=${encodeURIComponent(clientId)}`)
+    fetch(`/api/creatives/by-campaign?clientId=${encodeURIComponent(clientId)}&${periodQuery}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) setCampaigns(j.campaigns ?? []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [clientId]);
+  }, [clientId, periodQuery]);
 
   useEffect(() => {
     load();
@@ -101,7 +105,7 @@ export function CreativesByCampaignView({
                     {c.thumbnailUrl ? (
                       <button
                         type="button"
-                        onClick={() => setLightboxUrl(c.imageUrl ?? c.thumbnailUrl)}
+                        onClick={() => setPreviewing(c)}
                         className="h-16 w-16 shrink-0 overflow-hidden rounded-lg"
                         title={t("view")}
                       >
@@ -136,7 +140,7 @@ export function CreativesByCampaignView({
                       <div className="mt-0.5 flex gap-2">
                         <button
                           type="button"
-                          onClick={() => setLightboxUrl(c.imageUrl ?? c.thumbnailUrl)}
+                          onClick={() => setPreviewing(c)}
                           className="text-[11px] font-medium text-violet-600 hover:underline"
                         >
                           {t("view")}
@@ -171,27 +175,14 @@ export function CreativesByCampaignView({
         );
       })}
 
-      {lightboxUrl ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4"
-          onMouseDown={() => setLightboxUrl(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setLightboxUrl(null)}
-            className="absolute right-4 top-4 rounded-lg bg-white/10 px-3 py-1.5 text-lg text-white hover:bg-white/20"
-            aria-label={t("close")}
-          >
-            ✕
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightboxUrl}
-            alt=""
-            onMouseDown={(e) => e.stopPropagation()}
-            className="max-h-[92vh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
-          />
-        </div>
+      {previewing ? (
+        <CreativePreviewModal
+          adId={previewing.adId}
+          imageUrl={previewing.imageUrl ?? previewing.thumbnailUrl}
+          name={previewing.name}
+          downloadHref={dl(previewing)}
+          onClose={() => setPreviewing(null)}
+        />
       ) : null}
     </div>
   );

@@ -5,14 +5,18 @@ import { useEffect, useState } from "react";
 
 import { CreativesLibraryView } from "@/components/creatives/CreativesLibraryView";
 import { CreativesByCampaignView } from "@/components/creatives/CreativesByCampaignView";
+import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 
 type ClientRow = { id: string; slug: string; name: string };
 
 export function CreativesLibraryClient() {
   const t = useTranslations("creatives");
+  const tPerf = useTranslations("creativesPerf");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState("");
   const [view, setView] = useState<"library" | "byCampaign">("library");
+  const [period, setPeriod] = useState<PeriodState>({ preset: "last30", since: "", until: "" });
+  const periodQuery = periodStateToQuery(period).toString();
 
   useEffect(() => {
     fetch("/api/clients")
@@ -38,7 +42,7 @@ export function CreativesLibraryClient() {
           </h1>
           <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
           <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5 shadow-sm">
             {(["library", "byCampaign"] as const).map((v) => (
               <button
@@ -53,6 +57,7 @@ export function CreativesLibraryClient() {
               </button>
             ))}
           </div>
+          <PeriodFilter value={period} onChange={setPeriod} />
           <span className="text-xs text-slate-500">{t("clientLabel")}:</span>
           <select
             value={clientId}
@@ -65,18 +70,28 @@ export function CreativesLibraryClient() {
               </option>
             ))}
           </select>
+          {view === "byCampaign" ? (
+            <button type="button" onClick={() => window.print()} className="ui-btn-secondary text-sm">
+              ⬇ {tPerf("exportPdf")}
+            </button>
+          ) : null}
         </div>
       </div>
 
       {clientId ? (
         view === "library" ? (
           <CreativesLibraryView
-            key={clientId}
-            fetchUrl={`/api/creatives/library?clientId=${encodeURIComponent(clientId)}`}
+            key={`${clientId}-${periodQuery}`}
+            fetchUrl={`/api/creatives/library?clientId=${encodeURIComponent(clientId)}&${periodQuery}`}
             translationNs="creatives"
           />
         ) : (
-          <CreativesByCampaignView key={clientId} clientId={clientId} clientSlug={clientId} />
+          <CreativesByCampaignView
+            key={`${clientId}-${periodQuery}`}
+            clientId={clientId}
+            clientSlug={clientId}
+            periodQuery={periodQuery}
+          />
         )
       ) : null}
     </div>

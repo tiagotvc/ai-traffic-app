@@ -11,6 +11,7 @@ import {
 } from "@/lib/meta-graph";
 import { type MetricKey } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
+import { parsePeriodFromSearchParams } from "@/lib/report-period";
 
 export const maxDuration = 60;
 
@@ -21,6 +22,7 @@ type CreAgg = {
   type: CreativeAssetType;
   thumbnailUrl?: string;
   imageUrl?: string;
+  firstAdId?: string;
   ads: Set<string>;
   anyActive: boolean;
   spend: number;
@@ -58,7 +60,9 @@ function metricsOf(a: CreAgg): Partial<Record<MetricKey, number>> {
 }
 
 export async function GET(req: Request) {
-  const clientIdParam = new URL(req.url).searchParams.get("clientId");
+  const url = new URL(req.url);
+  const clientIdParam = url.searchParams.get("clientId");
+  const period = parsePeriodFromSearchParams(url);
   const { tenant, user, metaAccessToken: ctxToken } = await getAppContext();
 
   if (!clientIdParam) return NextResponse.json({ ok: true, campaigns: [] });
@@ -90,7 +94,10 @@ export async function GET(req: Request) {
     try {
       [ads, insights] = await Promise.all([
         fetchAdsWithUsageForAccount(token, acc.metaAdAccountId),
-        fetchAdInsightsForAccount(token, acc.metaAdAccountId)
+        fetchAdInsightsForAccount(token, acc.metaAdAccountId, {
+          since: period.since,
+          until: period.until
+        })
       ]);
     } catch {
       continue;
@@ -133,6 +140,7 @@ export async function GET(req: Request) {
       }
       if (!cre.thumbnailUrl && ad.thumbnailUrl) cre.thumbnailUrl = ad.thumbnailUrl;
       if (!cre.imageUrl && ad.imageUrl) cre.imageUrl = ad.imageUrl;
+      if (!cre.firstAdId || ad.status === "ACTIVE") cre.firstAdId = ad.id;
       cre.ads.add(ad.id);
       if (ad.status === "ACTIVE") cre.anyActive = true;
 
@@ -162,6 +170,7 @@ export async function GET(req: Request) {
           name: a.name,
           type: a.type,
           status: a.anyActive ? "ACTIVE" : "PAUSED",
+          adId: a.firstAdId ?? null,
           adsCount: a.ads.size,
           thumbnailUrl: a.thumbnailUrl ?? null,
           imageUrl: a.imageUrl ?? a.thumbnailUrl ?? null,

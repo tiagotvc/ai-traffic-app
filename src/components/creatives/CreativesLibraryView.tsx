@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
+import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
 
 export type CreativeRow = {
   id: string;
@@ -25,6 +26,7 @@ export type CreativeRow = {
   createdAt?: string;
   thumbnailUrl?: string | null;
   imageUrl?: string | null;
+  adId?: string | null;
   dominantPreset?: string;
   metrics?: Partial<Record<MetricKey, number>>;
 };
@@ -75,7 +77,7 @@ export function CreativesLibraryView({
   const [rows, setRows] = useState<CreativeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [tab, setTab] = useState<"all" | "active" | "testing" | "paused" | "archived">("all");
 
   function dlUrl(r: CreativeRow) {
@@ -393,7 +395,7 @@ export function CreativesLibraryView({
             {selected.thumbnailUrl || selected.imageUrl ? (
               <button
                 type="button"
-                onClick={() => setLightboxUrl(selected.imageUrl ?? selected.thumbnailUrl ?? null)}
+                onClick={() => setPreviewOpen(true)}
                 className="mt-4 block w-full"
                 title={t("actionView")}
               >
@@ -470,7 +472,7 @@ export function CreativesLibraryView({
               <button
                 type="button"
                 disabled={!selected.thumbnailUrl && !selected.imageUrl}
-                onClick={() => setLightboxUrl(selected.imageUrl ?? selected.thumbnailUrl ?? null)}
+                onClick={() => setPreviewOpen(true)}
                 className="ui-btn-secondary w-full text-sm disabled:opacity-50"
               >
                 {t("actionView")}
@@ -488,27 +490,14 @@ export function CreativesLibraryView({
         ) : null}
       </div>
 
-      {lightboxUrl ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4"
-          onMouseDown={() => setLightboxUrl(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setLightboxUrl(null)}
-            className="absolute right-4 top-4 rounded-lg bg-white/10 px-3 py-1.5 text-lg text-white hover:bg-white/20"
-            aria-label="close"
-          >
-            ✕
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightboxUrl}
-            alt=""
-            onMouseDown={(e) => e.stopPropagation()}
-            className="max-h-[92vh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
-          />
-        </div>
+      {previewOpen && selected ? (
+        <CreativePreviewModal
+          adId={selected.adId ?? null}
+          imageUrl={selected.imageUrl ?? selected.thumbnailUrl ?? null}
+          name={selected.title}
+          downloadHref={dlUrl(selected)}
+          onClose={() => setPreviewOpen(false)}
+        />
       ) : null}
     </div>
   );
