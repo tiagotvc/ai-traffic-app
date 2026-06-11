@@ -12,6 +12,7 @@ import {
 import { type MetricKey } from "@/lib/dashboard-metrics";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
 import { compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
+import { loadRankConfig } from "@/lib/ranking-config";
 
 export const maxDuration = 60;
 
@@ -91,6 +92,7 @@ export async function GET(req: Request) {
   }
   const presetRows = await presetRepo.find({ where: { tenantId: tenant.id } });
   const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));
+  const rankConfig = await loadRankConfig(tenant.id);
 
   const byCampaign = new Map<string, CampAgg>();
 
@@ -170,7 +172,7 @@ export async function GET(req: Request) {
   const campaigns = [...byCampaign.values()]
     .map((camp) => {
       const preset = presetByCampaign.get(camp.id) ?? "default";
-      const spec = rankSpecFor(preset);
+      const spec = rankSpecFor(preset, rankConfig);
       const all = [...camp.creatives.values()].map((a) => ({
         name: a.name,
         type: a.type,
@@ -182,7 +184,7 @@ export async function GET(req: Request) {
         metrics: metricsOf(a)
       }));
       // Piso mínimo de atividade; se nada atinge, mostra todos (ranqueados por gasto).
-      const qualified = all.filter((c) => meetsMinActivity(c.metrics));
+      const qualified = all.filter((c) => meetsMinActivity(c.metrics, rankConfig));
       const ranked = qualified.length ? qualified : all;
       const creatives = ranked
         .sort((x, y) =>

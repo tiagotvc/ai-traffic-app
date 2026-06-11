@@ -2,27 +2,58 @@ import type { MetricKey } from "@/lib/dashboard-metrics";
 
 export type RankSpec = { metric: MetricKey; dir: "asc" | "desc" };
 
-/**
- * Métrica de EFICIÊNCIA usada para ranquear os melhores criativos por tipo.
- * dir "asc" = menor é melhor (custos); "desc" = maior é melhor.
- */
-const RANK_SPEC: Record<string, RankSpec> = {
-  sales: { metric: "roas", dir: "desc" },
-  lead_whatsapp: { metric: "cpmsg", dir: "asc" },
-  lead_site: { metric: "cpa", dir: "asc" },
-  reach: { metric: "cpm", dir: "asc" },
-  default: { metric: "ctr", dir: "desc" }
+export type RankConfig = {
+  minImpressions: number;
+  specs: Record<string, RankSpec>;
 };
 
-export function rankSpecFor(preset?: string): RankSpec {
-  return RANK_SPEC[preset ?? "default"] ?? RANK_SPEC.default;
+/** Tipos de campanha configuráveis (na ordem exibida na UI). */
+export const RANKABLE_PRESETS = ["sales", "lead_whatsapp", "lead_site", "reach", "default"] as const;
+
+/** Métricas que podem ser escolhidas como critério de ranqueamento. */
+export const RANKABLE_METRICS: MetricKey[] = [
+  "roas",
+  "conversions",
+  "cpa",
+  "messages",
+  "cpmsg",
+  "ctr",
+  "cpc",
+  "cpm",
+  "reach",
+  "impressions",
+  "spend",
+  "frequency"
+];
+
+/**
+ * Default: ranqueia por EFICIÊNCIA por tipo de campanha.
+ * dir "asc" = menor é melhor (custos); "desc" = maior é melhor.
+ */
+export const DEFAULT_RANK_CONFIG: RankConfig = {
+  minImpressions: 100,
+  specs: {
+    sales: { metric: "roas", dir: "desc" },
+    lead_whatsapp: { metric: "cpmsg", dir: "asc" },
+    lead_site: { metric: "cpa", dir: "asc" },
+    reach: { metric: "cpm", dir: "asc" },
+    default: { metric: "ctr", dir: "desc" }
+  }
+};
+
+export function rankSpecFor(preset?: string, config: RankConfig = DEFAULT_RANK_CONFIG): RankSpec {
+  return (
+    config.specs[preset ?? "default"] ??
+    config.specs.default ??
+    DEFAULT_RANK_CONFIG.specs.default
+  );
 }
 
-/** Piso mínimo de atividade para um criativo entrar no ranking. */
-export const MIN_RANK_IMPRESSIONS = 100;
-
-export function meetsMinActivity(m: Partial<Record<MetricKey, number>>): boolean {
-  return Number(m.impressions ?? 0) >= MIN_RANK_IMPRESSIONS;
+export function meetsMinActivity(
+  m: Partial<Record<MetricKey, number>>,
+  config: RankConfig = DEFAULT_RANK_CONFIG
+): boolean {
+  return Number(m.impressions ?? 0) >= config.minImpressions;
 }
 
 /**

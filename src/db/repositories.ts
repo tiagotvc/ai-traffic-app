@@ -21,6 +21,7 @@ import type { MetaBusiness } from "@/db/entities/MetaBusiness";
 import type { MetaPage } from "@/db/entities/MetaPage";
 import type { MetricSnapshot } from "@/db/entities/MetricSnapshot";
 import type { NotificationState } from "@/db/entities/NotificationState";
+import type { RankingConfig } from "@/db/entities/RankingConfig";
 import type { ReportSchedule } from "@/db/entities/ReportSchedule";
 import type { SavedView } from "@/db/entities/SavedView";
 import type { SyncQueueJob } from "@/db/entities/SyncQueueJob";
@@ -49,6 +50,7 @@ const ENTITY = {
   ClientGoal: "ClientGoal",
   CampaignGoal: "CampaignGoal",
   CampaignPreset: "CampaignPreset",
+  RankingConfig: "RankingConfig",
   Alert: "Alert",
   AiRecommendation: "AiRecommendation",
   AuditLog: "AuditLog",
@@ -103,6 +105,7 @@ export async function repositories() {
     clientGoal: repositoryFor<ClientGoal>(ds, ENTITY.ClientGoal),
     campaignGoal: repositoryFor<CampaignGoal>(ds, ENTITY.CampaignGoal),
     campaignPreset: repositoryFor<CampaignPreset>(ds, ENTITY.CampaignPreset),
+    rankingConfig: repositoryFor<RankingConfig>(ds, ENTITY.RankingConfig),
     alert: repositoryFor<Alert>(ds, ENTITY.Alert),
     aiRecommendation: repositoryFor<AiRecommendation>(ds, ENTITY.AiRecommendation),
     auditLog: repositoryFor<AuditLog>(ds, ENTITY.AuditLog),

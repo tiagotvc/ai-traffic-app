@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { CreativesLibraryView } from "@/components/creatives/CreativesLibraryView";
 import { CreativesByCampaignView } from "@/components/creatives/CreativesByCampaignView";
+import { RankingConfigModal } from "@/components/creatives/RankingConfigModal";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 
 type ClientRow = { id: string; slug: string; name: string };
@@ -19,6 +20,8 @@ export function CreativesLibraryClient() {
   const [accountId, setAccountId] = useState("");
   const [view, setView] = useState<"library" | "byCampaign">("library");
   const [period, setPeriod] = useState<PeriodState>({ preset: "last30", since: "", until: "" });
+  const [configOpen, setConfigOpen] = useState(false);
+  const [rankVersion, setRankVersion] = useState(0);
   const periodQuery = periodStateToQuery(period).toString();
   const scopeQuery = `${periodQuery}${accountId ? `&adAccountId=${encodeURIComponent(accountId)}` : ""}`;
 
@@ -100,6 +103,13 @@ export function CreativesLibraryClient() {
               ))}
             </select>
           ) : null}
+          <button
+            type="button"
+            onClick={() => setConfigOpen(true)}
+            className="ui-btn-secondary text-sm"
+          >
+            ⚙ {tPerf("cfgButton")}
+          </button>
           {view === "byCampaign" ? (
             <button type="button" onClick={() => window.print()} className="ui-btn-secondary text-sm">
               ⬇ {tPerf("exportPdf")}
@@ -111,18 +121,25 @@ export function CreativesLibraryClient() {
       {clientId ? (
         view === "library" ? (
           <CreativesLibraryView
-            key={`${clientId}-${scopeQuery}`}
+            key={`${clientId}-${scopeQuery}-${rankVersion}`}
             fetchUrl={`/api/creatives/library?clientId=${encodeURIComponent(clientId)}&${scopeQuery}`}
             translationNs="creatives"
           />
         ) : (
           <CreativesByCampaignView
-            key={`${clientId}-${scopeQuery}`}
+            key={`${clientId}-${scopeQuery}-${rankVersion}`}
             clientId={clientId}
             clientSlug={clientId}
             periodQuery={scopeQuery}
           />
         )
+      ) : null}
+
+      {configOpen ? (
+        <RankingConfigModal
+          onClose={() => setConfigOpen(false)}
+          onSaved={() => setRankVersion((v) => v + 1)}
+        />
       ) : null}
     </div>
   );

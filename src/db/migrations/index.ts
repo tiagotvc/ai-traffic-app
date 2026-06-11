@@ -11,6 +11,7 @@ import { TenantMetaConnection1735690700000 } from "./0010-TenantMetaConnection";
 import { AdAccountTimezone1735690800000 } from "./0011-AdAccountTimezone";
 import { ReachAndMessages1735690900000 } from "./0012-ReachAndMessages";
 import { CampaignPresets1735691000000 } from "./0013-CampaignPresets";
+import { RankingConfig1735691100000 } from "./0014-RankingConfig";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -26,5 +27,6 @@ export const appMigrations = [
   TenantMetaConnection1735690700000,
   AdAccountTimezone1735690800000,
   ReachAndMessages1735690900000,
-  CampaignPresets1735691000000
+  CampaignPresets1735691000000,
+  RankingConfig1735691100000
 ];

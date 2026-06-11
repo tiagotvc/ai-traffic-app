@@ -12,6 +12,7 @@ import {
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
 import { compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
+import { loadRankConfig } from "@/lib/ranking-config";
 
 export const maxDuration = 60;
 
@@ -77,6 +78,7 @@ export async function GET(req: Request) {
   }
   const presetRows = await presetRepo.find({ where: { tenantId: tenant.id } });
   const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));
+  const rankConfig = await loadRankConfig(tenant.id);
 
   const byCreative = new Map<string, Agg>();
 
@@ -182,7 +184,7 @@ export async function GET(req: Request) {
       roas: a.roasCount ? a.roasSum / a.roasCount : 0
     };
 
-    const rankMetric = rankSpecFor(dominantPreset).metric;
+    const rankMetric = rankSpecFor(dominantPreset, rankConfig).metric;
     const metricLabel = `${formatMetricValue(rankMetric, metrics[rankMetric] ?? 0, "pt-BR")} · ${METRIC_BY_KEY[rankMetric].label.toUpperCase()}`;
 
     // performance é atribuída no segundo passo (eficiência por tipo + piso).
@@ -223,8 +225,8 @@ export async function GET(req: Request) {
     byPreset.set(r.dominantPreset, arr);
   }
   for (const [preset, arr] of byPreset) {
-    const spec = rankSpecFor(preset);
-    const qualified = arr.filter((r) => meetsMinActivity(r.metrics));
+    const spec = rankSpecFor(preset, rankConfig);
+    const qualified = arr.filter((r) => meetsMinActivity(r.metrics, rankConfig));
     qualified.sort((x, y) => compareByRank(x.metrics, y.metrics, spec));
     const n = qualified.length;
     qualified.forEach((r, i) => {
@@ -232,7 +234,7 @@ export async function GET(req: Request) {
       r.performance =
         pct <= 0.15 ? "very_high" : pct <= 0.4 ? "high" : pct <= 0.75 ? "medium" : "low";
     });
-    arr.filter((r) => !meetsMinActivity(r.metrics)).forEach((r) => (r.performance = "low"));
+    arr.filter((r) => !meetsMinActivity(r.metrics, rankConfig)).forEach((r) => (r.performance = "low"));
   }
 
   // Melhores primeiro (por faixa de performance) e, em empate, por gasto.

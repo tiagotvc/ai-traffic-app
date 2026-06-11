@@ -1362,6 +1362,17 @@
     "allAccounts": "Todas as contas",
     "rankedBy": "Ordenado por",
     "rankHigher": "maior",
-    "rankLower": "menor"
+    "rankLower": "menor",
+    "cfgButton": "Configurar ranking",
+    "cfgTitle": "Critérios de ranqueamento",
+    "cfgSubtitle": "Defina, por tipo de campanha, qual métrica decide o melhor criativo.",
+    "cfgMinImpr": "Mínimo de impressões para entrar no ranking",
+    "cfgMetric": "Métrica",
+    "cfgDirection": "Critério",
+    "dirHigher": "Maior é melhor",
+    "dirLower": "Menor é melhor",
+    "cfgReset": "Restaurar padrão",
+    "cfgSave": "Salvar",
+    "cfgCancel": "Cancelar"
   }
 }
