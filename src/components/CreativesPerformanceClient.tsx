@@ -112,7 +112,10 @@ export function CreativesPerformanceClient() {
       </div>
 
       {loading ? (
-        <TableSkeleton rows={6} />
+        <TableSkeleton
+          rows={6}
+          columns={["media", "metric", "metric", "metric", "metric", "chips"]}
+        />
       ) : groups.length === 0 ? (
         <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
       ) : (

@@ -2,6 +2,7 @@ import {
   CardsRowSkeleton,
   ChartCardSkeleton,
   Skeleton,
+  SupportStripSkeleton,
   TableSkeleton
 } from "@/components/ui/Skeleton";
 
@@ -16,8 +17,9 @@ export default function AppLoading() {
         <Skeleton className="h-9 w-40 rounded-xl" />
       </div>
       <CardsRowSkeleton />
+      <SupportStripSkeleton />
       <ChartCardSkeleton />
-      <TableSkeleton rows={4} />
+      <TableSkeleton rows={4} columns={["media", "text", "badge", "select", "metric", "metric"]} />
     </div>
   );
 }

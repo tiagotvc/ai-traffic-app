@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
-import { TableSkeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 
@@ -163,8 +163,17 @@ export function AlertsClient() {
 
       <div className="ui-card overflow-hidden">
         {loading ? (
-          <div className="p-4">
-            <TableSkeleton rows={5} />
+          <div className="divide-y divide-slate-100">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="space-y-2 p-4">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                  <Skeleton className="h-3 w-28" />
+                </div>
+                <Skeleton className="h-3.5 w-1/2" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            ))}
           </div>
         ) : items.length === 0 ? (
           <p className="p-10 text-center text-sm text-slate-500">{t("emptyVariations")}</p>

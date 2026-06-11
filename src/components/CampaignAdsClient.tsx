@@ -153,7 +153,10 @@ export function CampaignAdsClient({
       <div className="space-y-4">
         <Skeleton className="h-6 w-56" />
         <Skeleton className="h-16 w-full rounded-2xl" />
-        <TableSkeleton rows={5} />
+        <TableSkeleton
+          rows={5}
+          columns={["media", "badge", "metric", "metric", "metric", "badge"]}
+        />
       </div>
     );
   }
@@ -272,8 +275,25 @@ export function CampaignAdsClient({
               {adsLoading && ads.length === 0 ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-t border-slate-100">
-                    <td colSpan={4 + presetMetrics.length} className="px-4 py-4">
-                      <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+                        <Skeleton className="h-3.5 w-40 max-w-full" />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <Skeleton className="h-5 w-20 rounded-md" />
+                    </td>
+                    {presetMetrics.map((m) => (
+                      <td key={m} className="px-3 py-3 text-right">
+                        <Skeleton className="ml-auto h-3.5 w-12" />
+                      </td>
+                    ))}
+                    <td className="px-3 py-3">
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </td>
+                    <td className="px-3 py-3">
+                      <Skeleton className="h-4 w-3" />
                     </td>
                   </tr>
                 ))

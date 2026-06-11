@@ -37,7 +37,12 @@ import {
   type Range
 } from "@/lib/dashboard-ranges";
 import { presetMetricsFor } from "@/lib/campaign-presets";
-import { CardsRowSkeleton, ChartCardSkeleton } from "@/components/ui/Skeleton";
+import {
+  CardsRowSkeleton,
+  ChartCardSkeleton,
+  Skeleton,
+  SupportStripSkeleton
+} from "@/components/ui/Skeleton";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 
@@ -410,7 +415,26 @@ export function DashboardClient() {
       {loading || !summary ? (
         <div className="space-y-4">
           <CardsRowSkeleton />
-          <ChartCardSkeleton />
+          <SupportStripSkeleton />
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <ChartCardSkeleton />
+            </div>
+            <div className="ui-card space-y-2 p-4">
+              <Skeleton className="h-4 w-24" />
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full rounded-xl" />
+              ))}
+            </div>
+          </div>
+          <div className="ui-card space-y-3 p-4">
+            <Skeleton className="h-4 w-32" />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <>

@@ -747,7 +747,10 @@ export function CampaignsHubClient() {
       {groupByType ? (
         <div className="space-y-4">
           {loading ? (
-            <TableSkeleton rows={6} />
+            <TableSkeleton
+              rows={6}
+              columns={["wide", "text", "badge", "select", "metric", "metric", "metric"]}
+            />
           ) : rows.length === 0 ? (
             <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
           ) : (

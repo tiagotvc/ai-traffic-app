@@ -344,9 +344,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           {t("campaignsTitle")}
         </div>
         {loading ? (
-          <div className="p-4">
-            <TableSkeleton rows={4} />
-          </div>
+          <TableSkeleton bare rows={4} columns={["media", "badge", "select", "wide"]} />
         ) : campaigns.length === 0 ? (
           <p className="p-6 text-center text-sm text-slate-500">{t("noCampaigns")}</p>
         ) : (
