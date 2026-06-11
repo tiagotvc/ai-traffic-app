@@ -24,7 +24,7 @@ export function CreativePreviewModal({
   onClose: () => void;
 }) {
   const t = useTranslations("creativesPerf");
-  const [mode, setMode] = useState<"preview" | "image">(adId ? "preview" : "image");
+  const [mode, setMode] = useState<"preview" | "image">("image");
   const [format, setFormat] = useState<string>("MOBILE_FEED_STANDARD");
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -73,7 +73,9 @@ export function CreativePreviewModal({
       onMouseDown={onClose}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${
+          mode === "preview" && adId ? "max-w-md" : "max-w-5xl"
+        }`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
@@ -126,13 +128,13 @@ export function CreativePreviewModal({
               />
             ) : imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="" className="max-h-[78vh] max-w-full rounded-lg object-contain" />
+              <img src={imageUrl} alt="" className="max-h-[84vh] max-w-full rounded-lg object-contain" />
             ) : (
               <span className="text-sm text-slate-500">{t("previewUnavailable")}</span>
             )
           ) : imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" className="max-h-[78vh] max-w-full rounded-lg object-contain" />
+            <img src={imageUrl} alt="" className="max-h-[84vh] max-w-full rounded-lg object-contain" />
           ) : (
             <span className="text-sm text-slate-500">—</span>
           )}
