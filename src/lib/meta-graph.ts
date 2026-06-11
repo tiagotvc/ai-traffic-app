@@ -968,8 +968,10 @@ export type AdUsageRow = {
   campaignName?: string;
   creativeId?: string;
   creativeName?: string;
+  creativeType?: CreativeAssetType;
   thumbnailUrl?: string;
   imageUrl?: string;
+  campaignStatus?: string;
 };
 
 /** Anúncios de uma conta com criativo + conjunto + campanha (para rastrear criativos). */
@@ -979,14 +981,14 @@ export async function fetchAdsWithUsageForAccount(
 ): Promise<AdUsageRow[]> {
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
   const fields =
-    "id,name,status,adset{id,name},campaign{id,name},creative{id,name,thumbnail_url,image_url,object_story_spec}";
+    "id,name,status,adset{id,name},campaign{id,name,effective_status},creative{id,name,thumbnail_url,image_url,object_story_spec}";
   const path = `/${encodeURIComponent(act)}/ads?fields=${encodeURIComponent(fields)}&limit=500`;
   const rows = await fetchGraphPaged<{
     id: string;
     name?: string;
     status?: string;
     adset?: { id?: string; name?: string };
-    campaign?: { id?: string; name?: string };
+    campaign?: { id?: string; name?: string; effective_status?: string };
     creative?: {
       id?: string;
       name?: string;
@@ -1010,8 +1012,10 @@ export async function fetchAdsWithUsageForAccount(
       adsetName: r.adset?.name,
       campaignId: r.campaign?.id,
       campaignName: r.campaign?.name,
+      campaignStatus: r.campaign?.effective_status,
       creativeId: r.creative?.id,
       creativeName: r.creative?.name,
+      creativeType: spec ? inferCreativeTypeFromStorySpec(spec) : "image",
       thumbnailUrl: r.creative?.thumbnail_url,
       imageUrl: r.creative?.image_url ?? fromSpec ?? r.creative?.thumbnail_url
     };

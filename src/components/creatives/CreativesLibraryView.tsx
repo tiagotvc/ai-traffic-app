@@ -20,8 +20,9 @@ export type CreativeRow = {
   metricLabel: string;
   usageAds: number;
   usageCampaigns: number;
-  createdAt: string;
+  createdAt?: string;
   thumbnailUrl?: string | null;
+  imageUrl?: string | null;
 };
 
 const STAT_KEYS = ["total", "images", "videos", "carousels", "copy", "headlines", "descriptions"] as const;
@@ -69,7 +70,13 @@ export function CreativesLibraryView({
   const [rows, setRows] = useState<CreativeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "active" | "testing" | "paused" | "archived">("all");
+
+  function dlUrl(r: CreativeRow) {
+    const u = r.imageUrl ?? r.thumbnailUrl;
+    return u ? `/api/creatives/download?u=${encodeURIComponent(u)}&name=${encodeURIComponent(r.title)}` : null;
+  }
   const [q, setQ] = useState("");
   const [formatFilter, setFormatFilter] = useState("");
   const [page, setPage] = useState(1);
@@ -378,13 +385,20 @@ export function CreativesLibraryView({
                 ✕
               </button>
             </div>
-            {selected.thumbnailUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={selected.thumbnailUrl}
-                alt=""
-                className="mt-4 h-32 w-full rounded-xl object-cover"
-              />
+            {selected.thumbnailUrl || selected.imageUrl ? (
+              <button
+                type="button"
+                onClick={() => setLightboxUrl(selected.imageUrl ?? selected.thumbnailUrl ?? null)}
+                className="mt-4 block w-full"
+                title={t("actionView")}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selected.imageUrl ?? selected.thumbnailUrl ?? ""}
+                  alt=""
+                  className="h-44 w-full rounded-xl bg-slate-50 object-contain"
+                />
+              </button>
             ) : (
               <div className="mt-4 flex h-32 items-center justify-center rounded-xl bg-slate-100 text-4xl">
                 {typeIcon(selected.type)}
@@ -442,19 +456,49 @@ export function CreativesLibraryView({
             </section>
 
             <div className="mt-4 space-y-2">
-              <button type="button" className="ui-btn-secondary w-full text-sm">
+              <button
+                type="button"
+                disabled={!selected.thumbnailUrl && !selected.imageUrl}
+                onClick={() => setLightboxUrl(selected.imageUrl ?? selected.thumbnailUrl ?? null)}
+                className="ui-btn-secondary w-full text-sm disabled:opacity-50"
+              >
                 {t("actionView")}
               </button>
-              <button type="button" className="ui-btn-primary w-full text-sm">
-                {t("actionUse")}
-              </button>
-              <button type="button" className="ui-btn-danger w-full text-sm">
-                {t("actionArchive")}
-              </button>
+              {dlUrl(selected) ? (
+                <a
+                  href={dlUrl(selected)!}
+                  className="ui-btn-primary block w-full text-center text-sm"
+                >
+                  ⬇ {t("download")}
+                </a>
+              ) : null}
             </div>
           </aside>
         ) : null}
       </div>
+
+      {lightboxUrl ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4"
+          onMouseDown={() => setLightboxUrl(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxUrl(null)}
+            className="absolute right-4 top-4 rounded-lg bg-white/10 px-3 py-1.5 text-lg text-white hover:bg-white/20"
+            aria-label="close"
+          >
+            ✕
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxUrl}
+            alt=""
+            onMouseDown={(e) => e.stopPropagation()}
+            className="max-h-[92vh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

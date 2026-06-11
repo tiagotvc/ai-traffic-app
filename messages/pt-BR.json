@@ -551,7 +551,9 @@
       "copy": "Copy",
       "headlines": "Headlines",
       "descriptions": "Descrições"
-    }
+    },
+    "download": "Baixar",
+    "clientLabel": "Cliente"
   },
   "auth": {
     "tabLogin": "Entrar",
@@ -1061,7 +1063,9 @@
       "copy": "Copy",
       "headlines": "Headlines",
       "descriptions": "Descrições"
-    }
+    },
+    "download": "Baixar",
+    "clientLabel": "Cliente"
   },
   "audiences": {
     "title": "Públicos / Lookalike",
