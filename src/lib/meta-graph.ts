@@ -833,6 +833,76 @@ export async function fetchAdSetInsights(
   }
 }
 
+export type AdInsightMetrics = {
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  reach: number;
+  conversions: number;
+  messages: number;
+  roas: number;
+  cpc: number;
+  cpm: number;
+  cpa: number;
+  cpmsg: number;
+  frequency: number;
+};
+
+/** Insights por anúncio de uma campanha (1 chamada, level=ad). */
+export async function fetchAdInsightsForCampaign(
+  accessToken: string,
+  campaignId: string,
+  datePreset = "last_30d"
+): Promise<Map<string, AdInsightMetrics>> {
+  const map = new Map<string, AdInsightMetrics>();
+  try {
+    const fields = [
+      "ad_id",
+      "spend",
+      "impressions",
+      "clicks",
+      "ctr",
+      "reach",
+      "actions",
+      "results",
+      "purchase_roas"
+    ].join(",");
+    const path = `/${encodeURIComponent(campaignId)}/insights?level=ad&fields=${encodeURIComponent(fields)}&date_preset=${datePreset}&limit=500`;
+    const rows = await fetchGraphPaged<MetaInsightRow & { ad_id?: string }>(path, accessToken);
+    for (const row of rows) {
+      const adId = row.ad_id;
+      if (!adId) continue;
+      const spend = Number(row.spend) || 0;
+      const impressions = Number(row.impressions) || 0;
+      const clicks = Number(row.clicks) || 0;
+      const reach = Number(row.reach) || 0;
+      const conversions = pickResults(row);
+      const messages = pickMessages(row.actions);
+      const roasRaw = row.purchase_roas?.[0]?.value;
+      const roas = roasRaw != null ? Number(roasRaw) : 0;
+      map.set(adId, {
+        spend,
+        impressions,
+        clicks,
+        ctr: Number(row.ctr) || (impressions > 0 ? (clicks / impressions) * 100 : 0),
+        reach,
+        conversions,
+        messages,
+        roas: Number.isFinite(roas) ? roas : 0,
+        cpc: clicks > 0 ? spend / clicks : 0,
+        cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+        cpa: conversions > 0 ? spend / conversions : 0,
+        cpmsg: messages > 0 ? spend / messages : 0,
+        frequency: reach > 0 ? impressions / reach : 0
+      });
+    }
+  } catch {
+    /* sem insights → mapa vazio */
+  }
+  return map;
+}
+
 export async function updateEntityStatus(
   accessToken: string,
   entityId: string,

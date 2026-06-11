@@ -1,12 +1,16 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { Link } from "@/i18n/navigation";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { presetMetricsFor } from "@/lib/campaign-presets";
+
+type AdMetrics = Partial<Record<MetricKey, number>>;
 
 type Campaign = {
   id: string;
@@ -31,6 +35,7 @@ type AdRow = {
     name?: string;
     thumbnail_url?: string;
   };
+  metrics?: AdMetrics | null;
 };
 
 function statusVariant(status: string) {
@@ -55,7 +60,10 @@ export function CampaignAdsClient({
   embedded?: boolean;
 }) {
   const t = useTranslations("adsPage");
+  const tMetrics = useTranslations("metrics");
+  const locale = useLocale();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [preset, setPreset] = useState<string>("default");
   const [ads, setAds] = useState<AdRow[]>([]);
   const [adsetsCount, setAdsetsCount] = useState<number | null>(null);
   const [creativesCount, setCreativesCount] = useState<number | null>(null);
@@ -79,6 +87,13 @@ export function CampaignAdsClient({
           rememberCampaign(metaCampaignId, j.campaign.clientSlug || clientSlug);
         }
       });
+
+    fetch("/api/campaign-presets")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setPreset(j.presets?.[metaCampaignId] ?? "default");
+      })
+      .catch(() => {});
 
     fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads`)
       .then((r) => r.json())
@@ -118,6 +133,8 @@ export function CampaignAdsClient({
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  // Métricas exibidas conforme o tipo (preset) da campanha.
+  const presetMetrics = presetMetricsFor(preset);
 
   const adAction = (adId: string, action: "pause" | "activate") => {
     startTransition(async () => {
@@ -235,6 +252,11 @@ export function CampaignAdsClient({
               <tr>
                 <th className="px-4 py-3">{t("colAd")}</th>
                 <th className="px-3 py-3">{t("colAdset")}</th>
+                {presetMetrics.map((m) => (
+                  <th key={m} className="px-3 py-3 text-right">
+                    {tMetrics(METRIC_BY_KEY[m].label)}
+                  </th>
+                ))}
                 <th className="px-3 py-3">{t("colStatus")}</th>
                 <th className="w-10 px-3 py-3" />
               </tr>
@@ -243,14 +265,14 @@ export function CampaignAdsClient({
               {adsLoading && ads.length === 0 ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-t border-slate-100">
-                    <td colSpan={4} className="px-4 py-4">
+                    <td colSpan={4 + presetMetrics.length} className="px-4 py-4">
                       <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
                     </td>
                   </tr>
                 ))
               ) : paged.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={4 + presetMetrics.length} className="px-4 py-8 text-center text-sm text-slate-500">
                     {t("empty")}
                   </td>
                 </tr>
@@ -284,6 +306,16 @@ export function CampaignAdsClient({
                           {ad.adsetName ?? ad.adsetId}
                         </span>
                       </td>
+                      {presetMetrics.map((m) => (
+                        <td
+                          key={m}
+                          className="px-3 py-3 text-right tabular-nums text-slate-700"
+                        >
+                          {ad.metrics
+                            ? formatMetricValue(m, ad.metrics[m] ?? 0, locale)
+                            : "—"}
+                        </td>
+                      ))}
                       <td className="px-3 py-3">
                         <label className="flex cursor-pointer items-center gap-2">
                           <input
