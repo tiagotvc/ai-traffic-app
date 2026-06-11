@@ -903,6 +903,104 @@ export async function fetchAdInsightsForCampaign(
   return map;
 }
 
+function parseAdInsightRow(row: MetaInsightRow & { ad_id?: string }): [string, AdInsightMetrics] | null {
+  const adId = row.ad_id;
+  if (!adId) return null;
+  const spend = Number(row.spend) || 0;
+  const impressions = Number(row.impressions) || 0;
+  const clicks = Number(row.clicks) || 0;
+  const reach = Number(row.reach) || 0;
+  const conversions = pickResults(row);
+  const messages = pickMessages(row.actions);
+  const roasRaw = row.purchase_roas?.[0]?.value;
+  const roas = roasRaw != null ? Number(roasRaw) : 0;
+  return [
+    adId,
+    {
+      spend,
+      impressions,
+      clicks,
+      ctr: Number(row.ctr) || (impressions > 0 ? (clicks / impressions) * 100 : 0),
+      reach,
+      conversions,
+      messages,
+      roas: Number.isFinite(roas) ? roas : 0,
+      cpc: clicks > 0 ? spend / clicks : 0,
+      cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+      cpa: conversions > 0 ? spend / conversions : 0,
+      cpmsg: messages > 0 ? spend / messages : 0,
+      frequency: reach > 0 ? impressions / reach : 0
+    }
+  ];
+}
+
+const AD_INSIGHT_FIELDS =
+  "ad_id,spend,impressions,clicks,ctr,reach,actions,results,purchase_roas";
+
+/** Insights por anúncio de uma conta inteira (1 chamada, level=ad). */
+export async function fetchAdInsightsForAccount(
+  accessToken: string,
+  adAccountId: string,
+  datePreset = "last_30d"
+): Promise<Map<string, AdInsightMetrics>> {
+  const map = new Map<string, AdInsightMetrics>();
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  try {
+    const path = `/${encodeURIComponent(act)}/insights?level=ad&fields=${encodeURIComponent(AD_INSIGHT_FIELDS)}&date_preset=${datePreset}&limit=500`;
+    const rows = await fetchGraphPaged<MetaInsightRow & { ad_id?: string }>(path, accessToken);
+    for (const row of rows) {
+      const entry = parseAdInsightRow(row);
+      if (entry) map.set(entry[0], entry[1]);
+    }
+  } catch {
+    /* sem insights */
+  }
+  return map;
+}
+
+export type AdUsageRow = {
+  id: string;
+  name?: string;
+  status?: string;
+  adsetId?: string;
+  adsetName?: string;
+  campaignId?: string;
+  campaignName?: string;
+  creativeId?: string;
+  creativeName?: string;
+  thumbnailUrl?: string;
+};
+
+/** Anúncios de uma conta com criativo + conjunto + campanha (para rastrear criativos). */
+export async function fetchAdsWithUsageForAccount(
+  accessToken: string,
+  adAccountId: string
+): Promise<AdUsageRow[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const fields = "id,name,status,adset{id,name},campaign{id,name},creative{id,name,thumbnail_url}";
+  const path = `/${encodeURIComponent(act)}/ads?fields=${encodeURIComponent(fields)}&limit=500`;
+  const rows = await fetchGraphPaged<{
+    id: string;
+    name?: string;
+    status?: string;
+    adset?: { id?: string; name?: string };
+    campaign?: { id?: string; name?: string };
+    creative?: { id?: string; name?: string; thumbnail_url?: string };
+  }>(path, accessToken);
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    status: r.status,
+    adsetId: r.adset?.id,
+    adsetName: r.adset?.name,
+    campaignId: r.campaign?.id,
+    campaignName: r.campaign?.name,
+    creativeId: r.creative?.id,
+    creativeName: r.creative?.name,
+    thumbnailUrl: r.creative?.thumbnail_url
+  }));
+}
+
 export async function updateEntityStatus(
   accessToken: string,
   entityId: string,

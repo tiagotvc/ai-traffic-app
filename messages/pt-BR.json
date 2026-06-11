@@ -1330,5 +1330,16 @@
     "lead_site": "Lead no site",
     "sales": "Vendas",
     "reach": "Alcance"
+  },
+  "creativesPerf": {
+    "breadcrumb": "Criativos",
+    "title": "Performance de criativos",
+    "subtitle": "Melhores criativos por nome e onde estão sendo usados",
+    "clientLabel": "Cliente",
+    "loading": "Carregando criativos…",
+    "empty": "Nenhum criativo com dados para este cliente no período.",
+    "colCreative": "Criativo",
+    "colAds": "Anúncios",
+    "colCampaigns": "Campanhas onde é usado"
   }
 }

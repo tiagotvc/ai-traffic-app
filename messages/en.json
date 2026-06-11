@@ -1330,5 +1330,16 @@
     "lead_site": "Site lead",
     "sales": "Sales",
     "reach": "Reach"
+  },
+  "creativesPerf": {
+    "breadcrumb": "Creatives",
+    "title": "Creative performance",
+    "subtitle": "Top creatives by name and where they are used",
+    "clientLabel": "Client",
+    "loading": "Loading creatives…",
+    "empty": "No creatives with data for this client in the period.",
+    "colCreative": "Creative",
+    "colAds": "Ads",
+    "colCampaigns": "Used in campaigns"
   }
 }

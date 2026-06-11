@@ -1,5 +1,5 @@
-import { CreativesLibraryClient } from "@/components/CreativesLibraryClient";
+import { CreativesPerformanceClient } from "@/components/CreativesPerformanceClient";
 
 export default function CreativesPage() {
-  return <CreativesLibraryClient />;
+  return <CreativesPerformanceClient />;
 }
