@@ -29,8 +29,15 @@ export async function GET(
 
   for (const token of [metaAccessToken, fallbackMetaToken]) {
     if (!token) continue;
-    const src = await fetchAdPreview(token, metaAdId, format);
-    if (src) return NextResponse.json({ ok: true, src });
+    const preview = await fetchAdPreview(token, metaAdId, format);
+    if (preview) {
+      return NextResponse.json({
+        ok: true,
+        src: preview.src,
+        width: preview.width,
+        height: preview.height
+      });
+    }
   }
   return NextResponse.json({ ok: false, error: "preview indisponível" }, { status: 404 });
 }

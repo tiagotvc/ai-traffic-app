@@ -125,11 +125,11 @@ export async function GET(req: Request) {
         byCampaign.set(ad.campaignId, camp);
       }
 
-      const key = ad.creativeName?.trim() || ad.name?.trim() || ad.creativeId || ad.id;
+      const key = ad.name?.trim() || ad.creativeName?.trim() || ad.creativeId || ad.id;
       let cre = camp.creatives.get(key);
       if (!cre) {
         cre = {
-          name: ad.creativeName?.trim() || ad.name?.trim() || key,
+          name: ad.name?.trim() || ad.creativeName?.trim() || key,
           type: ad.creativeType ?? "image",
           thumbnailUrl: ad.thumbnailUrl,
           imageUrl: ad.imageUrl,

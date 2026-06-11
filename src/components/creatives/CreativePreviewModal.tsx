@@ -13,6 +13,7 @@ const FORMATS = [
 ] as const;
 
 type Copy = { bodies: string[]; titles: string[]; descriptions: string[]; ctas: string[] };
+type Preview = { src: string; width: number | null; height: number | null };
 
 export function CreativePreviewModal({
   adId,
@@ -28,9 +29,9 @@ export function CreativePreviewModal({
   onClose: () => void;
 }) {
   const t = useTranslations("creativesPerf");
-  const [mode, setMode] = useState<"image" | "preview" | "copy">("image");
+  const [mode, setMode] = useState<"image" | "preview" | "copy">(adId ? "preview" : "image");
   const [format, setFormat] = useState<string>("MOBILE_FEED_STANDARD");
-  const [src, setSrc] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(false);
   const [copy, setCopy] = useState<Copy | null>(null);
@@ -49,12 +50,12 @@ export function CreativePreviewModal({
     let cancelled = false;
     setLoading(true);
     setErr(false);
-    setSrc(null);
+    setPreview(null);
     fetch(`/api/ads/${encodeURIComponent(adId)}/preview?format=${format}`)
       .then((r) => r.json())
       .then((j) => {
         if (cancelled) return;
-        if (j.ok && j.src) setSrc(j.src);
+        if (j.ok && j.src) setPreview({ src: j.src, width: j.width, height: j.height });
         else setErr(true);
       })
       .catch(() => {
@@ -98,6 +99,8 @@ export function CreativePreviewModal({
     !copy.descriptions.length &&
     !copy.ctas.length;
 
+  const panelWidth = mode === "image" ? "max-w-5xl" : mode === "preview" ? "max-w-3xl" : "max-w-md";
+
   function CopyBlock({ label, items }: { label: string; items: string[] }) {
     if (!items.length) return null;
     return (
@@ -126,9 +129,7 @@ export function CreativePreviewModal({
       onMouseDown={onClose}
     >
       <div
-        className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${
-          mode === "image" ? "max-w-5xl" : "max-w-md"
-        }`}
+        className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${panelWidth}`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
@@ -145,18 +146,10 @@ export function CreativePreviewModal({
 
         {adId ? (
           <div className="flex flex-wrap items-center gap-1 border-b border-slate-100 px-4 py-2">
-            <button
-              type="button"
-              onClick={() => setMode((m) => (m === "preview" ? "image" : "preview"))}
-              className={tabClass(mode === "preview")}
-            >
+            <button type="button" onClick={() => setMode("preview")} className={tabClass(mode === "preview")}>
               {t("fmtAd")}
             </button>
-            <button
-              type="button"
-              onClick={() => setMode((m) => (m === "copy" ? "image" : "copy"))}
-              className={tabClass(mode === "copy")}
-            >
+            <button type="button" onClick={() => setMode("copy")} className={tabClass(mode === "copy")}>
               {t("copyTab")}
             </button>
             {mode === "preview" ? (
@@ -176,44 +169,50 @@ export function CreativePreviewModal({
           </div>
         ) : null}
 
-        <div className="flex min-h-[300px] flex-1 items-center justify-center overflow-auto bg-slate-100 p-3">
-          {mode === "copy" ? (
-            <div className="w-full max-w-md space-y-4 self-start">
-              {copyLoading ? (
-                <p className="py-8 text-center text-sm text-slate-500">{t("copyLoading")}</p>
-              ) : isCopyEmpty || !copy ? (
-                <p className="py-8 text-center text-sm text-slate-500">{t("copyEmpty")}</p>
+        <div className="flex-1 overflow-auto bg-slate-100 p-3">
+          <div className="flex min-h-full items-center justify-center">
+            {mode === "copy" ? (
+              <div className="w-full max-w-md space-y-4 self-start">
+                {copyLoading ? (
+                  <p className="py-8 text-center text-sm text-slate-500">{t("copyLoading")}</p>
+                ) : isCopyEmpty || !copy ? (
+                  <p className="py-8 text-center text-sm text-slate-500">{t("copyEmpty")}</p>
+                ) : (
+                  <>
+                    <CopyBlock label={t("copyTitles")} items={copy.titles} />
+                    <CopyBlock label={t("copyBodies")} items={copy.bodies} />
+                    <CopyBlock label={t("copyDescriptions")} items={copy.descriptions} />
+                    <CopyBlock label={t("copyCtas")} items={copy.ctas} />
+                  </>
+                )}
+              </div>
+            ) : mode === "preview" && adId ? (
+              loading ? (
+                <span className="py-8 text-sm text-slate-500">{t("previewLoading")}</span>
+              ) : preview && !err ? (
+                <iframe
+                  title="ad-preview"
+                  src={preview.src}
+                  scrolling="no"
+                  style={{
+                    width: preview.width ? `${preview.width}px` : "360px",
+                    height: preview.height ? `${preview.height}px` : "640px"
+                  }}
+                  className="border-0 bg-white"
+                />
+              ) : imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageUrl} alt="" className="max-h-[84vh] max-w-full rounded-lg object-contain" />
               ) : (
-                <>
-                  <CopyBlock label={t("copyTitles")} items={copy.titles} />
-                  <CopyBlock label={t("copyBodies")} items={copy.bodies} />
-                  <CopyBlock label={t("copyDescriptions")} items={copy.descriptions} />
-                  <CopyBlock label={t("copyCtas")} items={copy.ctas} />
-                </>
-              )}
-            </div>
-          ) : mode === "preview" && adId ? (
-            loading ? (
-              <span className="text-sm text-slate-500">{t("previewLoading")}</span>
-            ) : src && !err ? (
-              <iframe
-                title="ad-preview"
-                src={src}
-                scrolling="no"
-                className="h-[600px] w-[360px] max-w-full border-0 bg-white"
-              />
+                <span className="py-8 text-sm text-slate-500">{t("previewUnavailable")}</span>
+              )
             ) : imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={imageUrl} alt="" className="max-h-[84vh] max-w-full rounded-lg object-contain" />
             ) : (
-              <span className="text-sm text-slate-500">{t("previewUnavailable")}</span>
-            )
-          ) : imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" className="max-h-[84vh] max-w-full rounded-lg object-contain" />
-          ) : (
-            <span className="text-sm text-slate-500">—</span>
-          )}
+              <span className="py-8 text-sm text-slate-500">—</span>
+            )}
+          </div>
         </div>
 
         {downloadHref ? (

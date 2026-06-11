@@ -1035,12 +1035,14 @@ export async function fetchAdCreativeCopy(
   };
 }
 
-/** Preview real do anúncio (iframe renderizado pela Meta). Retorna a URL do iframe. */
+export type AdPreview = { src: string; width: number | null; height: number | null };
+
+/** Preview real do anúncio (iframe renderizado pela Meta). Retorna URL + dimensões. */
 export async function fetchAdPreview(
   accessToken: string,
   adId: string,
   format = "MOBILE_FEED_STANDARD"
-): Promise<string | null> {
+): Promise<AdPreview | null> {
   try {
     const data = await metaFetch<{ data?: Array<{ body?: string }> }>(
       `/${encodeURIComponent(adId)}/previews?ad_format=${encodeURIComponent(format)}`,
@@ -1048,8 +1050,15 @@ export async function fetchAdPreview(
     );
     const body = data.data?.[0]?.body;
     if (!body) return null;
-    const match = body.match(/src=["']([^"']+)["']/i);
-    return match ? match[1].replace(/&amp;/g, "&") : null;
+    const srcMatch = body.match(/src=["']([^"']+)["']/i);
+    if (!srcMatch) return null;
+    const widthMatch = body.match(/width=["']?(\d+)/i);
+    const heightMatch = body.match(/height=["']?(\d+)/i);
+    return {
+      src: srcMatch[1].replace(/&amp;/g, "&"),
+      width: widthMatch ? Number(widthMatch[1]) : null,
+      height: heightMatch ? Number(heightMatch[1]) : null
+    };
   } catch {
     return null;
   }
