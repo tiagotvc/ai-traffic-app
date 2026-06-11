@@ -3,12 +3,11 @@ import { NextResponse } from "next/server";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
 import { resolveMetaTokensForApi } from "@/lib/campaign-detail-api";
+import { type AdInsightMetrics, type CreativeAssetType } from "@/lib/meta-graph";
 import {
-  fetchAdInsightsForAccount,
-  fetchAdsWithUsageForAccount,
-  type AdInsightMetrics,
-  type CreativeAssetType
-} from "@/lib/meta-graph";
+  fetchAdsForAccountAnyToken,
+  fetchInsightsForAccountAnyToken
+} from "@/lib/creatives-data";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
 import { compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
@@ -63,12 +62,13 @@ export async function GET(req: Request) {
     user.id,
     ctxToken
   );
-  const token = metaAccessToken ?? fallbackMetaToken ?? undefined;
-  if (!token) {
+  const tokens = [metaAccessToken, fallbackMetaToken].filter(Boolean) as string[];
+  if (!tokens.length) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
 
   const adAccountId = url.searchParams.get("adAccountId");
+  const debug = url.searchParams.get("debug") === "1";
   const { adAccount: adAccountRepo, campaignPreset: presetRepo } = await repositories();
   let accounts = await adAccountRepo.find({ where: { clientId: client.id } });
   if (adAccountId) {
@@ -81,20 +81,25 @@ export async function GET(req: Request) {
   const rankConfig = await loadRankConfig(tenant.id);
 
   const byCreative = new Map<string, Agg>();
+  const diag: Array<Record<string, unknown>> = [];
 
   for (const acc of accounts) {
-    let ads: Awaited<ReturnType<typeof fetchAdsWithUsageForAccount>> = [];
-    let insights: Map<string, AdInsightMetrics> = new Map();
-    try {
-      [ads, insights] = await Promise.all([
-        fetchAdsWithUsageForAccount(token, acc.metaAdAccountId),
-        fetchAdInsightsForAccount(token, acc.metaAdAccountId, {
+    const { ads, ok, errors } = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
+    const insights: Map<string, AdInsightMetrics> = ads.length
+      ? await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
           since: period.since,
           until: period.until
         })
-      ]);
-    } catch {
-      continue;
+      : new Map();
+    if (debug) {
+      diag.push({
+        account: acc.metaAdAccountId,
+        label: acc.label ?? null,
+        ok,
+        tokenErrors: errors,
+        adsTotal: ads.length,
+        adsActiveCampaign: ads.filter((a) => a.campaignStatus === "ACTIVE").length
+      });
     }
 
     for (const ad of ads) {
@@ -245,5 +250,5 @@ export async function GET(req: Request) {
       Number(y.metrics.spend ?? 0) - Number(x.metrics.spend ?? 0)
   );
 
-  return NextResponse.json({ ok: true, rows, total: rows.length });
+  return NextResponse.json({ ok: true, rows, total: rows.length, ...(debug ? { diag } : {}) });
 }

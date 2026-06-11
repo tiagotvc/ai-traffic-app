@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { repositories } from "@/db/repositories";
 import { getAppContext, slugify } from "@/lib/app-context";
 import { resolveMetaTokensForApi } from "@/lib/campaign-detail-api";
-import { fetchAdRef, fetchAdsWithUsageForAccount } from "@/lib/meta-graph";
+import { fetchAdRef } from "@/lib/meta-graph";
+import { fetchAdsForAccountAnyToken } from "@/lib/creatives-data";
 
 export const maxDuration = 30;
 
@@ -18,15 +19,19 @@ export async function GET(
     user.id,
     ctxToken
   );
-  const token = metaAccessToken ?? fallbackMetaToken ?? undefined;
-  if (!token) return NextResponse.json({ ok: true, campaigns: [], clientSlug: "" });
+  const tokens = [metaAccessToken, fallbackMetaToken].filter(Boolean) as string[];
+  if (!tokens.length) return NextResponse.json({ ok: true, campaigns: [], clientSlug: "" });
 
-  const ref = await fetchAdRef(token, metaAdId);
+  let ref = { accountId: null as string | null, creativeId: null as string | null };
+  for (const token of tokens) {
+    ref = await fetchAdRef(token, metaAdId);
+    if (ref.accountId && ref.creativeId) break;
+  }
   if (!ref.accountId || !ref.creativeId) {
     return NextResponse.json({ ok: true, campaigns: [], clientSlug: "" });
   }
 
-  const ads = await fetchAdsWithUsageForAccount(token, ref.accountId);
+  const { ads } = await fetchAdsForAccountAnyToken(tokens, ref.accountId);
   const used = ads.filter((a) => a.creativeId && a.creativeId === ref.creativeId);
 
   // slug do cliente (para os links) a partir da conta de anúncio.
