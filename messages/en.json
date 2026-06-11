@@ -1373,6 +1373,16 @@
     "dirLower": "Lower is better",
     "cfgReset": "Restore defaults",
     "cfgSave": "Save",
-    "cfgCancel": "Cancel"
+    "cfgCancel": "Cancel",
+    "copyTab": "Copy",
+    "copyTitles": "Titles",
+    "copyBodies": "Primary text",
+    "copyDescriptions": "Descriptions",
+    "copyCtas": "Button (CTA)",
+    "copyEmpty": "No copy available for this creative.",
+    "copyLoading": "Loading copy…",
+    "copied": "Copied!",
+    "viewAllCreatives": "View all creatives",
+    "backToRanking": "Back to ranking"
   }
 }

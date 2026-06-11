@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
+import { DownloadIcon } from "@/components/ui/DownloadIcon";
 
 export type CreativeRow = {
   id: string;
@@ -480,9 +481,10 @@ export function CreativesLibraryView({
               {dlUrl(selected) ? (
                 <a
                   href={dlUrl(selected)!}
-                  className="ui-btn-primary block w-full text-center text-sm"
+                  className="ui-btn-primary flex w-full items-center justify-center gap-1.5 text-sm"
                 >
-                  ⬇ {t("download")}
+                  <DownloadIcon />
+                  {t("download")}
                 </a>
               ) : null}
             </div>

@@ -1373,6 +1373,16 @@
     "dirLower": "Menor é melhor",
     "cfgReset": "Restaurar padrão",
     "cfgSave": "Salvar",
-    "cfgCancel": "Cancelar"
+    "cfgCancel": "Cancelar",
+    "copyTab": "Copy",
+    "copyTitles": "Títulos",
+    "copyBodies": "Texto principal",
+    "copyDescriptions": "Descrições",
+    "copyCtas": "Botão (CTA)",
+    "copyEmpty": "Sem textos disponíveis para este criativo.",
+    "copyLoading": "Carregando textos…",
+    "copied": "Copiado!",
+    "viewAllCreatives": "Ver todos os criativos",
+    "backToRanking": "Voltar ao ranking"
   }
 }

@@ -964,6 +964,77 @@ export async function fetchAdInsightsForAccount(
   return map;
 }
 
+export type AdCreativeCopy = {
+  bodies: string[];
+  titles: string[];
+  descriptions: string[];
+  ctas: string[];
+};
+
+/** Textos do criativo (corpo, título, descrição, CTA) — para a aba "Copy". */
+export async function fetchAdCreativeCopy(
+  accessToken: string,
+  adId: string
+): Promise<AdCreativeCopy> {
+  const bodies = new Set<string>();
+  const titles = new Set<string>();
+  const descriptions = new Set<string>();
+  const ctas = new Set<string>();
+  const add = (set: Set<string>, v: unknown) => {
+    if (typeof v === "string" && v.trim()) set.add(v.trim());
+  };
+  try {
+    const data = await metaFetch<{
+      creative?: {
+        body?: string;
+        title?: string;
+        object_story_spec?: Record<string, Record<string, unknown> | undefined>;
+        asset_feed_spec?: {
+          bodies?: Array<{ text?: string }>;
+          titles?: Array<{ text?: string }>;
+          descriptions?: Array<{ text?: string }>;
+          call_to_action_types?: string[];
+        };
+      };
+    }>(
+      `/${encodeURIComponent(adId)}?fields=${encodeURIComponent(
+        "creative{body,title,object_story_spec,asset_feed_spec}"
+      )}`,
+      accessToken
+    );
+    const c = data.creative ?? {};
+    add(bodies, c.body);
+    add(titles, c.title);
+
+    const spec = c.object_story_spec ?? {};
+    for (const key of ["link_data", "video_data", "template_data", "photo_data"]) {
+      const d = spec[key];
+      if (!d) continue;
+      add(bodies, d.message);
+      add(titles, d.name);
+      add(titles, d.title);
+      add(descriptions, d.description);
+      add(descriptions, d.caption);
+      const cta = d.call_to_action as { type?: string } | undefined;
+      if (cta?.type) add(ctas, cta.type);
+    }
+
+    const feed = c.asset_feed_spec ?? {};
+    for (const b of feed.bodies ?? []) add(bodies, b?.text);
+    for (const tt of feed.titles ?? []) add(titles, tt?.text);
+    for (const d of feed.descriptions ?? []) add(descriptions, d?.text);
+    for (const cta of feed.call_to_action_types ?? []) add(ctas, cta);
+  } catch {
+    /* sem textos */
+  }
+  return {
+    bodies: [...bodies],
+    titles: [...titles],
+    descriptions: [...descriptions],
+    ctas: [...ctas]
+  };
+}
+
 /** Preview real do anúncio (iframe renderizado pela Meta). Retorna a URL do iframe. */
 export async function fetchAdPreview(
   accessToken: string,
