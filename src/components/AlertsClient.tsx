@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 
@@ -162,7 +163,9 @@ export function AlertsClient() {
 
       <div className="ui-card overflow-hidden">
         {loading ? (
-          <p className="p-8 text-center text-sm text-slate-500">{t("loading")}</p>
+          <div className="p-4">
+            <TableSkeleton rows={5} />
+          </div>
         ) : items.length === 0 ? (
           <p className="p-10 text-center text-sm text-slate-500">{t("emptyVariations")}</p>
         ) : (

@@ -37,6 +37,7 @@ import {
   type Range
 } from "@/lib/dashboard-ranges";
 import { presetMetricsFor } from "@/lib/campaign-presets";
+import { CardsRowSkeleton, ChartCardSkeleton } from "@/components/ui/Skeleton";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 
@@ -407,7 +408,10 @@ export function DashboardClient() {
       {note ? <div className="ui-alert-info">{note}</div> : null}
 
       {loading || !summary ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loadingMetrics")}</div>
+        <div className="space-y-4">
+          <CardsRowSkeleton />
+          <ChartCardSkeleton />
+        </div>
       ) : (
         <>
           {/* Hero highlight cards — adaptam ao tipo dominante do cliente */}

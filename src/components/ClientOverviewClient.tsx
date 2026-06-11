@@ -19,6 +19,7 @@ import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components
 import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import {
   MAX_CHART_METRICS,
@@ -343,7 +344,9 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           {t("campaignsTitle")}
         </div>
         {loading ? (
-          <p className="p-6 text-center text-sm text-slate-500">{t("loading")}</p>
+          <div className="p-4">
+            <TableSkeleton rows={4} />
+          </div>
         ) : campaigns.length === 0 ? (
           <p className="p-6 text-center text-sm text-slate-500">{t("noCampaigns")}</p>
         ) : (

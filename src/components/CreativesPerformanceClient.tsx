@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
@@ -111,7 +112,7 @@ export function CreativesPerformanceClient() {
       </div>
 
       {loading ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
+        <TableSkeleton rows={6} />
       ) : groups.length === 0 ? (
         <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
       ) : (

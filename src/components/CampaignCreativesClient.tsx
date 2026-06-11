@@ -7,6 +7,7 @@ import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { CreativesLibraryView } from "@/components/creatives/CreativesLibraryView";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 
 type Campaign = {
@@ -77,7 +78,13 @@ export function CampaignCreativesClient({
   }, [reload]);
 
   if (!campaign) {
-    return <div className="p-8 text-center text-sm text-slate-500">{t("loading")}</div>;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-16 w-full rounded-2xl" />
+        <TableSkeleton rows={5} />
+      </div>
+    );
   }
 
   const slug = campaign.clientSlug || clientSlug;

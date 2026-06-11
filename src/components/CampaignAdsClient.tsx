@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 
 type AdMetrics = Partial<Record<MetricKey, number>>;
 
@@ -148,7 +149,13 @@ export function CampaignAdsClient({
   };
 
   if (!campaign) {
-    return <div className="p-8 text-center text-sm text-slate-500">{t("loading")}</div>;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-16 w-full rounded-2xl" />
+        <TableSkeleton rows={5} />
+      </div>
+    );
   }
 
   const slug = campaign.clientSlug || clientSlug;

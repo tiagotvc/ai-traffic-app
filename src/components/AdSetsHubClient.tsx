@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { CampaignAdSetsClient } from "@/components/CampaignAdSetsClient";
 import { rememberCampaign } from "@/components/CampaignsListClient";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatRoas } from "@/lib/format";
 import { Link } from "@/i18n/navigation";
 
@@ -91,7 +92,11 @@ export function AdSetsHubClient() {
         </div>
         <div className="max-h-[50vh] overflow-y-auto p-2 lg:max-h-none lg:flex-1">
           {loading ? (
-            <p className="p-4 text-center text-xs text-slate-500">{t("loading")}</p>
+            <div className="space-y-2 p-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-xl" />
+              ))}
+            </div>
           ) : rows.length === 0 ? (
             <div className="space-y-2 p-3 text-center text-xs text-slate-500">
               <p>{t("noCampaigns")}</p>
