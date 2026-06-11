@@ -1383,6 +1383,10 @@
     "copyLoading": "Loading copy…",
     "copied": "Copied!",
     "viewAllCreatives": "View all creatives",
-    "backToRanking": "Back to ranking"
+    "backToRanking": "Back to ranking",
+    "usageTab": "Where used",
+    "usageEmpty": "Could not locate where this creative is used.",
+    "usageAdsets": "Ad sets",
+    "usageAds": "Ads"
   }
 }

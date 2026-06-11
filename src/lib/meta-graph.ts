@@ -1035,6 +1035,22 @@ export async function fetchAdCreativeCopy(
   };
 }
 
+/** Conta e criativo de um anúncio (para rastrear onde o criativo é usado). */
+export async function fetchAdRef(
+  accessToken: string,
+  adId: string
+): Promise<{ accountId: string | null; creativeId: string | null }> {
+  try {
+    const data = await metaFetch<{ account_id?: string; creative?: { id?: string } }>(
+      `/${encodeURIComponent(adId)}?fields=account_id,creative{id}`,
+      accessToken
+    );
+    return { accountId: data.account_id ?? null, creativeId: data.creative?.id ?? null };
+  } catch {
+    return { accountId: null, creativeId: null };
+  }
+}
+
 export type AdPreview = { src: string; width: number | null; height: number | null };
 
 /** Preview real do anúncio (iframe renderizado pela Meta). Retorna URL + dimensões. */

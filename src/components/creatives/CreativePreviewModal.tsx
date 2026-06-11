@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { DownloadIcon } from "@/components/ui/DownloadIcon";
+import { Link } from "@/i18n/navigation";
 
 const FORMATS = [
   { key: "MOBILE_FEED_STANDARD", label: "fmtMobile" },
@@ -14,6 +15,10 @@ const FORMATS = [
 
 type Copy = { bodies: string[]; titles: string[]; descriptions: string[]; ctas: string[] };
 type Preview = { src: string; width: number | null; height: number | null };
+type AdItem = { id: string; name: string; status: string | null };
+type Adset = { id: string | null; name: string; ads: AdItem[] };
+type Campaign = { id: string; name: string; adsets: Adset[] };
+type Usage = { campaigns: Campaign[]; clientSlug: string };
 
 export function CreativePreviewModal({
   adId,
@@ -29,13 +34,18 @@ export function CreativePreviewModal({
   onClose: () => void;
 }) {
   const t = useTranslations("creativesPerf");
-  const [mode, setMode] = useState<"image" | "preview" | "copy">(adId ? "preview" : "image");
+  const [mode, setMode] = useState<"image" | "preview" | "copy" | "usage">(
+    adId ? "preview" : "image"
+  );
   const [format, setFormat] = useState<string>("MOBILE_FEED_STANDARD");
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [scale, setScale] = useState(1);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(false);
   const [copy, setCopy] = useState<Copy | null>(null);
   const [copyLoading, setCopyLoading] = useState(false);
+  const [usage, setUsage] = useState<Usage | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -69,6 +79,22 @@ export function CreativePreviewModal({
     };
   }, [adId, format, mode]);
 
+  // Escala o preview para caber inteiro na janela.
+  useEffect(() => {
+    if (mode !== "preview" || !preview) return;
+    function compute() {
+      const w = preview!.width ?? 360;
+      const h = preview!.height ?? 640;
+      const availW = Math.min(window.innerWidth - 32, 768) - 32;
+      const availH = window.innerHeight * 0.92 - 180;
+      const s = Math.min(availW / w, availH / h, 1);
+      setScale(s > 0 ? s : 1);
+    }
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, [mode, preview]);
+
   useEffect(() => {
     if (!adId || mode !== "copy" || copy) return;
     let cancelled = false;
@@ -86,6 +112,24 @@ export function CreativePreviewModal({
       cancelled = true;
     };
   }, [adId, mode, copy]);
+
+  useEffect(() => {
+    if (!adId || mode !== "usage" || usage) return;
+    let cancelled = false;
+    setUsageLoading(true);
+    fetch(`/api/ads/${encodeURIComponent(adId)}/usage`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled && j.ok) setUsage({ campaigns: j.campaigns ?? [], clientSlug: j.clientSlug ?? "" });
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setUsageLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adId, mode, usage]);
 
   const tabClass = (active: boolean) =>
     `rounded-lg px-2.5 py-1 text-xs font-medium ${
@@ -123,6 +167,9 @@ export function CreativePreviewModal({
     );
   }
 
+  const previewW = preview?.width ?? 360;
+  const previewH = preview?.height ?? 640;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4"
@@ -151,6 +198,9 @@ export function CreativePreviewModal({
             </button>
             <button type="button" onClick={() => setMode("copy")} className={tabClass(mode === "copy")}>
               {t("copyTab")}
+            </button>
+            <button type="button" onClick={() => setMode("usage")} className={tabClass(mode === "usage")}>
+              {t("usageTab")}
             </button>
             {mode === "preview" ? (
               <span className="ml-auto flex flex-wrap gap-1">
@@ -186,20 +236,66 @@ export function CreativePreviewModal({
                   </>
                 )}
               </div>
+            ) : mode === "usage" ? (
+              <div className="w-full max-w-md space-y-3 self-start">
+                {usageLoading ? (
+                  <p className="py-8 text-center text-sm text-slate-500">{t("copyLoading")}</p>
+                ) : !usage || !usage.campaigns.length ? (
+                  <p className="py-8 text-center text-sm text-slate-500">{t("usageEmpty")}</p>
+                ) : (
+                  usage.campaigns.map((c) => (
+                    <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                      <Link
+                        href={`/campaigns/${c.id}?client=${encodeURIComponent(usage.clientSlug)}`}
+                        className="text-sm font-semibold text-violet-700 hover:underline"
+                      >
+                        {c.name}
+                      </Link>
+                      <div className="mt-2 space-y-2">
+                        {c.adsets.map((s, i) => (
+                          <div key={s.id ?? i} className="rounded-lg bg-slate-50 p-2">
+                            <Link
+                              href={`/campaigns/${c.id}/adsets?client=${encodeURIComponent(usage.clientSlug)}`}
+                              className="text-xs font-medium text-slate-700 hover:text-violet-700 hover:underline"
+                            >
+                              {s.name}
+                            </Link>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {s.ads.map((ad) => (
+                                <Link
+                                  key={ad.id}
+                                  href={`/campaigns/${c.id}/ads?client=${encodeURIComponent(usage.clientSlug)}`}
+                                  className="rounded-md bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200 hover:text-violet-700"
+                                >
+                                  {ad.name}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             ) : mode === "preview" && adId ? (
               loading ? (
                 <span className="py-8 text-sm text-slate-500">{t("previewLoading")}</span>
               ) : preview && !err ? (
-                <iframe
-                  title="ad-preview"
-                  src={preview.src}
-                  scrolling="no"
-                  style={{
-                    width: preview.width ? `${preview.width}px` : "360px",
-                    height: preview.height ? `${preview.height}px` : "640px"
-                  }}
-                  className="border-0 bg-white"
-                />
+                <div style={{ width: previewW * scale, height: previewH * scale }}>
+                  <iframe
+                    title="ad-preview"
+                    src={preview.src}
+                    scrolling="no"
+                    style={{
+                      width: previewW,
+                      height: previewH,
+                      transform: `scale(${scale})`,
+                      transformOrigin: "top left"
+                    }}
+                    className="border-0 bg-white"
+                  />
+                </div>
               ) : imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imageUrl} alt="" className="max-h-[84vh] max-w-full rounded-lg object-contain" />

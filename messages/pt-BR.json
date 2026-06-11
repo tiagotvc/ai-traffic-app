@@ -1383,6 +1383,10 @@
     "copyLoading": "Carregando textos…",
     "copied": "Copiado!",
     "viewAllCreatives": "Ver todos os criativos",
-    "backToRanking": "Voltar ao ranking"
+    "backToRanking": "Voltar ao ranking",
+    "usageTab": "Onde é usado",
+    "usageEmpty": "Não foi possível localizar onde este criativo é usado.",
+    "usageAdsets": "Conjuntos",
+    "usageAds": "Anúncios"
   }
 }
