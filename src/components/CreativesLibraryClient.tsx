@@ -8,15 +8,31 @@ import { CreativesByCampaignView } from "@/components/creatives/CreativesByCampa
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 
 type ClientRow = { id: string; slug: string; name: string };
+type AccountOpt = { metaAdAccountId: string; label: string };
 
 export function CreativesLibraryClient() {
   const t = useTranslations("creatives");
   const tPerf = useTranslations("creativesPerf");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState("");
+  const [accounts, setAccounts] = useState<AccountOpt[]>([]);
+  const [accountId, setAccountId] = useState("");
   const [view, setView] = useState<"library" | "byCampaign">("library");
   const [period, setPeriod] = useState<PeriodState>({ preset: "last30", since: "", until: "" });
   const periodQuery = periodStateToQuery(period).toString();
+  const scopeQuery = `${periodQuery}${accountId ? `&adAccountId=${encodeURIComponent(accountId)}` : ""}`;
+
+  useEffect(() => {
+    if (!clientId) {
+      setAccounts([]);
+      return;
+    }
+    setAccountId("");
+    fetch(`/api/meta/ad-accounts?clientId=${encodeURIComponent(clientId)}`)
+      .then((r) => r.json())
+      .then((j) => setAccounts(j.accounts ?? []))
+      .catch(() => setAccounts([]));
+  }, [clientId]);
 
   useEffect(() => {
     fetch("/api/clients")
@@ -70,6 +86,20 @@ export function CreativesLibraryClient() {
               </option>
             ))}
           </select>
+          {accounts.length > 1 ? (
+            <select
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              className="ui-select !w-auto !py-1.5 text-sm"
+            >
+              <option value="">{tPerf("allAccounts")}</option>
+              {accounts.map((a) => (
+                <option key={a.metaAdAccountId} value={a.metaAdAccountId}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
           {view === "byCampaign" ? (
             <button type="button" onClick={() => window.print()} className="ui-btn-secondary text-sm">
               ⬇ {tPerf("exportPdf")}
@@ -81,16 +111,16 @@ export function CreativesLibraryClient() {
       {clientId ? (
         view === "library" ? (
           <CreativesLibraryView
-            key={`${clientId}-${periodQuery}`}
-            fetchUrl={`/api/creatives/library?clientId=${encodeURIComponent(clientId)}&${periodQuery}`}
+            key={`${clientId}-${scopeQuery}`}
+            fetchUrl={`/api/creatives/library?clientId=${encodeURIComponent(clientId)}&${scopeQuery}`}
             translationNs="creatives"
           />
         ) : (
           <CreativesByCampaignView
-            key={`${clientId}-${periodQuery}`}
+            key={`${clientId}-${scopeQuery}`}
             clientId={clientId}
             clientSlug={clientId}
-            periodQuery={periodQuery}
+            periodQuery={scopeQuery}
           />
         )
       ) : null}

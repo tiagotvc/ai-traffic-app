@@ -1358,6 +1358,7 @@
     "fmtStory": "Stories",
     "previewLoading": "Generating preview…",
     "previewUnavailable": "Preview unavailable",
-    "exportPdf": "Export PDF"
+    "exportPdf": "Export PDF",
+    "allAccounts": "All accounts"
   }
 }

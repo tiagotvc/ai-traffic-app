@@ -67,8 +67,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
 
+  const adAccountId = url.searchParams.get("adAccountId");
   const { adAccount: adAccountRepo, campaignPreset: presetRepo } = await repositories();
-  const accounts = await adAccountRepo.find({ where: { clientId: client.id } });
+  let accounts = await adAccountRepo.find({ where: { clientId: client.id } });
+  if (adAccountId) {
+    accounts = accounts.filter(
+      (a) => a.metaAdAccountId === adAccountId || a.id === adAccountId
+    );
+  }
   const presetRows = await presetRepo.find({ where: { tenantId: tenant.id } });
   const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));
 
