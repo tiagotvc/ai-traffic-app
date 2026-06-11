@@ -15,6 +15,7 @@ export const maxDuration = 60;
 type Agg = {
   name: string;
   thumbnailUrl?: string;
+  imageUrl?: string;
   spend: number;
   impressions: number;
   clicks: number;
@@ -76,6 +77,7 @@ export async function GET(req: Request) {
         agg = {
           name: ad.creativeName?.trim() || ad.name?.trim() || key,
           thumbnailUrl: ad.thumbnailUrl,
+          imageUrl: ad.imageUrl,
           spend: 0,
           impressions: 0,
           clicks: 0,
@@ -93,6 +95,7 @@ export async function GET(req: Request) {
         byCreative.set(key, agg);
       }
       if (!agg.thumbnailUrl && ad.thumbnailUrl) agg.thumbnailUrl = ad.thumbnailUrl;
+      if (!agg.imageUrl && ad.imageUrl) agg.imageUrl = ad.imageUrl;
       agg.ads.add(ad.id);
       if (ad.campaignId) {
         agg.campaigns.set(ad.campaignId, ad.campaignName ?? ad.campaignId);
@@ -135,6 +138,7 @@ export async function GET(req: Request) {
     return {
       creativeName: a.name,
       thumbnailUrl: a.thumbnailUrl ?? null,
+      imageUrl: a.imageUrl ?? a.thumbnailUrl ?? null,
       dominantPreset,
       status: a.anyActive ? "ACTIVE" : "PAUSED",
       adsCount: a.ads.size,

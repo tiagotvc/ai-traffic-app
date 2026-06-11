@@ -969,6 +969,7 @@ export type AdUsageRow = {
   creativeId?: string;
   creativeName?: string;
   thumbnailUrl?: string;
+  imageUrl?: string;
 };
 
 /** Anúncios de uma conta com criativo + conjunto + campanha (para rastrear criativos). */
@@ -977,7 +978,8 @@ export async function fetchAdsWithUsageForAccount(
   adAccountId: string
 ): Promise<AdUsageRow[]> {
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
-  const fields = "id,name,status,adset{id,name},campaign{id,name},creative{id,name,thumbnail_url}";
+  const fields =
+    "id,name,status,adset{id,name},campaign{id,name},creative{id,name,thumbnail_url,image_url,object_story_spec}";
   const path = `/${encodeURIComponent(act)}/ads?fields=${encodeURIComponent(fields)}&limit=500`;
   const rows = await fetchGraphPaged<{
     id: string;
@@ -985,20 +987,35 @@ export async function fetchAdsWithUsageForAccount(
     status?: string;
     adset?: { id?: string; name?: string };
     campaign?: { id?: string; name?: string };
-    creative?: { id?: string; name?: string; thumbnail_url?: string };
+    creative?: {
+      id?: string;
+      name?: string;
+      thumbnail_url?: string;
+      image_url?: string;
+      object_story_spec?: Record<string, unknown>;
+    };
   }>(path, accessToken);
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    status: r.status,
-    adsetId: r.adset?.id,
-    adsetName: r.adset?.name,
-    campaignId: r.campaign?.id,
-    campaignName: r.campaign?.name,
-    creativeId: r.creative?.id,
-    creativeName: r.creative?.name,
-    thumbnailUrl: r.creative?.thumbnail_url
-  }));
+  return rows.map((r) => {
+    const spec = r.creative?.object_story_spec;
+    const linkData = spec?.link_data as Record<string, unknown> | undefined;
+    const photoData = spec?.photo_data as Record<string, unknown> | undefined;
+    const fromSpec =
+      (typeof linkData?.picture === "string" ? (linkData.picture as string) : undefined) ??
+      (typeof photoData?.url === "string" ? (photoData.url as string) : undefined);
+    return {
+      id: r.id,
+      name: r.name,
+      status: r.status,
+      adsetId: r.adset?.id,
+      adsetName: r.adset?.name,
+      campaignId: r.campaign?.id,
+      campaignName: r.campaign?.name,
+      creativeId: r.creative?.id,
+      creativeName: r.creative?.name,
+      thumbnailUrl: r.creative?.thumbnail_url,
+      imageUrl: r.creative?.image_url ?? fromSpec ?? r.creative?.thumbnail_url
+    };
+  });
 }
 
 export async function updateEntityStatus(

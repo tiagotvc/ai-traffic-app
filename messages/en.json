@@ -1340,6 +1340,9 @@
     "empty": "No creatives with data for this client in the period.",
     "colCreative": "Creative",
     "colAds": "Ads",
-    "colCampaigns": "Used in campaigns"
+    "colCampaigns": "Used in campaigns",
+    "view": "View",
+    "download": "Download",
+    "close": "Close"
   }
 }

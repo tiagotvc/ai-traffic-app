@@ -13,6 +13,7 @@ type CampaignRef = { id: string; name: string };
 type CreativeRow = {
   creativeName: string;
   thumbnailUrl: string | null;
+  imageUrl: string | null;
   dominantPreset: string;
   status: string;
   adsCount: number;
@@ -40,6 +41,13 @@ export function CreativesPerformanceClient() {
   const [clientId, setClientId] = useState("");
   const [rows, setRows] = useState<CreativeRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [viewing, setViewing] = useState<CreativeRow | null>(null);
+
+  function downloadUrl(r: CreativeRow) {
+    const u = r.imageUrl ?? r.thumbnailUrl;
+    if (!u) return null;
+    return `/api/creatives/download?u=${encodeURIComponent(u)}&name=${encodeURIComponent(r.creativeName)}`;
+  }
 
   useEffect(() => {
     fetch("/api/clients")
@@ -148,12 +156,22 @@ export function CreativesPerformanceClient() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               {r.thumbnailUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={r.thumbnailUrl}
-                                  alt=""
-                                  className="h-10 w-10 shrink-0 rounded-lg object-cover"
-                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setViewing(r)}
+                                  className="group relative h-10 w-10 shrink-0 overflow-hidden rounded-lg"
+                                  title={t("view")}
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={r.thumbnailUrl}
+                                    alt=""
+                                    className="h-10 w-10 object-cover transition group-hover:opacity-80"
+                                  />
+                                  <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-xs text-white opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100">
+                                    🔍
+                                  </span>
+                                </button>
                               ) : (
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm">
                                   {(r.creativeName[0] ?? "C").toUpperCase()}
@@ -163,9 +181,26 @@ export function CreativesPerformanceClient() {
                                 <div className="max-w-[220px] truncate font-medium text-slate-800">
                                   {r.creativeName}
                                 </div>
-                                <Badge variant={statusVariant(r.status)}>
-                                  {statusLabel(r.status)}
-                                </Badge>
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                  <Badge variant={statusVariant(r.status)}>
+                                    {statusLabel(r.status)}
+                                  </Badge>
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewing(r)}
+                                    className="text-[11px] font-medium text-violet-600 hover:underline"
+                                  >
+                                    {t("view")}
+                                  </button>
+                                  {downloadUrl(r) ? (
+                                    <a
+                                      href={downloadUrl(r)!}
+                                      className="text-[11px] font-medium text-violet-600 hover:underline"
+                                    >
+                                      {t("download")}
+                                    </a>
+                                  ) : null}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -208,6 +243,51 @@ export function CreativesPerformanceClient() {
           })}
         </div>
       )}
+
+      {viewing ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
+          onMouseDown={() => setViewing(null)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-5 py-3">
+              <div className="min-w-0 truncate text-sm font-semibold text-slate-800">
+                {viewing.creativeName}
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewing(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label={t("close")}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex min-h-[200px] flex-1 items-center justify-center overflow-auto bg-slate-50 p-4">
+              {viewing.imageUrl || viewing.thumbnailUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={viewing.imageUrl ?? viewing.thumbnailUrl ?? ""}
+                  alt={viewing.creativeName}
+                  className="max-h-[65vh] max-w-full rounded-lg object-contain"
+                />
+              ) : (
+                <div className="text-sm text-slate-400">—</div>
+              )}
+            </div>
+            <div className="flex justify-end border-t border-slate-100 px-5 py-3">
+              {downloadUrl(viewing) ? (
+                <a href={downloadUrl(viewing)!} className="ui-btn-primary text-sm">
+                  ⬇ {t("download")}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

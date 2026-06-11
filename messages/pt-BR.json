@@ -1340,6 +1340,9 @@
     "empty": "Nenhum criativo com dados para este cliente no período.",
     "colCreative": "Criativo",
     "colAds": "Anúncios",
-    "colCampaigns": "Campanhas onde é usado"
+    "colCampaigns": "Campanhas onde é usado",
+    "view": "Ver",
+    "download": "Baixar",
+    "close": "Fechar"
   }
 }
