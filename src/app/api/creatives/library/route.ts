@@ -10,8 +10,8 @@ import {
   type CreativeAssetType
 } from "@/lib/meta-graph";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
-import { presetMetricsFor } from "@/lib/campaign-presets";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
 
 export const maxDuration = 60;
 
@@ -150,7 +150,6 @@ export async function GET(req: Request) {
   }
 
   const aggs = [...byCreative.values()];
-  const maxSpend = Math.max(1, ...aggs.map((a) => a.spend));
 
   const rows = aggs.map((a) => {
     const counts = new Map<string, number>();
@@ -183,12 +182,11 @@ export async function GET(req: Request) {
       roas: a.roasCount ? a.roasSum / a.roasCount : 0
     };
 
-    const primary = presetMetricsFor(dominantPreset)[0];
-    const metricLabel = `${formatMetricValue(primary, metrics[primary] ?? 0, "pt-BR")} · ${METRIC_BY_KEY[primary].label.toUpperCase()}`;
+    const rankMetric = rankSpecFor(dominantPreset).metric;
+    const metricLabel = `${formatMetricValue(rankMetric, metrics[rankMetric] ?? 0, "pt-BR")} · ${METRIC_BY_KEY[rankMetric].label.toUpperCase()}`;
 
-    const ratio = a.spend / maxSpend;
-    const performance: "very_high" | "high" | "medium" | "low" =
-      ratio >= 0.66 ? "very_high" : ratio >= 0.33 ? "high" : ratio > 0 ? "medium" : "low";
+    // performance é atribuída no segundo passo (eficiência por tipo + piso).
+    const performance = "low" as "very_high" | "high" | "medium" | "low";
 
     const campaignList = [...a.campaigns];
 
@@ -217,7 +215,33 @@ export async function GET(req: Request) {
     };
   });
 
-  rows.sort((x, y) => y.usageAds - x.usageAds);
+  // Performance por eficiência dentro de cada tipo (preset), com piso mínimo.
+  const byPreset = new Map<string, typeof rows>();
+  for (const r of rows) {
+    const arr = byPreset.get(r.dominantPreset) ?? [];
+    arr.push(r);
+    byPreset.set(r.dominantPreset, arr);
+  }
+  for (const [preset, arr] of byPreset) {
+    const spec = rankSpecFor(preset);
+    const qualified = arr.filter((r) => meetsMinActivity(r.metrics));
+    qualified.sort((x, y) => compareByRank(x.metrics, y.metrics, spec));
+    const n = qualified.length;
+    qualified.forEach((r, i) => {
+      const pct = n <= 1 ? 0 : i / (n - 1); // 0 = melhor da categoria
+      r.performance =
+        pct <= 0.15 ? "very_high" : pct <= 0.4 ? "high" : pct <= 0.75 ? "medium" : "low";
+    });
+    arr.filter((r) => !meetsMinActivity(r.metrics)).forEach((r) => (r.performance = "low"));
+  }
+
+  // Melhores primeiro (por faixa de performance) e, em empate, por gasto.
+  const perfOrder = { very_high: 0, high: 1, medium: 2, low: 3 } as const;
+  rows.sort(
+    (x, y) =>
+      perfOrder[x.performance] - perfOrder[y.performance] ||
+      Number(y.metrics.spend ?? 0) - Number(x.metrics.spend ?? 0)
+  );
 
   return NextResponse.json({ ok: true, rows, total: rows.length });
 }

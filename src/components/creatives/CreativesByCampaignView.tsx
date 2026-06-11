@@ -75,6 +75,11 @@ export function CreativesByCampaignView({
     if (s === "PAUSED") return tCampaigns("statusPaused");
     return tCampaigns("statusInactive");
   }
+  const COST_METRICS = new Set<MetricKey>(["cpmsg", "cpa", "cpm", "cpc"]);
+  function rankHint(metric: MetricKey) {
+    const dir = COST_METRICS.has(metric) ? t("rankLower") : t("rankHigher");
+    return `${t("rankedBy")} ${tMetrics(METRIC_BY_KEY[metric].label)} (${dir})`;
+  }
 
   if (loading) {
     return <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />;
@@ -90,12 +95,15 @@ export function CreativesByCampaignView({
         return (
           <div key={camp.campaignId} className="ui-card overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
-              <Link
-                href={`/campaigns/${camp.campaignId}?client=${encodeURIComponent(clientSlug ?? "")}`}
-                className="truncate text-sm font-semibold text-slate-800 hover:text-violet-700 hover:underline"
-              >
-                {camp.campaignName}
-              </Link>
+              <div className="min-w-0">
+                <Link
+                  href={`/campaigns/${camp.campaignId}?client=${encodeURIComponent(clientSlug ?? "")}`}
+                  className="block truncate text-sm font-semibold text-slate-800 hover:text-violet-700 hover:underline"
+                >
+                  {camp.campaignName}
+                </Link>
+                <div className="text-[11px] text-slate-400">{rankHint(camp.primaryMetric)}</div>
+              </div>
               <Badge variant="brand">{tPresets(camp.preset)}</Badge>
             </div>
             <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -157,16 +165,33 @@ export function CreativesByCampaignView({
                     </div>
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-1.5">
-                    {metrics.map((m) => (
-                      <div key={m} className="rounded-md bg-slate-50 px-2 py-1">
-                        <div className="text-[9px] uppercase tracking-wide text-slate-400">
-                          {tMetrics(METRIC_BY_KEY[m].label)}
+                    {metrics.map((m) => {
+                      const isRank = m === camp.primaryMetric;
+                      return (
+                        <div
+                          key={m}
+                          className={`rounded-md px-2 py-1 ${
+                            isRank ? "bg-violet-50 ring-1 ring-violet-200" : "bg-slate-50"
+                          }`}
+                        >
+                          <div
+                            className={`text-[9px] uppercase tracking-wide ${
+                              isRank ? "text-violet-500" : "text-slate-400"
+                            }`}
+                          >
+                            {isRank ? "★ " : ""}
+                            {tMetrics(METRIC_BY_KEY[m].label)}
+                          </div>
+                          <div
+                            className={`text-xs font-semibold tabular-nums ${
+                              isRank ? "text-violet-800" : "text-slate-800"
+                            }`}
+                          >
+                            {formatMetricValue(m, Number(c.metrics[m] ?? 0), locale)}
+                          </div>
                         </div>
-                        <div className="text-xs font-semibold tabular-nums text-slate-800">
-                          {formatMetricValue(m, Number(c.metrics[m] ?? 0), locale)}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ))}

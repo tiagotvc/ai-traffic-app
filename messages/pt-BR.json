@@ -1359,6 +1359,9 @@
     "previewLoading": "Gerando preview…",
     "previewUnavailable": "Preview indisponível",
     "exportPdf": "Exportar PDF",
-    "allAccounts": "Todas as contas"
+    "allAccounts": "Todas as contas",
+    "rankedBy": "Ordenado por",
+    "rankHigher": "maior",
+    "rankLower": "menor"
   }
 }

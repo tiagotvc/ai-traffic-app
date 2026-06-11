@@ -10,8 +10,8 @@ import {
   type CreativeAssetType
 } from "@/lib/meta-graph";
 import { type MetricKey } from "@/lib/dashboard-metrics";
-import { presetMetricsFor } from "@/lib/campaign-presets";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
 
 export const maxDuration = 60;
 
@@ -170,25 +170,33 @@ export async function GET(req: Request) {
   const campaigns = [...byCampaign.values()]
     .map((camp) => {
       const preset = presetByCampaign.get(camp.id) ?? "default";
-      const primaryMetric = presetMetricsFor(preset)[0];
-      const creatives = [...camp.creatives.values()]
-        .map((a) => ({
-          name: a.name,
-          type: a.type,
-          status: a.anyActive ? "ACTIVE" : "PAUSED",
-          adId: a.firstAdId ?? null,
-          adsCount: a.ads.size,
-          thumbnailUrl: a.thumbnailUrl ?? null,
-          imageUrl: a.imageUrl ?? a.thumbnailUrl ?? null,
-          metrics: metricsOf(a)
-        }))
-        .sort((x, y) => Number(y.metrics[primaryMetric] ?? 0) - Number(x.metrics[primaryMetric] ?? 0))
+      const spec = rankSpecFor(preset);
+      const all = [...camp.creatives.values()].map((a) => ({
+        name: a.name,
+        type: a.type,
+        status: a.anyActive ? "ACTIVE" : "PAUSED",
+        adId: a.firstAdId ?? null,
+        adsCount: a.ads.size,
+        thumbnailUrl: a.thumbnailUrl ?? null,
+        imageUrl: a.imageUrl ?? a.thumbnailUrl ?? null,
+        metrics: metricsOf(a)
+      }));
+      // Piso mínimo de atividade; se nada atinge, mostra todos (ranqueados por gasto).
+      const qualified = all.filter((c) => meetsMinActivity(c.metrics));
+      const ranked = qualified.length ? qualified : all;
+      const creatives = ranked
+        .sort((x, y) =>
+          qualified.length
+            ? compareByRank(x.metrics, y.metrics, spec)
+            : Number(y.metrics.spend ?? 0) - Number(x.metrics.spend ?? 0)
+        )
         .slice(0, TOP_PER_CAMPAIGN);
       return {
         campaignId: camp.id,
         campaignName: camp.name,
         preset,
-        primaryMetric,
+        primaryMetric: spec.metric,
+        rankBelowFloor: qualified.length === 0,
         spend: camp.spend,
         creatives
       };
