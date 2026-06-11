@@ -71,6 +71,7 @@ export function CreativesLibraryView({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "active" | "testing" | "paused" | "archived">("all");
   const [q, setQ] = useState("");
+  const [formatFilter, setFormatFilter] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
@@ -97,12 +98,18 @@ export function CreativesLibraryView({
     load();
   }, [load]);
 
+  const formatOptions = useMemo(
+    () => [...new Set(rows.map((r) => r.format).filter(Boolean))].sort(),
+    [rows]
+  );
+
   const filtered = useMemo(() => {
     let list = rows;
     if (tab === "active") list = list.filter((r) => r.status === "active");
     if (tab === "testing") list = list.filter((r) => r.status === "testing");
     if (tab === "paused") list = list.filter((r) => r.status === "paused");
     if (tab === "archived") list = list.filter((r) => r.status === "archived");
+    if (formatFilter) list = list.filter((r) => r.format === formatFilter);
     if (q.trim()) {
       const needle = q.toLowerCase();
       list = list.filter(
@@ -113,7 +120,7 @@ export function CreativesLibraryView({
       );
     }
     return list;
-  }, [rows, tab, q]);
+  }, [rows, tab, q, formatFilter]);
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const selected = rows.find((r) => r.id === selectedId) ?? paged[0] ?? null;
@@ -166,17 +173,25 @@ export function CreativesLibraryView({
 
       {showFilters ? (
         <div className="flex flex-wrap gap-2">
-          <select className="ui-select w-auto min-w-[140px]">
-            <option>{t("filterClient")}</option>
-          </select>
-          <select className="ui-select w-auto min-w-[140px]" disabled={!!lockedCampaignName}>
-            <option>{lockedCampaignName ?? t("filterCampaign")}</option>
-          </select>
-          <select className="ui-select w-auto min-w-[120px]">
-            <option>{t("filterFormat")}</option>
-          </select>
-          <select className="ui-select w-auto min-w-[120px]">
-            <option>{t("filterStatus")}</option>
+          {lockedCampaignName ? (
+            <select className="ui-select w-auto min-w-[140px]" disabled>
+              <option>{lockedCampaignName}</option>
+            </select>
+          ) : null}
+          <select
+            value={formatFilter}
+            onChange={(e) => {
+              setFormatFilter(e.target.value);
+              setPage(1);
+            }}
+            className="ui-select w-auto min-w-[120px]"
+          >
+            <option value="">{t("filterFormat")}</option>
+            {formatOptions.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
           </select>
           <input
             value={q}
