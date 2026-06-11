@@ -1065,7 +1065,9 @@
       "descriptions": "Descriptions"
     },
     "download": "Download",
-    "clientLabel": "Client"
+    "clientLabel": "Client",
+    "viewLibrary": "Library",
+    "viewByCampaign": "Top by campaign"
   },
   "audiences": {
     "title": "Audiences / Lookalike",

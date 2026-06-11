@@ -196,7 +196,9 @@ export async function GET(req: Request) {
       usageAds: a.ads.size,
       usageCampaigns: a.campaigns.size,
       thumbnailUrl: a.thumbnailUrl ?? null,
-      imageUrl: a.imageUrl ?? a.thumbnailUrl ?? null
+      imageUrl: a.imageUrl ?? a.thumbnailUrl ?? null,
+      dominantPreset,
+      metrics
     };
   });
 

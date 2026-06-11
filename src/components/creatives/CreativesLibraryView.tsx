@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/Badge";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { presetMetricsFor } from "@/lib/campaign-presets";
 
 export type CreativeRow = {
   id: string;
@@ -23,6 +25,8 @@ export type CreativeRow = {
   createdAt?: string;
   thumbnailUrl?: string | null;
   imageUrl?: string | null;
+  dominantPreset?: string;
+  metrics?: Partial<Record<MetricKey, number>>;
 };
 
 const STAT_KEYS = ["total", "images", "videos", "carousels", "copy", "headlines", "descriptions"] as const;
@@ -66,6 +70,7 @@ export function CreativesLibraryView({
   onTotalChange?: (total: number) => void;
 }) {
   const t = useTranslations(translationNs);
+  const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [rows, setRows] = useState<CreativeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -439,17 +444,23 @@ export function CreativesLibraryView({
             <section className="mt-4 border-t border-slate-100 pt-4">
               <h3 className="text-xs font-semibold uppercase text-slate-500">{t("detailPerformance")}</h3>
               <div className="mt-2 grid grid-cols-2 gap-2 text-center text-xs">
-                {[
-                  ["125.430", t("metricImpressions")],
-                  ["2.843", t("metricClicks")],
-                  ["2,27%", "CTR"],
-                  ["R$ 1.240", t("metricSpend")],
-                  ["128", t("metricConversions")],
-                  [selected.metricLabel, "ROAS"]
-                ].map(([val, lbl]) => (
-                  <div key={lbl} className="rounded-lg border border-slate-100 bg-slate-50 p-2">
-                    <div className="font-bold text-slate-900">{val}</div>
-                    <div className="text-slate-500">{lbl}</div>
+                {(
+                  [
+                    ...new Set([
+                      ...presetMetricsFor(selected.dominantPreset),
+                      "spend",
+                      "impressions",
+                      "clicks"
+                    ])
+                  ].slice(0, 6) as MetricKey[]
+                ).map((key) => (
+                  <div key={key} className="rounded-lg border border-slate-100 bg-slate-50 p-2">
+                    <div className="font-bold text-slate-900">
+                      {selected.metrics
+                        ? formatMetricValue(key, selected.metrics[key] ?? 0, locale)
+                        : "—"}
+                    </div>
+                    <div className="text-slate-500">{tMetrics(METRIC_BY_KEY[key].label)}</div>
                   </div>
                 ))}
               </div>

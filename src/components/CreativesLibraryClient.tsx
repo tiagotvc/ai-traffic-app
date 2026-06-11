@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { CreativesLibraryView } from "@/components/creatives/CreativesLibraryView";
+import { CreativesByCampaignView } from "@/components/creatives/CreativesByCampaignView";
 
 type ClientRow = { id: string; slug: string; name: string };
 
@@ -11,6 +12,7 @@ export function CreativesLibraryClient() {
   const t = useTranslations("creatives");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState("");
+  const [view, setView] = useState<"library" | "byCampaign">("library");
 
   useEffect(() => {
     fetch("/api/clients")
@@ -36,7 +38,21 @@ export function CreativesLibraryClient() {
           </h1>
           <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5 shadow-sm">
+            {(["library", "byCampaign"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                  view === v ? "bg-violet-100 text-violet-700" : "text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                {v === "library" ? t("viewLibrary") : t("viewByCampaign")}
+              </button>
+            ))}
+          </div>
           <span className="text-xs text-slate-500">{t("clientLabel")}:</span>
           <select
             value={clientId}
@@ -53,11 +69,15 @@ export function CreativesLibraryClient() {
       </div>
 
       {clientId ? (
-        <CreativesLibraryView
-          key={clientId}
-          fetchUrl={`/api/creatives/library?clientId=${encodeURIComponent(clientId)}`}
-          translationNs="creatives"
-        />
+        view === "library" ? (
+          <CreativesLibraryView
+            key={clientId}
+            fetchUrl={`/api/creatives/library?clientId=${encodeURIComponent(clientId)}`}
+            translationNs="creatives"
+          />
+        ) : (
+          <CreativesByCampaignView key={clientId} clientId={clientId} clientSlug={clientId} />
+        )
       ) : null}
     </div>
   );

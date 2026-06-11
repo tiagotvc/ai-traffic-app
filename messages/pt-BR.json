@@ -1065,7 +1065,9 @@
       "descriptions": "Descrições"
     },
     "download": "Baixar",
-    "clientLabel": "Cliente"
+    "clientLabel": "Cliente",
+    "viewLibrary": "Biblioteca",
+    "viewByCampaign": "Melhores por campanha"
   },
   "audiences": {
     "title": "Públicos / Lookalike",
