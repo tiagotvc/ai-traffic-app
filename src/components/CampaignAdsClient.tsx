@@ -10,6 +10,7 @@ import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
+import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
 
 type AdMetrics = Partial<Record<MetricKey, number>>;
 
@@ -73,6 +74,7 @@ export function CampaignAdsClient({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [previewing, setPreviewing] = useState<AdRow | null>(null);
   const [isPending, startTransition] = useTransition();
   const pageSize = 20;
 
@@ -309,13 +311,17 @@ export function CampaignAdsClient({
                   return (
                     <tr key={ad.id} className="border-t border-slate-100 hover:bg-slate-50/80">
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewing(ad)}
+                          className="group flex items-center gap-3 text-left"
+                        >
                           {ad.creative?.thumbnail_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={ad.creative.thumbnail_url}
                               alt=""
-                              className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                              className="h-10 w-10 shrink-0 rounded-lg object-cover transition group-hover:opacity-80"
                             />
                           ) : (
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm">
@@ -323,10 +329,12 @@ export function CampaignAdsClient({
                             </div>
                           )}
                           <div>
-                            <div className="font-medium text-slate-900">{name}</div>
+                            <div className="font-medium text-slate-900 group-hover:text-violet-700 group-hover:underline">
+                              {name}
+                            </div>
                             <div className="text-[10px] text-slate-400">{ad.id}</div>
                           </div>
-                        </div>
+                        </button>
                       </td>
                       <td className="px-3 py-3">
                         <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
@@ -398,6 +406,20 @@ export function CampaignAdsClient({
           </div>
         </div>
       </div>
+
+      {previewing ? (
+        <CreativePreviewModal
+          adId={previewing.id}
+          imageUrl={previewing.creative?.thumbnail_url ?? null}
+          name={previewing.name ?? previewing.id}
+          downloadHref={
+            previewing.creative?.thumbnail_url
+              ? `/api/creatives/download?u=${encodeURIComponent(previewing.creative.thumbnail_url)}&name=${encodeURIComponent(previewing.name ?? previewing.id)}`
+              : null
+          }
+          onClose={() => setPreviewing(null)}
+        />
+      ) : null}
     </div>
   );
 }

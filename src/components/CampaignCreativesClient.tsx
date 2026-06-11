@@ -151,7 +151,7 @@ export function CampaignCreativesClient({
       />
 
       <CreativesLibraryView
-        fetchUrl={`/api/campaigns/${encodeURIComponent(metaCampaignId)}/creatives`}
+        fetchUrl={`/api/campaigns/${encodeURIComponent(metaCampaignId)}/creatives?clientSlug=${encodeURIComponent(slug)}`}
         translationNs="creativesPage"
         lockedCampaignName={campaign.name}
         onTotalChange={setCreativesCount}
