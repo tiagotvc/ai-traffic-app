@@ -103,6 +103,7 @@ export function CreativesRankingView({
             metrics={presetMetricsFor(g.preset)}
             primaryMetric={g.primaryMetric}
             clientSlug={clientSlug ?? ""}
+            collapseZeroSpend
           />
         </div>
       ))}

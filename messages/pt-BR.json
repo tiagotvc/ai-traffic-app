@@ -1396,6 +1396,11 @@
     "comparePerf": "Desempenho por campanha",
     "total": "Total (global)",
     "colCampaign": "Campanha",
-    "usedInCampaigns": "Usado em {n} campanha(s)"
+    "usedInCampaigns": "Usado em {n} campanha(s)",
+    "cmpByCampaign": "Por campanha",
+    "cmpByAdset": "Por conjunto",
+    "colAdset": "Conjunto",
+    "showMoreZero": "Ver criativos sem gasto no período ({n})",
+    "showLess": "Ocultar"
   }
 }

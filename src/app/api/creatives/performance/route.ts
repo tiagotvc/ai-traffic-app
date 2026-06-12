@@ -63,6 +63,7 @@ function metricsOf(s: Sums): Partial<Record<MetricKey, number>> {
 }
 
 type CampBreak = { id: string; name: string; sums: Sums; ads: Set<string> };
+type AdsetBreak = { id: string; name: string; campaignName: string; sums: Sums; ads: Set<string> };
 type Agg = {
   name: string;
   type: CreativeAssetType;
@@ -76,6 +77,7 @@ type Agg = {
   campaignIds: string[];
   anyActive: boolean;
   perCampaign: Map<string, CampBreak>;
+  perAdset: Map<string, AdsetBreak>;
 };
 
 export async function GET(req: Request) {
@@ -150,7 +152,8 @@ export async function GET(req: Request) {
           adsets: new Map(),
           campaignIds: [],
           anyActive: false,
-          perCampaign: new Map()
+          perCampaign: new Map(),
+          perAdset: new Map()
         };
         byCreative.set(key, agg);
       }
@@ -176,6 +179,21 @@ export async function GET(req: Request) {
           }
           addInsight(cb.sums, m);
           cb.ads.add(ad.id);
+        }
+        if (ad.adsetId) {
+          let ab = agg.perAdset.get(ad.adsetId);
+          if (!ab) {
+            ab = {
+              id: ad.adsetId,
+              name: ad.adsetName ?? ad.adsetId,
+              campaignName: ad.campaignName ?? "",
+              sums: newSums(),
+              ads: new Set()
+            };
+            agg.perAdset.set(ad.adsetId, ab);
+          }
+          addInsight(ab.sums, m);
+          ab.ads.add(ad.id);
         }
       }
     }
@@ -207,6 +225,16 @@ export async function GET(req: Request) {
       }))
       .sort((x, y) => Number(y.metrics.spend ?? 0) - Number(x.metrics.spend ?? 0));
 
+    const breakdownAdsets = [...a.perAdset.values()]
+      .map((ab) => ({
+        adsetId: ab.id,
+        adsetName: ab.name,
+        campaignName: ab.campaignName,
+        adsCount: ab.ads.size,
+        metrics: metricsOf(ab.sums)
+      }))
+      .sort((x, y) => Number(y.metrics.spend ?? 0) - Number(x.metrics.spend ?? 0));
+
     return {
       key: a.name,
       name: a.name,
@@ -221,7 +249,8 @@ export async function GET(req: Request) {
       metrics: metricsOf(a.sums),
       campaigns: [...a.campaigns.entries()].map(([id, name]) => ({ id, name })),
       adsets: [...a.adsets.entries()].map(([id, name]) => ({ id, name })),
-      breakdown
+      breakdown,
+      breakdownAdsets
     };
   });
 

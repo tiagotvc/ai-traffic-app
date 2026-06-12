@@ -14,6 +14,14 @@ export type CreativeBreakdown = {
   metrics: Partial<Record<MetricKey, number>>;
 };
 
+export type CreativeAdsetBreakdown = {
+  adsetId: string;
+  adsetName: string;
+  campaignName: string;
+  adsCount: number;
+  metrics: Partial<Record<MetricKey, number>>;
+};
+
 export type CreativeItem = {
   name: string;
   type?: string;
@@ -25,6 +33,7 @@ export type CreativeItem = {
   metrics: Partial<Record<MetricKey, number>>;
   campaigns?: Array<{ id: string; name: string }>;
   breakdown?: CreativeBreakdown[];
+  breakdownAdsets?: CreativeAdsetBreakdown[];
 };
 
 export function CreativeCardGrid({
@@ -32,13 +41,15 @@ export function CreativeCardGrid({
   metrics,
   primaryMetric,
   clientSlug = "",
-  showRank = true
+  showRank = true,
+  collapseZeroSpend = false
 }: {
   creatives: CreativeItem[];
   metrics: MetricKey[];
   primaryMetric: MetricKey;
   clientSlug?: string;
   showRank?: boolean;
+  collapseZeroSpend?: boolean;
 }) {
   const t = useTranslations("creativesPerf");
   const tMetrics = useTranslations("metrics");
@@ -46,6 +57,38 @@ export function CreativeCardGrid({
   const locale = useLocale();
   const [previewing, setPreviewing] = useState<CreativeItem | null>(null);
   const [comparing, setComparing] = useState<CreativeItem | null>(null);
+  const [cmpMode, setCmpMode] = useState<"campaign" | "adset">("campaign");
+  const [showZero, setShowZero] = useState(false);
+
+  // Sem gasto no período só aparecem ao clicar em "ver mais".
+  const spent = collapseZeroSpend
+    ? creatives.filter((c) => Number(c.metrics.spend ?? 0) > 0)
+    : creatives;
+  const zero = collapseZeroSpend
+    ? creatives.filter((c) => Number(c.metrics.spend ?? 0) <= 0)
+    : [];
+  const visible = showZero ? [...spent, ...zero] : spent;
+
+  const cmpRows: Array<{
+    id: string;
+    label: string;
+    sub: string;
+    metrics: Partial<Record<MetricKey, number>>;
+  }> = !comparing
+    ? []
+    : cmpMode === "adset"
+      ? (comparing.breakdownAdsets ?? []).map((b) => ({
+          id: b.adsetId,
+          label: b.adsetName,
+          sub: `${b.campaignName ? b.campaignName + " · " : ""}${b.adsCount} anúncio(s)`,
+          metrics: b.metrics
+        }))
+      : (comparing.breakdown ?? []).map((b) => ({
+          id: b.campaignId,
+          label: b.campaignName,
+          sub: `${b.adsCount} anúncio(s)`,
+          metrics: b.metrics
+        }));
 
   function dl(c: CreativeItem) {
     const u = c.imageUrl ?? c.thumbnailUrl;
@@ -62,7 +105,7 @@ export function CreativeCardGrid({
   return (
     <>
       <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-        {creatives.map((c, idx) => (
+        {visible.map((c, idx) => (
           <div key={`${c.name}-${idx}`} className="rounded-xl border border-slate-200 p-3">
             <div className="flex gap-3">
               {c.thumbnailUrl ? (
@@ -122,10 +165,14 @@ export function CreativeCardGrid({
                       {t("download")}
                     </a>
                   ) : null}
-                  {c.breakdown && c.breakdown.length > 1 ? (
+                  {(c.breakdown && c.breakdown.length > 1) ||
+                  (c.breakdownAdsets && c.breakdownAdsets.length > 1) ? (
                     <button
                       type="button"
-                      onClick={() => setComparing(c)}
+                      onClick={() => {
+                        setCmpMode("campaign");
+                        setComparing(c);
+                      }}
                       className="text-[11px] font-medium text-violet-600 hover:underline"
                     >
                       {t("compare")}
@@ -172,6 +219,18 @@ export function CreativeCardGrid({
         ))}
       </div>
 
+      {zero.length ? (
+        <div className="px-4 pb-3 -mt-1">
+          <button
+            type="button"
+            onClick={() => setShowZero((v) => !v)}
+            className="text-xs font-medium text-violet-600 hover:underline"
+          >
+            {showZero ? t("showLess") : t("showMoreZero", { n: zero.length })}
+          </button>
+        </div>
+      ) : null}
+
       {previewing ? (
         <CreativePreviewModal
           adId={previewing.adId}
@@ -205,11 +264,29 @@ export function CreativeCardGrid({
                 ✕
               </button>
             </div>
+            <div className="flex gap-1 border-b border-slate-100 px-5 py-2">
+              {(["campaign", "adset"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setCmpMode(mode)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                    cmpMode === mode
+                      ? "bg-violet-100 text-violet-700"
+                      : "text-slate-500 hover:bg-slate-50"
+                  }`}
+                >
+                  {mode === "campaign" ? t("cmpByCampaign") : t("cmpByAdset")}
+                </button>
+              ))}
+            </div>
             <div className="overflow-auto">
               <table className="w-full min-w-[520px] text-left text-sm">
                 <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-slate-500">
                   <tr>
-                    <th className="px-4 py-2">{t("colCampaign")}</th>
+                    <th className="px-4 py-2">
+                      {cmpMode === "adset" ? t("colAdset") : t("colCampaign")}
+                    </th>
                     {metrics.map((m) => (
                       <th key={m} className="px-3 py-2 text-right">
                         {tMetrics(METRIC_BY_KEY[m].label)}
@@ -218,11 +295,11 @@ export function CreativeCardGrid({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(comparing.breakdown ?? []).map((b) => (
-                    <tr key={b.campaignId} className="hover:bg-slate-50/60">
+                  {cmpRows.map((b, i) => (
+                    <tr key={`${b.id}-${i}`} className="hover:bg-slate-50/60">
                       <td className="px-4 py-2.5">
-                        <div className="max-w-[260px] truncate text-slate-800">{b.campaignName}</div>
-                        <div className="text-[10px] text-slate-400">{b.adsCount} anúncio(s)</div>
+                        <div className="max-w-[260px] truncate text-slate-800">{b.label}</div>
+                        <div className="text-[10px] text-slate-400">{b.sub}</div>
                       </td>
                       {metrics.map((m) => (
                         <td key={m} className="px-3 py-2.5 text-right tabular-nums text-slate-700">

@@ -1396,6 +1396,11 @@
     "comparePerf": "Performance by campaign",
     "total": "Total (global)",
     "colCampaign": "Campaign",
-    "usedInCampaigns": "Used in {n} campaign(s)"
+    "usedInCampaigns": "Used in {n} campaign(s)",
+    "cmpByCampaign": "By campaign",
+    "cmpByAdset": "By ad set",
+    "colAdset": "Ad set",
+    "showMoreZero": "Show creatives with no spend in the period ({n})",
+    "showLess": "Hide"
   }
 }
