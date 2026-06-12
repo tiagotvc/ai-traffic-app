@@ -38,6 +38,9 @@ export function SettingsClient({
   const [wsMeta, setWsMeta] = useState<WorkspaceMetaInfo | null>(null);
   const [wsMetaMessage, setWsMetaMessage] = useState<string | null>(null);
   const [wsMetaPending, startWsMetaTransition] = useTransition();
+  const [resetText, setResetText] = useState("");
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [resetPending, startResetTransition] = useTransition();
 
   const loadWorkspaceMeta = useCallback(() => {
     fetch("/api/settings/workspace-meta")
@@ -292,6 +295,51 @@ export function SettingsClient({
             className="mt-3 w-full rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
           >
             {purgePending ? tCommon("loading") : t("demoDataAction")}
+          </button>
+        </section>
+
+        <section className="ui-card border-rose-200 p-4">
+          <div className="text-sm font-semibold text-rose-700">{t("resetDataTitle")}</div>
+          <p className="mt-2 text-xs text-slate-500">{t("resetDataHint")}</p>
+          <p className="mt-1 text-[11px] text-slate-400">{t("resetDataKeeps")}</p>
+          <label className="mt-3 block text-[11px] font-medium text-slate-600">
+            {t("resetDataConfirmLabel")}
+          </label>
+          <input
+            value={resetText}
+            onChange={(e) => setResetText(e.target.value)}
+            placeholder="RESET"
+            className="ui-input mt-1 !py-1.5 font-mono text-sm"
+          />
+          {resetMessage ? <p className="mt-2 text-xs text-slate-600">{resetMessage}</p> : null}
+          <button
+            type="button"
+            disabled={resetPending || resetText !== "RESET"}
+            onClick={() => {
+              if (resetText !== "RESET") return;
+              if (!window.confirm(t("resetDataConfirm"))) return;
+              setResetMessage(null);
+              startResetTransition(async () => {
+                const res = await fetch("/api/settings/reset-workspace-data", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ confirm: "RESET" })
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok || !json.ok) {
+                  setResetMessage(String(json.error ?? t("resetDataFailed")));
+                  return;
+                }
+                setResetText("");
+                setMetaConnected(false);
+                setResetMessage(t("resetDataDone", { total: json.totalDeleted ?? 0 }));
+                window.dispatchEvent(new Event("traffic:campaigns-reload"));
+                loadWorkspaceMeta();
+              });
+            }}
+            className="mt-3 w-full rounded-xl border border-rose-300 bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-50"
+          >
+            {resetPending ? tCommon("loading") : t("resetDataAction")}
           </button>
         </section>
 
