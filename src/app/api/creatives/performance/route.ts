@@ -112,23 +112,30 @@ export async function GET(req: Request) {
   const byCreative = new Map<string, Agg>();
   const warnings: Array<{ account: string; label: string }> = [];
 
-  for (const acc of accounts) {
-    const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
-    let ads = accRes.ads;
-    let insights: Map<string, AdInsightMetrics>;
-    if (accRes.ok) {
-      insights = ads.length
-        ? await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
-            since: period.since,
-            until: period.until
-          })
-        : new Map();
-    } else {
-      const campIds = await getSyncedCampaignIds(acc.id);
-      const fb = await loadAdsViaCampaigns(tokens, campIds);
-      ads = fb.ads;
-      insights = fb.insights;
-    }
+  // Busca por conta EM PARALELO (evita 504): a parte lenta é a rede.
+  const perAccount = await Promise.all(
+    accounts.map(async (acc) => {
+      const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
+      let ads = accRes.ads;
+      let insights: Map<string, AdInsightMetrics>;
+      if (accRes.ok) {
+        insights = ads.length
+          ? await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
+              since: period.since,
+              until: period.until
+            })
+          : new Map();
+      } else {
+        const campIds = await getSyncedCampaignIds(acc.id);
+        const fb = await loadAdsViaCampaigns(tokens, campIds);
+        ads = fb.ads;
+        insights = fb.insights;
+      }
+      return { acc, accRes, ads, insights };
+    })
+  );
+
+  for (const { acc, accRes, ads, insights } of perAccount) {
     if (!accRes.ok && ads.length === 0 && accRes.errors > 0) {
       warnings.push({ account: acc.metaAdAccountId, label: acc.label ?? acc.metaAdAccountId });
     }

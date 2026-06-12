@@ -91,23 +91,45 @@ export async function getSyncedCampaignIds(adAccountId: string, limit = 80): Pro
   return rows.map((r) => r.metaCampaignId).filter(Boolean);
 }
 
+/** Executa `fn` sobre `items` com no máximo `limit` em paralelo (evita timeout). */
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let i = 0;
+  async function worker() {
+    while (i < items.length) {
+      const idx = i++;
+      out[idx] = await fn(items[idx]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return out;
+}
+
 /**
  * Fallback quando a conta não é acessível a nível de conta: busca anúncios e
  * insights POR CAMPANHA (acesso por objeto costuma funcionar mesmo sem acesso
- * à listagem da conta inteira).
+ * à listagem da conta inteira). Paralelizado para não estourar o timeout.
  */
 export async function loadAdsViaCampaigns(
   tokens: Array<string | null | undefined>,
   campaignIds: string[]
 ): Promise<{ ads: AdUsageRow[]; insights: Map<string, AdInsightMetrics> }> {
+  const results = await mapLimit(campaignIds, 8, async (cid) => {
+    const { ads: cAds } = await fetchAdsForCampaignAnyToken(tokens, cid);
+    if (!cAds.length) return { ads: [] as AdUsageRow[], insights: new Map<string, AdInsightMetrics>() };
+    const cIns = await fetchInsightsForCampaignAnyToken(tokens, cid);
+    return { ads: cAds, insights: cIns };
+  });
+
   const ads: AdUsageRow[] = [];
   const insights = new Map<string, AdInsightMetrics>();
-  for (const cid of campaignIds) {
-    const { ads: cAds } = await fetchAdsForCampaignAnyToken(tokens, cid);
-    if (!cAds.length) continue;
-    ads.push(...cAds);
-    const cIns = await fetchInsightsForCampaignAnyToken(tokens, cid);
-    for (const [k, v] of cIns) insights.set(k, v);
+  for (const r of results) {
+    ads.push(...r.ads);
+    for (const [k, v] of r.insights) insights.set(k, v);
   }
   return { ads, insights };
 }
