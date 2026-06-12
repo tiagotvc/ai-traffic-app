@@ -6,9 +6,7 @@ import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { type AdInsightMetrics, type CreativeAssetType } from "@/lib/meta-graph";
 import {
   fetchAdsForAccountAnyToken,
-  fetchInsightsForAccountAnyToken,
-  getSyncedCampaignIds,
-  loadAdsViaCampaigns
+  fetchInsightsForAccountAnyToken
 } from "@/lib/creatives-data";
 import { type MetricKey } from "@/lib/dashboard-metrics";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
@@ -93,39 +91,43 @@ export async function GET(req: Request) {
 
   const byCampaign = new Map<string, CampAgg>();
   const diag: Array<Record<string, unknown>> = [];
-  const warnings: Array<{ account: string; label: string }> = [];
+  const warnings: Array<{
+    account: string;
+    label: string;
+    needsReconnect: boolean;
+    reason: string | null;
+  }> = [];
 
+  // Caminho ÚNICO: chamada a nível de conta. Conta recusada (sem permissão)
+  // é marcada para reconexão — sem fallback lento campanha-por-campanha.
   for (const acc of accounts) {
     const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
-    let ads = accRes.ads;
-    let insights: Map<string, AdInsightMetrics>;
-    let viaCampaigns = false;
-    if (accRes.ok) {
-      insights = ads.length
+    const ads = accRes.ok ? accRes.ads : [];
+    const insights: Map<string, AdInsightMetrics> =
+      accRes.ok && ads.length
         ? await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
             since: period.since,
             until: period.until
           })
         : new Map();
-    } else {
-      // Conta não acessível a nível de conta: tenta por campanha (acesso por objeto).
-      const campIds = await getSyncedCampaignIds(acc.id);
-      const fb = await loadAdsViaCampaigns(tokens, campIds);
-      ads = fb.ads;
-      insights = fb.insights;
-      viaCampaigns = true;
-    }
-    const accessible = accRes.ok || ads.length > 0;
-    if (!accessible && accRes.errors > 0) {
-      warnings.push({ account: acc.metaAdAccountId, label: acc.label ?? acc.metaAdAccountId });
+    if (!accRes.ok) {
+      const reason = accRes.lastError ?? null;
+      const needsReconnect = /#200|ads_management|ads_read|permission/i.test(reason ?? "");
+      warnings.push({
+        account: acc.metaAdAccountId,
+        label: acc.label ?? acc.metaAdAccountId,
+        needsReconnect,
+        reason
+      });
     }
     if (debug) {
       diag.push({
         account: acc.metaAdAccountId,
         label: acc.label ?? null,
-        ok: accessible,
-        viaCampaigns,
+        ok: accRes.ok,
+        needsReconnect: !accRes.ok,
         tokenErrors: accRes.errors,
+        accountError: accRes.lastError ?? null,
         adsTotal: ads.length,
         adsActiveCampaign: ads.filter((a) => a.campaignStatus === "ACTIVE").length
       });

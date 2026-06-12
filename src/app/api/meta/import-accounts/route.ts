@@ -4,7 +4,9 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
+import { probeAdAccountAccessAnyToken } from "@/lib/creatives-data";
 import { linkClientMetaAccounts } from "@/lib/link-client-meta";
+import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { listMetaAdAccountOptions } from "@/lib/meta-ad-accounts";
 
 export const maxDuration = 60;
@@ -35,14 +37,24 @@ export async function POST(req: Request) {
     : [];
   const linkedSet = new Set(linked.map((a) => a.metaAdAccountId));
 
+  // Tokens do tenant para checar permissão real de cada conta a nível de conta.
+  const tokens = await getAllTenantMetaTokens(tenant.id, metaAccessToken);
+
   let created = 0;
   let skipped = 0;
+  const needsPermission: Array<{ id: string; label: string }> = [];
 
   for (const id of body.metaAdAccountIds) {
     const opt = optById.get(id);
     if (!opt || linkedSet.has(id)) {
       skipped += 1;
       continue;
+    }
+
+    // Avisa (sem bloquear) se o token não tem ads_read/ads_management na conta.
+    if (!opt.isDemo && tokens.length) {
+      const access = await probeAdAccountAccessAnyToken(tokens, id);
+      if (!access.ok) needsPermission.push({ id, label: opt.label });
     }
 
     const client = await clientRepo.save(
@@ -66,5 +78,5 @@ export async function POST(req: Request) {
     created += 1;
   }
 
-  return NextResponse.json({ ok: true, created, skipped });
+  return NextResponse.json({ ok: true, created, skipped, needsPermission });
 }

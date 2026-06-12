@@ -4,6 +4,7 @@ import {
   fetchAdInsightsForCampaign,
   fetchAdsWithUsageForAccount,
   fetchAdsWithUsageForCampaign,
+  probeAdAccountAccess,
   type AdInsightMetrics,
   type AdUsageRow
 } from "@/lib/meta-graph";
@@ -13,6 +14,24 @@ import {
  * Se um token não tem acesso à conta, a chamada lança — então tentamos o próximo,
  * em vez de descartar a conta silenciosamente.
  */
+/**
+ * Checa, entre todos os tokens, se algum tem acesso a nível de conta.
+ * ok=true assim que um token passa; senão devolve o motivo do último erro.
+ */
+export async function probeAdAccountAccessAnyToken(
+  tokens: Array<string | null | undefined>,
+  accountId: string
+): Promise<{ ok: boolean; reason: string | null }> {
+  let reason: string | null = null;
+  for (const token of tokens) {
+    if (!token) continue;
+    const r = await probeAdAccountAccess(token, accountId);
+    if (r.ok) return { ok: true, reason: null };
+    reason = r.error ?? reason;
+  }
+  return { ok: false, reason };
+}
+
 export async function fetchAdsForAccountAnyToken(
   tokens: Array<string | null | undefined>,
   accountId: string

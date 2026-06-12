@@ -99,6 +99,7 @@ export function ChooseAdAccountsView() {
 
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [permWarn, setPermWarn] = useState<Array<{ id: string; label: string }>>([]);
 
   useEffect(() => {
     if (USE_MOCK) {
@@ -189,6 +190,7 @@ export function ChooseAdAccountsView() {
     }
     startTransition(async () => {
       setError(null);
+      setPermWarn([]);
       const res = await fetch("/api/meta/import-accounts", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -197,6 +199,12 @@ export function ChooseAdAccountsView() {
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j.ok) {
         setError("Não foi possível importar as contas. Tente novamente.");
+        return;
+      }
+      const noPerm = (j.needsPermission ?? []) as Array<{ id: string; label: string }>;
+      if (noPerm.length) {
+        // Importou, mas o token não tem permissão nessas contas: avisa antes de seguir.
+        setPermWarn(noPerm);
         return;
       }
       router.push("/dashboard");
@@ -352,6 +360,29 @@ export function ChooseAdAccountsView() {
           </div>
 
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+
+          {permWarn.length ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <p className="font-medium">Contas importadas, mas sem permissão na Meta</p>
+              <p className="mt-0.5 text-xs">
+                Estas contas foram vinculadas, porém o acesso (ads_read/ads_management) ainda não foi
+                concedido ao app — os dados delas não vão aparecer até reconectar a Meta liberando o
+                acesso a elas:
+              </p>
+              <ul className="mt-1.5 list-disc pl-5 text-xs font-medium">
+                {permWarn.map((p) => (
+                  <li key={p.id}>{p.label}</li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard")}
+                className="mt-2 text-xs font-semibold text-violet-600 hover:underline"
+              >
+                Entendi, ir para o painel →
+              </button>
+            </div>
+          ) : null}
 
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={backToBm} className="text-sm font-medium text-slate-500 hover:text-slate-700">

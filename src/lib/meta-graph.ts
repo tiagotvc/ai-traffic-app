@@ -175,6 +175,23 @@ async function metaFetch<T>(path: string, accessToken: string): Promise<T> {
   return data;
 }
 
+/**
+ * Leitura mínima a nível de conta para checar permissão (ads_read/ads_management).
+ * true = token tem acesso; caso contrário retorna o erro da Meta (ex.: #200).
+ */
+export async function probeAdAccountAccess(
+  accessToken: string,
+  adAccountId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const id = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  try {
+    await metaFetch<{ id: string }>(`/${id}?fields=id`, accessToken);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export async function metaPost<T>(path: string, accessToken: string, body: Record<string, string>): Promise<T> {
   const url = new URL(`${GRAPH_BASE}${path}`);
   url.searchParams.set("access_token", accessToken);

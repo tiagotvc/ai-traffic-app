@@ -73,9 +73,11 @@ export function CreativesLibraryView({
   onTotalChange?: (total: number) => void;
 }) {
   const t = useTranslations(translationNs);
+  const tPerf = useTranslations("creativesPerf");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [rows, setRows] = useState<CreativeRow[]>([]);
+  const [warnings, setWarnings] = useState<Array<{ account: string; label: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -98,11 +100,13 @@ export function CreativesLibraryView({
         const apiRows = (j.ok === false ? [] : (j.rows ?? [])) as CreativeRow[];
         const total = j.total ?? apiRows.length;
         setRows(apiRows);
+        setWarnings((j.warnings ?? []) as Array<{ account: string; label: string }>);
         setSelectedId(apiRows[0]?.id ?? null);
         onTotalChange?.(total);
       })
       .catch(() => {
         setRows([]);
+        setWarnings([]);
         setSelectedId(null);
         onTotalChange?.(0);
       })
@@ -165,6 +169,15 @@ export function CreativesLibraryView({
 
   return (
     <div className="space-y-5">
+      {warnings.length ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <p className="font-medium">{tPerf("accessWarningTitle")}</p>
+          <p className="mt-0.5 text-xs">
+            {tPerf("accessWarningBody")} {warnings.map((w) => w.label).join(", ")}
+          </p>
+        </div>
+      ) : null}
+
       {showStats ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {STAT_KEYS.map((key) => (
