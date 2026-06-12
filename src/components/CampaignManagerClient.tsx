@@ -12,6 +12,44 @@ import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { formatDayLabel } from "@/lib/dashboard-ranges";
+
+function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
+    </svg>
+  );
+}
+
+function Spinner({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-90" d="M22 12a10 10 0 00-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const ICONS = {
+  pause: "M15.75 5.25v13.5m-7.5-13.5v13.5",
+  play: "M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z",
+  pencil:
+    "M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z",
+  copy: "M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75",
+  external: "M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+} as const;
 
 type Campaign = {
   id: string;
@@ -244,73 +282,104 @@ function CampaignDetailSkeleton({ compact }: { compact?: boolean }) {
   );
 }
 
+const CHART_METRICS: MetricKey[] = ["spend", "conversions", "cpa", "roas"];
+
 function PerformanceChart({
   series,
   loading,
   noDataLabel,
-  spendLabel,
-  conversionsLabel,
   title,
-  metricsLabel,
   locale
 }: {
   series: SeriesPoint[];
   loading: boolean;
   noDataLabel: string;
-  spendLabel: string;
-  conversionsLabel: string;
   title: string;
-  metricsLabel: string;
   locale: string;
 }) {
-  const maxSpend = Math.max(...series.map((s) => s.spend), 1);
-  const maxConv = Math.max(...series.map((s) => s.conversions), 1);
+  const tMetrics = useTranslations("metrics");
+  const [selected, setSelected] = useState<MetricKey[]>(["spend", "conversions"]);
+
+  const data = series.map((p) => ({
+    label: formatDayLabel(p.day, locale),
+    spend: p.spend,
+    conversions: p.conversions,
+    cpa: p.cpa ?? 0,
+    roas: p.roas
+  }));
+
+  function toggle(m: MetricKey) {
+    setSelected((cur) =>
+      cur.includes(m) ? (cur.length > 1 ? cur.filter((x) => x !== m) : cur) : [...cur, m]
+    );
+  }
 
   return (
     <div className="ui-card p-4 lg:col-span-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-        <span className="text-xs text-slate-400">{metricsLabel}</span>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-3 text-[10px]">
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-violet-500" /> {spendLabel}
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-blue-500" /> {conversionsLabel}
-        </span>
-      </div>
-      {loading ? (
-        <Skeleton className="mt-4 h-44 w-full rounded-lg" />
-      ) : series.length ? (
-        <div className="mt-4 flex items-end gap-1" style={{ height: CHART_HEIGHT + 24 }}>
-          {series.map((p) => {
-            const spendH = (p.spend / maxSpend) * CHART_HEIGHT;
-            const convH = (p.conversions / maxConv) * CHART_HEIGHT;
-            const spendLabelText = formatChartSpend(p.spend, locale);
-            const convLabelText = formatChartCount(p.conversions, locale);
+        <div className="flex flex-wrap gap-1.5">
+          {CHART_METRICS.map((m) => {
+            const on = selected.includes(m);
             return (
-              <div key={p.day} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-                <div className="flex w-full items-end justify-center gap-0.5" style={{ height: CHART_HEIGHT }}>
-                  <ChartBar
-                    height={spendH}
-                    bgClass="bg-violet-500/90"
-                    labelClass="text-violet-700"
-                    label={spendLabelText}
-                  />
-                  <ChartBar
-                    height={convH}
-                    bgClass="bg-blue-400/80"
-                    labelClass="text-blue-700"
-                    label={convLabelText}
-                  />
-                </div>
-                <span className="text-[9px] text-slate-400">
-                  {p.day.slice(8, 10)}/{p.day.slice(5, 7)}
-                </span>
-              </div>
+              <button
+                key={m}
+                type="button"
+                onClick={() => toggle(m)}
+                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                  on ? "text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                }`}
+                style={on ? { backgroundColor: METRIC_BY_KEY[m].color } : undefined}
+              >
+                {tMetrics(METRIC_BY_KEY[m].label)}
+              </button>
             );
           })}
+        </div>
+      </div>
+
+      {loading ? (
+        <Skeleton className="mt-4 h-64 w-full rounded-xl" />
+      ) : data.length ? (
+        <div className="mt-4 h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 10 }} />
+              {selected.map((m) => (
+                <YAxis key={m} yAxisId={m} hide domain={["auto", "auto"]} />
+              ))}
+              <Tooltip
+                contentStyle={{
+                  background: "#ffffff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  fontSize: 12
+                }}
+                labelStyle={{ color: "#64748b" }}
+                formatter={(value, _name, item) => {
+                  const key = (item?.dataKey as MetricKey) ?? "spend";
+                  return [
+                    formatMetricValue(key, Number(value), locale),
+                    tMetrics(METRIC_BY_KEY[key].label)
+                  ];
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              {selected.map((m) => (
+                <Line
+                  key={m}
+                  yAxisId={m}
+                  type="monotone"
+                  dataKey={m}
+                  name={tMetrics(METRIC_BY_KEY[m].label)}
+                  stroke={METRIC_BY_KEY[m].color}
+                  strokeWidth={2}
+                  dot={data.length === 1}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       ) : (
         <p className="mt-4 text-xs text-slate-500">{noDataLabel}</p>
@@ -361,6 +430,7 @@ export function CampaignManagerClient({
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [statusPending, setStatusPending] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<DetailTab>(tab);
   const [refreshing, setRefreshing] = useState(false);
@@ -420,7 +490,7 @@ export function CampaignManagerClient({
       })
       .finally(() => setChartLoading(false));
 
-    void Promise.all([detailPromise, adsetsPromise, adsCountPromise, creativesCountPromise, timeseriesPromise]).finally(() => {
+    return Promise.all([detailPromise, adsetsPromise, adsCountPromise, creativesCountPromise, timeseriesPromise]).finally(() => {
       setRefreshing(false);
     });
   }, [metaCampaignId, clientSlug, detailPeriod, seedRow]);
@@ -461,15 +531,21 @@ export function CampaignManagerClient({
   );
 
   const campaignAction = (action: "pause" | "activate") => {
+    setStatusPending(true);
     startTransition(async () => {
-      const res = await fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/actions`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action })
-      });
-      const j = await res.json();
-      setMessage(j.ok ? t(action === "pause" ? "paused" : "activated") : j.error);
-      reload();
+      try {
+        const res = await fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/actions`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action })
+        });
+        const j = await res.json();
+        setMessage(j.ok ? t(action === "pause" ? "paused" : "activated") : j.error);
+        // Aguarda a confirmação da Meta (reload refaz o detalhe → status atualizado).
+        await reload();
+      } finally {
+        setStatusPending(false);
+      }
     });
   };
 
@@ -648,9 +724,6 @@ export function CampaignManagerClient({
                 loading={chartLoading}
                 locale={locale}
                 title={t("chartTitle")}
-                metricsLabel={t("metrics")}
-                spendLabel={t("legendSpend")}
-                conversionsLabel={t("legendConversions")}
                 noDataLabel={t("noChartData")}
               />
 
@@ -677,15 +750,25 @@ export function CampaignManagerClient({
                   </div>
                 </dl>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <QuickAction icon="⏸" label={t("pause")} onClick={() => campaignAction("pause")} />
                   <QuickAction
-                    icon="✏️"
+                    iconPath={campaign.status === "ACTIVE" ? ICONS.pause : ICONS.play}
+                    label={campaign.status === "ACTIVE" ? t("pause") : t("activate")}
+                    loading={statusPending}
+                    highlight={campaign.status !== "ACTIVE"}
+                    onClick={() => campaignAction(campaign.status === "ACTIVE" ? "pause" : "activate")}
+                  />
+                  <QuickAction
+                    iconPath={ICONS.pencil}
                     label={t("editBudget")}
                     onClick={() => setBudgetDrawerOpen(true)}
                   />
-                  <QuickAction icon="📋" label={t("duplicate")} onClick={() => openPanel({ clientSlug: slug })} />
                   <QuickAction
-                    icon="↗"
+                    iconPath={ICONS.copy}
+                    label={t("duplicate")}
+                    onClick={() => openPanel({ clientSlug: slug })}
+                  />
+                  <QuickAction
+                    iconPath={ICONS.external}
                     label={t("viewMeta")}
                     href={`https://www.facebook.com/adsmanager/manage/campaigns?act=${campaign.metaAdAccountId.replace("act_", "")}&selected_campaign_ids=${campaign.id}`}
                     external
@@ -730,7 +813,22 @@ export function CampaignManagerClient({
               adsets.map((a) => (
               <div key={a.id} className="ui-card p-4 text-sm">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="font-semibold text-slate-900">{a.name ?? a.id}</div>
+                  {embedded ? (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("adsets")}
+                      className="text-left font-semibold text-slate-900 hover:text-violet-700"
+                    >
+                      {a.name ?? a.id}
+                    </button>
+                  ) : (
+                    <Link
+                      href={`/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`}
+                      className="font-semibold text-slate-900 hover:text-violet-700 hover:underline"
+                    >
+                      {a.name ?? a.id}
+                    </Link>
+                  )}
                   <Badge variant={statusVariant(a.status ?? "")}>{statusLabel(a.status ?? "", t)}</Badge>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
@@ -873,26 +971,35 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function QuickAction({
-  icon,
+  iconPath,
   label,
   onClick,
   href,
-  external
+  external,
+  loading,
+  highlight
 }: {
-  icon: string;
+  iconPath: string;
   label: string;
   onClick?: () => void;
   href?: string;
   external?: boolean;
+  loading?: boolean;
+  highlight?: boolean;
 }) {
   const inner = (
     <>
-      <span className="text-lg">{icon}</span>
+      <span className={highlight ? "text-violet-600" : "text-slate-500"}>
+        {loading ? <Spinner className="h-5 w-5" /> : <Icon d={iconPath} className="h-5 w-5" />}
+      </span>
       <span className="text-[10px] font-medium text-slate-600">{label}</span>
     </>
   );
-  const cls =
-    "flex flex-col items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-white";
+  const cls = `flex flex-col items-center justify-center gap-1 rounded-xl border p-3 transition ${
+    highlight
+      ? "border-violet-200 bg-violet-50 hover:bg-violet-100"
+      : "border-slate-200 bg-slate-50 hover:bg-white"
+  } ${loading ? "pointer-events-none opacity-70" : ""}`;
   if (href) {
     if (external) {
       return (
@@ -908,7 +1015,7 @@ function QuickAction({
     );
   }
   return (
-    <button type="button" onClick={onClick} className={cls}>
+    <button type="button" onClick={onClick} disabled={loading} className={cls}>
       {inner}
     </button>
   );
@@ -970,7 +1077,12 @@ function AdsetsTable({
             {filteredAdsets.map((a) => (
               <tr key={a.id} className="border-t border-slate-100 hover:bg-slate-50/80">
                 <td className="px-4 py-3">
-                  <div className="font-medium text-slate-900">{a.name ?? a.id}</div>
+                  <Link
+                    href={`/campaigns/${metaCampaignId}/ads?client=${encodeURIComponent(slug)}&adset=${encodeURIComponent(a.id)}`}
+                    className="font-medium text-slate-900 hover:text-violet-700 hover:underline"
+                  >
+                    {a.name ?? a.id}
+                  </Link>
                   <div className="text-[10px] text-slate-400">{a.id}</div>
                 </td>
                 <td className="px-3 py-3">

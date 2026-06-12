@@ -484,7 +484,9 @@
     "colAd": "Anúncio",
     "colAdset": "Conjunto",
     "colStatus": "Status",
-    "pagination": "Mostrando {from} a {to} de {total} anúncios"
+    "pagination": "Mostrando {from} a {to} de {total} anúncios",
+    "adsetFilter": "Conjunto: {name}",
+    "clearFilter": "Remover filtro"
   },
   "creativesPage": {
     "title": "Criativos",

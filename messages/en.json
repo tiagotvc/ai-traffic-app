@@ -484,7 +484,9 @@
     "colAd": "Ad",
     "colAdset": "Ad set",
     "colStatus": "Status",
-    "pagination": "Showing {from} to {to} of {total} ads"
+    "pagination": "Showing {from} to {to} of {total} ads",
+    "adsetFilter": "Ad set: {name}",
+    "clearFilter": "Clear filter"
   },
   "creativesPage": {
     "title": "Creatives",

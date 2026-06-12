@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
@@ -64,6 +65,8 @@ export function CampaignAdsClient({
   const t = useTranslations("adsPage");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const adsetFilter = searchParams.get("adset");
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [preset, setPreset] = useState<string>("default");
   const [ads, setAds] = useState<AdRow[]>([]);
@@ -121,6 +124,7 @@ export function CampaignAdsClient({
 
   const filtered = useMemo(() => {
     let list = ads;
+    if (adsetFilter) list = list.filter((a) => a.adsetId === adsetFilter);
     if (statusFilter === "active") list = list.filter((a) => a.status === "ACTIVE");
     if (statusFilter === "paused") list = list.filter((a) => a.status === "PAUSED");
     if (search.trim()) {
@@ -132,7 +136,11 @@ export function CampaignAdsClient({
       );
     }
     return list;
-  }, [ads, search, statusFilter]);
+  }, [ads, search, statusFilter, adsetFilter]);
+
+  const adsetFilterName = adsetFilter
+    ? ads.find((a) => a.adsetId === adsetFilter)?.adsetName ?? adsetFilter
+    : null;
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -256,6 +264,21 @@ export function CampaignAdsClient({
           <option value="paused">{t("filterStatusPaused")}</option>
         </select>
       </div>
+
+      {adsetFilter ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1 font-medium text-violet-700">
+            {t("adsetFilter", { name: adsetFilterName ?? "" })}
+            <Link
+              href={`/campaigns/${metaCampaignId}/ads?client=${encodeURIComponent(clientSlug)}`}
+              className="text-violet-500 hover:text-violet-800"
+              title={t("clearFilter")}
+            >
+              ✕
+            </Link>
+          </span>
+        </div>
+      ) : null}
 
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
