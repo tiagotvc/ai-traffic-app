@@ -223,11 +223,15 @@ export function DashboardClient() {
     try {
       const { current, previous } = resolveRanges(period, selectedTz);
       const curQ = buildQuery(clientFilter, accountFilter, current);
+      // Caixa de variações segue o período da página (mesma janela do seletor).
+      const varDays = current
+        ? Math.min(90, Math.max(1, Math.round((Date.parse(current.until) - Date.parse(current.since)) / 86_400_000) + 1))
+        : 90;
       const [sRes, tRes, aRes, critRes, pRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
         fetch(`/api/dashboard/timeseries?${curQ}`),
         fetch(
-          `/api/alerts/variations?level=client&days=30${
+          `/api/alerts/variations?level=client&days=${varDays}${
             clientFilter ? `&clientId=${encodeURIComponent(clientFilter)}` : ""
           }`
         ),
