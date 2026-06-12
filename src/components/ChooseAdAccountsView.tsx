@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 
-// Tela "Escolha suas contas de anúncio" (onboarding) — VISUAL (seleção local;
-// a aplicação da escolha fica para depois).
+// Tela "Escolha suas contas de anúncio" (onboarding).
+// Lista as contas da Meta disponíveis; "Continuar" importa as NOVAS selecionadas
+// (cria 1 cliente por conta e vincula). Aditivo — não remove as desmarcadas.
 
 function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
   return (
@@ -16,27 +17,43 @@ function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
 }
 
 const ICONS = {
-  card: "M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z",
   check: "M4.5 12.75l6 6 9-13.5",
-  search:
-    "M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+  search: "M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
 };
 
-type Account = { metaAdAccountId: string; label: string; metaBusinessId: string | null };
+type Account = {
+  metaAdAccountId: string;
+  label: string;
+  metaBusinessId: string | null;
+  metaBusinessName: string | null;
+  spendLast30d: number | null;
+};
 
 export function ChooseAdAccountsView() {
+  const router = useRouter();
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [linkedSet, setLinkedSet] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/meta/ad-accounts")
-      .then((r) => r.json())
-      .then((j) => {
-        const list = (j.accounts ?? []) as Account[];
+    Promise.all([
+      fetch("/api/meta/account-options").then((r) => r.json()),
+      fetch("/api/meta/ad-accounts").then((r) => r.json())
+    ])
+      .then(([opts, linked]) => {
+        const list = (opts.accounts ?? []) as Account[];
+        const linkedIds = new Set<string>(
+          ((linked.accounts ?? []) as Array<{ metaAdAccountId: string }>).map(
+            (a) => a.metaAdAccountId
+          )
+        );
         setAccounts(list);
-        setSelected(new Set(list.map((a) => a.metaAdAccountId)));
+        setLinkedSet(linkedIds);
+        setSelected(new Set(linkedIds)); // já vinculadas vêm marcadas
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -46,11 +63,18 @@ export function ChooseAdAccountsView() {
     const needle = q.trim().toLowerCase();
     if (!needle) return accounts;
     return accounts.filter(
-      (a) => a.label.toLowerCase().includes(needle) || a.metaAdAccountId.toLowerCase().includes(needle)
+      (a) =>
+        a.label.toLowerCase().includes(needle) ||
+        a.metaAdAccountId.toLowerCase().includes(needle) ||
+        (a.metaBusinessName ?? "").toLowerCase().includes(needle)
     );
   }, [accounts, q]);
 
   const allSelected = filtered.length > 0 && filtered.every((a) => selected.has(a.metaAdAccountId));
+  const toImport = useMemo(
+    () => [...selected].filter((id) => !linkedSet.has(id)),
+    [selected, linkedSet]
+  );
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -69,9 +93,34 @@ export function ChooseAdAccountsView() {
     });
   }
 
+  function continuar() {
+    if (!toImport.length) {
+      router.push("/dashboard");
+      return;
+    }
+    startTransition(async () => {
+      setError(null);
+      const res = await fetch("/api/meta/import-accounts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ metaAdAccountIds: toImport })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) {
+        setError("Não foi possível importar as contas. Tente novamente.");
+        return;
+      }
+      router.push("/dashboard");
+    });
+  }
+
   function avatarLetter(label: string) {
     const m = label.match(/[a-z0-9]/i);
     return (m?.[0] ?? "C").toUpperCase();
+  }
+  function fmtSpend(v: number | null) {
+    if (v == null) return null;
+    return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
   }
 
   return (
@@ -96,12 +145,12 @@ export function ChooseAdAccountsView() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Escolha suas contas de anúncio</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Selecione quais contas você quer acompanhar no painel. Você pode mudar isso depois.
+          Selecione as contas que você quer trazer para o painel. Cada conta nova vira um
+          cliente. As já vinculadas vêm marcadas — desmarcar não remove nada.
         </p>
       </div>
 
       <div className="ui-card overflow-hidden">
-        {/* Barra: selecionar todas + busca */}
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
           <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
             <input
@@ -112,9 +161,7 @@ export function ChooseAdAccountsView() {
             />
             Selecionar todas
           </label>
-          <span className="text-xs text-slate-400">
-            {selected.size} de {accounts.length} selecionadas
-          </span>
+          <span className="text-xs text-slate-400">{selected.size} selecionadas</span>
           <div className="relative ml-auto">
             <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
               <Icon d={ICONS.search} className="h-4 w-4" />
@@ -128,7 +175,6 @@ export function ChooseAdAccountsView() {
           </div>
         </div>
 
-        {/* Lista */}
         <div className="max-h-[52vh] divide-y divide-slate-100 overflow-y-auto">
           {loading ? (
             <p className="p-8 text-center text-sm text-slate-500">Carregando contas…</p>
@@ -137,6 +183,8 @@ export function ChooseAdAccountsView() {
           ) : (
             filtered.map((a) => {
               const isSel = selected.has(a.metaAdAccountId);
+              const isLinked = linkedSet.has(a.metaAdAccountId);
+              const spend = fmtSpend(a.spendLast30d);
               return (
                 <label
                   key={a.metaAdAccountId}
@@ -158,16 +206,23 @@ export function ChooseAdAccountsView() {
                     {avatarLetter(a.label)}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-800">
-                      {a.label}
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium text-slate-800">{a.label}</span>
+                      {isLinked ? (
+                        <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
+                          Vinculada
+                        </span>
+                      ) : null}
                     </span>
                     <span className="block truncate text-[11px] text-slate-400">
+                      {a.metaBusinessName ? `${a.metaBusinessName} · ` : ""}
                       {a.metaAdAccountId}
                     </span>
                   </span>
-                  {isSel ? (
-                    <span className="text-violet-600">
-                      <Icon d={ICONS.check} className="h-4 w-4" />
+                  {spend ? (
+                    <span className="shrink-0 text-right text-[11px] text-slate-400">
+                      <span className="block font-medium text-slate-600">{spend}</span>
+                      30 dias
                     </span>
                   ) : null}
                 </label>
@@ -177,17 +232,23 @@ export function ChooseAdAccountsView() {
         </div>
       </div>
 
-      {/* Rodapé */}
+      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+
       <div className="flex items-center justify-between gap-3">
         <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
           Pular por enquanto
         </Link>
         <button
           type="button"
-          disabled={selected.size === 0}
-          className="ui-btn-primary disabled:opacity-50"
+          onClick={continuar}
+          disabled={isPending}
+          className="ui-btn-primary disabled:opacity-60"
         >
-          Continuar com {selected.size} {selected.size === 1 ? "conta" : "contas"}
+          {isPending
+            ? "Importando…"
+            : toImport.length
+              ? `Importar ${toImport.length} ${toImport.length === 1 ? "conta" : "contas"}`
+              : "Continuar"}
         </button>
       </div>
     </div>
