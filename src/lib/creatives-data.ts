@@ -1,3 +1,4 @@
+import { repositories } from "@/db/repositories";
 import {
   fetchAdInsightsForAccount,
   fetchAdInsightsForCampaign,
@@ -76,4 +77,37 @@ export async function fetchInsightsForCampaignAnyToken(
     last = m;
   }
   return last;
+}
+
+/** IDs de campanha já sincronizadas no DB para uma conta (AdAccount.id). */
+export async function getSyncedCampaignIds(adAccountId: string, limit = 80): Promise<string[]> {
+  const { campaignMetricSnapshot } = await repositories();
+  const rows = await campaignMetricSnapshot
+    .createQueryBuilder("s")
+    .select("DISTINCT s.metaCampaignId", "metaCampaignId")
+    .where("s.adAccountId = :id", { id: adAccountId })
+    .limit(limit)
+    .getRawMany<{ metaCampaignId: string }>();
+  return rows.map((r) => r.metaCampaignId).filter(Boolean);
+}
+
+/**
+ * Fallback quando a conta não é acessível a nível de conta: busca anúncios e
+ * insights POR CAMPANHA (acesso por objeto costuma funcionar mesmo sem acesso
+ * à listagem da conta inteira).
+ */
+export async function loadAdsViaCampaigns(
+  tokens: Array<string | null | undefined>,
+  campaignIds: string[]
+): Promise<{ ads: AdUsageRow[]; insights: Map<string, AdInsightMetrics> }> {
+  const ads: AdUsageRow[] = [];
+  const insights = new Map<string, AdInsightMetrics>();
+  for (const cid of campaignIds) {
+    const { ads: cAds } = await fetchAdsForCampaignAnyToken(tokens, cid);
+    if (!cAds.length) continue;
+    ads.push(...cAds);
+    const cIns = await fetchInsightsForCampaignAnyToken(tokens, cid);
+    for (const [k, v] of cIns) insights.set(k, v);
+  }
+  return { ads, insights };
 }

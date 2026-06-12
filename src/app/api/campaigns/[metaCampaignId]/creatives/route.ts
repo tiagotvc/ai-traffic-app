@@ -181,5 +181,12 @@ export async function GET(
       Number(y.metrics.spend ?? 0) - Number(x.metrics.spend ?? 0)
   );
 
-  return NextResponse.json({ ok: true, rows, total: rows.length, campaignName });
+  return NextResponse.json({
+    ok: true,
+    rows,
+    total: rows.length,
+    campaignName,
+    preset,
+    primaryMetric: spec.metric
+  });
 }

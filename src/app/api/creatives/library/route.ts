@@ -6,7 +6,9 @@ import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { type AdInsightMetrics, type CreativeAssetType } from "@/lib/meta-graph";
 import {
   fetchAdsForAccountAnyToken,
-  fetchInsightsForAccountAnyToken
+  fetchInsightsForAccountAnyToken,
+  getSyncedCampaignIds,
+  loadAdsViaCampaigns
 } from "@/lib/creatives-data";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
@@ -79,19 +81,31 @@ export async function GET(req: Request) {
   const diag: Array<Record<string, unknown>> = [];
 
   for (const acc of accounts) {
-    const { ads, ok, errors } = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
-    const insights: Map<string, AdInsightMetrics> = ads.length
-      ? await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
-          since: period.since,
-          until: period.until
-        })
-      : new Map();
+    const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
+    let ads = accRes.ads;
+    let insights: Map<string, AdInsightMetrics>;
+    let viaCampaigns = false;
+    if (accRes.ok) {
+      insights = ads.length
+        ? await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
+            since: period.since,
+            until: period.until
+          })
+        : new Map();
+    } else {
+      const campIds = await getSyncedCampaignIds(acc.id);
+      const fb = await loadAdsViaCampaigns(tokens, campIds);
+      ads = fb.ads;
+      insights = fb.insights;
+      viaCampaigns = true;
+    }
     if (debug) {
       diag.push({
         account: acc.metaAdAccountId,
         label: acc.label ?? null,
-        ok,
-        tokenErrors: errors,
+        ok: accRes.ok || ads.length > 0,
+        viaCampaigns,
+        tokenErrors: accRes.errors,
         adsTotal: ads.length,
         adsActiveCampaign: ads.filter((a) => a.campaignStatus === "ACTIVE").length
       });
