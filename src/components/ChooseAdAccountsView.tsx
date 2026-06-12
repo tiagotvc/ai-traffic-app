@@ -29,6 +29,17 @@ type Account = {
   spendLast30d: number | null;
 };
 
+// Mock para visualizar a tela sem Meta conectada (ative com NEXT_PUBLIC_MOCK_ACCOUNTS=1 no .env local).
+const USE_MOCK = process.env.NEXT_PUBLIC_MOCK_ACCOUNTS === "1";
+const MOCK_ACCOUNTS: Account[] = [
+  { metaAdAccountId: "act_1001", label: "Gabriela Dawson — Pacientes", metaBusinessId: "bm1", metaBusinessName: "Dawson Estética", spendLast30d: 4280 },
+  { metaAdAccountId: "act_1002", label: "Gabriela Dawson — Alunos", metaBusinessId: "bm1", metaBusinessName: "Dawson Estética", spendLast30d: 1530 },
+  { metaAdAccountId: "act_1003", label: "Imper Estofados", metaBusinessId: "bm2", metaBusinessName: "Imper", spendLast30d: 9120 },
+  { metaAdAccountId: "act_1004", label: "Loja Couro Rio", metaBusinessId: "bm2", metaBusinessName: "Imper", spendLast30d: 340 },
+  { metaAdAccountId: "act_1005", label: "Conta de teste", metaBusinessId: null, metaBusinessName: null, spendLast30d: null }
+];
+const MOCK_LINKED = new Set(["act_1001"]);
+
 export function ChooseAdAccountsView() {
   const router = useRouter();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -40,6 +51,13 @@ export function ChooseAdAccountsView() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (USE_MOCK) {
+      setAccounts(MOCK_ACCOUNTS);
+      setLinkedSet(MOCK_LINKED);
+      setSelected(new Set(MOCK_LINKED));
+      setLoading(false);
+      return;
+    }
     Promise.all([
       fetch("/api/meta/account-options").then((r) => r.json()),
       fetch("/api/meta/ad-accounts").then((r) => r.json())
@@ -94,6 +112,11 @@ export function ChooseAdAccountsView() {
   }
 
   function continuar() {
+    if (USE_MOCK) {
+      // No mock não há contas reais para importar — só simula seguir.
+      router.push("/dashboard");
+      return;
+    }
     if (!toImport.length) {
       router.push("/dashboard");
       return;
