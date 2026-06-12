@@ -2,20 +2,24 @@ import { NextResponse } from "next/server";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
-import { resolveMetaTokensForApi } from "@/lib/campaign-detail-api";
+import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
+import { type AdInsightMetrics, type CreativeAssetType } from "@/lib/meta-graph";
 import {
-  fetchAdInsightsForAccount,
-  fetchAdsWithUsageForAccount,
-  type AdInsightMetrics
-} from "@/lib/meta-graph";
+  fetchAdsForAccountAnyToken,
+  fetchInsightsForAccountAnyToken,
+  getSyncedCampaignIds,
+  loadAdsViaCampaigns
+} from "@/lib/creatives-data";
+import { type MetricKey } from "@/lib/dashboard-metrics";
+import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
+import { loadRankConfig } from "@/lib/ranking-config";
 
-// Busca anúncios + insights de todas as contas do cliente — dá folga.
+// Ranking CENTRADO NO CRIATIVO (arquivo): dedup por mediaKey, metricas globais,
+// agrupado por tipo, com breakdown por campanha para comparacao.
 export const maxDuration = 60;
 
-type Agg = {
-  name: string;
-  thumbnailUrl?: string;
-  imageUrl?: string;
+type Sums = {
   spend: number;
   impressions: number;
   clicks: number;
@@ -24,78 +28,135 @@ type Agg = {
   messages: number;
   roasSum: number;
   roasCount: number;
+};
+function newSums(): Sums {
+  return { spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0, messages: 0, roasSum: 0, roasCount: 0 };
+}
+function addInsight(s: Sums, m: AdInsightMetrics) {
+  s.spend += m.spend;
+  s.impressions += m.impressions;
+  s.clicks += m.clicks;
+  s.reach += m.reach;
+  s.conversions += m.conversions;
+  s.messages += m.messages;
+  if (m.roas > 0) {
+    s.roasSum += m.roas;
+    s.roasCount += 1;
+  }
+}
+function metricsOf(s: Sums): Partial<Record<MetricKey, number>> {
+  return {
+    spend: s.spend,
+    impressions: s.impressions,
+    clicks: s.clicks,
+    reach: s.reach,
+    conversions: s.conversions,
+    messages: s.messages,
+    ctr: s.impressions > 0 ? (s.clicks / s.impressions) * 100 : 0,
+    cpc: s.clicks > 0 ? s.spend / s.clicks : 0,
+    cpm: s.impressions > 0 ? (s.spend / s.impressions) * 1000 : 0,
+    cpa: s.conversions > 0 ? s.spend / s.conversions : 0,
+    cpmsg: s.messages > 0 ? s.spend / s.messages : 0,
+    frequency: s.reach > 0 ? s.impressions / s.reach : 0,
+    roas: s.roasCount ? s.roasSum / s.roasCount : 0
+  };
+}
+
+type CampBreak = { id: string; name: string; sums: Sums; ads: Set<string> };
+type Agg = {
+  name: string;
+  type: CreativeAssetType;
+  thumbnailUrl?: string;
+  imageUrl?: string;
+  firstAdId?: string;
+  sums: Sums;
   ads: Set<string>;
   campaigns: Map<string, string>;
   adsets: Map<string, string>;
   campaignIds: string[];
   anyActive: boolean;
+  perCampaign: Map<string, CampBreak>;
 };
 
 export async function GET(req: Request) {
-  const clientIdParam = new URL(req.url).searchParams.get("clientId");
-  const { tenant, user, metaAccessToken: ctxToken } = await getAppContext();
+  const url = new URL(req.url);
+  const clientIdParam = url.searchParams.get("clientId");
+  const period = parsePeriodFromSearchParams(url);
+  const { tenant, metaAccessToken: ctxToken } = await getAppContext();
 
-  if (!clientIdParam) return NextResponse.json({ ok: true, rows: [] });
+  if (!clientIdParam) return NextResponse.json({ ok: true, groups: [] });
   const client = await getClientBySlugOrId(tenant.id, clientIdParam);
   if (!client) {
     return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
   }
 
-  const { metaAccessToken, fallbackMetaToken } = await resolveMetaTokensForApi(
-    tenant.id,
-    user.id,
-    ctxToken
-  );
-  const token = metaAccessToken ?? fallbackMetaToken ?? undefined;
-  if (!token) {
+  const tokens = await getAllTenantMetaTokens(tenant.id, ctxToken);
+  if (!tokens.length) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
 
+  const adAccountId = url.searchParams.get("adAccountId");
   const { adAccount: adAccountRepo, campaignPreset: presetRepo } = await repositories();
-  const accounts = await adAccountRepo.find({ where: { clientId: client.id } });
+  let accounts = await adAccountRepo.find({ where: { clientId: client.id } });
+  if (adAccountId) {
+    accounts = accounts.filter((a) => a.metaAdAccountId === adAccountId || a.id === adAccountId);
+  }
   const presetRows = await presetRepo.find({ where: { tenantId: tenant.id } });
   const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));
+  const rankConfig = await loadRankConfig(tenant.id);
 
   const byCreative = new Map<string, Agg>();
+  const warnings: Array<{ account: string; label: string }> = [];
 
   for (const acc of accounts) {
-    let ads: Awaited<ReturnType<typeof fetchAdsWithUsageForAccount>> = [];
-    let insights: Map<string, AdInsightMetrics> = new Map();
-    try {
-      [ads, insights] = await Promise.all([
-        fetchAdsWithUsageForAccount(token, acc.metaAdAccountId),
-        fetchAdInsightsForAccount(token, acc.metaAdAccountId)
-      ]);
-    } catch {
-      continue;
+    const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
+    let ads = accRes.ads;
+    let insights: Map<string, AdInsightMetrics>;
+    if (accRes.ok) {
+      insights = ads.length
+        ? await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
+            since: period.since,
+            until: period.until
+          })
+        : new Map();
+    } else {
+      const campIds = await getSyncedCampaignIds(acc.id);
+      const fb = await loadAdsViaCampaigns(tokens, campIds);
+      ads = fb.ads;
+      insights = fb.insights;
+    }
+    if (!accRes.ok && ads.length === 0 && accRes.errors > 0) {
+      warnings.push({ account: acc.metaAdAccountId, label: acc.label ?? acc.metaAdAccountId });
     }
 
     for (const ad of ads) {
-      const key = ad.creativeName?.trim() || ad.name?.trim() || ad.creativeId || ad.id;
+      if (ad.campaignStatus !== "ACTIVE") continue;
+
+      // Chave do ARQUIVO: prioriza a midia (video_id/image_hash); senao o criativo; senao o nome.
+      const key =
+        ad.mediaKey ??
+        (ad.creativeId ? `c:${ad.creativeId}` : ad.creativeName ? `n:${ad.creativeName.trim()}` : ad.id);
+
       let agg = byCreative.get(key);
       if (!agg) {
         agg = {
           name: ad.creativeName?.trim() || ad.name?.trim() || key,
+          type: ad.creativeType ?? "image",
           thumbnailUrl: ad.thumbnailUrl,
           imageUrl: ad.imageUrl,
-          spend: 0,
-          impressions: 0,
-          clicks: 0,
-          reach: 0,
-          conversions: 0,
-          messages: 0,
-          roasSum: 0,
-          roasCount: 0,
+          sums: newSums(),
           ads: new Set(),
           campaigns: new Map(),
           adsets: new Map(),
           campaignIds: [],
-          anyActive: false
+          anyActive: false,
+          perCampaign: new Map()
         };
         byCreative.set(key, agg);
       }
       if (!agg.thumbnailUrl && ad.thumbnailUrl) agg.thumbnailUrl = ad.thumbnailUrl;
       if (!agg.imageUrl && ad.imageUrl) agg.imageUrl = ad.imageUrl;
+      if (!agg.firstAdId || ad.status === "ACTIVE") agg.firstAdId = ad.id;
       agg.ads.add(ad.id);
       if (ad.campaignId) {
         agg.campaigns.set(ad.campaignId, ad.campaignName ?? ad.campaignId);
@@ -106,21 +167,23 @@ export async function GET(req: Request) {
 
       const m = insights.get(ad.id);
       if (m) {
-        agg.spend += m.spend;
-        agg.impressions += m.impressions;
-        agg.clicks += m.clicks;
-        agg.reach += m.reach;
-        agg.conversions += m.conversions;
-        agg.messages += m.messages;
-        if (m.roas > 0) {
-          agg.roasSum += m.roas;
-          agg.roasCount += 1;
+        addInsight(agg.sums, m);
+        if (ad.campaignId) {
+          let cb = agg.perCampaign.get(ad.campaignId);
+          if (!cb) {
+            cb = { id: ad.campaignId, name: ad.campaignName ?? ad.campaignId, sums: newSums(), ads: new Set() };
+            agg.perCampaign.set(ad.campaignId, cb);
+          }
+          addInsight(cb.sums, m);
+          cb.ads.add(ad.id);
         }
       }
     }
   }
 
-  const rows = [...byCreative.values()].map((a) => {
+  const clientSlug = slugify(client.name);
+
+  const creatives = [...byCreative.values()].map((a) => {
     const counts = new Map<string, number>();
     for (const cid of a.campaignIds) {
       const p = presetByCampaign.get(cid) ?? "default";
@@ -135,33 +198,56 @@ export async function GET(req: Request) {
       }
     }
 
+    const breakdown = [...a.perCampaign.values()]
+      .map((cb) => ({
+        campaignId: cb.id,
+        campaignName: cb.name,
+        adsCount: cb.ads.size,
+        metrics: metricsOf(cb.sums)
+      }))
+      .sort((x, y) => Number(y.metrics.spend ?? 0) - Number(x.metrics.spend ?? 0));
+
     return {
-      creativeName: a.name,
+      key: a.name,
+      name: a.name,
+      type: a.type,
+      adId: a.firstAdId ?? null,
       thumbnailUrl: a.thumbnailUrl ?? null,
       imageUrl: a.imageUrl ?? a.thumbnailUrl ?? null,
-      dominantPreset,
       status: a.anyActive ? "ACTIVE" : "PAUSED",
       adsCount: a.ads.size,
+      clientSlug,
+      dominantPreset,
+      metrics: metricsOf(a.sums),
       campaigns: [...a.campaigns.entries()].map(([id, name]) => ({ id, name })),
       adsets: [...a.adsets.entries()].map(([id, name]) => ({ id, name })),
-      clientSlug: slugify(client.name),
-      metrics: {
-        spend: a.spend,
-        impressions: a.impressions,
-        clicks: a.clicks,
-        reach: a.reach,
-        conversions: a.conversions,
-        messages: a.messages,
-        ctr: a.impressions > 0 ? (a.clicks / a.impressions) * 100 : 0,
-        cpc: a.clicks > 0 ? a.spend / a.clicks : 0,
-        cpm: a.impressions > 0 ? (a.spend / a.impressions) * 1000 : 0,
-        cpa: a.conversions > 0 ? a.spend / a.conversions : 0,
-        cpmsg: a.messages > 0 ? a.spend / a.messages : 0,
-        frequency: a.reach > 0 ? a.impressions / a.reach : 0,
-        roas: a.roasCount ? a.roasSum / a.roasCount : 0
-      }
+      breakdown
     };
   });
 
-  return NextResponse.json({ ok: true, rows, clientName: client.name });
+  // Agrupa por TIPO (preset) e ranqueia por eficiencia dentro do tipo.
+  const byPreset = new Map<string, typeof creatives>();
+  for (const c of creatives) {
+    const arr = byPreset.get(c.dominantPreset) ?? [];
+    arr.push(c);
+    byPreset.set(c.dominantPreset, arr);
+  }
+
+  const groups = [...byPreset.entries()]
+    .map(([preset, list]) => {
+      const spec = rankSpecFor(preset, rankConfig);
+      const sorted = [...list].sort((a, b) => {
+        const qa = meetsMinActivity(a.metrics, rankConfig);
+        const qb = meetsMinActivity(b.metrics, rankConfig);
+        if (qa !== qb) return qa ? -1 : 1;
+        if (qa) return compareByRank(a.metrics, b.metrics, spec);
+        return Number(b.metrics.spend ?? 0) - Number(a.metrics.spend ?? 0);
+      });
+      const totalSpend = list.reduce((s, c) => s + Number(c.metrics.spend ?? 0), 0);
+      return { preset, primaryMetric: spec.metric, totalSpend, creatives: sorted };
+    })
+    .filter((g) => g.creatives.length > 0)
+    .sort((a, b) => b.totalSpend - a.totalSpend);
+
+  return NextResponse.json({ ok: true, groups, clientSlug, warnings });
 }

@@ -1096,7 +1096,22 @@ export type AdUsageRow = {
   thumbnailUrl?: string;
   imageUrl?: string;
   campaignStatus?: string;
+  /** Chave do ARQUIVO (video_id / image_hash) para deduplicar o mesmo criativo. */
+  mediaKey?: string;
 };
+
+/** Identifica o arquivo do criativo (vídeo ou imagem) a partir do object_story_spec. */
+function extractMediaKeyFromStorySpec(spec?: Record<string, unknown>): string | undefined {
+  if (!spec) return undefined;
+  const video = spec.video_data as Record<string, unknown> | undefined;
+  if (typeof video?.video_id === "string") return `v:${video.video_id}`;
+  const link = spec.link_data as Record<string, unknown> | undefined;
+  if (typeof link?.image_hash === "string") return `i:${link.image_hash}`;
+  const photo = spec.photo_data as Record<string, unknown> | undefined;
+  if (typeof photo?.image_hash === "string") return `i:${photo.image_hash}`;
+  if (typeof video?.image_hash === "string") return `i:${video.image_hash}`;
+  return undefined;
+}
 
 /** Anúncios de uma conta com criativo + conjunto + campanha (para rastrear criativos). */
 const AD_USAGE_FIELDS =
@@ -1137,7 +1152,8 @@ function mapAdUsageRow(r: RawAdUsage): AdUsageRow {
     creativeName: r.creative?.name,
     creativeType: spec ? inferCreativeTypeFromStorySpec(spec) : "image",
     thumbnailUrl: r.creative?.thumbnail_url,
-    imageUrl: r.creative?.image_url ?? fromSpec ?? r.creative?.thumbnail_url
+    imageUrl: r.creative?.image_url ?? fromSpec ?? r.creative?.thumbnail_url,
+    mediaKey: extractMediaKeyFromStorySpec(spec)
   };
 }
 

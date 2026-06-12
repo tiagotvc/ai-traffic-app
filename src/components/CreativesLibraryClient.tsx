@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { CreativesLibraryView } from "@/components/creatives/CreativesLibraryView";
-import { CreativesByCampaignView } from "@/components/creatives/CreativesByCampaignView";
+import { CreativesRankingView } from "@/components/creatives/CreativesRankingView";
 import { RankingConfigModal } from "@/components/creatives/RankingConfigModal";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { DownloadIcon } from "@/components/ui/DownloadIcon";
@@ -125,7 +125,7 @@ export function CreativesLibraryClient() {
           </div>
         ) : (
           <div className="space-y-4">
-            <CreativesByCampaignView
+            <CreativesRankingView
               key={`${clientId}-${scopeQuery}-${rankVersion}`}
               clientId={clientId}
               clientSlug={clientId}

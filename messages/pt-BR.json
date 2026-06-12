@@ -1391,6 +1391,11 @@
     "usageAdsets": "Conjuntos",
     "usageAds": "Anúncios",
     "accessWarningTitle": "Sem acesso a uma ou mais contas na Meta",
-    "accessWarningBody": "Os criativos destas contas não aparecem até liberar o acesso na Meta:"
+    "accessWarningBody": "Os criativos destas contas não aparecem até liberar o acesso na Meta:",
+    "compare": "Comparar",
+    "comparePerf": "Desempenho por campanha",
+    "total": "Total (global)",
+    "colCampaign": "Campanha",
+    "usedInCampaigns": "Usado em {n} campanha(s)"
   }
 }

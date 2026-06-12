@@ -1391,6 +1391,11 @@
     "usageAdsets": "Ad sets",
     "usageAds": "Ads",
     "accessWarningTitle": "No access to one or more ad accounts on Meta",
-    "accessWarningBody": "Creatives from these accounts will not show until access is granted on Meta:"
+    "accessWarningBody": "Creatives from these accounts will not show until access is granted on Meta:",
+    "compare": "Compare",
+    "comparePerf": "Performance by campaign",
+    "total": "Total (global)",
+    "colCampaign": "Campaign",
+    "usedInCampaigns": "Used in {n} campaign(s)"
   }
 }
