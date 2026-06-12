@@ -50,7 +50,7 @@
     "expandSidebar": "Expandir menu",
     "adsets": "Conjuntos",
     "audiences": "Públicos",
-    "creatives": "Criativos",
+    "creatives": "Ranking de Criativos",
     "highlights": "Destaques"
   },
   "command": {
@@ -1401,6 +1401,9 @@
     "cmpByAdset": "Por conjunto",
     "colAdset": "Conjunto",
     "showMoreZero": "Ver criativos sem gasto no período ({n})",
-    "showLess": "Ocultar"
+    "showLess": "Ocultar",
+    "promisingTitle": "Anúncios promissores",
+    "promisingDesc": "Gastaram pouco mas já estão com bom resultado — vale observar e considerar escalar.",
+    "refresh": "Atualizar"
   }
 }

@@ -199,11 +199,6 @@ export function DashboardClient() {
   const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(["spend", "conversions"]);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [clientMetric, setClientMetric] = useState<MetricKey>("roas");
-  const [clientsPeriod, setClientsPeriod] = useState<PeriodState>({
-    preset: "last30",
-    since: "",
-    until: ""
-  });
   const [summary, setSummary] = useState<Summary | null>(null);
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
@@ -262,14 +257,14 @@ export function DashboardClient() {
     }
   }, [clientFilter, accountFilter, period, selectedTz, t]);
 
-  // Clientes têm filtro de data próprio (a seção fica embaixo, com período explícito).
+  // Clientes seguem o MESMO período do seletor principal da página.
   const loadClients = useCallback(() => {
-    const qs = periodStateToQuery(clientsPeriod).toString();
+    const qs = periodStateToQuery(period).toString();
     fetch(`/api/clients?${qs}`)
       .then((r) => r.json())
       .then((j) => setClients(j.clients ?? []))
       .catch(() => {});
-  }, [clientsPeriod]);
+  }, [period]);
 
   useEffect(() => {
     void load();
@@ -619,7 +614,6 @@ export function DashboardClient() {
                 <div className="text-xs text-slate-500">{t("clientsSubtitle")}</div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <PeriodFilter value={clientsPeriod} onChange={setClientsPeriod} />
                 <span className="text-xs text-slate-500">{t("clientMetricLabel")}:</span>
                 <select
                   value={clientMetric}

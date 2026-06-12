@@ -89,6 +89,17 @@ export function CreativesLibraryClient() {
           ) : null}
           <button
             type="button"
+            onClick={() => setRankVersion((v) => v + 1)}
+            className="ui-btn-secondary px-2.5 text-sm"
+            title={tPerf("refresh")}
+            aria-label={tPerf("refresh")}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992V4.356M3.985 14.652H-.008m.001 0v4.992m0-4.992 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.183m0-4.992v4.992m0 0h-4.993" />
+            </svg>
+          </button>
+          <button
+            type="button"
             onClick={() => setConfigOpen(true)}
             className="ui-btn-secondary text-sm"
           >

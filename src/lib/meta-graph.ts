@@ -806,7 +806,7 @@ export async function fetchAdSetInsights(
     const fields = ["spend", "impressions", "clicks", "ctr", "reach", "actions", "results", "purchase_roas"].join(
       ","
     );
-    let path = `/${encodeURIComponent(adSetId)}/insights?fields=${encodeURIComponent(fields)}`;
+    let path = `/${encodeURIComponent(adSetId)}/insights?fields=${encodeURIComponent(fields)}&use_unified_attribution_setting=true`;
     if (since && until) {
       const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
       path += `&time_range=${encodeURIComponent(timeRange)}`;
@@ -870,7 +870,7 @@ export async function fetchAdInsightsForCampaign(
       "results",
       "purchase_roas"
     ].join(",");
-    const path = `/${encodeURIComponent(campaignId)}/insights?level=ad&fields=${encodeURIComponent(fields)}&date_preset=${datePreset}&limit=500`;
+    const path = `/${encodeURIComponent(campaignId)}/insights?level=ad&fields=${encodeURIComponent(fields)}&date_preset=${datePreset}&use_unified_attribution_setting=true&limit=500`;
     const rows = await fetchGraphPaged<MetaInsightRow & { ad_id?: string }>(path, accessToken);
     for (const row of rows) {
       const adId = row.ad_id;
@@ -954,7 +954,7 @@ export async function fetchAdInsightsForAccount(
         )}`
       : `date_preset=${opts?.datePreset ?? "last_30d"}`;
   try {
-    const path = `/${encodeURIComponent(act)}/insights?level=ad&fields=${encodeURIComponent(AD_INSIGHT_FIELDS)}&${range}&limit=500`;
+    const path = `/${encodeURIComponent(act)}/insights?level=ad&fields=${encodeURIComponent(AD_INSIGHT_FIELDS)}&${range}&use_unified_attribution_setting=true&limit=500`;
     const rows = await fetchGraphPaged<MetaInsightRow & { ad_id?: string }>(path, accessToken);
     for (const row of rows) {
       const entry = parseAdInsightRow(row);

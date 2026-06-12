@@ -57,6 +57,26 @@ export function meetsMinActivity(
 }
 
 /**
+ * Volume mínimo de RESULTADO para o criativo entrar nos "melhores" (e não no
+ * topo só por ter custo baixo com 1-2 resultados). Abaixo disso -> "promissores".
+ */
+const MIN_VOLUME: Record<string, { metric: MetricKey; min: number }> = {
+  sales: { metric: "conversions", min: 3 },
+  lead_whatsapp: { metric: "messages", min: 10 },
+  lead_site: { metric: "conversions", min: 5 },
+  reach: { metric: "impressions", min: 1000 },
+  default: { metric: "clicks", min: 20 }
+};
+
+export function bestEligible(
+  m: Partial<Record<MetricKey, number>>,
+  preset?: string
+): boolean {
+  const v = MIN_VOLUME[preset ?? "default"] ?? MIN_VOLUME.default;
+  return Number(m[v.metric] ?? 0) >= v.min;
+}
+
+/**
  * Valor de ordenação. Para métricas de custo (dir asc), 0/indefinido vira
  * "pior" (Infinity) — senão um criativo sem resultado ranquearia como o mais barato.
  */

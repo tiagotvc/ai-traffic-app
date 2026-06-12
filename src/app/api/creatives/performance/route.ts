@@ -12,7 +12,7 @@ import {
 } from "@/lib/creatives-data";
 import { type MetricKey } from "@/lib/dashboard-metrics";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
-import { compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
+import { bestEligible, compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
 import { loadRankConfig } from "@/lib/ranking-config";
 
 // Ranking CENTRADO NO CRIATIVO (arquivo): dedup por mediaKey, metricas globais,
@@ -98,6 +98,8 @@ export async function GET(req: Request) {
   }
 
   const adAccountId = url.searchParams.get("adAccountId");
+  const debug = url.searchParams.get("debug") === "1";
+  const diag: Array<Record<string, unknown>> = [];
   const { adAccount: adAccountRepo, campaignPreset: presetRepo } = await repositories();
   let accounts = await adAccountRepo.find({ where: { clientId: client.id } });
   if (adAccountId) {
@@ -129,6 +131,18 @@ export async function GET(req: Request) {
     }
     if (!accRes.ok && ads.length === 0 && accRes.errors > 0) {
       warnings.push({ account: acc.metaAdAccountId, label: acc.label ?? acc.metaAdAccountId });
+    }
+    if (debug) {
+      diag.push({
+        account: acc.metaAdAccountId,
+        label: acc.label ?? null,
+        ok: accRes.ok || ads.length > 0,
+        viaCampaigns: !accRes.ok,
+        tokenErrors: accRes.errors,
+        adsTotal: ads.length,
+        adsActiveCampaign: ads.filter((a) => a.campaignStatus === "ACTIVE").length,
+        insightsRows: insights.size
+      });
     }
 
     for (const ad of ads) {
@@ -265,18 +279,23 @@ export async function GET(req: Request) {
   const groups = [...byPreset.entries()]
     .map(([preset, list]) => {
       const spec = rankSpecFor(preset, rankConfig);
-      const sorted = [...list].sort((a, b) => {
-        const qa = meetsMinActivity(a.metrics, rankConfig);
-        const qb = meetsMinActivity(b.metrics, rankConfig);
-        if (qa !== qb) return qa ? -1 : 1;
-        if (qa) return compareByRank(a.metrics, b.metrics, spec);
-        return Number(b.metrics.spend ?? 0) - Number(a.metrics.spend ?? 0);
-      });
+      const byEff = (a: (typeof list)[number], b: (typeof list)[number]) =>
+        compareByRank(a.metrics, b.metrics, spec);
+      const spentList = list.filter((c) => Number(c.metrics.spend ?? 0) > 0);
+      const noSpend = list
+        .filter((c) => Number(c.metrics.spend ?? 0) <= 0)
+        .sort((a, b) => Number(b.metrics.impressions ?? 0) - Number(a.metrics.impressions ?? 0));
+      // "Melhores": rodaram o suficiente (atividade minima + volume de resultado).
+      const isBest = (c: (typeof list)[number]) =>
+        meetsMinActivity(c.metrics, rankConfig) && bestEligible(c.metrics, preset);
+      const best = spentList.filter(isBest).sort(byEff);
+      // "Promissores": gastaram pouco mas ja vao bem (ainda sem volume p/ confiar).
+      const promising = spentList.filter((c) => !isBest(c)).sort(byEff);
       const totalSpend = list.reduce((s, c) => s + Number(c.metrics.spend ?? 0), 0);
-      return { preset, primaryMetric: spec.metric, totalSpend, creatives: sorted };
+      return { preset, primaryMetric: spec.metric, totalSpend, best, promising, noSpend };
     })
-    .filter((g) => g.creatives.length > 0)
+    .filter((g) => g.best.length || g.promising.length || g.noSpend.length)
     .sort((a, b) => b.totalSpend - a.totalSpend);
 
-  return NextResponse.json({ ok: true, groups, clientSlug, warnings });
+  return NextResponse.json({ ok: true, groups, clientSlug, warnings, ...(debug ? { diag } : {}) });
 }

@@ -50,7 +50,7 @@
     "expandSidebar": "Expand menu",
     "adsets": "Ad sets",
     "audiences": "Audiences",
-    "creatives": "Creatives",
+    "creatives": "Creative Ranking",
     "highlights": "Highlights"
   },
   "command": {
@@ -1401,6 +1401,9 @@
     "cmpByAdset": "By ad set",
     "colAdset": "Ad set",
     "showMoreZero": "Show creatives with no spend in the period ({n})",
-    "showLess": "Hide"
+    "showLess": "Hide",
+    "promisingTitle": "Promising ads",
+    "promisingDesc": "Spent little but already performing well — worth watching and considering scaling.",
+    "refresh": "Refresh"
   }
 }

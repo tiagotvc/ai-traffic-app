@@ -41,15 +41,13 @@ export function CreativeCardGrid({
   metrics,
   primaryMetric,
   clientSlug = "",
-  showRank = true,
-  collapseZeroSpend = false
+  showRank = true
 }: {
   creatives: CreativeItem[];
   metrics: MetricKey[];
   primaryMetric: MetricKey;
   clientSlug?: string;
   showRank?: boolean;
-  collapseZeroSpend?: boolean;
 }) {
   const t = useTranslations("creativesPerf");
   const tMetrics = useTranslations("metrics");
@@ -58,16 +56,6 @@ export function CreativeCardGrid({
   const [previewing, setPreviewing] = useState<CreativeItem | null>(null);
   const [comparing, setComparing] = useState<CreativeItem | null>(null);
   const [cmpMode, setCmpMode] = useState<"campaign" | "adset">("campaign");
-  const [showZero, setShowZero] = useState(false);
-
-  // Sem gasto no período só aparecem ao clicar em "ver mais".
-  const spent = collapseZeroSpend
-    ? creatives.filter((c) => Number(c.metrics.spend ?? 0) > 0)
-    : creatives;
-  const zero = collapseZeroSpend
-    ? creatives.filter((c) => Number(c.metrics.spend ?? 0) <= 0)
-    : [];
-  const visible = showZero ? [...spent, ...zero] : spent;
 
   const cmpRows: Array<{
     id: string;
@@ -105,7 +93,7 @@ export function CreativeCardGrid({
   return (
     <>
       <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-        {visible.map((c, idx) => (
+        {creatives.map((c, idx) => (
           <div key={`${c.name}-${idx}`} className="rounded-xl border border-slate-200 p-3">
             <div className="flex gap-3">
               {c.thumbnailUrl ? (
@@ -218,18 +206,6 @@ export function CreativeCardGrid({
           </div>
         ))}
       </div>
-
-      {zero.length ? (
-        <div className="px-4 pb-3 -mt-1">
-          <button
-            type="button"
-            onClick={() => setShowZero((v) => !v)}
-            className="text-xs font-medium text-violet-600 hover:underline"
-          >
-            {showZero ? t("showLess") : t("showMoreZero", { n: zero.length })}
-          </button>
-        </div>
-      ) : null}
 
       {previewing ? (
         <CreativePreviewModal
