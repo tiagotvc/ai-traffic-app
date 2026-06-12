@@ -146,6 +146,7 @@ export async function GET(req: Request) {
         ok: accRes.ok || ads.length > 0,
         viaCampaigns: !accRes.ok,
         tokenErrors: accRes.errors,
+        accountError: accRes.lastError ?? null,
         adsTotal: ads.length,
         adsActiveCampaign: ads.filter((a) => a.campaignStatus === "ACTIVE").length,
         insightsRows: insights.size

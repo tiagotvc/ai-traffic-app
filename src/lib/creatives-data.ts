@@ -16,18 +16,20 @@ import {
 export async function fetchAdsForAccountAnyToken(
   tokens: Array<string | null | undefined>,
   accountId: string
-): Promise<{ ads: AdUsageRow[]; ok: boolean; errors: number }> {
+): Promise<{ ads: AdUsageRow[]; ok: boolean; errors: number; lastError?: string }> {
   let errors = 0;
+  let lastError: string | undefined;
   for (const token of tokens) {
     if (!token) continue;
     try {
       const ads = await fetchAdsWithUsageForAccount(token, accountId);
       return { ads, ok: true, errors };
-    } catch {
+    } catch (e) {
       errors += 1;
+      lastError = e instanceof Error ? e.message : String(e);
     }
   }
-  return { ads: [], ok: false, errors };
+  return { ads: [], ok: false, errors, lastError };
 }
 
 /** Insights por anúncio tentando cada token; o primeiro que retornar dados vence. */
