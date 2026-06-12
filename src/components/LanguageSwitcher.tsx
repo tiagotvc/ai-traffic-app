@@ -27,8 +27,8 @@ export function LanguageSwitcher({
   const selectClass =
     variant === "sidebar"
       ? collapsed
-        ? "h-8 w-8 cursor-pointer rounded-lg border border-white/10 bg-white/5 text-[10px] text-slate-300"
-        : "mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-slate-200"
+        ? "h-8 w-8 cursor-pointer rounded-lg border border-slate-200 bg-white text-[10px] text-slate-600"
+        : "mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700"
       : "mt-1 w-full rounded-lg border border-surface-line bg-white px-2 py-1.5 text-xs text-slate-700";
 
   return (

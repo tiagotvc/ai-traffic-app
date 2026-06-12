@@ -105,13 +105,13 @@ export function AppSidebar({
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col bg-[#0f111a] text-slate-400 transition-[width] duration-200 ease-in-out print:hidden ${
+      className={`flex h-full shrink-0 flex-col border-r border-slate-200 bg-white text-slate-500 transition-[width] duration-200 ease-in-out print:hidden ${
         collapsed ? "w-[72px]" : "w-[260px]"
       }`}
     >
       {/* Logo + collapse */}
       <div
-        className={`flex shrink-0 items-center border-b border-white/10 ${
+        className={`flex shrink-0 items-center border-b border-slate-100 ${
           collapsed ? "justify-center px-2 py-4" : "justify-between gap-2 px-4 py-4"
         }`}
       >
@@ -120,7 +120,7 @@ export function AppSidebar({
             ∞
           </div>
           {!collapsed ? (
-            <span className="text-[15px] font-semibold text-white">Traffic AI</span>
+            <span className="text-[15px] font-semibold text-slate-900">Traffic AI</span>
           ) : null}
         </div>
         {!collapsed ? (
@@ -128,7 +128,7 @@ export function AppSidebar({
             type="button"
             onClick={onToggleCollapse}
             title={t("collapseSidebar")}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             aria-label={t("collapseSidebar")}
           >
             <NavIcon d="M15 19l-7-7 7-7" />
@@ -142,7 +142,7 @@ export function AppSidebar({
             type="button"
             onClick={onToggleCollapse}
             title={t("expandSidebar")}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             aria-label={t("expandSidebar")}
           >
             <NavIcon d="M9 5l7 7-7 7" />
@@ -158,23 +158,24 @@ export function AppSidebar({
       >
         {items.map((item) => {
           const active = isActive(item);
-          const cls = `relative flex w-full items-center rounded-xl font-medium transition ${
+          const cls = `relative flex w-full items-center rounded-xl transition ${
             collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2 text-[13px]"
           } ${
             active
-              ? "bg-violet-600 text-white"
-              : "text-slate-400 hover:bg-white/5 hover:text-white"
+              ? "bg-violet-50 font-semibold text-violet-700"
+              : "font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900"
           }`;
 
           const inner = (
             <>
+              {active && !collapsed ? (
+                <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-violet-600" />
+              ) : null}
               {item.icon}
               {!collapsed ? <span className="flex-1 truncate text-left">{item.label}</span> : null}
               {item.badge && !collapsed ? (
                 <span
-                  className={`min-w-[18px] rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
-                    active ? "bg-white/25 text-white" : "bg-red-500 text-white"
-                  }`}
+                  className="min-w-[18px] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white"
                 >
                   {item.badge > 99 ? "99+" : item.badge}
                 </span>
@@ -216,7 +217,7 @@ export function AppSidebar({
 
       {/* Footer — sempre colado embaixo, mesmo fundo */}
       <div
-        className={`shrink-0 border-t border-white/10 bg-[#0f111a] ${
+        className={`shrink-0 border-t border-slate-100 bg-white ${
           collapsed ? "p-2" : "p-3"
         }`}
       >
@@ -229,8 +230,8 @@ export function AppSidebar({
           </div>
           {!collapsed ? (
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-white">{userName}</div>
-              <div className="truncate text-[11px] text-slate-500">Admin</div>
+              <div className="truncate text-sm font-medium text-slate-900">{userName}</div>
+              <div className="truncate text-[11px] text-slate-400">Admin</div>
             </div>
           ) : null}
         </div>
@@ -238,14 +239,14 @@ export function AppSidebar({
         {!collapsed ? (
           <Link
             href="/settings"
-            className="mt-1 block rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-white/5 hover:text-slate-300"
+            className="mt-1 block rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700"
           >
             {t("help")}
           </Link>
         ) : null}
 
         <div
-          className={`space-y-0.5 border-white/10 ${collapsed ? "mt-2 border-t pt-2" : "mt-2 border-t pt-2"}`}
+          className={`space-y-0.5 border-slate-100 ${collapsed ? "mt-2 border-t pt-2" : "mt-2 border-t pt-2"}`}
         >
           <LanguageSwitcher variant="sidebar" collapsed={collapsed} />
           <SignOutButton variant="sidebar" collapsed={collapsed} />
