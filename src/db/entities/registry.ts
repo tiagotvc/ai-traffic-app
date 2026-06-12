@@ -135,7 +135,9 @@ stabilizeTypeOrmEntityNames([
   { ctor: Invoice, name: "Invoice" },
   { ctor: BillingEvent, name: "BillingEvent" },
   { ctor: BillingJob, name: "BillingJob" },
-  { ctor: RefundRequest, name: "RefundRequest" }
+  { ctor: RefundRequest, name: "RefundRequest" },
+  { ctor: DiscountCoupon, name: "DiscountCoupon" },
+  { ctor: CouponRedemption, name: "CouponRedemption" }
 ]);
 
 export const typeOrmEntities = [
