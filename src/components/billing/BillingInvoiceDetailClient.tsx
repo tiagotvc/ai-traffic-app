@@ -1,0 +1,21 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useTranslations } from "next-intl";
+
+/** Redireciona para o portal com drawer aberto. */
+export function BillingInvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
+  const router = useRouter();
+  const t = useTranslations("billingPage");
+
+  useEffect(() => {
+    router.replace(`/billing?invoice=${invoiceId}`);
+  }, [invoiceId, router]);
+
+  return (
+    <div className="flex min-h-[30vh] items-center justify-center">
+      <p className="text-sm text-slate-500">{t("loading")}</p>
+    </div>
+  );
+}

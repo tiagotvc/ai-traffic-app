@@ -58,6 +58,9 @@ export async function enqueueTenantSync(input: {
     if (!gate.ok) {
       throw new SyncCooldownError(gate.retryAfterSec ?? 60);
     }
+  } else {
+    const { assertFeature } = await import("@/lib/billing/entitlements");
+    await assertFeature(input.tenantId, "allowAutoSync");
   }
 
   const clients = await clientRepo.find({ where: { tenantId: input.tenantId } });

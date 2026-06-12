@@ -23,6 +23,10 @@ export function getAppBaseUrl(): string {
   return `http://localhost:${port}`;
 }
 
+export function getAsaasWebhookUrl(): string {
+  return `${getAppBaseUrl()}/api/webhooks/asaas`;
+}
+
 export function getMetaOAuthRedirectUri(): string {
   return `${getAppBaseUrl()}/api/auth/callback/facebook`;
 }

@@ -10,10 +10,10 @@ export default async function LoginPage({
   searchParams
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ callbackUrl?: string; switch?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; switch?: string; error?: string }>;
 }) {
   const { locale } = await params;
-  const { callbackUrl, switch: switchParam } = await searchParams;
+  const { callbackUrl, switch: switchParam, error: queryError } = await searchParams;
   const tCommon = await getTranslations("common");
   const session = await auth();
   const switchAccount = switchParam === "1";
@@ -43,6 +43,7 @@ export default async function LoginPage({
           metaOAuthConfigured={isMetaOAuthConfigured()}
           switchAccount={switchAccount}
           currentUserEmail={currentUserEmail}
+          accountSuspended={queryError === "account_suspended"}
         />
       </div>
     </div>

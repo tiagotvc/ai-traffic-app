@@ -67,6 +67,17 @@ export async function POST(req: Request) {
   }
 
   const role = body?.role === "admin" ? "admin" : "member";
+
+  try {
+    const { assertLimit } = await import("@/lib/billing/entitlements");
+    await assertLimit(tenant.id, "maxMembers");
+  } catch (err) {
+    const { billingErrorResponse } = await import("@/lib/billing/api-errors");
+    const res = billingErrorResponse(err);
+    if (res) return res;
+    throw err;
+  }
+
   const invite = await createWorkspaceInvite({
     tenantId: tenant.id,
     email,

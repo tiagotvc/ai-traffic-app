@@ -19,6 +19,10 @@ import {
   getUserWorkspaceMembership
 } from "@/lib/workspace-members";
 import { IsNull, MoreThan } from "typeorm";
+import { ensureFreeSubscription } from "@/lib/billing/event-handlers";
+import { assertTenantCanLogin, getEntitlements } from "@/lib/billing/entitlements";
+import { isPlatformAdmin } from "@/lib/platform-auth";
+import type { Entitlements } from "@/lib/billing/types";
 
 export async function getAppContext() {
   const session = await auth();
@@ -150,7 +154,16 @@ export async function getAppContext() {
 
   let metaAccessToken = await resolveWorkspaceMetaAccessToken(tenant.id, user.id, sessionToken);
 
-  return { session, ds, tenant, user, defaultClient, metaAccessToken };
+  await ensureFreeSubscription(tenant.id);
+
+  const platformAdmin = await isPlatformAdmin(user.id);
+  if (!platformAdmin) {
+    await assertTenantCanLogin(tenant.id);
+  }
+
+  const entitlements: Entitlements = await getEntitlements(tenant.id);
+
+  return { session, ds, tenant, user, defaultClient, metaAccessToken, entitlements, platformAdmin };
 }
 
 export async function listClientsForTenant(tenantId: string, opts?: { includeDemo?: boolean }) {

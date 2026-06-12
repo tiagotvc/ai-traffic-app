@@ -2,6 +2,8 @@ import { Column, Entity, ManyToOne, JoinColumn } from "typeorm";
 import { AppBaseEntity } from "./_shared";
 import type { Tenant } from "./Tenant";
 
+export type PlatformRole = "user" | "admin";
+
 @Entity({ name: "users" })
 export class User extends AppBaseEntity {
   @Column({ type: "text", unique: true })
@@ -12,6 +14,9 @@ export class User extends AppBaseEntity {
 
   @Column({ type: "text", nullable: true })
   passwordHash?: string | null;
+
+  @Column({ type: "text", default: "user" })
+  platformRole!: PlatformRole;
 
   @Column({ type: "uuid" })
   tenantId!: string;

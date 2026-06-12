@@ -17,13 +17,15 @@ export function LoginForm({
   callbackUrl,
   metaOAuthConfigured,
   switchAccount = false,
-  currentUserEmail = null
+  currentUserEmail = null,
+  accountSuspended = false
 }: {
   locale: string;
   callbackUrl: string;
   metaOAuthConfigured: boolean;
   switchAccount?: boolean;
   currentUserEmail?: string | null;
+  accountSuspended?: boolean;
 }) {
   const t = useTranslations("auth");
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -77,6 +79,12 @@ export function LoginForm({
       <div className="mt-1 text-sm text-slate-500">
         {mode === "login" ? t("loginSubtitle") : t("registerSubtitle")}
       </div>
+
+      {accountSuspended ? (
+        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {t("errors.ACCOUNT_SUSPENDED")}
+        </div>
+      ) : null}
 
       {error ? (
         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">

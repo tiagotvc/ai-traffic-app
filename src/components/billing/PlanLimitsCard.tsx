@@ -1,0 +1,483 @@
+"use client";
+
+import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import {
+  isBrBillingMode,
+  planListCents,
+  resolveBillingCurrency,
+  resolvePlanMonthlyCents
+} from "@/lib/billing/currency";
+import type { ExternalPrices, PlanLimits, TenantUsage } from "@/lib/billing/types";
+import {
+  calculateCheckoutPricing,
+  formatMoney,
+  MONTHLY_PIX_DISCOUNT_PERCENT,
+  YEARLY_DISCOUNT_PERCENT,
+  YEARLY_PIX_DISCOUNT_PERCENT,
+  type PricingBreakdown
+} from "@/lib/billing/pricing";
+
+export function BillingBackLink({ href = "/billing/plans", label }: { href?: string; label?: string }) {
+  const t = useTranslations("billingPage");
+  return (
+    <Link
+      href={href}
+      className="group inline-flex items-center gap-2.5 text-sm font-medium text-slate-500 transition hover:text-violet-600"
+    >
+      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition group-hover:border-violet-200 group-hover:bg-violet-50 group-hover:text-violet-600">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+      </span>
+      {label ?? t("back")}
+    </Link>
+  );
+}
+
+function DiscountBadge({
+  type,
+  percent,
+  label,
+  dark = false,
+  highlight = false
+}: {
+  type: "annual" | "pix";
+  percent: number;
+  label: string;
+  dark?: boolean;
+  highlight?: boolean;
+}) {
+  const isPix = type === "pix";
+
+  const base = highlight
+    ? isPix
+      ? dark
+        ? "bg-gradient-to-r from-teal-500/30 to-emerald-500/30 ring-1 ring-teal-400/50"
+        : "bg-gradient-to-r from-teal-500 to-emerald-500 shadow-sm shadow-teal-200/50"
+      : dark
+        ? "bg-emerald-500/20 ring-1 ring-emerald-400/40"
+        : "bg-gradient-to-r from-emerald-500 to-green-500 shadow-sm shadow-emerald-200/50"
+    : dark
+      ? "bg-white/10 ring-1 ring-white/15"
+      : isPix
+        ? "bg-teal-50 ring-1 ring-teal-100"
+        : "bg-emerald-50 ring-1 ring-emerald-100";
+
+  const text = highlight
+    ? "text-white"
+    : dark
+      ? isPix
+        ? "text-teal-200"
+        : "text-emerald-200"
+      : isPix
+        ? "text-teal-800"
+        : "text-emerald-800";
+
+  const pctBg = highlight
+    ? "bg-white/25 text-white"
+    : dark
+      ? "bg-white/15 text-white"
+      : isPix
+        ? "bg-teal-600 text-white"
+        : "bg-emerald-600 text-white";
+
+  return (
+    <span
+      className={`inline-flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${base} ${text}`}
+    >
+      <span className="flex items-center gap-2 leading-none">
+        {isPix ? (
+          <span
+            className={`rounded px-1.5 py-0.5 text-[9px] font-black tracking-widest ${
+              highlight ? "bg-white/20 text-white" : dark ? "bg-teal-500/30 text-teal-100" : "bg-teal-600 text-white"
+            }`}
+          >
+            PIX
+          </span>
+        ) : (
+          <span
+            className={`flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-black ${
+              highlight ? "bg-white/20" : dark ? "bg-emerald-500/30" : "bg-emerald-600 text-white"
+            }`}
+          >
+            %
+          </span>
+        )}
+        {label}
+      </span>
+      <span className={`shrink-0 rounded-lg px-2 py-1 text-xs font-black leading-none ${pctBg}`}>
+        -{percent}%
+      </span>
+    </span>
+  );
+}
+
+function PlanDiscountBadges({
+  cycle,
+  isFree,
+  dark = false
+}: {
+  cycle: "monthly" | "yearly";
+  isFree: boolean;
+  dark?: boolean;
+}) {
+  const t = useTranslations("billingPage");
+  if (isFree) return null;
+
+  if (cycle === "yearly") {
+    return (
+      <div className="mt-3 flex flex-col gap-1.5">
+        <DiscountBadge
+          type="pix"
+          percent={YEARLY_PIX_DISCOUNT_PERCENT}
+          label={t("discountPixLabel")}
+          dark={dark}
+          highlight
+        />
+        <DiscountBadge
+          type="annual"
+          percent={YEARLY_DISCOUNT_PERCENT}
+          label={t("discountAnnualLabel")}
+          dark={dark}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3">
+      <DiscountBadge
+        type="pix"
+        percent={MONTHLY_PIX_DISCOUNT_PERCENT}
+        label={t("discountPixLabel")}
+        dark={dark}
+        highlight
+      />
+    </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
+
+function CrossIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+export function PlanLimitsCard({
+  limits,
+  usage,
+  compact = false
+}: {
+  limits: PlanLimits;
+  usage?: TenantUsage;
+  compact?: boolean;
+}) {
+  const t = useTranslations("billingPage");
+
+  const rows: Array<{ key: keyof PlanLimits; label: string; usageVal?: number }> = [
+    { key: "maxClients", label: t("limitClients"), usageVal: usage?.clients },
+    { key: "maxAdAccounts", label: t("limitAdAccounts"), usageVal: usage?.adAccounts },
+    { key: "maxMembers", label: t("limitMembers"), usageVal: usage?.members },
+    { key: "maxAutomationRules", label: t("limitAutomations"), usageVal: usage?.automationRules },
+    { key: "maxAiRequestsPerMonth", label: t("limitAi"), usageVal: usage?.aiRequestsThisMonth },
+    { key: "maxScheduledReports", label: t("limitReports"), usageVal: usage?.scheduledReports }
+  ];
+
+  return (
+    <ul className={`space-y-2.5 ${compact ? "text-sm" : ""}`}>
+      {rows.map(({ key, label, usageVal }) => {
+        const max = limits[key] as number;
+        return (
+          <li key={key} className="flex items-start justify-between gap-3">
+            <span className="flex items-center gap-2 text-slate-600">
+              <CheckIcon />
+              {label}
+            </span>
+            <span className="shrink-0 font-semibold text-slate-800">
+              {usageVal != null ? `${usageVal}/${max}` : max}
+            </span>
+          </li>
+        );
+      })}
+      <li className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2 text-slate-600">
+          {limits.allowAutoSync ? <CheckIcon /> : <CrossIcon />}
+          {t("limitAutoSync")}
+        </span>
+        <span className="text-xs font-medium text-slate-500">{limits.allowAutoSync ? t("included") : "—"}</span>
+      </li>
+      <li className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2 text-slate-600">
+          {limits.allowLiveMeta ? <CheckIcon /> : <CrossIcon />}
+          {t("limitLiveMeta")}
+        </span>
+        <span className="text-xs font-medium text-slate-500">{limits.allowLiveMeta ? t("included") : "—"}</span>
+      </li>
+    </ul>
+  );
+}
+
+export function PlanPrice({
+  plan,
+  cycle,
+  trialDays = 0
+}: {
+  plan: {
+    priceMonthlyCents: number;
+    priceYearlyCents: number;
+    externalPrices?: ExternalPrices | null;
+  };
+  cycle: "monthly" | "yearly";
+  trialDays?: number;
+}) {
+  const t = useTranslations("billingPage");
+  const locale = useLocale();
+  const currency = resolveBillingCurrency(locale);
+  const isBr = isBrBillingMode(locale);
+
+  if (trialDays > 0) {
+    return (
+      <div>
+        <span className="text-3xl font-bold tracking-tight text-slate-900">{t("freeTrialDays", { days: trialDays })}</span>
+        <p className="mt-1 text-sm text-slate-500">{t("freeTrialHint")}</p>
+      </div>
+    );
+  }
+
+  const monthlyCents = resolvePlanMonthlyCents(plan, currency);
+  const pricing = calculateCheckoutPricing({
+    priceMonthlyCents: monthlyCents,
+    listCents: planListCents(plan, cycle, currency),
+    cycle,
+    provider: "asaas",
+    billingType: "CREDIT_CARD"
+  });
+  const period = cycle === "yearly" ? t("perYear") : t("perMonth");
+
+  return (
+    <div>
+      {pricing.discountPercent > 0 ? (
+        <p className="text-sm text-slate-400 line-through">{formatMoney(pricing.listCents, currency)}</p>
+      ) : null}
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span className="text-4xl font-bold tracking-tight text-slate-900">
+          {formatMoney(pricing.finalCents, currency)}
+        </span>
+        <span className="text-sm font-medium text-slate-500">{period}</span>
+      </div>
+    </div>
+  );
+}
+
+export function BillingCtaLink({
+  planId,
+  slug,
+  className,
+  featured = false
+}: {
+  planId: string;
+  slug: string;
+  className?: string;
+  featured?: boolean;
+}) {
+  const t = useTranslations("billingPage");
+  if (slug === "free") {
+    return (
+      <Link
+        href="/billing"
+        className={className ?? "mt-6 block w-full rounded-xl border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50"}
+      >
+        {t("startFreeTrial")}
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href={`/billing/checkout?plan=${planId}`}
+      className={
+        className ??
+        `mt-6 block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
+          featured
+            ? "bg-violet-600 text-white shadow-lg shadow-violet-600/25 hover:bg-violet-700"
+            : "border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
+        }`
+      }
+    >
+      {t("subscribe")}
+    </Link>
+  );
+}
+
+export type PlanCardData = {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  priceMonthlyCents: number;
+  priceYearlyCents: number;
+  trialDays?: number;
+  currency?: string;
+  externalPrices?: ExternalPrices | null;
+  limits: PlanLimits;
+};
+
+type PlanTier = "free" | "standard" | "popular" | "premium";
+
+function planTier(slug: string): PlanTier {
+  if (slug === "free") return "free";
+  if (slug === "agency") return "premium";
+  if (slug === "advanced") return "popular";
+  return "standard";
+}
+
+const TIER_STYLES: Record<PlanTier, string> = {
+  free: "border-slate-200/80 bg-white shadow-sm hover:border-slate-300 hover:shadow-md",
+  standard: "border-slate-200/80 bg-white shadow-sm hover:border-violet-200 hover:shadow-md",
+  popular:
+    "border-violet-300 bg-gradient-to-b from-violet-50 to-white shadow-lg shadow-violet-100/60 ring-1 ring-violet-200 lg:scale-[1.02]",
+  premium:
+    "border-slate-800/20 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl shadow-slate-900/30 ring-1 ring-amber-400/40 lg:scale-[1.05] lg:-mt-2 lg:mb-2"
+};
+
+export function PlanCard({
+  plan,
+  cycle,
+  featured = false
+}: {
+  plan: PlanCardData;
+  cycle: "monthly" | "yearly";
+  featured?: boolean;
+}) {
+  const t = useTranslations("billingPage");
+  const tier = planTier(plan.slug);
+  const isPremium = tier === "premium";
+  const isPopular = tier === "popular" || featured;
+  const isFree = tier === "free";
+
+  return (
+    <div className={`relative flex flex-col rounded-2xl border p-6 transition ${TIER_STYLES[tier]}`}>
+      {isPopular && !isPremium ? (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-violet-600 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-md">
+          {t("mostPopular")}
+        </span>
+      ) : null}
+      {isPremium ? (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 px-3 py-0.5 text-[11px] font-black uppercase tracking-wide text-slate-900 shadow-md">
+          {t("planPremium")}
+        </span>
+      ) : null}
+
+      <div className="mb-4">
+        <h2 className={`text-lg font-bold ${isPremium ? "text-white" : "text-slate-900"}`}>{plan.name}</h2>
+        {plan.description ? (
+          <p className={`mt-1 text-sm leading-relaxed ${isPremium ? "text-slate-300" : "text-slate-500"}`}>
+            {plan.description}
+          </p>
+        ) : null}
+      </div>
+
+      <div className={isPremium ? "[&_.text-slate-900]:text-white [&_.text-slate-400]:text-slate-400 [&_.text-slate-500]:text-slate-300" : ""}>
+        <PlanPrice plan={plan} cycle={cycle} trialDays={plan.trialDays} />
+        <PlanDiscountBadges cycle={cycle} isFree={isFree} dark={isPremium} />
+      </div>
+
+      <div className={`my-6 border-t pt-5 ${isPremium ? "border-slate-700" : "border-slate-100"}`}>
+        <div className={isPremium ? "[&_li]:text-slate-200 [&_.text-slate-600]:text-slate-300 [&_.text-slate-800]:text-white" : ""}>
+          <PlanLimitsCard limits={plan.limits} compact />
+        </div>
+      </div>
+
+      <div className="mt-auto">
+        <BillingCtaLink
+          planId={plan.id}
+          slug={plan.slug}
+          featured={isPopular || isPremium}
+          className={
+            isPremium
+              ? "mt-6 block w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 text-center text-sm font-extrabold text-slate-900 shadow-lg transition hover:from-amber-300 hover:to-amber-400"
+              : undefined
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+export function CheckoutPlanSummary({
+  plan,
+  cycle,
+  pricing,
+  currency: currencyOverride
+}: {
+  plan: PlanCardData;
+  cycle: "monthly" | "yearly";
+  pricing: PricingBreakdown;
+  currency?: string;
+}) {
+  const locale = useLocale();
+  const currency = currencyOverride ?? resolveBillingCurrency(locale);
+  const t = useTranslations("billingPage");
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-slate-50 shadow-sm">
+      <div className="border-b border-violet-100/80 bg-violet-600/5 px-5 py-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">{t("yourPlan")}</p>
+        <h2 className="mt-1 text-xl font-bold text-slate-900">{plan.name}</h2>
+
+        {pricing.discountPercent > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            <span className="line-through">{formatMoney(pricing.listCents, currency)}</span>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+              {t("discountBadge", { percent: pricing.discountPercent })}
+            </span>
+          </div>
+        ) : null}
+
+        <p className="mt-1 text-2xl font-bold text-slate-900">
+          {formatMoney(pricing.finalCents, currency)}
+          <span className="ml-1 text-sm font-normal text-slate-500">
+            / {cycle === "yearly" ? t("perYear") : t("perMonth")}
+          </span>
+        </p>
+
+        {pricing.installmentCount >= 2 && pricing.installmentValueCents ? (
+          <p className="mt-1 text-sm text-violet-700">
+            {t("installmentSummary", {
+              count: pricing.installmentCount,
+              value: formatMoney(pricing.installmentValueCents, currency)
+            })}
+          </p>
+        ) : null}
+      </div>
+      <div className="px-5 py-4">
+        <PlanLimitsCard limits={plan.limits} compact />
+      </div>
+    </div>
+  );
+}
+
+export function DiscountRulesBanner() {
+  const t = useTranslations("billingPage");
+  return (
+    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
+      <p className="font-semibold">{t("discountRulesTitle")}</p>
+      <ul className="mt-2 space-y-1 text-emerald-800/90">
+        <li>{t("discountRuleYearly", { percent: YEARLY_DISCOUNT_PERCENT })}</li>
+        <li>{t("discountRuleYearlyPix", { percent: YEARLY_PIX_DISCOUNT_PERCENT })}</li>
+        <li>{t("discountRuleYearlyInstallments", { percent: YEARLY_DISCOUNT_PERCENT })}</li>
+        <li>{t("discountRuleMonthlyPix", { percent: MONTHLY_PIX_DISCOUNT_PERCENT })}</li>
+      </ul>
+    </div>
+  );
+}

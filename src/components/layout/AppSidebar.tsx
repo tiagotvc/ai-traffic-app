@@ -50,19 +50,29 @@ const icons = {
   automations:
     "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
   settings:
-    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
+  billing:
+    "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
 };
 
 export function AppSidebar({
   userName,
   userEmail,
   alertCount,
+  planName,
+  planSlug,
+  subscriptionStatus,
+  isPlatformAdmin = false,
   collapsed,
   onToggleCollapse
 }: {
   userName: string;
   userEmail: string;
   alertCount: number;
+  planName?: string;
+  planSlug?: string;
+  subscriptionStatus?: string;
+  isPlatformAdmin?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
 }) {
@@ -84,6 +94,17 @@ export function AppSidebar({
       icon: <NavIcon d={icons.alerts} />
     },
     { id: "automations", href: "/automations", label: t("automations"), icon: <NavIcon d={icons.automations} /> },
+    { id: "billing", href: "/billing", label: t("billing"), icon: <NavIcon d={icons.billing} /> },
+    ...(isPlatformAdmin
+      ? [
+          {
+            id: "admin",
+            href: "/admin/billing/plans",
+            label: t("adminPanel"),
+            icon: <NavIcon d={icons.settings} />
+          }
+        ]
+      : []),
     { id: "settings", href: "/settings", label: t("settings"), icon: <NavIcon d={icons.settings} /> }
   ];
 
@@ -99,6 +120,8 @@ export function AppSidebar({
     if (item.id === "creatives") return base === "/creatives" || base.startsWith("/creatives/");
     if (item.id === "audiences") return base === "/audiences" || base.startsWith("/audiences/");
     if (item.id === "automations") return base === "/automations" || base.startsWith("/automations/");
+    if (item.id === "billing") return base === "/billing" || base.startsWith("/billing/");
+    if (item.id === "admin") return base.startsWith("/admin/");
     if (item.id === "settings") return base === "/settings" || base.startsWith("/settings/");
     return item.href ? base === item.href || base.startsWith(`${item.href}/`) : false;
   }
@@ -230,7 +253,12 @@ export function AppSidebar({
           {!collapsed ? (
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-white">{userName}</div>
-              <div className="truncate text-[11px] text-slate-500">Admin</div>
+              <div className="truncate text-[11px] text-slate-500">
+                {planName ?? t("planTitle")}
+                {subscriptionStatus === "past_due" || subscriptionStatus === "suspended" ? (
+                  <span className="ml-1 text-amber-400">!</span>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </div>

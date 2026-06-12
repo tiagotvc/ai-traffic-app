@@ -11,6 +11,10 @@ import { TenantMetaConnection1735690700000 } from "./0010-TenantMetaConnection";
 import { AdAccountTimezone1735690800000 } from "./0011-AdAccountTimezone";
 import { ReachAndMessages1735690900000 } from "./0012-ReachAndMessages";
 import { CampaignPresets1735691000000 } from "./0013-CampaignPresets";
+import { BillingModule1735691100000 } from "./0014-BillingModule";
+import { BillingPlansV2_1735691200000 } from "./0015-BillingPlansV2";
+import { InvoiceBillingCycle_1735691300000 } from "./0016-InvoiceBillingCycle";
+import { CouponsAndPlatformRole_1735691400000 } from "./0017-CouponsAndPlatformRole";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -26,5 +30,9 @@ export const appMigrations = [
   TenantMetaConnection1735690700000,
   AdAccountTimezone1735690800000,
   ReachAndMessages1735690900000,
-  CampaignPresets1735691000000
+  CampaignPresets1735691000000,
+  BillingModule1735691100000,
+  BillingPlansV2_1735691200000,
+  InvoiceBillingCycle_1735691300000,
+  CouponsAndPlatformRole_1735691400000
 ];

@@ -34,6 +34,15 @@ import { ReportSchedule } from "./ReportSchedule";
 import { UserClient } from "./UserClient";
 import { TenantMember } from "./TenantMember";
 import { TenantInvite } from "./TenantInvite";
+import { Plan } from "./Plan";
+import { Subscription } from "./Subscription";
+import { BillingCustomer } from "./BillingCustomer";
+import { Invoice } from "./Invoice";
+import { BillingEvent } from "./BillingEvent";
+import { BillingJob } from "./BillingJob";
+import { RefundRequest } from "./RefundRequest";
+import { DiscountCoupon } from "./DiscountCoupon";
+import { CouponRedemption } from "./CouponRedemption";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
@@ -68,7 +77,16 @@ export {
   ReportSchedule,
   UserClient,
   TenantMember,
-  TenantInvite
+  TenantInvite,
+  Plan,
+  Subscription,
+  BillingCustomer,
+  Invoice,
+  BillingEvent,
+  BillingJob,
+  RefundRequest,
+  DiscountCoupon,
+  CouponRedemption
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -107,7 +125,14 @@ stabilizeTypeOrmEntityNames([
   { ctor: ReportSchedule, name: "ReportSchedule" },
   { ctor: UserClient, name: "UserClient" },
   { ctor: TenantMember, name: "TenantMember" },
-  { ctor: TenantInvite, name: "TenantInvite" }
+  { ctor: TenantInvite, name: "TenantInvite" },
+  { ctor: Plan, name: "Plan" },
+  { ctor: Subscription, name: "Subscription" },
+  { ctor: BillingCustomer, name: "BillingCustomer" },
+  { ctor: Invoice, name: "Invoice" },
+  { ctor: BillingEvent, name: "BillingEvent" },
+  { ctor: BillingJob, name: "BillingJob" },
+  { ctor: RefundRequest, name: "RefundRequest" }
 ]);
 
 export const typeOrmEntities = [
@@ -142,5 +167,14 @@ export const typeOrmEntities = [
   ReportSchedule,
   UserClient,
   TenantMember,
-  TenantInvite
+  TenantInvite,
+  Plan,
+  Subscription,
+  BillingCustomer,
+  Invoice,
+  BillingEvent,
+  BillingJob,
+  RefundRequest,
+  DiscountCoupon,
+  CouponRedemption
 ] as const;

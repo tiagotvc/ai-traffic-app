@@ -6,6 +6,8 @@ import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "@/auth.config";
 import { repositories } from "@/db/repositories";
 import { verifyPassword } from "@/lib/password";
+import { assertTenantCanLogin } from "@/lib/billing/entitlements";
+import { isPlatformAdmin } from "@/lib/platform-auth";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -28,6 +30,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await userRepo.findOne({ where: { email } });
         if (!user?.passwordHash) return null;
         if (!(await verifyPassword(password, user.passwordHash))) return null;
+
+        if (!(await isPlatformAdmin(user.id))) {
+          try {
+            await assertTenantCanLogin(user.tenantId);
+          } catch {
+            return null;
+          }
+        }
 
         return {
           id: user.id,

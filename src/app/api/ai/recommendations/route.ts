@@ -27,6 +27,17 @@ export async function GET() {
 
 export async function POST() {
   const { tenant, defaultClient } = await getAppContext();
+
+  try {
+    const { assertLimit } = await import("@/lib/billing/entitlements");
+    await assertLimit(tenant.id, "maxAiRequestsPerMonth");
+  } catch (err) {
+    const { billingErrorResponse } = await import("@/lib/billing/api-errors");
+    const res = billingErrorResponse(err);
+    if (res) return res;
+    throw err;
+  }
+
   const {
     metricSnapshot: metricsRepo,
     adAccount: adAccountRepo,

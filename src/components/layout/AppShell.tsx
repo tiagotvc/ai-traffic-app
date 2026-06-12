@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { PublishPanelHost } from "@/components/publish/PublishPanelHost";
 import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { BillingGateModal } from "@/components/billing/BillingGateModal";
 
 const STORAGE_KEY = "traffic-ai-sidebar-collapsed";
 
@@ -12,12 +13,20 @@ export function AppShell({
   children,
   userName,
   userEmail,
-  alertCount
+  alertCount,
+  planSlug = "free",
+  planName = "Free",
+  subscriptionStatus = "active",
+  isPlatformAdmin = false
 }: {
   children: React.ReactNode;
   userName: string;
   userEmail: string;
   alertCount: number;
+  planSlug?: string;
+  planName?: string;
+  subscriptionStatus?: string;
+  isPlatformAdmin?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [ready, setReady] = useState(false);
@@ -50,10 +59,15 @@ export function AppShell({
           userName={userName}
           userEmail={userEmail}
           alertCount={alertCount}
+          planName={planName}
+          planSlug={planSlug}
+          subscriptionStatus={subscriptionStatus}
+          isPlatformAdmin={isPlatformAdmin}
           collapsed={ready ? collapsed : false}
           onToggleCollapse={toggleCollapsed}
         />
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
           <div className="mx-auto w-full max-w-[1600px] px-6 py-6 lg:px-8 lg:py-7">{children}</div>
         </main>
       </div>

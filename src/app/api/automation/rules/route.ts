@@ -29,6 +29,17 @@ export async function GET() {
 export async function POST(req: Request) {
   const { tenant } = await getAppContext();
   const body = BodySchema.parse(await req.json().catch(() => ({})));
+
+  try {
+    const { assertLimit } = await import("@/lib/billing/entitlements");
+    await assertLimit(tenant.id, "maxAutomationRules");
+  } catch (err) {
+    const { billingErrorResponse } = await import("@/lib/billing/api-errors");
+    const res = billingErrorResponse(err);
+    if (res) return res;
+    throw err;
+  }
+
   const { automationRule: repo } = await repositories();
 
   const rule = await repo.save(

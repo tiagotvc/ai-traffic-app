@@ -30,6 +30,17 @@ const CreateClientSchema = z.object({
 export async function POST(req: Request) {
   const { tenant, metaAccessToken } = await getAppContext();
   const body = CreateClientSchema.parse(await req.json().catch(() => ({})));
+
+  try {
+    const { assertLimit } = await import("@/lib/billing/entitlements");
+    await assertLimit(tenant.id, "maxClients");
+  } catch (err) {
+    const { billingErrorResponse } = await import("@/lib/billing/api-errors");
+    const res = billingErrorResponse(err);
+    if (res) return res;
+    throw err;
+  }
+
   const { client: clientRepo, clientGoal: goalRepo } = await repositories();
 
   const saved = await clientRepo.save(

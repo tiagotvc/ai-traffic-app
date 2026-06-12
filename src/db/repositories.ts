@@ -31,6 +31,15 @@ import type { User } from "@/db/entities/User";
 import type { UserClient } from "@/db/entities/UserClient";
 import type { TenantMember } from "@/db/entities/TenantMember";
 import type { TenantInvite } from "@/db/entities/TenantInvite";
+import type { Plan } from "@/db/entities/Plan";
+import type { Subscription } from "@/db/entities/Subscription";
+import type { BillingCustomer } from "@/db/entities/BillingCustomer";
+import type { Invoice } from "@/db/entities/Invoice";
+import type { BillingEvent } from "@/db/entities/BillingEvent";
+import type { BillingJob } from "@/db/entities/BillingJob";
+import type { RefundRequest } from "@/db/entities/RefundRequest";
+import type { DiscountCoupon } from "@/db/entities/DiscountCoupon";
+import type { CouponRedemption } from "@/db/entities/CouponRedemption";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -67,7 +76,16 @@ const ENTITY = {
   ReportSchedule: "ReportSchedule",
   UserClient: "UserClient",
   TenantMember: "TenantMember",
-  TenantInvite: "TenantInvite"
+  TenantInvite: "TenantInvite",
+  Plan: "Plan",
+  Subscription: "Subscription",
+  BillingCustomer: "BillingCustomer",
+  Invoice: "Invoice",
+  BillingEvent: "BillingEvent",
+  BillingJob: "BillingJob",
+  RefundRequest: "RefundRequest",
+  DiscountCoupon: "DiscountCoupon",
+  CouponRedemption: "CouponRedemption"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -121,6 +139,15 @@ export async function repositories() {
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),
     tenantMember: repositoryFor<TenantMember>(ds, ENTITY.TenantMember),
-    tenantInvite: repositoryFor<TenantInvite>(ds, ENTITY.TenantInvite)
+    tenantInvite: repositoryFor<TenantInvite>(ds, ENTITY.TenantInvite),
+    plan: repositoryFor<Plan>(ds, ENTITY.Plan),
+    subscription: repositoryFor<Subscription>(ds, ENTITY.Subscription),
+    billingCustomer: repositoryFor<BillingCustomer>(ds, ENTITY.BillingCustomer),
+    invoice: repositoryFor<Invoice>(ds, ENTITY.Invoice),
+    billingEvent: repositoryFor<BillingEvent>(ds, ENTITY.BillingEvent),
+    billingJob: repositoryFor<BillingJob>(ds, ENTITY.BillingJob),
+    refundRequest: repositoryFor<RefundRequest>(ds, ENTITY.RefundRequest),
+    discountCoupon: repositoryFor<DiscountCoupon>(ds, ENTITY.DiscountCoupon),
+    couponRedemption: repositoryFor<CouponRedemption>(ds, ENTITY.CouponRedemption)
   };
 }
