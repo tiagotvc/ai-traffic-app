@@ -79,13 +79,23 @@ export async function fetchInsightsForCampaignAnyToken(
   return last;
 }
 
-/** IDs de campanha já sincronizadas no DB para uma conta (AdAccount.id). */
-export async function getSyncedCampaignIds(adAccountId: string, limit = 80): Promise<string[]> {
+/**
+ * IDs de campanha sincronizadas no DB para uma conta (AdAccount.id), apenas as
+ * com atividade RECENTE — campanhas paradas há semanas nao precisam ser
+ * buscadas (o ranking so mostra campanha ativa). Reduz muito o fallback.
+ */
+export async function getSyncedCampaignIds(
+  adAccountId: string,
+  limit = 80,
+  recentDays = 21
+): Promise<string[]> {
+  const since = new Date(Date.now() - recentDays * 86_400_000).toISOString().slice(0, 10);
   const { campaignMetricSnapshot } = await repositories();
   const rows = await campaignMetricSnapshot
     .createQueryBuilder("s")
     .select("DISTINCT s.metaCampaignId", "metaCampaignId")
     .where("s.adAccountId = :id", { id: adAccountId })
+    .andWhere("s.day >= :since", { since })
     .limit(limit)
     .getRawMany<{ metaCampaignId: string }>();
   return rows.map((r) => r.metaCampaignId).filter(Boolean);
@@ -118,7 +128,7 @@ export async function loadAdsViaCampaigns(
   tokens: Array<string | null | undefined>,
   campaignIds: string[]
 ): Promise<{ ads: AdUsageRow[]; insights: Map<string, AdInsightMetrics> }> {
-  const results = await mapLimit(campaignIds, 8, async (cid) => {
+  const results = await mapLimit(campaignIds, 12, async (cid) => {
     const { ads: cAds } = await fetchAdsForCampaignAnyToken(tokens, cid);
     if (!cAds.length) return { ads: [] as AdUsageRow[], insights: new Map<string, AdInsightMetrics>() };
     const cIns = await fetchInsightsForCampaignAnyToken(tokens, cid);
