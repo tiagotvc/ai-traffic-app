@@ -90,66 +90,6 @@ type SeriesPoint = { day: string; spend: number; conversions: number; cpa: numbe
 type PrevPeriod = { spend: number; conversions: number; cpa: number | null; roas: number };
 type DetailTab = "overview" | "adsets" | "ads" | "creatives" | "events";
 
-const CHART_HEIGHT = 140;
-const LABEL_INSIDE_MIN = 28;
-
-function formatChartSpend(value: number, locale?: string) {
-  if (value <= 0) return "";
-  const tag = locale === "en" ? "en-US" : "pt-BR";
-  if (value >= 1000) {
-    const k = value / 1000;
-    const n = k.toFixed(1).replace(".", ",");
-    return locale === "en" ? `$${n}k` : `R$ ${n}k`;
-  }
-  return value.toLocaleString(tag, {
-    style: "currency",
-    currency: "BRL",
-    maximumFractionDigits: 0,
-    minimumFractionDigits: 0
-  });
-}
-
-function formatChartCount(value: number, locale?: string) {
-  if (value <= 0) return "";
-  return formatNumber(value, locale);
-}
-
-function ChartBar({
-  height,
-  bgClass,
-  labelClass,
-  label
-}: {
-  height: number;
-  bgClass: string;
-  labelClass: string;
-  label: string;
-}) {
-  const barH = Math.max(4, height);
-  const showInside = Boolean(label) && barH >= LABEL_INSIDE_MIN;
-  const showAbove = Boolean(label) && !showInside;
-
-  return (
-    <div className="flex w-1/2 flex-col items-center justify-end" style={{ height: CHART_HEIGHT }}>
-      {showAbove ? (
-        <span
-          className={`mb-0.5 max-w-full truncate px-0.5 text-center text-[8px] font-semibold leading-none ${labelClass}`}
-          title={label}
-        >
-          {label}
-        </span>
-      ) : null}
-      <div className={`relative w-full rounded-t ${bgClass}`} style={{ height: barH }}>
-        {showInside ? (
-          <span className="absolute inset-x-0 top-0.5 px-0.5 text-center text-[8px] font-semibold leading-tight text-white drop-shadow-sm">
-            {label}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 export type CampaignSeedRow = {
   metaCampaignId: string;
   campaignName: string;

@@ -792,6 +792,7 @@ export type MetaAdSetInsight = {
   ctr: number;
   reach: number;
   conversions: number;
+  messages: number;
   roas: number;
 };
 
@@ -826,6 +827,7 @@ export async function fetchAdSetInsights(
       ctr: Number(row.ctr) || 0,
       reach: Number(row.reach) || 0,
       conversions,
+      messages: pickMessages(row.actions),
       roas: Number.isFinite(roas) ? roas : 0
     };
   } catch {
