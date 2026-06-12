@@ -32,7 +32,9 @@ export function CreativesRankingView({
   const tMetrics = useTranslations("metrics");
   const tPresets = useTranslations("campaignPresets");
   const [groups, setGroups] = useState<Group[]>([]);
-  const [warnings, setWarnings] = useState<Array<{ account: string; label: string }>>([]);
+  const [warnings, setWarnings] = useState<
+    Array<{ account: string; label: string; needsReconnect?: boolean; reason?: string | null }>
+  >([]);
   const [loading, setLoading] = useState(false);
   const [expandedZero, setExpandedZero] = useState<Record<string, boolean>>({});
 

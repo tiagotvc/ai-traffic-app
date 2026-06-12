@@ -6,9 +6,7 @@ import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { type AdInsightMetrics, type CreativeAssetType } from "@/lib/meta-graph";
 import {
   fetchAdsForAccountAnyToken,
-  fetchInsightsForAccountAnyToken,
-  getSyncedCampaignIds,
-  loadAdsViaCampaigns
+  fetchInsightsForAccountAnyToken
 } from "@/lib/creatives-data";
 import { type MetricKey } from "@/lib/dashboard-metrics";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
@@ -110,41 +108,48 @@ export async function GET(req: Request) {
   const rankConfig = await loadRankConfig(tenant.id);
 
   const byCreative = new Map<string, Agg>();
-  const warnings: Array<{ account: string; label: string }> = [];
+  const warnings: Array<{
+    account: string;
+    label: string;
+    needsReconnect: boolean;
+    reason: string | null;
+  }> = [];
 
-  // Busca por conta EM PARALELO (evita 504): a parte lenta é a rede.
+  // Busca por conta EM PARALELO. Caminho ÚNICO: chamada a nível de conta.
+  // Se a Meta recusar (sem permissão ads_read/ads_management), a conta é
+  // marcada para reconexão — NÃO há fallback lento campanha-por-campanha.
   const perAccount = await Promise.all(
     accounts.map(async (acc) => {
       const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
-      let ads = accRes.ads;
-      let insights: Map<string, AdInsightMetrics>;
-      if (accRes.ok) {
-        insights = ads.length
+      const ads = accRes.ok ? accRes.ads : [];
+      const insights: Map<string, AdInsightMetrics> =
+        accRes.ok && ads.length
           ? await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
               since: period.since,
               until: period.until
             })
           : new Map();
-      } else {
-        const campIds = await getSyncedCampaignIds(acc.id);
-        const fb = await loadAdsViaCampaigns(tokens, campIds);
-        ads = fb.ads;
-        insights = fb.insights;
-      }
       return { acc, accRes, ads, insights };
     })
   );
 
   for (const { acc, accRes, ads, insights } of perAccount) {
-    if (!accRes.ok && ads.length === 0 && accRes.errors > 0) {
-      warnings.push({ account: acc.metaAdAccountId, label: acc.label ?? acc.metaAdAccountId });
+    if (!accRes.ok) {
+      const reason = accRes.lastError ?? null;
+      const needsReconnect = /#200|ads_management|ads_read|permission/i.test(reason ?? "");
+      warnings.push({
+        account: acc.metaAdAccountId,
+        label: acc.label ?? acc.metaAdAccountId,
+        needsReconnect,
+        reason
+      });
     }
     if (debug) {
       diag.push({
         account: acc.metaAdAccountId,
         label: acc.label ?? null,
-        ok: accRes.ok || ads.length > 0,
-        viaCampaigns: !accRes.ok,
+        ok: accRes.ok,
+        needsReconnect: !accRes.ok,
         tokenErrors: accRes.errors,
         accountError: accRes.lastError ?? null,
         adsTotal: ads.length,
