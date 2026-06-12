@@ -19,8 +19,8 @@ export function SignOutButton({
   const className =
     variant === "sidebar"
       ? collapsed
-        ? "flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-60"
-        : "w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-60"
+        ? "flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-60"
+        : "w-full rounded-lg px-2 py-1.5 text-left text-xs text-slate-400 hover:bg-white/10 hover:text-white disabled:opacity-60"
       : "mt-3 w-full rounded-xl border border-surface-line bg-white px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60";
 
   return (
