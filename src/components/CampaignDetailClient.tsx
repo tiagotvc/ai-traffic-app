@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { Link } from "@/i18n/navigation";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatRoas } from "@/lib/format";
 
 type AdSet = { id: string; name?: string; status?: string; dailyBudget: number | null };
@@ -65,7 +66,13 @@ export function CampaignDetailClient({
   };
 
   if (!campaign) {
-    return <div className="p-8 text-center text-sm text-slate-500">{t("loading")}</div>;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-16 w-full rounded-2xl" />
+        <TableSkeleton rows={5} />
+      </div>
+    );
   }
 
   return (

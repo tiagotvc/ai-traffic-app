@@ -15,6 +15,7 @@ import { CampaignMetricSnapshot } from "./CampaignMetricSnapshot";
 import { ClientGoal } from "./ClientGoal";
 import { CampaignGoal } from "./CampaignGoal";
 import { CampaignPreset } from "./CampaignPreset";
+import { RankingConfig } from "./RankingConfig";
 import { Alert } from "./Alert";
 import { AiRecommendation } from "./AiRecommendation";
 import { AuditLog } from "./AuditLog";
@@ -59,6 +60,7 @@ export {
   ClientGoal,
   CampaignGoal,
   CampaignPreset,
+  RankingConfig,
   Alert,
   AiRecommendation,
   AuditLog,
@@ -107,6 +109,7 @@ stabilizeTypeOrmEntityNames([
   { ctor: ClientGoal, name: "ClientGoal" },
   { ctor: CampaignGoal, name: "CampaignGoal" },
   { ctor: CampaignPreset, name: "CampaignPreset" },
+  { ctor: RankingConfig, name: "RankingConfig" },
   { ctor: Alert, name: "Alert" },
   { ctor: AiRecommendation, name: "AiRecommendation" },
   { ctor: AuditLog, name: "AuditLog" },
@@ -149,6 +152,7 @@ export const typeOrmEntities = [
   ClientGoal,
   CampaignGoal,
   CampaignPreset,
+  RankingConfig,
   Alert,
   AiRecommendation,
   AuditLog,

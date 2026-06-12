@@ -1,12 +1,19 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { Link } from "@/i18n/navigation";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { presetMetricsFor } from "@/lib/campaign-presets";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
+import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
+
+type AdMetrics = Partial<Record<MetricKey, number>>;
 
 type Campaign = {
   id: string;
@@ -31,6 +38,7 @@ type AdRow = {
     name?: string;
     thumbnail_url?: string;
   };
+  metrics?: AdMetrics | null;
 };
 
 function statusVariant(status: string) {
@@ -55,7 +63,12 @@ export function CampaignAdsClient({
   embedded?: boolean;
 }) {
   const t = useTranslations("adsPage");
+  const tMetrics = useTranslations("metrics");
+  const locale = useLocale();
+  const searchParams = useSearchParams();
+  const adsetFilter = searchParams.get("adset");
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [preset, setPreset] = useState<string>("default");
   const [ads, setAds] = useState<AdRow[]>([]);
   const [adsetsCount, setAdsetsCount] = useState<number | null>(null);
   const [creativesCount, setCreativesCount] = useState<number | null>(null);
@@ -64,6 +77,7 @@ export function CampaignAdsClient({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [previewing, setPreviewing] = useState<AdRow | null>(null);
   const [isPending, startTransition] = useTransition();
   const pageSize = 20;
 
@@ -79,6 +93,13 @@ export function CampaignAdsClient({
           rememberCampaign(metaCampaignId, j.campaign.clientSlug || clientSlug);
         }
       });
+
+    fetch("/api/campaign-presets")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setPreset(j.presets?.[metaCampaignId] ?? "default");
+      })
+      .catch(() => {});
 
     fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads`)
       .then((r) => r.json())
@@ -103,6 +124,7 @@ export function CampaignAdsClient({
 
   const filtered = useMemo(() => {
     let list = ads;
+    if (adsetFilter) list = list.filter((a) => a.adsetId === adsetFilter);
     if (statusFilter === "active") list = list.filter((a) => a.status === "ACTIVE");
     if (statusFilter === "paused") list = list.filter((a) => a.status === "PAUSED");
     if (search.trim()) {
@@ -114,10 +136,16 @@ export function CampaignAdsClient({
       );
     }
     return list;
-  }, [ads, search, statusFilter]);
+  }, [ads, search, statusFilter, adsetFilter]);
+
+  const adsetFilterName = adsetFilter
+    ? ads.find((a) => a.adsetId === adsetFilter)?.adsetName ?? adsetFilter
+    : null;
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  // Métricas exibidas conforme o tipo (preset) da campanha.
+  const presetMetrics = presetMetricsFor(preset);
 
   const adAction = (adId: string, action: "pause" | "activate") => {
     startTransition(async () => {
@@ -131,7 +159,16 @@ export function CampaignAdsClient({
   };
 
   if (!campaign) {
-    return <div className="p-8 text-center text-sm text-slate-500">{t("loading")}</div>;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-16 w-full rounded-2xl" />
+        <TableSkeleton
+          rows={5}
+          columns={["media", "badge", "metric", "metric", "metric", "badge"]}
+        />
+      </div>
+    );
   }
 
   const slug = campaign.clientSlug || clientSlug;
@@ -228,6 +265,21 @@ export function CampaignAdsClient({
         </select>
       </div>
 
+      {adsetFilter ? (
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1 font-medium text-violet-700">
+            {t("adsetFilter", { name: adsetFilterName ?? "" })}
+            <Link
+              href={`/campaigns/${metaCampaignId}/ads?client=${encodeURIComponent(clientSlug)}`}
+              className="text-violet-500 hover:text-violet-800"
+              title={t("clearFilter")}
+            >
+              ✕
+            </Link>
+          </span>
+        </div>
+      ) : null}
+
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px] text-left text-sm">
@@ -235,6 +287,11 @@ export function CampaignAdsClient({
               <tr>
                 <th className="px-4 py-3">{t("colAd")}</th>
                 <th className="px-3 py-3">{t("colAdset")}</th>
+                {presetMetrics.map((m) => (
+                  <th key={m} className="px-3 py-3 text-right">
+                    {tMetrics(METRIC_BY_KEY[m].label)}
+                  </th>
+                ))}
                 <th className="px-3 py-3">{t("colStatus")}</th>
                 <th className="w-10 px-3 py-3" />
               </tr>
@@ -243,14 +300,31 @@ export function CampaignAdsClient({
               {adsLoading && ads.length === 0 ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-t border-slate-100">
-                    <td colSpan={4} className="px-4 py-4">
-                      <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+                        <Skeleton className="h-3.5 w-40 max-w-full" />
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <Skeleton className="h-5 w-20 rounded-md" />
+                    </td>
+                    {presetMetrics.map((m) => (
+                      <td key={m} className="px-3 py-3 text-right">
+                        <Skeleton className="ml-auto h-3.5 w-12" />
+                      </td>
+                    ))}
+                    <td className="px-3 py-3">
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </td>
+                    <td className="px-3 py-3">
+                      <Skeleton className="h-4 w-3" />
                     </td>
                   </tr>
                 ))
               ) : paged.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={4 + presetMetrics.length} className="px-4 py-8 text-center text-sm text-slate-500">
                     {t("empty")}
                   </td>
                 </tr>
@@ -260,13 +334,17 @@ export function CampaignAdsClient({
                   return (
                     <tr key={ad.id} className="border-t border-slate-100 hover:bg-slate-50/80">
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewing(ad)}
+                          className="group flex items-center gap-3 text-left"
+                        >
                           {ad.creative?.thumbnail_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={ad.creative.thumbnail_url}
                               alt=""
-                              className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                              className="h-10 w-10 shrink-0 rounded-lg object-cover transition group-hover:opacity-80"
                             />
                           ) : (
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm">
@@ -274,16 +352,28 @@ export function CampaignAdsClient({
                             </div>
                           )}
                           <div>
-                            <div className="font-medium text-slate-900">{name}</div>
+                            <div className="font-medium text-slate-900 group-hover:text-violet-700 group-hover:underline">
+                              {name}
+                            </div>
                             <div className="text-[10px] text-slate-400">{ad.id}</div>
                           </div>
-                        </div>
+                        </button>
                       </td>
                       <td className="px-3 py-3">
                         <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                           {ad.adsetName ?? ad.adsetId}
                         </span>
                       </td>
+                      {presetMetrics.map((m) => (
+                        <td
+                          key={m}
+                          className="px-3 py-3 text-right tabular-nums text-slate-700"
+                        >
+                          {ad.metrics
+                            ? formatMetricValue(m, ad.metrics[m] ?? 0, locale)
+                            : "—"}
+                        </td>
+                      ))}
                       <td className="px-3 py-3">
                         <label className="flex cursor-pointer items-center gap-2">
                           <input
@@ -339,6 +429,20 @@ export function CampaignAdsClient({
           </div>
         </div>
       </div>
+
+      {previewing ? (
+        <CreativePreviewModal
+          adId={previewing.id}
+          imageUrl={previewing.creative?.thumbnail_url ?? null}
+          name={previewing.name ?? previewing.id}
+          downloadHref={
+            previewing.creative?.thumbnail_url
+              ? `/api/creatives/download?u=${encodeURIComponent(previewing.creative.thumbnail_url)}&name=${encodeURIComponent(previewing.name ?? previewing.id)}`
+              : null
+          }
+          onClose={() => setPreviewing(null)}
+        />
+      ) : null}
     </div>
   );
 }

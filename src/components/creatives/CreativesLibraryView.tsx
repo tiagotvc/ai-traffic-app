@@ -5,6 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/Badge";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { presetMetricsFor } from "@/lib/campaign-presets";
+import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
+import { DownloadIcon } from "@/components/ui/DownloadIcon";
 
 export type CreativeRow = {
   id: string;
@@ -20,8 +24,12 @@ export type CreativeRow = {
   metricLabel: string;
   usageAds: number;
   usageCampaigns: number;
-  createdAt: string;
+  createdAt?: string;
   thumbnailUrl?: string | null;
+  imageUrl?: string | null;
+  adId?: string | null;
+  dominantPreset?: string;
+  metrics?: Partial<Record<MetricKey, number>>;
 };
 
 const STAT_KEYS = ["total", "images", "videos", "carousels", "copy", "headlines", "descriptions"] as const;
@@ -65,12 +73,22 @@ export function CreativesLibraryView({
   onTotalChange?: (total: number) => void;
 }) {
   const t = useTranslations(translationNs);
+  const tPerf = useTranslations("creativesPerf");
+  const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [rows, setRows] = useState<CreativeRow[]>([]);
+  const [warnings, setWarnings] = useState<Array<{ account: string; label: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [tab, setTab] = useState<"all" | "active" | "testing" | "paused" | "archived">("all");
+
+  function dlUrl(r: CreativeRow) {
+    const u = r.imageUrl ?? r.thumbnailUrl;
+    return u ? `/api/creatives/download?u=${encodeURIComponent(u)}&name=${encodeURIComponent(r.title)}` : null;
+  }
   const [q, setQ] = useState("");
+  const [formatFilter, setFormatFilter] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
@@ -82,11 +100,13 @@ export function CreativesLibraryView({
         const apiRows = (j.ok === false ? [] : (j.rows ?? [])) as CreativeRow[];
         const total = j.total ?? apiRows.length;
         setRows(apiRows);
+        setWarnings((j.warnings ?? []) as Array<{ account: string; label: string }>);
         setSelectedId(apiRows[0]?.id ?? null);
         onTotalChange?.(total);
       })
       .catch(() => {
         setRows([]);
+        setWarnings([]);
         setSelectedId(null);
         onTotalChange?.(0);
       })
@@ -97,12 +117,18 @@ export function CreativesLibraryView({
     load();
   }, [load]);
 
+  const formatOptions = useMemo(
+    () => [...new Set(rows.map((r) => r.format).filter(Boolean))].sort(),
+    [rows]
+  );
+
   const filtered = useMemo(() => {
     let list = rows;
     if (tab === "active") list = list.filter((r) => r.status === "active");
     if (tab === "testing") list = list.filter((r) => r.status === "testing");
     if (tab === "paused") list = list.filter((r) => r.status === "paused");
     if (tab === "archived") list = list.filter((r) => r.status === "archived");
+    if (formatFilter) list = list.filter((r) => r.format === formatFilter);
     if (q.trim()) {
       const needle = q.toLowerCase();
       list = list.filter(
@@ -113,7 +139,7 @@ export function CreativesLibraryView({
       );
     }
     return list;
-  }, [rows, tab, q]);
+  }, [rows, tab, q, formatFilter]);
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const selected = rows.find((r) => r.id === selectedId) ?? paged[0] ?? null;
@@ -143,6 +169,15 @@ export function CreativesLibraryView({
 
   return (
     <div className="space-y-5">
+      {warnings.length ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <p className="font-medium">{tPerf("accessWarningTitle")}</p>
+          <p className="mt-0.5 text-xs">
+            {tPerf("accessWarningBody")} {warnings.map((w) => w.label).join(", ")}
+          </p>
+        </div>
+      ) : null}
+
       {showStats ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {STAT_KEYS.map((key) => (
@@ -166,17 +201,25 @@ export function CreativesLibraryView({
 
       {showFilters ? (
         <div className="flex flex-wrap gap-2">
-          <select className="ui-select w-auto min-w-[140px]">
-            <option>{t("filterClient")}</option>
-          </select>
-          <select className="ui-select w-auto min-w-[140px]" disabled={!!lockedCampaignName}>
-            <option>{lockedCampaignName ?? t("filterCampaign")}</option>
-          </select>
-          <select className="ui-select w-auto min-w-[120px]">
-            <option>{t("filterFormat")}</option>
-          </select>
-          <select className="ui-select w-auto min-w-[120px]">
-            <option>{t("filterStatus")}</option>
+          {lockedCampaignName ? (
+            <select className="ui-select w-auto min-w-[140px]" disabled>
+              <option>{lockedCampaignName}</option>
+            </select>
+          ) : null}
+          <select
+            value={formatFilter}
+            onChange={(e) => {
+              setFormatFilter(e.target.value);
+              setPage(1);
+            }}
+            className="ui-select w-auto min-w-[120px]"
+          >
+            <option value="">{t("filterFormat")}</option>
+            {formatOptions.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
           </select>
           <input
             value={q}
@@ -363,13 +406,20 @@ export function CreativesLibraryView({
                 ✕
               </button>
             </div>
-            {selected.thumbnailUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={selected.thumbnailUrl}
-                alt=""
-                className="mt-4 h-32 w-full rounded-xl object-cover"
-              />
+            {selected.thumbnailUrl || selected.imageUrl ? (
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(true)}
+                className="mt-4 block w-full"
+                title={t("actionView")}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={selected.imageUrl ?? selected.thumbnailUrl ?? ""}
+                  alt=""
+                  className="h-44 w-full rounded-xl bg-slate-50 object-contain"
+                />
+              </button>
             ) : (
               <div className="mt-4 flex h-32 items-center justify-center rounded-xl bg-slate-100 text-4xl">
                 {typeIcon(selected.type)}
@@ -410,36 +460,60 @@ export function CreativesLibraryView({
             <section className="mt-4 border-t border-slate-100 pt-4">
               <h3 className="text-xs font-semibold uppercase text-slate-500">{t("detailPerformance")}</h3>
               <div className="mt-2 grid grid-cols-2 gap-2 text-center text-xs">
-                {[
-                  ["125.430", t("metricImpressions")],
-                  ["2.843", t("metricClicks")],
-                  ["2,27%", "CTR"],
-                  ["R$ 1.240", t("metricSpend")],
-                  ["128", t("metricConversions")],
-                  [selected.metricLabel, "ROAS"]
-                ].map(([val, lbl]) => (
-                  <div key={lbl} className="rounded-lg border border-slate-100 bg-slate-50 p-2">
-                    <div className="font-bold text-slate-900">{val}</div>
-                    <div className="text-slate-500">{lbl}</div>
+                {(
+                  [
+                    ...new Set([
+                      ...presetMetricsFor(selected.dominantPreset),
+                      "spend",
+                      "impressions",
+                      "clicks"
+                    ])
+                  ].slice(0, 6) as MetricKey[]
+                ).map((key) => (
+                  <div key={key} className="rounded-lg border border-slate-100 bg-slate-50 p-2">
+                    <div className="font-bold text-slate-900">
+                      {selected.metrics
+                        ? formatMetricValue(key, selected.metrics[key] ?? 0, locale)
+                        : "—"}
+                    </div>
+                    <div className="text-slate-500">{tMetrics(METRIC_BY_KEY[key].label)}</div>
                   </div>
                 ))}
               </div>
             </section>
 
             <div className="mt-4 space-y-2">
-              <button type="button" className="ui-btn-secondary w-full text-sm">
+              <button
+                type="button"
+                disabled={!selected.thumbnailUrl && !selected.imageUrl}
+                onClick={() => setPreviewOpen(true)}
+                className="ui-btn-secondary w-full text-sm disabled:opacity-50"
+              >
                 {t("actionView")}
               </button>
-              <button type="button" className="ui-btn-primary w-full text-sm">
-                {t("actionUse")}
-              </button>
-              <button type="button" className="ui-btn-danger w-full text-sm">
-                {t("actionArchive")}
-              </button>
+              {dlUrl(selected) ? (
+                <a
+                  href={dlUrl(selected)!}
+                  className="ui-btn-primary flex w-full items-center justify-center gap-1.5 text-sm"
+                >
+                  <DownloadIcon />
+                  {t("download")}
+                </a>
+              ) : null}
             </div>
           </aside>
         ) : null}
       </div>
+
+      {previewOpen && selected ? (
+        <CreativePreviewModal
+          adId={selected.adId ?? null}
+          imageUrl={selected.imageUrl ?? selected.thumbnailUrl ?? null}
+          name={selected.title}
+          downloadHref={dlUrl(selected)}
+          onClose={() => setPreviewOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

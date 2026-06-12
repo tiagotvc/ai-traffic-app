@@ -5,9 +5,23 @@ import { useCallback, useEffect, useState } from "react";
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
-import { CreativesLibraryView } from "@/components/creatives/CreativesLibraryView";
+import { CreativeCardGrid, type CreativeItem } from "@/components/creatives/CreativeCardGrid";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
+import { presetMetricsFor } from "@/lib/campaign-presets";
+import { type MetricKey } from "@/lib/dashboard-metrics";
+
+type CreativeRowApi = {
+  title: string;
+  type?: string;
+  status: string;
+  adId?: string | null;
+  usageAds?: number;
+  thumbnailUrl?: string | null;
+  imageUrl?: string | null;
+  metrics?: Partial<Record<MetricKey, number>>;
+};
 
 type Campaign = {
   id: string;
@@ -46,6 +60,10 @@ export function CampaignCreativesClient({
   const [adsCount, setAdsCount] = useState<number | null>(null);
   const [creativesCount, setCreativesCount] = useState<number | null>(null);
   const [countsLoading, setCountsLoading] = useState(true);
+  const [creatives, setCreatives] = useState<CreativeItem[]>([]);
+  const [creativesPreset, setCreativesPreset] = useState("default");
+  const [primaryMetric, setPrimaryMetric] = useState<MetricKey>("ctr");
+  const [creativesLoading, setCreativesLoading] = useState(true);
 
   const reload = useCallback(() => {
     setCountsLoading(true);
@@ -69,6 +87,31 @@ export function CampaignCreativesClient({
       .then((j) => setAdsCount(j.total ?? (j.ads ?? []).length))
       .catch(() => setAdsCount(0));
 
+    setCreativesLoading(true);
+    fetch(
+      `/api/campaigns/${encodeURIComponent(metaCampaignId)}/creatives?clientSlug=${encodeURIComponent(clientSlug)}`
+    )
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j.ok) return;
+        const items: CreativeItem[] = ((j.rows ?? []) as CreativeRowApi[]).map((r) => ({
+          name: r.title,
+          type: r.type,
+          status: r.status === "active" ? "ACTIVE" : "PAUSED",
+          adId: r.adId ?? null,
+          adsCount: r.usageAds ?? 0,
+          thumbnailUrl: r.thumbnailUrl ?? null,
+          imageUrl: r.imageUrl ?? null,
+          metrics: r.metrics ?? {}
+        }));
+        setCreatives(items);
+        setCreativesPreset(j.preset ?? "default");
+        setPrimaryMetric((j.primaryMetric ?? "ctr") as MetricKey);
+        setCreativesCount(items.length);
+      })
+      .catch(() => {})
+      .finally(() => setCreativesLoading(false));
+
     void Promise.all([adsetsPromise, adsPromise]).finally(() => setCountsLoading(false));
   }, [metaCampaignId, clientSlug]);
 
@@ -77,7 +120,13 @@ export function CampaignCreativesClient({
   }, [reload]);
 
   if (!campaign) {
-    return <div className="p-8 text-center text-sm text-slate-500">{t("loading")}</div>;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-16 w-full rounded-2xl" />
+        <TableSkeleton rows={5} />
+      </div>
+    );
   }
 
   const slug = campaign.clientSlug || clientSlug;
@@ -143,12 +192,20 @@ export function CampaignCreativesClient({
         translationNs="creativesPage"
       />
 
-      <CreativesLibraryView
-        fetchUrl={`/api/campaigns/${encodeURIComponent(metaCampaignId)}/creatives`}
-        translationNs="creativesPage"
-        lockedCampaignName={campaign.name}
-        onTotalChange={setCreativesCount}
-      />
+      <div className="ui-card overflow-hidden">
+        {creativesLoading ? (
+          <TableSkeleton bare rows={4} columns={["media", "metric", "metric", "metric"]} />
+        ) : creatives.length === 0 ? (
+          <p className="p-8 text-center text-sm text-slate-500">{t("empty")}</p>
+        ) : (
+          <CreativeCardGrid
+            creatives={creatives}
+            metrics={presetMetricsFor(creativesPreset)}
+            primaryMetric={primaryMetric}
+            clientSlug={slug}
+          />
+        )}
+      </div>
     </div>
   );
 }

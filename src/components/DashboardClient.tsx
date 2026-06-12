@@ -37,6 +37,12 @@ import {
   type Range
 } from "@/lib/dashboard-ranges";
 import { presetMetricsFor } from "@/lib/campaign-presets";
+import {
+  CardsRowSkeleton,
+  ChartCardSkeleton,
+  Skeleton,
+  SupportStripSkeleton
+} from "@/components/ui/Skeleton";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 
@@ -143,6 +149,7 @@ function HighlightCard({
         {data.length > 1 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+              <XAxis dataKey="label" hide />
               <defs>
                 <linearGradient id={`grad-${id}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={color} stopOpacity={0.25} />
@@ -192,11 +199,6 @@ export function DashboardClient() {
   const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(["spend", "conversions"]);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [clientMetric, setClientMetric] = useState<MetricKey>("roas");
-  const [clientsPeriod, setClientsPeriod] = useState<PeriodState>({
-    preset: "last30",
-    since: "",
-    until: ""
-  });
   const [summary, setSummary] = useState<Summary | null>(null);
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
@@ -221,11 +223,15 @@ export function DashboardClient() {
     try {
       const { current, previous } = resolveRanges(period, selectedTz);
       const curQ = buildQuery(clientFilter, accountFilter, current);
+      // Caixa de variações segue o período da página (mesma janela do seletor).
+      const varDays = current
+        ? Math.min(90, Math.max(1, Math.round((Date.parse(current.until) - Date.parse(current.since)) / 86_400_000) + 1))
+        : 90;
       const [sRes, tRes, aRes, critRes, pRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
         fetch(`/api/dashboard/timeseries?${curQ}`),
         fetch(
-          `/api/alerts/variations?level=client&days=30${
+          `/api/alerts/variations?level=client&days=${varDays}${
             clientFilter ? `&clientId=${encodeURIComponent(clientFilter)}` : ""
           }`
         ),
@@ -255,14 +261,14 @@ export function DashboardClient() {
     }
   }, [clientFilter, accountFilter, period, selectedTz, t]);
 
-  // Clientes têm filtro de data próprio (a seção fica embaixo, com período explícito).
+  // Clientes seguem o MESMO período do seletor principal da página.
   const loadClients = useCallback(() => {
-    const qs = periodStateToQuery(clientsPeriod).toString();
+    const qs = periodStateToQuery(period).toString();
     fetch(`/api/clients?${qs}`)
       .then((r) => r.json())
       .then((j) => setClients(j.clients ?? []))
       .catch(() => {});
-  }, [clientsPeriod]);
+  }, [period]);
 
   useEffect(() => {
     void load();
@@ -407,7 +413,29 @@ export function DashboardClient() {
       {note ? <div className="ui-alert-info">{note}</div> : null}
 
       {loading || !summary ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loadingMetrics")}</div>
+        <div className="space-y-4">
+          <CardsRowSkeleton />
+          <SupportStripSkeleton />
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <ChartCardSkeleton />
+            </div>
+            <div className="ui-card space-y-2 p-4">
+              <Skeleton className="h-4 w-24" />
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 w-full rounded-xl" />
+              ))}
+            </div>
+          </div>
+          <div className="ui-card space-y-3 p-4">
+            <Skeleton className="h-4 w-32" />
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+              ))}
+            </div>
+          </div>
+        </div>
       ) : (
         <>
           {/* Hero highlight cards — adaptam ao tipo dominante do cliente */}
@@ -590,7 +618,6 @@ export function DashboardClient() {
                 <div className="text-xs text-slate-500">{t("clientsSubtitle")}</div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <PeriodFilter value={clientsPeriod} onChange={setClientsPeriod} />
                 <span className="text-xs text-slate-500">{t("clientMetricLabel")}:</span>
                 <select
                   value={clientMetric}

@@ -6,9 +6,12 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { Badge } from "@/components/ui/Badge";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
-import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
+import { formatBRL, formatNumber, formatRoas } from "@/lib/format";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { presetMetricsFor } from "@/lib/campaign-presets";
 
 type Campaign = {
   id: string;
@@ -34,6 +37,7 @@ type AdSetRow = {
   reach: number;
   clicks: number;
   ctr: number;
+  metrics?: Partial<Record<MetricKey, number>>;
 };
 
 type SeriesPoint = { day: string; spend: number; conversions: number };
@@ -58,15 +62,6 @@ function inferTag(name: string, t: (k: string) => string) {
   return t("tagSaved");
 }
 
-function Trend({ value }: { value: number }) {
-  const up = value >= 0;
-  return (
-    <span className={`text-[10px] font-medium ${up ? "text-emerald-600" : "text-rose-600"}`}>
-      {up ? "↑" : "↓"} {Math.abs(value).toFixed(1).replace(".", ",")}%
-    </span>
-  );
-}
-
 export function CampaignAdSetsClient({
   metaCampaignId,
   clientSlug,
@@ -77,10 +72,12 @@ export function CampaignAdSetsClient({
   embedded?: boolean;
 }) {
   const t = useTranslations("adsetsPage");
+  const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [adsets, setAdsets] = useState<AdSetRow[]>([]);
+  const [preset, setPreset] = useState<string>("default");
   const [adsCount, setAdsCount] = useState<number | null>(null);
   const [creativesCount, setCreativesCount] = useState<number | null>(null);
   const [countsLoading, setCountsLoading] = useState(true);
@@ -102,7 +99,10 @@ export function CampaignAdSetsClient({
       });
     fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets`)
       .then((r) => r.json())
-      .then((j) => setAdsets(j.adsets ?? []))
+      .then((j) => {
+        setAdsets(j.adsets ?? []);
+        if (j.preset) setPreset(j.preset);
+      })
       .catch(() => setAdsets([]));
     fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries`)
       .then((r) => r.json())
@@ -184,7 +184,13 @@ export function CampaignAdSetsClient({
   };
 
   if (!campaign) {
-    return <div className="p-8 text-center text-sm text-slate-500">{t("loading")}</div>;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="h-16 w-full rounded-2xl" />
+        <TableSkeleton rows={5} />
+      </div>
+    );
   }
 
   const slug = campaign.clientSlug || clientSlug;
@@ -316,12 +322,11 @@ export function CampaignAdSetsClient({
               <tr>
                 <th className="px-4 py-3">{t("colAdset")}</th>
                 <th className="px-3 py-3">{t("colStatus")}</th>
-                <th className="px-3 py-3">{t("colSpend")}</th>
-                <th className="px-3 py-3">{t("colConversions")}</th>
-                <th className="px-3 py-3">CPA</th>
-                <th className="px-3 py-3">ROAS</th>
-                <th className="px-3 py-3">{t("colReach")}</th>
-                <th className="px-3 py-3">CTR</th>
+                {presetMetricsFor(preset).map((m) => (
+                  <th key={m} className="px-3 py-3 text-right">
+                    {tMetrics(METRIC_BY_KEY[m].label)}
+                  </th>
+                ))}
                 <th className="px-3 py-3">{t("colBudget")}</th>
                 <th className="w-10 px-3 py-3" />
               </tr>
@@ -329,7 +334,6 @@ export function CampaignAdSetsClient({
             <tbody>
               {paged.map((a, idx) => {
                 const name = a.name ?? a.id;
-                const trend = ((idx % 3) - 1) * 8 + (a.roas > 2 ? 5 : -3);
                 return (
                   <tr key={a.id} className="border-t border-slate-100 hover:bg-slate-50/80">
                     <td className="px-4 py-3">
@@ -341,7 +345,12 @@ export function CampaignAdSetsClient({
                           {(name[0] ?? "C").toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-medium text-slate-900">{name}</div>
+                          <Link
+                            href={`/campaigns/${metaCampaignId}/ads?client=${encodeURIComponent(slug)}&adset=${encodeURIComponent(a.id)}`}
+                            className="font-medium text-slate-900 hover:text-violet-700 hover:underline"
+                          >
+                            {name}
+                          </Link>
                           <div className="text-[10px] text-slate-400">{a.id}</div>
                           <span className="mt-1 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
                             {inferTag(name, t)}
@@ -367,30 +376,11 @@ export function CampaignAdSetsClient({
                         </span>
                       </label>
                     </td>
-                    <td className="px-3 py-3">
-                      <div className="font-semibold text-slate-900">{formatBRL(a.spend, locale)}</div>
-                      <Trend value={trend} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="font-medium">{a.conversions}</div>
-                      <Trend value={trend + 2} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <div>{a.cpa != null ? formatBRL(a.cpa, locale) : "—"}</div>
-                      <Trend value={-trend} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="font-medium">{formatRoas(a.roas, locale)}</div>
-                      <Trend value={trend + 4} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <div>{formatNumber(a.reach, locale)}</div>
-                      <Trend value={trend} />
-                    </td>
-                    <td className="px-3 py-3">
-                      <div>{formatPercent(a.ctr, 2, locale)}</div>
-                      <Trend value={trend - 1} />
-                    </td>
+                    {presetMetricsFor(preset).map((m) => (
+                      <td key={m} className="px-3 py-3 text-right tabular-nums text-slate-700">
+                        {formatMetricValue(m, Number(a.metrics?.[m] ?? 0), locale)}
+                      </td>
+                    ))}
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1">
                         {a.dailyBudget != null ? formatBRL(a.dailyBudget, locale) : "—"}

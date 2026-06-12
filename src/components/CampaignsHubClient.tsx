@@ -18,7 +18,7 @@ import { rememberCampaign } from "@/components/CampaignsListClient";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { Badge } from "@/components/ui/Badge";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
 import {
@@ -747,7 +747,10 @@ export function CampaignsHubClient() {
       {groupByType ? (
         <div className="space-y-4">
           {loading ? (
-            <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
+            <TableSkeleton
+              rows={6}
+              columns={["wide", "text", "badge", "select", "metric", "metric", "metric"]}
+            />
           ) : rows.length === 0 ? (
             <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
           ) : (

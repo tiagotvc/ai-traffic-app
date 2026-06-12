@@ -175,6 +175,23 @@ async function metaFetch<T>(path: string, accessToken: string): Promise<T> {
   return data;
 }
 
+/**
+ * Leitura mínima a nível de conta para checar permissão (ads_read/ads_management).
+ * true = token tem acesso; caso contrário retorna o erro da Meta (ex.: #200).
+ */
+export async function probeAdAccountAccess(
+  accessToken: string,
+  adAccountId: string
+): Promise<{ ok: boolean; error?: string }> {
+  const id = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  try {
+    await metaFetch<{ id: string }>(`/${id}?fields=id`, accessToken);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export async function metaPost<T>(path: string, accessToken: string, body: Record<string, string>): Promise<T> {
   const url = new URL(`${GRAPH_BASE}${path}`);
   url.searchParams.set("access_token", accessToken);
@@ -792,6 +809,7 @@ export type MetaAdSetInsight = {
   ctr: number;
   reach: number;
   conversions: number;
+  messages: number;
   roas: number;
 };
 
@@ -805,7 +823,7 @@ export async function fetchAdSetInsights(
     const fields = ["spend", "impressions", "clicks", "ctr", "reach", "actions", "results", "purchase_roas"].join(
       ","
     );
-    let path = `/${encodeURIComponent(adSetId)}/insights?fields=${encodeURIComponent(fields)}`;
+    let path = `/${encodeURIComponent(adSetId)}/insights?fields=${encodeURIComponent(fields)}&use_unified_attribution_setting=true`;
     if (since && until) {
       const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
       path += `&time_range=${encodeURIComponent(timeRange)}`;
@@ -826,11 +844,354 @@ export async function fetchAdSetInsights(
       ctr: Number(row.ctr) || 0,
       reach: Number(row.reach) || 0,
       conversions,
+      messages: pickMessages(row.actions),
       roas: Number.isFinite(roas) ? roas : 0
     };
   } catch {
     return null;
   }
+}
+
+export type AdInsightMetrics = {
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  reach: number;
+  conversions: number;
+  messages: number;
+  roas: number;
+  cpc: number;
+  cpm: number;
+  cpa: number;
+  cpmsg: number;
+  frequency: number;
+};
+
+/** Insights por anúncio de uma campanha (1 chamada, level=ad). */
+export async function fetchAdInsightsForCampaign(
+  accessToken: string,
+  campaignId: string,
+  datePreset = "last_30d"
+): Promise<Map<string, AdInsightMetrics>> {
+  const map = new Map<string, AdInsightMetrics>();
+  try {
+    const fields = [
+      "ad_id",
+      "spend",
+      "impressions",
+      "clicks",
+      "ctr",
+      "reach",
+      "actions",
+      "results",
+      "purchase_roas"
+    ].join(",");
+    const path = `/${encodeURIComponent(campaignId)}/insights?level=ad&fields=${encodeURIComponent(fields)}&date_preset=${datePreset}&use_unified_attribution_setting=true&limit=500`;
+    const rows = await fetchGraphPaged<MetaInsightRow & { ad_id?: string }>(path, accessToken);
+    for (const row of rows) {
+      const adId = row.ad_id;
+      if (!adId) continue;
+      const spend = Number(row.spend) || 0;
+      const impressions = Number(row.impressions) || 0;
+      const clicks = Number(row.clicks) || 0;
+      const reach = Number(row.reach) || 0;
+      const conversions = pickResults(row);
+      const messages = pickMessages(row.actions);
+      const roasRaw = row.purchase_roas?.[0]?.value;
+      const roas = roasRaw != null ? Number(roasRaw) : 0;
+      map.set(adId, {
+        spend,
+        impressions,
+        clicks,
+        ctr: Number(row.ctr) || (impressions > 0 ? (clicks / impressions) * 100 : 0),
+        reach,
+        conversions,
+        messages,
+        roas: Number.isFinite(roas) ? roas : 0,
+        cpc: clicks > 0 ? spend / clicks : 0,
+        cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+        cpa: conversions > 0 ? spend / conversions : 0,
+        cpmsg: messages > 0 ? spend / messages : 0,
+        frequency: reach > 0 ? impressions / reach : 0
+      });
+    }
+  } catch {
+    /* sem insights → mapa vazio */
+  }
+  return map;
+}
+
+function parseAdInsightRow(row: MetaInsightRow & { ad_id?: string }): [string, AdInsightMetrics] | null {
+  const adId = row.ad_id;
+  if (!adId) return null;
+  const spend = Number(row.spend) || 0;
+  const impressions = Number(row.impressions) || 0;
+  const clicks = Number(row.clicks) || 0;
+  const reach = Number(row.reach) || 0;
+  const conversions = pickResults(row);
+  const messages = pickMessages(row.actions);
+  const roasRaw = row.purchase_roas?.[0]?.value;
+  const roas = roasRaw != null ? Number(roasRaw) : 0;
+  return [
+    adId,
+    {
+      spend,
+      impressions,
+      clicks,
+      ctr: Number(row.ctr) || (impressions > 0 ? (clicks / impressions) * 100 : 0),
+      reach,
+      conversions,
+      messages,
+      roas: Number.isFinite(roas) ? roas : 0,
+      cpc: clicks > 0 ? spend / clicks : 0,
+      cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+      cpa: conversions > 0 ? spend / conversions : 0,
+      cpmsg: messages > 0 ? spend / messages : 0,
+      frequency: reach > 0 ? impressions / reach : 0
+    }
+  ];
+}
+
+const AD_INSIGHT_FIELDS =
+  "ad_id,spend,impressions,clicks,ctr,reach,actions,results,purchase_roas";
+
+/** Insights por anúncio de uma conta inteira (1 chamada, level=ad). */
+export async function fetchAdInsightsForAccount(
+  accessToken: string,
+  adAccountId: string,
+  opts?: { datePreset?: string; since?: string | null; until?: string | null }
+): Promise<Map<string, AdInsightMetrics>> {
+  const map = new Map<string, AdInsightMetrics>();
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const range =
+    opts?.since && opts?.until
+      ? `time_range=${encodeURIComponent(
+          JSON.stringify({ since: opts.since.slice(0, 10), until: opts.until.slice(0, 10) })
+        )}`
+      : `date_preset=${opts?.datePreset ?? "last_30d"}`;
+  try {
+    const path = `/${encodeURIComponent(act)}/insights?level=ad&fields=${encodeURIComponent(AD_INSIGHT_FIELDS)}&${range}&use_unified_attribution_setting=true&limit=500`;
+    const rows = await fetchGraphPaged<MetaInsightRow & { ad_id?: string }>(path, accessToken);
+    for (const row of rows) {
+      const entry = parseAdInsightRow(row);
+      if (entry) map.set(entry[0], entry[1]);
+    }
+  } catch {
+    /* sem insights */
+  }
+  return map;
+}
+
+export type AdCreativeCopy = {
+  bodies: string[];
+  titles: string[];
+  descriptions: string[];
+  ctas: string[];
+};
+
+/** Textos do criativo (corpo, título, descrição, CTA) — para a aba "Copy". */
+export async function fetchAdCreativeCopy(
+  accessToken: string,
+  adId: string
+): Promise<AdCreativeCopy> {
+  const bodies = new Set<string>();
+  const titles = new Set<string>();
+  const descriptions = new Set<string>();
+  const ctas = new Set<string>();
+  const add = (set: Set<string>, v: unknown) => {
+    if (typeof v === "string" && v.trim()) set.add(v.trim());
+  };
+  try {
+    const data = await metaFetch<{
+      creative?: {
+        body?: string;
+        title?: string;
+        object_story_spec?: Record<string, Record<string, unknown> | undefined>;
+        asset_feed_spec?: {
+          bodies?: Array<{ text?: string }>;
+          titles?: Array<{ text?: string }>;
+          descriptions?: Array<{ text?: string }>;
+          call_to_action_types?: string[];
+        };
+      };
+    }>(
+      `/${encodeURIComponent(adId)}?fields=${encodeURIComponent(
+        "creative{body,title,object_story_spec,asset_feed_spec}"
+      )}`,
+      accessToken
+    );
+    const c = data.creative ?? {};
+    add(bodies, c.body);
+    add(titles, c.title);
+
+    const spec = c.object_story_spec ?? {};
+    for (const key of ["link_data", "video_data", "template_data", "photo_data"]) {
+      const d = spec[key];
+      if (!d) continue;
+      add(bodies, d.message);
+      add(titles, d.name);
+      add(titles, d.title);
+      add(descriptions, d.description);
+      add(descriptions, d.caption);
+      const cta = d.call_to_action as { type?: string } | undefined;
+      if (cta?.type) add(ctas, cta.type);
+    }
+
+    const feed = c.asset_feed_spec ?? {};
+    for (const b of feed.bodies ?? []) add(bodies, b?.text);
+    for (const tt of feed.titles ?? []) add(titles, tt?.text);
+    for (const d of feed.descriptions ?? []) add(descriptions, d?.text);
+    for (const cta of feed.call_to_action_types ?? []) add(ctas, cta);
+  } catch {
+    /* sem textos */
+  }
+  return {
+    bodies: [...bodies],
+    titles: [...titles],
+    descriptions: [...descriptions],
+    ctas: [...ctas]
+  };
+}
+
+/** Conta e criativo de um anúncio (para rastrear onde o criativo é usado). */
+export async function fetchAdRef(
+  accessToken: string,
+  adId: string
+): Promise<{ accountId: string | null; creativeId: string | null }> {
+  try {
+    const data = await metaFetch<{ account_id?: string; creative?: { id?: string } }>(
+      `/${encodeURIComponent(adId)}?fields=account_id,creative{id}`,
+      accessToken
+    );
+    return { accountId: data.account_id ?? null, creativeId: data.creative?.id ?? null };
+  } catch {
+    return { accountId: null, creativeId: null };
+  }
+}
+
+export type AdPreview = { src: string; width: number | null; height: number | null };
+
+/** Preview real do anúncio (iframe renderizado pela Meta). Retorna URL + dimensões. */
+export async function fetchAdPreview(
+  accessToken: string,
+  adId: string,
+  format = "MOBILE_FEED_STANDARD"
+): Promise<AdPreview | null> {
+  try {
+    const data = await metaFetch<{ data?: Array<{ body?: string }> }>(
+      `/${encodeURIComponent(adId)}/previews?ad_format=${encodeURIComponent(format)}`,
+      accessToken
+    );
+    const body = data.data?.[0]?.body;
+    if (!body) return null;
+    const srcMatch = body.match(/src=["']([^"']+)["']/i);
+    if (!srcMatch) return null;
+    const widthMatch = body.match(/width=["']?(\d+)/i);
+    const heightMatch = body.match(/height=["']?(\d+)/i);
+    return {
+      src: srcMatch[1].replace(/&amp;/g, "&"),
+      width: widthMatch ? Number(widthMatch[1]) : null,
+      height: heightMatch ? Number(heightMatch[1]) : null
+    };
+  } catch {
+    return null;
+  }
+}
+
+export type AdUsageRow = {
+  id: string;
+  name?: string;
+  status?: string;
+  adsetId?: string;
+  adsetName?: string;
+  campaignId?: string;
+  campaignName?: string;
+  creativeId?: string;
+  creativeName?: string;
+  creativeType?: CreativeAssetType;
+  thumbnailUrl?: string;
+  imageUrl?: string;
+  campaignStatus?: string;
+  /** Chave do ARQUIVO (video_id / image_hash) para deduplicar o mesmo criativo. */
+  mediaKey?: string;
+};
+
+/** Identifica o arquivo do criativo (vídeo ou imagem) a partir do object_story_spec. */
+function extractMediaKeyFromStorySpec(spec?: Record<string, unknown>): string | undefined {
+  if (!spec) return undefined;
+  const video = spec.video_data as Record<string, unknown> | undefined;
+  if (typeof video?.video_id === "string") return `v:${video.video_id}`;
+  const link = spec.link_data as Record<string, unknown> | undefined;
+  if (typeof link?.image_hash === "string") return `i:${link.image_hash}`;
+  const photo = spec.photo_data as Record<string, unknown> | undefined;
+  if (typeof photo?.image_hash === "string") return `i:${photo.image_hash}`;
+  if (typeof video?.image_hash === "string") return `i:${video.image_hash}`;
+  return undefined;
+}
+
+/** Anúncios de uma conta com criativo + conjunto + campanha (para rastrear criativos). */
+const AD_USAGE_FIELDS =
+  "id,name,status,adset{id,name},campaign{id,name,effective_status},creative{id,name,thumbnail_url,image_url,object_story_spec}";
+
+type RawAdUsage = {
+  id: string;
+  name?: string;
+  status?: string;
+  adset?: { id?: string; name?: string };
+  campaign?: { id?: string; name?: string; effective_status?: string };
+  creative?: {
+    id?: string;
+    name?: string;
+    thumbnail_url?: string;
+    image_url?: string;
+    object_story_spec?: Record<string, unknown>;
+  };
+};
+
+function mapAdUsageRow(r: RawAdUsage): AdUsageRow {
+  const spec = r.creative?.object_story_spec;
+  const linkData = spec?.link_data as Record<string, unknown> | undefined;
+  const photoData = spec?.photo_data as Record<string, unknown> | undefined;
+  const fromSpec =
+    (typeof linkData?.picture === "string" ? (linkData.picture as string) : undefined) ??
+    (typeof photoData?.url === "string" ? (photoData.url as string) : undefined);
+  return {
+    id: r.id,
+    name: r.name,
+    status: r.status,
+    adsetId: r.adset?.id,
+    adsetName: r.adset?.name,
+    campaignId: r.campaign?.id,
+    campaignName: r.campaign?.name,
+    campaignStatus: r.campaign?.effective_status,
+    creativeId: r.creative?.id,
+    creativeName: r.creative?.name,
+    creativeType: spec ? inferCreativeTypeFromStorySpec(spec) : "image",
+    thumbnailUrl: r.creative?.thumbnail_url,
+    imageUrl: r.creative?.image_url ?? fromSpec ?? r.creative?.thumbnail_url,
+    mediaKey: extractMediaKeyFromStorySpec(spec)
+  };
+}
+
+export async function fetchAdsWithUsageForAccount(
+  accessToken: string,
+  adAccountId: string
+): Promise<AdUsageRow[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const path = `/${encodeURIComponent(act)}/ads?fields=${encodeURIComponent(AD_USAGE_FIELDS)}&limit=500`;
+  const rows = await fetchGraphPaged<RawAdUsage>(path, accessToken);
+  return rows.map(mapAdUsageRow);
+}
+
+/** Anúncios de uma campanha (mesma forma do account), para a aba de criativos da campanha. */
+export async function fetchAdsWithUsageForCampaign(
+  accessToken: string,
+  campaignId: string
+): Promise<AdUsageRow[]> {
+  const path = `/${encodeURIComponent(campaignId)}/ads?fields=${encodeURIComponent(AD_USAGE_FIELDS)}&limit=500`;
+  const rows = await fetchGraphPaged<RawAdUsage>(path, accessToken);
+  return rows.map(mapAdUsageRow);
 }
 
 export async function updateEntityStatus(

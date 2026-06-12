@@ -42,7 +42,7 @@ const icons = {
   audiences:
     "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
   creatives:
-    "M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z",
+    "M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.872M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.412 9.71 2.25 12 2.25c2.291 0 4.545.162 6.75.471v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0",
   reports:
     "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
   alerts:
@@ -128,7 +128,7 @@ export function AppSidebar({
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col bg-[#0f111a] text-slate-400 transition-[width] duration-200 ease-in-out ${
+      className={`flex h-full shrink-0 flex-col border-r border-white/10 bg-[#0f111a] text-slate-400 transition-[width] duration-200 ease-in-out print:hidden ${
         collapsed ? "w-[72px]" : "w-[260px]"
       }`}
     >
@@ -181,23 +181,24 @@ export function AppSidebar({
       >
         {items.map((item) => {
           const active = isActive(item);
-          const cls = `relative flex w-full items-center rounded-xl font-medium transition ${
+          const cls = `relative flex w-full items-center rounded-xl transition ${
             collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2 text-[13px]"
           } ${
             active
-              ? "bg-violet-600 text-white"
-              : "text-slate-400 hover:bg-white/5 hover:text-white"
+              ? "bg-white/10 font-semibold text-white"
+              : "font-medium text-slate-400 hover:bg-white/5 hover:text-white"
           }`;
 
           const inner = (
             <>
+              {active && !collapsed ? (
+                <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-violet-600" />
+              ) : null}
               {item.icon}
               {!collapsed ? <span className="flex-1 truncate text-left">{item.label}</span> : null}
               {item.badge && !collapsed ? (
                 <span
-                  className={`min-w-[18px] rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold ${
-                    active ? "bg-white/25 text-white" : "bg-red-500 text-white"
-                  }`}
+                  className="min-w-[18px] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white"
                 >
                   {item.badge > 99 ? "99+" : item.badge}
                 </span>
