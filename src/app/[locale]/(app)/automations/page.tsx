@@ -1,5 +1,5 @@
-import { AutomationsClient } from "@/components/AutomationsClient";
+import { AutomationsRulesView } from "@/components/AutomationsRulesView";
 
 export default function AutomationsPage() {
-  return <AutomationsClient />;
+  return <AutomationsRulesView />;
 }
