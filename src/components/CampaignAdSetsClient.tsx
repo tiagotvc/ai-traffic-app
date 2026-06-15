@@ -86,7 +86,16 @@ export function CampaignAdSetsClient({
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [isPending, startTransition] = useTransition();
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const pageSize = 20;
+
+  const toggleSort = (key: string) => {
+    setPage(1);
+    setSort((s) => {
+      if (s?.key === key) return { key, dir: s.dir === "asc" ? "desc" : "asc" };
+      return { key, dir: "desc" };
+    });
+  };
 
   const reload = useCallback(() => {
     fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}`)
@@ -320,14 +329,31 @@ export function CampaignAdSetsClient({
           <table className="w-full min-w-[1100px] text-left text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-3">{t("colAdset")}</th>
-                <th className="px-3 py-3">{t("colStatus")}</th>
+                <th className="px-4 py-3">
+                  <button type="button" onClick={() => toggleSort("name")} className="flex items-center gap-2">
+                    {t("colAdset")}
+                    {sort?.key === "name" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                  </button>
+                </th>
+                <th className="px-3 py-3">
+                  <button type="button" onClick={() => toggleSort("status")} className="flex items-center gap-2">
+                    {t("colStatus")}
+                    {sort?.key === "status" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                  </button>
+                </th>
                 {presetMetricsFor(preset).map((m) => (
                   <th key={m} className="px-3 py-3 text-right">
-                    {tMetrics(METRIC_BY_KEY[m].label)}
+                    <button type="button" onClick={() => toggleSort(m)} className="ml-auto">
+                      {tMetrics(METRIC_BY_KEY[m].label)} {sort?.key === m ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                    </button>
                   </th>
                 ))}
-                <th className="px-3 py-3">{t("colBudget")}</th>
+                <th className="px-3 py-3">
+                  <button type="button" onClick={() => toggleSort("dailyBudget")} className="flex items-center gap-2">
+                    {t("colBudget")}
+                    {sort?.key === "dailyBudget" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                  </button>
+                </th>
                 <th className="w-10 px-3 py-3" />
               </tr>
             </thead>

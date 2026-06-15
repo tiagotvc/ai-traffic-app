@@ -79,7 +79,16 @@ export function CampaignAdsClient({
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<AdRow | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const pageSize = 20;
+
+  const toggleSort = (key: string) => {
+    setPage(1);
+    setSort((s) => {
+      if (s?.key === key) return { key, dir: s.dir === "asc" ? "desc" : "asc" };
+      return { key, dir: "desc" };
+    });
+  };
 
   const reload = useCallback(() => {
     setAdsLoading(true);
@@ -123,7 +132,7 @@ export function CampaignAdsClient({
   }, [reload]);
 
   const filtered = useMemo(() => {
-    let list = ads;
+    let list = ads.slice();
     if (adsetFilter) list = list.filter((a) => a.adsetId === adsetFilter);
     if (statusFilter === "active") list = list.filter((a) => a.status === "ACTIVE");
     if (statusFilter === "paused") list = list.filter((a) => a.status === "PAUSED");
@@ -135,8 +144,35 @@ export function CampaignAdsClient({
           (a.adsetName ?? a.adsetId).toLowerCase().includes(q)
       );
     }
+    if (sort) {
+      const { key, dir } = sort;
+      list.sort((x, y) => {
+        let aVal: any = null;
+        let bVal: any = null;
+        if (key === "name") {
+          aVal = (x.name ?? x.id).toLowerCase();
+          bVal = (y.name ?? y.id).toLowerCase();
+        } else if (key === "adset") {
+          aVal = (x.adsetName ?? x.adsetId).toLowerCase();
+          bVal = (y.adsetName ?? y.adsetId).toLowerCase();
+        } else if (key === "status") {
+          const rank = (s?: string) => (s === "ACTIVE" ? 2 : s === "PAUSED" ? 1 : 0);
+          aVal = rank(x.status);
+          bVal = rank(y.status);
+        } else if (x.metrics && key in (x.metrics as any)) {
+          aVal = Number(x.metrics?.[key] ?? 0);
+          bVal = Number(y.metrics?.[key] ?? 0);
+        } else {
+          aVal = String((x as any)[key] ?? "").toLowerCase();
+          bVal = String((y as any)[key] ?? "").toLowerCase();
+        }
+        if (aVal < bVal) return dir === "asc" ? -1 : 1;
+        if (aVal > bVal) return dir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
     return list;
-  }, [ads, search, statusFilter, adsetFilter]);
+  }, [ads, search, statusFilter, adsetFilter, sort]);
 
   const adsetFilterName = adsetFilter
     ? ads.find((a) => a.adsetId === adsetFilter)?.adsetName ?? adsetFilter
@@ -285,14 +321,31 @@ export function CampaignAdsClient({
           <table className="w-full min-w-[800px] text-left text-sm">
             <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-3">{t("colAd")}</th>
-                <th className="px-3 py-3">{t("colAdset")}</th>
+                <th className="px-4 py-3">
+                  <button type="button" onClick={() => toggleSort("name")} className="flex items-center gap-2">
+                    {t("colAd")}
+                    {sort?.key === "name" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                  </button>
+                </th>
+                <th className="px-3 py-3">
+                  <button type="button" onClick={() => toggleSort("adset")} className="flex items-center gap-2">
+                    {t("colAdset")}
+                    {sort?.key === "adset" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                  </button>
+                </th>
                 {presetMetrics.map((m) => (
                   <th key={m} className="px-3 py-3 text-right">
-                    {tMetrics(METRIC_BY_KEY[m].label)}
+                    <button type="button" onClick={() => toggleSort(m)} className="ml-auto">
+                      {tMetrics(METRIC_BY_KEY[m].label)} {sort?.key === m ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                    </button>
                   </th>
                 ))}
-                <th className="px-3 py-3">{t("colStatus")}</th>
+                <th className="px-3 py-3">
+                  <button type="button" onClick={() => toggleSort("status")} className="flex items-center gap-2">
+                    {t("colStatus")}
+                    {sort?.key === "status" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                  </button>
+                </th>
                 <th className="w-10 px-3 py-3" />
               </tr>
             </thead>
