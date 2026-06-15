@@ -1490,7 +1490,17 @@
     "tabLearnings": "Aprendizados",
     "tabSuggestions": "Sugestões",
     "loadingClients": "Carregando clientes…",
-    "noClients": "Nenhum cliente cadastrado. Crie um cliente para usar a memória criativa."
+    "noClients": "Nenhum cliente cadastrado. Crie um cliente para usar a memória criativa.",
+    "analyzeWithAi": "Analisar com IA",
+    "analyzingWithAi": "Analisando com IA…",
+    "generateWithAi": "Gerar com IA",
+    "generatingWithAi": "Gerando com IA…",
+    "aiSuccessLearnings": "{count} insight(s) gerado(s) pela IA.",
+    "aiSuccessActions": "{count} sugestão(ões) gerada(s) pela IA.",
+    "aiNoKey": "IA não configurada. Defina GEMINI_API_KEY no servidor.",
+    "aiLimit": "Limite mensal de requisições de IA atingido.",
+    "aiErrorLearnings": "Erro ao analisar aprendizados com IA.",
+    "aiErrorActions": "Erro ao gerar sugestões com IA."
   },
   "clientSuggestions": {
     "subtitle": "Sugestões acionáveis com base na memória do cliente e nas métricas recentes.",

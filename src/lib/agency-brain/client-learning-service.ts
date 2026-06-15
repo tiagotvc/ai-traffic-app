@@ -207,7 +207,8 @@ export async function hasActiveDedupeKey(
 export async function createSuggestedLearning(
   tenantId: string,
   clientId: string,
-  draft: SuggestedLearningDraft
+  draft: SuggestedLearningDraft,
+  source: ClientLearning["source"] = "RULE"
 ): Promise<LearningDto | null> {
   if (await hasActiveDedupeKey(tenantId, clientId, draft.dedupeKey)) {
     return null;
@@ -222,7 +223,7 @@ export async function createSuggestedLearning(
     category: draft.category,
     impact: draft.impact,
     confidence: draft.confidence,
-    source: "RULE",
+    source,
     status: "SUGGESTED",
     tags: draft.tags ?? [],
     metaCampaignId: draft.metaCampaignId ?? null,

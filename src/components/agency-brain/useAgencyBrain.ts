@@ -24,6 +24,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 
 export function useAgencyBrain(clientId: string) {
   const t = useTranslations("agencyBrain");
+  const tCm = useTranslations("creativeMemory");
 
   const [clientName, setClientName] = useState("");
   const [summary, setSummary] = useState<BrainSummary | null>(null);
@@ -35,6 +36,7 @@ export function useAgencyBrain(clientId: string) {
   const [listLoading, setListLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [detecting, setDetecting] = useState(false);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [message, setMessage] = useState<FeedbackMessage | null>(null);
 
@@ -127,6 +129,39 @@ export function useAgencyBrain(clientId: string) {
       setMessage({ type: "err", text: t("errorDetect") });
     } finally {
       setDetecting(false);
+    }
+  }
+
+  async function handleAiAnalyze() {
+    setAiAnalyzing(true);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `/api/clients/${encodeURIComponent(clientId)}/learnings/ai-suggest`,
+        { method: "POST" }
+      );
+      const json = await res.json();
+      if (res.status === 402 || json.code === "PLAN_LIMIT") {
+        setMessage({ type: "err", text: tCm("aiLimit") });
+        return;
+      }
+      if (json.code === "NO_AI_KEY") {
+        setMessage({ type: "err", text: tCm("aiNoKey") });
+        return;
+      }
+      if (!json.ok) {
+        setMessage({ type: "err", text: json.error ?? tCm("aiErrorLearnings") });
+        return;
+      }
+      setMessage({
+        type: "ok",
+        text: tCm("aiSuccessLearnings", { count: json.created ?? 0 })
+      });
+      await load();
+    } catch {
+      setMessage({ type: "err", text: tCm("aiErrorLearnings") });
+    } finally {
+      setAiAnalyzing(false);
     }
   }
 
@@ -229,6 +264,7 @@ export function useAgencyBrain(clientId: string) {
     listLoading,
     saving,
     detecting,
+    aiAnalyzing,
     actionLoadingId,
     message,
     setMessage,
@@ -245,6 +281,7 @@ export function useAgencyBrain(clientId: string) {
     setPage,
     campaigns,
     handleDetectPatterns,
+    handleAiAnalyze,
     handleSave,
     patchAction
   };

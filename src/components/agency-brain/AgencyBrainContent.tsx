@@ -16,6 +16,7 @@ import type { LearningDto } from "@/lib/agency-brain/types";
 
 export function AgencyBrainContent({ clientId }: { clientId: string }) {
   const t = useTranslations("agencyBrain");
+  const tCm = useTranslations("creativeMemory");
   const brain = useAgencyBrain(clientId);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -28,13 +29,21 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
           type="button"
           className="ui-btn-secondary text-sm"
           onClick={() => void brain.handleDetectPatterns()}
-          disabled={brain.detecting}
+          disabled={brain.detecting || brain.aiAnalyzing}
         >
           {brain.detecting ? t("detecting") : t("detectPatterns")}
         </button>
         <button
           type="button"
           className="ui-btn-primary text-sm"
+          onClick={() => void brain.handleAiAnalyze()}
+          disabled={brain.detecting || brain.aiAnalyzing}
+        >
+          {brain.aiAnalyzing ? tCm("analyzingWithAi") : tCm("analyzeWithAi")}
+        </button>
+        <button
+          type="button"
+          className="ui-btn-secondary text-sm"
           onClick={() => {
             setEditing(null);
             setModalOpen(true);

@@ -27,12 +27,14 @@ function statusVariant(status: ActionSuggestionStatus): "neutral" | "success" | 
 
 export function SuggestionsContent({ clientId }: { clientId: string }) {
   const t = useTranslations("clientSuggestions");
+  const tCm = useTranslations("creativeMemory");
 
   const [items, setItems] = useState<ActionSuggestionDto[]>([]);
   const [summary, setSummary] = useState<ActionSuggestionSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<ActionSuggestionStatus | "">("PENDING");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [message, setMessage] = useState<FeedbackMessage | null>(null);
 
@@ -87,6 +89,36 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
     }
   }
 
+  async function handleAiGenerate() {
+    setAiGenerating(true);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        `/api/clients/${encodeURIComponent(clientId)}/action-suggestions/ai-generate`,
+        { method: "POST" }
+      );
+      const json = await res.json();
+      if (res.status === 402 || json.code === "PLAN_LIMIT") {
+        setMessage({ type: "err", text: tCm("aiLimit") });
+        return;
+      }
+      if (json.code === "NO_AI_KEY") {
+        setMessage({ type: "err", text: tCm("aiNoKey") });
+        return;
+      }
+      if (!json.ok) {
+        setMessage({ type: "err", text: json.error ?? tCm("aiErrorActions") });
+        return;
+      }
+      setMessage({ type: "ok", text: tCm("aiSuccessActions", { count: json.created ?? 0 }) });
+      await load();
+    } catch {
+      setMessage({ type: "err", text: tCm("aiErrorActions") });
+    } finally {
+      setAiGenerating(false);
+    }
+  }
+
   async function resolveAction(
     suggestionId: string,
     action: "execute" | "acknowledge" | "reject"
@@ -136,11 +168,19 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
       <div className="flex flex-wrap justify-end gap-2">
         <button
           type="button"
-          className="ui-btn-primary text-sm"
+          className="ui-btn-secondary text-sm"
           onClick={() => void handleGenerate()}
-          disabled={generating}
+          disabled={generating || aiGenerating}
         >
           {generating ? t("generating") : t("generateSuggestions")}
+        </button>
+        <button
+          type="button"
+          className="ui-btn-primary text-sm"
+          onClick={() => void handleAiGenerate()}
+          disabled={generating || aiGenerating}
+        >
+          {aiGenerating ? tCm("generatingWithAi") : tCm("generateWithAi")}
         </button>
       </div>
 

@@ -241,7 +241,7 @@ export async function runActionSuggestionsForClient(
         manualUrl: `/clients/${clientSlug}`,
         checklist: ["Revisar aprendizados aprovados", "Priorizar campanhas mencionadas na memória"]
       },
-      source: "AI",
+      source: "RULE",
       evidence: {
         ruleId: "brain_context_review",
         reason: "Approved learnings suggest follow-up actions",
@@ -252,9 +252,6 @@ export async function runActionSuggestionsForClient(
   } else if (brainContext.summaryText) {
     for (const draft of drafts) {
       draft.evidence.brainContextSnippet = brainContext.summaryText.slice(0, 120);
-      if (draft.source === "RULE") {
-        draft.source = "AI";
-      }
     }
   }
 

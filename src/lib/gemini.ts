@@ -14,6 +14,19 @@ export const GeminiRecommendationsSchema = z.object({
 
 export type GeminiRecommendations = z.infer<typeof GeminiRecommendationsSchema>;
 
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
+
+export function getGeminiModel(): string {
+  return process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+}
+
+function geminiGenerateContentUrl(model?: string): URL {
+  const url = new URL(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model ?? getGeminiModel()}:generateContent`
+  );
+  return url;
+}
+
 function extractJson(text: string): unknown {
   // Prefer fenced JSON blocks first.
   const fenced = text.match(/```json\s*([\s\S]*?)```/i);
@@ -33,9 +46,7 @@ export async function geminiGenerateRecommendations(args: {
   prompt: string;
   apiKey: string;
 }): Promise<GeminiRecommendations> {
-  const url = new URL(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
-  );
+  const url = geminiGenerateContentUrl();
   url.searchParams.set("key", args.apiKey);
 
   const res = await fetch(url.toString(), {
@@ -60,5 +71,42 @@ export async function geminiGenerateRecommendations(args: {
 
   const parsed = extractJson(text);
   return GeminiRecommendationsSchema.parse(parsed);
+}
+
+export async function geminiGenerateJson<T>(args: {
+  prompt: string;
+  apiKey: string;
+  schema: z.ZodType<T>;
+  temperature?: number;
+}): Promise<T> {
+  const url = geminiGenerateContentUrl();
+  url.searchParams.set("key", args.apiKey);
+
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: args.prompt }] }],
+      generationConfig: { temperature: args.temperature ?? 0.25 }
+    })
+  });
+
+  const json = (await res.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    error?: { message?: string };
+  };
+
+  if (!res.ok) {
+    throw new Error(`Gemini error: ${res.status} ${JSON.stringify(json)}`);
+  }
+
+  const text =
+    json.candidates?.[0]?.content?.parts?.map((p) => p?.text).filter(Boolean).join("\n") ??
+    undefined;
+
+  if (!text) throw new Error("Gemini returned empty response");
+
+  const parsed = extractJson(text);
+  return args.schema.parse(parsed);
 }
 
