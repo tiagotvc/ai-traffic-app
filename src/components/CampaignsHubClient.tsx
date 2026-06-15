@@ -313,7 +313,7 @@ export function CampaignsHubClient() {
 
   useEffect(() => {    load();
     const onReload = () => load();
-    const onSync = () => load({ live: period.preset === "today", refresh: true });
+    const onSync = () => load({ live: true, refresh: true });
     window.addEventListener("traffic:campaigns-reload", onReload);
     window.addEventListener("traffic-sync-done", onSync);
     return () => {

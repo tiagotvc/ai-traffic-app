@@ -70,6 +70,7 @@ export function SyncNowButton({
                 error?: string;
                 errorCode?: string;
                 retryAfterSec?: number;
+                accounts?: number;
               } | null;
               if (!res.ok) {
                 if (json?.errorCode === "sync_cooldown" && json.retryAfterSec) {
@@ -78,6 +79,10 @@ export function SyncNowButton({
                 } else {
                   setError(json?.error ?? t("failed"));
                 }
+                return;
+              }
+              if ((json?.accounts ?? 0) === 0) {
+                setError(t("noAccounts"));
                 return;
               }
               setCooldown(null);

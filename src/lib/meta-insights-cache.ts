@@ -49,3 +49,11 @@ export function clearCachedCampaignInsights(
 ) {
   store.delete(cacheKey(tenantId, adAccountId, since, until));
 }
+
+/** Limpa cache in-memory de insights após sync manual (evita dados stale na UI). */
+export function clearTenantCampaignInsightsCache(tenantId: string) {
+  const prefix = `${tenantId}:`;
+  for (const key of store.keys()) {
+    if (key.startsWith(prefix)) store.delete(key);
+  }
+}

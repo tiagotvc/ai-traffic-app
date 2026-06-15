@@ -26,6 +26,37 @@ export class SyncCooldownError extends Error {
   }
 }
 
+export class SyncNoAccountsError extends Error {
+  readonly code = "sync_no_accounts" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "SyncNoAccountsError";
+  }
+}
+
+function resolveNoAccountsMessage(input: {
+  clientId?: string;
+  accounts: Array<{ clientId: string }>;
+  eligibleCount: number;
+}): string {
+  if (input.eligibleCount > 0) return "";
+
+  if (input.clientId) {
+    const forClient = input.accounts.filter((a) => a.clientId === input.clientId);
+    if (forClient.length === 0) {
+      return "Este cliente não tem contas de anúncio vinculadas. Vincule uma conta Meta nas configurações do cliente antes de sincronizar.";
+    }
+    return "A sincronização está desativada para as contas deste cliente. Ative em Configurações do cliente.";
+  }
+
+  if (input.accounts.length === 0) {
+    return "Nenhuma conta de anúncio vinculada no workspace. Vincule contas aos clientes antes de sincronizar.";
+  }
+
+  return "Nenhuma conta elegível para sincronizar.";
+}
+
 export async function canManualSync(tenantId: string): Promise<{ ok: boolean; retryAfterSec?: number }> {
   const { tenantSyncState: stateRepo } = await repositories();
   let state = await stateRepo.findOne({ where: { tenantId } });
@@ -88,6 +119,16 @@ export async function enqueueTenantSync(input: {
     return s?.syncEnabled !== false;
   });
 
+  if (eligible.length === 0) {
+    throw new SyncNoAccountsError(
+      resolveNoAccountsMessage({
+        clientId: input.clientId,
+        accounts,
+        eligibleCount: eligible.length
+      })
+    );
+  }
+
   const run = await runRepo.save(
     runRepo.create({
       tenantId: input.tenantId,
@@ -115,7 +156,7 @@ export async function enqueueTenantSync(input: {
   let state = await stateRepo.findOne({ where: { tenantId: input.tenantId } });
   if (!state) state = stateRepo.create({ tenantId: input.tenantId });
   state.activeSyncRunId = run.id;
-  if (input.manual) state.lastManualSyncAt = new Date();
+  if (input.manual && eligible.length > 0) state.lastManualSyncAt = new Date();
   await stateRepo.save(state);
 
   await processSyncQueue({
@@ -125,7 +166,7 @@ export async function enqueueTenantSync(input: {
     triggeredByUserId: input.triggeredByUserId
   });
 
-  return run;
+  return (await runRepo.findOne({ where: { id: run.id } })) ?? run;
 }
 
 export async function processSyncQueue(input: {
@@ -186,6 +227,9 @@ export async function processSyncQueue(input: {
   run.status = failedJobs.length ? "partial" : "completed";
   run.finishedAt = new Date();
   await runRepo.save(run);
+
+  const { clearTenantCampaignInsightsCache } = await import("@/lib/meta-insights-cache");
+  clearTenantCampaignInsightsCache(input.tenantId);
 
   const { runAlertEngine } = await import("@/lib/alert-engine");
   const { fetchCampaigns } = await import("@/lib/meta-graph");

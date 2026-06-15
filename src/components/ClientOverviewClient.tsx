@@ -145,12 +145,14 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
       .catch(() => {});
   }, [clientId]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { afterSync?: boolean }) => {
     setLoading(true);
     try {
       const { current, previous } = resolveRanges(period);
       const curQ = buildQuery(clientId, "", current);
       const campQ = periodStateToQuery(period).toString();
+      const liveSuffix =
+        opts?.afterSync || period.preset === "today" ? "&live=1&refresh=1" : "";
       const [sRes, tRes, pRes, cRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
         fetch(`/api/dashboard/timeseries?${curQ}`),
@@ -158,7 +160,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           ? fetch(`/api/dashboard/summary?${buildQuery(clientId, "", previous)}`)
           : Promise.resolve<Response | null>(null),
         fetch(
-          `/api/command-center/campaigns?clientId=${encodeURIComponent(clientId)}&status=ACTIVE&${campQ}`
+          `/api/command-center/campaigns?clientId=${encodeURIComponent(clientId)}&status=ACTIVE&${campQ}${liveSuffix}`
         )
       ]);
       const sJson = await sRes.json();
@@ -181,7 +183,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   }, [load]);
 
   useEffect(() => {
-    const onSync = () => void load();
+    const onSync = () => void load({ afterSync: true });
     window.addEventListener("traffic-sync-done", onSync);
     return () => window.removeEventListener("traffic-sync-done", onSync);
   }, [load]);

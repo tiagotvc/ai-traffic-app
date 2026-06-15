@@ -154,6 +154,44 @@ export async function runMetaSyncForAccount(input: {
     }
   }
 
+  // Campanhas novas na Meta ainda sem insights no dia — garante linha no banco para aparecer na listagem.
+  const dayToday = campToday.find((r) => r.date_start)?.date_start ?? new Date().toISOString().slice(0, 10);
+  for (const c of campaigns) {
+    if (!c.id) continue;
+    const dailyBudget = budgetByCampaign.get(c.id) ?? null;
+    const campaignStatus = statusByCampaign.get(c.id) ?? null;
+    const existingToday = await campRepo.findOne({
+      where: { adAccountId: input.adAccountId, metaCampaignId: c.id, day: dayToday }
+    });
+    if (existingToday) {
+      if (c.name) existingToday.campaignName = c.name;
+      if (campaignStatus) existingToday.campaignStatus = campaignStatus;
+      if (dailyBudget != null) existingToday.dailyBudget = dailyBudget;
+      await campRepo.save(existingToday);
+      continue;
+    }
+    await campRepo.save(
+      campRepo.create({
+        adAccountId: input.adAccountId,
+        metaCampaignId: c.id,
+        campaignName: c.name ?? null,
+        day: dayToday,
+        spend: "0",
+        impressions: "0",
+        clicks: "0",
+        ctr: "0",
+        cpc: "0",
+        conversions: "0",
+        leads: "0",
+        reach: "0",
+        messages: "0",
+        roas: "0",
+        dailyBudget,
+        campaignStatus
+      })
+    );
+  }
+
   return { campaigns };
 }
 

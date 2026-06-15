@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 
 type SyncStatus = {
   lastManualSyncAt: string | null;
-  lastRun: { finishedAt: string | null } | null;
+  lastRun: { finishedAt: string | null; accountsDone?: number; accountsTotal?: number } | null;
   accounts: Array<{ lastSyncedAt: string | null }>;
   manualSyncCooldown?: { retryAfterSec: number } | null;
 };
@@ -33,19 +33,23 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
   const [, setTick] = useState(0);
 
   const loadStatus = useCallback(() => {
-    fetch("/api/sync/status")
+    const qs = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+    fetch(`/api/sync/status${qs}`)
       .then((r) => r.json())
       .then((j: SyncStatus & { ok?: boolean }) => {
         if (j.ok === false) return;
         const latest = (j.accounts ?? [])
           .filter((a) => a.lastSyncedAt)
           .sort((a, b) => (b.lastSyncedAt ?? "").localeCompare(a.lastSyncedAt ?? ""))[0];
-        setLastIso(latest?.lastSyncedAt ?? j.lastRun?.finishedAt ?? j.lastManualSyncAt ?? null);
+        const run = j.lastRun;
+        const runSynced =
+          run && (run.accountsDone ?? 0) > 0 && run.finishedAt ? run.finishedAt : null;
+        setLastIso(latest?.lastSyncedAt ?? runSynced ?? null);
         const cd = j.manualSyncCooldown?.retryAfterSec ?? 0;
         setCooldownSec(cd > 0 ? cd : 0);
       })
       .catch(() => {});
-  }, []);
+  }, [clientId]);
 
   useEffect(() => {
     loadStatus();
@@ -80,6 +84,8 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
         error?: string;
         errorCode?: string;
         retryAfterSec?: number;
+        accounts?: number;
+        accountsSynced?: number;
       } | null;
       if (!res.ok) {
         if (json?.errorCode === "sync_cooldown" && json.retryAfterSec) {
@@ -87,6 +93,10 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
         } else {
           setError(json?.error ?? t("failed"));
         }
+        return;
+      }
+      if ((json?.accounts ?? 0) === 0) {
+        setError(t("noAccounts"));
         return;
       }
       window.dispatchEvent(new Event("traffic-sync-done"));
@@ -103,7 +113,11 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
         className={`text-xs ${error ? "text-rose-600" : "text-slate-500"}`}
         title={error ?? undefined}
       >
-        {error ? error : `${t("updated")} ${formatRelative(lastIso, locale)}`}
+        {error
+          ? error
+          : lastIso
+            ? `${t("updated")} ${formatRelative(lastIso, locale)}`
+            : t("neverSynced")}
       </span>
       <button
         type="button"

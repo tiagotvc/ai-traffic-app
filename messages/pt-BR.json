@@ -762,7 +762,9 @@
     "hintMemberNoWorkspaceMeta": "Você é membro deste workspace: a sincronização usa a Meta do administrador. Peça para ele conectar ou reconectar o Facebook em Configurações.",
     "hintAdminReconnectMeta": "Conecte ou reconecte o Facebook em Configurações para sincronizar as contas.",
     "hintMemberAccountAccess": "Como membro, você não precisa conectar sua Meta — mas o administrador precisa ter acesso à conta de anúncios vinculada no Gerenciador de Anúncios.",
-    "updated": "Atualizado"
+    "updated": "Atualizado",
+    "neverSynced": "Nunca sincronizado",
+    "noAccounts": "Nenhuma conta de anúncio vinculada a este cliente. Vincule uma conta Meta nas configurações do cliente."
   },
   "welcome": {
     "title": "Na sua ausência",

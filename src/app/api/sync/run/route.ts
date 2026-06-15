@@ -5,7 +5,7 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { formatMetaGraphError } from "@/lib/meta-error";
 import { getMetaConnectionInfo } from "@/lib/meta-auth-store";
-import { enqueueTenantSync, SyncCooldownError } from "@/lib/sync-queue";
+import { enqueueTenantSync, SyncCooldownError, SyncNoAccountsError } from "@/lib/sync-queue";
 
 const BodySchema = z.object({
   clientId: z.string().optional(),
@@ -78,6 +78,7 @@ export async function POST(req: Request) {
       ok: true,
       syncRunId: run.id,
       accounts: run.accountsTotal,
+      accountsSynced: run.accountsDone,
       status: run.status
     });
   } catch (err) {
@@ -90,6 +91,21 @@ export async function POST(req: Request) {
           error: err.message
         },
         { status: 429 }
+      );
+    }
+    if (err instanceof SyncNoAccountsError) {
+      await auditRepo.save(
+        auditRepo.create({
+          tenantId: tenant.id,
+          clientId: clientId ?? defaultClient.id,
+          kind: "SYNC",
+          success: false,
+          errorMessage: err.message
+        })
+      );
+      return NextResponse.json(
+        { ok: false, errorCode: err.code, error: err.message },
+        { status: 400 }
       );
     }
     const msg = formatMetaGraphError(err);
