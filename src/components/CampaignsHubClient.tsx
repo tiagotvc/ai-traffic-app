@@ -60,6 +60,7 @@ type CampaignRow = {
   hasAlert: boolean;
   status?: string;
   objective?: string | null;
+  preset?: string;
 };
 
 function campaignMetricValue(r: CampaignRow, key: MetricKey): number {
@@ -152,14 +153,32 @@ export function CampaignsHubClient() {
   const selectedIdRef = useRef<string | null>(null);
   selectedIdRef.current = selectedId;
 
-  useEffect(() => {
-    fetch("/api/campaign-presets")
+  const reloadPresets = useCallback(() => {
+    return fetch("/api/campaign-presets")
       .then((r) => r.json())
       .then((j) => {
-        if (j.ok) setPresets(j.presets ?? {});
+        if (j.ok) setPresets((prev) => ({ ...prev, ...(j.presets ?? {}) }));
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    void reloadPresets();
+  }, [reloadPresets]);
+
+  function campaignPreset(row: CampaignRow): string {
+    return presets[row.metaCampaignId] ?? row.preset ?? "default";
+  }
+
+  function mergePresetsFromResponse(j: { presets?: Record<string, string>; rows?: CampaignRow[] }) {
+    const fromApi = { ...(j.presets ?? {}) };
+    for (const r of j.rows ?? []) {
+      if (r.preset) fromApi[r.metaCampaignId] = r.preset;
+    }
+    if (Object.keys(fromApi).length) {
+      setPresets((prev) => ({ ...prev, ...fromApi }));
+    }
+  }
 
   function changePreset(metaCampaignId: string, preset: string) {
     setPresets((prev) => ({ ...prev, [metaCampaignId]: preset }));
@@ -237,7 +256,7 @@ export function CampaignsHubClient() {
       const reqId = ++requestIdRef.current;
 
       setLoading(true);
-      setRows([]);
+      if (!opts?.refresh) setRows([]);
 
       const live = opts?.live ?? period.preset === "today";
       const params = new URLSearchParams(periodStateToQuery(period));
@@ -273,6 +292,7 @@ export function CampaignsHubClient() {
             return;
           }
           const list = (j.rows ?? []) as CampaignRow[];
+          mergePresetsFromResponse(j);
           setRows(list);
           setTotal(j.total ?? list.length);
           setTotals(j.totals ?? { spend: 0, conversions: 0, leads: 0 });
@@ -311,16 +331,23 @@ export function CampaignsHubClient() {
     ]
   );
 
-  useEffect(() => {    load();
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
     const onReload = () => load();
-    const onSync = () => load({ live: true, refresh: true });
+    const onSync = () => {
+      void reloadPresets();
+      load({ live: true, refresh: true });
+    };
     window.addEventListener("traffic:campaigns-reload", onReload);
     window.addEventListener("traffic-sync-done", onSync);
     return () => {
       window.removeEventListener("traffic:campaigns-reload", onReload);
       window.removeEventListener("traffic-sync-done", onSync);
     };
-  }, [load]);
+  }, [load, reloadPresets]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -745,8 +772,8 @@ export function CampaignsHubClient() {
       ) : null}
 
       {groupByType ? (
-        <div className="space-y-4">
-          {loading ? (
+        <div className={`space-y-4 ${loading && rows.length > 0 ? "opacity-60 pointer-events-none" : ""}`}>
+          {loading && rows.length === 0 ? (
             <TableSkeleton
               rows={6}
               columns={["wide", "text", "badge", "select", "metric", "metric", "metric"]}
@@ -755,9 +782,7 @@ export function CampaignsHubClient() {
             <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
           ) : (
             CAMPAIGN_PRESETS.map((preset) => {
-              const list = rows.filter(
-                (r) => (presets[r.metaCampaignId] ?? "default") === preset
-              );
+              const list = rows.filter((r) => campaignPreset(r) === preset);
               if (!list.length) return null;
               const metrics = presetMetricsFor(preset);
               const sorted = sortGroupRows(list, metrics);
@@ -836,7 +861,7 @@ export function CampaignsHubClient() {
                             </td>
                             <td className="px-3 py-2.5">
                               <select
-                                value={presets[r.metaCampaignId] ?? "default"}
+                                value={campaignPreset(r)}
                                 onChange={(e) => changePreset(r.metaCampaignId, e.target.value)}
                                 className="ui-select !w-auto !py-1.5 text-xs"
                               >

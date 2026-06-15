@@ -54,6 +54,7 @@ type CampaignRow = {
   frequency: number;
   status?: string;
   alertCount?: number;
+  preset?: string;
 };
 
 function campaignMetric(row: CampaignRow, key: MetricKey): number {
@@ -114,14 +115,28 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const [presets, setPresets] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/campaign-presets")
+  const reloadPresets = useCallback(() => {
+    return fetch("/api/campaign-presets")
       .then((r) => r.json())
       .then((j) => {
-        if (j.ok) setPresets(j.presets ?? {});
+        if (j.ok) setPresets((prev) => ({ ...prev, ...(j.presets ?? {}) }));
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    void reloadPresets();
+  }, [reloadPresets]);
+
+  function mergePresetsFromResponse(j: { presets?: Record<string, string>; rows?: CampaignRow[] }) {
+    const fromApi = { ...(j.presets ?? {}) };
+    for (const r of j.rows ?? []) {
+      if (r.preset) fromApi[r.metaCampaignId] = r.preset;
+    }
+    if (Object.keys(fromApi).length) {
+      setPresets((prev) => ({ ...prev, ...fromApi }));
+    }
+  }
 
   function changePreset(metaCampaignId: string, preset: string) {
     setPresets((prev) => ({ ...prev, [metaCampaignId]: preset }));
@@ -170,6 +185,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
       setSummary(sJson.summary);
       setPrevSummary(pJson?.summary ?? null);
       setSeries(tJson.series ?? []);
+      mergePresetsFromResponse(cJson);
       setCampaigns(cJson.rows ?? []);
     } catch {
       // silencioso
@@ -183,10 +199,13 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   }, [load]);
 
   useEffect(() => {
-    const onSync = () => void load({ afterSync: true });
+    const onSync = () => {
+      void reloadPresets();
+      void load({ afterSync: true });
+    };
     window.addEventListener("traffic-sync-done", onSync);
     return () => window.removeEventListener("traffic-sync-done", onSync);
-  }, [load]);
+  }, [load, reloadPresets]);
 
   const chartData = series.map((p) => ({ ...p, label: formatDayLabel(p.day, locale) }));
   const metricSeries = (key: MetricKey) => series.map((p) => Number(p[key] ?? 0));
@@ -365,7 +384,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {campaigns.map((c) => {
-                  const preset = presets[c.metaCampaignId] ?? "default";
+                  const preset = presets[c.metaCampaignId] ?? c.preset ?? "default";
                   const metrics = presetMetricsFor(preset);
                   return (
                     <tr key={c.metaCampaignId} className="align-top hover:bg-slate-50/60">

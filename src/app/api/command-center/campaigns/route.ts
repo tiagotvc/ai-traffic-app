@@ -3,6 +3,7 @@ import { In } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
+import { getCampaignPresetsMap, withCampaignPresets } from "@/lib/campaign-preset-store";
 import { enrichCampaignRowsFromMeta } from "@/lib/campaign-metrics-enrich";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
@@ -20,6 +21,7 @@ import { parsePeriodFromSearchParams } from "@/lib/report-period";
 export async function GET(req: Request) {
   try {
     const { tenant, user, metaAccessToken } = await getAppContext();
+    const presetMap = await getCampaignPresetsMap(tenant.id);
     const url = new URL(req.url);
     const period = parsePeriodFromSearchParams(url);
     const tenantToken = await getTenantMetaAccessToken(tenant.id, user.id);
@@ -33,10 +35,10 @@ export async function GET(req: Request) {
     if (clientParam) {
       const client = await getClientBySlugOrId(tenant.id, clientParam);
       if (!client) {
-        return NextResponse.json({ ok: true, rows: [], total: 0, metricsSource: "db" });
+        return NextResponse.json({ ok: true, rows: [], total: 0, metricsSource: "db", presets: presetMap });
       }
       if (userClientIds?.length && !userClientIds.includes(client.id)) {
-        return NextResponse.json({ ok: true, rows: [], total: 0, metricsSource: "db" });
+        return NextResponse.json({ ok: true, rows: [], total: 0, metricsSource: "db", presets: presetMap });
       }
       clientIds = [client.id];
       metaBusinessId = client.metaBusinessId?.trim() || null;
@@ -181,12 +183,13 @@ export async function GET(req: Request) {
       }
     }
 
-    const rows = [...byId.values()];
+    const rows = withCampaignPresets([...byId.values()], presetMap);
 
     return NextResponse.json({
       ok: true,
       rows,
       total: live ? rows.length : result.total,
+      presets: presetMap,
       metricsSource,
       cachedAt,
       enrichError: enrichError ?? null,

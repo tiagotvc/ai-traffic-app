@@ -3,6 +3,7 @@ import { In } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
+import { getCampaignPresetsMap, withCampaignPresets } from "@/lib/campaign-preset-store";
 import { enrichCampaignRowsFromMeta } from "@/lib/campaign-metrics-enrich";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
@@ -33,6 +34,7 @@ function filterByObjective<T extends { objective?: string | null }>(
 export async function GET(req: Request) {
   try {
     const { tenant, user, metaAccessToken } = await getAppContext();
+    const presetMap = await getCampaignPresetsMap(tenant.id);
     const url = new URL(req.url);
     const period = parsePeriodFromSearchParams(url);
     const tenantToken = await getTenantMetaAccessToken(tenant.id, user.id);
@@ -110,7 +112,7 @@ export async function GET(req: Request) {
 
       return NextResponse.json({
         ok: true,
-        rows,
+        rows: withCampaignPresets(rows, presetMap),
         total,
         totals: cc.totals ?? {
           spend: 0,
@@ -119,6 +121,7 @@ export async function GET(req: Request) {
           impressions: 0,
           clicks: 0
         },
+        presets: presetMap,
         enrichError: null,
         metricsSource: "db" as const,
         period: { preset: period.preset, since: period.since, until: period.until }
@@ -292,9 +295,10 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    rows,
+    rows: withCampaignPresets(rows, presetMap),
     total,
     totals,
+    presets: presetMap,
     enrichError: enrichError ?? null,
     metricsSource,
     cachedAt,
