@@ -280,7 +280,7 @@
     "loadingMetaToday": "Atualizando métricas de hoje na Meta…",
     "metricsFromDb": "Dados da última sincronização — «Atualizar da Meta» busca ao vivo.",
     "enrichRateLimitHint": "Se o erro persistir, aguarde 2–5 minutos antes de atualizar de novo.",
-    "showZeroActivity": "Mostrar sem atividade",
+    "showZeroActivity": "Exibir todas",
     "loading": "Carregando…",
     "empty": "Nenhuma campanha com métricas no período. Sincronize a Meta ou vincule contas.",
     "colCampaign": "Campanha",

@@ -157,13 +157,7 @@ function buildFilteredSubquery(input: {
 
   const alertsClause = input.onlyAlerts ? ` AND COALESCE(al.cnt, 0) > 0` : "";
 
-  const zeroClause = input.hideZeroActivity
-    ? ` AND (
-        agg.spend > 0 OR agg.conversions > 0 OR agg.impressions > 0
-        OR COALESCE(al.cnt, 0) > 0
-        OR (agg.campaign_status = 'ACTIVE' AND COALESCE(agg.daily_budget, 0) > 0)
-      )`
-    : "";
+  const zeroClause = input.hideZeroActivity ? ` AND agg.spend > 0` : "";
 
   let searchClause = "";
   if (input.searchQ.length > 0) {

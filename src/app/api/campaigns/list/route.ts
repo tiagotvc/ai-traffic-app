@@ -5,6 +5,7 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
 import { getCampaignPresetsMap, withCampaignPresets } from "@/lib/campaign-preset-store";
 import { filterCampaignRowsByStatus } from "@/lib/campaign-status-filter";
+import { filterZeroActivityRows } from "@/lib/campaign-list-filters";
 import { enrichCampaignRowsFromMeta } from "@/lib/campaign-metrics-enrich";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
@@ -68,7 +69,7 @@ export async function GET(req: Request) {
 
     const searchQ = url.searchParams.get("q")?.trim() ?? "";
     const onlyAlerts = url.searchParams.get("onlyAlerts") === "1";
-    const showZero = url.searchParams.get("showZero") !== "0";
+    const showZero = url.searchParams.get("showZero") === "1";
     const live = url.searchParams.get("live") === "1";
     const refresh = url.searchParams.get("refresh") === "1";
     const sortKey = url.searchParams.get("sort");
@@ -108,8 +109,9 @@ export async function GET(req: Request) {
 
       if (objectiveRaw === "leads" || objectiveRaw === "sales" || objectiveRaw === "traffic") {
         rows = filterByObjective(rows, objectiveRaw);
-        total = rows.length;
       }
+      rows = filterZeroActivityRows(rows, { hideZeroActivity: !showZero });
+      total = rows.length;
 
       return NextResponse.json({
         ok: true,
@@ -137,7 +139,7 @@ export async function GET(req: Request) {
     statusFilter: "ALL",
     q: searchQ,
     onlyAlerts,
-    hideZeroActivity: !showZero,
+    hideZeroActivity: false,
     days: period.days ?? undefined,
     since: period.since,
     until: period.until,
@@ -285,6 +287,8 @@ export async function GET(req: Request) {
   }
 
   rows = filterCampaignRowsByStatus(rows, statusFilter);
+
+  rows = filterZeroActivityRows(rows, { hideZeroActivity: !showZero });
 
   const total = rows.length;
   const totals = {

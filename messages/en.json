@@ -280,7 +280,7 @@
     "loadingMetaToday": "Fetching today's metrics from Meta…",
     "metricsFromDb": "Data from last sync — Refresh from Meta fetches live values.",
     "enrichRateLimitHint": "If this persists, wait 2–5 minutes before refreshing again.",
-    "showZeroActivity": "Show without activity",
+    "showZeroActivity": "Show all",
     "loading": "Loading…",
     "empty": "No campaigns with metrics in this period. Sync Meta or link ad accounts.",
     "colCampaign": "Campaign",

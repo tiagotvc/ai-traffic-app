@@ -130,7 +130,7 @@ export function CampaignsHubClient() {
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [onlyAlerts, setOnlyAlerts] = useState(false);
-  const [showZeroActivity, setShowZeroActivity] = useState(true);
+  const [showZeroActivity, setShowZeroActivity] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveFilter>("ALL");
   const [period, setPeriod] = useState<PeriodState>({ preset: "last7", since: "", until: "" });
@@ -265,7 +265,7 @@ export function CampaignsHubClient() {
       if (clientFilter) params.set("clientId", clientFilter);
       if (q.trim()) params.set("q", q.trim());
       if (onlyAlerts) params.set("onlyAlerts", "1");
-      if (!showZeroActivity) params.set("showZero", "0");
+      if (showZeroActivity) params.set("showZero", "1");
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
       if (live) params.set("live", "1");
