@@ -77,7 +77,11 @@ export async function getAppContext() {
       await acceptPendingInviteForEmail(user, email);
       user = (await userRepo.findOne({ where: { email } }))!;
       tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
-    } else {
+    } else if (user?.tenantId) {
+      tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
+    }
+
+    if (!tenant) {
       const tenantName = resolveTenantName(email, metaProfileId);
       let metaTenant = await tenantRepo.findOne({ where: { name: tenantName } });
       if (!metaTenant) {
@@ -92,7 +96,7 @@ export async function getAppContext() {
           tenantId: metaTenant.id
         });
         await userRepo.save(user);
-      } else if (user.tenantId !== metaTenant.id) {
+      } else {
         user.tenantId = metaTenant.id;
         await userRepo.save(user);
       }
