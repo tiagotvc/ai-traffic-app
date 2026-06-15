@@ -279,22 +279,36 @@ export function DashboardClient() {
   }, [loadClients]);
 
   // Load client-specific meta settings to apply dashboard defaults (metrics, client card metric)
+  // If no client selected, fall back to locally stored preferences (per-browser), if present.
   useEffect(() => {
-    if (!clientFilter) return;
     let mounted = true;
-    fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (!mounted) return;
-        const s = j.settings;
-        if (s) {
-          if (Array.isArray(s.defaultDashboardMetrics) && s.defaultDashboardMetrics.length) {
-            setChartMetrics(s.defaultDashboardMetrics as MetricKey[]);
+    if (clientFilter) {
+      fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`)
+        .then((r) => r.json())
+        .then((j) => {
+          if (!mounted) return;
+          const s = j.settings;
+          if (s) {
+            if (Array.isArray(s.defaultDashboardMetrics) && s.defaultDashboardMetrics.length) {
+              setChartMetrics(s.defaultDashboardMetrics as MetricKey[]);
+            }
+            if (s.defaultClientMetric) setClientMetric(s.defaultClientMetric as MetricKey);
           }
-          if (s.defaultClientMetric) setClientMetric(s.defaultClientMetric as MetricKey);
+        })
+        .catch(() => {});
+    } else if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("dashboard.defaultMetrics");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length) setChartMetrics(parsed as MetricKey[]);
         }
-      })
-      .catch(() => {});
+        const cm = localStorage.getItem("dashboard.defaultClientMetric");
+        if (cm) setClientMetric(cm as MetricKey);
+      } catch {
+        // ignore
+      }
+    }
     return () => {
       mounted = false;
     };
@@ -653,6 +667,10 @@ export function DashboardClient() {
                         headers: { "content-type": "application/json" },
                         body: JSON.stringify({ defaultClientMetric: next })
                       }).catch(() => {});
+                    } else if (typeof window !== "undefined") {
+                      try {
+                        localStorage.setItem("dashboard.defaultClientMetric", next);
+                      } catch {}
                     }
                   }}
                   className="ui-select !w-auto !py-1.5 text-xs"
@@ -709,13 +727,17 @@ export function DashboardClient() {
         onApply={(next) => {
           setChartMetrics(next);
           setMetricsModalOpen(false);
-          // persist per-client default if a client is selected
+          // persist per-client default if a client is selected, else save locally per-browser
           if (clientFilter) {
             fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
               method: "PATCH",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({ defaultDashboardMetrics: next })
             }).catch(() => {});
+          } else if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("dashboard.defaultMetrics", JSON.stringify(next));
+            } catch {}
           }
         }}
         onClose={() => setMetricsModalOpen(false)}
