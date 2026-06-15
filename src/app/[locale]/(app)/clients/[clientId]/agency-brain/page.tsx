@@ -1,10 +1,13 @@
-import { AgencyBrainClient } from "@/components/agency-brain/AgencyBrainClient";
+import { redirect } from "@/i18n/navigation";
 
 export default async function ClientAgencyBrainPage({
   params
 }: {
-  params: Promise<{ clientId: string }>;
+  params: Promise<{ locale: string; clientId: string }>;
 }) {
-  const { clientId } = await params;
-  return <AgencyBrainClient clientId={clientId} />;
+  const { locale, clientId } = await params;
+  redirect({
+    href: `/creative-memory?client=${encodeURIComponent(clientId)}&tab=learnings`,
+    locale
+  });
 }

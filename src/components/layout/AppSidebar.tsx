@@ -12,6 +12,7 @@ type NavItem = {
   href?: string;
   label: string;
   badge?: number;
+  beta?: boolean;
   icon: React.ReactNode;
   action?: () => void;
 };
@@ -43,6 +44,8 @@ const icons = {
     "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
   creatives:
     "M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.872M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.412 9.71 2.25 12 2.25c2.291 0 4.545.162 6.75.471v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0",
+  creativeMemory:
+    "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z",
   reports:
     "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
   alerts:
@@ -87,6 +90,13 @@ export function AppSidebar({
     { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <NavIcon d={icons.campaigns} /> },
     { id: "audiences", href: "/audiences", label: t("audiences"), icon: <NavIcon d={icons.audiences} /> },
     { id: "creatives", href: "/creatives", label: t("creatives"), icon: <NavIcon d={icons.creatives} /> },
+    {
+      id: "creativeMemory",
+      href: "/creative-memory",
+      label: t("creativeMemory"),
+      beta: true,
+      icon: <NavIcon d={icons.creativeMemory} />
+    },
     { id: "reports", href: "/reports", label: t("reports"), icon: <NavIcon d={icons.reports} /> },
     {
       id: "alerts",
@@ -120,6 +130,8 @@ export function AppSidebar({
     if (item.id === "clients") return base === "/clients" || base.startsWith("/clients/");
     if (item.id === "reports") return base === "/reports" || base.startsWith("/reports/");
     if (item.id === "creatives") return base === "/creatives" || base.startsWith("/creatives/");
+    if (item.id === "creativeMemory")
+      return base === "/creative-memory" || base.startsWith("/creative-memory/");
     if (item.id === "audiences") return base === "/audiences" || base.startsWith("/audiences/");
     if (item.id === "automations") return base === "/automations" || base.startsWith("/automations/");
     if (item.id === "billing") return base === "/billing" || base.startsWith("/billing/");
@@ -197,7 +209,16 @@ export function AppSidebar({
                 <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-violet-600" />
               ) : null}
               {item.icon}
-              {!collapsed ? <span className="flex-1 truncate text-left">{item.label}</span> : null}
+              {!collapsed ? (
+                <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left">
+                  <span className="truncate">{item.label}</span>
+                  {item.beta ? (
+                    <span className="shrink-0 rounded-full bg-violet-500/20 px-1.5 py-px text-[9px] font-bold uppercase leading-none tracking-wide text-violet-300">
+                      Beta
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
               {item.badge && !collapsed ? (
                 <span
                   className="min-w-[18px] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white"

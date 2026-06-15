@@ -1,10 +1,13 @@
-import { SuggestionsClient } from "@/components/suggestions/SuggestionsClient";
+import { redirect } from "@/i18n/navigation";
 
 export default async function ClientSuggestionsPage({
   params
 }: {
-  params: Promise<{ clientId: string }>;
+  params: Promise<{ locale: string; clientId: string }>;
 }) {
-  const { clientId } = await params;
-  return <SuggestionsClient clientId={clientId} />;
+  const { locale, clientId } = await params;
+  redirect({
+    href: `/creative-memory?client=${encodeURIComponent(clientId)}&tab=suggestions`,
+    locale
+  });
 }

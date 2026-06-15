@@ -51,6 +51,7 @@
     "adsets": "Conjuntos",
     "audiences": "Públicos",
     "creatives": "Ranking de Criativos",
+    "creativeMemory": "Memória Criativa",
     "highlights": "Destaques",
     "billing": "Assinatura",
     "adminPanel": "Admin"
@@ -1377,8 +1378,9 @@
   },
   "agencyBrain": {
     "tabOverview": "Visão geral",
-    "tabAgencyBrain": "Agency Brain",
+    "tabAgencyBrain": "Aprendizados",
     "tabSuggestions": "Sugestões",
+    "tabBeta": "Beta",
     "tabSettings": "Configurações",
     "subtitle": "Memória operacional deste cliente: criativos, públicos, ofertas e decisões que já funcionaram ou falharam.",
     "newLearning": "Novo aprendizado",
@@ -1479,6 +1481,16 @@
       "AI": "IA",
       "IMPORTED": "Importado"
     }
+  },
+  "creativeMemory": {
+    "title": "Memória Criativa",
+    "beta": "Beta",
+    "subtitle": "Aprendizados e sugestões acionáveis por cliente — memória operacional e próximos passos.",
+    "clientLabel": "Cliente",
+    "tabLearnings": "Aprendizados",
+    "tabSuggestions": "Sugestões",
+    "loadingClients": "Carregando clientes…",
+    "noClients": "Nenhum cliente cadastrado. Crie um cliente para usar a memória criativa."
   },
   "clientSuggestions": {
     "subtitle": "Sugestões acionáveis com base na memória do cliente e nas métricas recentes.",

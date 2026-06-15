@@ -51,6 +51,7 @@
     "adsets": "Ad sets",
     "audiences": "Audiences",
     "creatives": "Creative Ranking",
+    "creativeMemory": "Creative Memory",
     "highlights": "Highlights",
     "billing": "Billing",
     "adminPanel": "Admin"
@@ -1377,8 +1378,9 @@
   },
   "agencyBrain": {
     "tabOverview": "Overview",
-    "tabAgencyBrain": "Agency Brain",
+    "tabAgencyBrain": "Learnings",
     "tabSuggestions": "Suggestions",
+    "tabBeta": "Beta",
     "tabSettings": "Settings",
     "subtitle": "Operational memory for this client: creatives, audiences, offers, and decisions that worked or failed.",
     "newLearning": "New learning",
@@ -1479,6 +1481,16 @@
       "AI": "AI",
       "IMPORTED": "Imported"
     }
+  },
+  "creativeMemory": {
+    "title": "Creative Memory",
+    "beta": "Beta",
+    "subtitle": "Learnings and actionable suggestions per client — operational memory and next steps.",
+    "clientLabel": "Client",
+    "tabLearnings": "Learnings",
+    "tabSuggestions": "Suggestions",
+    "loadingClients": "Loading clients…",
+    "noClients": "No clients yet. Create a client to use creative memory."
   },
   "clientSuggestions": {
     "subtitle": "Actionable suggestions based on client memory and recent metrics.",

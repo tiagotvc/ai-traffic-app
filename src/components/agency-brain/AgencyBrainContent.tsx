@@ -12,13 +12,10 @@ import { LearningCard } from "@/components/agency-brain/LearningCard";
 import { LearningFilters } from "@/components/agency-brain/LearningFilters";
 import { LearningFormModal } from "@/components/agency-brain/LearningFormModal";
 import { useAgencyBrain } from "@/components/agency-brain/useAgencyBrain";
-import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
-import { Link } from "@/i18n/navigation";
 import type { LearningDto } from "@/lib/agency-brain/types";
 
-export function AgencyBrainClient({ clientId }: { clientId: string }) {
+export function AgencyBrainContent({ clientId }: { clientId: string }) {
   const t = useTranslations("agencyBrain");
-  const tOverview = useTranslations("clientOverview");
   const brain = useAgencyBrain(clientId);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -26,39 +23,26 @@ export function AgencyBrainClient({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Link href="/clients" className="text-xs font-medium text-slate-500 hover:text-slate-700">
-            ← {tOverview("breadcrumb")}
-          </Link>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-            {brain.clientName || tOverview("client")}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="ui-btn-secondary text-sm"
-            onClick={() => void brain.handleDetectPatterns()}
-            disabled={brain.detecting}
-          >
-            {brain.detecting ? t("detecting") : t("detectPatterns")}
-          </button>
-          <button
-            type="button"
-            className="ui-btn-primary text-sm"
-            onClick={() => {
-              setEditing(null);
-              setModalOpen(true);
-            }}
-          >
-            {t("newLearning")}
-          </button>
-        </div>
+      <div className="flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          className="ui-btn-secondary text-sm"
+          onClick={() => void brain.handleDetectPatterns()}
+          disabled={brain.detecting}
+        >
+          {brain.detecting ? t("detecting") : t("detectPatterns")}
+        </button>
+        <button
+          type="button"
+          className="ui-btn-primary text-sm"
+          onClick={() => {
+            setEditing(null);
+            setModalOpen(true);
+          }}
+        >
+          {t("newLearning")}
+        </button>
       </div>
-
-      <ClientDetailTabs clientSlug={clientId} activeTab="agency-brain" />
 
       <FeedbackBanner message={brain.message} />
 

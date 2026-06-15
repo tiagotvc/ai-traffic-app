@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { FeedbackBanner, type FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
-import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { Link } from "@/i18n/navigation";
 import type {
@@ -26,11 +25,9 @@ function statusVariant(status: ActionSuggestionStatus): "neutral" | "success" | 
   }
 }
 
-export function SuggestionsClient({ clientId }: { clientId: string }) {
+export function SuggestionsContent({ clientId }: { clientId: string }) {
   const t = useTranslations("clientSuggestions");
-  const tOverview = useTranslations("clientOverview");
 
-  const [clientName, setClientName] = useState("");
   const [items, setItems] = useState<ActionSuggestionDto[]>([]);
   const [summary, setSummary] = useState<ActionSuggestionSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<ActionSuggestionStatus | "">("PENDING");
@@ -46,12 +43,10 @@ export function SuggestionsClient({ clientId }: { clientId: string }) {
       if (statusFilter) params.set("status", statusFilter);
       params.set("pageSize", "50");
 
-      const [listRes, clientRes] = await Promise.all([
-        fetch(`/api/clients/${encodeURIComponent(clientId)}/action-suggestions?${params}`),
-        fetch(`/api/clients/${encodeURIComponent(clientId)}`)
-      ]);
+      const listRes = await fetch(
+        `/api/clients/${encodeURIComponent(clientId)}/action-suggestions?${params}`
+      );
       const listJson = await listRes.json();
-      const clientJson = await clientRes.json();
 
       if (listJson.ok) {
         setItems(listJson.items ?? []);
@@ -59,7 +54,6 @@ export function SuggestionsClient({ clientId }: { clientId: string }) {
       } else {
         setMessage({ type: "err", text: listJson.error ?? t("errorLoad") });
       }
-      if (clientJson.client) setClientName(clientJson.client.name);
     } catch {
       setMessage({ type: "err", text: t("errorLoad") });
     } finally {
@@ -139,16 +133,7 @@ export function SuggestionsClient({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Link href="/clients" className="text-xs font-medium text-slate-500 hover:text-slate-700">
-            ← {tOverview("breadcrumb")}
-          </Link>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-            {clientName || tOverview("client")}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
-        </div>
+      <div className="flex flex-wrap justify-end gap-2">
         <button
           type="button"
           className="ui-btn-primary text-sm"
@@ -158,8 +143,6 @@ export function SuggestionsClient({ clientId }: { clientId: string }) {
           {generating ? t("generating") : t("generateSuggestions")}
         </button>
       </div>
-
-      <ClientDetailTabs clientSlug={clientId} activeTab="suggestions" />
 
       <FeedbackBanner message={message} />
 
