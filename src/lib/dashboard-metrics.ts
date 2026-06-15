@@ -64,6 +64,8 @@ export const QUICK_METRICS: MetricKey[] = [
 
 export const MAX_CHART_METRICS = 3;
 
+export const DEFAULT_DASHBOARD_CHART_METRICS: MetricKey[] = ["spend", "conversions"];
+
 export function formatMetricValue(key: MetricKey, value: number, locale?: string): string {
   const def = METRIC_BY_KEY[key];
   const v = Number.isFinite(value) ? value : 0;

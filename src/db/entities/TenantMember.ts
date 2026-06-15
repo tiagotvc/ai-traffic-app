@@ -18,6 +18,10 @@ export class TenantMember extends AppBaseEntity {
   @Column({ type: "text", default: "member" })
   role!: TenantMemberRole;
 
+  /** Métricas do gráfico Performance Geral (Destaques) — preferência do usuário no workspace. */
+  @Column({ type: "jsonb", nullable: true })
+  dashboardChartMetrics?: string[] | null;
+
   @ManyToOne("Tenant", { onDelete: "CASCADE" })
   @JoinColumn({ name: "tenantId" })
   tenant!: Tenant;

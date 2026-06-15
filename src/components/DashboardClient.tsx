@@ -21,6 +21,7 @@ import { PeriodFilter, type PeriodState, periodStateToQuery } from "@/components
 import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import {
+  DEFAULT_DASHBOARD_CHART_METRICS,
   MAX_CHART_METRICS,
   METRIC_BY_KEY,
   METRIC_CATALOG,
@@ -196,7 +197,8 @@ export function DashboardClient() {
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [period, setPeriod] = useState<PeriodState>({ preset: "thisWeek", since: "", until: "" });
-  const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(["spend", "conversions"]);
+  const [userChartMetrics, setUserChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
+  const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [clientMetric, setClientMetric] = useState<MetricKey>("roas");
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -278,41 +280,77 @@ export function DashboardClient() {
     loadClients();
   }, [loadClients]);
 
-  // Load client-specific meta settings to apply dashboard defaults (metrics, client card metric)
-  // If no client selected, fall back to locally stored preferences (per-browser), if present.
+  const persistChartMetrics = useCallback(
+    (next: MetricKey[]) => {
+      if (clientFilter) {
+        void fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ defaultDashboardMetrics: next })
+        });
+        return;
+      }
+      setUserChartMetrics(next);
+      void fetch("/api/settings/dashboard-prefs", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ dashboardChartMetrics: next })
+      });
+    },
+    [clientFilter]
+  );
+
+  const applyChartMetrics = useCallback(
+    (next: MetricKey[]) => {
+      setChartMetrics(next);
+      persistChartMetrics(next);
+    },
+    [persistChartMetrics]
+  );
+
+  // Preferências do usuário (workspace) — persistidas no banco.
   useEffect(() => {
     let mounted = true;
-    if (clientFilter) {
-      fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`)
-        .then((r) => r.json())
-        .then((j) => {
-          if (!mounted) return;
-          const s = j.settings;
-          if (s) {
-            if (Array.isArray(s.defaultDashboardMetrics) && s.defaultDashboardMetrics.length) {
-              setChartMetrics(s.defaultDashboardMetrics as MetricKey[]);
-            }
-            if (s.defaultClientMetric) setClientMetric(s.defaultClientMetric as MetricKey);
-          }
-        })
-        .catch(() => {});
-    } else if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("dashboard.defaultMetrics");
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length) setChartMetrics(parsed as MetricKey[]);
-        }
-        const cm = localStorage.getItem("dashboard.defaultClientMetric");
-        if (cm) setClientMetric(cm as MetricKey);
-      } catch {
-        // ignore
-      }
-    }
+    fetch("/api/settings/dashboard-prefs")
+      .then((r) => r.json())
+      .then((j) => {
+        if (!mounted || !j.ok || !Array.isArray(j.dashboardChartMetrics)) return;
+        const metrics = j.dashboardChartMetrics as MetricKey[];
+        setUserChartMetrics(metrics);
+        if (!clientFilter) setChartMetrics(metrics);
+      })
+      .catch(() => {});
     return () => {
       mounted = false;
     };
-  }, [clientFilter]);
+  }, []);
+
+  // Com filtro de cliente: usa defaults do cliente; sem filtro: restaura preferência do usuário.
+  useEffect(() => {
+    let mounted = true;
+    if (!clientFilter) {
+      setChartMetrics(userChartMetrics);
+      return () => {
+        mounted = false;
+      };
+    }
+    fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!mounted) return;
+        const s = j.settings;
+        if (s) {
+          if (Array.isArray(s.defaultDashboardMetrics) && s.defaultDashboardMetrics.length) {
+            setChartMetrics(s.defaultDashboardMetrics as MetricKey[]);
+          }
+          if (s.defaultClientMetric) setClientMetric(s.defaultClientMetric as MetricKey);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [clientFilter, userChartMetrics]);
 
 
   useEffect(() => {
@@ -348,15 +386,17 @@ export function DashboardClient() {
   }
 
   function toggleChartMetric(key: MetricKey) {
-    setChartMetrics((cur) =>
-      cur.includes(key)
+    setChartMetrics((cur) => {
+      const next = cur.includes(key)
         ? cur.length > 1
           ? cur.filter((k) => k !== key)
           : cur
         : cur.length >= MAX_CHART_METRICS
           ? cur
-          : [...cur, key]
-    );
+          : [...cur, key];
+      if (next !== cur) persistChartMetrics(next);
+      return next;
+    });
   }
 
   return (
@@ -725,20 +765,8 @@ export function DashboardClient() {
         open={metricsModalOpen}
         selected={chartMetrics}
         onApply={(next) => {
-          setChartMetrics(next);
+          applyChartMetrics(next);
           setMetricsModalOpen(false);
-          // persist per-client default if a client is selected, else save locally per-browser
-          if (clientFilter) {
-            fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
-              method: "PATCH",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ defaultDashboardMetrics: next })
-            }).catch(() => {});
-          } else if (typeof window !== "undefined") {
-            try {
-              localStorage.setItem("dashboard.defaultMetrics", JSON.stringify(next));
-            } catch {}
-          }
         }}
         onClose={() => setMetricsModalOpen(false)}
       />

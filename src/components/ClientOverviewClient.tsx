@@ -23,6 +23,7 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import {
+  DEFAULT_DASHBOARD_CHART_METRICS,
   MAX_CHART_METRICS,
   METRIC_BY_KEY,
   QUICK_METRICS,
@@ -106,7 +107,8 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const [name, setName] = useState("");
   const [dominantPreset, setDominantPreset] = useState<string>("default");
   const [period, setPeriod] = useState<PeriodState>({ preset: "thisWeek", since: "", until: "" });
-  const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(["spend", "conversions"]);
+  const [userChartMetrics, setUserChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
+  const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
@@ -127,6 +129,60 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   useEffect(() => {
     void reloadPresets();
   }, [reloadPresets]);
+
+  const persistChartMetrics = useCallback(
+    (next: MetricKey[]) => {
+      void fetch(`/api/clients/${encodeURIComponent(clientId)}/meta-settings`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ defaultDashboardMetrics: next })
+      });
+    },
+    [clientId]
+  );
+
+  const applyChartMetrics = useCallback(
+    (next: MetricKey[]) => {
+      setChartMetrics(next);
+      persistChartMetrics(next);
+    },
+    [persistChartMetrics]
+  );
+
+  // Preferências do usuário (workspace) — fallback quando o cliente não tem defaults.
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/settings/dashboard-prefs")
+      .then((r) => r.json())
+      .then((j) => {
+        if (!mounted || !j.ok || !Array.isArray(j.dashboardChartMetrics)) return;
+        setUserChartMetrics(j.dashboardChartMetrics as MetricKey[]);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Defaults do cliente; sem configuração, usa preferência do usuário.
+  useEffect(() => {
+    let mounted = true;
+    fetch(`/api/clients/${encodeURIComponent(clientId)}/meta-settings`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!mounted) return;
+        const metrics = j.settings?.defaultDashboardMetrics;
+        if (Array.isArray(metrics) && metrics.length) {
+          setChartMetrics(metrics as MetricKey[]);
+        } else {
+          setChartMetrics(userChartMetrics);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [clientId, userChartMetrics]);
 
   function mergePresetsFromResponse(j: { presets?: Record<string, string>; rows?: CampaignRow[] }) {
     const fromApi = { ...(j.presets ?? {}) };
@@ -222,15 +278,17 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   }
 
   function toggleChartMetric(key: MetricKey) {
-    setChartMetrics((cur) =>
-      cur.includes(key)
+    setChartMetrics((cur) => {
+      const next = cur.includes(key)
         ? cur.length > 1
           ? cur.filter((k) => k !== key)
           : cur
         : cur.length >= MAX_CHART_METRICS
           ? cur
-          : [...cur, key]
-    );
+          : [...cur, key];
+      if (next !== cur) persistChartMetrics(next);
+      return next;
+    });
   }
 
   return (
@@ -444,7 +502,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
         open={metricsModalOpen}
         selected={chartMetrics}
         onApply={(next) => {
-          setChartMetrics(next);
+          applyChartMetrics(next);
           setMetricsModalOpen(false);
         }}
         onClose={() => setMetricsModalOpen(false)}
