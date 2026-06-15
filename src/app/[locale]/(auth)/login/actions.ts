@@ -3,6 +3,7 @@
 import { AuthError } from "next-auth";
 
 import { signIn, signOut } from "@/auth";
+import { isGoogleOAuthConfigured } from "@/lib/google-env";
 import { buildMetaFacebookLoginAuthParams, isMetaOAuthConfigured } from "@/lib/meta-env";
 import { registerUser } from "@/lib/register-user";
 
