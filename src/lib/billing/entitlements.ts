@@ -5,6 +5,7 @@ import type { Plan } from "@/db/entities/Plan";
 import type { Subscription } from "@/db/entities/Subscription";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
 import { ensureFreeSubscription } from "./event-handlers";
+import { getTenantAddonBonuses, mergePlanLimitsWithAddons } from "./tenant-addons";
 import type { Entitlements, PlanLimitKey, PlanLimits, TenantUsage } from "./types";
 import { FREE_LIMITS } from "./types";
 
@@ -123,7 +124,9 @@ export function resolveLimits(plan: Plan | null): PlanLimits {
 
 export async function getEntitlements(tenantId: string): Promise<Entitlements> {
   const { subscription: sub, plan: p } = await getTenantSubscription(tenantId);
-  const limits = resolveLimits(p);
+  const baseLimits = resolveLimits(p);
+  const bonuses = await getTenantAddonBonuses(tenantId);
+  const limits = mergePlanLimitsWithAddons(baseLimits, bonuses);
   const usage = await getTenantUsage(tenantId);
   const isPaid = p?.slug !== "free" && sub.status === "active";
   const canWrite = sub.status === "active" || sub.status === "trialing" || p?.slug === "free";

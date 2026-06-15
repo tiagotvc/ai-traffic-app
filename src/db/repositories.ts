@@ -42,6 +42,7 @@ import type { RefundRequest } from "@/db/entities/RefundRequest";
 import type { DiscountCoupon } from "@/db/entities/DiscountCoupon";
 import type { CouponRedemption } from "@/db/entities/CouponRedemption";
 import type { ClientLearning } from "@/db/entities/ClientLearning";
+import type { TenantAddon } from "@/db/entities/TenantAddon";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -89,7 +90,8 @@ const ENTITY = {
   RefundRequest: "RefundRequest",
   DiscountCoupon: "DiscountCoupon",
   CouponRedemption: "CouponRedemption",
-  ClientLearning: "ClientLearning"
+  ClientLearning: "ClientLearning",
+  TenantAddon: "TenantAddon"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -154,6 +156,7 @@ export async function repositories() {
     refundRequest: repositoryFor<RefundRequest>(ds, ENTITY.RefundRequest),
     discountCoupon: repositoryFor<DiscountCoupon>(ds, ENTITY.DiscountCoupon),
     couponRedemption: repositoryFor<CouponRedemption>(ds, ENTITY.CouponRedemption),
-    clientLearning: repositoryFor<ClientLearning>(ds, ENTITY.ClientLearning)
+    clientLearning: repositoryFor<ClientLearning>(ds, ENTITY.ClientLearning),
+    tenantAddon: repositoryFor<TenantAddon>(ds, ENTITY.TenantAddon)
   };
 }

@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { AdminBillingNav } from "@/components/billing/AdminBillingNav";
 
 type CouponRow = {
   id: string;
@@ -72,16 +71,11 @@ export function AdminCouponsClient() {
   }
 
   if (forbidden) {
-    return (
-      <div className="mx-auto max-w-3xl p-6">
-        <p className="text-sm text-slate-600">{t("forbiddenHint")}</p>
-      </div>
-    );
+    return <p className="text-sm text-slate-600">{t("forbiddenHint")}</p>;
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <AdminBillingNav />
+    <div className="w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{t("couponsTitle")}</h1>
         <p className="mt-1 text-sm text-slate-500">{t("couponsSubtitle")}</p>

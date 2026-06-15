@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { usePathname } from "@/i18n/navigation";
 
 const LINKS = [
+  { href: "/admin/users", key: "navUsers" as const },
   { href: "/admin/billing/plans", key: "navPlans" as const },
   { href: "/admin/billing/finance", key: "navFinance" as const },
   { href: "/admin/billing/coupons", key: "navCoupons" as const },
@@ -18,7 +19,10 @@ export function AdminBillingNav() {
   return (
     <nav className="flex flex-wrap gap-2 border-b border-slate-200 pb-4">
       {LINKS.map((link) => {
-        const active = pathname?.includes(link.href);
+        const active =
+          link.href === "/admin/users"
+            ? pathname?.startsWith("/admin/users")
+            : pathname?.includes(link.href);
         return (
           <Link
             key={link.href}

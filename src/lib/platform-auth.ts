@@ -37,17 +37,23 @@ export async function requirePlatformAdmin() {
   const session = await auth();
   const email = session?.user?.email?.toLowerCase();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userId = (session as any)?.user?.id as string | undefined;
+  const sessionUserId = (session as any)?.user?.id as string | undefined;
 
   if (!email) {
     return { ok: false as const, response: NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 }) };
   }
 
-  if (userId && (await isPlatformAdmin(userId))) {
-    return { ok: true as const, userId, email };
-  }
   if (isBillingAdminEmail(email)) {
-    return { ok: true as const, userId, email };
+    return { ok: true as const, userId: sessionUserId, email };
+  }
+
+  const { user: userRepo } = await repositories();
+  const user =
+    (sessionUserId ? await userRepo.findOne({ where: { id: sessionUserId } }) : null) ??
+    (await userRepo.findOne({ where: { email } }));
+
+  if (user?.platformRole === "admin") {
+    return { ok: true as const, userId: user.id, email };
   }
 
   return { ok: false as const, response: NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 }) };

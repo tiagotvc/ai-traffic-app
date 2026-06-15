@@ -2,8 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { AdminBillingNav } from "@/components/billing/AdminBillingNav";
-import type { ExternalPrices, PlanLimits } from "@/lib/billing/types";
+import { AdminPlansSkeleton } from "@/components/billing/BillingSkeletons";
+import { adminPlanRowStyle } from "@/lib/billing/admin-plan-styles";
+import { FREE_LIMITS, type ExternalPrices, type PlanLimits } from "@/lib/billing/types";
 
 type AdminPlan = {
   id: string;
@@ -73,7 +74,7 @@ function LimitField({
 }) {
   if (type === "checkbox") {
     return (
-      <label className="flex items-center gap-2 text-sm text-slate-700">
+      <label className="flex items-center gap-2 text-sm text-slate-800">
         <input
           type="checkbox"
           checked={Boolean(value)}
@@ -86,7 +87,7 @@ function LimitField({
   }
   return (
     <label className="block text-sm">
-      <span className="mb-1 block text-slate-600">{label}</span>
+              <span className="mb-1 block font-medium text-slate-700">{label}</span>
       <input
         type="number"
         min={0}
@@ -96,6 +97,10 @@ function LimitField({
       />
     </label>
   );
+}
+
+function formatUsd(cents: number) {
+  return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
 }
 
 function PlanEditor({
@@ -109,7 +114,8 @@ function PlanEditor({
   const [draft, setDraft] = useState<PlanDraft>(() => planToDraft(plan));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [open, setOpen] = useState(plan.slug !== "free");
+  const [open, setOpen] = useState(false);
+  const style = adminPlanRowStyle(plan.slug, draft.isActive);
 
   useEffect(() => {
     setDraft(planToDraft(plan));
@@ -158,29 +164,49 @@ function PlanEditor({
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className={`overflow-hidden rounded-2xl border ${style.card}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50/80"
+        className={`flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition ${style.header}`}
       >
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-slate-400">{plan.slug}</span>
-          <span className="text-lg font-bold text-slate-900">{plan.name}</span>
-          {!draft.isActive ? (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
-              {t("inactive")}
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className={`h-10 w-1 shrink-0 rounded-full ${style.accent}`} aria-hidden />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`text-lg font-bold ${style.title}`}>{plan.name}</span>
+              {!draft.isActive ? (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style.inactiveBadge}`}
+                >
+                  {t("inactive")}
+                </span>
+              ) : null}
+            </div>
+            {!open && plan.description ? (
+              <p className={`mt-0.5 truncate text-sm ${style.meta}`}>{plan.description}</p>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-4">
+          {!open ? (
+            <span className={`text-sm font-semibold tabular-nums ${style.price}`}>
+              {formatUsd(plan.priceMonthlyCents)}
+              <span className="font-normal opacity-80">/mês</span>
             </span>
           ) : null}
+          <span className={`text-sm ${style.chevron}`}>{open ? "▲" : "▼"}</span>
         </div>
-        <span className="text-slate-400">{open ? "▲" : "▼"}</span>
       </button>
 
       {open ? (
-        <div className="space-y-6 border-t border-slate-100 px-5 py-5">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <div className={`space-y-6 border-t px-5 py-5 ${style.body}`}>
+          <p className="font-mono text-xs text-slate-400">
+            {t("fieldSlug")}: {plan.slug}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block text-sm sm:col-span-2">
-              <span className="mb-1 block text-slate-600">{t("fieldName")}</span>
+              <span className="mb-1 block font-medium text-slate-700">{t("fieldName")}</span>
               <input
                 value={draft.name}
                 onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
@@ -188,7 +214,7 @@ function PlanEditor({
               />
             </label>
             <label className="block text-sm sm:col-span-2">
-              <span className="mb-1 block text-slate-600">{t("fieldDescription")}</span>
+              <span className="mb-1 block font-medium text-slate-700">{t("fieldDescription")}</span>
               <textarea
                 value={draft.description}
                 onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
@@ -196,7 +222,7 @@ function PlanEditor({
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block text-slate-600">{t("fieldTrialDays")}</span>
+              <span className="mb-1 block font-medium text-slate-700">{t("fieldTrialDays")}</span>
               <input
                 type="number"
                 min={0}
@@ -206,7 +232,7 @@ function PlanEditor({
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block text-slate-600">{t("fieldSortOrder")}</span>
+              <span className="mb-1 block font-medium text-slate-700">{t("fieldSortOrder")}</span>
               <input
                 type="number"
                 min={0}
@@ -215,7 +241,7 @@ function PlanEditor({
                 className="ui-input w-full"
               />
             </label>
-            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-800 sm:col-span-2">
               <input
                 type="checkbox"
                 checked={draft.isActive}
@@ -227,12 +253,12 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-700">
               {t("sectionPricesUsd")}
             </h3>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <label className="block text-sm">
-                <span className="mb-1 block text-slate-600">{t("fieldPriceMonthly")} (USD)</span>
+                <span className="mb-1 block font-medium text-slate-700">{t("fieldPriceMonthly")} (USD)</span>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
                   <input
@@ -243,7 +269,7 @@ function PlanEditor({
                 </div>
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block text-slate-600">{t("fieldPriceYearly")} (USD)</span>
+                <span className="mb-1 block font-medium text-slate-700">{t("fieldPriceYearly")} (USD)</span>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
                   <input
@@ -257,13 +283,13 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-700">
               {t("sectionPricesBrl")}
             </h3>
-            <p className="mb-3 text-xs text-slate-500">{t("sectionPricesBrlHint")}</p>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <p className="mb-3 text-xs text-slate-600">{t("sectionPricesBrlHint")}</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <label className="block text-sm">
-                <span className="mb-1 block text-slate-600">{t("fieldPriceMonthly")} (BRL)</span>
+                <span className="mb-1 block font-medium text-slate-700">{t("fieldPriceMonthly")} (BRL)</span>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">R$</span>
                   <input
@@ -274,7 +300,7 @@ function PlanEditor({
                 </div>
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block text-slate-600">{t("fieldPriceYearly")} (BRL)</span>
+                <span className="mb-1 block font-medium text-slate-700">{t("fieldPriceYearly")} (BRL)</span>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">R$</span>
                   <input
@@ -288,10 +314,10 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-700">
               {t("sectionLimits")}
             </h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <LimitField
                 label={t("limitClients")}
                 value={draft.limits.maxClients}
@@ -361,11 +387,121 @@ function PlanEditor({
   );
 }
 
-export function AdminPlansClient() {
+function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void }) {
   const t = useTranslations("billingAdmin");
-  const [plans, setPlans] = useState<AdminPlan[]>([]);
+  const [open, setOpen] = useState(false);
+  const [slug, setSlug] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/billing/plans", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          slug: slug.trim().toLowerCase(),
+          name: name.trim(),
+          description: description.trim() || null,
+          limits: FREE_LIMITS
+        })
+      });
+      const j = await res.json();
+      if (!j.ok) {
+        setMessage(j.error ?? t("createPlanError"));
+        return;
+      }
+      onCreated(j.plan as AdminPlan);
+      setSlug("");
+      setName("");
+      setDescription("");
+      setOpen(false);
+      setMessage(t("createPlanSuccess"));
+    } catch {
+      setMessage(t("createPlanError"));
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-dashed border-violet-300 bg-violet-50/40">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-lg font-bold text-white">
+            +
+          </span>
+          <div>
+            <p className="font-semibold text-slate-900">{t("createPlanTitle")}</p>
+            <p className="text-xs text-slate-500">{t("createPlanHint")}</p>
+          </div>
+        </div>
+        <span className="text-sm text-violet-600">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open ? (
+        <form onSubmit={submit} className="space-y-4 border-t border-violet-200/60 px-5 pb-5 pt-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-600">{t("fieldSlug")}</span>
+              <input
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                placeholder="meu-plano"
+                required
+                className="ui-input w-full font-mono text-sm"
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-slate-600">{t("fieldName")}</span>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="ui-input w-full"
+              />
+            </label>
+            <label className="block text-sm sm:col-span-2 lg:col-span-1">
+              <span className="mb-1 block text-slate-600">{t("fieldDescription")}</span>
+              <input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="ui-input w-full"
+              />
+            </label>
+          </div>
+          <p className="text-xs text-slate-500">{t("createPlanDefaults")}</p>
+          {message ? (
+            <p className={`text-sm ${message === t("createPlanSuccess") ? "text-emerald-600" : "text-red-600"}`}>
+              {message}
+            </p>
+          ) : null}
+          <button type="submit" disabled={creating} className="ui-btn-primary text-sm">
+            {creating ? t("creatingPlan") : t("createPlanBtn")}
+          </button>
+        </form>
+      ) : message && message === t("createPlanSuccess") ? (
+        <p className="border-t border-violet-200/60 px-5 py-3 text-sm text-emerald-600">{message}</p>
+      ) : null}
+    </div>
+  );
+}
+
+export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] }) {
+  const t = useTranslations("billingAdmin");
+  const hasInitial = initialPlans !== undefined;
+  const [plans, setPlans] = useState<AdminPlan[]>(initialPlans ?? []);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!hasInitial);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -382,13 +518,15 @@ export function AdminPlansClient() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!hasInitial) load();
+  }, [hasInitial, load]);
+
+  if (loading && plans.length === 0) {
+    return <AdminPlansSkeleton />;
+  }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <AdminBillingNav />
-
+    <div className="w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{t("plansTitle")}</h1>
         <p className="mt-1 text-sm text-slate-500">{t("plansSubtitle")}</p>
@@ -403,8 +541,22 @@ export function AdminPlansClient() {
         </div>
       ) : null}
 
+      <CreatePlanForm
+        onCreated={(plan) => {
+          setPlans((prev) => [...prev, plan].sort((a, b) => a.sortOrder - b.sortOrder));
+        }}
+      />
+
       {loading ? (
-        <p className="text-sm text-slate-500">{t("loading")}</p>
+        <div className="space-y-4 opacity-60">
+          {plans.map((plan) => (
+            <PlanEditor
+              key={plan.id}
+              plan={plan}
+              onSaved={(updated) => setPlans((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))}
+            />
+          ))}
+        </div>
       ) : (
         <div className="space-y-4">
           {plans.map((plan) => (

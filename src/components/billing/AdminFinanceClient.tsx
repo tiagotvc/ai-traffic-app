@@ -131,8 +131,8 @@ export function AdminFinanceClient() {
     reload();
   }, [reload]);
 
-  if (loading) return <p className="text-sm text-slate-500">{t("loading")}</p>;
-  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  if (loading) return <p className="w-full text-sm text-slate-500">{t("loading")}</p>;
+  if (error) return <p className="w-full text-sm text-red-600">{error}</p>;
   if (!summary) return null;
 
   const stripeBal = balances?.stripe?.available?.[0];
@@ -144,7 +144,7 @@ export function AdminFinanceClient() {
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{t("financeTitle")}</h1>
         <p className="mt-1 text-sm text-slate-500">{t("financeSubtitle")}</p>

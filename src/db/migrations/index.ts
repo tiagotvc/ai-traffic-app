@@ -18,6 +18,7 @@ import { CouponsAndPlatformRole_1735691400000 } from "./0017-CouponsAndPlatformR
 import { SocialAuthAndGoogleAds_1735691500000 } from "./0018-SocialAuthAndGoogleAds";
 import { InvoiceCurrencyFields_1735691600000 } from "./0019-InvoiceCurrencyFields";
 import { ClientLearnings_1735691700000 } from "./0020-ClientLearnings";
+import { TenantAddons_1735691800000 } from "./0021-TenantAddons";
 import { RankingConfig1735691100000 } from "./0014-RankingConfig";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
@@ -42,5 +43,6 @@ export const appMigrations = [
   CouponsAndPlatformRole_1735691400000,
   SocialAuthAndGoogleAds_1735691500000,
   InvoiceCurrencyFields_1735691600000,
-  ClientLearnings_1735691700000
+  ClientLearnings_1735691700000,
+  TenantAddons_1735691800000
 ];
