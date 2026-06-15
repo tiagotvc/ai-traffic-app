@@ -195,7 +195,8 @@ function buildFilteredSubquery(input: {
           THEN AVG(CASE WHEN s.roas::numeric > 0 THEN s.roas::numeric ELSE NULL END)
           ELSE 0
         END AS roas,
-        MAX(s."campaignStatus") AS campaign_status,
+        (ARRAY_AGG(s."campaignStatus" ORDER BY s.day DESC NULLS LAST)
+          FILTER (WHERE s."campaignStatus" IS NOT NULL))[1] AS campaign_status,
         MAX(s."dailyBudget"::numeric) AS daily_budget
       FROM campaign_metric_snapshots s
       WHERE s."adAccountId" = ANY($1::uuid[])

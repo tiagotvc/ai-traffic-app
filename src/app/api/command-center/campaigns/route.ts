@@ -4,6 +4,7 @@ import { In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
 import { getCampaignPresetsMap, withCampaignPresets } from "@/lib/campaign-preset-store";
+import { filterCampaignRowsByStatus } from "@/lib/campaign-status-filter";
 import { enrichCampaignRowsFromMeta } from "@/lib/campaign-metrics-enrich";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
       tenantId: tenant.id,
       clientIds,
       metaBusinessId,
-      statusFilter,
+      statusFilter: live ? "ALL" : statusFilter,
       q: url.searchParams.get("q") ?? undefined,
       onlyAlerts: url.searchParams.get("onlyAlerts") === "1",
       tag: url.searchParams.get("tag") ?? undefined,
@@ -183,7 +184,10 @@ export async function GET(req: Request) {
       }
     }
 
-    const rows = withCampaignPresets([...byId.values()], presetMap);
+    const rows = withCampaignPresets(
+      filterCampaignRowsByStatus([...byId.values()], statusFilter),
+      presetMap
+    );
 
     return NextResponse.json({
       ok: true,

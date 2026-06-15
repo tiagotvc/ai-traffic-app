@@ -258,7 +258,9 @@ export function CampaignsHubClient() {
       setLoading(true);
       if (!opts?.refresh) setRows([]);
 
-      const live = opts?.live ?? period.preset === "today";
+      const live =
+        opts?.live ??
+        (period.preset === "today" || statusFilter !== "ALL" || objectiveFilter !== "ALL");
       const params = new URLSearchParams(periodStateToQuery(period));
       if (clientFilter) params.set("clientId", clientFilter);
       if (q.trim()) params.set("q", q.trim());

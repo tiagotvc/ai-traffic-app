@@ -4,6 +4,7 @@ import { In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
 import { getCampaignPresetsMap, withCampaignPresets } from "@/lib/campaign-preset-store";
+import { filterCampaignRowsByStatus } from "@/lib/campaign-status-filter";
 import { enrichCampaignRowsFromMeta } from "@/lib/campaign-metrics-enrich";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
@@ -128,12 +129,12 @@ export async function GET(req: Request) {
       });
     }
 
-    // Modo ao vivo (Atualizar): busca mais linhas, enriquece na Meta, pagina depois.
+    // Modo ao vivo: base do banco sem filtro de status (status vem da Meta); filtra depois do merge.
     const cc = await queryCommandCenterCampaigns({
     tenantId: tenant.id,
     clientIds,
     metaBusinessId: scopeClient?.metaBusinessId ?? null,
-    statusFilter,
+    statusFilter: "ALL",
     q: searchQ,
     onlyAlerts,
     hideZeroActivity: !showZero,
@@ -282,6 +283,8 @@ export async function GET(req: Request) {
   if (objectiveRaw === "leads" || objectiveRaw === "sales" || objectiveRaw === "traffic") {
     rows = filterByObjective(rows, objectiveRaw);
   }
+
+  rows = filterCampaignRowsByStatus(rows, statusFilter);
 
   const total = rows.length;
   const totals = {
