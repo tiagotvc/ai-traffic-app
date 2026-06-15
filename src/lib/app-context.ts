@@ -11,6 +11,7 @@ import {
   persistMetaAuth,
   resolveWorkspaceMetaAccessToken
 } from "@/lib/meta-auth-store";
+import { resolveUserForMetaLogin } from "@/lib/account-linking";
 import { resolveTenantName } from "@/lib/tenant-name";
 import { isUuid } from "@/lib/uuid";
 import {
@@ -43,8 +44,14 @@ export async function getAppContext() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const metaProfileId = (session as any).meta?.profileId as string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const facebookId = metaProfileId ?? ((session as any).meta?.profileId as string | undefined);
 
-  let user = await userRepo.findOne({ where: { email } });
+  let user = await resolveUserForMetaLogin(userRepo, {
+    email,
+    name: session.user.name,
+    facebookId
+  });
   let tenant;
 
   const existingMembership = user ? await getUserWorkspaceMembership(user.id) : null;
@@ -110,8 +117,6 @@ export async function getAppContext() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const googleId = (session as any).googleId as string | undefined;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const facebookId = metaProfileId ?? ((session as any).meta?.profileId as string | undefined);
 
   if (user && googleId && user.googleId !== googleId) {
     user.googleId = googleId;
