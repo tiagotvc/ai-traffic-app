@@ -159,9 +159,10 @@ export function CampaignAdsClient({
           const rank = (s?: string) => (s === "ACTIVE" ? 2 : s === "PAUSED" ? 1 : 0);
           aVal = rank(x.status);
           bVal = rank(y.status);
-        } else if (x.metrics && key in (x.metrics as any)) {
-          aVal = Number(x.metrics?.[key] ?? 0);
-          bVal = Number(y.metrics?.[key] ?? 0);
+        } else if (key in METRIC_BY_KEY) {
+          const mk = key as MetricKey;
+          aVal = Number(x.metrics?.[mk] ?? 0);
+          bVal = Number(y.metrics?.[mk] ?? 0);
         } else {
           aVal = String((x as any)[key] ?? "").toLowerCase();
           bVal = String((y as any)[key] ?? "").toLowerCase();
