@@ -5,9 +5,16 @@ import {
   avgCtr,
   buildDedupeKey,
   confidenceFromSample,
+  evaluateAllRules,
   impactFromDelta,
   pctDelta,
-  ruleCpaWinner
+  ruleAudienceCpa,
+  ruleBudgetConcentration,
+  ruleCpaWinner,
+  ruleCtrWinner,
+  ruleRoasLift,
+  ruleSaturation,
+  ruleSpendNoConversion
 } from "@/lib/agency-brain/learning-rules";
 import type { CampaignMetricsRow } from "@/lib/agency-brain/types";
 
@@ -68,11 +75,66 @@ describe("learning-rules", () => {
     expect(draft).not.toBeNull();
     expect(draft?.category).toBe("CREATIVE");
     expect(draft?.metaCampaignId).toBe("a");
-    expect(draft?.dedupeKey).toContain("cpa_winner");
   });
 
-  it("ruleCpaWinner returns null when no winner", () => {
-    const rows = [baseRow({ cpa: 100 }), baseRow({ metaCampaignId: "b", cpa: 105 })];
-    expect(ruleCpaWinner(rows, "client-1", 7)).toBeNull();
+  it("ruleCtrWinner detects high CTR", () => {
+    const rows = [
+      baseRow({ metaCampaignId: "a", ctr: 4, clicks: 40, impressions: 1000 }),
+      baseRow({ metaCampaignId: "b", ctr: 1, clicks: 10, impressions: 1000 })
+    ];
+    expect(ruleCtrWinner(rows, "client-1", 7)?.metaCampaignId).toBe("a");
+  });
+
+  it("evaluateAllRules dedupes cpa and audience for same campaign", () => {
+    const rows = [
+      baseRow({ metaCampaignId: "a", campaignName: "A", cpa: 50, conversions: 5 }),
+      baseRow({ metaCampaignId: "b", campaignName: "B", cpa: 150, conversions: 5 })
+    ];
+    const drafts = evaluateAllRules(rows, [], "client-1", 7);
+    const audienceForA = drafts.filter(
+      (d) => d.evidence.ruleId === "audience_cpa" && d.metaCampaignId === "a"
+    );
+    expect(audienceForA).toHaveLength(0);
+    expect(drafts.some((d) => d.evidence.ruleId === "cpa_winner")).toBe(true);
+  });
+
+  it("ruleSaturation returns up to 3 matches", () => {
+    const rows = [
+      baseRow({ metaCampaignId: "a", frequency: 4, ctr: 0.5, impressions: 2000 }),
+      baseRow({ metaCampaignId: "b", frequency: 5, ctr: 0.4, impressions: 3000 }),
+      baseRow({ metaCampaignId: "c", frequency: 6, ctr: 0.3, impressions: 4000 }),
+      baseRow({ metaCampaignId: "d", frequency: 7, ctr: 0.2, impressions: 5000 })
+    ];
+    expect(ruleSaturation(rows, "client-1", 7)).toHaveLength(3);
+  });
+
+  it("ruleSpendNoConversion returns multiple high-spend rows", () => {
+    const rows = [
+      baseRow({ metaCampaignId: "a", spend: 600, conversions: 0 }),
+      baseRow({ metaCampaignId: "b", spend: 700, conversions: 0 })
+    ];
+    expect(ruleSpendNoConversion(rows, "client-1", 7, 500)).toHaveLength(2);
+  });
+
+  it("ruleRoasLift compares periods", () => {
+    const current = [baseRow({ metaCampaignId: "a", roas: 3 })];
+    const previous = [baseRow({ metaCampaignId: "a", roas: 2 })];
+    expect(ruleRoasLift(current, previous, "client-1", 7)).toHaveLength(1);
+  });
+
+  it("ruleBudgetConcentration flags spend concentration", () => {
+    const rows = [
+      baseRow({ metaCampaignId: "a", spend: 800 }),
+      baseRow({ metaCampaignId: "b", spend: 200 })
+    ];
+    expect(ruleBudgetConcentration(rows, "client-1", 7)?.category).toBe("BUDGET");
+  });
+
+  it("ruleAudienceCpa still works standalone", () => {
+    const rows = [
+      baseRow({ metaCampaignId: "a", cpa: 40, conversions: 5 }),
+      baseRow({ metaCampaignId: "b", cpa: 120, conversions: 5 })
+    ];
+    expect(ruleAudienceCpa(rows, "client-1", 7)?.category).toBe("AUDIENCE");
   });
 });

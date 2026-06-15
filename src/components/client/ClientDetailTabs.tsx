@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 
-export type ClientDetailTab = "overview" | "agency-brain" | "settings";
+export type ClientDetailTab = "overview" | "agency-brain" | "suggestions" | "settings";
 
 export function clientTabHref(tab: ClientDetailTab, clientSlug: string): string {
   switch (tab) {
@@ -12,6 +12,8 @@ export function clientTabHref(tab: ClientDetailTab, clientSlug: string): string 
       return `/clients/${clientSlug}`;
     case "agency-brain":
       return `/clients/${clientSlug}/agency-brain`;
+    case "suggestions":
+      return `/clients/${clientSlug}/suggestions`;
     case "settings":
       return `/clients/${clientSlug}/settings`;
     default:
@@ -31,6 +33,7 @@ export function ClientDetailTabs({
   const tabs: Array<{ id: ClientDetailTab; label: string }> = [
     { id: "overview", label: t("tabOverview") },
     { id: "agency-brain", label: t("tabAgencyBrain") },
+    { id: "suggestions", label: t("tabSuggestions") },
     { id: "settings", label: t("tabSettings") }
   ];
 

@@ -10,6 +10,8 @@ const EXPECTED_ENTITY_COUNT = typeOrmEntities.length;
 declare global {
   // eslint-disable-next-line no-var
   var __appDataSource: DataSource | undefined;
+  // eslint-disable-next-line no-var
+  var __appDataSourceInit: Promise<DataSource> | undefined;
 }
 
 function buildDataSource() {
@@ -53,28 +55,48 @@ export async function getDataSource(): Promise<DataSource> {
     globalThis.__appDataSource = undefined;
   }
 
-  const ds = buildDataSource();
-  await ds.initialize();
-  await runPendingMigrations(ds);
-  globalThis.__appDataSource = ds;
-  return ds;
+  if (globalThis.__appDataSourceInit) {
+    return globalThis.__appDataSourceInit;
+  }
+
+  globalThis.__appDataSourceInit = (async () => {
+    const ds = buildDataSource();
+    await ds.initialize();
+    await runPendingMigrations(ds);
+    globalThis.__appDataSource = ds;
+    return ds;
+  })();
+
+  try {
+    return await globalThis.__appDataSourceInit;
+  } finally {
+    globalThis.__appDataSourceInit = undefined;
+  }
 }
+
+/** Chave estável para serializar migrações entre workers/processos do Next.js dev. */
+const MIGRATION_ADVISORY_LOCK_KEY = 8394721;
 
 /**
  * Aplica migrações pendentes na inicialização, garantindo que o schema acompanhe o
  * código em produção sem depender do build do Vercel (que não roda o db:migrate).
- * Migrações são idempotentes (IF NOT EXISTS) e transacionais. Em caso de falha,
+ * Migrações são idempotentes e transacionais. Em caso de falha,
  * loga e segue — não derruba o app (uma proxima inicialização tenta de novo).
  */
 async function runPendingMigrations(ds: DataSource): Promise<void> {
   try {
-    const applied = await ds.runMigrations({ transaction: "each" });
-    if (applied.length) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[migrations] aplicadas ${applied.length}:`,
-        applied.map((m) => m.name).join(", ")
-      );
+    await ds.query("SELECT pg_advisory_lock($1)", [MIGRATION_ADVISORY_LOCK_KEY]);
+    try {
+      const applied = await ds.runMigrations({ transaction: "each" });
+      if (applied.length) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[migrations] aplicadas ${applied.length}:`,
+          applied.map((m) => m.name).join(", ")
+        );
+      }
+    } finally {
+      await ds.query("SELECT pg_advisory_unlock($1)", [MIGRATION_ADVISORY_LOCK_KEY]);
     }
   } catch (err) {
     // eslint-disable-next-line no-console

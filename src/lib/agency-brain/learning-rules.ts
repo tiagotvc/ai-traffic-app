@@ -199,10 +199,11 @@ export function ruleSaturation(
   rows: CampaignMetricsRow[],
   clientId: string,
   windowDays: number
-): SuggestedLearningDraft | null {
+): SuggestedLearningDraft[] {
+  const drafts: SuggestedLearningDraft[] = [];
   for (const row of rows) {
     if (row.frequency > 3.5 && row.ctr < 1 && row.impressions > 1000) {
-      return {
+      drafts.push({
         title: `Possível saturação em "${row.campaignName}"`,
         description: `Frequência de ${row.frequency.toFixed(1)} com CTR baixo (${row.ctr.toFixed(2)}%). Criativos podem estar saturados — considere renovar.`,
         category: "CREATIVE",
@@ -224,10 +225,10 @@ export function ruleSaturation(
         },
         dedupeKey: buildDedupeKey("saturation", clientId, row.metaCampaignId, windowDays),
         tags: ["saturation", "frequency"]
-      };
+      });
     }
   }
-  return null;
+  return drafts.slice(0, 3);
 }
 
 export function ruleSpendNoConversion(
@@ -235,10 +236,11 @@ export function ruleSpendNoConversion(
   clientId: string,
   windowDays: number,
   spendThreshold = 500
-): SuggestedLearningDraft | null {
+): SuggestedLearningDraft[] {
+  const drafts: SuggestedLearningDraft[] = [];
   for (const row of rows) {
     if (row.spend >= spendThreshold && row.conversions === 0) {
-      return {
+      drafts.push({
         title: `Campanha "${row.campaignName}" com gasto sem conversões`,
         description: `R$ ${row.spend.toFixed(0)} investidos sem conversões no período. Revisar criativo, público ou oferta.`,
         category: "GENERAL",
@@ -255,10 +257,10 @@ export function ruleSpendNoConversion(
         },
         dedupeKey: buildDedupeKey("spend_no_conversion", clientId, row.metaCampaignId, windowDays),
         tags: ["negative", "spend"]
-      };
+      });
     }
   }
-  return null;
+  return drafts.slice(0, 3);
 }
 
 export function ruleRoasLift(
@@ -266,15 +268,16 @@ export function ruleRoasLift(
   previous: CampaignMetricsRow[],
   clientId: string,
   windowDays: number
-): SuggestedLearningDraft | null {
+): SuggestedLearningDraft[] {
   const prevMap = new Map(previous.map((r) => [r.metaCampaignId, r]));
+  const drafts: SuggestedLearningDraft[] = [];
 
   for (const row of current) {
     const prev = prevMap.get(row.metaCampaignId);
     if (!prev || prev.roas <= 0 || row.roas <= 0) continue;
     const delta = pctDelta(row.roas, prev.roas);
     if (delta >= 20) {
-      return {
+      drafts.push({
         title: `ROAS em alta em "${row.campaignName}"`,
         description: `ROAS subiu ${delta.toFixed(0)}% vs período anterior (${prev.roas.toFixed(2)} → ${row.roas.toFixed(2)}). Mudança recente pode estar funcionando.`,
         category: "CREATIVE",
@@ -296,10 +299,41 @@ export function ruleRoasLift(
         },
         dedupeKey: buildDedupeKey("roas_lift", clientId, row.metaCampaignId, windowDays),
         tags: ["roas", "lift"]
-      };
+      });
     }
   }
-  return null;
+  return drafts.slice(0, 3);
+}
+
+export function ruleBudgetConcentration(
+  rows: CampaignMetricsRow[],
+  clientId: string,
+  windowDays: number
+): SuggestedLearningDraft | null {
+  const totalSpend = rows.reduce((s, r) => s + r.spend, 0);
+  if (totalSpend <= 0 || rows.length < 2) return null;
+
+  const top = [...rows].sort((a, b) => b.spend - a.spend)[0];
+  if (!top || top.spend / totalSpend < 0.6) return null;
+
+  return {
+    title: `Orçamento concentrado em "${top.campaignName}"`,
+    description: `${((top.spend / totalSpend) * 100).toFixed(0)}% do spend do cliente está nesta campanha. Avalie diversificação ou escala consciente.`,
+    category: "BUDGET",
+    impact: "MEDIUM",
+    confidence: "MEDIUM",
+    metaCampaignId: top.metaCampaignId,
+    metricSnapshot: { spend: top.spend, periodDays: windowDays },
+    evidence: {
+      ruleId: "budget_concentration",
+      reason: "Single campaign holds 60%+ of client spend",
+      actualValue: top.spend,
+      metaCampaignId: top.metaCampaignId,
+      campaignName: top.campaignName
+    },
+    dedupeKey: buildDedupeKey("budget_concentration", clientId, top.metaCampaignId, windowDays),
+    tags: ["budget", "concentration"]
+  };
 }
 
 export function evaluateAllRules(
@@ -309,13 +343,41 @@ export function evaluateAllRules(
   windowDays: number,
   spendThreshold?: number
 ): SuggestedLearningDraft[] {
-  const rules = [
-    ruleCpaWinner(current, clientId, windowDays),
-    ruleCtrWinner(current, clientId, windowDays),
-    ruleAudienceCpa(current, clientId, windowDays),
-    ruleSaturation(current, clientId, windowDays),
-    ruleSpendNoConversion(current, clientId, windowDays, spendThreshold),
-    ruleRoasLift(current, previous, clientId, windowDays)
+  const cpaWinner = ruleCpaWinner(current, clientId, windowDays);
+  const audienceCpa = ruleAudienceCpa(current, clientId, windowDays);
+
+  const usedCampaigns = new Set<string>();
+  const singles: SuggestedLearningDraft[] = [];
+
+  if (cpaWinner) {
+    singles.push(cpaWinner);
+    usedCampaigns.add(cpaWinner.metaCampaignId ?? "");
+  } else if (audienceCpa) {
+    singles.push(audienceCpa);
+    usedCampaigns.add(audienceCpa.metaCampaignId ?? "");
+  }
+
+  const ctrWinner = ruleCtrWinner(current, clientId, windowDays);
+  if (ctrWinner && !usedCampaigns.has(ctrWinner.metaCampaignId ?? "")) {
+    singles.push(ctrWinner);
+  }
+
+  const budget = ruleBudgetConcentration(current, clientId, windowDays);
+  if (budget) singles.push(budget);
+
+  const multi = [
+    ...ruleSaturation(current, clientId, windowDays),
+    ...ruleSpendNoConversion(current, clientId, windowDays, spendThreshold),
+    ...ruleRoasLift(current, previous, clientId, windowDays)
   ];
-  return rules.filter((r): r is SuggestedLearningDraft => r !== null);
+
+  const seen = new Set(singles.map((d) => d.dedupeKey));
+  for (const draft of multi) {
+    if (!seen.has(draft.dedupeKey)) {
+      seen.add(draft.dedupeKey);
+      singles.push(draft);
+    }
+  }
+
+  return singles;
 }

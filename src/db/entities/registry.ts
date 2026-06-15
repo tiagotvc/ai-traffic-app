@@ -46,6 +46,7 @@ import { DiscountCoupon } from "./DiscountCoupon";
 import { CouponRedemption } from "./CouponRedemption";
 import { GoogleAuth } from "./GoogleAuth";
 import { ClientLearning } from "./ClientLearning";
+import { ClientActionSuggestion } from "./ClientActionSuggestion";
 import { TenantAddon } from "./TenantAddon";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
@@ -94,6 +95,7 @@ export {
   CouponRedemption,
   GoogleAuth,
   ClientLearning,
+  ClientActionSuggestion,
   TenantAddon
 };
 
@@ -107,6 +109,11 @@ export type {
   LearningSource,
   LearningStatus
 } from "./ClientLearning";
+export type {
+  ActionSuggestionType,
+  ActionSuggestionSource,
+  ActionSuggestionStatus
+} from "./ClientActionSuggestion";
 
 stabilizeTypeOrmEntityNames([
   { ctor: Tenant, name: "Tenant" },
@@ -153,6 +160,7 @@ stabilizeTypeOrmEntityNames([
   { ctor: CouponRedemption, name: "CouponRedemption" },
   { ctor: GoogleAuth, name: "GoogleAuth" },
   { ctor: ClientLearning, name: "ClientLearning" },
+  { ctor: ClientActionSuggestion, name: "ClientActionSuggestion" },
   { ctor: TenantAddon, name: "TenantAddon" }
 ]);
 
@@ -201,5 +209,6 @@ export const typeOrmEntities = [
   CouponRedemption,
   GoogleAuth,
   ClientLearning,
+  ClientActionSuggestion,
   TenantAddon
 ] as const;
