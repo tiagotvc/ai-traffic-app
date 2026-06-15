@@ -3,9 +3,11 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
+import { CreativesAccessWarningBanner } from "@/components/creatives/CreativesAccessWarningBanner";
 import { Badge } from "@/components/ui/Badge";
 import { type MetricKey, METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
+import type { CreativeAccessWarning } from "@/lib/creatives-access-types";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativeCardGrid, type CreativeItem } from "@/components/creatives/CreativeCardGrid";
 
@@ -32,24 +34,27 @@ export function CreativesRankingView({
   const tMetrics = useTranslations("metrics");
   const tPresets = useTranslations("campaignPresets");
   const [groups, setGroups] = useState<Group[]>([]);
-  const [warnings, setWarnings] = useState<
-    Array<{ account: string; label: string; needsReconnect?: boolean; reason?: string | null }>
-  >([]);
-  const [loading, setLoading] = useState(false);
+  const [warnings, setWarnings] = useState<CreativeAccessWarning[]>([]);
+  const [partialData, setPartialData] = useState(false);
+  const [dataSource, setDataSource] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [expandedZero, setExpandedZero] = useState<Record<string, boolean>>({});
 
   const load = useCallback(() => {
     if (!clientId) {
       setGroups([]);
+      setLoading(false);
       return;
     }
     setLoading(true);
     fetch(`/api/creatives/performance?clientId=${encodeURIComponent(clientId)}&${periodQuery}`)
-      .then((r) => r.json())
-      .then((j) => {
+      .then(async (r) => {
+        const j = await r.json();
         if (j.ok) {
           setGroups(j.groups ?? []);
           setWarnings(j.warnings ?? []);
+          setPartialData(Boolean(j.partialData));
+          setDataSource(j.dataSource ?? r.headers.get("X-Data-Source"));
         }
       })
       .catch(() => {})
@@ -69,15 +74,16 @@ export function CreativesRankingView({
     return <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />;
   }
 
-  const banner =
-    warnings.length > 0 ? (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        <p className="font-medium">{t("accessWarningTitle")}</p>
-        <p className="mt-0.5 text-xs">
-          {t("accessWarningBody")} {warnings.map((w) => w.label).join(", ")}
-        </p>
-      </div>
-    ) : null;
+  const banner = (
+    <>
+      {dataSource === "cached" || dataSource === "mixed" ? (
+        <div className="flex justify-end">
+          <Badge variant="neutral">{t("dataCached")}</Badge>
+        </div>
+      ) : null}
+      <CreativesAccessWarningBanner warnings={warnings} partialData={partialData} />
+    </>
+  );
 
   if (!groups.length) {
     return (

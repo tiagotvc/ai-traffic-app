@@ -8,7 +8,8 @@ export function isBrBillingMode(
   provider?: PaymentProvider | null
 ): boolean {
   if (provider === "asaas") return true;
-  return (locale ?? "").startsWith("pt") || provider !== "stripe";
+  if (provider === "stripe") return false;
+  return (locale ?? "").startsWith("pt");
 }
 
 export function resolveBillingCurrency(
@@ -16,7 +17,8 @@ export function resolveBillingCurrency(
   provider?: PaymentProvider | null
 ): BillingCurrency {
   if (provider === "stripe") return "USD";
-  return "BRL";
+  if (provider === "asaas") return "BRL";
+  return (locale ?? "").startsWith("pt") ? "BRL" : "USD";
 }
 
 export function resolvePlanMonthlyCents(
@@ -29,10 +31,20 @@ export function resolvePlanMonthlyCents(
   return plan.priceMonthlyCents;
 }
 
+export function resolveStripePriceId(
+  plan: { externalPrices?: ExternalPrices | null },
+  cycle: BillingCycle
+): string | null {
+  const stripe = plan.externalPrices?.stripe;
+  if (!stripe) return null;
+  return cycle === "yearly" ? stripe.priceIdYearly ?? null : stripe.priceIdMonthly ?? null;
+}
+
 /** Centavos de lista antes dos descontos de checkout. */
 export function planListCents(
   plan: {
     priceMonthlyCents: number;
+    priceYearlyCents?: number;
     externalPrices?: ExternalPrices | null;
   },
   cycle: BillingCycle,
@@ -40,6 +52,9 @@ export function planListCents(
 ): number {
   if (cycle === "yearly" && currency === "BRL" && plan.externalPrices?.asaas?.yearlyCents != null) {
     return plan.externalPrices.asaas.yearlyCents;
+  }
+  if (cycle === "yearly" && plan.priceYearlyCents != null && plan.priceYearlyCents > 0) {
+    return plan.priceYearlyCents;
   }
   const monthly = resolvePlanMonthlyCents(plan, currency);
   return cycle === "yearly" ? monthly * 12 : monthly;

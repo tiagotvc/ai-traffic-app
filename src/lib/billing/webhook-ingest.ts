@@ -54,7 +54,12 @@ function mapEventToJobType(eventType: string, provider: string): string | null {
   if (t.includes("OVERDUE") || t === "INVOICE.PAYMENT_FAILED") {
     return "payment_overdue";
   }
-  if (t.includes("SUBSCRIPTION_DELETED") || t === "CUSTOMER.SUBSCRIPTION.DELETED") {
+  if (
+    t.includes("SUBSCRIPTION_DELETED") ||
+    t === "CUSTOMER.SUBSCRIPTION.DELETED" ||
+    t === "CUSTOMER.SUBSCRIPTION.UPDATED"
+  ) {
+    if (t === "CUSTOMER.SUBSCRIPTION.UPDATED") return null;
     return "subscription_canceled";
   }
   return null;
@@ -89,21 +94,53 @@ async function buildJobPayload(event: WebhookEvent): Promise<Record<string, unkn
   if (event.provider === "stripe") {
     const obj = p;
     const customerId = (obj.customer as string) ?? null;
-    const tenantId = customerId ? await resolveTenantFromStripeCustomer(customerId) : null;
+    const tenantIdFromCustomer = customerId
+      ? await resolveTenantFromStripeCustomer(customerId)
+      : null;
     const metadata = (obj.metadata as Record<string, string>) ?? {};
-    const { plan: planRepo } = await repositories();
+    const { plan: planRepo, invoice: invRepo } = await repositories();
+
+    const paymentId =
+      (obj.payment_intent as string) ??
+      (obj.id as string | undefined);
+
+    let inv =
+      paymentId
+        ? await invRepo.findOne({ where: { externalPaymentId: paymentId } })
+        : null;
+    if (!inv && obj.id) {
+      inv = await invRepo.findOne({ where: { externalPaymentId: obj.id as string } });
+    }
+
     const fallbackPlan = metadata.planId
       ? await planRepo.findOne({ where: { id: metadata.planId } })
       : null;
+
+    const amountCents = obj.amount_total
+      ? Number(obj.amount_total)
+      : obj.amount_paid
+        ? Number(obj.amount_paid)
+        : inv?.amountCents;
+
+    const taxCents =
+      obj.total_details && typeof obj.total_details === "object"
+        ? Number((obj.total_details as { tax_amount?: number }).tax_amount ?? 0)
+        : undefined;
+
     return {
-      tenantId: metadata.tenantId ?? tenantId,
-      planId: metadata.planId ?? fallbackPlan?.id,
+      tenantId: metadata.tenantId ?? tenantIdFromCustomer ?? inv?.tenantId,
+      invoiceId: inv?.id,
+      planId: metadata.planId ?? inv?.planId ?? fallbackPlan?.id,
       provider: "stripe",
       externalCustomerId: customerId,
-      externalSubscriptionId: (obj.subscription as string) ?? (obj.id as string),
-      billingCycle: metadata.billingCycle ?? "monthly",
-      amountCents: obj.amount_total ? Number(obj.amount_total) : undefined,
-      paymentId: obj.payment_intent as string | undefined
+      externalSubscriptionId:
+        (obj.subscription as string) ?? (obj.subscription_id as string) ?? null,
+      billingCycle: metadata.billingCycle ?? inv?.billingCycle ?? "monthly",
+      amountCents,
+      taxCents,
+      currency: (obj.currency as string)?.toUpperCase() ?? inv?.currency ?? "USD",
+      paymentId,
+      checkoutSessionId: obj.object === "checkout.session" ? (obj.id as string) : undefined
     };
   }
 

@@ -131,6 +131,11 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
       inv.status = "paid";
       inv.paidAt = new Date();
       if (paymentId) inv.externalPaymentId = paymentId;
+      if (payload.currency && typeof payload.currency === "string") {
+        inv.currency = payload.currency.toUpperCase();
+      }
+      if (typeof payload.amountCents === "number") inv.amountCents = payload.amountCents;
+      if (typeof payload.taxCents === "number") inv.taxCents = payload.taxCents;
       if (provider === "asaas") inv.nfStatus = "pending";
       await invRepo.save(inv);
 
@@ -170,6 +175,7 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
         provider,
         externalPaymentId: paymentId,
         amountCents: amountCents ?? 0,
+        currency: (payload.currency as string)?.toUpperCase() ?? (provider === "stripe" ? "USD" : "BRL"),
         status: "paid",
         paidAt: new Date(),
         nfStatus: provider === "asaas" ? "pending" : "not_applicable",

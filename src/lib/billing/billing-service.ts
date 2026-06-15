@@ -1,12 +1,14 @@
 import "server-only";
 
 import { repositories } from "@/db/repositories";
-import type { BillingCycle } from "./types";
+import type { BillingCycle, PaymentProvider } from "./types";
 import { getBillingProvider } from "./providers";
-import { planListCents, resolvePlanMonthlyCents } from "./currency";
+import { planListCents, resolvePlanMonthlyCents, resolveStripePriceId } from "./currency";
 import { calculateCheckoutPricing } from "./pricing";
 import { localDatePlusDays } from "./dates";
 import { validateCouponForCheckout } from "./coupons";
+import { createStripeCheckoutSession } from "@/lib/stripe/checkout";
+import { getAppBaseUrl } from "@/lib/app-url";
 
 export async function getOrCreateBillingCustomer(
   tenantId: string,
@@ -20,7 +22,8 @@ export async function getOrCreateBillingCustomer(
     addressNumber?: string;
     city?: string;
     state?: string;
-  }
+  },
+  provider: PaymentProvider = "asaas"
 ) {
   const { billingCustomer: repo } = await repositories();
   let row = await repo.findOne({ where: { tenantId } });
@@ -29,15 +32,34 @@ export async function getOrCreateBillingCustomer(
       tenantId,
       name: input.name,
       email: input.email,
-      preferredProvider: "asaas"
+      preferredProvider: provider
     });
   }
-  Object.assign(row, { ...input, preferredProvider: "asaas" });
-  await repo.save(row);
 
-  const provider = getBillingProvider("asaas");
-  if (!row.asaasCustomerId) {
-    const ext = await provider.createCustomer({
+  row.name = input.name;
+  row.email = input.email;
+  if (input.cpfCnpj) row.cpfCnpj = input.cpfCnpj;
+  if (input.phone) row.phone = input.phone;
+  if (input.postalCode) row.postalCode = input.postalCode;
+  if (input.address) row.address = input.address;
+  if (input.addressNumber) row.addressNumber = input.addressNumber;
+  if (input.city) row.city = input.city;
+  if (input.state) row.state = input.state;
+  row.preferredProvider = provider;
+
+  const billingProvider = getBillingProvider(provider);
+
+  if (provider === "stripe" && !row.stripeCustomerId) {
+    const ext = await billingProvider.createCustomer({
+      name: input.name,
+      email: input.email,
+      metadata: { tenantId }
+    });
+    row.stripeCustomerId = ext.id;
+  }
+
+  if (provider === "asaas" && !row.asaasCustomerId && input.cpfCnpj) {
+    const ext = await billingProvider.createCustomer({
       name: input.name,
       email: input.email,
       cpfCnpj: input.cpfCnpj,
@@ -49,9 +71,97 @@ export async function getOrCreateBillingCustomer(
       state: input.state
     });
     row.asaasCustomerId = ext.id;
-    await repo.save(row);
   }
+
+  await repo.save(row);
   return row;
+}
+
+export async function assertNoConflictingSubscription(
+  tenantId: string,
+  targetProvider: PaymentProvider
+) {
+  const { subscription: subRepo, plan: planRepo } = await repositories();
+  const sub = await subRepo.findOne({ where: { tenantId } });
+  if (!sub || sub.status !== "active") return;
+  const plan = await planRepo.findOne({ where: { id: sub.planId } });
+  if (!plan || plan.slug === "free") return;
+  if (sub.paymentProvider && sub.paymentProvider !== targetProvider) {
+    throw new Error(
+      targetProvider === "stripe"
+        ? "Assinatura ativa via Asaas. Cancele ou use o checkout Brasil."
+        : "Assinatura ativa via Stripe. Cancele ou use o checkout internacional."
+    );
+  }
+}
+
+export async function startStripeCheckout(input: {
+  tenantId: string;
+  planId: string;
+  cycle: BillingCycle;
+  locale: string;
+  customer: { name: string; email: string };
+}) {
+  const { plan: planRepo, invoice: invRepo } = await repositories();
+  const plan = await planRepo.findOne({ where: { id: input.planId, isActive: true } });
+  if (!plan || plan.slug === "free") throw new Error("Invalid plan");
+
+  await assertNoConflictingSubscription(input.tenantId, "stripe");
+
+  const priceId = resolveStripePriceId(plan, input.cycle);
+  if (!priceId) throw new Error("Stripe price not configured for this plan");
+
+  const billingCustomer = await getOrCreateBillingCustomer(input.tenantId, input.customer, "stripe");
+  if (!billingCustomer.stripeCustomerId) throw new Error("Stripe customer not created");
+
+  const base = getAppBaseUrl();
+  const localeSeg = input.locale.replace(/^\//, "");
+  const successUrl = `${base}/${localeSeg}/billing?checkout=success`;
+  const cancelUrl = `${base}/${localeSeg}/billing/checkout?plan=${plan.id}`;
+
+  const metadata = {
+    tenantId: input.tenantId,
+    planId: plan.id,
+    billingCycle: input.cycle
+  };
+
+  const session = await createStripeCheckoutSession({
+    customerId: billingCustomer.stripeCustomerId,
+    priceId,
+    successUrl,
+    cancelUrl,
+    metadata,
+    idempotencyKey: `checkout:${input.tenantId}:${plan.id}:${input.cycle}`
+  });
+
+  if (!session.url) throw new Error("Stripe checkout URL missing");
+
+  const amountCents =
+    input.cycle === "yearly" && plan.priceYearlyCents > 0
+      ? plan.priceYearlyCents
+      : plan.priceMonthlyCents;
+
+  const inv = await invRepo.save(
+    invRepo.create({
+      tenantId: input.tenantId,
+      planId: plan.id,
+      provider: "stripe",
+      externalPaymentId: session.id,
+      amountCents,
+      currency: "USD",
+      status: "pending",
+      billingCycle: input.cycle,
+      nfStatus: "not_applicable",
+      description: `Traffic AI ${plan.name}`
+    })
+  );
+
+  return {
+    checkoutUrl: session.url,
+    invoiceId: inv.id,
+    plan,
+    amountCents
+  };
 }
 
 export async function startCheckout(input: {
@@ -79,6 +189,8 @@ export async function startCheckout(input: {
   const { plan: planRepo, invoice: invRepo } = await repositories();
   const plan = await planRepo.findOne({ where: { id: input.planId, isActive: true } });
   if (!plan || plan.slug === "free") throw new Error("Invalid plan");
+
+  await assertNoConflictingSubscription(input.tenantId, "asaas");
 
   const billingType = input.billingType ?? "PIX";
   const currency = "BRL";
@@ -110,9 +222,10 @@ export async function startCheckout(input: {
   const amountCents = pricing.finalCents;
   if (amountCents <= 0) throw new Error("Plan has no price");
 
-  const billingCustomer = await getOrCreateBillingCustomer(input.tenantId, input.customer);
+  const billingCustomer = await getOrCreateBillingCustomer(input.tenantId, input.customer, "asaas");
   const provider = getBillingProvider("asaas");
   const customerId = billingCustomer.asaasCustomerId!;
+  if (!customerId) throw new Error("Asaas customer not created");
 
   const description = `Traffic AI ${plan.name} (${input.cycle}${pricing.discountPercent ? ` -${pricing.discountPercent}%` : ""})`;
 
@@ -173,6 +286,7 @@ export async function startCheckout(input: {
       provider: "asaas",
       externalPaymentId: result.paymentId ?? null,
       amountCents,
+      currency: "BRL",
       status: "pending",
       billingType,
       billingCycle: input.cycle,

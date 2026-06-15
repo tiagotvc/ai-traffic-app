@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 
 import { ClientMetaExtras } from "@/components/ClientMetaExtras";
 import { ClientReadinessChecklist } from "@/components/ClientReadinessChecklist";
+import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatBRL, formatRoas } from "@/lib/format";
@@ -179,6 +180,15 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
   }
 
   return (
+    <div className="space-y-4">
+      <div>
+        <Link href="/clients" className="text-xs font-medium text-slate-500 hover:text-slate-700">
+          ← Clientes
+        </Link>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{data.name}</h1>
+      </div>
+      <ClientDetailTabs clientSlug={clientId} activeTab="settings" />
+
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       {feedback ? (
         <div
@@ -509,6 +519,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
           </Link>
         </div>
       </aside>
+    </div>
     </div>
   );
 }

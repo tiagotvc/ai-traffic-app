@@ -203,4 +203,6 @@ export async function processSyncQueue(input: {
   await runAlertEngine(input.tenantId, campaignMeta);
   const { runAutomationEngine } = await import("@/lib/automation-engine");
   await runAutomationEngine(input.tenantId, input.metaAccessToken, campaignMeta);
+  const { runLearningSuggestions } = await import("@/lib/agency-brain/learning-suggestion-service");
+  await runLearningSuggestions(input.tenantId);
 }

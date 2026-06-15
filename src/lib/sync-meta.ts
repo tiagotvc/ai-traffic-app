@@ -183,5 +183,7 @@ export async function runMetaSync(input: {
 
   await runAlertEngine(input.tenantId, campaignMeta);
   await runAutomationEngine(input.tenantId, input.metaAccessToken, campaignMeta);
+  const { runLearningSuggestions } = await import("@/lib/agency-brain/learning-suggestion-service");
+  await runLearningSuggestions(input.tenantId);
   return { accountsSynced: accounts.length };
 }

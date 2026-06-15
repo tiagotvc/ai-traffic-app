@@ -28,5 +28,9 @@ export class Client extends AppBaseEntity {
   /** Business Manager principal deste cliente (filtra contas/páginas no app) */
   @Column({ type: "text", nullable: true })
   metaBusinessId?: string | null;
+
+  /** Google Ads customer ID (integração futura) */
+  @Column({ type: "text", nullable: true })
+  googleAdsCustomerId?: string | null;
 }
 

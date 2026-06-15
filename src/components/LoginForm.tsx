@@ -5,16 +5,17 @@ import { useActionState, useState } from "react";
 
 import {
   loginWithCredentials,
-  loginWithFacebook,
   registerWithCredentials,
   type AuthFormState
 } from "@/app/[locale]/(auth)/login/actions";
+import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 
 const initialState: AuthFormState = {};
 
 export function LoginForm({
   locale,
   callbackUrl,
+  googleOAuthConfigured,
   metaOAuthConfigured,
   switchAccount = false,
   currentUserEmail = null,
@@ -22,6 +23,7 @@ export function LoginForm({
 }: {
   locale: string;
   callbackUrl: string;
+  googleOAuthConfigured: boolean;
   metaOAuthConfigured: boolean;
   switchAccount?: boolean;
   currentUserEmail?: string | null;
@@ -41,9 +43,10 @@ export function LoginForm({
   const error = mode === "login" ? loginState.error : registerState.error;
   const pending = mode === "login" ? loginPending : registerPending;
   const showSwitchBanner = switchAccount && currentUserEmail;
+  const hasSocial = googleOAuthConfigured || metaOAuthConfigured;
 
   return (
-    <div className="ui-card p-6 shadow-cardHover">
+    <div className="w-full">
       {showSwitchBanner ? (
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <div className="font-semibold">{t("switchAccountTitle")}</div>
@@ -52,12 +55,14 @@ export function LoginForm({
         </div>
       ) : null}
 
-      <div className="flex gap-1 rounded-xl border border-surface-line bg-slate-50 p-1 text-xs">
+      <div className="flex gap-1 rounded-2xl border border-slate-200/80 bg-slate-100/80 p-1 text-xs shadow-inner">
         <button
           type="button"
           onClick={() => setMode("login")}
-          className={`flex-1 rounded-lg px-2 py-1.5 font-medium ${
-            mode === "login" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+          className={`flex-1 rounded-xl px-3 py-2 font-semibold transition ${
+            mode === "login"
+              ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80"
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
           {t("tabLogin")}
@@ -65,18 +70,20 @@ export function LoginForm({
         <button
           type="button"
           onClick={() => setMode("register")}
-          className={`flex-1 rounded-lg px-2 py-1.5 font-medium ${
-            mode === "register" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+          className={`flex-1 rounded-xl px-3 py-2 font-semibold transition ${
+            mode === "register"
+              ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80"
+              : "text-slate-500 hover:text-slate-700"
           }`}
         >
           {t("tabRegister")}
         </button>
       </div>
 
-      <div className="mt-3 text-lg font-semibold">
+      <div className="mt-6 text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.75rem]">
         {mode === "login" ? t("loginTitle") : t("registerTitle")}
       </div>
-      <div className="mt-1 text-sm text-slate-500">
+      <div className="mt-2 text-sm leading-relaxed text-slate-500">
         {mode === "login" ? t("loginSubtitle") : t("registerSubtitle")}
       </div>
 
@@ -100,8 +107,24 @@ export function LoginForm({
         </div>
       ) : null}
 
+      {hasSocial ? (
+        <div className="mt-4">
+          <SocialLoginButtons
+            locale={locale}
+            callbackUrl={callbackUrl}
+            googleConfigured={googleOAuthConfigured}
+            metaConfigured={metaOAuthConfigured}
+          />
+          <div className="my-5 flex items-center gap-3 text-xs text-slate-400">
+            <div className="h-px flex-1 bg-slate-200" />
+            {t("orEmail")}
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+        </div>
+      ) : null}
+
       {mode === "login" ? (
-        <form action={loginAction} className="mt-4 space-y-3">
+        <form action={loginAction} className="space-y-3">
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
           {showSwitchBanner ? <input type="hidden" name="switchAccount" value="1" /> : null}
@@ -115,13 +138,13 @@ export function LoginForm({
           <button
             type="submit"
             disabled={pending}
-            className="ui-btn-primary w-full disabled:opacity-60"
+            className="ui-btn-primary mt-1 w-full py-2.5 text-sm font-semibold disabled:opacity-60"
           >
             {pending ? t("signingIn") : t("signIn")}
           </button>
         </form>
       ) : (
-        <form action={registerAction} className="mt-4 space-y-3">
+        <form action={registerAction} className="space-y-3">
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
           <Field label={t("name")} name="name" type="text" autoComplete="name" />
@@ -136,53 +159,14 @@ export function LoginForm({
           <button
             type="submit"
             disabled={pending}
-            className="ui-btn-primary w-full disabled:opacity-60"
+            className="ui-btn-primary mt-1 w-full py-2.5 text-sm font-semibold disabled:opacity-60"
           >
             {pending ? t("creatingAccount") : t("createAccount")}
           </button>
         </form>
       )}
 
-      <div className="my-4 flex items-center gap-3 text-xs text-slate-500">
-        <div className="h-px flex-1 bg-surface-line" />
-        {t("orFacebook")}
-        <div className="h-px flex-1 bg-surface-line" />
-      </div>
-
-      {metaOAuthConfigured ? (
-        <form action={loginWithFacebook}>
-          <input type="hidden" name="locale" value={locale} />
-          <input
-            type="hidden"
-            name="callbackUrl"
-            value={callbackUrl || `/${locale}/onboarding/meta`}
-          />
-          <button type="submit" className="ui-btn-primary w-full">
-            {t("loginButtonRecommended")}
-          </button>
-          <p className="mt-2 text-center text-[11px] text-violet-700">{t("loginFacebookHint")}</p>
-        </form>
-      ) : (
-        <button
-          type="button"
-          disabled
-          className="ui-btn-secondary w-full cursor-not-allowed opacity-60"
-        >
-          {t("loginButton")}
-        </button>
-      )}
-
-      <div className="mt-3 text-xs text-slate-500">
-        {t("loginScopesExtended", {
-          adsRead: t("adsRead"),
-          adsManagement: t("adsManagement"),
-          businessManagement: t("businessManagement"),
-          pagesShowList: t("pagesShowList")
-        })}
-      </div>
-      <p className="mt-2 text-[11px] text-slate-500">
-        {metaOAuthConfigured ? t("metaOptionalHint") : t("metaNotConfiguredHint")}
-      </p>
+      <p className="mt-2 text-[11px] text-slate-400">{t("metaConnectLaterHint")}</p>
     </div>
   );
 }

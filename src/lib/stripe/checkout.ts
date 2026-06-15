@@ -6,19 +6,27 @@ export async function createStripeCheckoutSession(input: {
   successUrl: string;
   cancelUrl: string;
   metadata?: Record<string, string>;
+  idempotencyKey?: string;
 }) {
   const stripe = getStripeClient();
-  return stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: input.customerId,
-    line_items: [{ price: input.priceId, quantity: 1 }],
-    success_url: input.successUrl,
-    cancel_url: input.cancelUrl,
-    metadata: input.metadata,
-    subscription_data: {
-      metadata: input.metadata
-    }
-  });
+  return stripe.checkout.sessions.create(
+    {
+      mode: "subscription",
+      customer: input.customerId,
+      line_items: [{ price: input.priceId, quantity: 1 }],
+      success_url: input.successUrl,
+      cancel_url: input.cancelUrl,
+      automatic_tax: { enabled: true },
+      customer_update: { address: "auto" },
+      tax_id_collection: { enabled: true },
+      excluded_payment_method_types: ["pix", "boleto"],
+      metadata: input.metadata,
+      subscription_data: {
+        metadata: input.metadata
+      }
+    },
+    input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined
+  );
 }
 
 export async function createStripeBillingPortalSession(input: {

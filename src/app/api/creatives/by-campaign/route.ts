@@ -4,10 +4,7 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { type AdInsightMetrics, type CreativeAssetType } from "@/lib/meta-graph";
-import {
-  fetchAdsForAccountAnyToken,
-  fetchInsightsForAccountAnyToken
-} from "@/lib/creatives-data";
+import { fetchAllAccountCreatives } from "@/lib/creatives-access";
 import { type MetricKey } from "@/lib/dashboard-metrics";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
 import { compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
@@ -78,6 +75,7 @@ export async function GET(req: Request) {
 
   const adAccountId = url.searchParams.get("adAccountId");
   const debug = url.searchParams.get("debug") === "1";
+  const skipCache = url.searchParams.get("refresh") === "1";
   const { adAccount: adAccountRepo, campaignPreset: presetRepo } = await repositories();
   let accounts = await adAccountRepo.find({ where: { clientId: client.id } });
   if (adAccountId) {
@@ -90,49 +88,23 @@ export async function GET(req: Request) {
   const rankConfig = await loadRankConfig(tenant.id);
 
   const byCampaign = new Map<string, CampAgg>();
-  const diag: Array<Record<string, unknown>> = [];
-  const warnings: Array<{
-    account: string;
-    label: string;
-    needsReconnect: boolean;
-    reason: string | null;
-  }> = [];
 
-  // Caminho ÚNICO: chamada a nível de conta. Conta recusada (sem permissão)
-  // é marcada para reconexão — sem fallback lento campanha-por-campanha.
-  for (const acc of accounts) {
-    const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
-    const ads = accRes.ok ? accRes.ads : [];
-    const insights: Map<string, AdInsightMetrics> =
-      accRes.ok && ads.length
-        ? await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
-            since: period.since,
-            until: period.until
-          })
-        : new Map();
-    if (!accRes.ok) {
-      const reason = accRes.lastError ?? null;
-      const needsReconnect = /#200|ads_management|ads_read|permission/i.test(reason ?? "");
-      warnings.push({
-        account: acc.metaAdAccountId,
-        label: acc.label ?? acc.metaAdAccountId,
-        needsReconnect,
-        reason
-      });
-    }
-    if (debug) {
-      diag.push({
-        account: acc.metaAdAccountId,
-        label: acc.label ?? null,
-        ok: accRes.ok,
-        needsReconnect: !accRes.ok,
-        tokenErrors: accRes.errors,
-        accountError: accRes.lastError ?? null,
-        adsTotal: ads.length,
-        adsActiveCampaign: ads.filter((a) => a.campaignStatus === "ACTIVE").length
-      });
-    }
+  const { results: perAccount, warnings, partialData, dataSource } =
+    await fetchAllAccountCreatives(accounts, {
+      tokens,
+      since: period.since,
+      until: period.until,
+      tenantId: tenant.id,
+      clientId: client.id,
+      skipCache,
+      debug
+    });
 
+  const diag = debug
+    ? perAccount.map((r) => r.diag).filter(Boolean) as Array<Record<string, unknown>>
+    : [];
+
+  for (const { ads, insights } of perAccount) {
     for (const ad of ads) {
       if (ad.campaignStatus !== "ACTIVE" || !ad.campaignId) continue;
 
@@ -228,5 +200,14 @@ export async function GET(req: Request) {
     .filter((c) => c.creatives.length > 0)
     .sort((a, b) => b.spend - a.spend);
 
-  return NextResponse.json({ ok: true, campaigns, warnings, ...(debug ? { diag } : {}) });
+  const res = NextResponse.json({
+    ok: true,
+    campaigns,
+    warnings,
+    partialData,
+    dataSource,
+    ...(debug ? { diag } : {})
+  });
+  res.headers.set("X-Data-Source", dataSource);
+  return res;
 }

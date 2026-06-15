@@ -15,6 +15,9 @@ import { BillingModule1735691100000 } from "./0014-BillingModule";
 import { BillingPlansV2_1735691200000 } from "./0015-BillingPlansV2";
 import { InvoiceBillingCycle_1735691300000 } from "./0016-InvoiceBillingCycle";
 import { CouponsAndPlatformRole_1735691400000 } from "./0017-CouponsAndPlatformRole";
+import { SocialAuthAndGoogleAds_1735691500000 } from "./0018-SocialAuthAndGoogleAds";
+import { InvoiceCurrencyFields_1735691600000 } from "./0019-InvoiceCurrencyFields";
+import { ClientLearnings_1735691700000 } from "./0020-ClientLearnings";
 import { RankingConfig1735691100000 } from "./0014-RankingConfig";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
@@ -36,5 +39,8 @@ export const appMigrations = [
   BillingModule1735691100000,
   BillingPlansV2_1735691200000,
   InvoiceBillingCycle_1735691300000,
-  CouponsAndPlatformRole_1735691400000
+  CouponsAndPlatformRole_1735691400000,
+  SocialAuthAndGoogleAds_1735691500000,
+  InvoiceCurrencyFields_1735691600000,
+  ClientLearnings_1735691700000
 ];

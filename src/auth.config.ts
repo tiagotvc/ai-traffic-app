@@ -1,8 +1,10 @@
 import type { NextAuthConfig } from "next-auth";
+import Google from "next-auth/providers/google";
 
 import { getAuthSecret } from "@/lib/auth-secret";
-import { MetaFacebookProvider } from "@/lib/meta-facebook-provider";
-import { getMetaAppId, getMetaAppSecret } from "@/lib/meta-env";
+import { isGoogleOAuthConfigured, getGoogleClientId, getGoogleClientSecret } from "@/lib/google-env";
+import { MetaFacebookLoginProvider } from "@/lib/meta-facebook-login-provider";
+import { getMetaAppId, getMetaAppSecret, isMetaOAuthConfigured } from "@/lib/meta-env";
 import { metaEmailFromProfileId } from "@/lib/tenant-name";
 
 type FacebookProfile = {
@@ -11,18 +13,41 @@ type FacebookProfile = {
   email?: string | null;
 };
 
+type GoogleProfile = {
+  sub?: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+};
+
+const providers: NextAuthConfig["providers"] = [];
+
+if (isGoogleOAuthConfigured()) {
+  providers.push(
+    Google({
+      clientId: getGoogleClientId(),
+      clientSecret: getGoogleClientSecret(),
+      authorization: { params: { prompt: "consent", access_type: "offline", response_type: "code" } }
+    })
+  );
+}
+
+if (isMetaOAuthConfigured()) {
+  providers.push(
+    MetaFacebookLoginProvider({
+      clientId: getMetaAppId(),
+      clientSecret: getMetaAppSecret()
+    })
+  );
+}
+
 /**
  * Config compartilhada — sem imports de DB/TypeORM (compatível com Edge Middleware).
  */
 export const authConfig = {
   trustHost: true,
   session: { strategy: "jwt" },
-  providers: [
-    MetaFacebookProvider({
-      clientId: getMetaAppId(),
-      clientSecret: getMetaAppSecret()
-    })
-  ],
+  providers,
   secret: getAuthSecret(),
   pages: {
     signIn: "/login"
@@ -32,7 +57,7 @@ export const authConfig = {
       const previousProfileId =
         typeof token.metaProfileId === "string" ? token.metaProfileId : undefined;
 
-      if (account?.provider === "facebook" && profile && typeof profile === "object") {
+      if (account?.provider === "facebook-login" && profile && typeof profile === "object") {
         const p = profile as FacebookProfile;
         const newProfileId = p.id;
 
@@ -46,22 +71,32 @@ export const authConfig = {
             token.metaOAuthError = "PROFILE_MISMATCH";
           } else {
             delete token.metaOAuthError;
-
-            if (!previousProfileId || profileChanged) {
-              token.metaProfileId = newProfileId;
-              token.name = p.name ?? token.name;
-              token.email = p.email ?? metaEmailFromProfileId(newProfileId);
-              delete token.userId;
-            } else {
-              token.metaProfileId = newProfileId;
-              if (p.name) token.name = p.name;
-            }
-
-            token.metaAccessToken = account.access_token;
-            token.metaExpiresAt = account.expires_at;
-            token.metaTokenType = account.token_type;
-            token.metaScopes = (account.scope as string | undefined) ?? undefined;
+            token.metaProfileId = newProfileId;
+            token.facebookId = newProfileId;
+            token.name = p.name ?? token.name;
+            token.email = p.email ?? metaEmailFromProfileId(newProfileId);
+            delete token.userId;
           }
+        }
+      } else if (account?.provider === "google" && profile && typeof profile === "object") {
+        const p = profile as GoogleProfile;
+        if (p.sub) token.googleId = p.sub;
+        if (p.email) token.email = p.email.toLowerCase();
+        if (p.name) token.name = p.name;
+        if (p.picture) token.picture = p.picture;
+        delete token.userId;
+      } else if (account?.provider === "facebook" && profile && typeof profile === "object") {
+        // Legado: sessões antigas com provider facebook + scopes de ads
+        const p = profile as FacebookProfile;
+        const newProfileId = p.id;
+        if (newProfileId) {
+          token.metaProfileId = newProfileId;
+          token.name = p.name ?? token.name;
+          token.email = p.email ?? metaEmailFromProfileId(newProfileId);
+          token.metaAccessToken = account.access_token;
+          token.metaExpiresAt = account.expires_at;
+          token.metaTokenType = account.token_type;
+          token.metaScopes = (account.scope as string | undefined) ?? undefined;
         }
       } else if (account) {
         token.metaAccessToken = account.access_token;
@@ -79,6 +114,7 @@ export const authConfig = {
       if (session.user) {
         session.user.email = (token.email as string | undefined) ?? "";
         session.user.name = (token.name as string | undefined) ?? session.user.name;
+        if (token.picture) session.user.image = token.picture as string;
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,6 +129,11 @@ export const authConfig = {
       if (token.metaOAuthError) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (session as any).metaOAuthError = token.metaOAuthError;
+      }
+
+      if (token.googleId) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session as any).googleId = token.googleId;
       }
 
       return session;

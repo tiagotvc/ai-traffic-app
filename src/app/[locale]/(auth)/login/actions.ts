@@ -3,6 +3,7 @@
 import { AuthError } from "next-auth";
 
 import { signIn, signOut } from "@/auth";
+import { isGoogleOAuthConfigured } from "@/lib/google-env";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
 import { registerUser } from "@/lib/register-user";
 
@@ -70,17 +71,39 @@ export async function registerWithCredentials(
   return {};
 }
 
+export async function loginWithGoogle(formData: FormData) {
+  const locale = String(formData.get("locale") ?? "pt-BR");
+  const callbackUrl = String(formData.get("callbackUrl") ?? `/${locale}/dashboard`);
+  if (!isGoogleOAuthConfigured()) return;
+
+  await signOut({ redirect: false });
+
+  await signIn("google", { redirectTo: callbackUrl });
+}
+
 export async function loginWithFacebook(formData: FormData) {
   const locale = String(formData.get("locale") ?? "pt-BR");
-  const callbackUrl = String(formData.get("callbackUrl") ?? `/${locale}/onboarding/meta`);
+  const callbackUrl = String(formData.get("callbackUrl") ?? `/${locale}/dashboard`);
   if (!isMetaOAuthConfigured()) return;
 
   await signOut({ redirect: false });
 
-  await signIn("facebook", {
+  await signIn("facebook-login", {
     redirectTo: callbackUrl,
     authorizationParams: {
       auth_type: "reauthenticate"
     }
   });
+}
+
+export async function redirectToMetaBusinessOAuth(formData: FormData) {
+  const locale = String(formData.get("locale") ?? "pt-BR");
+  const redirectTo = String(
+    formData.get("redirectTo") ?? `/${locale}/onboarding/meta/setup`
+  );
+  const { redirect } = await import("next/navigation");
+  const { getAppBaseUrl } = await import("@/lib/app-url");
+  redirect(
+    `${getAppBaseUrl()}/api/meta/oauth/start?redirectTo=${encodeURIComponent(redirectTo)}`
+  );
 }

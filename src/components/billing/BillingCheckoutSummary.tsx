@@ -22,7 +22,8 @@ export function BillingCheckoutSummary({
   billingType,
   installmentSim,
   onPlanChange,
-  planSwitcherLoading
+  planSwitcherLoading,
+  paymentProvider = "asaas"
 }: {
   plan: PlanCardData;
   plans?: PlanCardData[];
@@ -33,6 +34,7 @@ export function BillingCheckoutSummary({
   installmentSim?: InstallmentSimulateRow | null;
   onPlanChange?: (planId: string) => void;
   planSwitcherLoading?: boolean;
+  paymentProvider?: "asaas" | "stripe";
 }) {
   const t = useTranslations("billingPage");
   const isPremium = plan.slug === "agency";
@@ -193,12 +195,21 @@ export function BillingCheckoutSummary({
         <PlanLimitsGrid limits={plan.limits} />
       </div>
 
-      <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
-        <p className="font-semibold">{t("checkoutNfTitle")}</p>
-        <p className="mt-1 text-emerald-800/90">{t("checkoutNfHint")}</p>
-      </div>
+      {paymentProvider === "stripe" ? (
+        <div className="rounded-xl border border-violet-100 bg-violet-50/60 px-4 py-3 text-sm text-violet-900">
+          <p className="font-semibold">{t("checkoutStripeTaxTitle")}</p>
+          <p className="mt-1 text-violet-800/90">{t("checkoutStripeTaxHint")}</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
+          <p className="font-semibold">{t("checkoutNfTitle")}</p>
+          <p className="mt-1 text-emerald-800/90">{t("checkoutNfHint")}</p>
+        </div>
+      )}
 
-      <p className="text-center text-xs text-slate-400">{t("checkoutSecureHint")}</p>
+      <p className="text-center text-xs text-slate-400">
+        {paymentProvider === "stripe" ? t("checkoutStripeSecureHint") : t("checkoutSecureHint")}
+      </p>
     </div>
   );
 }

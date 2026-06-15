@@ -22,6 +22,18 @@ export class Invoice extends AppBaseEntity {
   @Column({ type: "int" })
   amountCents!: number;
 
+  @Column({ type: "text", default: "BRL" })
+  currency!: string;
+
+  @Column({ type: "int", nullable: true })
+  taxCents?: number | null;
+
+  @Column({ type: "int", nullable: true })
+  feeCents?: number | null;
+
+  @Column({ type: "int", nullable: true })
+  netCents?: number | null;
+
   @Column({ type: "text", default: "pending" })
   status!: InvoiceStatus;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
@@ -48,12 +48,14 @@ const NEXT_PLAN_SLUG: Record<string, string> = {
 
 export function BillingPortalClient() {
   const t = useTranslations("billingPage");
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [sub, setSub] = useState<{
     status: string;
     billingCycle: string;
+    paymentProvider?: string | null;
     plan: {
       id?: string;
       slug: string;
@@ -100,6 +102,24 @@ export function BillingPortalClient() {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  useEffect(() => {
+    if (searchParams.get("checkout") === "success") {
+      setMessage(t("checkoutSuccessProcessing"));
+      reload();
+    }
+  }, [searchParams, t, reload]);
+
+  async function openStripePortal() {
+    const res = await fetch("/api/billing/stripe/portal", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ locale })
+    });
+    const j = await res.json();
+    if (j.ok && j.portalUrl) window.location.href = j.portalUrl;
+    else setMessage(j.error ?? t("checkoutError"));
+  }
 
   useEffect(() => {
     const id = searchParams.get("invoice");
@@ -196,6 +216,16 @@ export function BillingPortalClient() {
             }
             canManageBilling={canManageBilling}
           />
+
+          {canManageBilling && sub?.paymentProvider === "stripe" && isPaidPlan ? (
+            <button
+              type="button"
+              onClick={openStripePortal}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-violet-700 shadow-sm transition hover:border-violet-200 hover:bg-violet-50"
+            >
+              {t("updatePaymentMethod")}
+            </button>
+          ) : null}
 
           {showUpgrade && nextPlan ? (
             <UpgradePromoCard

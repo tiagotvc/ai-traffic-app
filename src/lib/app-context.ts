@@ -104,6 +104,20 @@ export async function getAppContext() {
     user = (await userRepo.findOne({ where: { email } }))!;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const googleId = (session as any).googleId as string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const facebookId = metaProfileId ?? ((session as any).meta?.profileId as string | undefined);
+
+  if (user && googleId && user.googleId !== googleId) {
+    user.googleId = googleId;
+    await userRepo.save(user);
+  }
+  if (user && facebookId && user.facebookId !== facebookId) {
+    user.facebookId = facebookId;
+    await userRepo.save(user);
+  }
+
   if (!tenant) {
     tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
   }

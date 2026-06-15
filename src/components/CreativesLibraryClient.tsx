@@ -24,7 +24,7 @@ export function CreativesLibraryClient() {
   const [configOpen, setConfigOpen] = useState(false);
   const [rankVersion, setRankVersion] = useState(0);
   const periodQuery = periodStateToQuery(period).toString();
-  const scopeQuery = `${periodQuery}${accountId ? `&adAccountId=${encodeURIComponent(accountId)}` : ""}`;
+  const scopeQuery = `${periodQuery}${accountId ? `&adAccountId=${encodeURIComponent(accountId)}` : ""}${rankVersion > 0 ? "&refresh=1" : ""}`;
 
   useEffect(() => {
     if (!clientId) {

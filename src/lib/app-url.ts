@@ -27,6 +27,19 @@ export function getAsaasWebhookUrl(): string {
   return `${getAppBaseUrl()}/api/webhooks/asaas`;
 }
 
+export function getMetaFacebookLoginRedirectUri(): string {
+  return `${getAppBaseUrl()}/api/auth/callback/facebook-login`;
+}
+
+/** URI de redirect para exibir em settings (login + conectar Meta). */
 export function getMetaOAuthRedirectUri(): string {
-  return `${getAppBaseUrl()}/api/auth/callback/facebook`;
+  return getMetaBusinessOAuthRedirectUri();
+}
+
+export function getMetaBusinessOAuthRedirectUri(): string {
+  return `${getAppBaseUrl()}/api/meta/oauth/callback`;
+}
+
+export function getStripeWebhookUrl(): string {
+  return `${getAppBaseUrl()}/api/webhooks/stripe`;
 }

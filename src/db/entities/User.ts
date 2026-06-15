@@ -15,6 +15,12 @@ export class User extends AppBaseEntity {
   @Column({ type: "text", nullable: true })
   passwordHash?: string | null;
 
+  @Column({ type: "text", nullable: true, unique: true })
+  googleId?: string | null;
+
+  @Column({ type: "text", nullable: true, unique: true })
+  facebookId?: string | null;
+
   @Column({ type: "text", default: "user" })
   platformRole!: PlatformRole;
 

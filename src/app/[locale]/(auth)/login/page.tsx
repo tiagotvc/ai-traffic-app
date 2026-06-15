@@ -2,7 +2,10 @@ import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
 import { LoginForm } from "@/components/LoginForm";
+import { LoginMarketingPanel } from "@/components/auth/LoginMarketingPanel";
+import { TrafficAILogo } from "@/components/brand/TrafficAILogo";
 import { StripOAuthHash } from "@/components/StripOAuthHash";
+import { isGoogleOAuthConfigured } from "@/lib/google-env";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
 
 export default async function LoginPage({
@@ -25,26 +28,38 @@ export default async function LoginPage({
       : `/${locale}/dashboard`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-50 via-slate-50 to-white">
+    <div className="min-h-screen lg:grid lg:grid-cols-2">
       <StripOAuthHash />
-      <div className="mx-auto flex max-w-md flex-col gap-4 p-6 pt-16">
-        <div className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-bold text-white">
-            ∞
-          </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-brand">Traffic AI</div>
-            <div className="text-sm text-slate-500">{tCommon("product")}</div>
+
+      {/* Marketing — full height left panel */}
+      <div className="hidden lg:block lg:min-h-screen">
+        <LoginMarketingPanel productLabel={tCommon("product")} />
+      </div>
+
+      {/* Form — full height right panel */}
+      <div className="flex min-h-screen flex-col bg-white">
+        {/* Mobile marketing header (compact) */}
+        <div className="border-b border-slate-100 bg-gradient-to-r from-violet-950 to-indigo-950 px-6 py-8 text-white lg:hidden">
+          <TrafficAILogo size="sm" productLabel={tCommon("product")} variant="dark" />
+        </div>
+
+        <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 sm:px-10">
+          <div className="w-full max-w-[420px]">
+            <LoginForm
+              locale={locale}
+              callbackUrl={redirectTo}
+              googleOAuthConfigured={isGoogleOAuthConfigured()}
+              metaOAuthConfigured={isMetaOAuthConfigured()}
+              switchAccount={switchAccount}
+              currentUserEmail={currentUserEmail}
+              accountSuspended={queryError === "account_suspended"}
+            />
           </div>
         </div>
-        <LoginForm
-          locale={locale}
-          callbackUrl={redirectTo}
-          metaOAuthConfigured={isMetaOAuthConfigured()}
-          switchAccount={switchAccount}
-          currentUserEmail={currentUserEmail}
-          accountSuspended={queryError === "account_suspended"}
-        />
+
+        <div className="px-6 pb-6 text-center text-[11px] text-slate-400 lg:pb-8">
+          © {new Date().getFullYear()} Traffic AI
+        </div>
       </div>
     </div>
   );

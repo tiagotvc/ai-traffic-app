@@ -17,7 +17,17 @@ import {
 } from "@/lib/billing/currency";
 import { calculateCheckoutPricing, formatMoney } from "@/lib/billing/pricing";
 
+import type { PaymentProvider } from "@/lib/billing/types";
+
 const INSTALLMENT_OPTIONS = [2, 3, 6, 12] as const;
+
+type PaymentRegion = "br" | "intl";
+
+function defaultPaymentRegion(locale: string, providers: PaymentProvider[]): PaymentRegion {
+  if (locale.startsWith("pt") && providers.includes("asaas")) return "br";
+  if (providers.includes("stripe")) return "intl";
+  return "br";
+}
 
 type InstallmentSimRow = {
   installmentCount: number;
@@ -39,6 +49,8 @@ export function BillingCheckoutClient() {
   const planId = params.get("plan") ?? "";
 
   const [plans, setPlans] = useState<PlanCardData[]>([]);
+  const [providers, setProviders] = useState<PaymentProvider[]>([]);
+  const [paymentRegion, setPaymentRegion] = useState<PaymentRegion | null>(null);
   const [plan, setPlan] = useState<PlanCardData | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -86,9 +98,17 @@ export function BillingCheckoutClient() {
   useEffect(() => {
     fetch("/api/billing/plans")
       .then((r) => r.json())
-      .then((j) => setPlans((j.plans as PlanCardData[]) ?? []))
+      .then((j) => {
+        setPlans((j.plans as PlanCardData[]) ?? []);
+        setProviders((j.providers as PaymentProvider[]) ?? []);
+      })
       .finally(() => setInitialLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!providers.length || paymentRegion) return;
+    setPaymentRegion(defaultPaymentRegion(locale, providers));
+  }, [providers, locale, paymentRegion]);
 
   useEffect(() => {
     if (!plans.length) return;
@@ -103,7 +123,13 @@ export function BillingCheckoutClient() {
     if (cycle === "monthly") setPayInInstallments(false);
   }, [cycle]);
 
-  const currency = resolveBillingCurrency(locale, "asaas");
+  const checkoutProvider: PaymentProvider =
+    paymentRegion === "intl" ? "stripe" : "asaas";
+  const isIntl = checkoutProvider === "stripe";
+  const showRegionToggle =
+    providers.includes("asaas") && providers.includes("stripe");
+
+  const currency = resolveBillingCurrency(locale, checkoutProvider);
 
   const effectiveInstallments =
     cycle === "yearly" && billingType === "CREDIT_CARD" && payInInstallments ? installmentCount : 1;
@@ -114,13 +140,21 @@ export function BillingCheckoutClient() {
       priceMonthlyCents: resolvePlanMonthlyCents(plan, currency),
       listCents: planListCents(plan, cycle, currency),
       cycle,
-      provider: "asaas",
+      provider: checkoutProvider,
       billingType,
       installmentCount: effectiveInstallments
     });
-  }, [plan, cycle, billingType, effectiveInstallments, currency]);
+  }, [plan, cycle, billingType, effectiveInstallments, currency, checkoutProvider]);
 
   const displayPricing = appliedCoupon?.pricing ?? pricing;
+
+  useEffect(() => {
+    if (isIntl) {
+      setAppliedCoupon(null);
+      setCouponInput("");
+      setCouponError(null);
+    }
+  }, [isIntl]);
 
   useEffect(() => {
     if (!displayPricing || billingType !== "CREDIT_CARD" || !payInInstallments) {
@@ -183,10 +217,35 @@ export function BillingCheckoutClient() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!plan || !displayPricing) return;
+    if (!plan || !displayPricing || !paymentRegion) return;
     setLoading(true);
     setError(null);
     try {
+      if (isIntl) {
+        const res = await fetch("/api/billing/checkout", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            planId: plan.id,
+            cycle,
+            paymentRegion: "intl",
+            locale,
+            customer: { name: customer.name, email: customer.email }
+          })
+        });
+        const j = await res.json();
+        if (!j.ok) {
+          setError(j.error ?? t("checkoutError"));
+          return;
+        }
+        if (j.checkoutUrl) {
+          window.location.href = j.checkoutUrl;
+          return;
+        }
+        setError(t("checkoutError"));
+        return;
+      }
+
       let creditCardToken: string | undefined;
 
       if (billingType === "CREDIT_CARD") {
@@ -209,8 +268,11 @@ export function BillingCheckoutClient() {
         body: JSON.stringify({
           planId: plan.id,
           cycle,
+          paymentRegion: "br",
+          locale,
           billingType,
           installmentCount: effectiveInstallments,
+          couponCode: appliedCoupon?.code,
           creditCardToken,
           customer
         })
@@ -238,7 +300,7 @@ export function BillingCheckoutClient() {
     }
   }
 
-  if (initialLoading) {
+  if (initialLoading || !paymentRegion) {
     return <BillingPortalSkeleton />;
   }
 
@@ -319,6 +381,35 @@ export function BillingCheckoutClient() {
         </div>
       </div>
 
+      {showRegionToggle ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <span className="text-sm font-semibold text-slate-700">{t("paymentRegionLabel")}</span>
+          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => setPaymentRegion("br")}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                paymentRegion === "br" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              {t("regionBr")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentRegion("intl")}
+              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                paymentRegion === "intl" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+              }`}
+            >
+              {t("regionIntl")}
+            </button>
+          </div>
+          {isIntl ? (
+            <p className="text-xs text-slate-500">{t("stripeRedirectHint")}</p>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="grid gap-8 lg:grid-cols-5 lg:items-start">
         <div className="lg:col-span-2 lg:sticky lg:top-6">
           {displayPricing ? (
@@ -332,6 +423,7 @@ export function BillingCheckoutClient() {
               installmentSim={selectedInstallmentSim}
               onPlanChange={changePlan}
               planSwitcherLoading={summaryLoading}
+              paymentProvider={checkoutProvider}
             />
           ) : (
             <CheckoutSummarySkeleton />
@@ -339,6 +431,7 @@ export function BillingCheckoutClient() {
         </div>
 
         <form onSubmit={submit} className="space-y-5 lg:col-span-3">
+          {!isIntl ? (
           <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 p-5">
             <FieldLabel>{t("couponLabel")}</FieldLabel>
             <div className="flex flex-wrap gap-2">
@@ -375,7 +468,9 @@ export function BillingCheckoutClient() {
               </p>
             ) : null}
           </div>
+          ) : null}
 
+          {!isIntl ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
               {t("paymentDetails")}
@@ -486,6 +581,7 @@ export function BillingCheckoutClient() {
               </div>
             ) : null}
           </div>
+          ) : null}
 
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
@@ -511,6 +607,7 @@ export function BillingCheckoutClient() {
                   className="ui-input w-full"
                 />
               </label>
+              {!isIntl ? (
               <label className="block">
                 <FieldLabel>{t("cpfCnpj")}</FieldLabel>
                 <input
@@ -520,6 +617,8 @@ export function BillingCheckoutClient() {
                   className="ui-input w-full"
                 />
               </label>
+              ) : null}
+              {!isIntl ? (
               <label className="block">
                 <FieldLabel>{t("phone")}</FieldLabel>
                 <input
@@ -529,10 +628,11 @@ export function BillingCheckoutClient() {
                   className="ui-input w-full"
                 />
               </label>
+              ) : null}
             </div>
           </div>
 
-          {billingType === "CREDIT_CARD" ? (
+          {billingType === "CREDIT_CARD" && !isIntl ? (
             <>
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
@@ -666,7 +766,9 @@ export function BillingCheckoutClient() {
           >
             {loading
               ? t("processing")
-              : `${t("payNow")} · ${displayPricing ? formatMoney(selectedInstallmentSim?.totalCents ?? displayPricing.finalCents, currency) : ""}`}
+              : isIntl
+                ? t("continueOnStripe")
+                : `${t("payNow")} · ${displayPricing ? formatMoney(selectedInstallmentSim?.totalCents ?? displayPricing.finalCents, currency) : ""}`}
           </button>
         </form>
       </div>

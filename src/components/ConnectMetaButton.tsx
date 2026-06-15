@@ -1,7 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { auth, signIn } from "@/auth";
+import { auth } from "@/auth";
+import { getAppBaseUrl } from "@/lib/app-url";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
 
 export async function ConnectMetaButton({
@@ -15,8 +16,7 @@ export async function ConnectMetaButton({
 }) {
   const t = await getTranslations("settings");
   const configured = isMetaOAuthConfigured();
-  const target =
-    redirectTo ?? `/${locale}/settings?from=meta_reconnect`;
+  const target = redirectTo ?? `/${locale}/settings?from=meta_reconnect`;
 
   if (!configured) {
     return (
@@ -47,7 +47,9 @@ export async function ConnectMetaButton({
         if (!session?.user?.email) {
           redirect(`/${locale}/login?callbackUrl=${encodeURIComponent(target)}`);
         }
-        await signIn("facebook", { redirectTo: target });
+        redirect(
+          `${getAppBaseUrl()}/api/meta/oauth/start?redirectTo=${encodeURIComponent(target)}`
+        );
       }}
     >
       <button type="submit" className={btnClass}>

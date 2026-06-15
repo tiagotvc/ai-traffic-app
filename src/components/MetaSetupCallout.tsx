@@ -1,10 +1,11 @@
 import { getTranslations } from "next-intl/server";
 
-import { getMetaOAuthRedirectUri } from "@/lib/meta-env";
+import { getMetaFacebookLoginRedirectUri, getMetaOAuthRedirectUri } from "@/lib/meta-env";
 
 export async function MetaSetupCallout() {
   const t = await getTranslations("settings");
-  const redirectUri = getMetaOAuthRedirectUri();
+  const redirectUri = getMetaFacebookLoginRedirectUri();
+  const businessRedirectUri = getMetaOAuthRedirectUri();
 
   return (
     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-100">
@@ -27,6 +28,9 @@ export async function MetaSetupCallout() {
           {t("metaSetupStep3")}
           <code className="mt-1 block break-all rounded bg-black/30 px-2 py-1 text-[11px]">
             {redirectUri}
+          </code>
+          <code className="mt-1 block break-all rounded bg-black/30 px-2 py-1 text-[11px]">
+            {businessRedirectUri}
           </code>
         </li>
         <li>{t("metaSetupStep4")}</li>

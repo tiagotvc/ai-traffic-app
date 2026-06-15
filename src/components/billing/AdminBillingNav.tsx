@@ -6,6 +6,7 @@ import { usePathname } from "@/i18n/navigation";
 
 const LINKS = [
   { href: "/admin/billing/plans", key: "navPlans" as const },
+  { href: "/admin/billing/finance", key: "navFinance" as const },
   { href: "/admin/billing/coupons", key: "navCoupons" as const },
   { href: "/admin/billing/refunds", key: "navRefunds" as const }
 ];

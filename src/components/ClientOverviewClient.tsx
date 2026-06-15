@@ -14,6 +14,7 @@ import {
 } from "recharts";
 
 import { Link } from "@/i18n/navigation";
+import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { SyncRefreshButton } from "@/components/SyncRefreshButton";
@@ -232,6 +233,8 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           </Link>
         </div>
       </div>
+
+      <ClientDetailTabs clientSlug={clientId} activeTab="overview" />
 
       {/* KPIs — adaptam ao tipo dominante das campanhas do cliente */}
       <div className="grid gap-3 sm:grid-cols-3">

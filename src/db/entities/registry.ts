@@ -44,6 +44,8 @@ import { BillingJob } from "./BillingJob";
 import { RefundRequest } from "./RefundRequest";
 import { DiscountCoupon } from "./DiscountCoupon";
 import { CouponRedemption } from "./CouponRedemption";
+import { GoogleAuth } from "./GoogleAuth";
+import { ClientLearning } from "./ClientLearning";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
@@ -88,12 +90,21 @@ export {
   BillingJob,
   RefundRequest,
   DiscountCoupon,
-  CouponRedemption
+  CouponRedemption,
+  GoogleAuth,
+  ClientLearning
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
 export type { GoalObjective } from "./ClientGoal";
 export type { ClientTargeting, SyncPriority } from "./ClientMetaSettings";
+export type {
+  LearningCategory,
+  LearningImpact,
+  LearningConfidence,
+  LearningSource,
+  LearningStatus
+} from "./ClientLearning";
 
 stabilizeTypeOrmEntityNames([
   { ctor: Tenant, name: "Tenant" },
@@ -137,7 +148,9 @@ stabilizeTypeOrmEntityNames([
   { ctor: BillingJob, name: "BillingJob" },
   { ctor: RefundRequest, name: "RefundRequest" },
   { ctor: DiscountCoupon, name: "DiscountCoupon" },
-  { ctor: CouponRedemption, name: "CouponRedemption" }
+  { ctor: CouponRedemption, name: "CouponRedemption" },
+  { ctor: GoogleAuth, name: "GoogleAuth" },
+  { ctor: ClientLearning, name: "ClientLearning" }
 ]);
 
 export const typeOrmEntities = [
@@ -182,5 +195,7 @@ export const typeOrmEntities = [
   BillingJob,
   RefundRequest,
   DiscountCoupon,
-  CouponRedemption
+  CouponRedemption,
+  GoogleAuth,
+  ClientLearning
 ] as const;
