@@ -27,7 +27,10 @@ export async function getOrCreateClientMetaSettings(clientId: string): Promise<C
       targeting: DEFAULT_TARGETING,
       specialAdCategories: [],
       defaultCustomAudienceIds: [],
-      defaultExcludedAudienceIds: []
+      defaultExcludedAudienceIds: [],
+      // sensible defaults for dashboard
+      defaultDashboardMetrics: ["spend", "conversions"],
+      defaultClientMetric: "roas"
     });
     await repo.save(row);
   }
@@ -101,6 +104,9 @@ export type ClientMetaSettingsPatch = Partial<{
   targetingTemplateName: string | null;
   metaPageId: string | null;
   metaLinkUrl: string | null;
+  // new dashboard preferences
+  defaultDashboardMetrics: string[];
+  defaultClientMetric: string | null;
 }>;
 
 export async function patchClientMetaSettings(
@@ -150,6 +156,8 @@ export async function patchClientMetaSettings(
     ...(patch.targetingTemplateName !== undefined && {
       targetingTemplateName: patch.targetingTemplateName?.trim() || null
     }),
+    ...(patch.defaultDashboardMetrics !== undefined && { defaultDashboardMetrics: patch.defaultDashboardMetrics }),
+    ...(patch.defaultClientMetric !== undefined && { defaultClientMetric: patch.defaultClientMetric }),
     updatedAt: new Date()
   });
 

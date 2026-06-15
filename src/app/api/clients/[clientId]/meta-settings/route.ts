@@ -38,7 +38,10 @@ const PatchSchema = z.object({
   defaultExcludedAudienceIds: z.array(z.string()).optional(),
   automationEnabled: z.boolean().optional(),
   targetingTemplateName: z.string().nullable().optional(),
-  tags: z.array(z.string()).optional()
+  tags: z.array(z.string()).optional(),
+  // dashboard preferences
+  defaultDashboardMetrics: z.array(z.string()).optional(),
+  defaultClientMetric: z.string().nullable().optional()
 });
 
 export async function GET(

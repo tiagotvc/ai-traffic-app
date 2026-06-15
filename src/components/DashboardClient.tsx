@@ -278,6 +278,29 @@ export function DashboardClient() {
     loadClients();
   }, [loadClients]);
 
+  // Load client-specific meta settings to apply dashboard defaults (metrics, client card metric)
+  useEffect(() => {
+    if (!clientFilter) return;
+    let mounted = true;
+    fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!mounted) return;
+        const s = j.settings;
+        if (s) {
+          if (Array.isArray(s.defaultDashboardMetrics) && s.defaultDashboardMetrics.length) {
+            setChartMetrics(s.defaultDashboardMetrics as MetricKey[]);
+          }
+          if (s.defaultClientMetric) setClientMetric(s.defaultClientMetric as MetricKey);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [clientFilter]);
+
+
   useEffect(() => {
     const onSync = () => {
       void load();
@@ -621,7 +644,17 @@ export function DashboardClient() {
                 <span className="text-xs text-slate-500">{t("clientMetricLabel")}:</span>
                 <select
                   value={clientMetric}
-                  onChange={(e) => setClientMetric(e.target.value as MetricKey)}
+                  onChange={(e) => {
+                    const next = e.target.value as MetricKey;
+                    setClientMetric(next);
+                    if (clientFilter) {
+                      fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
+                        method: "PATCH",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ defaultClientMetric: next })
+                      }).catch(() => {});
+                    }
+                  }}
                   className="ui-select !w-auto !py-1.5 text-xs"
                 >
                   {METRIC_CATALOG.map((m) => (
@@ -676,9 +709,18 @@ export function DashboardClient() {
         onApply={(next) => {
           setChartMetrics(next);
           setMetricsModalOpen(false);
+          // persist per-client default if a client is selected
+          if (clientFilter) {
+            fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
+              method: "PATCH",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ defaultDashboardMetrics: next })
+            }).catch(() => {});
+          }
         }}
         onClose={() => setMetricsModalOpen(false)}
       />
+
     </div>
   );
 }

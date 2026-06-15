@@ -61,6 +61,14 @@ export class ClientMetaSettings {
   @Column({ type: "jsonb" })
   defaultExcludedAudienceIds!: string[];
 
+  // Dashboard: default metrics to show in charts (array of MetricKey)
+  @Column({ type: "jsonb", nullable: true })
+  defaultDashboardMetrics?: string[] | null;
+
+  // Metric to show in clients summary (e.g., 'roas')
+  @Column({ type: "text", nullable: true })
+  defaultClientMetric?: string | null;
+
   @Column({ type: "bool", default: false })
   automationEnabled!: boolean;
 
