@@ -3,8 +3,7 @@
 import { AuthError } from "next-auth";
 
 import { signIn, signOut } from "@/auth";
-import { isGoogleOAuthConfigured } from "@/lib/google-env";
-import { isMetaOAuthConfigured } from "@/lib/meta-env";
+import { buildMetaFacebookLoginAuthParams, isMetaOAuthConfigured } from "@/lib/meta-env";
 import { registerUser } from "@/lib/register-user";
 
 export type AuthFormState = {
@@ -84,13 +83,17 @@ export async function loginWithGoogle(formData: FormData) {
 export async function loginWithFacebook(formData: FormData) {
   const locale = String(formData.get("locale") ?? "pt-BR");
   const callbackUrl = String(formData.get("callbackUrl") ?? `/${locale}/dashboard`);
-  if (!isMetaOAuthConfigured()) return;
+  if (!isMetaOAuthConfigured()) {
+    const { redirect } = await import("next/navigation");
+    redirect(`/${locale}/login?error=meta_not_configured`);
+  }
 
   await signOut({ redirect: false });
 
   await signIn("facebook-login", {
     redirectTo: callbackUrl,
     authorizationParams: {
+      ...buildMetaFacebookLoginAuthParams(),
       auth_type: "reauthenticate"
     }
   });

@@ -32,7 +32,10 @@ export default auth((req) => {
   const locale = getLocaleFromPath(path);
   const pathWithoutLocale = stripLocale(path);
 
-  const isPublic = pathWithoutLocale === "/login" || pathWithoutLocale === "/";
+  const isPublic =
+    pathWithoutLocale === "/" ||
+    pathWithoutLocale === "/login" ||
+    pathWithoutLocale.startsWith("/login/");
 
   if (!isLoggedIn && !isPublic) {
     const login = new URL(`/${locale}/login`, req.nextUrl.origin);
