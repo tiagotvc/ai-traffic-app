@@ -489,11 +489,6 @@ export function CampaignAdsClient({
           adId={previewing.id}
           imageUrl={previewing.creative?.thumbnail_url ?? null}
           name={previewing.name ?? previewing.id}
-          downloadHref={
-            previewing.creative?.thumbnail_url
-              ? `/api/creatives/download?u=${encodeURIComponent(previewing.creative.thumbnail_url)}&name=${encodeURIComponent(previewing.name ?? previewing.id)}`
-              : null
-          }
           onClose={() => setPreviewing(null)}
         />
       ) : null}

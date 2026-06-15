@@ -153,7 +153,7 @@
     "shortcutLookalike": "Create lookalike",
     "shortcutReport": "Send report",
     "shortcutAutomation": "Automation rules",
-    "shortcutCreatives": "Creative library",
+    "shortcutCreatives": "Creative ranking",
     "shortcutSync": "Sync now"
   },
   "alertsPage": {
@@ -1041,9 +1041,9 @@
     "recentHint": "Manually generated reports download immediately."
   },
   "creatives": {
-    "breadcrumb": "Creatives › Library",
-    "title": "Creative Library",
-    "subtitle": "Organize and manage all creatives across your clients.",
+    "breadcrumb": "Creatives › Ranking",
+    "title": "Creative Ranking",
+    "subtitle": "Top creatives by campaign type and period metrics.",
     "export": "Export",
     "newCreative": "+ New creative",
     "filterClient": "Client",

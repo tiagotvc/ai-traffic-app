@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { DownloadIcon } from "@/components/ui/DownloadIcon";
 import { Link } from "@/i18n/navigation";
 
 const FORMATS = [
@@ -24,13 +23,11 @@ export function CreativePreviewModal({
   adId,
   imageUrl,
   name,
-  downloadHref,
   onClose
 }: {
   adId: string | null;
   imageUrl: string | null;
   name: string;
-  downloadHref: string | null;
   onClose: () => void;
 }) {
   const t = useTranslations("creativesPerf");
@@ -39,7 +36,6 @@ export function CreativePreviewModal({
   );
   const [format, setFormat] = useState<string>("MOBILE_FEED_STANDARD");
   const [preview, setPreview] = useState<Preview | null>(null);
-  const [scale, setScale] = useState(1);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(false);
   const [copy, setCopy] = useState<Copy | null>(null);
@@ -78,22 +74,6 @@ export function CreativePreviewModal({
       cancelled = true;
     };
   }, [adId, format, mode]);
-
-  // Escala o preview para caber inteiro na janela.
-  useEffect(() => {
-    if (mode !== "preview" || !preview) return;
-    function compute() {
-      const w = preview!.width ?? 360;
-      const h = preview!.height ?? 640;
-      const availW = Math.min(window.innerWidth - 32, 768) - 32;
-      const availH = window.innerHeight * 0.92 - 180;
-      const s = Math.min(availW / w, availH / h, 1);
-      setScale(s > 0 ? s : 1);
-    }
-    compute();
-    window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
-  }, [mode, preview]);
 
   useEffect(() => {
     if (!adId || mode !== "copy" || copy) return;
@@ -172,14 +152,14 @@ export function CreativePreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/80 p-4 sm:items-center"
       onMouseDown={onClose}
     >
       <div
-        className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ${panelWidth}`}
+        className={`my-auto flex max-h-[92vh] w-full flex-col rounded-2xl bg-white shadow-2xl ${panelWidth}`}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
           <div className="min-w-0 truncate text-sm font-semibold text-slate-800">{name}</div>
           <button
             type="button"
@@ -192,7 +172,7 @@ export function CreativePreviewModal({
         </div>
 
         {adId ? (
-          <div className="flex flex-wrap items-center gap-1 border-b border-slate-100 px-4 py-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-slate-100 px-4 py-2">
             <button type="button" onClick={() => setMode("preview")} className={tabClass(mode === "preview")}>
               {t("fmtAd")}
             </button>
@@ -219,106 +199,94 @@ export function CreativePreviewModal({
           </div>
         ) : null}
 
-        <div className="flex-1 overflow-auto bg-slate-100 p-3">
-          <div className="flex min-h-full items-center justify-center">
-            {mode === "copy" ? (
-              <div className="w-full max-w-md space-y-4 self-start">
-                {copyLoading ? (
-                  <p className="py-8 text-center text-sm text-slate-500">{t("copyLoading")}</p>
-                ) : isCopyEmpty || !copy ? (
-                  <p className="py-8 text-center text-sm text-slate-500">{t("copyEmpty")}</p>
-                ) : (
-                  <>
-                    <CopyBlock label={t("copyTitles")} items={copy.titles} />
-                    <CopyBlock label={t("copyBodies")} items={copy.bodies} />
-                    <CopyBlock label={t("copyDescriptions")} items={copy.descriptions} />
-                    <CopyBlock label={t("copyCtas")} items={copy.ctas} />
-                  </>
-                )}
-              </div>
-            ) : mode === "usage" ? (
-              <div className="w-full max-w-md space-y-3 self-start">
-                {usageLoading ? (
-                  <p className="py-8 text-center text-sm text-slate-500">{t("copyLoading")}</p>
-                ) : !usage || !usage.campaigns.length ? (
-                  <p className="py-8 text-center text-sm text-slate-500">{t("usageEmpty")}</p>
-                ) : (
-                  usage.campaigns.map((c) => (
-                    <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-3">
-                      <Link
-                        href={`/campaigns/${c.id}?client=${encodeURIComponent(usage.clientSlug)}`}
-                        className="text-sm font-semibold text-violet-700 hover:underline"
-                      >
-                        {c.name}
-                      </Link>
-                      <div className="mt-2 space-y-2">
-                        {c.adsets.map((s, i) => (
-                          <div key={s.id ?? i} className="rounded-lg bg-slate-50 p-2">
-                            <Link
-                              href={`/campaigns/${c.id}/adsets?client=${encodeURIComponent(usage.clientSlug)}`}
-                              className="text-xs font-medium text-slate-700 hover:text-violet-700 hover:underline"
-                            >
-                              {s.name}
-                            </Link>
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {s.ads.map((ad) => (
-                                <Link
-                                  key={ad.id}
-                                  href={`/campaigns/${c.id}/ads?client=${encodeURIComponent(usage.clientSlug)}`}
-                                  className="rounded-md bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200 hover:text-violet-700"
-                                >
-                                  {ad.name}
-                                </Link>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            ) : mode === "preview" && adId ? (
-              loading ? (
-                <span className="py-8 text-sm text-slate-500">{t("previewLoading")}</span>
-              ) : preview && !err ? (
-                <div style={{ width: previewW * scale, height: previewH * scale }}>
-                  <iframe
-                    title="ad-preview"
-                    src={preview.src}
-                    scrolling="no"
-                    style={{
-                      width: previewW,
-                      height: previewH,
-                      transform: `scale(${scale})`,
-                      transformOrigin: "top left"
-                    }}
-                    className="border-0 bg-white"
-                  />
-                </div>
-              ) : imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageUrl} alt="" className="max-h-[84vh] max-w-full rounded-lg object-contain" />
+        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-100 p-3">
+          {mode === "copy" ? (
+            <div className="mx-auto w-full max-w-md space-y-4">
+              {copyLoading ? (
+                <p className="py-8 text-center text-sm text-slate-500">{t("copyLoading")}</p>
+              ) : isCopyEmpty || !copy ? (
+                <p className="py-8 text-center text-sm text-slate-500">{t("copyEmpty")}</p>
               ) : (
-                <span className="py-8 text-sm text-slate-500">{t("previewUnavailable")}</span>
-              )
+                <>
+                  <CopyBlock label={t("copyTitles")} items={copy.titles} />
+                  <CopyBlock label={t("copyBodies")} items={copy.bodies} />
+                  <CopyBlock label={t("copyDescriptions")} items={copy.descriptions} />
+                  <CopyBlock label={t("copyCtas")} items={copy.ctas} />
+                </>
+              )}
+            </div>
+          ) : mode === "usage" ? (
+            <div className="mx-auto w-full max-w-md space-y-3">
+              {usageLoading ? (
+                <p className="py-8 text-center text-sm text-slate-500">{t("copyLoading")}</p>
+              ) : !usage || !usage.campaigns.length ? (
+                <p className="py-8 text-center text-sm text-slate-500">{t("usageEmpty")}</p>
+              ) : (
+                usage.campaigns.map((c) => (
+                  <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                    <Link
+                      href={`/campaigns/${c.id}?client=${encodeURIComponent(usage.clientSlug)}`}
+                      className="text-sm font-semibold text-violet-700 hover:underline"
+                    >
+                      {c.name}
+                    </Link>
+                    <div className="mt-2 space-y-2">
+                      {c.adsets.map((s, i) => (
+                        <div key={s.id ?? i} className="rounded-lg bg-slate-50 p-2">
+                          <Link
+                            href={`/campaigns/${c.id}/adsets?client=${encodeURIComponent(usage.clientSlug)}`}
+                            className="text-xs font-medium text-slate-700 hover:text-violet-700 hover:underline"
+                          >
+                            {s.name}
+                          </Link>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {s.ads.map((ad) => (
+                              <Link
+                                key={ad.id}
+                                href={`/campaigns/${c.id}/ads?client=${encodeURIComponent(usage.clientSlug)}`}
+                                className="rounded-md bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200 hover:text-violet-700"
+                              >
+                                {ad.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : mode === "preview" && adId ? (
+            loading ? (
+              <p className="py-8 text-center text-sm text-slate-500">{t("previewLoading")}</p>
+            ) : preview && !err ? (
+              <div className="mx-auto w-full" style={{ maxWidth: previewW }}>
+                <iframe
+                  title="ad-preview"
+                  src={preview.src}
+                  scrolling="yes"
+                  style={{
+                    width: "100%",
+                    height: previewH,
+                    minHeight: 480
+                  }}
+                  className="block border-0 bg-white"
+                />
+              </div>
             ) : imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="" className="max-h-[84vh] max-w-full rounded-lg object-contain" />
+              <img src={imageUrl} alt="" className="mx-auto max-w-full rounded-lg object-contain" />
             ) : (
-              <span className="py-8 text-sm text-slate-500">—</span>
-            )}
-          </div>
+              <p className="py-8 text-center text-sm text-slate-500">{t("previewUnavailable")}</p>
+            )
+          ) : imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="" className="mx-auto max-w-full rounded-lg object-contain" />
+          ) : (
+            <p className="py-8 text-center text-sm text-slate-500">—</p>
+          )}
         </div>
-
-        {downloadHref ? (
-          <div className="flex justify-end border-t border-slate-100 px-4 py-3">
-            <a href={downloadHref} className="ui-btn-primary inline-flex items-center gap-1.5 text-sm">
-              <DownloadIcon />
-              {t("download")}
-            </a>
-          </div>
-        ) : null}
       </div>
     </div>
   );

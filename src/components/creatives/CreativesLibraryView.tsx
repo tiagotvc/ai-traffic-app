@@ -507,7 +507,6 @@ export function CreativesLibraryView({
           adId={selected.adId ?? null}
           imageUrl={selected.imageUrl ?? selected.thumbnailUrl ?? null}
           name={selected.title}
-          downloadHref={dlUrl(selected)}
           onClose={() => setPreviewOpen(false)}
         />
       ) : null}

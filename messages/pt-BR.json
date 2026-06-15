@@ -153,7 +153,7 @@
     "shortcutLookalike": "Criar lookalike",
     "shortcutReport": "Enviar relatório",
     "shortcutAutomation": "Regras de automação",
-    "shortcutCreatives": "Biblioteca de criativos",
+    "shortcutCreatives": "Ranking de criativos",
     "shortcutSync": "Sincronizar agora"
   },
   "alertsPage": {
@@ -1041,9 +1041,9 @@
     "recentHint": "Relatórios gerados manualmente aparecem no download imediato."
   },
   "creatives": {
-    "breadcrumb": "Criativos › Biblioteca",
-    "title": "Biblioteca de Criativos",
-    "subtitle": "Organize e gerencie todos os criativos dos seus clientes.",
+    "breadcrumb": "Criativos › Ranking",
+    "title": "Ranking de Criativos",
+    "subtitle": "Melhores criativos por tipo de campanha e métricas do período.",
     "export": "Exportar",
     "newCreative": "+ Novo criativo",
     "filterClient": "Cliente",

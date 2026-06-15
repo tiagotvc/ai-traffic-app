@@ -78,12 +78,6 @@ export function CreativeCardGrid({
           metrics: b.metrics
         }));
 
-  function dl(c: CreativeItem) {
-    const u = c.imageUrl ?? c.thumbnailUrl;
-    return u
-      ? `/api/creatives/download?u=${encodeURIComponent(u)}&name=${encodeURIComponent(c.name)}`
-      : null;
-  }
   function statusLabel(s: string) {
     if (s === "ACTIVE") return tCampaigns("statusActive");
     if (s === "PAUSED") return tCampaigns("statusPaused");
@@ -145,14 +139,6 @@ export function CreativeCardGrid({
                   >
                     {t("view")}
                   </button>
-                  {dl(c) ? (
-                    <a
-                      href={dl(c)!}
-                      className="text-[11px] font-medium text-violet-600 hover:underline"
-                    >
-                      {t("download")}
-                    </a>
-                  ) : null}
                   {(c.breakdown && c.breakdown.length > 1) ||
                   (c.breakdownAdsets && c.breakdownAdsets.length > 1) ? (
                     <button
@@ -212,7 +198,6 @@ export function CreativeCardGrid({
           adId={previewing.adId}
           imageUrl={previewing.imageUrl ?? previewing.thumbnailUrl}
           name={previewing.name}
-          downloadHref={dl(previewing)}
           onClose={() => setPreviewing(null)}
         />
       ) : null}
