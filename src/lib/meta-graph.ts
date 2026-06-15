@@ -872,9 +872,15 @@ export type AdInsightMetrics = {
 export async function fetchAdInsightsForCampaign(
   accessToken: string,
   campaignId: string,
-  datePreset = "last_30d"
+  opts?: { datePreset?: string; since?: string | null; until?: string | null }
 ): Promise<Map<string, AdInsightMetrics>> {
   const map = new Map<string, AdInsightMetrics>();
+  const range =
+    opts?.since && opts?.until
+      ? `time_range=${encodeURIComponent(
+          JSON.stringify({ since: opts.since.slice(0, 10), until: opts.until.slice(0, 10) })
+        )}`
+      : `date_preset=${opts?.datePreset ?? "last_30d"}`;
   try {
     const fields = [
       "ad_id",
@@ -887,7 +893,7 @@ export async function fetchAdInsightsForCampaign(
       "results",
       "purchase_roas"
     ].join(",");
-    const path = `/${encodeURIComponent(campaignId)}/insights?level=ad&fields=${encodeURIComponent(fields)}&date_preset=${datePreset}&use_unified_attribution_setting=true&limit=500`;
+    const path = `/${encodeURIComponent(campaignId)}/insights?level=ad&fields=${encodeURIComponent(fields)}&${range}&use_unified_attribution_setting=true&limit=500`;
     const rows = await fetchGraphPaged<MetaInsightRow & { ad_id?: string }>(path, accessToken);
     for (const row of rows) {
       const adId = row.ad_id;

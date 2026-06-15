@@ -106,6 +106,7 @@ export async function GET(req: Request) {
 
   const byCreative = new Map<string, Agg>();
 
+  const tFetch = Date.now();
   const { results: perAccount, warnings, partialData, dataSource } =
     await fetchAllAccountCreatives(accounts, {
       tokens,
@@ -116,10 +117,16 @@ export async function GET(req: Request) {
       skipCache,
       debug
     });
+  const fetchMs = Date.now() - tFetch;
 
   const diag = debug
-    ? perAccount.map((r) => r.diag).filter(Boolean) as Array<Record<string, unknown>>
-    : [];
+    ? {
+        fetchMs,
+        accountCount: accounts.length,
+        period: { since: period.since, until: period.until },
+        perAccount: perAccount.map((r) => r.diag).filter(Boolean) as Array<Record<string, unknown>>
+      }
+    : undefined;
 
   for (const { ads, insights } of perAccount) {
     for (const ad of ads) {
@@ -281,7 +288,7 @@ export async function GET(req: Request) {
     warnings,
     partialData,
     dataSource,
-    ...(debug ? { diag } : {})
+    ...(debug && diag ? { diag } : {})
   });
   res.headers.set("X-Data-Source", dataSource);
   return res;

@@ -88,16 +88,45 @@ export async function fetchAdsForCampaignAnyToken(
 /** Insights por anúncio de uma CAMPANHA tentando cada token. */
 export async function fetchInsightsForCampaignAnyToken(
   tokens: Array<string | null | undefined>,
-  campaignId: string
+  campaignId: string,
+  opts?: { datePreset?: string; since?: string | null; until?: string | null }
 ): Promise<Map<string, AdInsightMetrics>> {
   let last: Map<string, AdInsightMetrics> = new Map();
   for (const token of tokens) {
     if (!token) continue;
-    const m = await fetchAdInsightsForCampaign(token, campaignId);
+    const m = await fetchAdInsightsForCampaign(token, campaignId, opts);
     if (m.size) return m;
     last = m;
   }
   return last;
+}
+
+/**
+ * Campanhas com gasto no período (fonte: snapshots do sync).
+ * Usado para limitar chamadas Meta ao que importa no ranking.
+ */
+export async function getCampaignIdsWithSpendInPeriod(
+  adAccountId: string,
+  since: string,
+  until: string,
+  limit = 60
+): Promise<string[]> {
+  const sinceDay = since.slice(0, 10);
+  const untilDay = until.slice(0, 10);
+  const { campaignMetricSnapshot } = await repositories();
+  const rows = await campaignMetricSnapshot
+    .createQueryBuilder("s")
+    .select("s.metaCampaignId", "metaCampaignId")
+    .addSelect("SUM(s.spend::numeric)", "spend")
+    .where("s.adAccountId = :id", { id: adAccountId })
+    .andWhere("s.day >= :since", { since: sinceDay })
+    .andWhere("s.day <= :until", { until: untilDay })
+    .groupBy("s.metaCampaignId")
+    .having("SUM(s.spend::numeric) > 0")
+    .orderBy("spend", "DESC")
+    .limit(limit)
+    .getRawMany<{ metaCampaignId: string }>();
+  return rows.map((r) => r.metaCampaignId).filter(Boolean);
 }
 
 /**
@@ -108,9 +137,12 @@ export async function fetchInsightsForCampaignAnyToken(
 export async function getSyncedCampaignIds(
   adAccountId: string,
   limit = 80,
-  recentDays = 21
+  recentDaysOrSince?: number | string
 ): Promise<string[]> {
-  const since = new Date(Date.now() - recentDays * 86_400_000).toISOString().slice(0, 10);
+  const since =
+    typeof recentDaysOrSince === "string"
+      ? recentDaysOrSince.slice(0, 10)
+      : new Date(Date.now() - (recentDaysOrSince ?? 21) * 86_400_000).toISOString().slice(0, 10);
   const { campaignMetricSnapshot } = await repositories();
   const rows = await campaignMetricSnapshot
     .createQueryBuilder("s")
@@ -141,18 +173,22 @@ async function mapLimit<T, R>(
 }
 
 /**
- * Fallback quando a conta não é acessível a nível de conta: busca anúncios e
- * insights POR CAMPANHA (acesso por objeto costuma funcionar mesmo sem acesso
- * à listagem da conta inteira). Paralelizado para não estourar o timeout.
+ * Busca anúncios e insights por campanha (2 chamadas Meta por campanha).
+ * Muito mais rápido que listar a conta inteira quando há poucas campanhas ativas.
  */
 export async function loadAdsViaCampaigns(
   tokens: Array<string | null | undefined>,
-  campaignIds: string[]
+  campaignIds: string[],
+  opts?: { since?: string | null; until?: string | null; concurrency?: number }
 ): Promise<{ ads: AdUsageRow[]; insights: Map<string, AdInsightMetrics> }> {
-  const results = await mapLimit(campaignIds, 12, async (cid) => {
+  const insightOpts =
+    opts?.since && opts?.until ? { since: opts.since, until: opts.until } : undefined;
+  const concurrency = opts?.concurrency ?? 10;
+
+  const results = await mapLimit(campaignIds, concurrency, async (cid) => {
     const { ads: cAds } = await fetchAdsForCampaignAnyToken(tokens, cid);
     if (!cAds.length) return { ads: [] as AdUsageRow[], insights: new Map<string, AdInsightMetrics>() };
-    const cIns = await fetchInsightsForCampaignAnyToken(tokens, cid);
+    const cIns = await fetchInsightsForCampaignAnyToken(tokens, cid, insightOpts);
     return { ads: cAds, insights: cIns };
   });
 
