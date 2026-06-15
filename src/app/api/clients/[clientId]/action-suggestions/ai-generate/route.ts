@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
 import { runAiActionSuggestionsForClient } from "@/lib/creative-memory/ai-action-generator";
+import { resolveCreativeMemoryModelChain } from "@/lib/creative-memory/models";
 import {
-  assertCreativeMemoryAiQuota,
+  assertCreativeMemoryAiAccess,
+  getCreativeMemoryAiStatus,
   recordCreativeMemoryAiUsage
 } from "@/lib/creative-memory/ai-usage";
 
@@ -21,18 +23,22 @@ export async function POST(
     }
 
     try {
-      await assertCreativeMemoryAiQuota(tenant.id);
+      await assertCreativeMemoryAiAccess(tenant.id);
     } catch (err) {
       const res = billingErrorResponse(err);
       if (res) return res;
       throw err;
     }
 
+    const aiStatus = await getCreativeMemoryAiStatus(tenant.id);
+    const modelChain = resolveCreativeMemoryModelChain(aiStatus.planSlug);
+
     const result = await runAiActionSuggestionsForClient(
       tenant.id,
       client.id,
       clientId,
-      client.name
+      client.name,
+      modelChain
     );
 
     if (result.skippedReason === "no_api_key") {
@@ -52,23 +58,22 @@ export async function POST(
       });
     }
 
-    if (result.created > 0) {
+    if (result.modelMeta) {
       await recordCreativeMemoryAiUsage({
         tenantId: tenant.id,
         clientId: client.id,
         kind: "actions",
-        createdCount: result.created
-      });
-    } else if (!result.skippedReason) {
-      await recordCreativeMemoryAiUsage({
-        tenantId: tenant.id,
-        clientId: client.id,
-        kind: "actions",
-        createdCount: 0
+        createdCount: result.created,
+        modelMeta: result.modelMeta
       });
     }
 
-    return NextResponse.json({ ok: true, ...result, ai: true });
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      ai: true,
+      modelUsed: result.modelMeta?.modelUsed
+    });
   } catch (err) {
     console.error("[action-suggestions ai-generate]", err);
     return NextResponse.json({ ok: false, error: "Erro ao gerar sugestões com IA" }, { status: 500 });

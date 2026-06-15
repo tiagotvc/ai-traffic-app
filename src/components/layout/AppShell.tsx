@@ -17,6 +17,7 @@ export function AppShell({
   planSlug = "free",
   planName = "Free",
   subscriptionStatus = "active",
+  allowCreativeMemoryAi = true,
   isPlatformAdmin = false
 }: {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ export function AppShell({
   planSlug?: string;
   planName?: string;
   subscriptionStatus?: string;
+  allowCreativeMemoryAi?: boolean;
   isPlatformAdmin?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -64,6 +66,7 @@ export function AppShell({
           planName={planName}
           planSlug={planSlug}
           subscriptionStatus={subscriptionStatus}
+          allowCreativeMemoryAi={allowCreativeMemoryAi}
           isPlatformAdmin={isPlatformAdmin}
           collapsed={ready ? collapsed : false}
           onToggleCollapse={toggleCollapsed}

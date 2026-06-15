@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
+import { useCreativeMemoryAi } from "@/components/creative-memory/CreativeMemoryAiContext";
 import type {
   BrainSummary,
   LearningCategory,
@@ -25,6 +26,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 export function useAgencyBrain(clientId: string) {
   const t = useTranslations("agencyBrain");
   const tCm = useTranslations("creativeMemory");
+  const { aiDisabled, refresh: refreshAiStatus } = useCreativeMemoryAi();
 
   const [clientName, setClientName] = useState("");
   const [summary, setSummary] = useState<BrainSummary | null>(null);
@@ -157,7 +159,7 @@ export function useAgencyBrain(clientId: string) {
         type: "ok",
         text: tCm("aiSuccessLearnings", { count: json.created ?? 0 })
       });
-      await load();
+      await Promise.all([load(), refreshAiStatus()]);
     } catch {
       setMessage({ type: "err", text: tCm("aiErrorLearnings") });
     } finally {
@@ -265,6 +267,7 @@ export function useAgencyBrain(clientId: string) {
     saving,
     detecting,
     aiAnalyzing,
+    aiDisabled,
     actionLoadingId,
     message,
     setMessage,

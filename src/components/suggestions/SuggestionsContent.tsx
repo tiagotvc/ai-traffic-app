@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { FeedbackBanner, type FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
+import { useCreativeMemoryAi } from "@/components/creative-memory/CreativeMemoryAiContext";
 import { Badge } from "@/components/ui/Badge";
 import { Link } from "@/i18n/navigation";
 import type {
@@ -28,6 +29,7 @@ function statusVariant(status: ActionSuggestionStatus): "neutral" | "success" | 
 export function SuggestionsContent({ clientId }: { clientId: string }) {
   const t = useTranslations("clientSuggestions");
   const tCm = useTranslations("creativeMemory");
+  const { aiDisabled, refresh: refreshAiStatus } = useCreativeMemoryAi();
 
   const [items, setItems] = useState<ActionSuggestionDto[]>([]);
   const [summary, setSummary] = useState<ActionSuggestionSummary | null>(null);
@@ -111,7 +113,7 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
         return;
       }
       setMessage({ type: "ok", text: tCm("aiSuccessActions", { count: json.created ?? 0 }) });
-      await load();
+      await Promise.all([load(), refreshAiStatus()]);
     } catch {
       setMessage({ type: "err", text: tCm("aiErrorActions") });
     } finally {
@@ -178,7 +180,8 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
           type="button"
           className="ui-btn-primary text-sm"
           onClick={() => void handleAiGenerate()}
-          disabled={generating || aiGenerating}
+          disabled={generating || aiGenerating || aiDisabled}
+          title={aiDisabled ? tCm("aiLimit") : undefined}
         >
           {aiGenerating ? tCm("generatingWithAi") : tCm("generateWithAi")}
         </button>

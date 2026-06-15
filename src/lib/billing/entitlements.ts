@@ -119,7 +119,12 @@ export async function getTenantUsage(tenantId: string): Promise<TenantUsage> {
 
 export function resolveLimits(plan: Plan | null): PlanLimits {
   if (!plan?.limits) return FREE_LIMITS;
-  return plan.limits as PlanLimits;
+  const raw = plan.limits as Partial<PlanLimits>;
+  return {
+    ...FREE_LIMITS,
+    ...raw,
+    allowCreativeMemoryAi: raw.allowCreativeMemoryAi ?? true
+  };
 }
 
 export async function getEntitlements(tenantId: string): Promise<Entitlements> {
@@ -143,7 +148,7 @@ export async function getEntitlements(tenantId: string): Promise<Entitlements> {
 }
 
 const LIMIT_CHECKS: Record<
-  Exclude<PlanLimitKey, "allowAutoSync" | "allowLiveMeta">,
+  Exclude<PlanLimitKey, "allowAutoSync" | "allowLiveMeta" | "allowCreativeMemoryAi">,
   (u: TenantUsage) => number
 > = {
   maxClients: (u) => u.clients,
@@ -166,7 +171,7 @@ export async function assertSubscriptionWritable(tenantId: string) {
 
 export async function assertLimit(tenantId: string, key: PlanLimitKey) {
   const ent = await getEntitlements(tenantId);
-  if (key === "allowAutoSync" || key === "allowLiveMeta") {
+  if (key === "allowAutoSync" || key === "allowLiveMeta" || key === "allowCreativeMemoryAi") {
     if (!ent.limits[key]) throw new PlanLimitError(key, `Feature not included in ${ent.planName}`);
     return ent;
   }

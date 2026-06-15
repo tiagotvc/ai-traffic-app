@@ -48,6 +48,7 @@ export default async function AppLayout({
       planSlug={entitlements.planSlug}
       planName={entitlements.planName}
       subscriptionStatus={entitlements.status}
+      allowCreativeMemoryAi={entitlements.limits.allowCreativeMemoryAi}
       isPlatformAdmin={platformAdmin}
     >
       {children}

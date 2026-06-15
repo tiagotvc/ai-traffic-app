@@ -6,12 +6,13 @@ import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-conte
 import { getClientCampaignMetricsWithComparison } from "@/lib/agency-brain/metrics-input";
 import { createActionSuggestion } from "@/lib/action-suggestions/action-suggestion-service";
 import type { ActionSuggestionDto, SuggestedActionDraft } from "@/lib/action-suggestions/types";
+import { buildFewShotBlock } from "@/lib/creative-memory/few-shot";
 import {
   AiActionsResponseSchema,
   type AiActionsResponse
 } from "@/lib/creative-memory/gemini-schemas";
 import { getGeminiApiKey } from "@/lib/creative-memory/ai-usage";
-import { geminiGenerateJson } from "@/lib/gemini";
+import { geminiGenerateJson, type GeminiGenerateMeta } from "@/lib/gemini";
 
 const WINDOW_DAYS = 7;
 
@@ -71,6 +72,7 @@ function slugify(input: string): string {
 function buildPrompt(args: {
   clientName: string;
   brainSummary: string;
+  fewShotBlock: string;
   campaigns: Array<{ metaCampaignId: string; campaignName: string; metrics: Record<string, unknown> }>;
 }): string {
   return [
@@ -84,6 +86,7 @@ function buildPrompt(args: {
     "",
     "Memória operacional:",
     args.brainSummary,
+    args.fewShotBlock,
     "",
     "Campanhas (últimos 7 dias):",
     JSON.stringify(args.campaigns, null, 2),
@@ -101,8 +104,14 @@ export async function runAiActionSuggestionsForClient(
   tenantId: string,
   clientId: string,
   clientSlug: string,
-  clientName: string
-): Promise<{ created: number; suggestions: ActionSuggestionDto[]; skippedReason?: string }> {
+  clientName: string,
+  modelChain: string[]
+): Promise<{
+  created: number;
+  suggestions: ActionSuggestionDto[];
+  skippedReason?: string;
+  modelMeta?: GeminiGenerateMeta;
+}> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
     return { created: 0, suggestions: [], skippedReason: "no_api_key" };
@@ -124,6 +133,7 @@ export async function runAiActionSuggestionsForClient(
   const prompt = buildPrompt({
     clientName,
     brainSummary: brain.summaryText,
+    fewShotBlock: buildFewShotBlock(brain.topLearnings),
     campaigns: current.slice(0, 12).map((r) => ({
       metaCampaignId: r.metaCampaignId,
       campaignName: r.campaignName,
@@ -138,10 +148,11 @@ export async function runAiActionSuggestionsForClient(
     }))
   });
 
-  const ai = await geminiGenerateJson({
+  const { data: ai, ...modelMeta } = await geminiGenerateJson({
     apiKey,
     prompt,
-    schema: AiActionsResponseSchema
+    schema: AiActionsResponseSchema,
+    modelChain
   });
 
   const suggestions: ActionSuggestionDto[] = [];
@@ -157,5 +168,5 @@ export async function runAiActionSuggestionsForClient(
     if (created) suggestions.push(created);
   }
 
-  return { created: suggestions.length, suggestions };
+  return { created: suggestions.length, suggestions, modelMeta };
 }

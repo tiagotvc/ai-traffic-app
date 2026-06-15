@@ -6,24 +6,15 @@ import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-conte
 import { createSuggestedLearning } from "@/lib/agency-brain/client-learning-service";
 import { getClientCampaignMetricsWithComparison } from "@/lib/agency-brain/metrics-input";
 import type { LearningDto, SuggestedLearningDraft } from "@/lib/agency-brain/types";
+import { buildFewShotBlock } from "@/lib/creative-memory/few-shot";
 import {
   AiLearningsResponseSchema,
   type AiLearningsResponse
 } from "@/lib/creative-memory/gemini-schemas";
 import { getGeminiApiKey } from "@/lib/creative-memory/ai-usage";
-import { geminiGenerateJson } from "@/lib/gemini";
+import { geminiGenerateJson, type GeminiGenerateMeta } from "@/lib/gemini";
 
 const WINDOW_DAYS = 7;
-
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 48);
-}
 
 function buildLearningDedupeKey(clientId: string, title: string, category: string): string {
   const hash = createHash("sha1").update(`${title}:${category}`).digest("hex").slice(0, 10);
@@ -60,12 +51,13 @@ function buildPrompt(args: {
   clientName: string;
   brainSummary: string;
   approvedTitles: string[];
+  fewShotBlock: string;
   campaigns: Array<{ metaCampaignId: string; campaignName: string; metrics: Record<string, unknown> }>;
 }): string {
   return [
     "Você é um estrategista de performance marketing em uma agência.",
     "Analise métricas recentes e a memória operacional do cliente.",
-    "Proponha APENADOS insights novos que ainda NÃO estejam na memória aprovada.",
+    "Proponha APENAS insights novos que ainda NÃO estejam na memória aprovada.",
     "Foque em padrões acionáveis: criativos, públicos, ofertas, copy e decisões.",
     "",
     "Retorne ESTRITAMENTE JSON válido (sem markdown) no formato:",
@@ -77,6 +69,7 @@ function buildPrompt(args: {
     args.approvedTitles.length
       ? args.approvedTitles.map((t) => `- ${t}`).join("\n")
       : "- (nenhum aprendizado aprovado ainda)",
+    args.fewShotBlock,
     "",
     "Resumo da memória:",
     args.brainSummary,
@@ -96,8 +89,14 @@ function buildPrompt(args: {
 export async function runAiLearningSuggestionsForClient(
   tenantId: string,
   clientId: string,
-  clientName: string
-): Promise<{ created: number; suggestions: LearningDto[]; skippedReason?: string }> {
+  clientName: string,
+  modelChain: string[]
+): Promise<{
+  created: number;
+  suggestions: LearningDto[];
+  skippedReason?: string;
+  modelMeta?: GeminiGenerateMeta;
+}> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
     return { created: 0, suggestions: [], skippedReason: "no_api_key" };
@@ -120,6 +119,7 @@ export async function runAiLearningSuggestionsForClient(
     clientName,
     brainSummary: brain.summaryText,
     approvedTitles: brain.topLearnings.map((l) => l.title),
+    fewShotBlock: buildFewShotBlock(brain.topLearnings),
     campaigns: current.slice(0, 12).map((r) => ({
       metaCampaignId: r.metaCampaignId,
       campaignName: r.campaignName,
@@ -135,10 +135,11 @@ export async function runAiLearningSuggestionsForClient(
     }))
   });
 
-  const ai = await geminiGenerateJson({
+  const { data: ai, ...modelMeta } = await geminiGenerateJson({
     apiKey,
     prompt,
-    schema: AiLearningsResponseSchema
+    schema: AiLearningsResponseSchema,
+    modelChain
   });
 
   const suggestions: LearningDto[] = [];
@@ -148,5 +149,5 @@ export async function runAiLearningSuggestionsForClient(
     if (created) suggestions.push(created);
   }
 
-  return { created: suggestions.length, suggestions };
+  return { created: suggestions.length, suggestions, modelMeta };
 }

@@ -14,25 +14,41 @@ export const GeminiRecommendationsSchema = z.object({
 
 export type GeminiRecommendations = z.infer<typeof GeminiRecommendationsSchema>;
 
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
+export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
+
+const DEFAULT_FALLBACK_CHAIN = ["gemini-2.5-flash-lite", "gemini-2.5-flash"];
 
 export function getGeminiModel(): string {
   return process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
 }
 
-function geminiGenerateContentUrl(model?: string): URL {
-  const url = new URL(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model ?? getGeminiModel()}:generateContent`
+export function getGeminiModelFallbackChain(requestedModel?: string): string[] {
+  const primary = requestedModel?.trim() || getGeminiModel();
+  const fromEnv =
+    process.env.GEMINI_MODEL_FALLBACKS?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) ?? DEFAULT_FALLBACK_CHAIN;
+  return [...new Set([primary, ...fromEnv])];
+}
+
+export type GeminiGenerateMeta = {
+  modelRequested: string;
+  modelUsed: string;
+  fallbackFrom?: string;
+};
+
+export type GeminiGenerateJsonResult<T> = GeminiGenerateMeta & { data: T };
+
+function geminiGenerateContentUrl(model: string): URL {
+  return new URL(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
   );
-  return url;
 }
 
 function extractJson(text: string): unknown {
-  // Prefer fenced JSON blocks first.
   const fenced = text.match(/```json\s*([\s\S]*?)```/i);
   if (fenced?.[1]) return JSON.parse(fenced[1]);
 
-  // Fallback: first {...} blob.
   const firstBrace = text.indexOf("{");
   const lastBrace = text.lastIndexOf("}");
   if (firstBrace >= 0 && lastBrace > firstBrace) {
@@ -42,44 +58,17 @@ function extractJson(text: string): unknown {
   throw new Error("Gemini did not return JSON");
 }
 
-export async function geminiGenerateRecommendations(args: {
-  prompt: string;
-  apiKey: string;
-}): Promise<GeminiRecommendations> {
-  const url = geminiGenerateContentUrl();
-  url.searchParams.set("key", args.apiKey);
-
-  const res = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: args.prompt }] }],
-      generationConfig: { temperature: 0.2 }
-    })
-  });
-
-  const json = (await res.json()) as any;
-  if (!res.ok) {
-    throw new Error(`Gemini error: ${res.status} ${JSON.stringify(json)}`);
-  }
-
-  const text: string | undefined =
-    json?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
-    undefined;
-
-  if (!text) throw new Error("Gemini returned empty response");
-
-  const parsed = extractJson(text);
-  return GeminiRecommendationsSchema.parse(parsed);
+function isRetryableGeminiStatus(status: number): boolean {
+  return status === 429 || status === 503 || status === 500;
 }
 
-export async function geminiGenerateJson<T>(args: {
-  prompt: string;
+async function callGeminiRaw(args: {
   apiKey: string;
-  schema: z.ZodType<T>;
-  temperature?: number;
-}): Promise<T> {
-  const url = geminiGenerateContentUrl();
+  model: string;
+  prompt: string;
+  temperature: number;
+}): Promise<{ ok: true; text: string } | { ok: false; status: number; body: unknown }> {
+  const url = geminiGenerateContentUrl(args.model);
   url.searchParams.set("key", args.apiKey);
 
   const res = await fetch(url.toString(), {
@@ -87,7 +76,7 @@ export async function geminiGenerateJson<T>(args: {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: args.prompt }] }],
-      generationConfig: { temperature: args.temperature ?? 0.25 }
+      generationConfig: { temperature: args.temperature }
     })
   });
 
@@ -97,16 +86,94 @@ export async function geminiGenerateJson<T>(args: {
   };
 
   if (!res.ok) {
-    throw new Error(`Gemini error: ${res.status} ${JSON.stringify(json)}`);
+    return { ok: false, status: res.status, body: json };
   }
 
   const text =
     json.candidates?.[0]?.content?.parts?.map((p) => p?.text).filter(Boolean).join("\n") ??
     undefined;
 
-  if (!text) throw new Error("Gemini returned empty response");
+  if (!text) {
+    return { ok: false, status: 502, body: { error: "Gemini returned empty response" } };
+  }
 
-  const parsed = extractJson(text);
-  return args.schema.parse(parsed);
+  return { ok: true, text };
 }
 
+async function geminiGenerateTextWithFallback(args: {
+  apiKey: string;
+  prompt: string;
+  temperature: number;
+  modelId?: string;
+  modelChain?: string[];
+}): Promise<GeminiGenerateMeta & { text: string }> {
+  const chain = args.modelChain?.length
+    ? args.modelChain
+    : getGeminiModelFallbackChain(args.modelId);
+  const modelRequested = chain[0]!;
+  let lastError: unknown;
+
+  for (let i = 0; i < chain.length; i++) {
+    const model = chain[i]!;
+    const result = await callGeminiRaw({
+      apiKey: args.apiKey,
+      model,
+      prompt: args.prompt,
+      temperature: args.temperature
+    });
+
+    if (result.ok) {
+      return {
+        text: result.text,
+        modelRequested,
+        modelUsed: model,
+        fallbackFrom: model !== modelRequested ? modelRequested : undefined
+      };
+    }
+
+    lastError = result;
+    if (!isRetryableGeminiStatus(result.status) || i === chain.length - 1) {
+      throw new Error(`Gemini error: ${result.status} ${JSON.stringify(result.body)}`);
+    }
+  }
+
+  throw new Error(`Gemini error: ${JSON.stringify(lastError)}`);
+}
+
+export async function geminiGenerateRecommendations(args: {
+  prompt: string;
+  apiKey: string;
+  modelId?: string;
+}): Promise<GeminiRecommendations & GeminiGenerateMeta> {
+  const { text, ...meta } = await geminiGenerateTextWithFallback({
+    apiKey: args.apiKey,
+    prompt: args.prompt,
+    temperature: 0.2,
+    modelId: args.modelId
+  });
+
+  const parsed = extractJson(text);
+  const data = GeminiRecommendationsSchema.parse(parsed);
+  return { ...data, ...meta };
+}
+
+export async function geminiGenerateJson<T>(args: {
+  prompt: string;
+  apiKey: string;
+  schema: z.ZodType<T>;
+  temperature?: number;
+  modelId?: string;
+  modelChain?: string[];
+}): Promise<GeminiGenerateJsonResult<T>> {
+  const { text, ...meta } = await geminiGenerateTextWithFallback({
+    apiKey: args.apiKey,
+    prompt: args.prompt,
+    temperature: args.temperature ?? 0.25,
+    modelId: args.modelId,
+    modelChain: args.modelChain
+  });
+
+  const parsed = extractJson(text);
+  const data = args.schema.parse(parsed);
+  return { data, ...meta };
+}

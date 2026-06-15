@@ -19,5 +19,8 @@ export class Tenant extends AppBaseEntity {
    */
   @Column({ type: "uuid", nullable: true })
   metaConnectionUserId?: string | null;
+
+  @Column({ type: "text", nullable: true })
+  preferredGeminiModel?: string | null;
 }
 

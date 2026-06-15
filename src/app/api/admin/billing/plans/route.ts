@@ -15,7 +15,8 @@ const limitsSchema = z.object({
   maxAiRequestsPerMonth: z.number().int().min(0),
   maxScheduledReports: z.number().int().min(0),
   allowAutoSync: z.boolean(),
-  allowLiveMeta: z.boolean()
+  allowLiveMeta: z.boolean(),
+  allowCreativeMemoryAi: z.boolean()
 });
 
 const createSchema = z.object({
@@ -42,7 +43,8 @@ const DEFAULT_NEW_LIMITS: PlanLimits = {
   maxAiRequestsPerMonth: 30,
   maxScheduledReports: 1,
   allowAutoSync: true,
-  allowLiveMeta: false
+  allowLiveMeta: false,
+  allowCreativeMemoryAi: true
 };
 
 export async function GET() {

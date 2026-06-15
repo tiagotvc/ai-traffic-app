@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AgencyBrainContent } from "@/components/agency-brain/AgencyBrainContent";
+import { CreativeMemoryAiBar } from "@/components/creative-memory/CreativeMemoryAiBar";
+import { CreativeMemoryAiProvider } from "@/components/creative-memory/CreativeMemoryAiContext";
 import {
   CreativeMemoryTabs,
   type CreativeMemoryTab
@@ -101,14 +103,15 @@ export function CreativeMemoryClient() {
       ) : clients.length === 0 ? (
         <div className="ui-card p-8 text-center text-sm text-slate-500">{t("noClients")}</div>
       ) : clientSlug ? (
-        <>
+        <CreativeMemoryAiProvider>
+          <CreativeMemoryAiBar />
           <CreativeMemoryTabs clientSlug={clientSlug} activeTab={activeTab} />
           {activeTab === "learnings" ? (
             <AgencyBrainContent key={`learnings-${clientSlug}`} clientId={clientSlug} />
           ) : (
             <SuggestionsContent key={`suggestions-${clientSlug}`} clientId={clientSlug} />
           )}
-        </>
+        </CreativeMemoryAiProvider>
       ) : null}
     </div>
   );

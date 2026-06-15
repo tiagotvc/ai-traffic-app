@@ -14,7 +14,8 @@ const limitsSchema = z.object({
   maxAiRequestsPerMonth: z.number().int().min(0),
   maxScheduledReports: z.number().int().min(0),
   allowAutoSync: z.boolean(),
-  allowLiveMeta: z.boolean()
+  allowLiveMeta: z.boolean(),
+  allowCreativeMemoryAi: z.boolean()
 });
 
 const externalPricesSchema = z

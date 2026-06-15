@@ -28,7 +28,8 @@ export function mergePlanLimitsWithAddons(base: PlanLimits, bonuses: TenantAddon
     maxAiRequestsPerMonth: base.maxAiRequestsPerMonth + bonuses.extraAiRequestsPerMonth,
     maxScheduledReports: base.maxScheduledReports + bonuses.extraScheduledReports,
     allowAutoSync: base.allowAutoSync,
-    allowLiveMeta: base.allowLiveMeta
+    allowLiveMeta: base.allowLiveMeta,
+    allowCreativeMemoryAi: base.allowCreativeMemoryAi
   };
 }
 

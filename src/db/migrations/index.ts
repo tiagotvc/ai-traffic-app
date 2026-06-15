@@ -23,6 +23,7 @@ import { ClientMetaSettingsDashboardPrefs_1735691900000 } from "./0022-ClientMet
 import { TenantMemberDashboardPrefs_1735692000000 } from "./0023-TenantMemberDashboardPrefs";
 import { TenantMemberClientMetricPref_1735692100000 } from "./0024-TenantMemberClientMetricPref";
 import { ClientActionSuggestions_1735692200000 } from "./0025-ClientActionSuggestions";
+import { TenantGeminiModel_1735692300000 } from "./0026-TenantGeminiModel";
 import { RankingConfig1735691100000 } from "./0014-RankingConfig";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
@@ -52,5 +53,6 @@ export const appMigrations = [
   ClientMetaSettingsDashboardPrefs_1735691900000,
   TenantMemberDashboardPrefs_1735692000000,
   TenantMemberClientMetricPref_1735692100000,
-  ClientActionSuggestions_1735692200000
+  ClientActionSuggestions_1735692200000,
+  TenantGeminiModel_1735692300000
 ];

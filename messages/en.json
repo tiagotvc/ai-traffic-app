@@ -1500,7 +1500,16 @@
     "aiNoKey": "AI not configured. Set GEMINI_API_KEY on the server.",
     "aiLimit": "Monthly AI request limit reached.",
     "aiErrorLearnings": "Failed to analyze learnings with AI.",
-    "aiErrorActions": "Failed to generate suggestions with AI."
+    "aiErrorActions": "Failed to generate suggestions with AI.",
+    "aiStatusLoading": "Loading AI status…",
+    "modelLabel": "Model",
+    "modelFlashLite": "Gemini 2.5 Flash Lite",
+    "modelFlash": "Gemini 2.5 Flash",
+    "modelPro": "Gemini 2.5 Pro",
+    "modelProLocked": "Advanced+ plan",
+    "aiUsage": "{remaining}/{max} AI analyses remaining this month",
+    "aiUsageEmpty": "Monthly limit reached (0/{max} AI analyses).",
+    "aiUpgrade": "Upgrade plan"
   },
   "clientSuggestions": {
     "subtitle": "Actionable suggestions based on client memory and recent metrics.",
@@ -1837,6 +1846,7 @@
     "limitReports": "Scheduled reports",
     "limitAutoSync": "Auto sync",
     "limitLiveMeta": "Live Meta",
+    "limitCreativeMemoryAi": "Creative Memory (AI)",
     "savePlan": "Save plan",
     "saving": "Saving…",
     "saved": "Plan updated.",

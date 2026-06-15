@@ -360,6 +360,12 @@ function PlanEditor({
                 onChange={(v) => setLimit("allowLiveMeta", v as boolean)}
                 type="checkbox"
               />
+              <LimitField
+                label={t("limitCreativeMemoryAi")}
+                value={draft.limits.allowCreativeMemoryAi}
+                onChange={(v) => setLimit("allowCreativeMemoryAi", v as boolean)}
+                type="checkbox"
+              />
             </div>
           </div>
 

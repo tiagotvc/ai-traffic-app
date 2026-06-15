@@ -37,7 +37,8 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
           type="button"
           className="ui-btn-primary text-sm"
           onClick={() => void brain.handleAiAnalyze()}
-          disabled={brain.detecting || brain.aiAnalyzing}
+          disabled={brain.detecting || brain.aiAnalyzing || brain.aiDisabled}
+          title={brain.aiDisabled ? tCm("aiLimit") : undefined}
         >
           {brain.aiAnalyzing ? tCm("analyzingWithAi") : tCm("analyzeWithAi")}
         </button>

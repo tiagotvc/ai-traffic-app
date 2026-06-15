@@ -1500,7 +1500,16 @@
     "aiNoKey": "IA não configurada. Defina GEMINI_API_KEY no servidor.",
     "aiLimit": "Limite mensal de requisições de IA atingido.",
     "aiErrorLearnings": "Erro ao analisar aprendizados com IA.",
-    "aiErrorActions": "Erro ao gerar sugestões com IA."
+    "aiErrorActions": "Erro ao gerar sugestões com IA.",
+    "aiStatusLoading": "Carregando status de IA…",
+    "modelLabel": "Modelo",
+    "modelFlashLite": "Gemini 2.5 Flash Lite",
+    "modelFlash": "Gemini 2.5 Flash",
+    "modelPro": "Gemini 2.5 Pro",
+    "modelProLocked": "plano Advanced+",
+    "aiUsage": "{remaining}/{max} análises IA restantes este mês",
+    "aiUsageEmpty": "Limite mensal atingido (0/{max} análises IA).",
+    "aiUpgrade": "Fazer upgrade"
   },
   "clientSuggestions": {
     "subtitle": "Sugestões acionáveis com base na memória do cliente e nas métricas recentes.",
@@ -1837,6 +1846,7 @@
     "limitReports": "Relatórios agendados",
     "limitAutoSync": "Sync automático",
     "limitLiveMeta": "Meta ao vivo",
+    "limitCreativeMemoryAi": "Memória Criativa (IA)",
     "savePlan": "Salvar plano",
     "saving": "Salvando…",
     "saved": "Plano atualizado.",

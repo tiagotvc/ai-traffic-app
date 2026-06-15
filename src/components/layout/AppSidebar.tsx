@@ -67,6 +67,7 @@ export function AppSidebar({
   planName,
   planSlug,
   subscriptionStatus,
+  allowCreativeMemoryAi = true,
   isPlatformAdmin = false,
   collapsed,
   onToggleCollapse
@@ -77,6 +78,7 @@ export function AppSidebar({
   planName?: string;
   planSlug?: string;
   subscriptionStatus?: string;
+  allowCreativeMemoryAi?: boolean;
   isPlatformAdmin?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -90,13 +92,17 @@ export function AppSidebar({
     { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <NavIcon d={icons.campaigns} /> },
     { id: "audiences", href: "/audiences", label: t("audiences"), icon: <NavIcon d={icons.audiences} /> },
     { id: "creatives", href: "/creatives", label: t("creatives"), icon: <NavIcon d={icons.creatives} /> },
-    {
-      id: "creativeMemory",
-      href: "/creative-memory",
-      label: t("creativeMemory"),
-      beta: true,
-      icon: <NavIcon d={icons.creativeMemory} />
-    },
+    ...(allowCreativeMemoryAi
+      ? [
+          {
+            id: "creativeMemory",
+            href: "/creative-memory",
+            label: t("creativeMemory"),
+            beta: true,
+            icon: <NavIcon d={icons.creativeMemory} />
+          }
+        ]
+      : []),
     { id: "reports", href: "/reports", label: t("reports"), icon: <NavIcon d={icons.reports} /> },
     {
       id: "alerts",
