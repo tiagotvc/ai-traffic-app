@@ -22,6 +22,10 @@ export class TenantMember extends AppBaseEntity {
   @Column({ type: "jsonb", nullable: true })
   dashboardChartMetrics?: string[] | null;
 
+  /** Métrica exibida nos cards da seção Clientes (Destaques). */
+  @Column({ type: "text", nullable: true })
+  dashboardClientMetric?: string | null;
+
   @ManyToOne("Tenant", { onDelete: "CASCADE" })
   @JoinColumn({ name: "tenantId" })
   tenant!: Tenant;

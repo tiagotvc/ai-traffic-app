@@ -21,6 +21,7 @@ import { ClientLearnings_1735691700000 } from "./0020-ClientLearnings";
 import { TenantAddons_1735691800000 } from "./0021-TenantAddons";
 import { ClientMetaSettingsDashboardPrefs_1735691900000 } from "./0022-ClientMetaSettingsDashboardPrefs";
 import { TenantMemberDashboardPrefs_1735692000000 } from "./0023-TenantMemberDashboardPrefs";
+import { TenantMemberClientMetricPref_1735692100000 } from "./0024-TenantMemberClientMetricPref";
 import { RankingConfig1735691100000 } from "./0014-RankingConfig";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
@@ -48,5 +49,6 @@ export const appMigrations = [
   ClientLearnings_1735691700000,
   TenantAddons_1735691800000,
   ClientMetaSettingsDashboardPrefs_1735691900000,
-  TenantMemberDashboardPrefs_1735692000000
+  TenantMemberDashboardPrefs_1735692000000,
+  TenantMemberClientMetricPref_1735692100000
 ];

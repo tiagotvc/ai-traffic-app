@@ -22,6 +22,7 @@ import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import {
   DEFAULT_DASHBOARD_CHART_METRICS,
+  DEFAULT_DASHBOARD_CLIENT_METRIC,
   MAX_CHART_METRICS,
   METRIC_BY_KEY,
   METRIC_CATALOG,
@@ -200,7 +201,8 @@ export function DashboardClient() {
   const [userChartMetrics, setUserChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
   const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
-  const [clientMetric, setClientMetric] = useState<MetricKey>("roas");
+  const [clientMetric, setClientMetric] = useState<MetricKey>(DEFAULT_DASHBOARD_CLIENT_METRIC);
+  const [userClientMetric, setUserClientMetric] = useState<MetricKey>(DEFAULT_DASHBOARD_CLIENT_METRIC);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
@@ -308,16 +310,51 @@ export function DashboardClient() {
     [persistChartMetrics]
   );
 
+  const persistClientMetric = useCallback(
+    (next: MetricKey) => {
+      if (clientFilter) {
+        void fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ defaultClientMetric: next })
+        });
+        return;
+      }
+      setUserClientMetric(next);
+      void fetch("/api/settings/dashboard-prefs", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ dashboardClientMetric: next })
+      });
+    },
+    [clientFilter]
+  );
+
+  const applyClientMetric = useCallback(
+    (next: MetricKey) => {
+      setClientMetric(next);
+      persistClientMetric(next);
+    },
+    [persistClientMetric]
+  );
+
   // Preferências do usuário (workspace) — persistidas no banco.
   useEffect(() => {
     let mounted = true;
     fetch("/api/settings/dashboard-prefs")
       .then((r) => r.json())
       .then((j) => {
-        if (!mounted || !j.ok || !Array.isArray(j.dashboardChartMetrics)) return;
-        const metrics = j.dashboardChartMetrics as MetricKey[];
-        setUserChartMetrics(metrics);
-        if (!clientFilter) setChartMetrics(metrics);
+        if (!mounted || !j.ok) return;
+        if (Array.isArray(j.dashboardChartMetrics)) {
+          const metrics = j.dashboardChartMetrics as MetricKey[];
+          setUserChartMetrics(metrics);
+          if (!clientFilter) setChartMetrics(metrics);
+        }
+        if (typeof j.dashboardClientMetric === "string" && j.dashboardClientMetric in METRIC_BY_KEY) {
+          const metric = j.dashboardClientMetric as MetricKey;
+          setUserClientMetric(metric);
+          if (!clientFilter) setClientMetric(metric);
+        }
       })
       .catch(() => {});
     return () => {
@@ -330,6 +367,7 @@ export function DashboardClient() {
     let mounted = true;
     if (!clientFilter) {
       setChartMetrics(userChartMetrics);
+      setClientMetric(userClientMetric);
       return () => {
         mounted = false;
       };
@@ -350,7 +388,7 @@ export function DashboardClient() {
     return () => {
       mounted = false;
     };
-  }, [clientFilter, userChartMetrics]);
+  }, [clientFilter, userChartMetrics, userClientMetric]);
 
 
   useEffect(() => {
@@ -698,21 +736,7 @@ export function DashboardClient() {
                 <span className="text-xs text-slate-500">{t("clientMetricLabel")}:</span>
                 <select
                   value={clientMetric}
-                  onChange={(e) => {
-                    const next = e.target.value as MetricKey;
-                    setClientMetric(next);
-                    if (clientFilter) {
-                      fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
-                        method: "PATCH",
-                        headers: { "content-type": "application/json" },
-                        body: JSON.stringify({ defaultClientMetric: next })
-                      }).catch(() => {});
-                    } else if (typeof window !== "undefined") {
-                      try {
-                        localStorage.setItem("dashboard.defaultClientMetric", next);
-                      } catch {}
-                    }
-                  }}
+                  onChange={(e) => applyClientMetric(e.target.value as MetricKey)}
                   className="ui-select !w-auto !py-1.5 text-xs"
                 >
                   {METRIC_CATALOG.map((m) => (
