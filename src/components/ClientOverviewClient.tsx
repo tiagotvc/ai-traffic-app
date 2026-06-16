@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -42,7 +42,6 @@ import {
   customTypesToMap,
   effectiveMetricColumnsForPreset
 } from "@/lib/campaign-table-metrics";
-import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 

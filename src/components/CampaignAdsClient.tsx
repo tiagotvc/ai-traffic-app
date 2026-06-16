@@ -77,6 +77,7 @@ export function CampaignAdsClient({
   const searchParams = useSearchParams();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
+  const [preset, setPreset] = useState<string>("default");
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
     () =>
@@ -97,7 +98,6 @@ export function CampaignAdsClient({
   }
   const adsetFilter = searchParams.get("adset");
   const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [preset, setPreset] = useState<string>("default");
   const [ads, setAds] = useState<AdRow[]>([]);
   const [adsetsCount, setAdsetsCount] = useState<number | null>(null);
   const [creativesCount, setCreativesCount] = useState<number | null>(null);

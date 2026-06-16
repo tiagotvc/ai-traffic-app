@@ -86,6 +86,7 @@ export function CampaignAdSetsClient({
   const { openPanel } = usePublishPanel();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
+  const [preset, setPreset] = useState<string>("default");
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
     () =>
@@ -108,7 +109,6 @@ export function CampaignAdSetsClient({
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [adsets, setAdsets] = useState<AdSetRow[]>([]);
-  const [preset, setPreset] = useState<string>("default");
   const [adsCount, setAdsCount] = useState<number | null>(null);
   const [creativesCount, setCreativesCount] = useState<number | null>(null);
   const [countsLoading, setCountsLoading] = useState(true);
