@@ -83,6 +83,13 @@ export function normalizeTableColumnRefs(raw: unknown): TableColumnRef[] {
   return out.length ? out.slice(0, MAX_TABLE_COLUMNS) : [...DEFAULT_CAMPAIGN_TABLE_LAYOUT.columns];
 }
 
+export function repairLayoutColumns(layout: CampaignTableLayout): CampaignTableLayout {
+  const metrics = layoutMetricColumns(layout);
+  if (metrics.length > 0) return layout;
+  const defaultMetrics = layoutMetricColumns(DEFAULT_CAMPAIGN_TABLE_LAYOUT);
+  return { ...layout, columns: [...layout.columns, ...defaultMetrics] };
+}
+
 export function normalizeCampaignTableLayouts(raw: unknown): CampaignTableLayout[] {
   if (!Array.isArray(raw) || !raw.length) return [{ ...DEFAULT_CAMPAIGN_TABLE_LAYOUT }];
   const out: CampaignTableLayout[] = [];
@@ -92,7 +99,7 @@ export function normalizeCampaignTableLayouts(raw: unknown): CampaignTableLayout
     const id = typeof o.id === "string" ? o.id : `layout-${out.length}`;
     const name = typeof o.name === "string" && o.name.trim() ? o.name.trim() : "Visão";
     const columns = normalizeTableColumnRefs(o.columns);
-    out.push({ id, name, columns });
+    out.push(repairLayoutColumns({ id, name, columns }));
   }
   return out.length ? out : [{ ...DEFAULT_CAMPAIGN_TABLE_LAYOUT }];
 }

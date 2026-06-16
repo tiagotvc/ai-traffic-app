@@ -15,7 +15,12 @@ import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
-import { columnRefKey, layoutMetricColumns } from "@/lib/campaign-table-layout";
+import { columnRefKey } from "@/lib/campaign-table-layout";
+import {
+  customTypesToMap,
+  effectiveMetricColumnsForPreset
+} from "@/lib/campaign-table-metrics";
+import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { ChartContainer } from "@/components/ui/ChartContainer";
@@ -364,6 +369,7 @@ export function CampaignManagerClient({
   const { openPanel } = usePublishPanel();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [adsets, setAdsets] = useState<AdSetRow[]>([]);
+  const [campaignPreset, setCampaignPreset] = useState("default");
   const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [previous, setPrevious] = useState<PrevPeriod | null>(null);
   const [adsCount, setAdsCount] = useState<number | null>(null);
@@ -408,7 +414,10 @@ export function CampaignManagerClient({
 
     const adsetsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${qs}`)
       .then((r) => r.json())
-      .then((j) => setAdsets((j.adsets ?? []) as AdSetRow[]))
+      .then((j) => {
+        setAdsets((j.adsets ?? []) as AdSetRow[]);
+        if (typeof j.preset === "string") setCampaignPreset(j.preset);
+      })
       .catch(() => setAdsets([]));
 
     setAdsCountLoading(true);
@@ -858,6 +867,7 @@ export function CampaignManagerClient({
             t={t}
             isPending={isPending}
             adsetAction={adsetAction}
+            campaignPreset={campaignPreset}
           />
         )
       ) : (
@@ -973,7 +983,8 @@ function AdsetsTable({
   locale,
   t,
   isPending,
-  adsetAction
+  adsetAction,
+  campaignPreset
 }: {
   filteredAdsets: AdSetRow[];
   search: string;
@@ -984,15 +995,18 @@ function AdsetsTable({
   t: (k: string, p?: Record<string, string | number>) => string;
   isPending: boolean;
   adsetAction: (id: string, action: "pause" | "activate") => void;
+  campaignPreset: string;
 }) {
   const { openPanel } = usePublishPanel();
   const tMetrics = useTranslations("metrics");
   const tableLayout = useCampaignTableLayout();
-  const metricColumns = layoutMetricColumns({
-    id: "",
-    name: "",
-    columns: tableLayout.columns
-  });
+  const { types: customTypes } = useCampaignTypes();
+  const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
+  const metricColumns = useMemo(
+    () =>
+      effectiveMetricColumnsForPreset(campaignPreset, customTypesMap, tableLayout.activeLayout),
+    [campaignPreset, customTypesMap, tableLayout.activeLayout]
+  );
   const customMetricNames = Object.fromEntries(
     tableLayout.customMetrics.map((m) => [m.id, m.name])
   );

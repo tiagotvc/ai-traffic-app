@@ -12,7 +12,12 @@ import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboar
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
-import { columnRefKey, layoutMetricColumns } from "@/lib/campaign-table-layout";
+import { columnRefKey } from "@/lib/campaign-table-layout";
+import {
+  customTypesToMap,
+  effectiveMetricColumnsForPreset
+} from "@/lib/campaign-table-metrics";
+import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
@@ -71,11 +76,13 @@ export function CampaignAdsClient({
   const locale = useLocale();
   const searchParams = useSearchParams();
   const tableLayout = useCampaignTableLayout();
-  const metricColumns = layoutMetricColumns({
-    id: "",
-    name: "",
-    columns: tableLayout.columns
-  });
+  const { types: customTypes } = useCampaignTypes();
+  const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
+  const metricColumns = useMemo(
+    () =>
+      effectiveMetricColumnsForPreset(preset, customTypesMap, tableLayout.activeLayout),
+    [preset, customTypesMap, tableLayout.activeLayout]
+  );
   const customMetricNames = Object.fromEntries(
     tableLayout.customMetrics.map((m) => [m.id, m.name])
   );

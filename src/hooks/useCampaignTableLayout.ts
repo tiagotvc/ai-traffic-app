@@ -26,11 +26,18 @@ function localColumnsToLayout(): CampaignTableLayout | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CampaignColumnId[];
     if (!Array.isArray(parsed) || !parsed.length) return null;
-    const columns: TableColumnRef[] = parsed
+    const fieldCols: TableColumnRef[] = parsed
       .filter((c) => ALL_CAMPAIGN_COLUMNS.includes(c))
-      .map((id) => ({ kind: "field", id }));
-    if (!columns.length) return null;
-    return { id: "migrated-local", name: "Padrão", columns };
+      .map((id) => ({ kind: "field" as const, id }));
+    if (!fieldCols.length) return null;
+    const defaultMetrics = DEFAULT_CAMPAIGN_TABLE_LAYOUT.columns.filter(
+      (c) => c.kind === "metric" || c.kind === "meta_action" || c.kind === "custom"
+    );
+    return {
+      id: "migrated-local",
+      name: "Padrão",
+      columns: [...fieldCols, ...defaultMetrics]
+    };
   } catch {
     return null;
   }
