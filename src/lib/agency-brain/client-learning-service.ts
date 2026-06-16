@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ClientLearning } from "@/db/entities/ClientLearning";
 import { repositories } from "@/db/repositories";
+import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
 import type {
   CreateLearningInput,
   LearningDto,
@@ -236,7 +237,18 @@ export async function createSuggestedLearning(
     dedupeKey: draft.dedupeKey
   });
   const saved = await repo.save(row);
-  return toLearningDto(saved);
+  const dto = toLearningDto(saved);
+
+  await recordTimelineEvent(tenantId, clientId, {
+    type: "learning_suggested",
+    title: dto.title,
+    description: dto.description,
+    sourceId: dto.id,
+    sourceType: "learning",
+    metadata: { source: dto.source, confidenceScore: dto.confidenceScore }
+  });
+
+  return dto;
 }
 
 export async function listApprovedLearnings(

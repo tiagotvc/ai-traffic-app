@@ -3,6 +3,7 @@ import "server-only";
 import type { ClientTimelineEvent } from "@/db/entities/ClientTimelineEvent";
 import { repositories } from "@/db/repositories";
 import type { TimelineEventDto, TimelineEventType } from "@/lib/agency-brain/domain/schemas";
+import { enrichSuggestionExecutedEvent } from "@/lib/agency-brain/suggestion-outcome";
 
 export type RecordTimelineEventInput = {
   type: TimelineEventType;
@@ -84,5 +85,28 @@ export async function listClientTimeline(
     .take(pageSize)
     .getMany();
 
-  return { items: rows.map(toTimelineEventDto), total, page, pageSize };
+  const items: TimelineEventDto[] = [];
+  for (const row of rows) {
+    let metadata = (row.metadata as TimelineEventDto["metadata"]) ?? null;
+    if (row.type === "suggestion_executed" && metadata) {
+      metadata = await enrichSuggestionExecutedEvent(
+        tenantId,
+        clientId,
+        row.id,
+        metadata as Record<string, unknown>,
+        row.createdAt.toISOString()
+      );
+    }
+    items.push({
+      id: row.id,
+      clientId: row.clientId,
+      type: row.type,
+      title: row.title,
+      description: row.description ?? null,
+      metadata,
+      createdAt: row.createdAt.toISOString()
+    });
+  }
+
+  return { items, total, page, pageSize };
 }

@@ -41,6 +41,9 @@ export function SettingsClient({
   const [resetText, setResetText] = useState("");
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [resetPending, startResetTransition] = useTransition();
+  const [nicheShareOptIn, setNicheShareOptIn] = useState(false);
+  const [nicheShareMessage, setNicheShareMessage] = useState<string | null>(null);
+  const [nicheSharePending, startNicheShareTransition] = useTransition();
 
   const loadWorkspaceMeta = useCallback(() => {
     fetch("/api/settings/workspace-meta")
@@ -58,6 +61,7 @@ export function SettingsClient({
         if (j.tenant) {
           setBrandName(j.tenant.brandName ?? j.tenant.name ?? "");
           setLogoUrl(j.tenant.logoUrl ?? "");
+          setNicheShareOptIn(!!j.tenant.agencyBrainNicheShareOptIn);
         }
       })
       .catch(() => setMessage(t("loadFailed")));
@@ -151,7 +155,47 @@ export function SettingsClient({
         {message ? <div className="mt-2 text-xs text-slate-500">{message}</div> : null}
       </section>
 
-      <div className="lg:col-span-2 lg:row-start-2">
+      <section className="lg:col-span-2 ui-card p-4">
+        <div className="text-sm font-semibold">{t("agencyBrainPrivacyTitle")}</div>
+        <p className="mt-1 text-xs text-slate-500">{t("agencyBrainPrivacyHint")}</p>
+        <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={nicheShareOptIn}
+            onChange={(e) => setNicheShareOptIn(e.target.checked)}
+            className="mt-0.5 rounded border-slate-300"
+          />
+          <span>{t("agencyBrainNicheShareOptIn")}</span>
+        </label>
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            disabled={nicheSharePending}
+            onClick={() => {
+              setNicheShareMessage(null);
+              startNicheShareTransition(async () => {
+                const res = await fetch("/api/settings/tenant", {
+                  method: "PATCH",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ agencyBrainNicheShareOptIn: nicheShareOptIn })
+                });
+                const json = await res.json().catch(() => null);
+                setNicheShareMessage(
+                  json?.ok ? t("agencyBrainPrivacySaved") : json?.error ?? t("saveFailed")
+                );
+              });
+            }}
+            className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+          >
+            {nicheSharePending ? tCommon("loading") : tCommon("save")}
+          </button>
+        </div>
+        {nicheShareMessage ? (
+          <div className="mt-2 text-xs text-slate-500">{nicheShareMessage}</div>
+        ) : null}
+      </section>
+
+      <div className="lg:col-span-2 lg:row-start-3">
         <WorkspaceTeamSection workspaceName={brandName} />
       </div>
 

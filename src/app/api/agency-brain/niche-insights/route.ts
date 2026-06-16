@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
     }
 
-    const insights = getNicheStarterInsights(client.niche);
+    const insights = await getNicheStarterInsights(client.niche);
     return NextResponse.json({ ok: true, ...insights });
   } catch (err) {
     console.error("[niche-insights]", err);

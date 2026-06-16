@@ -69,17 +69,30 @@ export function DnaContent({ clientId }: { clientId: string }) {
   const [editMode, setEditMode] = useState(false);
   const [overrideText, setOverrideText] = useState("");
   const [message, setMessage] = useState<FeedbackMessage | null>(null);
+  const [nichePatterns, setNichePatterns] = useState<string[]>([]);
+  const [nicheAggregated, setNicheAggregated] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/clients/${encodeURIComponent(clientId)}/dna`);
-      const json = await res.json();
+      const [dnaRes, nicheRes] = await Promise.all([
+        fetch(`/api/clients/${encodeURIComponent(clientId)}/dna`),
+        fetch(`/api/agency-brain/niche-insights?client=${encodeURIComponent(clientId)}`)
+      ]);
+      const json = await dnaRes.json();
+      const nicheJson = await nicheRes.json();
       if (json.ok) {
         setDna(json.dna);
         setOverrideText(JSON.stringify(json.dna?.manualOverrides ?? {}, null, 2));
       } else {
         setMessage({ type: "err", text: json.error ?? t("dnaErrorLoad") });
+      }
+      if (nicheJson.ok && Array.isArray(nicheJson.patterns)) {
+        setNichePatterns(nicheJson.patterns);
+        setNicheAggregated(!!nicheJson.aggregated);
+      } else {
+        setNichePatterns([]);
+        setNicheAggregated(false);
       }
     } catch {
       setMessage({ type: "err", text: t("dnaErrorLoad") });
@@ -172,7 +185,23 @@ export function DnaContent({ clientId }: { clientId: string }) {
       {loading ? (
         <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
       ) : !dna ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("dnaEmpty")}</div>
+        <div className="space-y-4">
+          <div className="ui-card p-8 text-center text-sm text-slate-500">{t("dnaEmpty")}</div>
+          {nichePatterns.length > 0 ? (
+            <div className="ui-card p-4">
+              <h3 className="font-semibold text-slate-900">{t("nicheInsightsTitle")}</h3>
+              <p className="mt-1 text-xs text-slate-500">{t("nicheInsightsHint")}</p>
+              {nicheAggregated ? (
+                <p className="mt-1 text-xs text-violet-600">{t("nicheInsightsAggregated")}</p>
+              ) : null}
+              <ul className="mt-3 list-disc space-y-1 pl-4 text-sm text-slate-600">
+                {nichePatterns.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
       ) : (
         <>
           <div className="ui-card p-4">

@@ -128,6 +128,7 @@ export async function GET(
         slug: slugify(client.name),
         name: client.name,
         aiContext: client.aiContext,
+        niche: client.niche ?? null,
         kpis: { spend, conversions, cpa, cpl, roas, leads },
         accounts: accounts.map((a) => ({
           id: a.id,

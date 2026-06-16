@@ -113,5 +113,6 @@ export const CreateActionPlanSchema = z.object({
 });
 
 export const AgencyBrainChatSchema = z.object({
-  message: z.string().min(1).max(2000)
+  message: z.string().min(1).max(2000),
+  mode: z.enum(["default", "meeting"]).optional()
 });

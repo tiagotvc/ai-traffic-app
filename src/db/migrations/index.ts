@@ -25,6 +25,7 @@ import { TenantMemberClientMetricPref_1735692100000 } from "./0024-TenantMemberC
 import { ClientActionSuggestions_1735692200000 } from "./0025-ClientActionSuggestions";
 import { TenantGeminiModel_1735692300000 } from "./0026-TenantGeminiModel";
 import { AgencyBrainCore_1735692400000 } from "./0027-AgencyBrainCore";
+import { AgencyBrainNicheOptIn_1735692500000 } from "./0028-AgencyBrainNicheOptIn";
 import { RankingConfig1735691100000 } from "./0014-RankingConfig";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
@@ -56,5 +57,6 @@ export const appMigrations = [
   TenantMemberClientMetricPref_1735692100000,
   ClientActionSuggestions_1735692200000,
   TenantGeminiModel_1735692300000,
-  AgencyBrainCore_1735692400000
+  AgencyBrainCore_1735692400000,
+  AgencyBrainNicheOptIn_1735692500000
 ];

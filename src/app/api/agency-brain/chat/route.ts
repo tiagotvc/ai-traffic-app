@@ -53,9 +53,14 @@ export async function POST(req: Request) {
     const aiStatus = await getCreativeMemoryAiStatus(tenant.id);
     const modelChain = resolveCreativeMemoryModelChain(aiStatus.planSlug);
 
+    const isMeeting = body.mode === "meeting";
     const prompt = [
-      "Você é um assistente de performance marketing da agência.",
-      "Responda em português, de forma clara e acionável.",
+      isMeeting
+        ? "Você está em Modo Reunião com o cliente. Responda em português com tom profissional e consultivo."
+        : "Você é um assistente de performance marketing da agência.",
+      isMeeting
+        ? "Estruture a resposta com: Resumo executivo, Destaques positivos, Pontos de atenção, Próximos passos recomendados."
+        : "Responda em português, de forma clara e acionável.",
       "Use apenas o contexto abaixo — se não souber, diga que falta informação.",
       "",
       `Cliente: ${client.name}`,

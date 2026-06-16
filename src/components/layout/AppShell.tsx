@@ -6,6 +6,7 @@ import { PublishPanelHost } from "@/components/publish/PublishPanelHost";
 import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
+import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 
 const STORAGE_KEY = "traffic-ai-sidebar-collapsed";
 
@@ -18,6 +19,7 @@ export function AppShell({
   planName = "Free",
   subscriptionStatus = "active",
   allowCreativeMemoryAi = true,
+  agencyBrainFeatures,
   isPlatformAdmin = false
 }: {
   children: React.ReactNode;
@@ -28,6 +30,7 @@ export function AppShell({
   planName?: string;
   subscriptionStatus?: string;
   allowCreativeMemoryAi?: boolean;
+  agencyBrainFeatures?: AgencyBrainFeatureFlags;
   isPlatformAdmin?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -67,6 +70,7 @@ export function AppShell({
           planSlug={planSlug}
           subscriptionStatus={subscriptionStatus}
           allowCreativeMemoryAi={allowCreativeMemoryAi}
+          agencyBrainFeatures={agencyBrainFeatures}
           isPlatformAdmin={isPlatformAdmin}
           collapsed={ready ? collapsed : false}
           onToggleCollapse={toggleCollapsed}

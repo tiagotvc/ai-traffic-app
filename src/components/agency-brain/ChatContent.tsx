@@ -1,11 +1,33 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { FeedbackBanner, type FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
 
 type ChatMessage = { role: "user" | "assistant"; text: string };
+
+function buildMeetingExport(
+  clientLabel: string,
+  messages: ChatMessage[],
+  meetingMode: boolean
+): string {
+  const lines = [
+    `# Agency Brain — ${meetingMode ? "Modo Reunião" : "Chat"}`,
+    `Cliente: ${clientLabel}`,
+    `Exportado: ${new Date().toLocaleString()}`,
+    "",
+    "---",
+    ""
+  ];
+
+  for (const msg of messages) {
+    const who = msg.role === "user" ? "Pergunta" : "Assistente";
+    lines.push(`## ${who}`, "", msg.text, "");
+  }
+
+  return lines.join("\n");
+}
 
 export function ChatContent({ clientId }: { clientId: string }) {
   const t = useTranslations("agencyBrain");
@@ -13,9 +35,10 @@ export function ChatContent({ clientId }: { clientId: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [meetingMode, setMeetingMode] = useState(false);
   const [message, setMessage] = useState<FeedbackMessage | null>(null);
 
-  async function handleSend() {
+  const sendMessage = useCallback(async () => {
     const text = input.trim();
     if (!text || sending) return;
 
@@ -28,7 +51,11 @@ export function ChatContent({ clientId }: { clientId: string }) {
       const res = await fetch("/api/agency-brain/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, message: text })
+        body: JSON.stringify({
+          clientId,
+          message: text,
+          mode: meetingMode ? "meeting" : "default"
+        })
       });
       const json = await res.json();
       if (res.status === 402 || json.code === "PLAN_LIMIT") {
@@ -49,10 +76,60 @@ export function ChatContent({ clientId }: { clientId: string }) {
     } finally {
       setSending(false);
     }
+  }, [clientId, input, meetingMode, sending, t]);
+
+  function handleExport() {
+    if (!messages.length) return;
+    const md = buildMeetingExport(clientId, messages, meetingMode);
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `agency-brain-${clientId}-${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setMessage({ type: "ok", text: t("chatExportDone") });
+  }
+
+  async function handleCopyExport() {
+    if (!messages.length) return;
+    const md = buildMeetingExport(clientId, messages, meetingMode);
+    try {
+      await navigator.clipboard.writeText(md);
+      setMessage({ type: "ok", text: t("chatCopyDone") });
+    } catch {
+      setMessage({ type: "err", text: t("chatExportError") });
+    }
   }
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={meetingMode}
+            onChange={(e) => setMeetingMode(e.target.checked)}
+            className="rounded border-slate-300"
+          />
+          {t("chatMeetingMode")}
+        </label>
+        {messages.length > 0 ? (
+          <div className="flex gap-2">
+            <button type="button" className="ui-btn-secondary text-xs" onClick={() => void handleCopyExport()}>
+              {t("chatCopyExport")}
+            </button>
+            <button type="button" className="ui-btn-secondary text-xs" onClick={handleExport}>
+              {t("chatDownloadExport")}
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {meetingMode ? (
+        <p className="text-xs text-slate-500">{t("chatMeetingHint")}</p>
+      ) : null}
+
       <FeedbackBanner message={message} />
 
       <div className="ui-card flex min-h-[400px] flex-col">
@@ -72,7 +149,7 @@ export function ChatContent({ clientId }: { clientId: string }) {
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   {msg.role === "user" ? t("chatYou") : t("chatAssistant")}
                 </p>
-                <p className="mt-1">{msg.text}</p>
+                <p className="mt-1 whitespace-pre-wrap">{msg.text}</p>
               </div>
             ))
           )}
@@ -85,13 +162,13 @@ export function ChatContent({ clientId }: { clientId: string }) {
           <div className="flex gap-2">
             <input
               className="ui-input flex-1"
-              placeholder={t("chatPlaceholder")}
+              placeholder={meetingMode ? t("chatMeetingPlaceholder") : t("chatPlaceholder")}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  void handleSend();
+                  void sendMessage();
                 }
               }}
               disabled={sending}
@@ -99,7 +176,7 @@ export function ChatContent({ clientId }: { clientId: string }) {
             <button
               type="button"
               className="ui-btn-primary shrink-0"
-              onClick={() => void handleSend()}
+              onClick={() => void sendMessage()}
               disabled={sending || !input.trim()}
             >
               {sending ? t("chatSending") : t("chatSend")}

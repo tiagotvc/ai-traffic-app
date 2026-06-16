@@ -7,6 +7,38 @@ import { FeedbackBanner, type FeedbackMessage } from "@/components/agency-brain/
 import { Badge } from "@/components/ui/Badge";
 import type { TimelineEventDto } from "@/lib/agency-brain/domain/schemas";
 
+type TFn = ReturnType<typeof useTranslations>;
+
+function SuggestionOutcomeBlock({
+  metadata,
+  t
+}: {
+  metadata: Record<string, unknown>;
+  t: TFn;
+}) {
+  const status = metadata.outcomeStatus as string | undefined;
+  const summary = metadata.outcomeSummary as string | undefined;
+  const readyIn = metadata.outcomeReadyInDays as number | undefined;
+
+  if (status === "pending" && readyIn != null) {
+    return (
+      <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+        {t("timelineOutcomePending", { days: readyIn })}
+      </p>
+    );
+  }
+
+  if (status === "ready" && summary) {
+    return (
+      <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
+        {t("timelineOutcomeTitle")}: {summary}
+      </p>
+    );
+  }
+
+  return null;
+}
+
 export function TimelineContent({ clientId }: { clientId: string }) {
   const t = useTranslations("agencyBrain");
 
@@ -63,6 +95,9 @@ export function TimelineContent({ clientId }: { clientId: string }) {
                 </div>
                 {event.description ? (
                   <p className="mt-2 text-sm text-slate-600">{event.description}</p>
+                ) : null}
+                {event.type === "suggestion_executed" && event.metadata ? (
+                  <SuggestionOutcomeBlock metadata={event.metadata as Record<string, unknown>} t={t} />
                 ) : null}
               </div>
             </div>

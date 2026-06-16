@@ -8,6 +8,7 @@ import { evaluateHypothesisRules, type SuggestedHypothesisDraft } from "@/lib/ag
 import { getClientCampaignMetricsWithComparison } from "@/lib/agency-brain/metrics-input";
 import { createManualLearning } from "@/lib/agency-brain/client-learning-service";
 import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
+import { rebuildClientDna } from "@/lib/agency-brain/dna-builder";
 import { In, MoreThanOrEqual, Not } from "typeorm";
 
 const WINDOW_DAYS = 7;
@@ -215,6 +216,8 @@ export async function promoteHypothesisToLearning(
     sourceId: row.id,
     sourceType: "hypothesis"
   });
+
+  await rebuildClientDna(tenantId, clientId);
 
   return { hypothesis: toHypothesisDto(saved), learning };
 }

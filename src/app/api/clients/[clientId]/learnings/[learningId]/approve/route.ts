@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
-import { approveLearning } from "@/lib/agency-brain/client-learning-service";
+import { approveLearning, getLearningById } from "@/lib/agency-brain/client-learning-service";
 import { rebuildClientDna } from "@/lib/agency-brain/dna-builder";
 import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
 
@@ -15,6 +15,23 @@ export async function PATCH(
     const client = await getClientBySlugOrId(tenant.id, clientId);
     if (!client) {
       return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
+    }
+
+    const existing = await getLearningById(tenant.id, client.id, learningId);
+    if (!existing) {
+      return NextResponse.json({ ok: false, error: "Aprendizado não encontrado" }, { status: 404 });
+    }
+
+    const score = existing.confidenceScore ?? 0;
+    if (score < 50) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "LOW_CONFIDENCE",
+          error: `Confiança insuficiente (${score}/100). Mínimo 50 para aprovar.`
+        },
+        { status: 400 }
+      );
     }
 
     const learning = await approveLearning(tenant.id, client.id, learningId);

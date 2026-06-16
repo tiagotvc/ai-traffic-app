@@ -49,6 +49,15 @@ export default async function AppLayout({
       planName={entitlements.planName}
       subscriptionStatus={entitlements.status}
       allowCreativeMemoryAi={entitlements.limits.allowCreativeMemoryAi}
+      agencyBrainFeatures={{
+        allowCreativeMemoryAi: entitlements.limits.allowCreativeMemoryAi,
+        allowAgencyBrainHypotheses: entitlements.limits.allowAgencyBrainHypotheses,
+        allowAgencyBrainDna: entitlements.limits.allowAgencyBrainDna,
+        allowAgencyBrainTimeline: entitlements.limits.allowAgencyBrainTimeline,
+        allowAgencyBrainExperiments: entitlements.limits.allowAgencyBrainExperiments,
+        allowAgencyBrainActionPlans: entitlements.limits.allowAgencyBrainActionPlans,
+        allowAgencyBrainChat: entitlements.limits.allowAgencyBrainChat
+      }}
       isPlatformAdmin={platformAdmin}
     >
       {children}

@@ -6,7 +6,8 @@ import { getAppContext } from "@/lib/app-context";
 
 const PatchSchema = z.object({
   brandName: z.string().min(1).optional(),
-  logoUrl: z.string().optional()
+  logoUrl: z.string().optional(),
+  agencyBrainNicheShareOptIn: z.boolean().optional()
 });
 
 export async function GET() {
@@ -17,7 +18,8 @@ export async function GET() {
       id: tenant.id,
       name: tenant.name,
       brandName: tenant.brandName,
-      logoUrl: tenant.logoUrl
+      logoUrl: tenant.logoUrl,
+      agencyBrainNicheShareOptIn: tenant.agencyBrainNicheShareOptIn ?? false
     }
   });
 }
@@ -29,6 +31,9 @@ export async function PATCH(req: Request) {
 
   if (body.brandName !== undefined) tenant.brandName = body.brandName;
   if (body.logoUrl !== undefined) tenant.logoUrl = body.logoUrl || null;
+  if (body.agencyBrainNicheShareOptIn !== undefined) {
+    tenant.agencyBrainNicheShareOptIn = body.agencyBrainNicheShareOptIn;
+  }
 
   await tenantRepo.save(tenant);
 
@@ -38,7 +43,8 @@ export async function PATCH(req: Request) {
       id: tenant.id,
       name: tenant.name,
       brandName: tenant.brandName,
-      logoUrl: tenant.logoUrl
+      logoUrl: tenant.logoUrl,
+      agencyBrainNicheShareOptIn: tenant.agencyBrainNicheShareOptIn ?? false
     }
   });
 }

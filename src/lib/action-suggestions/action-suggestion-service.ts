@@ -3,6 +3,7 @@ import "server-only";
 import type { ClientActionSuggestion } from "@/db/entities/ClientActionSuggestion";
 import { repositories } from "@/db/repositories";
 import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
+import { captureClientMetricsSnapshot } from "@/lib/agency-brain/suggestion-outcome";
 import type {
   ActionPayload,
   ActionSuggestionDto,
@@ -130,7 +131,22 @@ export async function createActionSuggestion(
     dedupeKey: draft.dedupeKey
   });
   const saved = await repo.save(row);
-  return toActionSuggestionDto(saved);
+  const dto = toActionSuggestionDto(saved);
+
+  await recordTimelineEvent(tenantId, clientId, {
+    type: "suggestion_created",
+    title: dto.title,
+    description: dto.description,
+    sourceId: dto.id,
+    sourceType: "suggestion",
+    metadata: {
+      priority: dto.priority,
+      actionType: dto.actionType,
+      source: dto.source
+    }
+  });
+
+  return dto;
 }
 
 async function resolveSuggestion(
@@ -165,13 +181,26 @@ export async function executeActionSuggestion(
 
   const result = await resolveSuggestion(tenantId, clientId, suggestionId, "EXECUTED", userId, "Executado pelo app");
   if (result) {
+    const metricsBaseline = await captureClientMetricsSnapshot(
+      tenantId,
+      clientId,
+      row.metaCampaignId ?? null,
+      7
+    );
+    const executedAt = new Date().toISOString();
+
     await recordTimelineEvent(tenantId, clientId, {
       type: "suggestion_executed",
       title: result.title,
       description: result.description,
       sourceId: result.id,
       sourceType: "suggestion",
-      metadata: { priority: result.priority }
+      metadata: {
+        priority: result.priority,
+        suggestionId: result.id,
+        metricsBaseline,
+        executedAt
+      }
     });
   }
   return result;

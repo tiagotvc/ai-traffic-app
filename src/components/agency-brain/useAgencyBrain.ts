@@ -231,7 +231,11 @@ export function useAgencyBrain(clientId: string) {
       );
       const json = await res.json();
       if (!json.ok) {
-        setMessage({ type: "err", text: json.error ?? t("errorAction") });
+        const errText =
+          json.code === "LOW_CONFIDENCE"
+            ? t("approveLowConfidence")
+            : json.error ?? t("errorAction");
+        setMessage({ type: "err", text: errText });
         return;
       }
       setMessage({

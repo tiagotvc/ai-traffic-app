@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 
 import { AgencyBrainNavGroup } from "@/components/layout/AgencyBrainNavGroup";
+import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -70,6 +71,7 @@ export function AppSidebar({
   planSlug,
   subscriptionStatus,
   allowCreativeMemoryAi = true,
+  agencyBrainFeatures,
   isPlatformAdmin = false,
   collapsed,
   onToggleCollapse
@@ -81,12 +83,23 @@ export function AppSidebar({
   planSlug?: string;
   subscriptionStatus?: string;
   allowCreativeMemoryAi?: boolean;
+  agencyBrainFeatures?: AgencyBrainFeatureFlags;
   isPlatformAdmin?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
 }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
+
+  const brainFeatures: AgencyBrainFeatureFlags = agencyBrainFeatures ?? {
+    allowCreativeMemoryAi,
+    allowAgencyBrainHypotheses: allowCreativeMemoryAi,
+    allowAgencyBrainDna: allowCreativeMemoryAi,
+    allowAgencyBrainTimeline: false,
+    allowAgencyBrainExperiments: false,
+    allowAgencyBrainActionPlans: false,
+    allowAgencyBrainChat: false
+  };
 
   const items: NavItem[] = [
     { id: "highlights", href: "/dashboard", label: t("highlights"), icon: <NavIcon d={icons.highlights} /> },
@@ -251,7 +264,7 @@ export function AppSidebar({
               {item.id === "creatives" ? (
                 <AgencyBrainNavGroup
                   collapsed={collapsed}
-                  allowCreativeMemoryAi={allowCreativeMemoryAi}
+                  agencyBrainFeatures={brainFeatures}
                   pathname={pathname}
                 />
               ) : null}

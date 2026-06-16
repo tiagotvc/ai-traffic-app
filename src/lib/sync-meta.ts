@@ -223,5 +223,9 @@ export async function runMetaSync(input: {
   await runAutomationEngine(input.tenantId, input.metaAccessToken, campaignMeta);
   const { runLearningSuggestions } = await import("@/lib/agency-brain/learning-suggestion-service");
   await runLearningSuggestions(input.tenantId);
+  const { recordSyncCompletedTimelineEvents } = await import(
+    "@/lib/agency-brain/timeline-recorder"
+  );
+  await recordSyncCompletedTimelineEvents(input.tenantId, accounts.length);
   return { accountsSynced: accounts.length };
 }

@@ -22,5 +22,9 @@ export class Tenant extends AppBaseEntity {
 
   @Column({ type: "text", nullable: true })
   preferredGeminiModel?: string | null;
+
+  /** Opt-in para agregar aprendizados anonimizados por nicho (cross-tenant). */
+  @Column({ type: "boolean", default: false })
+  agencyBrainNicheShareOptIn!: boolean;
 }
 

@@ -28,6 +28,7 @@ type ClientData = {
   slug: string;
   name: string;
   aiContext: unknown;
+  niche: string | null;
   kpis: { spend: number; conversions: number; cpa: number; cpl?: number; roas: number };
   accounts: Array<{ id: string; metaAdAccountId: string; label: string }>;
   campaigns: Array<{
@@ -57,6 +58,17 @@ type BusinessOption = {
 
 type Feedback = { type: "success" | "error"; text: string };
 
+const CLIENT_NICHE_OPTIONS = [
+  { value: "", labelKey: "nicheUnset" },
+  { value: "clinica", labelKey: "nicheClinica" },
+  { value: "ecommerce", labelKey: "nicheEcommerce" },
+  { value: "infoproduto", labelKey: "nicheInfoproduto" },
+  { value: "imobiliaria", labelKey: "nicheImobiliaria" },
+  { value: "saas", labelKey: "nicheSaas" },
+  { value: "apps_games", labelKey: "nicheAppsGames" },
+  { value: "outro", labelKey: "nicheOutro" }
+] as const;
+
 const ONBOARDING_KEY = "traffic-ai-client-onboarding-dismissed";
 
 function isProtectedClient(name: string, slug: string) {
@@ -80,6 +92,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
     Array<{ id: string; name: string; metaBusinessId?: string | null }>
   >([]);
   const [publishReady, setPublishReady] = useState(false);
+  const [clientNiche, setClientNiche] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -125,6 +138,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
           return;
         }
         setData(j.client);
+        setClientNiche(j.client.niche ?? "");
       })
       .catch(() => notify("error", t("loadError")));
   }, [clientId, t, notify]);
@@ -392,6 +406,55 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
           clientId={clientId}
           defaultAdAccountId={linkedMetaIds[0] ?? data.accounts[0]?.metaAdAccountId ?? ""}
         />
+
+        <div className="ui-card p-4">
+          <div className="text-sm font-semibold">{t("agencyBrainTitle")}</div>
+          <p className="mt-1 text-xs text-slate-500">{t("agencyBrainHint")}</p>
+          <div className="mt-3">
+            <div className="text-xs text-slate-500">{t("nicheLabel")}</div>
+            <select
+              value={clientNiche}
+              onChange={(e) => setClientNiche(e.target.value)}
+              className="mt-1 w-full max-w-md rounded-xl ui-input text-sm"
+            >
+              {CLIENT_NICHE_OPTIONS.map((opt) => (
+                <option key={opt.value || "unset"} value={opt.value}>
+                  {t(opt.labelKey)}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[10px] text-slate-500">{t("nicheHint")}</p>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  const res = await fetch(
+                    `/api/clients/${encodeURIComponent(clientId)}/context`,
+                    {
+                      method: "PATCH",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({
+                        niche: clientNiche || null
+                      })
+                    }
+                  );
+                  const j = await res.json();
+                  if (j.ok) setClientNiche(j.niche ?? "");
+                  notify(
+                    j.ok ? "success" : "error",
+                    j.ok ? t("nicheSaved") : j.error ?? t("loadError")
+                  );
+                });
+              }}
+              className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+            >
+              {isPending ? "…" : t("nicheSave")}
+            </button>
+          </div>
+        </div>
 
         <div className="ui-card p-4">
           <div className="text-sm font-semibold">{t("adAccounts")}</div>

@@ -3,7 +3,9 @@ import "server-only";
 import { repositories } from "@/db/repositories";
 import { createSuggestedLearning } from "@/lib/agency-brain/client-learning-service";
 import { evaluateAllRules } from "@/lib/agency-brain/learning-rules";
+import { detectMetricSpikes } from "@/lib/agency-brain/metric-spike-detector";
 import { getClientCampaignMetricsWithComparison } from "@/lib/agency-brain/metrics-input";
+import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
 import type { LearningDto } from "@/lib/agency-brain/types";
 
 const WINDOW_DAYS = 7;
@@ -42,6 +44,20 @@ export async function runLearningSuggestionsForClient(
   for (const draft of drafts) {
     const created = await createSuggestedLearning(tenantId, clientId, draft);
     if (created) suggestions.push(created);
+  }
+
+  const spikes = detectMetricSpikes(current, previous);
+  for (const spike of spikes) {
+    await recordTimelineEvent(tenantId, clientId, {
+      type: "metric_spike",
+      title: spike.title,
+      description: spike.description,
+      metadata: {
+        metric: spike.metric,
+        deltaPct: spike.deltaPct,
+        metaCampaignId: spike.metaCampaignId
+      }
+    });
   }
 
   return { created: suggestions.length, suggestions };

@@ -149,10 +149,13 @@ export function LearningCard({
         <div className="flex flex-wrap gap-2">
           {learning.status === "SUGGESTED" ? (
             <>
+              {(learning.confidenceScore ?? 0) < 50 ? (
+                <p className="w-full text-xs text-amber-600">{t("approveLowConfidence")}</p>
+              ) : null}
               <button
                 type="button"
                 className="ui-btn-primary text-xs"
-                disabled={busy}
+                disabled={busy || (learning.confidenceScore ?? 0) < 50}
                 onClick={() => onApprove(learning.id)}
               >
                 {t("approveMemory")}
