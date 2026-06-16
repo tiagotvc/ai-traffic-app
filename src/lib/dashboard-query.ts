@@ -6,6 +6,19 @@ import { repositories } from "@/db/repositories";
 import { getClientBySlugOrId, listClientsForTenant } from "@/lib/app-context";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { addDaysIso, parsePeriodFromSearchParams, todayIso } from "@/lib/report-period";
+
+export type MetricTotals = {
+  spend: number;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  reach: number;
+  messages: number;
+  roas: number;
+};
+
+export type MetricDayRow = MetricTotals & { day: string };
+
 export async function resolveDashboardScope(
   tenantId: string,
   clientIdParam?: string | null,
@@ -71,47 +84,304 @@ export function dateNDaysAgo(n: number) {
   return addDaysIso(todayIso(), -n);
 }
 
+function emptyTotals(): MetricTotals {
+  return { spend: 0, impressions: 0, clicks: 0, conversions: 0, reach: 0, messages: 0, roas: 0 };
+}
+
+function parseTotalsRow(r: {
+  spend?: string;
+  impressions?: string;
+  clicks?: string;
+  conversions?: string;
+  reach?: string;
+  messages?: string;
+  roasAvg?: string | null;
+}): MetricTotals {
+  return {
+    spend: Number(r.spend) || 0,
+    impressions: Number(r.impressions) || 0,
+    clicks: Number(r.clicks) || 0,
+    conversions: Number(r.conversions) || 0,
+    reach: Number(r.reach) || 0,
+    messages: Number(r.messages) || 0,
+    roas: Number(r.roasAvg) || 0
+  };
+}
+
+function resolveDateRange(
+  days: number,
+  opts?: { since?: string | null; until?: string | null; allTime?: boolean }
+) {
+  if (opts?.allTime) return null;
+  const end = opts?.until?.slice(0, 10) ?? todayIso();
+  const start = opts?.since?.slice(0, 10) ?? dateNDaysAgo(days);
+  return { start, end };
+}
+
+async function useAccountMetricSnapshots(
+  accountIds: string[],
+  start: string,
+  end: string
+): Promise<boolean> {
+  const { metricSnapshot: metricsRepo } = await repositories();
+  const row = await metricsRepo
+    .createQueryBuilder("m")
+    .select("1")
+    .where("m.adAccountId IN (:...accountIds)", { accountIds })
+    .andWhere("m.day >= :start", { start })
+    .andWhere("m.day <= :end", { end })
+    .limit(1)
+    .getRawOne();
+  return !!row;
+}
+
+/** Totais agregados no SQL (1 linha) — muito mais rápido que carregar snapshots. */
+export async function loadMetricTotals(
+  accountIds: string[],
+  days = 30,
+  opts?: { since?: string | null; until?: string | null; allTime?: boolean }
+): Promise<MetricTotals> {
+  if (!accountIds.length) return emptyTotals();
+
+  const range = resolveDateRange(days, opts);
+  const { metricSnapshot: metricsRepo, campaignMetricSnapshot: campRepo } = await repositories();
+
+  const buildQb = (useAccount: boolean) => {
+    const qb = (useAccount ? metricsRepo : campRepo).createQueryBuilder("m");
+    qb.select("COALESCE(SUM(m.spend::numeric), 0)", "spend")
+      .addSelect("COALESCE(SUM(m.impressions::bigint), 0)", "impressions")
+      .addSelect("COALESCE(SUM(m.clicks::bigint), 0)", "clicks")
+      .addSelect("COALESCE(SUM(m.conversions::bigint), 0)", "conversions")
+      .addSelect("COALESCE(SUM(m.reach::bigint), 0)", "reach")
+      .addSelect("COALESCE(SUM(m.messages::bigint), 0)", "messages")
+      .addSelect("AVG(NULLIF(m.roas::numeric, 0))", "roasAvg")
+      .where("m.adAccountId IN (:...accountIds)", { accountIds });
+    if (range) {
+      qb.andWhere("m.day >= :start", { start: range.start }).andWhere("m.day <= :end", {
+        end: range.end
+      });
+    }
+    return qb;
+  };
+
+  if (range) {
+    const useAccount = await useAccountMetricSnapshots(accountIds, range.start, range.end);
+    const row = await buildQb(useAccount).getRawOne<{
+      spend: string;
+      impressions: string;
+      clicks: string;
+      conversions: string;
+      reach: string;
+      messages: string;
+      roasAvg: string | null;
+    }>();
+    return parseTotalsRow(row ?? {});
+  }
+
+  const row = await buildQb(true).getRawOne();
+  if (row && Number(row.spend) > 0) return parseTotalsRow(row);
+  return parseTotalsRow((await buildQb(false).getRawOne()) ?? {});
+}
+
+/** Série diária agregada no SQL (GROUP BY day). */
+export async function loadMetricSeriesByDay(
+  accountIds: string[],
+  days = 30,
+  opts?: { since?: string | null; until?: string | null; allTime?: boolean }
+): Promise<MetricDayRow[]> {
+  if (!accountIds.length) return [];
+
+  const range = resolveDateRange(days, opts);
+  if (!range && !opts?.allTime) return [];
+
+  const { metricSnapshot: metricsRepo, campaignMetricSnapshot: campRepo } = await repositories();
+
+  const buildQb = (useAccount: boolean) => {
+    const qb = (useAccount ? metricsRepo : campRepo).createQueryBuilder("m");
+    qb.select("m.day", "day")
+      .addSelect("COALESCE(SUM(m.spend::numeric), 0)", "spend")
+      .addSelect("COALESCE(SUM(m.impressions::bigint), 0)", "impressions")
+      .addSelect("COALESCE(SUM(m.clicks::bigint), 0)", "clicks")
+      .addSelect("COALESCE(SUM(m.conversions::bigint), 0)", "conversions")
+      .addSelect("COALESCE(SUM(m.reach::bigint), 0)", "reach")
+      .addSelect("COALESCE(SUM(m.messages::bigint), 0)", "messages")
+      .addSelect("AVG(NULLIF(m.roas::numeric, 0))", "roasAvg")
+      .where("m.adAccountId IN (:...accountIds)", { accountIds });
+    if (range) {
+      qb.andWhere("m.day >= :start", { start: range.start }).andWhere("m.day <= :end", {
+        end: range.end
+      });
+    }
+    qb.groupBy("m.day").orderBy("m.day", "ASC");
+    return qb;
+  };
+
+  let rows: Array<{
+    day: string;
+    spend: string;
+    impressions: string;
+    clicks: string;
+    conversions: string;
+    reach: string;
+    messages: string;
+    roasAvg: string | null;
+  }> = [];
+
+  if (range) {
+    const useAccount = await useAccountMetricSnapshots(accountIds, range.start, range.end);
+    rows = await buildQb(useAccount).getRawMany();
+  } else {
+    rows = await buildQb(true).getRawMany();
+    if (!rows.length) rows = await buildQb(false).getRawMany();
+  }
+
+  return rows.map((d) => ({
+    day: d.day,
+    ...parseTotalsRow(d)
+  }));
+}
+
+/** Totais por conta em duas janelas (variações). */
+export async function loadAccountMetricWindows(
+  accountIds: string[],
+  curSince: string,
+  curUntil: string,
+  prevSince: string,
+  prevUntil: string
+): Promise<
+  Map<
+    string,
+    { current: MetricTotals; previous: MetricTotals }
+  >
+> {
+  const out = new Map<string, { current: MetricTotals; previous: MetricTotals }>();
+  if (!accountIds.length) return out;
+
+  const { metricSnapshot: metricsRepo, campaignMetricSnapshot: campRepo } = await repositories();
+  const useAccount = await useAccountMetricSnapshots(accountIds, prevSince, curUntil);
+  const qb = (useAccount ? metricsRepo : campRepo).createQueryBuilder("m");
+
+  const rows = await qb
+    .select("m.adAccountId", "adAccountId")
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :curSince AND m.day <= :curUntil THEN m.spend::numeric ELSE 0 END), 0)`,
+      "curSpend"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :curSince AND m.day <= :curUntil THEN m.impressions::bigint ELSE 0 END), 0)`,
+      "curImpressions"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :curSince AND m.day <= :curUntil THEN m.clicks::bigint ELSE 0 END), 0)`,
+      "curClicks"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :curSince AND m.day <= :curUntil THEN m.conversions::bigint ELSE 0 END), 0)`,
+      "curConversions"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :curSince AND m.day <= :curUntil THEN m.reach::bigint ELSE 0 END), 0)`,
+      "curReach"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :curSince AND m.day <= :curUntil THEN m.messages::bigint ELSE 0 END), 0)`,
+      "curMessages"
+    )
+    .addSelect(
+      `AVG(CASE WHEN m.day >= :curSince AND m.day <= :curUntil AND m.roas::numeric > 0 THEN m.roas::numeric END)`,
+      "curRoas"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :prevSince AND m.day <= :prevUntil THEN m.spend::numeric ELSE 0 END), 0)`,
+      "prevSpend"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :prevSince AND m.day <= :prevUntil THEN m.impressions::bigint ELSE 0 END), 0)`,
+      "prevImpressions"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :prevSince AND m.day <= :prevUntil THEN m.clicks::bigint ELSE 0 END), 0)`,
+      "prevClicks"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :prevSince AND m.day <= :prevUntil THEN m.conversions::bigint ELSE 0 END), 0)`,
+      "prevConversions"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :prevSince AND m.day <= :prevUntil THEN m.reach::bigint ELSE 0 END), 0)`,
+      "prevReach"
+    )
+    .addSelect(
+      `COALESCE(SUM(CASE WHEN m.day >= :prevSince AND m.day <= :prevUntil THEN m.messages::bigint ELSE 0 END), 0)`,
+      "prevMessages"
+    )
+    .addSelect(
+      `AVG(CASE WHEN m.day >= :prevSince AND m.day <= :prevUntil AND m.roas::numeric > 0 THEN m.roas::numeric END)`,
+      "prevRoas"
+    )
+    .where("m.adAccountId IN (:...accountIds)", { accountIds })
+    .andWhere("m.day >= :prevSince", { prevSince })
+    .andWhere("m.day <= :curUntil", { curUntil })
+    .setParameters({ curSince, curUntil, prevSince, prevUntil, accountIds })
+    .groupBy("m.adAccountId")
+    .getRawMany<{
+      adAccountId: string;
+      curSpend: string;
+      curImpressions: string;
+      curClicks: string;
+      curConversions: string;
+      curReach: string;
+      curMessages: string;
+      curRoas: string | null;
+      prevSpend: string;
+      prevImpressions: string;
+      prevClicks: string;
+      prevConversions: string;
+      prevReach: string;
+      prevMessages: string;
+      prevRoas: string | null;
+    }>();
+
+  for (const r of rows) {
+    const cur = parseTotalsRow({
+      spend: r.curSpend,
+      impressions: r.curImpressions,
+      clicks: r.curClicks,
+      conversions: r.curConversions,
+      reach: r.curReach,
+      messages: r.curMessages,
+      roasAvg: r.curRoas
+    });
+    const prev = parseTotalsRow({
+      spend: r.prevSpend,
+      impressions: r.prevImpressions,
+      clicks: r.prevClicks,
+      conversions: r.prevConversions,
+      reach: r.prevReach,
+      messages: r.prevMessages,
+      roasAvg: r.prevRoas
+    });
+    out.set(r.adAccountId, { current: cur, previous: prev });
+  }
+  return out;
+}
+
+/** @deprecated Prefer loadMetricTotals / loadMetricSeriesByDay */
 export async function loadMetricRows(
   accountIds: string[],
   days = 30,
   opts?: { since?: string | null; until?: string | null; allTime?: boolean }
 ) {
-  const { metricSnapshot: metricsRepo, campaignMetricSnapshot: campRepo } = await repositories();
-  if (!accountIds.length) return [];
-
-  if (opts?.allTime) {
-    return metricsRepo.find({
-      where: { adAccountId: In(accountIds) },
-      order: { day: "ASC" }
-    });
-  }
-
-  const end = opts?.until?.slice(0, 10) ?? todayIso();
-  const start = opts?.since?.slice(0, 10) ?? dateNDaysAgo(days);
-
-  const accountRows = await metricsRepo.find({
-    where: { adAccountId: In(accountIds), day: Between(start, end) },
-    order: { day: "ASC" }
-  });
-
-  if (accountRows.length > 0) return accountRows;
-
-  const campRows = await campRepo.find({
-    where: { adAccountId: In(accountIds), day: Between(start, end) },
-    order: { day: "ASC" }
-  });
-
-  return campRows.map((c) => ({
-    adAccountId: c.adAccountId,
-    day: c.day,
-    spend: c.spend,
-    impressions: c.impressions,
-    clicks: c.clicks,
-    ctr: c.ctr,
-    cpc: c.cpc,
-    conversions: c.conversions,
-    reach: c.reach,
-    messages: c.messages,
-    roas: c.roas
+  const series = await loadMetricSeriesByDay(accountIds, days, opts);
+  return series.map((d) => ({
+    adAccountId: accountIds[0],
+    day: d.day,
+    spend: String(d.spend),
+    impressions: String(d.impressions),
+    clicks: String(d.clicks),
+    conversions: String(d.conversions),
+    reach: String(d.reach),
+    messages: String(d.messages),
+    roas: String(d.roas)
   }));
 }

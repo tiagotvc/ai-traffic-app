@@ -36,13 +36,13 @@ async function pingUpstash() {
 }
 
 async function main() {
-  if (url) {
-    const r = await pingRedisUrl();
+  if (upstashUrl && upstashToken) {
+    const r = await pingUpstash();
     console.log("OK", r);
     return;
   }
-  if (upstashUrl && upstashToken) {
-    const r = await pingUpstash();
+  if (url) {
+    const r = await pingRedisUrl();
     console.log("OK", r);
     return;
   }

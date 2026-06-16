@@ -3,15 +3,16 @@ import { NextResponse } from "next/server";
 import { getAppContext } from "@/lib/app-context";
 import {
   inventoryTimezoneMap,
-  loadMetricRows,
+  loadMetricTotals,
   parseDashboardSearchParams,
   resolveDashboardScope
 } from "@/lib/dashboard-query";
 import { applyServerTiming } from "@/lib/server-timing";
 
+export const maxDuration = 30;
+
 export async function GET(req: Request) {
   const t0 = Date.now();
-  let dbMs = 0;
   const { tenant } = await getAppContext();
   const url = new URL(req.url);
   const { clientId, adAccountId, days, period } = parseDashboardSearchParams(url);
@@ -41,43 +42,19 @@ export async function GET(req: Request) {
   }
 
   const tDb = Date.now();
-  const allRows = await loadMetricRows(accountIds, days, {
+  const totals = await loadMetricTotals(accountIds, days, {
     since: period.since,
     until: period.until,
     allTime: period.allTime
   });
-  dbMs = Date.now() - tDb;
+  const dbMs = Date.now() - tDb;
 
-  let spend = 0;
-  let impressions = 0;
-  let clicks = 0;
-  let conversions = 0;
-  let reach = 0;
-  let messages = 0;
-  let roasSum = 0;
-  let roasCount = 0;
-
-  for (const r of allRows) {
-    const row = r as typeof r & { reach?: string | number; messages?: string | number };
-    spend += Number(r.spend) || 0;
-    impressions += Number(r.impressions) || 0;
-    clicks += Number(r.clicks) || 0;
-    conversions += Number(r.conversions) || 0;
-    reach += Number(row.reach) || 0;
-    messages += Number(row.messages) || 0;
-    const roas = Number(r.roas);
-    if (!Number.isNaN(roas) && roas > 0) {
-      roasSum += roas;
-      roasCount += 1;
-    }
-  }
-
+  const { spend, impressions, clicks, conversions, reach, messages, roas } = totals;
   const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
   const cpc = clicks > 0 ? spend / clicks : 0;
   const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
   const cpmsg = messages > 0 ? spend / messages : 0;
   const frequency = reach > 0 ? impressions / reach : 0;
-  const roas = roasCount > 0 ? roasSum / roasCount : 0;
   const cpa = conversions > 0 ? spend / conversions : 0;
 
   const tzMap = await inventoryTimezoneMap(tenant.id);

@@ -227,49 +227,72 @@ export function DashboardClient() {
     try {
       const { current, previous } = resolveRanges(period, selectedTz);
       const curQ = buildQuery(clientFilter, accountFilter, current);
-      // Caixa de variações segue o período da página (mesma janela do seletor).
-      const varDays = current
-        ? Math.min(90, Math.max(1, Math.round((Date.parse(current.until) - Date.parse(current.since)) / 86_400_000) + 1))
-        : 90;
-      const [sRes, tRes, aRes, critRes, pRes] = await Promise.all([
+
+      const [sRes, tRes, pRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
         fetch(`/api/dashboard/timeseries?${curQ}`),
-        fetch(
-          `/api/alerts/variations?level=client&days=${varDays}${
-            clientFilter ? `&clientId=${encodeURIComponent(clientFilter)}` : ""
-          }`
-        ),
-        fetch("/api/alerts?severity=critical&limit=8"),
         previous
           ? fetch(`/api/dashboard/summary?${buildQuery(clientFilter, accountFilter, previous)}`)
           : Promise.resolve<Response | null>(null)
       ]);
 
-      const sJson = await sRes.json();
-      const tJson = await tRes.json();
-      const aJson = await aRes.json();
-      const critJson = await critRes.json();
-      const pJson = pRes ? await pRes.json() : null;
+      const parseJson = async (res: Response) => {
+        const text = await res.text();
+        try {
+          return JSON.parse(text) as Record<string, unknown>;
+        } catch {
+          throw new Error(res.status === 504 ? "timeout" : "parse");
+        }
+      };
 
-      setSummary(sJson.summary);
-      setPrevSummary(pJson?.summary ?? null);
-      setSeries(tJson.series ?? []);
-      setVariations(aJson.items ?? []);
-      setCriticalAlerts(critJson.alerts ?? []);
-      setAdAccounts(sJson.adAccounts ?? []);
+      const sJson = await parseJson(sRes);
+      const tJson = await parseJson(tRes);
+      const pJson = pRes ? await parseJson(pRes) : null;
+
+      setSummary(sJson.summary as Summary);
+      setPrevSummary((pJson?.summary as Summary) ?? null);
+      setSeries((tJson.series as SeriesPoint[]) ?? []);
+      setAdAccounts((sJson.adAccounts as AdAccountOpt[]) ?? []);
       setNote(null);
     } catch {
       setNote(t("loadError"));
     } finally {
       setLoading(false);
     }
+
+    const { current } = resolveRanges(period, selectedTz);
+    const varDays = current
+      ? Math.min(90, Math.max(1, Math.round((Date.parse(current.until) - Date.parse(current.since)) / 86_400_000) + 1))
+      : 90;
+
+    void Promise.all([
+      fetch(
+        `/api/alerts/variations?level=client&days=${varDays}${
+          clientFilter ? `&clientId=${encodeURIComponent(clientFilter)}` : ""
+        }`
+      )
+        .then((r) => r.json())
+        .then((j) => setVariations(j.items ?? []))
+        .catch(() => {}),
+      fetch("/api/alerts?severity=critical&limit=8")
+        .then((r) => r.json())
+        .then((j) => setCriticalAlerts(j.alerts ?? []))
+        .catch(() => {})
+    ]);
   }, [clientFilter, accountFilter, period, selectedTz, t]);
 
   // Clientes seguem o MESMO período do seletor principal da página.
   const loadClients = useCallback(() => {
     const qs = periodStateToQuery(period).toString();
     fetch(`/api/clients?${qs}`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        const text = await r.text();
+        try {
+          return JSON.parse(text) as { clients?: ClientCard[] };
+        } catch {
+          return { clients: [] as ClientCard[] };
+        }
+      })
       .then((j) => setClients(j.clients ?? []))
       .catch(() => {});
   }, [period]);
