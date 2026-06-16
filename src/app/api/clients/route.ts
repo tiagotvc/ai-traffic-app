@@ -140,6 +140,19 @@ export async function GET(req: Request) {
     ? await metricsRepo.find({ where: { adAccountId: In(accountIds), ...dayFilter } })
     : [];
 
+  const alertCountsRaw = clientIds.length
+    ? await alertRepo
+        .createQueryBuilder("a")
+        .select("a.clientId", "clientId")
+        .addSelect("COUNT(*)::int", "cnt")
+        .where("a.tenantId = :tenantId", { tenantId: tenant.id })
+        .andWhere("a.dismissed = false")
+        .andWhere("a.clientId IN (:...clientIds)", { clientIds })
+        .groupBy("a.clientId")
+        .getRawMany<{ clientId: string; cnt: string }>()
+    : [];
+  const alertCountByClient = new Map(alertCountsRaw.map((r) => [r.clientId, Number(r.cnt) || 0]));
+
   // Tipo dominante por cliente (define quais métricas a "prévia da semana" exibe).
   const presetRows = await presetRepo.find({ where: { tenantId: tenant.id } });
   const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));
@@ -223,9 +236,7 @@ export async function GET(req: Request) {
         roas
       };
 
-      const openAlerts = await alertRepo.count({
-        where: { tenantId: tenant.id, clientId: c.id, dismissed: false }
-      });
+      const openAlerts = alertCountByClient.get(c.id) ?? 0;
 
       return {
         id: c.id,

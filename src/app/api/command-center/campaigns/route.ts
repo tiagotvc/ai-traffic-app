@@ -6,20 +6,21 @@ import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
 import { getCampaignPresetsMap, withCampaignPresets } from "@/lib/campaign-preset-store";
 import { filterCampaignRowsByStatus } from "@/lib/campaign-status-filter";
 import { enrichCampaignRowsFromMeta } from "@/lib/campaign-metrics-enrich";
+import { loadCampaignMetadataFromMetaParallel } from "@/lib/campaign-meta-loader";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
 import {
   queryCommandCenterCampaigns,
   type CommandCenterCampaignRow
 } from "@/lib/command-center-query";
-import {
-  getTenantMetaAccessToken,
-  isMetaPermissionError
-} from "@/lib/meta-auth-store";
-import { fetchCampaigns } from "@/lib/meta-graph";
+import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
+import { applyServerTiming } from "@/lib/server-timing";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
 
 export async function GET(req: Request) {
+  const t0 = Date.now();
+  let dbMs = 0;
+  let metaMs = 0;
   try {
     const { tenant, user, metaAccessToken } = await getAppContext();
     const presetMap = await getCampaignPresetsMap(tenant.id);
@@ -54,6 +55,7 @@ export async function GET(req: Request) {
     const live = url.searchParams.get("live") === "1";
     const refresh = url.searchParams.get("refresh") === "1";
 
+    const tDb = Date.now();
     const result = await queryCommandCenterCampaigns({
       tenantId: tenant.id,
       clientIds,
@@ -71,6 +73,7 @@ export async function GET(req: Request) {
       includeTotals: false,
       skipAggregates: true
     });
+    dbMs = Date.now() - tDb;
 
     const byId = new Map<string, CommandCenterCampaignRow>(
       result.rows.map((r) => [r.metaCampaignId, { ...r }])
@@ -94,65 +97,65 @@ export async function GET(req: Request) {
 
       const clientById = new Map(clients.map((c) => [c.id, c]));
 
+      const tMetaLoad = Date.now();
       async function loadCampaignsFromMeta(accessToken: string, retried = false) {
-        for (const acc of accounts) {
-          try {
-            const camps = await fetchCampaigns(accessToken, acc.metaAdAccountId);
-            const client = clientById.get(acc.clientId);
-            for (const c of camps) {
-              const budgetFromMeta = c.daily_budget ? Number(c.daily_budget) / 100 : null;
-              if (c.id && byId.has(c.id)) {
-                const row = byId.get(c.id)!;
-                row.status = c.status ?? row.status;
-                if (budgetFromMeta != null) row.dailyBudget = budgetFromMeta;
-                continue;
-              }
-              if (!c.id) continue;
-              byId.set(c.id, {
-                metaCampaignId: c.id,
-                campaignName: c.name ?? c.id,
-                clientId: acc.clientId,
-                clientName: client?.name ?? "—",
-                clientSlug: client ? slugify(client.name) : "",
-                clientTag: null,
-                adAccountId: acc.id,
-                accountLabel: acc.label ?? acc.metaAdAccountId,
-                metaAdAccountId: acc.metaAdAccountId,
-                spend: 0,
-                conversions: 0,
-                leads: 0,
-                cpl: null,
-                cpa: null,
-                roas: 0,
-                impressions: 0,
-                clicks: 0,
-                ctr: 0,
-                cpc: 0,
-                cpm: 0,
-                reach: 0,
-                messages: 0,
-                frequency: 0,
-                alertCount: 0,
-                hasAlert: false,
-                dailyBudget: budgetFromMeta,
-                status: c.status ?? "UNKNOWN"
-              });
-            }
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            if (!retried && isMetaPermissionError(msg) && tenantToken && tenantToken !== accessToken) {
-              tokenForMeta = tenantToken;
-              await loadCampaignsFromMeta(tenantToken, true);
-              return;
-            }
+        const { permissionDenied } = await loadCampaignMetadataFromMetaParallel({
+          accounts: accounts.map((a) => ({
+            id: a.id,
+            metaAdAccountId: a.metaAdAccountId,
+            clientId: a.clientId,
+            label: a.label
+          })),
+          accessToken,
+          byId,
+          clientById,
+          slugify,
+          createRow: ({ acc, camp, clientName, clientSlug, budgetFromMeta }) => ({
+            metaCampaignId: camp.id!,
+            campaignName: camp.name ?? camp.id!,
+            clientId: acc.clientId,
+            clientName,
+            clientSlug,
+            clientTag: null,
+            adAccountId: acc.id,
+            accountLabel: acc.label ?? acc.metaAdAccountId,
+            metaAdAccountId: acc.metaAdAccountId,
+            spend: 0,
+            conversions: 0,
+            leads: 0,
+            cpl: null,
+            cpa: null,
+            roas: 0,
+            impressions: 0,
+            clicks: 0,
+            ctr: 0,
+            cpc: 0,
+            cpm: 0,
+            reach: 0,
+            messages: 0,
+            frequency: 0,
+            alertCount: 0,
+            hasAlert: false,
+            dailyBudget: budgetFromMeta,
+            status: camp.status ?? "UNKNOWN"
+          }),
+          patchRow: (row, camp, budgetFromMeta) => {
+            row.status = camp.status ?? row.status;
+            if (budgetFromMeta != null) row.dailyBudget = budgetFromMeta;
           }
+        });
+        if (permissionDenied && !retried && tenantToken && tenantToken !== accessToken) {
+          tokenForMeta = tenantToken;
+          await loadCampaignsFromMeta(tenantToken, true);
         }
       }
 
       await loadCampaignsFromMeta(tokenForMeta);
+      metaMs += Date.now() - tMetaLoad;
 
       const rowsForEnrich = [...byId.values()];
       if (rowsForEnrich.length && accounts.length) {
+        const tEnrich = Date.now();
         let enriched = await enrichCampaignRowsFromMeta({
           rows: rowsForEnrich as Parameters<typeof enrichCampaignRowsFromMeta>[0]["rows"],
           metaAccessToken: tokenForMeta,
@@ -181,6 +184,7 @@ export async function GET(req: Request) {
         enrichError = enriched.enrichError;
         metricsSource = enriched.fromCache ? "live-cached" : "live";
         cachedAt = enriched.cachedAt ?? null;
+        metaMs += Date.now() - tEnrich;
       }
     }
 
@@ -189,7 +193,7 @@ export async function GET(req: Request) {
       presetMap
     );
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       ok: true,
       rows,
       total: live ? rows.length : result.total,
@@ -199,6 +203,8 @@ export async function GET(req: Request) {
       enrichError: enrichError ?? null,
       period: { preset: period.preset, since: period.since, until: period.until }
     });
+    res.headers.set("X-Data-Source", metricsSource);
+    return applyServerTiming(res, { total: Date.now() - t0, db: dbMs, meta: metaMs });
   } catch (err) {
     console.error("[command-center/campaigns]", err);
     const message = err instanceof Error ? err.message : "Erro ao carregar campanhas";

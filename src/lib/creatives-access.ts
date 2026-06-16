@@ -10,8 +10,8 @@ import {
   probeAdAccountAccessAnyToken
 } from "@/lib/creatives-data";
 import {
-  getCachedAccountCreatives,
-  setCachedAccountCreatives,
+  getCachedAccountCreativesAsync,
+  setCachedAccountCreativesAsync,
   type CachedAccountCreatives
 } from "@/lib/creatives-cache";
 import type { AdInsightMetrics, AdUsageRow } from "@/lib/meta-graph";
@@ -134,7 +134,7 @@ export async function fetchAccountCreatives(
   }
 
   if (!skipCache && since && until) {
-    const cached = getCachedAccountCreatives(
+    const cached = await getCachedAccountCreativesAsync(
       tenantId,
       clientId,
       acc.metaAdAccountId,
@@ -301,7 +301,7 @@ export async function fetchAccountCreatives(
       ads,
       insights: Object.fromEntries(insights)
     };
-    setCachedAccountCreatives(tenantId, clientId, acc.metaAdAccountId, since, until, payload);
+    await setCachedAccountCreativesAsync(tenantId, clientId, acc.metaAdAccountId, since, until, payload);
   }
 
   const warning =

@@ -230,7 +230,7 @@ export async function processSyncQueue(input: {
   await runRepo.save(run);
 
   const { clearTenantCampaignInsightsCache } = await import("@/lib/meta-insights-cache");
-  clearTenantCampaignInsightsCache(input.tenantId);
+  await clearTenantCampaignInsightsCache(input.tenantId);
 
   const { runAlertEngine } = await import("@/lib/alert-engine");
   const { fetchCampaigns } = await import("@/lib/meta-graph");

@@ -8,9 +8,12 @@ import {
 } from "@/lib/meta-graph";
 import {
   getCachedCampaignInsights,
-  setCachedCampaignInsights
+  getCachedCampaignInsightsAsync,
+  setCachedCampaignInsights,
+  setCachedCampaignInsightsAsync
 } from "@/lib/meta-insights-cache";
 import { isMetaRateLimitMessage, isMetaRateLimitPayload } from "@/lib/meta-rate-limit";
+import { mapLimit } from "@/lib/concurrency";
 import { num } from "@/lib/goal-types";
 import { formatMetaGraphError } from "@/lib/meta-error";
 import { isMetaPermissionError } from "@/lib/meta-auth-store";
@@ -75,13 +78,13 @@ export async function enrichCampaignRowsFromMeta(input: {
 
   const accounts = input.accounts.filter((a) => accountHasCampaignRows(input.rows, a.metaAdAccountId));
 
-  for (const acc of accounts) {
-    if (rateLimited) break;
+  await mapLimit(accounts, 3, async (acc) => {
+    if (rateLimited) return;
 
     if (input.skipIfHasSpend) {
       const rowsForAcc = input.rows.filter((r) => r.metaAdAccountId === acc.metaAdAccountId);
       if (rowsForAcc.length > 0 && rowsForAcc.every((r) => (r.spend ?? 0) > 0)) {
-        continue;
+        return;
       }
     }
 
@@ -89,7 +92,7 @@ export async function enrichCampaignRowsFromMeta(input: {
       let insights: MetaCampaignInsightRow[] | undefined;
       const tenantId = input.tenantId?.trim();
       if (tenantId && !input.refresh) {
-        const cached = getCachedCampaignInsights(
+        const cached = await getCachedCampaignInsightsAsync(
           tenantId,
           acc.metaAdAccountId,
           input.since,
@@ -109,7 +112,7 @@ export async function enrichCampaignRowsFromMeta(input: {
           input.until
         );
         if (tenantId) {
-          setCachedCampaignInsights(
+          await setCachedCampaignInsightsAsync(
             tenantId,
             acc.metaAdAccountId,
             input.since,
@@ -152,12 +155,9 @@ export async function enrichCampaignRowsFromMeta(input: {
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
 
-      // Erro de permissão é POR CONTA: o token vê a conta mas não tem ads_read/
-      // ads_management nela. Pula a conta silenciosamente (sinaliza p/ fallback de
-      // token) em vez de contaminar a tela com o 403 cru.
       if (isMetaPermissionError(raw)) {
         permissionDenied = true;
-        continue;
+        return;
       }
 
       enrichError = formatMetaGraphError(e);
@@ -171,9 +171,8 @@ export async function enrichCampaignRowsFromMeta(input: {
         }
       }
       rateLimited = payloadRateLimit || isMetaRateLimitMessage(enrichError) || isMetaRateLimitMessage(raw);
-      if (rateLimited) break;
     }
-  }
+  });
 
   return {
     rows: [...byCampaign.values()],

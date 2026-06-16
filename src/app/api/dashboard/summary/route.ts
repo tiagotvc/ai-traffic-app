@@ -7,8 +7,11 @@ import {
   parseDashboardSearchParams,
   resolveDashboardScope
 } from "@/lib/dashboard-query";
+import { applyServerTiming } from "@/lib/server-timing";
 
 export async function GET(req: Request) {
+  const t0 = Date.now();
+  let dbMs = 0;
   const { tenant } = await getAppContext();
   const url = new URL(req.url);
   const { clientId, adAccountId, days, period } = parseDashboardSearchParams(url);
@@ -37,11 +40,13 @@ export async function GET(req: Request) {
     });
   }
 
+  const tDb = Date.now();
   const allRows = await loadMetricRows(accountIds, days, {
     since: period.since,
     until: period.until,
     allTime: period.allTime
   });
+  dbMs = Date.now() - tDb;
 
   let spend = 0;
   let impressions = 0;
@@ -77,7 +82,7 @@ export async function GET(req: Request) {
 
   const tzMap = await inventoryTimezoneMap(tenant.id);
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     ok: true,
     summary: {
       spend,
@@ -102,4 +107,5 @@ export async function GET(req: Request) {
       timezone: tzMap.get(a.metaAdAccountId) ?? null
     }))
   });
+  return applyServerTiming(res, { total: Date.now() - t0, db: dbMs });
 }

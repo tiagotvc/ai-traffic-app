@@ -16,6 +16,8 @@
     "user:create": "tsx scripts/create-user.ts tiago@traffic-ai.local TrafficAI2026! \"Tiago Carvalho\"",
     "business-plan:pdf": "tsx scripts/generate-business-plan-pdf.ts",
     "sync:cron": "tsx scripts/sync-cron.ts",
+    "benchmark:meta": "node scripts/benchmark-meta-pages.mjs",
+    "redis:ping": "node scripts/redis-ping.mjs",
     "test": "vitest run"
   },
   "dependencies": {
@@ -31,6 +33,7 @@
     "react": "latest",
     "react-dom": "latest",
     "recharts": "latest",
+    "redis": "^6.0.0",
     "reflect-metadata": "latest",
     "server-only": "latest",
     "stripe": "^22.2.0",

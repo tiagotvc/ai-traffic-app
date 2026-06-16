@@ -868,23 +868,55 @@ export async function fetchAdSetInsights(
     const data = await metaFetch<{ data: MetaInsightRow[] }>(path, accessToken);
     const row = data.data?.[0];
     if (!row) return null;
-    const spend = Number(row.spend) || 0;
-    const conversions = pickResults(row);
-    const roasRaw = row.purchase_roas?.[0]?.value;
-    const roas = roasRaw != null ? Number(roasRaw) : spend > 0 && conversions > 0 ? spend / conversions : 0;
-    return {
-      spend,
-      impressions: Number(row.impressions) || 0,
-      clicks: Number(row.clicks) || 0,
-      ctr: Number(row.ctr) || 0,
-      reach: Number(row.reach) || 0,
-      conversions,
-      messages: pickMessages(row.actions),
-      roas: Number.isFinite(roas) ? roas : 0
-    };
+    return insightRowToAdSetInsight(row);
   } catch {
     return null;
   }
+}
+
+function insightRowToAdSetInsight(row: MetaInsightRow): MetaAdSetInsight {
+  const spend = Number(row.spend) || 0;
+  const conversions = pickResults(row);
+  const roasRaw = row.purchase_roas?.[0]?.value;
+  const roas = roasRaw != null ? Number(roasRaw) : spend > 0 && conversions > 0 ? spend / conversions : 0;
+  return {
+    spend,
+    impressions: Number(row.impressions) || 0,
+    clicks: Number(row.clicks) || 0,
+    ctr: Number(row.ctr) || 0,
+    reach: Number(row.reach) || 0,
+    conversions,
+    messages: pickMessages(row.actions),
+    roas: Number.isFinite(roas) ? roas : 0
+  };
+}
+
+/** Insights de todos os ad sets de uma campanha em uma chamada (level=adset + filtering). */
+export async function fetchAdSetInsightsForCampaign(
+  accessToken: string,
+  adAccountId: string,
+  metaCampaignId: string,
+  since: string,
+  until: string
+): Promise<Map<string, MetaAdSetInsight>> {
+  const fields = ["campaign_id", "adset_id", "spend", "impressions", "clicks", "ctr", "reach", "actions", "results", "purchase_roas"].join(
+    ","
+  );
+  const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
+  const filtering = JSON.stringify([
+    { field: "campaign.id", operator: "EQUAL", value: metaCampaignId }
+  ]);
+  const path = `/${encodeURIComponent(adAccountId)}/insights?level=adset&fields=${encodeURIComponent(
+    fields
+  )}&time_range=${encodeURIComponent(timeRange)}&filtering=${encodeURIComponent(filtering)}&limit=500`;
+  const rows = await fetchGraphPaged<MetaAdsetInsightRow>(path, accessToken);
+  const out = new Map<string, MetaAdSetInsight>();
+  for (const row of rows) {
+    const adsetId = row.adset_id;
+    if (!adsetId) continue;
+    out.set(adsetId, insightRowToAdSetInsight(row));
+  }
+  return out;
 }
 
 export type AdInsightMetrics = {

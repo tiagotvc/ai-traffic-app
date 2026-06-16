@@ -273,14 +273,9 @@ async function queryAggregatedCampaigns(input: {
   let totals: CommandCenterTotals = emptyTotals();
 
   if (!input.skipAggregates) {
-    const countRows = await ds.query(
-      `SELECT COUNT(*)::int AS cnt FROM (${baseSql}) sub`,
-      params
-    );
-    total = num(countRows[0]?.cnt);
-
-    const sumRows = await ds.query(
+    const aggRows = await ds.query(
       `SELECT
+        COUNT(*)::int AS cnt,
         COALESCE(SUM(sub.spend), 0) AS spend,
         COALESCE(SUM(sub.conversions), 0) AS conversions,
         COALESCE(SUM(sub.leads), 0) AS leads,
@@ -289,13 +284,13 @@ async function queryAggregatedCampaigns(input: {
       FROM (${baseSql}) sub`,
       params
     );
-
+    total = num(aggRows[0]?.cnt);
     totals = {
-      spend: num(sumRows[0]?.spend),
-      conversions: num(sumRows[0]?.conversions),
-      leads: num(sumRows[0]?.leads),
-      impressions: num(sumRows[0]?.impressions),
-      clicks: num(sumRows[0]?.clicks)
+      spend: num(aggRows[0]?.spend),
+      conversions: num(aggRows[0]?.conversions),
+      leads: num(aggRows[0]?.leads),
+      impressions: num(aggRows[0]?.impressions),
+      clicks: num(aggRows[0]?.clicks)
     };
   }
 

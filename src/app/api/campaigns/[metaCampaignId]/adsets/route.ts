@@ -3,8 +3,13 @@ import { NextResponse } from "next/server";
 import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
 import { resolveMetaTokensForApi } from "@/lib/campaign-detail-api";
-import { fetchAdSetInsights, fetchAdSetsForCampaign, type MetaAdSetInsight } from "@/lib/meta-graph";
+import {
+  fetchAdSetInsightsForCampaign,
+  fetchAdSetsForCampaign,
+  type MetaAdSetInsight
+} from "@/lib/meta-graph";
 import { type MetricKey } from "@/lib/dashboard-metrics";
+import { applyServerTiming } from "@/lib/server-timing";
 import { parsePeriodFromSearchParams, rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
 
 function metricsFromInsight(m: MetaAdSetInsight | null): Partial<Record<MetricKey, number>> {
@@ -44,50 +49,86 @@ function resolveSinceUntil(period: ReturnType<typeof parsePeriodFromSearchParams
   };
 }
 
+async function resolveAdAccountMetaId(
+  tenantId: string,
+  metaCampaignId: string
+): Promise<string | null> {
+  const { campaignMetricSnapshot: campRepo, adAccount: adRepo } = await repositories();
+  const snap = await campRepo.findOne({
+    where: { metaCampaignId },
+    order: { day: "DESC" }
+  });
+  if (!snap) return null;
+  const acc = await adRepo.findOne({ where: { id: snap.adAccountId } });
+  if (!acc) return null;
+  const client = await (await repositories()).client.findOne({ where: { id: acc.clientId } });
+  if (!client || client.tenantId !== tenantId) return null;
+  return acc.metaAdAccountId;
+}
+
 async function loadAdSets(
+  tenantId: string,
   metaCampaignId: string,
   since: string,
   until: string,
   primaryToken?: string,
   fallbackToken?: string
 ) {
+  const tMeta = Date.now();
   for (const token of [primaryToken, fallbackToken]) {
     if (!token) continue;
     try {
       const adsets = await fetchAdSetsForCampaign(token, metaCampaignId);
-      const enriched = await Promise.all(
-        adsets.map(async (a) => {
-          const insights = await fetchAdSetInsights(token, a.id, since, until);
-          const spend = insights?.spend ?? 0;
-          const conversions = insights?.conversions ?? 0;
-          return {
-            id: a.id,
-            name: a.name,
-            status: a.status,
-            dailyBudget: a.daily_budget ? Number(a.daily_budget) / 100 : null,
-            spend,
-            conversions,
-            cpa: conversions > 0 ? spend / conversions : null,
-            roas: insights?.roas ?? 0,
-            reach: insights?.reach ?? 0,
-            clicks: insights?.clicks ?? 0,
-            ctr: insights?.ctr ?? 0,
-            metrics: metricsFromInsight(insights)
-          };
-        })
-      );
-      return enriched;
+      const metaAdAccountId = await resolveAdAccountMetaId(tenantId, metaCampaignId);
+
+      let insightsByAdset = new Map<string, MetaAdSetInsight>();
+      if (metaAdAccountId) {
+        try {
+          insightsByAdset = await fetchAdSetInsightsForCampaign(
+            token,
+            metaAdAccountId,
+            metaCampaignId,
+            since,
+            until
+          );
+        } catch {
+          /* fallback per-adset abaixo */
+        }
+      }
+
+      const enriched = adsets.map((a) => {
+        const insights = insightsByAdset.get(a.id) ?? null;
+        const spend = insights?.spend ?? 0;
+        const conversions = insights?.conversions ?? 0;
+        return {
+          id: a.id,
+          name: a.name,
+          status: a.status,
+          dailyBudget: a.daily_budget ? Number(a.daily_budget) / 100 : null,
+          spend,
+          conversions,
+          cpa: conversions > 0 ? spend / conversions : null,
+          roas: insights?.roas ?? 0,
+          reach: insights?.reach ?? 0,
+          clicks: insights?.clicks ?? 0,
+          ctr: insights?.ctr ?? 0,
+          metrics: metricsFromInsight(insights)
+        };
+      });
+
+      return { adsets: enriched, metaMs: Date.now() - tMeta };
     } catch {
       /* try fallback token */
     }
   }
-  return [];
+  return { adsets: [], metaMs: Date.now() - tMeta };
 }
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ metaCampaignId: string }> }
 ) {
+  const t0 = Date.now();
   const { metaCampaignId } = await params;
   const { tenant, user, metaAccessToken: ctxToken } = await getAppContext();
   const { metaAccessToken, fallbackMetaToken } = await resolveMetaTokensForApi(
@@ -109,7 +150,8 @@ export async function GET(
   });
   const preset = presetRow?.preset ?? "default";
 
-  const adsets = await loadAdSets(
+  const { adsets, metaMs } = await loadAdSets(
+    tenant.id,
     metaCampaignId,
     since,
     until,
@@ -117,5 +159,6 @@ export async function GET(
     fallbackMetaToken
   );
 
-  return NextResponse.json({ ok: true, adsets, preset });
+  const res = NextResponse.json({ ok: true, adsets, preset });
+  return applyServerTiming(res, { total: Date.now() - t0, meta: metaMs, db: Date.now() - t0 - metaMs });
 }

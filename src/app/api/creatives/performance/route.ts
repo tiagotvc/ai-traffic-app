@@ -13,10 +13,12 @@ import {
   type CreativeAgg
 } from "@/lib/agency-brain/creative-intelligence";
 import { getCreativesCacheTtlSec } from "@/lib/creatives-cache";
+import { applyServerTiming } from "@/lib/server-timing";
 
 export const maxDuration = 60;
 
 export async function GET(req: Request) {
+  const t0 = Date.now();
   const url = new URL(req.url);
   const clientIdParam = url.searchParams.get("clientId");
   const period = parsePeriodFromSearchParams(url);
@@ -104,5 +106,5 @@ export async function GET(req: Request) {
   });
   res.headers.set("X-Data-Source", dataSource);
   res.headers.set("X-Cache-TTL-Sec", String(cacheTtlSec));
-  return res;
+  return applyServerTiming(res, { total: Date.now() - t0, meta: fetchMs });
 }

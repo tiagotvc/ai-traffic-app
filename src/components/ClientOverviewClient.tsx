@@ -222,7 +222,8 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
       const { current, previous } = resolveRanges(period);
       const curQ = buildQuery(clientId, "", current);
       const campQ = periodStateToQuery(period).toString();
-      const liveSuffix = opts?.afterSync || period.preset === "today" ? "&live=1&refresh=1" : "&live=1";
+      const liveSuffix =
+        opts?.afterSync || period.preset === "today" ? "&live=1&refresh=1" : "";
       const [sRes, tRes, pRes, cRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
         fetch(`/api/dashboard/timeseries?${curQ}`),

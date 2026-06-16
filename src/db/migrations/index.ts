@@ -30,6 +30,7 @@ import { RankingConfig1735691100000 } from "./0014-RankingConfig";
 import { HistoricalBackfillQueue1735820000000 } from "./0029-HistoricalBackfillQueue";
 import { AdMetricSnapshots1735830000000 } from "./0030-AdMetricSnapshots";
 import { ClientExperimentForecast1735830100000 } from "./0031-ClientExperimentForecast";
+import { CampaignSnapshotDayIndex1735830200000 } from "./0032-CampaignSnapshotDayIndex";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -64,5 +65,6 @@ export const appMigrations = [
   AgencyBrainNicheOptIn_1735692500000,
   HistoricalBackfillQueue1735820000000,
   AdMetricSnapshots1735830000000,
-  ClientExperimentForecast1735830100000
+  ClientExperimentForecast1735830100000,
+  CampaignSnapshotDayIndex1735830200000
 ];
