@@ -209,6 +209,7 @@ export function DashboardClient() {
   const [variations, setVariations] = useState<VariationLite[]>([]);
   const [criticalAlerts, setCriticalAlerts] = useState<AlertItem[]>([]);
   const [clients, setClients] = useState<ClientCard[]>([]);
+  const [clientOptions, setClientOptions] = useState<{ slug: string; name: string }[]>([]);
   const [adAccounts, setAdAccounts] = useState<AdAccountOpt[]>([]);
   const [clientFilter, setClientFilter] = useState("");
   const [accountFilter, setAccountFilter] = useState("");
@@ -281,20 +282,37 @@ export function DashboardClient() {
     ]);
   }, [clientFilter, accountFilter, period, selectedTz, t]);
 
-  // Clientes seguem o MESMO período do seletor principal da página.
-  const loadClients = useCallback(() => {
-    const qs = periodStateToQuery(period).toString();
-    fetch(`/api/clients?${qs}`)
+  // Dropdown de clientes: lista leve; cards com métricas carregam depois.
+  useEffect(() => {
+    fetch("/api/clients?minimal=1")
       .then(async (r) => {
         const text = await r.text();
         try {
-          return JSON.parse(text) as { clients?: ClientCard[] };
+          return JSON.parse(text) as { clients?: { slug: string; name: string }[] };
         } catch {
-          return { clients: [] as ClientCard[] };
+          return { clients: [] };
         }
       })
-      .then((j) => setClients(j.clients ?? []))
+      .then((j) => setClientOptions(j.clients ?? []))
       .catch(() => {});
+  }, []);
+
+  const loadClients = useCallback(() => {
+    const qs = periodStateToQuery(period).toString();
+    const timer = window.setTimeout(() => {
+      fetch(`/api/clients/cards?${qs}`)
+        .then(async (r) => {
+          const text = await r.text();
+          try {
+            return JSON.parse(text) as { clients?: ClientCard[] };
+          } catch {
+            return { clients: [] as ClientCard[] };
+          }
+        })
+        .then((j) => setClients(j.clients ?? []))
+        .catch(() => {});
+    }, 500);
+    return () => window.clearTimeout(timer);
   }, [period]);
 
   useEffect(() => {
@@ -302,7 +320,7 @@ export function DashboardClient() {
   }, [load]);
 
   useEffect(() => {
-    loadClients();
+    return loadClients();
   }, [loadClients]);
 
   const persistChartMetrics = useCallback(
@@ -496,8 +514,8 @@ export function DashboardClient() {
             className="mt-1 ui-select"
           >
             <option value="">{t("filterAllClients")}</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.slug}>
+            {(clientOptions.length ? clientOptions : clients).map((c) => (
+              <option key={c.slug} value={c.slug}>
                 {c.name}
               </option>
             ))}

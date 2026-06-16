@@ -1,120 +1,28 @@
 import "server-only";
 
-import { auth } from "@/auth";
+import { cache } from "react";
 import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
-import type { Client } from "@/db/entities/Client";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
 import {
-  getTenantMetaAccessToken,
-  isMetaPermissionError,
   persistMetaAuth,
   resolveWorkspaceMetaAccessToken
 } from "@/lib/meta-auth-store";
-import { resolveUserForMetaLogin } from "@/lib/account-linking";
-import { resolveTenantName } from "@/lib/tenant-name";
 import { isUuid } from "@/lib/uuid";
-import {
-  acceptPendingInviteForEmail,
-  ensureTenantMember,
-  getUserWorkspaceMembership
-} from "@/lib/workspace-members";
-import { IsNull, MoreThan } from "typeorm";
 import { ensureFreeSubscription } from "@/lib/billing/event-handlers";
-import { assertTenantCanLogin, getEntitlements } from "@/lib/billing/entitlements";
-import { isPlatformAdmin } from "@/lib/platform-auth";
+import { getEntitlements } from "@/lib/billing/entitlements";
+import { getAppShellContext } from "@/lib/app-shell-context";
 import type { Entitlements } from "@/lib/billing/types";
 
-export async function getAppContext() {
-  const session = await auth();
-  if (!session?.user?.email) {
-    throw new Error("Not authenticated");
-  }
+export const getAppContext = cache(async () => {
+  const shell = await getAppShellContext();
+  const { session, tenant, user, platformAdmin } = shell;
 
   const ds = await getDataSource();
-  const {
-    tenant: tenantRepo,
-    user: userRepo,
-    client: clientRepo,
-    tenantInvite: inviteRepo,
-    tenantMember: memberRepo
-  } = await repositories();
-
-  const email = session.user.email.toLowerCase();
+  const { user: userRepo, client: clientRepo } = await repositories();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const metaProfileId = (session as any).meta?.profileId as string | undefined;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const facebookId = metaProfileId ?? ((session as any).meta?.profileId as string | undefined);
-
-  let user = await resolveUserForMetaLogin(userRepo, {
-    email,
-    name: session.user.name,
-    facebookId
-  });
-  let tenant;
-
-  const existingMembership = user ? await getUserWorkspaceMembership(user.id) : null;
-
-  if (existingMembership) {
-    tenant = await tenantRepo.findOne({ where: { id: existingMembership.tenantId } });
-    if (!tenant) {
-      await memberRepo.delete({ userId: user!.id });
-    } else if (user && user.tenantId !== tenant.id) {
-      user.tenantId = tenant.id;
-      await userRepo.save(user);
-    }
-  }
-
-  if (!tenant) {
-    const pendingInvite = await inviteRepo.findOne({
-      where: { email, acceptedAt: IsNull(), expiresAt: MoreThan(new Date()) },
-      order: { createdAt: "DESC" }
-    });
-
-    if (pendingInvite) {
-      if (!user) {
-        user = userRepo.create({
-          email,
-          name: session.user.name ?? null,
-          tenantId: pendingInvite.tenantId
-        });
-        await userRepo.save(user);
-      }
-      await acceptPendingInviteForEmail(user, email);
-      user = (await userRepo.findOne({ where: { email } }))!;
-      tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
-    } else if (user?.tenantId) {
-      tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
-    }
-
-    if (!tenant) {
-      const tenantName = resolveTenantName(email, metaProfileId);
-      let metaTenant = await tenantRepo.findOne({ where: { name: tenantName } });
-      if (!metaTenant) {
-        metaTenant = tenantRepo.create({ name: tenantName, brandName: tenantName });
-        await tenantRepo.save(metaTenant);
-      }
-
-      if (!user) {
-        user = userRepo.create({
-          email,
-          name: session.user.name ?? null,
-          tenantId: metaTenant.id
-        });
-        await userRepo.save(user);
-      } else {
-        user.tenantId = metaTenant.id;
-        await userRepo.save(user);
-      }
-      tenant = metaTenant;
-    }
-  }
-
-  if (!user) {
-    user = (await userRepo.findOne({ where: { email } }))!;
-  }
-
+  const facebookId = (session as any).meta?.profileId as string | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const googleId = (session as any).googleId as string | undefined;
 
@@ -126,19 +34,6 @@ export async function getAppContext() {
     user.facebookId = facebookId;
     await userRepo.save(user);
   }
-
-  if (!tenant) {
-    tenant = await tenantRepo.findOne({ where: { id: user.tenantId } });
-  }
-  if (!tenant) {
-    const tenantName = resolveTenantName(email, metaProfileId);
-    tenant = tenantRepo.create({ name: tenantName, brandName: tenantName });
-    await tenantRepo.save(tenant);
-    user.tenantId = tenant.id;
-    await userRepo.save(user);
-  }
-
-  await ensureTenantMember(tenant.id, user.id);
 
   let defaultClient = await clientRepo.findOne({
     where: { tenantId: tenant.id, name: "Default" }
@@ -175,19 +70,14 @@ export async function getAppContext() {
     });
   }
 
-  let metaAccessToken = await resolveWorkspaceMetaAccessToken(tenant.id, user.id, sessionToken);
+  const metaAccessToken = await resolveWorkspaceMetaAccessToken(tenant.id, user.id, sessionToken);
 
   await ensureFreeSubscription(tenant.id);
-
-  const platformAdmin = await isPlatformAdmin(user.id);
-  if (!platformAdmin) {
-    await assertTenantCanLogin(tenant.id);
-  }
 
   const entitlements: Entitlements = await getEntitlements(tenant.id);
 
   return { session, ds, tenant, user, defaultClient, metaAccessToken, entitlements, platformAdmin };
-}
+});
 
 export async function listClientsForTenant(tenantId: string, opts?: { includeDemo?: boolean }) {
   const { client } = await repositories();

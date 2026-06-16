@@ -12,6 +12,16 @@ declare global {
   var __appDataSource: DataSource | undefined;
   // eslint-disable-next-line no-var
   var __appDataSourceInit: Promise<DataSource> | undefined;
+  // eslint-disable-next-line no-var
+  var __appDataSourceLastPing: number | undefined;
+}
+
+const HEALTH_PING_INTERVAL_MS = 30_000;
+
+function shouldSkipRuntimeMigrations(): boolean {
+  if (process.env.SKIP_RUNTIME_MIGRATIONS === "1") return true;
+  if (process.env.VERCEL === "1" && process.env.SKIP_RUNTIME_MIGRATIONS !== "0") return true;
+  return false;
 }
 
 function buildDataSource() {
@@ -43,16 +53,24 @@ export async function getDataSource(): Promise<DataSource> {
   const existing = globalThis.__appDataSource;
 
   if (existing?.isInitialized && dataSourceHasEntities(existing)) {
+    const lastPing = globalThis.__appDataSourceLastPing ?? 0;
+    const pingDue = Date.now() - lastPing > HEALTH_PING_INTERVAL_MS;
+    if (!pingDue) {
+      return existing;
+    }
     try {
       await existing.query("SELECT 1");
+      globalThis.__appDataSourceLastPing = Date.now();
       return existing;
     } catch {
       await existing.destroy().catch(() => undefined);
       globalThis.__appDataSource = undefined;
+      globalThis.__appDataSourceLastPing = undefined;
     }
   } else if (existing?.isInitialized) {
     await existing.destroy().catch(() => undefined);
     globalThis.__appDataSource = undefined;
+    globalThis.__appDataSourceLastPing = undefined;
   }
 
   if (globalThis.__appDataSourceInit) {
@@ -62,8 +80,11 @@ export async function getDataSource(): Promise<DataSource> {
   globalThis.__appDataSourceInit = (async () => {
     const ds = buildDataSource();
     await ds.initialize();
-    await runPendingMigrations(ds);
+    if (!shouldSkipRuntimeMigrations()) {
+      await runPendingMigrations(ds);
+    }
     globalThis.__appDataSource = ds;
+    globalThis.__appDataSourceLastPing = Date.now();
     return ds;
   })();
 
