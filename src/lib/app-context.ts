@@ -1,6 +1,5 @@
 import "server-only";
 
-import { cache } from "react";
 import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
@@ -14,7 +13,7 @@ import { getEntitlements } from "@/lib/billing/entitlements";
 import { getAppShellContext } from "@/lib/app-shell-context";
 import type { Entitlements } from "@/lib/billing/types";
 
-export const getAppContext = cache(async () => {
+export async function getAppContext() {
   const shell = await getAppShellContext();
   const { session, tenant, user, platformAdmin } = shell;
 
@@ -77,7 +76,7 @@ export const getAppContext = cache(async () => {
   const entitlements: Entitlements = await getEntitlements(tenant.id);
 
   return { session, ds, tenant, user, defaultClient, metaAccessToken, entitlements, platformAdmin };
-});
+}
 
 export async function listClientsForTenant(tenantId: string, opts?: { includeDemo?: boolean }) {
   const { client } = await repositories();

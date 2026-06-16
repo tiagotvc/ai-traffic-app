@@ -1,7 +1,5 @@
 import "server-only";
 
-import { cache } from "react";
-
 import { auth } from "@/auth";
 import { repositories } from "@/db/repositories";
 import { resolveUserForMetaLogin } from "@/lib/account-linking";
@@ -22,7 +20,7 @@ import { IsNull, MoreThan } from "typeorm";
  * Contexto enxuto para o shell do app — sem Meta token, sem entitlements/usage,
  * sem provisioning de cliente default. Usado no layout e deduplicado por request.
  */
-export const getAppShellContext = cache(async () => {
+export async function getAppShellContext() {
   const session = await auth();
   if (!session?.user?.email) {
     throw new Error("Not authenticated");
@@ -107,7 +105,10 @@ export const getAppShellContext = cache(async () => {
   }
 
   if (!user) {
-    user = (await userRepo.findOne({ where: { email } }))!;
+    user = await userRepo.findOne({ where: { email } });
+  }
+  if (!user) {
+    throw new Error("Not authenticated");
   }
 
   if (!tenant) {
@@ -128,21 +129,31 @@ export const getAppShellContext = cache(async () => {
     await assertTenantCanLogin(tenant.id);
   }
 
-  const { subscription, plan } = await getTenantSubscription(tenant.id);
+  let subscriptionStatus = "active";
+  let planSlug = "free";
+  let planName = "Free";
+  try {
+    const { subscription, plan } = await getTenantSubscription(tenant.id);
+    subscriptionStatus = subscription.status;
+    planSlug = plan?.slug ?? "free";
+    planName = plan?.name ?? "Free";
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[getAppShellContext] subscription lookup failed:", err);
+  }
 
   return {
     session,
     user,
     tenant,
     platformAdmin,
-    subscriptionStatus: subscription.status,
-    planSlug: plan?.slug ?? "free",
-    planName: plan?.name ?? "Free"
+    subscriptionStatus,
+    planSlug,
+    planName
   };
-});
+}
 
-/** tenantId + userId para rotas API que não precisam do contexto completo. */
-export const getTenantContextSlim = cache(async () => {
+export async function getTenantContextSlim() {
   const { user, tenant } = await getAppShellContext();
   return { userId: user.id, tenantId: tenant.id, user, tenant };
-});
+}

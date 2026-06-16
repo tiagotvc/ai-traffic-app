@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import { redirect as nextRedirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import AppLoading from "@/app/[locale]/(app)/loading";
 import { AppShellData } from "@/app/[locale]/(app)/AppShellData";
+import { AppPageSkeleton } from "@/components/layout/AppPageSkeleton";
 import { AppShellSkeleton } from "@/components/layout/AppShellSkeleton";
 
 export default async function AppLayout({
@@ -22,7 +22,7 @@ export default async function AppLayout({
       userName={session.user?.name ?? "Usuário"}
       userEmail={session.user?.email ?? ""}
     >
-      <Suspense fallback={<AppLoading />}>
+      <Suspense fallback={<AppPageSkeleton />}>
         <AppShellData locale={locale}>{children}</AppShellData>
       </Suspense>
     </AppShellSkeleton>
