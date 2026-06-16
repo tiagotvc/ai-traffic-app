@@ -8,6 +8,8 @@ import {
   computeConfidenceScore,
   confidenceEnumFromScore
 } from "@/lib/agency-brain/confidence-score";
+import { analyzeClientCampaigns } from "@/lib/agency-brain/campaign-signal-analyzer";
+import { signalsToLearningDrafts } from "@/lib/agency-brain/signal-mappers";
 
 export function buildDedupeKey(
   ruleId: string,
@@ -416,41 +418,30 @@ export function evaluateAllRules(
   windowDays: number,
   spendThreshold?: number
 ): SuggestedLearningDraft[] {
-  const cpaWinner = ruleCpaWinner(current, clientId, windowDays);
-  const audienceCpa = ruleAudienceCpa(current, clientId, windowDays);
+  const threshold = spendThreshold ?? 500;
+  const prevById = new Map(previous.map((p) => [p.metaCampaignId, p]));
+  const enriched = current.map((cur) => {
+    const prev = prevById.get(cur.metaCampaignId);
+    if (!prev) return cur;
+    return {
+      ...cur,
+      previousCpa: prev.cpa ?? null,
+      previousCtr: prev.ctr,
+      previousRoas: prev.roas,
+      cpaDeltaPct:
+        cur.cpa != null && prev.cpa != null && prev.cpa !== 0 ? pctDelta(cur.cpa, prev.cpa) : 0,
+      ctrDeltaPct: pctDelta(cur.ctr, prev.ctr),
+      roasDeltaPct: pctDelta(cur.roas, prev.roas)
+    };
+  });
 
-  const usedCampaigns = new Set<string>();
-  const singles: SuggestedLearningDraft[] = [];
-
-  if (cpaWinner) {
-    singles.push(cpaWinner);
-    usedCampaigns.add(cpaWinner.metaCampaignId ?? "");
-  } else if (audienceCpa) {
-    singles.push(audienceCpa);
-    usedCampaigns.add(audienceCpa.metaCampaignId ?? "");
-  }
-
-  const ctrWinner = ruleCtrWinner(current, clientId, windowDays);
-  if (ctrWinner && !usedCampaigns.has(ctrWinner.metaCampaignId ?? "")) {
-    singles.push(ctrWinner);
-  }
-
-  const budget = ruleBudgetConcentration(current, clientId, windowDays);
-  if (budget) singles.push(budget);
-
-  const multi = [
-    ...ruleSaturation(current, clientId, windowDays),
-    ...ruleSpendNoConversion(current, clientId, windowDays, spendThreshold),
-    ...ruleRoasLift(current, previous, clientId, windowDays)
-  ];
-
-  const seen = new Set(singles.map((d) => d.dedupeKey));
-  for (const draft of multi) {
-    if (!seen.has(draft.dedupeKey)) {
-      seen.add(draft.dedupeKey);
-      singles.push(draft);
-    }
-  }
-
-  return singles;
+  const signals = analyzeClientCampaigns({
+    clientId,
+    current: enriched,
+    previous,
+    goal: null,
+    spendThreshold: threshold,
+    windowDays
+  });
+  return signalsToLearningDrafts(signals, clientId, windowDays);
 }

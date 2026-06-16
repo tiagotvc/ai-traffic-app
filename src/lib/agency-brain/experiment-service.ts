@@ -15,6 +15,10 @@ export type CreateExperimentInput = {
   variantB: string;
   hypothesisId?: string | null;
   metrics?: Record<string, unknown> | null;
+  metaCampaignId?: string | null;
+  horizonDays?: number | null;
+  baselineForecast?: Record<string, unknown> | null;
+  actualMetrics?: Record<string, unknown> | null;
 };
 
 export type UpdateExperimentInput = Partial<
@@ -31,6 +35,11 @@ function toExperimentDto(row: ClientExperiment): ExperimentDto {
     winner: row.winner ?? null,
     metrics: (row.metrics as ExperimentDto["metrics"]) ?? null,
     conclusion: row.conclusion ?? null,
+    metaCampaignId: row.metaCampaignId ?? null,
+    horizonDays: row.horizonDays ?? null,
+    baselineForecast: (row.baselineForecast as ExperimentDto["baselineForecast"]) ?? null,
+    actualMetrics: (row.actualMetrics as ExperimentDto["actualMetrics"]) ?? null,
+    hypothesisId: row.hypothesisId ?? null,
     createdAt: row.createdAt.toISOString()
   };
 }
@@ -77,7 +86,11 @@ export async function createExperiment(
     variantA: input.variantA,
     variantB: input.variantB,
     hypothesisId: input.hypothesisId ?? null,
-    metrics: input.metrics ?? null
+    metrics: input.metrics ?? null,
+    metaCampaignId: input.metaCampaignId ?? null,
+    horizonDays: input.horizonDays ?? null,
+    baselineForecast: input.baselineForecast ?? null,
+    actualMetrics: input.actualMetrics ?? null
   });
   const saved = await repo.save(row);
   return toExperimentDto(saved);
@@ -98,6 +111,10 @@ export async function updateExperiment(
   if (input.variantB !== undefined) row.variantB = input.variantB;
   if (input.hypothesisId !== undefined) row.hypothesisId = input.hypothesisId;
   if (input.metrics !== undefined) row.metrics = input.metrics;
+  if (input.metaCampaignId !== undefined) row.metaCampaignId = input.metaCampaignId;
+  if (input.horizonDays !== undefined) row.horizonDays = input.horizonDays;
+  if (input.baselineForecast !== undefined) row.baselineForecast = input.baselineForecast;
+  if (input.actualMetrics !== undefined) row.actualMetrics = input.actualMetrics;
   if (input.winner !== undefined) row.winner = input.winner;
   if (input.conclusion !== undefined) row.conclusion = input.conclusion;
 

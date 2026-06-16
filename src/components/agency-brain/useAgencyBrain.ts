@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import { parseAiAnalysisResponse } from "@/components/agency-brain/handleAiAnalysisResponse";
 import type { FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
 import { useAgencyBrainAi } from "@/components/agency-brain/AgencyBrainAiContext";
 import type {
   BrainSummary,
   LearningCategory,
+  LearningConfidence,
   LearningDto,
   LearningImpact,
   LearningSource,
@@ -23,6 +25,8 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
+export type LearningSortBy = "createdAt" | "confidenceScore" | "impact";
+
 export function useAgencyBrain(clientId: string) {
   const t = useTranslations("agencyBrain");
   const { aiDisabled, refresh: refreshAiStatus } = useAgencyBrainAi();
@@ -32,7 +36,7 @@ export function useAgencyBrain(clientId: string) {
   const [learnings, setLearnings] = useState<LearningDto[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const pageSize = 10;
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -47,6 +51,12 @@ export function useAgencyBrain(clientId: string) {
   const [impact, setImpact] = useState<LearningImpact | "">("");
   const [status, setStatus] = useState<LearningStatus | "">("");
   const [source, setSource] = useState<LearningSource | "">("");
+  const [confidence, setConfidence] = useState<LearningConfidence | "">("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
+  const [sortBy, setSortBy] = useState<LearningSortBy>("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [campaigns, setCampaigns] = useState<Array<{ id: string; name: string }>>([]);
 
@@ -62,6 +72,12 @@ export function useAgencyBrain(clientId: string) {
         if (impact) params.set("impact", impact);
         if (status) params.set("status", status);
         if (source) params.set("source", source);
+        if (confidence) params.set("confidence", confidence);
+        if (dateFrom) params.set("dateFrom", dateFrom);
+        if (dateTo) params.set("dateTo", dateTo);
+        if (tagFilter) params.set("tags", tagFilter);
+        params.set("sortBy", sortBy);
+        params.set("sortDir", sortDir);
         params.set("page", String(page));
         params.set("pageSize", String(pageSize));
 
@@ -97,7 +113,23 @@ export function useAgencyBrain(clientId: string) {
         setListLoading(false);
       }
     },
-    [clientId, debouncedSearch, category, impact, status, source, page, pageSize, t]
+    [
+      clientId,
+      debouncedSearch,
+      category,
+      impact,
+      status,
+      source,
+      confidence,
+      dateFrom,
+      dateTo,
+      tagFilter,
+      sortBy,
+      sortDir,
+      page,
+      pageSize,
+      t
+    ]
   );
 
   useEffect(() => {
@@ -106,7 +138,24 @@ export function useAgencyBrain(clientId: string) {
 
   useEffect(() => {
     if (!loading) void load();
-  }, [debouncedSearch, category, impact, status, source, page]);
+  }, [
+    debouncedSearch,
+    category,
+    impact,
+    status,
+    source,
+    confidence,
+    dateFrom,
+    dateTo,
+    tagFilter,
+    sortBy,
+    sortDir,
+    page
+  ]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, category, impact, status, source, confidence, dateFrom, dateTo, tagFilter, sortBy, sortDir]);
 
   async function handleDetectPatterns() {
     setDetecting(true);
@@ -142,23 +191,22 @@ export function useAgencyBrain(clientId: string) {
         { method: "POST" }
       );
       const json = await res.json();
-      if (res.status === 402 || json.code === "PLAN_LIMIT") {
-        setMessage({ type: "err", text: t("aiLimit") });
-        return;
-      }
-      if (json.code === "NO_AI_KEY") {
-        setMessage({ type: "err", text: t("aiNoKey") });
-        return;
-      }
-      if (!json.ok) {
-        setMessage({ type: "err", text: json.error ?? t("aiErrorLearnings") });
-        return;
-      }
-      setMessage({
-        type: "ok",
-        text: t("aiSuccessLearnings", { count: json.created ?? 0 })
+      const parsed = parseAiAnalysisResponse(res, json, {
+        aiLimit: t("aiLimit"),
+        aiNoKey: t("aiNoKey"),
+        aiRateLimit: t("aiRateLimit"),
+        aiServiceError: t("aiServiceError"),
+        aiParseError: t("aiParseError"),
+        aiSchemaError: t("aiSchemaError"),
+        aiNoResults: t("aiNoResults"),
+        aiNoMetrics: t("aiNoMetrics"),
+        aiGenericError: t("aiErrorLearnings"),
+        aiSuccess: (count) => t("aiSuccessLearnings", { count })
       });
-      await Promise.all([load(), refreshAiStatus()]);
+      if (!parsed) return;
+      setMessage(parsed.message);
+      if (parsed.shouldReload) await load();
+      if (parsed.shouldRefreshAiStatus) await refreshAiStatus();
     } catch {
       setMessage({ type: "err", text: t("aiErrorLearnings") });
     } finally {
@@ -257,6 +305,12 @@ export function useAgencyBrain(clientId: string) {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  const learningSortOptions = [
+    { value: "createdAt", label: t("sortBy.createdAt") },
+    { value: "confidenceScore", label: t("sortBy.confidence") },
+    { value: "impact", label: t("sortBy.impact") }
+  ];
+
   return {
     clientName,
     summary,
@@ -284,6 +338,19 @@ export function useAgencyBrain(clientId: string) {
     setStatus,
     source,
     setSource,
+    confidence,
+    setConfidence,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    tagFilter,
+    setTagFilter,
+    sortBy,
+    setSortBy,
+    sortDir,
+    setSortDir,
+    learningSortOptions,
     setPage,
     campaigns,
     handleDetectPatterns,

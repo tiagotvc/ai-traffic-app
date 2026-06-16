@@ -7,6 +7,7 @@ import {
   BrainMemoryExtras,
   BrainSummaryCards
 } from "@/components/agency-brain/BrainMemoryDashboard";
+import { BrainListToolbar } from "@/components/agency-brain/BrainListToolbar";
 import { FeedbackBanner } from "@/components/agency-brain/FeedbackBanner";
 import { LearningCard } from "@/components/agency-brain/LearningCard";
 import { LearningFilters } from "@/components/agency-brain/LearningFilters";
@@ -58,17 +59,39 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
       <BrainSummaryCards summary={brain.summary} />
       <BrainMemoryExtras summary={brain.summary} />
 
-      <LearningFilters
-        search={brain.search}
-        category={brain.category}
-        impact={brain.impact}
-        status={brain.status}
-        source={brain.source}
-        onSearchChange={brain.setSearch}
-        onCategoryChange={brain.setCategory}
-        onImpactChange={brain.setImpact}
-        onStatusChange={brain.setStatus}
-        onSourceChange={brain.setSource}
+      <BrainListToolbar
+        sortBy={brain.sortBy}
+        sortDir={brain.sortDir}
+        sortOptions={brain.learningSortOptions}
+        onSortByChange={(v) => brain.setSortBy(v as typeof brain.sortBy)}
+        onSortDirChange={brain.setSortDir}
+        page={brain.page}
+        totalPages={brain.totalPages}
+        total={brain.total}
+        onPageChange={brain.setPage}
+        listLoading={brain.listLoading}
+        filters={
+          <LearningFilters
+            search={brain.search}
+            category={brain.category}
+            impact={brain.impact}
+            status={brain.status}
+            source={brain.source}
+            confidence={brain.confidence}
+            dateFrom={brain.dateFrom}
+            dateTo={brain.dateTo}
+            tagFilter={brain.tagFilter}
+            onSearchChange={brain.setSearch}
+            onCategoryChange={brain.setCategory}
+            onImpactChange={brain.setImpact}
+            onStatusChange={brain.setStatus}
+            onSourceChange={brain.setSource}
+            onConfidenceChange={brain.setConfidence}
+            onDateFromChange={brain.setDateFrom}
+            onDateToChange={brain.setDateTo}
+            onTagFilterChange={brain.setTagFilter}
+          />
+        }
       />
 
       {brain.loading ? (
@@ -77,12 +100,6 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
         <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
       ) : (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-slate-500">{t("resultsCount", { count: brain.total })}</p>
-            {brain.listLoading ? (
-              <span className="text-xs text-slate-400">{t("updating")}</span>
-            ) : null}
-          </div>
           {brain.learnings.map((learning) => (
             <LearningCard
               key={learning.id}
@@ -98,29 +115,6 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
               }}
             />
           ))}
-          {brain.totalPages > 1 ? (
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <button
-                type="button"
-                className="ui-btn-secondary text-xs"
-                disabled={brain.page <= 1}
-                onClick={() => brain.setPage((p) => Math.max(1, p - 1))}
-              >
-                {t("prevPage")}
-              </button>
-              <span className="text-xs text-slate-500">
-                {t("pageOf", { page: brain.page, total: brain.totalPages })}
-              </span>
-              <button
-                type="button"
-                className="ui-btn-secondary text-xs"
-                disabled={brain.page >= brain.totalPages}
-                onClick={() => brain.setPage((p) => Math.min(brain.totalPages, p + 1))}
-              >
-                {t("nextPage")}
-              </button>
-            </div>
-          ) : null}
         </div>
       )}
 

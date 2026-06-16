@@ -93,8 +93,7 @@ export async function createActionPlanFromSuggestions(
       status: "PENDING",
       priority: In(["HIGH", "MEDIUM"])
     },
-    order: { createdAt: "DESC" },
-    take: 10
+    take: 20
   });
 
   if (input.suggestionIds?.length) {
@@ -104,10 +103,21 @@ export async function createActionPlanFromSuggestions(
   if (!suggestions.length) {
     suggestions = await sugRepo.find({
       where: { tenantId, clientId, status: "PENDING" },
-      order: { createdAt: "DESC" },
-      take: 5
+      take: 10
     });
   }
+
+  const priorityWeight = (p: string) => (p === "HIGH" ? 3 : p === "MEDIUM" ? 2 : 1);
+  suggestions.sort((a, b) => {
+    const scoreA =
+      priorityWeight(a.priority) * 100 +
+      Number((a.evidence as { priorityScore?: number } | null)?.priorityScore ?? 0);
+    const scoreB =
+      priorityWeight(b.priority) * 100 +
+      Number((b.evidence as { priorityScore?: number } | null)?.priorityScore ?? 0);
+    return scoreB - scoreA;
+  });
+  suggestions = suggestions.slice(0, 10);
 
   const plan = planRepo.create({
     tenantId,

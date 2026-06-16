@@ -55,6 +55,7 @@ export type TimelineEventType =
   | "learning_approved"
   | "learning_suggested"
   | "hypothesis_promoted"
+  | "hypothesis_confirmed"
   | "suggestion_executed"
   | "suggestion_created"
   | "metric_spike"
@@ -79,6 +80,11 @@ export type ExperimentDto = {
   winner: string | null;
   metrics: Record<string, unknown> | null;
   conclusion: string | null;
+  metaCampaignId: string | null;
+  horizonDays: number | null;
+  baselineForecast: Record<string, unknown> | null;
+  actualMetrics: Record<string, unknown> | null;
+  hypothesisId: string | null;
   createdAt: string;
 };
 

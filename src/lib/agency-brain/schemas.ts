@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+const brainSortByEnum = z.enum(["createdAt", "confidenceScore", "priority", "impact"]);
+const brainSortDirEnum = z.enum(["asc", "desc"]);
+
 const categoryEnum = z.enum([
   "CREATIVE",
   "AUDIENCE",
@@ -42,7 +45,9 @@ export const ListLearningsQuerySchema = z.object({
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
   page: z.coerce.number().int().min(1).optional(),
-  pageSize: z.coerce.number().int().min(1).max(100).optional()
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(10),
+  sortBy: brainSortByEnum.optional(),
+  sortDir: brainSortDirEnum.optional().default("desc")
 });
 
 const hypothesisStatusEnum = z.enum(["SUGGESTED", "TESTING", "CONFIRMED", "REJECTED", "PROMOTED"]);
@@ -61,7 +66,31 @@ export const ListHypothesesQuerySchema = z.object({
   source: hypothesisSourceEnum.optional(),
   category: categoryEnum.optional(),
   page: z.coerce.number().int().min(1).optional(),
-  pageSize: z.coerce.number().int().min(1).max(100).optional()
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(10),
+  sortBy: z.enum(["createdAt", "confidenceScore"]).optional(),
+  sortDir: brainSortDirEnum.optional().default("desc")
+});
+
+const actionSuggestionStatusEnum = z.enum(["PENDING", "EXECUTED", "ACKNOWLEDGED", "REJECTED"]);
+const actionSuggestionPriorityEnum = z.enum(["HIGH", "MEDIUM", "LOW"]);
+const actionSuggestionSourceEnum = z.enum(["RULE", "AI"]);
+const actionSuggestionTypeEnum = z.enum([
+  "scale_budget",
+  "pause_campaign",
+  "duplicate_audience",
+  "refresh_creative",
+  "review_campaign"
+]);
+
+export const ListActionSuggestionsQuerySchema = z.object({
+  status: actionSuggestionStatusEnum.optional(),
+  priority: actionSuggestionPriorityEnum.optional(),
+  source: actionSuggestionSourceEnum.optional(),
+  actionType: actionSuggestionTypeEnum.optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(10),
+  sortBy: z.enum(["createdAt", "priority"]).optional(),
+  sortDir: brainSortDirEnum.optional().default("desc")
 });
 
 export const PatchClientDnaSchema = z.object({
@@ -98,7 +127,11 @@ export const CreateExperimentSchema = z.object({
   variantA: z.string().min(1).max(500),
   variantB: z.string().min(1).max(500),
   hypothesisId: z.string().uuid().nullable().optional(),
-  metrics: z.record(z.string(), z.unknown()).nullable().optional()
+  metrics: z.record(z.string(), z.unknown()).nullable().optional(),
+  metaCampaignId: z.string().min(1).nullable().optional(),
+  horizonDays: z.coerce.number().int().min(7).max(30).nullable().optional(),
+  baselineForecast: z.record(z.string(), z.unknown()).nullable().optional(),
+  actualMetrics: z.record(z.string(), z.unknown()).nullable().optional()
 });
 
 export const ListExperimentsQuerySchema = z.object({

@@ -6,6 +6,18 @@ export class SyncRun extends AppBaseEntity {
   @Column({ type: "uuid" })
   tenantId!: string;
 
+  @Column({ type: "text", default: "sync" })
+  runType!: "sync" | "historical_backfill";
+
+  @Column({ type: "int", nullable: true })
+  depthDays?: number | null;
+
+  @Column({ type: "int", default: 0 })
+  daysDone!: number;
+
+  @Column({ type: "int", default: 0 })
+  daysTotal!: number;
+
   @Column({ type: "text", default: "pending" })
   status!: string;
 

@@ -31,7 +31,9 @@ export async function GET(
       dateFrom: url.searchParams.get("dateFrom") ?? undefined,
       dateTo: url.searchParams.get("dateTo") ?? undefined,
       page: url.searchParams.get("page") ?? undefined,
-      pageSize: url.searchParams.get("pageSize") ?? undefined
+      pageSize: url.searchParams.get("pageSize") ?? undefined,
+      sortBy: url.searchParams.get("sortBy") ?? undefined,
+      sortDir: url.searchParams.get("sortDir") ?? undefined
     });
 
     const tags = query.tags ? query.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined;

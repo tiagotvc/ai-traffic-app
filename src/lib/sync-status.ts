@@ -27,7 +27,7 @@ export async function getTenantSyncStatus(tenantId: string, clientSlug?: string 
 
   const state = await stateRepo.findOne({ where: { tenantId } });
   const lastRun = await runRepo.find({
-    where: { tenantId },
+    where: { tenantId, runType: "sync" },
     order: { createdAt: "DESC" },
     take: 1
   });

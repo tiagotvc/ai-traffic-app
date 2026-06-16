@@ -37,6 +37,13 @@ export function CreativesRankingView({
   const [warnings, setWarnings] = useState<CreativeAccessWarning[]>([]);
   const [partialData, setPartialData] = useState(false);
   const [dataSource, setDataSource] = useState<string | null>(null);
+  const [dataProvenance, setDataProvenance] = useState<{
+    source?: string;
+    fetchedAt?: string;
+    cacheTtlSec?: number;
+    cacheHits?: number;
+    partialData?: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedZero, setExpandedZero] = useState<Record<string, boolean>>({});
 
@@ -55,6 +62,7 @@ export function CreativesRankingView({
           setWarnings(j.warnings ?? []);
           setPartialData(Boolean(j.partialData));
           setDataSource(j.dataSource ?? r.headers.get("X-Data-Source"));
+          setDataProvenance(j.dataProvenance ?? null);
         }
       })
       .catch(() => {})
@@ -74,9 +82,30 @@ export function CreativesRankingView({
     return <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />;
   }
 
+  function provenanceLabel() {
+    if (!dataProvenance) return null;
+    const src = dataProvenance.source ?? dataSource;
+    if (src === "cached" || src === "mixed") {
+      const fetchedAt = dataProvenance.fetchedAt
+        ? new Date(dataProvenance.fetchedAt)
+        : null;
+      if (fetchedAt) {
+        const mins = Math.max(0, Math.floor((Date.now() - fetchedAt.getTime()) / 60000));
+        return t("dataProvenanceCached", { mins });
+      }
+      return t("dataCached");
+    }
+    if (src === "live") return t("dataProvenanceLive");
+    return null;
+  }
+
   const banner = (
     <>
-      {dataSource === "cached" || dataSource === "mixed" ? (
+      {provenanceLabel() ? (
+        <div className="flex justify-end">
+          <Badge variant="neutral">{provenanceLabel()}</Badge>
+        </div>
+      ) : dataSource === "cached" || dataSource === "mixed" ? (
         <div className="flex justify-end">
           <Badge variant="neutral">{t("dataCached")}</Badge>
         </div>

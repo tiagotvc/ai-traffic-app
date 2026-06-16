@@ -21,6 +21,10 @@ import type {
   CreativeAccessWarning,
   CreativeAccessWarningCode
 } from "@/lib/creatives-access-types";
+import { mapLimit } from "@/lib/concurrency";
+
+const ACCOUNT_LEVEL_CAMPAIGN_THRESHOLD = 8;
+const ACCOUNT_FETCH_CONCURRENCY = 3;
 
 export type { CreativeAccessWarning, CreativeAccessWarningCode, CreativeAccessSuggestedAction };
 
@@ -175,7 +179,30 @@ export async function fetchAccountCreatives(
   timings.resolveCampaignIdsMs = Date.now() - tResolve;
   timings.campaignCount = campaignIds.length;
 
-  if (campaignIds.length) {
+  const preferAccountLevel =
+    probe.ok && campaignIds.length > ACCOUNT_LEVEL_CAMPAIGN_THRESHOLD && !campaignMetaIds?.length;
+
+  if (preferAccountLevel) {
+    const tAds = Date.now();
+    const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
+    timings.fetchAdsMs = Date.now() - tAds;
+    tokenErrors = accRes.errors;
+    lastError = accRes.lastError ?? null;
+    if (accRes.ok) {
+      ads = accRes.ads;
+      ok = true;
+      if (ads.length) {
+        const tIns = Date.now();
+        insights = await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
+          since,
+          until
+        });
+        timings.fetchInsightsMs = Date.now() - tIns;
+      }
+    }
+  }
+
+  if (!ok && campaignIds.length) {
     const tLoad = Date.now();
     const scoped = await loadAdsViaCampaigns(tokens, campaignIds, { since, until });
     timings.loadViaCampaignsMs = Date.now() - tLoad;
@@ -232,6 +259,25 @@ export async function fetchAccountCreatives(
         resolvedViaFallback = true;
         scopedViaCampaigns = true;
         lastError = null;
+      }
+    }
+  }
+
+  if (!ok && probe.ok) {
+    const tAds = Date.now();
+    const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
+    timings.fallbackAccountLevelMs = Date.now() - tAds;
+    tokenErrors = accRes.errors;
+    lastError = accRes.lastError ?? probe.reason ?? null;
+    if (accRes.ok) {
+      ads = accRes.ads;
+      ok = true;
+      resolvedViaFallback = true;
+      if (ads.length) {
+        insights = await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
+          since,
+          until
+        });
       }
     }
   } else if (!probe.ok && !ok && !scopedViaCampaigns) {
@@ -300,8 +346,11 @@ export async function fetchAllAccountCreatives(
   warnings: CreativeAccessWarning[];
   partialData: boolean;
   dataSource: "cached" | "live" | "mixed";
+  cacheHits: number;
 }> {
-  const results = await Promise.all(accounts.map((acc) => fetchAccountCreatives(acc, opts)));
+  const results = await mapLimit(accounts, ACCOUNT_FETCH_CONCURRENCY, (acc) =>
+    fetchAccountCreatives(acc, opts)
+  );
 
   const warnings: CreativeAccessWarning[] = [];
   for (const r of results) {
@@ -312,6 +361,7 @@ export async function fetchAllAccountCreatives(
   const partialData = okCount > 0 && warnings.length > 0;
 
   const cachedCount = results.filter((r) => r.fromCache).length;
+  const cacheHits = results.filter((r) => r.fromCache).length;
   const dataSource: "cached" | "live" | "mixed" =
     cachedCount === results.length
       ? "cached"
@@ -319,5 +369,5 @@ export async function fetchAllAccountCreatives(
         ? "live"
         : "mixed";
 
-  return { results, warnings, partialData, dataSource };
+  return { results, warnings, partialData, dataSource, cacheHits };
 }

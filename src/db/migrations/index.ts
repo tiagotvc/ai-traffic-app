@@ -27,6 +27,9 @@ import { TenantGeminiModel_1735692300000 } from "./0026-TenantGeminiModel";
 import { AgencyBrainCore_1735692400000 } from "./0027-AgencyBrainCore";
 import { AgencyBrainNicheOptIn_1735692500000 } from "./0028-AgencyBrainNicheOptIn";
 import { RankingConfig1735691100000 } from "./0014-RankingConfig";
+import { HistoricalBackfillQueue1735820000000 } from "./0029-HistoricalBackfillQueue";
+import { AdMetricSnapshots1735830000000 } from "./0030-AdMetricSnapshots";
+import { ClientExperimentForecast1735830100000 } from "./0031-ClientExperimentForecast";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -58,5 +61,8 @@ export const appMigrations = [
   ClientActionSuggestions_1735692200000,
   TenantGeminiModel_1735692300000,
   AgencyBrainCore_1735692400000,
-  AgencyBrainNicheOptIn_1735692500000
+  AgencyBrainNicheOptIn_1735692500000,
+  HistoricalBackfillQueue1735820000000,
+  AdMetricSnapshots1735830000000,
+  ClientExperimentForecast1735830100000
 ];

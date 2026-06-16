@@ -29,4 +29,16 @@ export class ClientExperiment extends AppBaseEntity {
 
   @Column({ type: "uuid", nullable: true })
   hypothesisId?: string | null;
+
+  @Column({ type: "text", nullable: true })
+  metaCampaignId?: string | null;
+
+  @Column({ type: "int", nullable: true })
+  horizonDays?: number | null;
+
+  @Column({ type: "jsonb", nullable: true })
+  baselineForecast?: Record<string, unknown> | null;
+
+  @Column({ type: "jsonb", nullable: true })
+  actualMetrics?: Record<string, unknown> | null;
 }

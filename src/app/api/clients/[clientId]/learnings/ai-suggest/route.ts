@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
+import {
+  buildAiAnalysisResponse,
+  shouldBillAiUsage
+} from "@/lib/creative-memory/ai-analysis-response";
 import { runAiLearningSuggestionsForClient } from "@/lib/creative-memory/ai-learning-generator";
 import { resolveCreativeMemoryModelChain } from "@/lib/creative-memory/models";
 import {
@@ -40,38 +44,22 @@ export async function POST(
       modelChain
     );
 
-    if (result.skippedReason === "no_api_key") {
-      return NextResponse.json({
-        ok: false,
-        code: "NO_AI_KEY",
-        error: "IA não configurada. Defina GEMINI_API_KEY no servidor."
-      });
-    }
-
-    if (result.skippedReason === "no_metrics") {
-      return NextResponse.json({
-        ok: true,
-        created: 0,
-        suggestions: [],
-        message: "Sem métricas recentes para analisar."
-      });
-    }
-
-    if (result.modelMeta) {
+    if (shouldBillAiUsage(result)) {
       await recordCreativeMemoryAiUsage({
         tenantId: tenant.id,
         clientId: client.id,
         kind: "learnings",
         createdCount: result.created,
-        modelMeta: result.modelMeta
+        modelMeta: result.modelMeta!
       });
     }
 
-    return NextResponse.json({
-      ok: true,
-      ...result,
-      ai: true,
-      modelUsed: result.modelMeta?.modelUsed
+    return buildAiAnalysisResponse(result, {
+      noApiKeyError: "IA não configurada. Defina GEMINI_API_KEY no servidor.",
+      noMetricsMessage: "Sem métricas recentes para analisar.",
+      noResultsMessage:
+        "Nenhum aprendizado novo foi gerado. Os itens podem ter sido rejeitados pela validação ou já existir na memória.",
+      genericError: "Erro ao analisar com IA"
     });
   } catch (err) {
     console.error("[learnings ai-suggest]", err);

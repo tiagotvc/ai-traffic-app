@@ -23,6 +23,7 @@ export type ActionEvidence = {
   actualValue?: number;
   campaignName?: string;
   brainContextSnippet?: string;
+  priorityScore?: number;
 };
 
 export type ActionSuggestionDto = {
@@ -30,6 +31,7 @@ export type ActionSuggestionDto = {
   clientId: string;
   metaCampaignId: string | null;
   linkedLearningId: string | null;
+  linkedHypothesisIds: string[];
   title: string;
   description: string;
   actionType: ActionSuggestionType;
@@ -50,8 +52,11 @@ export type ActionSuggestionFilters = {
   status?: ActionSuggestionStatus;
   actionType?: ActionSuggestionType;
   source?: ActionSuggestionSource;
+  priority?: ActionSuggestionPriority;
   page?: number;
   pageSize?: number;
+  sortBy?: "createdAt" | "priority";
+  sortDir?: "asc" | "desc";
 };
 
 export type ActionSuggestionSummary = {
@@ -70,6 +75,7 @@ export type SuggestedActionDraft = {
   metaCampaignId?: string | null;
   linkedLearningId?: string | null;
   linkedLearningIds?: string[];
+  linkedHypothesisIds?: string[];
   priority?: ActionSuggestionPriority;
   evidence: ActionEvidence;
   dedupeKey: string;

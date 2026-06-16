@@ -12,7 +12,11 @@ type CacheEntry = {
   cachedAt: number;
 };
 
-const TTL_MS = Number(process.env.CREATIVES_CACHE_TTL_SEC ?? "300") * 1000;
+const TTL_MS = Number(process.env.CREATIVES_CACHE_TTL_SEC ?? "180") * 1000;
+
+export function getCreativesCacheTtlSec(): number {
+  return Math.round(TTL_MS / 1000);
+}
 const store = new Map<string, CacheEntry>();
 
 function cacheKey(

@@ -51,6 +51,13 @@ export function AutoSyncOnLogin() {
         if (res.ok && json?.ok !== false) {
           sessionStorage.setItem(SESSION_KEY, "1");
           window.dispatchEvent(new Event("traffic-sync-done"));
+
+          // Backfill histórico (não-bloqueante).
+          void fetch("/api/sync/backfill", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ depthDays: 90 })
+          }).catch(() => {});
         } else if (json?.error) {
           setError(json.error);
         }

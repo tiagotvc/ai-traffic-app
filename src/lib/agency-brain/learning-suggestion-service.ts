@@ -2,51 +2,37 @@ import "server-only";
 
 import { repositories } from "@/db/repositories";
 import { createSuggestedLearning } from "@/lib/agency-brain/client-learning-service";
-import { evaluateAllRules } from "@/lib/agency-brain/learning-rules";
+import { loadClientSignals, type ClientSignalsContext } from "@/lib/agency-brain/client-signals";
 import { detectMetricSpikes } from "@/lib/agency-brain/metric-spike-detector";
-import { getClientCampaignMetricsWithComparison } from "@/lib/agency-brain/metrics-input";
+import { signalsToLearningDrafts } from "@/lib/agency-brain/signal-mappers";
+import { hasActiveSignalDedupe } from "@/lib/agency-brain/signal-dedupe";
 import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
 import type { LearningDto } from "@/lib/agency-brain/types";
 
 const WINDOW_DAYS = 7;
-const DEFAULT_SPEND_THRESHOLD = 500;
 
 export async function runLearningSuggestionsForClient(
   tenantId: string,
-  clientId: string
+  clientId: string,
+  preloaded?: ClientSignalsContext
 ): Promise<{ created: number; suggestions: LearningDto[] }> {
-  const { clientGoal: goalRepo } = await repositories();
-  const goal = await goalRepo.findOne({ where: { clientId } });
-  const spendThreshold =
-    goal?.maxSpendWithoutConversion != null
-      ? Number(goal.maxSpendWithoutConversion)
-      : DEFAULT_SPEND_THRESHOLD;
+  const ctx = preloaded ?? (await loadClientSignals(tenantId, clientId, WINDOW_DAYS));
 
-  const { current, previous } = await getClientCampaignMetricsWithComparison(
-    tenantId,
-    clientId,
-    WINDOW_DAYS
-  );
-
-  if (!current.length) {
+  if (!ctx) {
     return { created: 0, suggestions: [] };
   }
 
-  const drafts = evaluateAllRules(
-    current,
-    previous,
-    clientId,
-    WINDOW_DAYS,
-    spendThreshold
-  );
+  const drafts = signalsToLearningDrafts(ctx.signals, clientId, ctx.windowDays);
 
   const suggestions: LearningDto[] = [];
   for (const draft of drafts) {
+    const blocked = await hasActiveSignalDedupe(tenantId, clientId, draft.dedupeKey);
+    if (blocked.hypothesis) continue;
     const created = await createSuggestedLearning(tenantId, clientId, draft);
     if (created) suggestions.push(created);
   }
 
-  const spikes = detectMetricSpikes(current, previous);
+  const spikes = detectMetricSpikes(ctx.current, ctx.previous);
   for (const spike of spikes) {
     await recordTimelineEvent(tenantId, clientId, {
       type: "metric_spike",

@@ -6,6 +6,10 @@ import { assertLimit } from "@/lib/billing/entitlements";
 import { runAiHypothesisSuggestionsForClient } from "@/lib/agency-brain/hypothesis-generator";
 import { listHypotheses } from "@/lib/agency-brain/hypothesis-service";
 import {
+  buildAiAnalysisResponse,
+  shouldBillAiUsage
+} from "@/lib/creative-memory/ai-analysis-response";
+import {
   assertCreativeMemoryAiAccess,
   getCreativeMemoryAiStatus,
   recordCreativeMemoryAiUsage
@@ -45,38 +49,22 @@ export async function POST(
       existing.items.map((h) => h.title)
     );
 
-    if (result.skippedReason === "no_api_key") {
-      return NextResponse.json({
-        ok: false,
-        code: "NO_AI_KEY",
-        error: "IA não configurada. Defina GEMINI_API_KEY no servidor."
-      });
-    }
-
-    if (result.skippedReason === "no_metrics") {
-      return NextResponse.json({
-        ok: true,
-        created: 0,
-        hypotheses: [],
-        message: "Sem métricas recentes para analisar."
-      });
-    }
-
-    if (result.modelMeta) {
+    if (shouldBillAiUsage(result)) {
       await recordCreativeMemoryAiUsage({
         tenantId: tenant.id,
         clientId: client.id,
         kind: "hypotheses",
         createdCount: result.created,
-        modelMeta: result.modelMeta
+        modelMeta: result.modelMeta!
       });
     }
 
-    return NextResponse.json({
-      ok: true,
-      ...result,
-      ai: true,
-      modelUsed: result.modelMeta?.modelUsed
+    return buildAiAnalysisResponse(result, {
+      noApiKeyError: "IA não configurada. Defina GEMINI_API_KEY no servidor.",
+      noMetricsMessage: "Sem métricas recentes para analisar.",
+      noResultsMessage:
+        "Nenhuma hipótese nova foi gerada. Os itens podem ter sido rejeitados pela validação ou já existir.",
+      genericError: "Erro ao gerar hipóteses com IA"
     });
   } catch (err) {
     console.error("[hypotheses ai-suggest]", err);

@@ -1,8 +1,15 @@
 import "server-only";
 
+import { In, IsNull } from "typeorm";
+import type { Repository } from "typeorm";
+
+import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
+import type { MetricSnapshot } from "@/db/entities/MetricSnapshot";
+import type { AdMetricSnapshot } from "@/db/entities/AdMetricSnapshot";
 import type { MetaCampaign } from "@/lib/meta-graph";
 import {
   fetchAccountInsightsDaily,
+  fetchAdsetInsightsDaily,
   fetchCampaignInsightsDaily,
   fetchCampaigns,
   pickLeads,
@@ -13,6 +20,132 @@ import { repositories } from "@/db/repositories";
 import { runAlertEngine } from "@/lib/alert-engine";
 import { runAutomationEngine } from "@/lib/automation-engine";
 import { ensureMetaAccountsInDb, getLinkedAdAccountsForTenant } from "@/lib/tenant-accounts";
+import { mapLimit } from "@/lib/concurrency";
+
+type MetricRowInput = {
+  day: string;
+  spend: string;
+  impressions: string;
+  clicks: string;
+  ctr: string;
+  cpc: string;
+  conversions: string;
+  reach: string;
+  messages: string;
+  roas: string;
+};
+
+type CampaignMetricRowInput = MetricRowInput & {
+  metaCampaignId: string;
+  campaignName: string | null;
+  leads: string;
+  dailyBudget: string | null;
+  campaignStatus: string | null;
+};
+
+type AdsetMetricRowInput = MetricRowInput & {
+  metaCampaignId: string;
+  metaAdsetId: string;
+  adsetName: string | null;
+  leads: string;
+};
+
+async function bulkUpsertMetricSnapshots(
+  repo: Repository<MetricSnapshot>,
+  adAccountId: string,
+  rows: MetricRowInput[]
+) {
+  if (!rows.length) return;
+  const days = [...new Set(rows.map((r) => r.day))];
+  const existing = await repo.find({ where: { adAccountId, day: In(days) } });
+  const byDay = new Map(existing.map((e) => [e.day, e]));
+  const toSave = rows.map((row) => {
+    const ex = byDay.get(row.day);
+    if (ex) {
+      ex.spend = row.spend;
+      ex.impressions = row.impressions;
+      ex.clicks = row.clicks;
+      ex.ctr = row.ctr;
+      ex.cpc = row.cpc;
+      ex.conversions = row.conversions;
+      ex.reach = row.reach;
+      ex.messages = row.messages;
+      ex.roas = row.roas;
+      return ex;
+    }
+    return repo.create({ adAccountId, ...row });
+  });
+  await repo.save(toSave);
+}
+
+async function bulkUpsertCampaignMetricSnapshots(
+  repo: Repository<CampaignMetricSnapshot>,
+  adAccountId: string,
+  rows: CampaignMetricRowInput[]
+) {
+  if (!rows.length) return;
+  const days = [...new Set(rows.map((r) => r.day))];
+  const campaignIds = [...new Set(rows.map((r) => r.metaCampaignId))];
+  const existing = await repo.find({
+    where: { adAccountId, metaCampaignId: In(campaignIds), day: In(days) }
+  });
+  const byKey = new Map(existing.map((e) => [`${e.metaCampaignId}:${e.day}`, e]));
+  const toSave = rows.map((row) => {
+    const ex = byKey.get(`${row.metaCampaignId}:${row.day}`);
+    if (ex) {
+      ex.campaignName = row.campaignName ?? ex.campaignName ?? null;
+      ex.spend = row.spend;
+      ex.impressions = row.impressions;
+      ex.clicks = row.clicks;
+      ex.ctr = row.ctr;
+      ex.cpc = row.cpc;
+      ex.conversions = row.conversions;
+      ex.leads = row.leads;
+      ex.reach = row.reach;
+      ex.messages = row.messages;
+      ex.roas = row.roas;
+      ex.dailyBudget = row.dailyBudget;
+      ex.campaignStatus = row.campaignStatus;
+      return ex;
+    }
+    return repo.create({ adAccountId, ...row });
+  });
+  await repo.save(toSave);
+}
+
+async function bulkUpsertAdsetMetricSnapshots(
+  repo: Repository<AdMetricSnapshot>,
+  adAccountId: string,
+  rows: AdsetMetricRowInput[]
+) {
+  if (!rows.length) return;
+  const days = [...new Set(rows.map((r) => r.day))];
+  const adsetIds = [...new Set(rows.map((r) => r.metaAdsetId))];
+  const existing = await repo.find({
+    where: { adAccountId, metaAdsetId: In(adsetIds), day: In(days), metaAdId: IsNull() }
+  });
+  const byKey = new Map(existing.map((e) => [`${e.metaAdsetId}:${e.day}`, e]));
+  const toSave = rows.map((row) => {
+    const ex = byKey.get(`${row.metaAdsetId}:${row.day}`);
+    if (ex) {
+      ex.metaCampaignId = row.metaCampaignId;
+      ex.adsetName = row.adsetName ?? ex.adsetName ?? null;
+      ex.spend = row.spend;
+      ex.impressions = row.impressions;
+      ex.clicks = row.clicks;
+      ex.ctr = row.ctr;
+      ex.cpc = row.cpc;
+      ex.conversions = row.conversions;
+      ex.leads = row.leads;
+      ex.reach = row.reach;
+      ex.messages = row.messages;
+      ex.roas = row.roas;
+      return ex;
+    }
+    return repo.create({ adAccountId, metaAdId: null, ...row });
+  });
+  await repo.save(toSave);
+}
 
 export async function runMetaSyncForAccount(input: {
   tenantId: string;
@@ -20,60 +153,31 @@ export async function runMetaSyncForAccount(input: {
   metaAdAccountId: string;
   metaAccessToken: string;
 }) {
-  const { metricSnapshot: metricsRepo, campaignMetricSnapshot: campRepo } = await repositories();
+  const {
+    metricSnapshot: metricsRepo,
+    campaignMetricSnapshot: campRepo,
+    adMetricSnapshot: adRepo
+  } = await repositories();
 
-  // last_30d (histórico, exclui hoje) + today (dia corrente no fuso da conta).
   const [historyRows, todayRows] = await Promise.all([
     fetchAccountInsightsDaily(input.metaAccessToken, input.metaAdAccountId),
     fetchAccountInsightsDaily(input.metaAccessToken, input.metaAdAccountId, "today").catch(() => [])
   ]);
-  const rows = [...historyRows, ...todayRows];
-  for (const r of rows) {
-    const day = r.date_start;
-    if (!day) continue;
-
-    const spend = r.spend ?? "0";
-    const impressions = r.impressions ?? "0";
-    const clicks = r.clicks ?? "0";
-    const ctr = r.ctr ?? "0";
-    const cpc = r.cpc ?? "0";
-    const conversions = String(pickResults(r));
-    const reach = r.reach ?? "0";
-    const messages = String(pickMessages(r.actions));
-    const roas = r.purchase_roas?.[0]?.value ?? "0";
-
-    const existing = await metricsRepo.findOne({
-      where: { adAccountId: input.adAccountId, day }
-    });
-    if (existing) {
-      existing.spend = spend;
-      existing.impressions = impressions;
-      existing.clicks = clicks;
-      existing.ctr = ctr;
-      existing.cpc = cpc;
-      existing.conversions = conversions;
-      existing.reach = reach;
-      existing.messages = messages;
-      existing.roas = roas;
-      await metricsRepo.save(existing);
-    } else {
-      await metricsRepo.save(
-        metricsRepo.create({
-          adAccountId: input.adAccountId,
-          day,
-          spend,
-          impressions,
-          clicks,
-          ctr,
-          cpc,
-          conversions,
-          reach,
-          messages,
-          roas
-        })
-      );
-    }
-  }
+  const accountRows = [...historyRows, ...todayRows]
+    .filter((r) => r.date_start)
+    .map((r) => ({
+      day: r.date_start!,
+      spend: r.spend ?? "0",
+      impressions: r.impressions ?? "0",
+      clicks: r.clicks ?? "0",
+      ctr: r.ctr ?? "0",
+      cpc: r.cpc ?? "0",
+      conversions: String(pickResults(r)),
+      reach: r.reach ?? "0",
+      messages: String(pickMessages(r.actions)),
+      roas: r.purchase_roas?.[0]?.value ?? "0"
+    }));
+  await bulkUpsertMetricSnapshots(metricsRepo, input.adAccountId, accountRows);
 
   let campaigns: MetaCampaign[] = [];
   try {
@@ -87,109 +191,112 @@ export async function runMetaSyncForAccount(input: {
   );
   const statusByCampaign = new Map(campaigns.map((c) => [c.id, c.status ?? null]));
 
-  const [campHistory, campToday] = await Promise.all([
+  const [campHistory, campToday, adsetHistory, adsetToday] = await Promise.all([
     fetchCampaignInsightsDaily(input.metaAccessToken, input.metaAdAccountId),
-    fetchCampaignInsightsDaily(input.metaAccessToken, input.metaAdAccountId, "today").catch(() => [])
+    fetchCampaignInsightsDaily(input.metaAccessToken, input.metaAdAccountId, "today").catch(() => []),
+    fetchAdsetInsightsDaily(input.metaAccessToken, input.metaAdAccountId),
+    fetchAdsetInsightsDaily(input.metaAccessToken, input.metaAdAccountId, "today").catch(() => [])
   ]);
-  const campRows = [...campHistory, ...campToday];
 
-  for (const r of campRows) {
-    const day = r.date_start;
-    const metaCampaignId = r.campaign_id;
-    if (!day || !metaCampaignId) continue;
-
-    const spend = r.spend ?? "0";
-    const impressions = r.impressions ?? "0";
-    const clicks = r.clicks ?? "0";
-    const ctr = r.ctr ?? "0";
-    const cpc = r.cpc ?? "0";
-    const conversions = String(pickResults(r));
-    const leads = String(pickLeads(r.actions));
-    const reach = r.reach ?? "0";
-    const messages = String(pickMessages(r.actions));
-    const roas = r.purchase_roas?.[0]?.value ?? "0";
-
-    const existing = await campRepo.findOne({
-      where: { adAccountId: input.adAccountId, metaCampaignId, day }
+  const campRows: CampaignMetricRowInput[] = [...campHistory, ...campToday]
+    .filter((r) => r.date_start && r.campaign_id)
+    .map((r) => {
+      const metaCampaignId = r.campaign_id!;
+      return {
+        metaCampaignId,
+        campaignName: r.campaign_name ?? null,
+        day: r.date_start!,
+        spend: r.spend ?? "0",
+        impressions: r.impressions ?? "0",
+        clicks: r.clicks ?? "0",
+        ctr: r.ctr ?? "0",
+        cpc: r.cpc ?? "0",
+        conversions: String(pickResults(r)),
+        leads: String(pickLeads(r.actions)),
+        reach: r.reach ?? "0",
+        messages: String(pickMessages(r.actions)),
+        roas: r.purchase_roas?.[0]?.value ?? "0",
+        dailyBudget: budgetByCampaign.get(metaCampaignId) ?? null,
+        campaignStatus: statusByCampaign.get(metaCampaignId) ?? null
+      };
     });
-    const dailyBudget = budgetByCampaign.get(metaCampaignId) ?? null;
-    const campaignStatus = statusByCampaign.get(metaCampaignId) ?? null;
+  await bulkUpsertCampaignMetricSnapshots(campRepo, input.adAccountId, campRows);
 
-    if (existing) {
-      existing.campaignName = r.campaign_name ?? existing.campaignName;
-      existing.spend = spend;
-      existing.impressions = impressions;
-      existing.clicks = clicks;
-      existing.ctr = ctr;
-      existing.cpc = cpc;
-      existing.conversions = conversions;
-      existing.leads = leads;
-      existing.reach = reach;
-      existing.messages = messages;
-      existing.roas = roas;
-      existing.dailyBudget = dailyBudget;
-      existing.campaignStatus = campaignStatus;
-      await campRepo.save(existing);
-    } else {
-      await campRepo.save(
-        campRepo.create({
-          adAccountId: input.adAccountId,
-          metaCampaignId,
-          campaignName: r.campaign_name ?? null,
-          day,
-          spend,
-          impressions,
-          clicks,
-          ctr,
-          cpc,
-          conversions,
-          leads,
-          reach,
-          messages,
-          roas,
-          dailyBudget,
-          campaignStatus
-        })
-      );
-    }
-  }
+  const adsetRows: AdsetMetricRowInput[] = [...adsetHistory, ...adsetToday]
+    .filter((r) => r.date_start && r.adset_id && r.campaign_id)
+    .map((r) => ({
+      metaCampaignId: r.campaign_id!,
+      metaAdsetId: r.adset_id!,
+      adsetName: r.adset_name ?? null,
+      day: r.date_start!,
+      spend: r.spend ?? "0",
+      impressions: r.impressions ?? "0",
+      clicks: r.clicks ?? "0",
+      ctr: r.ctr ?? "0",
+      cpc: r.cpc ?? "0",
+      conversions: String(pickResults(r)),
+      leads: String(pickLeads(r.actions)),
+      reach: r.reach ?? "0",
+      messages: String(pickMessages(r.actions)),
+      roas: r.purchase_roas?.[0]?.value ?? "0"
+    }));
+  await bulkUpsertAdsetMetricSnapshots(adRepo, input.adAccountId, adsetRows);
 
-  // Campanhas novas na Meta ainda sem insights no dia — garante linha no banco para aparecer na listagem.
   const dayToday = campToday.find((r) => r.date_start)?.date_start ?? new Date().toISOString().slice(0, 10);
+  const existingToday = await campRepo.find({
+    where: { adAccountId: input.adAccountId, day: dayToday }
+  });
+  const existingTodayByCampaign = new Map(existingToday.map((e) => [e.metaCampaignId, e]));
+
+  const placeholderRows: CampaignMetricRowInput[] = [];
   for (const c of campaigns) {
     if (!c.id) continue;
-    const dailyBudget = budgetByCampaign.get(c.id) ?? null;
-    const campaignStatus = statusByCampaign.get(c.id) ?? null;
-    const existingToday = await campRepo.findOne({
-      where: { adAccountId: input.adAccountId, metaCampaignId: c.id, day: dayToday }
-    });
-    if (existingToday) {
-      if (c.name) existingToday.campaignName = c.name;
-      if (campaignStatus) existingToday.campaignStatus = campaignStatus;
-      if (dailyBudget != null) existingToday.dailyBudget = dailyBudget;
-      await campRepo.save(existingToday);
+    if (existingTodayByCampaign.has(c.id)) {
+      const row = existingTodayByCampaign.get(c.id)!;
+      if (c.name) row.campaignName = c.name;
+      const st = statusByCampaign.get(c.id);
+      if (st) row.campaignStatus = st;
+      const db = budgetByCampaign.get(c.id);
+      if (db != null) row.dailyBudget = db;
+      placeholderRows.push({
+        metaCampaignId: c.id,
+        campaignName: row.campaignName ?? c.name ?? null,
+        day: dayToday,
+        spend: row.spend,
+        impressions: row.impressions,
+        clicks: row.clicks,
+        ctr: row.ctr,
+        cpc: row.cpc,
+        conversions: row.conversions,
+        leads: row.leads,
+        reach: row.reach,
+        messages: row.messages,
+        roas: row.roas,
+        dailyBudget: row.dailyBudget ?? budgetByCampaign.get(c.id) ?? null,
+        campaignStatus: row.campaignStatus ?? statusByCampaign.get(c.id) ?? null
+      });
       continue;
     }
-    await campRepo.save(
-      campRepo.create({
-        adAccountId: input.adAccountId,
-        metaCampaignId: c.id,
-        campaignName: c.name ?? null,
-        day: dayToday,
-        spend: "0",
-        impressions: "0",
-        clicks: "0",
-        ctr: "0",
-        cpc: "0",
-        conversions: "0",
-        leads: "0",
-        reach: "0",
-        messages: "0",
-        roas: "0",
-        dailyBudget,
-        campaignStatus
-      })
-    );
+    placeholderRows.push({
+      metaCampaignId: c.id,
+      campaignName: c.name ?? null,
+      day: dayToday,
+      spend: "0",
+      impressions: "0",
+      clicks: "0",
+      ctr: "0",
+      cpc: "0",
+      conversions: "0",
+      leads: "0",
+      reach: "0",
+      messages: "0",
+      roas: "0",
+      dailyBudget: budgetByCampaign.get(c.id) ?? null,
+      campaignStatus: statusByCampaign.get(c.id) ?? null
+    });
+  }
+  if (placeholderRows.length) {
+    await bulkUpsertCampaignMetricSnapshots(campRepo, input.adAccountId, placeholderRows);
   }
 
   return { campaigns };
@@ -205,7 +312,7 @@ export async function runMetaSync(input: {
 
   const campaignMeta = new Map<string, MetaCampaign>();
 
-  for (const account of accounts) {
+  const results = await mapLimit(accounts, 3, async (account) => {
     try {
       const { campaigns } = await runMetaSyncForAccount({
         tenantId: input.tenantId,
@@ -213,16 +320,22 @@ export async function runMetaSync(input: {
         metaAdAccountId: account.metaAdAccountId,
         metaAccessToken: input.metaAccessToken
       });
-      for (const c of campaigns) campaignMeta.set(c.id, c);
+      return { ok: true as const, campaigns };
     } catch {
-      // continue other accounts
+      return { ok: false as const, campaigns: [] as MetaCampaign[] };
+    }
+  });
+
+  for (const r of results) {
+    if (r.ok) {
+      for (const c of r.campaigns) campaignMeta.set(c.id, c);
     }
   }
 
   await runAlertEngine(input.tenantId, campaignMeta);
   await runAutomationEngine(input.tenantId, input.metaAccessToken, campaignMeta);
-  const { runLearningSuggestions } = await import("@/lib/agency-brain/learning-suggestion-service");
-  await runLearningSuggestions(input.tenantId);
+  const { runAgencyBrainPipeline } = await import("@/lib/agency-brain/brain-pipeline");
+  await runAgencyBrainPipeline(input.tenantId);
   const { recordSyncCompletedTimelineEvents } = await import(
     "@/lib/agency-brain/timeline-recorder"
   );

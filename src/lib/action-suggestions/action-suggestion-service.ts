@@ -11,6 +11,10 @@ import type {
   ActionSuggestionSummary,
   SuggestedActionDraft
 } from "@/lib/action-suggestions/types";
+import {
+  applyCreatedAtSort,
+  applyPrioritySort
+} from "@/lib/agency-brain/list-sort";
 import { MoreThanOrEqual, Not } from "typeorm";
 
 const DEDUPE_WINDOW_DAYS = 30;
@@ -21,6 +25,7 @@ export function toActionSuggestionDto(row: ClientActionSuggestion): ActionSugges
     clientId: row.clientId,
     metaCampaignId: row.metaCampaignId ?? null,
     linkedLearningId: row.linkedLearningId ?? null,
+    linkedHypothesisIds: row.linkedHypothesisIds ?? [],
     title: row.title,
     description: row.description,
     actionType: row.actionType,
@@ -45,19 +50,30 @@ export async function listActionSuggestions(
 ): Promise<{ items: ActionSuggestionDto[]; total: number; page: number; pageSize: number }> {
   const { clientActionSuggestion: repo } = await repositories();
   const page = filters.page ?? 1;
-  const pageSize = filters.pageSize ?? 20;
+  const pageSize = filters.pageSize ?? 10;
+  const sortBy = filters.sortBy ?? "createdAt";
+  const sortDir = filters.sortDir ?? "desc";
 
   const where: Record<string, unknown> = { tenantId, clientId };
   if (filters.status) where.status = filters.status;
   if (filters.actionType) where.actionType = filters.actionType;
   if (filters.source) where.source = filters.source;
+  if (filters.priority) where.priority = filters.priority;
 
-  const [rows, total] = await repo.findAndCount({
-    where,
-    order: { createdAt: "DESC" },
-    skip: (page - 1) * pageSize,
-    take: pageSize
-  });
+  const qb = repo.createQueryBuilder("s").where(where);
+
+  const total = await qb.getCount();
+
+  if (sortBy === "priority") {
+    applyPrioritySort(qb, "s", sortDir);
+  } else {
+    applyCreatedAtSort(qb, "s", sortDir);
+  }
+
+  const rows = await qb
+    .skip((page - 1) * pageSize)
+    .take(pageSize)
+    .getMany();
 
   return { items: rows.map(toActionSuggestionDto), total, page, pageSize };
 }
@@ -114,6 +130,8 @@ export async function createActionSuggestion(
       ? [draft.linkedLearningId]
       : [];
 
+  const linkedHypothesisIds = draft.linkedHypothesisIds?.length ? draft.linkedHypothesisIds : [];
+
   const row = repo.create({
     tenantId,
     clientId,
@@ -127,6 +145,7 @@ export async function createActionSuggestion(
     metaCampaignId: draft.metaCampaignId ?? null,
     linkedLearningId: linkedIds[0] ?? null,
     linkedLearningIds: linkedIds,
+    linkedHypothesisIds,
     evidence: draft.evidence,
     dedupeKey: draft.dedupeKey
   });

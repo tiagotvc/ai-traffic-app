@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+import type { AiAnalysisError, AiAnalysisErrorCode } from "@/lib/creative-memory/ai-analysis-types";
+
+export type { AiAnalysisError, AiAnalysisErrorCode };
+
 const ActionSchema = z.object({
   targetId: z.string().min(1),
   actionType: z.enum(["ALTER_BUDGET", "PAUSE_AD", "UPDATE_BID"]),
@@ -56,6 +60,53 @@ function extractJson(text: string): unknown {
     return JSON.parse(slice);
   }
   throw new Error("Gemini did not return JSON");
+}
+
+export function classifyGeminiError(err: unknown): AiAnalysisError {
+  const message = err instanceof Error ? err.message : String(err);
+  const lower = message.toLowerCase();
+
+  if (message.includes("429") || lower.includes("rate limit") || lower.includes("quota")) {
+    return {
+      code: "RATE_LIMIT",
+      message: "Limite de requisições da IA atingido. Tente novamente em 1–2 minutos."
+    };
+  }
+
+  if (
+    message.includes("502") ||
+    message.includes("503") ||
+    lower.includes("empty response") ||
+    lower.includes("service unavailable")
+  ) {
+    return {
+      code: "SERVICE_UNAVAILABLE",
+      message: "Serviço de IA temporariamente indisponível. Tente novamente em instantes."
+    };
+  }
+
+  if (err instanceof z.ZodError || lower.includes("zod")) {
+    return {
+      code: "SCHEMA_ERROR",
+      message: "A IA retornou um formato inesperado. Tente novamente."
+    };
+  }
+
+  if (
+    err instanceof SyntaxError ||
+    lower.includes("did not return json") ||
+    lower.includes("unexpected token")
+  ) {
+    return {
+      code: "PARSE_ERROR",
+      message: "Não foi possível interpretar a resposta da IA. Tente novamente."
+    };
+  }
+
+  return {
+    code: "UNKNOWN",
+    message: "Erro ao processar análise com IA."
+  };
 }
 
 function isRetryableGeminiStatus(status: number): boolean {

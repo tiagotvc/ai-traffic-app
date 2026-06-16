@@ -132,6 +132,7 @@ export async function enqueueTenantSync(input: {
   const run = await runRepo.save(
     runRepo.create({
       tenantId: input.tenantId,
+      runType: "sync",
       status: "queued",
       accountsTotal: eligible.length,
       accountsDone: 0
@@ -247,8 +248,8 @@ export async function processSyncQueue(input: {
   await runAlertEngine(input.tenantId, campaignMeta);
   const { runAutomationEngine } = await import("@/lib/automation-engine");
   await runAutomationEngine(input.tenantId, input.metaAccessToken, campaignMeta);
-  const { runLearningSuggestions } = await import("@/lib/agency-brain/learning-suggestion-service");
-  await runLearningSuggestions(input.tenantId);
+  const { runAgencyBrainPipeline } = await import("@/lib/agency-brain/brain-pipeline");
+  await runAgencyBrainPipeline(input.tenantId);
   const { recordSyncCompletedTimelineEvents } = await import(
     "@/lib/agency-brain/timeline-recorder"
   );

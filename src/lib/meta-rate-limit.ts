@@ -1,6 +1,13 @@
 import "server-only";
 
-const META_DELAY_MS = Number(process.env.META_API_DELAY_MS ?? "350");
+function adaptiveMetaDelayMs(throttle: { appUtilPct: number; accUtilPct: number }): number {
+  const base = Number(process.env.META_API_DELAY_MS ?? "350");
+  const util = Math.max(throttle.appUtilPct, throttle.accUtilPct);
+  if (util > 90) return Math.max(base, 5000);
+  if (util > 80) return Math.max(base, 3000);
+  if (util > 60) return Math.max(base, 1500);
+  return base;
+}
 const MAX_RETRIES = 5;
 
 function sleep(ms: number) {
@@ -81,7 +88,8 @@ export async function metaFetchWithRateLimit<T>(
     }
 
     if (res.ok) {
-      await sleep(META_DELAY_MS);
+      const delay = adaptiveMetaDelayMs(throttle);
+      if (delay > 0) await sleep(delay);
       return { data: json as T, headers: res.headers };
     }
 

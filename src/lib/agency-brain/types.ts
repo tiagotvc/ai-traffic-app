@@ -54,6 +54,8 @@ export type LearningFilters = {
   dateTo?: string;
   page?: number;
   pageSize?: number;
+  sortBy?: "createdAt" | "confidenceScore" | "impact" | "priority";
+  sortDir?: "asc" | "desc";
 };
 
 export type LearningDto = {
@@ -117,6 +119,7 @@ export type ClientBrainContext = {
   tags: string[];
   summaryText: string;
   dna: ClientDnaPayload | null;
+  topCreatives?: import("@/lib/agency-brain/creative-intelligence").RankedCreative[];
 };
 
 export type CampaignMetricsRow = {
@@ -131,6 +134,12 @@ export type CampaignMetricsRow = {
   cpa: number | null;
   roas: number;
   frequency: number;
+  previousCpa?: number | null;
+  previousCtr?: number | null;
+  previousRoas?: number | null;
+  cpaDeltaPct?: number;
+  ctrDeltaPct?: number;
+  roasDeltaPct?: number;
 };
 
 export type SuggestedLearningDraft = {

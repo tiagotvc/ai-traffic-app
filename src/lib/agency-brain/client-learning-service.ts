@@ -10,6 +10,11 @@ import type {
   SuggestedLearningDraft,
   UpdateLearningInput
 } from "@/lib/agency-brain/types";
+import {
+  applyConfidenceScoreSort,
+  applyCreatedAtSort,
+  applyImpactSort
+} from "@/lib/agency-brain/list-sort";
 import { In, MoreThanOrEqual, Not } from "typeorm";
 
 export function toLearningDto(row: ClientLearning): LearningDto {
@@ -43,7 +48,9 @@ export async function listClientLearnings(
 ): Promise<{ items: LearningDto[]; total: number; page: number; pageSize: number }> {
   const { clientLearning: repo } = await repositories();
   const page = filters.page ?? 1;
-  const pageSize = filters.pageSize ?? 20;
+  const pageSize = filters.pageSize ?? 10;
+  const sortBy = filters.sortBy ?? "createdAt";
+  const sortDir = filters.sortDir ?? "desc";
 
   const where: Record<string, unknown> = { tenantId, clientId };
   if (filters.category) where.category = filters.category;
@@ -71,8 +78,16 @@ export async function listClientLearnings(
   }
 
   const total = await qb.getCount();
+
+  if (sortBy === "confidenceScore") {
+    applyConfidenceScoreSort(qb, "l", sortDir);
+  } else if (sortBy === "impact") {
+    applyImpactSort(qb, "l", sortDir);
+  } else {
+    applyCreatedAtSort(qb, "l", sortDir);
+  }
+
   const rows = await qb
-    .orderBy("l.createdAt", "DESC")
     .skip((page - 1) * pageSize)
     .take(pageSize)
     .getMany();

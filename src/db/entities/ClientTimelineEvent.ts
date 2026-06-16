@@ -5,6 +5,7 @@ export type TimelineEventType =
   | "learning_approved"
   | "learning_suggested"
   | "hypothesis_promoted"
+  | "hypothesis_confirmed"
   | "suggestion_executed"
   | "suggestion_created"
   | "metric_spike"

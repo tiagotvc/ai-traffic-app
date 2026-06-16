@@ -3,7 +3,11 @@ import "server-only";
 import { createHash } from "crypto";
 
 import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-context";
-import { getClientCampaignMetricsWithComparison } from "@/lib/agency-brain/metrics-input";
+import {
+  getCampaignBaselinesMap,
+  getClientCampaignMetricsWithComparison
+} from "@/lib/agency-brain/metrics-input";
+import { validateAiActionDraft } from "@/lib/agency-brain/ai-output-validator";
 import { createActionSuggestion } from "@/lib/action-suggestions/action-suggestion-service";
 import type { ActionSuggestionDto, SuggestedActionDraft } from "@/lib/action-suggestions/types";
 import type { ActionSuggestionPriority } from "@/lib/action-suggestions/types";
@@ -13,7 +17,8 @@ import {
   type AiActionsResponse
 } from "@/lib/creative-memory/gemini-schemas";
 import { getGeminiApiKey } from "@/lib/creative-memory/ai-usage";
-import { geminiGenerateJson, type GeminiGenerateMeta } from "@/lib/gemini";
+import type { AiRunResult } from "@/lib/creative-memory/ai-analysis-types";
+import { classifyGeminiError, geminiGenerateJson, type GeminiGenerateMeta } from "@/lib/gemini";
 
 const WINDOW_DAYS = 7;
 
@@ -85,7 +90,9 @@ function buildPrompt(args: {
   clientName: string;
   brainSummary: string;
   fewShotBlock: string;
+  pendingSuggestionTitles: string[];
   campaigns: Array<{ metaCampaignId: string; campaignName: string; metrics: Record<string, unknown> }>;
+  previousCampaigns?: Array<{ metaCampaignId: string; campaignName: string; metrics: Record<string, unknown> }>;
 }): string {
   return [
     "Você é um gestor de tráfego sênior.",
@@ -100,14 +107,25 @@ function buildPrompt(args: {
     args.brainSummary,
     args.fewShotBlock,
     "",
+    "Sugestões pendentes (não repetir):",
+    args.pendingSuggestionTitles.length
+      ? args.pendingSuggestionTitles.map((t) => `- ${t}`).join("\n")
+      : "- (nenhuma)",
+    "",
     "Campanhas (últimos 7 dias):",
     JSON.stringify(args.campaigns, null, 2),
+    "",
+    "Período anterior:",
+    args.previousCampaigns?.length
+      ? JSON.stringify(args.previousCampaigns, null, 2)
+      : "- (sem histórico)",
     "",
     "Regras:",
     "- Máximo 5 sugestões acionáveis.",
     "- actionType deve ser um dos valores permitidos.",
     "- Inclua checklist curta quando fizer sentido.",
     "- Use metaCampaignId apenas se existir na lista.",
+    "- Não invente números que contradigam as métricas.",
     "- Priorize ações com impacto claro e baixo risco operacional."
   ].join("\n");
 }
@@ -118,56 +136,114 @@ export async function runAiActionSuggestionsForClient(
   clientSlug: string,
   clientName: string,
   modelChain: string[]
-): Promise<{
-  created: number;
-  suggestions: ActionSuggestionDto[];
-  skippedReason?: string;
-  modelMeta?: GeminiGenerateMeta;
-}> {
+): Promise<AiRunResult<ActionSuggestionDto> & { suggestions: ActionSuggestionDto[] }> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
-    return { created: 0, suggestions: [], skippedReason: "no_api_key" };
+    return {
+      created: 0,
+      items: [],
+      suggestions: [],
+      rejected: 0,
+      deduped: 0,
+      warnings: [],
+      skippedReason: "no_api_key"
+    };
   }
 
-  const { current } = await getClientCampaignMetricsWithComparison(
+  const { current, previous } = await getClientCampaignMetricsWithComparison(
     tenantId,
     clientId,
     WINDOW_DAYS
   );
 
   if (!current.length) {
-    return { created: 0, suggestions: [], skippedReason: "no_metrics" };
+    return {
+      created: 0,
+      items: [],
+      suggestions: [],
+      rejected: 0,
+      deduped: 0,
+      warnings: [],
+      skippedReason: "no_metrics"
+    };
   }
 
+  const baselineByCampaign = await getCampaignBaselinesMap(tenantId, clientId, 30);
   const brain = await getClientBrainContext(tenantId, clientId);
   const campaignIds = new Set(current.map((r) => r.metaCampaignId));
+
+  const { clientActionSuggestion: sugRepo } = await (await import("@/db/repositories")).repositories();
+  const pending = await sugRepo.find({
+    where: { tenantId, clientId, status: "PENDING" },
+    take: 10
+  });
+
+  const mapCampaign = (r: (typeof current)[number]) => ({
+    metaCampaignId: r.metaCampaignId,
+    campaignName: r.campaignName,
+    metrics: {
+      spend: r.spend,
+      conversions: r.conversions,
+      ctr: r.ctr,
+      cpa: r.cpa,
+      roas: r.roas,
+      frequency: r.frequency,
+      cpaDeltaPct: r.cpaDeltaPct,
+      ctrDeltaPct: r.ctrDeltaPct
+    }
+  });
 
   const prompt = buildPrompt({
     clientName,
     brainSummary: brain.summaryText,
     fewShotBlock: buildFewShotBlock(brain.topLearnings),
-    campaigns: current.slice(0, 12).map((r) => ({
-      metaCampaignId: r.metaCampaignId,
-      campaignName: r.campaignName,
-      metrics: {
-        spend: r.spend,
-        conversions: r.conversions,
-        ctr: r.ctr,
-        cpa: r.cpa,
-        roas: r.roas,
-        frequency: r.frequency
-      }
-    }))
+    pendingSuggestionTitles: pending.map((p) => p.title),
+    campaigns: current.slice(0, 12).map(mapCampaign),
+    previousCampaigns: previous.slice(0, 12).map(mapCampaign)
   });
 
-  const { data: ai, ...modelMeta } = await geminiGenerateJson({
-    apiKey,
-    prompt,
-    schema: AiActionsResponseSchema,
-    modelChain
-  });
+  let ai: AiActionsResponse;
+  let modelMeta: GeminiGenerateMeta | undefined;
+  try {
+    const result = await geminiGenerateJson({
+      apiKey,
+      prompt,
+      schema: AiActionsResponseSchema,
+      modelChain
+    });
+    ai = result.data;
+    modelMeta = result;
+  } catch (err) {
+    const classified = classifyGeminiError(err);
+    return {
+      created: 0,
+      items: [],
+      suggestions: [],
+      rejected: 0,
+      deduped: 0,
+      warnings: [classified.message],
+      error: classified
+    };
+  }
+
+  if (!ai.suggestions.length) {
+    return {
+      created: 0,
+      items: [],
+      suggestions: [],
+      rejected: 0,
+      deduped: 0,
+      warnings: ["A IA não retornou sugestões de ação para este período."],
+      noResultsReason: "empty_ai",
+      modelMeta
+    };
+  }
 
   const suggestions: ActionSuggestionDto[] = [];
+  let rejected = 0;
+  let deduped = 0;
+  const warnings: string[] = [];
+
   for (const item of ai.suggestions) {
     const draft = toActionDraft(
       item,
@@ -177,9 +253,39 @@ export async function runAiActionSuggestionsForClient(
       brain.summaryText,
       brain.topLearnings.slice(0, 2).map((l) => l.id)
     );
+    const validated = validateAiActionDraft(
+      {
+        title: draft.title,
+        description: draft.description,
+        category: "GENERAL",
+        metaCampaignId: draft.metaCampaignId,
+        actionType: draft.actionType
+      },
+      current,
+      baselineByCampaign
+    );
+    if (!validated.ok) {
+      rejected += 1;
+      warnings.push(validated.reason);
+      continue;
+    }
+
     const created = await createActionSuggestion(tenantId, clientId, draft);
-    if (created) suggestions.push(created);
+    if (!created) {
+      deduped += 1;
+      continue;
+    }
+    suggestions.push(created);
   }
 
-  return { created: suggestions.length, suggestions, modelMeta };
+  return {
+    created: suggestions.length,
+    items: suggestions,
+    suggestions,
+    rejected,
+    deduped,
+    warnings,
+    noResultsReason: suggestions.length === 0 ? "validation" : undefined,
+    modelMeta
+  };
 }

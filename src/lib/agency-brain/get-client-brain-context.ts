@@ -4,6 +4,19 @@ import { repositories } from "@/db/repositories";
 import { getClientDna } from "@/lib/agency-brain/dna-builder";
 import { listApprovedLearnings } from "@/lib/agency-brain/client-learning-service";
 import type { ClientBrainContext, LearningDto } from "@/lib/agency-brain/types";
+import {
+  aggregateCreativesFromAccountData,
+  getTopCreativesByPreset,
+  mapAggregatesToCreatives,
+  rankedCreativesFromGroups,
+  type CreativeAgg,
+  type RankedCreative
+} from "@/lib/agency-brain/creative-intelligence";
+import { fetchAllAccountCreatives } from "@/lib/creatives-access";
+import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
+import { loadRankConfig } from "@/lib/ranking-config";
+import { rollingDaysEndingYesterday } from "@/lib/report-period";
+import { slugify } from "@/lib/app-context";
 
 function buildSummaryText(learnings: LearningDto[]): string {
   if (!learnings.length) {
@@ -44,6 +57,51 @@ function buildSummaryText(learnings: LearningDto[]): string {
         .join(". ") + ".";
 }
 
+async function loadTopCreatives(
+  tenantId: string,
+  clientId: string,
+  clientSlug: string
+): Promise<RankedCreative[]> {
+  try {
+    const tokens = await getAllTenantMetaTokens(tenantId);
+    if (!tokens.length) return [];
+
+    const { adAccount: adAccountRepo, campaignPreset: presetRepo } = await repositories();
+    const accounts = await adAccountRepo.find({ where: { clientId } });
+    if (!accounts.length) return [];
+
+    const period = rollingDaysEndingYesterday(7);
+    const presetRows = await presetRepo.find({ where: { tenantId } });
+    const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));
+    const rankConfig = await loadRankConfig(tenantId);
+
+    const { results } = await fetchAllAccountCreatives(accounts, {
+      tokens,
+      since: period.since,
+      until: period.until,
+      tenantId,
+      clientId
+    });
+
+    const byCreative = new Map<string, CreativeAgg>();
+    for (const { ads, insights } of results) {
+      aggregateCreativesFromAccountData({
+        ads,
+        insights,
+        clientSlug,
+        presetByCampaign,
+        into: byCreative
+      });
+    }
+
+    const creatives = mapAggregatesToCreatives(byCreative, clientSlug, presetByCampaign);
+    const groups = getTopCreativesByPreset(creatives, rankConfig);
+    return rankedCreativesFromGroups(groups).filter((c) => c.tier !== "no_spend").slice(0, 10);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Contexto estruturado do Agency Brain para prompts de IA.
  * Usar em /api/ai/recommendations e agentes futuros.
@@ -81,7 +139,17 @@ export async function getClientBrainContext(
     for (const t of l.tags ?? []) tagSet.add(t);
   }
 
+  const clientSlug = client ? slugify(client.name) : "";
+  const topCreatives = client ? await loadTopCreatives(tenantId, clientId, clientSlug) : [];
+
   let summaryText = buildSummaryText(approved);
+  if (topCreatives.length) {
+    const names = topCreatives
+      .slice(0, 3)
+      .map((c) => c.name)
+      .join(", ");
+    summaryText = `${summaryText} Top criativos (7d): ${names}.`;
+  }
   if (dna?.summaryText) {
     summaryText = `${summaryText} DNA: ${dna.summaryText.slice(0, 250)}`;
   }
@@ -103,6 +171,7 @@ export async function getClientBrainContext(
     highImpactLearnings,
     tags: [...tagSet],
     summaryText,
-    dna
+    dna,
+    topCreatives
   };
 }

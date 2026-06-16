@@ -61,6 +61,13 @@ export type MetaCampaignInsightRow = MetaInsightRow & {
   campaign_name?: string;
 };
 
+export type MetaAdsetInsightRow = MetaInsightRow & {
+  campaign_id?: string;
+  campaign_name?: string;
+  adset_id?: string;
+  adset_name?: string;
+};
+
 export type MetaAdImage = { id: string; hash?: string; name?: string; url?: string };
 
 export type MetaCampaign = {
@@ -576,6 +583,16 @@ export async function fetchCampaignInsightsDaily(
   return fetchGraphPaged<MetaCampaignInsightRow>(path, accessToken);
 }
 
+export async function fetchAdsetInsightsDaily(
+  accessToken: string,
+  adAccountId: string,
+  datePreset = "last_30d"
+): Promise<MetaAdsetInsightRow[]> {
+  const fields = ["campaign_id", "campaign_name", "adset_id", "adset_name", ...INSIGHT_METRIC_FIELDS].join(",");
+  const path = `/${encodeURIComponent(adAccountId)}/insights?level=adset&fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=${datePreset}&limit=500`;
+  return fetchGraphPaged<MetaAdsetInsightRow>(path, accessToken);
+}
+
 export async function fetchCampaignInsightsForRange(
   accessToken: string,
   adAccountId: string,
@@ -587,6 +604,24 @@ export async function fetchCampaignInsightsForRange(
   );
   const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
   const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}&time_range=${encodeURIComponent(timeRange)}&limit=500`;
+  return fetchGraphPaged<MetaCampaignInsightRow>(path, accessToken);
+}
+
+/**
+ * Insights CAMPAIGN em nível de campanha com granularidade diária para um range arbitrário.
+ * Necessário para backfill histórico (ex.: 90d em blocos de 30d).
+ */
+export async function fetchCampaignInsightsDailyForRange(
+  accessToken: string,
+  adAccountId: string,
+  since: string,
+  until: string
+): Promise<MetaCampaignInsightRow[]> {
+  const fields = ["campaign_id", "campaign_name", ...INSIGHT_METRIC_FIELDS].join(",");
+  const timeRange = JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) });
+  const path = `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(
+    fields
+  )}&time_increment=1&time_range=${encodeURIComponent(timeRange)}&limit=500`;
   return fetchGraphPaged<MetaCampaignInsightRow>(path, accessToken);
 }
 

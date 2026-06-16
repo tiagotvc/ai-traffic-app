@@ -35,7 +35,9 @@ export async function GET(
       source: url.searchParams.get("source") ?? undefined,
       category: url.searchParams.get("category") ?? undefined,
       page: url.searchParams.get("page") ?? undefined,
-      pageSize: url.searchParams.get("pageSize") ?? undefined
+      pageSize: url.searchParams.get("pageSize") ?? undefined,
+      sortBy: url.searchParams.get("sortBy") ?? undefined,
+      sortDir: url.searchParams.get("sortDir") ?? undefined
     });
 
     const result = await listHypotheses(tenant.id, client.id, query);

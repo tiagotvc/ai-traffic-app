@@ -12,6 +12,7 @@ import { MetaPage } from "./MetaPage";
 import { MetaAdAccountInventory } from "./MetaAdAccountInventory";
 import { MetricSnapshot } from "./MetricSnapshot";
 import { CampaignMetricSnapshot } from "./CampaignMetricSnapshot";
+import { AdMetricSnapshot } from "./AdMetricSnapshot";
 import { ClientGoal } from "./ClientGoal";
 import { CampaignGoal } from "./CampaignGoal";
 import { CampaignPreset } from "./CampaignPreset";
@@ -67,6 +68,7 @@ export {
   MetaAdAccountInventory,
   MetricSnapshot,
   CampaignMetricSnapshot,
+  AdMetricSnapshot,
   ClientGoal,
   CampaignGoal,
   CampaignPreset,
@@ -144,6 +146,7 @@ stabilizeTypeOrmEntityNames([
   { ctor: MetaAdAccountInventory, name: "MetaAdAccountInventory" },
   { ctor: MetricSnapshot, name: "MetricSnapshot" },
   { ctor: CampaignMetricSnapshot, name: "CampaignMetricSnapshot" },
+  { ctor: AdMetricSnapshot, name: "AdMetricSnapshot" },
   { ctor: ClientGoal, name: "ClientGoal" },
   { ctor: CampaignGoal, name: "CampaignGoal" },
   { ctor: CampaignPreset, name: "CampaignPreset" },
@@ -199,6 +202,7 @@ export const typeOrmEntities = [
   MetaAdAccountInventory,
   MetricSnapshot,
   CampaignMetricSnapshot,
+  AdMetricSnapshot,
   ClientGoal,
   CampaignGoal,
   CampaignPreset,

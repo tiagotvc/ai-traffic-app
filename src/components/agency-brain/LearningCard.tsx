@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { BrainListCard } from "@/components/agency-brain/BrainListCard";
 import { Badge } from "@/components/ui/Badge";
 import { Link } from "@/i18n/navigation";
 import { formatConfidenceBadge } from "@/lib/agency-brain/confidence-score";
@@ -36,6 +37,29 @@ function formatMetrics(snapshot: MetricSnapshotPayload, t: ReturnType<typeof use
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+function confidenceTooltip(
+  learning: LearningDto,
+  t: ReturnType<typeof useTranslations>
+): string | undefined {
+  if (learning.confidenceScore == null) return undefined;
+
+  const parts: string[] = [];
+  const snap = learning.metricSnapshot;
+  const evidence = learning.evidence;
+
+  if (snap?.conversions != null) {
+    parts.push(t("confidenceTooltipConversions", { value: snap.conversions }));
+  }
+  if (evidence?.deltaPercent != null) {
+    parts.push(t("confidenceTooltipDelta", { value: evidence.deltaPercent.toFixed(0) }));
+  }
+  if (snap?.spend != null) {
+    parts.push(t("confidenceTooltipSpend", { value: snap.spend.toFixed(0) }));
+  }
+
+  return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
 function EvidenceBlock({
@@ -89,109 +113,112 @@ export function LearningCard({
 }) {
   const t = useTranslations("agencyBrain");
   const busy = actionLoadingId === learning.id;
+  const tooltip = confidenceTooltip(learning, t);
+
+  const badges = (
+    <>
+      <Badge variant={statusVariant(learning.status)}>{t(`status.${learning.status}`)}</Badge>
+      <Badge>{t(`category.${learning.category}`)}</Badge>
+      <Badge>{t(`impact.${learning.impact}`)}</Badge>
+      {learning.confidenceScore != null ? (
+        <span
+          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${confidenceScoreClass(learning.confidenceScore)}`}
+          title={tooltip}
+        >
+          {t("confidenceScore", {
+            score: formatConfidenceBadge(learning.confidenceScore)
+          })}
+        </span>
+      ) : null}
+    </>
+  );
 
   return (
-    <div className="ui-card p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-slate-900">{learning.title}</h3>
-            <Badge variant={statusVariant(learning.status)}>{t(`status.${learning.status}`)}</Badge>
-            <Badge>{t(`category.${learning.category}`)}</Badge>
-            <Badge>{t(`impact.${learning.impact}`)}</Badge>
-            {learning.confidenceScore != null ? (
-              <span
-                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${confidenceScoreClass(learning.confidenceScore)}`}
-              >
-                {t("confidenceScore", {
-                  score: formatConfidenceBadge(learning.confidenceScore)
-                })}
-              </span>
-            ) : null}
-          </div>
-          <p className="mt-2 text-sm text-slate-600">{learning.description}</p>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
-            <span>{t(`source.${learning.source}`)}</span>
-            <span>·</span>
-            <span>{t(`confidence.${learning.confidence}`)}</span>
-            <span>·</span>
-            <span>{new Date(learning.createdAt).toLocaleDateString()}</span>
-          </div>
-          {learning.metaCampaignId ? (
-            <div className="mt-2">
-              <Link
-                href={`/clients/${clientId}/campaigns?campaign=${encodeURIComponent(learning.metaCampaignId)}`}
-                className="text-xs font-medium text-violet-600 hover:text-violet-800"
-              >
-                {t("viewCampaign")}
-              </Link>
-            </div>
-          ) : null}
-          {learning.tags.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {learning.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
-          {learning.metricSnapshot ? (
-            <div className="mt-2 text-xs text-slate-500">
-              {formatMetrics(learning.metricSnapshot, t)}
-            </div>
-          ) : null}
-          {learning.evidence ? <EvidenceBlock evidence={learning.evidence} t={t} /> : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {learning.status === "SUGGESTED" ? (
-            <>
-              {(learning.confidenceScore ?? 0) < 50 ? (
-                <p className="w-full text-xs text-amber-600">{t("approveLowConfidence")}</p>
-              ) : null}
-              <button
-                type="button"
-                className="ui-btn-primary text-xs"
-                disabled={busy || (learning.confidenceScore ?? 0) < 50}
-                onClick={() => onApprove(learning.id)}
-              >
-                {t("approveMemory")}
-              </button>
-              <button
-                type="button"
-                className="ui-btn-danger text-xs"
-                disabled={busy}
-                onClick={() => onReject(learning.id)}
-              >
-                {t("reject")}
-              </button>
-            </>
-          ) : null}
-          {learning.status !== "ARCHIVED" ? (
-            <>
-              <button
-                type="button"
-                className="ui-btn-secondary text-xs"
-                disabled={busy}
-                onClick={() => onEdit(learning)}
-              >
-                {t("edit")}
-              </button>
-              <button
-                type="button"
-                className="ui-btn-secondary text-xs"
-                disabled={busy}
-                onClick={() => onArchive(learning.id)}
-              >
-                {t("archive")}
-              </button>
-            </>
-          ) : null}
-        </div>
+    <BrainListCard
+      title={learning.title}
+      badges={badges}
+      createdAt={learning.createdAt}
+      updatedAt={learning.updatedAt}
+    >
+      <p className="text-sm text-slate-600">{learning.description}</p>
+      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
+        <span>{t(`source.${learning.source}`)}</span>
+        <span>·</span>
+        <span>{t(`confidence.${learning.confidence}`)}</span>
       </div>
-    </div>
+      {learning.metaCampaignId ? (
+        <div className="mt-2">
+          <Link
+            href={`/clients/${clientId}/campaigns?campaign=${encodeURIComponent(learning.metaCampaignId)}`}
+            className="text-xs font-medium text-violet-600 hover:text-violet-800"
+          >
+            {t("viewCampaign")}
+          </Link>
+        </div>
+      ) : null}
+      {learning.tags.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {learning.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {learning.metricSnapshot ? (
+        <div className="mt-2 text-xs text-slate-500">
+          {formatMetrics(learning.metricSnapshot, t)}
+        </div>
+      ) : null}
+      {learning.evidence ? <EvidenceBlock evidence={learning.evidence} t={t} /> : null}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {learning.status === "SUGGESTED" ? (
+          <>
+            {(learning.confidenceScore ?? 0) < 50 ? (
+              <p className="w-full text-xs text-amber-600">{t("approveLowConfidence")}</p>
+            ) : null}
+            <button
+              type="button"
+              className="ui-btn-primary text-xs"
+              disabled={busy || (learning.confidenceScore ?? 0) < 50}
+              onClick={() => onApprove(learning.id)}
+            >
+              {t("approveMemory")}
+            </button>
+            <button
+              type="button"
+              className="ui-btn-danger text-xs"
+              disabled={busy}
+              onClick={() => onReject(learning.id)}
+            >
+              {t("reject")}
+            </button>
+          </>
+        ) : null}
+        {learning.status !== "ARCHIVED" ? (
+          <>
+            <button
+              type="button"
+              className="ui-btn-secondary text-xs"
+              disabled={busy}
+              onClick={() => onEdit(learning)}
+            >
+              {t("edit")}
+            </button>
+            <button
+              type="button"
+              className="ui-btn-secondary text-xs"
+              disabled={busy}
+              onClick={() => onArchive(learning.id)}
+            >
+              {t("archive")}
+            </button>
+          </>
+        ) : null}
+      </div>
+    </BrainListCard>
   );
 }

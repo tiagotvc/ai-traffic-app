@@ -85,17 +85,18 @@ describe("learning-rules", () => {
     expect(ruleCtrWinner(rows, "client-1", 7)?.metaCampaignId).toBe("a");
   });
 
-  it("evaluateAllRules dedupes cpa and audience for same campaign", () => {
+  it("evaluateAllRules uses signal analyzer for CPA efficient campaigns", () => {
     const rows = [
       baseRow({ metaCampaignId: "a", campaignName: "A", cpa: 50, conversions: 5 }),
       baseRow({ metaCampaignId: "b", campaignName: "B", cpa: 150, conversions: 5 })
     ];
-    const drafts = evaluateAllRules(rows, [], "client-1", 7);
-    const audienceForA = drafts.filter(
-      (d) => d.evidence.ruleId === "audience_cpa" && d.metaCampaignId === "a"
-    );
-    expect(audienceForA).toHaveLength(0);
-    expect(drafts.some((d) => d.evidence.ruleId === "cpa_winner")).toBe(true);
+    const previous = [
+      baseRow({ metaCampaignId: "a", campaignName: "A", cpa: 100, conversions: 4 }),
+      baseRow({ metaCampaignId: "b", campaignName: "B", cpa: 150, conversions: 5 })
+    ];
+    const drafts = evaluateAllRules(rows, previous, "client-1", 7);
+    expect(drafts.some((d) => d.evidence.ruleId?.startsWith("signal_"))).toBe(true);
+    expect(drafts.some((d) => d.metaCampaignId === "a")).toBe(true);
   });
 
   it("ruleSaturation returns up to 3 matches", () => {
