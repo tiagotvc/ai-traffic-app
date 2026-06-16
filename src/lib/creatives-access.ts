@@ -23,7 +23,7 @@ import type {
 } from "@/lib/creatives-access-types";
 import { mapLimit } from "@/lib/concurrency";
 
-const ACCOUNT_LEVEL_CAMPAIGN_THRESHOLD = 8;
+const ACCOUNT_LEVEL_CAMPAIGN_THRESHOLD = 3;
 const ACCOUNT_FETCH_CONCURRENCY = 3;
 
 export type { CreativeAccessWarning, CreativeAccessWarningCode, CreativeAccessSuggestedAction };
@@ -89,6 +89,8 @@ export type FetchAccountCreativesOpts = {
   tenantId: string;
   clientId: string;
   skipCache?: boolean;
+  /** Só retorna dados do cache Redis/memória; não chama Meta. */
+  cacheOnly?: boolean;
   debug?: boolean;
   /** Limita a campanhas específicas (ex.: filtro na UI). */
   campaignMetaIds?: string[];
@@ -116,7 +118,7 @@ export async function fetchAccountCreatives(
   acc: AdAccount,
   opts: FetchAccountCreativesOpts
 ): Promise<AccountCreativesFetchResult> {
-  const { tokens, since, until, tenantId, clientId, skipCache, debug, campaignMetaIds } = opts;
+  const { tokens, since, until, tenantId, clientId, skipCache, cacheOnly, debug, campaignMetaIds } = opts;
   const t0 = Date.now();
 
   if (!tokens.length) {
@@ -161,6 +163,19 @@ export async function fetchAccountCreatives(
           : undefined
       };
     }
+    if (cacheOnly) {
+      return {
+        acc,
+        ads: [],
+        insights: new Map(),
+        ok: false,
+        fromCache: false,
+        warning: null,
+        diag: debug
+          ? { account: acc.metaAdAccountId, ok: false, cacheMiss: true, totalMs: Date.now() - t0 }
+          : undefined
+      };
+    }
   }
 
   const probe = await probeAdAccountAccessAnyToken(tokens, acc.metaAdAccountId);
@@ -180,25 +195,24 @@ export async function fetchAccountCreatives(
   timings.campaignCount = campaignIds.length;
 
   const preferAccountLevel =
-    probe.ok && campaignIds.length > ACCOUNT_LEVEL_CAMPAIGN_THRESHOLD && !campaignMetaIds?.length;
+    probe.ok && !campaignMetaIds?.length && campaignIds.length >= ACCOUNT_LEVEL_CAMPAIGN_THRESHOLD;
 
-  if (preferAccountLevel) {
+  if (preferAccountLevel || (probe.ok && !campaignMetaIds?.length && !campaignIds.length)) {
     const tAds = Date.now();
-    const accRes = await fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId);
+    const [accRes, insMap] = await Promise.all([
+      fetchAdsForAccountAnyToken(tokens, acc.metaAdAccountId),
+      since && until
+        ? fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, { since, until })
+        : Promise.resolve(new Map<string, AdInsightMetrics>())
+    ]);
     timings.fetchAdsMs = Date.now() - tAds;
     tokenErrors = accRes.errors;
     lastError = accRes.lastError ?? null;
     if (accRes.ok) {
       ads = accRes.ads;
+      insights = insMap;
       ok = true;
-      if (ads.length) {
-        const tIns = Date.now();
-        insights = await fetchInsightsForAccountAnyToken(tokens, acc.metaAdAccountId, {
-          since,
-          until
-        });
-        timings.fetchInsightsMs = Date.now() - tIns;
-      }
+      timings.fetchInsightsMs = timings.fetchAdsMs;
     }
   }
 
@@ -347,6 +361,7 @@ export async function fetchAllAccountCreatives(
   partialData: boolean;
   dataSource: "cached" | "live" | "mixed";
   cacheHits: number;
+  cacheMisses: number;
 }> {
   const results = await mapLimit(accounts, ACCOUNT_FETCH_CONCURRENCY, (acc) =>
     fetchAccountCreatives(acc, opts)
@@ -362,6 +377,7 @@ export async function fetchAllAccountCreatives(
 
   const cachedCount = results.filter((r) => r.fromCache).length;
   const cacheHits = results.filter((r) => r.fromCache).length;
+  const cacheMisses = results.filter((r) => !r.fromCache && !r.ok).length;
   const dataSource: "cached" | "live" | "mixed" =
     cachedCount === results.length
       ? "cached"
@@ -369,5 +385,5 @@ export async function fetchAllAccountCreatives(
         ? "live"
         : "mixed";
 
-  return { results, warnings, partialData, dataSource, cacheHits };
+  return { results, warnings, partialData, dataSource, cacheHits, cacheMisses };
 }

@@ -1,34 +1,52 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CreativesAccessWarningBanner } from "@/components/creatives/CreativesAccessWarningBanner";
 import { Badge } from "@/components/ui/Badge";
 import { type MetricKey, METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import type { CreativeAccessWarning } from "@/lib/creatives-access-types";
+import type { AggregatedCreative } from "@/lib/agency-brain/creative-intelligence";
+import type { RankConfig } from "@/lib/creative-ranking";
+import { DEFAULT_RANK_CONFIG } from "@/lib/creative-ranking";
+import {
+  mergeCreativesIntoGroups,
+  type CreativeRankGroup
+} from "@/lib/creatives-ranking-merge";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativeCardGrid, type CreativeItem } from "@/components/creatives/CreativeCardGrid";
 
-type Group = {
-  preset: string;
-  primaryMetric: MetricKey;
-  best: CreativeItem[];
-  promising: CreativeItem[];
-  noSpend: CreativeItem[];
-};
+type Group = CreativeRankGroup;
+
+type AccountOpt = { metaAdAccountId: string; label: string };
 
 const COST_METRICS = new Set<MetricKey>(["cpmsg", "cpa", "cpm", "cpc"]);
+
+function parseAdAccountIdFromQuery(periodQuery: string): string | null {
+  const params = new URLSearchParams(periodQuery);
+  return params.get("adAccountId");
+}
+
+function stripRefreshFromQuery(periodQuery: string): string {
+  const params = new URLSearchParams(periodQuery);
+  params.delete("refresh");
+  return params.toString();
+}
 
 export function CreativesRankingView({
   clientId,
   clientSlug,
-  periodQuery = ""
+  periodQuery = "",
+  accounts = [],
+  accountsLoading = false
 }: {
   clientId: string;
   clientSlug?: string;
   periodQuery?: string;
+  accounts?: AccountOpt[];
+  accountsLoading?: boolean;
 }) {
   const t = useTranslations("creativesPerf");
   const tMetrics = useTranslations("metrics");
@@ -45,32 +63,146 @@ export function CreativesRankingView({
     partialData?: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingAccounts, setPendingAccounts] = useState(0);
   const [expandedZero, setExpandedZero] = useState<Record<string, boolean>>({});
+  const chunksRef = useRef<AggregatedCreative[][]>([]);
+  const rankConfigRef = useRef<RankConfig>(DEFAULT_RANK_CONFIG);
+  const loadGenRef = useRef(0);
 
-  const load = useCallback(() => {
+  const applyResponseMeta = useCallback((j: Record<string, unknown>) => {
+    if (j.warnings) setWarnings(j.warnings as CreativeAccessWarning[]);
+    setPartialData(Boolean(j.partialData));
+    setDataSource((j.dataSource as string) ?? null);
+    setDataProvenance((j.dataProvenance as typeof dataProvenance) ?? null);
+  }, []);
+
+  const publishGroups = useCallback((rankConfig: RankConfig) => {
+    const merged = mergeCreativesIntoGroups(chunksRef.current, rankConfig);
+    setGroups(merged);
+  }, []);
+
+  const fetchPerformance = useCallback(
+    async (extraQuery: string) => {
+      const base = stripRefreshFromQuery(periodQuery);
+      const q = [base, extraQuery].filter(Boolean).join("&");
+      const res = await fetch(
+        `/api/creatives/performance?clientId=${encodeURIComponent(clientId)}&${q}`
+      );
+      const j = await res.json();
+      return { res, j };
+    },
+    [clientId, periodQuery]
+  );
+
+  const load = useCallback(async () => {
     if (!clientId) {
       setGroups([]);
       setLoading(false);
       return;
     }
+
+    const filteredAccountId = parseAdAccountIdFromQuery(periodQuery);
+    if (accountsLoading && !filteredAccountId) {
+      setLoading(true);
+      return;
+    }
+
+    const gen = ++loadGenRef.current;
     setLoading(true);
-    fetch(`/api/creatives/performance?clientId=${encodeURIComponent(clientId)}&${periodQuery}`)
-      .then(async (r) => {
-        const j = await r.json();
+    setPendingAccounts(0);
+    setGroups([]);
+    setWarnings([]);
+    chunksRef.current = [];
+
+    try {
+      const cfgRes = await fetch("/api/creatives/ranking-config");
+      const cfgJson = await cfgRes.json();
+      const rankConfig = (cfgJson.config ?? DEFAULT_RANK_CONFIG) as RankConfig;
+      rankConfigRef.current = rankConfig;
+
+      const filteredAccountId = parseAdAccountIdFromQuery(periodQuery);
+      const accountIds =
+        filteredAccountId != null
+          ? [filteredAccountId]
+          : accounts.length > 0
+            ? accounts.map((a) => a.metaAdAccountId)
+            : null;
+
+      // Uma conta ou lista ainda não carregada: request único (comportamento anterior).
+      if (!accountIds || accountIds.length <= 1) {
+        const { j } = await fetchPerformance("");
+        if (gen !== loadGenRef.current) return;
         if (j.ok) {
           setGroups(j.groups ?? []);
-          setWarnings(j.warnings ?? []);
-          setPartialData(Boolean(j.partialData));
-          setDataSource(j.dataSource ?? r.headers.get("X-Data-Source"));
-          setDataProvenance(j.dataProvenance ?? null);
+          applyResponseMeta(j);
         }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [clientId, periodQuery]);
+        return;
+      }
+
+      // Várias contas: cache primeiro, depois Meta por conta (UI atualiza a cada conta).
+      const cachedChunks: AggregatedCreative[][] = [];
+      const needsLive: string[] = [];
+
+      await Promise.all(
+        accountIds.map(async (id) => {
+          const { res, j } = await fetchPerformance(`adAccountId=${encodeURIComponent(id)}&cacheOnly=1`);
+          if (gen !== loadGenRef.current) return;
+          if (j.ok && Array.isArray(j.creatives) && j.creatives.length) {
+            cachedChunks.push(j.creatives as AggregatedCreative[]);
+          }
+          const partial = res.headers.get("X-Cache-Partial") === "1" || Number(j.cacheMisses ?? 0) > 0;
+          if (partial || !j.ok) needsLive.push(id);
+        })
+      );
+
+      if (gen !== loadGenRef.current) return;
+
+      chunksRef.current = [...cachedChunks];
+      if (chunksRef.current.length) {
+        publishGroups(rankConfig);
+        setLoading(false);
+      }
+
+      const liveQueue = [...new Set(needsLive)];
+      if (!liveQueue.length) {
+        if (!chunksRef.current.length) setGroups([]);
+        setLoading(false);
+        return;
+      }
+
+      setPendingAccounts(liveQueue.length);
+      let remaining = liveQueue.length;
+
+      await Promise.all(
+        liveQueue.map(async (id) => {
+          try {
+            const { j } = await fetchPerformance(`adAccountId=${encodeURIComponent(id)}`);
+            if (gen !== loadGenRef.current) return;
+            if (j.ok && Array.isArray(j.creatives) && j.creatives.length) {
+              chunksRef.current.push(j.creatives as AggregatedCreative[]);
+              publishGroups(rankConfigRef.current);
+              applyResponseMeta(j);
+            }
+          } finally {
+            if (gen === loadGenRef.current) {
+              remaining -= 1;
+              setPendingAccounts(remaining);
+            }
+          }
+        })
+      );
+    } catch {
+      /* ignore */
+    } finally {
+      if (gen === loadGenRef.current) {
+        setLoading(false);
+        setPendingAccounts(0);
+      }
+    }
+  }, [clientId, periodQuery, accounts, accountsLoading, fetchPerformance, applyResponseMeta, publishGroups]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   function rankHint(metric: MetricKey) {
@@ -78,8 +210,15 @@ export function CreativesRankingView({
     return `${t("rankedBy")} ${tMetrics(METRIC_BY_KEY[metric].label)} (${dir})`;
   }
 
-  if (loading) {
-    return <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />;
+  const showInitialSkeleton = loading && !groups.length;
+
+  if (showInitialSkeleton) {
+    return (
+      <div className="space-y-3">
+        <p className="text-center text-sm text-slate-500">{t("loading")}</p>
+        <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />
+      </div>
+    );
   }
 
   function provenanceLabel() {
@@ -101,6 +240,11 @@ export function CreativesRankingView({
 
   const banner = (
     <>
+      {pendingAccounts > 0 ? (
+        <div className="flex justify-center">
+          <Badge variant="brand">{t("loadingAccounts", { n: pendingAccounts })}</Badge>
+        </div>
+      ) : null}
       {provenanceLabel() ? (
         <div className="flex justify-end">
           <Badge variant="neutral">{provenanceLabel()}</Badge>
@@ -114,7 +258,7 @@ export function CreativesRankingView({
     </>
   );
 
-  if (!groups.length) {
+  if (!groups.length && !loading) {
     return (
       <div className="space-y-4">
         {banner}
@@ -145,7 +289,7 @@ export function CreativesRankingView({
 
             {g.best.length ? (
               <CreativeCardGrid
-                creatives={g.best}
+                creatives={g.best as CreativeItem[]}
                 metrics={cols}
                 primaryMetric={g.primaryMetric}
                 clientSlug={clientSlug ?? ""}
@@ -162,7 +306,7 @@ export function CreativesRankingView({
                   </div>
                 </div>
                 <CreativeCardGrid
-                  creatives={g.promising}
+                  creatives={g.promising as CreativeItem[]}
                   metrics={cols}
                   primaryMetric={g.primaryMetric}
                   clientSlug={clientSlug ?? ""}
@@ -186,7 +330,7 @@ export function CreativesRankingView({
                 </div>
                 {zeroOpen ? (
                   <CreativeCardGrid
-                    creatives={g.noSpend}
+                    creatives={g.noSpend as CreativeItem[]}
                     metrics={cols}
                     primaryMetric={g.primaryMetric}
                     clientSlug={clientSlug ?? ""}
@@ -198,6 +342,11 @@ export function CreativesRankingView({
           </div>
         );
       })}
+      {pendingAccounts > 0 ? (
+        <div className="opacity-70">
+          <TableSkeleton rows={2} columns={["media", "metric", "metric", "metric"]} />
+        </div>
+      ) : null}
     </div>
   );
 }

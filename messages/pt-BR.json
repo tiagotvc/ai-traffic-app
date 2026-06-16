@@ -2131,6 +2131,7 @@
     "subtitle": "Melhores criativos por nome e onde estão sendo usados",
     "clientLabel": "Cliente",
     "loading": "Carregando criativos…",
+    "loadingAccounts": "Buscando mais {n} conta(s) na Meta…",
     "empty": "Nenhum criativo com dados para este cliente no período.",
     "colCreative": "Criativo",
     "colAds": "Anúncios",

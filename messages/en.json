@@ -2139,6 +2139,7 @@
     "subtitle": "Top creatives by name and where they are used",
     "clientLabel": "Client",
     "loading": "Loading creatives…",
+    "loadingAccounts": "Fetching {n} more account(s) from Meta…",
     "empty": "No creatives with data for this client in the period.",
     "colCreative": "Creative",
     "colAds": "Ads",

@@ -38,6 +38,7 @@ export async function GET(req: Request) {
   const adAccountId = url.searchParams.get("adAccountId");
   const debug = url.searchParams.get("debug") === "1";
   const skipCache = url.searchParams.get("refresh") === "1";
+  const cacheOnly = url.searchParams.get("cacheOnly") === "1";
   const { adAccount: adAccountRepo, campaignPreset: presetRepo } = await repositories();
   let accounts = await adAccountRepo.find({ where: { clientId: client.id } });
   if (adAccountId) {
@@ -48,7 +49,7 @@ export async function GET(req: Request) {
   const rankConfig = await loadRankConfig(tenant.id);
 
   const tFetch = Date.now();
-  const { results: perAccount, warnings, partialData, dataSource, cacheHits } =
+  const { results: perAccount, warnings, partialData, dataSource, cacheHits, cacheMisses } =
     await fetchAllAccountCreatives(accounts, {
       tokens,
       since: period.since,
@@ -56,6 +57,7 @@ export async function GET(req: Request) {
       tenantId: tenant.id,
       clientId: client.id,
       skipCache,
+      cacheOnly,
       debug
     });
   const fetchMs = Date.now() - tFetch;
@@ -97,14 +99,20 @@ export async function GET(req: Request) {
   const res = NextResponse.json({
     ok: true,
     groups,
+    creatives,
     clientSlug,
     warnings,
     partialData,
     dataSource,
+    cacheOnly,
+    cacheMisses,
     dataProvenance,
     ...(debug && diag ? { diag } : {})
   });
   res.headers.set("X-Data-Source", dataSource);
   res.headers.set("X-Cache-TTL-Sec", String(cacheTtlSec));
+  if (cacheOnly && cacheMisses > 0) {
+    res.headers.set("X-Cache-Partial", "1");
+  }
   return applyServerTiming(res, { total: Date.now() - t0, meta: fetchMs });
 }

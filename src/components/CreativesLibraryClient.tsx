@@ -8,6 +8,7 @@ import { CreativesRankingView } from "@/components/creatives/CreativesRankingVie
 import { RankingConfigModal } from "@/components/creatives/RankingConfigModal";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { DownloadIcon } from "@/components/ui/DownloadIcon";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 
 type ClientRow = { id: string; slug: string; name: string };
 type AccountOpt = { metaAdAccountId: string; label: string };
@@ -16,8 +17,10 @@ export function CreativesLibraryClient() {
   const t = useTranslations("creatives");
   const tPerf = useTranslations("creativesPerf");
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
   const [clientId, setClientId] = useState("");
   const [accounts, setAccounts] = useState<AccountOpt[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountId, setAccountId] = useState("");
   const [view, setView] = useState<"library" | "byCampaign">("byCampaign");
   const [period, setPeriod] = useState<PeriodState>({ preset: "last30", since: "", until: "" });
@@ -29,13 +32,16 @@ export function CreativesLibraryClient() {
   useEffect(() => {
     if (!clientId) {
       setAccounts([]);
+      setAccountsLoading(false);
       return;
     }
     setAccountId("");
+    setAccountsLoading(true);
     fetch(`/api/meta/ad-accounts?clientId=${encodeURIComponent(clientId)}`)
       .then((r) => r.json())
       .then((j) => setAccounts(j.accounts ?? []))
-      .catch(() => setAccounts([]));
+      .catch(() => setAccounts([]))
+      .finally(() => setAccountsLoading(false));
   }, [clientId]);
 
   useEffect(() => {
@@ -48,7 +54,8 @@ export function CreativesLibraryClient() {
           (prev) => prev || list.find((c) => c.slug !== "default")?.slug || list[0]?.slug || ""
         );
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setClientsLoading(false));
   }, []);
 
   return (
@@ -118,7 +125,12 @@ export function CreativesLibraryClient() {
         </div>
       </div>
 
-      {clientId ? (
+      {clientsLoading ? (
+        <div className="space-y-3">
+          <p className="text-center text-sm text-slate-500">{tPerf("loading")}</p>
+          <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />
+        </div>
+      ) : clientId ? (
         view === "library" ? (
           <div className="space-y-3">
             <button
@@ -141,6 +153,8 @@ export function CreativesLibraryClient() {
               clientId={clientId}
               clientSlug={clientId}
               periodQuery={scopeQuery}
+              accounts={accounts}
+              accountsLoading={accountsLoading}
             />
             <div className="flex justify-center print:hidden">
               <button
