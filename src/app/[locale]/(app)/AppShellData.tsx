@@ -16,7 +16,9 @@ export async function AppShellData({
     if (err instanceof SubscriptionSuspendedError) {
       nextRedirect(`/${locale}/login?error=account_suspended`);
     }
-    throw err;
+    // DB lento/indisponível: não derruba o shell — a página client tenta carregar via API.
+    // eslint-disable-next-line no-console
+    console.error("[AppShellData] context unavailable:", err);
   }
 
   return children;
