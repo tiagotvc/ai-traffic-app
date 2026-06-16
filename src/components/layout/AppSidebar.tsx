@@ -275,7 +275,7 @@ export function AppSidebar({
 
       {/* Footer — sempre colado embaixo, mesmo fundo */}
       <div
-        className={`shrink-0 border-t border-white/10 bg-[#0f111a] ${
+        className={`relative shrink-0 overflow-visible border-t border-white/10 bg-[#0f111a] ${
           collapsed ? "p-2" : "p-3"
         }`}
       >
@@ -309,7 +309,7 @@ export function AppSidebar({
         ) : null}
 
         <div
-          className={`space-y-0.5 border-white/10 ${collapsed ? "mt-2 border-t pt-2" : "mt-2 border-t pt-2"}`}
+          className={`space-y-0.5 overflow-visible border-white/10 ${collapsed ? "mt-2 border-t pt-2" : "mt-2 border-t pt-2"}`}
         >
           <LanguageSwitcher variant="sidebar" collapsed={collapsed} />
           <SignOutButton variant="sidebar" collapsed={collapsed} />

@@ -27,19 +27,23 @@ export function LanguageSwitcher({
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!open) return;
     function onDoc(e: MouseEvent) {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
-    document.addEventListener("mousedown", onDoc);
+    const timer = window.setTimeout(() => {
+      document.addEventListener("click", onDoc);
+    }, 0);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
+      window.clearTimeout(timer);
+      document.removeEventListener("click", onDoc);
       document.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [open]);
 
   const wrap =
     variant === "sidebar"
@@ -63,8 +67,12 @@ export function LanguageSwitcher({
 
   const menu = (
     <div
-      className={`absolute z-50 min-w-[140px] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg ${
-        collapsed ? "bottom-full left-0 mb-1" : "left-0 right-0 mt-1"
+      className={`absolute z-[200] min-w-[140px] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg ${
+        variant === "sidebar"
+          ? collapsed
+            ? "bottom-full left-0 mb-1"
+            : "bottom-full left-0 right-0 mb-1"
+          : "left-0 right-0 mt-1"
       }`}
       role="listbox"
     >
