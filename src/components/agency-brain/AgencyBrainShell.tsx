@@ -28,7 +28,7 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const clientFromUrl = searchParams.get("client");
-    fetch("/api/clients")
+    fetch("/api/clients?minimal=1")
       .then((r) => r.json())
       .then((j) => {
         const list = (j.clients ?? []) as ClientRow[];

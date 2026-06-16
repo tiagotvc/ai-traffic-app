@@ -52,7 +52,7 @@ export function AlertsClient() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/clients")
+    fetch("/api/clients?minimal=1")
       .then((r) => r.json())
       .then((j) => setClients(j.clients ?? []))
       .catch(() => {});

@@ -9,7 +9,6 @@ import {
   Legend,
   Line,
   LineChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
@@ -45,6 +44,7 @@ import {
   Skeleton,
   SupportStripSkeleton
 } from "@/components/ui/Skeleton";
+import { ChartContainer } from "@/components/ui/ChartContainer";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 
@@ -147,9 +147,9 @@ function HighlightCard({
       </div>
       <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</div>
       <div className="mt-0.5 text-[11px] text-slate-400">{vsLabel}</div>
-      <div className="mt-3 h-16">
+      <div className="mt-3 h-16 min-w-0">
         {data.length > 1 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ChartContainer height={64}>
             <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
               <XAxis dataKey="label" hide />
               <defs>
@@ -177,7 +177,7 @@ function HighlightCard({
                 dot={false}
               />
             </AreaChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         ) : null}
       </div>
     </div>
@@ -635,10 +635,9 @@ export function DashboardClient() {
                 })}
               </div>
 
-              <div className="mt-4 h-56">
-                {chartData.length >= 1 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
+              {chartData.length >= 1 ? (
+                <ChartContainer height="h-56" className="mt-4">
+                  <LineChart data={chartData}>
                       <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" />
                       <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 10 }} />
                       {chartMetrics.map((key) => (
@@ -674,13 +673,12 @@ export function DashboardClient() {
                         />
                       ))}
                     </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">
-                    {t("noChartData")}
-                  </div>
-                )}
-              </div>
+                </ChartContainer>
+              ) : (
+                <div className="mt-4 flex h-56 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">
+                  {t("noChartData")}
+                </div>
+              )}
             </div>
 
             <div className="ui-card p-4">

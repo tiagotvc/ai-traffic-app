@@ -17,12 +17,12 @@ import {
   Legend,
   Line,
   LineChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
 } from "recharts";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { ChartContainer } from "@/components/ui/ChartContainer";
 import { formatDayLabel } from "@/lib/dashboard-ranges";
 
 function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
@@ -281,9 +281,8 @@ function PerformanceChart({
       {loading ? (
         <Skeleton className="mt-4 h-64 w-full rounded-xl" />
       ) : data.length ? (
-        <div className="mt-4 h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+        <ChartContainer height="h-64" className="mt-4">
+          <LineChart data={data}>
               <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" />
               <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 10 }} />
               {selected.map((m) => (
@@ -319,8 +318,7 @@ function PerformanceChart({
                 />
               ))}
             </LineChart>
-          </ResponsiveContainer>
-        </div>
+        </ChartContainer>
       ) : (
         <p className="mt-4 text-xs text-slate-500">{noDataLabel}</p>
       )}

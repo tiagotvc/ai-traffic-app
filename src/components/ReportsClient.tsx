@@ -66,7 +66,7 @@ export function ReportsClient() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/clients")
+    fetch("/api/clients?minimal=1")
       .then((r) => r.json())
       .then((j: { clients?: ClientOption[] }) => {
         const list = j.clients ?? [];

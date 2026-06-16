@@ -45,7 +45,7 @@ export function CreativesLibraryClient() {
   }, [clientId]);
 
   useEffect(() => {
-    fetch("/api/clients")
+    fetch("/api/clients?minimal=1")
       .then((r) => r.json())
       .then((j) => {
         const list = (j.clients ?? []) as ClientRow[];

@@ -7,7 +7,6 @@ import {
   Legend,
   Line,
   LineChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
@@ -19,6 +18,7 @@ import { MetricPickerModal } from "@/components/MetricPickerModal";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { Badge } from "@/components/ui/Badge";
+import { ChartContainer } from "@/components/ui/ChartContainer";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
@@ -372,10 +372,9 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           })}
         </div>
 
-        <div className="mt-4 h-56">
-          {chartData.length >= 1 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
+        {chartData.length >= 1 ? (
+          <ChartContainer height="h-56" className="mt-4">
+            <LineChart data={chartData}>
                 <CartesianGrid stroke="#eef2f7" strokeDasharray="3 3" />
                 <XAxis dataKey="label" tick={{ fill: "#94a3b8", fontSize: 10 }} />
                 {chartMetrics.map((key) => (
@@ -411,13 +410,12 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
                   />
                 ))}
               </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">
-              {t("noChartData")}
-            </div>
-          )}
-        </div>
+          </ChartContainer>
+        ) : (
+          <div className="mt-4 flex h-56 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">
+            {t("noChartData")}
+          </div>
+        )}
       </div>
 
       {/* Campanhas ativas */}
