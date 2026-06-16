@@ -16,7 +16,13 @@ const limitsSchema = z.object({
   maxScheduledReports: z.number().int().min(0),
   allowAutoSync: z.boolean(),
   allowLiveMeta: z.boolean(),
-  allowCreativeMemoryAi: z.boolean()
+  allowCreativeMemoryAi: z.boolean(),
+  allowAgencyBrainHypotheses: z.boolean().optional(),
+  allowAgencyBrainDna: z.boolean().optional(),
+  allowAgencyBrainTimeline: z.boolean().optional(),
+  allowAgencyBrainExperiments: z.boolean().optional(),
+  allowAgencyBrainActionPlans: z.boolean().optional(),
+  allowAgencyBrainChat: z.boolean().optional()
 });
 
 const createSchema = z.object({
@@ -44,7 +50,13 @@ const DEFAULT_NEW_LIMITS: PlanLimits = {
   maxScheduledReports: 1,
   allowAutoSync: true,
   allowLiveMeta: false,
-  allowCreativeMemoryAi: true
+  allowCreativeMemoryAi: true,
+  allowAgencyBrainHypotheses: true,
+  allowAgencyBrainDna: true,
+  allowAgencyBrainTimeline: false,
+  allowAgencyBrainExperiments: false,
+  allowAgencyBrainActionPlans: false,
+  allowAgencyBrainChat: false
 };
 
 export async function GET() {

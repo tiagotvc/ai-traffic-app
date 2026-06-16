@@ -6,6 +6,7 @@ import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-conte
 import { getClientCampaignMetricsWithComparison } from "@/lib/agency-brain/metrics-input";
 import { createActionSuggestion } from "@/lib/action-suggestions/action-suggestion-service";
 import type { ActionSuggestionDto, SuggestedActionDraft } from "@/lib/action-suggestions/types";
+import type { ActionSuggestionPriority } from "@/lib/action-suggestions/types";
 import { buildFewShotBlock } from "@/lib/creative-memory/few-shot";
 import {
   AiActionsResponseSchema,
@@ -25,12 +26,20 @@ function buildActionDedupeKey(actionType: string, clientId: string, scope: strin
   return `ai:action:${actionType}:${clientId}:${scope}:${hash}:${WINDOW_DAYS}`;
 }
 
+function inferPriority(item: AiActionsResponse["suggestions"][number]): ActionSuggestionPriority {
+  if (item.actionType === "pause_campaign") return "HIGH";
+  if (item.actionType === "scale_budget") return "HIGH";
+  if (item.budgetIncreasePercent != null && item.budgetIncreasePercent >= 20) return "HIGH";
+  return "MEDIUM";
+}
+
 function toActionDraft(
   item: AiActionsResponse["suggestions"][number],
   clientId: string,
   clientSlug: string,
   campaignIds: Set<string>,
-  brainSnippet?: string
+  brainSnippet?: string,
+  linkedLearningIds: string[] = []
 ): SuggestedActionDraft {
   const metaCampaignId =
     item.metaCampaignId && campaignIds.has(item.metaCampaignId) ? item.metaCampaignId : null;
@@ -42,6 +51,9 @@ function toActionDraft(
     actionType: item.actionType,
     source: "AI",
     metaCampaignId,
+    linkedLearningId: linkedLearningIds[0] ?? null,
+    linkedLearningIds,
+    priority: inferPriority(item),
     actionPayload: {
       metaCampaignId: metaCampaignId ?? undefined,
       campaignName: item.campaignName,
@@ -162,7 +174,8 @@ export async function runAiActionSuggestionsForClient(
       clientId,
       clientSlug,
       campaignIds,
-      brain.summaryText
+      brain.summaryText,
+      brain.topLearnings.slice(0, 2).map((l) => l.id)
     );
     const created = await createActionSuggestion(tenantId, clientId, draft);
     if (created) suggestions.push(created);

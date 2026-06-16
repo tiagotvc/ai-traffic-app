@@ -29,7 +29,13 @@ export function mergePlanLimitsWithAddons(base: PlanLimits, bonuses: TenantAddon
     maxScheduledReports: base.maxScheduledReports + bonuses.extraScheduledReports,
     allowAutoSync: base.allowAutoSync,
     allowLiveMeta: base.allowLiveMeta,
-    allowCreativeMemoryAi: base.allowCreativeMemoryAi
+    allowCreativeMemoryAi: base.allowCreativeMemoryAi,
+    allowAgencyBrainHypotheses: base.allowAgencyBrainHypotheses,
+    allowAgencyBrainDna: base.allowAgencyBrainDna,
+    allowAgencyBrainTimeline: base.allowAgencyBrainTimeline,
+    allowAgencyBrainExperiments: base.allowAgencyBrainExperiments,
+    allowAgencyBrainActionPlans: base.allowAgencyBrainActionPlans,
+    allowAgencyBrainChat: base.allowAgencyBrainChat
   };
 }
 

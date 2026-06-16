@@ -1,10 +1,11 @@
 import type {
+  ActionSuggestionPriority,
   ActionSuggestionSource,
   ActionSuggestionStatus,
   ActionSuggestionType
 } from "@/db/entities/ClientActionSuggestion";
 
-export type { ActionSuggestionSource, ActionSuggestionStatus, ActionSuggestionType };
+export type { ActionSuggestionSource, ActionSuggestionStatus, ActionSuggestionType, ActionSuggestionPriority };
 
 export type ActionPayload = {
   metaCampaignId?: string;
@@ -35,6 +36,8 @@ export type ActionSuggestionDto = {
   actionPayload: ActionPayload;
   source: ActionSuggestionSource;
   status: ActionSuggestionStatus;
+  priority: ActionSuggestionPriority;
+  linkedLearningIds: string[];
   evidence: ActionEvidence | null;
   resolvedByUserId: string | null;
   resolvedAt: string | null;
@@ -66,6 +69,8 @@ export type SuggestedActionDraft = {
   source: ActionSuggestionSource;
   metaCampaignId?: string | null;
   linkedLearningId?: string | null;
+  linkedLearningIds?: string[];
+  priority?: ActionSuggestionPriority;
   evidence: ActionEvidence;
   dedupeKey: string;
 };

@@ -33,6 +33,12 @@ export type PlanLimits = {
   allowAutoSync: boolean;
   allowLiveMeta: boolean;
   allowCreativeMemoryAi: boolean;
+  allowAgencyBrainHypotheses: boolean;
+  allowAgencyBrainDna: boolean;
+  allowAgencyBrainTimeline: boolean;
+  allowAgencyBrainExperiments: boolean;
+  allowAgencyBrainActionPlans: boolean;
+  allowAgencyBrainChat: boolean;
 };
 
 export type ExternalPrices = {
@@ -52,7 +58,13 @@ export const FREE_LIMITS: PlanLimits = {
   maxScheduledReports: 0,
   allowAutoSync: false,
   allowLiveMeta: false,
-  allowCreativeMemoryAi: true
+  allowCreativeMemoryAi: true,
+  allowAgencyBrainHypotheses: true,
+  allowAgencyBrainDna: true,
+  allowAgencyBrainTimeline: false,
+  allowAgencyBrainExperiments: false,
+  allowAgencyBrainActionPlans: false,
+  allowAgencyBrainChat: false
 };
 
 export const BASIC_LIMITS: PlanLimits = {
@@ -64,7 +76,13 @@ export const BASIC_LIMITS: PlanLimits = {
   maxScheduledReports: 1,
   allowAutoSync: true,
   allowLiveMeta: false,
-  allowCreativeMemoryAi: true
+  allowCreativeMemoryAi: true,
+  allowAgencyBrainHypotheses: true,
+  allowAgencyBrainDna: true,
+  allowAgencyBrainTimeline: false,
+  allowAgencyBrainExperiments: false,
+  allowAgencyBrainActionPlans: false,
+  allowAgencyBrainChat: false
 };
 
 export const ADVANCED_LIMITS: PlanLimits = {
@@ -76,7 +94,13 @@ export const ADVANCED_LIMITS: PlanLimits = {
   maxScheduledReports: 5,
   allowAutoSync: true,
   allowLiveMeta: true,
-  allowCreativeMemoryAi: true
+  allowCreativeMemoryAi: true,
+  allowAgencyBrainHypotheses: true,
+  allowAgencyBrainDna: true,
+  allowAgencyBrainTimeline: true,
+  allowAgencyBrainExperiments: true,
+  allowAgencyBrainActionPlans: true,
+  allowAgencyBrainChat: true
 };
 
 export const AGENCY_LIMITS: PlanLimits = {
@@ -88,7 +112,13 @@ export const AGENCY_LIMITS: PlanLimits = {
   maxScheduledReports: 20,
   allowAutoSync: true,
   allowLiveMeta: true,
-  allowCreativeMemoryAi: true
+  allowCreativeMemoryAi: true,
+  allowAgencyBrainHypotheses: true,
+  allowAgencyBrainDna: true,
+  allowAgencyBrainTimeline: true,
+  allowAgencyBrainExperiments: true,
+  allowAgencyBrainActionPlans: true,
+  allowAgencyBrainChat: true
 };
 
 /** @deprecated use ADVANCED_LIMITS */

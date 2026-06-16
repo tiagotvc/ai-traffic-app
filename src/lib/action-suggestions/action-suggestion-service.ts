@@ -2,6 +2,7 @@ import "server-only";
 
 import type { ClientActionSuggestion } from "@/db/entities/ClientActionSuggestion";
 import { repositories } from "@/db/repositories";
+import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
 import type {
   ActionPayload,
   ActionSuggestionDto,
@@ -25,6 +26,8 @@ export function toActionSuggestionDto(row: ClientActionSuggestion): ActionSugges
     actionPayload: (row.actionPayload as ActionPayload) ?? {},
     source: row.source,
     status: row.status,
+    priority: row.priority,
+    linkedLearningIds: row.linkedLearningIds ?? [],
     evidence: (row.evidence as ActionSuggestionDto["evidence"]) ?? null,
     resolvedByUserId: row.resolvedByUserId ?? null,
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
@@ -104,6 +107,12 @@ export async function createActionSuggestion(
   }
 
   const { clientActionSuggestion: repo } = await repositories();
+  const linkedIds = draft.linkedLearningIds?.length
+    ? draft.linkedLearningIds
+    : draft.linkedLearningId
+      ? [draft.linkedLearningId]
+      : [];
+
   const row = repo.create({
     tenantId,
     clientId,
@@ -113,8 +122,10 @@ export async function createActionSuggestion(
     actionPayload: draft.actionPayload,
     source: draft.source,
     status: "PENDING",
+    priority: draft.priority ?? "MEDIUM",
     metaCampaignId: draft.metaCampaignId ?? null,
-    linkedLearningId: draft.linkedLearningId ?? null,
+    linkedLearningId: linkedIds[0] ?? null,
+    linkedLearningIds: linkedIds,
     evidence: draft.evidence,
     dedupeKey: draft.dedupeKey
   });
@@ -152,8 +163,18 @@ export async function executeActionSuggestion(
   const row = await repo.findOne({ where: { id: suggestionId, tenantId, clientId } });
   if (!row || row.status !== "PENDING") return null;
 
-  // Phase 4: record execution intent; Meta API integration can be wired here later.
-  return resolveSuggestion(tenantId, clientId, suggestionId, "EXECUTED", userId, "Executado pelo app");
+  const result = await resolveSuggestion(tenantId, clientId, suggestionId, "EXECUTED", userId, "Executado pelo app");
+  if (result) {
+    await recordTimelineEvent(tenantId, clientId, {
+      type: "suggestion_executed",
+      title: result.title,
+      description: result.description,
+      sourceId: result.id,
+      sourceType: "suggestion",
+      metadata: { priority: result.priority }
+    });
+  }
+  return result;
 }
 
 export async function acknowledgeActionSuggestion(

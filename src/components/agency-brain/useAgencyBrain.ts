@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
-import { useCreativeMemoryAi } from "@/components/creative-memory/CreativeMemoryAiContext";
+import { useAgencyBrainAi } from "@/components/agency-brain/AgencyBrainAiContext";
 import type {
   BrainSummary,
   LearningCategory,
@@ -25,8 +25,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 
 export function useAgencyBrain(clientId: string) {
   const t = useTranslations("agencyBrain");
-  const tCm = useTranslations("creativeMemory");
-  const { aiDisabled, refresh: refreshAiStatus } = useCreativeMemoryAi();
+  const { aiDisabled, refresh: refreshAiStatus } = useAgencyBrainAi();
 
   const [clientName, setClientName] = useState("");
   const [summary, setSummary] = useState<BrainSummary | null>(null);
@@ -144,24 +143,24 @@ export function useAgencyBrain(clientId: string) {
       );
       const json = await res.json();
       if (res.status === 402 || json.code === "PLAN_LIMIT") {
-        setMessage({ type: "err", text: tCm("aiLimit") });
+        setMessage({ type: "err", text: t("aiLimit") });
         return;
       }
       if (json.code === "NO_AI_KEY") {
-        setMessage({ type: "err", text: tCm("aiNoKey") });
+        setMessage({ type: "err", text: t("aiNoKey") });
         return;
       }
       if (!json.ok) {
-        setMessage({ type: "err", text: json.error ?? tCm("aiErrorLearnings") });
+        setMessage({ type: "err", text: json.error ?? t("aiErrorLearnings") });
         return;
       }
       setMessage({
         type: "ok",
-        text: tCm("aiSuccessLearnings", { count: json.created ?? 0 })
+        text: t("aiSuccessLearnings", { count: json.created ?? 0 })
       });
       await Promise.all([load(), refreshAiStatus()]);
     } catch {
-      setMessage({ type: "err", text: tCm("aiErrorLearnings") });
+      setMessage({ type: "err", text: t("aiErrorLearnings") });
     } finally {
       setAiAnalyzing(false);
     }

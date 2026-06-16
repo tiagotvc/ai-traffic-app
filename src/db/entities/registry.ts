@@ -47,6 +47,12 @@ import { CouponRedemption } from "./CouponRedemption";
 import { GoogleAuth } from "./GoogleAuth";
 import { ClientLearning } from "./ClientLearning";
 import { ClientActionSuggestion } from "./ClientActionSuggestion";
+import { ClientHypothesis } from "./ClientHypothesis";
+import { ClientDna } from "./ClientDna";
+import { ClientTimelineEvent } from "./ClientTimelineEvent";
+import { ClientExperiment } from "./ClientExperiment";
+import { ClientActionPlan } from "./ClientActionPlan";
+import { ClientActionPlanItem } from "./ClientActionPlanItem";
 import { TenantAddon } from "./TenantAddon";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
@@ -96,6 +102,12 @@ export {
   GoogleAuth,
   ClientLearning,
   ClientActionSuggestion,
+  ClientHypothesis,
+  ClientDna,
+  ClientTimelineEvent,
+  ClientExperiment,
+  ClientActionPlan,
+  ClientActionPlanItem,
   TenantAddon
 };
 
@@ -112,8 +124,14 @@ export type {
 export type {
   ActionSuggestionType,
   ActionSuggestionSource,
-  ActionSuggestionStatus
+  ActionSuggestionStatus,
+  ActionSuggestionPriority
 } from "./ClientActionSuggestion";
+export type { DnaBucket } from "./ClientDna";
+export type { HypothesisStatus, HypothesisSource } from "./ClientHypothesis";
+export type { TimelineEventType } from "./ClientTimelineEvent";
+export type { ActionPlanStatus } from "./ClientActionPlan";
+export type { ActionPlanItemStatus } from "./ClientActionPlanItem";
 
 stabilizeTypeOrmEntityNames([
   { ctor: Tenant, name: "Tenant" },
@@ -161,6 +179,12 @@ stabilizeTypeOrmEntityNames([
   { ctor: GoogleAuth, name: "GoogleAuth" },
   { ctor: ClientLearning, name: "ClientLearning" },
   { ctor: ClientActionSuggestion, name: "ClientActionSuggestion" },
+  { ctor: ClientHypothesis, name: "ClientHypothesis" },
+  { ctor: ClientDna, name: "ClientDna" },
+  { ctor: ClientTimelineEvent, name: "ClientTimelineEvent" },
+  { ctor: ClientExperiment, name: "ClientExperiment" },
+  { ctor: ClientActionPlan, name: "ClientActionPlan" },
+  { ctor: ClientActionPlanItem, name: "ClientActionPlanItem" },
   { ctor: TenantAddon, name: "TenantAddon" }
 ]);
 
@@ -210,5 +234,11 @@ export const typeOrmEntities = [
   GoogleAuth,
   ClientLearning,
   ClientActionSuggestion,
+  ClientHypothesis,
+  ClientDna,
+  ClientTimelineEvent,
+  ClientExperiment,
+  ClientActionPlan,
+  ClientActionPlanItem,
   TenantAddon
 ] as const;

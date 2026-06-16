@@ -7,7 +7,7 @@ export default async function ClientSuggestionsPage({
 }) {
   const { locale, clientId } = await params;
   redirect({
-    href: `/creative-memory?client=${encodeURIComponent(clientId)}&tab=suggestions`,
+    href: `/agency-brain/suggestions?client=${encodeURIComponent(clientId)}`,
     locale
   });
 }

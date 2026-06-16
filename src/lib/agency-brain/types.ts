@@ -5,6 +5,7 @@ import type {
   LearningSource,
   LearningStatus
 } from "@/db/entities/ClientLearning";
+import type { ClientDnaPayload } from "@/lib/agency-brain/domain/schemas";
 
 export type {
   LearningCategory,
@@ -66,6 +67,7 @@ export type LearningDto = {
   category: LearningCategory;
   impact: LearningImpact;
   confidence: LearningConfidence;
+  confidenceScore: number | null;
   source: LearningSource;
   status: LearningStatus;
   tags: string[];
@@ -82,6 +84,7 @@ export type CreateLearningInput = {
   category: LearningCategory;
   impact?: LearningImpact;
   confidence?: LearningConfidence;
+  confidenceScore?: number | null;
   tags?: string[];
   metaCampaignId?: string | null;
   metaAdId?: string | null;
@@ -113,6 +116,7 @@ export type ClientBrainContext = {
   highImpactLearnings: LearningDto[];
   tags: string[];
   summaryText: string;
+  dna: ClientDnaPayload | null;
 };
 
 export type CampaignMetricsRow = {
@@ -135,6 +139,7 @@ export type SuggestedLearningDraft = {
   category: LearningCategory;
   impact: LearningImpact;
   confidence: LearningConfidence;
+  confidenceScore?: number;
   metaCampaignId?: string | null;
   metaAdId?: string | null;
   metricSnapshot?: MetricSnapshotPayload;

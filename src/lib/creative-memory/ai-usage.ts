@@ -4,7 +4,7 @@ import { repositories } from "@/db/repositories";
 import { getEntitlements, PlanLimitError } from "@/lib/billing/entitlements";
 import type { GeminiGenerateMeta } from "@/lib/gemini";
 
-const CM_AI_ACTION_TYPES = ["CM_AI_LEARNINGS", "CM_AI_ACTIONS"] as const;
+const CM_AI_ACTION_TYPES = ["CM_AI_LEARNINGS", "CM_AI_ACTIONS", "AB_AI_HYPOTHESES", "AB_AI_CHAT"] as const;
 
 export function getGeminiApiKey(): string | undefined {
   return process.env.GEMINI_API_KEY?.trim() || undefined;
@@ -60,17 +60,31 @@ export async function getCreativeMemoryAiStatus(tenantId: string) {
 export async function recordCreativeMemoryAiUsage(args: {
   tenantId: string;
   clientId: string;
-  kind: "learnings" | "actions";
+  kind: "learnings" | "actions" | "hypotheses" | "chat";
   createdCount: number;
   modelMeta: GeminiGenerateMeta;
 }) {
+  const actionTypeMap = {
+    learnings: "CM_AI_LEARNINGS",
+    actions: "CM_AI_ACTIONS",
+    hypotheses: "AB_AI_HYPOTHESES",
+    chat: "AB_AI_CHAT"
+  } as const;
+
+  const labelMap = {
+    learnings: "Memória Criativa (learnings)",
+    actions: "Memória Criativa (actions)",
+    hypotheses: "Agency Brain (hypotheses)",
+    chat: "Agency Brain (chat)"
+  } as const;
+
   const { aiRecommendation: recRepo } = await repositories();
   await recRepo.save(
     recRepo.create({
       tenantId: args.tenantId,
       clientId: args.clientId,
-      targetId: "creative_memory",
-      actionType: args.kind === "learnings" ? "CM_AI_LEARNINGS" : "CM_AI_ACTIONS",
+      targetId: args.kind === "hypotheses" || args.kind === "chat" ? "agency_brain" : "creative_memory",
+      actionType: actionTypeMap[args.kind],
       payload: {
         kind: args.kind,
         createdCount: args.createdCount,
@@ -78,8 +92,12 @@ export async function recordCreativeMemoryAiUsage(args: {
         modelUsed: args.modelMeta.modelUsed,
         fallbackFrom: args.modelMeta.fallbackFrom ?? null
       },
-      justification: `Memória Criativa (${args.kind}): ${args.createdCount} item(ns) via ${args.modelMeta.modelUsed}`,
+      justification: `${labelMap[args.kind]}: ${args.createdCount} item(ns) via ${args.modelMeta.modelUsed}`,
       status: "APPLIED"
     })
   );
+}
+
+export async function getAgencyBrainAiStatus(tenantId: string) {
+  return getCreativeMemoryAiStatus(tenantId);
 }

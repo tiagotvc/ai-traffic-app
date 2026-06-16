@@ -10,6 +10,7 @@ export type ActionSuggestionType =
 
 export type ActionSuggestionSource = "RULE" | "AI";
 export type ActionSuggestionStatus = "PENDING" | "EXECUTED" | "ACKNOWLEDGED" | "REJECTED";
+export type ActionSuggestionPriority = "HIGH" | "MEDIUM" | "LOW";
 
 @Entity({ name: "client_action_suggestions" })
 @Index(["tenantId", "clientId", "createdAt"])
@@ -45,6 +46,15 @@ export class ClientActionSuggestion extends AppBaseEntity {
 
   @Column({ type: "text", default: "PENDING" })
   status!: ActionSuggestionStatus;
+
+  @Column({ type: "text", default: "MEDIUM" })
+  priority!: ActionSuggestionPriority;
+
+  @Column({ type: "jsonb", default: () => "'[]'" })
+  linkedLearningIds!: string[];
+
+  @Column({ type: "jsonb", default: () => "'[]'" })
+  linkedHypothesisIds!: string[];
 
   @Column({ type: "jsonb", nullable: true })
   evidence?: Record<string, unknown> | null;

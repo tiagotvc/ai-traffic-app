@@ -10,8 +10,16 @@ import {
 import type { CampaignMetricsRow } from "@/lib/agency-brain/types";
 import { createActionSuggestion } from "@/lib/action-suggestions/action-suggestion-service";
 import type { ActionSuggestionDto, SuggestedActionDraft } from "@/lib/action-suggestions/types";
+import type { ActionSuggestionPriority } from "@/lib/action-suggestions/types";
 
 const WINDOW_DAYS = 7;
+
+function priorityFromDelta(delta: number): ActionSuggestionPriority {
+  const abs = Math.abs(delta);
+  if (abs >= 30) return "HIGH";
+  if (abs >= 15) return "MEDIUM";
+  return "LOW";
+}
 
 function buildActionDedupeKey(
   actionType: string,
@@ -52,6 +60,8 @@ function draftScaleBudget(
     source: "RULE",
     metaCampaignId: row.metaCampaignId,
     linkedLearningId,
+    linkedLearningIds: linkedLearningId ? [linkedLearningId] : [],
+    priority: priorityFromDelta(delta),
     evidence: {
       ruleId: "action_scale_budget",
       reason: "CPA significantly below client average",
@@ -68,7 +78,8 @@ function draftPauseCampaign(
   clientId: string,
   clientSlug: string,
   reason: string,
-  ruleId: string
+  ruleId: string,
+  spendThreshold: number
 ): SuggestedActionDraft {
   return {
     title: `Pausar ou revisar "${row.campaignName}"`,
@@ -82,6 +93,8 @@ function draftPauseCampaign(
     },
     source: "RULE",
     metaCampaignId: row.metaCampaignId,
+    linkedLearningIds: [],
+    priority: row.spend >= spendThreshold * 2 ? "HIGH" : "MEDIUM",
     evidence: {
       ruleId,
       reason,
@@ -109,6 +122,8 @@ function draftRefreshCreative(
     },
     source: "RULE",
     metaCampaignId: row.metaCampaignId,
+    linkedLearningIds: [],
+    priority: "MEDIUM",
     evidence: {
       ruleId: "action_refresh_creative",
       reason: "High frequency with low CTR",
@@ -137,6 +152,8 @@ function draftLandingPageReview(
     },
     source: "RULE",
     metaCampaignId: row.metaCampaignId,
+    linkedLearningIds: [],
+    priority: priorityFromDelta(pctDelta(row.ctr, baselineCtr)),
     evidence: {
       ruleId: "action_landing_page",
       reason: "High CTR with poor conversion efficiency",
@@ -177,7 +194,8 @@ function evaluateActionDrafts(
           clientId,
           clientSlug,
           `R$ ${row.spend.toFixed(0)} gastos sem conversões.`,
-          "action_spend_no_conversion"
+          "action_spend_no_conversion",
+          spendThreshold
         )
       );
     }
@@ -242,6 +260,8 @@ export async function runActionSuggestionsForClient(
         checklist: ["Revisar aprendizados aprovados", "Priorizar campanhas mencionadas na memória"]
       },
       source: "RULE",
+      linkedLearningIds: brainContext.topLearnings.slice(0, 2).map((l) => l.id),
+      priority: "MEDIUM",
       evidence: {
         ruleId: "brain_context_review",
         reason: "Approved learnings suggest follow-up actions",

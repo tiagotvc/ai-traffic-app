@@ -43,6 +43,12 @@ import type { DiscountCoupon } from "@/db/entities/DiscountCoupon";
 import type { CouponRedemption } from "@/db/entities/CouponRedemption";
 import type { ClientLearning } from "@/db/entities/ClientLearning";
 import type { ClientActionSuggestion } from "@/db/entities/ClientActionSuggestion";
+import type { ClientHypothesis } from "@/db/entities/ClientHypothesis";
+import type { ClientDna } from "@/db/entities/ClientDna";
+import type { ClientTimelineEvent } from "@/db/entities/ClientTimelineEvent";
+import type { ClientExperiment } from "@/db/entities/ClientExperiment";
+import type { ClientActionPlan } from "@/db/entities/ClientActionPlan";
+import type { ClientActionPlanItem } from "@/db/entities/ClientActionPlanItem";
 import type { TenantAddon } from "@/db/entities/TenantAddon";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
@@ -93,6 +99,12 @@ const ENTITY = {
   CouponRedemption: "CouponRedemption",
   ClientLearning: "ClientLearning",
   ClientActionSuggestion: "ClientActionSuggestion",
+  ClientHypothesis: "ClientHypothesis",
+  ClientDna: "ClientDna",
+  ClientTimelineEvent: "ClientTimelineEvent",
+  ClientExperiment: "ClientExperiment",
+  ClientActionPlan: "ClientActionPlan",
+  ClientActionPlanItem: "ClientActionPlanItem",
   TenantAddon: "TenantAddon"
 } as const;
 
@@ -163,6 +175,12 @@ export async function repositories() {
       ds,
       ENTITY.ClientActionSuggestion
     ),
+    clientHypothesis: repositoryFor<ClientHypothesis>(ds, ENTITY.ClientHypothesis),
+    clientDna: repositoryFor<ClientDna>(ds, ENTITY.ClientDna),
+    clientTimelineEvent: repositoryFor<ClientTimelineEvent>(ds, ENTITY.ClientTimelineEvent),
+    clientExperiment: repositoryFor<ClientExperiment>(ds, ENTITY.ClientExperiment),
+    clientActionPlan: repositoryFor<ClientActionPlan>(ds, ENTITY.ClientActionPlan),
+    clientActionPlanItem: repositoryFor<ClientActionPlanItem>(ds, ENTITY.ClientActionPlanItem),
     tenantAddon: repositoryFor<TenantAddon>(ds, ENTITY.TenantAddon)
   };
 }

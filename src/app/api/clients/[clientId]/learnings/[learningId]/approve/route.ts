@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { approveLearning } from "@/lib/agency-brain/client-learning-service";
+import { rebuildClientDna } from "@/lib/agency-brain/dna-builder";
+import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
 
 export async function PATCH(
   _req: Request,
@@ -19,6 +21,15 @@ export async function PATCH(
     if (!learning) {
       return NextResponse.json({ ok: false, error: "Aprendizado não encontrado" }, { status: 404 });
     }
+
+    await recordTimelineEvent(tenant.id, client.id, {
+      type: "learning_approved",
+      title: learning.title,
+      description: learning.description,
+      sourceId: learning.id,
+      sourceType: "learning"
+    });
+    await rebuildClientDna(tenant.id, client.id);
 
     return NextResponse.json({ ok: true, learning });
   } catch (err) {

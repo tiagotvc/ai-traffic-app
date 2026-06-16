@@ -32,5 +32,9 @@ export class Client extends AppBaseEntity {
   /** Google Ads customer ID (integração futura) */
   @Column({ type: "text", nullable: true })
   googleAdsCustomerId?: string | null;
+
+  /** Market segment for Agency Brain context */
+  @Column({ type: "text", nullable: true })
+  niche?: string | null;
 }
 

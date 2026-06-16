@@ -1,0 +1,108 @@
+/** Agency Brain module identifiers — used in routes, sidebar, feature flags */
+export const AGENCY_BRAIN_MODULES = [
+  "learnings",
+  "hypotheses",
+  "suggestions",
+  "dna",
+  "timeline",
+  "experiments",
+  "action-plans",
+  "chat"
+] as const;
+
+export type AgencyBrainModule = (typeof AGENCY_BRAIN_MODULES)[number];
+
+export type AgencyBrainModuleMeta = {
+  id: AgencyBrainModule;
+  route: string;
+  navKey: string;
+  phase: 1 | 2 | 3 | 4 | 5 | 6;
+  featureFlag?: keyof AgencyBrainFeatureFlags;
+};
+
+export type AgencyBrainFeatureFlags = {
+  allowCreativeMemoryAi: boolean;
+  allowAgencyBrainHypotheses: boolean;
+  allowAgencyBrainDna: boolean;
+  allowAgencyBrainTimeline: boolean;
+  allowAgencyBrainExperiments: boolean;
+  allowAgencyBrainActionPlans: boolean;
+  allowAgencyBrainChat: boolean;
+};
+
+export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
+  { id: "learnings", route: "/agency-brain/learnings", navKey: "agencyBrainLearnings", phase: 1 },
+  {
+    id: "hypotheses",
+    route: "/agency-brain/hypotheses",
+    navKey: "agencyBrainHypotheses",
+    phase: 1,
+    featureFlag: "allowAgencyBrainHypotheses"
+  },
+  { id: "suggestions", route: "/agency-brain/suggestions", navKey: "agencyBrainSuggestions", phase: 1 },
+  {
+    id: "dna",
+    route: "/agency-brain/dna",
+    navKey: "agencyBrainDna",
+    phase: 1,
+    featureFlag: "allowAgencyBrainDna"
+  },
+  {
+    id: "timeline",
+    route: "/agency-brain/timeline",
+    navKey: "agencyBrainTimeline",
+    phase: 2,
+    featureFlag: "allowAgencyBrainTimeline"
+  },
+  {
+    id: "experiments",
+    route: "/agency-brain/experiments",
+    navKey: "agencyBrainExperiments",
+    phase: 3,
+    featureFlag: "allowAgencyBrainExperiments"
+  },
+  {
+    id: "action-plans",
+    route: "/agency-brain/action-plans",
+    navKey: "agencyBrainActionPlans",
+    phase: 4,
+    featureFlag: "allowAgencyBrainActionPlans"
+  },
+  {
+    id: "chat",
+    route: "/agency-brain/chat",
+    navKey: "agencyBrainChat",
+    phase: 5,
+    featureFlag: "allowAgencyBrainChat"
+  }
+];
+
+export function resolveAgencyBrainFeatures(limits: {
+  allowCreativeMemoryAi?: boolean;
+  allowAgencyBrainHypotheses?: boolean;
+  allowAgencyBrainDna?: boolean;
+  allowAgencyBrainTimeline?: boolean;
+  allowAgencyBrainExperiments?: boolean;
+  allowAgencyBrainActionPlans?: boolean;
+  allowAgencyBrainChat?: boolean;
+}): AgencyBrainFeatureFlags {
+  const base = limits.allowCreativeMemoryAi ?? true;
+  return {
+    allowCreativeMemoryAi: base,
+    allowAgencyBrainHypotheses: limits.allowAgencyBrainHypotheses ?? base,
+    allowAgencyBrainDna: limits.allowAgencyBrainDna ?? base,
+    allowAgencyBrainTimeline: limits.allowAgencyBrainTimeline ?? false,
+    allowAgencyBrainExperiments: limits.allowAgencyBrainExperiments ?? false,
+    allowAgencyBrainActionPlans: limits.allowAgencyBrainActionPlans ?? false,
+    allowAgencyBrainChat: limits.allowAgencyBrainChat ?? false
+  };
+}
+
+export function isAgencyBrainModuleEnabled(
+  module: AgencyBrainModuleMeta,
+  features: AgencyBrainFeatureFlags
+): boolean {
+  if (!features.allowCreativeMemoryAi) return false;
+  if (!module.featureFlag) return true;
+  return features[module.featureFlag];
+}

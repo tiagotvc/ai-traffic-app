@@ -51,6 +51,9 @@ export class ClientLearning extends AppBaseEntity {
   @Column({ type: "text", default: "MEDIUM" })
   confidence!: LearningConfidence;
 
+  @Column({ type: "smallint", nullable: true })
+  confidenceScore?: number | null;
+
   @Column({ type: "text" })
   source!: LearningSource;
 

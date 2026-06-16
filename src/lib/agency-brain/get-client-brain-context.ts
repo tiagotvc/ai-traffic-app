@@ -1,6 +1,7 @@
 import "server-only";
 
 import { repositories } from "@/db/repositories";
+import { getClientDna } from "@/lib/agency-brain/dna-builder";
 import { listApprovedLearnings } from "@/lib/agency-brain/client-learning-service";
 import type { ClientBrainContext, LearningDto } from "@/lib/agency-brain/types";
 
@@ -52,6 +53,7 @@ export async function getClientBrainContext(
   clientId: string
 ): Promise<ClientBrainContext> {
   const approved = await listApprovedLearnings(tenantId, clientId, 100);
+  const dna = await getClientDna(tenantId, clientId);
   const { client: clientRepo } = await repositories();
   const client = await clientRepo.findOne({ where: { id: clientId, tenantId } });
 
@@ -80,6 +82,9 @@ export async function getClientBrainContext(
   }
 
   let summaryText = buildSummaryText(approved);
+  if (dna?.summaryText) {
+    summaryText = `${summaryText} DNA: ${dna.summaryText.slice(0, 250)}`;
+  }
   if (client?.aiContext && typeof client.aiContext === "string" && client.aiContext.trim()) {
     summaryText = `${summaryText} Contexto adicional: ${client.aiContext.trim().slice(0, 300)}`;
   } else if (client?.aiContext && typeof client.aiContext === "object") {
@@ -97,6 +102,7 @@ export async function getClientBrainContext(
     recentLearnings,
     highImpactLearnings,
     tags: [...tagSet],
-    summaryText
+    summaryText,
+    dna
   };
 }

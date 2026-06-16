@@ -123,7 +123,13 @@ export function resolveLimits(plan: Plan | null): PlanLimits {
   return {
     ...FREE_LIMITS,
     ...raw,
-    allowCreativeMemoryAi: raw.allowCreativeMemoryAi ?? true
+    allowCreativeMemoryAi: raw.allowCreativeMemoryAi ?? true,
+    allowAgencyBrainHypotheses: raw.allowAgencyBrainHypotheses ?? true,
+    allowAgencyBrainDna: raw.allowAgencyBrainDna ?? true,
+    allowAgencyBrainTimeline: raw.allowAgencyBrainTimeline ?? false,
+    allowAgencyBrainExperiments: raw.allowAgencyBrainExperiments ?? false,
+    allowAgencyBrainActionPlans: raw.allowAgencyBrainActionPlans ?? false,
+    allowAgencyBrainChat: raw.allowAgencyBrainChat ?? false
   };
 }
 
@@ -147,10 +153,21 @@ export async function getEntitlements(tenantId: string): Promise<Entitlements> {
   };
 }
 
-const LIMIT_CHECKS: Record<
-  Exclude<PlanLimitKey, "allowAutoSync" | "allowLiveMeta" | "allowCreativeMemoryAi">,
-  (u: TenantUsage) => number
-> = {
+const BOOLEAN_LIMIT_KEYS = [
+  "allowAutoSync",
+  "allowLiveMeta",
+  "allowCreativeMemoryAi",
+  "allowAgencyBrainHypotheses",
+  "allowAgencyBrainDna",
+  "allowAgencyBrainTimeline",
+  "allowAgencyBrainExperiments",
+  "allowAgencyBrainActionPlans",
+  "allowAgencyBrainChat"
+] as const;
+
+type NumericPlanLimitKey = Exclude<PlanLimitKey, (typeof BOOLEAN_LIMIT_KEYS)[number]>;
+
+const LIMIT_CHECKS: Record<NumericPlanLimitKey, (u: TenantUsage) => number> = {
   maxClients: (u) => u.clients,
   maxAdAccounts: (u) => u.adAccounts,
   maxMembers: (u) => u.members,
@@ -171,12 +188,15 @@ export async function assertSubscriptionWritable(tenantId: string) {
 
 export async function assertLimit(tenantId: string, key: PlanLimitKey) {
   const ent = await getEntitlements(tenantId);
-  if (key === "allowAutoSync" || key === "allowLiveMeta" || key === "allowCreativeMemoryAi") {
-    if (!ent.limits[key]) throw new PlanLimitError(key, `Feature not included in ${ent.planName}`);
+  if ((BOOLEAN_LIMIT_KEYS as readonly string[]).includes(key)) {
+    if (!ent.limits[key as (typeof BOOLEAN_LIMIT_KEYS)[number]]) {
+      throw new PlanLimitError(key, `Recurso não incluído no plano ${ent.planName}`);
+    }
     return ent;
   }
-  const max = ent.limits[key];
-  const current = LIMIT_CHECKS[key](ent.usage);
+  const numericKey = key as NumericPlanLimitKey;
+  const max = ent.limits[numericKey];
+  const current = LIMIT_CHECKS[numericKey](ent.usage);
   if (current >= max) {
     throw new PlanLimitError(key, `Limit reached: ${key} (${current}/${max})`);
   }

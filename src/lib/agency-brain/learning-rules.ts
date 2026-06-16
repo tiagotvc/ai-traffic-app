@@ -4,6 +4,10 @@ import type {
   SuggestedLearningDraft
 } from "@/lib/agency-brain/types";
 import type { CampaignMetricsRow } from "@/lib/agency-brain/types";
+import {
+  computeConfidenceScore,
+  confidenceEnumFromScore
+} from "@/lib/agency-brain/confidence-score";
 
 export function buildDedupeKey(
   ruleId: string,
@@ -54,6 +58,37 @@ export function pctDelta(actual: number, baseline: number): number {
   return ((actual - baseline) / baseline) * 100;
 }
 
+function enrichDraftWithConfidence(
+  draft: Omit<SuggestedLearningDraft, "confidence" | "confidenceScore"> & {
+    confidence?: LearningConfidence;
+    confidenceScore?: number;
+  },
+  row?: CampaignMetricsRow,
+  campaignCount?: number,
+  windowDays?: number
+): SuggestedLearningDraft {
+  const deltaPercent = draft.evidence.deltaPercent ?? 0;
+  const conversions = row?.conversions ?? draft.metricSnapshot?.conversions ?? 0;
+  const spend = row?.spend ?? draft.metricSnapshot?.spend ?? 0;
+
+  const confidenceScore =
+    draft.confidenceScore ??
+    computeConfidenceScore({
+      conversions,
+      spend,
+      deltaPercent,
+      campaignCount,
+      windowDays,
+      mode: "learning"
+    });
+
+  return {
+    ...draft,
+    confidenceScore,
+    confidence: draft.confidence ?? confidenceEnumFromScore(confidenceScore)
+  };
+}
+
 export function ruleCpaWinner(
   rows: CampaignMetricsRow[],
   clientId: string,
@@ -76,32 +111,36 @@ export function ruleCpaWinner(
 
   if (!best) return null;
 
-  return {
-    title: `Campanha "${best.campaignName}" com CPA abaixo da média`,
-    description: `CPA de R$ ${best.cpa!.toFixed(2)} está ${Math.abs(bestDelta).toFixed(0)}% abaixo da média do cliente (R$ ${baseline.toFixed(2)}). Considere escalar ou replicar a estratégia.`,
-    category: "CREATIVE",
-    impact: impactFromDelta(bestDelta),
-    confidence: confidenceFromSample(best.conversions, best.spend),
-    metaCampaignId: best.metaCampaignId,
-    metricSnapshot: {
-      cpa: best.cpa ?? undefined,
-      spend: best.spend,
-      conversions: best.conversions,
-      periodDays: windowDays
-    },
-    evidence: {
-      ruleId: "cpa_winner",
-      reason: "CPA 25%+ below client average",
-      deltaPercent: bestDelta,
-      baselineValue: baseline,
-      actualValue: best.cpa ?? undefined,
+  return enrichDraftWithConfidence(
+    {
+      title: `Campanha "${best.campaignName}" com CPA abaixo da média`,
+      description: `CPA de R$ ${best.cpa!.toFixed(2)} está ${Math.abs(bestDelta).toFixed(0)}% abaixo da média do cliente (R$ ${baseline.toFixed(2)}). Considere escalar ou replicar a estratégia.`,
+      category: "CREATIVE",
+      impact: impactFromDelta(bestDelta),
       metaCampaignId: best.metaCampaignId,
-      campaignName: best.campaignName,
-      comparedTo: "client_average"
+      metricSnapshot: {
+        cpa: best.cpa ?? undefined,
+        spend: best.spend,
+        conversions: best.conversions,
+        periodDays: windowDays
+      },
+      evidence: {
+        ruleId: "cpa_winner",
+        reason: "CPA 25%+ below client average",
+        deltaPercent: bestDelta,
+        baselineValue: baseline,
+        actualValue: best.cpa ?? undefined,
+        metaCampaignId: best.metaCampaignId,
+        campaignName: best.campaignName,
+        comparedTo: "client_average"
+      },
+      dedupeKey: buildDedupeKey("cpa_winner", clientId, best.metaCampaignId, windowDays),
+      tags: ["cpa", "winner"]
     },
-    dedupeKey: buildDedupeKey("cpa_winner", clientId, best.metaCampaignId, windowDays),
-    tags: ["cpa", "winner"]
-  };
+    best,
+    rows.length,
+    windowDays
+  );
 }
 
 export function ruleCtrWinner(
@@ -126,31 +165,35 @@ export function ruleCtrWinner(
 
   if (!best) return null;
 
-  return {
-    title: `Campanha "${best.campaignName}" com CTR acima da média`,
-    description: `CTR de ${best.ctr.toFixed(2)}% está ${bestDelta.toFixed(0)}% acima da média do cliente (${baseline.toFixed(2)}%). Criativos desta campanha merecem análise.`,
-    category: "CREATIVE",
-    impact: impactFromDelta(bestDelta),
-    confidence: confidenceFromSample(best.conversions, best.spend),
-    metaCampaignId: best.metaCampaignId,
-    metricSnapshot: {
-      ctr: best.ctr,
-      impressions: best.impressions,
-      clicks: best.clicks,
-      periodDays: windowDays
-    },
-    evidence: {
-      ruleId: "ctr_winner",
-      reason: "CTR 30%+ above client average",
-      deltaPercent: bestDelta,
-      baselineValue: baseline,
-      actualValue: best.ctr,
+  return enrichDraftWithConfidence(
+    {
+      title: `Campanha "${best.campaignName}" com CTR acima da média`,
+      description: `CTR de ${best.ctr.toFixed(2)}% está ${bestDelta.toFixed(0)}% acima da média do cliente (${baseline.toFixed(2)}%). Criativos desta campanha merecem análise.`,
+      category: "CREATIVE",
+      impact: impactFromDelta(bestDelta),
       metaCampaignId: best.metaCampaignId,
-      campaignName: best.campaignName
+      metricSnapshot: {
+        ctr: best.ctr,
+        impressions: best.impressions,
+        clicks: best.clicks,
+        periodDays: windowDays
+      },
+      evidence: {
+        ruleId: "ctr_winner",
+        reason: "CTR 30%+ above client average",
+        deltaPercent: bestDelta,
+        baselineValue: baseline,
+        actualValue: best.ctr,
+        metaCampaignId: best.metaCampaignId,
+        campaignName: best.campaignName
+      },
+      dedupeKey: buildDedupeKey("ctr_winner", clientId, best.metaCampaignId, windowDays),
+      tags: ["ctr", "winner"]
     },
-    dedupeKey: buildDedupeKey("ctr_winner", clientId, best.metaCampaignId, windowDays),
-    tags: ["ctr", "winner"]
-  };
+    best,
+    rows.length,
+    windowDays
+  );
 }
 
 export function ruleAudienceCpa(
@@ -175,24 +218,28 @@ export function ruleAudienceCpa(
 
   if (!best) return null;
 
-  return {
-    title: `Público/campanha "${best.campaignName}" com melhor eficiência`,
-    description: `CPA ${Math.abs(bestDelta).toFixed(0)}% abaixo da média — público ou segmentação desta campanha performou melhor que as demais.`,
-    category: "AUDIENCE",
-    impact: impactFromDelta(bestDelta),
-    confidence: confidenceFromSample(best.conversions, best.spend),
-    metaCampaignId: best.metaCampaignId,
-    metricSnapshot: { cpa: best.cpa ?? undefined, periodDays: windowDays },
-    evidence: {
-      ruleId: "audience_cpa",
-      reason: "Campaign CPA 30%+ below average (audience proxy)",
-      deltaPercent: bestDelta,
+  return enrichDraftWithConfidence(
+    {
+      title: `Público/campanha "${best.campaignName}" com melhor eficiência`,
+      description: `CPA ${Math.abs(bestDelta).toFixed(0)}% abaixo da média — público ou segmentação desta campanha performou melhor que as demais.`,
+      category: "AUDIENCE",
+      impact: impactFromDelta(bestDelta),
       metaCampaignId: best.metaCampaignId,
-      campaignName: best.campaignName
+      metricSnapshot: { cpa: best.cpa ?? undefined, periodDays: windowDays },
+      evidence: {
+        ruleId: "audience_cpa",
+        reason: "Campaign CPA 30%+ below average (audience proxy)",
+        deltaPercent: bestDelta,
+        metaCampaignId: best.metaCampaignId,
+        campaignName: best.campaignName
+      },
+      dedupeKey: buildDedupeKey("audience_cpa", clientId, best.metaCampaignId, windowDays),
+      tags: ["audience", "cpa"]
     },
-    dedupeKey: buildDedupeKey("audience_cpa", clientId, best.metaCampaignId, windowDays),
-    tags: ["audience", "cpa"]
-  };
+    best,
+    rows.length,
+    windowDays
+  );
 }
 
 export function ruleSaturation(
@@ -203,29 +250,36 @@ export function ruleSaturation(
   const drafts: SuggestedLearningDraft[] = [];
   for (const row of rows) {
     if (row.frequency > 3.5 && row.ctr < 1 && row.impressions > 1000) {
-      drafts.push({
-        title: `Possível saturação em "${row.campaignName}"`,
-        description: `Frequência de ${row.frequency.toFixed(1)} com CTR baixo (${row.ctr.toFixed(2)}%). Criativos podem estar saturados — considere renovar.`,
-        category: "CREATIVE",
-        impact: "MEDIUM",
-        confidence: row.impressions > 5000 ? "MEDIUM" : "LOW",
-        metaCampaignId: row.metaCampaignId,
-        metricSnapshot: {
-          frequency: row.frequency,
-          ctr: row.ctr,
-          impressions: row.impressions,
-          periodDays: windowDays
-        },
-        evidence: {
-          ruleId: "saturation",
-          reason: "Frequency > 3.5 with low CTR",
-          actualValue: row.frequency,
-          metaCampaignId: row.metaCampaignId,
-          campaignName: row.campaignName
-        },
-        dedupeKey: buildDedupeKey("saturation", clientId, row.metaCampaignId, windowDays),
-        tags: ["saturation", "frequency"]
-      });
+      drafts.push(
+        enrichDraftWithConfidence(
+          {
+            title: `Possível saturação em "${row.campaignName}"`,
+            description: `Frequência de ${row.frequency.toFixed(1)} com CTR baixo (${row.ctr.toFixed(2)}%). Criativos podem estar saturados — considere renovar.`,
+            category: "CREATIVE",
+            impact: "MEDIUM",
+            confidence: row.impressions > 5000 ? "MEDIUM" : "LOW",
+            metaCampaignId: row.metaCampaignId,
+            metricSnapshot: {
+              frequency: row.frequency,
+              ctr: row.ctr,
+              impressions: row.impressions,
+              periodDays: windowDays
+            },
+            evidence: {
+              ruleId: "saturation",
+              reason: "Frequency > 3.5 with low CTR",
+              actualValue: row.frequency,
+              metaCampaignId: row.metaCampaignId,
+              campaignName: row.campaignName
+            },
+            dedupeKey: buildDedupeKey("saturation", clientId, row.metaCampaignId, windowDays),
+            tags: ["saturation", "frequency"]
+          },
+          row,
+          rows.length,
+          windowDays
+        )
+      );
     }
   }
   return drafts.slice(0, 3);
@@ -240,24 +294,31 @@ export function ruleSpendNoConversion(
   const drafts: SuggestedLearningDraft[] = [];
   for (const row of rows) {
     if (row.spend >= spendThreshold && row.conversions === 0) {
-      drafts.push({
-        title: `Campanha "${row.campaignName}" com gasto sem conversões`,
-        description: `R$ ${row.spend.toFixed(0)} investidos sem conversões no período. Revisar criativo, público ou oferta.`,
-        category: "GENERAL",
-        impact: row.spend >= spendThreshold * 2 ? "HIGH" : "MEDIUM",
-        confidence: "MEDIUM",
-        metaCampaignId: row.metaCampaignId,
-        metricSnapshot: { spend: row.spend, conversions: 0, periodDays: windowDays },
-        evidence: {
-          ruleId: "spend_no_conversion",
-          reason: "Significant spend without conversions",
-          actualValue: row.spend,
-          metaCampaignId: row.metaCampaignId,
-          campaignName: row.campaignName
-        },
-        dedupeKey: buildDedupeKey("spend_no_conversion", clientId, row.metaCampaignId, windowDays),
-        tags: ["negative", "spend"]
-      });
+      drafts.push(
+        enrichDraftWithConfidence(
+          {
+            title: `Campanha "${row.campaignName}" com gasto sem conversões`,
+            description: `R$ ${row.spend.toFixed(0)} investidos sem conversões no período. Revisar criativo, público ou oferta.`,
+            category: "GENERAL",
+            impact: row.spend >= spendThreshold * 2 ? "HIGH" : "MEDIUM",
+            confidence: "MEDIUM",
+            metaCampaignId: row.metaCampaignId,
+            metricSnapshot: { spend: row.spend, conversions: 0, periodDays: windowDays },
+            evidence: {
+              ruleId: "spend_no_conversion",
+              reason: "Significant spend without conversions",
+              actualValue: row.spend,
+              metaCampaignId: row.metaCampaignId,
+              campaignName: row.campaignName
+            },
+            dedupeKey: buildDedupeKey("spend_no_conversion", clientId, row.metaCampaignId, windowDays),
+            tags: ["negative", "spend"]
+          },
+          row,
+          rows.length,
+          windowDays
+        )
+      );
     }
   }
   return drafts.slice(0, 3);
@@ -277,29 +338,36 @@ export function ruleRoasLift(
     if (!prev || prev.roas <= 0 || row.roas <= 0) continue;
     const delta = pctDelta(row.roas, prev.roas);
     if (delta >= 20) {
-      drafts.push({
-        title: `ROAS em alta em "${row.campaignName}"`,
-        description: `ROAS subiu ${delta.toFixed(0)}% vs período anterior (${prev.roas.toFixed(2)} → ${row.roas.toFixed(2)}). Mudança recente pode estar funcionando.`,
-        category: "CREATIVE",
-        impact: impactFromDelta(delta),
-        confidence: "MEDIUM",
-        metaCampaignId: row.metaCampaignId,
-        metricSnapshot: {
-          roas: row.roas,
-          periodDays: windowDays
-        },
-        evidence: {
-          ruleId: "roas_lift",
-          reason: "ROAS increased 20%+ vs prior period",
-          deltaPercent: delta,
-          baselineValue: prev.roas,
-          actualValue: row.roas,
-          metaCampaignId: row.metaCampaignId,
-          campaignName: row.campaignName
-        },
-        dedupeKey: buildDedupeKey("roas_lift", clientId, row.metaCampaignId, windowDays),
-        tags: ["roas", "lift"]
-      });
+      drafts.push(
+        enrichDraftWithConfidence(
+          {
+            title: `ROAS em alta em "${row.campaignName}"`,
+            description: `ROAS subiu ${delta.toFixed(0)}% vs período anterior (${prev.roas.toFixed(2)} → ${row.roas.toFixed(2)}). Mudança recente pode estar funcionando.`,
+            category: "CREATIVE",
+            impact: impactFromDelta(delta),
+            confidence: "MEDIUM",
+            metaCampaignId: row.metaCampaignId,
+            metricSnapshot: {
+              roas: row.roas,
+              periodDays: windowDays
+            },
+            evidence: {
+              ruleId: "roas_lift",
+              reason: "ROAS increased 20%+ vs prior period",
+              deltaPercent: delta,
+              baselineValue: prev.roas,
+              actualValue: row.roas,
+              metaCampaignId: row.metaCampaignId,
+              campaignName: row.campaignName
+            },
+            dedupeKey: buildDedupeKey("roas_lift", clientId, row.metaCampaignId, windowDays),
+            tags: ["roas", "lift"]
+          },
+          row,
+          current.length,
+          windowDays
+        )
+      );
     }
   }
   return drafts.slice(0, 3);
@@ -316,24 +384,29 @@ export function ruleBudgetConcentration(
   const top = [...rows].sort((a, b) => b.spend - a.spend)[0];
   if (!top || top.spend / totalSpend < 0.6) return null;
 
-  return {
-    title: `Orçamento concentrado em "${top.campaignName}"`,
-    description: `${((top.spend / totalSpend) * 100).toFixed(0)}% do spend do cliente está nesta campanha. Avalie diversificação ou escala consciente.`,
-    category: "BUDGET",
-    impact: "MEDIUM",
-    confidence: "MEDIUM",
-    metaCampaignId: top.metaCampaignId,
-    metricSnapshot: { spend: top.spend, periodDays: windowDays },
-    evidence: {
-      ruleId: "budget_concentration",
-      reason: "Single campaign holds 60%+ of client spend",
-      actualValue: top.spend,
+  return enrichDraftWithConfidence(
+    {
+      title: `Orçamento concentrado em "${top.campaignName}"`,
+      description: `${((top.spend / totalSpend) * 100).toFixed(0)}% do spend do cliente está nesta campanha. Avalie diversificação ou escala consciente.`,
+      category: "BUDGET",
+      impact: "MEDIUM",
+      confidence: "MEDIUM",
       metaCampaignId: top.metaCampaignId,
-      campaignName: top.campaignName
+      metricSnapshot: { spend: top.spend, periodDays: windowDays },
+      evidence: {
+        ruleId: "budget_concentration",
+        reason: "Single campaign holds 60%+ of client spend",
+        actualValue: top.spend,
+        metaCampaignId: top.metaCampaignId,
+        campaignName: top.campaignName
+      },
+      dedupeKey: buildDedupeKey("budget_concentration", clientId, top.metaCampaignId, windowDays),
+      tags: ["budget", "concentration"]
     },
-    dedupeKey: buildDedupeKey("budget_concentration", clientId, top.metaCampaignId, windowDays),
-    tags: ["budget", "concentration"]
-  };
+    top,
+    rows.length,
+    windowDays
+  );
 }
 
 export function evaluateAllRules(

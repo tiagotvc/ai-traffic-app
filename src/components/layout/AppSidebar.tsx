@@ -1,8 +1,10 @@
 "use client";
 
+import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 
+import { AgencyBrainNavGroup } from "@/components/layout/AgencyBrainNavGroup";
 import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -92,17 +94,6 @@ export function AppSidebar({
     { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <NavIcon d={icons.campaigns} /> },
     { id: "audiences", href: "/audiences", label: t("audiences"), icon: <NavIcon d={icons.audiences} /> },
     { id: "creatives", href: "/creatives", label: t("creatives"), icon: <NavIcon d={icons.creatives} /> },
-    ...(allowCreativeMemoryAi
-      ? [
-          {
-            id: "creativeMemory",
-            href: "/creative-memory",
-            label: t("creativeMemory"),
-            beta: true,
-            icon: <NavIcon d={icons.creativeMemory} />
-          }
-        ]
-      : []),
     { id: "reports", href: "/reports", label: t("reports"), icon: <NavIcon d={icons.reports} /> },
     {
       id: "alerts",
@@ -136,8 +127,6 @@ export function AppSidebar({
     if (item.id === "clients") return base === "/clients" || base.startsWith("/clients/");
     if (item.id === "reports") return base === "/reports" || base.startsWith("/reports/");
     if (item.id === "creatives") return base === "/creatives" || base.startsWith("/creatives/");
-    if (item.id === "creativeMemory")
-      return base === "/creative-memory" || base.startsWith("/creative-memory/");
     if (item.id === "audiences") return base === "/audiences" || base.startsWith("/audiences/");
     if (item.id === "automations") return base === "/automations" || base.startsWith("/automations/");
     if (item.id === "billing") return base === "/billing" || base.startsWith("/billing/");
@@ -240,10 +229,9 @@ export function AppSidebar({
             </>
           );
 
-          if (item.action) {
-            return (
+          const navItem =
+            item.action ? (
               <button
-                key={item.id}
                 type="button"
                 onClick={item.action}
                 title={collapsed ? item.label : undefined}
@@ -251,18 +239,23 @@ export function AppSidebar({
               >
                 {inner}
               </button>
+            ) : (
+              <Link href={item.href!} title={collapsed ? item.label : undefined} className={cls}>
+                {inner}
+              </Link>
             );
-          }
 
           return (
-            <Link
-              key={item.id}
-              href={item.href!}
-              title={collapsed ? item.label : undefined}
-              className={cls}
-            >
-              {inner}
-            </Link>
+            <Fragment key={item.id}>
+              {navItem}
+              {item.id === "creatives" ? (
+                <AgencyBrainNavGroup
+                  collapsed={collapsed}
+                  allowCreativeMemoryAi={allowCreativeMemoryAi}
+                  pathname={pathname}
+                />
+              ) : null}
+            </Fragment>
           );
         })}
       </nav>

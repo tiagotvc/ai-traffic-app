@@ -5,7 +5,19 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 
 const BodySchema = z.object({
-  aiContext: z.union([z.string(), z.record(z.string(), z.unknown())])
+  aiContext: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+  niche: z
+    .enum([
+      "clinica",
+      "ecommerce",
+      "infoproduto",
+      "imobiliaria",
+      "saas",
+      "apps_games",
+      "outro"
+    ])
+    .nullable()
+    .optional()
 });
 
 export async function PATCH(
@@ -20,17 +32,23 @@ export async function PATCH(
   const client = await getClientBySlugOrId(tenant.id, clientId);
   if (!client) return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
 
-  if (typeof body.aiContext === "string") {
-    try {
-      client.aiContext = JSON.parse(body.aiContext);
-    } catch {
-      client.aiContext = { notes: body.aiContext };
+  if (body.aiContext !== undefined) {
+    if (typeof body.aiContext === "string") {
+      try {
+        client.aiContext = JSON.parse(body.aiContext);
+      } catch {
+        client.aiContext = { notes: body.aiContext };
+      }
+    } else {
+      client.aiContext = body.aiContext;
     }
-  } else {
-    client.aiContext = body.aiContext;
+  }
+
+  if (body.niche !== undefined) {
+    client.niche = body.niche;
   }
 
   await clientRepo.save(client);
 
-  return NextResponse.json({ ok: true, aiContext: client.aiContext });
+  return NextResponse.json({ ok: true, aiContext: client.aiContext, niche: client.niche });
 }

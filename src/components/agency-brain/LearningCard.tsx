@@ -4,7 +4,15 @@ import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/Badge";
 import { Link } from "@/i18n/navigation";
+import { formatConfidenceBadge } from "@/lib/agency-brain/confidence-score";
 import type { EvidencePayload, LearningDto, MetricSnapshotPayload } from "@/lib/agency-brain/types";
+
+function confidenceScoreClass(score: number | null): string {
+  if (score == null) return "bg-slate-100 text-slate-600";
+  if (score >= 80) return "bg-green-100 text-green-800";
+  if (score >= 50) return "bg-yellow-100 text-yellow-800";
+  return "bg-red-100 text-red-800";
+}
 
 function statusVariant(status: LearningDto["status"]): "neutral" | "success" | "warning" | "danger" {
   switch (status) {
@@ -91,6 +99,15 @@ export function LearningCard({
             <Badge variant={statusVariant(learning.status)}>{t(`status.${learning.status}`)}</Badge>
             <Badge>{t(`category.${learning.category}`)}</Badge>
             <Badge>{t(`impact.${learning.impact}`)}</Badge>
+            {learning.confidenceScore != null ? (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${confidenceScoreClass(learning.confidenceScore)}`}
+              >
+                {t("confidenceScore", {
+                  score: formatConfidenceBadge(learning.confidenceScore)
+                })}
+              </span>
+            ) : null}
           </div>
           <p className="mt-2 text-sm text-slate-600">{learning.description}</p>
           <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">

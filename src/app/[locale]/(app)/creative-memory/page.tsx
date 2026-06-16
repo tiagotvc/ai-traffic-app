@@ -1,22 +1,20 @@
-import { Suspense } from "react";
-
-import { CreativeMemoryClient } from "@/components/creative-memory/CreativeMemoryClient";
 import { redirect } from "@/i18n/navigation";
-import { getAppContext } from "@/lib/app-context";
 
 export default async function CreativeMemoryPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { locale } = await params;
-  const { entitlements } = await getAppContext();
-  if (!entitlements.limits.allowCreativeMemoryAi) {
-    redirect({ href: "/billing", locale });
+  const sp = await searchParams;
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp)) {
+    if (value === undefined) continue;
+    const v = Array.isArray(value) ? value[0] : value;
+    if (v) query.set(key, v);
   }
-  return (
-    <Suspense fallback={<div className="p-8 text-sm text-slate-500">…</div>}>
-      <CreativeMemoryClient />
-    </Suspense>
-  );
+  const qs = query.toString();
+  redirect({ href: `/agency-brain/learnings${qs ? `?${qs}` : ""}`, locale });
 }
