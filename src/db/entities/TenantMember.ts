@@ -26,6 +26,13 @@ export class TenantMember extends AppBaseEntity {
   @Column({ type: "text", nullable: true })
   dashboardClientMetric?: string | null;
 
+  /** Visões de colunas salvas para tabelas de campanhas. */
+  @Column({ type: "jsonb", nullable: true })
+  campaignTableLayouts?: Record<string, unknown>[] | null;
+
+  @Column({ type: "text", nullable: true })
+  activeCampaignTableLayoutId?: string | null;
+
   @ManyToOne("Tenant", { onDelete: "CASCADE" })
   @JoinColumn({ name: "tenantId" })
   tenant!: Tenant;

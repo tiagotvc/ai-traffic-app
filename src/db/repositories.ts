@@ -8,6 +8,8 @@ import type { CampaignGoal } from "@/db/entities/CampaignGoal";
 import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
 import type { AdMetricSnapshot } from "@/db/entities/AdMetricSnapshot";
 import type { CampaignPreset } from "@/db/entities/CampaignPreset";
+import type { CampaignTypeDefinition } from "@/db/entities/CampaignTypeDefinition";
+import type { CustomMetric } from "@/db/entities/CustomMetric";
 import type { CampaignTemplate } from "@/db/entities/CampaignTemplate";
 import type { Client } from "@/db/entities/Client";
 import type { ClientGoal } from "@/db/entities/ClientGoal";
@@ -70,6 +72,8 @@ const ENTITY = {
   ClientGoal: "ClientGoal",
   CampaignGoal: "CampaignGoal",
   CampaignPreset: "CampaignPreset",
+  CampaignTypeDefinition: "CampaignTypeDefinition",
+  CustomMetric: "CustomMetric",
   RankingConfig: "RankingConfig",
   Alert: "Alert",
   AiRecommendation: "AiRecommendation",
@@ -144,6 +148,11 @@ export async function repositories() {
     clientGoal: repositoryFor<ClientGoal>(ds, ENTITY.ClientGoal),
     campaignGoal: repositoryFor<CampaignGoal>(ds, ENTITY.CampaignGoal),
     campaignPreset: repositoryFor<CampaignPreset>(ds, ENTITY.CampaignPreset),
+    campaignTypeDefinition: repositoryFor<CampaignTypeDefinition>(
+      ds,
+      ENTITY.CampaignTypeDefinition
+    ),
+    customMetric: repositoryFor<CustomMetric>(ds, ENTITY.CustomMetric),
     rankingConfig: repositoryFor<RankingConfig>(ds, ENTITY.RankingConfig),
     alert: repositoryFor<Alert>(ds, ENTITY.Alert),
     aiRecommendation: repositoryFor<AiRecommendation>(ds, ENTITY.AiRecommendation),

@@ -31,6 +31,9 @@ import { HistoricalBackfillQueue1735820000000 } from "./0029-HistoricalBackfillQ
 import { AdMetricSnapshots1735830000000 } from "./0030-AdMetricSnapshots";
 import { ClientExperimentForecast1735830100000 } from "./0031-ClientExperimentForecast";
 import { CampaignSnapshotDayIndex1735830200000 } from "./0032-CampaignSnapshotDayIndex";
+import { CampaignTypeDefinitions1735830300000 } from "./0033-CampaignTypeDefinitions";
+import { TenantMemberCampaignTableLayouts1735830400000 } from "./0034-TenantMemberCampaignTableLayouts";
+import { CustomMetrics1735830500000 } from "./0035-CustomMetrics";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -66,5 +69,8 @@ export const appMigrations = [
   HistoricalBackfillQueue1735820000000,
   AdMetricSnapshots1735830000000,
   ClientExperimentForecast1735830100000,
-  CampaignSnapshotDayIndex1735830200000
+  CampaignSnapshotDayIndex1735830200000,
+  CampaignTypeDefinitions1735830300000,
+  TenantMemberCampaignTableLayouts1735830400000,
+  CustomMetrics1735830500000
 ];

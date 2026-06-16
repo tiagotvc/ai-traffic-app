@@ -3,9 +3,11 @@ import "server-only";
 import {
   fetchCampaignInsightsForRange,
   pickLeads,
+  pickMessages,
   pickResults,
   type MetaCampaignInsightRow
 } from "@/lib/meta-graph";
+import { buildActionMetrics } from "@/lib/action-metrics";
 import {
   getCachedCampaignInsights,
   getCachedCampaignInsightsAsync,
@@ -44,6 +46,10 @@ export type CampaignMetricRow = {
   alertCount: number;
   hasAlert: boolean;
   dailyBudget?: number | null;
+  reach?: number;
+  messages?: number;
+  frequency?: number;
+  actionMetrics?: Record<string, number>;
 };
 
 type AccountRef = { id: string; metaAdAccountId: string };
@@ -132,15 +138,22 @@ export async function enrichCampaignRowsFromMeta(input: {
         const spend = num(row.spend);
         const conversions = pickResults(row);
         const leads = pickLeads(row.actions);
+        const messages = pickMessages(row.actions);
         const impressions = num(row.impressions);
         const clicks = num(row.clicks);
+        const reach = num(row.reach);
         const roas = num(row.purchase_roas?.[0]?.value);
+        const actionMetrics = buildActionMetrics(row.actions);
 
         if (spend > 0 || !input.skipIfHasSpend) existing.spend = spend;
         else if (existing.spend === 0) existing.spend = spend;
 
         existing.conversions = conversions;
         existing.leads = leads;
+        existing.messages = messages;
+        existing.reach = reach;
+        existing.frequency = reach > 0 ? impressions / reach : 0;
+        existing.actionMetrics = actionMetrics;
         existing.cpl = existing.leads > 0 ? existing.spend / existing.leads : null;
         existing.cpa = existing.conversions > 0 ? existing.spend / existing.conversions : null;
         existing.roas = roas || existing.roas;

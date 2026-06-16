@@ -9,7 +9,11 @@ import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
-import { presetMetricsFor } from "@/lib/campaign-presets";
+import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
+import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
+import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
+import { columnRefKey, layoutMetricColumns } from "@/lib/campaign-table-layout";
+import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
 
@@ -66,6 +70,24 @@ export function CampaignAdsClient({
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const tableLayout = useCampaignTableLayout();
+  const metricColumns = layoutMetricColumns({
+    id: "",
+    name: "",
+    columns: tableLayout.columns
+  });
+  const customMetricNames = Object.fromEntries(
+    tableLayout.customMetrics.map((m) => [m.id, m.name])
+  );
+  function metricColLabel(col: (typeof metricColumns)[number]) {
+    if (col.kind === "metric") return tMetrics(METRIC_BY_KEY[col.key].label);
+    if (col.kind === "meta_action") {
+      const known = META_ACTION_CATALOG.find((a) => a.actionType === col.actionType);
+      return known?.label ?? col.actionType;
+    }
+    if (col.kind === "custom") return customMetricNames[col.id] ?? col.id;
+    return "";
+  }
   const adsetFilter = searchParams.get("adset");
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [preset, setPreset] = useState<string>("default");
@@ -181,8 +203,6 @@ export function CampaignAdsClient({
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  // Métricas exibidas conforme o tipo (preset) da campanha.
-  const presetMetrics = presetMetricsFor(preset);
 
   const adAction = (adId: string, action: "pause" | "activate") => {
     startTransition(async () => {
@@ -300,6 +320,9 @@ export function CampaignAdsClient({
           <option value="active">{t("filterStatusActive")}</option>
           <option value="paused">{t("filterStatusPaused")}</option>
         </select>
+        <div className="ml-auto">
+          <CampaignTableColumnsButton layout={tableLayout} />
+        </div>
       </div>
 
       {adsetFilter ? (
@@ -334,13 +357,17 @@ export function CampaignAdsClient({
                     {sort?.key === "adset" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
                   </button>
                 </th>
-                {presetMetrics.map((m) => (
-                  <th key={m} className="px-3 py-3 text-right">
-                    <button type="button" onClick={() => toggleSort(m)} className="ml-auto">
-                      {tMetrics(METRIC_BY_KEY[m].label)} {sort?.key === m ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
-                    </button>
-                  </th>
-                ))}
+                {metricColumns.map((m) => {
+                  const sortKey = m.kind === "metric" ? m.key : columnRefKey(m);
+                  return (
+                    <th key={columnRefKey(m)} className="px-3 py-3 text-right">
+                      <button type="button" onClick={() => toggleSort(sortKey)} className="ml-auto">
+                        {metricColLabel(m)}{" "}
+                        {sort?.key === sortKey ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                      </button>
+                    </th>
+                  );
+                })}
                 <th className="px-3 py-3">
                   <button type="button" onClick={() => toggleSort("status")} className="flex items-center gap-2">
                     {t("colStatus")}
@@ -363,8 +390,8 @@ export function CampaignAdsClient({
                     <td className="px-3 py-3">
                       <Skeleton className="h-5 w-20 rounded-md" />
                     </td>
-                    {presetMetrics.map((m) => (
-                      <td key={m} className="px-3 py-3 text-right">
+                    {metricColumns.map((m) => (
+                      <td key={columnRefKey(m)} className="px-3 py-3 text-right">
                         <Skeleton className="ml-auto h-3.5 w-12" />
                       </td>
                     ))}
@@ -378,7 +405,7 @@ export function CampaignAdsClient({
                 ))
               ) : paged.length === 0 ? (
                 <tr>
-                  <td colSpan={4 + presetMetrics.length} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={4 + metricColumns.length} className="px-4 py-8 text-center text-sm text-slate-500">
                     {t("empty")}
                   </td>
                 </tr>
@@ -418,15 +445,13 @@ export function CampaignAdsClient({
                           {ad.adsetName ?? ad.adsetId}
                         </span>
                       </td>
-                      {presetMetrics.map((m) => (
-                        <td
-                          key={m}
-                          className="px-3 py-3 text-right tabular-nums text-slate-700"
-                        >
-                          {ad.metrics
-                            ? formatMetricValue(m, ad.metrics[m] ?? 0, locale)
-                            : "—"}
-                        </td>
+                      {metricColumns.map((col) => (
+                        <CampaignTableCell
+                          key={columnRefKey(col)}
+                          col={col}
+                          row={{ ...(ad.metrics ?? {}) }}
+                          customMetrics={tableLayout.customMetricsMap}
+                        />
                       ))}
                       <td className="px-3 py-3">
                         <label className="flex cursor-pointer items-center gap-2">

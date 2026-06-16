@@ -12,6 +12,13 @@ import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
+import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
+import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
+import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
+import { columnRefKey, layoutMetricColumns } from "@/lib/campaign-table-layout";
+import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { ChartContainer } from "@/components/ui/ChartContainer";
 import {
   CartesianGrid,
   Legend,
@@ -21,8 +28,6 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
-import { ChartContainer } from "@/components/ui/ChartContainer";
 import { formatDayLabel } from "@/lib/dashboard-ranges";
 
 function Icon({ d, className = "h-5 w-5" }: { d: string; className?: string }) {
@@ -981,6 +986,25 @@ function AdsetsTable({
   adsetAction: (id: string, action: "pause" | "activate") => void;
 }) {
   const { openPanel } = usePublishPanel();
+  const tMetrics = useTranslations("metrics");
+  const tableLayout = useCampaignTableLayout();
+  const metricColumns = layoutMetricColumns({
+    id: "",
+    name: "",
+    columns: tableLayout.columns
+  });
+  const customMetricNames = Object.fromEntries(
+    tableLayout.customMetrics.map((m) => [m.id, m.name])
+  );
+  function metricColLabel(col: (typeof metricColumns)[number]) {
+    if (col.kind === "metric") return tMetrics(METRIC_BY_KEY[col.key].label);
+    if (col.kind === "meta_action") {
+      const known = META_ACTION_CATALOG.find((a) => a.actionType === col.actionType);
+      return known?.label ?? col.actionType;
+    }
+    if (col.kind === "custom") return customMetricNames[col.id] ?? col.id;
+    return "";
+  }
 
   return (
     <div className="space-y-4">
@@ -991,6 +1015,7 @@ function AdsetsTable({
           placeholder={t("searchAdsets")}
           className="ui-input min-w-[200px] flex-1"
         />
+        <CampaignTableColumnsButton layout={tableLayout} />
         <button type="button" onClick={() => openPanel({ clientSlug: slug })} className="ui-btn-primary text-sm">
           + {t("newAdset")}
         </button>
@@ -1001,12 +1026,11 @@ function AdsetsTable({
             <tr>
               <th className="px-4 py-3">{t("colAdset")}</th>
               <th className="px-3 py-3">{t("statusLabel")}</th>
-              <th className="px-3 py-3">{t("spend7d")}</th>
-              <th className="px-3 py-3">{t("conversions")}</th>
-              <th className="px-3 py-3">CPA</th>
-              <th className="px-3 py-3">ROAS</th>
-              <th className="px-3 py-3">{t("reach")}</th>
-              <th className="px-3 py-3">CTR</th>
+              {metricColumns.map((col) => (
+                <th key={columnRefKey(col)} className="px-3 py-3 text-right">
+                  {metricColLabel(col)}
+                </th>
+              ))}
               <th className="px-3 py-3">{t("dailyBudget")}</th>
               <th className="px-3 py-3" />
             </tr>
@@ -1026,12 +1050,22 @@ function AdsetsTable({
                 <td className="px-3 py-3">
                   <Badge variant={statusVariant(a.status ?? "")}>{statusLabel(a.status ?? "", t)}</Badge>
                 </td>
-                <td className="px-3 py-3 font-medium">{formatBRL(a.spend, locale)}</td>
-                <td className="px-3 py-3">{a.conversions}</td>
-                <td className="px-3 py-3">{a.cpa != null ? formatBRL(a.cpa, locale) : "—"}</td>
-                <td className="px-3 py-3">{formatRoas(a.roas, locale)}</td>
-                <td className="px-3 py-3">{formatNumber(a.reach, locale)}</td>
-                <td className="px-3 py-3">{formatPercent(a.ctr, 2, locale)}</td>
+                {metricColumns.map((col) => (
+                  <CampaignTableCell
+                    key={columnRefKey(col)}
+                    col={col}
+                    row={{
+                      spend: a.spend,
+                      conversions: a.conversions,
+                      cpa: a.cpa,
+                      roas: a.roas,
+                      reach: a.reach,
+                      clicks: a.clicks,
+                      ctr: a.ctr
+                    }}
+                    customMetrics={tableLayout.customMetricsMap}
+                  />
+                ))}
                 <td className="px-3 py-3">
                   {a.dailyBudget != null ? formatBRL(a.dailyBudget, locale) : "—"}
                 </td>

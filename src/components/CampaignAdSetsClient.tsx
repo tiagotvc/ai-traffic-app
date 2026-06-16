@@ -11,7 +11,11 @@ import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
 import { formatBRL, formatNumber, formatRoas } from "@/lib/format";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
-import { presetMetricsFor } from "@/lib/campaign-presets";
+import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
+import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
+import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
+import { columnRefKey, layoutMetricColumns } from "@/lib/campaign-table-layout";
+import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
 
 type Campaign = {
   id: string;
@@ -75,6 +79,26 @@ export function CampaignAdSetsClient({
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
+  const tableLayout = useCampaignTableLayout();
+  const metricColumns = layoutMetricColumns({
+    id: "",
+    name: "",
+    columns: tableLayout.columns
+  });
+  const customMetricNames = Object.fromEntries(
+    tableLayout.customMetrics.map((m) => [m.id, m.name])
+  );
+
+  function metricColLabel(col: (typeof metricColumns)[number]) {
+    if (col.kind === "metric") return tMetrics(METRIC_BY_KEY[col.key].label);
+    if (col.kind === "meta_action") {
+      const known = META_ACTION_CATALOG.find((a) => a.actionType === col.actionType);
+      return known?.label ?? col.actionType;
+    }
+    if (col.kind === "custom") return customMetricNames[col.id] ?? col.id;
+    return "";
+  }
+
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [adsets, setAdsets] = useState<AdSetRow[]>([]);
   const [preset, setPreset] = useState<string>("default");
@@ -315,9 +339,7 @@ export function CampaignAdSetsClient({
           {t("moreFilters")}
         </button>
         <div className="ml-auto flex gap-2">
-          <button type="button" className="ui-btn-secondary text-xs">
-            {t("customizeCols")}
-          </button>
+          <CampaignTableColumnsButton layout={tableLayout} />
           <button type="button" className="ui-btn-secondary text-xs">
             {t("export")}
           </button>
@@ -341,13 +363,17 @@ export function CampaignAdSetsClient({
                     {sort?.key === "status" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
                   </button>
                 </th>
-                {presetMetricsFor(preset).map((m) => (
-                  <th key={m} className="px-3 py-3 text-right">
-                    <button type="button" onClick={() => toggleSort(m)} className="ml-auto">
-                      {tMetrics(METRIC_BY_KEY[m].label)} {sort?.key === m ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
-                    </button>
-                  </th>
-                ))}
+                {metricColumns.map((m) => {
+                  const sortKey = m.kind === "metric" ? m.key : columnRefKey(m);
+                  return (
+                    <th key={columnRefKey(m)} className="px-3 py-3 text-right">
+                      <button type="button" onClick={() => toggleSort(sortKey)} className="ml-auto">
+                        {metricColLabel(m)}{" "}
+                        {sort?.key === sortKey ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                      </button>
+                    </th>
+                  );
+                })}
                 <th className="px-3 py-3">
                   <button type="button" onClick={() => toggleSort("dailyBudget")} className="flex items-center gap-2">
                     {t("colBudget")}
@@ -402,10 +428,22 @@ export function CampaignAdSetsClient({
                         </span>
                       </label>
                     </td>
-                    {presetMetricsFor(preset).map((m) => (
-                      <td key={m} className="px-3 py-3 text-right tabular-nums text-slate-700">
-                        {formatMetricValue(m, Number(a.metrics?.[m] ?? 0), locale)}
-                      </td>
+                    {metricColumns.map((col) => (
+                      <CampaignTableCell
+                        key={columnRefKey(col)}
+                        col={col}
+                        row={{
+                          spend: a.spend,
+                          conversions: a.conversions,
+                          cpa: a.cpa,
+                          roas: a.roas,
+                          reach: a.reach,
+                          clicks: a.clicks,
+                          ctr: a.ctr,
+                          ...(a.metrics ?? {})
+                        }}
+                        customMetrics={tableLayout.customMetricsMap}
+                      />
                     ))}
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1">

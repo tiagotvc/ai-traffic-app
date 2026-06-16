@@ -32,6 +32,12 @@ import {
 } from "@/lib/dashboard-metrics";
 import { buildQuery, formatDayLabel, pctDelta, resolveRanges } from "@/lib/dashboard-ranges";
 import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
+import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
+import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
+import { CampaignTypeSelect, CreateCampaignTypeModal } from "@/components/CreateCampaignTypeModal";
+import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
+import { useCampaignTypes } from "@/hooks/useCampaignTypes";
+import { columnRefKey, layoutMetricColumns } from "@/lib/campaign-table-layout";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 
@@ -100,9 +106,22 @@ function statusVariant(status?: string): "success" | "warning" | "neutral" {
 export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const t = useTranslations("clientOverview");
   const tMetrics = useTranslations("metrics");
-  const tPresets = useTranslations("campaignPresets");
+  const tPresets = useTranslations("campaignTypes");
   const tCampaigns = useTranslations("campaignsPage");
   const locale = useLocale();
+  const tableLayout = useCampaignTableLayout();
+  const { types: customTypes, reload: reloadTypes } = useCampaignTypes();
+  const [createTypeOpen, setCreateTypeOpen] = useState(false);
+  const [createTypeCampaignId, setCreateTypeCampaignId] = useState<string | null>(null);
+
+  const metricColumns = layoutMetricColumns({
+    id: "",
+    name: "",
+    columns: tableLayout.columns
+  });
+  const customMetricNames = Object.fromEntries(
+    tableLayout.customMetrics.map((m) => [m.id, m.name])
+  );
 
   const [name, setName] = useState("");
   const [dominantPreset, setDominantPreset] = useState<string>("default");
@@ -420,8 +439,9 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
 
       {/* Campanhas ativas */}
       <div className="ui-card overflow-hidden">
-        <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800">
-          {t("campaignsTitle")}
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <div className="text-sm font-semibold text-slate-800">{t("campaignsTitle")}</div>
+          <CampaignTableColumnsButton layout={tableLayout} />
         </div>
         {loading ? (
           <TableSkeleton bare rows={4} columns={["media", "badge", "select", "wide"]} />
@@ -435,13 +455,15 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
                   <th className="px-4 py-2 font-medium">{t("colCampaign")}</th>
                   <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
                   <th className="px-3 py-2 font-medium">{tPresets("label")}</th>
-                  <th className="px-4 py-2 font-medium">{t("keyMetrics")}</th>
+                  <CampaignTableHead
+                    columns={metricColumns}
+                    customMetricNames={customMetricNames}
+                  />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {campaigns.map((c) => {
                   const preset = presets[c.metaCampaignId] ?? c.preset ?? "default";
-                  const metrics = presetMetricsFor(preset);
                   return (
                     <tr key={c.metaCampaignId} className="align-top hover:bg-slate-50/60">
                       <td className="px-4 py-3">
@@ -462,32 +484,25 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
                       </Badge>
                       </td>
                       <td className="px-3 py-3">
-                        <select
+                        <CampaignTypeSelect
                           value={preset}
-                          onChange={(e) => changePreset(c.metaCampaignId, e.target.value)}
-                          className="ui-select !w-auto !py-1.5 text-xs"
-                        >
-                          {CAMPAIGN_PRESETS.map((p) => (
-                            <option key={p} value={p}>
-                              {tPresets(p)}
-                            </option>
-                          ))}
-                        </select>
+                          customTypes={customTypes}
+                          onChange={(p) => changePreset(c.metaCampaignId, p)}
+                          onCreateType={() => {
+                            setCreateTypeCampaignId(c.metaCampaignId);
+                            setCreateTypeOpen(true);
+                          }}
+                        />
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-x-4 gap-y-1">
-                          {metrics.map((key) => (
-                            <div key={key} className="min-w-[64px]">
-                              <div className="text-[10px] uppercase tracking-wide text-slate-400">
-                                {tMetrics(METRIC_BY_KEY[key].label)}
-                              </div>
-                              <div className="text-sm font-semibold tabular-nums text-slate-800">
-                                {formatMetricValue(key, campaignMetric(c, key), locale)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
+                      {metricColumns.map((col) => (
+                        <CampaignTableCell
+                          key={columnRefKey(col)}
+                          col={col}
+                          row={c}
+                          customMetrics={tableLayout.customMetricsMap}
+                          className="px-4 py-3"
+                        />
+                      ))}
                     </tr>
                   );
                 })}
@@ -496,6 +511,16 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           </div>
         )}
       </div>
+
+      <CreateCampaignTypeModal
+        open={createTypeOpen}
+        onClose={() => setCreateTypeOpen(false)}
+        customMetrics={tableLayout.customMetrics}
+        onCreated={(_type, presetKey) => {
+          if (createTypeCampaignId) changePreset(createTypeCampaignId, presetKey);
+          void reloadTypes();
+        }}
+      />
 
       <MetricPickerModal
         open={metricsModalOpen}

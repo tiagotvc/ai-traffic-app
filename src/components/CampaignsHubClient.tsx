@@ -33,6 +33,12 @@ import {
 import { formatBRL, formatPercent, formatRoas } from "@/lib/format";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
+import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
+import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
+import { CampaignTypeSelect, CreateCampaignTypeModal } from "@/components/CreateCampaignTypeModal";
+import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
+import { useCampaignTypes } from "@/hooks/useCampaignTypes";
+import { columnRefKey, layoutMetricColumns } from "@/lib/campaign-table-layout";
 
 type CampaignRow = {
   metaCampaignId: string;
@@ -55,6 +61,7 @@ type CampaignRow = {
   reach?: number;
   messages?: number;
   frequency?: number;
+  actionMetrics?: Record<string, number>;
   dailyBudget?: number | null;
   alertCount: number;
   hasAlert: boolean;
@@ -111,9 +118,48 @@ function statusVariant(status?: string): "success" | "warning" | "neutral" {
 export function CampaignsHubClient() {
   const t = useTranslations("campaignsPage");
   const tMetrics = useTranslations("metrics");
-  const tPresets = useTranslations("campaignPresets");
+  const tPresets = useTranslations("campaignTypes");
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
+  const tableLayout = useCampaignTableLayout();
+  const { types: customTypes, reload: reloadTypes } = useCampaignTypes();
+  const [createTypeOpen, setCreateTypeOpen] = useState(false);
+  const [createTypeCampaignId, setCreateTypeCampaignId] = useState<string | null>(null);
+  const metricColumns = useMemo(
+    () => layoutMetricColumns({ id: "", name: "", columns: tableLayout.columns }),
+    [tableLayout.columns]
+  );
+
+  const customMetricNames = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const c of tableLayout.customMetrics) m[c.id] = c.name;
+    return m;
+  }, [tableLayout.customMetrics]);
+
+
+  const groupKeys = useMemo(
+    () => [...CAMPAIGN_PRESETS, ...customTypes.map((ct) => `custom:${ct.id}`)],
+    [customTypes]
+  );
+
+  function groupLabel(key: string) {
+    if (key.startsWith("custom:")) {
+      const id = key.slice("custom:".length);
+      return customTypes.find((t) => t.id === id)?.name ?? key;
+    }
+    return tPresets(key as "default");
+  }
+
+  function openCreateType(metaCampaignId?: string) {
+    setCreateTypeCampaignId(metaCampaignId ?? null);
+    setCreateTypeOpen(true);
+  }
+
+  function onTypeCreated(presetKey: string) {
+    if (createTypeCampaignId) changePreset(createTypeCampaignId, presetKey);
+    void reloadTypes();
+  }
+
   const groupByType = true;
   const [presets, setPresets] = useState<Record<string, string>>({});
   const [groupSortKey, setGroupSortKey] = useState<MetricKey | "name" | "client" | null>(null);
@@ -765,6 +811,7 @@ export function CampaignsHubClient() {
           />
           {t("onlyAlerts")}
         </label>
+        <CampaignTableColumnsButton layout={tableLayout} />
       </div>
 
       {clientFilter ? (
@@ -783,16 +830,18 @@ export function CampaignsHubClient() {
           ) : rows.length === 0 ? (
             <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
           ) : (
-            CAMPAIGN_PRESETS.map((preset) => {
+            groupKeys.map((preset) => {
               const list = rows.filter((r) => campaignPreset(r) === preset);
               if (!list.length) return null;
-              const metrics = presetMetricsFor(preset);
-              const sorted = sortGroupRows(list, metrics);
+              const metricKeys = metricColumns
+                .filter((c): c is { kind: "metric"; key: MetricKey } => c.kind === "metric")
+                .map((c) => c.key);
+              const sorted = sortGroupRows(list, metricKeys);
               return (
                 <div key={preset} className="ui-card overflow-hidden">
                   <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                     <div className="text-sm font-semibold text-slate-800">
-                      {tPresets(preset)}{" "}
+                      {groupLabel(preset)}{" "}
                       <span className="font-normal text-slate-400">({list.length})</span>
                     </div>
                   </div>
@@ -826,18 +875,10 @@ export function CampaignsHubClient() {
                           </th>
                           <th className="px-3 py-2">{t("colStatus")}</th>
                           <th className="px-3 py-2">{tPresets("label")}</th>
-                          {metrics.map((m) => (
-                            <th key={m} className="px-3 py-2 text-right">
-                              <button
-                                type="button"
-                                onClick={() => toggleGroupSort(m)}
-                                className="hover:text-slate-700"
-                              >
-                                {tMetrics(METRIC_BY_KEY[m].label)}
-                                {groupSortKey === m ? (groupSortDir === "asc" ? " ▲" : " ▼") : ""}
-                              </button>
-                            </th>
-                          ))}
+                          <CampaignTableHead
+                            columns={metricColumns}
+                            customMetricNames={customMetricNames}
+                          />
                         </tr>
                       </thead>
                       <tbody>
@@ -862,25 +903,20 @@ export function CampaignsHubClient() {
                               </Badge>
                             </td>
                             <td className="px-3 py-2.5">
-                              <select
+                              <CampaignTypeSelect
                                 value={campaignPreset(r)}
-                                onChange={(e) => changePreset(r.metaCampaignId, e.target.value)}
-                                className="ui-select !w-auto !py-1.5 text-xs"
-                              >
-                                {CAMPAIGN_PRESETS.map((p) => (
-                                  <option key={p} value={p}>
-                                    {tPresets(p)}
-                                  </option>
-                                ))}
-                              </select>
+                                customTypes={customTypes}
+                                onChange={(p) => changePreset(r.metaCampaignId, p)}
+                                onCreateType={() => openCreateType(r.metaCampaignId)}
+                              />
                             </td>
-                            {metrics.map((m) => (
-                              <td
-                                key={m}
-                                className="px-3 py-2.5 text-right tabular-nums text-slate-700"
-                              >
-                                {formatMetricValue(m, campaignMetricValue(r, m), locale)}
-                              </td>
+                            {metricColumns.map((col) => (
+                              <CampaignTableCell
+                                key={columnRefKey(col)}
+                                col={col}
+                                row={r}
+                                customMetrics={tableLayout.customMetricsMap}
+                              />
                             ))}
                           </tr>
                         ))}
@@ -1057,6 +1093,13 @@ export function CampaignsHubClient() {
           </div>
         </div>
       )}
+
+      <CreateCampaignTypeModal
+        open={createTypeOpen}
+        onClose={() => setCreateTypeOpen(false)}
+        customMetrics={tableLayout.customMetrics}
+        onCreated={(type, presetKey) => onTypeCreated(presetKey)}
+      />
     </div>
   );
 }

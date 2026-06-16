@@ -3,8 +3,10 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
+import { validatePresetKey } from "@/lib/campaign-type-store";
+import { CAMPAIGN_PRESETS } from "@/lib/campaign-presets";
 
-const VALID_PRESETS = ["default", "lead_whatsapp", "lead_site", "sales", "reach"] as const;
+const BUILTIN = [...CAMPAIGN_PRESETS] as const;
 
 export async function GET() {
   const { tenant } = await getAppContext();
@@ -17,14 +19,21 @@ export async function GET() {
 
 const BodySchema = z.object({
   metaCampaignId: z.string().min(1),
-  preset: z.enum(VALID_PRESETS)
+  preset: z.string().min(1)
 });
 
 export async function POST(req: Request) {
-  const { tenant } = await getAppContext();
+  const { tenant, user } = await getAppContext();
   const body = BodySchema.parse(await req.json().catch(() => ({})));
-  const { campaignPreset: repo } = await repositories();
 
+  const valid =
+    (BUILTIN as readonly string[]).includes(body.preset) ||
+    (await validatePresetKey(tenant.id, user.id, body.preset));
+  if (!valid) {
+    return NextResponse.json({ ok: false, error: "invalid_preset" }, { status: 400 });
+  }
+
+  const { campaignPreset: repo } = await repositories();
   let row = await repo.findOne({
     where: { tenantId: tenant.id, metaCampaignId: body.metaCampaignId }
   });
