@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { customTypeKey } from "@/lib/campaign-type-store";
+import { customTypeKey } from "@/lib/campaign-type-keys";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 
 export type CampaignTypeDto = {
