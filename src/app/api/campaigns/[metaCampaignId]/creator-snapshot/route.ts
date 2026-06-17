@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
 import type { CampaignDraftPayload, DraftTargeting } from "@/lib/campaign-draft";
 import { defaultCampaignDraft } from "@/lib/campaign-draft";
@@ -58,12 +59,32 @@ function mapGeoToLocations(targeting?: Record<string, unknown>): DraftTargeting[
   return out;
 }
 
+async function resolveAdAccountMetaId(
+  tenantId: string,
+  metaCampaignId: string
+): Promise<string | null> {
+  const { campaignMetricSnapshot: campRepo, adAccount: adRepo } = await repositories();
+  const snap = await campRepo.findOne({
+    where: { metaCampaignId },
+    order: { day: "DESC" }
+  });
+  if (!snap) return null;
+  const acc = await adRepo.findOne({ where: { id: snap.adAccountId } });
+  if (!acc) return null;
+  const client = await (await repositories()).client.findOne({ where: { id: acc.clientId } });
+  if (!client || client.tenantId !== tenantId) return null;
+  return acc.metaAdAccountId;
+}
+
 export async function GET(
   req: Request,
   ctx: { params: Promise<{ metaCampaignId: string }> }
 ) {
   const { tenant, user, metaAccessToken } = await getAppContext();
   const { metaCampaignId } = await ctx.params;
+  const url = new URL(req.url);
+  const adsetParam = url.searchParams.get("adset");
+  const mode = url.searchParams.get("mode");
   const token = metaAccessToken ?? (await getTenantMetaAccessToken(tenant.id, user.id));
   if (!token) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
@@ -71,14 +92,61 @@ export async function GET(
 
   try {
     const campaign = await fetchCampaign(token, metaCampaignId);
+    const adAccountId = await resolveAdAccountMetaId(tenant.id, metaCampaignId);
     const adsets = await fetchAdSetsForCampaign(token, metaCampaignId);
-    const firstAdset = adsets[0];
-    if (!firstAdset) {
+    const selectedAdset =
+      (adsetParam ? adsets.find((a) => a.id === adsetParam) : null) ?? adsets[0];
+    if (!selectedAdset) {
       return NextResponse.json({ ok: false, error: "Campanha sem conjuntos" }, { status: 404 });
     }
 
-    const adsetDetail = await fetchAdSetDetail(token, firstAdset.id);
-    const ads = await fetchAdsForAdSet(token, firstAdset.id);
+    if (mode === "add-ad") {
+      const ads = await fetchAdsForAdSet(token, selectedAdset.id);
+      const firstAd = ads[0];
+      let pageId = "";
+      if (firstAd?.id) {
+        try {
+          const creativeData = await fetchAdWithCreative(token, firstAd.id);
+          const story = creativeData?.creative?.object_story_spec as { page_id?: string } | undefined;
+          pageId = story?.page_id ?? "";
+        } catch {
+          /* optional */
+        }
+      }
+
+      const objective =
+        OBJECTIVE_REVERSE[campaign.objective ?? ""] ?? defaultCampaignDraft("pt-BR").objective;
+      const dailyBudgetBRL = campaign.daily_budget
+        ? Number(campaign.daily_budget) / 100
+        : selectedAdset.daily_budget
+          ? Number(selectedAdset.daily_budget) / 100
+          : 150;
+
+      const patch: Partial<CampaignDraftPayload> = {
+        objective,
+        campaign: {
+          name: campaign.name ?? "",
+          budgetLevel: campaign.daily_budget ? "campaign" : "adset",
+          dailyBudgetBRL,
+          bidStrategy: "lowest_cost",
+          specialAdCategories: [],
+          abTestEnabled: false
+        },
+        copyFromCampaignEnabled: false,
+        copyFromCampaignId: null
+      };
+
+      return NextResponse.json({
+        ok: true,
+        patch,
+        adAccountId,
+        adsetName: selectedAdset.name ?? "Conjunto",
+        defaultPageId: pageId
+      });
+    }
+
+    const adsetDetail = await fetchAdSetDetail(token, selectedAdset.id);
+    const ads = await fetchAdsForAdSet(token, selectedAdset.id);
     const firstAd = ads[0];
     let creativeData: Awaited<ReturnType<typeof fetchAdWithCreative>> | null = null;
     if (firstAd?.id) {
@@ -115,8 +183,8 @@ export async function GET(
       OBJECTIVE_REVERSE[campaign.objective ?? ""] ?? defaultCampaignDraft("pt-BR").objective;
     const dailyBudgetBRL = campaign.daily_budget
       ? Number(campaign.daily_budget) / 100
-      : firstAdset.daily_budget
-        ? Number(firstAdset.daily_budget) / 100
+      : selectedAdset.daily_budget
+        ? Number(selectedAdset.daily_budget) / 100
         : 150;
 
     const patch: Partial<CampaignDraftPayload> = {
@@ -132,7 +200,7 @@ export async function GET(
       adsets: [
         {
           id: `imported_adset_${Date.now()}`,
-          name: firstAdset.name ?? "Conjunto importado",
+          name: selectedAdset.name ?? "Conjunto importado",
           conversionLocation: "website_and_form",
           dynamicCreative: true,
           schedule: { start: null, end: null },
@@ -171,7 +239,7 @@ export async function GET(
       copyFromCampaignId: metaCampaignId
     };
 
-    return NextResponse.json({ ok: true, patch });
+    return NextResponse.json({ ok: true, patch, adAccountId });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erro ao importar campanha";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

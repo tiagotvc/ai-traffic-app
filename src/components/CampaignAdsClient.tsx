@@ -7,18 +7,28 @@ import { useSearchParams } from "next/navigation";
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { Badge } from "@/components/ui/Badge";
-import { Link } from "@/i18n/navigation";
-import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
-import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
+import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
+import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
-import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
+import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
+import { usePublishPanel } from "@/components/publish/PublishPanelContext";
+import { Link } from "@/i18n/navigation";
+import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import { columnRefKey } from "@/lib/campaign-table-layout";
+import {
+  STICKY_NAME_TD,
+  STICKY_NAME_TH,
+  STICKY_STATUS_TD,
+  STICKY_STATUS_TH
+} from "@/lib/campaign-table-sticky";
 import { sortRowsByKey } from "@/lib/campaign-table-sort";
 import {
   customTypesToMap,
   metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
+import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
+import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
@@ -73,9 +83,11 @@ export function CampaignAdsClient({
   embedded?: boolean;
 }) {
   const t = useTranslations("adsPage");
+  const tCampaigns = useTranslations("campaignsPage");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const { openPanel } = usePublishPanel();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
   const [preset, setPreset] = useState<string>("default");
@@ -108,6 +120,7 @@ export function CampaignAdsClient({
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<AdRow | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const pageSize = 20;
 
@@ -220,16 +233,41 @@ export function CampaignAdsClient({
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
+  const totals = useMemo(
+    () =>
+      computeGroupTotals(
+        filtered.map((ad) => ({ ...(ad.metrics ?? {}) })),
+        metricColumns,
+        tableLayout.customMetricsMap
+      ),
+    [filtered, metricColumns, tableLayout.customMetricsMap]
+  );
+
   const adAction = (adId: string, action: "pause" | "activate") => {
+    setStatusPendingId(adId);
     startTransition(async () => {
-      await fetch(`/api/ads/${encodeURIComponent(adId)}/actions`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action })
-      });
-      reload();
+      try {
+        await fetch(`/api/ads/${encodeURIComponent(adId)}/actions`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action })
+        });
+        reload();
+      } finally {
+        setStatusPendingId(null);
+      }
     });
   };
+
+  function openNewAd() {
+    if (!adsetFilter || !campaign) return;
+    openPanel({
+      clientSlug: campaign.clientSlug || clientSlug,
+      metaCampaignId,
+      adsetId: adsetFilter,
+      mode: "add-ad"
+    });
+  }
 
   if (!campaign) {
     return (
@@ -278,6 +316,15 @@ export function CampaignAdsClient({
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
             ↻
+          </button>
+          <button
+            type="button"
+            onClick={openNewAd}
+            disabled={!adsetFilter}
+            title={!adsetFilter ? t("newAdSelectAdset") : undefined}
+            className="ui-btn-primary text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            + {t("newAd")}
           </button>
         </div>
       </div>
@@ -358,70 +405,73 @@ export function CampaignAdsClient({
 
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left text-sm">
-            <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-slate-500">
+          <table className="w-full min-w-[680px] text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-3">
-                  <button type="button" onClick={() => toggleSort("name")} className="flex items-center gap-2">
+                <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
+                  <button type="button" onClick={() => toggleSort("status")} className="hover:text-slate-700">
+                    {t("colStatus")}
+                    {sort?.key === "status" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                  </button>
+                </th>
+                <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>
+                  <button type="button" onClick={() => toggleSort("name")} className="hover:text-slate-700">
                     {t("colAd")}
-                    {sort?.key === "name" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                    {sort?.key === "name" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
                 </th>
-                <th className="px-3 py-3">
-                  <button type="button" onClick={() => toggleSort("adset")} className="flex items-center gap-2">
-                    {t("colAdset")}
-                    {sort?.key === "adset" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
-                  </button>
-                </th>
+                {!adsetFilter ? (
+                  <th className="whitespace-nowrap px-3 py-2 text-center">
+                    <button type="button" onClick={() => toggleSort("adset")} className="hover:text-slate-700">
+                      {t("colAdset")}
+                      {sort?.key === "adset" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                    </button>
+                  </th>
+                ) : null}
                 {metricColumns.map((m) => {
                   const sortKey = m.kind === "metric" ? m.key : columnRefKey(m);
                   return (
-                    <th key={columnRefKey(m)} className="px-3 py-3 text-right">
-                      <button type="button" onClick={() => toggleSort(sortKey)} className="ml-auto">
-                        {metricColLabel(m)}{" "}
+                    <th key={columnRefKey(m)} className="whitespace-nowrap px-3 py-2 text-center">
+                      <button type="button" onClick={() => toggleSort(sortKey)} className="hover:text-slate-700">
+                        {metricColLabel(m)}
                         {sort?.key === sortKey ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                       </button>
                     </th>
                   );
                 })}
-                <th className="px-3 py-3">
-                  <button type="button" onClick={() => toggleSort("status")} className="flex items-center gap-2">
-                    {t("colStatus")}
-                    {sort?.key === "status" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
-                  </button>
-                </th>
-                <th className="w-10 px-3 py-3" />
               </tr>
             </thead>
             <tbody>
               {adsLoading && ads.length === 0 ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-t border-slate-100">
-                    <td className="px-4 py-3">
+                    <td className={STICKY_STATUS_TD}>
+                      <Skeleton className="mx-auto h-5 w-9 rounded-full" />
+                    </td>
+                    <td className={STICKY_NAME_TD}>
                       <div className="flex items-center gap-3">
                         <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
                         <Skeleton className="h-3.5 w-40 max-w-full" />
                       </div>
                     </td>
-                    <td className="px-3 py-3">
-                      <Skeleton className="h-5 w-20 rounded-md" />
-                    </td>
+                    {!adsetFilter ? (
+                      <td className="px-3 py-3">
+                        <Skeleton className="mx-auto h-5 w-20 rounded-md" />
+                      </td>
+                    ) : null}
                     {metricColumns.map((m) => (
-                      <td key={columnRefKey(m)} className="px-3 py-3 text-right">
-                        <Skeleton className="ml-auto h-3.5 w-12" />
+                      <td key={columnRefKey(m)} className="px-3 py-3 text-center">
+                        <Skeleton className="mx-auto h-3.5 w-12" />
                       </td>
                     ))}
-                    <td className="px-3 py-3">
-                      <Skeleton className="h-5 w-16 rounded-full" />
-                    </td>
-                    <td className="px-3 py-3">
-                      <Skeleton className="h-4 w-3" />
-                    </td>
                   </tr>
                 ))
               ) : paged.length === 0 ? (
                 <tr>
-                  <td colSpan={4 + metricColumns.length} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td
+                    colSpan={2 + metricColumns.length + (adsetFilter ? 0 : 1)}
+                    className="px-4 py-8 text-center text-sm text-slate-500"
+                  >
                     {t("empty")}
                   </td>
                 </tr>
@@ -429,38 +479,50 @@ export function CampaignAdsClient({
                 paged.map((ad) => {
                   const name = ad.name ?? ad.id;
                   return (
-                    <tr key={ad.id} className="border-t border-slate-100 hover:bg-slate-50/80">
-                      <td className="px-4 py-3">
+                    <tr key={ad.id} className="group border-t border-slate-100 hover:bg-violet-50/40">
+                      <td className={STICKY_STATUS_TD}>
+                        <CampaignStatusToggle
+                          active={ad.status === "ACTIVE"}
+                          disabled={statusPendingId === ad.id || isPending}
+                          ariaLabel={statusLabel(ad.status ?? "", t)}
+                          onChange={() =>
+                            adAction(ad.id, ad.status === "ACTIVE" ? "pause" : "activate")
+                          }
+                        />
+                      </td>
+                      <td className={STICKY_NAME_TD}>
                         <button
                           type="button"
                           onClick={() => setPreviewing(ad)}
-                          className="group flex items-center gap-3 text-left"
+                          className="group/btn flex w-full items-center gap-3 text-left"
                         >
                           {ad.creative?.thumbnail_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={ad.creative.thumbnail_url}
                               alt=""
-                              className="h-10 w-10 shrink-0 rounded-lg object-cover transition group-hover:opacity-80"
+                              className="h-10 w-10 shrink-0 rounded-lg object-cover transition group-hover/btn:opacity-80"
                             />
                           ) : (
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm font-medium text-slate-500">
                               {(name[0] ?? "A").toUpperCase()}
                             </div>
                           )}
-                          <div>
-                            <div className="font-medium text-slate-900 group-hover:text-violet-700 group-hover:underline">
+                          <div className="min-w-0">
+                            <div className="whitespace-normal break-words font-medium text-slate-800 group-hover/btn:text-violet-700 group-hover/btn:underline">
                               {name}
                             </div>
                             <div className="text-[10px] text-slate-400">{ad.id}</div>
                           </div>
                         </button>
                       </td>
-                      <td className="px-3 py-3">
-                        <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                          {ad.adsetName ?? ad.adsetId}
-                        </span>
-                      </td>
+                      {!adsetFilter ? (
+                        <td className="px-3 py-2.5 text-center">
+                          <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                            {ad.adsetName ?? ad.adsetId}
+                          </span>
+                        </td>
+                      ) : null}
                       {metricColumns.map((col) => (
                         <CampaignTableCell
                           key={columnRefKey(col)}
@@ -469,28 +531,25 @@ export function CampaignAdsClient({
                           customMetrics={tableLayout.customMetricsMap}
                         />
                       ))}
-                      <td className="px-3 py-3">
-                        <label className="flex cursor-pointer items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={ad.status === "ACTIVE"}
-                            disabled={isPending}
-                            onChange={() =>
-                              adAction(ad.id, ad.status === "ACTIVE" ? "pause" : "activate")
-                            }
-                            className="accent-violet-600"
-                          />
-                          <Badge variant={statusVariant(ad.status ?? "")}>
-                            {statusLabel(ad.status ?? "", t)}
-                          </Badge>
-                        </label>
-                      </td>
-                      <td className="px-3 py-3 text-slate-400">⋮</td>
                     </tr>
                   );
                 })
               )}
             </tbody>
+            {filtered.length > 0 && !adsLoading ? (
+              <CampaignMetricTableFooter
+                rowCount={filtered.length}
+                totalLabel={tCampaigns("rowTotal")}
+                metricColumns={metricColumns}
+                totals={totals}
+                customMetrics={tableLayout.customMetricsMap}
+                middleCells={
+                  !adsetFilter ? (
+                    <td className="px-3 py-2.5 text-center text-slate-400">—</td>
+                  ) : null
+                }
+              />
+            ) : null}
           </table>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">

@@ -523,7 +523,9 @@
     "colStatus": "Status",
     "pagination": "Showing {from} to {to} of {total} ads",
     "adsetFilter": "Ad set: {name}",
-    "clearFilter": "Clear filter"
+    "clearFilter": "Clear filter",
+    "newAd": "New ad",
+    "newAdSelectAdset": "Filter by an ad set to create an ad in it"
   },
   "creativesPage": {
     "title": "Creatives",
@@ -1005,6 +1007,9 @@
   },
   "campaignCreator": {
     "title": "Campaign creator",
+    "addAdTitle": "New ad",
+    "addAdLoading": "Loading campaign…",
+    "publishAd": "Publish ad",
     "breadcrumbCampaigns": "Campaigns",
     "newCampaign": "New campaign",
     "draftStatus": "Draft",

@@ -523,7 +523,9 @@
     "colStatus": "Status",
     "pagination": "Mostrando {from} a {to} de {total} anúncios",
     "adsetFilter": "Conjunto: {name}",
-    "clearFilter": "Remover filtro"
+    "clearFilter": "Remover filtro",
+    "newAd": "Novo anúncio",
+    "newAdSelectAdset": "Filtre por um conjunto para criar um anúncio nele"
   },
   "creativesPage": {
     "title": "Criativos",
@@ -1005,6 +1007,9 @@
   },
   "campaignCreator": {
     "title": "Criador de campanhas",
+    "addAdTitle": "Novo anúncio",
+    "addAdLoading": "Carregando campanha…",
+    "publishAd": "Publicar anúncio",
     "breadcrumbCampaigns": "Campanhas",
     "newCampaign": "Nova campanha",
     "draftStatus": "Rascunho",

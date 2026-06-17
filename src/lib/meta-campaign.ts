@@ -235,6 +235,42 @@ async function createAdForAdset(args: {
   return { adId: metaAd.id, creativeId: creative.id };
 }
 
+export async function publishAdToAdset(
+  input: {
+    accessToken: string;
+    adAccountId: string;
+    adsetId: string;
+    ad: AdDraftItem;
+    adset: AdSetDraftItem;
+    objective: CampaignObjectiveKey;
+    pageId: string;
+    linkUrl: string;
+    settings?: ClientMetaSettings;
+    callToAction?: string;
+    campaignName?: string;
+  }
+): Promise<{ adId: string; creativeId: string }> {
+  const actId = normalizeAdAccountId(input.adAccountId);
+  const cta = input.callToAction ?? input.settings?.defaultCta ?? "LEARN_MORE";
+  const campaignName = input.campaignName ?? "Campanha";
+  const adName = input.ad.name.trim() || `${campaignName} — Ad`;
+
+  return createAdForAdset({
+    token: input.accessToken,
+    actId,
+    campaignName,
+    adsetId: input.adsetId,
+    adset: input.adset,
+    ad: input.ad,
+    adName,
+    objective: input.objective,
+    pageId: input.pageId,
+    linkUrl: input.linkUrl,
+    cta,
+    settings: input.settings
+  });
+}
+
 export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promise<PublishDraftV2Result> {
   const { draft } = input;
   const actId = normalizeAdAccountId(input.adAccountId);

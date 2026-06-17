@@ -11,10 +11,19 @@ import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
 import { formatBRL, formatNumber, formatRoas } from "@/lib/format";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
-import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
+import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
+import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
+import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
-import { columnRefKey } from "@/lib/campaign-table-layout";
+import { columnRefKey, type MetricRowData } from "@/lib/campaign-table-layout";
+import { computeGroupTotals } from "@/lib/campaign-group-totals";
+import {
+  STICKY_NAME_TD,
+  STICKY_NAME_TH,
+  STICKY_STATUS_TD,
+  STICKY_STATUS_TH
+} from "@/lib/campaign-table-sticky";
 import {
   customTypesToMap,
   metricsColumnsForPreset
@@ -116,6 +125,7 @@ export function CampaignAdSetsClient({
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [isPending, startTransition] = useTransition();
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const pageSize = 20;
 
@@ -205,15 +215,25 @@ export function CampaignAdSetsClient({
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
   const totals = useMemo(
-    () => ({
-      spend: filtered.reduce((s, a) => s + a.spend, 0),
-      conversions: filtered.reduce((s, a) => s + a.conversions, 0),
-      cpa:
-        filtered.reduce((s, a) => s + a.conversions, 0) > 0
-          ? filtered.reduce((s, a) => s + a.spend, 0) / filtered.reduce((s, a) => s + a.conversions, 0)
-          : null
-    }),
-    [filtered]
+    () =>
+      computeGroupTotals(
+        filtered.map((a) => {
+          const metrics = (a.metrics ?? {}) as MetricRowData;
+          return {
+            spend: a.spend,
+            conversions: a.conversions,
+            cpa: a.cpa,
+            roas: a.roas,
+            reach: a.reach,
+            clicks: a.clicks,
+            ctr: a.ctr,
+            ...metrics
+          };
+        }),
+        metricColumns,
+        tableLayout.customMetricsMap
+      ),
+    [filtered, metricColumns, tableLayout.customMetricsMap]
   );
 
   const spendShares = useMemo(() => {
@@ -239,14 +259,21 @@ export function CampaignAdSetsClient({
     return list;
   }, [filtered, t, locale]);
 
+  const tCampaigns = useTranslations("campaignsPage");
+
   const adsetAction = (adsetId: string, action: "pause" | "activate") => {
+    setStatusPendingId(adsetId);
     startTransition(async () => {
-      await fetch(`/api/adsets/${encodeURIComponent(adsetId)}/actions`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action })
-      });
-      reload();
+      try {
+        await fetch(`/api/adsets/${encodeURIComponent(adsetId)}/actions`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action })
+        });
+        reload();
+      } finally {
+        setStatusPendingId(null);
+      }
     });
   };
 
@@ -382,58 +409,77 @@ export function CampaignAdSetsClient({
 
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-left text-sm">
-            <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-slate-500">
+          <table className="w-full min-w-[680px] text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
               <tr>
-                <th className="px-4 py-3">
-                  <button type="button" onClick={() => toggleSort("name")} className="flex items-center gap-2">
-                    {t("colAdset")}
-                    {sort?.key === "name" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("status")}
+                    className="hover:text-slate-700"
+                  >
+                    {t("colStatus")}
+                    {sort?.key === "status" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
                 </th>
-                <th className="px-3 py-3">
-                  <button type="button" onClick={() => toggleSort("status")} className="flex items-center gap-2">
-                    {t("colStatus")}
-                    {sort?.key === "status" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort("name")}
+                    className="hover:text-slate-700"
+                  >
+                    {t("colAdset")}
+                    {sort?.key === "name" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
                 </th>
                 {metricColumns.map((m) => {
                   const sortKey = m.kind === "metric" ? m.key : columnRefKey(m);
                   return (
-                    <th key={columnRefKey(m)} className="px-3 py-3 text-right">
-                      <button type="button" onClick={() => toggleSort(sortKey)} className="ml-auto">
-                        {metricColLabel(m)}{" "}
+                    <th key={columnRefKey(m)} className="whitespace-nowrap px-3 py-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(sortKey)}
+                        className="hover:text-slate-700"
+                      >
+                        {metricColLabel(m)}
                         {sort?.key === sortKey ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                       </button>
                     </th>
                   );
                 })}
-                <th className="px-3 py-3">
-                  <button type="button" onClick={() => toggleSort("dailyBudget")} className="flex items-center gap-2">
+                <th className="whitespace-nowrap px-3 py-2 text-center">
+                  <button type="button" onClick={() => toggleSort("dailyBudget")} className="hover:text-slate-700">
                     {t("colBudget")}
-                    {sort?.key === "dailyBudget" ? <span className="text-xs">{sort.dir === "asc" ? "▲" : "▼"}</span> : null}
+                    {sort?.key === "dailyBudget" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
                 </th>
-                <th className="w-10 px-3 py-3" />
               </tr>
             </thead>
             <tbody>
               {paged.map((a, idx) => {
                 const name = a.name ?? a.id;
                 return (
-                  <tr key={a.id} className="border-t border-slate-100 hover:bg-slate-50/80">
-                    <td className="px-4 py-3">
+                  <tr key={a.id} className="group border-t border-slate-100 hover:bg-violet-50/40">
+                    <td className={STICKY_STATUS_TD}>
+                      <CampaignStatusToggle
+                        active={a.status === "ACTIVE"}
+                        disabled={statusPendingId === a.id || isPending}
+                        ariaLabel={statusLabel(a.status ?? "", t)}
+                        onChange={() => adsetAction(a.id, a.status === "ACTIVE" ? "pause" : "activate")}
+                      />
+                    </td>
+                    <td className={STICKY_NAME_TD}>
                       <div className="flex items-center gap-3">
                         <div
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
                           style={{ backgroundColor: colors[idx % colors.length] }}
                         >
                           {(name[0] ?? "C").toUpperCase()}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <Link
                             href={`/campaigns/${metaCampaignId}/ads?client=${encodeURIComponent(slug)}&adset=${encodeURIComponent(a.id)}`}
-                            className="font-medium text-slate-900 hover:text-violet-700 hover:underline"
+                            className="block whitespace-normal break-words font-medium text-slate-800 hover:text-violet-700 hover:underline"
                           >
                             {name}
                           </Link>
@@ -443,24 +489,6 @@ export function CampaignAdSetsClient({
                           </span>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={a.status === "ACTIVE"}
-                          disabled={isPending}
-                          onChange={() =>
-                            adsetAction(a.id, a.status === "ACTIVE" ? "pause" : "activate")
-                          }
-                          className="accent-violet-600"
-                        />
-                        <span className="text-xs">
-                          <Badge variant={statusVariant(a.status ?? "")}>
-                            {statusLabel(a.status ?? "", t)}
-                          </Badge>
-                        </span>
-                      </label>
                     </td>
                     {metricColumns.map((col) => (
                       <CampaignTableCell
@@ -479,17 +507,30 @@ export function CampaignAdSetsClient({
                         customMetrics={tableLayout.customMetricsMap}
                       />
                     ))}
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-1">
-                        {a.dailyBudget != null ? formatBRL(a.dailyBudget, locale) : "—"}
-                        <span className="text-slate-400">✎</span>
-                      </div>
+                    <td className="px-3 py-2.5 text-center tabular-nums text-slate-700">
+                      {a.dailyBudget != null ? formatBRL(a.dailyBudget, locale) : "—"}
                     </td>
-                    <td className="px-3 py-3 text-slate-400">⋮</td>
                   </tr>
                 );
               })}
             </tbody>
+            {filtered.length > 0 ? (
+              <CampaignMetricTableFooter
+                rowCount={filtered.length}
+                totalLabel={tCampaigns("rowTotal")}
+                metricColumns={metricColumns}
+                totals={totals}
+                customMetrics={tableLayout.customMetricsMap}
+                trailingCells={
+                  <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-900">
+                    {formatBRL(
+                      filtered.reduce((s, a) => s + (a.dailyBudget ?? 0), 0),
+                      locale
+                    )}
+                  </td>
+                }
+              />
+            ) : null}
           </table>
         </div>
         {!paged.length ? (
@@ -535,16 +576,27 @@ export function CampaignAdSetsClient({
           <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
             <div>
               <div className="text-slate-500">{t("totalSpend")}</div>
-              <div className="font-bold text-slate-900">{formatBRL(totals.spend, locale)}</div>
+              <div className="font-bold text-slate-900">
+                {formatBRL(
+                  filtered.reduce((s, a) => s + a.spend, 0),
+                  locale
+                )}
+              </div>
             </div>
             <div>
               <div className="text-slate-500">{t("totalConversions")}</div>
-              <div className="font-bold">{totals.conversions}</div>
+              <div className="font-bold">
+                {filtered.reduce((s, a) => s + a.conversions, 0)}
+              </div>
             </div>
             <div>
               <div className="text-slate-500">CPA médio</div>
               <div className="font-bold">
-                {totals.cpa != null ? formatBRL(totals.cpa, locale) : "—"}
+                {(() => {
+                  const conv = filtered.reduce((s, a) => s + a.conversions, 0);
+                  const spend = filtered.reduce((s, a) => s + a.spend, 0);
+                  return conv > 0 ? formatBRL(spend / conv, locale) : "—";
+                })()}
               </div>
             </div>
           </div>

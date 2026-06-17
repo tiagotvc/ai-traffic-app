@@ -6,6 +6,9 @@ import { useRouter } from "@/i18n/navigation";
 
 export type PublishPanelOptions = {
   clientSlug?: string;
+  metaCampaignId?: string;
+  adsetId?: string;
+  mode?: "add-ad" | "full";
 };
 
 type PublishPanelContextValue = {
@@ -24,7 +27,12 @@ export function PublishPanelProvider({ children }: { children: ReactNode }) {
 
   const openPanel = useCallback(
     (opts?: PublishPanelOptions) => {
-      const qs = opts?.clientSlug ? `?client=${encodeURIComponent(opts.clientSlug)}` : "";
+      const params = new URLSearchParams();
+      if (opts?.clientSlug) params.set("client", opts.clientSlug);
+      if (opts?.metaCampaignId) params.set("fromCampaign", opts.metaCampaignId);
+      if (opts?.adsetId) params.set("adset", opts.adsetId);
+      if (opts?.mode === "add-ad") params.set("mode", "add-ad");
+      const qs = params.toString() ? `?${params.toString()}` : "";
       router.push(`/campaigns/new${qs}`);
     },
     [router]

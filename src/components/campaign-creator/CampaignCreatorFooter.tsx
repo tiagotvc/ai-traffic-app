@@ -9,7 +9,8 @@ import {
   prevNode,
   validateAdSetStep,
   validateAdStep,
-  validateCampaignStep
+  validateCampaignStep,
+  validatePublishDraft
 } from "@/lib/campaign-draft";
 
 export function CampaignCreatorFooter({
@@ -21,10 +22,13 @@ export function CampaignCreatorFooter({
 }) {
   const t = useTranslations("campaignCreator");
   const tCommon = useTranslations("common");
-  const { activeNode, setActiveNode, payload, saving, lastSavedAt } = useCampaignDraft();
+  const { activeNode, setActiveNode, payload, saving, lastSavedAt, addAdMode } = useCampaignDraft();
 
-  const err =
-    activeNode === "campaign"
+  const err = addAdMode
+    ? activeNode === "ad"
+      ? validatePublishDraft(payload)
+      : null
+    : activeNode === "campaign"
       ? validateCampaignStep(payload)
       : activeNode === "adset"
         ? validateAdSetStep(payload)
@@ -44,14 +48,29 @@ export function CampaignCreatorFooter({
 
   return (
     <footer className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-white px-4 py-3">
-      <Link href="/campaigns" className="ui-btn-secondary text-xs">
+      <Link
+        href={
+          addAdMode && payload.meta?.targetMetaCampaignId
+            ? `/campaigns/${payload.meta.targetMetaCampaignId}/ads${
+                payload.clientSlug
+                  ? `?client=${encodeURIComponent(payload.clientSlug)}${
+                      payload.meta.targetMetaAdsetId
+                        ? `&adset=${encodeURIComponent(payload.meta.targetMetaAdsetId)}`
+                        : ""
+                    }`
+                  : ""
+              }`
+            : "/campaigns"
+        }
+        className="ui-btn-secondary text-xs"
+      >
         {t("close")}
       </Link>
       <div className="flex items-center gap-3">
         {lastSavedAt && !saving ? (
           <span className="hidden text-[11px] text-emerald-600 sm:inline">{t("allSaved")}</span>
         ) : null}
-        {activeNode !== "campaign" ? (
+        {activeNode !== "campaign" && !(addAdMode && activeNode === "ad") ? (
           <button type="button" className="ui-btn-secondary text-xs" onClick={goPrev}>
             {t("back")}
           </button>
@@ -63,7 +82,7 @@ export function CampaignCreatorFooter({
             disabled={publishing}
             onClick={onPublish}
           >
-            {publishing ? tCommon("sending") : t("publish")}
+            {publishing ? tCommon("sending") : addAdMode ? t("publishAd") : t("publish")}
           </button>
         ) : (
           <button

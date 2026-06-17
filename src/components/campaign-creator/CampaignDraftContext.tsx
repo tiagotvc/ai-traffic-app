@@ -15,7 +15,10 @@ import { useLocale } from "next-intl";
 import {
   type CampaignDraftPayload,
   type CreatorNode,
+  defaultAdItem,
   defaultCampaignDraft,
+  isAddAdDraft,
+  newDraftId,
   parseCampaignDraftPayload
 } from "@/lib/campaign-draft";
 
@@ -35,6 +38,8 @@ type CampaignDraftContextValue = {
   objectiveChosen: boolean;
   setObjectiveChosen: (v: boolean) => void;
   flushSave: () => Promise<void>;
+  addAdMode: boolean;
+  addAdLoading: boolean;
 };
 
 const CampaignDraftContext = createContext<CampaignDraftContextValue | null>(null);
@@ -42,11 +47,17 @@ const CampaignDraftContext = createContext<CampaignDraftContextValue | null>(nul
 export function CampaignDraftProvider({
   children,
   initialDraftId,
-  initialClientSlug
+  initialClientSlug,
+  initialAddAd
 }: {
   children: ReactNode;
   initialDraftId?: string;
   initialClientSlug?: string;
+  initialAddAd?: {
+    fromCampaignId: string;
+    adsetId: string;
+    clientSlug?: string;
+  };
 }) {
   const locale = useLocale();
   const [draftId, setDraftId] = useState<string | null>(initialDraftId ?? null);
@@ -56,8 +67,11 @@ export function CampaignDraftProvider({
     if (initialClientSlug) d.clientSlug = initialClientSlug;
     return d;
   });
-  const [activeNode, setActiveNode] = useState<CreatorNode>("campaign");
-  const [objectiveChosen, setObjectiveChosen] = useState(!!initialDraftId);
+  const [activeNode, setActiveNode] = useState<CreatorNode>(
+    initialAddAd ? "ad" : "campaign"
+  );
+  const [objectiveChosen, setObjectiveChosen] = useState(!!initialDraftId || !!initialAddAd);
+  const [addAdLoading, setAddAdLoading] = useState(!!initialAddAd);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -92,7 +106,66 @@ export function CampaignDraftProvider({
       .catch(() => {});
   }, [initialDraftId]);
 
+  useEffect(() => {
+    if (!initialAddAd) return;
+    const { fromCampaignId, adsetId, clientSlug } = initialAddAd;
+    setAddAdLoading(true);
+    fetch(
+      `/api/campaigns/${encodeURIComponent(fromCampaignId)}/creator-snapshot?adset=${encodeURIComponent(adsetId)}&mode=add-ad`
+    )
+      .then((r) => r.json())
+      .then(
+        (j: {
+          ok?: boolean;
+          patch?: Partial<CampaignDraftPayload>;
+          adAccountId?: string | null;
+          adsetName?: string;
+          defaultPageId?: string;
+          error?: string;
+        }) => {
+          if (!j.ok || !j.patch) return;
+          const adId = newDraftId();
+          const adsetDraftId = newDraftId();
+          const base = defaultCampaignDraft(locale);
+          const freshAd = defaultAdItem(locale);
+          if (j.defaultPageId) freshAd.pageId = j.defaultPageId;
+
+          const next = parseCampaignDraftPayload({
+            ...base,
+            ...j.patch,
+            clientSlug: clientSlug ?? base.clientSlug,
+            adAccountId: j.adAccountId ?? "",
+            adsets: [
+              {
+                ...base.adsets[0]!,
+                id: adsetDraftId,
+                name: j.adsetName ?? base.adsets[0]!.name
+              }
+            ],
+            ads: [{ ...freshAd, id: adId, targetAdsetIds: [adsetDraftId] }],
+            activeAdsetId: adsetDraftId,
+            activeAdId: adId,
+            adAssignment: "single",
+            selectedAdsetIdForAds: adsetDraftId,
+            visitedNodes: ["ad", "review"],
+            meta: {
+              publishMode: "add_ad",
+              targetMetaAdsetId: adsetId,
+              targetMetaCampaignId: fromCampaignId,
+              targetAdsetName: j.adsetName
+            }
+          });
+          setPayload(next);
+          setActiveNode("ad");
+          setObjectiveChosen(true);
+        }
+      )
+      .catch(() => {})
+      .finally(() => setAddAdLoading(false));
+  }, [initialAddAd, locale]);
+
   const persist = useCallback(async () => {
+    if (isAddAdDraft(payloadRef.current)) return;
     const p = payloadRef.current;
     const name = draftNameRef.current || p.campaign.name || "Rascunho";
     setSaving(true);
@@ -179,7 +252,9 @@ export function CampaignDraftProvider({
       clients,
       objectiveChosen,
       setObjectiveChosen,
-      flushSave: persist
+      flushSave: persist,
+      addAdMode: isAddAdDraft(payload),
+      addAdLoading
     }),
     [
       draftId,
@@ -193,7 +268,8 @@ export function CampaignDraftProvider({
       lastSavedAt,
       clients,
       objectiveChosen,
-      persist
+      persist,
+      addAdLoading
     ]
   );
 
