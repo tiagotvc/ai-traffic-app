@@ -1,5 +1,5 @@
 import type { PeriodState } from "@/components/PeriodFilter";
-import { addDaysIso, startOfWeekIso, todayIso } from "@/lib/report-period";
+import { addDaysIso, normalizeDayKey, startOfWeekIso, todayIso } from "@/lib/report-period";
 
 export type Range = { since: string; until: string };
 
@@ -10,7 +10,8 @@ export function pctDelta(cur: number, prev: number): number | null {
 
 /** Rótulo de data do eixo: dia/mês (padrão BR), ou mês/dia em inglês. */
 export function formatDayLabel(day: string, locale: string): string {
-  const [, mm, dd] = day.split("-");
+  const iso = normalizeDayKey(day);
+  const [, mm, dd] = iso.split("-");
   if (!mm || !dd) return day;
   return locale === "en" ? `${mm}/${dd}` : `${dd}/${mm}`;
 }

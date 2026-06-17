@@ -5,6 +5,7 @@ import { Between, In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import { getClientBySlugOrId, listClientsForTenant } from "@/lib/app-context";
 import { matchesClientBusinessScope } from "@/lib/client-meta-business";
+import { normalizeDayKey } from "@/lib/report-period";
 import { addDaysIso, parsePeriodFromSearchParams, todayIso } from "@/lib/report-period";
 
 export type MetricTotals = {
@@ -236,7 +237,7 @@ export async function loadMetricSeriesByDay(
   }
 
   return rows.map((d) => ({
-    day: d.day,
+    day: normalizeDayKey(String(d.day)),
     ...parseTotalsRow(d)
   }));
 }
