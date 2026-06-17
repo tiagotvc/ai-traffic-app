@@ -32,16 +32,18 @@ import {
 } from "@/lib/campaign-table-columns";
 import { formatBRL, formatPercent, formatRoas } from "@/lib/format";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
-import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
+import { CAMPAIGN_PRESETS } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
-import { CampaignTypeSelect, CreateCampaignTypeModal } from "@/components/CreateCampaignTypeModal";
+import { CampaignTypeSelect } from "@/components/CreateCampaignTypeModal";
+import { useCampaignColumnWidths } from "@/hooks/useCampaignColumnWidths";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { columnRefKey } from "@/lib/campaign-table-layout";
+import { sortRowsByKey } from "@/lib/campaign-table-sort";
 import {
   customTypesToMap,
-  metricKeysToColumns
+  metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
 
 type CampaignRow = {
@@ -74,39 +76,6 @@ type CampaignRow = {
   preset?: string;
 };
 
-function campaignMetricValue(r: CampaignRow, key: MetricKey): number {
-  switch (key) {
-    case "spend":
-      return r.spend;
-    case "conversions":
-      return r.conversions;
-    case "roas":
-      return r.roas;
-    case "cpa":
-      return r.cpa ?? 0;
-    case "ctr":
-      return r.ctr ?? 0;
-    case "cpc":
-      return r.cpc ?? 0;
-    case "cpm":
-      return r.cpm ?? 0;
-    case "messages":
-      return r.messages ?? 0;
-    case "cpmsg":
-      return (r.messages ?? 0) > 0 ? r.spend / (r.messages ?? 1) : 0;
-    case "reach":
-      return r.reach ?? 0;
-    case "impressions":
-      return r.impressions ?? 0;
-    case "clicks":
-      return r.clicks ?? 0;
-    case "frequency":
-      return r.frequency ?? 0;
-    default:
-      return 0;
-  }
-}
-
 type ClientOption = { id: string; slug: string; name: string };
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 type ObjectiveFilter = "ALL" | "leads" | "sales" | "traffic";
@@ -126,9 +95,8 @@ export function CampaignsHubClient() {
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
   const tableLayout = useCampaignTableLayout();
-  const { types: customTypes, reload: reloadTypes } = useCampaignTypes();
-  const [createTypeOpen, setCreateTypeOpen] = useState(false);
-  const [createTypeCampaignId, setCreateTypeCampaignId] = useState<string | null>(null);
+  const { types: customTypes } = useCampaignTypes();
+  const { widths, onResizeStart } = useCampaignColumnWidths();
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
 
   const customMetricNames = useMemo(() => {
@@ -151,20 +119,9 @@ export function CampaignsHubClient() {
     return tPresets(key as "default");
   }
 
-  function openCreateType(metaCampaignId?: string) {
-    setCreateTypeCampaignId(metaCampaignId ?? null);
-    setCreateTypeOpen(true);
-  }
-
-  function onTypeCreated(presetKey: string) {
-    if (createTypeCampaignId) changePreset(createTypeCampaignId, presetKey);
-    void reloadTypes();
-  }
-
   const groupByType = true;
   const [presets, setPresets] = useState<Record<string, string>>({});
-  const [groupSortKey, setGroupSortKey] = useState<MetricKey | "name" | "client" | null>(null);
-  const [groupSortDir, setGroupSortDir] = useState<"asc" | "desc">("desc");
+  const [groupSorts, setGroupSorts] = useState<Record<string, { key: string; dir: "asc" | "desc" }>>({});
   const [rows, setRows] = useState<CampaignRow[]>([]);
   const [total, setTotal] = useState(0);
   const [totals, setTotals] = useState<{ spend: number; conversions: number; leads: number }>({
@@ -242,33 +199,35 @@ export function CampaignsHubClient() {
     return t("statusInactive");
   }
 
-  function toggleGroupSort(key: MetricKey | "name" | "client") {
-    if (groupSortKey === key) {
-      setGroupSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setGroupSortKey(key);
-      setGroupSortDir("desc");
-    }
+  function toggleGroupSort(preset: string, key: string) {
+    setGroupSorts((prev) => {
+      const cur = prev[preset];
+      if (cur?.key === key) {
+        return { ...prev, [preset]: { key, dir: cur.dir === "asc" ? "desc" : "asc" } };
+      }
+      return { ...prev, [preset]: { key, dir: "desc" } };
+    });
   }
 
-  function sortGroupRows(list: CampaignRow[], metrics: MetricKey[]): CampaignRow[] {
-    const key = groupSortKey;
-    if (!key) return list;
-    if (key !== "name" && key !== "client" && !metrics.includes(key)) return list;
-    const val = (r: CampaignRow): number | string => {
-      if (key === "name") return r.campaignName?.toLowerCase() ?? "";
-      if (key === "client") return r.clientName?.toLowerCase() ?? "";
-      return campaignMetricValue(r, key);
-    };
-    return [...list].sort((a, b) => {
-      const va = val(a);
-      const vb = val(b);
-      if (typeof va === "number" && typeof vb === "number") {
-        return groupSortDir === "asc" ? va - vb : vb - va;
-      }
-      const cmp = String(va).localeCompare(String(vb));
-      return groupSortDir === "asc" ? cmp : -cmp;
-    });
+  function sortGroupRows(
+    list: CampaignRow[],
+    preset: string,
+    metricColumns: ReturnType<typeof metricsColumnsForPreset>
+  ): CampaignRow[] {
+    const sort = groupSorts[preset];
+    if (!sort) return list;
+    return sortRowsByKey(
+      list,
+      sort.key,
+      sort.dir,
+      metricColumns,
+      tableLayout.customMetricsMap
+    );
+  }
+
+  function colWidthStyle(key: string) {
+    const w = widths[key];
+    return w ? { width: w, minWidth: w, maxWidth: w } : undefined;
   }
 
   useEffect(() => {
@@ -448,7 +407,7 @@ export function CampaignsHubClient() {
     }
   };
 
-  const onResizeStart = useCallback(
+  const onFlatResizeStart = useCallback(
     (col: CampaignColumnId, e: ReactPointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
@@ -812,7 +771,10 @@ export function CampaignsHubClient() {
           />
           {t("onlyAlerts")}
         </label>
-        <CampaignTableColumnsButton layout={tableLayout} />
+        <CampaignTableColumnsButton />
+        <Link href="/campaigns/columns" className="text-xs text-violet-700 hover:underline">
+          {t("createTypeLink")}
+        </Link>
       </div>
 
       {clientFilter ? (
@@ -834,13 +796,9 @@ export function CampaignsHubClient() {
             groupKeys.map((preset) => {
               const list = rows.filter((r) => campaignPreset(r) === preset);
               if (!list.length) return null;
-              const groupMetricColumns = metricKeysToColumns(
-                presetMetricsFor(preset, customTypesMap)
-              );
-              const metricKeys = groupMetricColumns
-                .filter((c): c is { kind: "metric"; key: MetricKey } => c.kind === "metric")
-                .map((c) => c.key);
-              const sorted = sortGroupRows(list, metricKeys);
+              const groupMetricColumns = metricsColumnsForPreset(preset, customTypesMap);
+              const groupSort = groupSorts[preset];
+              const sorted = sortGroupRows(list, preset, groupMetricColumns);
               return (
                 <div key={preset} className="ui-card overflow-hidden">
                   <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
@@ -850,38 +808,84 @@ export function CampaignsHubClient() {
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[680px] text-left text-sm">
+                    <table className="w-full min-w-[680px] text-left text-sm table-fixed">
+                      <colgroup>
+                        <col style={colWidthStyle("name")} />
+                        <col style={colWidthStyle("client")} />
+                        <col style={colWidthStyle("status")} />
+                        <col style={colWidthStyle("type")} />
+                        {groupMetricColumns.map((col) => (
+                          <col key={columnRefKey(col)} style={colWidthStyle(columnRefKey(col))} />
+                        ))}
+                      </colgroup>
                       <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                         <tr>
-                          <th className="px-4 py-2">
+                          <th className="relative px-4 py-2" style={colWidthStyle("name")}>
                             <button
                               type="button"
-                              onClick={() => toggleGroupSort("name")}
+                              onClick={() => toggleGroupSort(preset, "name")}
                               className="hover:text-slate-700"
                             >
                               {t("colCampaign")}
-                              {groupSortKey === "name" ? (groupSortDir === "asc" ? " ▲" : " ▼") : ""}
-                            </button>
-                          </th>
-                          <th className="px-3 py-2">
-                            <button
-                              type="button"
-                              onClick={() => toggleGroupSort("client")}
-                              className="hover:text-slate-700"
-                            >
-                              {t("colClient")}
-                              {groupSortKey === "client"
-                                ? groupSortDir === "asc"
+                              {groupSort?.key === "name"
+                                ? groupSort.dir === "asc"
                                   ? " ▲"
                                   : " ▼"
                                 : ""}
                             </button>
+                            <span
+                              role="separator"
+                              onPointerDown={(e) => onResizeStart("name", e)}
+                              className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-violet-300/60"
+                              aria-hidden
+                            />
                           </th>
-                          <th className="px-3 py-2">{t("colStatus")}</th>
-                          <th className="px-3 py-2">{tPresets("label")}</th>
+                          <th className="relative px-3 py-2" style={colWidthStyle("client")}>
+                            <button
+                              type="button"
+                              onClick={() => toggleGroupSort(preset, "client")}
+                              className="hover:text-slate-700"
+                            >
+                              {t("colClient")}
+                              {groupSort?.key === "client"
+                                ? groupSort.dir === "asc"
+                                  ? " ▲"
+                                  : " ▼"
+                                : ""}
+                            </button>
+                            <span
+                              role="separator"
+                              onPointerDown={(e) => onResizeStart("client", e)}
+                              className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-violet-300/60"
+                              aria-hidden
+                            />
+                          </th>
+                          <th className="relative px-3 py-2" style={colWidthStyle("status")}>
+                            {t("colStatus")}
+                            <span
+                              role="separator"
+                              onPointerDown={(e) => onResizeStart("status", e)}
+                              className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-violet-300/60"
+                              aria-hidden
+                            />
+                          </th>
+                          <th className="relative px-3 py-2" style={colWidthStyle("type")}>
+                            {tPresets("label")}
+                            <span
+                              role="separator"
+                              onPointerDown={(e) => onResizeStart("type", e)}
+                              className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-violet-300/60"
+                              aria-hidden
+                            />
+                          </th>
                           <CampaignTableHead
                             columns={groupMetricColumns}
                             customMetricNames={customMetricNames}
+                            sortKey={groupSort?.key}
+                            sortDir={groupSort?.dir}
+                            onSort={(key) => toggleGroupSort(preset, key)}
+                            widths={widths}
+                            onResizeStart={onResizeStart}
                           />
                         </tr>
                       </thead>
@@ -891,7 +895,7 @@ export function CampaignsHubClient() {
                             key={r.metaCampaignId}
                             className="border-t border-slate-100 hover:bg-violet-50/40"
                           >
-                            <td className="px-4 py-2.5">
+                            <td className="truncate px-4 py-2.5">
                               <button
                                 type="button"
                                 onClick={() => pickCampaign(r)}
@@ -900,7 +904,7 @@ export function CampaignsHubClient() {
                                 {r.campaignName}
                               </button>
                             </td>
-                            <td className="px-3 py-2.5 text-slate-600">{r.clientName}</td>
+                            <td className="truncate px-3 py-2.5 text-slate-600">{r.clientName}</td>
                             <td className="px-3 py-2.5">
                               <Badge variant={statusVariant(r.status)}>
                                 {statusLabel(r.status)}
@@ -911,7 +915,6 @@ export function CampaignsHubClient() {
                                 value={campaignPreset(r)}
                                 customTypes={customTypes}
                                 onChange={(p) => changePreset(r.metaCampaignId, p)}
-                                onCreateType={() => openCreateType(r.metaCampaignId)}
                               />
                             </td>
                             {groupMetricColumns.map((col) => (
@@ -960,7 +963,7 @@ export function CampaignsHubClient() {
                         sortActive={sortKey === col}
                         sortDir={sortDir}
                         onSort={onSortColumn}
-                        onResizeStart={onResizeStart}
+                        onResizeStart={onFlatResizeStart}
                       />
                     ))}
                   </SortableContext>
@@ -1097,13 +1100,6 @@ export function CampaignsHubClient() {
           </div>
         </div>
       )}
-
-      <CreateCampaignTypeModal
-        open={createTypeOpen}
-        onClose={() => setCreateTypeOpen(false)}
-        customMetrics={tableLayout.customMetrics}
-        onCreated={(type, presetKey) => onTypeCreated(presetKey)}
-      />
     </div>
   );
 }

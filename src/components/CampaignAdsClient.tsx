@@ -13,9 +13,10 @@ import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsBut
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { columnRefKey } from "@/lib/campaign-table-layout";
+import { sortRowsByKey } from "@/lib/campaign-table-sort";
 import {
   customTypesToMap,
-  effectiveMetricColumnsForPreset
+  metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
@@ -80,9 +81,8 @@ export function CampaignAdsClient({
   const [preset, setPreset] = useState<string>("default");
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
-    () =>
-      effectiveMetricColumnsForPreset(preset, customTypesMap, tableLayout.activeLayout),
-    [preset, customTypesMap, tableLayout.activeLayout]
+    () => metricsColumnsForPreset(preset, customTypesMap),
+    [preset, customTypesMap]
   );
   const customMetricNames = Object.fromEntries(
     tableLayout.customMetrics.map((m) => [m.id, m.name])
@@ -175,34 +175,43 @@ export function CampaignAdsClient({
     }
     if (sort) {
       const { key, dir } = sort;
-      list.sort((x, y) => {
-        let aVal: any = null;
-        let bVal: any = null;
-        if (key === "name") {
-          aVal = (x.name ?? x.id).toLowerCase();
-          bVal = (y.name ?? y.id).toLowerCase();
-        } else if (key === "adset") {
-          aVal = (x.adsetName ?? x.adsetId).toLowerCase();
-          bVal = (y.adsetName ?? y.adsetId).toLowerCase();
-        } else if (key === "status") {
-          const rank = (s?: string) => (s === "ACTIVE" ? 2 : s === "PAUSED" ? 1 : 0);
-          aVal = rank(x.status);
-          bVal = rank(y.status);
-        } else if (key in METRIC_BY_KEY) {
-          const mk = key as MetricKey;
-          aVal = Number(x.metrics?.[mk] ?? 0);
-          bVal = Number(y.metrics?.[mk] ?? 0);
-        } else {
-          aVal = String((x as any)[key] ?? "").toLowerCase();
-          bVal = String((y as any)[key] ?? "").toLowerCase();
-        }
-        if (aVal < bVal) return dir === "asc" ? -1 : 1;
-        if (aVal > bVal) return dir === "asc" ? 1 : -1;
-        return 0;
-      });
+      if (key === "name" || key === "adset" || key === "status") {
+        list = [...list].sort((x, y) => {
+          let aVal: string | number = "";
+          let bVal: string | number = "";
+          if (key === "name") {
+            aVal = (x.name ?? x.id).toLowerCase();
+            bVal = (y.name ?? y.id).toLowerCase();
+          } else if (key === "adset") {
+            aVal = (x.adsetName ?? x.adsetId).toLowerCase();
+            bVal = (y.adsetName ?? y.adsetId).toLowerCase();
+          } else {
+            const rank = (s?: string) => (s === "ACTIVE" ? 2 : s === "PAUSED" ? 1 : 0);
+            aVal = rank(x.status);
+            bVal = rank(y.status);
+          }
+          if (aVal < bVal) return dir === "asc" ? -1 : 1;
+          if (aVal > bVal) return dir === "asc" ? 1 : -1;
+          return 0;
+        });
+      } else {
+        const rowForSort = (ad: AdRow) => ({
+          ...ad,
+          ...(ad.metrics ?? {}),
+          campaignName: ad.name ?? ad.id,
+          clientName: ad.adsetName ?? ad.adsetId
+        });
+        list = sortRowsByKey(
+          list.map(rowForSort),
+          key,
+          dir,
+          metricColumns,
+          tableLayout.customMetricsMap
+        );
+      }
     }
     return list;
-  }, [ads, search, statusFilter, adsetFilter, sort]);
+  }, [ads, search, statusFilter, adsetFilter, sort, metricColumns, tableLayout.customMetricsMap]);
 
   const adsetFilterName = adsetFilter
     ? ads.find((a) => a.adsetId === adsetFilter)?.adsetName ?? adsetFilter
@@ -328,7 +337,7 @@ export function CampaignAdsClient({
           <option value="paused">{t("filterStatusPaused")}</option>
         </select>
         <div className="ml-auto">
-          <CampaignTableColumnsButton layout={tableLayout} />
+          <CampaignTableColumnsButton />
         </div>
       </div>
 

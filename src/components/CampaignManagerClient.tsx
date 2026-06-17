@@ -18,7 +18,7 @@ import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { columnRefKey } from "@/lib/campaign-table-layout";
 import {
   customTypesToMap,
-  effectiveMetricColumnsForPreset
+  metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
@@ -1003,9 +1003,8 @@ function AdsetsTable({
   const { types: customTypes } = useCampaignTypes();
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
-    () =>
-      effectiveMetricColumnsForPreset(campaignPreset, customTypesMap, tableLayout.activeLayout),
-    [campaignPreset, customTypesMap, tableLayout.activeLayout]
+    () => metricsColumnsForPreset(campaignPreset, customTypesMap),
+    [campaignPreset, customTypesMap]
   );
   const customMetricNames = Object.fromEntries(
     tableLayout.customMetrics.map((m) => [m.id, m.name])
@@ -1029,7 +1028,7 @@ function AdsetsTable({
           placeholder={t("searchAdsets")}
           className="ui-input min-w-[200px] flex-1"
         />
-        <CampaignTableColumnsButton layout={tableLayout} />
+        <CampaignTableColumnsButton />
         <button type="button" onClick={() => openPanel({ clientSlug: slug })} className="ui-btn-primary text-sm">
           + {t("newAdset")}
         </button>

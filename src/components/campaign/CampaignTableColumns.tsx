@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import type { PointerEvent as ReactPointerEvent } from "react";
 
 import { COLUMN_I18N_KEYS } from "@/lib/campaign-table-columns";
 import {
@@ -14,18 +15,33 @@ import { formatBRL, formatPercent, formatRoas } from "@/lib/format";
 import { evaluateFormula } from "@/lib/metric-formula";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
 
+function ResizeHandle({ onResizeStart }: { onResizeStart: (e: ReactPointerEvent) => void }) {
+  return (
+    <span
+      role="separator"
+      onPointerDown={onResizeStart}
+      className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-violet-300/60"
+      aria-hidden
+    />
+  );
+}
+
 export function CampaignTableHead({
   columns,
   customMetricNames,
   sortKey,
   sortDir,
-  onSort
+  onSort,
+  widths,
+  onResizeStart
 }: {
   columns: TableColumnRef[];
   customMetricNames?: Record<string, string>;
   sortKey?: string | null;
   sortDir?: "asc" | "desc";
   onSort?: (key: string) => void;
+  widths?: Record<string, number>;
+  onResizeStart?: (key: string, e: React.PointerEvent) => void;
 }) {
   const t = useTranslations("campaignsPage");
   const tMetrics = useTranslations("metrics");
@@ -48,8 +64,13 @@ export function CampaignTableHead({
         const key = columnRefKey(col);
         const isMetric = col.kind !== "field";
         const thAlign = isMetric ? "text-right" : "text-left";
+        const w = widths?.[key];
         return (
-          <th key={key} className={`px-3 py-2 ${thAlign}`}>
+          <th
+            key={key}
+            className={`relative px-3 py-2 ${thAlign}`}
+            style={w ? { width: w, minWidth: w, maxWidth: w } : undefined}
+          >
             {onSort && isMetric ? (
               <button type="button" onClick={() => onSort(key)} className="hover:text-slate-700">
                 {label(col)}
@@ -58,6 +79,9 @@ export function CampaignTableHead({
             ) : (
               label(col)
             )}
+            {onResizeStart ? (
+              <ResizeHandle onResizeStart={(e) => onResizeStart(key, e)} />
+            ) : null}
           </th>
         );
       })}

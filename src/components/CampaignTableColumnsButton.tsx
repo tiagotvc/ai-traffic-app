@@ -2,35 +2,18 @@
 
 import { useTranslations } from "next-intl";
 
-import { CampaignTableColumnsModal } from "@/components/CampaignTableColumnsModal";
-import type { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
+import { Link } from "@/i18n/navigation";
 
-type LayoutHook = ReturnType<typeof useCampaignTableLayout>;
-
-export function CampaignTableColumnsButton({
-  className,
-  layout
-}: {
-  className?: string;
-  layout: LayoutHook;
-}) {
+export function CampaignTableColumnsButton({ className }: { className?: string }) {
   const t = useTranslations("campaignTableLayout");
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => layout.setModalOpen(true)}
-        className={className ?? "ui-btn-secondary text-xs"}
-        title={t("columnsTitle")}
-      >
-        <span aria-hidden>⚙</span> {t("columnsTitle")}
-      </button>
-      <CampaignTableColumnsModal
-        open={layout.modalOpen}
-        onClose={() => layout.setModalOpen(false)}
-        layout={layout}
-      />
-    </>
+    <Link
+      href="/campaigns/columns"
+      className={className ?? "ui-btn-secondary text-xs"}
+      title={t("columnsTitle")}
+    >
+      <span aria-hidden>⚙</span> {t("columnsTitle")}
+    </Link>
   );
 }

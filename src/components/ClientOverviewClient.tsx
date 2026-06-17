@@ -34,13 +34,13 @@ import { buildQuery, formatDayLabel, pctDelta, resolveRanges } from "@/lib/dashb
 import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
-import { CampaignTypeSelect, CreateCampaignTypeModal } from "@/components/CreateCampaignTypeModal";
+import { CampaignTypeSelect } from "@/components/CreateCampaignTypeModal";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { columnRefKey } from "@/lib/campaign-table-layout";
 import {
   customTypesToMap,
-  effectiveMetricColumnsForPreset
+  metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
@@ -114,9 +114,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const tCampaigns = useTranslations("campaignsPage");
   const locale = useLocale();
   const tableLayout = useCampaignTableLayout();
-  const { types: customTypes, reload: reloadTypes } = useCampaignTypes();
-  const [createTypeOpen, setCreateTypeOpen] = useState(false);
-  const [createTypeCampaignId, setCreateTypeCampaignId] = useState<string | null>(null);
+  const { types: customTypes } = useCampaignTypes();
 
   const customMetricNames = Object.fromEntries(
     tableLayout.customMetrics.map((m) => [m.id, m.name])
@@ -137,9 +135,8 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
 
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
-    () =>
-      effectiveMetricColumnsForPreset(dominantPreset, customTypesMap, tableLayout.activeLayout),
-    [dominantPreset, customTypesMap, tableLayout.activeLayout]
+    () => metricsColumnsForPreset(dominantPreset, customTypesMap),
+    [dominantPreset, customTypesMap]
   );
 
   const reloadPresets = useCallback(() => {
@@ -447,7 +444,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
       <div className="ui-card overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <div className="text-sm font-semibold text-slate-800">{t("campaignsTitle")}</div>
-          <CampaignTableColumnsButton layout={tableLayout} />
+          <CampaignTableColumnsButton />
         </div>
         {loading ? (
           <TableSkeleton bare rows={4} columns={["media", "badge", "select", "wide"]} />
@@ -494,10 +491,6 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
                           value={preset}
                           customTypes={customTypes}
                           onChange={(p) => changePreset(c.metaCampaignId, p)}
-                          onCreateType={() => {
-                            setCreateTypeCampaignId(c.metaCampaignId);
-                            setCreateTypeOpen(true);
-                          }}
                         />
                       </td>
                       {metricColumns.map((col) => (
@@ -517,16 +510,6 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           </div>
         )}
       </div>
-
-      <CreateCampaignTypeModal
-        open={createTypeOpen}
-        onClose={() => setCreateTypeOpen(false)}
-        customMetrics={tableLayout.customMetrics}
-        onCreated={(_type, presetKey) => {
-          if (createTypeCampaignId) changePreset(createTypeCampaignId, presetKey);
-          void reloadTypes();
-        }}
-      />
 
       <MetricPickerModal
         open={metricsModalOpen}

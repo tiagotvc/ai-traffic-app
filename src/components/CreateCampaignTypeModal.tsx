@@ -130,47 +130,35 @@ export function CampaignTypeSelect({
   value,
   customTypes,
   onChange,
-  onCreateType,
   className
 }: {
   value: string;
   customTypes: CampaignTypeDto[];
   onChange: (preset: string) => void;
-  onCreateType: () => void;
   className?: string;
 }) {
   const t = useTranslations("campaignTypes");
 
   return (
-    <div className="flex items-center gap-1">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={className ?? "ui-select !w-auto !py-1.5 text-xs"}
-      >
-        {CAMPAIGN_PRESETS.map((p) => (
-          <option key={p} value={p}>
-            {t(p)}
-          </option>
-        ))}
-        {customTypes.length ? (
-          <optgroup label={t("customTypes")}>
-            {customTypes.map((ct) => (
-              <option key={ct.id} value={`custom:${ct.id}`}>
-                {ct.name}
-              </option>
-            ))}
-          </optgroup>
-        ) : null}
-      </select>
-      <button
-        type="button"
-        onClick={onCreateType}
-        className="rounded-lg border border-slate-200 px-1.5 py-1 text-[10px] text-slate-600 hover:bg-slate-50"
-        title={t("createType")}
-      >
-        +
-      </button>
-    </div>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={className ?? "ui-select !w-auto !py-1.5 text-xs"}
+    >
+      {CAMPAIGN_PRESETS.map((p) => (
+        <option key={p} value={p}>
+          {t(p)}
+        </option>
+      ))}
+      {customTypes.length ? (
+        <optgroup label={t("customTypes")}>
+          {customTypes.map((ct) => (
+            <option key={ct.id} value={`custom:${ct.id}`}>
+              {ct.name}
+            </option>
+          ))}
+        </optgroup>
+      ) : null}
+    </select>
   );
 }
