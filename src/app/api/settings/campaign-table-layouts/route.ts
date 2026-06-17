@@ -26,10 +26,14 @@ const PatchSchema = z
 
 export async function GET() {
   const { tenant, user } = await getAppContext();
-  const [{ layouts, activeLayoutId }, customMetrics] = await Promise.all([
+  const [{ layouts: rawLayouts, activeLayoutId: rawActiveId }, customMetrics] = await Promise.all([
     getUserCampaignTableLayouts(tenant.id, user.id),
     listCustomMetricsForUser(tenant.id, user.id)
   ]);
+  const layouts = normalizeCampaignTableLayouts(rawLayouts);
+  const activeLayoutId = layouts.some((l) => l.id === rawActiveId)
+    ? rawActiveId
+    : (layouts[0]?.id ?? "default");
   return NextResponse.json({ ok: true, layouts, activeLayoutId, customMetrics });
 }
 

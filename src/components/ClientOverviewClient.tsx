@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -37,7 +37,11 @@ import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/Camp
 import { CampaignTypeSelect, CreateCampaignTypeModal } from "@/components/CreateCampaignTypeModal";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
-import { columnRefKey, layoutMetricColumns } from "@/lib/campaign-table-layout";
+import { columnRefKey } from "@/lib/campaign-table-layout";
+import {
+  customTypesToMap,
+  effectiveMetricColumnsForPreset
+} from "@/lib/campaign-table-metrics";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 
@@ -114,11 +118,6 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const [createTypeOpen, setCreateTypeOpen] = useState(false);
   const [createTypeCampaignId, setCreateTypeCampaignId] = useState<string | null>(null);
 
-  const metricColumns = layoutMetricColumns({
-    id: "",
-    name: "",
-    columns: tableLayout.columns
-  });
   const customMetricNames = Object.fromEntries(
     tableLayout.customMetrics.map((m) => [m.id, m.name])
   );
@@ -135,6 +134,13 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [presets, setPresets] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+
+  const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
+  const metricColumns = useMemo(
+    () =>
+      effectiveMetricColumnsForPreset(dominantPreset, customTypesMap, tableLayout.activeLayout),
+    [dominantPreset, customTypesMap, tableLayout.activeLayout]
+  );
 
   const reloadPresets = useCallback(() => {
     return fetch("/api/campaign-presets")

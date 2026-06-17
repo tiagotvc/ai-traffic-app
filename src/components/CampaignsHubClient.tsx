@@ -38,7 +38,11 @@ import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/Camp
 import { CampaignTypeSelect, CreateCampaignTypeModal } from "@/components/CreateCampaignTypeModal";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
-import { columnRefKey, layoutMetricColumns } from "@/lib/campaign-table-layout";
+import { columnRefKey } from "@/lib/campaign-table-layout";
+import {
+  customTypesToMap,
+  metricKeysToColumns
+} from "@/lib/campaign-table-metrics";
 
 type CampaignRow = {
   metaCampaignId: string;
@@ -125,10 +129,7 @@ export function CampaignsHubClient() {
   const { types: customTypes, reload: reloadTypes } = useCampaignTypes();
   const [createTypeOpen, setCreateTypeOpen] = useState(false);
   const [createTypeCampaignId, setCreateTypeCampaignId] = useState<string | null>(null);
-  const metricColumns = useMemo(
-    () => layoutMetricColumns({ id: "", name: "", columns: tableLayout.columns }),
-    [tableLayout.columns]
-  );
+  const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
 
   const customMetricNames = useMemo(() => {
     const m: Record<string, string> = {};
@@ -833,7 +834,10 @@ export function CampaignsHubClient() {
             groupKeys.map((preset) => {
               const list = rows.filter((r) => campaignPreset(r) === preset);
               if (!list.length) return null;
-              const metricKeys = metricColumns
+              const groupMetricColumns = metricKeysToColumns(
+                presetMetricsFor(preset, customTypesMap)
+              );
+              const metricKeys = groupMetricColumns
                 .filter((c): c is { kind: "metric"; key: MetricKey } => c.kind === "metric")
                 .map((c) => c.key);
               const sorted = sortGroupRows(list, metricKeys);
@@ -876,7 +880,7 @@ export function CampaignsHubClient() {
                           <th className="px-3 py-2">{t("colStatus")}</th>
                           <th className="px-3 py-2">{tPresets("label")}</th>
                           <CampaignTableHead
-                            columns={metricColumns}
+                            columns={groupMetricColumns}
                             customMetricNames={customMetricNames}
                           />
                         </tr>
@@ -910,7 +914,7 @@ export function CampaignsHubClient() {
                                 onCreateType={() => openCreateType(r.metaCampaignId)}
                               />
                             </td>
-                            {metricColumns.map((col) => (
+                            {groupMetricColumns.map((col) => (
                               <CampaignTableCell
                                 key={columnRefKey(col)}
                                 col={col}
