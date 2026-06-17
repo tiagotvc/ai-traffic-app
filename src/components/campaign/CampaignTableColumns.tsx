@@ -86,8 +86,10 @@ export function CampaignTableCell({
   const locale = useLocale();
   const align =
     col.kind === "field" && col.id === "campaign"
-      ? "text-left"
-      : "text-center tabular-nums";
+      ? "text-left align-top whitespace-normal break-words"
+      : col.kind === "field"
+        ? "text-center"
+        : "text-center tabular-nums";
 
   if (col.kind === "field") {
     let content: string = "—";

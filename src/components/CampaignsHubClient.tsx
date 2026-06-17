@@ -86,13 +86,13 @@ const STICKY_STATUS_TH =
 const STICKY_STATUS_TD =
   "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-white px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)] group-hover:bg-violet-50/40";
 const STICKY_NAME_TH =
-  "sticky left-14 z-20 min-w-[12rem] max-w-[18rem] bg-slate-50 px-4 py-2 text-left shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
+  "sticky left-14 z-20 min-w-[10rem] bg-slate-50 px-4 py-2 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
 const STICKY_NAME_TD =
-  "sticky left-14 z-10 min-w-[12rem] max-w-[18rem] truncate bg-white px-4 py-2.5 text-left shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)] group-hover:bg-violet-50/40";
+  "sticky left-14 z-10 min-w-[10rem] bg-white px-4 py-2.5 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)] group-hover:bg-violet-50/40";
 const STICKY_STATUS_TF =
   "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-slate-50/95 px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
 const STICKY_NAME_TF =
-  "sticky left-14 z-10 min-w-[12rem] max-w-[18rem] bg-slate-50/95 px-4 py-2.5 text-left font-semibold text-slate-800 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
+  "sticky left-14 z-10 min-w-[10rem] bg-slate-50/95 px-4 py-2.5 text-left align-top font-semibold text-slate-800 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
 
 function statusVariant(status?: string): "success" | "warning" | "neutral" {
   if (status === "ACTIVE") return "success";
@@ -459,8 +459,8 @@ export function CampaignsHubClient() {
     switch (col) {
       case "campaign":
         return (
-          <td key={col} className="px-4 py-3 text-left">
-            <div className="font-medium text-slate-900">{r.campaignName}</div>
+          <td key={col} className="max-w-md px-4 py-3 text-left align-top">
+            <div className="whitespace-normal break-words font-medium text-slate-900">{r.campaignName}</div>
           </td>
         );
       case "campaignId":
@@ -891,7 +891,7 @@ export function CampaignsHubClient() {
                               <button
                                 type="button"
                                 onClick={() => pickCampaign(r)}
-                                className="text-left font-medium text-slate-800 hover:text-violet-700 hover:underline"
+                                className="block w-full whitespace-normal break-words text-left font-medium text-slate-800 hover:text-violet-700 hover:underline"
                               >
                                 {r.campaignName}
                               </button>
