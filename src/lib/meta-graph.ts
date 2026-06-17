@@ -853,6 +853,28 @@ export async function fetchAdsForAdSet(accessToken: string, adSetId: string): Pr
   return fetchGraphPaged<MetaAd>(path, accessToken);
 }
 
+/** Lista leve de anúncios (sem object_story_spec) para seletores hierárquicos. */
+export async function fetchAdsForAdSetLite(
+  accessToken: string,
+  adSetId: string,
+  limit = 50
+): Promise<Array<{ id: string; name?: string; status?: string; thumbnailUrl?: string }>> {
+  const fields = "id,name,status,creative{thumbnail_url}";
+  const path = `/${encodeURIComponent(adSetId)}/ads?fields=${encodeURIComponent(fields)}&limit=${limit}`;
+  const rows = await fetchGraphPaged<{
+    id: string;
+    name?: string;
+    status?: string;
+    creative?: { thumbnail_url?: string };
+  }>(path, accessToken);
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    status: r.status,
+    thumbnailUrl: r.creative?.thumbnail_url
+  }));
+}
+
 async function mapAdsWithAdsetNames(
   accessToken: string,
   campaignId: string,

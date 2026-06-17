@@ -476,6 +476,8 @@ export function AdStep() {
         onClose={() => setImportOpen(false)}
         clientSlug={payload.clientSlug}
         adAccountId={payload.adAccountId}
+        defaultCampaignId={payload.meta?.targetMetaCampaignId}
+        defaultAdsetId={payload.meta?.targetMetaAdsetId}
         onImport={handleImport}
       />
 
