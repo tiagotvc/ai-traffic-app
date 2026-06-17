@@ -11,21 +11,16 @@ export function BillingPortalSkeleton() {
         </div>
         <Skeleton className="h-8 w-24 rounded-lg" />
       </div>
-      <div className="grid gap-4 xl:grid-cols-12">
-        <Skeleton className="h-40 rounded-xl xl:col-span-4" />
-        <div className="rounded-xl border border-slate-200 bg-white p-4 xl:col-span-8">
-          <Skeleton className="mb-3 h-4 w-40" />
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-xl" />
-            ))}
-          </div>
+      <div className="space-y-4">
+        <div className="flex gap-6 border-b border-slate-200 pb-2.5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-5 w-20" />
+          ))}
         </div>
-      </div>
-      <Skeleton className="h-20 w-full rounded-xl" />
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Skeleton className="h-52 rounded-xl xl:col-span-2" />
-        <Skeleton className="h-52 rounded-xl" />
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <Skeleton className="h-40 w-full rounded-xl" />
+          <Skeleton className="mt-4 h-24 w-full rounded-xl" />
+        </div>
       </div>
     </div>
   );

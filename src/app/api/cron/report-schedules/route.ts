@@ -66,7 +66,8 @@ export async function POST(req: Request) {
     await repo.save(schedule);
     processed.push(schedule.id);
 
-    const webhook = process.env.REPORT_WEBHOOK_URL?.trim();
+    const webhook =
+      tenant.webhookReportUrl?.trim() || process.env.REPORT_WEBHOOK_URL?.trim();
     if (webhook && schedule.recipients.length) {
       try {
         await fetch(webhook, {

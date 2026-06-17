@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 
-/** Redireciona para o portal com drawer aberto. */
+/** Redireciona para o portal com fatura expandida na aba Faturamento. */
 export function BillingInvoiceDetailClient({ invoiceId }: { invoiceId: string }) {
   const router = useRouter();
   const t = useTranslations("billingPage");
 
   useEffect(() => {
-    router.replace(`/billing?invoice=${invoiceId}`);
+    router.replace(`/billing?tab=billing&invoice=${invoiceId}`);
   }, [invoiceId, router]);
 
   return (

@@ -26,5 +26,11 @@ export class Tenant extends AppBaseEntity {
   /** Opt-in para agregar aprendizados anonimizados por nicho (cross-tenant). */
   @Column({ type: "boolean", default: false })
   agencyBrainNicheShareOptIn!: boolean;
+
+  @Column({ type: "text", nullable: true })
+  webhookAlertUrl?: string | null;
+
+  @Column({ type: "text", nullable: true })
+  webhookReportUrl?: string | null;
 }
 

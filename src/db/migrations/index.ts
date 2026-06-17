@@ -34,6 +34,7 @@ import { CampaignSnapshotDayIndex1735830200000 } from "./0032-CampaignSnapshotDa
 import { CampaignTypeDefinitions1735830300000 } from "./0033-CampaignTypeDefinitions";
 import { TenantMemberCampaignTableLayouts1735830400000 } from "./0034-TenantMemberCampaignTableLayouts";
 import { CustomMetrics1735830500000 } from "./0035-CustomMetrics";
+import { TenantWebhooks_1735830600000 } from "./0036-TenantWebhooks";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -72,5 +73,6 @@ export const appMigrations = [
   CampaignSnapshotDayIndex1735830200000,
   CampaignTypeDefinitions1735830300000,
   TenantMemberCampaignTableLayouts1735830400000,
-  CustomMetrics1735830500000
+  CustomMetrics1735830500000,
+  TenantWebhooks_1735830600000
 ];

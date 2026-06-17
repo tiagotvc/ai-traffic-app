@@ -7,6 +7,7 @@ export async function notifyCriticalAlert(input: {
   alert: Alert;
   client?: Client | null;
   tenantName: string;
+  webhookAlertUrl?: string | null;
 }) {
   const lines = [
     `[Traffic AI] Alerta crítico — ${input.tenantName}`,
@@ -17,7 +18,7 @@ export async function notifyCriticalAlert(input: {
 
   const text = lines.join("\n");
 
-  const webhook = process.env.ALERT_WEBHOOK_URL?.trim();
+  const webhook = input.webhookAlertUrl?.trim() || process.env.ALERT_WEBHOOK_URL?.trim();
   if (webhook) {
     try {
       await fetch(webhook, {
