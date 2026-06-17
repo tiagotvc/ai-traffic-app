@@ -50,7 +50,39 @@ export function useCampaignTypes() {
     [reload]
   );
 
+  const updateType = useCallback(
+    async (id: string, input: { name?: string; metrics?: MetricKey[]; shared?: boolean }) => {
+      const res = await fetch(`/api/campaign-types/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(input)
+      });
+      const j = await res.json();
+      if (j.ok) {
+        await reload();
+        return j.type as CampaignTypeDto;
+      }
+      return null;
+    },
+    [reload]
+  );
+
+  const deleteType = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/campaign-types/${encodeURIComponent(id)}`, {
+        method: "DELETE"
+      });
+      const j = await res.json();
+      if (j.ok) {
+        await reload();
+        return true;
+      }
+      return false;
+    },
+    [reload]
+  );
+
   const presetKeyForType = (id: string) => customTypeKey(id);
 
-  return { types, loading, reload, typesMap, createType, presetKeyForType };
+  return { types, loading, reload, typesMap, createType, updateType, deleteType, presetKeyForType };
 }

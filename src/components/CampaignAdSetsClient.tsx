@@ -17,7 +17,7 @@ import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { columnRefKey } from "@/lib/campaign-table-layout";
 import {
   customTypesToMap,
-  effectiveMetricColumnsForPreset
+  metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
@@ -89,9 +89,8 @@ export function CampaignAdSetsClient({
   const [preset, setPreset] = useState<string>("default");
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
-    () =>
-      effectiveMetricColumnsForPreset(preset, customTypesMap, tableLayout.activeLayout),
-    [preset, customTypesMap, tableLayout.activeLayout]
+    () => metricsColumnsForPreset(preset, customTypesMap),
+    [preset, customTypesMap]
   );
   const customMetricNames = Object.fromEntries(
     tableLayout.customMetrics.map((m) => [m.id, m.name])
@@ -171,8 +170,36 @@ export function CampaignAdSetsClient({
       const q = search.toLowerCase();
       list = list.filter((a) => (a.name ?? a.id).toLowerCase().includes(q));
     }
+    if (sort) {
+      const { key, dir } = sort;
+      list = [...list].sort((x, y) => {
+        let aVal: string | number = 0;
+        let bVal: string | number = 0;
+        if (key === "name") {
+          aVal = (x.name ?? x.id).toLowerCase();
+          bVal = (y.name ?? y.id).toLowerCase();
+        } else if (key === "status") {
+          const rank = (s?: string) => (s === "ACTIVE" ? 2 : s === "PAUSED" ? 1 : 0);
+          aVal = rank(x.status);
+          bVal = rank(y.status);
+        } else if (key === "dailyBudget") {
+          aVal = x.dailyBudget ?? 0;
+          bVal = y.dailyBudget ?? 0;
+        } else if (key in METRIC_BY_KEY) {
+          const mk = key as MetricKey;
+          aVal = Number(x.metrics?.[mk] ?? (x as unknown as Record<string, number>)[mk] ?? 0);
+          bVal = Number(y.metrics?.[mk] ?? (y as unknown as Record<string, number>)[mk] ?? 0);
+        } else {
+          aVal = String((x as Record<string, unknown>)[key] ?? "").toLowerCase();
+          bVal = String((y as Record<string, unknown>)[key] ?? "").toLowerCase();
+        }
+        if (aVal < bVal) return dir === "asc" ? -1 : 1;
+        if (aVal > bVal) return dir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
     return list;
-  }, [adsets, search, statusFilter]);
+  }, [adsets, search, statusFilter, sort]);
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -346,7 +373,7 @@ export function CampaignAdSetsClient({
           {t("moreFilters")}
         </button>
         <div className="ml-auto flex gap-2">
-          <CampaignTableColumnsButton layout={tableLayout} />
+          <CampaignTableColumnsButton />
           <button type="button" className="ui-btn-secondary text-xs">
             {t("export")}
           </button>

@@ -11,13 +11,28 @@ export const CAMPAIGN_PRESETS: CampaignPresetKey[] = [
   "reach"
 ];
 
-/** Métricas mais importantes por tipo de campanha. */
-export const PRESET_METRICS: Record<CampaignPresetKey, MetricKey[]> = {
+const PRESET_EXTRA_METRICS: MetricKey[] = ["clicks", "cpc", "cpm", "frequency"];
+
+function withExtraMetrics(base: MetricKey[]): MetricKey[] {
+  const seen = new Set(base);
+  return [...base, ...PRESET_EXTRA_METRICS.filter((k) => !seen.has(k))];
+}
+
+const PRESET_METRICS_BASE: Record<CampaignPresetKey, MetricKey[]> = {
   default: ["spend", "ctr", "reach", "conversions"],
   lead_whatsapp: ["messages", "cpmsg", "ctr", "spend"],
   lead_site: ["conversions", "cpa", "ctr", "spend"],
   sales: ["roas", "conversions", "cpa", "spend"],
   reach: ["reach", "impressions", "cpm", "frequency"]
+};
+
+/** Métricas por tipo de campanha built-in (inclui clicks, cpc, cpm, frequency). */
+export const PRESET_METRICS: Record<CampaignPresetKey, MetricKey[]> = {
+  default: withExtraMetrics(PRESET_METRICS_BASE.default),
+  lead_whatsapp: withExtraMetrics(PRESET_METRICS_BASE.lead_whatsapp),
+  lead_site: withExtraMetrics(PRESET_METRICS_BASE.lead_site),
+  sales: withExtraMetrics(PRESET_METRICS_BASE.sales),
+  reach: withExtraMetrics(PRESET_METRICS_BASE.reach)
 };
 
 export function presetMetricsFor(
