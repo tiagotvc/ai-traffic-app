@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -32,7 +32,8 @@ import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboar
 import { CAMPAIGN_PRESETS } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
-import { CampaignTypeSelect } from "@/components/CreateCampaignTypeModal";
+import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
+import { CampaignTypeSelectCompact } from "@/components/CreateCampaignTypeModal";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
@@ -78,6 +79,20 @@ type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 type ObjectiveFilter = "ALL" | "leads" | "sales" | "traffic";
 
 const PAGE_SIZES = [25, 50, 100, 200] as const;
+
+/** Colunas fixas à esquerda ao rolar métricas (status + campanha). */
+const STICKY_STATUS_TH =
+  "sticky left-0 z-30 w-14 min-w-[3.5rem] bg-slate-50 px-2 py-2 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
+const STICKY_STATUS_TD =
+  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-white px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)] group-hover:bg-violet-50/40";
+const STICKY_NAME_TH =
+  "sticky left-14 z-20 min-w-[12rem] max-w-[18rem] bg-slate-50 px-4 py-2 text-left shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
+const STICKY_NAME_TD =
+  "sticky left-14 z-10 min-w-[12rem] max-w-[18rem] truncate bg-white px-4 py-2.5 text-left shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)] group-hover:bg-violet-50/40";
+const STICKY_STATUS_TF =
+  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-slate-50/95 px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
+const STICKY_NAME_TF =
+  "sticky left-14 z-10 min-w-[12rem] max-w-[18rem] bg-slate-50/95 px-4 py-2.5 text-left font-semibold text-slate-800 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
 
 function statusVariant(status?: string): "success" | "warning" | "neutral" {
   if (status === "ACTIVE") return "success";
@@ -140,6 +155,8 @@ export function CampaignsHubClient() {
   const [sortKey, setSortKey] = useState<CampaignColumnId | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(true);
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
+  const [, startStatusTransition] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [metricsSource, setMetricsSource] = useState<"db" | "live" | "live-cached">("db");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -184,6 +201,32 @@ export function CampaignsHubClient() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ metaCampaignId, preset })
+    });
+  }
+
+  function toggleCampaignStatus(metaCampaignId: string, currentStatus?: string) {
+    const action = currentStatus === "ACTIVE" ? "pause" : "activate";
+    setStatusPendingId(metaCampaignId);
+    startStatusTransition(async () => {
+      try {
+        const res = await fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/actions`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action })
+        });
+        const j = await res.json();
+        if (j.ok) {
+          const next = action === "activate" ? "ACTIVE" : "PAUSED";
+          setRows((prev) =>
+            prev.map((r) => (r.metaCampaignId === metaCampaignId ? { ...r, status: next } : r))
+          );
+          if (selectedRow?.metaCampaignId === metaCampaignId) {
+            setSelectedRow((r) => (r ? { ...r, status: next } : r));
+          }
+        }
+      } finally {
+        setStatusPendingId(null);
+      }
     });
   }
 
@@ -778,7 +821,21 @@ export function CampaignsHubClient() {
                     <table className="w-full min-w-[680px] text-sm">
                       <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                         <tr>
-                          <th className="px-4 py-2 text-left">
+                          <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
+                            <button
+                              type="button"
+                              onClick={() => toggleGroupSort(preset, "status")}
+                              className="hover:text-slate-700"
+                            >
+                              {t("colStatus")}
+                              {groupSort?.key === "status"
+                                ? groupSort.dir === "asc"
+                                  ? " ▲"
+                                  : " ▼"
+                                : ""}
+                            </button>
+                          </th>
+                          <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>
                             <button
                               type="button"
                               onClick={() => toggleGroupSort(preset, "name")}
@@ -806,7 +863,6 @@ export function CampaignsHubClient() {
                                 : ""}
                             </button>
                           </th>
-                          <th className="whitespace-nowrap px-3 py-2 text-center">{t("colStatus")}</th>
                           <th className="whitespace-nowrap px-3 py-2 text-center">{tPresets("label")}</th>
                           <CampaignTableHead
                             columns={groupMetricColumns}
@@ -821,9 +877,17 @@ export function CampaignsHubClient() {
                         {sorted.map((r) => (
                           <tr
                             key={r.metaCampaignId}
-                            className="border-t border-slate-100 hover:bg-violet-50/40"
+                            className="group border-t border-slate-100 hover:bg-violet-50/40"
                           >
-                            <td className="truncate px-4 py-2.5">
+                            <td className={STICKY_STATUS_TD}>
+                              <CampaignStatusToggle
+                                active={r.status === "ACTIVE"}
+                                disabled={statusPendingId === r.metaCampaignId}
+                                ariaLabel={statusLabel(r.status)}
+                                onChange={() => toggleCampaignStatus(r.metaCampaignId, r.status)}
+                              />
+                            </td>
+                            <td className={STICKY_NAME_TD}>
                               <button
                                 type="button"
                                 onClick={() => pickCampaign(r)}
@@ -833,13 +897,8 @@ export function CampaignsHubClient() {
                               </button>
                             </td>
                             <td className="truncate px-3 py-2.5 text-center text-slate-600">{r.clientName}</td>
-                            <td className="px-3 py-2.5 text-center">
-                              <Badge variant={statusVariant(r.status)}>
-                                {statusLabel(r.status)}
-                              </Badge>
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              <CampaignTypeSelect
+                            <td className="relative px-3 py-2.5 text-center">
+                              <CampaignTypeSelectCompact
                                 value={campaignPreset(r)}
                                 customTypes={customTypes}
                                 onChange={(p) => changePreset(r.metaCampaignId, p)}
@@ -858,10 +917,10 @@ export function CampaignsHubClient() {
                       </tbody>
                       <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
                         <tr>
-                          <td className="px-4 py-2.5 text-left font-semibold text-slate-800">
+                          <td className={`${STICKY_STATUS_TF} text-slate-400`}>—</td>
+                          <td className={STICKY_NAME_TF}>
                             {t("rowTotal")} ({list.length})
                           </td>
-                          <td className="px-3 py-2.5 text-center text-slate-400">—</td>
                           <td className="px-3 py-2.5 text-center text-slate-400">—</td>
                           <td className="px-3 py-2.5 text-center text-slate-400">—</td>
                           {groupMetricColumns.map((col) => {
