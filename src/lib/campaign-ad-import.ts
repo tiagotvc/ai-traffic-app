@@ -1,6 +1,11 @@
 import type { AdDraftItem } from "@/lib/campaign-draft";
-import type { AdCreativeCopy } from "@/lib/meta-graph";
-import { extractImageHashFromStorySpec } from "@/lib/meta-graph";
+
+type AdCreativeCopy = {
+  bodies: string[];
+  titles: string[];
+  descriptions: string[];
+  ctas: string[];
+};
 
 type MetaCreative = {
   body?: string;
@@ -29,6 +34,17 @@ export type ImportedAdConfig = {
 
 function uniqueStrings(values: string[]) {
   return [...new Set(values.map((v) => v.trim()).filter(Boolean))];
+}
+
+function extractImageHashFromStorySpec(spec?: Record<string, unknown>): string | undefined {
+  if (!spec) return undefined;
+  const linkData = spec.link_data as Record<string, unknown> | undefined;
+  if (typeof linkData?.image_hash === "string") return linkData.image_hash;
+  const photoData = spec.photo_data as Record<string, unknown> | undefined;
+  if (typeof photoData?.image_hash === "string") return photoData.image_hash;
+  const videoData = spec.video_data as Record<string, unknown> | undefined;
+  if (typeof videoData?.image_hash === "string") return videoData.image_hash;
+  return undefined;
 }
 
 export function copyTextsFromMetaCopy(copy: AdCreativeCopy): {
