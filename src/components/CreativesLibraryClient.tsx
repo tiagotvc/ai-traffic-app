@@ -8,6 +8,7 @@ import { CreativesRankingView } from "@/components/creatives/CreativesRankingVie
 import { RankingConfigModal } from "@/components/creatives/RankingConfigModal";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { DownloadIcon } from "@/components/ui/DownloadIcon";
+import { SettingsOutlineIcon } from "@/components/ui/OutlineIcon";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 
 type ClientRow = { id: string; slug: string; name: string };
@@ -108,9 +109,10 @@ export function CreativesLibraryClient() {
           <button
             type="button"
             onClick={() => setConfigOpen(true)}
-            className="ui-btn-secondary text-sm"
+            className="ui-btn-secondary inline-flex items-center gap-1.5 text-sm"
           >
-            ⚙ {tPerf("cfgButton")}
+            <SettingsOutlineIcon className="h-4 w-4" />
+            {tPerf("cfgButton")}
           </button>
           {view === "byCampaign" ? (
             <button

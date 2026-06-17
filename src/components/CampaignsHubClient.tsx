@@ -35,6 +35,7 @@ import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/Camp
 import { CampaignTypeSelect } from "@/components/CreateCampaignTypeModal";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
+import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import { columnRefKey } from "@/lib/campaign-table-layout";
 import { sortRowsByKey } from "@/lib/campaign-table-sort";
 import {
@@ -760,6 +761,11 @@ export function CampaignsHubClient() {
               const groupMetricColumns = metricsColumnsForPreset(preset, customTypesMap);
               const groupSort = groupSorts[preset];
               const sorted = sortGroupRows(list, preset, groupMetricColumns);
+              const groupTotals = computeGroupTotals(
+                sorted,
+                groupMetricColumns,
+                tableLayout.customMetricsMap
+              );
               return (
                 <div key={preset} className="ui-card overflow-hidden">
                   <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
@@ -850,6 +856,40 @@ export function CampaignsHubClient() {
                           </tr>
                         ))}
                       </tbody>
+                      <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+                        <tr>
+                          <td className="px-4 py-2.5 text-left font-semibold text-slate-800">
+                            {t("rowTotal")} ({list.length})
+                          </td>
+                          <td className="px-3 py-2.5 text-center text-slate-400">—</td>
+                          <td className="px-3 py-2.5 text-center text-slate-400">—</td>
+                          <td className="px-3 py-2.5 text-center text-slate-400">—</td>
+                          {groupMetricColumns.map((col) => {
+                            const key = columnRefKey(col);
+                            const val = groupTotals[key];
+                            let content = "—";
+                            if (val != null && col.kind === "metric") {
+                              content = formatMetricValue(col.key, val, locale);
+                            } else if (val != null && col.kind === "custom") {
+                              const fmt = tableLayout.customMetricsMap[col.id]?.format ?? "number";
+                              if (fmt === "currency") content = formatBRL(val, locale);
+                              else if (fmt === "percent") content = formatPercent(val, 2, locale);
+                              else if (fmt === "multiplier") content = formatRoas(val, locale);
+                              else content = String(Math.round(val * 100) / 100);
+                            } else if (val != null) {
+                              content = String(val);
+                            }
+                            return (
+                              <td
+                                key={key}
+                                className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-900"
+                              >
+                                {content}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
