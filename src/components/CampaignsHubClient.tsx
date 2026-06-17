@@ -777,9 +777,6 @@ export function CampaignsHubClient() {
           {t("onlyAlerts")}
         </label>
         <CampaignTableColumnsButton />
-        <Link href="/campaigns/columns" className="text-xs text-violet-700 hover:underline">
-          {t("createTypeLink")}
-        </Link>
       </div>
 
       {clientFilter ? (

@@ -1,22 +1,19 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { MetricCatalogPicker } from "@/components/CampaignTableColumnsModal";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { Link, useRouter } from "@/i18n/navigation";
-import {
-  CAMPAIGN_PRESETS,
-  PRESET_METRICS,
-  type CampaignPresetKey
-} from "@/lib/campaign-presets";
+import { PRESET_METRICS } from "@/lib/campaign-presets";
 import { metricKeysToColumns } from "@/lib/campaign-table-metrics";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import type { TableColumnRef } from "@/lib/campaign-table-layout";
 
 const NEW_CUSTOM = "__new__";
+const DEFAULT_METRIC_COLS = metricKeysToColumns(PRESET_METRICS.default);
 
 export function CampaignTableColumnsPage() {
   const t = useTranslations("campaignTableLayout");
@@ -26,13 +23,10 @@ export function CampaignTableColumnsPage() {
   const { types: customTypes, createType, updateType, deleteType, loading: typesLoading } =
     useCampaignTypes();
 
-  const [systemPreset, setSystemPreset] = useState<CampaignPresetKey>("default");
   const [customSelection, setCustomSelection] = useState<string>(NEW_CUSTOM);
   const [name, setName] = useState("");
   const [shared, setShared] = useState(true);
-  const [draftMetrics, setDraftMetrics] = useState<TableColumnRef[]>(
-    metricKeysToColumns(PRESET_METRICS.default)
-  );
+  const [draftMetrics, setDraftMetrics] = useState<TableColumnRef[]>(DEFAULT_METRIC_COLS);
   const [tab, setTab] = useState<"metrics" | "formula">("metrics");
   const [formulaName, setFormulaName] = useState("");
   const [formulaExpr, setFormulaExpr] = useState("");
@@ -40,11 +34,6 @@ export function CampaignTableColumnsPage() {
   const [formulaError, setFormulaError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const systemMetricCols = useMemo(
-    () => metricKeysToColumns(PRESET_METRICS[systemPreset]),
-    [systemPreset]
-  );
 
   const loadCustomType = useCallback(
     (id: string) => {
@@ -61,19 +50,14 @@ export function CampaignTableColumnsPage() {
     if (customSelection === NEW_CUSTOM) {
       setName("");
       setShared(true);
-      setDraftMetrics(metricKeysToColumns(PRESET_METRICS[systemPreset]));
+      setDraftMetrics(DEFAULT_METRIC_COLS);
       return;
     }
     loadCustomType(customSelection);
   }, [customSelection, loadCustomType]);
 
-  useEffect(() => {
-    if (customSelection !== NEW_CUSTOM) return;
-    setDraftMetrics(metricKeysToColumns(PRESET_METRICS[systemPreset]));
-  }, [systemPreset, customSelection]);
-
-  function useSystemPresetAsBase() {
-    setDraftMetrics([...systemMetricCols]);
+  function resetToDefaultMetrics() {
+    setDraftMetrics([...DEFAULT_METRIC_COLS]);
   }
 
   async function createFormula() {
@@ -160,61 +144,35 @@ export function CampaignTableColumnsPage() {
 
       <div className="ui-card space-y-4 p-5">
         <div>
-          <label className="text-xs font-medium text-slate-600">{t("systemPresetLabel")}</label>
-          <select
-            className="ui-select mt-1 w-full text-sm"
-            value={systemPreset}
-            onChange={(e) => setSystemPreset(e.target.value as CampaignPresetKey)}
-          >
-            {CAMPAIGN_PRESETS.map((p) => (
-              <option key={p} value={p}>
-                {tTypes(p)}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-[11px] text-slate-500">{t("systemPresetReadonly")}</p>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {systemMetricCols.map((col) =>
-              col.kind === "metric" ? (
-                <span
-                  key={col.key}
-                  className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600"
-                >
-                  {col.key}
-                </span>
-              ) : null
-            )}
-          </div>
-        </div>
-
-        <hr className="border-slate-100" />
-
-        <div>
-          <label className="text-xs font-medium text-slate-600">{t("customTypeLabel")}</label>
-          <select
-            className="ui-select mt-1 w-full text-sm"
-            value={customSelection}
-            onChange={(e) => setCustomSelection(e.target.value)}
-            disabled={typesLoading}
-          >
-            <option value={NEW_CUSTOM}>{t("createNewType")}</option>
-            {customTypes.map((ct) => (
-              <option key={ct.id} value={ct.id}>
-                {ct.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="text-xs font-medium text-slate-600">{tTypes("typeName")}</label>
+          <label className="text-xs font-medium text-slate-600">{t("typeNameLabel")}</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("customNamePlaceholder")}
             className="ui-input mt-1 w-full text-sm"
+            autoFocus={customSelection === NEW_CUSTOM}
           />
+          <p className="mt-1 text-[11px] text-slate-500">{t("typeNameHint")}</p>
         </div>
+
+        {customTypes.length > 0 ? (
+          <div>
+            <label className="text-xs font-medium text-slate-600">{t("editExistingTypeLabel")}</label>
+            <select
+              className="ui-select mt-1 w-full text-sm"
+              value={customSelection}
+              onChange={(e) => setCustomSelection(e.target.value)}
+              disabled={typesLoading}
+            >
+              <option value={NEW_CUSTOM}>{t("createNewType")}</option>
+              {customTypes.map((ct) => (
+                <option key={ct.id} value={ct.id}>
+                  {ct.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <label className="flex items-center gap-2 text-xs text-slate-600">
           <input
@@ -283,8 +241,8 @@ export function CampaignTableColumnsPage() {
         {saveError ? <p className="text-xs text-red-600">{saveError}</p> : null}
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
-          <button type="button" className="ui-btn-secondary text-xs" onClick={useSystemPresetAsBase}>
-            {t("usePresetAsBase")}
+          <button type="button" className="ui-btn-secondary text-xs" onClick={resetToDefaultMetrics}>
+            {t("useDefaultMetrics")}
           </button>
           {customSelection !== NEW_CUSTOM ? (
             <button type="button" className="ui-btn-secondary text-xs text-red-600" onClick={() => void handleDelete()}>
