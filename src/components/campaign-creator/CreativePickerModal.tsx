@@ -9,8 +9,9 @@ type Props = {
   open: boolean;
   onClose: () => void;
   assets: PublishAsset[];
-  selectedHashes: string[];
-  onChange: (hashes: string[]) => void;
+  mediaKind: "image" | "video";
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
   clientSlug: string;
   adAccountId: string;
   onVariantsGenerated?: (hashes: Array<{ hash: string; label: string }>) => void;
@@ -20,7 +21,8 @@ export function CreativePickerModal({
   open,
   onClose,
   assets,
-  selectedHashes,
+  mediaKind,
+  selectedIds,
   onChange,
   clientSlug,
   adAccountId,
@@ -35,18 +37,19 @@ export function CreativePickerModal({
 
   if (!open) return null;
 
-  const allAssets = [...assets, ...localAssets];
-  const selected = new Set(selectedHashes);
+  const libraryAssets = assets.filter((a) => (a.kind ?? "image") === mediaKind);
+  const allAssets = [...libraryAssets, ...localAssets.filter((a) => (a.kind ?? "image") === mediaKind)];
+  const selected = new Set(selectedIds);
 
-  function toggle(hash: string) {
-    if (selected.has(hash)) {
-      onChange(selectedHashes.filter((h) => h !== hash));
+  function toggle(id: string) {
+    if (selected.has(id)) {
+      onChange(selectedIds.filter((h) => h !== id));
     } else {
-      onChange([...selectedHashes, hash]);
+      onChange([...selectedIds, id]);
     }
   }
 
-  async function handleUpload(file: File) {
+  async function handleImageUpload(file: File) {
     if (!clientSlug || !adAccountId) return;
     setUploading(true);
     setError(null);
@@ -69,8 +72,11 @@ export function CreativePickerModal({
       });
       const j = (await res.json()) as { ok?: boolean; hash?: string; error?: string };
       if (!j.ok || !j.hash) throw new Error(j.error ?? "uploadFailed");
-      setLocalAssets((prev) => [...prev, { id: j.hash!, label: file.name, url: dataUrl }]);
-      onChange([...selectedHashes, j.hash!]);
+      setLocalAssets((prev) => [
+        ...prev,
+        { id: j.hash!, label: file.name, url: dataUrl, kind: "image" }
+      ]);
+      onChange([...selectedIds, j.hash!]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "uploadFailed");
     } finally {
@@ -78,8 +84,39 @@ export function CreativePickerModal({
     }
   }
 
+  async function handleVideoUpload(file: File) {
+    if (!clientSlug || !adAccountId) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("clientId", clientSlug);
+      form.append("adAccountId", adAccountId);
+      form.append("label", file.name);
+      form.append("file", file);
+      const res = await fetch("/api/creative-assets/video", { method: "POST", body: form });
+      const j = (await res.json()) as { ok?: boolean; videoId?: string; label?: string; error?: string };
+      if (!j.ok || !j.videoId) throw new Error(j.error ?? "uploadFailed");
+      const previewUrl = URL.createObjectURL(file);
+      setLocalAssets((prev) => [
+        ...prev,
+        { id: j.videoId!, label: j.label ?? file.name, url: previewUrl, kind: "video" }
+      ]);
+      onChange([...selectedIds, j.videoId!]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "uploadFailed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleUpload(file: File) {
+    if (mediaKind === "video") await handleVideoUpload(file);
+    else await handleImageUpload(file);
+  }
+
   async function handleGenerateVariants() {
-    const first = selectedHashes[0];
+    const first = selectedIds[0];
     const asset = allAssets.find((a) => a.id === first);
     if (!first || !asset?.url) {
       setError(t("creativeSelectFirst"));
@@ -108,9 +145,9 @@ export function CreativePickerModal({
       const variants = j.variants ?? [];
       setLocalAssets((prev) => [
         ...prev,
-        ...variants.map((v) => ({ id: v.hash, label: v.label, url: null }))
+        ...variants.map((v) => ({ id: v.hash, label: v.label, url: null, kind: "image" as const }))
       ]);
-      onChange([...selectedHashes, ...variants.map((v) => v.hash)]);
+      onChange([...selectedIds, ...variants.map((v) => v.hash)]);
       onVariantsGenerated?.(variants);
     } catch (e) {
       setError(e instanceof Error ? e.message : "aiFailed");
@@ -125,7 +162,9 @@ export function CreativePickerModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">{t("creativeModalTitle")}</h2>
-            <p className="mt-1 text-sm text-slate-500">{t("creativeModalHint")}</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {mediaKind === "video" ? t("creativeModalHintVideo") : t("creativeModalHint")}
+            </p>
           </div>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
             ✕
@@ -139,26 +178,32 @@ export function CreativePickerModal({
             disabled={uploading || !clientSlug}
             className="ui-btn-secondary text-sm"
           >
-            {uploading ? t("uploading") : t("creativeUpload")}
+            {uploading
+              ? t("uploading")
+              : mediaKind === "video"
+                ? t("creativeUploadVideo")
+                : t("creativeUpload")}
           </button>
-          <button
-            type="button"
-            onClick={() => void handleGenerateVariants()}
-            disabled={generating || !selectedHashes.length}
-            className="ui-btn-secondary text-sm"
-          >
-            {generating ? t("generatingAi") : t("creativeAiVariants")}
-          </button>
-          <span className="self-center text-[11px] text-slate-400">{t("videoSoon")}</span>
+          {mediaKind === "image" ? (
+            <button
+              type="button"
+              onClick={() => void handleGenerateVariants()}
+              disabled={generating || !selectedIds.length}
+              className="ui-btn-secondary text-sm"
+            >
+              {generating ? t("generatingAi") : t("creativeAiVariants")}
+            </button>
+          ) : null}
         </div>
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept={mediaKind === "video" ? "video/*" : "image/*"}
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) void handleUpload(f);
+            e.target.value = "";
           }}
         />
 
@@ -175,12 +220,17 @@ export function CreativePickerModal({
               }`}
             >
               <div className="aspect-square bg-slate-100">
-                {a.url ? (
+                {a.kind === "video" && a.url?.startsWith("blob:") ? (
+                  <video src={a.url} className="h-full w-full object-cover" muted playsInline />
+                ) : a.url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={a.url} alt={a.label} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-[10px] text-slate-400">
-                    {a.label.slice(0, 12)}
+                  <div className="flex h-full flex-col items-center justify-center px-1 text-center text-[10px] text-slate-400">
+                    {a.kind === "video" ? (
+                      <span className="text-lg">▶</span>
+                    ) : null}
+                    <span>{a.label.slice(0, 12)}</span>
                   </div>
                 )}
               </div>
@@ -189,8 +239,16 @@ export function CreativePickerModal({
           ))}
         </div>
 
+        {allAssets.length === 0 ? (
+          <p className="mt-4 text-center text-xs text-slate-400">
+            {mediaKind === "video" ? t("creativeEmptyVideo") : t("creativeEmptyImage")}
+          </p>
+        ) : null}
+
         <p className="mt-3 text-xs text-slate-500">
-          {t("creativeSelected", { count: selectedHashes.length })}
+          {mediaKind === "video"
+            ? t("creativeSelectedVideos", { count: selectedIds.length })
+            : t("creativeSelected", { count: selectedIds.length })}
         </p>
 
         <div className="mt-4 flex justify-end">

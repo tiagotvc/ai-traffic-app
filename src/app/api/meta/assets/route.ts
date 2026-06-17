@@ -7,6 +7,7 @@ import { listTenantInventory, listTenantPages } from "@/lib/meta-discover";
 import {
   fetchAdAccountPixels,
   fetchAdImages,
+  fetchAdVideos,
   fetchInstagramAccountsForAdAccount
 } from "@/lib/meta-graph";
 
@@ -55,23 +56,32 @@ export async function GET(req: Request) {
 
   let pixels: Array<{ id: string; name: string }> = [];
   let instagramAccounts: Array<{ id: string; username: string }> = [];
-  let assets: Array<{ id: string; label: string; url?: string | null }> = [];
+  let assets: Array<{ id: string; label: string; url?: string | null; kind: "image" | "video" }> = [];
 
   if (metaAccessToken) {
-    const [pixelRows, igRows, imageRows] = await Promise.all([
+    const [pixelRows, igRows, imageRows, videoRows] = await Promise.all([
       fetchAdAccountPixels(metaAccessToken, adAccountId),
       fetchInstagramAccountsForAdAccount(metaAccessToken, adAccountId),
-      fetchAdImages(metaAccessToken, adAccountId)
+      fetchAdImages(metaAccessToken, adAccountId),
+      fetchAdVideos(metaAccessToken, adAccountId)
     ]);
     pixels = pixelRows.map((p) => ({ id: p.id, name: p.name?.trim() || p.id }));
     instagramAccounts = igRows.map((i) => ({ id: i.id, username: i.username?.trim() || i.id }));
-    assets = imageRows
+    const imageAssets = imageRows
       .filter((img) => !!img.hash)
       .map((img) => ({
         id: img.hash as string,
         label: img.name?.trim() || (img.hash as string),
-        url: img.url ?? null
+        url: img.url ?? null,
+        kind: "image" as const
       }));
+    const videoAssets = videoRows.map((vid) => ({
+      id: vid.id,
+      label: vid.title?.trim() || vid.id,
+      url: vid.picture ?? vid.source ?? null,
+      kind: "video" as const
+    }));
+    assets = [...imageAssets, ...videoAssets];
   }
 
   return NextResponse.json({

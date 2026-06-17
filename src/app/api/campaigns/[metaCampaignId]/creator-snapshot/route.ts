@@ -228,14 +228,29 @@ export async function GET(
     let gender: DraftTargeting["gender"] = "all";
     if (genders?.length === 1) gender = genders[0] === 1 ? "male" : "female";
 
-    const feed = creativeData?.creative?.asset_feed_spec;
+    const feed = creativeData?.creative?.asset_feed_spec as
+      | {
+          images?: Array<{ hash?: string }>;
+          videos?: Array<{ video_id?: string }>;
+          titles?: Array<{ text?: string }>;
+          bodies?: Array<{ text?: string }>;
+          link_urls?: Array<{ website_url?: string }>;
+        }
+      | undefined;
+    const imageHashes = feed?.images?.map((i) => i.hash).filter(Boolean) as string[] | undefined;
+    const videoIds = feed?.videos?.map((v) => v.video_id).filter(Boolean) as string[] | undefined;
     const titles =
       feed?.titles?.map((t) => t.text).filter(Boolean) ??
       (creativeData?.creative?.title ? [creativeData.creative.title] : []);
     const bodies =
       feed?.bodies?.map((b) => b.text).filter(Boolean) ??
       (creativeData?.creative?.body ? [creativeData.creative.body] : []);
-    const imageHashes = feed?.images?.map((i) => i.hash).filter(Boolean) as string[] | undefined;
+    const storyVideo = (
+      creativeData?.creative?.object_story_spec as { video_data?: { video_id?: string } } | undefined
+    )?.video_data?.video_id;
+    const allVideoIds = [...(videoIds ?? [])];
+    if (storyVideo && !allVideoIds.includes(storyVideo)) allVideoIds.push(storyVideo);
+    const format = allVideoIds.length ? ("video" as const) : ("single_image" as const);
     const linkUrl = feed?.link_urls?.[0]?.website_url ?? "";
 
     const story = creativeData?.creative?.object_story_spec as
@@ -288,8 +303,9 @@ export async function GET(
           pageId,
           instagramActorId: story?.instagram_actor_id ?? null,
           pixelId: null,
-          format: "single_image",
-          imageHashes: imageHashes ?? [],
+          format,
+          imageHashes: format === "video" ? [] : (imageHashes ?? []),
+          videoIds: format === "video" ? allVideoIds : [],
           titles: titles as string[],
           bodies: bodies as string[],
           destinationType: "website",

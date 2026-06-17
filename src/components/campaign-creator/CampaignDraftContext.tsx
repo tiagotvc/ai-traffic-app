@@ -138,6 +138,7 @@ export function CampaignDraftProvider({
             titles: [],
             bodies: [],
             imageHashes: [],
+            videoIds: [],
             targetAdsetIds: [adsetDraftId]
           };
 

@@ -24,6 +24,7 @@ export type ImportedAdConfig = {
   titles: string[];
   bodies: string[];
   imageHashes: string[];
+  videoIds: string[];
   format: AdDraftItem["format"];
   pageId: string;
   instagramActorId: string | null;
@@ -58,14 +59,19 @@ export function copyTextsFromMetaCopy(copy: AdCreativeCopy): {
 
 export function mediaFromMetaCreative(creative?: MetaCreative | null): {
   imageHashes: string[];
+  videoIds: string[];
   format: AdDraftItem["format"];
 } {
-  if (!creative) return { imageHashes: [], format: "single_image" };
+  if (!creative) return { imageHashes: [], videoIds: [], format: "single_image" };
 
   const hashes: string[] = [];
+  const videoIds: string[] = [];
   const feed = creative.asset_feed_spec;
   for (const img of feed?.images ?? []) {
     if (img.hash) hashes.push(img.hash);
+  }
+  for (const vid of feed?.videos ?? []) {
+    if (vid.video_id) videoIds.push(vid.video_id);
   }
 
   const spec = creative.object_story_spec;
@@ -73,17 +79,22 @@ export function mediaFromMetaCreative(creative?: MetaCreative | null): {
   if (storyHash && !hashes.includes(storyHash)) hashes.push(storyHash);
 
   const videoData = spec?.video_data as Record<string, unknown> | undefined;
-  const hasVideo = Boolean(videoData?.video_id) || Boolean(feed?.videos?.length);
+  const storyVideoId = videoData?.video_id;
+  if (typeof storyVideoId === "string" && !videoIds.includes(storyVideoId)) {
+    videoIds.push(storyVideoId);
+  }
+
+  const hasVideo = videoIds.length > 0;
   const format: AdDraftItem["format"] = hasVideo ? "video" : "single_image";
 
-  return { imageHashes: hashes, format };
+  return { imageHashes: hashes, videoIds, format };
 }
 
 export function buildImportedAdConfig(
   creative: MetaCreative | null | undefined,
   copy: AdCreativeCopy
 ): ImportedAdConfig {
-  const { imageHashes, format } = mediaFromMetaCreative(creative);
+  const { imageHashes, videoIds, format } = mediaFromMetaCreative(creative);
 
   const feed = creative?.asset_feed_spec;
   const story = creative?.object_story_spec;
@@ -112,6 +123,7 @@ export function buildImportedAdConfig(
     titles: uniqueStrings(titleList),
     bodies: uniqueStrings(bodyList),
     imageHashes,
+    videoIds,
     format,
     pageId,
     instagramActorId,
@@ -136,6 +148,7 @@ export function applyImportedToAd(
   }
   if (mode === "media" || mode === "all") {
     if (imported.imageHashes?.length) next.imageHashes = [...imported.imageHashes];
+    if (imported.videoIds?.length) next.videoIds = [...imported.videoIds];
     if (imported.format) next.format = imported.format;
     if (imported.pageId) next.pageId = imported.pageId;
     if (imported.instagramActorId !== undefined) next.instagramActorId = imported.instagramActorId;
@@ -173,6 +186,7 @@ export function cloneAdWithPreset(
       name: `${base.name} (${suffix})`,
       format: base.format,
       imageHashes: [],
+      videoIds: [],
       titles: titles.length ? [...titles] : [...base.titles],
       bodies: bodies.length ? [...bodies] : [...base.bodies]
     };
@@ -183,7 +197,8 @@ export function cloneAdWithPreset(
     ...shared,
     name: `${base.name} (${suffix})`,
     format: base.format,
-    imageHashes: [...base.imageHashes],
+    imageHashes: base.format === "video" ? [] : [...base.imageHashes],
+    videoIds: base.format === "video" ? [...base.videoIds] : [],
     titles: [],
     bodies: []
   };

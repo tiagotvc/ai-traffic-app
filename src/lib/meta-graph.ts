@@ -69,6 +69,7 @@ export type MetaAdsetInsightRow = MetaInsightRow & {
 };
 
 export type MetaAdImage = { id: string; hash?: string; name?: string; url?: string };
+export type MetaAdVideo = { id: string; title?: string; picture?: string; source?: string };
 
 export type MetaCampaign = {
   id: string;
@@ -607,6 +608,27 @@ export async function uploadAdImage(
   });
 }
 
+export async function uploadAdVideo(
+  accessToken: string,
+  adAccountId: string,
+  file: Buffer,
+  fileName: string,
+  title: string
+): Promise<{ id: string }> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const form = new FormData();
+  form.append("access_token", accessToken);
+  form.append("name", title);
+  form.append("source", new Blob([new Uint8Array(file)]), fileName);
+
+  const url = `${GRAPH_BASE}/${encodeURIComponent(act)}/advideos`;
+  const { data } = await metaFetchWithRateLimit<{ id: string }>(url, {
+    method: "POST",
+    body: form
+  });
+  return data;
+}
+
 const INSIGHT_METRIC_FIELDS = [
   "spend",
   "impressions",
@@ -715,6 +737,13 @@ export async function fetchAdImages(accessToken: string, adAccountId: string): P
   const fields = ["id", "hash", "name", "url"].join(",");
   const path = `/${encodeURIComponent(adAccountId)}/adimages?fields=${encodeURIComponent(fields)}&limit=50`;
   const data = await metaFetch<{ data: MetaAdImage[] }>(path, accessToken);
+  return data.data ?? [];
+}
+
+export async function fetchAdVideos(accessToken: string, adAccountId: string): Promise<MetaAdVideo[]> {
+  const fields = ["id", "title", "picture", "source"].join(",");
+  const path = `/${encodeURIComponent(adAccountId)}/advideos?fields=${encodeURIComponent(fields)}&limit=50`;
+  const data = await metaFetch<{ data: MetaAdVideo[] }>(path, accessToken);
   return data.data ?? [];
 }
 

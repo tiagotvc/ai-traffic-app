@@ -39,11 +39,17 @@ export function AdStep() {
   const clientRequired = !payload.clientSlug;
 
   const mediaPreviews = useMemo(() => {
-    return ad.imageHashes.map((hash) => {
-      const asset = assets.find((a) => a.id === hash);
-      return { hash, label: asset?.label ?? hash.slice(0, 8), url: asset?.url };
+    const ids = ad.format === "video" ? ad.videoIds : ad.imageHashes;
+    return ids.map((id) => {
+      const asset = assets.find((a) => a.id === id);
+      return {
+        id,
+        label: asset?.label ?? id.slice(0, 8),
+        url: asset?.url,
+        kind: ad.format === "video" ? ("video" as const) : ("image" as const)
+      };
     });
-  }, [ad.imageHashes, assets]);
+  }, [ad.format, ad.imageHashes, ad.videoIds, assets]);
 
   function patchAd(patch: Partial<AdDraftItem>) {
     updatePayload((p) => ({
@@ -428,6 +434,32 @@ export function AdStep() {
 
       <div className="ui-card space-y-3 p-4">
         <h3 className="text-sm font-semibold text-slate-900">{tAds("media")}</h3>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => patchAd({ format: "single_image", videoIds: [] })}
+            disabled={clientRequired}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+              ad.format === "single_image"
+                ? "border-violet-500 bg-violet-50 text-violet-700"
+                : "border-slate-200 text-slate-600 hover:border-slate-300"
+            }`}
+          >
+            {t("formatImage")}
+          </button>
+          <button
+            type="button"
+            onClick={() => patchAd({ format: "video", imageHashes: [] })}
+            disabled={clientRequired}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+              ad.format === "video"
+                ? "border-violet-500 bg-violet-50 text-violet-700"
+                : "border-slate-200 text-slate-600 hover:border-slate-300"
+            }`}
+          >
+            {t("formatVideo")}
+          </button>
+        </div>
         <button
           type="button"
           onClick={() => setCreativeOpen(true)}
@@ -437,21 +469,27 @@ export function AdStep() {
           {t("creativeOpenModal")}
         </button>
         <p className="text-xs text-slate-500">
-          {tAds("selected", { count: ad.imageHashes.length })}
-          {ad.format === "video" ? ` · ${t("mediaVideo")}` : ""}
+          {ad.format === "video"
+            ? t("creativeSelectedVideos", {
+                count: ad.videoIds.length
+              })
+            : tAds("selected", { count: ad.imageHashes.length })}
         </p>
         {mediaPreviews.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {mediaPreviews.map((m) => (
               <div
-                key={m.hash}
+                key={m.id}
                 className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
               >
-                {m.url ? (
+                {m.kind === "video" && m.url?.startsWith("blob:") ? (
+                  <video src={m.url} className="h-16 w-16 object-cover" muted playsInline />
+                ) : m.url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={m.url} alt={m.label} className="h-16 w-16 object-cover" />
                 ) : (
-                  <div className="flex h-16 w-16 items-center justify-center px-1 text-center text-[9px] text-slate-500">
+                  <div className="flex h-16 w-16 flex-col items-center justify-center px-1 text-center text-[9px] text-slate-500">
+                    {m.kind === "video" ? <span className="text-sm">▶</span> : null}
                     {m.label}
                   </div>
                 )}
@@ -465,8 +503,11 @@ export function AdStep() {
         open={creativeOpen}
         onClose={() => setCreativeOpen(false)}
         assets={assets}
-        selectedHashes={ad.imageHashes}
-        onChange={(hashes) => patchAd({ imageHashes: hashes })}
+        mediaKind={ad.format === "video" ? "video" : "image"}
+        selectedIds={ad.format === "video" ? ad.videoIds : ad.imageHashes}
+        onChange={(ids) =>
+          patchAd(ad.format === "video" ? { videoIds: ids } : { imageHashes: ids })
+        }
         clientSlug={payload.clientSlug}
         adAccountId={payload.adAccountId}
       />

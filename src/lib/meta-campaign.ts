@@ -208,7 +208,9 @@ async function createAdForAdset(args: {
       : ad.linkUrl.trim() || linkUrl;
 
   const assetFeedSpec: Record<string, unknown> = {
-    images: ad.imageHashes.map((hash) => ({ hash })),
+    ...(ad.format === "video" && ad.videoIds.length
+      ? { videos: ad.videoIds.map((video_id) => ({ video_id })) }
+      : { images: ad.imageHashes.map((hash) => ({ hash })) }),
     titles: ad.titles.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
     bodies: ad.bodies.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
     link_urls: [{ website_url: resolvedLink }],
@@ -486,6 +488,7 @@ export async function createFullMetaCampaign(
         pixelId: input.pixelId ?? null,
         format: "single_image",
         imageHashes: input.imageHashes,
+        videoIds: [],
         titles: input.titles,
         bodies: input.descriptions,
         destinationType: input.destinationType ?? "website",

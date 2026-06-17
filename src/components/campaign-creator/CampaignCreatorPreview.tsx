@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import { computeDraftScore, getActiveAd } from "@/lib/campaign-draft";
+import { computeDraftScore, getActiveAd, adHasMedia } from "@/lib/campaign-draft";
 
 export function CampaignCreatorPreview() {
   const t = useTranslations("campaignCreator");
@@ -48,8 +48,10 @@ export function CampaignCreatorPreview() {
         <p className="mt-1 text-[11px] text-slate-500">{t("adPreviewHint")}</p>
         <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="bg-slate-100 p-8 text-center text-xs text-slate-400">
-            {ad.imageHashes.length
-              ? t("imagesSelected", { count: ad.imageHashes.length })
+            {adHasMedia(ad)
+              ? ad.format === "video"
+                ? t("videosSelected", { count: ad.videoIds.length })
+                : t("imagesSelected", { count: ad.imageHashes.length })
               : t("noMedia")}
           </div>
           <div className="space-y-1 p-3">

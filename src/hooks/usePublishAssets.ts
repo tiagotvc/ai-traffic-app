@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-export type PublishAsset = { id: string; label: string; url?: string | null };
+export type PublishAsset = {
+  id: string;
+  label: string;
+  url?: string | null;
+  kind?: "image" | "video";
+};
 export type PublishPage = { metaPageId: string; name: string };
 export type PublishIgAccount = { id: string; username: string };
 export type PublishPixel = { id: string; name: string };

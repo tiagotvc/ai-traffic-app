@@ -72,6 +72,7 @@ export const AdDraftItemSchema = z.object({
   pixelId: z.string().nullable().default(null),
   format: z.enum(["single_image", "video"]).default("single_image"),
   imageHashes: z.array(z.string()).default([]),
+  videoIds: z.array(z.string()).default([]),
   titles: z.array(z.string()).default([]),
   bodies: z.array(z.string()).default([]),
   destinationType: z.enum(["website", "instant_form"]).default("website"),
@@ -183,6 +184,7 @@ export function defaultAdItem(locale: string, name?: string): AdDraftItem {
     pixelId: null,
     format: "single_image",
     imageHashes: [],
+    videoIds: [],
     titles: isEn
       ? ["Perfect smile in 30 days", "Dental implants — free evaluation"]
       : ["Sorriso perfeito em 30 dias", "Implantes com avaliação"],
@@ -292,6 +294,7 @@ export function migrateV1ToV2(raw: z.infer<typeof V1Schema>, locale: string): Ca
         pixelId: (v1Ad.pixelId as string | null) ?? null,
         format: v1Ad.format ?? "single_image",
         imageHashes: (v1Ad.imageHashes as string[]) ?? [],
+        videoIds: (v1Ad.videoIds as string[]) ?? [],
         titles: (v1Ad.titles as string[]) ?? [],
         bodies: (v1Ad.bodies as string[]) ?? [],
         destinationType: v1Ad.destinationType ?? "website",
@@ -512,11 +515,15 @@ export function validatePublishDraft(d: CampaignDraftPayload): string | null {
   );
 }
 
+export function adHasMedia(ad: AdDraftItem): boolean {
+  return ad.format === "video" ? ad.videoIds.length > 0 : ad.imageHashes.length > 0;
+}
+
 export function validateAdStep(d: CampaignDraftPayload): string | null {
   for (const ad of d.ads) {
     if (!ad.name.trim()) return "adNameRequired";
     if (!ad.pageId.trim()) return "pageRequired";
-    if (!ad.imageHashes.length) return "mediaRequired";
+    if (!adHasMedia(ad)) return "mediaRequired";
     if (!ad.titles.some((x) => x.trim())) return "titlesRequired";
     if (!ad.bodies.some((x) => x.trim())) return "bodiesRequired";
     if (d.objective === "leads" && ad.destinationType === "instant_form") {
@@ -533,7 +540,7 @@ export function computeDraftScore(d: CampaignDraftPayload): number {
     !validateCampaignStep(d),
     !validateAdSetStep(d),
     !validateAdStep(d),
-    d.ads.some((a) => a.imageHashes.length > 0),
+    d.ads.some(adHasMedia),
     d.ads.some((a) => a.titles.filter((x) => x.trim()).length >= 2)
   ];
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
