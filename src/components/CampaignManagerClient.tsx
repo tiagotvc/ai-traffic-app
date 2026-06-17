@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
+import { campaignAdsHref, rememberAdset } from "@/lib/campaign-navigation";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
@@ -1053,7 +1054,8 @@ function AdsetsTable({
               <tr key={a.id} className="border-t border-slate-100 hover:bg-slate-50/80">
                 <td className="px-4 py-3">
                   <Link
-                    href={`/campaigns/${metaCampaignId}/ads?client=${encodeURIComponent(slug)}&adset=${encodeURIComponent(a.id)}`}
+                    href={campaignAdsHref(metaCampaignId, slug, a.id)}
+                    onClick={() => rememberAdset(metaCampaignId, a.id, a.name ?? a.id)}
                     className="font-medium text-slate-900 hover:text-violet-700 hover:underline"
                   >
                     {a.name ?? a.id}

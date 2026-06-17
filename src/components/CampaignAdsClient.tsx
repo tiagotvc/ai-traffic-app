@@ -12,8 +12,15 @@ import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
+import {
+  campaignAdsHref,
+  campaignTabQuery,
+  clearRememberedAdset,
+  getRememberedAdset,
+  rememberAdset
+} from "@/lib/campaign-navigation";
 import { columnRefKey } from "@/lib/campaign-table-layout";
 import {
   STICKY_NAME_TD,
@@ -76,17 +83,20 @@ function statusLabel(status: string, t: (k: string) => string) {
 export function CampaignAdsClient({
   metaCampaignId,
   clientSlug,
-  embedded = false
+  embedded = false,
+  initialAdsetId
 }: {
   metaCampaignId: string;
   clientSlug: string;
   embedded?: boolean;
+  initialAdsetId?: string;
 }) {
   const t = useTranslations("adsPage");
   const tCampaigns = useTranslations("campaignsPage");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { openPanel } = usePublishPanel();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
@@ -108,7 +118,10 @@ export function CampaignAdsClient({
     if (col.kind === "custom") return customMetricNames[col.id] ?? col.id;
     return "";
   }
-  const adsetFilter = searchParams.get("adset");
+  const urlAdset = searchParams.get("adset");
+  const [adsetFilter, setAdsetFilter] = useState<string | null>(
+    urlAdset ?? initialAdsetId ?? null
+  );
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [ads, setAds] = useState<AdRow[]>([]);
   const [adsetsCount, setAdsetsCount] = useState<number | null>(null);
@@ -123,6 +136,29 @@ export function CampaignAdsClient({
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const pageSize = 20;
+
+  useEffect(() => {
+    const fromUrl = searchParams.get("adset");
+    if (fromUrl) {
+      setAdsetFilter(fromUrl);
+      rememberAdset(metaCampaignId, fromUrl);
+      return;
+    }
+
+    const remembered = getRememberedAdset(metaCampaignId);
+    if (remembered?.adsetId) {
+      setAdsetFilter(remembered.adsetId);
+      const slug = clientSlug || campaign?.clientSlug || "";
+      const qs = campaignTabQuery(slug, remembered.adsetId);
+      router.replace(`/campaigns/${metaCampaignId}/ads${qs}`, { scroll: false });
+      return;
+    }
+
+    if (initialAdsetId) {
+      setAdsetFilter(initialAdsetId);
+      rememberAdset(metaCampaignId, initialAdsetId);
+    }
+  }, [searchParams, metaCampaignId, clientSlug, initialAdsetId, router, campaign?.clientSlug]);
 
   const toggleSort = (key: string) => {
     setPage(1);
@@ -227,7 +263,9 @@ export function CampaignAdsClient({
   }, [ads, search, statusFilter, adsetFilter, sort, metricColumns, tableLayout.customMetricsMap]);
 
   const adsetFilterName = adsetFilter
-    ? ads.find((a) => a.adsetId === adsetFilter)?.adsetName ?? adsetFilter
+    ? ads.find((a) => a.adsetId === adsetFilter)?.adsetName ??
+      getRememberedAdset(metaCampaignId)?.adsetName ??
+      adsetFilter
     : null;
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -362,6 +400,7 @@ export function CampaignAdsClient({
         creativesCount={countsLoading ? null : creativesCount}
         embedded={embedded}
         translationNs="adsPage"
+        adsetId={adsetFilter}
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -393,9 +432,13 @@ export function CampaignAdsClient({
           <span className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1 font-medium text-violet-700">
             {t("adsetFilter", { name: adsetFilterName ?? "" })}
             <Link
-              href={`/campaigns/${metaCampaignId}/ads?client=${encodeURIComponent(clientSlug)}`}
+              href={campaignAdsHref(metaCampaignId, slug)}
               className="text-violet-500 hover:text-violet-800"
               title={t("clearFilter")}
+              onClick={() => {
+                clearRememberedAdset(metaCampaignId);
+                setAdsetFilter(null);
+              }}
             >
               ✕
             </Link>

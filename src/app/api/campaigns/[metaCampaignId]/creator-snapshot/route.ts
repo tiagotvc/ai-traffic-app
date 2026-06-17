@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { repositories } from "@/db/repositories";
-import { getAppContext } from "@/lib/app-context";
+import { getAppContext, slugify } from "@/lib/app-context";
 import type { CampaignDraftPayload, DraftTargeting } from "@/lib/campaign-draft";
 import { defaultCampaignDraft } from "@/lib/campaign-draft";
+import { getResolvedClientMeta } from "@/lib/client-meta-settings";
 import {
   fetchAdSetDetail,
   fetchAdSetsForCampaign,
@@ -59,11 +60,16 @@ function mapGeoToLocations(targeting?: Record<string, unknown>): DraftTargeting[
   return out;
 }
 
-async function resolveAdAccountMetaId(
+async function resolveCampaignClientContext(
   tenantId: string,
   metaCampaignId: string
-): Promise<string | null> {
-  const { campaignMetricSnapshot: campRepo, adAccount: adRepo } = await repositories();
+): Promise<{
+  metaAdAccountId: string;
+  clientSlug: string;
+  clientId: string;
+} | null> {
+  const { campaignMetricSnapshot: campRepo, adAccount: adRepo, client: clientRepo } =
+    await repositories();
   const snap = await campRepo.findOne({
     where: { metaCampaignId },
     order: { day: "DESC" }
@@ -71,9 +77,56 @@ async function resolveAdAccountMetaId(
   if (!snap) return null;
   const acc = await adRepo.findOne({ where: { id: snap.adAccountId } });
   if (!acc) return null;
-  const client = await (await repositories()).client.findOne({ where: { id: acc.clientId } });
+  const client = await clientRepo.findOne({ where: { id: acc.clientId } });
   if (!client || client.tenantId !== tenantId) return null;
-  return acc.metaAdAccountId;
+  return { metaAdAccountId: acc.metaAdAccountId, clientSlug: slugify(client.name) || client.id, clientId: client.id };
+}
+
+async function resolveAdAccountMetaId(
+  tenantId: string,
+  metaCampaignId: string
+): Promise<string | null> {
+  const ctx = await resolveCampaignClientContext(tenantId, metaCampaignId);
+  return ctx?.metaAdAccountId ?? null;
+}
+
+type CreativeSnapshot = Awaited<ReturnType<typeof fetchAdWithCreative>>;
+
+function extractInheritedAdDefaults(
+  creativeData: CreativeSnapshot | null,
+  fallback: {
+    pageId?: string | null;
+    linkUrl?: string | null;
+    instagramActorId?: string | null;
+    pixelId?: string | null;
+    leadFormId?: string | null;
+  }
+) {
+  const feed = creativeData?.creative?.asset_feed_spec;
+  const story = creativeData?.creative?.object_story_spec as Record<string, unknown> | undefined;
+  const linkData = story?.link_data as Record<string, unknown> | undefined;
+  const pageId = String(story?.page_id ?? fallback.pageId ?? "");
+  const instagramActorId =
+    (story?.instagram_actor_id as string | undefined) ?? fallback.instagramActorId ?? null;
+  const linkUrl =
+    feed?.link_urls?.[0]?.website_url ||
+    (typeof linkData?.link === "string" ? linkData.link : "") ||
+    fallback.linkUrl ||
+    "";
+  const leadFormId =
+    (linkData?.lead_gen_form_id as string | undefined) ?? fallback.leadFormId ?? null;
+  const destinationType = leadFormId ? ("instant_form" as const) : ("website" as const);
+
+  return {
+    pageId,
+    instagramActorId,
+    pixelId: fallback.pixelId ?? null,
+    linkUrl,
+    leadFormId,
+    destinationType,
+    urlParams: "",
+    tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
+  };
 }
 
 export async function GET(
@@ -92,7 +145,8 @@ export async function GET(
 
   try {
     const campaign = await fetchCampaign(token, metaCampaignId);
-    const adAccountId = await resolveAdAccountMetaId(tenant.id, metaCampaignId);
+    const clientCtx = await resolveCampaignClientContext(tenant.id, metaCampaignId);
+    const adAccountId = clientCtx?.metaAdAccountId ?? null;
     const adsets = await fetchAdSetsForCampaign(token, metaCampaignId);
     const selectedAdset =
       (adsetParam ? adsets.find((a) => a.id === adsetParam) : null) ?? adsets[0];
@@ -103,16 +157,25 @@ export async function GET(
     if (mode === "add-ad") {
       const ads = await fetchAdsForAdSet(token, selectedAdset.id);
       const firstAd = ads[0];
-      let pageId = "";
+      let creativeData: CreativeSnapshot | null = null;
       if (firstAd?.id) {
         try {
-          const creativeData = await fetchAdWithCreative(token, firstAd.id);
-          const story = creativeData?.creative?.object_story_spec as { page_id?: string } | undefined;
-          pageId = story?.page_id ?? "";
+          creativeData = await fetchAdWithCreative(token, firstAd.id);
         } catch {
           /* optional */
         }
       }
+
+      const resolvedMeta = clientCtx
+        ? await getResolvedClientMeta(tenant.id, clientCtx.clientSlug)
+        : null;
+      const inheritedAd = extractInheritedAdDefaults(creativeData, {
+        pageId: resolvedMeta?.publish.pageId,
+        linkUrl: resolvedMeta?.publish.linkUrl,
+        instagramActorId: resolvedMeta?.settings.instagramActorId,
+        pixelId: resolvedMeta?.settings.metaPixelId,
+        leadFormId: resolvedMeta?.settings.metaLeadFormId
+      });
 
       const objective =
         OBJECTIVE_REVERSE[campaign.objective ?? ""] ?? defaultCampaignDraft("pt-BR").objective;
@@ -140,8 +203,9 @@ export async function GET(
         ok: true,
         patch,
         adAccountId,
+        clientSlug: clientCtx?.clientSlug,
         adsetName: selectedAdset.name ?? "Conjunto",
-        defaultPageId: pageId
+        inheritedAd
       });
     }
 

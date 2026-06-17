@@ -1,8 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 
 import { Link } from "@/i18n/navigation";
+import { campaignTabQuery, getRememberedAdset } from "@/lib/campaign-navigation";
 
 export type CampaignDetailTab = "overview" | "adsets" | "ads" | "creatives" | "events";
 
@@ -16,9 +18,10 @@ type TabItem = {
 export function campaignTabHref(
   tab: CampaignDetailTab,
   metaCampaignId: string,
-  clientSlug: string
+  clientSlug: string,
+  adsetId?: string | null
 ): string | undefined {
-  const q = `?client=${encodeURIComponent(clientSlug)}`;
+  const q = campaignTabQuery(clientSlug, tab === "ads" ? adsetId : undefined);
   switch (tab) {
     case "overview":
       return `/campaigns/${metaCampaignId}${q}`;
@@ -44,7 +47,8 @@ export function CampaignDetailTabs({
   creativesCount,
   embedded = false,
   onTabClick,
-  translationNs = "campaignManager"
+  translationNs = "campaignManager",
+  adsetId
 }: {
   metaCampaignId: string;
   clientSlug: string;
@@ -55,29 +59,37 @@ export function CampaignDetailTabs({
   embedded?: boolean;
   onTabClick?: (tab: CampaignDetailTab) => void;
   translationNs?: "campaignManager" | "adsetsPage" | "adsPage" | "creativesPage";
+  adsetId?: string | null;
 }) {
   const t = useTranslations(translationNs);
+  const searchParams = useSearchParams();
+  const urlAdset = searchParams.get("adset");
+  const rememberedAdset = getRememberedAdset(metaCampaignId);
+  const activeAdsetId = adsetId ?? urlAdset ?? rememberedAdset?.adsetId ?? null;
   const countLabel = (value: number | null) => (value === null ? "…" : value);
+
+  const tabHref = (tab: CampaignDetailTab) =>
+    campaignTabHref(tab, metaCampaignId, clientSlug, activeAdsetId);
 
   const tabs: TabItem[] = [
     {
       id: "overview",
-      href: embedded ? undefined : campaignTabHref("overview", metaCampaignId, clientSlug),
+      href: embedded ? undefined : tabHref("overview"),
       label: t("tabOverview")
     },
     {
       id: "adsets",
-      href: embedded ? undefined : campaignTabHref("adsets", metaCampaignId, clientSlug),
+      href: embedded ? undefined : tabHref("adsets"),
       label: t("tabAdsets", { count: countLabel(adsetsCount) })
     },
     {
       id: "ads",
-      href: embedded ? undefined : campaignTabHref("ads", metaCampaignId, clientSlug),
+      href: embedded ? undefined : tabHref("ads"),
       label: t("tabAds", { count: countLabel(adsCount) })
     },
     {
       id: "creatives",
-      href: embedded ? undefined : campaignTabHref("creatives", metaCampaignId, clientSlug),
+      href: embedded ? undefined : tabHref("creatives"),
       label: t("tabCreatives", { count: countLabel(creativesCount ?? null) })
     },
     {
@@ -109,7 +121,7 @@ export function CampaignDetailTabs({
         }
 
         if (embedded) {
-          const fullHref = campaignTabHref(item.id, metaCampaignId, clientSlug);
+          const fullHref = tabHref(item.id);
           if (item.id === "overview" || item.id === "adsets") {
             return (
               <button

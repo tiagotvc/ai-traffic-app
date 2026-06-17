@@ -1,21 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { CreativePickerModal } from "@/components/campaign-creator/CreativePickerModal";
+import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfigModal";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
-import { getActiveAd, newDraftId } from "@/lib/campaign-draft";
+import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
+import { getActiveAd, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 
 export function AdStep() {
   const t = useTranslations("campaignCreator");
   const tAds = useTranslations("ads");
   const locale = useLocale();
-  const { payload, updatePayload } = useCampaignDraft();
+  const { payload, updatePayload, addAdMode } = useCampaignDraft();
   const { assets, pages, instagramAccounts, pixels } = usePublishAssets(
     payload.clientSlug,
     payload.adAccountId
@@ -26,13 +28,22 @@ export function AdStep() {
   );
   const [leadForms, setLeadForms] = useState<{ id: string; name: string }[]>([]);
   const [creativeOpen, setCreativeOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [copyMode, setCopyMode] = useState<"manual" | "ai">("manual");
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const topRef = useRef<HTMLDivElement>(null);
 
   const ad = getActiveAd(payload);
   const clientRequired = !payload.clientSlug;
+
+  const mediaPreviews = useMemo(() => {
+    return ad.imageHashes.map((hash) => {
+      const asset = assets.find((a) => a.id === hash);
+      return { hash, label: asset?.label ?? hash.slice(0, 8), url: asset?.url };
+    });
+  }, [ad.imageHashes, assets]);
 
   function patchAd(patch: Partial<AdDraftItem>) {
     updatePayload((p) => ({
@@ -45,20 +56,51 @@ export function AdStep() {
     updatePayload({ activeAdId: id });
   }
 
-  function addAd(preset?: "same_text" | "same_image") {
+  function scrollToAdForm() {
+    requestAnimationFrame(() => {
+      topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function addAd(preset: "same_text" | "same_image") {
+    const newId = newDraftId();
     updatePayload((p) => {
       const base = getActiveAd(p);
-      const clone: AdDraftItem = {
-        ...base,
-        id: newDraftId(),
-        name: `${base.name} (cópia)`,
-        imageHashes: preset === "same_image" ? [...base.imageHashes] : [],
-        titles: preset === "same_text" ? [...base.titles] : [],
-        bodies: preset === "same_text" ? [...base.bodies] : [],
+      const clone = cloneAdWithPreset(base, preset, locale, () => ({
+        ...defaultAdItem(locale),
+        id: newId
+      }));
+      return { ...p, ads: [...p.ads, clone], activeAdId: newId };
+    });
+    scrollToAdForm();
+  }
+
+  function addBlankAd() {
+    const newId = newDraftId();
+    updatePayload((p) => {
+      const base = getActiveAd(p);
+      const blank: AdDraftItem = {
+        ...defaultAdItem(locale),
+        id: newId,
+        name: `${base.name} 2`,
+        pageId: base.pageId,
+        instagramActorId: base.instagramActorId,
+        pixelId: base.pixelId,
+        linkUrl: base.linkUrl,
+        destinationType: base.destinationType,
+        leadFormId: base.leadFormId,
+        urlParams: base.urlParams,
+        tracking: { ...base.tracking },
         targetAdsetIds: [...base.targetAdsetIds]
       };
-      return { ...p, ads: [...p.ads, clone], activeAdId: clone.id };
+      return { ...p, ads: [...p.ads, blank], activeAdId: newId };
     });
+    scrollToAdForm();
+  }
+
+  function handleImport(imported: ImportedAdConfig, mode: "copy" | "media" | "all") {
+    patchAd(applyImportedToAd(ad, imported, mode));
+    setCopyMode("manual");
   }
 
   useEffect(() => {
@@ -114,64 +156,72 @@ export function AdStep() {
   }
 
   return (
-    <div className="space-y-4">
+    <div ref={topRef} className="space-y-4">
       {clientRequired ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           {t("selectClientFirst")}
         </p>
       ) : null}
 
-      <div className="ui-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("adAssignmentTitle")}</h3>
-        <div className="space-y-2 text-sm">
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              checked={payload.adAssignment === "all_adsets"}
-              onChange={() =>
+      {addAdMode && payload.meta?.targetAdsetName ? (
+        <p className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-violet-800">
+          {t("addAdContext", { adset: payload.meta.targetAdsetName })}
+        </p>
+      ) : null}
+
+      {!addAdMode ? (
+        <div className="ui-card space-y-3 p-4">
+          <h3 className="text-sm font-semibold text-slate-900">{t("adAssignmentTitle")}</h3>
+          <div className="space-y-2 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={payload.adAssignment === "all_adsets"}
+                onChange={() =>
+                  updatePayload((p) => ({
+                    ...p,
+                    adAssignment: "all_adsets",
+                    ads: p.ads.map((a) => ({ ...a, targetAdsetIds: ["__all__"] }))
+                  }))
+                }
+                className="accent-violet-600"
+              />
+              {t("adAssignmentAll")}
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={payload.adAssignment === "single"}
+                onChange={() => updatePayload({ adAssignment: "single" })}
+                className="accent-violet-600"
+              />
+              {t("adAssignmentSingle")}
+            </label>
+          </div>
+          {payload.adAssignment === "single" ? (
+            <select
+              value={payload.selectedAdsetIdForAds ?? payload.adsets[0]?.id ?? ""}
+              onChange={(e) => {
+                const id = e.target.value;
                 updatePayload((p) => ({
                   ...p,
-                  adAssignment: "all_adsets",
-                  ads: p.ads.map((a) => ({ ...a, targetAdsetIds: ["__all__"] }))
-                }))
-              }
-              className="accent-violet-600"
-            />
-            {t("adAssignmentAll")}
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              checked={payload.adAssignment === "single"}
-              onChange={() => updatePayload({ adAssignment: "single" })}
-              className="accent-violet-600"
-            />
-            {t("adAssignmentSingle")}
-          </label>
+                  selectedAdsetIdForAds: id,
+                  ads: p.ads.map((a) =>
+                    a.id === ad.id ? { ...a, targetAdsetIds: [id] } : a
+                  )
+                }));
+              }}
+              className="ui-select text-sm"
+            >
+              {payload.adsets.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </div>
-        {payload.adAssignment === "single" ? (
-          <select
-            value={payload.selectedAdsetIdForAds ?? payload.adsets[0]?.id ?? ""}
-            onChange={(e) => {
-              const id = e.target.value;
-              updatePayload((p) => ({
-                ...p,
-                selectedAdsetIdForAds: id,
-                ads: p.ads.map((a) =>
-                  a.id === ad.id ? { ...a, targetAdsetIds: [id] } : a
-                )
-              }));
-            }}
-            className="ui-select text-sm"
-          >
-            {payload.adsets.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        ) : null}
-      </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         {payload.ads.map((a) => (
@@ -190,7 +240,7 @@ export function AdStep() {
         ))}
         <button
           type="button"
-          onClick={() => addAd()}
+          onClick={() => addBlankAd()}
           className="rounded-lg border border-dashed border-violet-300 px-3 py-1.5 text-xs text-violet-700"
         >
           {t("addAd")}
@@ -200,17 +250,11 @@ export function AdStep() {
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => addAd("same_text")}
-          className="text-xs text-violet-600 hover:underline"
+          onClick={() => setImportOpen(true)}
+          disabled={clientRequired || !payload.adAccountId}
+          className="ui-btn-secondary text-xs"
         >
-          {t("presetSameText")}
-        </button>
-        <button
-          type="button"
-          onClick={() => addAd("same_image")}
-          className="text-xs text-violet-600 hover:underline"
-        >
-          {t("presetSameImage")}
+          {t("importAdConfig")}
         </button>
       </div>
 
@@ -394,7 +438,27 @@ export function AdStep() {
         </button>
         <p className="text-xs text-slate-500">
           {tAds("selected", { count: ad.imageHashes.length })}
+          {ad.format === "video" ? ` · ${t("mediaVideo")}` : ""}
         </p>
+        {mediaPreviews.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {mediaPreviews.map((m) => (
+              <div
+                key={m.hash}
+                className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+              >
+                {m.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={m.url} alt={m.label} className="h-16 w-16 object-cover" />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center px-1 text-center text-[9px] text-slate-500">
+                    {m.label}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <CreativePickerModal
@@ -405,6 +469,14 @@ export function AdStep() {
         onChange={(hashes) => patchAd({ imageHashes: hashes })}
         clientSlug={payload.clientSlug}
         adAccountId={payload.adAccountId}
+      />
+
+      <ImportAdConfigModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        clientSlug={payload.clientSlug}
+        adAccountId={payload.adAccountId}
+        onImport={handleImport}
       />
 
       <div className="ui-card space-y-2 p-4">
@@ -422,6 +494,27 @@ export function AdStep() {
           />
           {t("trackWebsite")}
         </label>
+      </div>
+
+      <div className="ui-card space-y-3 border-dashed border-violet-200 p-4">
+        <h3 className="text-sm font-semibold text-slate-900">{t("addAnotherAdTitle")}</h3>
+        <p className="text-xs text-slate-500">{t("addAnotherAdHint")}</p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => addAd("same_text")}
+            className="ui-btn-secondary flex-1 text-xs"
+          >
+            {t("presetSameText")}
+          </button>
+          <button
+            type="button"
+            onClick={() => addAd("same_image")}
+            className="ui-btn-secondary flex-1 text-xs"
+          >
+            {t("presetSameImage")}
+          </button>
+        </div>
       </div>
     </div>
   );

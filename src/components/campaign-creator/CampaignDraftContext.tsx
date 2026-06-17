@@ -14,6 +14,7 @@ import { useLocale } from "next-intl";
 
 import {
   type CampaignDraftPayload,
+  type AdDraftItem,
   type CreatorNode,
   defaultAdItem,
   defaultCampaignDraft,
@@ -119,21 +120,31 @@ export function CampaignDraftProvider({
           ok?: boolean;
           patch?: Partial<CampaignDraftPayload>;
           adAccountId?: string | null;
+          clientSlug?: string;
           adsetName?: string;
-          defaultPageId?: string;
+          inheritedAd?: Partial<AdDraftItem>;
           error?: string;
         }) => {
           if (!j.ok || !j.patch) return;
           const adId = newDraftId();
           const adsetDraftId = newDraftId();
           const base = defaultCampaignDraft(locale);
-          const freshAd = defaultAdItem(locale);
-          if (j.defaultPageId) freshAd.pageId = j.defaultPageId;
+          const inherited = j.inheritedAd ?? {};
+          const freshAd = {
+            ...defaultAdItem(locale),
+            ...inherited,
+            id: adId,
+            name: locale === "en" ? "New Ad" : "Novo anúncio",
+            titles: [],
+            bodies: [],
+            imageHashes: [],
+            targetAdsetIds: [adsetDraftId]
+          };
 
           const next = parseCampaignDraftPayload({
             ...base,
             ...j.patch,
-            clientSlug: clientSlug ?? base.clientSlug,
+            clientSlug: clientSlug ?? j.clientSlug ?? base.clientSlug,
             adAccountId: j.adAccountId ?? "",
             adsets: [
               {
@@ -142,7 +153,7 @@ export function CampaignDraftProvider({
                 name: j.adsetName ?? base.adsets[0]!.name
               }
             ],
-            ads: [{ ...freshAd, id: adId, targetAdsetIds: [adsetDraftId] }],
+            ads: [freshAd],
             activeAdsetId: adsetDraftId,
             activeAdId: adId,
             adAssignment: "single",

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
+import { campaignAdsHref, rememberAdset } from "@/lib/campaign-navigation";
 import { formatBRL, formatNumber, formatRoas } from "@/lib/format";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
@@ -478,7 +479,8 @@ export function CampaignAdSetsClient({
                         </div>
                         <div className="min-w-0">
                           <Link
-                            href={`/campaigns/${metaCampaignId}/ads?client=${encodeURIComponent(slug)}&adset=${encodeURIComponent(a.id)}`}
+                            href={campaignAdsHref(metaCampaignId, slug, a.id)}
+                            onClick={() => rememberAdset(metaCampaignId, a.id, name)}
                             className="block whitespace-normal break-words font-medium text-slate-800 hover:text-violet-700 hover:underline"
                           >
                             {name}
