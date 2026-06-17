@@ -74,7 +74,9 @@ export function AppSidebar({
   agencyBrainFeatures,
   isPlatformAdmin = false,
   collapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  variant = "sidebar",
+  onNavigate
 }: {
   userName: string;
   userEmail: string;
@@ -87,9 +89,13 @@ export function AppSidebar({
   isPlatformAdmin?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  variant?: "sidebar" | "drawer";
+  onNavigate?: () => void;
 }) {
   const t = useTranslations("nav");
   const pathname = usePathname();
+  const isDrawer = variant === "drawer";
+  const effectiveCollapsed = isDrawer ? false : collapsed;
 
   const brainFeatures: AgencyBrainFeatureFlags = agencyBrainFeatures ?? {
     allowCreativeMemoryAi,
@@ -150,25 +156,26 @@ export function AppSidebar({
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col border-r border-white/10 bg-[#0f111a] text-slate-400 transition-[width] duration-200 ease-in-out print:hidden ${
-        collapsed ? "w-[72px]" : "w-[260px]"
-      }`}
+      className={`flex h-full shrink-0 flex-col bg-[#0f111a] text-slate-400 print:hidden ${
+        isDrawer ? "w-full" : "border-r border-white/10 transition-[width] duration-200 ease-in-out"
+      } ${!isDrawer ? (effectiveCollapsed ? "w-[72px]" : "w-[260px]") : ""}`}
     >
-      {/* Logo + collapse */}
+      {/* Logo + collapse (desktop sidebar only) */}
+      {!isDrawer ? (
       <div
         className={`flex shrink-0 items-center border-b border-white/10 ${
-          collapsed ? "justify-center px-2 py-4" : "justify-between gap-2 px-4 py-4"
+          effectiveCollapsed ? "justify-center px-2 py-4" : "justify-between gap-2 px-4 py-4"
         }`}
       >
-        <div className={`flex items-center gap-2.5 ${collapsed ? "justify-center" : ""}`}>
+        <div className={`flex items-center gap-2.5 ${effectiveCollapsed ? "justify-center" : ""}`}>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-sm font-bold text-white">
             ∞
           </div>
-          {!collapsed ? (
+          {!effectiveCollapsed ? (
             <span className="text-[15px] font-semibold text-white">Traffic AI</span>
           ) : null}
         </div>
-        {!collapsed ? (
+        {!effectiveCollapsed ? (
           <button
             type="button"
             onClick={onToggleCollapse}
@@ -180,8 +187,9 @@ export function AppSidebar({
           </button>
         ) : null}
       </div>
+      ) : null}
 
-      {collapsed ? (
+      {effectiveCollapsed && !isDrawer ? (
         <div className="flex shrink-0 justify-center py-2">
           <button
             type="button"
@@ -198,13 +206,13 @@ export function AppSidebar({
       {/* Nav — scroll interno só se muitos itens */}
       <nav
         className={`sidebar-nav min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${
-          collapsed ? "space-y-1 px-2 py-2" : "space-y-0.5 px-3 py-2"
+          effectiveCollapsed ? "space-y-1 px-2 py-2" : "space-y-0.5 px-3 py-2"
         }`}
       >
         {items.map((item) => {
           const active = isActive(item);
           const cls = `relative flex w-full items-center rounded-xl transition ${
-            collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2 text-[13px]"
+            effectiveCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2 text-[13px]"
           } ${
             active
               ? "bg-white/10 font-semibold text-white"
@@ -213,11 +221,11 @@ export function AppSidebar({
 
           const inner = (
             <>
-              {active && !collapsed ? (
+              {active && !effectiveCollapsed ? (
                 <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-violet-600" />
               ) : null}
               {item.icon}
-              {!collapsed ? (
+              {!effectiveCollapsed ? (
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left">
                   <span className="truncate">{item.label}</span>
                   {item.beta ? (
@@ -227,14 +235,14 @@ export function AppSidebar({
                   ) : null}
                 </span>
               ) : null}
-              {item.badge && !collapsed ? (
+              {item.badge && !effectiveCollapsed ? (
                 <span
                   className="min-w-[18px] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white"
                 >
                   {item.badge > 99 ? "99+" : item.badge}
                 </span>
               ) : null}
-              {item.badge && collapsed ? (
+              {item.badge && effectiveCollapsed ? (
                 <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
                   {item.badge > 9 ? "9+" : item.badge}
                 </span>
@@ -246,14 +254,22 @@ export function AppSidebar({
             item.action ? (
               <button
                 type="button"
-                onClick={item.action}
-                title={collapsed ? item.label : undefined}
+                onClick={() => {
+                  item.action?.();
+                  onNavigate?.();
+                }}
+                title={effectiveCollapsed ? item.label : undefined}
                 className={cls}
               >
                 {inner}
               </button>
             ) : (
-              <Link href={item.href!} title={collapsed ? item.label : undefined} className={cls}>
+              <Link
+                href={item.href!}
+                title={effectiveCollapsed ? item.label : undefined}
+                className={cls}
+                onClick={() => onNavigate?.()}
+              >
                 {inner}
               </Link>
             );
@@ -263,9 +279,10 @@ export function AppSidebar({
               {navItem}
               {item.id === "creatives" ? (
                 <AgencyBrainNavGroup
-                  collapsed={collapsed}
+                  collapsed={effectiveCollapsed}
                   agencyBrainFeatures={brainFeatures}
                   pathname={pathname}
+                  onNavigate={onNavigate}
                 />
               ) : null}
             </Fragment>
@@ -276,17 +293,17 @@ export function AppSidebar({
       {/* Footer — sempre colado embaixo, mesmo fundo */}
       <div
         className={`shrink-0 border-t border-white/10 bg-[#0f111a] ${
-          collapsed ? "p-2" : "p-3"
+          effectiveCollapsed ? "p-2" : "p-3"
         }`}
       >
         <div
-          className={`flex items-center ${collapsed ? "justify-center py-2" : "gap-2.5 px-1 py-2"}`}
-          title={collapsed ? userName : undefined}
+          className={`flex items-center ${effectiveCollapsed ? "justify-center py-2" : "gap-2.5 px-1 py-2"}`}
+          title={effectiveCollapsed ? userName : undefined}
         >
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
             {userName.charAt(0).toUpperCase()}
           </div>
-          {!collapsed ? (
+          {!effectiveCollapsed ? (
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium text-white">{userName}</div>
               <div className="truncate text-[11px] text-slate-500">
@@ -299,20 +316,21 @@ export function AppSidebar({
           ) : null}
         </div>
 
-        {!collapsed ? (
+        {!effectiveCollapsed ? (
           <Link
             href="/settings"
             className="mt-1 block rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-white/5 hover:text-slate-300"
+            onClick={() => onNavigate?.()}
           >
             {t("help")}
           </Link>
         ) : null}
 
         <div
-          className={`space-y-0.5 border-white/10 ${collapsed ? "mt-2 border-t pt-2" : "mt-2 border-t pt-2"}`}
+          className={`space-y-0.5 border-white/10 ${effectiveCollapsed ? "mt-2 border-t pt-2" : "mt-2 border-t pt-2"}`}
         >
-          <LanguageSwitcher variant="sidebar" collapsed={collapsed} />
-          <SignOutButton variant="sidebar" collapsed={collapsed} />
+          <LanguageSwitcher variant="sidebar" collapsed={effectiveCollapsed} />
+          <SignOutButton variant="sidebar" collapsed={effectiveCollapsed} />
         </div>
       </div>
     </aside>

@@ -19,6 +19,9 @@ import {
   rankedCreativesFromGroups,
   type CreativeAgg
 } from "@/lib/agency-brain/creative-intelligence";
+import { fatiguedCreativesToLearningDrafts } from "@/lib/agency-brain/creative-patterns-service";
+import { createSuggestedLearning } from "@/lib/agency-brain/client-learning-service";
+import { hasActiveSignalDedupe } from "@/lib/agency-brain/signal-dedupe";
 import { fetchAllAccountCreatives } from "@/lib/creatives-access";
 import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { loadRankConfig } from "@/lib/ranking-config";
@@ -72,6 +75,13 @@ async function enrichClientSignals(
       const groups = getTopCreativesByPreset(creatives, rankConfig);
       const ranked = rankedCreativesFromGroups(groups);
       extraSignals.push(...creativesToSignals(ranked, ctx.current, ctx.windowDays));
+
+      const fatigueDrafts = fatiguedCreativesToLearningDrafts(creatives, clientId, ctx.windowDays);
+      for (const draft of fatigueDrafts) {
+        const blocked = await hasActiveSignalDedupe(tenantId, clientId, draft.dedupeKey);
+        if (blocked.hypothesis) continue;
+        await createSuggestedLearning(tenantId, clientId, draft);
+      }
     }
   } catch {
     // ranking opcional no pipeline

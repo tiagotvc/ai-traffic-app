@@ -21,6 +21,7 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isLearningsPage = pathname.includes("/learnings");
 
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientSlug, setClientSlug] = useState("");
@@ -52,6 +53,62 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("client", slug);
     router.replace(`${pathname}?${params.toString()}`);
+  }
+
+  if (isLearningsPage) {
+    return (
+      <AgencyBrainAiProvider>
+        <div className="flex h-[calc(100dvh-5.5rem)] min-h-[480px] flex-col gap-2 lg:h-[calc(100dvh-6.5rem)]">
+          <div className="shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+                  {t("title")}
+                </h1>
+                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                  {t("beta")}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {!clientsLoading && clients.length > 0 && clientSlug ? (
+                  <AgencyBrainAiBar variant="compact" />
+                ) : null}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-500">{t("clientLabel")}</span>
+                  <select
+                    value={clientSlug}
+                    onChange={(e) => handleClientChange(e.target.value)}
+                    disabled={clientsLoading || clients.length === 0}
+                    className="ui-select !w-auto !py-1 !text-xs sm:!text-sm"
+                  >
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.slug}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {clientsLoading ? (
+            <div className="ui-card flex flex-1 items-center justify-center p-8 text-center text-sm text-slate-500">
+              {t("loadingClients")}
+            </div>
+          ) : clients.length === 0 ? (
+            <div className="ui-card flex flex-1 items-center justify-center p-8 text-center text-sm text-slate-500">
+              {t("noClients")}
+            </div>
+          ) : clientSlug ? (
+            <AgencyBrainClientProvider clientSlug={clientSlug}>
+              <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+            </AgencyBrainClientProvider>
+          ) : null}
+        </div>
+      </AgencyBrainAiProvider>
+    );
   }
 
   return (

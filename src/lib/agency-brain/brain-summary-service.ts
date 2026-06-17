@@ -2,7 +2,7 @@ import "server-only";
 
 import { repositories } from "@/db/repositories";
 import { toLearningDto } from "@/lib/agency-brain/client-learning-service";
-import type { BrainSummary, LearningDto } from "@/lib/agency-brain/types";
+import type { BrainSummary } from "@/lib/agency-brain/types";
 
 export async function getBrainSummary(
   tenantId: string,

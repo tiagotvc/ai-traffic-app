@@ -208,6 +208,7 @@ export function DashboardClient() {
   const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [variations, setVariations] = useState<VariationLite[]>([]);
   const [criticalAlerts, setCriticalAlerts] = useState<AlertItem[]>([]);
+  const [pendingSuggestions, setPendingSuggestions] = useState(0);
   const [clients, setClients] = useState<ClientCard[]>([]);
   const [clientOptions, setClientOptions] = useState<{ slug: string; name: string }[]>([]);
   const [adAccounts, setAdAccounts] = useState<AdAccountOpt[]>([]);
@@ -278,6 +279,12 @@ export function DashboardClient() {
       fetch("/api/alerts?severity=critical&limit=8")
         .then((r) => r.json())
         .then((j) => setCriticalAlerts(j.alerts ?? []))
+        .catch(() => {}),
+      fetch(
+        `/api/dashboard/highlights${clientFilter ? `?clientId=${encodeURIComponent(clientFilter)}` : ""}`
+      )
+        .then((r) => r.json())
+        .then((j) => setPendingSuggestions(j.pendingSuggestions ?? 0))
         .catch(() => {})
     ]);
   }, [clientFilter, accountFilter, period, selectedTz, t]);
@@ -501,6 +508,60 @@ export function DashboardClient() {
         </div>
       </div>
 
+      {criticalAlerts.length > 0 ? (
+        <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold text-rose-700">{t("attentionTitle")}</div>
+              <div className="mt-1 text-xs text-rose-600/80">{t("attentionSubtitle")}</div>
+            </div>
+            <Link href="/alerts" className="text-xs font-semibold text-violet-600 hover:text-violet-500">
+              {t("viewAllAlerts")}
+            </Link>
+          </div>
+          <div className="mt-3 space-y-2">
+            {criticalAlerts.map((a) => (
+              <div
+                key={a.id}
+                className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-rose-200 bg-white p-3"
+              >
+                <div>
+                  <div className="text-xs font-semibold text-rose-700">{a.title}</div>
+                  <div className="mt-1 text-xs text-slate-600">{a.description}</div>
+                </div>
+                {a.clientId ? (
+                  <Link
+                    href={`/clients/${clients.find((c) => c.id === a.clientId)?.slug ?? ""}`}
+                    className="text-xs font-semibold text-violet-600 hover:text-violet-500"
+                  >
+                    {t("viewClient")}
+                  </Link>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {pendingSuggestions > 0 ? (
+        <section className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold text-violet-800">{t("pendingActionsTitle")}</div>
+              <div className="mt-1 text-xs text-violet-600/80">
+                {t("pendingActionsSubtitle", { count: pendingSuggestions })}
+              </div>
+            </div>
+            <Link
+              href="/agency-brain/suggestions"
+              className="text-xs font-semibold text-violet-700 hover:text-violet-600"
+            >
+              {t("openActionCenter")}
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3 ui-card p-4">
         <div>
@@ -537,34 +598,6 @@ export function DashboardClient() {
           </select>
         </div>
       </div>
-
-      {criticalAlerts.length > 0 ? (
-        <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
-          <div className="text-sm font-semibold text-rose-700">{t("attentionTitle")}</div>
-          <div className="mt-1 text-xs text-rose-600/80">{t("attentionSubtitle")}</div>
-          <div className="mt-3 space-y-2">
-            {criticalAlerts.map((a) => (
-              <div
-                key={a.id}
-                className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-rose-200 bg-white p-3"
-              >
-                <div>
-                  <div className="text-xs font-semibold text-rose-700">{a.title}</div>
-                  <div className="mt-1 text-xs text-slate-600">{a.description}</div>
-                </div>
-                {a.clientId ? (
-                  <Link
-                    href={`/clients/${clients.find((c) => c.id === a.clientId)?.slug ?? ""}`}
-                    className="text-xs font-semibold text-violet-600 hover:text-violet-500"
-                  >
-                    {t("viewClient")}
-                  </Link>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       {note ? <div className="ui-alert-info">{note}</div> : null}
 

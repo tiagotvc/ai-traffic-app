@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { auth } from "@/auth";
 import { repositories } from "@/db/repositories";
 import { resolveUserForMetaLogin } from "@/lib/account-linking";
@@ -20,7 +22,7 @@ import { IsNull, MoreThan } from "typeorm";
  * Contexto enxuto para o shell do app — sem Meta token, sem entitlements/usage,
  * sem provisioning de cliente default. Usado no layout e deduplicado por request.
  */
-export async function getAppShellContext() {
+export const getAppShellContext = cache(async () => {
   const session = await auth();
   if (!session?.user?.email) {
     throw new Error("Not authenticated");
@@ -151,9 +153,9 @@ export async function getAppShellContext() {
     planSlug,
     planName
   };
-}
+});
 
-export async function getTenantContextSlim() {
+export const getTenantContextSlim = cache(async () => {
   const { user, tenant } = await getAppShellContext();
   return { userId: user.id, tenantId: tenant.id, user, tenant };
-}
+});

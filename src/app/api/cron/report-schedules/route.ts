@@ -3,6 +3,7 @@ import { LessThanOrEqual } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import { buildClientReportPdf, buildClientWhatsappSummary } from "@/lib/report-generate";
+import { sendReportEmail } from "@/lib/report-notify";
 
 function authCron(req: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -34,9 +35,26 @@ export async function POST(req: Request) {
     if (!client) continue;
 
     if (schedule.format === "whatsapp") {
-      await buildClientWhatsappSummary({ tenant, client });
+      const text = await buildClientWhatsappSummary({ tenant, client });
+      if (schedule.recipients.length) {
+        await sendReportEmail({
+          to: schedule.recipients[0]!,
+          subject: `Resumo WhatsApp — ${client.name}`,
+          text
+        });
+      }
     } else {
-      await buildClientReportPdf({ tenant, client });
+      const bytes = await buildClientReportPdf({ tenant, client });
+      if (schedule.recipients.length) {
+        const safeName = client.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+        await sendReportEmail({
+          to: schedule.recipients[0]!,
+          subject: `Relatório ${client.name} — ${tenant.brandName ?? tenant.name}`,
+          text: `Relatório automático de ${client.name}.`,
+          pdfBytes: bytes,
+          filename: `relatorio-${safeName}.pdf`
+        });
+      }
     }
 
     schedule.lastRunAt = now;

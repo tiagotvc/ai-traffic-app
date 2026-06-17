@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 
 import {
   AGENCY_BRAIN_MODULE_REGISTRY,
+  AGENCY_BRAIN_NAV_PILLARS,
   isAgencyBrainModuleEnabled,
   resolveAgencyBrainFeatures,
   type AgencyBrainFeatureFlags,
-  type AgencyBrainModuleMeta
+  type AgencyBrainModuleMeta,
+  type AgencyBrainNavPillar
 } from "@/lib/agency-brain/domain/modules";
 
 const STORAGE_KEY = "agency-brain-nav-expanded";
@@ -18,6 +20,7 @@ type Props = {
   collapsed: boolean;
   agencyBrainFeatures: AgencyBrainFeatureFlags;
   pathname: string;
+  onNavigate?: () => void;
 };
 
 function NavIcon({ d }: { d: string }) {
@@ -37,7 +40,29 @@ function NavIcon({ d }: { d: string }) {
 const brainIcon =
   "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z";
 
-export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname }: Props) {
+const MODULE_NAV_CLASSES = {
+  default: {
+    active: "bg-violet-500/20 font-semibold text-violet-200",
+    idle: "text-slate-500 hover:bg-white/5 hover:text-slate-300"
+  },
+  cyan: {
+    active: "bg-cyan-500/20 font-semibold text-cyan-200",
+    idle: "text-cyan-400/90 hover:bg-cyan-500/10 hover:text-cyan-200"
+  }
+} as const;
+
+const PILLAR_LABEL_KEYS: Record<AgencyBrainNavPillar, string> = {
+  memory: "agencyBrainPillarMemory",
+  actions: "agencyBrainPillarActions",
+  analysis: "agencyBrainPillarAnalysis"
+};
+
+function moduleNavClasses(mod: AgencyBrainModuleMeta, active: boolean): string {
+  const accent = mod.navAccent ? MODULE_NAV_CLASSES[mod.navAccent] : MODULE_NAV_CLASSES.default;
+  return `block rounded-lg px-3 py-1.5 text-[12px] transition ${active ? accent.active : accent.idle}`;
+}
+
+export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname, onNavigate }: Props) {
   const t = useTranslations("nav");
   const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
   const inAgencyBrain = base.startsWith("/agency-brain");
@@ -79,11 +104,17 @@ export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname }
     return base === mod.route || base.startsWith(`${mod.route}/`);
   }
 
+  const modulesByPillar = AGENCY_BRAIN_NAV_PILLARS.map((pillar) => ({
+    pillar,
+    items: modules.filter((m) => m.navPillar === pillar)
+  })).filter((g) => g.items.length > 0);
+
   if (collapsed) {
     return (
       <Link
-        href="/agency-brain/learnings"
-        title={t("agencyBrain")}
+        href="/agency-brain/suggestions"
+        title={t("agencyBrainActionCenter")}
+        onClick={() => onNavigate?.()}
         className={`relative flex w-full items-center justify-center rounded-xl px-0 py-2.5 transition ${
           parentActive
             ? "bg-white/10 font-semibold text-white"
@@ -120,23 +151,27 @@ export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname }
       </button>
 
       {expanded ? (
-        <div className="ml-4 space-y-0.5 border-l border-white/10 pl-2">
-          {modules.map((mod) => {
-            const active = subActive(mod);
-            return (
-              <Link
-                key={mod.id}
-                href={mod.route}
-                className={`block rounded-lg px-3 py-1.5 text-[12px] transition ${
-                  active
-                    ? "bg-violet-500/20 font-semibold text-violet-200"
-                    : "text-slate-500 hover:bg-white/5 hover:text-slate-300"
-                }`}
-              >
-                {t(mod.navKey)}
-              </Link>
-            );
-          })}
+        <div className="ml-4 space-y-2 border-l border-white/10 pl-2">
+          {modulesByPillar.map(({ pillar, items }) => (
+            <div key={pillar} className="space-y-0.5">
+              <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                {t(PILLAR_LABEL_KEYS[pillar])}
+              </div>
+              {items.map((mod) => {
+                const active = subActive(mod);
+                return (
+                  <Link
+                    key={mod.id}
+                    href={mod.route}
+                    onClick={() => onNavigate?.()}
+                    className={moduleNavClasses(mod, active)}
+                  >
+                    {t(mod.navKey)}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </div>
       ) : null}
     </div>

@@ -18,11 +18,8 @@ type ScheduleRow = {
 };
 
 const READY_REPORTS = [
-  { id: "performance", icon: "📊", pages: 8 },
-  { id: "executive", icon: "📈", pages: 6 },
-  { id: "weekly", icon: "📅", pages: 4 },
-  { id: "monthly", icon: "🗓️", pages: 12 },
-  { id: "alerts", icon: "🔔", pages: 3 }
+  { id: "performance", icon: "📊", days: 7 },
+  { id: "executive", icon: "📈", days: 30 }
 ] as const;
 
 function formatNextRun(iso: string | null, locale: string) {
@@ -58,6 +55,7 @@ export function ReportsClient() {
   const [scheduleName, setScheduleName] = useState("");
   const [scheduleFreq, setScheduleFreq] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [scheduleEmail, setScheduleEmail] = useState("");
+  const [reportEmail, setReportEmail] = useState("");
   const loadSchedules = useCallback(() => {
     fetch("/api/report-schedules")
       .then((r) => r.json())
@@ -121,12 +119,25 @@ export function ReportsClient() {
       const res = await fetch("/api/reports/pdf", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ clientId, days: 7 })
+        body: JSON.stringify({
+          clientId,
+          days: READY_REPORTS.find((r) => r.id === template)?.days ?? 7,
+          template,
+          ...(reportEmail.trim() ? { email: reportEmail.trim() } : {})
+        })
       });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
         setMessage((j as { error?: string })?.error ?? t("pdfFailed"));
         return;
+      }
+      const contentType = res.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        const j = await res.json();
+        if (j.emailed) {
+          setMessage(t("pdfEmailed", { email: j.to }));
+          return;
+        }
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -215,7 +226,7 @@ export function ReportsClient() {
         <div className="min-w-0 space-y-6">
           <section>
             <h2 className="text-sm font-semibold text-slate-900">{t("readyTitle")}</h2>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {READY_REPORTS.map((r) => (
                 <button
                   key={r.id}
@@ -233,15 +244,26 @@ export function ReportsClient() {
                     {t(`ready.${r.id}.desc`)}
                   </span>
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-                      {t("standard")}
+                    <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                      {t("templateAvailable")}
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      {t("pages", { count: r.pages })}
+                      {t("periodDays", { count: r.days })}
                     </span>
                   </div>
                 </button>
               ))}
+            </div>
+            <div className="mt-4">
+              <label className="block text-xs font-medium text-slate-600">{t("emailOptional")}</label>
+              <input
+                type="email"
+                value={reportEmail}
+                onChange={(e) => setReportEmail(e.target.value)}
+                placeholder={t("emailPlaceholder")}
+                className="ui-input mt-1 w-full max-w-md"
+              />
+              <p className="mt-1 text-[11px] text-slate-400">{t("emailHint")}</p>
             </div>
           </section>
 

@@ -42,9 +42,9 @@ const STEPS = [
   { n: "3", title: "Ative e relaxe", desc: "A regra é avaliada a cada sincronização e age sozinha." }
 ];
 
-type Metric = "cpl" | "spend" | "conversions";
+type Metric = "cpl" | "spend" | "conversions" | "roas";
 type Op = "gt" | "gte" | "lt";
-type ActionType = "pause_campaign" | "alert_only";
+type ActionType = "pause_campaign" | "alert_only" | "adjust_budget_percent";
 
 type RuleForm = {
   name: string;
@@ -53,6 +53,7 @@ type RuleForm = {
   value: number;
   minSpend: number;
   action: ActionType;
+  budgetPercent?: number;
 };
 
 type Template = {
@@ -108,9 +109,17 @@ const TEMPLATES: Template[] = [
     title: "Escalar vencedores",
     desc: "Aumenta o orçamento das campanhas com bom ROAS.",
     ifText: "ROAS > 3,0",
-    thenText: "+20% de orçamento",
+    thenText: "+10% de orçamento",
     tone: "emerald",
-    soon: true
+    form: {
+      name: "Escalar vencedores",
+      metric: "roas",
+      op: "gt",
+      value: 3,
+      minSpend: 100,
+      action: "adjust_budget_percent",
+      budgetPercent: 10
+    }
   },
   {
     icon: ICONS.clock,
@@ -131,12 +140,18 @@ type Rule = {
   action: { type?: string };
 };
 
-const METRIC_LABEL: Record<string, string> = { cpl: "CPL", spend: "Gasto", conversions: "Conversões" };
+const METRIC_LABEL: Record<string, string> = {
+  cpl: "CPL",
+  spend: "Gasto",
+  conversions: "Conversões",
+  roas: "ROAS"
+};
 const OP_LABEL: Record<string, string> = { gt: ">", gte: "≥", lt: "<" };
 
 function actionLabel(type?: string) {
   if (type === "pause_campaign") return "Pausar campanha";
   if (type === "alert_only") return "Enviar alerta";
+  if (type === "adjust_budget_percent") return "Ajustar orçamento %";
   return type ?? "—";
 }
 
@@ -200,7 +215,12 @@ export function AutomationsRulesView() {
             value: Number(form.value) || 0,
             minSpend: form.minSpend > 0 ? Number(form.minSpend) : undefined
           },
-          action: { type: form.action }
+          action: {
+            type: form.action,
+            ...(form.action === "adjust_budget_percent"
+              ? { budgetPercent: form.budgetPercent ?? 10 }
+              : {})
+          }
         })
       });
       if (!res.ok) {
@@ -438,6 +458,7 @@ export function AutomationsRulesView() {
                     <option value="cpl">CPL</option>
                     <option value="spend">Gasto</option>
                     <option value="conversions">Conversões</option>
+                    <option value="roas">ROAS</option>
                   </select>
                   <select
                     value={form.op}
@@ -480,8 +501,25 @@ export function AutomationsRulesView() {
                 >
                   <option value="pause_campaign">Pausar campanha</option>
                   <option value="alert_only">Enviar alerta</option>
+                  <option value="adjust_budget_percent">Ajustar orçamento (%)</option>
                 </select>
               </label>
+
+              {form.action === "adjust_budget_percent" ? (
+                <label className="block">
+                  <span className="text-xs font-medium text-slate-600">Aumento de orçamento (%)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={form.budgetPercent ?? 10}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, budgetPercent: Number(e.target.value) || 10 }))
+                    }
+                    className="ui-input mt-1 w-full"
+                  />
+                </label>
+              ) : null}
 
               {error ? <p className="text-xs text-rose-600">{error}</p> : null}
               <p className="text-[11px] text-slate-400">

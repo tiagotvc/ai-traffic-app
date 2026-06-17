@@ -37,7 +37,7 @@ function buildDataSource() {
     entities: [...typeOrmEntities],
     migrations: [...appMigrations],
     synchronize: false,
-    logging: process.env.NODE_ENV === "development"
+    logging: process.env.TYPEORM_LOGGING === "1"
   });
 }
 

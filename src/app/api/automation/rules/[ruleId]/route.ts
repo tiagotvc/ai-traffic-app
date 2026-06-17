@@ -9,7 +9,7 @@ const PatchSchema = z.object({
   enabled: z.boolean().optional(),
   condition: z
     .object({
-      metric: z.enum(["cpl", "spend", "conversions"]),
+      metric: z.enum(["cpl", "spend", "conversions", "roas"]),
       op: z.enum(["gt", "lt", "gte"]),
       value: z.number(),
       minSpend: z.number().optional()
@@ -17,7 +17,8 @@ const PatchSchema = z.object({
     .optional(),
   action: z
     .object({
-      type: z.enum(["pause_campaign", "alert_only"])
+      type: z.enum(["pause_campaign", "alert_only", "adjust_budget_percent"]),
+      budgetPercent: z.number().min(1).max(50).optional()
     })
     .optional()
 });

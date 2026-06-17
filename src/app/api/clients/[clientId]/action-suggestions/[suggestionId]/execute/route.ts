@@ -15,7 +15,7 @@ export async function PATCH(
       return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
     }
 
-    const suggestion = await executeActionSuggestion(
+    const { suggestion, meta } = await executeActionSuggestion(
       tenant.id,
       client.id,
       suggestionId,
@@ -25,7 +25,7 @@ export async function PATCH(
       return NextResponse.json({ ok: false, error: "Sugestão não encontrada" }, { status: 404 });
     }
 
-    return NextResponse.json({ ok: true, suggestion });
+    return NextResponse.json({ ok: true, suggestion, meta });
   } catch (err) {
     console.error("[action-suggestion execute]", err);
     return NextResponse.json({ ok: false, error: "Erro ao executar sugestão" }, { status: 500 });

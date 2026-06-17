@@ -48,6 +48,8 @@
     "help": "Help & support",
     "collapseSidebar": "Collapse menu",
     "expandSidebar": "Expand menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
     "adsets": "Ad sets",
     "audiences": "Audiences",
     "creatives": "Creative Ranking",
@@ -56,6 +58,10 @@
     "agencyBrainLearnings": "Learnings",
     "agencyBrainHypotheses": "Hypotheses",
     "agencyBrainSuggestions": "Suggestions",
+    "agencyBrainActionCenter": "Action center",
+    "agencyBrainPillarMemory": "Memory",
+    "agencyBrainPillarActions": "Actions",
+    "agencyBrainPillarAnalysis": "Analysis",
     "agencyBrainDna": "DNA",
     "agencyBrainTimeline": "Timeline",
     "agencyBrainExperiments": "Experiments & forecasts",
@@ -694,7 +700,10 @@
     "apply": "Apply",
     "cancel": "Cancel",
     "clientMetricLabel": "Metric",
-    "viewAllAlerts": "View all"
+    "viewAllAlerts": "View all",
+    "pendingActionsTitle": "Pending actions",
+    "pendingActionsSubtitle": "{count} suggestion(s) waiting for your decision",
+    "openActionCenter": "Open action center"
   },
   "clientsHub": {
     "title": "Client hub",
@@ -824,8 +833,8 @@
     "loadError": "Failed to load client",
     "loading": "Loading client…",
     "aiQuick": "AI — quick actions",
-    "aiQuickHint": "Generate suggestions in AI Center using this client's context.",
-    "openAiCenter": "Open AI Center (Beta)",
+    "aiQuickHint": "Review alerts and execute suggestions in this client's Action center.",
+    "openActionCenter": "Open Action center",
     "goalsTitle": "Performance goals",
     "goalsHint": "Automatic alerts when limits are exceeded (after sync).",
     "maxCpl": "Max CPL (BRL)",
@@ -985,6 +994,12 @@
     "generate": "Generate report",
     "readyTitle": "Ready-made reports",
     "standard": "Standard",
+    "templateAvailable": "Available",
+    "periodDays": "{count} days",
+    "emailOptional": "Send by email (optional)",
+    "emailPlaceholder": "client@company.com",
+    "emailHint": "If provided, sends the PDF by email instead of downloading.",
+    "pdfEmailed": "Report sent to {email}.",
     "pages": "{count} pages",
     "ready": {
       "performance": {
@@ -1432,6 +1447,9 @@
     "aiStatusLoading": "Loading AI status…",
     "aiUsage": "{remaining}/{max} AI analyses remaining this month",
     "aiUsageEmpty": "Monthly limit reached (0/{max} AI analyses).",
+    "aiUsageShort": "{remaining}/{max} AI",
+    "aiUsageEmptyShort": "0/{max} AI",
+    "aiNoKeyShort": "No AI key",
     "aiUpgrade": "Upgrade plan",
     "confidenceScore": "Confidence {score}",
     "confidenceTooltipConversions": "Conversions: {value}",
@@ -1443,6 +1461,20 @@
     "filterAllActionTypes": "All action types",
     "filterDateFrom": "From",
     "filterDateTo": "To",
+    "expandFilters": "Filters",
+    "collapseFilters": "Hide",
+    "brainLevel": "Level {level}",
+    "brainAgencyLevel": "Agency level {level}",
+    "brainScore": "{score} memory pts",
+    "brainProgress": "Progress",
+    "brainNextLevel": "{points} pts to go",
+    "brainValidatedCount": "{count} validated",
+    "brainScoreCompact": "{score} pts · {count} validated",
+    "brainValidationHint": "Only approved learnings with confidence ≥ 50 or rule/AI detection count.",
+    "learningXpTooltip": "Points credited to agency level",
+    "learningXpPotential": "Possible points if approved with quality",
+    "learningXpUpTo": "up to +{xp} XP",
+    "learningXpEarned": "+{xp} XP",
     "sortLabel": "Sort",
     "sortBy": {
       "createdAt": "Date",
@@ -1587,6 +1619,9 @@
     "approveLowConfidence": "Confidence below 50/100 — review or wait for more data before approving.",
     "tabOverview": "Overview",
     "tabAgencyBrain": "Learnings",
+    "tabLearnings": "Learnings",
+    "tabPatterns": "Patterns",
+    "learningsToolbarHint": "Detect patterns or create learnings manually",
     "tabSuggestions": "Suggestions",
     "tabBeta": "Beta",
     "tabSettings": "Settings",
@@ -1690,6 +1725,32 @@
       "IMPORTED": "Imported"
     }
   },
+  "actionCenter": {
+    "title": "Action center",
+    "subtitle": "Critical alerts, pending suggestions, and decision history in one place.",
+    "criticalAlertsTitle": "Today's critical alerts",
+    "criticalAlertsSubtitle": "Review before executing suggestions",
+    "viewAllAlerts": "View all alerts"
+  },
+  "creativePatterns": {
+    "title": "Creative patterns",
+    "subtitle": "Winners, fatigue, and high-spend low-result creatives.",
+    "openLibrary": "Open library",
+    "loading": "Loading creatives…",
+    "empty": "No patterns detected in this period. Sync with Meta.",
+    "metrics": "${spend} spend · CTR {ctr}% · ROAS {roas}x · freq. {freq}",
+    "filter": {
+      "all": "All",
+      "winner": "Winners",
+      "fatigue": "Fatigue",
+      "underperformer": "Low performance"
+    },
+    "tier": {
+      "winner": "Winning pattern",
+      "fatigue": "Possible fatigue",
+      "underperformer": "High spend · low result"
+    }
+  },
   "creativeMemory": {
     "title": "Creative Memory",
     "beta": "Beta",
@@ -1745,6 +1806,8 @@
     "doManually": "Do manually",
     "confirmReject": "Reject this suggestion?",
     "executed": "Suggestion executed.",
+    "executedMeta": "Executed on Meta: {detail}",
+    "executedWithNote": "Recorded: {note}",
     "acknowledged": "Recorded — you'll apply manually.",
     "rejected": "Suggestion rejected.",
     "errorLoad": "Failed to load suggestions.",

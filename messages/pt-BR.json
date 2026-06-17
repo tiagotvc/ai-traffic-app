@@ -48,6 +48,8 @@
     "help": "Ajuda e suporte",
     "collapseSidebar": "Recolher menu",
     "expandSidebar": "Expandir menu",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu",
     "adsets": "Conjuntos",
     "audiences": "Públicos",
     "creatives": "Ranking de Criativos",
@@ -56,6 +58,10 @@
     "agencyBrainLearnings": "Aprendizados",
     "agencyBrainHypotheses": "Hipóteses",
     "agencyBrainSuggestions": "Sugestões",
+    "agencyBrainActionCenter": "Centro de ações",
+    "agencyBrainPillarMemory": "Memória",
+    "agencyBrainPillarActions": "Ações",
+    "agencyBrainPillarAnalysis": "Análise",
     "agencyBrainDna": "DNA",
     "agencyBrainTimeline": "Timeline",
     "agencyBrainExperiments": "Experimentos & projeções",
@@ -694,7 +700,10 @@
     "apply": "Aplicar",
     "cancel": "Cancelar",
     "clientMetricLabel": "Métrica",
-    "viewAllAlerts": "Ver todos"
+    "viewAllAlerts": "Ver todos",
+    "pendingActionsTitle": "Ações pendentes",
+    "pendingActionsSubtitle": "{count} sugestão(ões) aguardando sua decisão",
+    "openActionCenter": "Abrir centro de ações"
   },
   "clientsHub": {
     "title": "Hub de clientes",
@@ -824,8 +833,8 @@
     "loadError": "Erro ao carregar cliente",
     "loading": "Carregando cliente…",
     "aiQuick": "IA — ações rápidas",
-    "aiQuickHint": "Gere sugestões no IA Center com o contexto deste cliente.",
-    "openAiCenter": "Abrir IA Center (Beta)",
+    "aiQuickHint": "Revise alertas e execute sugestões no Centro de ações deste cliente.",
+    "openActionCenter": "Abrir Centro de ações",
     "goalsTitle": "Metas de performance",
     "goalsHint": "Alertas automáticos quando ultrapassar estes limites (após sincronizar).",
     "maxCpl": "CPL máximo (R$)",
@@ -985,6 +994,12 @@
     "generate": "Gerar relatório",
     "readyTitle": "Relatórios prontos",
     "standard": "Padrão",
+    "templateAvailable": "Disponível",
+    "periodDays": "{count} dias",
+    "emailOptional": "Enviar por e-mail (opcional)",
+    "emailPlaceholder": "cliente@empresa.com",
+    "emailHint": "Se informado, envia o PDF por e-mail em vez de baixar.",
+    "pdfEmailed": "Relatório enviado para {email}.",
     "pages": "{count} pág.",
     "ready": {
       "performance": {
@@ -1432,6 +1447,9 @@
     "aiStatusLoading": "Carregando status de IA…",
     "aiUsage": "{remaining}/{max} análises IA restantes este mês",
     "aiUsageEmpty": "Limite mensal atingido (0/{max} análises IA).",
+    "aiUsageShort": "{remaining}/{max} IA",
+    "aiUsageEmptyShort": "0/{max} IA",
+    "aiNoKeyShort": "Sem chave IA",
     "aiUpgrade": "Fazer upgrade",
     "confidenceScore": "Confiança {score}",
     "confidenceTooltipConversions": "Conversões: {value}",
@@ -1443,6 +1461,20 @@
     "filterAllActionTypes": "Todos tipos",
     "filterDateFrom": "De",
     "filterDateTo": "Até",
+    "expandFilters": "Filtros",
+    "collapseFilters": "Ocultar",
+    "brainLevel": "Nível {level}",
+    "brainAgencyLevel": "Nível da agência {level}",
+    "brainScore": "{score} pts de memória",
+    "brainProgress": "Progresso",
+    "brainNextLevel": "faltam {points} pts",
+    "brainValidatedCount": "{count} validado(s)",
+    "brainScoreCompact": "{score} pts · {count} validado(s)",
+    "brainValidationHint": "Só contam aprovados com confiança ≥ 50 ou detectados por regra/IA.",
+    "learningXpTooltip": "Pontos creditados no nível da agência",
+    "learningXpPotential": "Pontos possíveis se aprovado com qualidade",
+    "learningXpUpTo": "até +{xp} XP",
+    "learningXpEarned": "+{xp} XP",
     "sortLabel": "Ordenar",
     "sortBy": {
       "createdAt": "Data",
@@ -1587,6 +1619,9 @@
     "approveLowConfidence": "Confiança abaixo de 50/100 — revise ou aguarde mais dados antes de aprovar.",
     "tabOverview": "Visão geral",
     "tabAgencyBrain": "Aprendizados",
+    "tabLearnings": "Aprendizados",
+    "tabPatterns": "Padrões",
+    "learningsToolbarHint": "Detecte padrões ou crie aprendizados manualmente",
     "tabSuggestions": "Sugestões",
     "tabBeta": "Beta",
     "tabSettings": "Configurações",
@@ -1690,6 +1725,32 @@
       "IMPORTED": "Importado"
     }
   },
+  "actionCenter": {
+    "title": "Centro de ações",
+    "subtitle": "Alertas críticos, sugestões pendentes e histórico de decisões em um só lugar.",
+    "criticalAlertsTitle": "Alertas críticos de hoje",
+    "criticalAlertsSubtitle": "Revisar antes de executar sugestões",
+    "viewAllAlerts": "Ver todos os alertas"
+  },
+  "creativePatterns": {
+    "title": "Padrões criativos",
+    "subtitle": "Vencedores, fadiga e criativos com gasto alto e resultado baixo.",
+    "openLibrary": "Abrir biblioteca",
+    "loading": "Carregando criativos…",
+    "empty": "Sem padrões detectados no período. Sincronize com a Meta.",
+    "metrics": "R$ {spend} · CTR {ctr}% · ROAS {roas}x · freq. {freq}",
+    "filter": {
+      "all": "Todos",
+      "winner": "Vencedores",
+      "fatigue": "Fadiga",
+      "underperformer": "Baixo resultado"
+    },
+    "tier": {
+      "winner": "Padrão vencedor",
+      "fatigue": "Possível fadiga",
+      "underperformer": "Gasto alto · resultado baixo"
+    }
+  },
   "creativeMemory": {
     "title": "Memória Criativa",
     "beta": "Beta",
@@ -1737,6 +1798,8 @@
     "doManually": "Fazer manualmente",
     "confirmReject": "Rejeitar esta sugestão?",
     "executed": "Sugestão executada.",
+    "executedMeta": "Executado na Meta: {detail}",
+    "executedWithNote": "Registrado: {note}",
     "acknowledged": "Registrado — você fará manualmente.",
     "rejected": "Sugestão rejeitada.",
     "errorLoad": "Erro ao carregar sugestões.",

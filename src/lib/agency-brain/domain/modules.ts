@@ -12,12 +12,16 @@ export const AGENCY_BRAIN_MODULES = [
 
 export type AgencyBrainModule = (typeof AGENCY_BRAIN_MODULES)[number];
 
+export type AgencyBrainNavPillar = "memory" | "actions" | "analysis";
+
 export type AgencyBrainModuleMeta = {
   id: AgencyBrainModule;
   route: string;
   navKey: string;
+  navPillar: AgencyBrainNavPillar;
   phase: 1 | 2 | 3 | 4 | 5 | 6;
   featureFlag?: keyof AgencyBrainFeatureFlags;
+  navAccent?: "cyan";
 };
 
 export type AgencyBrainFeatureFlags = {
@@ -30,20 +34,36 @@ export type AgencyBrainFeatureFlags = {
   allowAgencyBrainChat: boolean;
 };
 
+export const AGENCY_BRAIN_NAV_PILLARS: AgencyBrainNavPillar[] = ["memory", "actions", "analysis"];
+
 export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
-  { id: "learnings", route: "/agency-brain/learnings", navKey: "agencyBrainLearnings", phase: 1 },
+  {
+    id: "learnings",
+    route: "/agency-brain/learnings",
+    navKey: "agencyBrainLearnings",
+    navPillar: "memory",
+    phase: 1
+  },
   {
     id: "hypotheses",
     route: "/agency-brain/hypotheses",
     navKey: "agencyBrainHypotheses",
+    navPillar: "memory",
     phase: 1,
     featureFlag: "allowAgencyBrainHypotheses"
   },
-  { id: "suggestions", route: "/agency-brain/suggestions", navKey: "agencyBrainSuggestions", phase: 1 },
+  {
+    id: "suggestions",
+    route: "/agency-brain/suggestions",
+    navKey: "agencyBrainActionCenter",
+    navPillar: "actions",
+    phase: 1
+  },
   {
     id: "dna",
     route: "/agency-brain/dna",
     navKey: "agencyBrainDna",
+    navPillar: "memory",
     phase: 1,
     featureFlag: "allowAgencyBrainDna"
   },
@@ -51,6 +71,7 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     id: "timeline",
     route: "/agency-brain/timeline",
     navKey: "agencyBrainTimeline",
+    navPillar: "analysis",
     phase: 2,
     featureFlag: "allowAgencyBrainTimeline"
   },
@@ -58,13 +79,16 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     id: "experiments",
     route: "/agency-brain/experiments",
     navKey: "agencyBrainExperiments",
+    navPillar: "analysis",
     phase: 3,
-    featureFlag: "allowAgencyBrainExperiments"
+    featureFlag: "allowAgencyBrainExperiments",
+    navAccent: "cyan"
   },
   {
     id: "action-plans",
     route: "/agency-brain/action-plans",
     navKey: "agencyBrainActionPlans",
+    navPillar: "actions",
     phase: 4,
     featureFlag: "allowAgencyBrainActionPlans"
   },
@@ -72,6 +96,7 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     id: "chat",
     route: "/agency-brain/chat",
     navKey: "agencyBrainChat",
+    navPillar: "analysis",
     phase: 5,
     featureFlag: "allowAgencyBrainChat"
   }

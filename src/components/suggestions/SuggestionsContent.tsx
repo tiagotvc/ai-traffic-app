@@ -228,7 +228,11 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
         type: "ok",
         text:
           action === "execute"
-            ? tClient("executed")
+            ? json.meta?.applied
+              ? tClient("executedMeta", { detail: json.meta.detail ?? "" })
+              : json.meta?.error
+                ? tClient("executedWithNote", { note: json.meta.error })
+                : tClient("executed")
             : action === "acknowledge"
               ? tClient("acknowledged")
               : tClient("rejected")

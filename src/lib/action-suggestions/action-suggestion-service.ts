@@ -11,6 +11,7 @@ import type {
   ActionSuggestionSummary,
   SuggestedActionDraft
 } from "@/lib/action-suggestions/types";
+import { applySuggestionToMeta } from "@/lib/action-suggestions/apply-suggestion-meta";
 import {
   applyCreatedAtSort,
   applyPrioritySort
@@ -193,12 +194,19 @@ export async function executeActionSuggestion(
   clientId: string,
   suggestionId: string,
   userId?: string | null
-): Promise<ActionSuggestionDto | null> {
+): Promise<{ suggestion: ActionSuggestionDto | null; meta?: { applied: boolean; detail?: string; error?: string } }> {
   const { clientActionSuggestion: repo } = await repositories();
   const row = await repo.findOne({ where: { id: suggestionId, tenantId, clientId } });
-  if (!row || row.status !== "PENDING") return null;
+  if (!row || row.status !== "PENDING") return { suggestion: null };
 
-  const result = await resolveSuggestion(tenantId, clientId, suggestionId, "EXECUTED", userId, "Executado pelo app");
+  const meta = await applySuggestionToMeta(tenantId, row);
+  const note = meta.applied
+    ? meta.detail ?? "Executado na Meta"
+    : meta.error
+      ? `Registrado no app (${meta.error})`
+      : meta.detail ?? "Executado pelo app";
+
+  const result = await resolveSuggestion(tenantId, clientId, suggestionId, "EXECUTED", userId, note);
   if (result) {
     const metricsBaseline = await captureClientMetricsSnapshot(
       tenantId,
@@ -218,11 +226,12 @@ export async function executeActionSuggestion(
         priority: result.priority,
         suggestionId: result.id,
         metricsBaseline,
-        executedAt
+        executedAt,
+        metaApplied: meta.applied
       }
     });
   }
-  return result;
+  return { suggestion: result, meta };
 }
 
 export async function acknowledgeActionSuggestion(
