@@ -237,7 +237,7 @@ export async function loadMetricSeriesByDay(
   }
 
   return rows.map((d) => ({
-    day: normalizeDayKey(String(d.day)),
+    day: normalizeDayKey(d.day),
     ...parseTotalsRow(d)
   }));
 }

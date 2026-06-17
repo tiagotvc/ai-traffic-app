@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -24,11 +24,8 @@ import { Link } from "@/i18n/navigation";
 import {
   COLUMN_I18N_KEYS,
   loadCampaignColumns,
-  loadCampaignColumnWidths,
   saveCampaignColumns,
-  saveCampaignColumnWidths,
-  type CampaignColumnId,
-  type CampaignColumnWidths
+  type CampaignColumnId
 } from "@/lib/campaign-table-columns";
 import { formatBRL, formatPercent, formatRoas } from "@/lib/format";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
@@ -36,7 +33,6 @@ import { CAMPAIGN_PRESETS } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
 import { CampaignTypeSelect } from "@/components/CreateCampaignTypeModal";
-import { useCampaignColumnWidths } from "@/hooks/useCampaignColumnWidths";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { columnRefKey } from "@/lib/campaign-table-layout";
@@ -96,7 +92,6 @@ export function CampaignsHubClient() {
   const { openPanel } = usePublishPanel();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
-  const { widths, onResizeStart } = useCampaignColumnWidths();
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
 
   const customMetricNames = useMemo(() => {
@@ -141,10 +136,8 @@ export function CampaignsHubClient() {
   const [pageSize, setPageSize] = useState<number>(50);
   const [page, setPage] = useState(1);
   const [columns, setColumns] = useState<CampaignColumnId[]>(() => loadCampaignColumns());
-  const [columnWidths, setColumnWidths] = useState<CampaignColumnWidths>(() => loadCampaignColumnWidths());
   const [sortKey, setSortKey] = useState<CampaignColumnId | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const resizing = useRef<{ col: CampaignColumnId; startX: number; startW: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [metricsSource, setMetricsSource] = useState<"db" | "live" | "live-cached">("db");
@@ -223,11 +216,6 @@ export function CampaignsHubClient() {
       metricColumns,
       tableLayout.customMetricsMap
     );
-  }
-
-  function colWidthStyle(key: string) {
-    const w = widths[key];
-    return w ? { width: w, minWidth: w, maxWidth: w } : undefined;
   }
 
   useEffect(() => {
@@ -407,35 +395,6 @@ export function CampaignsHubClient() {
     }
   };
 
-  const onFlatResizeStart = useCallback(
-    (col: CampaignColumnId, e: ReactPointerEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const th = (e.currentTarget as HTMLElement).closest("th");
-      const startW = columnWidths[col] ?? th?.getBoundingClientRect().width ?? 160;
-      resizing.current = { col, startX: e.clientX, startW: Math.round(startW) };
-
-      const onMove = (ev: PointerEvent) => {
-        if (!resizing.current) return;
-        const delta = ev.clientX - resizing.current.startX;
-        const w = Math.max(80, Math.round(resizing.current.startW + delta));
-        setColumnWidths((prev) => ({ ...prev, [resizing.current!.col]: w }));
-      };
-      const onUp = () => {
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
-        resizing.current = null;
-        setColumnWidths((prev) => {
-          saveCampaignColumnWidths(prev);
-          return prev;
-        });
-      };
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-    },
-    [columnWidths]
-  );
-
   const clientLabel =
     clientFilter === ""
       ? t("allClients")
@@ -452,82 +411,83 @@ export function CampaignsHubClient() {
     period.preset === "all" ? t("colSpendAll") : period.preset === "today" ? t("colSpendToday") : t("colSpend");
 
   function renderCell(col: CampaignColumnId, r: CampaignRow) {
+    const center = "px-3 py-3 text-center tabular-nums";
     switch (col) {
       case "campaign":
         return (
-          <td key={col} className="px-4 py-3">
+          <td key={col} className="px-4 py-3 text-left">
             <div className="font-medium text-slate-900">{r.campaignName}</div>
           </td>
         );
       case "campaignId":
         return (
-          <td key={col} className="px-3 py-3 text-[10px] text-slate-400">
+          <td key={col} className={`${center} text-[10px] text-slate-400`}>
             {r.metaCampaignId}
           </td>
         );
       case "client":
         return (
-          <td key={col} className="px-3 py-3">
+          <td key={col} className={center}>
             {r.clientName}
           </td>
         );
       case "account":
-        return <td key={col} className="px-3 py-3 text-slate-500">{r.accountLabel}</td>;
+        return <td key={col} className={`${center} text-slate-500`}>{r.accountLabel}</td>;
       case "spend":
         return (
-          <td key={col} className="px-3 py-3 font-medium">
+          <td key={col} className={`${center} font-medium text-slate-900`}>
             {formatBRL(r.spend, locale)}
           </td>
         );
       case "conversions":
-        return <td key={col} className="px-3 py-3">{Math.round(r.conversions)}</td>;
+        return <td key={col} className={center}>{Math.round(r.conversions)}</td>;
       case "leads":
-        return <td key={col} className="px-3 py-3">{Math.round(r.leads)}</td>;
+        return <td key={col} className={center}>{Math.round(r.leads)}</td>;
       case "cpl":
         return (
-          <td key={col} className="px-3 py-3">
+          <td key={col} className={center}>
             {r.cpl != null ? formatBRL(r.cpl, locale) : "—"}
           </td>
         );
       case "cpa":
         return (
-          <td key={col} className="px-3 py-3">
+          <td key={col} className={center}>
             {r.cpa != null ? formatBRL(r.cpa, locale) : "—"}
           </td>
         );
       case "roas":
-        return <td key={col} className="px-3 py-3">{formatRoas(r.roas, locale)}</td>;
+        return <td key={col} className={center}>{formatRoas(r.roas, locale)}</td>;
       case "impressions":
-        return <td key={col} className="px-3 py-3">{r.impressions ?? 0}</td>;
+        return <td key={col} className={center}>{r.impressions ?? 0}</td>;
       case "clicks":
-        return <td key={col} className="px-3 py-3">{r.clicks ?? 0}</td>;
+        return <td key={col} className={center}>{r.clicks ?? 0}</td>;
       case "ctr":
         return (
-          <td key={col} className="px-3 py-3">
+          <td key={col} className={center}>
             {r.ctr != null ? formatPercent(r.ctr, 2, locale) : "—"}
           </td>
         );
       case "cpc":
         return (
-          <td key={col} className="px-3 py-3">
+          <td key={col} className={center}>
             {r.cpc != null ? formatBRL(r.cpc, locale) : "—"}
           </td>
         );
       case "cpm":
         return (
-          <td key={col} className="px-3 py-3">
+          <td key={col} className={center}>
             {r.cpm != null ? formatBRL(r.cpm, locale) : "—"}
           </td>
         );
       case "budget":
         return (
-          <td key={col} className="px-3 py-3">
+          <td key={col} className={center}>
             {r.dailyBudget != null ? formatBRL(r.dailyBudget, locale) : "—"}
           </td>
         );
       case "status":
         return (
-          <td key={col} className="px-3 py-3">
+          <td key={col} className={`${center} text-center`}>
             <Badge variant={r.status === "ACTIVE" ? "success" : "neutral"}>
               {r.status === "ACTIVE" ? t("statusActive") : t("statusInactive")}
             </Badge>
@@ -535,7 +495,7 @@ export function CampaignsHubClient() {
         );
       case "alerts":
         return (
-          <td key={col} className="px-3 py-3">
+          <td key={col} className={center}>
             {r.hasAlert ? (
               <Badge variant="danger">{r.alertCount}</Badge>
             ) : (
@@ -549,9 +509,10 @@ export function CampaignsHubClient() {
   }
 
   function renderTotalCell(col: CampaignColumnId, labelCol: CampaignColumnId) {
+    const center = "px-3 py-3 text-center font-semibold tabular-nums";
     if (col === labelCol) {
       return (
-        <td key={col} className="px-4 py-3 font-semibold text-slate-800">
+        <td key={col} className="px-4 py-3 text-left font-semibold text-slate-800">
           {t("rowTotal")} ({total})
         </td>
       );
@@ -559,37 +520,37 @@ export function CampaignsHubClient() {
     switch (col) {
       case "spend":
         return (
-          <td key={col} className="px-3 py-3 font-semibold text-slate-900">
+          <td key={col} className={`${center} text-slate-900`}>
             {formatBRL(totals.spend, locale)}
           </td>
         );
       case "conversions":
         return (
-          <td key={col} className="px-3 py-3 font-semibold">
+          <td key={col} className={center}>
             {Math.round(totals.conversions)}
           </td>
         );
       case "leads":
         return (
-          <td key={col} className="px-3 py-3 font-semibold">
+          <td key={col} className={center}>
             {Math.round(totals.leads)}
           </td>
         );
       case "cpa":
         return (
-          <td key={col} className="px-3 py-3 font-semibold">
+          <td key={col} className={center}>
             {totals.conversions > 0 ? formatBRL(totals.spend / totals.conversions, locale) : "—"}
           </td>
         );
       case "cpl":
         return (
-          <td key={col} className="px-3 py-3 font-semibold">
+          <td key={col} className={center}>
             {totals.leads > 0 ? formatBRL(totals.spend / totals.leads, locale) : "—"}
           </td>
         );
       default:
         return (
-          <td key={col} className="px-3 py-3 text-slate-400">
+          <td key={col} className={`${center} text-slate-400`}>
             —
           </td>
         );
@@ -808,19 +769,10 @@ export function CampaignsHubClient() {
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[680px] text-left text-sm table-fixed">
-                      <colgroup>
-                        <col style={colWidthStyle("name")} />
-                        <col style={colWidthStyle("client")} />
-                        <col style={colWidthStyle("status")} />
-                        <col style={colWidthStyle("type")} />
-                        {groupMetricColumns.map((col) => (
-                          <col key={columnRefKey(col)} style={colWidthStyle(columnRefKey(col))} />
-                        ))}
-                      </colgroup>
+                    <table className="w-full min-w-[680px] text-sm">
                       <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                         <tr>
-                          <th className="relative px-4 py-2" style={colWidthStyle("name")}>
+                          <th className="px-4 py-2 text-left">
                             <button
                               type="button"
                               onClick={() => toggleGroupSort(preset, "name")}
@@ -833,14 +785,8 @@ export function CampaignsHubClient() {
                                   : " ▼"
                                 : ""}
                             </button>
-                            <span
-                              role="separator"
-                              onPointerDown={(e) => onResizeStart("name", e)}
-                              className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-violet-300/60"
-                              aria-hidden
-                            />
                           </th>
-                          <th className="relative px-3 py-2" style={colWidthStyle("client")}>
+                          <th className="whitespace-nowrap px-3 py-2 text-center">
                             <button
                               type="button"
                               onClick={() => toggleGroupSort(preset, "client")}
@@ -853,39 +799,15 @@ export function CampaignsHubClient() {
                                   : " ▼"
                                 : ""}
                             </button>
-                            <span
-                              role="separator"
-                              onPointerDown={(e) => onResizeStart("client", e)}
-                              className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-violet-300/60"
-                              aria-hidden
-                            />
                           </th>
-                          <th className="relative px-3 py-2" style={colWidthStyle("status")}>
-                            {t("colStatus")}
-                            <span
-                              role="separator"
-                              onPointerDown={(e) => onResizeStart("status", e)}
-                              className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-violet-300/60"
-                              aria-hidden
-                            />
-                          </th>
-                          <th className="relative px-3 py-2" style={colWidthStyle("type")}>
-                            {tPresets("label")}
-                            <span
-                              role="separator"
-                              onPointerDown={(e) => onResizeStart("type", e)}
-                              className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-violet-300/60"
-                              aria-hidden
-                            />
-                          </th>
+                          <th className="whitespace-nowrap px-3 py-2 text-center">{t("colStatus")}</th>
+                          <th className="whitespace-nowrap px-3 py-2 text-center">{tPresets("label")}</th>
                           <CampaignTableHead
                             columns={groupMetricColumns}
                             customMetricNames={customMetricNames}
                             sortKey={groupSort?.key}
                             sortDir={groupSort?.dir}
                             onSort={(key) => toggleGroupSort(preset, key)}
-                            widths={widths}
-                            onResizeStart={onResizeStart}
                           />
                         </tr>
                       </thead>
@@ -904,13 +826,13 @@ export function CampaignsHubClient() {
                                 {r.campaignName}
                               </button>
                             </td>
-                            <td className="truncate px-3 py-2.5 text-slate-600">{r.clientName}</td>
-                            <td className="px-3 py-2.5">
+                            <td className="truncate px-3 py-2.5 text-center text-slate-600">{r.clientName}</td>
+                            <td className="px-3 py-2.5 text-center">
                               <Badge variant={statusVariant(r.status)}>
                                 {statusLabel(r.status)}
                               </Badge>
                             </td>
-                            <td className="px-3 py-2.5">
+                            <td className="px-3 py-2.5 text-center">
                               <CampaignTypeSelect
                                 value={campaignPreset(r)}
                                 customTypes={customTypes}
@@ -938,15 +860,7 @@ export function CampaignsHubClient() {
       ) : (
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
-            <colgroup>
-              {visibleColumns.map((col) => (
-                <col
-                  key={col}
-                  style={columnWidths[col] ? { width: `${columnWidths[col]}px` } : undefined}
-                />
-              ))}
-            </colgroup>
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
               <tr>
                 <DndContext
@@ -963,7 +877,6 @@ export function CampaignsHubClient() {
                         sortActive={sortKey === col}
                         sortDir={sortDir}
                         onSort={onSortColumn}
-                        onResizeStart={onFlatResizeStart}
                       />
                     ))}
                   </SortableContext>

@@ -6,6 +6,7 @@ import {
   parseDashboardSearchParams,
   resolveDashboardScope
 } from "@/lib/dashboard-query";
+import { normalizeDayKey } from "@/lib/report-period";
 
 export const maxDuration = 30;
 
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
   });
 
   const series = rows.map((d) => ({
-    day: d.day,
+    day: normalizeDayKey(d.day),
     spend: d.spend,
     impressions: d.impressions,
     clicks: d.clicks,
