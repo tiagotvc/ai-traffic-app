@@ -180,6 +180,21 @@ export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
   };
 }
 
+/** Normaliza dia vindo do banco/API para YYYY-MM-DD (aceita ISO datetime e Date). */
+export function normalizeDayKey(day: unknown): string {
+  if (day instanceof Date && !Number.isNaN(day.getTime())) {
+    return day.toISOString().slice(0, 10);
+  }
+  const trimmed = String(day ?? "").trim();
+  const isoMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) return isoMatch[1]!;
+  const parsed = Date.parse(trimmed);
+  if (!Number.isNaN(parsed)) {
+    return new Date(parsed).toISOString().slice(0, 10);
+  }
+  return trimmed;
+}
+
 export function periodToSearchParams(period: {
   preset: PeriodPreset;
   since?: string;

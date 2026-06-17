@@ -13,7 +13,7 @@ import {
   pickResults
 } from "@/lib/meta-graph";
 import type { ParsedPeriod } from "@/lib/report-period";
-import { rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
+import { normalizeDayKey, rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
 
 export type CampaignDetailHints = {
   metaAdAccountId?: string;
@@ -254,7 +254,7 @@ export async function getCampaignTimeseries(input: {
     const spend = num(s.spend);
     const conversions = num(s.conversions);
     return {
-      day: s.day,
+      day: normalizeDayKey(String(s.day)),
       spend,
       conversions,
       cpa: conversions > 0 ? spend / conversions : null,
@@ -284,7 +284,7 @@ export async function getCampaignTimeseries(input: {
               const spend = Number(r.spend) || 0;
               const conversions = pickResults(r);
               return {
-                day: r.date_start,
+                day: normalizeDayKey(String(r.date_start)),
                 spend,
                 conversions,
                 cpa: conversions > 0 ? spend / conversions : null,

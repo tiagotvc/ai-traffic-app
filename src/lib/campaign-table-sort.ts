@@ -9,10 +9,10 @@ import { evaluateFormula } from "@/lib/metric-formula";
 export type SortDir = "asc" | "desc";
 
 export function compareRowsByColumn<T extends MetricRowData>(
-  col: TableColumnRef | "name" | "client",
+  col: TableColumnRef | "name" | "client" | "status",
   dir: SortDir,
-  a: T & { campaignName?: string; clientName?: string },
-  b: T & { campaignName?: string; clientName?: string },
+  a: T & { campaignName?: string; clientName?: string; status?: string },
+  b: T & { campaignName?: string; clientName?: string; status?: string },
   customMetrics: Record<string, { id: string; name: string; formula: string; format: string }>
 ): number {
   if (col === "name") {
@@ -26,6 +26,11 @@ export function compareRowsByColumn<T extends MetricRowData>(
       sensitivity: "base"
     });
     return dir === "asc" ? cmp : -cmp;
+  }
+  if (col === "status") {
+    const rank = (s?: string) => (s === "ACTIVE" ? 2 : s === "PAUSED" ? 1 : 0);
+    const diff = rank(a.status) - rank(b.status);
+    return dir === "asc" ? diff : -diff;
   }
 
   const aVal = resolveColumnNumericValue(col, a, customMetrics, evaluateFormula) ?? 0;
@@ -42,7 +47,7 @@ export function sortRowsByKey<T extends MetricRowData>(
 ): T[] {
   if (!sortKey) return rows;
 
-  if (sortKey === "name" || sortKey === "client") {
+  if (sortKey === "name" || sortKey === "client" || sortKey === "status") {
     return [...rows].sort((a, b) =>
       compareRowsByColumn(sortKey, sortDir, a, b, customMetrics)
     );
