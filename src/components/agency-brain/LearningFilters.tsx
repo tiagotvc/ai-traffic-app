@@ -54,7 +54,10 @@ export function LearningFilters({
   page,
   totalPages,
   onPageChange,
-  embedded = false
+  embedded = false,
+  clients,
+  clientSlug,
+  onClientChange
 }: {
   search: string;
   category: LearningCategory | "";
@@ -85,6 +88,9 @@ export function LearningFilters({
   totalPages: number;
   onPageChange: (page: number) => void;
   embedded?: boolean;
+  clients?: { id: string; slug: string; name: string }[];
+  clientSlug?: string;
+  onClientChange?: (slug: string) => void;
 }) {
   const t = useTranslations("agencyBrain");
   const [expanded, setExpanded] = useState(false);
@@ -107,6 +113,20 @@ export function LearningFilters({
   return (
     <div className={embedded ? "space-y-1.5" : "shrink-0 space-y-1.5 rounded-xl border border-slate-200 bg-white p-2 shadow-sm"}>
       <div className="flex flex-wrap items-center gap-1.5">
+        {clients && clients.length > 0 && onClientChange ? (
+          <select
+            className="ui-select !w-auto !py-1 text-xs"
+            value={clientSlug ?? ""}
+            onChange={(e) => onClientChange(e.target.value)}
+            aria-label={t("clientLabel")}
+          >
+            {clients.map((c) => (
+              <option key={c.id} value={c.slug}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <input
           className="ui-input !w-32 !py-1 text-xs sm:!w-40"
           placeholder={t("searchPlaceholder")}

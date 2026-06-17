@@ -3,6 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { AgencyBrainAiBar } from "@/components/agency-brain/AgencyBrainAiBar";
+import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
 import { BrainSummaryCards } from "@/components/agency-brain/BrainMemoryDashboard";
 import { CreativePatternsPanel } from "@/components/agency-brain/CreativePatternsPanel";
 import { FeedbackSnackbar } from "@/components/agency-brain/FeedbackSnackbar";
@@ -14,6 +16,7 @@ import type { LearningDto } from "@/lib/agency-brain/types";
 
 export function AgencyBrainContent({ clientId }: { clientId: string }) {
   const t = useTranslations("agencyBrain");
+  const { clients, onClientChange } = useAgencyBrainClient();
   const brain = useAgencyBrain(clientId);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -23,8 +26,54 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col gap-2">
+        {/* Page header: title + actions */}
         <div className="shrink-0 space-y-3">
-          {/* Tabs — underline style, distinct from action buttons */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+                {t("title")}
+              </h1>
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                {t("beta")}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <AgencyBrainAiBar variant="compact" />
+              {tab === "learnings" ? (
+                <>
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+                    onClick={() => void brain.handleDetectPatterns()}
+                    disabled={brain.detecting || brain.aiAnalyzing}
+                  >
+                    {brain.detecting ? t("detecting") : t("detectPatterns")}
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-500 disabled:opacity-50"
+                    onClick={() => void brain.handleAiAnalyze()}
+                    disabled={brain.detecting || brain.aiAnalyzing || brain.aiDisabled}
+                    title={brain.aiDisabled ? t("aiLimit") : undefined}
+                  >
+                    {brain.aiAnalyzing ? t("analyzingWithAi") : t("analyzeWithAi")}
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    onClick={() => {
+                      setEditing(null);
+                      setModalOpen(true);
+                    }}
+                  >
+                    {t("newLearning")}
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
+
           <div className="flex gap-6 border-b border-slate-200">
             {(["learnings", "patterns"] as const).map((key) => (
               <button
@@ -46,52 +95,12 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
             <CreativePatternsPanel clientId={clientId} />
           ) : (
             <>
-              {/* Action toolbar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2">
-                <p className="text-xs text-slate-500">{t("learningsToolbarHint")}</p>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
-                    onClick={() => void brain.handleDetectPatterns()}
-                    disabled={brain.detecting || brain.aiAnalyzing}
-                  >
-                    <svg className="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                    </svg>
-                    {brain.detecting ? t("detecting") : t("detectPatterns")}
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-500 disabled:opacity-50"
-                    onClick={() => void brain.handleAiAnalyze()}
-                    disabled={brain.detecting || brain.aiAnalyzing || brain.aiDisabled}
-                    title={brain.aiDisabled ? t("aiLimit") : undefined}
-                  >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    </svg>
-                    {brain.aiAnalyzing ? t("analyzingWithAi") : t("analyzeWithAi")}
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-400 hover:bg-slate-50"
-                    onClick={() => {
-                      setEditing(null);
-                      setModalOpen(true);
-                    }}
-                  >
-                    <svg className="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    {t("newLearning")}
-                  </button>
-                </div>
-              </div>
-
               <BrainSummaryCards summary={brain.summary} compact />
 
               <LearningFilters
+                clients={clients}
+                clientSlug={clientId}
+                onClientChange={onClientChange}
                 search={brain.search}
                 category={brain.category}
                 impact={brain.impact}

@@ -10,8 +10,7 @@ import {
   isAgencyBrainModuleEnabled,
   resolveAgencyBrainFeatures,
   type AgencyBrainFeatureFlags,
-  type AgencyBrainModuleMeta,
-  type AgencyBrainNavPillar
+  type AgencyBrainModuleMeta
 } from "@/lib/agency-brain/domain/modules";
 
 const STORAGE_KEY = "agency-brain-nav-expanded";
@@ -50,12 +49,6 @@ const MODULE_NAV_CLASSES = {
     idle: "text-cyan-400/90 hover:bg-cyan-500/10 hover:text-cyan-200"
   }
 } as const;
-
-const PILLAR_LABEL_KEYS: Record<AgencyBrainNavPillar, string> = {
-  memory: "agencyBrainPillarMemory",
-  actions: "agencyBrainPillarActions",
-  analysis: "agencyBrainPillarAnalysis"
-};
 
 function moduleNavClasses(mod: AgencyBrainModuleMeta, active: boolean): string {
   const accent = mod.navAccent ? MODULE_NAV_CLASSES[mod.navAccent] : MODULE_NAV_CLASSES.default;
@@ -104,10 +97,9 @@ export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname, 
     return base === mod.route || base.startsWith(`${mod.route}/`);
   }
 
-  const modulesByPillar = AGENCY_BRAIN_NAV_PILLARS.map((pillar) => ({
-    pillar,
-    items: modules.filter((m) => m.navPillar === pillar)
-  })).filter((g) => g.items.length > 0);
+  const flatModules = AGENCY_BRAIN_NAV_PILLARS.flatMap((pillar) =>
+    modules.filter((m) => m.navPillar === pillar)
+  );
 
   if (collapsed) {
     return (
@@ -151,27 +143,20 @@ export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname, 
       </button>
 
       {expanded ? (
-        <div className="ml-4 space-y-2 border-l border-white/10 pl-2">
-          {modulesByPillar.map(({ pillar, items }) => (
-            <div key={pillar} className="space-y-0.5">
-              <div className="px-3 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                {t(PILLAR_LABEL_KEYS[pillar])}
-              </div>
-              {items.map((mod) => {
-                const active = subActive(mod);
-                return (
-                  <Link
-                    key={mod.id}
-                    href={mod.route}
-                    onClick={() => onNavigate?.()}
-                    className={moduleNavClasses(mod, active)}
-                  >
-                    {t(mod.navKey)}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+        <div className="ml-4 space-y-0.5 border-l border-white/10 pl-2">
+          {flatModules.map((mod) => {
+            const active = subActive(mod);
+            return (
+              <Link
+                key={mod.id}
+                href={mod.route}
+                onClick={() => onNavigate?.()}
+                className={moduleNavClasses(mod, active)}
+              >
+                {t(mod.navKey)}
+              </Link>
+            );
+          })}
         </div>
       ) : null}
     </div>
