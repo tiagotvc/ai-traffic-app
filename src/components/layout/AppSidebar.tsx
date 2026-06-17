@@ -4,8 +4,13 @@ import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 
-import { AgencyBrainNavGroup } from "@/components/layout/AgencyBrainNavGroup";
+import { AgencyBrainNavGroup, AgencyBrainNavLocked } from "@/components/layout/AgencyBrainNavGroup";
+import { ProfileNavGroup } from "@/components/layout/ProfileNavGroup";
+import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
+import { isNavItemAllowed, type GatedNavId } from "@/lib/billing/nav-permissions";
+import type { PlanLimits } from "@/lib/billing/types";
+import { FREE_LIMITS } from "@/lib/billing/types";
 import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -18,6 +23,7 @@ type NavItem = {
   beta?: boolean;
   icon: React.ReactNode;
   action?: () => void;
+  gate?: GatedNavId;
 };
 
 function NavIcon({ d }: { d: string }) {
@@ -54,13 +60,7 @@ const icons = {
   alerts:
     "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9",
   automations:
-    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
-  settings:
-    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
-  admin:
-    "M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z",
-  billing:
-    "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"
 };
 
 export function AppSidebar({
@@ -72,6 +72,7 @@ export function AppSidebar({
   subscriptionStatus,
   allowCreativeMemoryAi = true,
   agencyBrainFeatures,
+  planLimits = FREE_LIMITS,
   isPlatformAdmin = false,
   collapsed,
   onToggleCollapse,
@@ -86,6 +87,7 @@ export function AppSidebar({
   subscriptionStatus?: string;
   allowCreativeMemoryAi?: boolean;
   agencyBrainFeatures?: AgencyBrainFeatureFlags;
+  planLimits?: PlanLimits;
   isPlatformAdmin?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -110,30 +112,19 @@ export function AppSidebar({
   const items: NavItem[] = [
     { id: "highlights", href: "/dashboard", label: t("highlights"), icon: <NavIcon d={icons.highlights} /> },
     { id: "clients", href: "/clients", label: t("clients"), icon: <NavIcon d={icons.clients} /> },
-    { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <NavIcon d={icons.campaigns} /> },
-    { id: "audiences", href: "/audiences", label: t("audiences"), icon: <NavIcon d={icons.audiences} /> },
-    { id: "creatives", href: "/creatives", label: t("creatives"), icon: <NavIcon d={icons.creatives} /> },
-    { id: "reports", href: "/reports", label: t("reports"), icon: <NavIcon d={icons.reports} /> },
+    { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <NavIcon d={icons.campaigns} />, gate: "campaigns" },
+    { id: "audiences", href: "/audiences", label: t("audiences"), icon: <NavIcon d={icons.audiences} />, gate: "audiences" },
+    { id: "creatives", href: "/creatives", label: t("creatives"), icon: <NavIcon d={icons.creatives} />, gate: "creatives" },
+    { id: "reports", href: "/reports", label: t("reports"), icon: <NavIcon d={icons.reports} />, gate: "reports" },
     {
       id: "alerts",
       href: "/alerts",
       label: t("alerts"),
       badge: alertCount > 0 ? alertCount : undefined,
-      icon: <NavIcon d={icons.alerts} />
+      icon: <NavIcon d={icons.alerts} />,
+      gate: "alerts"
     },
-    { id: "automations", href: "/automations", label: t("automations"), icon: <NavIcon d={icons.automations} /> },
-    { id: "billing", href: "/billing", label: t("billing"), icon: <NavIcon d={icons.billing} /> },
-    ...(isPlatformAdmin
-      ? [
-          {
-            id: "admin",
-            href: "/admin/users",
-            label: t("adminPanel"),
-            icon: <NavIcon d={icons.admin} />
-          }
-        ]
-      : []),
-    { id: "settings", href: "/settings", label: t("settings"), icon: <NavIcon d={icons.settings} /> }
+    { id: "automations", href: "/automations", label: t("automations"), icon: <NavIcon d={icons.automations} />, gate: "automations" }
   ];
 
   function isActive(item: NavItem) {
@@ -148,9 +139,6 @@ export function AppSidebar({
     if (item.id === "creatives") return base === "/creatives" || base.startsWith("/creatives/");
     if (item.id === "audiences") return base === "/audiences" || base.startsWith("/audiences/");
     if (item.id === "automations") return base === "/automations" || base.startsWith("/automations/");
-    if (item.id === "billing") return base === "/billing" || base.startsWith("/billing/");
-    if (item.id === "admin") return base.startsWith("/admin/");
-    if (item.id === "settings") return base === "/settings" || base.startsWith("/settings/");
     return item.href ? base === item.href || base.startsWith(`${item.href}/`) : false;
   }
 
@@ -211,6 +199,34 @@ export function AppSidebar({
       >
         {items.map((item) => {
           const active = isActive(item);
+          const gated = item.gate && !isNavItemAllowed(item.gate, planLimits);
+
+          if (gated) {
+            return (
+              <Fragment key={item.id}>
+                <NavUpgradeLink
+                  label={item.label}
+                  collapsed={effectiveCollapsed}
+                  active={active}
+                  icon={item.icon}
+                  onNavigate={onNavigate}
+                />
+                {item.id === "creatives" ? (
+                  planLimits.allowCreativeMemoryAi ? (
+                    <AgencyBrainNavGroup
+                      collapsed={effectiveCollapsed}
+                      agencyBrainFeatures={brainFeatures}
+                      pathname={pathname}
+                      onNavigate={onNavigate}
+                    />
+                  ) : (
+                    <AgencyBrainNavLocked collapsed={effectiveCollapsed} onNavigate={onNavigate} />
+                  )
+                ) : null}
+              </Fragment>
+            );
+          }
+
           const cls = `relative flex w-full items-center rounded-xl transition ${
             effectiveCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2 text-[13px]"
           } ${
@@ -278,16 +294,26 @@ export function AppSidebar({
             <Fragment key={item.id}>
               {navItem}
               {item.id === "creatives" ? (
-                <AgencyBrainNavGroup
-                  collapsed={effectiveCollapsed}
-                  agencyBrainFeatures={brainFeatures}
-                  pathname={pathname}
-                  onNavigate={onNavigate}
-                />
+                planLimits.allowCreativeMemoryAi ? (
+                  <AgencyBrainNavGroup
+                    collapsed={effectiveCollapsed}
+                    agencyBrainFeatures={brainFeatures}
+                    pathname={pathname}
+                    onNavigate={onNavigate}
+                  />
+                ) : (
+                  <AgencyBrainNavLocked collapsed={effectiveCollapsed} onNavigate={onNavigate} />
+                )
               ) : null}
             </Fragment>
           );
         })}
+        <ProfileNavGroup
+          collapsed={effectiveCollapsed}
+          pathname={pathname}
+          isPlatformAdmin={isPlatformAdmin}
+          onNavigate={onNavigate}
+        />
       </nav>
 
       {/* Footer — sempre colado embaixo, mesmo fundo */}

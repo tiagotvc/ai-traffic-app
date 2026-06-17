@@ -24,7 +24,7 @@ export function planBadgeClass(slug: string) {
 
 /** Grid da listagem admin — colunas distribuídas na largura total. */
 export const ADMIN_USERS_ROW_GRID =
-  "grid w-full grid-cols-[minmax(220px,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(108px,auto)] items-center gap-x-10 px-5";
+  "grid w-full grid-cols-[minmax(220px,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(96px,auto)] items-center gap-x-6 px-4";
 
 export function userInitials(name: string | null, email: string) {
   const src = (name?.trim() || email).trim();
@@ -43,9 +43,9 @@ export function UserAvatar({
   size?: "sm" | "md" | "lg";
 }) {
   const sizes = {
-    sm: "h-9 w-9 text-xs",
-    md: "h-11 w-11 text-sm",
-    lg: "h-14 w-14 text-base"
+    sm: "h-8 w-8 text-[10px]",
+    md: "h-9 w-9 text-xs",
+    lg: "h-11 w-11 text-sm"
   };
   return (
     <span
@@ -214,18 +214,18 @@ export function AdminSection({
 
   return (
     <section
-      className={`overflow-hidden rounded-2xl border bg-gradient-to-br shadow-sm ${accents[accent]} ${className}`}
+      className={`overflow-hidden rounded-xl border bg-gradient-to-br shadow-sm ${accents[accent]} ${className}`}
     >
-      <div className="flex items-start gap-3 border-b border-inherit bg-white/60 px-5 py-4 backdrop-blur-sm">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/5">
-          <AdminIcon name={icon} className="h-5 w-5" />
+      <div className="flex items-start gap-2.5 border-b border-inherit bg-white/60 px-4 py-3 backdrop-blur-sm">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-black/5">
+          <AdminIcon name={icon} className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-bold text-slate-900">{title}</h2>
-          {subtitle ? <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p> : null}
+          <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+          {subtitle ? <p className="mt-0.5 text-[11px] text-slate-500">{subtitle}</p> : null}
         </div>
       </div>
-      <div className="bg-white/90 p-5">{children}</div>
+      <div className="bg-white/90 p-4">{children}</div>
     </section>
   );
 }
@@ -410,16 +410,16 @@ export function AddonStepperCard({
 
   return (
     <div
-      className={`rounded-2xl border border-slate-200/80 bg-gradient-to-br p-4 shadow-sm ${meta.gradient}`}
+      className={`rounded-xl border border-slate-200/80 bg-gradient-to-br p-3 shadow-sm ${meta.gradient}`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5">
         <span
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ${meta.ring} ${meta.color}`}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ${meta.ring} ${meta.color}`}
         >
-          <AdminIcon name={meta.icon} className="h-5 w-5" />
+          <AdminIcon name={meta.icon} className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900">{label}</p>
+          <p className="text-xs font-semibold text-slate-900">{label}</p>
           {baseLimit !== undefined ? (
             <p className="mt-0.5 text-xs text-slate-500">
               {planLabel}: {baseLimit} → <span className="font-semibold text-slate-700">{effective}</span>
@@ -428,17 +428,17 @@ export function AddonStepperCard({
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2">
+      <div className="mt-3 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
           aria-label="-1"
         >
           −
         </button>
         <div className="flex flex-1 flex-col items-center">
-          <span className="text-2xl font-bold tabular-nums text-slate-900">+{value}</span>
+          <span className="text-lg font-bold tabular-nums text-slate-900">+{value}</span>
           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
             {extraLabel}
           </span>
@@ -446,7 +446,7 @@ export function AddonStepperCard({
         <button
           type="button"
           onClick={() => onChange(value + 1)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-medium text-slate-600 shadow-sm transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-medium text-slate-600 shadow-sm transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
           aria-label="+1"
         >
           +

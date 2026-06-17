@@ -158,6 +158,21 @@ export async function redisSetJson(key: string, value: unknown, ttlSec: number):
   }
 }
 
+export async function redisDeleteKey(key: string): Promise<void> {
+  try {
+    const upstash = getUpstashConfig();
+    if (upstash) {
+      await upstashCommand(["DEL", key]);
+      return;
+    }
+    const client = await getRedisClient();
+    if (!client) return;
+    await withTimeout(client.del(key), REDIS_OP_TIMEOUT_MS);
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function redisDeleteByPrefix(prefix: string): Promise<void> {
   try {
     const upstash = getUpstashConfig();

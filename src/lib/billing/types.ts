@@ -39,6 +39,13 @@ export type PlanLimits = {
   allowAgencyBrainExperiments: boolean;
   allowAgencyBrainActionPlans: boolean;
   allowAgencyBrainChat: boolean;
+  /** Menu visibility — configurable per plan in admin */
+  allowNavCampaigns: boolean;
+  allowNavAudiences: boolean;
+  allowNavCreatives: boolean;
+  allowNavReports: boolean;
+  allowNavAlerts: boolean;
+  allowNavAutomations: boolean;
 };
 
 export type ExternalPrices = {
@@ -64,7 +71,13 @@ export const FREE_LIMITS: PlanLimits = {
   allowAgencyBrainTimeline: false,
   allowAgencyBrainExperiments: false,
   allowAgencyBrainActionPlans: false,
-  allowAgencyBrainChat: false
+  allowAgencyBrainChat: false,
+  allowNavCampaigns: true,
+  allowNavAudiences: false,
+  allowNavCreatives: true,
+  allowNavReports: false,
+  allowNavAlerts: true,
+  allowNavAutomations: false
 };
 
 export const BASIC_LIMITS: PlanLimits = {
@@ -82,7 +95,13 @@ export const BASIC_LIMITS: PlanLimits = {
   allowAgencyBrainTimeline: false,
   allowAgencyBrainExperiments: false,
   allowAgencyBrainActionPlans: false,
-  allowAgencyBrainChat: false
+  allowAgencyBrainChat: false,
+  allowNavCampaigns: true,
+  allowNavAudiences: true,
+  allowNavCreatives: true,
+  allowNavReports: true,
+  allowNavAlerts: true,
+  allowNavAutomations: false
 };
 
 export const ADVANCED_LIMITS: PlanLimits = {
@@ -100,7 +119,13 @@ export const ADVANCED_LIMITS: PlanLimits = {
   allowAgencyBrainTimeline: true,
   allowAgencyBrainExperiments: true,
   allowAgencyBrainActionPlans: true,
-  allowAgencyBrainChat: true
+  allowAgencyBrainChat: true,
+  allowNavCampaigns: true,
+  allowNavAudiences: true,
+  allowNavCreatives: true,
+  allowNavReports: true,
+  allowNavAlerts: true,
+  allowNavAutomations: true
 };
 
 export const AGENCY_LIMITS: PlanLimits = {
@@ -118,7 +143,13 @@ export const AGENCY_LIMITS: PlanLimits = {
   allowAgencyBrainTimeline: true,
   allowAgencyBrainExperiments: true,
   allowAgencyBrainActionPlans: true,
-  allowAgencyBrainChat: true
+  allowAgencyBrainChat: true,
+  allowNavCampaigns: true,
+  allowNavAudiences: true,
+  allowNavCreatives: true,
+  allowNavReports: true,
+  allowNavAlerts: true,
+  allowNavAutomations: true
 };
 
 /** @deprecated use ADVANCED_LIMITS */

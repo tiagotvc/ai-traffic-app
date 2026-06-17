@@ -213,7 +213,8 @@ export function UpgradePromoCard({
   discountPercent,
   ctaHref,
   ctaLabel,
-  planName
+  planName,
+  compact = false
 }: {
   title: string;
   description: string;
@@ -221,33 +222,50 @@ export function UpgradePromoCard({
   ctaHref: string;
   ctaLabel: string;
   planName?: string;
+  compact?: boolean;
 }) {
   const t = useTranslations("billingPage");
   return (
-    <div className="relative overflow-hidden rounded-2xl border-2 border-violet-300/50 bg-gradient-to-br from-violet-600 via-violet-500 to-indigo-700 p-6 text-white shadow-xl shadow-violet-300/40 ring-1 ring-violet-400/30">
-      <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
-      <div className="absolute -bottom-6 left-4 h-20 w-20 rounded-full bg-white/5" />
-      <div className="relative space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-violet-700">
+    <div
+      className={`relative overflow-hidden bg-gradient-to-br from-violet-600 via-violet-500 to-indigo-700 text-white shadow-sm ${
+        compact
+          ? "rounded-xl border border-violet-400/30 p-4"
+          : "rounded-2xl border-2 border-violet-300/50 p-6 shadow-xl shadow-violet-300/40 ring-1 ring-violet-400/30"
+      }`}
+    >
+      {!compact ? (
+        <>
+          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
+          <div className="absolute -bottom-6 left-4 h-20 w-20 rounded-full bg-white/5" />
+        </>
+      ) : null}
+      <div className={`relative ${compact ? "space-y-2.5" : "space-y-4"}`}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-violet-700">
             {t("upgradePromoBadge", { percent: discountPercent })}
           </span>
           {planName ? (
-            <span className="rounded-full bg-violet-900/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-violet-100">
+            <span className="rounded-full bg-violet-900/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-100">
               {planName}
             </span>
           ) : null}
         </div>
         <div>
-          <h3 className="text-xl font-extrabold tracking-tight">{title}</h3>
-          <p className="mt-1.5 text-sm leading-relaxed text-violet-100">{description}</p>
+          <h3 className={`font-bold tracking-tight ${compact ? "text-sm" : "text-xl font-extrabold"}`}>
+            {title}
+          </h3>
+          <p className={`text-violet-100 ${compact ? "mt-0.5 text-[11px] leading-snug" : "mt-1.5 text-sm leading-relaxed"}`}>
+            {description}
+          </p>
         </div>
         <Link
           href={ctaHref}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-sm font-extrabold text-violet-700 shadow-lg transition hover:bg-violet-50 hover:shadow-xl"
+          className={`flex w-full items-center justify-center gap-1.5 rounded-lg bg-white font-bold text-violet-700 transition hover:bg-violet-50 ${
+            compact ? "py-2 text-xs" : "rounded-xl py-3.5 text-sm font-extrabold shadow-lg hover:shadow-xl"
+          }`}
         >
           {ctaLabel}
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
         </Link>

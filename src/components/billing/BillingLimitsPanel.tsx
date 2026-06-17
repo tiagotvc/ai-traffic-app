@@ -19,7 +19,7 @@ function UsageBar({ usage, max }: { usage: number; max: number }) {
   const bar =
     usage > max ? "bg-red-500" : pct >= 85 ? "bg-amber-500" : "bg-emerald-500";
   return (
-    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+    <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-100">
       <div className={`h-full rounded-full transition-all ${bar}`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -272,30 +272,28 @@ export function BillingLimitsPanel({
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
       {rows.map((row) => (
         <div
           key={row.key}
-          className="rounded-xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/80 p-3.5"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm"
         >
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2.5">
-              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${row.color}`}>
-                {row.icon}
-              </span>
-              <div>
-                <p className="text-sm font-medium text-slate-700">{row.label}</p>
-                {row.max != null && row.usage != null ? (
-                  <p
-                    className={`text-lg font-bold tabular-nums ${
-                      row.usage > row.max ? "text-red-600" : "text-slate-900"
-                    }`}
-                  >
-                    {row.usage}
-                    <span className="text-sm font-normal text-slate-400"> / {row.max}</span>
-                  </p>
-                ) : null}
-              </div>
+          <div className="flex items-center gap-2">
+            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${row.color}`}>
+              {row.icon}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11px] text-slate-500">{row.label}</p>
+              {row.max != null && row.usage != null ? (
+                <p
+                  className={`text-lg font-semibold leading-tight tabular-nums ${
+                    row.usage > row.max ? "text-red-600" : "text-slate-900"
+                  }`}
+                >
+                  {row.usage}
+                  <span className="text-xs font-normal text-slate-400"> / {row.max}</span>
+                </p>
+              ) : null}
             </div>
           </div>
           {row.max != null && row.usage != null ? (
@@ -306,15 +304,15 @@ export function BillingLimitsPanel({
       {flags.map((row) => (
         <div
           key={row.key}
-          className={`flex items-center gap-3 rounded-xl border p-3.5 ${
-            row.enabled ? "border-emerald-100 bg-emerald-50/40" : "border-slate-100 bg-slate-50/50"
+          className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 shadow-sm ${
+            row.enabled ? "border-emerald-100 bg-emerald-50/50" : "border-slate-200 bg-slate-50/80"
           }`}
         >
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${row.color}`}>
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${row.color}`}>
             {row.icon}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-slate-700">{row.label}</p>
+            <p className="truncate text-[11px] text-slate-500">{row.label}</p>
             <p className={`text-xs font-semibold ${row.enabled ? "text-emerald-700" : "text-slate-400"}`}>
               {row.enabled ? t("included") : t("notIncluded")}
             </p>

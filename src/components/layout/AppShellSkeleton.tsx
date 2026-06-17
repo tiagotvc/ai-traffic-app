@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 
@@ -9,6 +9,8 @@ import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
+import type { PlanLimits } from "@/lib/billing/types";
+import { FREE_LIMITS } from "@/lib/billing/types";
 
 const STORAGE_KEY = "traffic-ai-sidebar-collapsed";
 const HEARTBEAT_KEY = "traffic-ai-heartbeat";
@@ -32,6 +34,7 @@ function sidebarProps(
   subscriptionStatus: string,
   allowCreativeMemoryAi: boolean,
   agencyBrainFeatures: AgencyBrainFeatureFlags,
+  planLimits: PlanLimits,
   platformAdmin: boolean,
   collapsed: boolean,
   onToggleCollapse: () => void,
@@ -46,6 +49,7 @@ function sidebarProps(
     subscriptionStatus,
     allowCreativeMemoryAi,
     agencyBrainFeatures,
+    planLimits,
     isPlatformAdmin: platformAdmin,
     collapsed,
     onToggleCollapse,
@@ -79,6 +83,7 @@ export function AppShellSkeleton({
   const [allowCreativeMemoryAi, setAllowCreativeMemoryAi] = useState(true);
   const [agencyBrainFeatures, setAgencyBrainFeatures] =
     useState<AgencyBrainFeatureFlags>(DEFAULT_BRAIN_FEATURES);
+  const [planLimits, setPlanLimits] = useState<PlanLimits>(FREE_LIMITS);
   const [platformAdmin, setPlatformAdmin] = useState(isPlatformAdmin);
 
   useEffect(() => {
@@ -107,31 +112,30 @@ export function AppShellSkeleton({
     };
   }, [mobileMenuOpen]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    void fetch("/api/alerts/count")
+  const loadShellData = useCallback(() => {
+    void fetch("/api/alerts/count", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
-        if (!cancelled && j?.count != null) setAlertCount(Number(j.count) || 0);
+        if (j?.count != null) setAlertCount(Number(j.count) || 0);
       })
       .catch(() => {});
 
-    void fetch("/api/me/entitlements")
+    void fetch(`/api/me/entitlements?fresh=${Date.now()}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
-        if (cancelled || !j?.entitlements) return;
+        if (!j?.entitlements) return;
         const e = j.entitlements as {
           planSlug?: string;
           planName?: string;
           status?: string;
-          limits?: AgencyBrainFeatureFlags & { allowCreativeMemoryAi?: boolean };
+          limits?: PlanLimits;
         };
         setPlanSlug(e.planSlug ?? "free");
         setPlanName(e.planName ?? "Free");
         setSubscriptionStatus(e.status ?? "active");
         const limits = e.limits;
         if (limits) {
+          setPlanLimits(limits);
           setAllowCreativeMemoryAi(limits.allowCreativeMemoryAi ?? true);
           setAgencyBrainFeatures({
             allowCreativeMemoryAi: limits.allowCreativeMemoryAi ?? true,
@@ -146,6 +150,13 @@ export function AppShellSkeleton({
         if (j.isPlatformAdmin != null) setPlatformAdmin(!!j.isPlatformAdmin);
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadShellData();
+
+    const onEntitlementsChanged = () => loadShellData();
+    window.addEventListener("traffic:entitlements-changed", onEntitlementsChanged);
 
     try {
       if (sessionStorage.getItem(HEARTBEAT_KEY) !== "1") {
@@ -164,9 +175,9 @@ export function AppShellSkeleton({
     }
 
     return () => {
-      cancelled = true;
+      window.removeEventListener("traffic:entitlements-changed", onEntitlementsChanged);
     };
-  }, []);
+  }, [loadShellData]);
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -189,6 +200,7 @@ export function AppShellSkeleton({
     subscriptionStatus,
     allowCreativeMemoryAi,
     agencyBrainFeatures,
+    planLimits,
     platformAdmin,
     ready ? collapsed : false,
     toggleCollapsed

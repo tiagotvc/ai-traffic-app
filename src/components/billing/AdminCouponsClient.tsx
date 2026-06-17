@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
 
 type CouponRow = {
   id: string;
@@ -75,11 +76,8 @@ export function AdminCouponsClient() {
   }
 
   return (
-    <div className="w-full space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t("couponsTitle")}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t("couponsSubtitle")}</p>
-      </div>
+    <div className="w-full space-y-4">
+      <CompactPageHeader title={t("couponsTitle")} subtitle={t("couponsSubtitle")} />
 
       {message ? (
         <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
@@ -87,9 +85,9 @@ export function AdminCouponsClient() {
         </div>
       ) : null}
 
-      <form onSubmit={createCoupon} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">{t("couponCreate")}</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <form onSubmit={createCoupon} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t("couponCreate")}</h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="text-xs font-semibold text-slate-600">{t("couponCode")}</span>
             <input
@@ -135,47 +133,47 @@ export function AdminCouponsClient() {
         </div>
         <button
           type="submit"
-          className="mt-4 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white"
+          className="mt-3 rounded-lg bg-violet-600 px-4 py-1.5 text-xs font-semibold text-white"
         >
           {t("couponCreateBtn")}
         </button>
       </form>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50 text-left text-[11px] uppercase text-slate-500">
             <tr>
-              <th className="px-4 py-3">{t("couponCode")}</th>
-              <th className="px-4 py-3">{t("couponPercent")}</th>
-              <th className="px-4 py-3">{t("couponUsage")}</th>
-              <th className="px-4 py-3">{t("couponMinCharge")}</th>
-              <th className="px-4 py-3" />
+              <th className="px-3 py-2">{t("couponCode")}</th>
+              <th className="px-3 py-2">{t("couponPercent")}</th>
+              <th className="px-3 py-2">{t("couponUsage")}</th>
+              <th className="px-3 py-2">{t("couponMinCharge")}</th>
+              <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={5} className="px-3 py-6 text-center text-slate-400">
                   {t("loading")}
                 </td>
               </tr>
             ) : coupons.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={5} className="px-3 py-6 text-center text-slate-400">
                   {t("couponEmpty")}
                 </td>
               </tr>
             ) : (
               coupons.map((c) => (
                 <tr key={c.id} className="border-t border-slate-100">
-                  <td className="px-4 py-3 font-mono font-bold">{c.code}</td>
-                  <td className="px-4 py-3">{c.percentOff}%</td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 font-mono font-bold">{c.code}</td>
+                  <td className="px-3 py-2">{c.percentOff}%</td>
+                  <td className="px-3 py-2">
                     {c.usedCount}
                     {c.maxUses != null ? ` / ${c.maxUses}` : ` (${t("couponUnlimited")})`}
                   </td>
-                  <td className="px-4 py-3">R$ {(c.minChargeCents / 100).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-2">R$ {(c.minChargeCents / 100).toFixed(2)}</td>
+                  <td className="px-3 py-2 text-right">
                     <button
                       type="button"
                       onClick={() => toggleActive(c)}

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { AdminUsersListSkeleton } from "@/components/billing/BillingSkeletons";
+import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
 import {
   ADMIN_USERS_ROW_GRID,
   AdminIcon,
@@ -143,33 +144,33 @@ export function AdminUsersClient() {
 
   return (
     <div className="flex min-h-[calc(100dvh-7.5rem)] flex-col">
-      <div className={`flex-1 space-y-6 ${loading ? "opacity-60" : ""}`}>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t("usersTitle")}</h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-500">{t("usersSubtitle")}</p>
-          </div>
-          <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white px-4 py-3 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-violet-600">
-              {t("usersTotal", { count: total })}
-            </p>
-          </div>
-        </div>
+      <div className={`flex-1 space-y-4 ${loading ? "opacity-60" : ""}`}>
+        <CompactPageHeader
+          title={t("usersTitle")}
+          subtitle={t("usersSubtitle")}
+          badge={
+            <div className="rounded-xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white px-3 py-2 shadow-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-600">
+                {t("usersTotal", { count: total })}
+              </p>
+            </div>
+          }
+        />
 
         <form onSubmit={onSearch} className="relative max-w-xl">
-          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-            <AdminIcon name="search" className="h-4 w-4" />
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <AdminIcon name="search" className="h-3.5 w-3.5" />
           </span>
           <input
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("usersSearchPlaceholder")}
-            className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-28 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-24 text-xs text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
           />
           <button
             type="submit"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700"
+            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700"
           >
             {t("usersSearchBtn")}
           </button>
@@ -187,9 +188,9 @@ export function AdminUsersClient() {
 
           <div className="space-y-2.5">
             {users.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/60 px-6 py-16 text-center">
-                <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-                  <AdminIcon name="user" className="h-7 w-7" />
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 px-4 py-12 text-center">
+                <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                  <AdminIcon name="user" className="h-5 w-5" />
                 </span>
                 <p className="font-medium text-slate-700">{t("usersEmpty")}</p>
                 {search ? (
@@ -202,7 +203,7 @@ export function AdminUsersClient() {
               users.map((u) => (
                 <article
                   key={u.id}
-                  className={`group ${ADMIN_USERS_ROW_GRID} rounded-xl border border-slate-200/90 bg-white py-3.5 shadow-sm transition hover:border-slate-300 hover:shadow-md`}
+                  className={`group ${ADMIN_USERS_ROW_GRID} rounded-xl border border-slate-200/90 bg-white py-2.5 shadow-sm transition hover:border-slate-300 hover:shadow-md`}
                 >
                   <div className={`${CELL} min-w-0 gap-3.5`}>
                     <UserAvatar name={u.name} email={u.email} />
@@ -239,7 +240,7 @@ export function AdminUsersClient() {
                   <div className={`${CELL} justify-end`}>
                     <Link
                       href={`/admin/users/${u.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-semibold text-violet-700 shadow-sm transition group-hover:border-violet-300 group-hover:bg-violet-100"
+                      className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[11px] font-semibold text-violet-700 shadow-sm transition group-hover:border-violet-300 group-hover:bg-violet-100"
                     >
                       {t("usersManage")}
                       <AdminIcon name="chevron" className="h-3.5 w-3.5" />
@@ -252,26 +253,26 @@ export function AdminUsersClient() {
         </div>
       </div>
 
-      <footer className="sticky bottom-0 z-10 -mx-6 mt-8 border-t border-slate-200/80 bg-[#f4f6f9]/90 px-6 py-4 backdrop-blur-md lg:-mx-8 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+      <footer className="sticky bottom-0 z-10 -mx-6 mt-6 border-t border-slate-200/80 bg-[#f4f6f9]/90 px-6 py-3 backdrop-blur-md lg:-mx-8 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
           <span>{t("usersTotal", { count: total })}</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               disabled={page <= 1 || loading}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("usersPrev")}
             </button>
-            <span className="min-w-[4.5rem] text-center font-medium text-slate-700">
+            <span className="min-w-[4rem] text-center font-medium text-slate-700">
               {page} / {totalPages}
             </span>
             <button
               type="button"
               disabled={page >= totalPages || loading}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("usersNext")}
             </button>

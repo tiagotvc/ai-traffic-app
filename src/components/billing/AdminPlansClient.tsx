@@ -3,7 +3,9 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { AdminPlansSkeleton } from "@/components/billing/BillingSkeletons";
+import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
 import { adminPlanRowStyle } from "@/lib/billing/admin-plan-styles";
+import { resolveLimits } from "@/lib/billing/resolve-limits";
 import { FREE_LIMITS, type ExternalPrices, type PlanLimits } from "@/lib/billing/types";
 
 type AdminPlan = {
@@ -47,6 +49,7 @@ function inputToCents(raw: string): number {
 
 function planToDraft(plan: AdminPlan): PlanDraft {
   const brl = plan.externalPrices?.asaas;
+  const resolvedLimits = resolveLimits({ limits: plan.limits });
   return {
     name: plan.name,
     description: plan.description ?? "",
@@ -57,7 +60,7 @@ function planToDraft(plan: AdminPlan): PlanDraft {
     trialDays: String(plan.trialDays),
     sortOrder: String(plan.sortOrder),
     isActive: plan.isActive,
-    limits: { ...plan.limits }
+    limits: { ...resolvedLimits }
   };
 }
 
@@ -152,6 +155,7 @@ function PlanEditor({
       }
       onSaved(j.plan as AdminPlan);
       setMessage({ type: "ok", text: t("saved") });
+      window.dispatchEvent(new Event("traffic:entitlements-changed"));
     } catch {
       setMessage({ type: "err", text: t("saveError") });
     } finally {
@@ -164,17 +168,17 @@ function PlanEditor({
   };
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${style.card}`}>
+    <div className={`overflow-hidden rounded-xl border ${style.card}`}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition ${style.header}`}
+        className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition ${style.header}`}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span className={`h-10 w-1 shrink-0 rounded-full ${style.accent}`} aria-hidden />
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <span className={`h-8 w-1 shrink-0 rounded-full ${style.accent}`} aria-hidden />
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-lg font-bold ${style.title}`}>{plan.name}</span>
+              <span className={`text-base font-bold ${style.title}`}>{plan.name}</span>
               {!draft.isActive ? (
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style.inactiveBadge}`}
@@ -200,7 +204,7 @@ function PlanEditor({
       </button>
 
       {open ? (
-        <div className={`space-y-6 border-t px-5 py-5 ${style.body}`}>
+        <div className={`space-y-4 border-t px-4 py-4 ${style.body}`}>
           <p className="font-mono text-xs text-slate-400">
             {t("fieldSlug")}: {plan.slug}
           </p>
@@ -360,10 +364,100 @@ function PlanEditor({
                 onChange={(v) => setLimit("allowLiveMeta", v as boolean)}
                 type="checkbox"
               />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-slate-700">
+              {t("sectionNav")}
+            </h3>
+            <p className="mb-3 text-xs text-slate-500">{t("sectionNavHint")}</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <LimitField
+                label={t("limitNavCampaigns")}
+                value={draft.limits.allowNavCampaigns}
+                onChange={(v) => setLimit("allowNavCampaigns", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitNavAudiences")}
+                value={draft.limits.allowNavAudiences}
+                onChange={(v) => setLimit("allowNavAudiences", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitNavCreatives")}
+                value={draft.limits.allowNavCreatives}
+                onChange={(v) => setLimit("allowNavCreatives", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitNavReports")}
+                value={draft.limits.allowNavReports}
+                onChange={(v) => setLimit("allowNavReports", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitNavAlerts")}
+                value={draft.limits.allowNavAlerts}
+                onChange={(v) => setLimit("allowNavAlerts", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitNavAutomations")}
+                value={draft.limits.allowNavAutomations}
+                onChange={(v) => setLimit("allowNavAutomations", v as boolean)}
+                type="checkbox"
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-slate-700">
+              {t("sectionAgencyBrain")}
+            </h3>
+            <p className="mb-3 text-xs text-slate-500">{t("sectionAgencyBrainHint")}</p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <LimitField
                 label={t("limitCreativeMemoryAi")}
                 value={draft.limits.allowCreativeMemoryAi}
                 onChange={(v) => setLimit("allowCreativeMemoryAi", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitAgencyBrainHypotheses")}
+                value={draft.limits.allowAgencyBrainHypotheses}
+                onChange={(v) => setLimit("allowAgencyBrainHypotheses", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitAgencyBrainDna")}
+                value={draft.limits.allowAgencyBrainDna}
+                onChange={(v) => setLimit("allowAgencyBrainDna", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitAgencyBrainTimeline")}
+                value={draft.limits.allowAgencyBrainTimeline}
+                onChange={(v) => setLimit("allowAgencyBrainTimeline", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitAgencyBrainExperiments")}
+                value={draft.limits.allowAgencyBrainExperiments}
+                onChange={(v) => setLimit("allowAgencyBrainExperiments", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitAgencyBrainActionPlans")}
+                value={draft.limits.allowAgencyBrainActionPlans}
+                onChange={(v) => setLimit("allowAgencyBrainActionPlans", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitAgencyBrainChat")}
+                value={draft.limits.allowAgencyBrainChat}
+                onChange={(v) => setLimit("allowAgencyBrainChat", v as boolean)}
                 type="checkbox"
               />
             </div>
@@ -436,14 +530,14 @@ function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void })
   }
 
   return (
-    <div className="rounded-2xl border border-dashed border-violet-300 bg-violet-50/40">
+    <div className="rounded-xl border border-dashed border-violet-300 bg-violet-50/40">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+        className="flex w-full items-center justify-between gap-2.5 px-4 py-3 text-left"
       >
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600 text-lg font-bold text-white">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-base font-bold text-white">
             +
           </span>
           <div>
@@ -455,7 +549,7 @@ function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void })
       </button>
 
       {open ? (
-        <form onSubmit={submit} className="space-y-4 border-t border-violet-200/60 px-5 pb-5 pt-4">
+        <form onSubmit={submit} className="space-y-3 border-t border-violet-200/60 px-4 pb-4 pt-3">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block text-sm">
               <span className="mb-1 block text-slate-600">{t("fieldSlug")}</span>
@@ -532,11 +626,8 @@ export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] 
   }
 
   return (
-    <div className="w-full space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t("plansTitle")}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t("plansSubtitle")}</p>
-      </div>
+    <div className="w-full space-y-4">
+      <CompactPageHeader title={t("plansTitle")} subtitle={t("plansSubtitle")} />
 
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">

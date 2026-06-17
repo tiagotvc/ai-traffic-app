@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
 
 type RefundRow = {
   id: string;
@@ -43,16 +44,13 @@ export function AdminRefundsClient() {
   }
 
   return (
-    <div className="w-full space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t("refundsSubtitle")}</p>
-      </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="w-full space-y-4">
+      <CompactPageHeader title={t("title")} subtitle={t("refundsSubtitle")} />
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-[11px] uppercase">
               <tr>
                 <th className="px-3 py-2">{t("colDate")}</th>
                 <th className="px-3 py-2">{t("colProvider")}</th>
@@ -66,7 +64,7 @@ export function AdminRefundsClient() {
                 <tr key={r.id} className="border-t">
                   <td className="px-3 py-2">{new Date(r.createdAt).toLocaleString()}</td>
                   <td className="px-3 py-2">{r.provider}</td>
-                  <td className="px-3 py-2 max-w-xs truncate">{r.reason}</td>
+                  <td className="max-w-xs truncate px-3 py-2">{r.reason}</td>
                   <td className="px-3 py-2">{r.status}</td>
                   <td className="px-3 py-2">
                     {r.status === "pending" ? (

@@ -4,14 +4,15 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useEffect, useState } from "react";
 
+import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import {
   AGENCY_BRAIN_MODULE_REGISTRY,
   AGENCY_BRAIN_NAV_PILLARS,
-  isAgencyBrainModuleEnabled,
   resolveAgencyBrainFeatures,
   type AgencyBrainFeatureFlags,
   type AgencyBrainModuleMeta
 } from "@/lib/agency-brain/domain/modules";
+import { agencyBrainModuleAllowed } from "@/lib/billing/nav-permissions";
 
 const STORAGE_KEY = "agency-brain-nav-expanded";
 
@@ -55,13 +56,65 @@ function moduleNavClasses(mod: AgencyBrainModuleMeta, active: boolean): string {
   return `block rounded-lg px-3 py-1.5 text-[12px] transition ${active ? accent.active : accent.idle}`;
 }
 
+function LockedModuleLink({
+  mod,
+  collapsed,
+  onNavigate,
+  label
+}: {
+  mod: AgencyBrainModuleMeta;
+  collapsed: boolean;
+  onNavigate?: () => void;
+  label: string;
+}) {
+  if (collapsed) {
+    return (
+      <Link
+        href="/billing"
+        title={`${label} — upgrade`}
+        onClick={() => onNavigate?.()}
+        className="flex justify-center rounded-lg px-2 py-1.5 text-slate-500 opacity-60 hover:bg-white/5"
+      >
+        <svg className="h-3.5 w-3.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href="/billing"
+      onClick={() => onNavigate?.()}
+      className="flex items-center justify-between rounded-lg px-3 py-1.5 text-[12px] text-slate-500/70 transition hover:bg-white/5"
+    >
+      <span className="truncate opacity-70">{label}</span>
+      <span className="flex shrink-0 items-center gap-1 text-[9px] font-semibold uppercase text-amber-400">
+        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+          <path
+            fillRule="evenodd"
+            d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </span>
+    </Link>
+  );
+}
+
 export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname, onNavigate }: Props) {
   const t = useTranslations("nav");
   const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
   const inAgencyBrain = base.startsWith("/agency-brain");
 
   const features = resolveAgencyBrainFeatures(agencyBrainFeatures);
-  const modules = AGENCY_BRAIN_MODULE_REGISTRY.filter((m) => isAgencyBrainModuleEnabled(m, features));
+  const flatModules = AGENCY_BRAIN_NAV_PILLARS.flatMap((pillar) =>
+    AGENCY_BRAIN_MODULE_REGISTRY.filter((m) => m.navPillar === pillar)
+  );
 
   const [expanded, setExpanded] = useState(inAgencyBrain);
 
@@ -89,17 +142,11 @@ export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname, 
     }
   }
 
-  if (!agencyBrainFeatures.allowCreativeMemoryAi || !modules.length) return null;
-
   const parentActive = inAgencyBrain;
 
   function subActive(mod: AgencyBrainModuleMeta) {
     return base === mod.route || base.startsWith(`${mod.route}/`);
   }
-
-  const flatModules = AGENCY_BRAIN_NAV_PILLARS.flatMap((pillar) =>
-    modules.filter((m) => m.navPillar === pillar)
-  );
 
   if (collapsed) {
     return (
@@ -145,6 +192,19 @@ export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname, 
       {expanded ? (
         <div className="ml-4 space-y-0.5 border-l border-white/10 pl-2">
           {flatModules.map((mod) => {
+            const allowed = agencyBrainModuleAllowed(mod, features);
+            const label = t(mod.navKey);
+            if (!allowed) {
+              return (
+                <LockedModuleLink
+                  key={mod.id}
+                  mod={mod}
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                  label={label}
+                />
+              );
+            }
             const active = subActive(mod);
             return (
               <Link
@@ -153,12 +213,30 @@ export function AgencyBrainNavGroup({ collapsed, agencyBrainFeatures, pathname, 
                 onClick={() => onNavigate?.()}
                 className={moduleNavClasses(mod, active)}
               >
-                {t(mod.navKey)}
+                {label}
               </Link>
             );
           })}
         </div>
       ) : null}
     </div>
+  );
+}
+
+export function AgencyBrainNavLocked({
+  collapsed,
+  onNavigate
+}: {
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
+  const t = useTranslations("nav");
+  return (
+    <NavUpgradeLink
+      label={t("agencyBrain")}
+      collapsed={collapsed}
+      icon={<NavIcon d={brainIcon} />}
+      onNavigate={onNavigate}
+    />
   );
 }

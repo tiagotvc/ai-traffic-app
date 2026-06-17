@@ -84,7 +84,7 @@ function UsageBar({ used, max, label }: { used: number; max: number; label: stri
   const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
   const over = used > max;
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+    <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
       <div className="mb-2 flex justify-between text-xs">
         <span className="font-medium text-slate-700">{label}</span>
         <span className={over ? "font-bold text-red-600" : "tabular-nums text-slate-500"}>
@@ -189,26 +189,26 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <Link
             href="/admin/users"
-            className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 hover:text-violet-800"
+            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-800"
           >
             <span className="rotate-180">
-              <AdminIcon name="chevron" className="h-4 w-4" />
+              <AdminIcon name="chevron" className="h-3.5 w-3.5" />
             </span>
             {t("usersBack")}
           </Link>
-          <div className="mt-4 flex items-center gap-4">
-            <UserAvatar name={data.user.name} email={data.user.email} size="lg" />
+          <div className="mt-3 flex items-center gap-3">
+            <UserAvatar name={data.user.name} email={data.user.email} size="md" />
             <div className="min-w-0">
-              <h1 className="truncate text-2xl font-bold tracking-tight text-slate-900">
+              <h1 className="truncate text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
                 {data.user.name || data.user.email}
               </h1>
-              <p className="truncate text-sm text-slate-500">{data.user.email}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="truncate text-xs text-slate-500">{data.user.email}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <PlanBadge
                   slug={data.subscription.plan?.slug ?? "free"}
                   name={data.subscription.plan?.name ?? "Free"}
@@ -232,7 +232,7 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <AdminSection title={t("usersSectionProfile")} icon="user" accent="violet">
           <div className="space-y-4">
             <AdminField label={t("fieldName")} icon="user">

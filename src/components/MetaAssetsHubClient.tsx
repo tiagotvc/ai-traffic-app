@@ -112,19 +112,19 @@ export function MetaAssetsHubClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-medium text-slate-500">{t("breadcrumb")}</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("title")}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
-          <p className="mt-2 text-xs text-violet-800">{t("discoverFixHint")}</p>
+          <p className="text-[11px] font-medium text-slate-500">{t("breadcrumb")}</p>
+          <h1 className="mt-0.5 text-lg font-bold text-slate-900 sm:text-xl">{t("title")}</h1>
+          <p className="mt-0.5 text-xs text-slate-500">{t("subtitle")}</p>
+          <p className="mt-1.5 text-[11px] text-violet-800">{t("discoverFixHint")}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
             disabled={isPending}
             onClick={refresh}
-            className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+            className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
           >
             {isPending ? t("refreshing") : t("refresh")}
           </button>

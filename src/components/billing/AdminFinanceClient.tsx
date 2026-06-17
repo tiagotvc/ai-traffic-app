@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
 import { formatMoney } from "@/lib/billing/pricing";
 
 type ProviderBlock = {
@@ -41,9 +42,9 @@ function ProviderCard({
 }) {
   const t = useTranslations("billingAdmin");
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
         <a
           href={dashboardUrl}
           target="_blank"
@@ -54,17 +55,17 @@ function ProviderCard({
         </a>
       </div>
       <p className="mt-1 text-xs text-slate-500">{block.currency}</p>
-      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+      <dl className="mt-3 grid gap-2.5 sm:grid-cols-2">
         <div>
-          <dt className="text-xs text-slate-500">{t("financeRevenue")}</dt>
-          <dd className="text-xl font-bold tabular-nums text-emerald-700">
+          <dt className="text-[11px] text-slate-500">{t("financeRevenue")}</dt>
+          <dd className="text-lg font-bold tabular-nums text-emerald-700">
             {formatMoney(block.revenueCents, block.currency)}
           </dd>
           <dd className="text-xs text-slate-400">{block.paidInvoiceCount} paid</dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">{t("financeMrr")}</dt>
-          <dd className="text-xl font-bold tabular-nums text-slate-900">
+          <dt className="text-[11px] text-slate-500">{t("financeMrr")}</dt>
+          <dd className="text-lg font-bold tabular-nums text-slate-900">
             {formatMoney(block.mrrCents, block.currency)}
           </dd>
           <dd className="text-xs text-slate-400">
@@ -144,13 +145,10 @@ export function AdminFinanceClient() {
     : null;
 
   return (
-    <div className="w-full space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">{t("financeTitle")}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t("financeSubtitle")}</p>
-      </div>
+    <div className="w-full space-y-4">
+      <CompactPageHeader title={t("financeTitle")} subtitle={t("financeSubtitle")} />
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <ProviderCard
           title={t("financeAsaas")}
           block={summary.providers.asaas}
@@ -165,31 +163,31 @@ export function AdminFinanceClient() {
         />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <h2 className="border-b border-slate-100 bg-slate-50/80 px-5 py-3.5 font-semibold text-slate-900">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <h2 className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5 text-sm font-semibold text-slate-900">
           {t("financeRecentInvoices")}
         </h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50/50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50/50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-5 py-3">{t("colDate")}</th>
-                <th className="px-5 py-3">{t("colProvider")}</th>
-                <th className="px-5 py-3">{t("colAmount")}</th>
-                <th className="px-5 py-3">{t("colStatus")}</th>
+                <th className="px-4 py-2">{t("colDate")}</th>
+                <th className="px-4 py-2">{t("colProvider")}</th>
+                <th className="px-4 py-2">{t("colAmount")}</th>
+                <th className="px-4 py-2">{t("colStatus")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {invoices.map((inv) => (
                 <tr key={inv.id}>
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-2">
                     {new Date(inv.createdAt).toLocaleDateString(locale)}
                   </td>
-                  <td className="px-5 py-3">{inv.provider}</td>
-                  <td className="px-5 py-3 font-semibold tabular-nums">
+                  <td className="px-4 py-2">{inv.provider}</td>
+                  <td className="px-4 py-2 font-semibold tabular-nums">
                     {formatMoney(inv.amountCents, inv.currency ?? "BRL")}
                   </td>
-                  <td className="px-5 py-3">{inv.status}</td>
+                  <td className="px-4 py-2">{inv.status}</td>
                 </tr>
               ))}
             </tbody>

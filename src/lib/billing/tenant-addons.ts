@@ -35,7 +35,13 @@ export function mergePlanLimitsWithAddons(base: PlanLimits, bonuses: TenantAddon
     allowAgencyBrainTimeline: base.allowAgencyBrainTimeline,
     allowAgencyBrainExperiments: base.allowAgencyBrainExperiments,
     allowAgencyBrainActionPlans: base.allowAgencyBrainActionPlans,
-    allowAgencyBrainChat: base.allowAgencyBrainChat
+    allowAgencyBrainChat: base.allowAgencyBrainChat,
+    allowNavCampaigns: base.allowNavCampaigns,
+    allowNavAudiences: base.allowNavAudiences,
+    allowNavCreatives: base.allowNavCreatives,
+    allowNavReports: base.allowNavReports,
+    allowNavAlerts: base.allowNavAlerts,
+    allowNavAutomations: base.allowNavAutomations
   };
 }
 

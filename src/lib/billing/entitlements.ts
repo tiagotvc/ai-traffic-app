@@ -4,10 +4,11 @@ import { repositories } from "@/db/repositories";
 import type { Plan } from "@/db/entities/Plan";
 import type { Subscription } from "@/db/entities/Subscription";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
+import { redisDeleteKey } from "@/lib/redis-cache";
 import { ensureFreeSubscription } from "./event-handlers";
 import { getTenantAddonBonuses, mergePlanLimitsWithAddons } from "./tenant-addons";
+import { resolveLimits } from "./resolve-limits";
 import type { Entitlements, PlanLimitKey, PlanLimits, TenantUsage } from "./types";
-import { FREE_LIMITS } from "./types";
 
 export class PlanLimitError extends Error {
   code = "PLAN_LIMIT" as const;
@@ -117,21 +118,7 @@ export async function getTenantUsage(tenantId: string): Promise<TenantUsage> {
   };
 }
 
-export function resolveLimits(plan: Plan | null): PlanLimits {
-  if (!plan?.limits) return FREE_LIMITS;
-  const raw = plan.limits as Partial<PlanLimits>;
-  return {
-    ...FREE_LIMITS,
-    ...raw,
-    allowCreativeMemoryAi: raw.allowCreativeMemoryAi ?? true,
-    allowAgencyBrainHypotheses: raw.allowAgencyBrainHypotheses ?? true,
-    allowAgencyBrainDna: raw.allowAgencyBrainDna ?? true,
-    allowAgencyBrainTimeline: raw.allowAgencyBrainTimeline ?? false,
-    allowAgencyBrainExperiments: raw.allowAgencyBrainExperiments ?? false,
-    allowAgencyBrainActionPlans: raw.allowAgencyBrainActionPlans ?? false,
-    allowAgencyBrainChat: raw.allowAgencyBrainChat ?? false
-  };
-}
+export { resolveLimits };
 
 export async function getEntitlements(tenantId: string): Promise<Entitlements> {
   const { subscription: sub, plan: p } = await getTenantSubscription(tenantId);
@@ -162,7 +149,13 @@ const BOOLEAN_LIMIT_KEYS = [
   "allowAgencyBrainTimeline",
   "allowAgencyBrainExperiments",
   "allowAgencyBrainActionPlans",
-  "allowAgencyBrainChat"
+  "allowAgencyBrainChat",
+  "allowNavCampaigns",
+  "allowNavAudiences",
+  "allowNavCreatives",
+  "allowNavReports",
+  "allowNavAlerts",
+  "allowNavAutomations"
 ] as const;
 
 type NumericPlanLimitKey = Exclude<PlanLimitKey, (typeof BOOLEAN_LIMIT_KEYS)[number]>;
@@ -228,4 +221,17 @@ export function subscriptionToJson(sub: Subscription, plan: Plan | null) {
         }
       : null
   };
+}
+
+export async function invalidateEntitlementsForTenant(tenantId: string): Promise<void> {
+  await redisDeleteKey(`entitlements:${tenantId}`);
+}
+
+export async function invalidateEntitlementsForPlan(planId: string): Promise<void> {
+  const { subscription: subRepo } = await repositories();
+  const subs = await subRepo.find({
+    where: { planId },
+    select: { tenantId: true }
+  });
+  await Promise.all(subs.map((s) => invalidateEntitlementsForTenant(s.tenantId)));
 }

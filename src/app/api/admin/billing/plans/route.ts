@@ -5,25 +5,9 @@ import { repositories } from "@/db/repositories";
 import { listAdminPlans } from "@/lib/billing/admin-plans";
 import { requireBillingAdmin } from "@/lib/billing/admin-auth";
 import { planToAdminJson } from "@/lib/billing/plan-serializer";
+import { planLimitsSchema } from "@/lib/billing/plan-limits-schema";
 import type { ExternalPrices, PlanLimits } from "@/lib/billing/types";
-
-const limitsSchema = z.object({
-  maxClients: z.number().int().min(0),
-  maxAdAccounts: z.number().int().min(0),
-  maxMembers: z.number().int().min(0),
-  maxAutomationRules: z.number().int().min(0),
-  maxAiRequestsPerMonth: z.number().int().min(0),
-  maxScheduledReports: z.number().int().min(0),
-  allowAutoSync: z.boolean(),
-  allowLiveMeta: z.boolean(),
-  allowCreativeMemoryAi: z.boolean(),
-  allowAgencyBrainHypotheses: z.boolean().optional(),
-  allowAgencyBrainDna: z.boolean().optional(),
-  allowAgencyBrainTimeline: z.boolean().optional(),
-  allowAgencyBrainExperiments: z.boolean().optional(),
-  allowAgencyBrainActionPlans: z.boolean().optional(),
-  allowAgencyBrainChat: z.boolean().optional()
-});
+import { FREE_LIMITS } from "@/lib/billing/types";
 
 const createSchema = z.object({
   slug: z
@@ -38,26 +22,10 @@ const createSchema = z.object({
   trialDays: z.number().int().min(0).max(365).optional(),
   sortOrder: z.number().int().min(0).max(99).optional(),
   isActive: z.boolean().optional(),
-  limits: limitsSchema.optional()
+  limits: planLimitsSchema.optional()
 });
 
-const DEFAULT_NEW_LIMITS: PlanLimits = {
-  maxClients: 5,
-  maxAdAccounts: 10,
-  maxMembers: 2,
-  maxAutomationRules: 3,
-  maxAiRequestsPerMonth: 30,
-  maxScheduledReports: 1,
-  allowAutoSync: true,
-  allowLiveMeta: false,
-  allowCreativeMemoryAi: true,
-  allowAgencyBrainHypotheses: true,
-  allowAgencyBrainDna: true,
-  allowAgencyBrainTimeline: false,
-  allowAgencyBrainExperiments: false,
-  allowAgencyBrainActionPlans: false,
-  allowAgencyBrainChat: false
-};
+const DEFAULT_NEW_LIMITS: PlanLimits = { ...FREE_LIMITS };
 
 export async function GET() {
   const gate = await requireBillingAdmin();
