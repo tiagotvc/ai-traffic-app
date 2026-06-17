@@ -22,11 +22,10 @@ export function PublishPanelProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<PublishPanelOptions>({});
 
-  // O criador de campanhas agora é uma página cheia (/ads/new) em vez de drawer.
   const openPanel = useCallback(
     (opts?: PublishPanelOptions) => {
       const qs = opts?.clientSlug ? `?client=${encodeURIComponent(opts.clientSlug)}` : "";
-      router.push(`/ads/new${qs}`);
+      router.push(`/campaigns/new${qs}`);
     },
     [router]
   );

@@ -3,11 +3,12 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
+import { CampaignDraftPayloadSchema } from "@/lib/campaign-draft";
 
 const BodySchema = z.object({
   name: z.string().min(1),
   clientId: z.string().nullable().optional(),
-  payload: z.record(z.string(), z.unknown())
+  payload: CampaignDraftPayloadSchema
 });
 
 export async function GET(req: Request) {

@@ -533,6 +533,17 @@ export async function createLookalikeAudience(
   });
 }
 
+export async function fetchLeadGenForms(
+  accessToken: string,
+  pageId: string
+): Promise<Array<{ id: string; name?: string; status?: string }>> {
+  const data = await metaFetch<{ data?: Array<{ id: string; name?: string; status?: string }> }>(
+    `/${pageId}/leadgen_forms?fields=id,name,status&limit=50`,
+    accessToken
+  );
+  return data.data ?? [];
+}
+
 export async function uploadAdImage(
   accessToken: string,
   adAccountId: string,

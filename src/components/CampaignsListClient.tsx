@@ -62,7 +62,7 @@ export function CampaignsListClient() {
           <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("title")}</h1>
           <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
         </div>
-        <Link href="/ads/new" className="ui-btn-primary">
+        <Link href="/campaigns/new" className="ui-btn-primary">
           {t("newCampaign")}
         </Link>
       </div>

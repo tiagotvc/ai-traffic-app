@@ -1,13 +1,13 @@
-"use client";
+import { redirect } from "@/i18n/navigation";
 
-import { useSearchParams } from "next/navigation";
+type Props = {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ client?: string }>;
+};
 
-import { AdsCreatorClient } from "@/components/AdsCreatorClient";
-
-export default function AdsNewPage() {
-  const searchParams = useSearchParams();
-  const client = searchParams.get("client") ?? undefined;
-
-  // Página cheia (não-embedded) — substitui o antigo drawer lateral.
-  return <AdsCreatorClient initialClientSlug={client} />;
+export default async function AdsNewRedirectPage({ params, searchParams }: Props) {
+  const { locale } = await params;
+  const sp = await searchParams;
+  const qs = sp.client ? `?client=${encodeURIComponent(sp.client)}` : "";
+  redirect({ href: `/campaigns/new${qs}`, locale });
 }
