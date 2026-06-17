@@ -11,7 +11,17 @@ export const CAMPAIGN_OBJECTIVES = [
 
 export type CampaignObjectiveKey = (typeof CAMPAIGN_OBJECTIVES)[number];
 
+export const RESERVATION_OBJECTIVES = ["awareness", "engagement"] as const;
+
+export type BuyingType = "auction" | "reservation";
+
 export type CreatorNode = "campaign" | "adset" | "ad" | "review";
+
+export type AdAssignmentMode = "single" | "all_adsets";
+
+export type VariationAxis = "location" | "ageRange" | "customAudience" | "interests" | "gender";
+
+export type TargetingItem = z.infer<typeof TargetingItemSchema>;
 
 export const TargetingItemSchema = z.object({
   value: z.string(),
@@ -20,7 +30,9 @@ export const TargetingItemSchema = z.object({
     .object({
       type: z.string().optional(),
       countryCode: z.string().optional(),
-      kind: z.string().optional()
+      kind: z.string().optional(),
+      radius: z.number().optional(),
+      distanceUnit: z.enum(["mile", "kilometer"]).optional()
     })
     .optional()
 });
@@ -36,13 +48,70 @@ export const DraftTargetingSchema = z.object({
   excludedAudienceIds: z.array(z.string()).default([])
 });
 
-export const CampaignDraftPayloadSchema = z.object({
-  version: z.literal(1),
+export const AdSetDraftItemSchema = z.object({
+  id: z.string(),
+  name: z.string().default(""),
+  conversionLocation: z
+    .enum(["website", "instant_form", "website_and_form"])
+    .default("website_and_form"),
+  dynamicCreative: z.boolean().default(true),
+  schedule: z.object({
+    start: z.string().nullable().default(null),
+    end: z.string().nullable().default(null)
+  }),
+  targeting: DraftTargetingSchema,
+  placements: z.enum(["advantage_plus", "manual"]).default("advantage_plus"),
+  variantLabel: z.string().optional()
+});
+
+export const AdDraftItemSchema = z.object({
+  id: z.string(),
+  name: z.string().default(""),
+  pageId: z.string().default(""),
+  instagramActorId: z.string().nullable().default(null),
+  pixelId: z.string().nullable().default(null),
+  format: z.enum(["single_image", "video"]).default("single_image"),
+  imageHashes: z.array(z.string()).default([]),
+  titles: z.array(z.string()).default([]),
+  bodies: z.array(z.string()).default([]),
+  destinationType: z.enum(["website", "instant_form"]).default("website"),
+  linkUrl: z.string().default(""),
+  leadFormId: z.string().nullable().default(null),
+  urlParams: z.string().default(""),
+  targetAdsetIds: z.array(z.string()).default(["__all__"]),
+  tracking: z.object({
+    websiteEvents: z.boolean().default(false),
+    appEvents: z.boolean().default(false),
+    offlineEvents: z.boolean().default(false)
+  })
+});
+
+export const AdSetBatchSchema = z.object({
+  enabled: z.boolean().default(false),
+  extraCount: z.number().min(0).max(10).default(0),
+  variationAxes: z.array(z.enum(["location", "ageRange", "customAudience", "interests", "gender"])).default([]),
+  locationVariants: z.array(TargetingItemSchema).default([]),
+  ageRanges: z
+    .array(z.object({ label: z.string(), ageMin: z.number(), ageMax: z.number() }))
+    .default([]),
+  audienceVariants: z.array(z.array(z.string())).default([]),
+  interestVariants: z.array(z.array(TargetingItemSchema)).default([]),
+  genderVariants: z.array(z.enum(["all", "male", "female"])).default([])
+});
+
+export const CampaignDraftPayloadV2Schema = z.object({
+  version: z.literal(2),
   clientSlug: z.string().default(""),
   adAccountId: z.string().default(""),
-  buyingType: z.literal("auction").default("auction"),
+  buyingType: z.enum(["auction", "reservation"]).default("auction"),
   objective: z.enum(CAMPAIGN_OBJECTIVES).default("leads"),
+  copyFromCampaignEnabled: z.boolean().default(false),
+  copyFromCampaignId: z.string().nullable().default(null),
   visitedNodes: z.array(z.enum(["campaign", "adset", "ad", "review"])).default(["campaign"]),
+  activeAdsetId: z.string().nullable().default(null),
+  activeAdId: z.string().nullable().default(null),
+  adAssignment: z.enum(["single", "all_adsets"]).default("all_adsets"),
+  selectedAdsetIdForAds: z.string().nullable().default(null),
   campaign: z.object({
     name: z.string().default(""),
     budgetLevel: z.enum(["campaign", "adset"]).default("adset"),
@@ -51,59 +120,100 @@ export const CampaignDraftPayloadSchema = z.object({
     specialAdCategories: z.array(z.string()).default([]),
     abTestEnabled: z.boolean().default(false)
   }),
-  adset: z.object({
-    name: z.string().default(""),
-    conversionLocation: z.enum(["website", "instant_form", "website_and_form"]).default("website_and_form"),
-    dynamicCreative: z.boolean().default(true),
-    schedule: z.object({
-      start: z.string().nullable().default(null),
-      end: z.string().nullable().default(null)
-    }),
-    targeting: DraftTargetingSchema,
-    placements: z.enum(["advantage_plus", "manual"]).default("advantage_plus")
-  }),
-  ad: z.object({
-    name: z.string().default(""),
-    pageId: z.string().default(""),
-    instagramActorId: z.string().nullable().default(null),
-    pixelId: z.string().nullable().default(null),
-    format: z.enum(["single_image"]).default("single_image"),
-    imageHashes: z.array(z.string()).default([]),
-    titles: z.array(z.string()).default([]),
-    bodies: z.array(z.string()).default([]),
-    destinationType: z.enum(["website", "instant_form"]).default("website"),
-    linkUrl: z.string().default(""),
-    leadFormId: z.string().nullable().default(null),
-    urlParams: z.string().default(""),
-    tracking: z.object({
-      websiteEvents: z.boolean().default(false),
-      appEvents: z.boolean().default(false),
-      offlineEvents: z.boolean().default(false)
-    })
-  }),
+  adsetBatch: AdSetBatchSchema,
+  adsets: z.array(AdSetDraftItemSchema).min(1),
+  ads: z.array(AdDraftItemSchema).min(1),
   meta: z
     .object({
       campaignId: z.string().optional(),
-      adsetId: z.string().optional(),
-      creativeId: z.string().optional(),
-      adId: z.string().optional(),
+      adsetIds: z.array(z.string()).optional(),
+      adIds: z.array(z.string()).optional(),
       publishedAt: z.string().optional()
     })
     .optional()
 });
 
-export type CampaignDraftPayload = z.infer<typeof CampaignDraftPayloadSchema>;
+export type CampaignDraftPayload = z.infer<typeof CampaignDraftPayloadV2Schema>;
+export type AdSetDraftItem = z.infer<typeof AdSetDraftItemSchema>;
+export type AdDraftItem = z.infer<typeof AdDraftItemSchema>;
 export type DraftTargeting = z.infer<typeof DraftTargetingSchema>;
+export type AdSetBatchConfig = z.infer<typeof AdSetBatchSchema>;
+
+export function newDraftId() {
+  return `draft_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function defaultTargeting(): DraftTargeting {
+  return {
+    locations: [],
+    ageMin: 18,
+    ageMax: 65,
+    gender: "all",
+    interests: [],
+    locales: [],
+    customAudienceIds: [],
+    excludedAudienceIds: []
+  };
+}
+
+function defaultAdSetItem(locale: string, name?: string): AdSetDraftItem {
+  const isEn = locale === "en";
+  return {
+    id: newDraftId(),
+    name: name ?? (isEn ? "New Ad Set" : "Novo conjunto de anúncios"),
+    conversionLocation: "website_and_form",
+    dynamicCreative: true,
+    schedule: { start: null, end: null },
+    targeting: defaultTargeting(),
+    placements: "advantage_plus"
+  };
+}
+
+function defaultAdItem(locale: string, name?: string): AdDraftItem {
+  const isEn = locale === "en";
+  return {
+    id: newDraftId(),
+    name: name ?? (isEn ? "New Ad" : "Novo anúncio"),
+    pageId: "",
+    instagramActorId: null,
+    pixelId: null,
+    format: "single_image",
+    imageHashes: [],
+    titles: isEn
+      ? ["Perfect smile in 30 days", "Dental implants — free evaluation"]
+      : ["Sorriso perfeito em 30 dias", "Implantes com avaliação"],
+    bodies: isEn
+      ? ["Special offer for first visit.", "Expert team and human care."]
+      : ["Condições especiais para primeira consulta.", "Equipe especialista."],
+    destinationType: "website",
+    linkUrl: "",
+    leadFormId: null,
+    urlParams: "",
+    targetAdsetIds: ["__all__"],
+    tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
+  };
+}
 
 export function defaultCampaignDraft(locale: string): CampaignDraftPayload {
   const isEn = locale === "en";
-  return CampaignDraftPayloadSchema.parse({
-    version: 1,
+  const adset = defaultAdSetItem(
+    locale,
+    isEn ? "New Leads Ad Set" : "Novo conjunto de anúncios de Leads"
+  );
+  const ad = defaultAdItem(locale, isEn ? "New Leads Ad" : "Novo anúncio de Leads");
+  return CampaignDraftPayloadV2Schema.parse({
+    version: 2,
     clientSlug: "",
     adAccountId: "",
     buyingType: "auction",
     objective: "leads",
+    copyFromCampaignEnabled: false,
+    copyFromCampaignId: null,
     visitedNodes: ["campaign"],
+    activeAdsetId: adset.id,
+    activeAdId: ad.id,
+    adAssignment: "all_adsets",
+    selectedAdsetIdForAds: null,
     campaign: {
       name: isEn ? "New Leads Campaign" : "Nova campanha de Leads",
       budgetLevel: "adset",
@@ -112,47 +222,230 @@ export function defaultCampaignDraft(locale: string): CampaignDraftPayload {
       specialAdCategories: [],
       abTestEnabled: false
     },
-    adset: {
-      name: isEn ? "New Leads Ad Set" : "Novo conjunto de anúncios de Leads",
-      conversionLocation: "website_and_form",
-      dynamicCreative: true,
-      schedule: { start: null, end: null },
-      targeting: {
-        locations: [],
-        ageMin: 18,
-        ageMax: 65,
-        gender: "all",
-        interests: [],
-        locales: [],
-        customAudienceIds: [],
-        excludedAudienceIds: []
-      },
-      placements: "advantage_plus"
+    adsetBatch: {
+      enabled: false,
+      extraCount: 0,
+      variationAxes: [],
+      locationVariants: [],
+      ageRanges: [],
+      audienceVariants: [],
+      interestVariants: [],
+      genderVariants: []
     },
-    ad: {
-      name: isEn ? "New Leads Ad" : "Novo anúncio de Leads",
-      pageId: "",
-      instagramActorId: null,
-      pixelId: null,
-      format: "single_image",
-      imageHashes: [],
-      titles: isEn
-        ? ["Perfect smile in 30 days", "Dental implants — free evaluation"]
-        : ["Sorriso perfeito em 30 dias", "Implantes com avaliação"],
-      bodies: isEn
-        ? ["Special offer for first visit.", "Expert team and human care."]
-        : ["Condições especiais para primeira consulta.", "Equipe especialista."],
-      destinationType: "website",
-      linkUrl: "",
-      leadFormId: null,
-      urlParams: "",
-      tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
-    }
+    adsets: [adset],
+    ads: [ad]
+  });
+}
+
+const V1Schema = z.object({
+  version: z.literal(1),
+  clientSlug: z.string().optional(),
+  adAccountId: z.string().optional(),
+  buyingType: z.enum(["auction", "reservation"]).optional(),
+  objective: z.enum(CAMPAIGN_OBJECTIVES).optional(),
+  visitedNodes: z.array(z.string()).optional(),
+  campaign: z.record(z.string(), z.unknown()).optional(),
+  adset: z.record(z.string(), z.unknown()).optional(),
+  ad: z.record(z.string(), z.unknown()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional()
+});
+
+export function migrateV1ToV2(raw: z.infer<typeof V1Schema>, locale: string): CampaignDraftPayload {
+  const base = defaultCampaignDraft(locale);
+  const adsetId = newDraftId();
+  const adId = newDraftId();
+  const v1Adset = (raw.adset ?? {}) as Record<string, unknown>;
+  const v1Ad = (raw.ad ?? {}) as Record<string, unknown>;
+  const v1Campaign = (raw.campaign ?? {}) as Record<string, unknown>;
+
+  return CampaignDraftPayloadV2Schema.parse({
+    ...base,
+    clientSlug: raw.clientSlug ?? "",
+    adAccountId: raw.adAccountId ?? "",
+    buyingType: raw.buyingType ?? "auction",
+    objective: raw.objective ?? "leads",
+    visitedNodes: raw.visitedNodes ?? ["campaign"],
+    activeAdsetId: adsetId,
+    activeAdId: adId,
+    campaign: { ...base.campaign, ...v1Campaign },
+    adsets: [
+      {
+        id: adsetId,
+        name: String(v1Adset.name ?? base.adsets[0]!.name),
+        conversionLocation: v1Adset.conversionLocation ?? "website_and_form",
+        dynamicCreative: v1Adset.dynamicCreative ?? true,
+        schedule: v1Adset.schedule ?? { start: null, end: null },
+        targeting: v1Adset.targeting ?? defaultTargeting(),
+        placements: v1Adset.placements ?? "advantage_plus"
+      }
+    ],
+    ads: [
+      {
+        id: adId,
+        name: String(v1Ad.name ?? base.ads[0]!.name),
+        pageId: String(v1Ad.pageId ?? ""),
+        instagramActorId: (v1Ad.instagramActorId as string | null) ?? null,
+        pixelId: (v1Ad.pixelId as string | null) ?? null,
+        format: v1Ad.format ?? "single_image",
+        imageHashes: (v1Ad.imageHashes as string[]) ?? [],
+        titles: (v1Ad.titles as string[]) ?? [],
+        bodies: (v1Ad.bodies as string[]) ?? [],
+        destinationType: v1Ad.destinationType ?? "website",
+        linkUrl: String(v1Ad.linkUrl ?? ""),
+        leadFormId: (v1Ad.leadFormId as string | null) ?? null,
+        urlParams: String(v1Ad.urlParams ?? ""),
+        targetAdsetIds: ["__all__"],
+        tracking: v1Ad.tracking ?? { websiteEvents: false, appEvents: false, offlineEvents: false }
+      }
+    ],
+    meta: raw.meta
   });
 }
 
 export function parseCampaignDraftPayload(raw: unknown): CampaignDraftPayload {
-  return CampaignDraftPayloadSchema.parse(raw);
+  if (raw && typeof raw === "object" && (raw as { version?: number }).version === 1) {
+    return migrateV1ToV2(V1Schema.parse(raw), "pt-BR");
+  }
+  return CampaignDraftPayloadV2Schema.parse(raw);
+}
+
+export function objectivesForBuyingType(buyingType: BuyingType): CampaignObjectiveKey[] {
+  if (buyingType === "reservation") {
+    return [...RESERVATION_OBJECTIVES];
+  }
+  return [...CAMPAIGN_OBJECTIVES];
+}
+
+export function getActiveAdset(d: CampaignDraftPayload): AdSetDraftItem {
+  const id = d.activeAdsetId ?? d.adsets[0]?.id;
+  return d.adsets.find((a) => a.id === id) ?? d.adsets[0]!;
+}
+
+export function getActiveAd(d: CampaignDraftPayload): AdDraftItem {
+  const id = d.activeAdId ?? d.ads[0]?.id;
+  return d.ads.find((a) => a.id === id) ?? d.ads[0]!;
+}
+
+export function resolveAdTargetAdsets(d: CampaignDraftPayload, ad: AdDraftItem): AdSetDraftItem[] {
+  if (ad.targetAdsetIds.includes("__all__")) return d.adsets;
+  return d.adsets.filter((a) => ad.targetAdsetIds.includes(a.id));
+}
+
+export function countPublishEntities(d: CampaignDraftPayload): {
+  adsets: number;
+  ads: number;
+  creatives: number;
+} {
+  let ads = 0;
+  for (const ad of d.ads) {
+    ads += resolveAdTargetAdsets(d, ad).length;
+  }
+  return { adsets: d.adsets.length, ads, creatives: ads };
+}
+
+export function buildAdSetVariants(
+  base: AdSetDraftItem,
+  batch: AdSetBatchConfig,
+  baseName: string
+): AdSetDraftItem[] {
+  const results: AdSetDraftItem[] = [{ ...base, name: base.name || baseName }];
+
+  if (!batch.enabled || batch.extraCount <= 0) return results;
+
+  const axes = batch.variationAxes;
+  const variants: Partial<AdSetDraftItem>[] = [];
+
+  if (axes.includes("location") && batch.locationVariants.length > 0) {
+    for (const loc of batch.locationVariants) {
+      variants.push({
+        variantLabel: loc.label,
+        name: `${baseName} — ${loc.label}`,
+        targeting: {
+          ...base.targeting,
+          locations: [loc, ...base.targeting.locations.filter((l) => l.value !== loc.value)]
+        }
+      });
+    }
+  }
+
+  if (axes.includes("ageRange") && batch.ageRanges.length > 0) {
+    for (const range of batch.ageRanges) {
+      variants.push({
+        variantLabel: range.label,
+        name: `${baseName} — ${range.label}`,
+        targeting: {
+          ...base.targeting,
+          ageMin: range.ageMin,
+          ageMax: range.ageMax
+        }
+      });
+    }
+  }
+
+  if (axes.includes("customAudience") && batch.audienceVariants.length > 0) {
+    for (const audIds of batch.audienceVariants) {
+      const label = audIds.length === 1 ? `Público ${audIds[0]!.slice(-6)}` : `${audIds.length} públicos`;
+      variants.push({
+        variantLabel: label,
+        name: `${baseName} — ${label}`,
+        targeting: { ...base.targeting, customAudienceIds: audIds }
+      });
+    }
+  }
+
+  if (axes.includes("interests") && batch.interestVariants.length > 0) {
+    for (const ints of batch.interestVariants) {
+      const label = ints[0]?.label ?? "Interesses";
+      variants.push({
+        variantLabel: label,
+        name: `${baseName} — ${label}`,
+        targeting: { ...base.targeting, interests: ints }
+      });
+    }
+  }
+
+  if (axes.includes("gender") && batch.genderVariants.length > 0) {
+    for (const g of batch.genderVariants) {
+      const label = g === "all" ? "Todos" : g === "male" ? "Masculino" : "Feminino";
+      variants.push({
+        variantLabel: label,
+        name: `${baseName} — ${label}`,
+        targeting: { ...base.targeting, gender: g }
+      });
+    }
+  }
+
+  const needed = batch.extraCount;
+  const picked = variants.slice(0, needed);
+  while (picked.length < needed) {
+    const i = picked.length + 1;
+    picked.push({ variantLabel: `Variação ${i}`, name: `${baseName} — Variação ${i}` });
+  }
+
+  for (const v of picked) {
+    results.push({
+      ...base,
+      id: newDraftId(),
+      name: v.name ?? `${baseName} — Extra`,
+      variantLabel: v.variantLabel,
+      targeting: v.targeting ?? { ...base.targeting }
+    });
+  }
+
+  return results;
+}
+
+export function syncAdsetsFromBatch(d: CampaignDraftPayload): CampaignDraftPayload {
+  if (!d.adsetBatch.enabled || d.adsetBatch.extraCount <= 0) {
+    const primary = getActiveAdset(d);
+    return { ...d, adsets: [primary] };
+  }
+  const base = getActiveAdset(d);
+  const built = buildAdSetVariants(base, d.adsetBatch, d.campaign.name || base.name);
+  const activeId = d.activeAdsetId && built.some((a) => a.id === d.activeAdsetId)
+    ? d.activeAdsetId
+    : built[0]!.id;
+  return { ...d, adsets: built, activeAdsetId: activeId };
 }
 
 export function draftTargetingToApi(t: DraftTargeting) {
@@ -161,9 +454,12 @@ export function draftTargetingToApi(t: DraftTargeting) {
     .map((l) => l.meta?.countryCode ?? l.value);
   const cities = t.locations
     .filter((l) => l.meta?.type === "city" || l.meta?.type === "region")
-    .map((l) => ({ key: l.value }));
-  const genders =
-    t.gender === "male" ? [1] : t.gender === "female" ? [2] : undefined;
+    .map((l) => ({
+      key: l.value,
+      radius: l.meta?.radius,
+      distanceUnit: l.meta?.distanceUnit
+    }));
+  const genders = t.gender === "male" ? [1] : t.gender === "female" ? [2] : undefined;
   const locales = t.locales.map((l) => Number(l.value)).filter((n) => !Number.isNaN(n));
   const interests = t.interests.map((i) => ({ id: i.value, name: i.label }));
   return {
@@ -184,41 +480,44 @@ export function validateCampaignStep(d: CampaignDraftPayload): string | null {
   if (!d.adAccountId.trim()) return "adAccountRequired";
   if (!d.campaign.name.trim()) return "campaignNameRequired";
   if (d.campaign.dailyBudgetBRL < 1) return "budgetRequired";
+  if (d.copyFromCampaignEnabled && !d.copyFromCampaignId) return "copyCampaignRequired";
   return null;
 }
 
 export function validateAdSetStep(d: CampaignDraftPayload): string | null {
-  if (!d.adset.name.trim()) return "adsetNameRequired";
-  const t = d.adset.targeting;
-  if (!t.locations.length && !t.customAudienceIds.length) return "audienceRequired";
+  for (const adset of d.adsets) {
+    if (!adset.name.trim()) return "adsetNameRequired";
+    const t = adset.targeting;
+    if (!t.locations.length && !t.customAudienceIds.length) return "audienceRequired";
+  }
   return null;
 }
 
 export function validateAdStep(d: CampaignDraftPayload): string | null {
-  if (!d.ad.name.trim()) return "adNameRequired";
-  if (!d.ad.pageId.trim()) return "pageRequired";
-  if (!d.ad.imageHashes.length) return "mediaRequired";
-  if (!d.ad.titles.some((x) => x.trim())) return "titlesRequired";
-  if (!d.ad.bodies.some((x) => x.trim())) return "bodiesRequired";
-  if (d.objective === "leads" && d.ad.destinationType === "instant_form") {
-    if (!d.ad.leadFormId) return "leadFormRequired";
-  } else if (!d.ad.linkUrl.trim()) {
-    return "linkUrlRequired";
+  for (const ad of d.ads) {
+    if (!ad.name.trim()) return "adNameRequired";
+    if (!ad.pageId.trim()) return "pageRequired";
+    if (!ad.imageHashes.length) return "mediaRequired";
+    if (!ad.titles.some((x) => x.trim())) return "titlesRequired";
+    if (!ad.bodies.some((x) => x.trim())) return "bodiesRequired";
+    if (d.objective === "leads" && ad.destinationType === "instant_form") {
+      if (!ad.leadFormId) return "leadFormRequired";
+    } else if (!ad.linkUrl.trim()) {
+      return "linkUrlRequired";
+    }
   }
   return null;
 }
 
 export function computeDraftScore(d: CampaignDraftPayload): number {
-  let score = 0;
   const checks = [
     !validateCampaignStep(d),
     !validateAdSetStep(d),
     !validateAdStep(d),
-    d.ad.imageHashes.length > 0,
-    d.ad.titles.filter((x) => x.trim()).length >= 2
+    d.ads.some((a) => a.imageHashes.length > 0),
+    d.ads.some((a) => a.titles.filter((x) => x.trim()).length >= 2)
   ];
-  score = Math.round((checks.filter(Boolean).length / checks.length) * 100);
-  return score;
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 
 export const CREATOR_NODE_ORDER: CreatorNode[] = ["campaign", "adset", "ad", "review"];
@@ -232,3 +531,6 @@ export function prevNode(node: CreatorNode): CreatorNode | null {
   const i = CREATOR_NODE_ORDER.indexOf(node);
   return i > 0 ? CREATOR_NODE_ORDER[i - 1]! : null;
 }
+
+/** @deprecated use CampaignDraftPayloadV2Schema */
+export const CampaignDraftPayloadSchema = CampaignDraftPayloadV2Schema;

@@ -1,6 +1,7 @@
 import type { ClientMetaSettings } from "@/db/entities/ClientMetaSettings";
-import type { CampaignDraftPayload } from "@/lib/campaign-draft";
-import { draftTargetingToApi } from "@/lib/campaign-draft";
+import type { AdDraftItem, AdSetDraftItem, CampaignDraftPayload } from "@/lib/campaign-draft";
+import { draftTargetingToApi, resolveAdTargetAdsets } from "@/lib/campaign-draft";
+import { mapLimit } from "@/lib/concurrency";
 import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
 import { metaPost } from "@/lib/meta-graph";
 
@@ -78,10 +79,25 @@ export type CreateCampaignFromDraftInput = {
   linkUrl: string;
   settings?: ClientMetaSettings;
   callToAction?: string;
+  onProgress?: (step: PublishProgressStep) => void;
 };
 
-export type CreateFullCampaignResult = {
+export type PublishProgressStep = {
+  phase: "campaign" | "adset" | "creative" | "ad";
+  current: number;
+  total: number;
+  label?: string;
+};
+
+export type PublishAdResult = { adsetId: string; adId: string; creativeId: string; adName: string };
+
+export type PublishDraftV2Result = {
   campaignId: string;
+  adsets: Array<{ draftId: string; adsetId: string; name: string }>;
+  ads: PublishAdResult[];
+};
+
+export type CreateFullCampaignResult = PublishDraftV2Result & {
   adsetId: string;
   creativeId: string;
   adId: string;
@@ -133,9 +149,93 @@ function parseScheduleTime(iso: string | null | undefined, fallbackOffsetSec: nu
   return Math.floor(Date.now() / 1000) + fallbackOffsetSec;
 }
 
-export async function createCampaignFromDraft(
-  input: CreateCampaignFromDraftInput
-): Promise<CreateFullCampaignResult> {
+function resolveTargeting(
+  adset: AdSetDraftItem,
+  settings?: ClientMetaSettings
+): Record<string, unknown> {
+  const targetingApi = draftTargetingToApi(adset.targeting);
+  if (Object.keys(targetingApi).length) {
+    return buildTargetingFromInput(targetingApi);
+  }
+  if (settings) return buildTargetingFromSettings(settings);
+  return { geo_locations: { countries: ["BR"] }, age_min: 18, age_max: 65 };
+}
+
+function buildPromotedObject(
+  objective: CampaignObjectiveKey,
+  ad: AdDraftItem,
+  adset: AdSetDraftItem,
+  pageId: string,
+  settings?: ClientMetaSettings
+): Record<string, string> | null {
+  if (objective === "leads") {
+    const promoted: Record<string, string> = { page_id: pageId };
+    const formId = ad.leadFormId ?? settings?.metaLeadFormId;
+    if (ad.destinationType === "instant_form" && formId) {
+      promoted.lead_gen_form_id = formId;
+    } else if (formId && adset.conversionLocation !== "website") {
+      promoted.lead_gen_form_id = formId;
+    }
+    return promoted;
+  }
+  const pixelId = ad.pixelId ?? settings?.metaPixelId ?? null;
+  if (objective === "sales" && pixelId) {
+    return { pixel_id: pixelId, custom_event_type: "PURCHASE" };
+  }
+  return null;
+}
+
+async function createAdForAdset(args: {
+  token: string;
+  actId: string;
+  campaignName: string;
+  adsetId: string;
+  adset: AdSetDraftItem;
+  ad: AdDraftItem;
+  adName: string;
+  objective: CampaignObjectiveKey;
+  pageId: string;
+  linkUrl: string;
+  cta: string;
+  settings?: ClientMetaSettings;
+}): Promise<{ adId: string; creativeId: string }> {
+  const { ad, objective, pageId, linkUrl, cta, settings, token, actId, campaignName, adsetId, adName } =
+    args;
+
+  const resolvedLink =
+    ad.destinationType === "instant_form" && ad.leadFormId
+      ? linkUrl || "https://www.facebook.com"
+      : ad.linkUrl.trim() || linkUrl;
+
+  const assetFeedSpec: Record<string, unknown> = {
+    images: ad.imageHashes.map((hash) => ({ hash })),
+    titles: ad.titles.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
+    bodies: ad.bodies.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
+    link_urls: [{ website_url: resolvedLink }],
+    call_to_action_types: [objective === "leads" ? "SIGN_UP" : cta]
+  };
+
+  const instagramId = ad.instagramActorId ?? settings?.instagramActorId ?? null;
+  const objectStory: Record<string, unknown> = { page_id: pageId };
+  if (instagramId) objectStory.instagram_actor_id = instagramId;
+
+  const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
+    name: `${campaignName} — ${adName} Creative`,
+    object_story_spec: JSON.stringify(objectStory),
+    asset_feed_spec: JSON.stringify(assetFeedSpec)
+  });
+
+  const metaAd = await metaPost<{ id: string }>(`/${actId}/ads`, token, {
+    name: adName,
+    adset_id: adsetId,
+    creative: JSON.stringify({ creative_id: creative.id }),
+    status: "PAUSED"
+  });
+
+  return { adId: metaAd.id, creativeId: creative.id };
+}
+
+export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promise<PublishDraftV2Result> {
   const { draft } = input;
   const actId = normalizeAdAccountId(input.adAccountId);
   const token = input.accessToken;
@@ -145,8 +245,6 @@ export async function createCampaignFromDraft(
   const cta = input.callToAction ?? settings?.defaultCta ?? "LEARN_MORE";
   const prefix = settings?.campaignNamePrefix?.trim();
   const campaignName = prefix ? `${prefix} ${draft.campaign.name}` : draft.campaign.name;
-  const adsetName = draft.adset.name.trim() || `${campaignName} — Ad Set`;
-  const adName = draft.ad.name.trim() || `${campaignName} — Ad`;
 
   const specialCategories =
     draft.campaign.specialAdCategories.length > 0
@@ -156,102 +254,133 @@ export async function createCampaignFromDraft(
         : "[]";
 
   const isCbo = draft.campaign.budgetLevel === "campaign";
+  const buyingType = draft.buyingType === "reservation" ? "RESERVED" : "AUCTION";
 
   const campaignBody: Record<string, string> = {
     name: campaignName,
     objective: OBJECTIVE_MAP[objective],
     status: "PAUSED",
     special_ad_categories: specialCategories,
-    is_adset_budget_sharing_enabled: isCbo ? "true" : "false"
+    is_adset_budget_sharing_enabled: isCbo ? "true" : "false",
+    buying_type: buyingType
   };
   if (isCbo) campaignBody.daily_budget = String(dailyBudgetMinor);
 
+  input.onProgress?.({ phase: "campaign", current: 0, total: 1, label: campaignName });
   const campaign = await metaPost<{ id: string }>(`/${actId}/campaigns`, token, campaignBody);
+  input.onProgress?.({ phase: "campaign", current: 1, total: 1 });
 
-  const startTime = parseScheduleTime(draft.adset.schedule.start, 3600);
-  const targetingApi = draftTargetingToApi(draft.adset.targeting);
-  const targeting = Object.keys(targetingApi).length
-    ? buildTargetingFromInput(targetingApi)
-    : settings
-      ? buildTargetingFromSettings(settings)
-      : { geo_locations: { countries: ["BR"] }, age_min: 18, age_max: 65 };
+  const adsetResults: PublishDraftV2Result["adsets"] = [];
+  const adsetIdMap = new Map<string, string>();
+  const totalAdsets = draft.adsets.length;
 
-  const pageId = draft.ad.pageId || input.pageId;
-  const instagramId = draft.ad.instagramActorId ?? settings?.instagramActorId ?? null;
-  const pixelId = draft.ad.pixelId ?? settings?.metaPixelId ?? null;
+  await mapLimit(draft.adsets, 2, async (adset, idx) => {
+    const adsetName = adset.name.trim() || `${campaignName} — Ad Set ${idx + 1}`;
+    const startTime = parseScheduleTime(adset.schedule.start, 3600);
+    const targeting = resolveTargeting(adset, settings);
+    const primaryAd = draft.ads[0]!;
+    const pageId = primaryAd.pageId || input.pageId;
 
-  const adsetBody: Record<string, string> = {
-    name: adsetName,
-    campaign_id: campaign.id,
-    billing_event: "IMPRESSIONS",
-    optimization_goal: OPTIMIZATION_MAP[objective],
-    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-    targeting: JSON.stringify(targeting),
-    status: "PAUSED",
-    start_time: String(startTime)
-  };
+    const adsetBody: Record<string, string> = {
+      name: adsetName,
+      campaign_id: campaign.id,
+      billing_event: "IMPRESSIONS",
+      optimization_goal: OPTIMIZATION_MAP[objective],
+      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+      targeting: JSON.stringify(targeting),
+      status: "PAUSED",
+      start_time: String(startTime)
+    };
 
-  if (!isCbo) adsetBody.daily_budget = String(dailyBudgetMinor);
+    if (!isCbo) adsetBody.daily_budget = String(dailyBudgetMinor);
 
-  if (draft.adset.schedule.end) {
-    const endTime = parseScheduleTime(draft.adset.schedule.end, 86400 * 7);
-    if (endTime > startTime) adsetBody.end_time = String(endTime);
-  }
-
-  if (objective === "leads") {
-    const promoted: Record<string, string> = { page_id: pageId };
-    const formId = draft.ad.leadFormId ?? settings?.metaLeadFormId;
-    if (draft.ad.destinationType === "instant_form" && formId) {
-      promoted.lead_gen_form_id = formId;
-    } else if (formId && draft.adset.conversionLocation !== "website") {
-      promoted.lead_gen_form_id = formId;
+    if (adset.schedule.end) {
+      const endTime = parseScheduleTime(adset.schedule.end, 86400 * 7);
+      if (endTime > startTime) adsetBody.end_time = String(endTime);
     }
-    adsetBody.promoted_object = JSON.stringify(promoted);
-  }
 
-  if (objective === "sales" && pixelId) {
-    adsetBody.promoted_object = JSON.stringify({
-      pixel_id: pixelId,
-      custom_event_type: "PURCHASE"
+    const promoted = buildPromotedObject(objective, primaryAd, adset, pageId, settings);
+    if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
+
+    input.onProgress?.({
+      phase: "adset",
+      current: idx,
+      total: totalAdsets,
+      label: adsetName
     });
-  }
 
-  const adset = await metaPost<{ id: string }>(`/${actId}/adsets`, token, adsetBody);
-
-  const linkUrl =
-    draft.ad.destinationType === "instant_form" && draft.ad.leadFormId
-      ? input.linkUrl || "https://www.facebook.com"
-      : draft.ad.linkUrl.trim() || input.linkUrl;
-
-  const assetFeedSpec: Record<string, unknown> = {
-    images: draft.ad.imageHashes.map((hash) => ({ hash })),
-    titles: draft.ad.titles.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
-    bodies: draft.ad.bodies.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
-    link_urls: [{ website_url: linkUrl }],
-    call_to_action_types: [objective === "leads" ? "SIGN_UP" : cta]
-  };
-
-  const objectStory: Record<string, unknown> = { page_id: pageId };
-  if (instagramId) objectStory.instagram_actor_id = instagramId;
-
-  const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
-    name: `${campaignName} — Creative`,
-    object_story_spec: JSON.stringify(objectStory),
-    asset_feed_spec: JSON.stringify(assetFeedSpec)
+    const metaAdset = await metaPost<{ id: string }>(`/${actId}/adsets`, token, adsetBody);
+    adsetIdMap.set(adset.id, metaAdset.id);
+    adsetResults.push({ draftId: adset.id, adsetId: metaAdset.id, name: adsetName });
   });
 
-  const ad = await metaPost<{ id: string }>(`/${actId}/ads`, token, {
-    name: adName,
-    adset_id: adset.id,
-    creative: JSON.stringify({ creative_id: creative.id }),
-    status: "PAUSED"
+  const publishPairs: Array<{ ad: AdDraftItem; adset: AdSetDraftItem; metaAdsetId: string }> = [];
+  for (const ad of draft.ads) {
+    for (const adset of resolveAdTargetAdsets(draft, ad)) {
+      const metaAdsetId = adsetIdMap.get(adset.id);
+      if (metaAdsetId) publishPairs.push({ ad, adset, metaAdsetId });
+    }
+  }
+
+  const adResults: PublishAdResult[] = [];
+  const totalAds = publishPairs.length;
+
+  await mapLimit(publishPairs, 2, async (pair, idx) => {
+    const pageId = pair.ad.pageId || input.pageId;
+    const adName =
+      pair.ad.name.trim() ||
+      `${campaignName} — ${pair.adset.name || "Ad"} — ${idx + 1}`;
+
+    input.onProgress?.({
+      phase: "creative",
+      current: idx,
+      total: totalAds,
+      label: adName
+    });
+
+    const { adId, creativeId } = await createAdForAdset({
+      token,
+      actId,
+      campaignName,
+      adsetId: pair.metaAdsetId,
+      adset: pair.adset,
+      ad: pair.ad,
+      adName,
+      objective,
+      pageId,
+      linkUrl: input.linkUrl,
+      cta,
+      settings
+    });
+
+    adResults.push({
+      adsetId: pair.metaAdsetId,
+      adId,
+      creativeId,
+      adName
+    });
+
+    input.onProgress?.({ phase: "ad", current: idx + 1, total: totalAds, label: adName });
   });
 
   return {
     campaignId: campaign.id,
-    adsetId: adset.id,
-    creativeId: creative.id,
-    adId: ad.id
+    adsets: adsetResults,
+    ads: adResults
+  };
+}
+
+export async function createCampaignFromDraft(
+  input: CreateCampaignFromDraftInput
+): Promise<CreateFullCampaignResult> {
+  const result = await publishDraftV2(input);
+  const firstAdset = result.adsets[0];
+  const firstAd = result.ads[0];
+  return {
+    ...result,
+    adsetId: firstAdset?.adsetId ?? "",
+    creativeId: firstAd?.creativeId ?? "",
+    adId: firstAd?.adId ?? ""
   };
 }
 
@@ -259,13 +388,21 @@ export async function createFullMetaCampaign(
   input: CreateFullCampaignInput
 ): Promise<CreateFullCampaignResult> {
   const objective = normalizeObjective(input.objective);
+  const adsetId = `legacy_adset_${Date.now()}`;
+  const adId = `legacy_ad_${Date.now()}`;
   const draftLike: CampaignDraftPayload = {
-    version: 1,
+    version: 2,
     clientSlug: "",
     adAccountId: input.adAccountId,
     buyingType: "auction",
     objective,
+    copyFromCampaignEnabled: false,
+    copyFromCampaignId: null,
     visitedNodes: ["campaign", "adset", "ad", "review"],
+    activeAdsetId: adsetId,
+    activeAdId: adId,
+    adAssignment: "all_adsets",
+    selectedAdsetIdForAds: null,
     campaign: {
       name: input.campaignName,
       budgetLevel: input.budgetLevel ?? "adset",
@@ -274,62 +411,87 @@ export async function createFullMetaCampaign(
       specialAdCategories: input.specialAdCategories ?? [],
       abTestEnabled: false
     },
-    adset: {
-      name: input.adsetName ?? `${input.campaignName} — Ad Set`,
-      conversionLocation: "website_and_form",
-      dynamicCreative: true,
-      schedule: { start: input.scheduleStart ?? null, end: input.scheduleEnd ?? null },
-      targeting: {
-        locations: [],
-        ageMin: input.targeting?.ageMin ?? 18,
-        ageMax: input.targeting?.ageMax ?? 65,
-        gender: "all",
-        interests: [],
-        locales: [],
-        customAudienceIds: input.targeting?.customAudienceIds ?? [],
-        excludedAudienceIds: input.targeting?.excludedAudienceIds ?? []
-      },
-      placements: "advantage_plus"
+    adsetBatch: {
+      enabled: false,
+      extraCount: 0,
+      variationAxes: [],
+      locationVariants: [],
+      ageRanges: [],
+      audienceVariants: [],
+      interestVariants: [],
+      genderVariants: []
     },
-    ad: {
-      name: input.adName ?? `${input.campaignName} — Ad`,
-      pageId: input.pageId,
-      instagramActorId: input.instagramActorId ?? null,
-      pixelId: input.pixelId ?? null,
-      format: "single_image",
-      imageHashes: input.imageHashes,
-      titles: input.titles,
-      bodies: input.descriptions,
-      destinationType: input.destinationType ?? "website",
-      linkUrl: input.linkUrl,
-      leadFormId: input.leadFormId ?? null,
-      urlParams: "",
-      tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
-    }
+    adsets: [
+      {
+        id: adsetId,
+        name: input.adsetName ?? `${input.campaignName} — Ad Set`,
+        conversionLocation: "website_and_form",
+        dynamicCreative: true,
+        schedule: { start: input.scheduleStart ?? null, end: input.scheduleEnd ?? null },
+        targeting: {
+          locations: [],
+          ageMin: input.targeting?.ageMin ?? 18,
+          ageMax: input.targeting?.ageMax ?? 65,
+          gender: "all",
+          interests: [],
+          locales: [],
+          customAudienceIds: input.targeting?.customAudienceIds ?? [],
+          excludedAudienceIds: input.targeting?.excludedAudienceIds ?? []
+        },
+        placements: "advantage_plus"
+      }
+    ],
+    ads: [
+      {
+        id: adId,
+        name: input.adName ?? `${input.campaignName} — Ad`,
+        pageId: input.pageId,
+        instagramActorId: input.instagramActorId ?? null,
+        pixelId: input.pixelId ?? null,
+        format: "single_image",
+        imageHashes: input.imageHashes,
+        titles: input.titles,
+        bodies: input.descriptions,
+        destinationType: input.destinationType ?? "website",
+        linkUrl: input.linkUrl,
+        leadFormId: input.leadFormId ?? null,
+        urlParams: "",
+        targetAdsetIds: ["__all__"],
+        tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
+      }
+    ]
   };
 
   if (input.targeting) {
     const apiT = input.targeting;
+    const adset = draftLike.adsets[0]!;
     if (apiT.countries?.length) {
-      draftLike.adset.targeting.locations = apiT.countries.map((c) => ({
+      adset.targeting.locations = apiT.countries.map((c) => ({
         value: c,
         label: c,
         meta: { type: "country", countryCode: c }
       }));
     }
-    if (apiT.ageMin) draftLike.adset.targeting.ageMin = apiT.ageMin;
-    if (apiT.ageMax) draftLike.adset.targeting.ageMax = apiT.ageMax;
+    if (apiT.cities?.length) {
+      adset.targeting.locations = apiT.cities.map((c) => ({
+        value: c.key,
+        label: c.key,
+        meta: { type: "city", radius: c.radius, distanceUnit: c.distanceUnit }
+      }));
+    }
+    if (apiT.ageMin) adset.targeting.ageMin = apiT.ageMin;
+    if (apiT.ageMax) adset.targeting.ageMax = apiT.ageMax;
     if (apiT.genders?.length === 1) {
-      draftLike.adset.targeting.gender = apiT.genders[0] === 1 ? "male" : "female";
+      adset.targeting.gender = apiT.genders[0] === 1 ? "male" : "female";
     }
     if (apiT.interests?.length) {
-      draftLike.adset.targeting.interests = apiT.interests.map((i) => ({
+      adset.targeting.interests = apiT.interests.map((i) => ({
         value: i.id,
         label: i.name ?? i.id
       }));
     }
     if (apiT.locales?.length) {
-      draftLike.adset.targeting.locales = apiT.locales.map((l) => ({
+      adset.targeting.locales = apiT.locales.map((l) => ({
         value: String(l),
         label: String(l)
       }));

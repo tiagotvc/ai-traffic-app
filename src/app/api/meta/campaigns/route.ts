@@ -87,10 +87,14 @@ export async function POST(req: Request) {
     }
 
     const draft = body.draft;
-    const overridePage = draft.ad.pageId?.trim();
-    const overrideLink = draft.ad.linkUrl?.trim();
+    const primaryAd = draft.ads[0];
+    if (!primaryAd) {
+      return NextResponse.json({ ok: false, error: "Rascunho sem anúncios" }, { status: 400 });
+    }
+    const overridePage = primaryAd.pageId?.trim();
+    const overrideLink = primaryAd.linkUrl?.trim();
 
-    if (overrideLink && draft.ad.destinationType === "website") {
+    if (overrideLink && primaryAd.destinationType === "website") {
       try {
         new URL(overrideLink);
       } catch {
@@ -116,9 +120,9 @@ export async function POST(req: Request) {
     }
 
     const settings = await getOrCreateClientMetaSettings(client.id);
-    if (draft.ad.pixelId !== undefined) settings.metaPixelId = draft.ad.pixelId?.trim() || null;
-    if (draft.ad.instagramActorId !== undefined) {
-      settings.instagramActorId = draft.ad.instagramActorId?.trim() || null;
+    if (primaryAd.pixelId !== undefined) settings.metaPixelId = primaryAd.pixelId?.trim() || null;
+    if (primaryAd.instagramActorId !== undefined) {
+      settings.instagramActorId = primaryAd.instagramActorId?.trim() || null;
     }
 
     try {

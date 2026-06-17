@@ -3,56 +3,87 @@
 import { useTranslations } from "next-intl";
 
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
+import { AdSetBatchPanel } from "@/components/campaign-creator/AdSetBatchPanel";
+import { GeoRadiusMapPicker } from "@/components/campaign-creator/GeoRadiusMapPicker";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
+import { getActiveAdset } from "@/lib/campaign-draft";
+import type { DraftTargeting } from "@/lib/campaign-draft";
 
 export function AdSetStep() {
   const t = useTranslations("campaignCreator");
   const tAds = useTranslations("ads");
   const { payload, updatePayload } = useCampaignDraft();
   const { audiences } = usePublishAssets(payload.clientSlug, payload.adAccountId);
-  const targeting = payload.adset.targeting;
+  const adset = getActiveAdset(payload);
+  const targeting = adset.targeting;
+  const clientRequired = !payload.clientSlug;
 
-  function patchTargeting(patch: Partial<typeof targeting>) {
+  function patchAdset(patch: Partial<typeof adset>) {
     updatePayload((p) => ({
       ...p,
-      adset: {
-        ...p.adset,
-        targeting: { ...p.adset.targeting, ...patch }
-      }
+      adsets: p.adsets.map((a) => (a.id === adset.id ? { ...a, ...patch } : a))
     }));
+  }
+
+  function patchTargeting(patch: Partial<DraftTargeting>) {
+    patchAdset({ targeting: { ...targeting, ...patch } });
+  }
+
+  function selectAdset(id: string) {
+    updatePayload({ activeAdsetId: id });
   }
 
   return (
     <div className="space-y-4">
+      {!payload.clientSlug ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {t("selectClientFirst")}
+        </p>
+      ) : null}
+
+      {payload.adsets.length > 1 ? (
+        <div className="flex flex-wrap gap-2">
+          {payload.adsets.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => selectAdset(a.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs ${
+                adset.id === a.id
+                  ? "bg-violet-100 font-medium text-violet-800"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              {a.name || t("treeAdset")}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <AdSetBatchPanel />
+
       <FormField label={t("adsetName")}>
         <input
-          value={payload.adset.name}
-          onChange={(e) =>
-            updatePayload((p) => ({
-              ...p,
-              adset: { ...p.adset, name: e.target.value }
-            }))
-          }
+          value={adset.name}
+          onChange={(e) => patchAdset({ name: e.target.value })}
           className="ui-input"
+          disabled={clientRequired}
         />
       </FormField>
 
       {payload.objective === "leads" ? (
         <FormField label={t("conversionLocation")}>
           <select
-            value={payload.adset.conversionLocation}
+            value={adset.conversionLocation}
             onChange={(e) =>
-              updatePayload((p) => ({
-                ...p,
-                adset: {
-                  ...p.adset,
-                  conversionLocation: e.target.value as typeof payload.adset.conversionLocation
-                }
-              }))
+              patchAdset({
+                conversionLocation: e.target.value as typeof adset.conversionLocation
+              })
             }
             className="ui-select"
+            disabled={clientRequired}
           >
             <option value="website_and_form">{t("convWebsiteAndForm")}</option>
             <option value="website">{t("convWebsite")}</option>
@@ -74,6 +105,32 @@ export function AdSetStep() {
             }
           />
         </FormField>
+
+        <GeoRadiusMapPicker
+          locations={targeting.locations}
+          onAdd={(item) => patchTargeting({ locations: [...targeting.locations, item] })}
+          onRemove={(value) =>
+            patchTargeting({ locations: targeting.locations.filter((p) => p.value !== value) })
+          }
+          onUpdateRadius={(value, radius) =>
+            patchTargeting({
+              locations: targeting.locations.map((l) =>
+                l.value === value
+                  ? {
+                      ...l,
+                      meta: {
+                        ...l.meta,
+                        type: l.meta?.type ?? "city",
+                        radius,
+                        distanceUnit: "kilometer"
+                      }
+                    }
+                  : l
+              )
+            })
+          }
+        />
+
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <FormField label={tAds("ageMin")}>
             <input
@@ -83,6 +140,7 @@ export function AdSetStep() {
               value={targeting.ageMin}
               onChange={(e) => patchTargeting({ ageMin: Number(e.target.value) })}
               className="ui-input"
+              disabled={clientRequired}
             />
           </FormField>
           <FormField label={tAds("ageMax")}>
@@ -93,15 +151,17 @@ export function AdSetStep() {
               value={targeting.ageMax}
               onChange={(e) => patchTargeting({ ageMax: Number(e.target.value) })}
               className="ui-input"
+              disabled={clientRequired}
             />
           </FormField>
           <FormField label={tAds("gender")}>
             <select
               value={targeting.gender}
               onChange={(e) =>
-                patchTargeting({ gender: e.target.value as typeof targeting.gender })
+                patchTargeting({ gender: e.target.value as DraftTargeting["gender"] })
               }
               className="ui-select"
+              disabled={clientRequired}
             >
               <option value="all">{tAds("genderAll")}</option>
               <option value="male">{tAds("genderMale")}</option>
@@ -132,6 +192,7 @@ export function AdSetStep() {
                   })
                 }
                 className="ui-select h-24"
+                disabled={clientRequired}
               >
                 {audiences.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -150,6 +211,7 @@ export function AdSetStep() {
                   })
                 }
                 className="ui-select h-24"
+                disabled={clientRequired}
               >
                 {audiences.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -168,33 +230,27 @@ export function AdSetStep() {
           <FormField label={t("scheduleStart")}>
             <input
               type="datetime-local"
-              value={payload.adset.schedule.start ?? ""}
+              value={adset.schedule.start ?? ""}
               onChange={(e) =>
-                updatePayload((p) => ({
-                  ...p,
-                  adset: {
-                    ...p.adset,
-                    schedule: { ...p.adset.schedule, start: e.target.value || null }
-                  }
-                }))
+                patchAdset({
+                  schedule: { ...adset.schedule, start: e.target.value || null }
+                })
               }
               className="ui-input"
+              disabled={clientRequired}
             />
           </FormField>
           <FormField label={t("scheduleEnd")}>
             <input
               type="datetime-local"
-              value={payload.adset.schedule.end ?? ""}
+              value={adset.schedule.end ?? ""}
               onChange={(e) =>
-                updatePayload((p) => ({
-                  ...p,
-                  adset: {
-                    ...p.adset,
-                    schedule: { ...p.adset.schedule, end: e.target.value || null }
-                  }
-                }))
+                patchAdset({
+                  schedule: { ...adset.schedule, end: e.target.value || null }
+                })
               }
               className="ui-input"
+              disabled={clientRequired}
             />
           </FormField>
         </div>
@@ -202,14 +258,12 @@ export function AdSetStep() {
 
       <FormField label={t("placements")}>
         <select
-          value={payload.adset.placements}
+          value={adset.placements}
           onChange={(e) =>
-            updatePayload((p) => ({
-              ...p,
-              adset: { ...p.adset, placements: e.target.value as "advantage_plus" | "manual" }
-            }))
+            patchAdset({ placements: e.target.value as "advantage_plus" | "manual" })
           }
           className="ui-select"
+          disabled={clientRequired}
         >
           <option value="advantage_plus">{t("placementsAdvantage")}</option>
           <option value="manual" disabled>

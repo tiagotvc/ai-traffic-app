@@ -3,14 +3,15 @@
 import { useTranslations } from "next-intl";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import { computeDraftScore } from "@/lib/campaign-draft";
+import { computeDraftScore, getActiveAd } from "@/lib/campaign-draft";
 
 export function CampaignCreatorPreview() {
   const t = useTranslations("campaignCreator");
   const { payload } = useCampaignDraft();
   const score = computeDraftScore(payload);
-  const title = payload.ad.titles.find((x) => x.trim()) ?? t("previewTitlePlaceholder");
-  const body = payload.ad.bodies.find((x) => x.trim()) ?? "";
+  const ad = getActiveAd(payload);
+  const title = ad.titles.find((x) => x.trim()) ?? t("previewTitlePlaceholder");
+  const body = ad.bodies.find((x) => x.trim()) ?? "";
   const circumference = 2 * Math.PI * 36;
   const offset = circumference - (score / 100) * circumference;
 
@@ -47,15 +48,15 @@ export function CampaignCreatorPreview() {
         <p className="mt-1 text-[11px] text-slate-500">{t("adPreviewHint")}</p>
         <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="bg-slate-100 p-8 text-center text-xs text-slate-400">
-            {payload.ad.imageHashes.length
-              ? t("imagesSelected", { count: payload.ad.imageHashes.length })
+            {ad.imageHashes.length
+              ? t("imagesSelected", { count: ad.imageHashes.length })
               : t("noMedia")}
           </div>
           <div className="space-y-1 p-3">
             <p className="text-sm font-semibold text-slate-900">{title}</p>
             {body ? <p className="text-xs text-slate-600">{body}</p> : null}
-            {payload.ad.linkUrl ? (
-              <p className="truncate text-[11px] text-violet-600">{payload.ad.linkUrl}</p>
+            {ad.linkUrl ? (
+              <p className="truncate text-[11px] text-violet-600">{ad.linkUrl}</p>
             ) : null}
           </div>
         </div>

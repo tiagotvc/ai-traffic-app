@@ -20,35 +20,47 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
   const [defaultAdAccountId, setDefaultAdAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadAssets = useCallback(async (accountId: string) => {
-    const qs = accountId ? `?adAccountId=${encodeURIComponent(accountId)}` : "";
+  const loadAssets = useCallback(async (slug: string, accountId: string) => {
+    if (!slug || !accountId) {
+      setAssets([]);
+      setPages([]);
+      setInstagramAccounts([]);
+      setPixels([]);
+      setAudiences([]);
+      return;
+    }
+    const qs = `?clientId=${encodeURIComponent(slug)}&adAccountId=${encodeURIComponent(accountId)}`;
     const res = await fetch(`/api/meta/assets${qs}`);
     const j = (await res.json()) as {
+      ok?: boolean;
       assets?: PublishAsset[];
       pages?: PublishPage[];
       instagramAccounts?: PublishIgAccount[];
       pixels?: PublishPixel[];
+      error?: string;
     };
+    if (!res.ok || !j.ok) {
+      setError(j.error ?? "loadFailed");
+      setAssets([]);
+      setPages([]);
+      return;
+    }
     setAssets(j.assets ?? []);
     setPages(j.pages ?? []);
     setInstagramAccounts(j.instagramAccounts ?? []);
     setPixels(j.pixels ?? []);
 
-    if (accountId) {
-      try {
-        const aud = await fetch(`/api/meta/audiences?adAccountId=${encodeURIComponent(accountId)}`).then(
-          (r) => r.json()
-        );
-        setAudiences(
-          ((aud.audiences ?? []) as Array<{ id: string; name?: string }>).map((a) => ({
-            id: a.id,
-            name: a.name?.trim() || a.id
-          }))
-        );
-      } catch {
-        setAudiences([]);
-      }
-    } else {
+    try {
+      const aud = await fetch(
+        `/api/meta/audiences?adAccountId=${encodeURIComponent(accountId)}`
+      ).then((r) => r.json());
+      setAudiences(
+        ((aud.audiences ?? []) as Array<{ id: string; name?: string }>).map((a) => ({
+          id: a.id,
+          name: a.name?.trim() || a.id
+        }))
+      );
+    } catch {
       setAudiences([]);
     }
   }, []);
@@ -59,6 +71,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
         setAccounts([]);
         setDefaultAdAccountId(null);
         setAssets([]);
+        setPages([]);
         return null;
       }
       setAccountsLoading(true);
@@ -80,7 +93,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
         setAccounts(list);
         const first = j.defaultAdAccountId ?? list[0]?.metaAdAccountId ?? "";
         setDefaultAdAccountId(first || null);
-        if (first) await loadAssets(first);
+        if (first) await loadAssets(slug, first);
         return first || null;
       } catch {
         setAccounts([]);
@@ -95,11 +108,16 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
 
   useEffect(() => {
     if (clientSlug) void loadForClient(clientSlug);
+    else {
+      setAccounts([]);
+      setAssets([]);
+      setPages([]);
+    }
   }, [clientSlug, loadForClient]);
 
   useEffect(() => {
-    if (adAccountId) void loadAssets(adAccountId);
-  }, [adAccountId, loadAssets]);
+    if (clientSlug && adAccountId) void loadAssets(clientSlug, adAccountId);
+  }, [clientSlug, adAccountId, loadAssets]);
 
   return {
     accounts,
@@ -112,6 +130,6 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
     defaultAdAccountId,
     error,
     loadForClient,
-    loadAssets
+    loadAssets: (accountId: string) => loadAssets(clientSlug, accountId)
   };
 }

@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import type { CampaignObjectiveKey } from "@/lib/campaign-draft";
-import { CAMPAIGN_OBJECTIVES } from "@/lib/campaign-draft";
+import type { BuyingType, CampaignObjectiveKey } from "@/lib/campaign-draft";
+import { CAMPAIGN_OBJECTIVES, objectivesForBuyingType } from "@/lib/campaign-draft";
 
 const OBJECTIVE_ICONS: Record<CampaignObjectiveKey, string> = {
   awareness: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z",
@@ -23,6 +23,14 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
 
   if (!open) return null;
 
+  const availableObjectives = objectivesForBuyingType(payload.buyingType);
+
+  function setBuyingType(bt: BuyingType) {
+    const objs = objectivesForBuyingType(bt);
+    const nextObjective = objs.includes(payload.objective) ? payload.objective : objs[0]!;
+    updatePayload({ buyingType: bt, objective: nextObjective });
+  }
+
   function select(obj: CampaignObjectiveKey) {
     const nameKey = `defaultName_${obj}` as const;
     const adsetKey = `defaultAdset_${obj}` as const;
@@ -32,18 +40,28 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
       objective: obj,
       campaign: {
         ...p.campaign,
-        name: p.campaign.name.startsWith("Nova") || p.campaign.name.startsWith("New")
-          ? t(nameKey)
-          : p.campaign.name
+        name:
+          p.campaign.name.startsWith("Nova") || p.campaign.name.startsWith("New")
+            ? t(nameKey)
+            : p.campaign.name
       },
-      adset: {
-        ...p.adset,
-        name: p.adset.name.startsWith("Novo") || p.adset.name.startsWith("New") ? t(adsetKey) : p.adset.name
-      },
-      ad: {
-        ...p.ad,
-        name: p.ad.name.startsWith("Novo") || p.ad.name.startsWith("New") ? t(adKey) : p.ad.name
-      }
+      adsets: p.adsets.map((a, i) =>
+        i === 0
+          ? {
+              ...a,
+              name:
+                a.name.startsWith("Novo") || a.name.startsWith("New") ? t(adsetKey) : a.name
+            }
+          : a
+      ),
+      ads: p.ads.map((a, i) =>
+        i === 0
+          ? {
+              ...a,
+              name: a.name.startsWith("Novo") || a.name.startsWith("New") ? t(adKey) : a.name
+            }
+          : a
+      )
     }));
     setObjectiveChosen(true);
     setActiveNode("campaign");
@@ -65,14 +83,22 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
 
         <div className="mt-4">
           <label className="text-xs font-medium text-slate-600">{t("buyingType")}</label>
-          <select className="ui-select mt-1 w-full text-sm" value={payload.buyingType} disabled>
+          <select
+            className="ui-select mt-1 w-full text-sm"
+            value={payload.buyingType}
+            onChange={(e) => setBuyingType(e.target.value as BuyingType)}
+          >
             <option value="auction">{t("buyingAuction")}</option>
+            <option value="reservation">{t("buyingReservation")}</option>
           </select>
+          {payload.buyingType === "reservation" ? (
+            <p className="mt-1 text-[11px] text-slate-500">{t("buyingReservationHint")}</p>
+          ) : null}
         </div>
 
         <p className="mt-5 text-xs font-medium text-slate-600">{t("chooseObjective")}</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          {CAMPAIGN_OBJECTIVES.map((obj) => (
+          {CAMPAIGN_OBJECTIVES.filter((obj) => availableObjectives.includes(obj)).map((obj) => (
             <button
               key={obj}
               type="button"
@@ -81,7 +107,13 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
                 payload.objective === obj ? "border-violet-400 bg-violet-50" : "border-slate-200"
               }`}
             >
-              <svg className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <svg
+                className="mt-0.5 h-5 w-5 shrink-0 text-violet-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.75}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d={OBJECTIVE_ICONS[obj]} />
               </svg>
               <div>

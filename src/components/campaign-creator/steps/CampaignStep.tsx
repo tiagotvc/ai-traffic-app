@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
+import type { CampaignDraftPayload } from "@/lib/campaign-draft";
+import { getActiveAdset, parseCampaignDraftPayload } from "@/lib/campaign-draft";
 
 const SPECIAL_CATEGORIES = [
   "CREDIT",
@@ -14,6 +16,8 @@ const SPECIAL_CATEGORIES = [
   "HOUSING",
   "ISSUES_ELECTIONS_POLITICS"
 ] as const;
+
+type SourceCampaign = { id: string; name: string; objective?: string; status?: string };
 
 export function CampaignStep() {
   const t = useTranslations("campaignCreator");
@@ -25,6 +29,9 @@ export function CampaignStep() {
     payload.adAccountId
   );
   const { defaultTargeting } = useClientPublishDefaults(payload.clientSlug, locale);
+  const [sources, setSources] = useState<SourceCampaign[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!payload.adAccountId && defaultAdAccountId) {
@@ -33,30 +40,79 @@ export function CampaignStep() {
   }, [defaultAdAccountId, payload.adAccountId, updatePayload]);
 
   useEffect(() => {
-    if (defaultTargeting && !payload.adset.targeting.locations.length) {
-      updatePayload((p) => ({
-        ...p,
-        adset: {
-          ...p.adset,
-          targeting: {
-            ...p.adset.targeting,
-            locations: defaultTargeting.locations,
-            ageMin: defaultTargeting.ageMin,
-            ageMax: defaultTargeting.ageMax,
-            customAudienceIds: defaultTargeting.includeAud,
-            excludedAudienceIds: defaultTargeting.excludeAud
-          }
-        }
-      }));
+    const adset = getActiveAdset(payload);
+    if (defaultTargeting && !adset.targeting.locations.length) {
+      updatePayload((p) => {
+        const activeId = p.activeAdsetId ?? p.adsets[0]?.id;
+        return {
+          ...p,
+          adsets: p.adsets.map((a) =>
+            a.id === activeId
+              ? {
+                  ...a,
+                  targeting: {
+                    ...a.targeting,
+                    locations: defaultTargeting.locations,
+                    ageMin: defaultTargeting.ageMin,
+                    ageMax: defaultTargeting.ageMax,
+                    customAudienceIds: defaultTargeting.includeAud,
+                    excludedAudienceIds: defaultTargeting.excludeAud
+                  }
+                }
+              : a
+          )
+        };
+      });
     }
-  }, [defaultTargeting, payload.adset.targeting.locations.length, updatePayload]);
+  }, [defaultTargeting, payload, updatePayload]);
+
+  useEffect(() => {
+    if (!payload.copyFromCampaignEnabled || !payload.clientSlug) {
+      setSources([]);
+      return;
+    }
+    setSourcesLoading(true);
+    fetch(`/api/campaigns/creator-sources?clientId=${encodeURIComponent(payload.clientSlug)}`)
+      .then((r) => r.json())
+      .then((j: { campaigns?: SourceCampaign[] }) => setSources(j.campaigns ?? []))
+      .catch(() => setSources([]))
+      .finally(() => setSourcesLoading(false));
+  }, [payload.copyFromCampaignEnabled, payload.clientSlug]);
+
+  async function applySnapshot(campaignId: string) {
+    if (campaignId.startsWith("draft:")) return;
+    setCopyError(null);
+    try {
+      const res = await fetch(
+        `/api/campaigns/${encodeURIComponent(campaignId)}/creator-snapshot`
+      );
+      const j = (await res.json()) as { ok?: boolean; patch?: Partial<CampaignDraftPayload>; error?: string };
+      if (!j.ok || !j.patch) throw new Error(j.error ?? "copyFailed");
+      const merged = parseCampaignDraftPayload({
+        ...payload,
+        ...j.patch,
+        copyFromCampaignEnabled: true,
+        copyFromCampaignId: campaignId
+      });
+      updatePayload(merged);
+    } catch (e) {
+      setCopyError(e instanceof Error ? e.message : "copyFailed");
+    }
+  }
 
   return (
     <div className="space-y-4">
       <FormField label={tAds("clientLabel")}>
         <select
           value={payload.clientSlug}
-          onChange={(e) => updatePayload({ clientSlug: e.target.value, adAccountId: "" })}
+          onChange={(e) =>
+            updatePayload({
+              clientSlug: e.target.value,
+              adAccountId: "",
+              copyFromCampaignEnabled: false,
+              copyFromCampaignId: null
+            })
+          }
           className="ui-select"
         >
           <option value="">{tAds("selectClient")}</option>
@@ -67,6 +123,58 @@ export function CampaignStep() {
           ))}
         </select>
       </FormField>
+
+      <div className="ui-card space-y-3 p-4">
+        <h3 className="text-sm font-semibold text-slate-900">{t("copyCampaignTitle")}</h3>
+        <p className="text-[11px] text-slate-500">{t("copyCampaignHint")}</p>
+        <div className="flex gap-4 text-sm">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={!payload.copyFromCampaignEnabled}
+              onChange={() =>
+                updatePayload({ copyFromCampaignEnabled: false, copyFromCampaignId: null })
+              }
+              className="accent-violet-600"
+            />
+            {t("copyCampaignNo")}
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={payload.copyFromCampaignEnabled}
+              onChange={() => updatePayload({ copyFromCampaignEnabled: true })}
+              className="accent-violet-600"
+            />
+            {t("copyCampaignYes")}
+          </label>
+        </div>
+        {payload.copyFromCampaignEnabled ? (
+          !payload.clientSlug ? (
+            <p className="text-xs text-amber-700">{t("selectClientFirst")}</p>
+          ) : sourcesLoading ? (
+            <p className="text-xs text-slate-400">{t("loading")}</p>
+          ) : (
+            <select
+              value={payload.copyFromCampaignId ?? ""}
+              onChange={(e) => {
+                const id = e.target.value || null;
+                updatePayload({ copyFromCampaignId: id });
+                if (id && !id.startsWith("draft:")) void applySnapshot(id);
+              }}
+              className="ui-select text-sm"
+            >
+              <option value="">{t("copyCampaignSelect")}</option>
+              {sources.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          )
+        ) : null}
+        {copyError ? <p className="text-xs text-red-600">{copyError}</p> : null}
+      </div>
 
       <FormField label={t("campaignName")}>
         <input

@@ -533,6 +533,56 @@ export async function createLookalikeAudience(
   });
 }
 
+export type MetaAdSetDetail = {
+  id: string;
+  name?: string;
+  targeting?: Record<string, unknown>;
+  promoted_object?: Record<string, unknown>;
+  start_time?: string;
+  end_time?: string;
+  daily_budget?: string;
+};
+
+export async function fetchAdSetDetail(
+  accessToken: string,
+  adSetId: string,
+  fields = "id,name,targeting,promoted_object,start_time,end_time,daily_budget"
+): Promise<MetaAdSetDetail> {
+  return metaFetch<MetaAdSetDetail>(
+    `/${encodeURIComponent(adSetId)}?fields=${encodeURIComponent(fields)}`,
+    accessToken
+  );
+}
+
+export type MetaAdWithCreative = {
+  id: string;
+  name?: string;
+  creative?: {
+    id?: string;
+    body?: string;
+    title?: string;
+    object_story_spec?: Record<string, unknown>;
+    asset_feed_spec?: {
+      images?: Array<{ hash?: string }>;
+      titles?: Array<{ text?: string }>;
+      bodies?: Array<{ text?: string }>;
+      link_urls?: Array<{ website_url?: string }>;
+    };
+  };
+};
+
+export async function fetchAdWithCreative(
+  accessToken: string,
+  adId: string
+): Promise<MetaAdWithCreative> {
+  const fields =
+    "id,name,creative{id,body,title,object_story_spec,asset_feed_spec{images,titles,bodies,link_urls}}";
+  return metaFetch<MetaAdWithCreative>(
+    `/${encodeURIComponent(adId)}?fields=${encodeURIComponent(fields)}`,
+    accessToken
+  );
+}
+
 export async function fetchLeadGenForms(
   accessToken: string,
   pageId: string

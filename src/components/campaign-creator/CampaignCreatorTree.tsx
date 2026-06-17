@@ -13,47 +13,102 @@ const GRID_PATH =
 const DOC_PATH =
   "M9 12h6m-6 4h6M9 8h6M7 4h7l3 3v13a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1z";
 
-const NODES: { id: CreatorNode; icon: string }[] = [
-  { id: "campaign", icon: FOLDER_PATH },
-  { id: "adset", icon: GRID_PATH },
-  { id: "ad", icon: DOC_PATH }
-];
-
 export function CampaignCreatorTree() {
   const t = useTranslations("campaignCreator");
-  const { payload, activeNode, setActiveNode } = useCampaignDraft();
+  const { payload, activeNode, setActiveNode, updatePayload } = useCampaignDraft();
 
-  const labels: Record<CreatorNode, string> = {
-    campaign: payload.campaign.name || t("treeCampaign"),
-    adset: payload.adset.name || t("treeAdset"),
-    ad: payload.ad.name || t("treeAd"),
-    review: t("treeReview")
-  };
+  const campaignLabel = payload.campaign.name || t("treeCampaign");
+
+  function goAdset(adsetId: string) {
+    updatePayload({ activeAdsetId: adsetId });
+    setActiveNode("adset");
+  }
+
+  function goAd(adId: string) {
+    updatePayload({ activeAdId: adId });
+    setActiveNode("ad");
+  }
+
+  const visited = (n: CreatorNode) => payload.visitedNodes.includes(n);
 
   return (
     <nav className="space-y-1 p-3">
-      {NODES.map(({ id, icon }) => {
-        const active = activeNode === id;
-        const visited = payload.visitedNodes.includes(id);
-        return (
+      <button
+        type="button"
+        onClick={() => setActiveNode("campaign")}
+        className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+          activeNode === "campaign"
+            ? "bg-violet-50 font-medium text-violet-800"
+            : "text-slate-700 hover:bg-slate-50"
+        }`}
+      >
+        <OutlineIcon d={FOLDER_PATH} className="h-4 w-4 shrink-0" />
+        <span className="truncate">{campaignLabel}</span>
+      </button>
+
+      <div className="ml-2 space-y-0.5 border-l border-slate-200 pl-2">
+        <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+          {t("treeAdset")}
+        </p>
+        {payload.adsets.map((adset) => (
           <button
-            key={id}
+            key={adset.id}
             type="button"
-            disabled={!visited && id !== "campaign"}
-            onClick={() => visited && setActiveNode(id)}
-            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition ${
-              active
+            disabled={!visited("adset")}
+            onClick={() => goAdset(adset.id)}
+            className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs transition ${
+              activeNode === "adset" && payload.activeAdsetId === adset.id
                 ? "bg-violet-50 font-medium text-violet-800"
-                : visited
+                : visited("adset")
                   ? "text-slate-700 hover:bg-slate-50"
                   : "cursor-not-allowed text-slate-300"
             }`}
           >
-            <OutlineIcon d={icon} className="h-4 w-4 shrink-0" />
-            <span className="truncate">{labels[id]}</span>
+            <OutlineIcon d={GRID_PATH} className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{adset.name || t("treeAdset")}</span>
           </button>
-        );
-      })}
+        ))}
+      </div>
+
+      <div className="ml-2 space-y-0.5 border-l border-slate-200 pl-2">
+        <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+          {t("treeAd")}
+        </p>
+        {payload.ads.map((adItem) => (
+          <button
+            key={adItem.id}
+            type="button"
+            disabled={!visited("ad")}
+            onClick={() => goAd(adItem.id)}
+            className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs transition ${
+              activeNode === "ad" && payload.activeAdId === adItem.id
+                ? "bg-violet-50 font-medium text-violet-800"
+                : visited("ad")
+                  ? "text-slate-700 hover:bg-slate-50"
+                  : "cursor-not-allowed text-slate-300"
+            }`}
+          >
+            <OutlineIcon d={DOC_PATH} className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{adItem.name || t("treeAd")}</span>
+          </button>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        disabled={!visited("review")}
+        onClick={() => visited("review") && setActiveNode("review")}
+        className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+          activeNode === "review"
+            ? "bg-violet-50 font-medium text-violet-800"
+            : visited("review")
+              ? "text-slate-700 hover:bg-slate-50"
+              : "cursor-not-allowed text-slate-300"
+        }`}
+      >
+        <span className="text-base">✓</span>
+        <span className="truncate">{t("treeReview")}</span>
+      </button>
     </nav>
   );
 }
