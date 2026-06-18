@@ -30,6 +30,11 @@ export function summarizeAudienceRule(rule: unknown): {
   const sources = first.event_sources as Array<{ id?: string; type?: string }> | undefined;
   const source = sources?.[0];
   const event = first.event as { event_name?: string } | undefined;
+  const filter = first.filter as
+    | { filters?: Array<{ field?: string; value?: string }> }
+    | undefined;
+  const eventFromFilter = filter?.filters?.find((f) => f.field === "event")?.value;
+  const eventName = event?.event_name ?? eventFromFilter;
   const retentionSeconds = Number(first.retention_seconds);
   const retentionDays = retentionSeconds > 0 ? Math.round(retentionSeconds / 86400) : undefined;
 
@@ -37,7 +42,7 @@ export function summarizeAudienceRule(rule: unknown): {
     return {
       kind: "website",
       pixelId: source.id,
-      eventName: event?.event_name,
+      eventName: eventName,
       retentionDays
     };
   }
@@ -67,10 +72,10 @@ export function summarizeAudienceRule(rule: unknown): {
       kind: "engagement",
       sourceType: source.type,
       sourceId: source.id,
-      eventName: event?.event_name,
+      eventName: eventName,
       retentionDays
     };
   }
 
-  return { kind: source?.type ?? "unknown", sourceId: source?.id, eventName: event?.event_name, retentionDays };
+  return { kind: source?.type ?? "unknown", sourceId: source?.id, eventName, retentionDays };
 }

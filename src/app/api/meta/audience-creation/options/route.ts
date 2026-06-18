@@ -7,7 +7,9 @@ import {
   ENGAGEMENT_SOURCES,
   WEBSITE_MAX_RETENTION_DAYS,
   WEBSITE_PIXEL_EVENTS,
-  fetchAdAccountApps
+  fetchAdAccountApps,
+  fetchEngagementLeadForms,
+  fetchEngagementVideoOptions
 } from "@/lib/meta-audience-create";
 import {
   fetchAdAccountPixels,
@@ -85,10 +87,20 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, ...payload, websiteEvents });
   }
   if (type === "engagement") {
+    const igForOptions = instagramAccounts.map((i) => ({
+      id: i.id,
+      name: i.username
+    }));
+    const [engagementVideos, leadForms] = await Promise.all([
+      fetchEngagementVideoOptions(metaAccessToken, adAccountId, pages, igForOptions),
+      fetchEngagementLeadForms(metaAccessToken, pages)
+    ]);
     return NextResponse.json({
       ok: true,
       pages,
       instagramAccounts: payload.instagramAccounts,
+      engagementVideos,
+      leadForms,
       engagementSources: ENGAGEMENT_SOURCES,
       engagementActions: ENGAGEMENT_ACTIONS
     });

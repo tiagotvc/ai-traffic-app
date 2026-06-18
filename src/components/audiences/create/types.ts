@@ -47,4 +47,13 @@ export type AudienceOptions = {
     string,
     Array<{ id: string; labelKey: string; metaEvent: string; maxRetentionDays: number }>
   >;
+  engagementVideos?: Array<{
+    id: string;
+    title: string;
+    picture?: string | null;
+    origin: "ad_account" | "page" | "instagram";
+    originId: string;
+    originLabel: string;
+  }>;
+  leadForms?: Array<{ id: string; name: string; pageId: string; pageName: string }>;
 };

@@ -10,12 +10,16 @@ type Props = {
   onBack: () => void;
 };
 
+type VideoOriginFilter = "all" | "ad_account" | "page" | "instagram";
+
 export function EngagementAudienceWizard({ ctx, onBack }: Props) {
   const t = useTranslations("audiences");
   const [pending, startTransition] = useTransition();
   const [options, setOptions] = useState<AudienceOptions | null>(null);
   const [sourceType, setSourceType] = useState<"page" | "ig_business" | "video" | "lead">("page");
   const [sourceId, setSourceId] = useState("");
+  const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
+  const [videoOriginFilter, setVideoOriginFilter] = useState<VideoOriginFilter>("all");
   const [eventName, setEventName] = useState("");
   const [retentionDays, setRetentionDays] = useState(30);
   const [name, setName] = useState("");
@@ -39,14 +43,23 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
   }
 
   const actions = options?.engagementActions?.[sourceType] ?? [];
-  const maxDays = actions.find((a) => a.metaEvent === eventName)?.maxRetentionDays ?? 365;
+  const selectedAction = actions.find((a) => a.metaEvent === eventName);
+  const maxDays = selectedAction?.maxRetentionDays ?? 365;
+  const fixedRetention = selectedAction?.maxRetentionDays === 0;
 
   const sourcesForType = useMemo(() => {
     if (!options) return [];
     if (sourceType === "page") return options.pages;
     if (sourceType === "ig_business") return options.instagramAccounts;
+    if (sourceType === "lead") return options.leadForms ?? [];
     return [];
   }, [options, sourceType]);
+
+  const filteredVideos = useMemo(() => {
+    const videos = options?.engagementVideos ?? [];
+    if (videoOriginFilter === "all") return videos;
+    return videos.filter((v) => v.origin === videoOriginFilter);
+  }, [options?.engagementVideos, videoOriginFilter]);
 
   useEffect(() => {
     const firstAction = actions[0];
@@ -56,11 +69,16 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
   }, [actions, eventName]);
 
   useEffect(() => {
+    if (sourceType === "video") return;
     if (sourcesForType.length && !sourcesForType.some((s) => s.id === sourceId)) {
       setSourceId(sourcesForType[0]?.id ?? "");
     }
     if (!sourcesForType.length) setSourceId("");
-  }, [sourcesForType, sourceId]);
+  }, [sourcesForType, sourceId, sourceType]);
+
+  useEffect(() => {
+    setSelectedVideoIds((prev) => prev.filter((id) => filteredVideos.some((v) => v.id === id)));
+  }, [filteredVideos]);
 
   const defaultName = useMemo(() => {
     const srcLabel = options?.engagementSources?.find((s) => s.id === sourceType);
@@ -70,11 +88,28 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
     return `${srcName} — ${actionName}`;
   }, [actions, eventName, sourceType, options, t]);
 
+  const originLabel = (origin: string, originLabelKey: string) => {
+    if (origin === "ad_account") return t("videoOriginAdAccount");
+    if (origin === "page") return `${t("videoOriginPage")}: ${originLabelKey}`;
+    if (origin === "instagram") return `${t("videoOriginInstagram")}: ${originLabelKey}`;
+    return originLabelKey;
+  };
+
   const submit = () => {
-    if (!sourceId && sourceType !== "video") {
-      ctx.onError(t("selectSourceAsset"));
+    const sourceIds =
+      sourceType === "video"
+        ? selectedVideoIds
+        : sourceId
+          ? [sourceId]
+          : [];
+
+    if (!sourceIds.length) {
+      ctx.onError(
+        sourceType === "video" ? t("selectEngagementVideos") : t("selectSourceAsset")
+      );
       return;
     }
+
     startTransition(async () => {
       const res = await fetch("/api/meta/audiences/engagement", {
         method: "POST",
@@ -84,9 +119,9 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
           adAccountId: ctx.adAccountId,
           name: name.trim() || defaultName,
           sourceType,
-          sourceId: sourceId || ctx.adAccountId,
+          sourceIds,
           eventName,
-          retentionDays: Math.min(retentionDays, maxDays)
+          retentionDays: fixedRetention ? 0 : Math.min(retentionDays, maxDays)
         })
       });
       const j = await res.json();
@@ -99,6 +134,15 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
       }
     });
   };
+
+  const canSubmit =
+    sourceType === "video"
+      ? selectedVideoIds.length > 0
+      : sourceType === "lead"
+        ? !!sourceId
+        : sourceType === "page" || sourceType === "ig_business"
+          ? !!sourceId
+          : true;
 
   return (
     <div className="space-y-4">
@@ -133,9 +177,78 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
             </div>
           </div>
 
-          {sourcesForType.length ? (
+          {sourceType === "video" ? (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-slate-500">{t("videoOriginFilter")}</label>
+                <select
+                  value={videoOriginFilter}
+                  onChange={(e) => setVideoOriginFilter(e.target.value as VideoOriginFilter)}
+                  className="ui-select mt-1 w-full text-sm"
+                >
+                  <option value="all">{t("videoOriginAll")}</option>
+                  <option value="ad_account">{t("videoOriginAdAccount")}</option>
+                  <option value="page">{t("videoOriginPage")}</option>
+                  <option value="instagram">{t("videoOriginInstagram")}</option>
+                </select>
+              </div>
+
+              {filteredVideos.length ? (
+                <div>
+                  <label className="text-xs font-medium text-slate-500">
+                    {t("selectEngagementVideos")} ({selectedVideoIds.length})
+                  </label>
+                  <div className="mt-2 max-h-56 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
+                    {filteredVideos.map((v) => {
+                      const checked = selectedVideoIds.includes(v.id);
+                      return (
+                        <label
+                          key={v.id}
+                          className={`flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-slate-50 ${
+                            checked ? "bg-violet-50" : ""
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setSelectedVideoIds((prev) =>
+                                e.target.checked
+                                  ? [...prev, v.id]
+                                  : prev.filter((id) => id !== v.id)
+                              );
+                            }}
+                            className="mt-0.5 accent-violet-600"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="font-medium text-slate-800">{v.title}</span>
+                            <span className="mt-0.5 block text-[10px] text-slate-500">
+                              {originLabel(v.origin, v.originLabel)}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-amber-700">
+                  <p>{t("noEngagementVideos")}</p>
+                  <button
+                    type="button"
+                    onClick={() => void loadOptions()}
+                    className="mt-1 text-xs font-medium text-violet-700 underline"
+                  >
+                    {t("engagementRecheck")}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : sourcesForType.length ? (
             <div>
-              <label className="text-xs font-medium text-slate-500">{t("selectSourceAsset")}</label>
+              <label className="text-xs font-medium text-slate-500">
+                {sourceType === "lead" ? t("selectLeadForm") : t("selectSourceAsset")}
+              </label>
               <select
                 value={sourceId}
                 onChange={(e) => setSourceId(e.target.value)}
@@ -143,7 +256,9 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
               >
                 {sourcesForType.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name}
+                    {sourceType === "lead" && "pageName" in s
+                      ? `${s.name} (${(s as { pageName: string }).pageName})`
+                      : s.name}
                   </option>
                 ))}
               </select>
@@ -159,41 +274,42 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
                 {t("engagementRecheck")}
               </button>
             </div>
+          ) : sourceType === "lead" ? (
+            <p className="text-sm text-amber-700">{t("noLeadForms")}</p>
           ) : null}
 
           <div>
             <label className="text-xs font-medium text-slate-500">{t("selectEngagementAction")}</label>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <select
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+              className="ui-select mt-1 w-full text-sm"
+            >
               {actions.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => setEventName(a.metaEvent)}
-                  className={`rounded-lg border px-3 py-2 text-left text-xs font-medium ${
-                    eventName === a.metaEvent
-                      ? "border-violet-500 bg-violet-50 text-violet-700"
-                      : "border-slate-200"
-                  }`}
-                >
+                <option key={a.id} value={a.metaEvent}>
                   {t(a.labelKey as "engagementAction.pageEngaged")}
-                </button>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-slate-500">
-              {t("retentionDays")} ({retentionDays}d, max {maxDays})
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={maxDays}
-              value={Math.min(retentionDays, maxDays)}
-              onChange={(e) => setRetentionDays(Number(e.target.value))}
-              className="mt-2 w-full"
-            />
-          </div>
+          {fixedRetention ? (
+            <p className="text-xs text-slate-500">{t("pageLikedRetentionNote")}</p>
+          ) : (
+            <div>
+              <label className="text-xs font-medium text-slate-500">
+                {t("retentionDays")} ({retentionDays}d, max {maxDays})
+              </label>
+              <input
+                type="range"
+                min={1}
+                max={maxDays}
+                value={Math.min(retentionDays, maxDays)}
+                onChange={(e) => setRetentionDays(Number(e.target.value))}
+                className="mt-2 w-full"
+              />
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-slate-500">{t("audienceName")}</label>
@@ -208,7 +324,7 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
           <div className="flex justify-end">
             <button
               type="button"
-              disabled={pending || ((sourceType === "page" || sourceType === "ig_business") && !sourceId)}
+              disabled={pending || !canSubmit}
               onClick={submit}
               className="ui-btn-primary"
             >

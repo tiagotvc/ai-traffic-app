@@ -1,6 +1,15 @@
 import "server-only";
 
-import { createLookalikeAudience, metaFetch, metaPost, STANDARD_CONVERSION_EVENTS } from "@/lib/meta-graph";
+import {
+  createLookalikeAudience,
+  fetchAdVideos,
+  fetchInstagramVideoMedia,
+  fetchLeadGenForms,
+  fetchPageVideos,
+  metaFetch,
+  metaPost,
+  STANDARD_CONVERSION_EVENTS
+} from "@/lib/meta-graph";
 
 // ---- Catalogs (Meta Ads Manager parity) ----
 
@@ -32,21 +41,41 @@ export const ENGAGEMENT_SOURCES: Array<{
   { id: "lead", labelKey: "engagementSource.lead", eventSourceType: "lead", maxRetentionDays: 90 }
 ];
 
-export const ENGAGEMENT_ACTIONS: Record<
-  EngagementSourceType,
-  Array<{ id: string; labelKey: string; metaEvent: string; maxRetentionDays: number }>
-> = {
+export type EngagementActionDef = {
+  id: string;
+  labelKey: string;
+  metaEvent: string;
+  maxRetentionDays: number;
+  /** page_liked has no retention window in Meta */
+  fixedRetentionSeconds?: number;
+};
+
+export const ENGAGEMENT_ACTIONS: Record<EngagementSourceType, EngagementActionDef[]> = {
   page: [
-    { id: "page_engaged", labelKey: "engagementAction.pageEngaged", metaEvent: "page_engaged", maxRetentionDays: 365 },
-    { id: "page_liked", labelKey: "engagementAction.pageLiked", metaEvent: "page_liked", maxRetentionDays: 365 },
-    { id: "page_visited", labelKey: "engagementAction.pageVisited", metaEvent: "page_visited", maxRetentionDays: 365 },
-    { id: "page_messaged", labelKey: "engagementAction.pageMessaged", metaEvent: "page_messaged", maxRetentionDays: 365 }
+    { id: "page_engaged", labelKey: "engagementAction.pageEngaged", metaEvent: "page_engaged", maxRetentionDays: 730 },
+    { id: "page_visited", labelKey: "engagementAction.pageVisited", metaEvent: "page_visited", maxRetentionDays: 730 },
+    {
+      id: "page_liked",
+      labelKey: "engagementAction.pageLiked",
+      metaEvent: "page_liked",
+      maxRetentionDays: 0,
+      fixedRetentionSeconds: 0
+    },
+    { id: "page_messaged", labelKey: "engagementAction.pageMessaged", metaEvent: "page_messaged", maxRetentionDays: 730 },
+    { id: "page_cta_clicked", labelKey: "engagementAction.pageCtaClicked", metaEvent: "page_cta_clicked", maxRetentionDays: 730 },
+    { id: "page_or_post_save", labelKey: "engagementAction.pageOrPostSave", metaEvent: "page_or_post_save", maxRetentionDays: 730 },
+    {
+      id: "page_post_interaction",
+      labelKey: "engagementAction.pagePostInteraction",
+      metaEvent: "page_post_interaction",
+      maxRetentionDays: 730
+    }
   ],
   ig_business: [
     {
-      id: "ig_user_engaged",
-      labelKey: "engagementAction.igEngaged",
-      metaEvent: "ig_user_engaged",
+      id: "ig_business_profile_all",
+      labelKey: "engagementAction.igProfileAll",
+      metaEvent: "ig_business_profile_all",
       maxRetentionDays: 365
     },
     {
@@ -56,18 +85,69 @@ export const ENGAGEMENT_ACTIONS: Record<
       maxRetentionDays: 365
     },
     {
-      id: "ig_user_messaged",
+      id: "ig_business_profile_visit",
+      labelKey: "engagementAction.igProfileVisit",
+      metaEvent: "ig_business_profile_visit",
+      maxRetentionDays: 365
+    },
+    {
+      id: "ig_user_followed_business",
+      labelKey: "engagementAction.igFollowed",
+      metaEvent: "ig_user_followed_business",
+      maxRetentionDays: 365
+    },
+    {
+      id: "ig_user_messaged_business",
       labelKey: "engagementAction.igMessaged",
-      metaEvent: "ig_user_messaged",
+      metaEvent: "ig_user_messaged_business",
+      maxRetentionDays: 365
+    },
+    {
+      id: "ig_business_profile_ad_saved",
+      labelKey: "engagementAction.igAdSaved",
+      metaEvent: "ig_business_profile_ad_saved",
+      maxRetentionDays: 365
+    },
+    { id: "ig_ad_like", labelKey: "engagementAction.igAdLike", metaEvent: "ig_ad_like", maxRetentionDays: 365 },
+    { id: "ig_ad_comment", labelKey: "engagementAction.igAdComment", metaEvent: "ig_ad_comment", maxRetentionDays: 365 },
+    { id: "ig_ad_share", labelKey: "engagementAction.igAdShare", metaEvent: "ig_ad_share", maxRetentionDays: 365 },
+    { id: "ig_ad_save", labelKey: "engagementAction.igAdSave", metaEvent: "ig_ad_save", maxRetentionDays: 365 },
+    { id: "ig_ad_cta_click", labelKey: "engagementAction.igAdCtaClick", metaEvent: "ig_ad_cta_click", maxRetentionDays: 365 },
+    {
+      id: "ig_ad_carousel_swipe",
+      labelKey: "engagementAction.igAdCarouselSwipe",
+      metaEvent: "ig_ad_carousel_swipe",
+      maxRetentionDays: 365
+    },
+    { id: "ig_organic_like", labelKey: "engagementAction.igOrganicLike", metaEvent: "ig_organic_like", maxRetentionDays: 365 },
+    {
+      id: "ig_organic_comment",
+      labelKey: "engagementAction.igOrganicComment",
+      metaEvent: "ig_organic_comment",
+      maxRetentionDays: 365
+    },
+    { id: "ig_organic_share", labelKey: "engagementAction.igOrganicShare", metaEvent: "ig_organic_share", maxRetentionDays: 365 },
+    { id: "ig_organic_save", labelKey: "engagementAction.igOrganicSave", metaEvent: "ig_organic_save", maxRetentionDays: 365 },
+    {
+      id: "ig_organic_carousel_swipe",
+      labelKey: "engagementAction.igOrganicCarouselSwipe",
+      metaEvent: "ig_organic_carousel_swipe",
       maxRetentionDays: 365
     }
   ],
   video: [
     { id: "video_view", labelKey: "engagementAction.videoView", metaEvent: "video_view", maxRetentionDays: 365 },
+    { id: "video_view_3s", labelKey: "engagementAction.videoView3s", metaEvent: "video_view_3s", maxRetentionDays: 365 },
+    { id: "video_view_10s", labelKey: "engagementAction.videoView10s", metaEvent: "video_view_10s", maxRetentionDays: 365 },
+    { id: "video_view_15s", labelKey: "engagementAction.videoView15s", metaEvent: "video_view_15s", maxRetentionDays: 365 },
+    { id: "video_view_25", labelKey: "engagementAction.videoView25", metaEvent: "video_view_25", maxRetentionDays: 365 },
+    { id: "video_view_50", labelKey: "engagementAction.videoView50", metaEvent: "video_view_50", maxRetentionDays: 365 },
+    { id: "video_view_75", labelKey: "engagementAction.videoView75", metaEvent: "video_view_75", maxRetentionDays: 365 },
+    { id: "video_view_95", labelKey: "engagementAction.videoView95", metaEvent: "video_view_95", maxRetentionDays: 365 },
     {
-      id: "video_view_95",
-      labelKey: "engagementAction.videoView95",
-      metaEvent: "video_view_95",
+      id: "video_completed",
+      labelKey: "engagementAction.videoCompleted",
+      metaEvent: "video_completed",
       maxRetentionDays: 365
     }
   ],
@@ -83,9 +163,22 @@ export const ENGAGEMENT_ACTIONS: Record<
       labelKey: "engagementAction.leadSubmitted",
       metaEvent: "lead_generation_submitted",
       maxRetentionDays: 90
+    },
+    {
+      id: "lead_generation_dropoff",
+      labelKey: "engagementAction.leadDropoff",
+      metaEvent: "lead_generation_dropoff",
+      maxRetentionDays: 90
     }
   ]
 };
+
+export function findEngagementAction(
+  sourceType: EngagementSourceType,
+  metaEvent: string
+): EngagementActionDef | undefined {
+  return ENGAGEMENT_ACTIONS[sourceType]?.find((a) => a.metaEvent === metaEvent);
+}
 
 export const LOOKALIKE_RATIOS = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1] as const;
 
@@ -149,21 +242,34 @@ export function buildWebsiteAudienceRule(input: {
 
 export function buildEngagementAudienceRule(input: {
   sourceType: EngagementSourceType;
-  sourceId: string;
+  sourceIds: string[];
   eventName: string;
   retentionDays: number;
 }): Record<string, unknown> {
   const sourceDef = ENGAGEMENT_SOURCES.find((s) => s.id === input.sourceType);
   const eventSourceType = sourceDef?.eventSourceType ?? input.sourceType;
+  const ids = input.sourceIds.map((id) => id.trim()).filter(Boolean);
+  if (!ids.length) throw new Error("Selecione ao menos uma fonte de engajamento");
+
+  const action = findEngagementAction(input.sourceType, input.eventName);
+  const retention =
+    action?.fixedRetentionSeconds !== undefined
+      ? action.fixedRetentionSeconds
+      : retentionSeconds(
+          Math.min(input.retentionDays, action?.maxRetentionDays ?? input.retentionDays)
+        );
 
   return {
     inclusions: {
       operator: "or",
       rules: [
         {
-          event_sources: [{ id: input.sourceId, type: eventSourceType }],
-          retention_seconds: retentionSeconds(input.retentionDays),
-          event: { event_name: input.eventName }
+          event_sources: ids.map((id) => ({ id, type: eventSourceType })),
+          retention_seconds: retention,
+          filter: {
+            operator: "and",
+            filters: [{ field: "event", operator: "eq", value: input.eventName }]
+          }
         }
       ]
     }
@@ -229,21 +335,28 @@ export async function createEngagementCustomAudience(
   input: {
     name: string;
     sourceType: EngagementSourceType;
-    sourceId: string;
+    sourceIds: string[];
     eventName: string;
     retentionDays: number;
   }
 ): Promise<{ id: string }> {
-  const actions = ENGAGEMENT_ACTIONS[input.sourceType] ?? [];
-  const actionDef = actions.find((a) => a.metaEvent === input.eventName);
-  const maxDays = actionDef?.maxRetentionDays ?? 365;
-  const days = Math.min(Math.max(1, input.retentionDays), maxDays);
+  const actionDef = findEngagementAction(input.sourceType, input.eventName);
+  if (!actionDef) throw new Error("Ação de engajamento inválida");
+
+  const maxDays = actionDef.maxRetentionDays || 365;
+  const days =
+    actionDef.fixedRetentionSeconds !== undefined
+      ? 0
+      : Math.min(Math.max(1, input.retentionDays), maxDays);
+
   const rule = buildEngagementAudienceRule({ ...input, retentionDays: days });
+  const subtype = input.sourceType === "video" ? "VIDEO" : "ENGAGEMENT";
 
   return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, {
     name: input.name,
-    subtype: "ENGAGEMENT",
-    rule: JSON.stringify(rule)
+    subtype,
+    rule: JSON.stringify(rule),
+    prefill: "1"
   });
 }
 
@@ -370,6 +483,121 @@ export async function createLookalikeBatch(
   }
 
   return results;
+}
+
+export type EngagementVideoOption = {
+  id: string;
+  title: string;
+  picture?: string | null;
+  origin: "ad_account" | "page" | "instagram";
+  originId: string;
+  originLabel: string;
+};
+
+/** Vídeos elegíveis para público de engajamento (conta, páginas e Instagram). */
+export async function fetchEngagementVideoOptions(
+  accessToken: string,
+  adAccountId: string,
+  pages: Array<{ id: string; name: string }>,
+  instagramAccounts: Array<{ id: string; name: string }>
+): Promise<EngagementVideoOption[]> {
+  const out: EngagementVideoOption[] = [];
+  const seen = new Set<string>();
+
+  const push = (row: EngagementVideoOption) => {
+    if (seen.has(row.id)) return;
+    seen.add(row.id);
+    out.push(row);
+  };
+
+  try {
+    const adVideos = await fetchAdVideos(accessToken, adAccountId);
+    for (const v of adVideos) {
+      push({
+        id: v.id,
+        title: v.title?.trim() || v.id,
+        picture: v.picture ?? null,
+        origin: "ad_account",
+        originId: adAccountId,
+        originLabel: "ad_account"
+      });
+    }
+  } catch {
+    /* best-effort */
+  }
+
+  await Promise.all(
+    pages.map(async (p) => {
+      try {
+        const vids = await fetchPageVideos(accessToken, p.id);
+        for (const v of vids) {
+          push({
+            id: v.id,
+            title: v.title?.trim() || v.id,
+            picture: v.picture ?? null,
+            origin: "page",
+            originId: p.id,
+            originLabel: p.name
+          });
+        }
+      } catch {
+        /* skip page */
+      }
+    })
+  );
+
+  await Promise.all(
+    instagramAccounts.map(async (ig) => {
+      try {
+        const media = await fetchInstagramVideoMedia(accessToken, ig.id);
+        for (const m of media) {
+          const caption = m.caption?.trim();
+          push({
+            id: m.id,
+            title: caption ? caption.slice(0, 80) : m.id,
+            picture: m.thumbnail_url ?? null,
+            origin: "instagram",
+            originId: ig.id,
+            originLabel: ig.name
+          });
+        }
+      } catch {
+        /* skip ig */
+      }
+    })
+  );
+
+  return out.sort((a, b) => a.title.localeCompare(b.title));
+}
+
+export async function fetchEngagementLeadForms(
+  accessToken: string,
+  pages: Array<{ id: string; name: string }>
+): Promise<Array<{ id: string; name: string; pageId: string; pageName: string }>> {
+  const out: Array<{ id: string; name: string; pageId: string; pageName: string }> = [];
+  const seen = new Set<string>();
+
+  await Promise.all(
+    pages.map(async (p) => {
+      try {
+        const forms = await fetchLeadGenForms(accessToken, p.id);
+        for (const f of forms) {
+          if (!f.id || seen.has(f.id)) continue;
+          seen.add(f.id);
+          out.push({
+            id: f.id,
+            name: f.name?.trim() || f.id,
+            pageId: p.id,
+            pageName: p.name
+          });
+        }
+      } catch {
+        /* skip */
+      }
+    })
+  );
+
+  return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Parse rule JSON for display in detail modal */

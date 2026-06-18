@@ -909,10 +909,32 @@ export async function fetchAdImages(accessToken: string, adAccountId: string): P
 }
 
 export async function fetchAdVideos(accessToken: string, adAccountId: string): Promise<MetaAdVideo[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
   const fields = ["id", "title", "picture", "source"].join(",");
-  const path = `/${encodeURIComponent(adAccountId)}/advideos?fields=${encodeURIComponent(fields)}&limit=50`;
-  const data = await metaFetch<{ data: MetaAdVideo[] }>(path, accessToken);
-  return data.data ?? [];
+  const path = `/${encodeURIComponent(act)}/advideos?fields=${encodeURIComponent(fields)}&limit=100`;
+  return fetchGraphPaged<MetaAdVideo>(path, accessToken);
+}
+
+export async function fetchPageVideos(accessToken: string, pageId: string): Promise<MetaAdVideo[]> {
+  const path = `/${encodeURIComponent(pageId)}/videos?fields=${encodeURIComponent("id,title,picture")}&limit=100`;
+  return fetchGraphPaged<MetaAdVideo>(path, accessToken);
+}
+
+export type MetaInstagramMedia = {
+  id: string;
+  caption?: string;
+  media_type?: string;
+  thumbnail_url?: string;
+  permalink?: string;
+};
+
+export async function fetchInstagramVideoMedia(
+  accessToken: string,
+  igBusinessId: string
+): Promise<MetaInstagramMedia[]> {
+  const path = `/${encodeURIComponent(igBusinessId)}/media?fields=${encodeURIComponent("id,caption,media_type,thumbnail_url,permalink")}&limit=100`;
+  const rows = await fetchGraphPaged<MetaInstagramMedia>(path, accessToken);
+  return rows.filter((r) => r.media_type === "VIDEO");
 }
 
 const LEAD_ACTIONS = new Set([

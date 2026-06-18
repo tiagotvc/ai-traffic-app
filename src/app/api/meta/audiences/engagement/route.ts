@@ -5,7 +5,7 @@ import { getAppContext } from "@/lib/app-context";
 import { checkCustomAudienceTos, validateClientAdAccount } from "@/lib/audience-api-helpers";
 import {
   createEngagementCustomAudience,
-  ENGAGEMENT_ACTIONS,
+  findEngagementAction,
   type EngagementSourceType
 } from "@/lib/meta-audience-create";
 
@@ -14,9 +14,10 @@ const BodySchema = z.object({
   adAccountId: z.string().min(1),
   name: z.string().min(1),
   sourceType: z.enum(["page", "ig_business", "video", "lead"]),
-  sourceId: z.string().min(1),
+  sourceId: z.string().optional(),
+  sourceIds: z.array(z.string().min(1)).optional(),
   eventName: z.string().min(1),
-  retentionDays: z.number().int().min(1).max(365)
+  retentionDays: z.number().int().min(0).max(730)
 });
 
 export async function POST(req: Request) {
@@ -31,12 +32,33 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status });
   }
 
-  const actions = ENGAGEMENT_ACTIONS[body.sourceType as EngagementSourceType] ?? [];
-  const actionDef = actions.find((a) => a.metaEvent === body.eventName);
+  const actionDef = findEngagementAction(body.sourceType as EngagementSourceType, body.eventName);
   if (!actionDef) {
     return NextResponse.json({ ok: false, error: "Ação de engajamento inválida" }, { status: 400 });
   }
-  if (body.retentionDays > actionDef.maxRetentionDays) {
+
+  const sourceIds =
+    body.sourceIds?.length
+      ? body.sourceIds
+      : body.sourceId
+        ? [body.sourceId]
+        : [];
+
+  if (!sourceIds.length) {
+    return NextResponse.json(
+      { ok: false, error: "Selecione a página, conta, vídeo ou formulário de origem" },
+      { status: 400 }
+    );
+  }
+
+  if (actionDef.fixedRetentionSeconds === undefined && body.retentionDays < 1) {
+    return NextResponse.json({ ok: false, error: "Informe o período de retenção" }, { status: 400 });
+  }
+
+  if (
+    actionDef.fixedRetentionSeconds === undefined &&
+    body.retentionDays > actionDef.maxRetentionDays
+  ) {
     return NextResponse.json(
       {
         ok: false,
@@ -58,7 +80,7 @@ export async function POST(req: Request) {
     const created = await createEngagementCustomAudience(metaAccessToken, body.adAccountId, {
       name: body.name,
       sourceType: body.sourceType,
-      sourceId: body.sourceId,
+      sourceIds,
       eventName: body.eventName,
       retentionDays: body.retentionDays
     });
