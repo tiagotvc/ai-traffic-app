@@ -181,7 +181,8 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
 
   const filteredPages = effectiveBm
     ? availablePages.filter((p) =>
-        effectiveBm === "unassigned" ? !p.metaBusinessId : p.metaBusinessId === effectiveBm
+        !p.metaBusinessId ||
+        (effectiveBm === "unassigned" ? !p.metaBusinessId : p.metaBusinessId === effectiveBm)
       )
     : availablePages;
 

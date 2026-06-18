@@ -9,6 +9,7 @@ import {
 } from "@/lib/client-meta-settings";
 import { repositories } from "@/db/repositories";
 import { resolveClientMetaBusinessId } from "@/lib/client-meta-business";
+import { resolvePagesForAdAccount } from "@/lib/meta-publish-assets";
 import { listTenantPages } from "@/lib/meta-discover";
 import { fetchUserPages } from "@/lib/meta-graph";
 
@@ -74,22 +75,40 @@ export async function GET(
     : [];
   const clientBm = client ? resolveClientMetaBusinessId(client, linked) : null;
 
-  let availablePages: Array<{ id: string; name: string; metaBusinessId?: string | null }> =
-    (await listTenantPages(tenant.id, clientBm ?? undefined)).map((p) => ({
+  const primaryAdAccountId =
+    resolved.settings.defaultAdAccountId?.trim() || linked[0]?.metaAdAccountId || null;
+
+  let availablePages: Array<{ id: string; name: string; metaBusinessId?: string | null }> = [];
+
+  if (primaryAdAccountId && metaAccessToken) {
+    availablePages = (await resolvePagesForAdAccount({
+      tenantId: tenant.id,
+      adAccountId: primaryAdAccountId,
+      metaAccessToken
+    })).map((p) => ({
+      id: p.metaPageId,
+      name: p.name,
+      metaBusinessId: null
+    }));
+  }
+
+  if (!availablePages.length) {
+    availablePages = (await listTenantPages(tenant.id, clientBm ?? undefined)).map((p) => ({
       id: p.metaPageId,
       name: p.name,
       metaBusinessId: p.metaBusinessId
     }));
 
-  if (!availablePages.length && metaAccessToken) {
-    try {
-      availablePages = (await fetchUserPages(metaAccessToken)).map((p) => ({
-        id: p.id,
-        name: p.name ?? p.id,
-        metaBusinessId: null
-      }));
-    } catch {
-      availablePages = [];
+    if (!availablePages.length && metaAccessToken) {
+      try {
+        availablePages = (await fetchUserPages(metaAccessToken)).map((p) => ({
+          id: p.id,
+          name: p.name ?? p.id,
+          metaBusinessId: null
+        }));
+      } catch {
+        availablePages = [];
+      }
     }
   }
 

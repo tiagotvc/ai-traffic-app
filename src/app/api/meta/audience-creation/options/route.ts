@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 
 import { getAppContext } from "@/lib/app-context";
 import { validateClientAdAccount } from "@/lib/audience-api-helpers";
-import { listTenantPages } from "@/lib/meta-discover";
-import { getInventoryMap } from "@/lib/meta-ad-accounts";
 import {
   ENGAGEMENT_ACTIONS,
   ENGAGEMENT_SOURCES,
@@ -14,9 +12,12 @@ import {
 import {
   fetchAdAccountPixels,
   fetchCustomConversions,
-  fetchInstagramAccountsForAdAccount,
   STANDARD_CONVERSION_EVENTS
 } from "@/lib/meta-graph";
+import {
+  resolveInstagramForAdAccount,
+  resolvePagesForAdAccount
+} from "@/lib/meta-publish-assets";
 
 export async function GET(req: Request) {
   const { tenant, metaAccessToken } = await getAppContext();
@@ -41,16 +42,18 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
 
-  const inv = await getInventoryMap(tenant.id);
-  const bmFilter = inv.get(adAccountId)?.metaBusinessId ?? undefined;
-  const pageRows = await listTenantPages(tenant.id, bmFilter);
-  const pages = pageRows.map((p) => ({ id: p.metaPageId, name: p.name }));
+  const publishPages = await resolvePagesForAdAccount({
+    tenantId: tenant.id,
+    adAccountId,
+    metaAccessToken
+  });
+  const pages = publishPages.map((p) => ({ id: p.metaPageId, name: p.name }));
 
-  const [pixels, instagramAccounts, customConversions, apps] = await Promise.all([
+  const [pixels, customConversions, apps, instagramAccounts] = await Promise.all([
     fetchAdAccountPixels(metaAccessToken, adAccountId),
-    fetchInstagramAccountsForAdAccount(metaAccessToken, adAccountId),
     fetchCustomConversions(metaAccessToken, adAccountId),
-    fetchAdAccountApps(metaAccessToken, adAccountId)
+    fetchAdAccountApps(metaAccessToken, adAccountId),
+    resolveInstagramForAdAccount({ metaAccessToken, adAccountId, pages: publishPages })
   ]);
 
   const websiteEvents = [
@@ -68,7 +71,7 @@ export async function GET(req: Request) {
     pages,
     instagramAccounts: instagramAccounts.map((i) => ({
       id: i.id,
-      name: i.username?.trim() || i.id
+      name: i.username
     })),
     apps: apps.map((a) => ({ id: a.id, name: a.name?.trim() || a.id })),
     websiteEvents,

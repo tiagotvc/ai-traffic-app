@@ -452,6 +452,54 @@ export async function fetchUserPages(accessToken: string): Promise<MetaFacebookP
   return fetchGraphPaged<MetaFacebookPage>("/me/accounts?fields=id,name&limit=100", accessToken);
 }
 
+/** Páginas que a conta de anúncios pode promover (live Graph API). */
+export async function fetchPagesForAdAccount(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaFacebookPage[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  for (const edge of ["assigned_pages", "promote_pages"] as const) {
+    try {
+      const rows = await fetchGraphPaged<MetaFacebookPage>(
+        `/${encodeURIComponent(act)}/${edge}?fields=id,name&limit=100`,
+        accessToken
+      );
+      if (rows.length) return rows;
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(`[meta-graph] ${edge} for ${act}:`, err);
+      }
+    }
+  }
+  return [];
+}
+
+/** Instagram vinculado às páginas (fallback quando instagram_accounts da conta vem vazio). */
+export async function fetchInstagramFromPages(
+  accessToken: string,
+  pageIds: string[]
+): Promise<MetaInstagramAccount[]> {
+  const seen = new Map<string, MetaInstagramAccount>();
+  for (const pageId of pageIds.slice(0, 25)) {
+    if (!pageId.trim()) continue;
+    try {
+      const data = await metaFetch<{
+        connected_instagram_account?: { id?: string; username?: string };
+      }>(
+        `/${encodeURIComponent(pageId)}?fields=${encodeURIComponent("connected_instagram_account{id,username}")}`,
+        accessToken
+      );
+      const ig = data.connected_instagram_account;
+      if (ig?.id && !seen.has(ig.id)) {
+        seen.set(ig.id, { id: ig.id, username: ig.username });
+      }
+    } catch {
+      /* skip page */
+    }
+  }
+  return [...seen.values()];
+}
+
 // ---- Targeting search (/search) ----
 
 export type MetaInterest = { id: string; name: string; audienceSize?: number; path?: string[] };

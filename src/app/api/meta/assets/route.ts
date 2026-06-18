@@ -3,13 +3,16 @@ import { NextResponse } from "next/server";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { getInventoryMap } from "@/lib/meta-ad-accounts";
-import { listTenantInventory, listTenantPages } from "@/lib/meta-discover";
+import { listTenantInventory } from "@/lib/meta-discover";
 import {
-  fetchAdAccountPixels,
+  resolveInstagramForAdAccount,
+  resolvePagesForAdAccount
+} from "@/lib/meta-publish-assets";
+import {
   fetchAdImages,
   fetchAdVideos,
+  fetchAdAccountPixels,
   fetchCustomConversions,
-  fetchInstagramAccountsForAdAccount,
   STANDARD_CONVERSION_EVENTS
 } from "@/lib/meta-graph";
 
@@ -53,8 +56,11 @@ export async function GET(req: Request) {
   const bmFilter = inv.get(adAccountId)?.metaBusinessId ?? undefined;
 
   const adAccounts = await listTenantInventory(tenant.id, bmFilter);
-  const pageRows = await listTenantPages(tenant.id, bmFilter);
-  const pages = pageRows.map((p) => ({ metaPageId: p.metaPageId, name: p.name }));
+  const pages = await resolvePagesForAdAccount({
+    tenantId: tenant.id,
+    adAccountId,
+    metaAccessToken
+  });
 
   let pixels: Array<{ id: string; name: string }> = [];
   let instagramAccounts: Array<{ id: string; username: string }> = [];
@@ -65,13 +71,13 @@ export async function GET(req: Request) {
   if (metaAccessToken) {
     const [pixelRows, igRows, imageRows, videoRows, conversionRows] = await Promise.all([
       fetchAdAccountPixels(metaAccessToken, adAccountId),
-      fetchInstagramAccountsForAdAccount(metaAccessToken, adAccountId),
+      resolveInstagramForAdAccount({ metaAccessToken, adAccountId, pages }),
       fetchAdImages(metaAccessToken, adAccountId),
       fetchAdVideos(metaAccessToken, adAccountId),
       fetchCustomConversions(metaAccessToken, adAccountId)
     ]);
     pixels = pixelRows.map((p) => ({ id: p.id, name: p.name?.trim() || p.id }));
-    instagramAccounts = igRows.map((i) => ({ id: i.id, username: i.username?.trim() || i.id }));
+    instagramAccounts = igRows;
     const imageAssets = imageRows
       .filter((img) => !!img.hash)
       .map((img) => ({

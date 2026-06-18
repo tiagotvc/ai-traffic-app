@@ -21,18 +21,22 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
   const [name, setName] = useState("");
 
   useEffect(() => {
+    void loadOptions();
+  }, [ctx.clientSlug, ctx.adAccountId]);
+
+  function loadOptions() {
     const qs = new URLSearchParams({
       clientId: ctx.clientSlug,
       adAccountId: ctx.adAccountId,
       type: "engagement"
     });
-    fetch(`/api/meta/audience-creation/options?${qs}`)
+    return fetch(`/api/meta/audience-creation/options?${qs}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) setOptions(j as AudienceOptions);
       })
       .catch(() => ctx.onError(t("optionsLoadFailed")));
-  }, [ctx, t]);
+  }
 
   const actions = options?.engagementActions?.[sourceType] ?? [];
   const maxDays = actions.find((a) => a.metaEvent === eventName)?.maxRetentionDays ?? 365;
@@ -145,7 +149,16 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
               </select>
             </div>
           ) : sourceType === "page" || sourceType === "ig_business" ? (
-            <p className="text-sm text-amber-700">{t("noEngagementAssets")}</p>
+            <div className="text-sm text-amber-700">
+              <p>{t("noEngagementAssets")}</p>
+              <button
+                type="button"
+                onClick={() => void loadOptions()}
+                className="mt-1 text-xs font-medium text-violet-700 underline"
+              >
+                {t("engagementRecheck")}
+              </button>
+            </div>
           ) : null}
 
           <div>

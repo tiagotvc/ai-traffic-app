@@ -1160,6 +1160,9 @@
     "inheritedFromAdset": "Herdado do conjunto",
     "unlockInheritedIdentity": "Alterar identidade manualmente",
     "identitySection": "Identidade",
+    "identityPagesEmpty": "Nenhuma página encontrada para esta conta de anúncios. Verifique o vínculo na Meta ou atualize os ativos.",
+    "identityInstagramEmpty": "Nenhum Instagram vinculado a esta conta — o anúncio pode usar só a Página do Facebook.",
+    "identityRecheck": "Verificar novamente",
     "destinationSection": "Destino",
     "destinationType": "Tipo de destino",
     "destWebsite": "URL do site",
@@ -1600,6 +1603,7 @@
     "selectSourceAsset": "Página ou conta",
     "selectEngagementAction": "Ação de engajamento",
     "noEngagementAssets": "Nenhuma página ou Instagram vinculado a esta conta.",
+    "engagementRecheck": "Verificar novamente",
     "engagementSource": {
       "page": "Página do Facebook",
       "ig": "Instagram",

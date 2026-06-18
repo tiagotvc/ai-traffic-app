@@ -21,7 +21,7 @@ export function AdStep() {
   const tAds = useTranslations("ads");
   const locale = useLocale();
   const { payload, updatePayload, addAdMode } = useCampaignDraft();
-  const { assets, pages, instagramAccounts, pixels } = usePublishAssets(
+  const { assets, pages, instagramAccounts, pixels, loadAssets } = usePublishAssets(
     payload.clientSlug,
     payload.adAccountId
   );
@@ -358,6 +358,18 @@ export function AdStep() {
           </div>
         ) : (
           <>
+            {!pages.length && payload.adAccountId ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <p>{t("identityPagesEmpty")}</p>
+                <button
+                  type="button"
+                  onClick={() => void loadAssets(payload.adAccountId)}
+                  className="mt-1 font-medium text-violet-700 underline"
+                >
+                  {t("identityRecheck")}
+                </button>
+              </div>
+            ) : null}
             <FormField label={tAds("page")}>
               <select
                 value={ad.pageId}
@@ -389,6 +401,8 @@ export function AdStep() {
                   ))}
                 </select>
               </FormField>
+            ) : pages.length > 0 && payload.adAccountId ? (
+              <p className="text-xs text-amber-700">{t("identityInstagramEmpty")}</p>
             ) : null}
             {pixels.length > 0 && payload.objective === "sales" ? (
               <FormField label={tAds("pixel")}>

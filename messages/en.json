@@ -1160,6 +1160,9 @@
     "inheritedFromAdset": "Inherited from ad set",
     "unlockInheritedIdentity": "Change identity manually",
     "identitySection": "Identity",
+    "identityPagesEmpty": "No pages found for this ad account. Check the link in Meta or refresh assets.",
+    "identityInstagramEmpty": "No Instagram linked to this account — the ad can still run with the Facebook Page only.",
+    "identityRecheck": "Check again",
     "destinationSection": "Destination",
     "destinationType": "Destination type",
     "destWebsite": "Website URL",
@@ -1600,6 +1603,7 @@
     "selectSourceAsset": "Page or account",
     "selectEngagementAction": "Engagement action",
     "noEngagementAssets": "No page or Instagram linked to this account.",
+    "engagementRecheck": "Check again",
     "engagementSource": {
       "page": "Facebook Page",
       "ig": "Instagram",
