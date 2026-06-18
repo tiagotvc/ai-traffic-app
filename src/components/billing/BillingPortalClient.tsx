@@ -39,6 +39,8 @@ type EventRow = {
 
 type PortalTab = "plan" | "limits" | "billing" | "events";
 
+export type { PortalTab };
+
 const NEXT_PLAN_SLUG: Record<string, string> = {
   free: "basic",
   basic: "advanced",
@@ -47,20 +49,36 @@ const NEXT_PLAN_SLUG: Record<string, string> = {
 
 const VALID_TABS = new Set<PortalTab>(["plan", "limits", "billing", "events"]);
 
-function parseTab(raw: string | null): PortalTab {
+export function parseBillingTab(raw: string | null): PortalTab {
   if (raw && VALID_TABS.has(raw as PortalTab)) return raw as PortalTab;
   return "plan";
 }
 
-export function BillingPortalClient() {
+function parseTab(raw: string | null): PortalTab {
+  return parseBillingTab(raw);
+}
+
+export function BillingPortalClient({
+  embedded = false,
+  basePath = "/billing",
+  activeTab: controlledTab,
+  onActiveTabChange
+}: {
+  embedded?: boolean;
+  basePath?: string;
+  activeTab?: PortalTab;
+  onActiveTabChange?: (tab: PortalTab) => void;
+} = {}) {
   const t = useTranslations("billingPage");
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<PortalTab>(() =>
+  const [internalTab, setInternalTab] = useState<PortalTab>(() =>
     parseTab(searchParams.get("tab"))
   );
+  const activeTab = controlledTab ?? internalTab;
+  const setActiveTab = onActiveTabChange ?? setInternalTab;
   const [sub, setSub] = useState<{
     status: string;
     billingCycle: string;
@@ -121,13 +139,15 @@ export function BillingPortalClient() {
 
   useEffect(() => {
     const tab = parseTab(searchParams.get("tab"));
-    setActiveTab(tab);
+    if (VALID_TABS.has(tab)) {
+      setActiveTab(tab);
+    }
     const invoiceId = searchParams.get("invoice");
     if (invoiceId) {
       setActiveTab("billing");
       setExpandedInvoiceId(invoiceId);
     }
-  }, [searchParams]);
+  }, [searchParams, setActiveTab]);
 
   function selectTab(tab: PortalTab) {
     setActiveTab(tab);
@@ -137,7 +157,7 @@ export function BillingPortalClient() {
       params.delete("invoice");
       setExpandedInvoiceId(null);
     }
-    router.replace(`/billing?${params.toString()}`, { scroll: false });
+    router.replace(`${basePath}?${params.toString()}`, { scroll: false });
   }
 
   function toggleInvoice(id: string) {
@@ -148,7 +168,7 @@ export function BillingPortalClient() {
     params.set("tab", "billing");
     if (next) params.set("invoice", next);
     else params.delete("invoice");
-    router.replace(`/billing?${params.toString()}`, { scroll: false });
+    router.replace(`${basePath}?${params.toString()}`, { scroll: false });
   }
 
   async function openStripePortal() {
@@ -201,54 +221,9 @@ export function BillingPortalClient() {
     { key: "events" as const, label: t("tabEvents") }
   ];
 
-  return (
-    <div className="w-full space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
-            {t("portalTitle")}
-          </h1>
-          <p className="mt-0.5 text-xs text-slate-500">{t("portalSubtitle")}</p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-          {canManageBilling && sub?.paymentProvider === "stripe" && isPaidPlan ? (
-            <button
-              type="button"
-              onClick={openStripePortal}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
-            >
-              {t("updatePaymentMethod")}
-            </button>
-          ) : null}
-          <Link
-            href="/billing/plans"
-            className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-500"
-          >
-            {t("viewPlans")}
-          </Link>
-        </div>
-      </div>
-
-      {message ? (
-        <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
-          {message}
-        </div>
-      ) : null}
-
-      {sub?.status === "past_due" || sub?.status === "suspended" ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          {sub.status === "suspended" ? t("statusSuspended") : t("statusPastDue")}
-          <Link href="/billing/plans" className="ml-2 font-semibold text-violet-700 underline">
-            {t("regularize")}
-          </Link>
-        </div>
-      ) : null}
-
-      <div className="space-y-4">
-        <PageTabs tabs={tabs} active={activeTab} onChange={selectTab} />
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          {activeTab === "plan" ? (
+  const panels = (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      {activeTab === "plan" ? (
             <div className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
                 <BillingPlanCard
@@ -363,7 +338,78 @@ export function BillingPortalClient() {
               </ul>
             </div>
           ) : null}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="space-y-4">
+        {message ? (
+          <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+            {message}
+          </div>
+        ) : null}
+
+        {sub?.status === "past_due" || sub?.status === "suspended" ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            {sub.status === "suspended" ? t("statusSuspended") : t("statusPastDue")}
+            <Link href="/billing/plans" className="ml-2 font-semibold text-violet-700 underline">
+              {t("regularize")}
+            </Link>
+          </div>
+        ) : null}
+
+        {panels}
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+            {t("portalTitle")}
+          </h1>
+          <p className="mt-0.5 text-xs text-slate-500">{t("portalSubtitle")}</p>
         </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          {canManageBilling && sub?.paymentProvider === "stripe" && isPaidPlan ? (
+            <button
+              type="button"
+              onClick={openStripePortal}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
+            >
+              {t("updatePaymentMethod")}
+            </button>
+          ) : null}
+          <Link
+            href="/billing/plans"
+            className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-500"
+          >
+            {t("viewPlans")}
+          </Link>
+        </div>
+      </div>
+
+      {message ? (
+        <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+          {message}
+        </div>
+      ) : null}
+
+      {sub?.status === "past_due" || sub?.status === "suspended" ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          {sub.status === "suspended" ? t("statusSuspended") : t("statusPastDue")}
+          <Link href="/billing/plans" className="ml-2 font-semibold text-violet-700 underline">
+            {t("regularize")}
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="space-y-4">
+        <PageTabs tabs={tabs} active={activeTab} onChange={selectTab} />
+        {panels}
       </div>
     </div>
   );

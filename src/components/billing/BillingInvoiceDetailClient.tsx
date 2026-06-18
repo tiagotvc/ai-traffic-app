@@ -10,7 +10,7 @@ export function BillingInvoiceDetailClient({ invoiceId }: { invoiceId: string })
   const t = useTranslations("billingPage");
 
   useEffect(() => {
-    router.replace(`/billing?tab=billing&invoice=${invoiceId}`);
+    router.replace(`/settings?tab=billing&invoice=${invoiceId}`);
   }, [invoiceId, router]);
 
   return (

@@ -1,9 +1,12 @@
 "use client";
 
+import { AgencyBrainClientGate } from "@/components/agency-brain/AgencyBrainClientGate";
 import { ExperimentsContent } from "@/components/agency-brain/ExperimentsContent";
-import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
 
 export default function ExperimentsPage() {
-  const { clientSlug } = useAgencyBrainClient();
-  return <ExperimentsContent clientId={clientSlug} />;
+  return (
+    <AgencyBrainClientGate>
+      {(clientSlug) => <ExperimentsContent clientId={clientSlug} />}
+    </AgencyBrainClientGate>
+  );
 }

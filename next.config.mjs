@@ -3,6 +3,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  devIndicators: false,
   serverExternalPackages: ["typeorm", "pg", "reflect-metadata"],
   experimental: {
     serverMinification: false

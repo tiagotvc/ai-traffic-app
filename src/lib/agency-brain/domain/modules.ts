@@ -6,6 +6,7 @@ export const AGENCY_BRAIN_MODULES = [
   "dna",
   "timeline",
   "experiments",
+  "labs",
   "action-plans",
   "chat"
 ] as const;
@@ -21,7 +22,9 @@ export type AgencyBrainModuleMeta = {
   navPillar: AgencyBrainNavPillar;
   phase: 1 | 2 | 3 | 4 | 5 | 6;
   featureFlag?: keyof AgencyBrainFeatureFlags;
-  navAccent?: "cyan";
+  navAccent?: "pink";
+  /** Visible in nav but not navigable (future release). */
+  comingSoon?: boolean;
 };
 
 export type AgencyBrainFeatureFlags = {
@@ -53,6 +56,14 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     featureFlag: "allowAgencyBrainHypotheses"
   },
   {
+    id: "dna",
+    route: "/agency-brain/dna",
+    navKey: "agencyBrainDna",
+    navPillar: "memory",
+    phase: 1,
+    featureFlag: "allowAgencyBrainDna"
+  },
+  {
     id: "suggestions",
     route: "/agency-brain/suggestions",
     navKey: "agencyBrainActionCenter",
@@ -60,12 +71,12 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     phase: 1
   },
   {
-    id: "dna",
-    route: "/agency-brain/dna",
-    navKey: "agencyBrainDna",
-    navPillar: "memory",
-    phase: 1,
-    featureFlag: "allowAgencyBrainDna"
+    id: "action-plans",
+    route: "/agency-brain/action-plans",
+    navKey: "agencyBrainActionPlans",
+    navPillar: "actions",
+    phase: 4,
+    featureFlag: "allowAgencyBrainActionPlans"
   },
   {
     id: "timeline",
@@ -76,21 +87,14 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     featureFlag: "allowAgencyBrainTimeline"
   },
   {
-    id: "experiments",
-    route: "/agency-brain/experiments",
-    navKey: "agencyBrainExperiments",
+    id: "labs",
+    route: "/agency-brain/labs",
+    navKey: "agencyBrainLabs",
     navPillar: "analysis",
     phase: 3,
     featureFlag: "allowAgencyBrainExperiments",
-    navAccent: "cyan"
-  },
-  {
-    id: "action-plans",
-    route: "/agency-brain/action-plans",
-    navKey: "agencyBrainActionPlans",
-    navPillar: "actions",
-    phase: 4,
-    featureFlag: "allowAgencyBrainActionPlans"
+    navAccent: "pink",
+    comingSoon: true
   },
   {
     id: "chat",

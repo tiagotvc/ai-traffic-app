@@ -1,9 +1,12 @@
 "use client";
 
 import { ActionPlansContent } from "@/components/agency-brain/ActionPlansContent";
-import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
+import { AgencyBrainClientGate } from "@/components/agency-brain/AgencyBrainClientGate";
 
 export default function ActionPlansPage() {
-  const { clientSlug } = useAgencyBrainClient();
-  return <ActionPlansContent clientId={clientSlug} />;
+  return (
+    <AgencyBrainClientGate>
+      {(clientSlug) => <ActionPlansContent clientId={clientSlug} />}
+    </AgencyBrainClientGate>
+  );
 }

@@ -8,6 +8,7 @@ import { ClientReadinessChecklist } from "@/components/ClientReadinessChecklist"
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { Link, useRouter } from "@/i18n/navigation";
+import { CLIENT_NICHE_OPTIONS } from "@/lib/client-niches";
 import { formatBRL, formatRoas } from "@/lib/format";
 
 type Goals = {
@@ -57,17 +58,6 @@ type BusinessOption = {
 };
 
 type Feedback = { type: "success" | "error"; text: string };
-
-const CLIENT_NICHE_OPTIONS = [
-  { value: "", labelKey: "nicheUnset" },
-  { value: "clinica", labelKey: "nicheClinica" },
-  { value: "ecommerce", labelKey: "nicheEcommerce" },
-  { value: "infoproduto", labelKey: "nicheInfoproduto" },
-  { value: "imobiliaria", labelKey: "nicheImobiliaria" },
-  { value: "saas", labelKey: "nicheSaas" },
-  { value: "apps_games", labelKey: "nicheAppsGames" },
-  { value: "outro", labelKey: "nicheOutro" }
-] as const;
 
 const ONBOARDING_KEY = "traffic-ai-client-onboarding-dismissed";
 

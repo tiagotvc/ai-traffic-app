@@ -2,6 +2,8 @@
 
 Traffic IA product module. Accumulates client knowledge: learnings, hypotheses, suggestions, DNA, timeline, experiments, action plans, chat.
 
+**Labs (Market Research Engine):** premium module that **replaces** the legacy Laboratório (manual A/B). Full spec: [labs/README.md](./labs/README.md).
+
 ## Module map
 
 | Module | Route | Phase | Feature flag |
@@ -11,7 +13,8 @@ Traffic IA product module. Accumulates client knowledge: learnings, hypotheses, 
 | Sugestões | `/agency-brain/suggestions` | 1 | `allowCreativeMemoryAi` |
 | DNA | `/agency-brain/dna` | 1 | `allowAgencyBrainDna` |
 | Timeline | `/agency-brain/timeline` | 2 | `allowAgencyBrainTimeline` |
-| Laboratório | `/agency-brain/experiments` | 3 | `allowAgencyBrainExperiments` |
+| **Labs** | `/agency-brain/labs` | 3 | `allowLabs` (evolve from `allowAgencyBrainExperiments`) |
+| Laboratório (legacy) | `/agency-brain/experiments` | 3 | redirect → Labs |
 | Plano de ação | `/agency-brain/action-plans` | 4 | `allowAgencyBrainActionPlans` |
 | Chat | `/agency-brain/chat` | 5 | `allowAgencyBrainChat` |
 
@@ -20,13 +23,17 @@ Types: `src/lib/agency-brain/domain/`
 ## Data model
 
 - `client_learnings` — facts (approved = memory)
-- `client_hypotheses` — unproven patterns
+- `client_hypotheses` — unproven patterns; enriched by Labs merge (`source: labs`)
 - `client_action_suggestions` — actionable items with priority + links
 - `client_dna` — structured works/doesn't work per category
 - `client_timeline_events` — aggregated events (Phase 2+)
-- `client_experiments` — A/B tests (Phase 3+)
+- `client_experiments` — **legacy** A/B tests; historical data retained
 - `client_action_plans` + items (Phase 4+)
 - `clients.niche` — market segment (Phase 6)
+
+### Labs data (Supabase, separate store)
+
+Persisted in Supabase `labs_*` tables — see [labs/03-data-model.md](./labs/03-data-model.md). Merge to Agency Brain via `agency.brain.merge`.
 
 ## Confidence score
 

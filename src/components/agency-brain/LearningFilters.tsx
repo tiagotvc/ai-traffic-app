@@ -118,8 +118,9 @@ export function LearningFilters({
             className="ui-select !w-auto !py-1 text-xs"
             value={clientSlug ?? ""}
             onChange={(e) => onClientChange(e.target.value)}
-            aria-label={t("clientLabel")}
+            aria-label={t("clientPickerLabel")}
           >
+            <option value="">{t("clientPickerPlaceholder")}</option>
             {clients.map((c) => (
               <option key={c.id} value={c.slug}>
                 {c.name}

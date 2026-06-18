@@ -1,9 +1,12 @@
 "use client";
 
+import { AgencyBrainClientGate } from "@/components/agency-brain/AgencyBrainClientGate";
 import { ChatContent } from "@/components/agency-brain/ChatContent";
-import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
 
 export default function ChatPage() {
-  const { clientSlug } = useAgencyBrainClient();
-  return <ChatContent clientId={clientSlug} />;
+  return (
+    <AgencyBrainClientGate>
+      {(clientSlug) => <ChatContent clientId={clientSlug} />}
+    </AgencyBrainClientGate>
+  );
 }

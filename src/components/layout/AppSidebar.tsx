@@ -5,15 +5,14 @@ import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 
 import { AgencyBrainNavGroup, AgencyBrainNavLocked } from "@/components/layout/AgencyBrainNavGroup";
-import { ProfileNavGroup } from "@/components/layout/ProfileNavGroup";
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 import { isNavItemAllowed, type GatedNavId } from "@/lib/billing/nav-permissions";
 import type { PlanLimits } from "@/lib/billing/types";
 import { FREE_LIMITS } from "@/lib/billing/types";
 import { Link } from "@/i18n/navigation";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { SignOutButton } from "@/components/SignOutButton";
+import { SidebarFooter } from "@/components/layout/SidebarFooter";
+import { sidebarItemClasses } from "@/components/layout/sidebar-nav-styles";
 
 type NavItem = {
   id: string;
@@ -73,6 +72,8 @@ export function AppSidebar({
   allowCreativeMemoryAi = true,
   agencyBrainFeatures,
   planLimits = FREE_LIMITS,
+  planUsage,
+  planLimitsReady = true,
   isPlatformAdmin = false,
   collapsed,
   onToggleCollapse,
@@ -88,6 +89,7 @@ export function AppSidebar({
   allowCreativeMemoryAi?: boolean;
   agencyBrainFeatures?: AgencyBrainFeatureFlags;
   planLimits?: PlanLimits;
+  planLimitsReady?: boolean;
   isPlatformAdmin?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -199,7 +201,7 @@ export function AppSidebar({
       >
         {items.map((item) => {
           const active = isActive(item);
-          const gated = item.gate && !isNavItemAllowed(item.gate, planLimits);
+          const gated = planLimitsReady && item.gate && !isNavItemAllowed(item.gate, planLimits);
 
           if (gated) {
             return (
@@ -212,34 +214,27 @@ export function AppSidebar({
                   onNavigate={onNavigate}
                 />
                 {item.id === "creatives" ? (
-                  planLimits.allowCreativeMemoryAi ? (
+                  planLimitsReady && !planLimits.allowCreativeMemoryAi ? (
+                    <AgencyBrainNavLocked collapsed={effectiveCollapsed} onNavigate={onNavigate} />
+                  ) : (
                     <AgencyBrainNavGroup
                       collapsed={effectiveCollapsed}
                       agencyBrainFeatures={brainFeatures}
                       pathname={pathname}
+                      permissionsReady={planLimitsReady}
+                      isPlatformAdmin={isPlatformAdmin}
                       onNavigate={onNavigate}
                     />
-                  ) : (
-                    <AgencyBrainNavLocked collapsed={effectiveCollapsed} onNavigate={onNavigate} />
                   )
                 ) : null}
               </Fragment>
             );
           }
 
-          const cls = `relative flex w-full items-center rounded-xl transition ${
-            effectiveCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2 text-[13px]"
-          } ${
-            active
-              ? "bg-white/10 font-semibold text-white"
-              : "font-medium text-slate-400 hover:bg-white/5 hover:text-white"
-          }`;
+          const cls = sidebarItemClasses(active, effectiveCollapsed);
 
           const inner = (
             <>
-              {active && !effectiveCollapsed ? (
-                <span className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-violet-600" />
-              ) : null}
               {item.icon}
               {!effectiveCollapsed ? (
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left">
@@ -294,71 +289,31 @@ export function AppSidebar({
             <Fragment key={item.id}>
               {navItem}
               {item.id === "creatives" ? (
-                planLimits.allowCreativeMemoryAi ? (
+                planLimitsReady && !planLimits.allowCreativeMemoryAi ? (
+                  <AgencyBrainNavLocked collapsed={effectiveCollapsed} onNavigate={onNavigate} />
+                ) : (
                   <AgencyBrainNavGroup
                     collapsed={effectiveCollapsed}
                     agencyBrainFeatures={brainFeatures}
                     pathname={pathname}
+                    permissionsReady={planLimitsReady}
+                    isPlatformAdmin={isPlatformAdmin}
                     onNavigate={onNavigate}
                   />
-                ) : (
-                  <AgencyBrainNavLocked collapsed={effectiveCollapsed} onNavigate={onNavigate} />
                 )
               ) : null}
             </Fragment>
           );
         })}
-        <ProfileNavGroup
-          collapsed={effectiveCollapsed}
-          pathname={pathname}
-          isPlatformAdmin={isPlatformAdmin}
-          onNavigate={onNavigate}
-        />
       </nav>
 
-      {/* Footer — sempre colado embaixo, mesmo fundo */}
-      <div
-        className={`relative shrink-0 overflow-visible border-t border-white/10 bg-[#0f111a] ${
-          collapsed ? "p-2" : "p-3"
-        }`}
-      >
-        <div
-          className={`flex items-center ${effectiveCollapsed ? "justify-center py-2" : "gap-2.5 px-1 py-2"}`}
-          title={effectiveCollapsed ? userName : undefined}
-        >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-600 text-xs font-bold text-white">
-            {userName.charAt(0).toUpperCase()}
-          </div>
-          {!effectiveCollapsed ? (
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-white">{userName}</div>
-              <div className="truncate text-[11px] text-slate-500">
-                {planName ?? t("planTitle")}
-                {subscriptionStatus === "past_due" || subscriptionStatus === "suspended" ? (
-                  <span className="ml-1 text-amber-400">!</span>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {!effectiveCollapsed ? (
-          <Link
-            href="/settings"
-            className="mt-1 block rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-white/5 hover:text-slate-300"
-            onClick={() => onNavigate?.()}
-          >
-            {t("help")}
-          </Link>
-        ) : null}
-
-        <div
-          className={`space-y-0.5 overflow-visible border-white/10 ${collapsed ? "mt-2 border-t pt-2" : "mt-2 border-t pt-2"}`}
-        >
-          <LanguageSwitcher variant="sidebar" collapsed={effectiveCollapsed} />
-          <SignOutButton variant="sidebar" collapsed={effectiveCollapsed} />
-        </div>
-      </div>
+      <SidebarFooter
+        userName={userName}
+        planName={planName}
+        subscriptionStatus={subscriptionStatus}
+        collapsed={effectiveCollapsed}
+        onNavigate={onNavigate}
+      />
     </aside>
   );
 }
