@@ -8,7 +8,7 @@ import { FormField } from "@/components/ui/FormField";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import type { CampaignDraftPayload } from "@/lib/campaign-draft";
-import { getActiveAdset, parseCampaignDraftPayload } from "@/lib/campaign-draft";
+import { parseCampaignDraftPayload } from "@/lib/campaign-draft";
 
 const SPECIAL_CATEGORIES = [
   "CREDIT",
@@ -40,31 +40,31 @@ export function CampaignStep() {
   }, [defaultAdAccountId, payload.adAccountId, updatePayload]);
 
   useEffect(() => {
-    const adset = getActiveAdset(payload);
-    if (defaultTargeting && !adset.targeting.locations.length) {
-      updatePayload((p) => {
-        const activeId = p.activeAdsetId ?? p.adsets[0]?.id;
-        return {
-          ...p,
-          adsets: p.adsets.map((a) =>
-            a.id === activeId
-              ? {
-                  ...a,
-                  targeting: {
-                    ...a.targeting,
-                    locations: defaultTargeting.locations,
-                    ageMin: defaultTargeting.ageMin,
-                    ageMax: defaultTargeting.ageMax,
-                    customAudienceIds: defaultTargeting.includeAud,
-                    excludedAudienceIds: defaultTargeting.excludeAud
-                  }
+    if (!defaultTargeting?.locations.length) return;
+    updatePayload((p) => {
+      const activeId = p.activeAdsetId ?? p.adsets[0]?.id;
+      const adset = p.adsets.find((a) => a.id === activeId) ?? p.adsets[0];
+      if (!adset || adset.targeting.locations.length) return p;
+      return {
+        ...p,
+        adsets: p.adsets.map((a) =>
+          a.id === activeId
+            ? {
+                ...a,
+                targeting: {
+                  ...a.targeting,
+                  locations: defaultTargeting.locations,
+                  ageMin: defaultTargeting.ageMin,
+                  ageMax: defaultTargeting.ageMax,
+                  customAudienceIds: defaultTargeting.includeAud,
+                  excludedAudienceIds: defaultTargeting.excludeAud
                 }
-              : a
-          )
-        };
-      });
-    }
-  }, [defaultTargeting, payload, updatePayload]);
+              }
+            : a
+        )
+      };
+    });
+  }, [defaultTargeting, updatePayload]);
 
   useEffect(() => {
     if (!payload.copyFromCampaignEnabled || !payload.clientSlug) {

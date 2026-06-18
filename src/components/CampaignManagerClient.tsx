@@ -12,6 +12,8 @@ import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
 import { campaignAdsHref, rememberAdset } from "@/lib/campaign-navigation";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
+import { useCampaignPeriod } from "@/hooks/useCampaignPeriod";
+import { formatPeriodLabel, periodStateToParsed } from "@/lib/report-period";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
@@ -366,8 +368,10 @@ export function CampaignManagerClient({
   seedRow?: CampaignSeedRow;
 }) {
   const t = useTranslations("campaignManager");
+  const tPeriod = useTranslations("period");
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
+  const urlPeriod = useCampaignPeriod();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [adsets, setAdsets] = useState<AdSetRow[]>([]);
   const [campaignPreset, setCampaignPreset] = useState("default");
@@ -387,7 +391,35 @@ export function CampaignManagerClient({
   const [chartLoading, setChartLoading] = useState(true);
   const [budgetDrawerOpen, setBudgetDrawerOpen] = useState(false);
   const [detailPeriod, setDetailPeriod] = useState<PeriodState>(() =>
-    periodStateFromQuery(periodQuery)
+    embedded ? periodStateFromQuery(periodQuery) : urlPeriod.period
+  );
+
+  useEffect(() => {
+    if (!embedded) setDetailPeriod(urlPeriod.period);
+  }, [embedded, urlPeriod.period]);
+
+  const onDetailPeriodChange = useCallback(
+    (next: PeriodState) => {
+      if (embedded) setDetailPeriod(next);
+      else urlPeriod.setPeriod(next);
+    },
+    [embedded, urlPeriod]
+  );
+
+  const chartPeriodLabel = useMemo(
+    () =>
+      formatPeriodLabel(periodStateToParsed(detailPeriod), locale, {
+        today: tPeriod("today"),
+        yesterday: tPeriod("yesterday"),
+        thisWeek: tPeriod("thisWeek"),
+        last7: tPeriod("last7"),
+        last14: tPeriod("last14"),
+        last15: tPeriod("last15"),
+        last30: tPeriod("last30"),
+        custom: tPeriod("custom"),
+        all: tPeriod("all")
+      }),
+    [detailPeriod, locale, tPeriod]
   );
 
   useEffect(() => {
@@ -396,8 +428,9 @@ export function CampaignManagerClient({
 
   // Acompanha o período vindo da lista (hub) como padrão; o usuário pode trocar aqui.
   useEffect(() => {
+    if (!embedded) return;
     setDetailPeriod(periodStateFromQuery(periodQuery));
-  }, [periodQuery]);
+  }, [embedded, periodQuery]);
 
   const reload = useCallback(() => {
     const qs = buildDetailQuery(`?${periodStateToQuery(detailPeriod).toString()}`, seedRow);
@@ -567,7 +600,7 @@ export function CampaignManagerClient({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <PeriodFilter value={detailPeriod} onChange={setDetailPeriod} />
+          <PeriodFilter value={detailPeriod} onChange={onDetailPeriodChange} />
           <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm" title={t("refresh")}>
             ↻
           </button>
@@ -676,7 +709,7 @@ export function CampaignManagerClient({
                 series={series}
                 loading={chartLoading}
                 locale={locale}
-                title={t("chartTitle")}
+                title={t("chartTitleWithPeriod", { period: chartPeriodLabel })}
                 noDataLabel={t("noChartData")}
               />
 

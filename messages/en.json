@@ -400,6 +400,7 @@
     "kpiCpa": "CPA",
     "kpiRoas": "ROAS",
     "chartTitle": "Performance — last 7 days",
+    "chartTitleWithPeriod": "Performance — {period}",
     "noChartData": "No time series data — run metric sync.",
     "comingSoon": "This section is coming soon.",
     "statusCard": "Campaign status",

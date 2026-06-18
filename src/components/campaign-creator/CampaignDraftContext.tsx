@@ -107,8 +107,13 @@ export function CampaignDraftProvider({
       .catch(() => {});
   }, [initialDraftId]);
 
+  const addAdFetchedRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!initialAddAd) return;
+    const key = `${initialAddAd.fromCampaignId}:${initialAddAd.adsetId}:${initialAddAd.clientSlug ?? ""}`;
+    if (addAdFetchedRef.current === key) return;
+    addAdFetchedRef.current = key;
     const { fromCampaignId, adsetId, clientSlug } = initialAddAd;
     setAddAdLoading(true);
     fetch(
@@ -178,7 +183,12 @@ export function CampaignDraftProvider({
       )
       .catch(() => {})
       .finally(() => setAddAdLoading(false));
-  }, [initialAddAd, locale]);
+  }, [
+    initialAddAd?.fromCampaignId,
+    initialAddAd?.adsetId,
+    initialAddAd?.clientSlug,
+    locale
+  ]);
 
   const persist = useCallback(async () => {
     if (isAddAdDraft(payloadRef.current)) return;

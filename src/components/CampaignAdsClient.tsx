@@ -39,6 +39,8 @@ import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
+import { PeriodFilter } from "@/components/PeriodFilter";
+import { useCampaignPeriod } from "@/hooks/useCampaignPeriod";
 
 type AdMetrics = Partial<Record<MetricKey, number>>;
 
@@ -98,6 +100,7 @@ export function CampaignAdsClient({
   const searchParams = useSearchParams();
   const router = useRouter();
   const { openPanel } = usePublishPanel();
+  const { period, setPeriod, periodQueryString } = useCampaignPeriod();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
   const [preset, setPreset] = useState<string>("default");
@@ -149,7 +152,7 @@ export function CampaignAdsClient({
     if (remembered?.adsetId) {
       setAdsetFilter(remembered.adsetId);
       const slug = clientSlug || campaign?.clientSlug || "";
-      const qs = campaignTabQuery(slug, remembered.adsetId);
+      const qs = campaignTabQuery(slug, remembered.adsetId, searchParams);
       router.replace(`/campaigns/${metaCampaignId}/ads${qs}`, { scroll: false });
       return;
     }
@@ -171,8 +174,9 @@ export function CampaignAdsClient({
   const reload = useCallback(() => {
     setAdsLoading(true);
     setCountsLoading(true);
+    const periodQs = periodQueryString || "?period=last7";
 
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}`)
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${periodQs}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.campaign) {
@@ -188,13 +192,15 @@ export function CampaignAdsClient({
       })
       .catch(() => {});
 
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads`)
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads${periodQs}`)
       .then((r) => r.json())
       .then((j) => setAds(j.ads ?? []))
       .catch(() => setAds([]))
       .finally(() => setAdsLoading(false));
 
-    const adsetsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets`)
+    const adsetsPromise = fetch(
+      `/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${periodQs}`
+    )
       .then((r) => r.json())
       .then((j) => setAdsetsCount((j.adsets ?? []).length))
       .catch(() => setAdsetsCount(0));
@@ -203,7 +209,7 @@ export function CampaignAdsClient({
       .then((j) => setCreativesCount(j.total ?? (j.rows ?? []).length))
       .catch(() => setCreativesCount(0));
     void Promise.all([adsetsPromise, creativesPromise]).finally(() => setCountsLoading(false));
-  }, [metaCampaignId, clientSlug]);
+  }, [metaCampaignId, clientSlug, periodQueryString]);
 
   useEffect(() => {
     reload();
@@ -352,6 +358,7 @@ export function CampaignAdsClient({
           <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <PeriodFilter value={period} onChange={setPeriod} />
           <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
             ↻
           </button>
