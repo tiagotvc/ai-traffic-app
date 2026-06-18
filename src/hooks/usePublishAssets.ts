@@ -13,7 +13,7 @@ export type PublishIgAccount = { id: string; username: string };
 export type PublishPixel = { id: string; name: string };
 export type PublishCustomConversion = { id: string; label: string; eventType?: string };
 export type PublishAdAccount = { metaAdAccountId: string; label: string };
-export type PublishAudience = { id: string; name: string };
+export type PublishAudience = { id: string; name: string; subtype?: string };
 
 export function usePublishAssets(clientSlug: string, adAccountId: string) {
   const [accounts, setAccounts] = useState<PublishAdAccount[]>([]);
@@ -24,8 +24,35 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
   const [pixels, setPixels] = useState<PublishPixel[]>([]);
   const [customConversions, setCustomConversions] = useState<PublishCustomConversion[]>([]);
   const [audiences, setAudiences] = useState<PublishAudience[]>([]);
+  const [audiencesLoading, setAudiencesLoading] = useState(false);
   const [defaultAdAccountId, setDefaultAdAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const loadAudiences = useCallback(async (accountId: string) => {
+    if (!accountId) {
+      setAudiences([]);
+      return;
+    }
+    setAudiencesLoading(true);
+    try {
+      const aud = await fetch(
+        `/api/meta/audiences?adAccountId=${encodeURIComponent(accountId)}`
+      ).then((r) => r.json());
+      setAudiences(
+        ((aud.audiences ?? []) as Array<{ id: string; name?: string; subtype?: string }>).map(
+          (a) => ({
+            id: a.id,
+            name: a.name?.trim() || a.id,
+            subtype: a.subtype
+          })
+        )
+      );
+    } catch {
+      setAudiences([]);
+    } finally {
+      setAudiencesLoading(false);
+    }
+  }, []);
 
   const loadAssets = useCallback(async (slug: string, accountId: string) => {
     if (!slug || !accountId) {
@@ -36,6 +63,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
       setAudiences([]);
       return;
     }
+    void loadAudiences(accountId);
     const qs = `?clientId=${encodeURIComponent(slug)}&adAccountId=${encodeURIComponent(accountId)}`;
     const res = await fetch(`/api/meta/assets${qs}`);
     const j = (await res.json()) as {
@@ -58,21 +86,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
     setInstagramAccounts(j.instagramAccounts ?? []);
     setPixels(j.pixels ?? []);
     setCustomConversions(j.customConversions ?? []);
-
-    try {
-      const aud = await fetch(
-        `/api/meta/audiences?adAccountId=${encodeURIComponent(accountId)}`
-      ).then((r) => r.json());
-      setAudiences(
-        ((aud.audiences ?? []) as Array<{ id: string; name?: string }>).map((a) => ({
-          id: a.id,
-          name: a.name?.trim() || a.id
-        }))
-      );
-    } catch {
-      setAudiences([]);
-    }
-  }, []);
+  }, [loadAudiences]);
 
   const loadForClient = useCallback(
     async (slug: string) => {
@@ -137,6 +151,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
     pixels,
     customConversions,
     audiences,
+    audiencesLoading,
     defaultAdAccountId,
     error,
     loadForClient,

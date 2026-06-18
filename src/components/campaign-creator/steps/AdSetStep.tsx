@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
+import { AudiencePicker } from "@/components/campaign-creator/AudiencePicker";
 import { AdSetBatchPanel } from "@/components/campaign-creator/AdSetBatchPanel";
 import { GeoRadiusMapPicker } from "@/components/campaign-creator/GeoRadiusMapPicker";
 import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
@@ -16,7 +17,7 @@ export function AdSetStep() {
   const t = useTranslations("campaignCreator");
   const tAds = useTranslations("ads");
   const { payload, updatePayload } = useCampaignDraft();
-  const { audiences, pixels, customConversions } = usePublishAssets(
+  const { audiences, audiencesLoading, pixels, customConversions } = usePublishAssets(
     payload.clientSlug,
     payload.adAccountId
   );
@@ -161,6 +162,22 @@ export function AdSetStep() {
 
       <div className="ui-card space-y-3 p-4">
         <h3 className="text-sm font-semibold text-slate-900">{tAds("audienceTitle")}</h3>
+
+        <AudiencePicker
+          audiences={audiences}
+          loading={audiencesLoading}
+          adAccountId={payload.adAccountId}
+          includeIds={targeting.customAudienceIds}
+          excludeIds={targeting.excludedAudienceIds}
+          onChangeInclude={(customAudienceIds) => patchTargeting({ customAudienceIds })}
+          onChangeExclude={(excludedAudienceIds) => patchTargeting({ excludedAudienceIds })}
+          disabled={clientRequired}
+        />
+
+        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+          {t("audienceOrDivider")}
+        </p>
+
         <FormField label={tAds("locations")}>
           <MetaTargetingSelect
             type="geo"
@@ -371,48 +388,6 @@ export function AdSetStep() {
             }
           />
         </FormField>
-        {audiences.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label={tAds("audienceInclude")}>
-              <select
-                multiple
-                value={targeting.customAudienceIds}
-                onChange={(e) =>
-                  patchTargeting({
-                    customAudienceIds: Array.from(e.target.selectedOptions, (o) => o.value)
-                  })
-                }
-                className="ui-select h-24"
-                disabled={clientRequired}
-              >
-                {audiences.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-            <FormField label={tAds("audienceExclude")}>
-              <select
-                multiple
-                value={targeting.excludedAudienceIds}
-                onChange={(e) =>
-                  patchTargeting({
-                    excludedAudienceIds: Array.from(e.target.selectedOptions, (o) => o.value)
-                  })
-                }
-                className="ui-select h-24"
-                disabled={clientRequired}
-              >
-                {audiences.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-          </div>
-        ) : null}
       </div>
 
       <div className="ui-card space-y-3 p-4">
