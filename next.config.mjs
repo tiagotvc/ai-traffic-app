@@ -6,8 +6,7 @@ const nextConfig = {
   serverExternalPackages: ["typeorm", "pg", "reflect-metadata"],
   experimental: {
     serverMinification: false,
-    // Middleware buffers POST bodies for all /api routes; default ~10MB truncates large video uploads.
-    middlewareClientMaxBodySize: "100mb",
+    // Middleware/proxy buffers POST bodies; default ~10MB truncates large uploads.
     proxyClientMaxBodySize: "100mb",
     serverActions: {
       bodySizeLimit: "100mb"
