@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status });
   }
 
-  const tos = await checkCustomAudienceTos(metaAccessToken);
+  const tos = await checkCustomAudienceTos(metaAccessToken, body.adAccountId);
   if (!tos.accepted) {
     return NextResponse.json(
       { ok: false, error: "Aceite os termos de públicos personalizados na Meta", tosUrl: tos.url },

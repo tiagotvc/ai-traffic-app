@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getAppContext } from "@/lib/app-context";
+import { checkCustomAudienceTos } from "@/lib/audience-api-helpers";
 
 type TermItem = {
   id: string;
@@ -11,11 +12,13 @@ type TermItem = {
 };
 
 /** Verifica termos Meta pendentes (Custom Audiences, Business Tools). */
-export async function GET() {
+export async function GET(req: Request) {
   const { metaAccessToken } = await getAppContext();
   if (!metaAccessToken) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
+
+  const adAccountId = new URL(req.url).searchParams.get("adAccountId")?.trim() || undefined;
 
   const terms: TermItem[] = [
     {
@@ -36,22 +39,13 @@ export async function GET() {
     }
   ];
 
-  try {
-    const res = await fetch(
-      `https://graph.facebook.com/v19.0/me/adaccounts?fields=id,tos_accepted&limit=1&access_token=${encodeURIComponent(metaAccessToken)}`
-    );
-    const json = (await res.json()) as {
-      data?: Array<{ tos_accepted?: { web_custom_audience_tos?: number } }>;
-    };
-    const tos = json.data?.[0]?.tos_accepted;
-    if (tos?.web_custom_audience_tos === 1) {
-      terms[0].status = "accepted";
-    }
-  } catch {
-    /* keep defaults */
+  const tosCheck = await checkCustomAudienceTos(metaAccessToken, adAccountId);
+  if (tosCheck.accepted) {
+    terms[0].status = "accepted";
   }
+  terms[0].url = tosCheck.url;
 
   const allAccepted = terms.every((t) => t.status === "accepted");
 
-  return NextResponse.json({ ok: true, terms, allAccepted });
+  return NextResponse.json({ ok: true, terms, allAccepted, adAccountId: adAccountId ?? null });
 }

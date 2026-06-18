@@ -1583,6 +1583,7 @@
     "tosRequiredTitle": "Custom audience terms pending",
     "tosRequiredBody": "Accept Meta custom audience terms before creating audiences.",
     "tosAcceptLink": "Accept terms in Meta",
+    "tosRecheck": "Check again",
     "loadingOptions": "Loading Meta options…",
     "optionsLoadFailed": "Failed to load options",
     "selectPixel": "Pixel",

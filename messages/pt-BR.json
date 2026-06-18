@@ -1583,6 +1583,7 @@
     "tosRequiredTitle": "Termos de públicos personalizados pendentes",
     "tosRequiredBody": "Aceite os termos na Meta antes de criar públicos personalizados.",
     "tosAcceptLink": "Aceitar termos na Meta",
+    "tosRecheck": "Verificar novamente",
     "loadingOptions": "Carregando opções da Meta…",
     "optionsLoadFailed": "Falha ao carregar opções",
     "selectPixel": "Pixel",

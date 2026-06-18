@@ -20,18 +20,40 @@ export async function validateClientAdAccount(
 }
 
 export async function checkCustomAudienceTos(
-  metaAccessToken: string
+  metaAccessToken: string,
+  adAccountId?: string
 ): Promise<{ accepted: boolean; url: string }> {
   const url = "https://www.facebook.com/ads/manage/customaudiences/tos/";
   try {
+    if (adAccountId) {
+      const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+      const res = await fetch(
+        `https://graph.facebook.com/v20.0/${encodeURIComponent(act)}?fields=${encodeURIComponent("tos_accepted")}&access_token=${encodeURIComponent(metaAccessToken)}`
+      );
+      const json = (await res.json()) as {
+        tos_accepted?: { web_custom_audience_tos?: number; custom_audience_tos?: number };
+        error?: { message?: string };
+      };
+      if (json.error) return { accepted: false, url };
+      const tos = json.tos_accepted;
+      const accepted =
+        tos?.web_custom_audience_tos === 1 || tos?.custom_audience_tos === 1;
+      return { accepted, url };
+    }
+
     const res = await fetch(
-      `https://graph.facebook.com/v20.0/me/adaccounts?fields=id,tos_accepted&limit=1&access_token=${encodeURIComponent(metaAccessToken)}`
+      `https://graph.facebook.com/v20.0/me/adaccounts?fields=id,tos_accepted&limit=100&access_token=${encodeURIComponent(metaAccessToken)}`
     );
     const json = (await res.json()) as {
-      data?: Array<{ tos_accepted?: { web_custom_audience_tos?: number } }>;
+      data?: Array<{
+        tos_accepted?: { web_custom_audience_tos?: number; custom_audience_tos?: number };
+      }>;
     };
-    const tos = json.data?.[0]?.tos_accepted;
-    return { accepted: tos?.web_custom_audience_tos === 1, url };
+    const accepted = (json.data ?? []).some((row) => {
+      const tos = row.tos_accepted;
+      return tos?.web_custom_audience_tos === 1 || tos?.custom_audience_tos === 1;
+    });
+    return { accepted, url };
   } catch {
     return { accepted: false, url };
   }

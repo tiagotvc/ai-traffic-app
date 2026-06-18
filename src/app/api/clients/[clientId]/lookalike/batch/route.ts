@@ -33,7 +33,7 @@ export async function POST(
 
   const body = BodySchema.parse(await req.json().catch(() => ({})));
 
-  const tos = await checkCustomAudienceTos(metaAccessToken);
+  const tos = await checkCustomAudienceTos(metaAccessToken, body.adAccountId);
   if (!tos.accepted) {
     return NextResponse.json(
       { ok: false, error: "Aceite os termos de públicos personalizados na Meta", tosUrl: tos.url },
