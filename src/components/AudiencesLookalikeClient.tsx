@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { Badge } from "@/components/ui/Badge";
+import { AudienceDetailModal } from "@/components/audiences/AudienceDetailModal";
 import { OutlineIcon } from "@/components/ui/OutlineIcon";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
@@ -72,16 +73,6 @@ function kindBadge(kind: string) {
   return "success" as const;
 }
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 function filterSeeds(audiences: MetaAudience[], source: SourceType) {
   const seeds = audiences.filter((a) => !(a.subtype ?? "").toUpperCase().includes("LOOKALIKE"));
   if (source === "engagement") {
@@ -134,6 +125,7 @@ export function AudiencesLookalikeClient() {
   const [step, setStep] = useState(1);
   const [listTab, setListTab] = useState<"saved" | "excluded" | "templates">("saved");
   const [search, setSearch] = useState("");
+  const [detailAudience, setDetailAudience] = useState<SavedAudience | null>(null);
   const clientsRef = useRef(clients);
   clientsRef.current = clients;
 
@@ -384,6 +376,13 @@ export function AudiencesLookalikeClient() {
 
   return (
     <div className="space-y-5">
+      <AudienceDetailModal
+        open={!!detailAudience}
+        onClose={() => setDetailAudience(null)}
+        summary={detailAudience}
+        clientSlug={clientSlug}
+        adAccountId={adAccountId}
+      />
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-medium text-slate-500">
@@ -512,10 +511,7 @@ export function AudiencesLookalikeClient() {
                     const attached = client?.defaultCustomAudienceIds.includes(a.id);
                     return (
                       <div key={`${a.adAccountId}-${a.id}`} className="rounded-xl border border-slate-100 p-3">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">
-                            {initials(a.name)}
-                          </div>
+                        <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="font-medium text-slate-900">{a.name}</div>
                             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -526,7 +522,7 @@ export function AudiencesLookalikeClient() {
                             </div>
                             <div className="mt-1 text-[11px] text-slate-500">{a.sourceLabel}</div>
                           </div>
-                          <div className="text-right text-[10px] text-slate-400">
+                          <div className="shrink-0 text-right text-[10px] text-slate-400">
                             {a.country ?? "BR"}
                             {a.ratioPct != null ? ` · ${a.ratioPct}%` : ""}
                             {a.approximateCount != null ? (
@@ -534,15 +530,29 @@ export function AudiencesLookalikeClient() {
                             ) : null}
                           </div>
                         </div>
-                        {listTab === "saved" ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => toggleAttach(a.id, !attached)}
-                            className="mt-2 w-full rounded-lg border border-slate-200 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+                            onClick={() => setDetailAudience(a)}
+                            className="rounded-lg border border-slate-200 px-3 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
                           >
-                            {attached ? t("detachDefault") : t("attachDefault")}
+                            {t("viewDetails")}
                           </button>
-                        ) : null}
+                          {listTab === "saved" ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleAttach(a.id, !attached)}
+                              title={t("attachDefaultHint")}
+                              className={`rounded-lg border px-3 py-1 text-[11px] font-medium ${
+                                attached
+                                  ? "border-violet-200 bg-violet-50 text-violet-700"
+                                  : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              {attached ? t("detachDefault") : t("attachDefault")}
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     );
                   })}

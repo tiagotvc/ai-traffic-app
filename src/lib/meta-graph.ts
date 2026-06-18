@@ -564,6 +564,39 @@ export async function fetchCustomAudiences(
   return data.data ?? [];
 }
 
+export type MetaCustomAudienceDetail = MetaCustomAudience & {
+  description?: string;
+  delivery_status?: { code?: number; description?: string };
+  operation_status?: { code?: number; description?: string };
+  time_created?: string;
+  time_updated?: string;
+  account_id?: string;
+};
+
+export async function fetchCustomAudienceDetail(
+  accessToken: string,
+  audienceId: string
+): Promise<MetaCustomAudienceDetail> {
+  const fields = [
+    "id",
+    "name",
+    "subtype",
+    "description",
+    "delivery_status",
+    "operation_status",
+    "time_created",
+    "time_updated",
+    "approximate_count_lower_bound",
+    "approximate_count_upper_bound",
+    "lookalike_spec",
+    "account_id"
+  ].join(",");
+  return metaFetch<MetaCustomAudienceDetail>(
+    `/${encodeURIComponent(audienceId)}?fields=${encodeURIComponent(fields)}`,
+    accessToken
+  );
+}
+
 export async function createLookalikeAudience(
   accessToken: string,
   adAccountId: string,
