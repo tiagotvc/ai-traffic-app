@@ -30,7 +30,10 @@ function audienceKind(subtype?: string) {
 }
 
 export async function GET(req: Request) {
-  const refresh = new URL(req.url).searchParams.get("refresh") === "1";
+  const url = new URL(req.url);
+  const refresh = url.searchParams.get("refresh") === "1";
+  const adAccountIdParam = url.searchParams.get("adAccountId")?.trim() ?? "";
+  const clientSlugParam = url.searchParams.get("clientId")?.trim() ?? "";
   const { tenant, metaAccessToken } = await getAppContext();
   const clients = await listClientsForTenant(tenant.id);
   const clientIds = clients.map((c) => c.id);
@@ -73,34 +76,56 @@ export async function GET(req: Request) {
     };
   });
 
-  const uniqueAdAccounts = [...new Set(accounts.map((a) => a.metaAdAccountId))];
   const audiencesByAccount: Record<string, MetaCustomAudience[]> = {};
 
-  if (metaAccessToken) {
-    for (const adAccountId of uniqueAdAccounts) {
-      try {
-        if (!refresh) {
-          const cached = await cacheRepo.findOne({ where: { metaAdAccountId: adAccountId } });
-          if (cached && Date.now() - cached.fetchedAt.getTime() < CACHE_TTL_MS) {
-            audiencesByAccount[adAccountId] = (cached.audiences ?? []) as MetaCustomAudience[];
-            continue;
-          }
+  if (metaAccessToken && adAccountIdParam) {
+    const linked = accounts.some((a) => a.metaAdAccountId === adAccountIdParam);
+    if (!linked) {
+      return NextResponse.json(
+        { ok: false, error: "Conta de anúncios não vinculada a este workspace" },
+        { status: 403 }
+      );
+    }
+    if (clientSlugParam) {
+      const client = clients.find((c) => slugify(c.name) === clientSlugParam);
+      const clientLinked = client
+        ? accounts.some((a) => a.clientId === client.id && a.metaAdAccountId === adAccountIdParam)
+        : false;
+      if (!clientLinked) {
+        return NextResponse.json(
+          { ok: false, error: "Conta não vinculada ao cliente selecionado" },
+          { status: 403 }
+        );
+      }
+    }
+    try {
+      if (!refresh) {
+        const cached = await cacheRepo.findOne({ where: { metaAdAccountId: adAccountIdParam } });
+        if (cached && Date.now() - cached.fetchedAt.getTime() < CACHE_TTL_MS) {
+          audiencesByAccount[adAccountIdParam] = (cached.audiences ?? []) as MetaCustomAudience[];
         }
-        const audiences = await fetchCustomAudiences(metaAccessToken, adAccountId);
-        audiencesByAccount[adAccountId] = audiences;
-        const cached = await cacheRepo.findOne({ where: { metaAdAccountId: adAccountId } });
+      }
+      if (!audiencesByAccount[adAccountIdParam]) {
+        const audiences = await fetchCustomAudiences(metaAccessToken, adAccountIdParam);
+        audiencesByAccount[adAccountIdParam] = audiences;
+        const cached = await cacheRepo.findOne({ where: { metaAdAccountId: adAccountIdParam } });
         if (cached) {
           cached.audiences = audiences;
           cached.fetchedAt = new Date();
           await cacheRepo.save(cached);
         } else {
           await cacheRepo.save(
-            cacheRepo.create({ metaAdAccountId: adAccountId, audiences, fetchedAt: new Date() })
+            cacheRepo.create({
+              metaAdAccountId: adAccountIdParam,
+              audiences,
+              fetchedAt: new Date()
+            })
           );
         }
-      } catch {
-        audiencesByAccount[adAccountId] = [];
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao buscar públicos na Meta";
+      return NextResponse.json({ ok: false, error: message }, { status: 500 });
     }
   }
 

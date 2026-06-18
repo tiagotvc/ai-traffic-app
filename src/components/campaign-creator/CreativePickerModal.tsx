@@ -70,7 +70,8 @@ export function CreativePickerModal({
   if (!open) return null;
 
   const libraryAssets = assets.filter((a) => (a.kind ?? "image") === mediaKind);
-  const allAssets = [...libraryAssets, ...localAssets.filter((a) => (a.kind ?? "image") === mediaKind)];
+  const localOfKind = localAssets.filter((a) => (a.kind ?? "image") === mediaKind);
+  const allAssets = [...localOfKind, ...libraryAssets];
   const selected = new Set(selectedIds);
 
   function toggle(id: string) {
@@ -105,8 +106,8 @@ export function CreativePickerModal({
       const j = await readApiJson(res);
       if (!res.ok || !j.ok || !j.hash) throw new Error(j.error ?? "uploadFailed");
       setLocalAssets((prev) => [
-        ...prev,
-        { id: j.hash!, label: file.name, url: dataUrl, kind: "image" }
+        { id: j.hash!, label: file.name, url: dataUrl, kind: "image" },
+        ...prev
       ]);
       onChange([...selectedIds, j.hash!]);
     } catch (e) {
@@ -166,8 +167,8 @@ export function CreativePickerModal({
       if (!commitRes.ok || !j.ok || !j.videoId) throw new Error(j.error ?? "uploadFailed");
       const previewUrl = URL.createObjectURL(file);
       setLocalAssets((prev) => [
-        ...prev,
-        { id: j.videoId!, label: j.label ?? file.name, url: previewUrl, kind: "video" }
+        { id: j.videoId!, label: j.label ?? file.name, url: previewUrl, kind: "video" },
+        ...prev
       ]);
       onChange([...selectedIds, j.videoId!]);
     } catch (e) {
@@ -211,8 +212,8 @@ export function CreativePickerModal({
       if (!j.ok) throw new Error(j.message ?? j.error ?? "aiFailed");
       const variants = j.variants ?? [];
       setLocalAssets((prev) => [
-        ...prev,
-        ...variants.map((v) => ({ id: v.hash, label: v.label, url: null, kind: "image" as const }))
+        ...variants.map((v) => ({ id: v.hash, label: v.label, url: null, kind: "image" as const })),
+        ...prev
       ]);
       onChange([...selectedIds, ...variants.map((v) => v.hash)]);
       onVariantsGenerated?.(variants);
