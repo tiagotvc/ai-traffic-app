@@ -27,6 +27,8 @@ export type CreativeItem = {
   type?: string;
   status: string;
   adId: string | null;
+  adIds?: string[];
+  creativeId?: string | null;
   adsCount: number;
   thumbnailUrl: string | null;
   imageUrl: string | null;
@@ -196,6 +198,7 @@ export function CreativeCardGrid({
       {previewing ? (
         <CreativePreviewModal
           adId={previewing.adId}
+          adIds={previewing.adIds}
           imageUrl={previewing.imageUrl ?? previewing.thumbnailUrl}
           name={previewing.name}
           onClose={() => setPreviewing(null)}

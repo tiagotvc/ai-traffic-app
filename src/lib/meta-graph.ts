@@ -1393,6 +1393,77 @@ export async function fetchAdRef(
 
 export type AdPreview = { src: string; width: number | null; height: number | null };
 
+export type AdsetPlacementInfo = {
+  adsetId: string;
+  adsetName: string;
+  campaignName: string;
+  platforms: string[];
+  positions: string[];
+};
+
+const PLACEMENT_LABELS: Record<string, string> = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  messenger: "Messenger",
+  audience_network: "Audience Network",
+  feed: "Feed",
+  story: "Stories",
+  reels: "Reels",
+  video_feeds: "Vídeos no feed",
+  right_hand_column: "Coluna direita",
+  instant_article: "Artigos instantâneos",
+  instream_video: "In-stream",
+  marketplace: "Marketplace",
+  search: "Busca",
+  explore: "Explorar",
+  profile_feed: "Feed do perfil"
+};
+
+function labelPlacement(value: string): string {
+  return PLACEMENT_LABELS[value] ?? value.replace(/_/g, " ");
+}
+
+export async function fetchAdsetPlacementInfo(
+  accessToken: string,
+  adsetId: string,
+  campaignName = "",
+  adsetName = ""
+): Promise<AdsetPlacementInfo> {
+  try {
+    const data = await metaFetch<{
+      name?: string;
+      campaign?: { name?: string };
+      targeting?: {
+        publisher_platforms?: string[];
+        facebook_positions?: string[];
+        instagram_positions?: string[];
+        messenger_positions?: string[];
+        audience_network_positions?: string[];
+      };
+    }>(
+      `/${encodeURIComponent(adsetId)}?fields=${encodeURIComponent("name,campaign{name},targeting{publisher_platforms,facebook_positions,instagram_positions,messenger_positions,audience_network_positions}")}`,
+      accessToken
+    );
+    const t = data.targeting ?? {};
+    const platforms = (t.publisher_platforms ?? []).map(labelPlacement);
+    const positions = [
+      ...(t.facebook_positions ?? []).map((p) => `Facebook · ${labelPlacement(p)}`),
+      ...(t.instagram_positions ?? []).map((p) => `Instagram · ${labelPlacement(p)}`),
+      ...(t.messenger_positions ?? []).map((p) => `Messenger · ${labelPlacement(p)}`),
+      ...(t.audience_network_positions ?? []).map((p) => `Audience Network · ${labelPlacement(p)}`)
+    ];
+    return {
+      adsetId,
+      adsetName: data.name ?? adsetName,
+      campaignName: data.campaign?.name ?? campaignName,
+      platforms,
+      positions
+    };
+  } catch {
+    return { adsetId, adsetName, campaignName, platforms: [], positions: [] };
+  }
+}
+
 /** Preview real do anúncio (iframe renderizado pela Meta). Retorna URL + dimensões. */
 export async function fetchAdPreview(
   accessToken: string,

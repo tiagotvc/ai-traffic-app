@@ -60,6 +60,7 @@ export type CreativeAgg = {
   thumbnailUrl?: string;
   imageUrl?: string;
   firstAdId?: string;
+  creativeId?: string;
   sums: CreativeSums;
   ads: Set<string>;
   campaigns: Map<string, string>;
@@ -75,6 +76,8 @@ export type AggregatedCreative = {
   name: string;
   type: CreativeAssetType;
   adId: string | null;
+  adIds: string[];
+  creativeId: string | null;
   thumbnailUrl: string | null;
   imageUrl: string | null;
   status: "ACTIVE" | "PAUSED";
@@ -136,6 +139,7 @@ export function aggregateCreativesFromAccountData(input: {
     if (!agg.thumbnailUrl && ad.thumbnailUrl) agg.thumbnailUrl = ad.thumbnailUrl;
     if (!agg.imageUrl && ad.imageUrl) agg.imageUrl = ad.imageUrl;
     if (!agg.firstAdId || ad.status === "ACTIVE") agg.firstAdId = ad.id;
+    if (!agg.creativeId && ad.creativeId) agg.creativeId = ad.creativeId;
     agg.ads.add(ad.id);
     if (ad.campaignId) {
       agg.campaigns.set(ad.campaignId, ad.campaignName ?? ad.campaignId);
@@ -221,6 +225,8 @@ export function mapAggregatesToCreatives(
       name: a.name,
       type: a.type,
       adId: a.firstAdId ?? null,
+      adIds: [...a.ads],
+      creativeId: a.creativeId ?? null,
       thumbnailUrl: a.thumbnailUrl ?? null,
       imageUrl: a.imageUrl ?? a.thumbnailUrl ?? null,
       status: a.anyActive ? "ACTIVE" : "PAUSED",
