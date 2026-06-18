@@ -75,10 +75,12 @@ export const AdDraftItemSchema = z.object({
   videoIds: z.array(z.string()).default([]),
   titles: z.array(z.string()).default([]),
   bodies: z.array(z.string()).default([]),
-  destinationType: z.enum(["website", "instant_form"]).default("website"),
+  destinationType: z.enum(["website", "instant_form", "whatsapp"]).default("website"),
   linkUrl: z.string().default(""),
   leadFormId: z.string().nullable().default(null),
   urlParams: z.string().default(""),
+  callToAction: z.string().default(""),
+  whatsappWelcomeMessage: z.string().nullable().default(null),
   targetAdsetIds: z.array(z.string()).default(["__all__"]),
   tracking: z.object({
     websiteEvents: z.boolean().default(false),
@@ -195,6 +197,8 @@ export function defaultAdItem(locale: string, name?: string): AdDraftItem {
     linkUrl: "",
     leadFormId: null,
     urlParams: "",
+    callToAction: "",
+    whatsappWelcomeMessage: null,
     targetAdsetIds: ["__all__"],
     tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
   };
@@ -301,6 +305,8 @@ export function migrateV1ToV2(raw: z.infer<typeof V1Schema>, locale: string): Ca
         linkUrl: String(v1Ad.linkUrl ?? ""),
         leadFormId: (v1Ad.leadFormId as string | null) ?? null,
         urlParams: String(v1Ad.urlParams ?? ""),
+        callToAction: String(v1Ad.callToAction ?? ""),
+        whatsappWelcomeMessage: (v1Ad.whatsappWelcomeMessage as string | null) ?? null,
         targetAdsetIds: ["__all__"],
         tracking: v1Ad.tracking ?? { websiteEvents: false, appEvents: false, offlineEvents: false }
       }
@@ -528,7 +534,7 @@ export function validateAdStep(d: CampaignDraftPayload): string | null {
     if (!ad.bodies.some((x) => x.trim())) return "bodiesRequired";
     if (d.objective === "leads" && ad.destinationType === "instant_form") {
       if (!ad.leadFormId) return "leadFormRequired";
-    } else if (!ad.linkUrl.trim()) {
+    } else if (ad.destinationType !== "whatsapp" && !ad.linkUrl.trim()) {
       return "linkUrlRequired";
     }
   }

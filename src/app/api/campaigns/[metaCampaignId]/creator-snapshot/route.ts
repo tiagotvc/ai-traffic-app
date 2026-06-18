@@ -4,6 +4,7 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, slugify } from "@/lib/app-context";
 import type { CampaignDraftPayload, DraftTargeting } from "@/lib/campaign-draft";
 import { defaultCampaignDraft } from "@/lib/campaign-draft";
+import { extractCreativeRouting } from "@/lib/campaign-ad-import";
 import { getResolvedClientMeta } from "@/lib/client-meta-settings";
 import {
   fetchAdSetDetail,
@@ -102,29 +103,20 @@ function extractInheritedAdDefaults(
     leadFormId?: string | null;
   }
 ) {
-  const feed = creativeData?.creative?.asset_feed_spec;
-  const story = creativeData?.creative?.object_story_spec as Record<string, unknown> | undefined;
-  const linkData = story?.link_data as Record<string, unknown> | undefined;
-  const pageId = String(story?.page_id ?? fallback.pageId ?? "");
-  const instagramActorId =
-    (story?.instagram_actor_id as string | undefined) ?? fallback.instagramActorId ?? null;
-  const linkUrl =
-    feed?.link_urls?.[0]?.website_url ||
-    (typeof linkData?.link === "string" ? linkData.link : "") ||
-    fallback.linkUrl ||
-    "";
-  const leadFormId =
-    (linkData?.lead_gen_form_id as string | undefined) ?? fallback.leadFormId ?? null;
-  const destinationType = leadFormId ? ("instant_form" as const) : ("website" as const);
+  const routing = extractCreativeRouting(creativeData?.creative ?? null);
+  const pageId = routing.pageId || String(fallback.pageId ?? "");
+  const linkUrl = routing.linkUrl || fallback.linkUrl || "";
 
   return {
     pageId,
-    instagramActorId,
+    instagramActorId: routing.instagramActorId ?? fallback.instagramActorId ?? null,
     pixelId: fallback.pixelId ?? null,
     linkUrl,
-    leadFormId,
-    destinationType,
-    urlParams: "",
+    urlParams: routing.urlParams,
+    callToAction: routing.callToAction,
+    whatsappWelcomeMessage: routing.whatsappWelcomeMessage,
+    leadFormId: routing.leadFormId ?? fallback.leadFormId ?? null,
+    destinationType: routing.destinationType,
     tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
   };
 }
@@ -251,12 +243,12 @@ export async function GET(
     const allVideoIds = [...(videoIds ?? [])];
     if (storyVideo && !allVideoIds.includes(storyVideo)) allVideoIds.push(storyVideo);
     const format = allVideoIds.length ? ("video" as const) : ("single_image" as const);
-    const linkUrl = feed?.link_urls?.[0]?.website_url ?? "";
+    const routing = extractCreativeRouting(creativeData?.creative ?? null);
 
     const story = creativeData?.creative?.object_story_spec as
       | { page_id?: string; instagram_actor_id?: string }
       | undefined;
-    const pageId = story?.page_id ?? "";
+    const pageId = routing.pageId || story?.page_id || "";
 
     const objective =
       OBJECTIVE_REVERSE[campaign.objective ?? ""] ?? defaultCampaignDraft("pt-BR").objective;
@@ -308,10 +300,12 @@ export async function GET(
           videoIds: format === "video" ? allVideoIds : [],
           titles: titles as string[],
           bodies: bodies as string[],
-          destinationType: "website",
-          linkUrl,
-          leadFormId: null,
-          urlParams: "",
+          destinationType: routing.destinationType,
+          linkUrl: routing.linkUrl,
+          leadFormId: routing.leadFormId,
+          urlParams: routing.urlParams,
+          callToAction: routing.callToAction,
+          whatsappWelcomeMessage: routing.whatsappWelcomeMessage,
           targetAdsetIds: ["__all__"],
           tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
         }

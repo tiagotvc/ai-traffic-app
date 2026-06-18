@@ -565,10 +565,14 @@ export type MetaAdWithCreative = {
     object_story_spec?: Record<string, unknown>;
     asset_feed_spec?: {
       images?: Array<{ hash?: string }>;
+      videos?: Array<{ video_id?: string }>;
       titles?: Array<{ text?: string }>;
       bodies?: Array<{ text?: string }>;
+      descriptions?: Array<{ text?: string }>;
       link_urls?: Array<{ website_url?: string }>;
+      call_to_action_types?: string[];
     };
+    page_welcome_message?: unknown;
   };
 };
 
@@ -577,7 +581,7 @@ export async function fetchAdWithCreative(
   adId: string
 ): Promise<MetaAdWithCreative> {
   const fields =
-    "id,name,creative{id,body,title,object_story_spec,asset_feed_spec{images,titles,bodies,link_urls}}";
+    "id,name,creative{id,body,title,page_welcome_message,object_story_spec,asset_feed_spec{images,videos,titles,bodies,descriptions,link_urls,call_to_action_types}}";
   return metaFetch<MetaAdWithCreative>(
     `/${encodeURIComponent(adId)}?fields=${encodeURIComponent(fields)}`,
     accessToken
@@ -1175,6 +1179,19 @@ export type AdCreativeCopy = {
   ctas: string[];
 };
 
+function readWelcomeMessageForCopy(raw: unknown): string | null {
+  if (typeof raw === "string" && raw.trim()) return raw.trim();
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const direct = obj.text ?? obj.message ?? obj.greeting ?? obj.autofill_message;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  if (direct && typeof direct === "object") {
+    const nested = (direct as Record<string, unknown>).text;
+    if (typeof nested === "string" && nested.trim()) return nested.trim();
+  }
+  return null;
+}
+
 /** Textos do criativo (corpo, título, descrição, CTA) — para a aba "Copy". */
 export async function fetchAdCreativeCopy(
   accessToken: string,
@@ -1192,6 +1209,7 @@ export async function fetchAdCreativeCopy(
       creative?: {
         body?: string;
         title?: string;
+        page_welcome_message?: unknown;
         object_story_spec?: Record<string, Record<string, unknown> | undefined>;
         asset_feed_spec?: {
           bodies?: Array<{ text?: string }>;
@@ -1202,7 +1220,7 @@ export async function fetchAdCreativeCopy(
       };
     }>(
       `/${encodeURIComponent(adId)}?fields=${encodeURIComponent(
-        "creative{body,title,object_story_spec,asset_feed_spec}"
+        "creative{body,title,page_welcome_message,object_story_spec,asset_feed_spec}"
       )}`,
       accessToken
     );
@@ -1222,6 +1240,8 @@ export async function fetchAdCreativeCopy(
       const cta = d.call_to_action as { type?: string } | undefined;
       if (cta?.type) add(ctas, cta.type);
     }
+
+    add(bodies, readWelcomeMessageForCopy(c.page_welcome_message));
 
     const feed = c.asset_feed_spec ?? {};
     for (const b of feed.bodies ?? []) add(bodies, b?.text);

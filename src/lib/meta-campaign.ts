@@ -202,10 +202,21 @@ async function createAdForAdset(args: {
   const { ad, objective, pageId, linkUrl, cta, settings, token, actId, campaignName, adsetId, adName } =
     args;
 
-  const resolvedLink =
+  const baseLink =
     ad.destinationType === "instant_form" && ad.leadFormId
       ? linkUrl || "https://www.facebook.com"
       : ad.linkUrl.trim() || linkUrl;
+  const resolvedLink = ad.urlParams.trim()
+    ? `${baseLink}${baseLink.includes("?") ? "&" : "?"}${ad.urlParams.trim()}`
+    : baseLink;
+
+  const resolvedCta =
+    ad.callToAction.trim() ||
+    (ad.destinationType === "whatsapp"
+      ? "WHATSAPP_MESSAGE"
+      : objective === "leads" && ad.destinationType === "instant_form"
+        ? "SIGN_UP"
+        : cta);
 
   const assetFeedSpec: Record<string, unknown> = {
     ...(ad.format === "video" && ad.videoIds.length
@@ -214,12 +225,18 @@ async function createAdForAdset(args: {
     titles: ad.titles.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
     bodies: ad.bodies.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
     link_urls: [{ website_url: resolvedLink }],
-    call_to_action_types: [objective === "leads" ? "SIGN_UP" : cta]
+    call_to_action_types: [resolvedCta]
   };
 
   const instagramId = ad.instagramActorId ?? settings?.instagramActorId ?? null;
   const objectStory: Record<string, unknown> = { page_id: pageId };
   if (instagramId) objectStory.instagram_actor_id = instagramId;
+  if (ad.whatsappWelcomeMessage?.trim()) {
+    objectStory.page_welcome_message = {
+      type: "PAGE_WELCOME_MESSAGE",
+      message: { text: ad.whatsappWelcomeMessage.trim() }
+    };
+  }
 
   const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
     name: `${campaignName} — ${adName} Creative`,
@@ -495,6 +512,8 @@ export async function createFullMetaCampaign(
         linkUrl: input.linkUrl,
         leadFormId: input.leadFormId ?? null,
         urlParams: "",
+        callToAction: input.callToAction ?? "",
+        whatsappWelcomeMessage: null,
         targetAdsetIds: ["__all__"],
         tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
       }

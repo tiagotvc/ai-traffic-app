@@ -57,6 +57,12 @@ export function CampaignCreatorPreview() {
           <div className="space-y-1 p-3">
             <p className="text-sm font-semibold text-slate-900">{title}</p>
             {body ? <p className="text-xs text-slate-600">{body}</p> : null}
+            {ad.callToAction ? (
+              <p className="text-[11px] text-slate-500">CTA: {ad.callToAction}</p>
+            ) : null}
+            {ad.whatsappWelcomeMessage ? (
+              <p className="text-[11px] text-slate-500">{ad.whatsappWelcomeMessage}</p>
+            ) : null}
             {ad.linkUrl ? (
               <p className="truncate text-[11px] text-violet-600">{ad.linkUrl}</p>
             ) : null}

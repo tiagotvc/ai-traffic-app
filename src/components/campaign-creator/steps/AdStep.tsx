@@ -96,6 +96,8 @@ export function AdStep() {
         destinationType: base.destinationType,
         leadFormId: base.leadFormId,
         urlParams: base.urlParams,
+        callToAction: base.callToAction,
+        whatsappWelcomeMessage: base.whatsappWelcomeMessage,
         tracking: { ...base.tracking },
         targetAdsetIds: [...base.targetAdsetIds]
       };
@@ -328,21 +330,24 @@ export function AdStep() {
 
       <div className="ui-card space-y-3 p-4">
         <h3 className="text-sm font-semibold text-slate-900">{t("destinationSection")}</h3>
-        {payload.objective === "leads" ? (
-          <FormField label={t("destinationType")}>
-            <select
-              value={ad.destinationType}
-              onChange={(e) =>
-                patchAd({ destinationType: e.target.value as "website" | "instant_form" })
-              }
-              className="ui-select"
-              disabled={clientRequired}
-            >
-              <option value="website">{t("destWebsite")}</option>
+        <FormField label={t("destinationType")}>
+          <select
+            value={ad.destinationType}
+            onChange={(e) =>
+              patchAd({
+                destinationType: e.target.value as AdDraftItem["destinationType"]
+              })
+            }
+            className="ui-select"
+            disabled={clientRequired}
+          >
+            <option value="website">{t("destWebsite")}</option>
+            {payload.objective === "leads" ? (
               <option value="instant_form">{t("destInstantForm")}</option>
-            </select>
-          </FormField>
-        ) : null}
+            ) : null}
+            <option value="whatsapp">{t("destWhatsapp")}</option>
+          </select>
+        </FormField>
         {ad.destinationType === "instant_form" && payload.objective === "leads" ? (
           <FormField label={t("leadForm")}>
             <select
@@ -360,15 +365,65 @@ export function AdStep() {
             </select>
           </FormField>
         ) : (
-          <FormField label={tAds("destinationUrl")}>
+          <FormField
+            label={
+              ad.destinationType === "whatsapp" ? t("destWhatsappUrl") : tAds("destinationUrl")
+            }
+          >
             <input
               value={ad.linkUrl}
               onChange={(e) => patchAd({ linkUrl: e.target.value })}
-              placeholder="https://"
+              placeholder={ad.destinationType === "whatsapp" ? "https://wa.me/..." : "https://"}
               className="ui-input"
               disabled={clientRequired}
             />
           </FormField>
+        )}
+        <FormField label={t("callToAction")}>
+          <select
+            value={ad.callToAction || "LEARN_MORE"}
+            onChange={(e) => patchAd({ callToAction: e.target.value })}
+            className="ui-select"
+            disabled={clientRequired}
+          >
+            <option value="LEARN_MORE">LEARN_MORE</option>
+            <option value="SIGN_UP">SIGN_UP</option>
+            <option value="SHOP_NOW">SHOP_NOW</option>
+            <option value="CONTACT_US">CONTACT_US</option>
+            <option value="WHATSAPP_MESSAGE">WHATSAPP_MESSAGE</option>
+          </select>
+        </FormField>
+        {ad.destinationType === "whatsapp" || ad.callToAction === "WHATSAPP_MESSAGE" ? (
+          <FormField label={t("whatsappWelcomeMessage")}>
+            <textarea
+              value={ad.whatsappWelcomeMessage ?? ""}
+              onChange={(e) =>
+                patchAd({ whatsappWelcomeMessage: e.target.value.trim() || null })
+              }
+              placeholder={t("whatsappWelcomeMessagePlaceholder")}
+              className="ui-textarea text-sm"
+              rows={3}
+              disabled={clientRequired}
+            />
+          </FormField>
+        ) : null}
+        {ad.urlParams ? (
+          <FormField label={t("urlParams")}>
+            <input
+              value={ad.urlParams}
+              onChange={(e) => patchAd({ urlParams: e.target.value })}
+              className="ui-input font-mono text-xs"
+              disabled={clientRequired}
+            />
+          </FormField>
+        ) : (
+          <button
+            type="button"
+            onClick={() => patchAd({ urlParams: "utm_source=facebook&utm_medium=paid" })}
+            className="text-left text-[11px] text-violet-600 hover:underline"
+          >
+            {t("addUrlParams")}
+          </button>
         )}
         {!publishReady && payload.clientSlug ? (
           <p className="text-[11px] text-amber-700">{tAds("publishNotReady")}</p>

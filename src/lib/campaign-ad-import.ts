@@ -7,16 +7,21 @@ type AdCreativeCopy = {
   ctas: string[];
 };
 
+type StoryDataBlock = Record<string, unknown>;
+
 type MetaCreative = {
   body?: string;
   title?: string;
+  page_welcome_message?: unknown;
   object_story_spec?: Record<string, unknown>;
   asset_feed_spec?: {
     images?: Array<{ hash?: string }>;
     videos?: Array<{ video_id?: string }>;
     titles?: Array<{ text?: string }>;
     bodies?: Array<{ text?: string }>;
+    descriptions?: Array<{ text?: string }>;
     link_urls?: Array<{ website_url?: string }>;
+    call_to_action_types?: string[];
   };
 };
 
@@ -29,23 +34,192 @@ export type ImportedAdConfig = {
   pageId: string;
   instagramActorId: string | null;
   linkUrl: string;
+  linkUrls: string[];
+  urlParams: string;
+  callToAction: string;
+  whatsappWelcomeMessage: string | null;
   leadFormId: string | null;
   destinationType: AdDraftItem["destinationType"];
 };
+
+const STORY_DATA_KEYS = ["link_data", "video_data", "template_data", "photo_data"] as const;
 
 function uniqueStrings(values: string[]) {
   return [...new Set(values.map((v) => v.trim()).filter(Boolean))];
 }
 
+function isHttpUrl(value: string) {
+  return /^https?:\/\//i.test(value);
+}
+
+function isWhatsappUrl(value: string) {
+  const lower = value.toLowerCase();
+  return lower.includes("wa.me/") || lower.includes("api.whatsapp.com/") || lower.includes("whatsapp.com/");
+}
+
+function addUrl(bucket: string[], value: unknown) {
+  if (typeof value === "string" && isHttpUrl(value.trim())) bucket.push(value.trim());
+}
+
+function readWelcomeMessageText(raw: unknown): string | null {
+  if (typeof raw === "string" && raw.trim()) return raw.trim();
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const direct = obj.text ?? obj.message ?? obj.greeting ?? obj.autofill_message;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  if (direct && typeof direct === "object") {
+    const nested = (direct as Record<string, unknown>).text;
+    if (typeof nested === "string" && nested.trim()) return nested.trim();
+  }
+  return null;
+}
+
 function extractImageHashFromStorySpec(spec?: Record<string, unknown>): string | undefined {
   if (!spec) return undefined;
-  const linkData = spec.link_data as Record<string, unknown> | undefined;
+  const linkData = spec.link_data as StoryDataBlock | undefined;
   if (typeof linkData?.image_hash === "string") return linkData.image_hash;
-  const photoData = spec.photo_data as Record<string, unknown> | undefined;
+  const photoData = spec.photo_data as StoryDataBlock | undefined;
   if (typeof photoData?.image_hash === "string") return photoData.image_hash;
-  const videoData = spec.video_data as Record<string, unknown> | undefined;
+  const videoData = spec.video_data as StoryDataBlock | undefined;
   if (typeof videoData?.image_hash === "string") return videoData.image_hash;
   return undefined;
+}
+
+function storyBlocks(spec?: Record<string, unknown>): StoryDataBlock[] {
+  if (!spec) return [];
+  return STORY_DATA_KEYS.map((key) => spec[key]).filter(
+    (block): block is StoryDataBlock => Boolean(block) && typeof block === "object"
+  );
+}
+
+export function extractLinkUrlsFromCreative(creative?: MetaCreative | null): string[] {
+  if (!creative) return [];
+  const urls: string[] = [];
+  const feed = creative.asset_feed_spec;
+  for (const entry of feed?.link_urls ?? []) addUrl(urls, entry.website_url);
+
+  const spec = creative.object_story_spec;
+  for (const block of storyBlocks(spec)) {
+    addUrl(urls, block.link);
+    const cta = block.call_to_action as StoryDataBlock | undefined;
+    const value = cta?.value as StoryDataBlock | undefined;
+    addUrl(urls, value?.link);
+    addUrl(urls, value?.app_link);
+  }
+
+  return uniqueStrings(urls);
+}
+
+export function extractCallToAction(
+  creative?: MetaCreative | null,
+  copy?: AdCreativeCopy
+): string {
+  const ctas: string[] = [];
+  if (copy?.ctas?.length) ctas.push(...copy.ctas);
+  const feed = creative?.asset_feed_spec;
+  if (feed?.call_to_action_types?.length) ctas.push(...feed.call_to_action_types);
+
+  for (const block of storyBlocks(creative?.object_story_spec)) {
+    const cta = block.call_to_action as StoryDataBlock | undefined;
+    if (typeof cta?.type === "string") ctas.push(cta.type);
+  }
+
+  return uniqueStrings(ctas)[0] ?? "";
+}
+
+export function extractWhatsappWelcomeMessage(creative?: MetaCreative | null): string | null {
+  if (!creative) return null;
+  const candidates: unknown[] = [creative.page_welcome_message];
+
+  const spec = creative.object_story_spec;
+  if (spec) candidates.push(spec.page_welcome_message);
+
+  for (const block of storyBlocks(spec)) {
+    candidates.push(block.page_welcome_message);
+    const cta = block.call_to_action as StoryDataBlock | undefined;
+    const value = cta?.value as StoryDataBlock | undefined;
+    if (value) {
+      candidates.push(value.page_welcome_message, value.welcome_message, value.greeting);
+    }
+  }
+
+  for (const raw of candidates) {
+    const text = readWelcomeMessageText(raw);
+    if (text) return text;
+  }
+  return null;
+}
+
+function splitUrlAndParams(url: string): { linkUrl: string; urlParams: string } {
+  try {
+    const parsed = new URL(url);
+    const params = parsed.search ? parsed.search.replace(/^\?/, "") : "";
+    parsed.search = "";
+    const base = parsed.toString().replace(/\/$/, "");
+    return { linkUrl: base, urlParams: params };
+  } catch {
+    return { linkUrl: url, urlParams: "" };
+  }
+}
+
+function pickPrimaryLinkUrl(urls: string[], destinationType: AdDraftItem["destinationType"]) {
+  if (!urls.length) return "";
+  if (destinationType === "whatsapp") {
+    return urls.find(isWhatsappUrl) ?? urls[0]!;
+  }
+  return urls.find((u) => !u.includes("facebook.com")) ?? urls[0]!;
+}
+
+export function inferDestinationType(args: {
+  leadFormId: string | null;
+  callToAction: string;
+  linkUrls: string[];
+}): AdDraftItem["destinationType"] {
+  if (args.leadFormId) return "instant_form";
+  const cta = args.callToAction.toUpperCase();
+  if (cta.includes("WHATSAPP")) return "whatsapp";
+  if (args.linkUrls.some(isWhatsappUrl)) return "whatsapp";
+  return "website";
+}
+
+export function extractCreativeRouting(
+  creative?: MetaCreative | null,
+  copy?: AdCreativeCopy
+): Pick<
+  ImportedAdConfig,
+  | "linkUrl"
+  | "linkUrls"
+  | "urlParams"
+  | "callToAction"
+  | "whatsappWelcomeMessage"
+  | "leadFormId"
+  | "destinationType"
+  | "pageId"
+  | "instagramActorId"
+> {
+  const linkUrls = extractLinkUrlsFromCreative(creative);
+  const story = creative?.object_story_spec;
+  const linkData = story?.link_data as StoryDataBlock | undefined;
+  const pageId = String(story?.page_id ?? "");
+  const instagramActorId = (story?.instagram_actor_id as string | undefined) ?? null;
+  const leadFormId = (linkData?.lead_gen_form_id as string | undefined) ?? null;
+  const callToAction = extractCallToAction(creative, copy);
+  const whatsappWelcomeMessage = extractWhatsappWelcomeMessage(creative);
+  const destinationType = inferDestinationType({ leadFormId, callToAction, linkUrls });
+  const primary = pickPrimaryLinkUrl(linkUrls, destinationType);
+  const { linkUrl, urlParams } = primary ? splitUrlAndParams(primary) : { linkUrl: "", urlParams: "" };
+
+  return {
+    pageId,
+    instagramActorId,
+    linkUrl,
+    linkUrls,
+    urlParams,
+    callToAction,
+    whatsappWelcomeMessage,
+    leadFormId,
+    destinationType
+  };
 }
 
 export function copyTextsFromMetaCopy(copy: AdCreativeCopy): {
@@ -78,7 +252,7 @@ export function mediaFromMetaCreative(creative?: MetaCreative | null): {
   const storyHash = extractImageHashFromStorySpec(spec);
   if (storyHash && !hashes.includes(storyHash)) hashes.push(storyHash);
 
-  const videoData = spec?.video_data as Record<string, unknown> | undefined;
+  const videoData = spec?.video_data as StoryDataBlock | undefined;
   const storyVideoId = videoData?.video_id;
   if (typeof storyVideoId === "string" && !videoIds.includes(storyVideoId)) {
     videoIds.push(storyVideoId);
@@ -95,19 +269,9 @@ export function buildImportedAdConfig(
   copy: AdCreativeCopy
 ): ImportedAdConfig {
   const { imageHashes, videoIds, format } = mediaFromMetaCreative(creative);
+  const routing = extractCreativeRouting(creative, copy);
 
   const feed = creative?.asset_feed_spec;
-  const story = creative?.object_story_spec;
-  const linkData = story?.link_data as Record<string, unknown> | undefined;
-  const pageId = String(story?.page_id ?? "");
-  const instagramActorId = (story?.instagram_actor_id as string | undefined) ?? null;
-  const linkUrl =
-    feed?.link_urls?.[0]?.website_url ||
-    (typeof linkData?.link === "string" ? linkData.link : "") ||
-    "";
-  const leadFormId = (linkData?.lead_gen_form_id as string | undefined) ?? null;
-  const destinationType = leadFormId ? ("instant_form" as const) : ("website" as const);
-
   const titleList = [...copy.titles, ...copy.descriptions];
   const bodyList = [...copy.bodies];
   if (!titleList.length && creative?.title) titleList.push(creative.title);
@@ -118,6 +282,12 @@ export function buildImportedAdConfig(
   for (const b of feed?.bodies ?? []) {
     if (b.text?.trim()) bodyList.push(b.text.trim());
   }
+  for (const block of storyBlocks(creative?.object_story_spec)) {
+    if (typeof block.name === "string") titleList.push(block.name);
+    if (typeof block.title === "string") titleList.push(block.title);
+    if (typeof block.message === "string") bodyList.push(block.message);
+    if (typeof block.description === "string") titleList.push(block.description);
+  }
 
   return {
     titles: uniqueStrings(titleList),
@@ -125,11 +295,7 @@ export function buildImportedAdConfig(
     imageHashes,
     videoIds,
     format,
-    pageId,
-    instagramActorId,
-    linkUrl,
-    leadFormId,
-    destinationType
+    ...routing
   };
 }
 
@@ -143,6 +309,11 @@ export function applyImportedToAd(
     if (imported.titles?.length) next.titles = [...imported.titles];
     if (imported.bodies?.length) next.bodies = [...imported.bodies];
     if (imported.linkUrl) next.linkUrl = imported.linkUrl;
+    if (imported.urlParams) next.urlParams = imported.urlParams;
+    if (imported.callToAction) next.callToAction = imported.callToAction;
+    if (imported.whatsappWelcomeMessage !== undefined) {
+      next.whatsappWelcomeMessage = imported.whatsappWelcomeMessage;
+    }
     if (imported.destinationType) next.destinationType = imported.destinationType;
     if (imported.leadFormId !== undefined) next.leadFormId = imported.leadFormId;
   }
@@ -152,6 +323,14 @@ export function applyImportedToAd(
     if (imported.format) next.format = imported.format;
     if (imported.pageId) next.pageId = imported.pageId;
     if (imported.instagramActorId !== undefined) next.instagramActorId = imported.instagramActorId;
+    if (imported.linkUrl) next.linkUrl = imported.linkUrl;
+    if (imported.urlParams) next.urlParams = imported.urlParams;
+    if (imported.callToAction) next.callToAction = imported.callToAction;
+    if (imported.whatsappWelcomeMessage !== undefined) {
+      next.whatsappWelcomeMessage = imported.whatsappWelcomeMessage;
+    }
+    if (imported.destinationType) next.destinationType = imported.destinationType;
+    if (imported.leadFormId !== undefined) next.leadFormId = imported.leadFormId;
   }
   return next;
 }
@@ -170,6 +349,8 @@ export function cloneAdWithPreset(
     destinationType: base.destinationType,
     leadFormId: base.leadFormId,
     urlParams: base.urlParams,
+    callToAction: base.callToAction,
+    whatsappWelcomeMessage: base.whatsappWelcomeMessage,
     tracking: { ...base.tracking },
     targetAdsetIds: [...base.targetAdsetIds]
   };
