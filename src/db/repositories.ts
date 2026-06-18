@@ -17,6 +17,7 @@ import type { ClientMetaSettings } from "@/db/entities/ClientMetaSettings";
 import type { ClientTag } from "@/db/entities/ClientTag";
 import type { CreativeAsset } from "@/db/entities/CreativeAsset";
 import type { LookalikeJob } from "@/db/entities/LookalikeJob";
+import type { AudienceInsightBreakdown } from "@/db/entities/AudienceInsightBreakdown";
 import type { MetaAdAccountInventory } from "@/db/entities/MetaAdAccountInventory";
 import type { MetaAuth } from "@/db/entities/MetaAuth";
 import type { MetaAudienceCache } from "@/db/entities/MetaAudienceCache";
@@ -53,6 +54,9 @@ import type { ClientExperiment } from "@/db/entities/ClientExperiment";
 import type { ClientActionPlan } from "@/db/entities/ClientActionPlan";
 import type { ClientActionPlanItem } from "@/db/entities/ClientActionPlanItem";
 import type { TenantAddon } from "@/db/entities/TenantAddon";
+import type { MessageTemplate } from "@/db/entities/MessageTemplate";
+import type { VideoUploadSession } from "@/db/entities/VideoUploadSession";
+import type { VideoUploadPart } from "@/db/entities/VideoUploadPart";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -87,8 +91,12 @@ const ENTITY = {
   ClientTag: "ClientTag",
   MetaAudienceCache: "MetaAudienceCache",
   LookalikeJob: "LookalikeJob",
+  AudienceInsightBreakdown: "AudienceInsightBreakdown",
   CampaignTemplate: "CampaignTemplate",
   CreativeAsset: "CreativeAsset",
+  MessageTemplate: "MessageTemplate",
+  VideoUploadSession: "VideoUploadSession",
+  VideoUploadPart: "VideoUploadPart",
   AutomationRule: "AutomationRule",
   ReportSchedule: "ReportSchedule",
   UserClient: "UserClient",
@@ -166,8 +174,15 @@ export async function repositories() {
     clientTag: repositoryFor<ClientTag>(ds, ENTITY.ClientTag),
     metaAudienceCache: repositoryFor<MetaAudienceCache>(ds, ENTITY.MetaAudienceCache),
     lookalikeJob: repositoryFor<LookalikeJob>(ds, ENTITY.LookalikeJob),
+    audienceInsightBreakdown: repositoryFor<AudienceInsightBreakdown>(
+      ds,
+      ENTITY.AudienceInsightBreakdown
+    ),
     campaignTemplate: repositoryFor<CampaignTemplate>(ds, ENTITY.CampaignTemplate),
     creativeAsset: repositoryFor<CreativeAsset>(ds, ENTITY.CreativeAsset),
+    messageTemplate: repositoryFor<MessageTemplate>(ds, ENTITY.MessageTemplate),
+    videoUploadSession: repositoryFor<VideoUploadSession>(ds, ENTITY.VideoUploadSession),
+    videoUploadPart: repositoryFor<VideoUploadPart>(ds, ENTITY.VideoUploadPart),
     automationRule: repositoryFor<AutomationRule>(ds, ENTITY.AutomationRule),
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),

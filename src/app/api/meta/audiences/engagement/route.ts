@@ -1,0 +1,94 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { getAppContext } from "@/lib/app-context";
+import { checkCustomAudienceTos, validateClientAdAccount } from "@/lib/audience-api-helpers";
+import {
+  createEngagementCustomAudience,
+  findEngagementAction,
+  type EngagementSourceType
+} from "@/lib/meta-audience-create";
+
+const BodySchema = z.object({
+  clientId: z.string().min(1),
+  adAccountId: z.string().min(1),
+  name: z.string().min(1),
+  sourceType: z.enum(["page", "ig_business", "video", "lead"]),
+  sourceId: z.string().optional(),
+  sourceIds: z.array(z.string().min(1)).optional(),
+  eventName: z.string().min(1),
+  retentionDays: z.number().int().min(0).max(730)
+});
+
+export async function POST(req: Request) {
+  const { tenant, metaAccessToken } = await getAppContext();
+  if (!metaAccessToken) {
+    return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
+  }
+
+  const body = BodySchema.parse(await req.json().catch(() => ({})));
+  const validation = await validateClientAdAccount(tenant.id, body.clientId, body.adAccountId);
+  if (!validation.ok) {
+    return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status });
+  }
+
+  const actionDef = findEngagementAction(body.sourceType as EngagementSourceType, body.eventName);
+  if (!actionDef) {
+    return NextResponse.json({ ok: false, error: "Ação de engajamento inválida" }, { status: 400 });
+  }
+
+  const sourceIds =
+    body.sourceIds?.length
+      ? body.sourceIds
+      : body.sourceId
+        ? [body.sourceId]
+        : [];
+
+  if (!sourceIds.length) {
+    return NextResponse.json(
+      { ok: false, error: "Selecione a página, conta, vídeo ou formulário de origem" },
+      { status: 400 }
+    );
+  }
+
+  if (actionDef.fixedRetentionSeconds === undefined && body.retentionDays < 1) {
+    return NextResponse.json({ ok: false, error: "Informe o período de retenção" }, { status: 400 });
+  }
+
+  if (
+    actionDef.fixedRetentionSeconds === undefined &&
+    body.retentionDays > actionDef.maxRetentionDays
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Retenção máxima para esta ação: ${actionDef.maxRetentionDays} dias`
+      },
+      { status: 400 }
+    );
+  }
+
+  const tos = await checkCustomAudienceTos(metaAccessToken, body.adAccountId);
+  if (!tos.accepted) {
+    return NextResponse.json(
+      { ok: false, error: "Aceite os termos de públicos personalizados na Meta", tosUrl: tos.url },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const created = await createEngagementCustomAudience(metaAccessToken, body.adAccountId, {
+      name: body.name,
+      sourceType: body.sourceType,
+      sourceIds,
+      eventName: body.eventName,
+      retentionDays: body.retentionDays
+    });
+    return NextResponse.json({ ok: true, audienceId: created.id });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "Falha ao criar público" },
+      { status: 500 }
+    );
+  }
+}

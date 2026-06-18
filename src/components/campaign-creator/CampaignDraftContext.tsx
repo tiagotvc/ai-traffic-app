@@ -107,8 +107,13 @@ export function CampaignDraftProvider({
       .catch(() => {});
   }, [initialDraftId]);
 
+  const addAdFetchedRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!initialAddAd) return;
+    const key = `${initialAddAd.fromCampaignId}:${initialAddAd.adsetId}:${initialAddAd.clientSlug ?? ""}`;
+    if (addAdFetchedRef.current === key) return;
+    addAdFetchedRef.current = key;
     const { fromCampaignId, adsetId, clientSlug } = initialAddAd;
     setAddAdLoading(true);
     fetch(
@@ -123,6 +128,7 @@ export function CampaignDraftProvider({
           clientSlug?: string;
           adsetName?: string;
           inheritedAd?: Partial<AdDraftItem>;
+          inheritedAdset?: Partial<import("@/lib/campaign-draft").AdSetDraftItem>;
           error?: string;
         }) => {
           if (!j.ok || !j.patch) return;
@@ -130,6 +136,7 @@ export function CampaignDraftProvider({
           const adsetDraftId = newDraftId();
           const base = defaultCampaignDraft(locale);
           const inherited = j.inheritedAd ?? {};
+          const inheritedAdset = j.inheritedAdset ?? {};
           const freshAd = {
             ...defaultAdItem(locale),
             ...inherited,
@@ -138,6 +145,7 @@ export function CampaignDraftProvider({
             titles: [],
             bodies: [],
             imageHashes: [],
+            videoIds: [],
             targetAdsetIds: [adsetDraftId]
           };
 
@@ -149,8 +157,9 @@ export function CampaignDraftProvider({
             adsets: [
               {
                 ...base.adsets[0]!,
+                ...inheritedAdset,
                 id: adsetDraftId,
-                name: j.adsetName ?? base.adsets[0]!.name
+                name: j.adsetName ?? inheritedAdset.name ?? base.adsets[0]!.name
               }
             ],
             ads: [freshAd],
@@ -163,7 +172,8 @@ export function CampaignDraftProvider({
               publishMode: "add_ad",
               targetMetaAdsetId: adsetId,
               targetMetaCampaignId: fromCampaignId,
-              targetAdsetName: j.adsetName
+              targetAdsetName: j.adsetName,
+              inheritedContextLocked: true
             }
           });
           setPayload(next);
@@ -173,7 +183,12 @@ export function CampaignDraftProvider({
       )
       .catch(() => {})
       .finally(() => setAddAdLoading(false));
-  }, [initialAddAd, locale]);
+  }, [
+    initialAddAd?.fromCampaignId,
+    initialAddAd?.adsetId,
+    initialAddAd?.clientSlug,
+    locale
+  ]);
 
   const persist = useCallback(async () => {
     if (isAddAdDraft(payloadRef.current)) return;

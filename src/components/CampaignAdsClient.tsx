@@ -1,13 +1,14 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
+import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
@@ -37,8 +38,14 @@ import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
+import {
+  type AppliedCampaignFilter,
+  matchesCampaignFilters
+} from "@/lib/campaign-meta-filters";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
+import { PeriodFilter } from "@/components/PeriodFilter";
+import { useCampaignPeriod } from "@/hooks/useCampaignPeriod";
 
 type AdMetrics = Partial<Record<MetricKey, number>>;
 
@@ -98,6 +105,7 @@ export function CampaignAdsClient({
   const searchParams = useSearchParams();
   const router = useRouter();
   const { openPanel } = usePublishPanel();
+  const { period, setPeriod, periodQueryString } = useCampaignPeriod();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
   const [preset, setPreset] = useState<string>("default");
@@ -119,16 +127,20 @@ export function CampaignAdsClient({
     return "";
   }
   const urlAdset = searchParams.get("adset");
+  const urlQueryString = searchParams.toString();
+  const rememberedAdsetAppliedRef = useRef(false);
   const [adsetFilter, setAdsetFilter] = useState<string | null>(
     urlAdset ?? initialAdsetId ?? null
   );
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [campaignLoading, setCampaignLoading] = useState(true);
   const [ads, setAds] = useState<AdRow[]>([]);
   const [adsetsCount, setAdsetsCount] = useState<number | null>(null);
   const [creativesCount, setCreativesCount] = useState<number | null>(null);
   const [adsLoading, setAdsLoading] = useState(true);
   const [countsLoading, setCountsLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<AdRow | null>(null);
@@ -138,18 +150,24 @@ export function CampaignAdsClient({
   const pageSize = 20;
 
   useEffect(() => {
-    const fromUrl = searchParams.get("adset");
-    if (fromUrl) {
-      setAdsetFilter(fromUrl);
-      rememberAdset(metaCampaignId, fromUrl);
+    rememberedAdsetAppliedRef.current = false;
+  }, [metaCampaignId]);
+
+  useEffect(() => {
+    if (urlAdset) {
+      setAdsetFilter(urlAdset);
+      rememberAdset(metaCampaignId, urlAdset);
+      rememberedAdsetAppliedRef.current = true;
       return;
     }
 
+    if (rememberedAdsetAppliedRef.current) return;
+
     const remembered = getRememberedAdset(metaCampaignId);
     if (remembered?.adsetId) {
+      rememberedAdsetAppliedRef.current = true;
       setAdsetFilter(remembered.adsetId);
-      const slug = clientSlug || campaign?.clientSlug || "";
-      const qs = campaignTabQuery(slug, remembered.adsetId);
+      const qs = campaignTabQuery(clientSlug, remembered.adsetId, urlQueryString);
       router.replace(`/campaigns/${metaCampaignId}/ads${qs}`, { scroll: false });
       return;
     }
@@ -158,7 +176,14 @@ export function CampaignAdsClient({
       setAdsetFilter(initialAdsetId);
       rememberAdset(metaCampaignId, initialAdsetId);
     }
-  }, [searchParams, metaCampaignId, clientSlug, initialAdsetId, router, campaign?.clientSlug]);
+  }, [urlAdset, urlQueryString, metaCampaignId, clientSlug, initialAdsetId, router]);
+
+  const apiQueryString = useMemo(() => {
+    const params = new URLSearchParams(periodQueryString.replace(/^\?/, ""));
+    if (clientSlug) params.set("client", clientSlug);
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
+  }, [periodQueryString, clientSlug]);
 
   const toggleSort = (key: string) => {
     setPage(1);
@@ -171,15 +196,18 @@ export function CampaignAdsClient({
   const reload = useCallback(() => {
     setAdsLoading(true);
     setCountsLoading(true);
+    setCampaignLoading(true);
 
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}`)
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${apiQueryString}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.campaign) {
           setCampaign(j.campaign);
           rememberCampaign(metaCampaignId, j.campaign.clientSlug || clientSlug);
         }
-      });
+      })
+      .catch(() => undefined)
+      .finally(() => setCampaignLoading(false));
 
     fetch("/api/campaign-presets")
       .then((r) => r.json())
@@ -188,13 +216,15 @@ export function CampaignAdsClient({
       })
       .catch(() => {});
 
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads`)
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads${apiQueryString}`)
       .then((r) => r.json())
       .then((j) => setAds(j.ads ?? []))
       .catch(() => setAds([]))
       .finally(() => setAdsLoading(false));
 
-    const adsetsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets`)
+    const adsetsPromise = fetch(
+      `/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${apiQueryString}`
+    )
       .then((r) => r.json())
       .then((j) => setAdsetsCount((j.adsets ?? []).length))
       .catch(() => setAdsetsCount(0));
@@ -203,7 +233,7 @@ export function CampaignAdsClient({
       .then((j) => setCreativesCount(j.total ?? (j.rows ?? []).length))
       .catch(() => setCreativesCount(0));
     void Promise.all([adsetsPromise, creativesPromise]).finally(() => setCountsLoading(false));
-  }, [metaCampaignId, clientSlug]);
+  }, [metaCampaignId, clientSlug, apiQueryString]);
 
   useEffect(() => {
     reload();
@@ -214,6 +244,18 @@ export function CampaignAdsClient({
     if (adsetFilter) list = list.filter((a) => a.adsetId === adsetFilter);
     if (statusFilter === "active") list = list.filter((a) => a.status === "ACTIVE");
     if (statusFilter === "paused") list = list.filter((a) => a.status === "PAUSED");
+    if (metaFilters.length) {
+      list = list.filter((a) =>
+        matchesCampaignFilters(
+          {
+            metaCampaignId: a.id,
+            campaignName: a.name ?? a.id,
+            status: a.status
+          },
+          metaFilters
+        )
+      );
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -260,7 +302,7 @@ export function CampaignAdsClient({
       }
     }
     return list;
-  }, [ads, search, statusFilter, adsetFilter, sort, metricColumns, tableLayout.customMetricsMap]);
+  }, [ads, search, statusFilter, adsetFilter, sort, metricColumns, tableLayout.customMetricsMap, metaFilters]);
 
   const adsetFilterName = adsetFilter
     ? ads.find((a) => a.adsetId === adsetFilter)?.adsetName ??
@@ -298,16 +340,16 @@ export function CampaignAdsClient({
   };
 
   function openNewAd() {
-    if (!adsetFilter || !campaign) return;
+    if (!adsetFilter) return;
     openPanel({
-      clientSlug: campaign.clientSlug || clientSlug,
+      clientSlug: slug,
       metaCampaignId,
       adsetId: adsetFilter,
       mode: "add-ad"
     });
   }
 
-  if (!campaign) {
+  if (campaignLoading && !campaign) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-6 w-56" />
@@ -320,7 +362,8 @@ export function CampaignAdsClient({
     );
   }
 
-  const slug = campaign.clientSlug || clientSlug;
+  const slug = campaign?.clientSlug || clientSlug;
+  const campaignName = campaign?.name ?? metaCampaignId;
 
   return (
     <div className="space-y-4">
@@ -334,7 +377,7 @@ export function CampaignAdsClient({
             href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
             className="hover:text-violet-600"
           >
-            {campaign.name}
+            {campaignName}
           </Link>
           {" › "}
           <span className="text-slate-700">{t("title")}</span>
@@ -352,6 +395,7 @@ export function CampaignAdsClient({
           <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <PeriodFilter value={period} onChange={setPeriod} />
           <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
             ↻
           </button>
@@ -373,20 +417,26 @@ export function CampaignAdsClient({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-slate-900">{campaign.name}</span>
-            <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
+            <span className="font-semibold text-slate-900">{campaignName}</span>
+            {campaign ? (
+              <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
+            ) : null}
           </div>
           <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-slate-500">
-            <span>ID: {campaign.id}</span>
-            <span>
-              {t("client")}: {campaign.clientName}
-            </span>
-            <span>
-              {t("account")}: {campaign.accountLabel}
-            </span>
-            <span>
-              {t("objective")}: {campaign.objective}
-            </span>
+            <span>ID: {campaign?.id ?? metaCampaignId}</span>
+            {campaign ? (
+              <>
+                <span>
+                  {t("client")}: {campaign.clientName}
+                </span>
+                <span>
+                  {t("account")}: {campaign.accountLabel}
+                </span>
+                <span>
+                  {t("objective")}: {campaign.objective}
+                </span>
+              </>
+            ) : null}
           </div>
         </div>
       </div>
@@ -404,14 +454,18 @@ export function CampaignAdsClient({
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <input
+        <MetaFilterSearchBar
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
+          onChange={(v) => {
+            setSearch(v);
             setPage(1);
           }}
-          placeholder={t("search")}
-          className="ui-input min-w-[200px] flex-1"
+          filters={metaFilters}
+          onFiltersChange={(next) => {
+            setMetaFilters(next);
+            setPage(1);
+          }}
+          className="min-w-[240px] flex-1"
         />
         <select
           value={statusFilter}

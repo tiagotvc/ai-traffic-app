@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAppContext } from "@/lib/app-context";
 import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
-import { searchAdInterests, searchAdLocales, searchGeoLocations } from "@/lib/meta-graph";
+import { searchAdInterests, searchAdLocales, searchAdTargetingCategories, searchGeoLocations } from "@/lib/meta-graph";
 
 /** Busca de segmentação do Meta (interesses, geolocalização, idiomas) para o criador de anúncios. */
 export async function GET(req: Request) {
@@ -26,6 +26,18 @@ export async function GET(req: Request) {
     }
     if (type === "locale") {
       return NextResponse.json({ ok: true, results: await searchAdLocales(token, q) });
+    }
+    if (type === "behavior") {
+      return NextResponse.json({
+        ok: true,
+        results: await searchAdTargetingCategories(token, q, "behaviors")
+      });
+    }
+    if (type === "demographic") {
+      return NextResponse.json({
+        ok: true,
+        results: await searchAdTargetingCategories(token, q, "demographics")
+      });
     }
     return NextResponse.json({ ok: false, error: "type inválido" }, { status: 400 });
   } catch (e) {

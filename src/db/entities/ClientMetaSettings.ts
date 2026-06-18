@@ -75,6 +75,15 @@ export class ClientMetaSettings {
   @Column({ type: "text", nullable: true })
   targetingTemplateName?: string | null;
 
+  @Column({ type: "jsonb", nullable: true })
+  defaultUtm?: {
+    source?: string;
+    medium?: string;
+    campaign?: string;
+    content?: string;
+    term?: string;
+  } | null;
+
   @Column({ type: "timestamptz", default: () => "now()" })
   createdAt!: Date;
 

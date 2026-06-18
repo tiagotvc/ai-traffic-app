@@ -19,14 +19,17 @@ export { periodStateFromQueryString, buildPeriodQueryFromParams } from "@/lib/ca
 
 export function useCampaignPeriod() {
   const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const pathname = usePathname();
   const router = useRouter();
 
   const period = useMemo(() => {
     const url = new URL("http://local");
-    searchParams.forEach((v, k) => url.searchParams.set(k, v));
+    if (queryString) {
+      new URLSearchParams(queryString).forEach((v, k) => url.searchParams.set(k, v));
+    }
     return periodStateFromParsed(parsePeriodFromSearchParams(url));
-  }, [searchParams]);
+  }, [queryString]);
 
   const periodQueryString = useMemo(() => {
     const qs = periodToSearchParams(period).toString();
@@ -35,7 +38,7 @@ export function useCampaignPeriod() {
 
   const setPeriod = useCallback(
     (next: PeriodState) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(queryString);
       const periodQs = periodToSearchParams({
         preset: next.preset,
         since: next.since,
@@ -48,7 +51,7 @@ export function useCampaignPeriod() {
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname);
     },
-    [pathname, router, searchParams]
+    [pathname, router, queryString]
   );
 
   return { period, setPeriod, periodQueryString };

@@ -38,7 +38,8 @@ export type MetaCustomAudience = {
   id: string;
   name?: string;
   subtype?: string;
-  approximate_count?: number;
+  approximate_count_lower_bound?: number;
+  approximate_count_upper_bound?: number;
   lookalike_spec?: unknown;
 };
 
@@ -69,6 +70,7 @@ export type MetaAdsetInsightRow = MetaInsightRow & {
 };
 
 export type MetaAdImage = { id: string; hash?: string; name?: string; url?: string };
+export type MetaAdVideo = { id: string; title?: string; picture?: string; source?: string };
 
 export type MetaCampaign = {
   id: string;
@@ -175,7 +177,7 @@ export type CampaignAdRow = MetaAd & {
   adsetName?: string;
 };
 
-async function metaFetch<T>(path: string, accessToken: string): Promise<T> {
+export async function metaFetch<T>(path: string, accessToken: string): Promise<T> {
   const url = new URL(`${GRAPH_BASE}${path}`);
   url.searchParams.set("access_token", accessToken);
   const { data } = await metaFetchWithRateLimit<T>(url.toString());
@@ -421,8 +423,81 @@ export async function fetchAdAccountPixels(
   }
 }
 
+export type MetaCustomConversion = { id: string; name?: string; custom_event_type?: string };
+
+export async function fetchCustomConversions(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaCustomConversion[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  try {
+    const path = `/${encodeURIComponent(act)}/customconversions?fields=id,name,custom_event_type&limit=100`;
+    return fetchGraphPaged<MetaCustomConversion>(path, accessToken);
+  } catch {
+    return [];
+  }
+}
+
+export const STANDARD_CONVERSION_EVENTS = [
+  "LEAD",
+  "PURCHASE",
+  "COMPLETE_REGISTRATION",
+  "ADD_TO_CART",
+  "INITIATED_CHECKOUT",
+  "SUBSCRIBE",
+  "CONTACT"
+] as const;
+
 export async function fetchUserPages(accessToken: string): Promise<MetaFacebookPage[]> {
   return fetchGraphPaged<MetaFacebookPage>("/me/accounts?fields=id,name&limit=100", accessToken);
+}
+
+/** Páginas que a conta de anúncios pode promover (live Graph API). */
+export async function fetchPagesForAdAccount(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaFacebookPage[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  for (const edge of ["assigned_pages", "promote_pages"] as const) {
+    try {
+      const rows = await fetchGraphPaged<MetaFacebookPage>(
+        `/${encodeURIComponent(act)}/${edge}?fields=id,name&limit=100`,
+        accessToken
+      );
+      if (rows.length) return rows;
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(`[meta-graph] ${edge} for ${act}:`, err);
+      }
+    }
+  }
+  return [];
+}
+
+/** Instagram vinculado às páginas (fallback quando instagram_accounts da conta vem vazio). */
+export async function fetchInstagramFromPages(
+  accessToken: string,
+  pageIds: string[]
+): Promise<MetaInstagramAccount[]> {
+  const seen = new Map<string, MetaInstagramAccount>();
+  for (const pageId of pageIds.slice(0, 25)) {
+    if (!pageId.trim()) continue;
+    try {
+      const data = await metaFetch<{
+        connected_instagram_account?: { id?: string; username?: string };
+      }>(
+        `/${encodeURIComponent(pageId)}?fields=${encodeURIComponent("connected_instagram_account{id,username}")}`,
+        accessToken
+      );
+      const ig = data.connected_instagram_account;
+      if (ig?.id && !seen.has(ig.id)) {
+        seen.set(ig.id, { id: ig.id, username: ig.username });
+      }
+    } catch {
+      /* skip page */
+    }
+  }
+  return [...seen.values()];
 }
 
 // ---- Targeting search (/search) ----
@@ -478,6 +553,26 @@ export async function searchAdLocales(accessToken: string, q: string): Promise<M
   return (data.data ?? []).map((d) => ({ key: d.key, name: d.name }));
 }
 
+export type MetaTargetingCategory = { id: string; name: string; audience_size?: number; path?: string[] };
+
+export async function searchAdTargetingCategories(
+  accessToken: string,
+  q: string,
+  classType: "behaviors" | "demographics" | "life_events"
+): Promise<MetaTargetingCategory[]> {
+  if (!q.trim()) return [];
+  const path = `/search?type=adTargetingCategory&class=${classType}&limit=25&q=${encodeURIComponent(q.trim())}`;
+  const data = await metaFetch<{
+    data: Array<{ id: string; name: string; audience_size_lower_bound?: number; path?: string[] }>;
+  }>(path, accessToken);
+  return (data.data ?? []).map((d) => ({
+    id: d.id,
+    name: d.name,
+    audience_size: d.audience_size_lower_bound,
+    path: d.path
+  }));
+}
+
 export type MetaInstagramAccount = { id: string; username?: string };
 
 /** Contas do Instagram utilizáveis por uma conta de anúncio. */
@@ -502,12 +597,54 @@ export async function fetchCustomAudiences(
   adAccountId: string
 ): Promise<MetaCustomAudience[]> {
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
-  const fields = ["id", "name", "subtype", "approximate_count", "lookalike_spec"].join(",");
+  const fields = [
+    "id",
+    "name",
+    "subtype",
+    "approximate_count_lower_bound",
+    "approximate_count_upper_bound",
+    "lookalike_spec"
+  ].join(",");
   const data = await metaFetch<{ data: MetaCustomAudience[] }>(
     `/${encodeURIComponent(act)}/customaudiences?fields=${encodeURIComponent(fields)}&limit=100`,
     accessToken
   );
   return data.data ?? [];
+}
+
+export type MetaCustomAudienceDetail = MetaCustomAudience & {
+  description?: string;
+  delivery_status?: { code?: number; description?: string };
+  operation_status?: { code?: number; description?: string };
+  time_created?: string;
+  time_updated?: string;
+  account_id?: string;
+  rule?: unknown;
+};
+
+export async function fetchCustomAudienceDetail(
+  accessToken: string,
+  audienceId: string
+): Promise<MetaCustomAudienceDetail> {
+  const fields = [
+    "id",
+    "name",
+    "subtype",
+    "description",
+    "delivery_status",
+    "operation_status",
+    "time_created",
+    "time_updated",
+    "approximate_count_lower_bound",
+    "approximate_count_upper_bound",
+    "lookalike_spec",
+    "rule",
+    "account_id"
+  ].join(",");
+  return metaFetch<MetaCustomAudienceDetail>(
+    `/${encodeURIComponent(audienceId)}?fields=${encodeURIComponent(fields)}`,
+    accessToken
+  );
 }
 
 export async function createLookalikeAudience(
@@ -538,6 +675,9 @@ export type MetaAdSetDetail = {
   name?: string;
   targeting?: Record<string, unknown>;
   promoted_object?: Record<string, unknown>;
+  destination_type?: string;
+  optimization_goal?: string;
+  billing_event?: string;
   start_time?: string;
   end_time?: string;
   daily_budget?: string;
@@ -546,7 +686,7 @@ export type MetaAdSetDetail = {
 export async function fetchAdSetDetail(
   accessToken: string,
   adSetId: string,
-  fields = "id,name,targeting,promoted_object,start_time,end_time,daily_budget"
+  fields = "id,name,targeting,promoted_object,destination_type,optimization_goal,billing_event,start_time,end_time,daily_budget"
 ): Promise<MetaAdSetDetail> {
   return metaFetch<MetaAdSetDetail>(
     `/${encodeURIComponent(adSetId)}?fields=${encodeURIComponent(fields)}`,
@@ -564,10 +704,14 @@ export type MetaAdWithCreative = {
     object_story_spec?: Record<string, unknown>;
     asset_feed_spec?: {
       images?: Array<{ hash?: string }>;
+      videos?: Array<{ video_id?: string }>;
       titles?: Array<{ text?: string }>;
       bodies?: Array<{ text?: string }>;
+      descriptions?: Array<{ text?: string }>;
       link_urls?: Array<{ website_url?: string }>;
+      call_to_action_types?: string[];
     };
+    page_welcome_message?: unknown;
   };
 };
 
@@ -576,7 +720,7 @@ export async function fetchAdWithCreative(
   adId: string
 ): Promise<MetaAdWithCreative> {
   const fields =
-    "id,name,creative{id,body,title,object_story_spec,asset_feed_spec{images,titles,bodies,link_urls}}";
+    "id,name,creative{id,body,title,page_welcome_message,object_story_spec,asset_feed_spec{images,videos,titles,bodies,descriptions,link_urls,call_to_action_types}}";
   return metaFetch<MetaAdWithCreative>(
     `/${encodeURIComponent(adId)}?fields=${encodeURIComponent(fields)}`,
     accessToken
@@ -607,6 +751,27 @@ export async function uploadAdImage(
   });
 }
 
+export async function uploadAdVideo(
+  accessToken: string,
+  adAccountId: string,
+  file: Buffer,
+  fileName: string,
+  title: string
+): Promise<{ id: string }> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const form = new FormData();
+  form.append("access_token", accessToken);
+  form.append("name", title);
+  form.append("source", new Blob([new Uint8Array(file)]), fileName);
+
+  const url = `${GRAPH_BASE}/${encodeURIComponent(act)}/advideos`;
+  const { data } = await metaFetchWithRateLimit<{ id: string }>(url, {
+    method: "POST",
+    body: form
+  });
+  return data;
+}
+
 const INSIGHT_METRIC_FIELDS = [
   "spend",
   "impressions",
@@ -632,6 +797,31 @@ export async function fetchAccountInsightsDaily(
   const fields = INSIGHT_METRIC_FIELDS.join(",");
   const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=${datePreset}&limit=500`;
   return fetchGraphPaged<MetaInsightRow>(path, accessToken);
+}
+
+export type MetaBreakdownInsightRow = MetaCampaignInsightRow & {
+  age?: string;
+  gender?: string;
+  region?: string;
+  country?: string;
+};
+
+/** Insights with demographic breakdowns for AI audience suggestions. */
+export async function fetchInsightsWithBreakdowns(
+  accessToken: string,
+  adAccountId: string,
+  breakdowns: Array<"age" | "gender" | "region">,
+  datePreset = "last_30d",
+  level: "campaign" | "adset" = "campaign"
+): Promise<MetaBreakdownInsightRow[]> {
+  const fields = [
+    level === "campaign" ? "campaign_id" : "adset_id",
+    level === "campaign" ? "campaign_name" : "adset_name",
+    ...INSIGHT_METRIC_FIELDS
+  ].join(",");
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const path = `/${encodeURIComponent(act)}/insights?level=${level}&fields=${encodeURIComponent(fields)}&breakdowns=${breakdowns.join(",")}&date_preset=${datePreset}&limit=500`;
+  return fetchGraphPaged<MetaBreakdownInsightRow>(path, accessToken);
 }
 
 export async function fetchCampaignInsightsDaily(
@@ -716,6 +906,35 @@ export async function fetchAdImages(accessToken: string, adAccountId: string): P
   const path = `/${encodeURIComponent(adAccountId)}/adimages?fields=${encodeURIComponent(fields)}&limit=50`;
   const data = await metaFetch<{ data: MetaAdImage[] }>(path, accessToken);
   return data.data ?? [];
+}
+
+export async function fetchAdVideos(accessToken: string, adAccountId: string): Promise<MetaAdVideo[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const fields = ["id", "title", "picture", "source"].join(",");
+  const path = `/${encodeURIComponent(act)}/advideos?fields=${encodeURIComponent(fields)}&limit=100`;
+  return fetchGraphPaged<MetaAdVideo>(path, accessToken);
+}
+
+export async function fetchPageVideos(accessToken: string, pageId: string): Promise<MetaAdVideo[]> {
+  const path = `/${encodeURIComponent(pageId)}/videos?fields=${encodeURIComponent("id,title,picture")}&limit=100`;
+  return fetchGraphPaged<MetaAdVideo>(path, accessToken);
+}
+
+export type MetaInstagramMedia = {
+  id: string;
+  caption?: string;
+  media_type?: string;
+  thumbnail_url?: string;
+  permalink?: string;
+};
+
+export async function fetchInstagramVideoMedia(
+  accessToken: string,
+  igBusinessId: string
+): Promise<MetaInstagramMedia[]> {
+  const path = `/${encodeURIComponent(igBusinessId)}/media?fields=${encodeURIComponent("id,caption,media_type,thumbnail_url,permalink")}&limit=100`;
+  const rows = await fetchGraphPaged<MetaInstagramMedia>(path, accessToken);
+  return rows.filter((r) => r.media_type === "VIDEO");
 }
 
 const LEAD_ACTIONS = new Set([
@@ -1146,6 +1365,19 @@ export type AdCreativeCopy = {
   ctas: string[];
 };
 
+function readWelcomeMessageForCopy(raw: unknown): string | null {
+  if (typeof raw === "string" && raw.trim()) return raw.trim();
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const direct = obj.text ?? obj.message ?? obj.greeting ?? obj.autofill_message;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+  if (direct && typeof direct === "object") {
+    const nested = (direct as Record<string, unknown>).text;
+    if (typeof nested === "string" && nested.trim()) return nested.trim();
+  }
+  return null;
+}
+
 /** Textos do criativo (corpo, título, descrição, CTA) — para a aba "Copy". */
 export async function fetchAdCreativeCopy(
   accessToken: string,
@@ -1163,6 +1395,7 @@ export async function fetchAdCreativeCopy(
       creative?: {
         body?: string;
         title?: string;
+        page_welcome_message?: unknown;
         object_story_spec?: Record<string, Record<string, unknown> | undefined>;
         asset_feed_spec?: {
           bodies?: Array<{ text?: string }>;
@@ -1173,7 +1406,7 @@ export async function fetchAdCreativeCopy(
       };
     }>(
       `/${encodeURIComponent(adId)}?fields=${encodeURIComponent(
-        "creative{body,title,object_story_spec,asset_feed_spec}"
+        "creative{body,title,page_welcome_message,object_story_spec,asset_feed_spec}"
       )}`,
       accessToken
     );
@@ -1193,6 +1426,8 @@ export async function fetchAdCreativeCopy(
       const cta = d.call_to_action as { type?: string } | undefined;
       if (cta?.type) add(ctas, cta.type);
     }
+
+    add(bodies, readWelcomeMessageForCopy(c.page_welcome_message));
 
     const feed = c.asset_feed_spec ?? {};
     for (const b of feed.bodies ?? []) add(bodies, b?.text);
@@ -1227,6 +1462,77 @@ export async function fetchAdRef(
 }
 
 export type AdPreview = { src: string; width: number | null; height: number | null };
+
+export type AdsetPlacementInfo = {
+  adsetId: string;
+  adsetName: string;
+  campaignName: string;
+  platforms: string[];
+  positions: string[];
+};
+
+const PLACEMENT_LABELS: Record<string, string> = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  messenger: "Messenger",
+  audience_network: "Audience Network",
+  feed: "Feed",
+  story: "Stories",
+  reels: "Reels",
+  video_feeds: "Vídeos no feed",
+  right_hand_column: "Coluna direita",
+  instant_article: "Artigos instantâneos",
+  instream_video: "In-stream",
+  marketplace: "Marketplace",
+  search: "Busca",
+  explore: "Explorar",
+  profile_feed: "Feed do perfil"
+};
+
+function labelPlacement(value: string): string {
+  return PLACEMENT_LABELS[value] ?? value.replace(/_/g, " ");
+}
+
+export async function fetchAdsetPlacementInfo(
+  accessToken: string,
+  adsetId: string,
+  campaignName = "",
+  adsetName = ""
+): Promise<AdsetPlacementInfo> {
+  try {
+    const data = await metaFetch<{
+      name?: string;
+      campaign?: { name?: string };
+      targeting?: {
+        publisher_platforms?: string[];
+        facebook_positions?: string[];
+        instagram_positions?: string[];
+        messenger_positions?: string[];
+        audience_network_positions?: string[];
+      };
+    }>(
+      `/${encodeURIComponent(adsetId)}?fields=${encodeURIComponent("name,campaign{name},targeting{publisher_platforms,facebook_positions,instagram_positions,messenger_positions,audience_network_positions}")}`,
+      accessToken
+    );
+    const t = data.targeting ?? {};
+    const platforms = (t.publisher_platforms ?? []).map(labelPlacement);
+    const positions = [
+      ...(t.facebook_positions ?? []).map((p) => `Facebook · ${labelPlacement(p)}`),
+      ...(t.instagram_positions ?? []).map((p) => `Instagram · ${labelPlacement(p)}`),
+      ...(t.messenger_positions ?? []).map((p) => `Messenger · ${labelPlacement(p)}`),
+      ...(t.audience_network_positions ?? []).map((p) => `Audience Network · ${labelPlacement(p)}`)
+    ];
+    return {
+      adsetId,
+      adsetName: data.name ?? adsetName,
+      campaignName: data.campaign?.name ?? campaignName,
+      platforms,
+      positions
+    };
+  } catch {
+    return { adsetId, adsetName, campaignName, platforms: [], positions: [] };
+  }
+}
 
 /** Preview real do anúncio (iframe renderizado pela Meta). Retorna URL + dimensões. */
 export async function fetchAdPreview(

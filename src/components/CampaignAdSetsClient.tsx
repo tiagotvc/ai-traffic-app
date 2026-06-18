@@ -14,6 +14,7 @@ import { formatBRL, formatNumber, formatRoas } from "@/lib/format";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
+import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
@@ -31,6 +32,10 @@ import {
 } from "@/lib/campaign-table-metrics";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
+import {
+  type AppliedCampaignFilter,
+  matchesCampaignFilters
+} from "@/lib/campaign-meta-filters";
 
 type Campaign = {
   id: string;
@@ -123,6 +128,7 @@ export function CampaignAdSetsClient({
   const [countsLoading, setCountsLoading] = useState(true);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [search, setSearch] = useState("");
+  const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [isPending, startTransition] = useTransition();
@@ -177,6 +183,19 @@ export function CampaignAdSetsClient({
     let list = adsets;
     if (statusFilter === "active") list = list.filter((a) => a.status === "ACTIVE");
     if (statusFilter === "paused") list = list.filter((a) => a.status === "PAUSED");
+    if (metaFilters.length) {
+      list = list.filter((a) =>
+        matchesCampaignFilters(
+          {
+            metaCampaignId: a.id,
+            campaignName: a.name ?? a.id,
+            status: a.status,
+            dailyBudget: a.dailyBudget
+          },
+          metaFilters
+        )
+      );
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((a) => (a.name ?? a.id).toLowerCase().includes(q));
@@ -210,7 +229,7 @@ export function CampaignAdSetsClient({
       });
     }
     return list;
-  }, [adsets, search, statusFilter, sort]);
+  }, [adsets, search, statusFilter, sort, metaFilters]);
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -376,14 +395,18 @@ export function CampaignAdSetsClient({
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <input
+        <MetaFilterSearchBar
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
+          onChange={(v) => {
+            setSearch(v);
             setPage(1);
           }}
-          placeholder={t("search")}
-          className="ui-input min-w-[200px] flex-1"
+          filters={metaFilters}
+          onFiltersChange={(next) => {
+            setMetaFilters(next);
+            setPage(1);
+          }}
+          className="min-w-[240px] flex-1"
         />
         <select
           value={statusFilter}

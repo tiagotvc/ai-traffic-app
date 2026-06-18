@@ -4,13 +4,46 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { PublishAsset } from "@/hooks/usePublishAssets";
+import { MAX_CREATIVE_VIDEO_BYTES, VIDEO_UPLOAD_CHUNK_BYTES } from "@/lib/creative-upload-limits";
+
+type ApiJson = {
+  ok?: boolean;
+  error?: string;
+  hash?: string;
+  videoId?: string;
+  label?: string;
+  uploadId?: string;
+};
+
+async function readApiJson(res: Response): Promise<ApiJson> {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error(res.status === 413 ? "uploadRequestTooLarge" : "uploadFailed");
+  }
+  try {
+    return JSON.parse(text) as ApiJson;
+  } catch {
+    if (res.status === 413 || /request entity too large/i.test(text)) {
+      throw new Error("uploadRequestTooLarge");
+    }
+    throw new Error(text.slice(0, 160) || "uploadFailed");
+  }
+}
+
+function uploadErrorMessage(t: ReturnType<typeof useTranslations>, key: string) {
+  if (key === "uploadFailed" || key === "uploadRequestTooLarge" || key === "videoTooLarge") {
+    return t(key);
+  }
+  return key;
+}
 
 type Props = {
   open: boolean;
   onClose: () => void;
   assets: PublishAsset[];
-  selectedHashes: string[];
-  onChange: (hashes: string[]) => void;
+  mediaKind: "image" | "video";
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
   clientSlug: string;
   adAccountId: string;
   onVariantsGenerated?: (hashes: Array<{ hash: string; label: string }>) => void;
@@ -20,7 +53,8 @@ export function CreativePickerModal({
   open,
   onClose,
   assets,
-  selectedHashes,
+  mediaKind,
+  selectedIds,
   onChange,
   clientSlug,
   adAccountId,
@@ -35,18 +69,20 @@ export function CreativePickerModal({
 
   if (!open) return null;
 
-  const allAssets = [...assets, ...localAssets];
-  const selected = new Set(selectedHashes);
+  const libraryAssets = assets.filter((a) => (a.kind ?? "image") === mediaKind);
+  const localOfKind = localAssets.filter((a) => (a.kind ?? "image") === mediaKind);
+  const allAssets = [...localOfKind, ...libraryAssets];
+  const selected = new Set(selectedIds);
 
-  function toggle(hash: string) {
-    if (selected.has(hash)) {
-      onChange(selectedHashes.filter((h) => h !== hash));
+  function toggle(id: string) {
+    if (selected.has(id)) {
+      onChange(selectedIds.filter((h) => h !== id));
     } else {
-      onChange([...selectedHashes, hash]);
+      onChange([...selectedIds, id]);
     }
   }
 
-  async function handleUpload(file: File) {
+  async function handleImageUpload(file: File) {
     if (!clientSlug || !adAccountId) return;
     setUploading(true);
     setError(null);
@@ -67,19 +103,88 @@ export function CreativePickerModal({
           label: file.name
         })
       });
-      const j = (await res.json()) as { ok?: boolean; hash?: string; error?: string };
-      if (!j.ok || !j.hash) throw new Error(j.error ?? "uploadFailed");
-      setLocalAssets((prev) => [...prev, { id: j.hash!, label: file.name, url: dataUrl }]);
-      onChange([...selectedHashes, j.hash!]);
+      const j = await readApiJson(res);
+      if (!res.ok || !j.ok || !j.hash) throw new Error(j.error ?? "uploadFailed");
+      setLocalAssets((prev) => [
+        { id: j.hash!, label: file.name, url: dataUrl, kind: "image" },
+        ...prev
+      ]);
+      onChange([...selectedIds, j.hash!]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "uploadFailed");
+      setError(uploadErrorMessage(t, e instanceof Error ? e.message : "uploadFailed"));
     } finally {
       setUploading(false);
     }
   }
 
+  async function handleVideoUpload(file: File) {
+    if (!clientSlug || !adAccountId) return;
+    if (file.size > MAX_CREATIVE_VIDEO_BYTES) {
+      setError(t("videoTooLarge"));
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const totalChunks = Math.max(1, Math.ceil(file.size / VIDEO_UPLOAD_CHUNK_BYTES));
+
+      const initRes = await fetch("/api/creative-assets/video/init", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          clientId: clientSlug,
+          adAccountId,
+          label: file.name,
+          fileName: file.name,
+          totalSize: file.size,
+          totalChunks
+        })
+      });
+      const init = await readApiJson(initRes);
+      if (!initRes.ok || !init.ok || !init.uploadId) {
+        throw new Error(init.error ?? "uploadFailed");
+      }
+
+      for (let partIndex = 0; partIndex < totalChunks; partIndex++) {
+        const start = partIndex * VIDEO_UPLOAD_CHUNK_BYTES;
+        const chunk = file.slice(start, start + VIDEO_UPLOAD_CHUNK_BYTES);
+        const form = new FormData();
+        form.append("uploadId", init.uploadId);
+        form.append("partIndex", String(partIndex));
+        form.append("chunk", chunk, file.name);
+
+        const partRes = await fetch("/api/creative-assets/video/part", { method: "POST", body: form });
+        const part = await readApiJson(partRes);
+        if (!partRes.ok || !part.ok) throw new Error(part.error ?? "uploadFailed");
+      }
+
+      const commitRes = await fetch("/api/creative-assets/video/commit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ uploadId: init.uploadId })
+      });
+      const j = await readApiJson(commitRes);
+      if (!commitRes.ok || !j.ok || !j.videoId) throw new Error(j.error ?? "uploadFailed");
+      const previewUrl = URL.createObjectURL(file);
+      setLocalAssets((prev) => [
+        { id: j.videoId!, label: j.label ?? file.name, url: previewUrl, kind: "video" },
+        ...prev
+      ]);
+      onChange([...selectedIds, j.videoId!]);
+    } catch (e) {
+      setError(uploadErrorMessage(t, e instanceof Error ? e.message : "uploadFailed"));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleUpload(file: File) {
+    if (mediaKind === "video") await handleVideoUpload(file);
+    else await handleImageUpload(file);
+  }
+
   async function handleGenerateVariants() {
-    const first = selectedHashes[0];
+    const first = selectedIds[0];
     const asset = allAssets.find((a) => a.id === first);
     if (!first || !asset?.url) {
       setError(t("creativeSelectFirst"));
@@ -107,10 +212,10 @@ export function CreativePickerModal({
       if (!j.ok) throw new Error(j.message ?? j.error ?? "aiFailed");
       const variants = j.variants ?? [];
       setLocalAssets((prev) => [
-        ...prev,
-        ...variants.map((v) => ({ id: v.hash, label: v.label, url: null }))
+        ...variants.map((v) => ({ id: v.hash, label: v.label, url: null, kind: "image" as const })),
+        ...prev
       ]);
-      onChange([...selectedHashes, ...variants.map((v) => v.hash)]);
+      onChange([...selectedIds, ...variants.map((v) => v.hash)]);
       onVariantsGenerated?.(variants);
     } catch (e) {
       setError(e instanceof Error ? e.message : "aiFailed");
@@ -125,7 +230,9 @@ export function CreativePickerModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">{t("creativeModalTitle")}</h2>
-            <p className="mt-1 text-sm text-slate-500">{t("creativeModalHint")}</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {mediaKind === "video" ? t("creativeModalHintVideo") : t("creativeModalHint")}
+            </p>
           </div>
           <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
             ✕
@@ -139,26 +246,32 @@ export function CreativePickerModal({
             disabled={uploading || !clientSlug}
             className="ui-btn-secondary text-sm"
           >
-            {uploading ? t("uploading") : t("creativeUpload")}
+            {uploading
+              ? t("uploading")
+              : mediaKind === "video"
+                ? t("creativeUploadVideo")
+                : t("creativeUpload")}
           </button>
-          <button
-            type="button"
-            onClick={() => void handleGenerateVariants()}
-            disabled={generating || !selectedHashes.length}
-            className="ui-btn-secondary text-sm"
-          >
-            {generating ? t("generatingAi") : t("creativeAiVariants")}
-          </button>
-          <span className="self-center text-[11px] text-slate-400">{t("videoSoon")}</span>
+          {mediaKind === "image" ? (
+            <button
+              type="button"
+              onClick={() => void handleGenerateVariants()}
+              disabled={generating || !selectedIds.length}
+              className="ui-btn-secondary text-sm"
+            >
+              {generating ? t("generatingAi") : t("creativeAiVariants")}
+            </button>
+          ) : null}
         </div>
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept={mediaKind === "video" ? "video/*" : "image/*"}
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) void handleUpload(f);
+            e.target.value = "";
           }}
         />
 
@@ -175,12 +288,17 @@ export function CreativePickerModal({
               }`}
             >
               <div className="aspect-square bg-slate-100">
-                {a.url ? (
+                {a.kind === "video" && a.url?.startsWith("blob:") ? (
+                  <video src={a.url} className="h-full w-full object-cover" muted playsInline />
+                ) : a.url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={a.url} alt={a.label} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-[10px] text-slate-400">
-                    {a.label.slice(0, 12)}
+                  <div className="flex h-full flex-col items-center justify-center px-1 text-center text-[10px] text-slate-400">
+                    {a.kind === "video" ? (
+                      <span className="text-lg">▶</span>
+                    ) : null}
+                    <span>{a.label.slice(0, 12)}</span>
                   </div>
                 )}
               </div>
@@ -189,8 +307,16 @@ export function CreativePickerModal({
           ))}
         </div>
 
+        {allAssets.length === 0 ? (
+          <p className="mt-4 text-center text-xs text-slate-400">
+            {mediaKind === "video" ? t("creativeEmptyVideo") : t("creativeEmptyImage")}
+          </p>
+        ) : null}
+
         <p className="mt-3 text-xs text-slate-500">
-          {t("creativeSelected", { count: selectedHashes.length })}
+          {mediaKind === "video"
+            ? t("creativeSelectedVideos", { count: selectedIds.length })
+            : t("creativeSelected", { count: selectedIds.length })}
         </p>
 
         <div className="mt-4 flex justify-end">

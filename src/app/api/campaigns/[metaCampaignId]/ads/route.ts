@@ -7,6 +7,7 @@ import {
   fetchAdsForCampaign,
   type AdInsightMetrics
 } from "@/lib/meta-graph";
+import { parsePeriodFromSearchParams, periodToMetaInsightsRange } from "@/lib/report-period";
 
 // Pode buscar anúncios + insights por anúncio na Meta — dá folga.
 export const maxDuration = 30;
@@ -30,22 +31,26 @@ async function loadAds(
 async function loadAdMetrics(
   metaCampaignId: string,
   primaryToken?: string,
-  fallbackToken?: string
+  fallbackToken?: string,
+  period?: ReturnType<typeof parsePeriodFromSearchParams>
 ): Promise<Map<string, AdInsightMetrics>> {
+  const range = period ? periodToMetaInsightsRange(period) : { datePreset: "last_7d" };
   for (const token of [primaryToken, fallbackToken]) {
     if (!token) continue;
-    const map = await fetchAdInsightsForCampaign(token, metaCampaignId);
+    const map = await fetchAdInsightsForCampaign(token, metaCampaignId, range);
     if (map.size > 0) return map;
   }
   return new Map();
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ metaCampaignId: string }> }
 ) {
   const { metaCampaignId } = await params;
   const { tenant, user, metaAccessToken: ctxToken } = await getAppContext();
+  const url = new URL(req.url);
+  const period = parsePeriodFromSearchParams(url);
   const { metaAccessToken, fallbackMetaToken } = await resolveMetaTokensForApi(
     tenant.id,
     user.id,
@@ -58,7 +63,7 @@ export async function GET(
 
   const [ads, metricsMap] = await Promise.all([
     loadAds(metaCampaignId, metaAccessToken ?? undefined, fallbackMetaToken),
-    loadAdMetrics(metaCampaignId, metaAccessToken ?? undefined, fallbackMetaToken)
+    loadAdMetrics(metaCampaignId, metaAccessToken ?? undefined, fallbackMetaToken, period)
   ]);
 
   const adsWithMetrics = ads.map((a) => ({ ...a, metrics: metricsMap.get(a.id) ?? null }));

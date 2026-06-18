@@ -25,7 +25,10 @@ export function parseCampaignDetailHints(url: URL): CampaignDetailHints {
   const cpaRaw = url.searchParams.get("cpa");
   return {
     metaAdAccountId: url.searchParams.get("metaAdAccountId")?.trim() || undefined,
-    clientSlug: url.searchParams.get("clientSlug")?.trim() || undefined,
+    clientSlug:
+      url.searchParams.get("clientSlug")?.trim() ||
+      url.searchParams.get("client")?.trim() ||
+      undefined,
     campaignName: url.searchParams.get("campaignName")?.trim() || undefined,
     status: url.searchParams.get("status")?.trim() || undefined,
     objective: url.searchParams.get("objective")?.trim() || undefined,

@@ -31,8 +31,12 @@ import { SavedView } from "./SavedView";
 import { ClientTag } from "./ClientTag";
 import { MetaAudienceCache } from "./MetaAudienceCache";
 import { LookalikeJob } from "./LookalikeJob";
+import { AudienceInsightBreakdown } from "./AudienceInsightBreakdown";
 import { CampaignTemplate } from "./CampaignTemplate";
 import { CreativeAsset } from "./CreativeAsset";
+import { MessageTemplate } from "./MessageTemplate";
+import { VideoUploadSession } from "./VideoUploadSession";
+import { VideoUploadPart } from "./VideoUploadPart";
 import { AutomationRule } from "./AutomationRule";
 import { ReportSchedule } from "./ReportSchedule";
 import { UserClient } from "./UserClient";
@@ -89,8 +93,12 @@ export {
   ClientTag,
   MetaAudienceCache,
   LookalikeJob,
+  AudienceInsightBreakdown,
   CampaignTemplate,
   CreativeAsset,
+  MessageTemplate,
+  VideoUploadSession,
+  VideoUploadPart,
   AutomationRule,
   ReportSchedule,
   UserClient,
@@ -169,8 +177,12 @@ stabilizeTypeOrmEntityNames([
   { ctor: ClientTag, name: "ClientTag" },
   { ctor: MetaAudienceCache, name: "MetaAudienceCache" },
   { ctor: LookalikeJob, name: "LookalikeJob" },
+  { ctor: AudienceInsightBreakdown, name: "AudienceInsightBreakdown" },
   { ctor: CampaignTemplate, name: "CampaignTemplate" },
   { ctor: CreativeAsset, name: "CreativeAsset" },
+  { ctor: MessageTemplate, name: "MessageTemplate" },
+  { ctor: VideoUploadSession, name: "VideoUploadSession" },
+  { ctor: VideoUploadPart, name: "VideoUploadPart" },
   { ctor: AutomationRule, name: "AutomationRule" },
   { ctor: ReportSchedule, name: "ReportSchedule" },
   { ctor: UserClient, name: "UserClient" },
@@ -227,8 +239,12 @@ export const typeOrmEntities = [
   ClientTag,
   MetaAudienceCache,
   LookalikeJob,
+  AudienceInsightBreakdown,
   CampaignTemplate,
   CreativeAsset,
+  MessageTemplate,
+  VideoUploadSession,
+  VideoUploadPart,
   AutomationRule,
   ReportSchedule,
   UserClient,

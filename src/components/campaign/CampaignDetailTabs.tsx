@@ -19,9 +19,14 @@ export function campaignTabHref(
   tab: CampaignDetailTab,
   metaCampaignId: string,
   clientSlug: string,
-  adsetId?: string | null
+  adsetId?: string | null,
+  periodQuery?: string
 ): string | undefined {
-  const q = campaignTabQuery(clientSlug, tab === "ads" ? adsetId : undefined);
+  const q = campaignTabQuery(
+    clientSlug,
+    tab === "ads" ? adsetId : undefined,
+    periodQuery
+  );
   switch (tab) {
     case "overview":
       return `/campaigns/${metaCampaignId}${q}`;
@@ -66,10 +71,12 @@ export function CampaignDetailTabs({
   const urlAdset = searchParams.get("adset");
   const rememberedAdset = getRememberedAdset(metaCampaignId);
   const activeAdsetId = adsetId ?? urlAdset ?? rememberedAdset?.adsetId ?? null;
+  const urlQueryString = searchParams.toString();
+  const periodQuery = urlQueryString ? `?${urlQueryString}` : "";
   const countLabel = (value: number | null) => (value === null ? "…" : value);
 
   const tabHref = (tab: CampaignDetailTab) =>
-    campaignTabHref(tab, metaCampaignId, clientSlug, activeAdsetId);
+    campaignTabHref(tab, metaCampaignId, clientSlug, activeAdsetId, periodQuery);
 
   const tabs: TabItem[] = [
     {

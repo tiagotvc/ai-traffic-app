@@ -1,9 +1,12 @@
 import type { ClientMetaSettings } from "@/db/entities/ClientMetaSettings";
 import type { AdDraftItem, AdSetDraftItem, CampaignDraftPayload } from "@/lib/campaign-draft";
 import { draftTargetingToApi, resolveAdTargetAdsets } from "@/lib/campaign-draft";
+import { defaultPlacements, placementsToMetaTargeting } from "@/lib/campaign-placements";
+import { composeAdLinkUrl, defaultUtm, type UtmTokenContext } from "@/lib/campaign-utm";
 import { mapLimit } from "@/lib/concurrency";
 import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
-import { metaPost } from "@/lib/meta-graph";
+import { pickInstagramActorId } from "@/lib/meta-instagram";
+import { fetchInstagramAccountsForAdAccount, metaPost } from "@/lib/meta-graph";
 
 export type CampaignObjectiveKey =
   | "awareness"
@@ -41,6 +44,8 @@ export type CampaignTargetingInput = {
   genders?: number[];
   locales?: number[];
   interests?: { id: string; name?: string }[];
+  flexibleSpecs?: Array<Record<string, Array<{ id: string; name?: string }>>>;
+  advantageAudience?: boolean;
   customAudienceIds?: string[];
   excludedAudienceIds?: string[];
 };
@@ -129,8 +134,13 @@ function buildTargetingFromInput(t: CampaignTargetingInput): Record<string, unkn
   };
   if (t.genders?.length) targeting.genders = t.genders;
   if (t.locales?.length) targeting.locales = t.locales;
-  if (t.interests?.length) {
+  if (t.flexibleSpecs?.length) {
+    targeting.flexible_spec = t.flexibleSpecs;
+  } else if (t.interests?.length) {
     targeting.flexible_spec = [{ interests: t.interests.map((i) => ({ id: i.id, name: i.name })) }];
+  }
+  if (t.advantageAudience) {
+    targeting.targeting_automation = { advantage_audience: 1 };
   }
   if (t.customAudienceIds?.length) {
     targeting.custom_audiences = t.customAudienceIds.map((id) => ({ id }));
@@ -154,11 +164,41 @@ function resolveTargeting(
   settings?: ClientMetaSettings
 ): Record<string, unknown> {
   const targetingApi = draftTargetingToApi(adset.targeting);
+  let base: Record<string, unknown>;
   if (Object.keys(targetingApi).length) {
-    return buildTargetingFromInput(targetingApi);
+    base = buildTargetingFromInput(targetingApi);
+  } else if (settings) {
+    base = buildTargetingFromSettings(settings);
+  } else {
+    base = { geo_locations: { countries: ["BR"] }, age_min: 18, age_max: 65 };
   }
-  if (settings) return buildTargetingFromSettings(settings);
-  return { geo_locations: { countries: ["BR"] }, age_min: 18, age_max: 65 };
+  const placementFields = placementsToMetaTargeting(adset.placements);
+  return { ...base, ...placementFields };
+}
+
+function resolveOptimizationGoal(
+  objective: CampaignObjectiveKey,
+  adset: AdSetDraftItem
+): string {
+  if (adset.conversionLocation === "messaging") return "CONVERSATIONS";
+  if (adset.conversionLocation === "calls") return "QUALITY_CALL";
+  if (adset.conversionLocation === "app") return "APP_INSTALLS";
+  if (objective === "sales") return "OFFSITE_CONVERSIONS";
+  if (adset.conversionLocation === "website" && adset.pixelId) return "OFFSITE_CONVERSIONS";
+  return OPTIMIZATION_MAP[objective] ?? "LEAD_GENERATION";
+}
+
+function resolveDestinationType(adset: AdSetDraftItem): string | null {
+  if (adset.conversionLocation === "messaging") {
+    if (adset.messagingChannels.includes("whatsapp")) return "WHATSAPP";
+    if (adset.messagingChannels.includes("messenger")) return "MESSENGER";
+    if (adset.messagingChannels.includes("instagram")) return "INSTAGRAM_DIRECT";
+    return "MESSAGING_APPS";
+  }
+  if (adset.conversionLocation === "calls") return "PHONE_CALL";
+  if (adset.conversionLocation === "instant_form") return "ON_AD";
+  if (adset.conversionLocation === "website") return "WEBSITE";
+  return null;
 }
 
 function buildPromotedObject(
@@ -168,21 +208,52 @@ function buildPromotedObject(
   pageId: string,
   settings?: ClientMetaSettings
 ): Record<string, string> | null {
-  if (objective === "leads") {
-    const promoted: Record<string, string> = { page_id: pageId };
+  const promoted: Record<string, string> = { page_id: pageId };
+
+  if (adset.conversionLocation === "messaging") {
+    return promoted;
+  }
+  if (adset.conversionLocation === "calls") {
+    return promoted;
+  }
+
+  if (objective === "leads" || adset.conversionLocation === "instant_form") {
     const formId = ad.leadFormId ?? settings?.metaLeadFormId;
     if (ad.destinationType === "instant_form" && formId) {
       promoted.lead_gen_form_id = formId;
     } else if (formId && adset.conversionLocation !== "website") {
       promoted.lead_gen_form_id = formId;
     }
+    const pixelId = adset.pixelId ?? ad.pixelId ?? settings?.metaPixelId ?? null;
+    if (pixelId && adset.conversionLocation !== "instant_form") {
+      promoted.pixel_id = pixelId;
+      promoted.custom_event_type = adset.conversionEvent || "LEAD";
+    }
     return promoted;
   }
-  const pixelId = ad.pixelId ?? settings?.metaPixelId ?? null;
-  if (objective === "sales" && pixelId) {
-    return { pixel_id: pixelId, custom_event_type: "PURCHASE" };
+
+  const pixelId = adset.pixelId ?? ad.pixelId ?? settings?.metaPixelId ?? null;
+  if ((objective === "sales" || adset.conversionLocation === "website") && pixelId) {
+    promoted.pixel_id = pixelId;
+    promoted.custom_event_type = adset.conversionEvent || "PURCHASE";
+    return promoted;
   }
-  return null;
+  return Object.keys(promoted).length > 1 ? promoted : null;
+}
+
+function buildPageWelcomeMessage(ad: AdDraftItem) {
+  const tpl = ad.messageTemplate;
+  const greeting = tpl?.greeting?.trim() || ad.whatsappWelcomeMessage?.trim();
+  if (!greeting) return null;
+  const payload: Record<string, unknown> = {
+    type: "PAGE_WELCOME_MESSAGE",
+    message: { text: greeting }
+  };
+  const icebreakers = tpl?.icebreakers?.filter((x) => x.trim()) ?? [];
+  if (icebreakers.length) {
+    payload.ice_breakers = icebreakers.map((text) => ({ title: text.slice(0, 80), response: text }));
+  }
+  return payload;
 }
 
 async function createAdForAdset(args: {
@@ -198,26 +269,48 @@ async function createAdForAdset(args: {
   linkUrl: string;
   cta: string;
   settings?: ClientMetaSettings;
+  allowedInstagramActorIds?: string[];
 }): Promise<{ adId: string; creativeId: string }> {
-  const { ad, objective, pageId, linkUrl, cta, settings, token, actId, campaignName, adsetId, adName } =
+  const { ad, objective, pageId, linkUrl, cta, settings, token, actId, campaignName, adsetId, adName, allowedInstagramActorIds = [] } =
     args;
 
-  const resolvedLink =
+  const baseLink =
     ad.destinationType === "instant_form" && ad.leadFormId
       ? linkUrl || "https://www.facebook.com"
       : ad.linkUrl.trim() || linkUrl;
+  const utmCtx: UtmTokenContext = {
+    campaignName,
+    adsetName: args.adset.name,
+    adName
+  };
+  const resolvedLink = composeAdLinkUrl(baseLink, ad.utm, ad.urlParams, utmCtx);
+
+  const resolvedCta =
+    ad.callToAction.trim() ||
+    (ad.destinationType === "whatsapp"
+      ? "WHATSAPP_MESSAGE"
+      : objective === "leads" && ad.destinationType === "instant_form"
+        ? "SIGN_UP"
+        : cta);
 
   const assetFeedSpec: Record<string, unknown> = {
-    images: ad.imageHashes.map((hash) => ({ hash })),
+    ...(ad.format === "video" && ad.videoIds.length
+      ? { videos: ad.videoIds.map((video_id) => ({ video_id })) }
+      : { images: ad.imageHashes.map((hash) => ({ hash })) }),
     titles: ad.titles.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
     bodies: ad.bodies.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
     link_urls: [{ website_url: resolvedLink }],
-    call_to_action_types: [objective === "leads" ? "SIGN_UP" : cta]
+    call_to_action_types: [resolvedCta]
   };
 
-  const instagramId = ad.instagramActorId ?? settings?.instagramActorId ?? null;
+  const instagramId = pickInstagramActorId(
+    [ad.instagramActorId, settings?.instagramActorId],
+    allowedInstagramActorIds
+  );
   const objectStory: Record<string, unknown> = { page_id: pageId };
   if (instagramId) objectStory.instagram_actor_id = instagramId;
+  const welcome = buildPageWelcomeMessage(ad);
+  if (welcome) objectStory.page_welcome_message = welcome;
 
   const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
     name: `${campaignName} — ${adName} Creative`,
@@ -255,6 +348,9 @@ export async function publishAdToAdset(
   const campaignName = input.campaignName ?? "Campanha";
   const adName = input.ad.name.trim() || `${campaignName} — Ad`;
 
+  const igAccounts = await fetchInstagramAccountsForAdAccount(input.accessToken, input.adAccountId);
+  const allowedInstagramActorIds = igAccounts.map((a) => a.id);
+
   return createAdForAdset({
     token: input.accessToken,
     actId,
@@ -267,7 +363,8 @@ export async function publishAdToAdset(
     pageId: input.pageId,
     linkUrl: input.linkUrl,
     cta,
-    settings: input.settings
+    settings: input.settings,
+    allowedInstagramActorIds
   });
 }
 
@@ -306,6 +403,9 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
   const campaign = await metaPost<{ id: string }>(`/${actId}/campaigns`, token, campaignBody);
   input.onProgress?.({ phase: "campaign", current: 1, total: 1 });
 
+  const igAccounts = await fetchInstagramAccountsForAdAccount(token, input.adAccountId);
+  const allowedInstagramActorIds = igAccounts.map((a) => a.id);
+
   const adsetResults: PublishDraftV2Result["adsets"] = [];
   const adsetIdMap = new Map<string, string>();
   const totalAdsets = draft.adsets.length;
@@ -321,12 +421,15 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
       name: adsetName,
       campaign_id: campaign.id,
       billing_event: "IMPRESSIONS",
-      optimization_goal: OPTIMIZATION_MAP[objective],
+      optimization_goal: resolveOptimizationGoal(objective, adset),
       bid_strategy: "LOWEST_COST_WITHOUT_CAP",
       targeting: JSON.stringify(targeting),
       status: "PAUSED",
       start_time: String(startTime)
     };
+
+    const destinationType = resolveDestinationType(adset);
+    if (destinationType) adsetBody.destination_type = destinationType;
 
     if (!isCbo) adsetBody.daily_budget = String(dailyBudgetMinor);
 
@@ -386,7 +489,8 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
       pageId,
       linkUrl: input.linkUrl,
       cta,
-      settings
+      settings,
+      allowedInstagramActorIds
     });
 
     adResults.push({
@@ -462,6 +566,9 @@ export async function createFullMetaCampaign(
         id: adsetId,
         name: input.adsetName ?? `${input.campaignName} — Ad Set`,
         conversionLocation: "website_and_form",
+        messagingChannels: [],
+        pixelId: null,
+        conversionEvent: "LEAD",
         dynamicCreative: true,
         schedule: { start: input.scheduleStart ?? null, end: input.scheduleEnd ?? null },
         targeting: {
@@ -472,9 +579,11 @@ export async function createFullMetaCampaign(
           interests: [],
           locales: [],
           customAudienceIds: input.targeting?.customAudienceIds ?? [],
-          excludedAudienceIds: input.targeting?.excludedAudienceIds ?? []
+          excludedAudienceIds: input.targeting?.excludedAudienceIds ?? [],
+          detailedGroups: [],
+          advantageAudience: false
         },
-        placements: "advantage_plus"
+        placements: defaultPlacements()
       }
     ],
     ads: [
@@ -486,12 +595,17 @@ export async function createFullMetaCampaign(
         pixelId: input.pixelId ?? null,
         format: "single_image",
         imageHashes: input.imageHashes,
+        videoIds: [],
         titles: input.titles,
         bodies: input.descriptions,
         destinationType: input.destinationType ?? "website",
         linkUrl: input.linkUrl,
         leadFormId: input.leadFormId ?? null,
         urlParams: "",
+        callToAction: input.callToAction ?? "",
+        whatsappWelcomeMessage: null,
+        messageTemplate: null,
+        utm: defaultUtm(),
         targetAdsetIds: ["__all__"],
         tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
       }

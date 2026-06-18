@@ -34,7 +34,9 @@ import { buildQuery, formatDayLabel, pctDelta, resolveRanges } from "@/lib/dashb
 import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
+import { CampaignTableSimpleFooter } from "@/components/campaign/CampaignTableSimpleFooter";
 import { CampaignTypeSelect } from "@/components/CreateCampaignTypeModal";
+import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { columnRefKey } from "@/lib/campaign-table-layout";
@@ -137,6 +139,30 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const metricColumns = useMemo(
     () => metricsColumnsForPreset(dominantPreset, customTypesMap),
     [dominantPreset, customTypesMap]
+  );
+
+  const campaignMetricRows = useMemo(
+    () =>
+      campaigns.map((c) => ({
+        spend: c.spend,
+        conversions: c.conversions,
+        cpa: c.cpa,
+        roas: c.roas,
+        impressions: c.impressions,
+        clicks: c.clicks,
+        ctr: c.ctr,
+        cpc: c.cpc,
+        cpm: c.cpm,
+        reach: c.reach,
+        messages: c.messages,
+        frequency: c.frequency
+      })),
+    [campaigns]
+  );
+
+  const campaignTotals = useMemo(
+    () => computeGroupTotals(campaignMetricRows, metricColumns, tableLayout.customMetricsMap),
+    [campaignMetricRows, metricColumns, tableLayout.customMetricsMap]
   );
 
   const reloadPresets = useCallback(() => {
@@ -506,6 +532,14 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
                   );
                 })}
               </tbody>
+              <CampaignTableSimpleFooter
+                rowCount={campaigns.length}
+                totalLabel={tCampaigns("rowTotal")}
+                leadingColSpan={3}
+                metricColumns={metricColumns}
+                totals={campaignTotals}
+                customMetrics={tableLayout.customMetricsMap}
+              />
             </table>
           </div>
         )}

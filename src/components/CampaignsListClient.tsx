@@ -54,6 +54,20 @@ export function CampaignsListClient() {
 
   const filtered = useMemo(() => rows, [rows]);
 
+  const totals = useMemo(() => {
+    const spend = filtered.reduce((s, r) => s + r.spend, 0);
+    const conversions = filtered.reduce((s, r) => s + r.conversions, 0);
+    return {
+      spend,
+      conversions,
+      cpa: conversions > 0 ? spend / conversions : null,
+      roas:
+        filtered.length > 0
+          ? filtered.reduce((s, r) => s + r.roas * r.spend, 0) / (spend || 1)
+          : 0
+    };
+  }, [filtered]);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -148,6 +162,28 @@ export function CampaignsListClient() {
                 ))
               )}
             </tbody>
+            {!loading && filtered.length > 0 ? (
+              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+                <tr>
+                  <td colSpan={3} className="px-4 py-3 text-left font-semibold text-slate-800">
+                    {t("rowTotal")} ({filtered.length})
+                  </td>
+                  <td className="px-3 py-3 text-center font-semibold tabular-nums text-slate-900">
+                    {formatBRL(totals.spend, locale)}
+                  </td>
+                  <td className="px-3 py-3 text-center font-semibold tabular-nums">
+                    {totals.conversions}
+                  </td>
+                  <td className="px-3 py-3 text-center font-semibold tabular-nums">
+                    {totals.cpa != null ? formatBRL(totals.cpa, locale) : "—"}
+                  </td>
+                  <td className="px-3 py-3 text-center font-semibold tabular-nums">
+                    {formatRoas(totals.roas, locale)}
+                  </td>
+                  <td className="px-3 py-3 text-center text-slate-400">—</td>
+                </tr>
+              </tfoot>
+            ) : null}
           </table>
         </div>
       </div>

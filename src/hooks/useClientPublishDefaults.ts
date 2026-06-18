@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { TargetingItem } from "@/components/MetaTargetingSelect";
 
@@ -16,13 +16,13 @@ export function useClientPublishDefaults(clientSlug: string, locale: string) {
     excludeAud: string[];
   } | null>(null);
 
-  const regionNames = (() => {
+  const regionNames = useMemo(() => {
     try {
       return new Intl.DisplayNames([locale], { type: "region" });
     } catch {
       return null;
     }
-  })();
+  }, [locale]);
 
   const load = useCallback(async () => {
     if (!clientSlug) {

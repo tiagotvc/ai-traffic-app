@@ -2,12 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-export type PublishAsset = { id: string; label: string; url?: string | null };
+export type PublishAsset = {
+  id: string;
+  label: string;
+  url?: string | null;
+  kind?: "image" | "video";
+};
 export type PublishPage = { metaPageId: string; name: string };
 export type PublishIgAccount = { id: string; username: string };
 export type PublishPixel = { id: string; name: string };
+export type PublishCustomConversion = { id: string; label: string; eventType?: string };
 export type PublishAdAccount = { metaAdAccountId: string; label: string };
-export type PublishAudience = { id: string; name: string };
+export type PublishAudience = { id: string; name: string; subtype?: string };
 
 export function usePublishAssets(clientSlug: string, adAccountId: string) {
   const [accounts, setAccounts] = useState<PublishAdAccount[]>([]);
@@ -16,9 +22,37 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
   const [pages, setPages] = useState<PublishPage[]>([]);
   const [instagramAccounts, setInstagramAccounts] = useState<PublishIgAccount[]>([]);
   const [pixels, setPixels] = useState<PublishPixel[]>([]);
+  const [customConversions, setCustomConversions] = useState<PublishCustomConversion[]>([]);
   const [audiences, setAudiences] = useState<PublishAudience[]>([]);
+  const [audiencesLoading, setAudiencesLoading] = useState(false);
   const [defaultAdAccountId, setDefaultAdAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const loadAudiences = useCallback(async (accountId: string) => {
+    if (!accountId) {
+      setAudiences([]);
+      return;
+    }
+    setAudiencesLoading(true);
+    try {
+      const aud = await fetch(
+        `/api/meta/audiences?adAccountId=${encodeURIComponent(accountId)}`
+      ).then((r) => r.json());
+      setAudiences(
+        ((aud.audiences ?? []) as Array<{ id: string; name?: string; subtype?: string }>).map(
+          (a) => ({
+            id: a.id,
+            name: a.name?.trim() || a.id,
+            subtype: a.subtype
+          })
+        )
+      );
+    } catch {
+      setAudiences([]);
+    } finally {
+      setAudiencesLoading(false);
+    }
+  }, []);
 
   const loadAssets = useCallback(async (slug: string, accountId: string) => {
     if (!slug || !accountId) {
@@ -29,6 +63,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
       setAudiences([]);
       return;
     }
+    void loadAudiences(accountId);
     const qs = `?clientId=${encodeURIComponent(slug)}&adAccountId=${encodeURIComponent(accountId)}`;
     const res = await fetch(`/api/meta/assets${qs}`);
     const j = (await res.json()) as {
@@ -37,6 +72,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
       pages?: PublishPage[];
       instagramAccounts?: PublishIgAccount[];
       pixels?: PublishPixel[];
+      customConversions?: PublishCustomConversion[];
       error?: string;
     };
     if (!res.ok || !j.ok) {
@@ -49,21 +85,8 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
     setPages(j.pages ?? []);
     setInstagramAccounts(j.instagramAccounts ?? []);
     setPixels(j.pixels ?? []);
-
-    try {
-      const aud = await fetch(
-        `/api/meta/audiences?adAccountId=${encodeURIComponent(accountId)}`
-      ).then((r) => r.json());
-      setAudiences(
-        ((aud.audiences ?? []) as Array<{ id: string; name?: string }>).map((a) => ({
-          id: a.id,
-          name: a.name?.trim() || a.id
-        }))
-      );
-    } catch {
-      setAudiences([]);
-    }
-  }, []);
+    setCustomConversions(j.customConversions ?? []);
+  }, [loadAudiences]);
 
   const loadForClient = useCallback(
     async (slug: string) => {
@@ -126,7 +149,9 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
     pages,
     instagramAccounts,
     pixels,
+    customConversions,
     audiences,
+    audiencesLoading,
     defaultAdAccountId,
     error,
     loadForClient,

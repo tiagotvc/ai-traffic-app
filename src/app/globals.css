@@ -119,6 +119,36 @@ body {
     animation: brain-pop-in 0.24s ease-out both;
   }
 
+  @keyframes creator-step-forward {
+    from {
+      opacity: 0;
+      transform: translateX(32px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes creator-step-back {
+    from {
+      opacity: 0;
+      transform: translateX(-32px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-creator-step-forward {
+    animation: creator-step-forward 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-creator-step-back {
+    animation: creator-step-back 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
   .learnings-scroll {
     scrollbar-width: thin;
     scrollbar-color: rgb(196 181 253) transparent;

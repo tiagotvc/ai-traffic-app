@@ -6,7 +6,12 @@ const nextConfig = {
   devIndicators: false,
   serverExternalPackages: ["typeorm", "pg", "reflect-metadata"],
   experimental: {
-    serverMinification: false
+    serverMinification: false,
+    // Middleware/proxy buffers POST bodies; default ~10MB truncates large uploads.
+    proxyClientMaxBodySize: "100mb",
+    serverActions: {
+      bodySizeLimit: "100mb"
+    }
   }
 };
 

@@ -221,6 +221,52 @@ export function periodToSearchParams(period: {
   return qs;
 }
 
+export function periodStateToParsed(state: {
+  preset: PeriodPreset;
+  since: string;
+  until: string;
+}): ParsedPeriod {
+  return {
+    preset: state.preset,
+    since: state.preset === "custom" ? state.since || null : null,
+    until: state.preset === "custom" ? state.until || null : null,
+    days:
+      state.preset === "last7"
+        ? 7
+        : state.preset === "last14"
+          ? 14
+          : state.preset === "last15"
+            ? 15
+            : state.preset === "last30"
+              ? 30
+              : state.preset === "today" || state.preset === "yesterday"
+                ? 1
+                : null,
+    allTime: state.preset === "all"
+  };
+}
+
+/** Converte período parseado para since/until usados nas insights da Meta. */
+export function periodToMetaInsightsRange(period: ParsedPeriod): {
+  since?: string | null;
+  until?: string | null;
+  datePreset?: string;
+} {
+  if (period.allTime) {
+    const since = new Date();
+    since.setFullYear(since.getFullYear() - 2);
+    return { since: since.toISOString().slice(0, 10), until: yesterdayIso() };
+  }
+  if (period.preset === "custom" && period.since && period.until) {
+    return { since: period.since, until: period.until };
+  }
+  const fallback = rollingDaysEndingYesterday(period.days ?? 7);
+  return {
+    since: period.since ?? fallback.since,
+    until: period.until ?? fallback.until
+  };
+}
+
 export function formatPeriodLabel(
   period: ParsedPeriod,
   locale: string,

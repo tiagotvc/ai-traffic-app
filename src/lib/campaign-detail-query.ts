@@ -10,8 +10,10 @@ import {
   fetchCampaignInsightForRange,
   fetchCampaignInsightsDailyForCampaign,
   pickLeads,
+  pickMessages,
   pickResults
 } from "@/lib/meta-graph";
+import type { MetricKey } from "@/lib/dashboard-metrics";
 import type { ParsedPeriod } from "@/lib/report-period";
 import { normalizeDayKey, rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
 
@@ -38,6 +40,89 @@ function resolveSinceUntil(period: ParsedPeriod) {
   return {
     since: period.since ?? fallback.since,
     until: period.until ?? fallback.until
+  };
+}
+
+export type CampaignMetricSeriesPoint = {
+  day: string;
+  spend: number;
+  impressions: number;
+  reach: number;
+  frequency: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  conversions: number;
+  cpa: number | null;
+  messages: number;
+  cpmsg: number;
+  roas: number;
+};
+
+function buildCampaignSeriesPoint(
+  day: string,
+  raw: {
+    spend: number;
+    impressions: number;
+    clicks: number;
+    conversions: number;
+    reach: number;
+    messages: number;
+    roas: number;
+  }
+): CampaignMetricSeriesPoint {
+  const { spend, impressions, clicks, conversions, reach, messages, roas } = raw;
+  return {
+    day,
+    spend,
+    impressions,
+    reach,
+    messages,
+    clicks,
+    conversions,
+    roas,
+    ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+    cpc: clicks > 0 ? spend / clicks : 0,
+    cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+    cpa: conversions > 0 ? spend / conversions : null,
+    cpmsg: messages > 0 ? spend / messages : 0,
+    frequency: reach > 0 ? impressions / reach : 0
+  };
+}
+
+function aggregateCampaignSeries(slice: CampaignMetricSeriesPoint[]): Record<MetricKey, number> {
+  const spend = slice.reduce((a, b) => a + b.spend, 0);
+  const impressions = slice.reduce((a, b) => a + b.impressions, 0);
+  const clicks = slice.reduce((a, b) => a + b.clicks, 0);
+  const conversions = slice.reduce((a, b) => a + b.conversions, 0);
+  const reach = slice.reduce((a, b) => a + b.reach, 0);
+  const messages = slice.reduce((a, b) => a + b.messages, 0);
+  const roas =
+    slice.length > 0 ? slice.reduce((a, b) => a + b.roas, 0) / slice.length : 0;
+  const point = buildCampaignSeriesPoint("", {
+    spend,
+    impressions,
+    clicks,
+    conversions,
+    reach,
+    messages,
+    roas
+  });
+  return {
+    spend: point.spend,
+    impressions: point.impressions,
+    reach: point.reach,
+    frequency: point.frequency,
+    clicks: point.clicks,
+    ctr: point.ctr,
+    cpc: point.cpc,
+    cpm: point.cpm,
+    conversions: point.conversions,
+    cpa: point.cpa ?? 0,
+    messages: point.messages,
+    cpmsg: point.cpmsg,
+    roas: point.roas
   };
 }
 
@@ -100,6 +185,8 @@ export async function getCampaignDetail(input: {
   let leads = 0;
   let impressions = 0;
   let clicks = 0;
+  let reach = 0;
+  let messages = 0;
   let roasSum = 0;
   let roasN = 0;
 
@@ -109,6 +196,8 @@ export async function getCampaignDetail(input: {
     leads += num(s.leads);
     impressions += num(s.impressions);
     clicks += num(s.clicks);
+    reach += num(s.reach);
+    messages += num(s.messages);
     const roas = num(s.roas);
     if (roas > 0) {
       roasSum += roas;
@@ -186,8 +275,10 @@ export async function getCampaignDetail(input: {
     spend = Number(insight.spend) || spend;
     conversions = pickResults(insight) || conversions;
     leads = pickLeads(insight.actions) || leads;
+    messages = pickMessages(insight.actions) || messages;
     impressions = Number(insight.impressions) || impressions;
     clicks = Number(insight.clicks) || clicks;
+    reach = Number(insight.reach) || reach;
     const roas = Number(insight.purchase_roas?.[0]?.value);
     if (roas > 0) {
       roasSum = roas;
@@ -225,7 +316,13 @@ export async function getCampaignDetail(input: {
         leads,
         impressions,
         clicks,
+        reach,
+        messages,
         ctr,
+        cpc: clicks > 0 ? spend / clicks : 0,
+        cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+        cpmsg: messages > 0 ? spend / messages : 0,
+        frequency: reach > 0 ? impressions / reach : 0,
         roas: roasN ? roasSum / roasN : input.hints?.roas ?? 0,
         cpl: leads > 0 ? spend / leads : null,
         cpa
@@ -250,17 +347,17 @@ export async function getCampaignTimeseries(input: {
         order: { day: "ASC" }
       });
 
-  let series = snaps.map((s) => {
-    const spend = num(s.spend);
-    const conversions = num(s.conversions);
-    return {
-      day: normalizeDayKey(String(s.day)),
-      spend,
-      conversions,
-      cpa: conversions > 0 ? spend / conversions : null,
+  let series: CampaignMetricSeriesPoint[] = snaps.map((s) =>
+    buildCampaignSeriesPoint(normalizeDayKey(String(s.day)), {
+      spend: num(s.spend),
+      impressions: num(s.impressions),
+      clicks: num(s.clicks),
+      conversions: num(s.conversions),
+      reach: num(s.reach),
+      messages: num(s.messages),
       roas: num(s.roas)
-    };
-  });
+    })
+  );
 
   const snapshotSpend = series.reduce((a, b) => a + b.spend, 0);
   const snapshotConversions = series.reduce((a, b) => a + b.conversions, 0);
@@ -282,14 +379,20 @@ export async function getCampaignTimeseries(input: {
             .filter((r) => r.date_start)
             .map((r) => {
               const spend = Number(r.spend) || 0;
+              const impressions = Number(r.impressions) || 0;
+              const clicks = Number(r.clicks) || 0;
               const conversions = pickResults(r);
-              return {
-                day: normalizeDayKey(String(r.date_start)),
+              const reach = Number(r.reach) || 0;
+              const messages = pickMessages(r.actions);
+              return buildCampaignSeriesPoint(normalizeDayKey(String(r.date_start)), {
                 spend,
+                impressions,
+                clicks,
                 conversions,
-                cpa: conversions > 0 ? spend / conversions : null,
+                reach,
+                messages,
                 roas: Number(r.purchase_roas?.[0]?.value) || 0
-              };
+              });
             });
           break;
         }
@@ -302,30 +405,12 @@ export async function getCampaignTimeseries(input: {
   const mid = Math.floor(series.length / 2);
   const prevSlice = series.slice(0, mid);
   const curSlice = series.slice(mid);
-
-  const sum = (arr: typeof series, key: "spend" | "conversions") =>
-    arr.reduce((a, b) => a + b[key], 0);
-
-  const prevSpend = sum(prevSlice, "spend");
-  const prevConv = sum(prevSlice, "conversions");
-  const curSpend = sum(curSlice, "spend");
-  const curConv = sum(curSlice, "conversions");
+  const previous = aggregateCampaignSeries(prevSlice);
+  const current = aggregateCampaignSeries(curSlice);
 
   return {
     series,
-    previous: {
-      spend: prevSpend,
-      conversions: prevConv,
-      cpa: prevConv > 0 ? prevSpend / prevConv : null,
-      roas: prevSlice.length
-        ? prevSlice.reduce((a, b) => a + b.roas, 0) / prevSlice.length
-        : 0
-    },
-    current: {
-      spend: curSpend,
-      conversions: curConv,
-      cpa: curConv > 0 ? curSpend / curConv : null,
-      roas: curSlice.length ? curSlice.reduce((a, b) => a + b.roas, 0) / curSlice.length : 0
-    }
+    previous,
+    current
   };
 }

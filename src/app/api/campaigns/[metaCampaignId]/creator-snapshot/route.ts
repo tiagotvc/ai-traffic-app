@@ -4,13 +4,22 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, slugify } from "@/lib/app-context";
 import type { CampaignDraftPayload, DraftTargeting } from "@/lib/campaign-draft";
 import { defaultCampaignDraft } from "@/lib/campaign-draft";
+import { extractCreativeRouting } from "@/lib/campaign-ad-import";
+import { defaultUtm } from "@/lib/campaign-utm";
+import {
+  extractInheritedAdsetFromMeta,
+  mapMetaTargetingToDraft,
+  mapPlacementsFromTargeting,
+  pickValidatedInstagramId
+} from "@/lib/meta-adset-import";
 import { getResolvedClientMeta } from "@/lib/client-meta-settings";
 import {
   fetchAdSetDetail,
   fetchAdSetsForCampaign,
   fetchAdWithCreative,
   fetchAdsForAdSet,
-  fetchCampaign
+  fetchCampaign,
+  fetchInstagramAccountsForAdAccount
 } from "@/lib/meta-graph";
 import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
 
@@ -94,6 +103,8 @@ type CreativeSnapshot = Awaited<ReturnType<typeof fetchAdWithCreative>>;
 
 function extractInheritedAdDefaults(
   creativeData: CreativeSnapshot | null,
+  adsetDetail: Awaited<ReturnType<typeof fetchAdSetDetail>> | null,
+  allowedInstagramIds: string[],
   fallback: {
     pageId?: string | null;
     linkUrl?: string | null;
@@ -102,30 +113,62 @@ function extractInheritedAdDefaults(
     leadFormId?: string | null;
   }
 ) {
-  const feed = creativeData?.creative?.asset_feed_spec;
-  const story = creativeData?.creative?.object_story_spec as Record<string, unknown> | undefined;
-  const linkData = story?.link_data as Record<string, unknown> | undefined;
-  const pageId = String(story?.page_id ?? fallback.pageId ?? "");
-  const instagramActorId =
-    (story?.instagram_actor_id as string | undefined) ?? fallback.instagramActorId ?? null;
-  const linkUrl =
-    feed?.link_urls?.[0]?.website_url ||
-    (typeof linkData?.link === "string" ? linkData.link : "") ||
-    fallback.linkUrl ||
-    "";
+  const routing = extractCreativeRouting(creativeData?.creative ?? null);
+  const story = creativeData?.creative?.object_story_spec as
+    | { page_id?: string; instagram_actor_id?: string }
+    | undefined;
+  const promoted = adsetDetail?.promoted_object ?? {};
+  const pageId =
+    routing.pageId ||
+    String(story?.page_id ?? promoted.page_id ?? fallback.pageId ?? "");
+  const linkUrl = routing.linkUrl || fallback.linkUrl || "";
+  const instagramActorId = pickValidatedInstagramId(
+    [story?.instagram_actor_id, routing.instagramActorId, fallback.instagramActorId],
+    allowedInstagramIds
+  );
+  const pixelId =
+    (typeof promoted.pixel_id === "string" ? promoted.pixel_id : null) ??
+    fallback.pixelId ??
+    null;
   const leadFormId =
-    (linkData?.lead_gen_form_id as string | undefined) ?? fallback.leadFormId ?? null;
-  const destinationType = leadFormId ? ("instant_form" as const) : ("website" as const);
+    routing.leadFormId ??
+    (typeof promoted.lead_gen_form_id === "string" ? promoted.lead_gen_form_id : null) ??
+    fallback.leadFormId ??
+    null;
+
+  const messageTemplate =
+    routing.whatsappWelcomeMessage
+      ? {
+          channel: "whatsapp" as const,
+          templateId: null,
+          greeting: routing.whatsappWelcomeMessage,
+          icebreakers: [] as string[]
+        }
+      : null;
 
   return {
     pageId,
     instagramActorId,
-    pixelId: fallback.pixelId ?? null,
+    pixelId,
     linkUrl,
+    urlParams: routing.urlParams,
+    utm: {
+      source: "facebook",
+      medium: "paid",
+      campaign: "",
+      content: "",
+      term: ""
+    },
+    callToAction: routing.callToAction,
+    whatsappWelcomeMessage: routing.whatsappWelcomeMessage,
+    messageTemplate,
     leadFormId,
-    destinationType,
-    urlParams: "",
-    tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
+    destinationType: routing.destinationType,
+    tracking: {
+      websiteEvents: Boolean(pixelId),
+      appEvents: false,
+      offlineEvents: false
+    }
   };
 }
 
@@ -155,6 +198,7 @@ export async function GET(
     }
 
     if (mode === "add-ad") {
+      const adsetDetail = await fetchAdSetDetail(token, selectedAdset.id);
       const ads = await fetchAdsForAdSet(token, selectedAdset.id);
       const firstAd = ads[0];
       let creativeData: CreativeSnapshot | null = null;
@@ -166,16 +210,30 @@ export async function GET(
         }
       }
 
+      const igAccounts = adAccountId
+        ? await fetchInstagramAccountsForAdAccount(token, adAccountId)
+        : [];
+      const allowedInstagramIds = igAccounts.map((a) => a.id);
+
       const resolvedMeta = clientCtx
         ? await getResolvedClientMeta(tenant.id, clientCtx.clientSlug)
         : null;
-      const inheritedAd = extractInheritedAdDefaults(creativeData, {
-        pageId: resolvedMeta?.publish.pageId,
-        linkUrl: resolvedMeta?.publish.linkUrl,
-        instagramActorId: resolvedMeta?.settings.instagramActorId,
-        pixelId: resolvedMeta?.settings.metaPixelId,
-        leadFormId: resolvedMeta?.settings.metaLeadFormId
-      });
+      const inheritedAdset = extractInheritedAdsetFromMeta(
+        adsetDetail,
+        selectedAdset.name ?? "Conjunto"
+      );
+      const inheritedAd = extractInheritedAdDefaults(
+        creativeData,
+        adsetDetail,
+        allowedInstagramIds,
+        {
+          pageId: resolvedMeta?.publish.pageId,
+          linkUrl: resolvedMeta?.publish.linkUrl,
+          instagramActorId: resolvedMeta?.settings.instagramActorId,
+          pixelId: resolvedMeta?.settings.metaPixelId,
+          leadFormId: resolvedMeta?.settings.metaLeadFormId
+        }
+      );
 
       const objective =
         OBJECTIVE_REVERSE[campaign.objective ?? ""] ?? defaultCampaignDraft("pt-BR").objective;
@@ -205,6 +263,7 @@ export async function GET(
         adAccountId,
         clientSlug: clientCtx?.clientSlug,
         adsetName: selectedAdset.name ?? "Conjunto",
+        inheritedAdset,
         inheritedAd
       });
     }
@@ -228,20 +287,35 @@ export async function GET(
     let gender: DraftTargeting["gender"] = "all";
     if (genders?.length === 1) gender = genders[0] === 1 ? "male" : "female";
 
-    const feed = creativeData?.creative?.asset_feed_spec;
+    const feed = creativeData?.creative?.asset_feed_spec as
+      | {
+          images?: Array<{ hash?: string }>;
+          videos?: Array<{ video_id?: string }>;
+          titles?: Array<{ text?: string }>;
+          bodies?: Array<{ text?: string }>;
+          link_urls?: Array<{ website_url?: string }>;
+        }
+      | undefined;
+    const imageHashes = feed?.images?.map((i) => i.hash).filter(Boolean) as string[] | undefined;
+    const videoIds = feed?.videos?.map((v) => v.video_id).filter(Boolean) as string[] | undefined;
     const titles =
       feed?.titles?.map((t) => t.text).filter(Boolean) ??
       (creativeData?.creative?.title ? [creativeData.creative.title] : []);
     const bodies =
       feed?.bodies?.map((b) => b.text).filter(Boolean) ??
       (creativeData?.creative?.body ? [creativeData.creative.body] : []);
-    const imageHashes = feed?.images?.map((i) => i.hash).filter(Boolean) as string[] | undefined;
-    const linkUrl = feed?.link_urls?.[0]?.website_url ?? "";
+    const storyVideo = (
+      creativeData?.creative?.object_story_spec as { video_data?: { video_id?: string } } | undefined
+    )?.video_data?.video_id;
+    const allVideoIds = [...(videoIds ?? [])];
+    if (storyVideo && !allVideoIds.includes(storyVideo)) allVideoIds.push(storyVideo);
+    const format = allVideoIds.length ? ("video" as const) : ("single_image" as const);
+    const routing = extractCreativeRouting(creativeData?.creative ?? null);
 
     const story = creativeData?.creative?.object_story_spec as
       | { page_id?: string; instagram_actor_id?: string }
       | undefined;
-    const pageId = story?.page_id ?? "";
+    const pageId = routing.pageId || story?.page_id || "";
 
     const objective =
       OBJECTIVE_REVERSE[campaign.objective ?? ""] ?? defaultCampaignDraft("pt-BR").objective;
@@ -250,6 +324,8 @@ export async function GET(
       : selectedAdset.daily_budget
         ? Number(selectedAdset.daily_budget) / 100
         : 150;
+
+    const inheritedFromAdset = extractInheritedAdsetFromMeta(adsetDetail, selectedAdset.name ?? "Conjunto importado");
 
     const patch: Partial<CampaignDraftPayload> = {
       objective,
@@ -264,22 +340,13 @@ export async function GET(
       adsets: [
         {
           id: `imported_adset_${Date.now()}`,
+          ...inheritedFromAdset,
           name: selectedAdset.name ?? "Conjunto importado",
-          conversionLocation: "website_and_form",
           dynamicCreative: true,
           schedule: { start: null, end: null },
-          targeting: {
-            locations: mapGeoToLocations(targeting),
-            ageMin,
-            ageMax,
-            gender,
-            interests: [],
-            locales: [],
-            customAudienceIds: [],
-            excludedAudienceIds: []
-          },
-          placements: "advantage_plus"
-        }
+          targeting: mapMetaTargetingToDraft(targeting),
+          placements: mapPlacementsFromTargeting(targeting)
+        } as CampaignDraftPayload["adsets"][number]
       ],
       ads: [
         {
@@ -288,14 +355,19 @@ export async function GET(
           pageId,
           instagramActorId: story?.instagram_actor_id ?? null,
           pixelId: null,
-          format: "single_image",
-          imageHashes: imageHashes ?? [],
+          format,
+          imageHashes: format === "video" ? [] : (imageHashes ?? []),
+          videoIds: format === "video" ? allVideoIds : [],
           titles: titles as string[],
           bodies: bodies as string[],
-          destinationType: "website",
-          linkUrl,
-          leadFormId: null,
-          urlParams: "",
+          destinationType: routing.destinationType,
+          linkUrl: routing.linkUrl,
+          leadFormId: routing.leadFormId,
+          urlParams: routing.urlParams,
+          callToAction: routing.callToAction,
+          whatsappWelcomeMessage: routing.whatsappWelcomeMessage,
+          messageTemplate: routing.messageTemplate,
+          utm: defaultUtm(),
           targetAdsetIds: ["__all__"],
           tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
         }

@@ -3,6 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState, useTransition } from "react";
 
+import { Link } from "@/i18n/navigation";
+
 type Audience = { id: string; name?: string; subtype?: string };
 
 export function ClientMetaExtras({
@@ -23,8 +25,11 @@ export function ClientMetaExtras({
   const [tags, setTags] = useState("");
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [includeAudiences, setIncludeAudiences] = useState<string[]>([]);
-  const [lookalikeName, setLookalikeName] = useState("");
-  const [lookalikeSeed, setLookalikeSeed] = useState("");
+  const [defaultUtmSource, setDefaultUtmSource] = useState("facebook");
+  const [defaultUtmMedium, setDefaultUtmMedium] = useState("paid");
+  const [defaultUtmCampaign, setDefaultUtmCampaign] = useState("");
+  const [defaultUtmContent, setDefaultUtmContent] = useState("");
+  const [defaultUtmTerm, setDefaultUtmTerm] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -42,6 +47,14 @@ export function ClientMetaExtras({
           setSyncPriority(s.syncPriority ?? "normal");
           setAutomationEnabled(!!s.automationEnabled);
           setIncludeAudiences(s.defaultCustomAudienceIds ?? []);
+          const du = s.defaultUtm;
+          if (du) {
+            setDefaultUtmSource(du.source ?? "facebook");
+            setDefaultUtmMedium(du.medium ?? "paid");
+            setDefaultUtmCampaign(du.campaign ?? "");
+            setDefaultUtmContent(du.content ?? "");
+            setDefaultUtmTerm(du.term ?? "");
+          }
         }
         setTags((j.tags ?? []).join(", "));
       });
@@ -68,6 +81,13 @@ export function ClientMetaExtras({
           syncPriority,
           automationEnabled,
           defaultCustomAudienceIds: includeAudiences,
+          defaultUtm: {
+            source: defaultUtmSource,
+            medium: defaultUtmMedium,
+            campaign: defaultUtmCampaign,
+            content: defaultUtmContent,
+            term: defaultUtmTerm
+          },
           tags: tags
             .split(",")
             .map((x) => x.trim())
@@ -76,25 +96,6 @@ export function ClientMetaExtras({
       });
       const j = await res.json();
       setMessage(j.ok ? t("metaExtrasSaved") : j.error);
-    });
-  };
-
-  const createLookalike = () => {
-    if (!defaultAdAccountId || !lookalikeSeed || !lookalikeName) return;
-    startTransition(async () => {
-      const res = await fetch(`/api/clients/${encodeURIComponent(clientId)}/lookalike`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: lookalikeName,
-          adAccountId: defaultAdAccountId,
-          originAudienceId: lookalikeSeed,
-          ratio: 0.01,
-          country: "BR"
-        })
-      });
-      const j = await res.json();
-      setMessage(j.ok ? t("lookalikeCreated") : j.error);
     });
   };
 
@@ -131,6 +132,26 @@ export function ClientMetaExtras({
             </select>
           </div>
           <Field label={t("tags")} value={tags} onChange={setTags} placeholder="ecommerce, local" />
+        </div>
+        <div className="mt-3 rounded-xl border border-slate-200 p-3">
+          <div className="text-xs font-medium text-slate-600">{t("defaultUtmTitle")}</div>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Field label="utm_source" value={defaultUtmSource} onChange={setDefaultUtmSource} />
+            <Field label="utm_medium" value={defaultUtmMedium} onChange={setDefaultUtmMedium} />
+            <Field
+              label="utm_campaign"
+              value={defaultUtmCampaign}
+              onChange={setDefaultUtmCampaign}
+              placeholder="{{campaign.name}}"
+            />
+            <Field
+              label="utm_content"
+              value={defaultUtmContent}
+              onChange={setDefaultUtmContent}
+              placeholder="{{ad.name}}"
+            />
+            <Field label="utm_term" value={defaultUtmTerm} onChange={setDefaultUtmTerm} />
+          </div>
         </div>
         <label className="mt-3 flex items-center gap-2 text-xs text-slate-600">
           <input
@@ -185,31 +206,12 @@ export function ClientMetaExtras({
             </label>
           ))}
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Field label={t("lookalikeName")} value={lookalikeName} onChange={setLookalikeName} />
-          <div>
-            <div className="text-xs text-slate-500">{t("lookalikeSeed")}</div>
-            <select
-              value={lookalikeSeed}
-              onChange={(e) => setLookalikeSeed(e.target.value)}
-              className="mt-1 w-full rounded-xl ui-input"
-            >
-              <option value="">{t("selectAudience")}</option>
-              {audiences.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name ?? a.id}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <button
-          disabled={isPending || !lookalikeSeed}
-          onClick={createLookalike}
-          className="mt-3 rounded-xl border border-violet-700 px-3 py-2 text-xs text-violet-300 hover:bg-violet-950"
-        >
-          {t("createLookalike")}
-        </button>
+        <p className="mt-3 text-xs text-slate-500">
+          {t("audiencesManageHint")}{" "}
+          <Link href="/audiences" className="font-semibold text-violet-600 underline">
+            {t("openAudiencesPage")}
+          </Link>
+        </p>
       </div>
 
       {message ? <div className="text-xs text-slate-500">{message}</div> : null}

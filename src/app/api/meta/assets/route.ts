@@ -3,11 +3,17 @@ import { NextResponse } from "next/server";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { getInventoryMap } from "@/lib/meta-ad-accounts";
-import { listTenantInventory, listTenantPages } from "@/lib/meta-discover";
+import { listTenantInventory } from "@/lib/meta-discover";
 import {
-  fetchAdAccountPixels,
+  resolveInstagramForAdAccount,
+  resolvePagesForAdAccount
+} from "@/lib/meta-publish-assets";
+import {
   fetchAdImages,
-  fetchInstagramAccountsForAdAccount
+  fetchAdVideos,
+  fetchAdAccountPixels,
+  fetchCustomConversions,
+  STANDARD_CONVERSION_EVENTS
 } from "@/lib/meta-graph";
 
 async function validateClientAdAccount(
@@ -50,28 +56,55 @@ export async function GET(req: Request) {
   const bmFilter = inv.get(adAccountId)?.metaBusinessId ?? undefined;
 
   const adAccounts = await listTenantInventory(tenant.id, bmFilter);
-  const pageRows = await listTenantPages(tenant.id, bmFilter);
-  const pages = pageRows.map((p) => ({ metaPageId: p.metaPageId, name: p.name }));
+  const pages = await resolvePagesForAdAccount({
+    tenantId: tenant.id,
+    adAccountId,
+    metaAccessToken
+  });
 
   let pixels: Array<{ id: string; name: string }> = [];
   let instagramAccounts: Array<{ id: string; username: string }> = [];
-  let assets: Array<{ id: string; label: string; url?: string | null }> = [];
+  let assets: Array<{ id: string; label: string; url?: string | null; kind: "image" | "video" }> = [];
+
+  let customConversions: Array<{ id: string; label: string; eventType?: string }> = [];
 
   if (metaAccessToken) {
-    const [pixelRows, igRows, imageRows] = await Promise.all([
+    const [pixelRows, igRows, imageRows, videoRows, conversionRows] = await Promise.all([
       fetchAdAccountPixels(metaAccessToken, adAccountId),
-      fetchInstagramAccountsForAdAccount(metaAccessToken, adAccountId),
-      fetchAdImages(metaAccessToken, adAccountId)
+      resolveInstagramForAdAccount({ metaAccessToken, adAccountId, pages }),
+      fetchAdImages(metaAccessToken, adAccountId),
+      fetchAdVideos(metaAccessToken, adAccountId),
+      fetchCustomConversions(metaAccessToken, adAccountId)
     ]);
     pixels = pixelRows.map((p) => ({ id: p.id, name: p.name?.trim() || p.id }));
-    instagramAccounts = igRows.map((i) => ({ id: i.id, username: i.username?.trim() || i.id }));
-    assets = imageRows
+    instagramAccounts = igRows;
+    const imageAssets = imageRows
       .filter((img) => !!img.hash)
       .map((img) => ({
         id: img.hash as string,
         label: img.name?.trim() || (img.hash as string),
-        url: img.url ?? null
+        url: img.url ?? null,
+        kind: "image" as const
       }));
+    const videoAssets = videoRows.map((vid) => ({
+      id: vid.id,
+      label: vid.title?.trim() || vid.id,
+      url: vid.picture ?? vid.source ?? null,
+      kind: "video" as const
+    }));
+    assets = [...imageAssets, ...videoAssets];
+    customConversions = [
+      ...STANDARD_CONVERSION_EVENTS.map((eventType) => ({
+        id: `std:${eventType}`,
+        label: eventType,
+        eventType
+      })),
+      ...conversionRows.map((c) => ({
+        id: c.id,
+        label: c.name?.trim() || c.id,
+        eventType: c.custom_event_type
+      }))
+    ];
   }
 
   return NextResponse.json({
@@ -80,6 +113,7 @@ export async function GET(req: Request) {
     pages,
     pixels,
     instagramAccounts,
-    assets
+    assets,
+    customConversions
   });
 }
