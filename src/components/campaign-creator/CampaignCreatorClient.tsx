@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import { CampaignCreatorFooter } from "@/components/campaign-creator/CampaignCreatorFooter";
 import { CampaignCreatorHeader } from "@/components/campaign-creator/CampaignCreatorHeader";
 import { CampaignCreatorPreview } from "@/components/campaign-creator/CampaignCreatorPreview";
+import { CampaignCreatorStepPanel } from "@/components/campaign-creator/CampaignCreatorStepPanel";
 import { CampaignCreatorTree } from "@/components/campaign-creator/CampaignCreatorTree";
 import {
   CampaignDraftProvider,
@@ -17,7 +18,9 @@ import { AdStep } from "@/components/campaign-creator/steps/AdStep";
 import { CampaignStep } from "@/components/campaign-creator/steps/CampaignStep";
 import { ReviewStep } from "@/components/campaign-creator/steps/ReviewStep";
 import { useRouter } from "@/i18n/navigation";
-import { getActiveAd, isAddAdDraft, validatePublishDraft } from "@/lib/campaign-draft";
+import { getActiveAd, isAddAdDraft, type CreatorNode, validatePublishDraft } from "@/lib/campaign-draft";
+
+const STEP_ORDER: CreatorNode[] = ["campaign", "adset", "ad", "review"];
 
 function CampaignCreatorInner() {
   const t = useTranslations("campaignCreator");
@@ -35,6 +38,18 @@ function CampaignCreatorInner() {
   const [showObjective, setShowObjective] = useState(!objectiveChosen && !addAdMode);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const prevNodeRef = useRef(activeNode);
+  const [stepDirection, setStepDirection] = useState<"forward" | "back" | "none">("none");
+
+  useEffect(() => {
+    const prev = prevNodeRef.current;
+    if (prev !== activeNode) {
+      const pi = STEP_ORDER.indexOf(prev);
+      const ci = STEP_ORDER.indexOf(activeNode);
+      if (pi >= 0 && ci >= 0) setStepDirection(ci > pi ? "forward" : "back");
+      prevNodeRef.current = activeNode;
+    }
+  }, [activeNode]);
 
   const handlePublish = useCallback(() => {
     setPublishError(null);
@@ -138,10 +153,15 @@ function CampaignCreatorInner() {
         </div>
         <main className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6">
           <div className="mx-auto max-w-2xl space-y-4">
-            {!addAdMode && activeNode === "campaign" ? <CampaignStep /> : null}
-            {!addAdMode && activeNode === "adset" ? <AdSetStep /> : null}
-            {activeNode === "ad" ? <AdStep /> : null}
-            {activeNode === "review" ? <ReviewStep /> : null}
+            <CampaignCreatorStepPanel
+              stepKey={activeNode}
+              direction={stepDirection}
+            >
+              {!addAdMode && activeNode === "campaign" ? <CampaignStep /> : null}
+              {!addAdMode && activeNode === "adset" ? <AdSetStep /> : null}
+              {activeNode === "ad" ? <AdStep /> : null}
+              {activeNode === "review" ? <ReviewStep /> : null}
+            </CampaignCreatorStepPanel>
             {publishError ? <p className="text-xs text-red-600">{publishError}</p> : null}
           </div>
         </main>

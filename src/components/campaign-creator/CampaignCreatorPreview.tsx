@@ -2,8 +2,23 @@
 
 import { useTranslations } from "next-intl";
 
+import { MessageTemplatePreview } from "@/components/campaign-creator/MessageTemplatePreview";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { computeDraftScore, getActiveAd, adHasMedia } from "@/lib/campaign-draft";
+import { resolveAdMessagePreview } from "@/lib/meta-welcome-message";
+
+const CTA_KEYS: Record<string, string> = {
+  WHATSAPP_MESSAGE: "ctaWhatsapp",
+  LEARN_MORE: "ctaLearnMore",
+  SIGN_UP: "ctaSignUp",
+  SHOP_NOW: "ctaShopNow",
+  CONTACT_US: "ctaContactUs"
+};
+
+function isWhatsappLink(url: string) {
+  const lower = url.toLowerCase();
+  return lower.includes("wa.me/") || lower.includes("api.whatsapp.com/") || lower.includes("whatsapp.com/");
+}
 
 export function CampaignCreatorPreview() {
   const t = useTranslations("campaignCreator");
@@ -14,6 +29,11 @@ export function CampaignCreatorPreview() {
   const body = ad.bodies.find((x) => x.trim()) ?? "";
   const circumference = 2 * Math.PI * 36;
   const offset = circumference - (score / 100) * circumference;
+  const messagePreview = resolveAdMessagePreview(ad);
+  const ctaKey = ad.callToAction ? CTA_KEYS[ad.callToAction] : null;
+  const ctaLabel = ctaKey ? t(ctaKey as "ctaWhatsapp") : ad.callToAction;
+  const showLink =
+    ad.linkUrl && !isWhatsappLink(ad.linkUrl) && ad.destinationType !== "whatsapp";
 
   return (
     <aside className="space-y-4 p-4">
@@ -54,17 +74,28 @@ export function CampaignCreatorPreview() {
                 : t("imagesSelected", { count: ad.imageHashes.length })
               : t("noMedia")}
           </div>
-          <div className="space-y-1 p-3">
+          <div className="space-y-2 p-3">
             <p className="text-sm font-semibold text-slate-900">{title}</p>
-            {body ? <p className="text-xs text-slate-600">{body}</p> : null}
-            {ad.callToAction ? (
-              <p className="text-[11px] text-slate-500">CTA: {ad.callToAction}</p>
+            {body ? <p className="text-xs text-slate-600 line-clamp-4">{body}</p> : null}
+            {ctaLabel ? (
+              <p className="text-[11px] font-medium text-slate-600">
+                {t("previewCta")}: {ctaLabel}
+              </p>
             ) : null}
-            {ad.whatsappWelcomeMessage ? (
-              <p className="text-[11px] text-slate-500">{ad.whatsappWelcomeMessage}</p>
+            {messagePreview ? (
+              <MessageTemplatePreview
+                channel={ad.messageTemplate?.channel ?? "whatsapp"}
+                greeting={messagePreview.greeting}
+                icebreakers={messagePreview.icebreakers}
+                compact
+              />
+            ) : ad.destinationType === "whatsapp" ? (
+              <p className="text-[11px] text-slate-400 italic">{t("messageTemplatePreviewEmpty")}</p>
             ) : null}
-            {ad.linkUrl ? (
+            {showLink ? (
               <p className="truncate text-[11px] text-violet-600">{ad.linkUrl}</p>
+            ) : ad.destinationType === "whatsapp" && ad.linkUrl ? (
+              <p className="text-[11px] text-emerald-700">{t("previewWhatsappLink")}</p>
             ) : null}
           </div>
         </div>

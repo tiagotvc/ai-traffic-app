@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { coercePlacements, defaultPlacements, type PlacementConfig } from "@/lib/campaign-placements";
 import { defaultUtm, type UtmFields } from "@/lib/campaign-utm";
+import { normalizeMessageTemplateDraft } from "@/lib/meta-welcome-message";
 
 export const CAMPAIGN_OBJECTIVES = [
   "awareness",
@@ -415,6 +416,20 @@ function coerceDraftPayload(raw: unknown): unknown {
           typeof welcome === "string" && welcome.trim()
             ? { channel: "whatsapp", templateId: null, greeting: welcome.trim(), icebreakers: [] }
             : null;
+      }
+      if (ad.messageTemplate && typeof ad.messageTemplate === "object") {
+        ad.messageTemplate = normalizeMessageTemplateDraft(
+          ad.messageTemplate as {
+            channel: "whatsapp" | "messenger" | "instagram";
+            templateId: string | null;
+            greeting: string;
+            icebreakers: string[];
+          }
+        );
+        const mt = ad.messageTemplate as { greeting?: string };
+        if (typeof mt?.greeting === "string") {
+          ad.whatsappWelcomeMessage = mt.greeting.trim() || null;
+        }
       }
       return ad;
     });

@@ -1,4 +1,5 @@
 import type { AdDraftItem } from "@/lib/campaign-draft";
+import { parseMetaWelcomeMessage, type ParsedWelcomeMessage } from "@/lib/meta-welcome-message";
 
 type AdCreativeCopy = {
   bodies: string[];
@@ -62,15 +63,27 @@ function addUrl(bucket: string[], value: unknown) {
   if (typeof value === "string" && isHttpUrl(value.trim())) bucket.push(value.trim());
 }
 
-function readWelcomeMessageText(raw: unknown): string | null {
-  if (typeof raw === "string" && raw.trim()) return raw.trim();
-  if (!raw || typeof raw !== "object") return null;
-  const obj = raw as Record<string, unknown>;
-  const direct = obj.text ?? obj.message ?? obj.greeting ?? obj.autofill_message;
-  if (typeof direct === "string" && direct.trim()) return direct.trim();
-  if (direct && typeof direct === "object") {
-    const nested = (direct as Record<string, unknown>).text;
-    if (typeof nested === "string" && nested.trim()) return nested.trim();
+
+function collectWelcomeCandidates(creative?: MetaCreative | null): unknown[] {
+  if (!creative) return [];
+  const candidates: unknown[] = [creative.page_welcome_message];
+  const spec = creative.object_story_spec;
+  if (spec) candidates.push(spec.page_welcome_message);
+  for (const block of storyBlocks(spec)) {
+    candidates.push(block.page_welcome_message);
+    const cta = block.call_to_action as StoryDataBlock | undefined;
+    const value = cta?.value as StoryDataBlock | undefined;
+    if (value) {
+      candidates.push(value.page_welcome_message, value.welcome_message, value.greeting);
+    }
+  }
+  return candidates;
+}
+
+function extractParsedWelcome(creative?: MetaCreative | null): ParsedWelcomeMessage | null {
+  for (const raw of collectWelcomeCandidates(creative)) {
+    const parsed = parseMetaWelcomeMessage(raw);
+    if (parsed?.greeting) return parsed;
   }
   return null;
 }
@@ -162,44 +175,28 @@ export function extractMessageTemplate(
   creative?: MetaCreative | null,
   destinationType?: AdDraftItem["destinationType"]
 ): AdDraftItem["messageTemplate"] {
-  const greeting = extractWhatsappWelcomeMessage(creative);
-  const icebreakers = extractIcebreakers(creative);
-  if (!greeting && !icebreakers.length) return null;
+  const parsed = extractParsedWelcome(creative);
+  const legacyIce = extractIcebreakers(creative);
+  if (!parsed?.greeting && !legacyIce.length) return null;
   const channel =
     destinationType === "whatsapp"
       ? "whatsapp"
       : destinationType === "instant_form"
         ? "messenger"
         : "whatsapp";
+  const icebreakers = parsed?.icebreakers.length
+    ? parsed.icebreakers
+    : legacyIce;
   return {
     channel,
     templateId: null,
-    greeting: greeting ?? "",
+    greeting: parsed?.greeting ?? "",
     icebreakers
   };
 }
 
 export function extractWhatsappWelcomeMessage(creative?: MetaCreative | null): string | null {
-  if (!creative) return null;
-  const candidates: unknown[] = [creative.page_welcome_message];
-
-  const spec = creative.object_story_spec;
-  if (spec) candidates.push(spec.page_welcome_message);
-
-  for (const block of storyBlocks(spec)) {
-    candidates.push(block.page_welcome_message);
-    const cta = block.call_to_action as StoryDataBlock | undefined;
-    const value = cta?.value as StoryDataBlock | undefined;
-    if (value) {
-      candidates.push(value.page_welcome_message, value.welcome_message, value.greeting);
-    }
-  }
-
-  for (const raw of candidates) {
-    const text = readWelcomeMessageText(raw);
-    if (text) return text;
-  }
-  return null;
+  return extractParsedWelcome(creative)?.greeting ?? null;
 }
 
 function splitUrlAndParams(url: string): { linkUrl: string; urlParams: string } {
