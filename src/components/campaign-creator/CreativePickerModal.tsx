@@ -4,6 +4,31 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { PublishAsset } from "@/hooks/usePublishAssets";
+import { MAX_CREATIVE_VIDEO_BYTES } from "@/lib/creative-upload-limits";
+
+type ApiJson = { ok?: boolean; error?: string; hash?: string; videoId?: string; label?: string };
+
+async function readApiJson(res: Response): Promise<ApiJson> {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error(res.status === 413 ? "uploadRequestTooLarge" : "uploadFailed");
+  }
+  try {
+    return JSON.parse(text) as ApiJson;
+  } catch {
+    if (res.status === 413 || /request entity too large/i.test(text)) {
+      throw new Error("uploadRequestTooLarge");
+    }
+    throw new Error(text.slice(0, 160) || "uploadFailed");
+  }
+}
+
+function uploadErrorMessage(t: ReturnType<typeof useTranslations>, key: string) {
+  if (key === "uploadFailed" || key === "uploadRequestTooLarge" || key === "videoTooLarge") {
+    return t(key);
+  }
+  return key;
+}
 
 type Props = {
   open: boolean;
@@ -70,15 +95,15 @@ export function CreativePickerModal({
           label: file.name
         })
       });
-      const j = (await res.json()) as { ok?: boolean; hash?: string; error?: string };
-      if (!j.ok || !j.hash) throw new Error(j.error ?? "uploadFailed");
+      const j = await readApiJson(res);
+      if (!res.ok || !j.ok || !j.hash) throw new Error(j.error ?? "uploadFailed");
       setLocalAssets((prev) => [
         ...prev,
         { id: j.hash!, label: file.name, url: dataUrl, kind: "image" }
       ]);
       onChange([...selectedIds, j.hash!]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "uploadFailed");
+      setError(uploadErrorMessage(t, e instanceof Error ? e.message : "uploadFailed"));
     } finally {
       setUploading(false);
     }
@@ -86,6 +111,10 @@ export function CreativePickerModal({
 
   async function handleVideoUpload(file: File) {
     if (!clientSlug || !adAccountId) return;
+    if (file.size > MAX_CREATIVE_VIDEO_BYTES) {
+      setError(t("videoTooLarge"));
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
@@ -95,8 +124,8 @@ export function CreativePickerModal({
       form.append("label", file.name);
       form.append("file", file);
       const res = await fetch("/api/creative-assets/video", { method: "POST", body: form });
-      const j = (await res.json()) as { ok?: boolean; videoId?: string; label?: string; error?: string };
-      if (!j.ok || !j.videoId) throw new Error(j.error ?? "uploadFailed");
+      const j = await readApiJson(res);
+      if (!res.ok || !j.ok || !j.videoId) throw new Error(j.error ?? "uploadFailed");
       const previewUrl = URL.createObjectURL(file);
       setLocalAssets((prev) => [
         ...prev,
@@ -104,7 +133,7 @@ export function CreativePickerModal({
       ]);
       onChange([...selectedIds, j.videoId!]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "uploadFailed");
+      setError(uploadErrorMessage(t, e instanceof Error ? e.message : "uploadFailed"));
     } finally {
       setUploading(false);
     }

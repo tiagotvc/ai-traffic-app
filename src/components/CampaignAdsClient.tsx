@@ -8,6 +8,7 @@ import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { Badge } from "@/components/ui/Badge";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
+import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
@@ -37,6 +38,10 @@ import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
+import {
+  type AppliedCampaignFilter,
+  matchesCampaignFilters
+} from "@/lib/campaign-meta-filters";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
 import { PeriodFilter } from "@/components/PeriodFilter";
@@ -135,6 +140,7 @@ export function CampaignAdsClient({
   const [adsLoading, setAdsLoading] = useState(true);
   const [countsLoading, setCountsLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<AdRow | null>(null);
@@ -238,6 +244,18 @@ export function CampaignAdsClient({
     if (adsetFilter) list = list.filter((a) => a.adsetId === adsetFilter);
     if (statusFilter === "active") list = list.filter((a) => a.status === "ACTIVE");
     if (statusFilter === "paused") list = list.filter((a) => a.status === "PAUSED");
+    if (metaFilters.length) {
+      list = list.filter((a) =>
+        matchesCampaignFilters(
+          {
+            metaCampaignId: a.id,
+            campaignName: a.name ?? a.id,
+            status: a.status
+          },
+          metaFilters
+        )
+      );
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -284,7 +302,7 @@ export function CampaignAdsClient({
       }
     }
     return list;
-  }, [ads, search, statusFilter, adsetFilter, sort, metricColumns, tableLayout.customMetricsMap]);
+  }, [ads, search, statusFilter, adsetFilter, sort, metricColumns, tableLayout.customMetricsMap, metaFilters]);
 
   const adsetFilterName = adsetFilter
     ? ads.find((a) => a.adsetId === adsetFilter)?.adsetName ??
@@ -436,14 +454,18 @@ export function CampaignAdsClient({
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <input
+        <MetaFilterSearchBar
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
+          onChange={(v) => {
+            setSearch(v);
             setPage(1);
           }}
-          placeholder={t("search")}
-          className="ui-input min-w-[200px] flex-1"
+          filters={metaFilters}
+          onFiltersChange={(next) => {
+            setMetaFilters(next);
+            setPage(1);
+          }}
+          className="min-w-[240px] flex-1"
         />
         <select
           value={statusFilter}

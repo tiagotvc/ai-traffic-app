@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   DndContext,
@@ -32,6 +33,7 @@ import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboar
 import { CAMPAIGN_PRESETS } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
+import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTypeSelectCompact } from "@/components/CreateCampaignTypeModal";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
@@ -43,6 +45,10 @@ import {
   customTypesToMap,
   metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
+import {
+  type AppliedCampaignFilter,
+  matchesCampaignFilters
+} from "@/lib/campaign-meta-filters";
 
 type CampaignRow = {
   metaCampaignId: string;
@@ -105,6 +111,7 @@ export function CampaignsHubClient() {
   const tMetrics = useTranslations("metrics");
   const tPresets = useTranslations("campaignTypes");
   const locale = useLocale();
+  const searchParams = useSearchParams();
   const { openPanel } = usePublishPanel();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
@@ -144,6 +151,7 @@ export function CampaignsHubClient() {
   const [clientFilter, setClientFilter] = useState("");
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
+  const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [onlyAlerts, setOnlyAlerts] = useState(false);
   const [showZeroActivity, setShowZeroActivity] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -180,6 +188,28 @@ export function CampaignsHubClient() {
   useEffect(() => {
     void reloadPresets();
   }, [reloadPresets]);
+
+  useEffect(() => {
+    const clientFromUrl = searchParams.get("client");
+    if (clientFromUrl) setClientFilter(clientFromUrl);
+  }, [searchParams]);
+
+  const displayRows = useMemo(() => {
+    let list = rows;
+    if (metaFilters.length) {
+      list = list.filter((r) => matchesCampaignFilters(r, metaFilters));
+    }
+    if (q.trim()) {
+      const qq = q.toLowerCase();
+      list = list.filter(
+        (r) =>
+          r.campaignName.toLowerCase().includes(qq) ||
+          r.metaCampaignId.toLowerCase().includes(qq) ||
+          r.clientName.toLowerCase().includes(qq)
+      );
+    }
+    return list;
+  }, [rows, metaFilters, q]);
 
   function campaignPreset(row: CampaignRow): string {
     return presets[row.metaCampaignId] ?? row.preset ?? "default";
@@ -689,11 +719,15 @@ export function CampaignsHubClient() {
         </div>
         <div className="min-w-[200px] flex-1">
           <div className="text-xs text-slate-500">{t("search")}</div>
-          <input
+          <MetaFilterSearchBar
+            className="mt-1"
             value={qInput}
-            onChange={(e) => setQInput(e.target.value)}
-            placeholder={t("search")}
-            className="mt-1 w-full rounded-xl ui-input"
+            onChange={setQInput}
+            filters={metaFilters}
+            onFiltersChange={(next) => {
+              setMetaFilters(next);
+              setPage(1);
+            }}
           />
         </div>
         <div>
@@ -794,9 +828,11 @@ export function CampaignsHubClient() {
             />
           ) : rows.length === 0 ? (
             <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
+          ) : displayRows.length === 0 ? (
+            <div className="ui-card p-8 text-center text-sm text-slate-500">{t("emptyFiltered")}</div>
           ) : (
             groupKeys.map((preset) => {
-              const list = rows.filter((r) => campaignPreset(r) === preset);
+              const list = displayRows.filter((r) => campaignPreset(r) === preset);
               if (!list.length) return null;
               const groupMetricColumns = metricsColumnsForPreset(preset, customTypesMap);
               const groupSort = groupSorts[preset];

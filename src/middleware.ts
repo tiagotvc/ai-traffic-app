@@ -54,5 +54,6 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
+  // Exclude large video upload — middleware body buffering truncates multipart payloads.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/creative-assets/video).*)"]
 };

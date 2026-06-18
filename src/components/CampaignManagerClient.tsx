@@ -18,6 +18,7 @@ import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
+import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import {
@@ -35,6 +36,10 @@ import {
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
 import { presetMetricsFor } from "@/lib/campaign-presets";
+import {
+  type AppliedCampaignFilter,
+  matchesCampaignFilters
+} from "@/lib/campaign-meta-filters";
 import { METRIC_BY_KEY, MAX_CHART_METRICS, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { ChartContainer } from "@/components/ui/ChartContainer";
 import {
@@ -472,6 +477,7 @@ export function CampaignManagerClient({
   const [creativesCount, setCreativesCount] = useState<number | null>(null);
   const [creativesCountLoading, setCreativesCountLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [adsetMetaFilters, setAdsetMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [statusPending, setStatusPending] = useState(false);
@@ -621,10 +627,24 @@ export function CampaignManagerClient({
   }, [reload]);
 
   const filteredAdsets = useMemo(() => {
-    if (!search.trim()) return adsets;
+    let list = adsets;
+    if (adsetMetaFilters.length) {
+      list = list.filter((a) =>
+        matchesCampaignFilters(
+          {
+            metaCampaignId: a.id,
+            campaignName: a.name ?? a.id,
+            status: a.status,
+            dailyBudget: a.dailyBudget
+          },
+          adsetMetaFilters
+        )
+      );
+    }
+    if (!search.trim()) return list;
     const q = search.toLowerCase();
-    return adsets.filter((a) => (a.name ?? a.id).toLowerCase().includes(q));
-  }, [adsets, search]);
+    return list.filter((a) => (a.name ?? a.id).toLowerCase().includes(q));
+  }, [adsets, search, adsetMetaFilters]);
 
   const metricSeries = useCallback(
     (key: MetricKey) => series.map((p) => Number(p[key] ?? 0)),
@@ -1015,6 +1035,8 @@ export function CampaignManagerClient({
             filteredAdsets={filteredAdsets}
             search={search}
             setSearch={setSearch}
+            metaFilters={adsetMetaFilters}
+            setMetaFilters={setAdsetMetaFilters}
             metaCampaignId={metaCampaignId}
             slug={slug}
             locale={locale}
@@ -1133,6 +1155,8 @@ function AdsetsTable({
   filteredAdsets,
   search,
   setSearch,
+  metaFilters,
+  setMetaFilters,
   metaCampaignId,
   slug,
   locale,
@@ -1145,6 +1169,8 @@ function AdsetsTable({
   filteredAdsets: AdSetRow[];
   search: string;
   setSearch: (v: string) => void;
+  metaFilters: AppliedCampaignFilter[];
+  setMetaFilters: (v: AppliedCampaignFilter[]) => void;
   metaCampaignId: string;
   slug: string;
   locale: string;
@@ -1243,11 +1269,12 @@ function AdsetsTable({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        <input
+        <MetaFilterSearchBar
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("searchAdsets")}
-          className="ui-input min-w-[200px] flex-1"
+          onChange={setSearch}
+          filters={metaFilters}
+          onFiltersChange={setMetaFilters}
+          className="min-w-[240px] flex-1"
         />
         <CampaignTableColumnsButton />
         <button type="button" onClick={() => openPanel({ clientSlug: slug })} className="ui-btn-primary text-sm">

@@ -5,7 +5,12 @@ const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["typeorm", "pg", "reflect-metadata"],
   experimental: {
-    serverMinification: false
+    serverMinification: false,
+    // Middleware buffers POST bodies for all /api routes; default ~10MB truncates large video uploads.
+    middlewareClientMaxBodySize: "100mb",
+    serverActions: {
+      bodySizeLimit: "100mb"
+    }
   }
 };
 
