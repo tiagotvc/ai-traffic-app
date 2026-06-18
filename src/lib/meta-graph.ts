@@ -177,7 +177,7 @@ export type CampaignAdRow = MetaAd & {
   adsetName?: string;
 };
 
-async function metaFetch<T>(path: string, accessToken: string): Promise<T> {
+export async function metaFetch<T>(path: string, accessToken: string): Promise<T> {
   const url = new URL(`${GRAPH_BASE}${path}`);
   url.searchParams.set("access_token", accessToken);
   const { data } = await metaFetchWithRateLimit<T>(url.toString());
@@ -571,6 +571,7 @@ export type MetaCustomAudienceDetail = MetaCustomAudience & {
   time_created?: string;
   time_updated?: string;
   account_id?: string;
+  rule?: unknown;
 };
 
 export async function fetchCustomAudienceDetail(
@@ -589,6 +590,7 @@ export async function fetchCustomAudienceDetail(
     "approximate_count_lower_bound",
     "approximate_count_upper_bound",
     "lookalike_spec",
+    "rule",
     "account_id"
   ].join(",");
   return metaFetch<MetaCustomAudienceDetail>(
@@ -747,6 +749,31 @@ export async function fetchAccountInsightsDaily(
   const fields = INSIGHT_METRIC_FIELDS.join(",");
   const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=${datePreset}&limit=500`;
   return fetchGraphPaged<MetaInsightRow>(path, accessToken);
+}
+
+export type MetaBreakdownInsightRow = MetaCampaignInsightRow & {
+  age?: string;
+  gender?: string;
+  region?: string;
+  country?: string;
+};
+
+/** Insights with demographic breakdowns for AI audience suggestions. */
+export async function fetchInsightsWithBreakdowns(
+  accessToken: string,
+  adAccountId: string,
+  breakdowns: Array<"age" | "gender" | "region">,
+  datePreset = "last_30d",
+  level: "campaign" | "adset" = "campaign"
+): Promise<MetaBreakdownInsightRow[]> {
+  const fields = [
+    level === "campaign" ? "campaign_id" : "adset_id",
+    level === "campaign" ? "campaign_name" : "adset_name",
+    ...INSIGHT_METRIC_FIELDS
+  ].join(",");
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const path = `/${encodeURIComponent(act)}/insights?level=${level}&fields=${encodeURIComponent(fields)}&breakdowns=${breakdowns.join(",")}&date_preset=${datePreset}&limit=500`;
+  return fetchGraphPaged<MetaBreakdownInsightRow>(path, accessToken);
 }
 
 export async function fetchCampaignInsightsDaily(

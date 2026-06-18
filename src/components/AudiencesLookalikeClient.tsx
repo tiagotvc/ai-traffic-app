@@ -1,26 +1,25 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 
-import { Badge } from "@/components/ui/Badge";
+import { AiAudienceWizard } from "@/components/audiences/create/AiAudienceWizard";
+import { CreateAudienceHub } from "@/components/audiences/create/CreateAudienceHub";
+import { EngagementAudienceWizard } from "@/components/audiences/create/EngagementAudienceWizard";
+import { LookalikeAudienceWizard } from "@/components/audiences/create/LookalikeAudienceWizard";
+import { AppAudiencePanel, CustomerListPanel } from "@/components/audiences/create/ReadOnlyPanels";
+import { CombineAudienceWizard, SavedAudienceWizard } from "@/components/audiences/create/SavedCombineWizards";
+import { TosBanner } from "@/components/audiences/create/TosBanner";
+import type { AudienceCreateContext, CreateAudienceType, SavedAudienceSummary } from "@/components/audiences/create/types";
+import { WebsiteAudienceWizard } from "@/components/audiences/create/WebsiteAudienceWizard";
 import { AudienceDetailModal } from "@/components/audiences/AudienceDetailModal";
+import { Badge } from "@/components/ui/Badge";
 import { OutlineIcon } from "@/components/ui/OutlineIcon";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 
 const AUDIENCES_ICON_PATH =
   "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z";
-
-const SOURCE_ICON_PATHS = {
-  pixel:
-    "M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z",
-  customer_list:
-    "M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z",
-  engagement:
-    "M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z",
-  app: "M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"
-} as const;
 
 type HubClient = {
   id: string;
@@ -33,38 +32,7 @@ type HubClient = {
   defaultExcludedAudienceIds: string[];
 };
 
-type SavedAudience = {
-  id: string;
-  name: string;
-  kind: string;
-  subtype?: string;
-  clientName: string;
-  clientSlug: string;
-  clientId: string;
-  adAccountId: string;
-  sourceLabel: string;
-  country?: string;
-  ratioPct?: number;
-  updatedAt: string;
-  approximateCount?: number;
-};
-
-type MetaAudience = { id: string; name?: string; subtype?: string };
-
 type AccountOpt = { metaAdAccountId: string; label: string };
-
-type SourceType = "pixel" | "customer_list" | "engagement" | "app";
-
-const SOURCE_OPTIONS: { id: SourceType; iconPath: string }[] = [
-  { id: "pixel", iconPath: SOURCE_ICON_PATHS.pixel },
-  { id: "customer_list", iconPath: SOURCE_ICON_PATHS.customer_list },
-  { id: "engagement", iconPath: SOURCE_ICON_PATHS.engagement },
-  { id: "app", iconPath: SOURCE_ICON_PATHS.app }
-];
-
-const EVENTS = ["Purchase", "Lead", "ViewContent", "AddToCart", "CompleteRegistration"] as const;
-const COUNTRIES = ["BR", "US", "PT", "MX", "AR"] as const;
-const RATIOS = [0.01, 0.02, 0.03, 0.05, 0.1] as const;
 
 function kindBadge(kind: string) {
   if (kind === "lookalike") return "brand" as const;
@@ -73,31 +41,13 @@ function kindBadge(kind: string) {
   return "success" as const;
 }
 
-function filterSeeds(audiences: MetaAudience[], source: SourceType) {
-  const seeds = audiences.filter((a) => !(a.subtype ?? "").toUpperCase().includes("LOOKALIKE"));
-  if (source === "engagement") {
-    return seeds.filter((a) => (a.subtype ?? "").toUpperCase().includes("ENGAGEMENT"));
-  }
-  if (source === "app") {
-    return seeds.filter((a) => (a.subtype ?? "").toUpperCase().includes("APP"));
-  }
-  if (source === "customer_list") {
-    return seeds.filter((a) => {
-      const s = (a.subtype ?? "").toUpperCase();
-      return s === "CUSTOM" || s.includes("LIST");
-    });
-  }
-  return seeds.filter((a) => {
-    const s = (a.subtype ?? "").toUpperCase();
-    return !s.includes("ENGAGEMENT") && !s.includes("APP");
-  });
-}
-
 export function AudiencesLookalikeClient() {
   const t = useTranslations("audiences");
   const [isPending, startTransition] = useTransition();
 
   const [view, setView] = useState<"list" | "create">("list");
+  const [createType, setCreateType] = useState<CreateAudienceType | null>(null);
+  const [tosBlocked, setTosBlocked] = useState(false);
   const [hubLoading, setHubLoading] = useState(true);
   const [audiencesLoading, setAudiencesLoading] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -110,22 +60,16 @@ export function AudiencesLookalikeClient() {
     Array<{ clientSlug: string; clientName: string; templateCount: number; objective: string }>
   >([]);
 
-  const [audiences, setAudiences] = useState<SavedAudience[]>([]);
+  const [audiences, setAudiences] = useState<SavedAudienceSummary[]>([]);
   const [accounts, setAccounts] = useState<AccountOpt[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const [clientSlug, setClientSlug] = useState("");
   const [adAccountId, setAdAccountId] = useState("");
-  const [source, setSource] = useState<SourceType>("pixel");
-  const [seedId, setSeedId] = useState("");
-  const [event, setEvent] = useState<(typeof EVENTS)[number]>("Purchase");
-  const [country, setCountry] = useState<(typeof COUNTRIES)[number]>("BR");
-  const [ratio, setRatio] = useState<number>(0.01);
-  const [step, setStep] = useState(1);
   const [listTab, setListTab] = useState<"saved" | "excluded" | "templates">("saved");
   const [search, setSearch] = useState("");
-  const [detailAudience, setDetailAudience] = useState<SavedAudience | null>(null);
+  const [detailAudience, setDetailAudience] = useState<SavedAudienceSummary | null>(null);
   const clientsRef = useRef(clients);
   clientsRef.current = clients;
 
@@ -164,10 +108,7 @@ export function AudiencesLookalikeClient() {
       setAudiencesLoading(true);
       setError(null);
       try {
-        const qs = new URLSearchParams({
-          clientId: clientSlug,
-          adAccountId
-        });
+        const qs = new URLSearchParams({ clientId: clientSlug, adAccountId });
         if (refresh) qs.set("refresh", "1");
         const res = await fetch(`/api/audiences/hub?${qs}`);
         const j = await res.json();
@@ -206,10 +147,7 @@ export function AudiencesLookalikeClient() {
         setAccounts(list);
         const client = clientsRef.current.find((c) => c.slug === clientSlug);
         const nextAccount =
-          client?.defaultAdAccountId ??
-          j.defaultAdAccountId ??
-          list[0]?.metaAdAccountId ??
-          "";
+          client?.defaultAdAccountId ?? j.defaultAdAccountId ?? list[0]?.metaAdAccountId ?? "";
         setAdAccountId(nextAccount);
       })
       .catch(() => {
@@ -224,28 +162,6 @@ export function AudiencesLookalikeClient() {
   }, [loadAudiences]);
 
   const client = clients.find((c) => c.slug === clientSlug) ?? clients[0];
-  const accountAudiences = useMemo(
-    () =>
-      audiences.map((a) => ({
-        id: a.id,
-        name: a.name,
-        subtype: a.subtype
-      })),
-    [audiences]
-  );
-  const seeds = useMemo(() => filterSeeds(accountAudiences, source), [accountAudiences, source]);
-
-  useEffect(() => {
-    if (seeds.length && !seeds.some((s) => s.id === seedId)) {
-      setSeedId(seeds[0]?.id ?? "");
-    }
-    if (!seeds.length) setSeedId("");
-  }, [seeds, seedId]);
-
-  const lookalikeName = useMemo(() => {
-    const pct = Math.round(ratio * 100);
-    return `LA ${pct}% — ${event} ${country}`;
-  }, [ratio, event, country]);
 
   const filteredAudiences = useMemo(() => {
     let list = audiences;
@@ -265,34 +181,21 @@ export function AudiencesLookalikeClient() {
     return list;
   }, [audiences, listTab, client, search]);
 
-  const createLookalike = () => {
-    if (!client || !adAccountId || !seedId) return;
-    setMessage(null);
-    setError(null);
-    startTransition(async () => {
-      const res = await fetch(`/api/clients/${encodeURIComponent(client.slug)}/lookalike`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: lookalikeName,
+  const createCtx: AudienceCreateContext | null =
+    client && adAccountId
+      ? {
+          clientSlug,
+          clientName: client.name,
           adAccountId,
-          originAudienceId: seedId,
-          ratio,
-          country
-        })
-      });
-      const j = await res.json();
-      if (j.ok) {
-        setMessage(t("createdSuccess"));
-        setStep(1);
-        setView("list");
-        void loadAudiences(true);
-        void loadContext();
-      } else {
-        setError(j.error ?? t("createdFailed"));
-      }
-    });
-  };
+          audiences,
+          onSuccess: (msg) => setMessage(msg),
+          onError: (msg) => setError(msg),
+          onRefresh: () => {
+            void loadAudiences(true);
+            void loadContext();
+          }
+        }
+      : null;
 
   const toggleAttach = (audienceId: string, attach: boolean) => {
     if (!client) return;
@@ -315,24 +218,13 @@ export function AudiencesLookalikeClient() {
     });
   };
 
-  const steps = [
-    { n: 1, label: t("stepSource") },
-    { n: 2, label: t("stepEvent") },
-    { n: 3, label: t("stepCountry") },
-    { n: 4, label: t("stepRatio") },
-    { n: 5, label: t("stepReview") }
-  ];
-
   const selectors = (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
       <div className="flex items-center gap-2">
         <span className="shrink-0 text-xs font-medium text-slate-500">{t("selectClient")}</span>
         <select
           value={clientSlug}
-          onChange={(e) => {
-            setClientSlug(e.target.value);
-            setSeedId("");
-          }}
+          onChange={(e) => setClientSlug(e.target.value)}
           disabled={hubLoading}
           className="ui-select !w-auto min-w-[12rem] text-sm"
         >
@@ -348,10 +240,7 @@ export function AudiencesLookalikeClient() {
           <span className="shrink-0 text-xs font-medium text-slate-500">{t("selectAdAccount")}</span>
           <select
             value={adAccountId}
-            onChange={(e) => {
-              setAdAccountId(e.target.value);
-              setSeedId("");
-            }}
+            onChange={(e) => setAdAccountId(e.target.value)}
             disabled={accountsLoading}
             className="ui-select !w-auto min-w-[12rem] text-sm"
           >
@@ -373,6 +262,50 @@ export function AudiencesLookalikeClient() {
       ) : null}
     </div>
   );
+
+  const renderCreateWizard = () => {
+    if (!createCtx) return <p className="text-sm text-slate-500">{t("selectClientFirst")}</p>;
+    const backToHub = () => setCreateType(null);
+    const backToList = () => {
+      setCreateType(null);
+      setView("list");
+    };
+
+    if (!createType) {
+      return (
+        <CreateAudienceHub
+          disabled={tosBlocked}
+          onSelect={(type) => {
+            setCreateType(type);
+            setError(null);
+            setMessage(null);
+          }}
+        />
+      );
+    }
+
+    const wizardProps = { ctx: createCtx, onBack: backToHub };
+    switch (createType) {
+      case "website":
+        return <WebsiteAudienceWizard {...wizardProps} />;
+      case "engagement":
+        return <EngagementAudienceWizard {...wizardProps} />;
+      case "lookalike":
+        return <LookalikeAudienceWizard {...wizardProps} />;
+      case "customer_list":
+        return <CustomerListPanel {...wizardProps} />;
+      case "app":
+        return <AppAudiencePanel {...wizardProps} />;
+      case "saved":
+        return <SavedAudienceWizard {...wizardProps} />;
+      case "combine":
+        return <CombineAudienceWizard {...wizardProps} />;
+      case "ai":
+        return <AiAudienceWizard {...wizardProps} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -400,7 +333,7 @@ export function AudiencesLookalikeClient() {
               type="button"
               onClick={() => {
                 setView("create");
-                setStep(1);
+                setCreateType(null);
               }}
               disabled={!metaConnected || !adAccountId}
               className="ui-btn-primary text-sm"
@@ -408,7 +341,14 @@ export function AudiencesLookalikeClient() {
               {t("createNewAudience")}
             </button>
           ) : (
-            <button type="button" onClick={() => setView("list")} className="ui-btn-secondary text-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setView("list");
+                setCreateType(null);
+              }}
+              className="ui-btn-secondary text-sm"
+            >
               {t("backToList")}
             </button>
           )}
@@ -543,6 +483,7 @@ export function AudiencesLookalikeClient() {
                               type="button"
                               onClick={() => toggleAttach(a.id, !attached)}
                               title={t("attachDefaultHint")}
+                              disabled={isPending}
                               className={`rounded-lg border px-3 py-1 text-[11px] font-medium ${
                                 attached
                                   ? "border-violet-200 bg-violet-50 text-violet-700"
@@ -589,276 +530,10 @@ export function AudiencesLookalikeClient() {
       ) : (
         <div className="space-y-4">
           <div className="ui-card p-4">{selectors}</div>
-
-          <div className="ui-card p-5">
-            <h2 className="text-lg font-semibold text-slate-900">{t("wizardTitle")}</h2>
-            <div className="mt-4 flex items-center gap-0 overflow-x-auto pb-1">
-              {steps.map((s, idx) => (
-                <div key={s.n} className="flex min-w-0 flex-1 items-center">
-                  <button
-                    type="button"
-                    onClick={() => step >= s.n && setStep(s.n)}
-                    className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${
-                      step === s.n
-                        ? "bg-violet-600 text-white"
-                        : step > s.n
-                          ? "bg-violet-100 text-violet-700"
-                          : "bg-slate-100 text-slate-600"
-                    } ${step >= s.n ? "cursor-pointer" : "cursor-default"}`}
-                  >
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
-                        step >= s.n ? "bg-white/20" : "bg-slate-200"
-                      }`}
-                    >
-                      {s.n}
-                    </span>
-                    <span className="whitespace-nowrap">{s.label}</span>
-                  </button>
-                  {idx < steps.length - 1 ? (
-                    <div
-                      className={`mx-1 h-0.5 min-w-[1rem] flex-1 ${step > s.n ? "bg-violet-400" : "bg-slate-200"}`}
-                      aria-hidden
-                    />
-                  ) : null}
-                </div>
-              ))}
-            </div>
-
-            {step === 1 ? (
-              <div className="mt-5">
-                <p className="text-sm text-slate-600">{t("stepSourceDesc")}</p>
-                {!adAccountId ? (
-                  <p className="mt-3 text-sm text-slate-500">{t("selectClientFirst")}</p>
-                ) : audiencesLoading ? (
-                  <div className="mt-4">
-                    <TableSkeleton rows={2} />
-                  </div>
-                ) : (
-                  <>
-                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {SOURCE_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => {
-                            setSource(opt.id);
-                            setSeedId("");
-                          }}
-                          className={`rounded-xl border p-4 text-left transition ${
-                            source === opt.id
-                              ? "border-violet-500 bg-violet-50 ring-1 ring-violet-500"
-                              : "border-slate-200 hover:border-slate-300"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between">
-                            <OutlineIcon
-                              d={opt.iconPath}
-                              className={`h-6 w-6 ${source === opt.id ? "text-violet-600" : "text-slate-500"}`}
-                            />
-                            {source === opt.id ? (
-                              <span className="text-violet-600">
-                                <OutlineIcon
-                                  d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                  className="h-5 w-5"
-                                />
-                              </span>
-                            ) : (
-                              <span className="h-4 w-4 rounded-full border border-slate-300" />
-                            )}
-                          </div>
-                          <div className="mt-2 font-semibold text-slate-900">{t(`source.${opt.id}.title`)}</div>
-                          <div className="mt-1 text-xs text-slate-500">{t(`source.${opt.id}.desc`)}</div>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mt-4">
-                      <label className="text-xs font-medium text-slate-500">
-                        {source === "pixel" ? t("pixelSelected") : t("seedAudience")}
-                      </label>
-                      {source === "pixel" && client?.metaPixelId ? (
-                        <div className="mt-1 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                          <span>Pixel — {client.name}</span>
-                          <span className="text-xs text-slate-400">{client.metaPixelId}</span>
-                        </div>
-                      ) : null}
-                      <select
-                        value={seedId}
-                        onChange={(e) => setSeedId(e.target.value)}
-                        className="ui-select mt-2 w-full"
-                        disabled={!seeds.length}
-                      >
-                        {seeds.length === 0 ? (
-                          <option value="">{t("noSeeds")}</option>
-                        ) : (
-                          seeds.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.name ?? s.id} ({s.subtype})
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    </div>
-                  </>
-                )}
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    disabled={!seedId}
-                    onClick={() => setStep(2)}
-                    className="ui-btn-primary"
-                  >
-                    {t("next")}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {step === 2 ? (
-              <div className="mt-5">
-                <p className="text-sm text-slate-600">{t("stepEventDesc")}</p>
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {EVENTS.map((ev) => (
-                    <button
-                      key={ev}
-                      type="button"
-                      onClick={() => setEvent(ev)}
-                      className={`rounded-xl border px-3 py-2 text-sm font-medium ${
-                        event === ev
-                          ? "border-violet-500 bg-violet-50 text-violet-700"
-                          : "border-slate-200 text-slate-700"
-                      }`}
-                    >
-                      {ev}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-4 flex justify-between">
-                  <button type="button" onClick={() => setStep(1)} className="ui-btn-secondary">
-                    {t("back")}
-                  </button>
-                  <button type="button" onClick={() => setStep(3)} className="ui-btn-primary">
-                    {t("next")}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {step === 3 ? (
-              <div className="mt-5">
-                <p className="text-sm text-slate-600">{t("stepCountryDesc")}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {COUNTRIES.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setCountry(c)}
-                      className={`rounded-xl border px-4 py-2 text-sm font-semibold ${
-                        country === c
-                          ? "border-violet-500 bg-violet-50 text-violet-700"
-                          : "border-slate-200"
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-4 flex justify-between">
-                  <button type="button" onClick={() => setStep(2)} className="ui-btn-secondary">
-                    {t("back")}
-                  </button>
-                  <button type="button" onClick={() => setStep(4)} className="ui-btn-primary">
-                    {t("next")}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {step === 4 ? (
-              <div className="mt-5">
-                <p className="text-sm text-slate-600">{t("stepRatioDesc")}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {RATIOS.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setRatio(r)}
-                      className={`rounded-xl border px-4 py-2 text-sm font-semibold ${
-                        ratio === r
-                          ? "border-violet-500 bg-violet-50 text-violet-700"
-                          : "border-slate-200"
-                      }`}
-                    >
-                      {Math.round(r * 100)}%
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-4 flex justify-between">
-                  <button type="button" onClick={() => setStep(3)} className="ui-btn-secondary">
-                    {t("back")}
-                  </button>
-                  <button type="button" onClick={() => setStep(5)} className="ui-btn-primary">
-                    {t("next")}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {step === 5 ? (
-              <div className="mt-5">
-                <p className="text-sm text-slate-600">{t("stepReviewDesc")}</p>
-                <dl className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">{t("reviewClient")}</dt>
-                    <dd className="font-medium">{client?.name}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">{t("reviewSource")}</dt>
-                    <dd>{t(`source.${source}.title`)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">{t("reviewSeed")}</dt>
-                    <dd className="max-w-[200px] truncate">
-                      {seeds.find((s) => s.id === seedId)?.name ?? seedId}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">{t("reviewEvent")}</dt>
-                    <dd>{event}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">{t("reviewCountry")}</dt>
-                    <dd>{country}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">{t("reviewRatio")}</dt>
-                    <dd>{Math.round(ratio * 100)}%</dd>
-                  </div>
-                  <div className="flex justify-between border-t border-slate-200 pt-2">
-                    <dt className="text-slate-500">{t("reviewName")}</dt>
-                    <dd className="font-semibold text-violet-700">{lookalikeName}</dd>
-                  </div>
-                </dl>
-                <div className="mt-4 flex justify-between">
-                  <button type="button" onClick={() => setStep(4)} className="ui-btn-secondary">
-                    {t("back")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isPending || !metaConnected || !seedId}
-                    onClick={createLookalike}
-                    className="ui-btn-primary"
-                  >
-                    {isPending ? t("creating") : t("createLookalike")}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="rounded-xl border border-violet-100 bg-violet-50 p-4 text-sm text-violet-900">
-            <span className="font-semibold">{t("tipTitle")}</span> {t("tipBody")}
-          </div>
+          {adAccountId ? (
+            <TosBanner clientSlug={clientSlug} adAccountId={adAccountId} onBlocked={setTosBlocked} />
+          ) : null}
+          <div className="ui-card p-5">{renderCreateWizard()}</div>
         </div>
       )}
     </div>

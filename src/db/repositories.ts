@@ -17,6 +17,7 @@ import type { ClientMetaSettings } from "@/db/entities/ClientMetaSettings";
 import type { ClientTag } from "@/db/entities/ClientTag";
 import type { CreativeAsset } from "@/db/entities/CreativeAsset";
 import type { LookalikeJob } from "@/db/entities/LookalikeJob";
+import type { AudienceInsightBreakdown } from "@/db/entities/AudienceInsightBreakdown";
 import type { MetaAdAccountInventory } from "@/db/entities/MetaAdAccountInventory";
 import type { MetaAuth } from "@/db/entities/MetaAuth";
 import type { MetaAudienceCache } from "@/db/entities/MetaAudienceCache";
@@ -90,6 +91,7 @@ const ENTITY = {
   ClientTag: "ClientTag",
   MetaAudienceCache: "MetaAudienceCache",
   LookalikeJob: "LookalikeJob",
+  AudienceInsightBreakdown: "AudienceInsightBreakdown",
   CampaignTemplate: "CampaignTemplate",
   CreativeAsset: "CreativeAsset",
   MessageTemplate: "MessageTemplate",
@@ -172,6 +174,10 @@ export async function repositories() {
     clientTag: repositoryFor<ClientTag>(ds, ENTITY.ClientTag),
     metaAudienceCache: repositoryFor<MetaAudienceCache>(ds, ENTITY.MetaAudienceCache),
     lookalikeJob: repositoryFor<LookalikeJob>(ds, ENTITY.LookalikeJob),
+    audienceInsightBreakdown: repositoryFor<AudienceInsightBreakdown>(
+      ds,
+      ENTITY.AudienceInsightBreakdown
+    ),
     campaignTemplate: repositoryFor<CampaignTemplate>(ds, ENTITY.CampaignTemplate),
     creativeAsset: repositoryFor<CreativeAsset>(ds, ENTITY.CreativeAsset),
     messageTemplate: repositoryFor<MessageTemplate>(ds, ENTITY.MessageTemplate),

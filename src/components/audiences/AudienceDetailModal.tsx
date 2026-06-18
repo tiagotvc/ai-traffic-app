@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/Badge";
+import { summarizeAudienceRule } from "@/lib/meta-audience-rule-summary";
 
 type Summary = {
   id: string;
@@ -29,6 +30,7 @@ type Detail = {
   approximate_count_lower_bound?: number;
   approximate_count_upper_bound?: number;
   lookalike_spec?: unknown;
+  rule?: unknown;
   account_id?: string;
 };
 
@@ -101,6 +103,8 @@ export function AudienceDetailModal({ open, onClose, summary, clientSlug, adAcco
     detail?.lookalike_spec && typeof detail.lookalike_spec === "object"
       ? (detail.lookalike_spec as Record<string, unknown>)
       : null;
+
+  const ruleSummary = detail?.rule ? summarizeAudienceRule(detail.rule) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
@@ -185,6 +189,52 @@ export function AudienceDetailModal({ open, onClose, summary, clientSlug, adAcco
               <div>
                 <dt className="text-slate-500">{t("detailDescription")}</dt>
                 <dd className="mt-1 rounded-lg bg-slate-50 p-2 text-slate-700">{detail.description}</dd>
+              </div>
+            ) : null}
+            {ruleSummary ? (
+              <div>
+                <dt className="text-slate-500">{t("detailRule")}</dt>
+                <dd className="mt-1 space-y-1 rounded-lg bg-slate-50 p-2 text-xs text-slate-700">
+                  {ruleSummary.kind === "website" ? (
+                    <>
+                      <div>{t("ruleKind.website")}</div>
+                      {ruleSummary.pixelId ? <div>Pixel: {ruleSummary.pixelId}</div> : null}
+                      {ruleSummary.eventName ? <div>Evento: {ruleSummary.eventName}</div> : null}
+                      {ruleSummary.retentionDays != null ? (
+                        <div>
+                          {t("retentionDays")}: {ruleSummary.retentionDays}d
+                        </div>
+                      ) : null}
+                    </>
+                  ) : ruleSummary.kind === "engagement" ? (
+                    <>
+                      <div>{t("ruleKind.engagement")}</div>
+                      {ruleSummary.sourceType ? <div>Fonte: {ruleSummary.sourceType}</div> : null}
+                      {ruleSummary.eventName ? <div>Ação: {ruleSummary.eventName}</div> : null}
+                      {ruleSummary.retentionDays != null ? (
+                        <div>
+                          {t("retentionDays")}: {ruleSummary.retentionDays}d
+                        </div>
+                      ) : null}
+                    </>
+                  ) : ruleSummary.kind === "combined" ? (
+                    <>
+                      <div>{t("ruleKind.combined")}</div>
+                      {ruleSummary.includeIds?.length ? (
+                        <div>
+                          {t("combineInclude")}: {ruleSummary.includeIds.join(", ")}
+                        </div>
+                      ) : null}
+                      {ruleSummary.excludeIds?.length ? (
+                        <div>
+                          {t("combineExclude")}: {ruleSummary.excludeIds.join(", ")}
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div>{JSON.stringify(ruleSummary)}</div>
+                  )}
+                </dd>
               </div>
             ) : null}
             {spec ? (
