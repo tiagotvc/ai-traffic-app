@@ -80,7 +80,13 @@ export async function metaFetchWithRateLimit<T>(
     if (attempt > 0) await sleep(rateLimitBackoffMs(attempt - 1, lastError));
 
     const res = await fetch(url, { ...init, cache: "no-store" });
-    const json = (await res.json()) as unknown;
+    const text = await res.text();
+    let json: unknown;
+    try {
+      json = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error(`Meta Graph error: ${res.status} ${text.slice(0, 240)}`);
+    }
 
     const throttle = parseInsightsThrottle(res.headers);
     if (throttle.accUtilPct > 80 || throttle.appUtilPct > 80) {

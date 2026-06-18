@@ -4,9 +4,16 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { PublishAsset } from "@/hooks/usePublishAssets";
-import { MAX_CREATIVE_VIDEO_BYTES } from "@/lib/creative-upload-limits";
+import { MAX_CREATIVE_VIDEO_BYTES, VIDEO_UPLOAD_CHUNK_BYTES } from "@/lib/creative-upload-limits";
 
-type ApiJson = { ok?: boolean; error?: string; hash?: string; videoId?: string; label?: string };
+type ApiJson = {
+  ok?: boolean;
+  error?: string;
+  hash?: string;
+  videoId?: string;
+  label?: string;
+  uploadId?: string;
+};
 
 async function readApiJson(res: Response): Promise<ApiJson> {
   const text = await res.text();
@@ -118,14 +125,45 @@ export function CreativePickerModal({
     setUploading(true);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("clientId", clientSlug);
-      form.append("adAccountId", adAccountId);
-      form.append("label", file.name);
-      form.append("file", file);
-      const res = await fetch("/api/creative-assets/video", { method: "POST", body: form });
-      const j = await readApiJson(res);
-      if (!res.ok || !j.ok || !j.videoId) throw new Error(j.error ?? "uploadFailed");
+      const totalChunks = Math.max(1, Math.ceil(file.size / VIDEO_UPLOAD_CHUNK_BYTES));
+
+      const initRes = await fetch("/api/creative-assets/video/init", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          clientId: clientSlug,
+          adAccountId,
+          label: file.name,
+          fileName: file.name,
+          totalSize: file.size,
+          totalChunks
+        })
+      });
+      const init = await readApiJson(initRes);
+      if (!initRes.ok || !init.ok || !init.uploadId) {
+        throw new Error(init.error ?? "uploadFailed");
+      }
+
+      for (let partIndex = 0; partIndex < totalChunks; partIndex++) {
+        const start = partIndex * VIDEO_UPLOAD_CHUNK_BYTES;
+        const chunk = file.slice(start, start + VIDEO_UPLOAD_CHUNK_BYTES);
+        const form = new FormData();
+        form.append("uploadId", init.uploadId);
+        form.append("partIndex", String(partIndex));
+        form.append("chunk", chunk, file.name);
+
+        const partRes = await fetch("/api/creative-assets/video/part", { method: "POST", body: form });
+        const part = await readApiJson(partRes);
+        if (!partRes.ok || !part.ok) throw new Error(part.error ?? "uploadFailed");
+      }
+
+      const commitRes = await fetch("/api/creative-assets/video/commit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ uploadId: init.uploadId })
+      });
+      const j = await readApiJson(commitRes);
+      if (!commitRes.ok || !j.ok || !j.videoId) throw new Error(j.error ?? "uploadFailed");
       const previewUrl = URL.createObjectURL(file);
       setLocalAssets((prev) => [
         ...prev,

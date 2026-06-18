@@ -1262,7 +1262,7 @@
     "creativeDone": "Done",
     "uploading": "Uploading…",
     "uploadFailed": "Upload failed. Please try again.",
-    "uploadRequestTooLarge": "Video is too large for the server. Compress the file or use a smaller video (max 100 MB).",
+    "uploadRequestTooLarge": "The server rejected the upload (request size limit). The app now uploads in chunks; restart the server and try again.",
     "videoTooLarge": "Video is too large (max 100 MB).",
     "generatingAi": "Generating…",
     "copyTabManual": "Manual",

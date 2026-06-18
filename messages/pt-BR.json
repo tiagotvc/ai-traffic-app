@@ -1262,7 +1262,7 @@
     "creativeDone": "Concluir",
     "uploading": "Enviando…",
     "uploadFailed": "Falha no envio. Tente novamente.",
-    "uploadRequestTooLarge": "Vídeo grande demais para o servidor. Comprima o arquivo ou use um vídeo menor (máx. 100 MB).",
+    "uploadRequestTooLarge": "O servidor recusou o envio (limite de tamanho da requisição). O app agora envia em partes; reinicie o servidor e tente de novo.",
     "videoTooLarge": "Vídeo muito grande (máx. 100 MB).",
     "generatingAi": "Gerando…",
     "copyTabManual": "Manual",
