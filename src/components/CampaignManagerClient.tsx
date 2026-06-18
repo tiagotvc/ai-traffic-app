@@ -17,8 +17,17 @@ import { formatPeriodLabel, periodStateToParsed } from "@/lib/report-period";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
+import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
+import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
+import { computeGroupTotals } from "@/lib/campaign-group-totals";
+import {
+  STICKY_NAME_TD,
+  STICKY_NAME_TH,
+  STICKY_STATUS_TD,
+  STICKY_STATUS_TH
+} from "@/lib/campaign-table-sticky";
+import { columnRefKey, type MetricRowData } from "@/lib/campaign-table-layout";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
-import { columnRefKey } from "@/lib/campaign-table-layout";
 import {
   customTypesToMap,
   metricsColumnsForPreset
@@ -97,6 +106,7 @@ type AdSetRow = {
   reach: number;
   clicks: number;
   ctr: number;
+  metrics?: Partial<Record<MetricKey, number>>;
 };
 
 type SeriesPoint = { day: string; spend: number; conversions: number; cpa: number | null; roas: number };
@@ -176,6 +186,14 @@ function statusLabel(status: string, t: (k: string) => string) {
   if (status === "ACTIVE") return t("statusActive");
   if (status === "PAUSED") return t("statusPaused");
   return status;
+}
+
+function inferTag(name: string, t: (k: string) => string) {
+  const n = name.toLowerCase();
+  if (n.includes("lookalike") || n.includes("la ")) return t("tagLookalike");
+  if (n.includes("remarketing") || n.includes("retarget")) return t("tagRemarketing");
+  if (n.includes("interesse")) return t("tagInterest");
+  return t("tagSaved");
 }
 
 function pctDelta(current: number, previous: number) {
@@ -385,6 +403,7 @@ export function CampaignManagerClient({
   const [message, setMessage] = useState<string | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [statusPending, setStatusPending] = useState(false);
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<DetailTab>(tab);
   const [refreshing, setRefreshing] = useState(false);
@@ -536,13 +555,18 @@ export function CampaignManagerClient({
   };
 
   const adsetAction = (adsetId: string, action: "pause" | "activate") => {
+    setStatusPendingId(adsetId);
     startTransition(async () => {
-      await fetch(`/api/adsets/${encodeURIComponent(adsetId)}/actions`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action })
-      });
-      reload();
+      try {
+        await fetch(`/api/adsets/${encodeURIComponent(adsetId)}/actions`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action })
+        });
+        await reload();
+      } finally {
+        setStatusPendingId(null);
+      }
     });
   };
 
@@ -815,7 +839,12 @@ export function CampaignManagerClient({
                       {a.name ?? a.id}
                     </Link>
                   )}
-                  <Badge variant={statusVariant(a.status ?? "")}>{statusLabel(a.status ?? "", t)}</Badge>
+                  <CampaignStatusToggle
+                    active={a.status === "ACTIVE"}
+                    disabled={statusPendingId === a.id || isPending}
+                    ariaLabel={statusLabel(a.status ?? "", t)}
+                    onChange={() => adsetAction(a.id, a.status === "ACTIVE" ? "pause" : "activate")}
+                  />
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-x-2 gap-y-1 text-[11px]">
                   <Metric label={t("spend7d")} value={formatBRL(a.spend, locale)} />
@@ -845,14 +874,6 @@ export function CampaignManagerClient({
                       {t("viewDetail")}
                     </Link>
                   )}
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => adsetAction(a.id, a.status === "ACTIVE" ? "pause" : "activate")}
-                    className="font-medium text-slate-600 hover:text-violet-600"
-                  >
-                    {a.status === "ACTIVE" ? t("pause") : t("activate")}
-                  </button>
                 </div>
               </div>
             ))
@@ -900,6 +921,7 @@ export function CampaignManagerClient({
             locale={locale}
             t={t}
             isPending={isPending}
+            statusPendingId={statusPendingId}
             adsetAction={adsetAction}
             campaignPreset={campaignPreset}
           />
@@ -1017,6 +1039,7 @@ function AdsetsTable({
   locale,
   t,
   isPending,
+  statusPendingId,
   adsetAction,
   campaignPreset
 }: {
@@ -1028,13 +1051,17 @@ function AdsetsTable({
   locale: string;
   t: (k: string, p?: Record<string, string | number>) => string;
   isPending: boolean;
+  statusPendingId: string | null;
   adsetAction: (id: string, action: "pause" | "activate") => void;
   campaignPreset: string;
 }) {
   const { openPanel } = usePublishPanel();
+  const tAdsets = useTranslations("adsetsPage");
+  const tCampaigns = useTranslations("campaignsPage");
   const tMetrics = useTranslations("metrics");
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
     () => metricsColumnsForPreset(campaignPreset, customTypesMap),
@@ -1043,6 +1070,8 @@ function AdsetsTable({
   const customMetricNames = Object.fromEntries(
     tableLayout.customMetrics.map((m) => [m.id, m.name])
   );
+  const colors = ["#7c3aed", "#2563eb", "#059669", "#ea580c", "#db2777"];
+
   function metricColLabel(col: (typeof metricColumns)[number]) {
     if (col.kind === "metric") return tMetrics(METRIC_BY_KEY[col.key].label);
     if (col.kind === "meta_action") {
@@ -1052,6 +1081,65 @@ function AdsetsTable({
     if (col.kind === "custom") return customMetricNames[col.id] ?? col.id;
     return "";
   }
+
+  const toggleSort = (key: string) => {
+    setSort((s) => {
+      if (s?.key === key) return { key, dir: s.dir === "asc" ? "desc" : "asc" };
+      return { key, dir: "desc" };
+    });
+  };
+
+  const sortedAdsets = useMemo(() => {
+    if (!sort) return filteredAdsets;
+    const { key, dir } = sort;
+    return [...filteredAdsets].sort((x, y) => {
+      let aVal: string | number = 0;
+      let bVal: string | number = 0;
+      if (key === "name") {
+        aVal = (x.name ?? x.id).toLowerCase();
+        bVal = (y.name ?? y.id).toLowerCase();
+      } else if (key === "status") {
+        const rank = (s?: string) => (s === "ACTIVE" ? 2 : s === "PAUSED" ? 1 : 0);
+        aVal = rank(x.status);
+        bVal = rank(y.status);
+      } else if (key === "dailyBudget") {
+        aVal = x.dailyBudget ?? 0;
+        bVal = y.dailyBudget ?? 0;
+      } else if (key in METRIC_BY_KEY) {
+        const mk = key as MetricKey;
+        aVal = Number(x.metrics?.[mk] ?? (x as unknown as Record<string, number>)[mk] ?? 0);
+        bVal = Number(y.metrics?.[mk] ?? (y as unknown as Record<string, number>)[mk] ?? 0);
+      } else {
+        aVal = String((x as Record<string, unknown>)[key] ?? "").toLowerCase();
+        bVal = String((y as Record<string, unknown>)[key] ?? "").toLowerCase();
+      }
+      if (aVal < bVal) return dir === "asc" ? -1 : 1;
+      if (aVal > bVal) return dir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [filteredAdsets, sort]);
+
+  const totals = useMemo(
+    () =>
+      computeGroupTotals(
+        sortedAdsets.map((a) => {
+          const metrics = (a.metrics ?? {}) as MetricRowData;
+          return {
+            spend: a.spend,
+            conversions: a.conversions,
+            cpa: a.cpa,
+            roas: a.roas,
+            reach: a.reach,
+            clicks: a.clicks,
+            ctr: a.ctr,
+            ...metrics
+          };
+        }),
+        metricColumns,
+        tableLayout.customMetricsMap
+      ),
+    [sortedAdsets, metricColumns, tableLayout.customMetricsMap]
+  );
 
   return (
     <div className="space-y-4">
@@ -1068,69 +1156,123 @@ function AdsetsTable({
         </button>
       </div>
       <div className="ui-card overflow-hidden">
-        <table className="w-full min-w-[960px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-3">{t("colAdset")}</th>
-              <th className="px-3 py-3">{t("statusLabel")}</th>
-              {metricColumns.map((col) => (
-                <th key={columnRefKey(col)} className="px-3 py-3 text-right">
-                  {metricColLabel(col)}
-                </th>
-              ))}
-              <th className="px-3 py-3">{t("dailyBudget")}</th>
-              <th className="px-3 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAdsets.map((a) => (
-              <tr key={a.id} className="border-t border-slate-100 hover:bg-slate-50/80">
-                <td className="px-4 py-3">
-                  <Link
-                    href={campaignAdsHref(metaCampaignId, slug, a.id)}
-                    onClick={() => rememberAdset(metaCampaignId, a.id, a.name ?? a.id)}
-                    className="font-medium text-slate-900 hover:text-violet-700 hover:underline"
-                  >
-                    {a.name ?? a.id}
-                  </Link>
-                  <div className="text-[10px] text-slate-400">{a.id}</div>
-                </td>
-                <td className="px-3 py-3">
-                  <Badge variant={statusVariant(a.status ?? "")}>{statusLabel(a.status ?? "", t)}</Badge>
-                </td>
-                {metricColumns.map((col) => (
-                  <CampaignTableCell
-                    key={columnRefKey(col)}
-                    col={col}
-                    row={{
-                      spend: a.spend,
-                      conversions: a.conversions,
-                      cpa: a.cpa,
-                      roas: a.roas,
-                      reach: a.reach,
-                      clicks: a.clicks,
-                      ctr: a.ctr
-                    }}
-                    customMetrics={tableLayout.customMetricsMap}
-                  />
-                ))}
-                <td className="px-3 py-3">
-                  {a.dailyBudget != null ? formatBRL(a.dailyBudget, locale) : "—"}
-                </td>
-                <td className="px-3 py-3">
-                  <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={() => adsetAction(a.id, a.status === "ACTIVE" ? "pause" : "activate")}
-                    className="text-xs font-medium text-violet-600 hover:underline"
-                  >
-                    {a.status === "ACTIVE" ? t("pause") : t("activate")}
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+              <tr>
+                <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
+                  <button type="button" onClick={() => toggleSort("status")} className="hover:text-slate-700">
+                    {tAdsets("colStatus")}
+                    {sort?.key === "status" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
-                </td>
+                </th>
+                <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>
+                  <button type="button" onClick={() => toggleSort("name")} className="hover:text-slate-700">
+                    {tAdsets("colAdset")}
+                    {sort?.key === "name" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                  </button>
+                </th>
+                {metricColumns.map((m) => {
+                  const sortKey = m.kind === "metric" ? m.key : columnRefKey(m);
+                  return (
+                    <th key={columnRefKey(m)} className="whitespace-nowrap px-3 py-2 text-center">
+                      <button type="button" onClick={() => toggleSort(sortKey)} className="hover:text-slate-700">
+                        {metricColLabel(m)}
+                        {sort?.key === sortKey ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                      </button>
+                    </th>
+                  );
+                })}
+                <th className="whitespace-nowrap px-3 py-2 text-center">
+                  <button type="button" onClick={() => toggleSort("dailyBudget")} className="hover:text-slate-700">
+                    {tAdsets("colBudget")}
+                    {sort?.key === "dailyBudget" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
+                  </button>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sortedAdsets.map((a, idx) => {
+                const name = a.name ?? a.id;
+                return (
+                  <tr key={a.id} className="group border-t border-slate-100 hover:bg-violet-50/40">
+                    <td className={STICKY_STATUS_TD}>
+                      <CampaignStatusToggle
+                        active={a.status === "ACTIVE"}
+                        disabled={statusPendingId === a.id || isPending}
+                        ariaLabel={statusLabel(a.status ?? "", tAdsets)}
+                        onChange={() => adsetAction(a.id, a.status === "ACTIVE" ? "pause" : "activate")}
+                      />
+                    </td>
+                    <td className={STICKY_NAME_TD}>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
+                          style={{ backgroundColor: colors[idx % colors.length] }}
+                        >
+                          {(name[0] ?? "C").toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <Link
+                            href={campaignAdsHref(metaCampaignId, slug, a.id)}
+                            onClick={() => rememberAdset(metaCampaignId, a.id, name)}
+                            className="block whitespace-normal break-words font-medium text-slate-800 hover:text-violet-700 hover:underline"
+                          >
+                            {name}
+                          </Link>
+                          <div className="text-[10px] text-slate-400">{a.id}</div>
+                          <span className="mt-1 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                            {inferTag(name, tAdsets)}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    {metricColumns.map((col) => (
+                      <CampaignTableCell
+                        key={columnRefKey(col)}
+                        col={col}
+                        row={{
+                          spend: a.spend,
+                          conversions: a.conversions,
+                          cpa: a.cpa,
+                          roas: a.roas,
+                          reach: a.reach,
+                          clicks: a.clicks,
+                          ctr: a.ctr,
+                          ...(a.metrics ?? {})
+                        }}
+                        customMetrics={tableLayout.customMetricsMap}
+                      />
+                    ))}
+                    <td className="px-3 py-2.5 text-center tabular-nums text-slate-700">
+                      {a.dailyBudget != null ? formatBRL(a.dailyBudget, locale) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            {sortedAdsets.length > 0 ? (
+              <CampaignMetricTableFooter
+                rowCount={sortedAdsets.length}
+                totalLabel={tCampaigns("rowTotal")}
+                metricColumns={metricColumns}
+                totals={totals}
+                customMetrics={tableLayout.customMetricsMap}
+                trailingCells={
+                  <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-900">
+                    {formatBRL(
+                      sortedAdsets.reduce((s, a) => s + (a.dailyBudget ?? 0), 0),
+                      locale
+                    )}
+                  </td>
+                }
+              />
+            ) : null}
+          </table>
+        </div>
+        {!sortedAdsets.length ? (
+          <p className="p-8 text-center text-sm text-slate-500">{tAdsets("empty")}</p>
+        ) : null}
       </div>
     </div>
   );
