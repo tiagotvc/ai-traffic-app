@@ -34,7 +34,8 @@ import {
 } from "@/lib/campaign-table-metrics";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
-import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { presetMetricsFor } from "@/lib/campaign-presets";
+import { METRIC_BY_KEY, MAX_CHART_METRICS, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { ChartContainer } from "@/components/ui/ChartContainer";
 import {
   CartesianGrid,
@@ -73,6 +74,15 @@ const ICONS = {
   external: "M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
 } as const;
 
+const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
+
+type CampaignKpis = Partial<Record<MetricKey, number | null>> & {
+  spend: number;
+  conversions: number;
+  cpa: number | null;
+  roas: number;
+};
+
 type Campaign = {
   id: string;
   name: string;
@@ -83,15 +93,7 @@ type Campaign = {
   accountLabel: string;
   metaAdAccountId: string;
   objective: string;
-  kpis: {
-    spend: number;
-    conversions: number;
-    cpa: number | null;
-    roas: number;
-    ctr: number;
-    impressions: number;
-    clicks: number;
-  };
+  kpis: CampaignKpis;
 };
 
 type AdSetRow = {
@@ -109,8 +111,23 @@ type AdSetRow = {
   metrics?: Partial<Record<MetricKey, number>>;
 };
 
-type SeriesPoint = { day: string; spend: number; conversions: number; cpa: number | null; roas: number };
-type PrevPeriod = { spend: number; conversions: number; cpa: number | null; roas: number };
+type SeriesPoint = {
+  day: string;
+  spend: number;
+  impressions: number;
+  reach: number;
+  frequency: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  conversions: number;
+  cpa: number | null;
+  messages: number;
+  cpmsg: number;
+  roas: number;
+};
+type PrevPeriod = Partial<Record<MetricKey, number>>;
 type DetailTab = "overview" | "adsets" | "ads" | "creatives" | "events";
 
 export type CampaignSeedRow = {
@@ -151,6 +168,16 @@ function buildDetailQuery(periodQuery: string, seed?: CampaignSeedRow) {
   if (seed?.cpa != null) params.set("cpa", String(seed.cpa));
   const qs = params.toString();
   return qs ? `?${qs}` : "";
+}
+
+function readKpi(kpis: CampaignKpis, key: MetricKey): number {
+  const raw = kpis[key];
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : 0;
+}
+
+function formatCampaignKpi(key: MetricKey, kpis: CampaignKpis, locale: string): string {
+  if (key === "cpa" && (kpis.cpa == null || kpis.cpa <= 0)) return "—";
+  return formatMetricValue(key, readKpi(kpis, key), locale);
 }
 
 function campaignFromSeed(seed: CampaignSeedRow, metaCampaignId: string): Campaign {
@@ -255,54 +282,90 @@ function CampaignDetailSkeleton({ compact }: { compact?: boolean }) {
 
 const CHART_METRICS: MetricKey[] = ["spend", "conversions", "cpa", "roas"];
 
+function defaultChartSelection(presetMetrics: MetricKey[]): MetricKey[] {
+  const fromPreset = presetMetrics.slice(0, 2);
+  return fromPreset.length ? fromPreset : CHART_METRICS.slice(0, 2);
+}
+
 function PerformanceChart({
   series,
   loading,
   noDataLabel,
   title,
-  locale
+  locale,
+  presetMetrics
 }: {
   series: SeriesPoint[];
   loading: boolean;
   noDataLabel: string;
   title: string;
   locale: string;
+  presetMetrics: MetricKey[];
 }) {
   const tMetrics = useTranslations("metrics");
-  const [selected, setSelected] = useState<MetricKey[]>(["spend", "conversions"]);
+  const [selected, setSelected] = useState<MetricKey[]>(() => defaultChartSelection(presetMetrics));
+
+  useEffect(() => {
+    setSelected(defaultChartSelection(presetMetrics));
+  }, [presetMetrics.join(",")]);
 
   const data = series.map((p) => ({
     label: formatDayLabel(p.day, locale),
     spend: p.spend,
+    impressions: p.impressions,
+    reach: p.reach,
+    frequency: p.frequency,
+    clicks: p.clicks,
+    ctr: p.ctr,
+    cpc: p.cpc,
+    cpm: p.cpm,
     conversions: p.conversions,
     cpa: p.cpa ?? 0,
+    messages: p.messages,
+    cpmsg: p.cpmsg,
     roas: p.roas
   }));
 
   function toggle(m: MetricKey) {
-    setSelected((cur) =>
-      cur.includes(m) ? (cur.length > 1 ? cur.filter((x) => x !== m) : cur) : [...cur, m]
-    );
+    setSelected((cur) => {
+      if (cur.includes(m)) {
+        return cur.length > 1 ? cur.filter((x) => x !== m) : cur;
+      }
+      return cur.length >= MAX_CHART_METRICS ? cur : [...cur, m];
+    });
   }
+
+  const available = presetMetrics.length ? presetMetrics : CHART_METRICS;
 
   return (
     <div className="ui-card p-4 lg:col-span-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
         <div className="flex flex-wrap gap-1.5">
-          {CHART_METRICS.map((m) => {
+          {available.map((m) => {
+            const def = METRIC_BY_KEY[m];
             const on = selected.includes(m);
+            const disabled = !on && selected.length >= MAX_CHART_METRICS;
             return (
               <button
                 key={m}
                 type="button"
+                disabled={disabled}
                 onClick={() => toggle(m)}
-                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                  on ? "text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                  on
+                    ? "border-transparent text-white"
+                    : disabled
+                      ? "cursor-not-allowed border-slate-200 text-slate-300"
+                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
-                style={on ? { backgroundColor: METRIC_BY_KEY[m].color } : undefined}
+                style={on ? { background: def.color } : undefined}
               >
-                {tMetrics(METRIC_BY_KEY[m].label)}
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: on ? "rgba(255,255,255,0.85)" : def.color }}
+                />
+                {tMetrics(def.label)}
               </button>
             );
           })}
@@ -386,13 +449,22 @@ export function CampaignManagerClient({
   seedRow?: CampaignSeedRow;
 }) {
   const t = useTranslations("campaignManager");
+  const tSync = useTranslations("sync");
+  const tMetrics = useTranslations("metrics");
   const tPeriod = useTranslations("period");
   const locale = useLocale();
+  const { types: customTypes } = useCampaignTypes();
+  const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const { openPanel } = usePublishPanel();
   const urlPeriod = useCampaignPeriod();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [adsets, setAdsets] = useState<AdSetRow[]>([]);
   const [campaignPreset, setCampaignPreset] = useState("default");
+  const presetMetrics = useMemo(
+    () => presetMetricsFor(campaignPreset, customTypesMap),
+    [campaignPreset, customTypesMap]
+  );
+  const kpiMetrics = useMemo(() => presetMetrics.slice(0, 4), [presetMetrics]);
   const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [previous, setPrevious] = useState<PrevPeriod | null>(null);
   const [adsCount, setAdsCount] = useState<number | null>(null);
@@ -408,6 +480,7 @@ export function CampaignManagerClient({
   const [activeTab, setActiveTab] = useState<DetailTab>(tab);
   const [refreshing, setRefreshing] = useState(false);
   const [chartLoading, setChartLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [budgetDrawerOpen, setBudgetDrawerOpen] = useState(false);
   const [detailPeriod, setDetailPeriod] = useState<PeriodState>(() =>
     embedded ? periodStateFromQuery(periodQuery) : urlPeriod.period
@@ -500,6 +573,43 @@ export function CampaignManagerClient({
     });
   }, [metaCampaignId, clientSlug, detailPeriod, seedRow]);
 
+  const refreshFromMeta = useCallback(async () => {
+    if (syncing) return;
+    const slugForSync = campaign?.clientSlug || clientSlug;
+    setSyncing(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/sync/run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clientId: slugForSync })
+      });
+      const json = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        errorCode?: string;
+        retryAfterSec?: number;
+      } | null;
+      if (!res.ok || json?.ok === false) {
+        setMessage(json?.error ?? tSync("failed"));
+        return;
+      }
+      window.dispatchEvent(new Event("traffic-sync-done"));
+    } catch {
+      setMessage(tSync("failed"));
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncing, campaign?.clientSlug, clientSlug, tSync]);
+
+  useEffect(() => {
+    const onSync = () => {
+      void reload();
+    };
+    window.addEventListener("traffic-sync-done", onSync);
+    return () => window.removeEventListener("traffic-sync-done", onSync);
+  }, [reload]);
+
   useEffect(() => {
     if (seedRow && seedRow.metaCampaignId === metaCampaignId) {
       setCampaign(campaignFromSeed(seedRow, metaCampaignId));
@@ -516,10 +626,10 @@ export function CampaignManagerClient({
     return adsets.filter((a) => (a.name ?? a.id).toLowerCase().includes(q));
   }, [adsets, search]);
 
-  const spendSeries = series.map((s) => s.spend);
-  const convSeries = series.map((s) => s.conversions);
-  const cpaSeries = series.map((s) => (s.cpa != null ? s.cpa : 0));
-  const roasSeries = series.map((s) => s.roas);
+  const metricSeries = useCallback(
+    (key: MetricKey) => series.map((p) => Number(p[key] ?? 0)),
+    [series]
+  );
 
   const adsetTotals = useMemo(
     () => ({
@@ -575,7 +685,7 @@ export function CampaignManagerClient({
   }
 
   const slug = campaign.clientSlug || clientSlug;
-  const prev = previous ?? { spend: 0, conversions: 0, cpa: null, roas: 0 };
+  const prev = previous ?? {};
 
   return (
     <div className="space-y-4">
@@ -625,8 +735,16 @@ export function CampaignManagerClient({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PeriodFilter value={detailPeriod} onChange={onDetailPeriodChange} />
-          <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm" title={t("refresh")}>
-            ↻
+          <button
+            type="button"
+            onClick={() => void refreshFromMeta()}
+            disabled={syncing}
+            className="ui-btn-secondary inline-flex items-center gap-1.5 px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+            title={syncing ? t("syncing") : t("refresh")}
+            aria-label={t("refresh")}
+          >
+            {syncing ? <Spinner className="h-4 w-4" /> : <span aria-hidden>↻</span>}
+            <span className="hidden sm:inline">{syncing ? t("syncing") : t("refresh")}</span>
           </button>
           <div className="relative">
             <button
@@ -690,41 +808,21 @@ export function CampaignManagerClient({
       {activeTab === "overview" ? (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_360px]">
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {refreshing && !spendSeries.length ? (
-                [1, 2, 3, 4].map((n) => <Skeleton key={n} className="h-24 rounded-xl" />)
+            <div className={`grid grid-cols-2 gap-3 ${kpiMetrics.length >= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+              {refreshing && !series.length ? (
+                kpiMetrics.map((_, n) => <Skeleton key={n} className="h-24 rounded-xl" />)
               ) : (
-                <>
+                kpiMetrics.map((key) => (
                   <KpiCard
-                    label={t("kpiSpend")}
-                    value={formatBRL(campaign.kpis.spend, locale)}
-                    delta={pctDelta(campaign.kpis.spend, prev.spend)}
-                    series={spendSeries}
-                    color="#7c3aed"
+                    key={key}
+                    label={tMetrics(METRIC_BY_KEY[key].label)}
+                    value={formatCampaignKpi(key, campaign.kpis, locale)}
+                    delta={pctDelta(readKpi(campaign.kpis, key), prev[key] ?? 0)}
+                    series={metricSeries(key)}
+                    color={METRIC_BY_KEY[key].color}
+                    invertDelta={COST_METRICS.has(key)}
                   />
-                  <KpiCard
-                    label={t("kpiConversions")}
-                    value={formatNumber(campaign.kpis.conversions, locale)}
-                    delta={pctDelta(campaign.kpis.conversions, prev.conversions)}
-                    series={convSeries}
-                    color="#2563eb"
-                  />
-                  <KpiCard
-                    label={t("kpiCpa")}
-                    value={campaign.kpis.cpa != null ? formatBRL(campaign.kpis.cpa, locale) : "—"}
-                    delta={pctDelta(campaign.kpis.cpa ?? 0, prev.cpa ?? 0)}
-                    series={cpaSeries}
-                    color="#ea580c"
-                    invertDelta
-                  />
-                  <KpiCard
-                    label={t("kpiRoas")}
-                    value={formatRoas(campaign.kpis.roas, locale)}
-                    delta={pctDelta(campaign.kpis.roas, prev.roas)}
-                    series={roasSeries}
-                    color="#059669"
-                  />
-                </>
+                ))
               )}
             </div>
 
@@ -735,6 +833,7 @@ export function CampaignManagerClient({
                 locale={locale}
                 title={t("chartTitleWithPeriod", { period: chartPeriodLabel })}
                 noDataLabel={t("noChartData")}
+                presetMetrics={presetMetrics}
               />
 
               <div className="ui-card p-4">
