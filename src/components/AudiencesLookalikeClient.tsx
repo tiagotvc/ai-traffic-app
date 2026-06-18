@@ -332,9 +332,9 @@ export function AudiencesLookalikeClient() {
   ];
 
   const selectors = (
-    <div className="flex flex-wrap items-end gap-3">
-      <div>
-        <label className="text-xs font-medium text-slate-500">{t("selectClient")}</label>
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-xs font-medium text-slate-500">{t("selectClient")}</span>
         <select
           value={clientSlug}
           onChange={(e) => {
@@ -342,7 +342,7 @@ export function AudiencesLookalikeClient() {
             setSeedId("");
           }}
           disabled={hubLoading}
-          className="ui-select mt-1 !w-auto min-w-[12rem] text-sm"
+          className="ui-select !w-auto min-w-[12rem] text-sm"
         >
           {clients.map((c) => (
             <option key={c.slug} value={c.slug}>
@@ -352,8 +352,8 @@ export function AudiencesLookalikeClient() {
         </select>
       </div>
       {accounts.length > 1 ? (
-        <div>
-          <label className="text-xs font-medium text-slate-500">{t("selectAdAccount")}</label>
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-xs font-medium text-slate-500">{t("selectAdAccount")}</span>
           <select
             value={adAccountId}
             onChange={(e) => {
@@ -361,7 +361,7 @@ export function AudiencesLookalikeClient() {
               setSeedId("");
             }}
             disabled={accountsLoading}
-            className="ui-select mt-1 !w-auto min-w-[12rem] text-sm"
+            className="ui-select !w-auto min-w-[12rem] text-sm"
           >
             {accounts.map((a) => (
               <option key={a.metaAdAccountId} value={a.metaAdAccountId}>

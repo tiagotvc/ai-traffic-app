@@ -38,7 +38,8 @@ export type MetaCustomAudience = {
   id: string;
   name?: string;
   subtype?: string;
-  approximate_count?: number;
+  approximate_count_lower_bound?: number;
+  approximate_count_upper_bound?: number;
   lookalike_spec?: unknown;
 };
 
@@ -548,7 +549,14 @@ export async function fetchCustomAudiences(
   adAccountId: string
 ): Promise<MetaCustomAudience[]> {
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
-  const fields = ["id", "name", "subtype", "approximate_count", "lookalike_spec"].join(",");
+  const fields = [
+    "id",
+    "name",
+    "subtype",
+    "approximate_count_lower_bound",
+    "approximate_count_upper_bound",
+    "lookalike_spec"
+  ].join(",");
   const data = await metaFetch<{ data: MetaCustomAudience[] }>(
     `/${encodeURIComponent(act)}/customaudiences?fields=${encodeURIComponent(fields)}&limit=100`,
     accessToken

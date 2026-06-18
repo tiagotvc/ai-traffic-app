@@ -181,7 +181,12 @@ export async function GET(req: Request) {
         country: spec.country ?? "BR",
         ratioPct,
         updatedAt: new Date().toISOString(),
-        approximateCount: a.approximate_count
+        approximateCount:
+          a.approximate_count_upper_bound != null && a.approximate_count_upper_bound >= 0
+            ? a.approximate_count_upper_bound
+            : a.approximate_count_lower_bound != null && a.approximate_count_lower_bound >= 0
+              ? a.approximate_count_lower_bound
+              : undefined
       });
     }
   }
