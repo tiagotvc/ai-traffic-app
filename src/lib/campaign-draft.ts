@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { coercePlacements, defaultPlacements, type PlacementConfig } from "@/lib/campaign-placements";
+import { defaultUtm, type UtmFields } from "@/lib/campaign-utm";
+
 export const CAMPAIGN_OBJECTIVES = [
   "awareness",
   "traffic",
@@ -21,7 +24,40 @@ export type AdAssignmentMode = "single" | "all_adsets";
 
 export type VariationAxis = "location" | "ageRange" | "customAudience" | "interests" | "gender";
 
-export type TargetingItem = z.infer<typeof TargetingItemSchema>;
+export const MessagingChannelSchema = z.enum(["whatsapp", "messenger", "instagram"]);
+export type MessagingChannel = z.infer<typeof MessagingChannelSchema>;
+
+export const ConversionLocationSchema = z.enum([
+  "website",
+  "instant_form",
+  "website_and_form",
+  "messaging",
+  "calls",
+  "app"
+]);
+export type ConversionLocation = z.infer<typeof ConversionLocationSchema>;
+
+export const PlacementConfigSchema = z.object({
+  mode: z.enum(["advantage_plus", "manual"]).default("advantage_plus"),
+  platforms: z.array(z.enum(["facebook", "instagram", "audience_network", "messenger"])).default([]),
+  positions: z.array(z.string()).default([]),
+  devices: z.array(z.enum(["mobile", "desktop"])).default([])
+});
+
+export const MessageTemplateDraftSchema = z.object({
+  channel: MessagingChannelSchema,
+  templateId: z.string().nullable().default(null),
+  greeting: z.string().default(""),
+  icebreakers: z.array(z.string()).default([])
+});
+
+export const UtmFieldsSchema = z.object({
+  source: z.string().default("facebook"),
+  medium: z.string().default("paid"),
+  campaign: z.string().default(""),
+  content: z.string().default(""),
+  term: z.string().default("")
+});
 
 export const TargetingItemSchema = z.object({
   value: z.string(),
@@ -37,6 +73,12 @@ export const TargetingItemSchema = z.object({
     .optional()
 });
 
+export type TargetingItem = z.infer<typeof TargetingItemSchema>;
+
+export const DetailedTargetingGroupSchema = z.object({
+  items: z.array(TargetingItemSchema).default([])
+});
+
 export const DraftTargetingSchema = z.object({
   locations: z.array(TargetingItemSchema).default([]),
   ageMin: z.number().min(13).max(65).default(18),
@@ -45,22 +87,25 @@ export const DraftTargetingSchema = z.object({
   interests: z.array(TargetingItemSchema).default([]),
   locales: z.array(TargetingItemSchema).default([]),
   customAudienceIds: z.array(z.string()).default([]),
-  excludedAudienceIds: z.array(z.string()).default([])
+  excludedAudienceIds: z.array(z.string()).default([]),
+  detailedGroups: z.array(DetailedTargetingGroupSchema).default([]),
+  advantageAudience: z.boolean().default(false)
 });
 
 export const AdSetDraftItemSchema = z.object({
   id: z.string(),
   name: z.string().default(""),
-  conversionLocation: z
-    .enum(["website", "instant_form", "website_and_form"])
-    .default("website_and_form"),
+  conversionLocation: ConversionLocationSchema.default("website_and_form"),
+  messagingChannels: z.array(MessagingChannelSchema).default([]),
+  pixelId: z.string().nullable().default(null),
+  conversionEvent: z.string().default("LEAD"),
   dynamicCreative: z.boolean().default(true),
   schedule: z.object({
     start: z.string().nullable().default(null),
     end: z.string().nullable().default(null)
   }),
   targeting: DraftTargetingSchema,
-  placements: z.enum(["advantage_plus", "manual"]).default("advantage_plus"),
+  placements: PlacementConfigSchema.default(defaultPlacements()),
   variantLabel: z.string().optional()
 });
 
@@ -79,8 +124,10 @@ export const AdDraftItemSchema = z.object({
   linkUrl: z.string().default(""),
   leadFormId: z.string().nullable().default(null),
   urlParams: z.string().default(""),
+  utm: UtmFieldsSchema.default(defaultUtm()),
   callToAction: z.string().default(""),
   whatsappWelcomeMessage: z.string().nullable().default(null),
+  messageTemplate: MessageTemplateDraftSchema.nullable().default(null),
   targetAdsetIds: z.array(z.string()).default(["__all__"]),
   tracking: z.object({
     websiteEvents: z.boolean().default(false),
@@ -135,7 +182,8 @@ export const CampaignDraftPayloadV2Schema = z.object({
       publishMode: z.enum(["add_ad"]).optional(),
       targetMetaAdsetId: z.string().optional(),
       targetMetaCampaignId: z.string().optional(),
-      targetAdsetName: z.string().optional()
+      targetAdsetName: z.string().optional(),
+      inheritedContextLocked: z.boolean().optional()
     })
     .optional()
 });
@@ -145,6 +193,8 @@ export type AdSetDraftItem = z.infer<typeof AdSetDraftItemSchema>;
 export type AdDraftItem = z.infer<typeof AdDraftItemSchema>;
 export type DraftTargeting = z.infer<typeof DraftTargetingSchema>;
 export type AdSetBatchConfig = z.infer<typeof AdSetBatchSchema>;
+export type PlacementConfigDraft = PlacementConfig;
+export type UtmFieldsDraft = UtmFields;
 
 export function newDraftId() {
   return `draft_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -159,7 +209,9 @@ function defaultTargeting(): DraftTargeting {
     interests: [],
     locales: [],
     customAudienceIds: [],
-    excludedAudienceIds: []
+    excludedAudienceIds: [],
+    detailedGroups: [],
+    advantageAudience: false
   };
 }
 
@@ -169,10 +221,13 @@ function defaultAdSetItem(locale: string, name?: string): AdSetDraftItem {
     id: newDraftId(),
     name: name ?? (isEn ? "New Ad Set" : "Novo conjunto de anúncios"),
     conversionLocation: "website_and_form",
+    messagingChannels: [],
+    pixelId: null,
+    conversionEvent: "LEAD",
     dynamicCreative: true,
     schedule: { start: null, end: null },
     targeting: defaultTargeting(),
-    placements: "advantage_plus"
+    placements: defaultPlacements()
   };
 }
 
@@ -197,8 +252,10 @@ export function defaultAdItem(locale: string, name?: string): AdDraftItem {
     linkUrl: "",
     leadFormId: null,
     urlParams: "",
+    utm: defaultUtm(),
     callToAction: "",
     whatsappWelcomeMessage: null,
+    messageTemplate: null,
     targetAdsetIds: ["__all__"],
     tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
   };
@@ -283,10 +340,13 @@ export function migrateV1ToV2(raw: z.infer<typeof V1Schema>, locale: string): Ca
         id: adsetId,
         name: String(v1Adset.name ?? base.adsets[0]!.name),
         conversionLocation: v1Adset.conversionLocation ?? "website_and_form",
+        messagingChannels: [],
+        pixelId: null,
+        conversionEvent: "LEAD",
         dynamicCreative: v1Adset.dynamicCreative ?? true,
         schedule: v1Adset.schedule ?? { start: null, end: null },
         targeting: v1Adset.targeting ?? defaultTargeting(),
-        placements: v1Adset.placements ?? "advantage_plus"
+        placements: coercePlacements(v1Adset.placements)
       }
     ],
     ads: [
@@ -305,8 +365,17 @@ export function migrateV1ToV2(raw: z.infer<typeof V1Schema>, locale: string): Ca
         linkUrl: String(v1Ad.linkUrl ?? ""),
         leadFormId: (v1Ad.leadFormId as string | null) ?? null,
         urlParams: String(v1Ad.urlParams ?? ""),
+        utm: defaultUtm(),
         callToAction: String(v1Ad.callToAction ?? ""),
         whatsappWelcomeMessage: (v1Ad.whatsappWelcomeMessage as string | null) ?? null,
+        messageTemplate: v1Ad.whatsappWelcomeMessage
+          ? {
+              channel: "whatsapp" as const,
+              templateId: null,
+              greeting: String(v1Ad.whatsappWelcomeMessage),
+              icebreakers: []
+            }
+          : null,
         targetAdsetIds: ["__all__"],
         tracking: v1Ad.tracking ?? { websiteEvents: false, appEvents: false, offlineEvents: false }
       }
@@ -315,11 +384,49 @@ export function migrateV1ToV2(raw: z.infer<typeof V1Schema>, locale: string): Ca
   });
 }
 
+function coerceDraftPayload(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const obj = { ...(raw as Record<string, unknown>) };
+  if (Array.isArray(obj.adsets)) {
+    obj.adsets = obj.adsets.map((a) => {
+      if (!a || typeof a !== "object") return a;
+      const adset = { ...(a as Record<string, unknown>) };
+      adset.placements = coercePlacements(adset.placements);
+      if (adset.targeting && typeof adset.targeting === "object") {
+        const t = { ...(adset.targeting as Record<string, unknown>) };
+        if (!Array.isArray(t.detailedGroups)) t.detailedGroups = [];
+        if (typeof t.advantageAudience !== "boolean") t.advantageAudience = false;
+        adset.targeting = t;
+      }
+      if (!Array.isArray(adset.messagingChannels)) adset.messagingChannels = [];
+      if (adset.pixelId === undefined) adset.pixelId = null;
+      if (!adset.conversionEvent) adset.conversionEvent = "LEAD";
+      return adset;
+    });
+  }
+  if (Array.isArray(obj.ads)) {
+    obj.ads = obj.ads.map((a) => {
+      if (!a || typeof a !== "object") return a;
+      const ad = { ...(a as Record<string, unknown>) };
+      if (!ad.utm || typeof ad.utm !== "object") ad.utm = defaultUtm();
+      if (ad.messageTemplate === undefined) {
+        const welcome = ad.whatsappWelcomeMessage;
+        ad.messageTemplate =
+          typeof welcome === "string" && welcome.trim()
+            ? { channel: "whatsapp", templateId: null, greeting: welcome.trim(), icebreakers: [] }
+            : null;
+      }
+      return ad;
+    });
+  }
+  return obj;
+}
+
 export function parseCampaignDraftPayload(raw: unknown): CampaignDraftPayload {
   if (raw && typeof raw === "object" && (raw as { version?: number }).version === 1) {
     return migrateV1ToV2(V1Schema.parse(raw), "pt-BR");
   }
-  return CampaignDraftPayloadV2Schema.parse(raw);
+  return CampaignDraftPayloadV2Schema.parse(coerceDraftPayload(raw));
 }
 
 export function objectivesForBuyingType(buyingType: BuyingType): CampaignObjectiveKey[] {
@@ -474,6 +581,22 @@ export function draftTargetingToApi(t: DraftTargeting) {
     }));
   const genders = t.gender === "male" ? [1] : t.gender === "female" ? [2] : undefined;
   const locales = t.locales.map((l) => Number(l.value)).filter((n) => !Number.isNaN(n));
+
+  const flexibleSpecs =
+    t.detailedGroups.length > 0
+      ? t.detailedGroups.map((group) => {
+          const spec: Record<string, Array<{ id: string; name?: string }>> = {};
+          for (const item of group.items) {
+            const kind = item.meta?.kind ?? "interest";
+            const bucket =
+              kind === "behavior" ? "behaviors" : kind === "demographic" ? "life_events" : "interests";
+            if (!spec[bucket]) spec[bucket] = [];
+            spec[bucket]!.push({ id: item.value, name: item.label });
+          }
+          return spec;
+        })
+      : undefined;
+
   const interests = t.interests.map((i) => ({ id: i.value, name: i.label }));
   return {
     countries: countries.length ? countries : undefined,
@@ -482,7 +605,9 @@ export function draftTargetingToApi(t: DraftTargeting) {
     ageMax: t.ageMax,
     genders,
     locales: locales.length ? locales : undefined,
-    interests: interests.length ? interests : undefined,
+    interests: flexibleSpecs ? undefined : interests.length ? interests : undefined,
+    flexibleSpecs,
+    advantageAudience: t.advantageAudience || undefined,
     customAudienceIds: t.customAudienceIds.length ? t.customAudienceIds : undefined,
     excludedAudienceIds: t.excludedAudienceIds.length ? t.excludedAudienceIds : undefined
   };
@@ -502,6 +627,16 @@ export function validateAdSetStep(d: CampaignDraftPayload): string | null {
     if (!adset.name.trim()) return "adsetNameRequired";
     const t = adset.targeting;
     if (!t.locations.length && !t.customAudienceIds.length) return "audienceRequired";
+    if (
+      (adset.conversionLocation === "website" || adset.conversionLocation === "website_and_form") &&
+      (d.objective === "leads" || d.objective === "sales") &&
+      !adset.pixelId
+    ) {
+      return "pixelRequired";
+    }
+    if (adset.conversionLocation === "messaging" && !adset.messagingChannels.length) {
+      return "messagingChannelRequired";
+    }
   }
   return null;
 }
@@ -534,8 +669,14 @@ export function validateAdStep(d: CampaignDraftPayload): string | null {
     if (!ad.bodies.some((x) => x.trim())) return "bodiesRequired";
     if (d.objective === "leads" && ad.destinationType === "instant_form") {
       if (!ad.leadFormId) return "leadFormRequired";
-    } else if (ad.destinationType !== "whatsapp" && !ad.linkUrl.trim()) {
+    } else if (ad.destinationType === "whatsapp" || ad.destinationType === "instant_form") {
+      /* ok */
+    } else if (!ad.linkUrl.trim()) {
       return "linkUrlRequired";
+    }
+    const adset = d.adsets.find((s) => s.id === d.activeAdsetId) ?? d.adsets[0];
+    if (adset?.conversionLocation === "messaging" && !ad.messageTemplate?.greeting?.trim()) {
+      return "messageTemplateRequired";
     }
   }
   return null;

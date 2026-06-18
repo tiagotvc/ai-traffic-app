@@ -38,6 +38,7 @@ export type ImportedAdConfig = {
   urlParams: string;
   callToAction: string;
   whatsappWelcomeMessage: string | null;
+  messageTemplate: AdDraftItem["messageTemplate"];
   leadFormId: string | null;
   destinationType: AdDraftItem["destinationType"];
 };
@@ -127,6 +128,57 @@ export function extractCallToAction(
   return uniqueStrings(ctas)[0] ?? "";
 }
 
+export function extractIcebreakers(creative?: MetaCreative | null): string[] {
+  if (!creative) return [];
+  const out: string[] = [];
+  const candidates: unknown[] = [creative.page_welcome_message];
+  const spec = creative.object_story_spec;
+  if (spec) candidates.push(spec.page_welcome_message);
+  for (const block of storyBlocks(spec)) {
+    candidates.push(block.page_welcome_message);
+    const cta = block.call_to_action as StoryDataBlock | undefined;
+    const value = cta?.value as StoryDataBlock | undefined;
+    if (value) candidates.push(value.page_welcome_message);
+  }
+
+  for (const raw of candidates) {
+    if (!raw || typeof raw !== "object") continue;
+    const obj = raw as Record<string, unknown>;
+    const ice = obj.ice_breakers ?? obj.icebreakers;
+    if (!Array.isArray(ice)) continue;
+    for (const item of ice) {
+      if (typeof item === "string" && item.trim()) out.push(item.trim());
+      else if (item && typeof item === "object") {
+        const row = item as Record<string, unknown>;
+        const text = row.title ?? row.response ?? row.text ?? row.question;
+        if (typeof text === "string" && text.trim()) out.push(text.trim());
+      }
+    }
+  }
+  return uniqueStrings(out);
+}
+
+export function extractMessageTemplate(
+  creative?: MetaCreative | null,
+  destinationType?: AdDraftItem["destinationType"]
+): AdDraftItem["messageTemplate"] {
+  const greeting = extractWhatsappWelcomeMessage(creative);
+  const icebreakers = extractIcebreakers(creative);
+  if (!greeting && !icebreakers.length) return null;
+  const channel =
+    destinationType === "whatsapp"
+      ? "whatsapp"
+      : destinationType === "instant_form"
+        ? "messenger"
+        : "whatsapp";
+  return {
+    channel,
+    templateId: null,
+    greeting: greeting ?? "",
+    icebreakers
+  };
+}
+
 export function extractWhatsappWelcomeMessage(creative?: MetaCreative | null): string | null {
   if (!creative) return null;
   const candidates: unknown[] = [creative.page_welcome_message];
@@ -192,6 +244,7 @@ export function extractCreativeRouting(
   | "urlParams"
   | "callToAction"
   | "whatsappWelcomeMessage"
+  | "messageTemplate"
   | "leadFormId"
   | "destinationType"
   | "pageId"
@@ -206,6 +259,7 @@ export function extractCreativeRouting(
   const callToAction = extractCallToAction(creative, copy);
   const whatsappWelcomeMessage = extractWhatsappWelcomeMessage(creative);
   const destinationType = inferDestinationType({ leadFormId, callToAction, linkUrls });
+  const messageTemplate = extractMessageTemplate(creative, destinationType);
   const primary = pickPrimaryLinkUrl(linkUrls, destinationType);
   const { linkUrl, urlParams } = primary ? splitUrlAndParams(primary) : { linkUrl: "", urlParams: "" };
 
@@ -217,6 +271,7 @@ export function extractCreativeRouting(
     urlParams,
     callToAction,
     whatsappWelcomeMessage,
+    messageTemplate,
     leadFormId,
     destinationType
   };
@@ -314,6 +369,9 @@ export function applyImportedToAd(
     if (imported.whatsappWelcomeMessage !== undefined) {
       next.whatsappWelcomeMessage = imported.whatsappWelcomeMessage;
     }
+    if (imported.messageTemplate !== undefined) {
+      next.messageTemplate = imported.messageTemplate;
+    }
     if (imported.destinationType) next.destinationType = imported.destinationType;
     if (imported.leadFormId !== undefined) next.leadFormId = imported.leadFormId;
   }
@@ -328,6 +386,9 @@ export function applyImportedToAd(
     if (imported.callToAction) next.callToAction = imported.callToAction;
     if (imported.whatsappWelcomeMessage !== undefined) {
       next.whatsappWelcomeMessage = imported.whatsappWelcomeMessage;
+    }
+    if (imported.messageTemplate !== undefined) {
+      next.messageTemplate = imported.messageTemplate;
     }
     if (imported.destinationType) next.destinationType = imported.destinationType;
     if (imported.leadFormId !== undefined) next.leadFormId = imported.leadFormId;

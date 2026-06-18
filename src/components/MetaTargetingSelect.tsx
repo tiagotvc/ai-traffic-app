@@ -9,7 +9,7 @@ export type TargetingItem = {
   meta?: { type?: string; countryCode?: string; kind?: string };
 };
 
-type SearchType = "interest" | "geo" | "locale";
+type SearchType = "interest" | "geo" | "locale" | "behavior" | "demographic";
 
 function mapResults(type: SearchType, results: unknown[]): TargetingItem[] {
   if (type === "interest") {
@@ -18,6 +18,14 @@ function mapResults(type: SearchType, results: unknown[]): TargetingItem[] {
       label: r.name,
       sub: r.audienceSize ? `~${Intl.NumberFormat().format(r.audienceSize)}` : undefined,
       meta: { kind: "interest" }
+    }));
+  }
+  if (type === "behavior" || type === "demographic") {
+    return (results as Array<{ id: string; name: string; audience_size?: number }>).map((r) => ({
+      value: r.id,
+      label: r.name,
+      sub: r.audience_size ? `~${Intl.NumberFormat().format(r.audience_size)}` : undefined,
+      meta: { kind: type === "behavior" ? "behavior" : "demographic" }
     }));
   }
   if (type === "geo") {

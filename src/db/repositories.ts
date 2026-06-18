@@ -89,6 +89,7 @@ const ENTITY = {
   LookalikeJob: "LookalikeJob",
   CampaignTemplate: "CampaignTemplate",
   CreativeAsset: "CreativeAsset",
+  MessageTemplate: "MessageTemplate",
   AutomationRule: "AutomationRule",
   ReportSchedule: "ReportSchedule",
   UserClient: "UserClient",
@@ -168,6 +169,10 @@ export async function repositories() {
     lookalikeJob: repositoryFor<LookalikeJob>(ds, ENTITY.LookalikeJob),
     campaignTemplate: repositoryFor<CampaignTemplate>(ds, ENTITY.CampaignTemplate),
     creativeAsset: repositoryFor<CreativeAsset>(ds, ENTITY.CreativeAsset),
+    messageTemplate: repositoryFor<import("@/db/entities/MessageTemplate").MessageTemplate>(
+      ds,
+      ENTITY.MessageTemplate
+    ),
     automationRule: repositoryFor<AutomationRule>(ds, ENTITY.AutomationRule),
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),

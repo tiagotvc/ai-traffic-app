@@ -107,6 +107,13 @@ export type ClientMetaSettingsPatch = Partial<{
   // new dashboard preferences
   defaultDashboardMetrics: string[];
   defaultClientMetric: string | null;
+  defaultUtm: {
+    source?: string;
+    medium?: string;
+    campaign?: string;
+    content?: string;
+    term?: string;
+  } | null;
 }>;
 
 export async function patchClientMetaSettings(
@@ -158,6 +165,7 @@ export async function patchClientMetaSettings(
     }),
     ...(patch.defaultDashboardMetrics !== undefined && { defaultDashboardMetrics: patch.defaultDashboardMetrics }),
     ...(patch.defaultClientMetric !== undefined && { defaultClientMetric: patch.defaultClientMetric }),
+    ...(patch.defaultUtm !== undefined && { defaultUtm: patch.defaultUtm }),
     updatedAt: new Date()
   });
 

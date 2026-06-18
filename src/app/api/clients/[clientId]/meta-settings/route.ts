@@ -41,7 +41,17 @@ const PatchSchema = z.object({
   tags: z.array(z.string()).optional(),
   // dashboard preferences
   defaultDashboardMetrics: z.array(z.string()).optional(),
-  defaultClientMetric: z.string().nullable().optional()
+  defaultClientMetric: z.string().nullable().optional(),
+  defaultUtm: z
+    .object({
+      source: z.string().optional(),
+      medium: z.string().optional(),
+      campaign: z.string().optional(),
+      content: z.string().optional(),
+      term: z.string().optional()
+    })
+    .nullable()
+    .optional()
 });
 
 export async function GET(

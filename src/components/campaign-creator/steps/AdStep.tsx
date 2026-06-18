@@ -5,13 +5,16 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { CreativePickerModal } from "@/components/campaign-creator/CreativePickerModal";
 import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfigModal";
+import { MessageTemplateEditor } from "@/components/campaign-creator/MessageTemplateEditor";
+import { UtmBuilder } from "@/components/campaign-creator/UtmBuilder";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
-import { getActiveAd, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
+import { getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
+import { defaultUtm } from "@/lib/campaign-utm";
 
 export function AdStep() {
   const t = useTranslations("campaignCreator");
@@ -33,9 +36,16 @@ export function AdStep() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [identityUnlocked, setIdentityUnlocked] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
   const ad = getActiveAd(payload);
+  const adset = getActiveAdset(payload);
+  const inheritedLocked = !!payload.meta?.inheritedContextLocked && !identityUnlocked;
+  const showMessagingTemplate =
+    adset.conversionLocation === "messaging" ||
+    ad.destinationType === "whatsapp" ||
+    ad.callToAction === "WHATSAPP_MESSAGE";
   const clientRequired = !payload.clientSlug;
 
   const mediaPreviews = useMemo(() => {
@@ -112,10 +122,45 @@ export function AdStep() {
   }
 
   useEffect(() => {
-    if (!ad.pageId && defaultPageId) patchAd({ pageId: defaultPageId });
+    if (!ad.pageId && defaultPageId && !inheritedLocked) patchAd({ pageId: defaultPageId });
     if (!ad.linkUrl && defaultLink) patchAd({ linkUrl: defaultLink });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultPageId, defaultLink, ad.id]);
+  }, [defaultPageId, defaultLink, ad.id, inheritedLocked]);
+
+  useEffect(() => {
+    if (!payload.clientSlug) return;
+    fetch(`/api/clients/${encodeURIComponent(payload.clientSlug)}/meta-settings`)
+      .then((r) => r.json())
+      .then((j: { settings?: { defaultUtm?: AdDraftItem["utm"] } }) => {
+        const du = j.settings?.defaultUtm;
+        if (!du || typeof du !== "object") return;
+        const empty = !ad.utm.source && !ad.utm.medium && !ad.utm.campaign;
+        if (empty) {
+          patchAd({
+            utm: {
+              source: du.source ?? defaultUtm().source,
+              medium: du.medium ?? defaultUtm().medium,
+              campaign: du.campaign ?? "",
+              content: du.content ?? "",
+              term: du.term ?? ""
+            }
+          });
+        }
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payload.clientSlug, ad.id]);
+
+  useEffect(() => {
+    if (!ad.instagramActorId) return;
+    if (
+      instagramAccounts.length === 0 ||
+      !instagramAccounts.some((i) => i.id === ad.instagramActorId)
+    ) {
+      patchAd({ instagramActorId: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instagramAccounts, ad.instagramActorId, ad.id]);
 
   useEffect(() => {
     const pageId = ad.pageId;
@@ -276,56 +321,94 @@ export function AdStep() {
       </FormField>
 
       <div className="ui-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("identitySection")}</h3>
-        <FormField label={tAds("page")}>
-          <select
-            value={ad.pageId}
-            onChange={(e) => patchAd({ pageId: e.target.value })}
-            className="ui-select"
-            disabled={clientRequired}
-          >
-            <option value="">{tAds("selectPage")}</option>
-            {pages.map((p) => (
-              <option key={p.metaPageId} value={p.metaPageId}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </FormField>
-        {instagramAccounts.length > 0 ? (
-          <FormField label={tAds("instagram")}>
-            <select
-              value={ad.instagramActorId ?? ""}
-              onChange={(e) => patchAd({ instagramActorId: e.target.value || null })}
-              className="ui-select"
-              disabled={clientRequired}
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-slate-900">{t("identitySection")}</h3>
+          {inheritedLocked ? (
+            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+              {t("inheritedFromAdset")}
+            </span>
+          ) : null}
+        </div>
+        {inheritedLocked ? (
+          <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600">
+            <p>
+              <span className="font-medium text-slate-700">{tAds("page")}:</span>{" "}
+              {(pages.find((p) => p.metaPageId === ad.pageId)?.name ?? ad.pageId) || "—"}
+            </p>
+            {ad.instagramActorId ? (
+              <p>
+                <span className="font-medium text-slate-700">{tAds("instagram")}:</span> @
+                {instagramAccounts.find((i) => i.id === ad.instagramActorId)?.username ??
+                  ad.instagramActorId}
+              </p>
+            ) : null}
+            {adset.pixelId ? (
+              <p>
+                <span className="font-medium text-slate-700">{tAds("pixel")}:</span>{" "}
+                {pixels.find((p) => p.id === adset.pixelId)?.name ?? adset.pixelId}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setIdentityUnlocked(true)}
+              className="text-[11px] text-violet-600 hover:underline"
             >
-              <option value="">{tAds("instagramNone")}</option>
-              {instagramAccounts.map((i) => (
-                <option key={i.id} value={i.id}>
-                  @{i.username}
-                </option>
-              ))}
-            </select>
-          </FormField>
-        ) : null}
-        {pixels.length > 0 && payload.objective === "sales" ? (
-          <FormField label={tAds("pixel")}>
-            <select
-              value={ad.pixelId ?? ""}
-              onChange={(e) => patchAd({ pixelId: e.target.value || null })}
-              className="ui-select"
-              disabled={clientRequired}
-            >
-              <option value="">{tAds("pixelNone")}</option>
-              {pixels.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </FormField>
-        ) : null}
+              {t("unlockInheritedIdentity")}
+            </button>
+          </div>
+        ) : (
+          <>
+            <FormField label={tAds("page")}>
+              <select
+                value={ad.pageId}
+                onChange={(e) => patchAd({ pageId: e.target.value })}
+                className="ui-select"
+                disabled={clientRequired}
+              >
+                <option value="">{tAds("selectPage")}</option>
+                {pages.map((p) => (
+                  <option key={p.metaPageId} value={p.metaPageId}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            {instagramAccounts.length > 0 ? (
+              <FormField label={tAds("instagram")}>
+                <select
+                  value={ad.instagramActorId ?? ""}
+                  onChange={(e) => patchAd({ instagramActorId: e.target.value || null })}
+                  className="ui-select"
+                  disabled={clientRequired}
+                >
+                  <option value="">{tAds("instagramNone")}</option>
+                  {instagramAccounts.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      @{i.username}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            ) : null}
+            {pixels.length > 0 && payload.objective === "sales" ? (
+              <FormField label={tAds("pixel")}>
+                <select
+                  value={ad.pixelId ?? ""}
+                  onChange={(e) => patchAd({ pixelId: e.target.value || null })}
+                  className="ui-select"
+                  disabled={clientRequired}
+                >
+                  <option value="">{tAds("pixelNone")}</option>
+                  {pixels.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            ) : null}
+          </>
+        )}
       </div>
 
       <div className="ui-card space-y-3 p-4">
@@ -393,38 +476,42 @@ export function AdStep() {
             <option value="WHATSAPP_MESSAGE">WHATSAPP_MESSAGE</option>
           </select>
         </FormField>
-        {ad.destinationType === "whatsapp" || ad.callToAction === "WHATSAPP_MESSAGE" ? (
-          <FormField label={t("whatsappWelcomeMessage")}>
-            <textarea
-              value={ad.whatsappWelcomeMessage ?? ""}
-              onChange={(e) =>
-                patchAd({ whatsappWelcomeMessage: e.target.value.trim() || null })
-              }
-              placeholder={t("whatsappWelcomeMessagePlaceholder")}
-              className="ui-textarea text-sm"
-              rows={3}
-              disabled={clientRequired}
-            />
-          </FormField>
+        {showMessagingTemplate ? (
+          <MessageTemplateEditor
+            clientSlug={payload.clientSlug}
+            value={ad.messageTemplate}
+            defaultChannel={
+              adset.messagingChannels.includes("whatsapp")
+                ? "whatsapp"
+                : adset.messagingChannels.includes("messenger")
+                  ? "messenger"
+                  : adset.messagingChannels.includes("instagram")
+                    ? "instagram"
+                    : "whatsapp"
+            }
+            onChange={(messageTemplate) => {
+              patchAd({
+                messageTemplate,
+                whatsappWelcomeMessage: messageTemplate?.greeting?.trim() || null
+              });
+            }}
+            disabled={clientRequired}
+          />
         ) : null}
-        {ad.urlParams ? (
-          <FormField label={t("urlParams")}>
-            <input
-              value={ad.urlParams}
-              onChange={(e) => patchAd({ urlParams: e.target.value })}
-              className="ui-input font-mono text-xs"
-              disabled={clientRequired}
-            />
-          </FormField>
-        ) : (
-          <button
-            type="button"
-            onClick={() => patchAd({ urlParams: "utm_source=facebook&utm_medium=paid" })}
-            className="text-left text-[11px] text-violet-600 hover:underline"
-          >
-            {t("addUrlParams")}
-          </button>
-        )}
+        <UtmBuilder
+          value={ad.utm}
+          onChange={(utm) => patchAd({ utm })}
+          disabled={clientRequired}
+        />
+        <FormField label={t("urlParams")}>
+          <input
+            value={ad.urlParams}
+            onChange={(e) => patchAd({ urlParams: e.target.value })}
+            placeholder={t("urlParamsOverrideHint")}
+            className="ui-input font-mono text-xs"
+            disabled={clientRequired}
+          />
+        </FormField>
         {!publishReady && payload.clientSlug ? (
           <p className="text-[11px] text-amber-700">{tAds("publishNotReady")}</p>
         ) : null}

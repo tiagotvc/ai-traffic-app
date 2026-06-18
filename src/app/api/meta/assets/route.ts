@@ -8,7 +8,9 @@ import {
   fetchAdAccountPixels,
   fetchAdImages,
   fetchAdVideos,
-  fetchInstagramAccountsForAdAccount
+  fetchCustomConversions,
+  fetchInstagramAccountsForAdAccount,
+  STANDARD_CONVERSION_EVENTS
 } from "@/lib/meta-graph";
 
 async function validateClientAdAccount(
@@ -58,12 +60,15 @@ export async function GET(req: Request) {
   let instagramAccounts: Array<{ id: string; username: string }> = [];
   let assets: Array<{ id: string; label: string; url?: string | null; kind: "image" | "video" }> = [];
 
+  let customConversions: Array<{ id: string; label: string; eventType?: string }> = [];
+
   if (metaAccessToken) {
-    const [pixelRows, igRows, imageRows, videoRows] = await Promise.all([
+    const [pixelRows, igRows, imageRows, videoRows, conversionRows] = await Promise.all([
       fetchAdAccountPixels(metaAccessToken, adAccountId),
       fetchInstagramAccountsForAdAccount(metaAccessToken, adAccountId),
       fetchAdImages(metaAccessToken, adAccountId),
-      fetchAdVideos(metaAccessToken, adAccountId)
+      fetchAdVideos(metaAccessToken, adAccountId),
+      fetchCustomConversions(metaAccessToken, adAccountId)
     ]);
     pixels = pixelRows.map((p) => ({ id: p.id, name: p.name?.trim() || p.id }));
     instagramAccounts = igRows.map((i) => ({ id: i.id, username: i.username?.trim() || i.id }));
@@ -82,6 +87,18 @@ export async function GET(req: Request) {
       kind: "video" as const
     }));
     assets = [...imageAssets, ...videoAssets];
+    customConversions = [
+      ...STANDARD_CONVERSION_EVENTS.map((eventType) => ({
+        id: `std:${eventType}`,
+        label: eventType,
+        eventType
+      })),
+      ...conversionRows.map((c) => ({
+        id: c.id,
+        label: c.name?.trim() || c.id,
+        eventType: c.custom_event_type
+      }))
+    ];
   }
 
   return NextResponse.json({
@@ -90,6 +107,7 @@ export async function GET(req: Request) {
     pages,
     pixels,
     instagramAccounts,
-    assets
+    assets,
+    customConversions
   });
 }

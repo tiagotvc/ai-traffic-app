@@ -25,6 +25,11 @@ export function ClientMetaExtras({
   const [includeAudiences, setIncludeAudiences] = useState<string[]>([]);
   const [lookalikeName, setLookalikeName] = useState("");
   const [lookalikeSeed, setLookalikeSeed] = useState("");
+  const [defaultUtmSource, setDefaultUtmSource] = useState("facebook");
+  const [defaultUtmMedium, setDefaultUtmMedium] = useState("paid");
+  const [defaultUtmCampaign, setDefaultUtmCampaign] = useState("");
+  const [defaultUtmContent, setDefaultUtmContent] = useState("");
+  const [defaultUtmTerm, setDefaultUtmTerm] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -42,6 +47,14 @@ export function ClientMetaExtras({
           setSyncPriority(s.syncPriority ?? "normal");
           setAutomationEnabled(!!s.automationEnabled);
           setIncludeAudiences(s.defaultCustomAudienceIds ?? []);
+          const du = s.defaultUtm;
+          if (du) {
+            setDefaultUtmSource(du.source ?? "facebook");
+            setDefaultUtmMedium(du.medium ?? "paid");
+            setDefaultUtmCampaign(du.campaign ?? "");
+            setDefaultUtmContent(du.content ?? "");
+            setDefaultUtmTerm(du.term ?? "");
+          }
         }
         setTags((j.tags ?? []).join(", "));
       });
@@ -68,6 +81,13 @@ export function ClientMetaExtras({
           syncPriority,
           automationEnabled,
           defaultCustomAudienceIds: includeAudiences,
+          defaultUtm: {
+            source: defaultUtmSource,
+            medium: defaultUtmMedium,
+            campaign: defaultUtmCampaign,
+            content: defaultUtmContent,
+            term: defaultUtmTerm
+          },
           tags: tags
             .split(",")
             .map((x) => x.trim())
@@ -131,6 +151,26 @@ export function ClientMetaExtras({
             </select>
           </div>
           <Field label={t("tags")} value={tags} onChange={setTags} placeholder="ecommerce, local" />
+        </div>
+        <div className="mt-3 rounded-xl border border-slate-200 p-3">
+          <div className="text-xs font-medium text-slate-600">{t("defaultUtmTitle")}</div>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Field label="utm_source" value={defaultUtmSource} onChange={setDefaultUtmSource} />
+            <Field label="utm_medium" value={defaultUtmMedium} onChange={setDefaultUtmMedium} />
+            <Field
+              label="utm_campaign"
+              value={defaultUtmCampaign}
+              onChange={setDefaultUtmCampaign}
+              placeholder="{{campaign.name}}"
+            />
+            <Field
+              label="utm_content"
+              value={defaultUtmContent}
+              onChange={setDefaultUtmContent}
+              placeholder="{{ad.name}}"
+            />
+            <Field label="utm_term" value={defaultUtmTerm} onChange={setDefaultUtmTerm} />
+          </div>
         </div>
         <label className="mt-3 flex items-center gap-2 text-xs text-slate-600">
           <input

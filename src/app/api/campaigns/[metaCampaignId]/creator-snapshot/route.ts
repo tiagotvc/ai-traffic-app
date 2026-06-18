@@ -5,13 +5,21 @@ import { getAppContext, slugify } from "@/lib/app-context";
 import type { CampaignDraftPayload, DraftTargeting } from "@/lib/campaign-draft";
 import { defaultCampaignDraft } from "@/lib/campaign-draft";
 import { extractCreativeRouting } from "@/lib/campaign-ad-import";
+import { defaultUtm } from "@/lib/campaign-utm";
+import {
+  extractInheritedAdsetFromMeta,
+  mapMetaTargetingToDraft,
+  mapPlacementsFromTargeting,
+  pickValidatedInstagramId
+} from "@/lib/meta-adset-import";
 import { getResolvedClientMeta } from "@/lib/client-meta-settings";
 import {
   fetchAdSetDetail,
   fetchAdSetsForCampaign,
   fetchAdWithCreative,
   fetchAdsForAdSet,
-  fetchCampaign
+  fetchCampaign,
+  fetchInstagramAccountsForAdAccount
 } from "@/lib/meta-graph";
 import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
 
@@ -95,6 +103,8 @@ type CreativeSnapshot = Awaited<ReturnType<typeof fetchAdWithCreative>>;
 
 function extractInheritedAdDefaults(
   creativeData: CreativeSnapshot | null,
+  adsetDetail: Awaited<ReturnType<typeof fetchAdSetDetail>> | null,
+  allowedInstagramIds: string[],
   fallback: {
     pageId?: string | null;
     linkUrl?: string | null;
@@ -104,20 +114,61 @@ function extractInheritedAdDefaults(
   }
 ) {
   const routing = extractCreativeRouting(creativeData?.creative ?? null);
-  const pageId = routing.pageId || String(fallback.pageId ?? "");
+  const story = creativeData?.creative?.object_story_spec as
+    | { page_id?: string; instagram_actor_id?: string }
+    | undefined;
+  const promoted = adsetDetail?.promoted_object ?? {};
+  const pageId =
+    routing.pageId ||
+    String(story?.page_id ?? promoted.page_id ?? fallback.pageId ?? "");
   const linkUrl = routing.linkUrl || fallback.linkUrl || "";
+  const instagramActorId = pickValidatedInstagramId(
+    [story?.instagram_actor_id, routing.instagramActorId, fallback.instagramActorId],
+    allowedInstagramIds
+  );
+  const pixelId =
+    (typeof promoted.pixel_id === "string" ? promoted.pixel_id : null) ??
+    fallback.pixelId ??
+    null;
+  const leadFormId =
+    routing.leadFormId ??
+    (typeof promoted.lead_gen_form_id === "string" ? promoted.lead_gen_form_id : null) ??
+    fallback.leadFormId ??
+    null;
+
+  const messageTemplate =
+    routing.whatsappWelcomeMessage
+      ? {
+          channel: "whatsapp" as const,
+          templateId: null,
+          greeting: routing.whatsappWelcomeMessage,
+          icebreakers: [] as string[]
+        }
+      : null;
 
   return {
     pageId,
-    instagramActorId: routing.instagramActorId ?? fallback.instagramActorId ?? null,
-    pixelId: fallback.pixelId ?? null,
+    instagramActorId,
+    pixelId,
     linkUrl,
     urlParams: routing.urlParams,
+    utm: {
+      source: "facebook",
+      medium: "paid",
+      campaign: "",
+      content: "",
+      term: ""
+    },
     callToAction: routing.callToAction,
     whatsappWelcomeMessage: routing.whatsappWelcomeMessage,
-    leadFormId: routing.leadFormId ?? fallback.leadFormId ?? null,
+    messageTemplate,
+    leadFormId,
     destinationType: routing.destinationType,
-    tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
+    tracking: {
+      websiteEvents: Boolean(pixelId),
+      appEvents: false,
+      offlineEvents: false
+    }
   };
 }
 
@@ -147,6 +198,7 @@ export async function GET(
     }
 
     if (mode === "add-ad") {
+      const adsetDetail = await fetchAdSetDetail(token, selectedAdset.id);
       const ads = await fetchAdsForAdSet(token, selectedAdset.id);
       const firstAd = ads[0];
       let creativeData: CreativeSnapshot | null = null;
@@ -158,16 +210,30 @@ export async function GET(
         }
       }
 
+      const igAccounts = adAccountId
+        ? await fetchInstagramAccountsForAdAccount(token, adAccountId)
+        : [];
+      const allowedInstagramIds = igAccounts.map((a) => a.id);
+
       const resolvedMeta = clientCtx
         ? await getResolvedClientMeta(tenant.id, clientCtx.clientSlug)
         : null;
-      const inheritedAd = extractInheritedAdDefaults(creativeData, {
-        pageId: resolvedMeta?.publish.pageId,
-        linkUrl: resolvedMeta?.publish.linkUrl,
-        instagramActorId: resolvedMeta?.settings.instagramActorId,
-        pixelId: resolvedMeta?.settings.metaPixelId,
-        leadFormId: resolvedMeta?.settings.metaLeadFormId
-      });
+      const inheritedAdset = extractInheritedAdsetFromMeta(
+        adsetDetail,
+        selectedAdset.name ?? "Conjunto"
+      );
+      const inheritedAd = extractInheritedAdDefaults(
+        creativeData,
+        adsetDetail,
+        allowedInstagramIds,
+        {
+          pageId: resolvedMeta?.publish.pageId,
+          linkUrl: resolvedMeta?.publish.linkUrl,
+          instagramActorId: resolvedMeta?.settings.instagramActorId,
+          pixelId: resolvedMeta?.settings.metaPixelId,
+          leadFormId: resolvedMeta?.settings.metaLeadFormId
+        }
+      );
 
       const objective =
         OBJECTIVE_REVERSE[campaign.objective ?? ""] ?? defaultCampaignDraft("pt-BR").objective;
@@ -197,6 +263,7 @@ export async function GET(
         adAccountId,
         clientSlug: clientCtx?.clientSlug,
         adsetName: selectedAdset.name ?? "Conjunto",
+        inheritedAdset,
         inheritedAd
       });
     }
@@ -258,6 +325,8 @@ export async function GET(
         ? Number(selectedAdset.daily_budget) / 100
         : 150;
 
+    const inheritedFromAdset = extractInheritedAdsetFromMeta(adsetDetail, selectedAdset.name ?? "Conjunto importado");
+
     const patch: Partial<CampaignDraftPayload> = {
       objective,
       campaign: {
@@ -271,22 +340,13 @@ export async function GET(
       adsets: [
         {
           id: `imported_adset_${Date.now()}`,
+          ...inheritedFromAdset,
           name: selectedAdset.name ?? "Conjunto importado",
-          conversionLocation: "website_and_form",
           dynamicCreative: true,
           schedule: { start: null, end: null },
-          targeting: {
-            locations: mapGeoToLocations(targeting),
-            ageMin,
-            ageMax,
-            gender,
-            interests: [],
-            locales: [],
-            customAudienceIds: [],
-            excludedAudienceIds: []
-          },
-          placements: "advantage_plus"
-        }
+          targeting: mapMetaTargetingToDraft(targeting),
+          placements: mapPlacementsFromTargeting(targeting)
+        } as CampaignDraftPayload["adsets"][number]
       ],
       ads: [
         {
@@ -306,6 +366,8 @@ export async function GET(
           urlParams: routing.urlParams,
           callToAction: routing.callToAction,
           whatsappWelcomeMessage: routing.whatsappWelcomeMessage,
+          messageTemplate: routing.messageTemplate,
+          utm: defaultUtm(),
           targetAdsetIds: ["__all__"],
           tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
         }

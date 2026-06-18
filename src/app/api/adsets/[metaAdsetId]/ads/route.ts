@@ -4,6 +4,7 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { AdDraftItemSchema } from "@/lib/campaign-draft";
+import { defaultPlacements } from "@/lib/campaign-placements";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
 import { requireMetaPublishConfig } from "@/lib/client-publish-config";
 import { publishAdToAdset } from "@/lib/meta-campaign";
@@ -71,6 +72,9 @@ export async function POST(
         id: metaAdsetId,
         name: adsetDetail.name ?? "Conjunto",
         conversionLocation: "website_and_form",
+        messagingChannels: [],
+        pixelId: null,
+        conversionEvent: "LEAD",
         dynamicCreative: true,
         schedule: { start: null, end: null },
         targeting: {
@@ -81,9 +85,11 @@ export async function POST(
           interests: [],
           locales: [],
           customAudienceIds: [],
-          excludedAudienceIds: []
+          excludedAudienceIds: [],
+          detailedGroups: [],
+          advantageAudience: false
         },
-        placements: "advantage_plus"
+        placements: defaultPlacements()
       },
       objective: body.objective,
       pageId: publish.metaPageId,

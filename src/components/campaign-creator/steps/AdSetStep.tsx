@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
 import { AdSetBatchPanel } from "@/components/campaign-creator/AdSetBatchPanel";
 import { GeoRadiusMapPicker } from "@/components/campaign-creator/GeoRadiusMapPicker";
+import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
@@ -15,7 +16,10 @@ export function AdSetStep() {
   const t = useTranslations("campaignCreator");
   const tAds = useTranslations("ads");
   const { payload, updatePayload } = useCampaignDraft();
-  const { audiences } = usePublishAssets(payload.clientSlug, payload.adAccountId);
+  const { audiences, pixels, customConversions } = usePublishAssets(
+    payload.clientSlug,
+    payload.adAccountId
+  );
   const adset = getActiveAdset(payload);
   const targeting = adset.targeting;
   const clientRequired = !payload.clientSlug;
@@ -73,7 +77,7 @@ export function AdSetStep() {
         />
       </FormField>
 
-      {payload.objective === "leads" ? (
+      {payload.objective === "leads" || payload.objective === "sales" ? (
         <FormField label={t("conversionLocation")}>
           <select
             value={adset.conversionLocation}
@@ -88,8 +92,71 @@ export function AdSetStep() {
             <option value="website_and_form">{t("convWebsiteAndForm")}</option>
             <option value="website">{t("convWebsite")}</option>
             <option value="instant_form">{t("convInstantForm")}</option>
+            <option value="messaging">{t("convMessaging")}</option>
+            <option value="calls">{t("convCalls")}</option>
+            <option value="app">{t("convApp")}</option>
           </select>
         </FormField>
+      ) : null}
+
+      {adset.conversionLocation === "messaging" ? (
+        <FormField label={t("messagingChannels")}>
+          <div className="flex flex-wrap gap-3">
+            {(["whatsapp", "messenger", "instagram"] as const).map((ch) => (
+              <label key={ch} className="flex items-center gap-1 text-xs">
+                <input
+                  type="checkbox"
+                  checked={adset.messagingChannels.includes(ch)}
+                  disabled={clientRequired}
+                  onChange={() => {
+                    const next = adset.messagingChannels.includes(ch)
+                      ? adset.messagingChannels.filter((c) => c !== ch)
+                      : [...adset.messagingChannels, ch];
+                    patchAdset({ messagingChannels: next });
+                  }}
+                />
+                {ch}
+              </label>
+            ))}
+          </div>
+        </FormField>
+      ) : null}
+
+      {(adset.conversionLocation === "website" ||
+        adset.conversionLocation === "website_and_form" ||
+        payload.objective === "sales") &&
+      pixels.length > 0 ? (
+        <div className="ui-card grid gap-3 p-4 sm:grid-cols-2">
+          <FormField label={tAds("pixel")}>
+            <select
+              value={adset.pixelId ?? ""}
+              onChange={(e) => patchAdset({ pixelId: e.target.value || null })}
+              className="ui-select"
+              disabled={clientRequired}
+            >
+              <option value="">{tAds("pixelNone")}</option>
+              {pixels.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label={t("conversionEvent")}>
+            <select
+              value={adset.conversionEvent}
+              onChange={(e) => patchAdset({ conversionEvent: e.target.value })}
+              className="ui-select"
+              disabled={clientRequired}
+            >
+              {customConversions.map((c) => (
+                <option key={c.id} value={c.eventType ?? c.label}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        </div>
       ) : null}
 
       <div className="ui-card space-y-3 p-4">
@@ -180,6 +247,130 @@ export function AdSetStep() {
             }
           />
         </FormField>
+        <FormField label={t("targetingLocales")}>
+          <MetaTargetingSelect
+            type="locale"
+            placeholder={t("targetingLocalesPlaceholder")}
+            selected={targeting.locales}
+            onAdd={(item) => patchTargeting({ locales: [...targeting.locales, item] })}
+            onRemove={(value) =>
+              patchTargeting({ locales: targeting.locales.filter((p) => p.value !== value) })
+            }
+          />
+        </FormField>
+        <FormField label={t("targetingBehaviors")}>
+          <MetaTargetingSelect
+            type="behavior"
+            placeholder={t("targetingBehaviorsPlaceholder")}
+            selected={targeting.detailedGroups.flatMap((g) =>
+              g.items.filter((i) => i.meta?.kind === "behavior")
+            )}
+            onAdd={(item) => {
+              const groups = [...targeting.detailedGroups];
+              const idx = groups.findIndex((g) => g.items.some((i) => i.meta?.kind === "behavior"));
+              if (idx >= 0) groups[idx] = { items: [...groups[idx]!.items, item] };
+              else groups.push({ items: [item] });
+              patchTargeting({ detailedGroups: groups });
+            }}
+            onRemove={(value) =>
+              patchTargeting({
+                detailedGroups: targeting.detailedGroups
+                  .map((g) => ({ items: g.items.filter((i) => i.value !== value) }))
+                  .filter((g) => g.items.length)
+              })
+            }
+          />
+        </FormField>
+        <label className="flex items-center gap-2 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            checked={targeting.advantageAudience}
+            onChange={(e) => patchTargeting({ advantageAudience: e.target.checked })}
+            disabled={clientRequired}
+            className="accent-violet-600"
+          />
+          {t("advantageAudience")}
+        </label>
+        <div className="space-y-2 rounded-lg border border-dashed border-slate-200 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-slate-700">{t("detailedTargetingTitle")}</p>
+            <button
+              type="button"
+              disabled={clientRequired}
+              onClick={() =>
+                patchTargeting({
+                  detailedGroups: [...targeting.detailedGroups, { items: [] }]
+                })
+              }
+              className="text-[11px] text-violet-600 hover:underline"
+            >
+              {t("detailedTargetingAddGroup")}
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-500">{t("detailedTargetingHint")}</p>
+          {targeting.detailedGroups.map((group, idx) => (
+            <div key={idx} className="rounded-lg border border-slate-100 bg-slate-50/80 p-2">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[10px] font-medium text-slate-600">
+                  {t("detailedTargetingGroup", { n: idx + 1 })}
+                </span>
+                <button
+                  type="button"
+                  disabled={clientRequired}
+                  onClick={() =>
+                    patchTargeting({
+                      detailedGroups: targeting.detailedGroups.filter((_, i) => i !== idx)
+                    })
+                  }
+                  className="text-[10px] text-red-500 hover:underline"
+                >
+                  {t("detailedTargetingRemoveGroup")}
+                </button>
+              </div>
+              <MetaTargetingSelect
+                type="interest"
+                placeholder={tAds("interestsPlaceholder")}
+                selected={group.items.filter((i) => (i.meta?.kind ?? "interest") === "interest")}
+                onAdd={(item) => {
+                  const groups = [...targeting.detailedGroups];
+                  const g = groups[idx]!;
+                  groups[idx] = { items: [...g.items, { ...item, meta: { ...item.meta, kind: "interest" } }] };
+                  patchTargeting({ detailedGroups: groups, interests: [] });
+                }}
+                onRemove={(value) => {
+                  const groups = targeting.detailedGroups.map((g, i) =>
+                    i === idx ? { items: g.items.filter((x) => x.value !== value) } : g
+                  );
+                  patchTargeting({ detailedGroups: groups.filter((g) => g.items.length) });
+                }}
+              />
+            </div>
+          ))}
+        </div>
+        <FormField label={t("targetingDemographics")}>
+          <MetaTargetingSelect
+            type="demographic"
+            placeholder={t("targetingDemographicsPlaceholder")}
+            selected={targeting.detailedGroups.flatMap((g) =>
+              g.items.filter((i) => i.meta?.kind === "demographic")
+            )}
+            onAdd={(item) => {
+              const groups = [...targeting.detailedGroups];
+              const idx = groups.findIndex((g) => g.items.some((i) => i.meta?.kind === "demographic"));
+              const tagged = { ...item, meta: { ...item.meta, kind: "demographic" as const } };
+              if (idx >= 0) groups[idx] = { items: [...groups[idx]!.items, tagged] };
+              else groups.push({ items: [tagged] });
+              patchTargeting({ detailedGroups: groups });
+            }}
+            onRemove={(value) =>
+              patchTargeting({
+                detailedGroups: targeting.detailedGroups
+                  .map((g) => ({ items: g.items.filter((i) => i.value !== value) }))
+                  .filter((g) => g.items.length)
+              })
+            }
+          />
+        </FormField>
         {audiences.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label={tAds("audienceInclude")}>
@@ -257,19 +448,11 @@ export function AdSetStep() {
       </div>
 
       <FormField label={t("placements")}>
-        <select
+        <PlacementsPanel
           value={adset.placements}
-          onChange={(e) =>
-            patchAdset({ placements: e.target.value as "advantage_plus" | "manual" })
-          }
-          className="ui-select"
+          onChange={(placements) => patchAdset({ placements })}
           disabled={clientRequired}
-        >
-          <option value="advantage_plus">{t("placementsAdvantage")}</option>
-          <option value="manual" disabled>
-            {t("placementsManualSoon")}
-          </option>
-        </select>
+        />
       </FormField>
     </div>
   );

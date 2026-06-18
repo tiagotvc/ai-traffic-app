@@ -11,6 +11,7 @@ export type PublishAsset = {
 export type PublishPage = { metaPageId: string; name: string };
 export type PublishIgAccount = { id: string; username: string };
 export type PublishPixel = { id: string; name: string };
+export type PublishCustomConversion = { id: string; label: string; eventType?: string };
 export type PublishAdAccount = { metaAdAccountId: string; label: string };
 export type PublishAudience = { id: string; name: string };
 
@@ -21,6 +22,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
   const [pages, setPages] = useState<PublishPage[]>([]);
   const [instagramAccounts, setInstagramAccounts] = useState<PublishIgAccount[]>([]);
   const [pixels, setPixels] = useState<PublishPixel[]>([]);
+  const [customConversions, setCustomConversions] = useState<PublishCustomConversion[]>([]);
   const [audiences, setAudiences] = useState<PublishAudience[]>([]);
   const [defaultAdAccountId, setDefaultAdAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
       pages?: PublishPage[];
       instagramAccounts?: PublishIgAccount[];
       pixels?: PublishPixel[];
+      customConversions?: PublishCustomConversion[];
       error?: string;
     };
     if (!res.ok || !j.ok) {
@@ -54,6 +57,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
     setPages(j.pages ?? []);
     setInstagramAccounts(j.instagramAccounts ?? []);
     setPixels(j.pixels ?? []);
+    setCustomConversions(j.customConversions ?? []);
 
     try {
       const aud = await fetch(
@@ -131,6 +135,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
     pages,
     instagramAccounts,
     pixels,
+    customConversions,
     audiences,
     defaultAdAccountId,
     error,

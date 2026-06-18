@@ -422,6 +422,31 @@ export async function fetchAdAccountPixels(
   }
 }
 
+export type MetaCustomConversion = { id: string; name?: string; custom_event_type?: string };
+
+export async function fetchCustomConversions(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaCustomConversion[]> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  try {
+    const path = `/${encodeURIComponent(act)}/customconversions?fields=id,name,custom_event_type&limit=100`;
+    return fetchGraphPaged<MetaCustomConversion>(path, accessToken);
+  } catch {
+    return [];
+  }
+}
+
+export const STANDARD_CONVERSION_EVENTS = [
+  "LEAD",
+  "PURCHASE",
+  "COMPLETE_REGISTRATION",
+  "ADD_TO_CART",
+  "INITIATED_CHECKOUT",
+  "SUBSCRIBE",
+  "CONTACT"
+] as const;
+
 export async function fetchUserPages(accessToken: string): Promise<MetaFacebookPage[]> {
   return fetchGraphPaged<MetaFacebookPage>("/me/accounts?fields=id,name&limit=100", accessToken);
 }
@@ -477,6 +502,26 @@ export async function searchAdLocales(accessToken: string, q: string): Promise<M
   const path = `/search?type=adlocale&limit=25&q=${encodeURIComponent(q.trim())}`;
   const data = await metaFetch<{ data: Array<{ key: number; name: string }> }>(path, accessToken);
   return (data.data ?? []).map((d) => ({ key: d.key, name: d.name }));
+}
+
+export type MetaTargetingCategory = { id: string; name: string; audience_size?: number; path?: string[] };
+
+export async function searchAdTargetingCategories(
+  accessToken: string,
+  q: string,
+  classType: "behaviors" | "demographics" | "life_events"
+): Promise<MetaTargetingCategory[]> {
+  if (!q.trim()) return [];
+  const path = `/search?type=adTargetingCategory&class=${classType}&limit=25&q=${encodeURIComponent(q.trim())}`;
+  const data = await metaFetch<{
+    data: Array<{ id: string; name: string; audience_size_lower_bound?: number; path?: string[] }>;
+  }>(path, accessToken);
+  return (data.data ?? []).map((d) => ({
+    id: d.id,
+    name: d.name,
+    audience_size: d.audience_size_lower_bound,
+    path: d.path
+  }));
 }
 
 export type MetaInstagramAccount = { id: string; username?: string };
@@ -539,6 +584,9 @@ export type MetaAdSetDetail = {
   name?: string;
   targeting?: Record<string, unknown>;
   promoted_object?: Record<string, unknown>;
+  destination_type?: string;
+  optimization_goal?: string;
+  billing_event?: string;
   start_time?: string;
   end_time?: string;
   daily_budget?: string;
@@ -547,7 +595,7 @@ export type MetaAdSetDetail = {
 export async function fetchAdSetDetail(
   accessToken: string,
   adSetId: string,
-  fields = "id,name,targeting,promoted_object,start_time,end_time,daily_budget"
+  fields = "id,name,targeting,promoted_object,destination_type,optimization_goal,billing_event,start_time,end_time,daily_budget"
 ): Promise<MetaAdSetDetail> {
   return metaFetch<MetaAdSetDetail>(
     `/${encodeURIComponent(adSetId)}?fields=${encodeURIComponent(fields)}`,
