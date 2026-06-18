@@ -34,6 +34,8 @@ import { LookalikeJob } from "./LookalikeJob";
 import { CampaignTemplate } from "./CampaignTemplate";
 import { CreativeAsset } from "./CreativeAsset";
 import { MessageTemplate } from "./MessageTemplate";
+import { VideoUploadSession } from "./VideoUploadSession";
+import { VideoUploadPart } from "./VideoUploadPart";
 import { AutomationRule } from "./AutomationRule";
 import { ReportSchedule } from "./ReportSchedule";
 import { UserClient } from "./UserClient";
@@ -93,6 +95,8 @@ export {
   CampaignTemplate,
   CreativeAsset,
   MessageTemplate,
+  VideoUploadSession,
+  VideoUploadPart,
   AutomationRule,
   ReportSchedule,
   UserClient,
@@ -174,6 +178,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: CampaignTemplate, name: "CampaignTemplate" },
   { ctor: CreativeAsset, name: "CreativeAsset" },
   { ctor: MessageTemplate, name: "MessageTemplate" },
+  { ctor: VideoUploadSession, name: "VideoUploadSession" },
+  { ctor: VideoUploadPart, name: "VideoUploadPart" },
   { ctor: AutomationRule, name: "AutomationRule" },
   { ctor: ReportSchedule, name: "ReportSchedule" },
   { ctor: UserClient, name: "UserClient" },
@@ -233,6 +239,8 @@ export const typeOrmEntities = [
   CampaignTemplate,
   CreativeAsset,
   MessageTemplate,
+  VideoUploadSession,
+  VideoUploadPart,
   AutomationRule,
   ReportSchedule,
   UserClient,

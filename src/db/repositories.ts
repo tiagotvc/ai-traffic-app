@@ -53,6 +53,9 @@ import type { ClientExperiment } from "@/db/entities/ClientExperiment";
 import type { ClientActionPlan } from "@/db/entities/ClientActionPlan";
 import type { ClientActionPlanItem } from "@/db/entities/ClientActionPlanItem";
 import type { TenantAddon } from "@/db/entities/TenantAddon";
+import type { MessageTemplate } from "@/db/entities/MessageTemplate";
+import type { VideoUploadSession } from "@/db/entities/VideoUploadSession";
+import type { VideoUploadPart } from "@/db/entities/VideoUploadPart";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -90,6 +93,8 @@ const ENTITY = {
   CampaignTemplate: "CampaignTemplate",
   CreativeAsset: "CreativeAsset",
   MessageTemplate: "MessageTemplate",
+  VideoUploadSession: "VideoUploadSession",
+  VideoUploadPart: "VideoUploadPart",
   AutomationRule: "AutomationRule",
   ReportSchedule: "ReportSchedule",
   UserClient: "UserClient",
@@ -169,10 +174,9 @@ export async function repositories() {
     lookalikeJob: repositoryFor<LookalikeJob>(ds, ENTITY.LookalikeJob),
     campaignTemplate: repositoryFor<CampaignTemplate>(ds, ENTITY.CampaignTemplate),
     creativeAsset: repositoryFor<CreativeAsset>(ds, ENTITY.CreativeAsset),
-    messageTemplate: repositoryFor<import("@/db/entities/MessageTemplate").MessageTemplate>(
-      ds,
-      ENTITY.MessageTemplate
-    ),
+    messageTemplate: repositoryFor<MessageTemplate>(ds, ENTITY.MessageTemplate),
+    videoUploadSession: repositoryFor<VideoUploadSession>(ds, ENTITY.VideoUploadSession),
+    videoUploadPart: repositoryFor<VideoUploadPart>(ds, ENTITY.VideoUploadPart),
     automationRule: repositoryFor<AutomationRule>(ds, ENTITY.AutomationRule),
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),
