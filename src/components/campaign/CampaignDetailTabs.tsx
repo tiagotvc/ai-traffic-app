@@ -71,7 +71,8 @@ export function CampaignDetailTabs({
   const urlAdset = searchParams.get("adset");
   const rememberedAdset = getRememberedAdset(metaCampaignId);
   const activeAdsetId = adsetId ?? urlAdset ?? rememberedAdset?.adsetId ?? null;
-  const periodQuery = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  const urlQueryString = searchParams.toString();
+  const periodQuery = urlQueryString ? `?${urlQueryString}` : "";
   const countLabel = (value: number | null) => (value === null ? "…" : value);
 
   const tabHref = (tab: CampaignDetailTab) =>

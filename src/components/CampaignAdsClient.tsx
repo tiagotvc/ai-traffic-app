@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { rememberCampaign } from "@/components/CampaignsListClient";
@@ -122,10 +122,13 @@ export function CampaignAdsClient({
     return "";
   }
   const urlAdset = searchParams.get("adset");
+  const urlQueryString = searchParams.toString();
+  const rememberedAdsetAppliedRef = useRef(false);
   const [adsetFilter, setAdsetFilter] = useState<string | null>(
     urlAdset ?? initialAdsetId ?? null
   );
   const [campaign, setCampaign] = useState<Campaign | null>(null);
+  const [campaignLoading, setCampaignLoading] = useState(true);
   const [ads, setAds] = useState<AdRow[]>([]);
   const [adsetsCount, setAdsetsCount] = useState<number | null>(null);
   const [creativesCount, setCreativesCount] = useState<number | null>(null);
@@ -141,18 +144,24 @@ export function CampaignAdsClient({
   const pageSize = 20;
 
   useEffect(() => {
-    const fromUrl = searchParams.get("adset");
-    if (fromUrl) {
-      setAdsetFilter(fromUrl);
-      rememberAdset(metaCampaignId, fromUrl);
+    rememberedAdsetAppliedRef.current = false;
+  }, [metaCampaignId]);
+
+  useEffect(() => {
+    if (urlAdset) {
+      setAdsetFilter(urlAdset);
+      rememberAdset(metaCampaignId, urlAdset);
+      rememberedAdsetAppliedRef.current = true;
       return;
     }
 
+    if (rememberedAdsetAppliedRef.current) return;
+
     const remembered = getRememberedAdset(metaCampaignId);
     if (remembered?.adsetId) {
+      rememberedAdsetAppliedRef.current = true;
       setAdsetFilter(remembered.adsetId);
-      const slug = clientSlug || campaign?.clientSlug || "";
-      const qs = campaignTabQuery(slug, remembered.adsetId, searchParams);
+      const qs = campaignTabQuery(clientSlug, remembered.adsetId, urlQueryString);
       router.replace(`/campaigns/${metaCampaignId}/ads${qs}`, { scroll: false });
       return;
     }
@@ -161,7 +170,14 @@ export function CampaignAdsClient({
       setAdsetFilter(initialAdsetId);
       rememberAdset(metaCampaignId, initialAdsetId);
     }
-  }, [searchParams, metaCampaignId, clientSlug, initialAdsetId, router, campaign?.clientSlug]);
+  }, [urlAdset, urlQueryString, metaCampaignId, clientSlug, initialAdsetId, router]);
+
+  const apiQueryString = useMemo(() => {
+    const params = new URLSearchParams(periodQueryString.replace(/^\?/, ""));
+    if (clientSlug) params.set("client", clientSlug);
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
+  }, [periodQueryString, clientSlug]);
 
   const toggleSort = (key: string) => {
     setPage(1);
@@ -174,16 +190,18 @@ export function CampaignAdsClient({
   const reload = useCallback(() => {
     setAdsLoading(true);
     setCountsLoading(true);
-    const periodQs = periodQueryString || "?period=last7";
+    setCampaignLoading(true);
 
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${periodQs}`)
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${apiQueryString}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.campaign) {
           setCampaign(j.campaign);
           rememberCampaign(metaCampaignId, j.campaign.clientSlug || clientSlug);
         }
-      });
+      })
+      .catch(() => undefined)
+      .finally(() => setCampaignLoading(false));
 
     fetch("/api/campaign-presets")
       .then((r) => r.json())
@@ -192,14 +210,14 @@ export function CampaignAdsClient({
       })
       .catch(() => {});
 
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads${periodQs}`)
+    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads${apiQueryString}`)
       .then((r) => r.json())
       .then((j) => setAds(j.ads ?? []))
       .catch(() => setAds([]))
       .finally(() => setAdsLoading(false));
 
     const adsetsPromise = fetch(
-      `/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${periodQs}`
+      `/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${apiQueryString}`
     )
       .then((r) => r.json())
       .then((j) => setAdsetsCount((j.adsets ?? []).length))
@@ -209,7 +227,7 @@ export function CampaignAdsClient({
       .then((j) => setCreativesCount(j.total ?? (j.rows ?? []).length))
       .catch(() => setCreativesCount(0));
     void Promise.all([adsetsPromise, creativesPromise]).finally(() => setCountsLoading(false));
-  }, [metaCampaignId, clientSlug, periodQueryString]);
+  }, [metaCampaignId, clientSlug, apiQueryString]);
 
   useEffect(() => {
     reload();
@@ -304,16 +322,16 @@ export function CampaignAdsClient({
   };
 
   function openNewAd() {
-    if (!adsetFilter || !campaign) return;
+    if (!adsetFilter) return;
     openPanel({
-      clientSlug: campaign.clientSlug || clientSlug,
+      clientSlug: slug,
       metaCampaignId,
       adsetId: adsetFilter,
       mode: "add-ad"
     });
   }
 
-  if (!campaign) {
+  if (campaignLoading && !campaign) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-6 w-56" />
@@ -326,7 +344,8 @@ export function CampaignAdsClient({
     );
   }
 
-  const slug = campaign.clientSlug || clientSlug;
+  const slug = campaign?.clientSlug || clientSlug;
+  const campaignName = campaign?.name ?? metaCampaignId;
 
   return (
     <div className="space-y-4">
@@ -340,7 +359,7 @@ export function CampaignAdsClient({
             href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
             className="hover:text-violet-600"
           >
-            {campaign.name}
+            {campaignName}
           </Link>
           {" › "}
           <span className="text-slate-700">{t("title")}</span>
@@ -380,20 +399,26 @@ export function CampaignAdsClient({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-slate-900">{campaign.name}</span>
-            <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
+            <span className="font-semibold text-slate-900">{campaignName}</span>
+            {campaign ? (
+              <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
+            ) : null}
           </div>
           <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-slate-500">
-            <span>ID: {campaign.id}</span>
-            <span>
-              {t("client")}: {campaign.clientName}
-            </span>
-            <span>
-              {t("account")}: {campaign.accountLabel}
-            </span>
-            <span>
-              {t("objective")}: {campaign.objective}
-            </span>
+            <span>ID: {campaign?.id ?? metaCampaignId}</span>
+            {campaign ? (
+              <>
+                <span>
+                  {t("client")}: {campaign.clientName}
+                </span>
+                <span>
+                  {t("account")}: {campaign.accountLabel}
+                </span>
+                <span>
+                  {t("objective")}: {campaign.objective}
+                </span>
+              </>
+            ) : null}
           </div>
         </div>
       </div>
