@@ -41,6 +41,7 @@ import { ClientMetaSettingsDefaultUtm1735830800000 } from "./0038-ClientMetaSett
 import { VideoUploadSessions1735830900000 } from "./0039-VideoUploadSessions";
 import { AudienceInsightBreakdowns1735831000000 } from "./0040-AudienceInsightBreakdowns";
 import { MarketMemoryAndClientCompetitors1735831100000 } from "./0041-MarketMemoryAndClientCompetitors";
+import { ClientSavedTargeting1735831200000 } from "./0042-ClientSavedTargeting";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -86,5 +87,6 @@ export const appMigrations = [
   ClientMetaSettingsDefaultUtm1735830800000,
   VideoUploadSessions1735830900000,
   AudienceInsightBreakdowns1735831000000,
-  MarketMemoryAndClientCompetitors1735831100000
+  MarketMemoryAndClientCompetitors1735831100000,
+  ClientSavedTargeting1735831200000
 ];

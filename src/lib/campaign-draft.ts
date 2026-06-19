@@ -604,7 +604,13 @@ export function draftTargetingToApi(t: DraftTargeting) {
           for (const item of group.items) {
             const kind = item.meta?.kind ?? "interest";
             const bucket =
-              kind === "behavior" ? "behaviors" : kind === "demographic" ? "life_events" : "interests";
+              kind === "behavior"
+                ? "behaviors"
+                : kind === "demographic"
+                  ? typeof item.meta?.bucket === "string" && item.meta.bucket
+                    ? item.meta.bucket
+                    : "life_events"
+                  : "interests";
             if (!spec[bucket]) spec[bucket] = [];
             spec[bucket]!.push({ id: item.value, name: item.label });
           }

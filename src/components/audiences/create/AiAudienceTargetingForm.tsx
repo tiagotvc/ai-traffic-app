@@ -29,7 +29,12 @@ export type AiAudienceTargetingFormProps = {
     ageMax?: number;
     gender?: "all" | "male" | "female";
   }) => void;
-  onSaved?: (result: { name: string; metaAudienceId?: string }) => void;
+  onSaved?: (result: {
+    name: string;
+    metaAudienceId?: string;
+    storage?: "meta" | "local";
+    warning?: string;
+  }) => void;
   onApproveApply?: (suggestion: AudienceTargetingSuggestion) => Promise<void> | void;
   onError?: (message: string) => void;
 };
@@ -206,12 +211,23 @@ export function AiAudienceTargetingForm({
           provider: suggestion.provider
         })
       });
-      const j = await res.json();
+      const j = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        savedAudienceId?: string;
+        storage?: "meta" | "local";
+        warning?: string;
+      };
       if (!j.ok) {
         reportError(j.error ?? t("aiAudienceSaveFailed"));
         return;
       }
-      onSaved?.({ name: suggestion.name, metaAudienceId: j.savedAudienceId });
+      onSaved?.({
+        name: suggestion.name,
+        metaAudienceId: j.savedAudienceId,
+        storage: j.storage,
+        warning: j.warning
+      });
       resetForm();
     } catch {
       reportError(t("aiAudienceSaveFailed"));

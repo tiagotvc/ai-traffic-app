@@ -18,8 +18,11 @@ import {
 import type { LlmProviderId } from "@/lib/llm/types";
 import {
   searchAdInterests,
-  searchAdTargetingCategories
+  searchAdTargetingCategories,
+  validateTargetingIdList
 } from "@/lib/meta-graph";
+import { resolveFlexBucket, type MetaFlexSpecBucket } from "@/lib/meta-targeting-flex";
+import { sanitizeTargetingForMeta } from "@/lib/meta-targeting-sanitize";
 
 export {
   TRAFFIC_AI_AUDIENCE_PREFIX,
@@ -87,6 +90,8 @@ type CatalogItem = {
   id: string;
   name: string;
   audienceSize?: number;
+  path?: string[];
+  flexBucket?: MetaFlexSpecBucket;
 };
 
 function dedupeCatalog(items: CatalogItem[]): CatalogItem[] {
@@ -104,7 +109,14 @@ async function buildCatalog(accessToken: string, plan: SearchPlan): Promise<Cata
     ...plan.interestQueries.map(async (q) => {
       const hits = await searchAdInterests(accessToken, q);
       for (const h of hits.slice(0, 8)) {
-        rows.push({ type: "interest", id: h.id, name: h.name, audienceSize: h.audienceSize });
+        rows.push({
+          type: "interest",
+          id: h.id,
+          name: h.name,
+          audienceSize: h.audienceSize,
+          path: h.path,
+          flexBucket: "interests"
+        });
       }
     }),
     ...plan.behaviorQueries.map(async (q) => {
@@ -114,27 +126,50 @@ async function buildCatalog(accessToken: string, plan: SearchPlan): Promise<Cata
           type: "behavior",
           id: h.id,
           name: h.name,
-          audienceSize: h.audience_size
+          audienceSize: h.audience_size,
+          path: h.path,
+          flexBucket: resolveFlexBucket({ path: h.path, itemType: "behavior" })
         });
       }
     }),
     ...plan.demographicQueries.map(async (q) => {
-      const [demo, life] = await Promise.all([
-        searchAdTargetingCategories(accessToken, q, "demographics"),
-        searchAdTargetingCategories(accessToken, q, "life_events")
-      ]);
-      for (const h of [...demo, ...life].slice(0, 6)) {
+      const hits = await searchAdTargetingCategories(accessToken, q, "demographics");
+      for (const h of hits.slice(0, 6)) {
         rows.push({
           type: "demographic",
           id: h.id,
           name: h.name,
-          audienceSize: h.audience_size
+          audienceSize: h.audience_size,
+          path: h.path,
+          flexBucket: resolveFlexBucket({ path: h.path, itemType: "demographic" })
         });
       }
     })
   ]);
 
   return dedupeCatalog(rows);
+}
+
+async function enrichCatalogWithValidation(
+  accessToken: string,
+  adAccountId: string,
+  catalog: CatalogItem[]
+): Promise<CatalogItem[]> {
+  const validated = await validateTargetingIdList(
+    accessToken,
+    adAccountId,
+    catalog.map((c) => c.id)
+  );
+  const typeById = new Map(validated.map((v) => [v.id, v.type]));
+
+  return catalog.map((item) => ({
+    ...item,
+    flexBucket: resolveFlexBucket({
+      path: item.path,
+      itemType: item.type,
+      validatedType: typeById.get(item.id)
+    })
+  }));
 }
 
 function formatCatalogForPrompt(catalog: CatalogItem[]): string {
@@ -151,23 +186,30 @@ function formatCatalogForPrompt(catalog: CatalogItem[]): string {
 function buildFlexibleSpec(pick: z.infer<typeof PickSchema>, catalog: Map<string, CatalogItem>) {
   const spec: Record<string, Array<{ id: string; name: string }>> = {};
 
+  const add = (id: string, row: CatalogItem) => {
+    const bucket =
+      row.flexBucket ??
+      resolveFlexBucket({ path: row.path, itemType: row.type, validatedType: undefined });
+    if (!spec[bucket]) spec[bucket] = [];
+    if (!spec[bucket]!.some((x) => x.id === id)) {
+      spec[bucket]!.push({ id, name: row.name });
+    }
+  };
+
   for (const id of pick.interestIds) {
     const row = catalog.get(id);
     if (!row || row.type !== "interest") continue;
-    if (!spec.interests) spec.interests = [];
-    spec.interests.push({ id, name: row.name });
+    add(id, row);
   }
   for (const id of pick.behaviorIds) {
     const row = catalog.get(id);
     if (!row || row.type !== "behavior") continue;
-    if (!spec.behaviors) spec.behaviors = [];
-    spec.behaviors.push({ id, name: row.name });
+    add(id, row);
   }
   for (const id of pick.demographicIds) {
     const row = catalog.get(id);
     if (!row || row.type !== "demographic") continue;
-    if (!spec.life_events) spec.life_events = [];
-    spec.life_events.push({ id, name: row.name });
+    add(id, row);
   }
 
   return Object.keys(spec).length ? [spec] : [];
@@ -202,7 +244,7 @@ export function buildMetaTargetingFromSuggestion(args: {
     }));
   }
 
-  return targeting;
+  return sanitizeTargetingForMeta(targeting);
 }
 
 export function ensureTrafficAiAudienceName(name: string, clientName?: string): string {
@@ -302,6 +344,7 @@ export async function generateAudiencePersonaPreview(args: {
 
 export async function generateAudienceTargetingSuggestion(args: {
   accessToken: string;
+  adAccountId: string;
   provider: LlmProviderId;
   brief: AudienceTargetingBrief;
   persona: AudiencePersonaPreview;
@@ -311,12 +354,18 @@ export async function generateAudienceTargetingSuggestion(args: {
   const brief = AudienceTargetingBriefSchema.parse(args.brief);
   const persona = AudiencePersonaPreviewSchema.parse(args.persona);
 
-  const catalog = await buildCatalog(args.accessToken, persona.searchPlan);
-  if (!catalog.length) {
+  const rawCatalog = await buildCatalog(args.accessToken, persona.searchPlan);
+  if (!rawCatalog.length) {
     throw new Error(
       "Nenhum interesse ou comportamento encontrado na Meta para esta persona. Ajuste a prévia ou tente outros termos."
     );
   }
+
+  const catalog = await enrichCatalogWithValidation(
+    args.accessToken,
+    args.adAccountId,
+    rawCatalog
+  );
 
   const pickPrompt = [
     "Você recebeu uma PERSONA já validada pelo usuário e um CATÁLOGO real da Meta (IDs verificados).",

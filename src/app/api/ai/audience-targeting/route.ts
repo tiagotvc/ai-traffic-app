@@ -15,7 +15,8 @@ import { classifyLlmError } from "@/lib/llm/generate-json";
 import { getApiKeyForProvider, getLlmProvidersStatus } from "@/lib/llm/keys";
 import type { LlmProviderId } from "@/lib/llm/types";
 import { fetchCustomAudiences } from "@/lib/meta-graph";
-import { createSavedAudience } from "@/lib/meta-audience-create";
+import { persistSavedAudience } from "@/lib/persist-saved-audience";
+import { sanitizeTargetingForMeta } from "@/lib/meta-targeting-sanitize";
 
 const BriefFieldsSchema = AudienceTargetingBriefSchema.extend({
   clientId: z.string().min(1),
@@ -104,6 +105,7 @@ export async function POST(req: Request) {
     const audiences = await fetchCustomAudiences(metaAccessToken, adAccountId);
     const suggestion = await generateAudienceTargetingSuggestion({
       accessToken: metaAccessToken,
+      adAccountId,
       provider: provider as LlmProviderId,
       brief,
       persona: {
@@ -154,11 +156,21 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const created = await createSavedAudience(metaAccessToken, body.adAccountId, {
+    const result = await persistSavedAudience({
+      tenantId: tenant.id,
+      clientIdOrSlug: body.clientId,
+      adAccountId: body.adAccountId,
       name: body.name,
-      targeting: body.targeting
+      targeting: sanitizeTargetingForMeta(body.targeting),
+      metaAccessToken
     });
-    return NextResponse.json({ ok: true, savedAudienceId: created.id, name: body.name });
+    return NextResponse.json({
+      ok: true,
+      savedAudienceId: result.savedAudienceId,
+      storage: result.storage,
+      warning: result.warning,
+      name: body.name
+    });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Falha ao criar público salvo" },

@@ -10,6 +10,7 @@ import {
   metaPost,
   STANDARD_CONVERSION_EVENTS
 } from "@/lib/meta-graph";
+import { sanitizeTargetingForMeta } from "@/lib/meta-targeting-sanitize";
 
 // ---- Catalogs (Meta Ads Manager parity) ----
 
@@ -407,9 +408,10 @@ export async function createSavedAudience(
   adAccountId: string,
   input: { name: string; targeting: Record<string, unknown> }
 ): Promise<{ id: string }> {
+  const targeting = sanitizeTargetingForMeta(input.targeting);
   return metaPost(`/${encodeURIComponent(actId(adAccountId))}/saved_audiences`, accessToken, {
-    name: input.name,
-    targeting: JSON.stringify(input.targeting)
+    name: input.name.trim(),
+    targeting: JSON.stringify(targeting)
   });
 }
 
@@ -425,7 +427,7 @@ export async function createSavedAudienceFromTemplate(
   }
   return createSavedAudience(accessToken, adAccountId, {
     name: input.name,
-    targeting: template.targeting
+    targeting: sanitizeTargetingForMeta(template.targeting as Record<string, unknown>)
   });
 }
 

@@ -4,10 +4,15 @@ import { z } from "zod";
 import { getAppContext } from "@/lib/app-context";
 import { validateClientAdAccount } from "@/lib/audience-api-helpers";
 import {
-  createSavedAudience,
   createSavedAudienceFromTemplate,
   fetchSavedAudiences
 } from "@/lib/meta-audience-create";
+import {
+  listClientSavedTargeting,
+  toLocalSavedTargetingId
+} from "@/lib/client-saved-targeting";
+import { persistSavedAudience } from "@/lib/persist-saved-audience";
+import { sanitizeTargetingForMeta } from "@/lib/meta-targeting-sanitize";
 
 const BodySchema = z
   .object({
@@ -44,17 +49,31 @@ export async function GET(req: Request) {
   }
 
   try {
-    const audiences = await fetchSavedAudiences(metaAccessToken, adAccountId);
-    return NextResponse.json({
-      ok: true,
-      audiences: audiences.map((a) => ({
+    const [metaAudiences, localAudiences] = await Promise.all([
+      fetchSavedAudiences(metaAccessToken, adAccountId),
+      listClientSavedTargeting({ tenantId: tenant.id, clientIdOrSlug: clientId, adAccountId })
+    ]);
+
+    const audiences = [
+      ...metaAudiences.map((a) => ({
         id: a.id,
         name: a.name ?? a.id,
         targeting: a.targeting ?? {},
         timeCreated: a.time_created,
-        timeUpdated: a.time_updated
+        timeUpdated: a.time_updated,
+        storage: "meta" as const
+      })),
+      ...localAudiences.map((a) => ({
+        id: toLocalSavedTargetingId(a.id),
+        name: a.name,
+        targeting: a.targeting,
+        timeCreated: a.createdAt.toISOString(),
+        timeUpdated: a.updatedAt.toISOString(),
+        storage: "local" as const
       }))
-    });
+    ];
+
+    return NextResponse.json({ ok: true, audiences });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Falha ao listar públicos salvos" },
@@ -76,16 +95,28 @@ export async function POST(req: Request) {
   }
 
   try {
-    const created = body.templateAudienceId
-      ? await createSavedAudienceFromTemplate(metaAccessToken, body.adAccountId, {
-          name: body.name,
-          templateAudienceId: body.templateAudienceId
-        })
-      : await createSavedAudience(metaAccessToken, body.adAccountId, {
-          name: body.name,
-          targeting: body.targeting!
-        });
-    return NextResponse.json({ ok: true, savedAudienceId: created.id });
+    if (body.templateAudienceId) {
+      const created = await createSavedAudienceFromTemplate(metaAccessToken, body.adAccountId, {
+        name: body.name,
+        templateAudienceId: body.templateAudienceId
+      });
+      return NextResponse.json({ ok: true, savedAudienceId: created.id, storage: "meta" });
+    }
+
+    const result = await persistSavedAudience({
+      tenantId: tenant.id,
+      clientIdOrSlug: body.clientId,
+      adAccountId: body.adAccountId,
+      name: body.name,
+      targeting: sanitizeTargetingForMeta(body.targeting!),
+      metaAccessToken
+    });
+    return NextResponse.json({
+      ok: true,
+      savedAudienceId: result.savedAudienceId,
+      storage: result.storage,
+      warning: result.warning
+    });
   } catch (e) {
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Falha ao criar público salvo" },
