@@ -141,7 +141,7 @@ export function classifyAnthropicError(err: unknown): LlmError {
       code: "SERVICE_UNAVAILABLE",
       message:
         anthropicDetail ??
-        "Modelo Claude inválido. Ajuste ANTHROPIC_MODEL (ex.: claude-sonnet-4-20250514) no Vercel."
+        "Modelo Claude inválido. Ajuste ANTHROPIC_MODEL (ex.: claude-sonnet-4-6) no Vercel."
     };
   }
 
