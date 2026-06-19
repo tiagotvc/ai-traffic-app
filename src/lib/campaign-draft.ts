@@ -181,7 +181,7 @@ export const CampaignDraftPayloadV2Schema = z.object({
       adsetIds: z.array(z.string()).optional(),
       adIds: z.array(z.string()).optional(),
       publishedAt: z.string().optional(),
-      publishMode: z.enum(["add_ad"]).optional(),
+      publishMode: z.enum(["add_ad", "add_adset"]).optional(),
       targetMetaAdsetId: z.string().optional(),
       targetMetaCampaignId: z.string().optional(),
       targetAdsetName: z.string().optional(),
@@ -217,7 +217,7 @@ function defaultTargeting(): DraftTargeting {
   };
 }
 
-function defaultAdSetItem(locale: string, name?: string): AdSetDraftItem {
+export function defaultAdSetItem(locale: string, name?: string): AdSetDraftItem {
   const isEn = locale === "en";
   return {
     id: newDraftId(),
@@ -667,11 +667,24 @@ export function isAddAdDraft(d: CampaignDraftPayload): boolean {
   return d.meta?.publishMode === "add_ad";
 }
 
+export function isAddAdsetDraft(d: CampaignDraftPayload): boolean {
+  return d.meta?.publishMode === "add_adset";
+}
+
+export function isInheritedCampaignDraft(d: CampaignDraftPayload): boolean {
+  return isAddAdDraft(d) || isAddAdsetDraft(d);
+}
+
 export function validatePublishDraft(d: CampaignDraftPayload): string | null {
   if (isAddAdDraft(d)) {
     if (!d.clientSlug.trim()) return "clientRequired";
     if (!d.adAccountId.trim()) return "adAccountRequired";
     return validateAdStep(d);
+  }
+  if (isAddAdsetDraft(d)) {
+    if (!d.clientSlug.trim()) return "clientRequired";
+    if (!d.adAccountId.trim()) return "adAccountRequired";
+    return validateAdSetStep(d) ?? validateAdStep(d);
   }
   return (
     validateCampaignStep(d) ?? validateAdSetStep(d) ?? validateAdStep(d)

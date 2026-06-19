@@ -929,7 +929,9 @@ export function CampaignManagerClient({
               )}
               <button
                 type="button"
-                onClick={() => openPanel({ clientSlug: slug })}
+                onClick={() =>
+                  openPanel({ clientSlug: slug, metaCampaignId, mode: "add-adset" })
+                }
                 className="ui-btn-primary px-2 py-1 text-[11px]"
               >
                 + {t("newAdset")}
@@ -1277,7 +1279,11 @@ function AdsetsTable({
           className="min-w-[240px] flex-1"
         />
         <CampaignTableColumnsButton />
-        <button type="button" onClick={() => openPanel({ clientSlug: slug })} className="ui-btn-primary text-sm">
+        <button
+          type="button"
+          onClick={() => openPanel({ clientSlug: slug, metaCampaignId, mode: "add-adset" })}
+          className="ui-btn-primary text-sm"
+        >
           + {t("newAdset")}
         </button>
       </div>

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
 import { AiAudienceTargetingPanel } from "@/components/campaign-creator/AiAudienceTargetingPanel";
 import { AudiencePicker } from "@/components/campaign-creator/AudiencePicker";
+import { SavedTargetingPicker } from "@/components/campaign-creator/SavedTargetingPicker";
 import { AdSetBatchPanel } from "@/components/campaign-creator/AdSetBatchPanel";
 import { GeoRadiusMapPicker } from "@/components/campaign-creator/GeoRadiusMapPicker";
 import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
@@ -17,7 +18,7 @@ import type { DraftTargeting } from "@/lib/campaign-draft";
 export function AdSetStep() {
   const t = useTranslations("campaignCreator");
   const tAds = useTranslations("ads");
-  const { payload, updatePayload } = useCampaignDraft();
+  const { payload, updatePayload, addAdsetMode } = useCampaignDraft();
   const { audiences, audiencesLoading, pixels, customConversions } = usePublishAssets(
     payload.clientSlug,
     payload.adAccountId
@@ -68,7 +69,13 @@ export function AdSetStep() {
         </div>
       ) : null}
 
-      <AdSetBatchPanel />
+      {addAdsetMode && payload.meta?.targetMetaCampaignId ? (
+        <p className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+          {t("addAdsetContext", { campaign: payload.campaign.name || payload.meta.targetMetaCampaignId })}
+        </p>
+      ) : null}
+
+      {!addAdsetMode ? <AdSetBatchPanel /> : null}
 
       <FormField label={t("adsetName")}>
         <input
@@ -172,6 +179,18 @@ export function AdSetStep() {
           currentTargeting={targeting}
           onApplyTargeting={(next) => patchTargeting(next)}
           disabled={clientRequired}
+        />
+
+        <SavedTargetingPicker
+          clientSlug={payload.clientSlug}
+          adAccountId={payload.adAccountId}
+          disabled={clientRequired}
+          onApply={(next, audienceName) => {
+            patchTargeting(next);
+            if (!adset.name.trim() || adset.name.startsWith("Novo conjunto") || adset.name.startsWith("New Ad Set")) {
+              patchAdset({ name: audienceName.slice(0, 120) });
+            }
+          }}
         />
 
         <AudiencePicker

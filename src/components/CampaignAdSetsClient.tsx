@@ -349,7 +349,13 @@ export function CampaignAdSetsClient({
           <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
             ↻
           </button>
-          <button type="button" onClick={() => openPanel({ clientSlug: slug })} className="ui-btn-primary text-sm">
+          <button
+            type="button"
+            onClick={() =>
+              openPanel({ clientSlug: slug, metaCampaignId, mode: "add-adset" })
+            }
+            className="ui-btn-primary text-sm"
+          >
             + {t("newAdset")}
           </button>
         </div>

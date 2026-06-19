@@ -15,7 +15,8 @@ const DOC_PATH =
 
 export function CampaignCreatorTree() {
   const t = useTranslations("campaignCreator");
-  const { payload, activeNode, setActiveNode, updatePayload, addAdMode } = useCampaignDraft();
+  const { payload, activeNode, setActiveNode, updatePayload, addAdMode, addAdsetMode } =
+    useCampaignDraft();
 
   const campaignLabel = payload.campaign.name || t("treeCampaign");
 
@@ -34,18 +35,22 @@ export function CampaignCreatorTree() {
   return (
     <nav className="space-y-1 p-3">
       {!addAdMode ? (
-        <button
-          type="button"
-          onClick={() => setActiveNode("campaign")}
-          className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition ${
-            activeNode === "campaign"
-              ? "bg-violet-50 font-medium text-violet-800"
-              : "text-slate-700 hover:bg-slate-50"
-          }`}
-        >
-          <OutlineIcon d={FOLDER_PATH} className="h-4 w-4 shrink-0" />
-          <span className="truncate">{campaignLabel}</span>
-        </button>
+        addAdsetMode ? (
+          <p className="truncate px-3 py-2 text-xs font-medium text-slate-600">{campaignLabel}</p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setActiveNode("campaign")}
+            className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+              activeNode === "campaign"
+                ? "bg-violet-50 font-medium text-violet-800"
+                : "text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <OutlineIcon d={FOLDER_PATH} className="h-4 w-4 shrink-0" />
+            <span className="truncate">{campaignLabel}</span>
+          </button>
+        )
       ) : (
         <p className="px-3 py-2 text-xs font-medium text-slate-600">{payload.meta?.targetAdsetName}</p>
       )}

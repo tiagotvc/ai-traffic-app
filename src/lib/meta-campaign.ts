@@ -368,6 +368,82 @@ export async function publishAdToAdset(
   });
 }
 
+export async function publishAdsetToCampaign(input: {
+  accessToken: string;
+  adAccountId: string;
+  metaCampaignId: string;
+  adset: AdSetDraftItem;
+  ad: AdDraftItem;
+  objective: CampaignObjectiveKey;
+  campaign: CampaignDraftPayload["campaign"];
+  pageId: string;
+  linkUrl: string;
+  settings?: ClientMetaSettings;
+  callToAction?: string;
+  campaignName?: string;
+  isCampaignBudget?: boolean;
+}): Promise<{ adsetId: string; adId: string; creativeId: string }> {
+  const actId = normalizeAdAccountId(input.adAccountId);
+  const token = input.accessToken;
+  const objective = input.objective;
+  const dailyBudgetMinor = Math.max(100, Math.round(input.campaign.dailyBudgetBRL * 100));
+  const settings = input.settings;
+  const cta = input.callToAction ?? settings?.defaultCta ?? "LEARN_MORE";
+  const campaignName = input.campaignName ?? input.campaign.name ?? "Campanha";
+  const isCbo = input.isCampaignBudget ?? input.campaign.budgetLevel === "campaign";
+
+  const adsetName = input.adset.name.trim() || `${campaignName} — Ad Set`;
+  const startTime = parseScheduleTime(input.adset.schedule.start, 3600);
+  const targeting = resolveTargeting(input.adset, settings);
+
+  const adsetBody: Record<string, string> = {
+    name: adsetName,
+    campaign_id: input.metaCampaignId,
+    billing_event: "IMPRESSIONS",
+    optimization_goal: resolveOptimizationGoal(objective, input.adset),
+    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    targeting: JSON.stringify(targeting),
+    status: "PAUSED",
+    start_time: String(startTime)
+  };
+
+  const destinationType = resolveDestinationType(input.adset);
+  if (destinationType) adsetBody.destination_type = destinationType;
+  if (!isCbo) adsetBody.daily_budget = String(dailyBudgetMinor);
+
+  if (input.adset.schedule.end) {
+    const endTime = parseScheduleTime(input.adset.schedule.end, 86400 * 7);
+    if (endTime > startTime) adsetBody.end_time = String(endTime);
+  }
+
+  const promoted = buildPromotedObject(objective, input.ad, input.adset, input.pageId, settings);
+  if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
+
+  const metaAdset = await metaPost<{ id: string }>(`/${actId}/adsets`, token, adsetBody);
+
+  const igAccounts = await fetchInstagramAccountsForAdAccount(token, input.adAccountId);
+  const allowedInstagramActorIds = igAccounts.map((a) => a.id);
+  const adName = input.ad.name.trim() || `${campaignName} — ${adsetName} — Ad`;
+
+  const { adId, creativeId } = await createAdForAdset({
+    token,
+    actId,
+    campaignName,
+    adsetId: metaAdset.id,
+    adset: input.adset,
+    ad: input.ad,
+    adName,
+    objective,
+    pageId: input.pageId,
+    linkUrl: input.linkUrl,
+    cta,
+    settings,
+    allowedInstagramActorIds
+  });
+
+  return { adsetId: metaAdset.id, adId, creativeId };
+}
+
 export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promise<PublishDraftV2Result> {
   const { draft } = input;
   const actId = normalizeAdAccountId(input.adAccountId);

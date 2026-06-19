@@ -17,8 +17,10 @@ import {
   type AdDraftItem,
   type CreatorNode,
   defaultAdItem,
+  defaultAdSetItem,
   defaultCampaignDraft,
   isAddAdDraft,
+  isInheritedCampaignDraft,
   newDraftId,
   parseCampaignDraftPayload
 } from "@/lib/campaign-draft";
@@ -40,6 +42,8 @@ type CampaignDraftContextValue = {
   setObjectiveChosen: (v: boolean) => void;
   flushSave: () => Promise<void>;
   addAdMode: boolean;
+  addAdsetMode: boolean;
+  inheritCampaignMode: boolean;
   addAdLoading: boolean;
 };
 
@@ -49,7 +53,8 @@ export function CampaignDraftProvider({
   children,
   initialDraftId,
   initialClientSlug,
-  initialAddAd
+  initialAddAd,
+  initialAddAdset
 }: {
   children: ReactNode;
   initialDraftId?: string;
@@ -57,6 +62,10 @@ export function CampaignDraftProvider({
   initialAddAd?: {
     fromCampaignId: string;
     adsetId: string;
+    clientSlug?: string;
+  };
+  initialAddAdset?: {
+    fromCampaignId: string;
     clientSlug?: string;
   };
 }) {
@@ -69,10 +78,12 @@ export function CampaignDraftProvider({
     return d;
   });
   const [activeNode, setActiveNode] = useState<CreatorNode>(
-    initialAddAd ? "ad" : "campaign"
+    initialAddAd ? "ad" : initialAddAdset ? "adset" : "campaign"
   );
-  const [objectiveChosen, setObjectiveChosen] = useState(!!initialDraftId || !!initialAddAd);
-  const [addAdLoading, setAddAdLoading] = useState(!!initialAddAd);
+  const [objectiveChosen, setObjectiveChosen] = useState(
+    !!initialDraftId || !!initialAddAd || !!initialAddAdset
+  );
+  const [addAdLoading, setAddAdLoading] = useState(!!initialAddAd || !!initialAddAdset);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -190,8 +201,80 @@ export function CampaignDraftProvider({
     locale
   ]);
 
+  const addAdsetFetchedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!initialAddAdset) return;
+    const key = `${initialAddAdset.fromCampaignId}:${initialAddAdset.clientSlug ?? ""}`;
+    if (addAdsetFetchedRef.current === key) return;
+    addAdsetFetchedRef.current = key;
+    const { fromCampaignId, clientSlug } = initialAddAdset;
+    setAddAdLoading(true);
+    fetch(
+      `/api/campaigns/${encodeURIComponent(fromCampaignId)}/creator-snapshot?mode=add-adset`
+    )
+      .then((r) => r.json())
+      .then(
+        (j: {
+          ok?: boolean;
+          patch?: Partial<CampaignDraftPayload>;
+          adAccountId?: string | null;
+          clientSlug?: string;
+          campaignName?: string;
+          inheritedAd?: Partial<AdDraftItem>;
+          inheritedAdset?: Partial<import("@/lib/campaign-draft").AdSetDraftItem>;
+        }) => {
+          if (!j.ok || !j.patch) return;
+          const adId = newDraftId();
+          const adsetDraftId = newDraftId();
+          const base = defaultCampaignDraft(locale);
+          const freshAdset = {
+            ...defaultAdSetItem(locale),
+            ...(j.inheritedAdset ?? {}),
+            id: adsetDraftId,
+            name: locale === "en" ? "New Ad Set" : "Novo conjunto de anúncios"
+          };
+          const freshAd = {
+            ...defaultAdItem(locale),
+            ...(j.inheritedAd ?? {}),
+            id: adId,
+            name: locale === "en" ? "New Ad" : "Novo anúncio",
+            titles: [],
+            bodies: [],
+            imageHashes: [],
+            videoIds: [],
+            targetAdsetIds: [adsetDraftId]
+          };
+
+          const next = parseCampaignDraftPayload({
+            ...base,
+            ...j.patch,
+            clientSlug: clientSlug ?? j.clientSlug ?? base.clientSlug,
+            adAccountId: j.adAccountId ?? "",
+            adsets: [freshAdset],
+            ads: [freshAd],
+            activeAdsetId: adsetDraftId,
+            activeAdId: adId,
+            adAssignment: "single",
+            selectedAdsetIdForAds: adsetDraftId,
+            visitedNodes: ["adset", "ad", "review"],
+            meta: {
+              publishMode: "add_adset",
+              targetMetaCampaignId: fromCampaignId,
+              inheritedContextLocked: true
+            }
+          });
+          setPayload(next);
+          setActiveNode("adset");
+          setObjectiveChosen(true);
+        }
+      )
+      .catch(() => {})
+      .finally(() => setAddAdLoading(false));
+  }, [initialAddAdset?.fromCampaignId, initialAddAdset?.clientSlug, locale]);
+
   const persist = useCallback(async () => {
-    if (isAddAdDraft(payloadRef.current)) return;
+    if (isInheritedCampaignDraft(payloadRef.current)) return;
     const p = payloadRef.current;
     const name = draftNameRef.current || p.campaign.name || "Rascunho";
     setSaving(true);
@@ -280,6 +363,8 @@ export function CampaignDraftProvider({
       setObjectiveChosen,
       flushSave: persist,
       addAdMode: isAddAdDraft(payload),
+      addAdsetMode: payload.meta?.publishMode === "add_adset",
+      inheritCampaignMode: isInheritedCampaignDraft(payload),
       addAdLoading
     }),
     [

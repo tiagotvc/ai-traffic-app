@@ -18,7 +18,7 @@ import { AdStep } from "@/components/campaign-creator/steps/AdStep";
 import { CampaignStep } from "@/components/campaign-creator/steps/CampaignStep";
 import { ReviewStep } from "@/components/campaign-creator/steps/ReviewStep";
 import { useRouter } from "@/i18n/navigation";
-import { getActiveAd, isAddAdDraft, type CreatorNode, validatePublishDraft } from "@/lib/campaign-draft";
+import { getActiveAd, getActiveAdset, isAddAdDraft, isAddAdsetDraft, type CreatorNode, validatePublishDraft } from "@/lib/campaign-draft";
 
 const STEP_ORDER: CreatorNode[] = ["campaign", "adset", "ad", "review"];
 
@@ -33,9 +33,11 @@ function CampaignCreatorInner() {
     draftId,
     flushSave,
     addAdMode,
+    addAdsetMode,
+    inheritCampaignMode,
     addAdLoading
   } = useCampaignDraft();
-  const [showObjective, setShowObjective] = useState(!objectiveChosen && !addAdMode);
+  const [showObjective, setShowObjective] = useState(!objectiveChosen && !inheritCampaignMode);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const prevNodeRef = useRef(activeNode);
@@ -100,6 +102,47 @@ function CampaignCreatorInner() {
         return;
       }
 
+      if (isAddAdsetDraft(payload)) {
+        const campaignId = payload.meta?.targetMetaCampaignId;
+        if (!campaignId) {
+          setPublishError(t("publishFailed"));
+          return;
+        }
+
+        const res = await fetch(`/api/campaigns/${encodeURIComponent(campaignId)}/adsets`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            clientId: payload.clientSlug,
+            adAccountId: payload.adAccountId,
+            objective: payload.objective,
+            adset: getActiveAdset(payload),
+            ad: getActiveAd(payload),
+            campaignName: payload.campaign.name,
+            campaign: payload.campaign
+          })
+        });
+        const j = (await res.json()) as {
+          ok?: boolean;
+          error?: string;
+          message?: string;
+          adsetId?: string;
+        };
+        if (!j.ok || !j.adsetId) {
+          setPublishError(j.message ?? j.error ?? t("publishFailed"));
+          return;
+        }
+        try {
+          await fetch("/api/meta/discover", { method: "POST" });
+        } catch {
+          /* sync best-effort */
+        }
+        const qs = new URLSearchParams();
+        if (payload.clientSlug) qs.set("client", payload.clientSlug);
+        router.push(`/campaigns/${campaignId}/adsets?${qs.toString()}`);
+        return;
+      }
+
       await flushSave();
       const res = await fetch("/api/meta/campaigns", {
         method: "POST",
@@ -141,7 +184,7 @@ function CampaignCreatorInner() {
   return (
     <div className="-mx-6 -my-6 flex min-h-[calc(100vh-4rem)] flex-col bg-[var(--surface)]">
       <ObjectiveSelectModal
-        open={!addAdMode && (showObjective || !objectiveChosen)}
+        open={!inheritCampaignMode && (showObjective || !objectiveChosen)}
         onClose={() => {
           if (objectiveChosen) setShowObjective(false);
         }}
@@ -157,8 +200,10 @@ function CampaignCreatorInner() {
               stepKey={activeNode}
               direction={stepDirection}
             >
-              {!addAdMode && activeNode === "campaign" ? <CampaignStep /> : null}
-              {!addAdMode && activeNode === "adset" ? <AdSetStep /> : null}
+              {!inheritCampaignMode && activeNode === "campaign" ? <CampaignStep /> : null}
+              {(!addAdMode && activeNode === "adset") || (addAdsetMode && activeNode === "adset") ? (
+                <AdSetStep />
+              ) : null}
               {activeNode === "ad" ? <AdStep /> : null}
               {activeNode === "review" ? <ReviewStep /> : null}
             </CampaignCreatorStepPanel>
@@ -177,7 +222,8 @@ function CampaignCreatorInner() {
 export function CampaignCreatorClient({
   initialDraftId,
   initialClientSlug,
-  initialAddAd
+  initialAddAd,
+  initialAddAdset
 }: {
   initialDraftId?: string;
   initialClientSlug?: string;
@@ -186,12 +232,17 @@ export function CampaignCreatorClient({
     adsetId: string;
     clientSlug?: string;
   };
+  initialAddAdset?: {
+    fromCampaignId: string;
+    clientSlug?: string;
+  };
 }) {
   return (
     <CampaignDraftProvider
       initialDraftId={initialDraftId}
       initialClientSlug={initialClientSlug}
       initialAddAd={initialAddAd}
+      initialAddAdset={initialAddAdset}
     >
       <CampaignCreatorInner />
     </CampaignDraftProvider>
