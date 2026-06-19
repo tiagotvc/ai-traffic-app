@@ -1,16 +1,23 @@
-import { Suspense } from "react";
+import { redirect } from "@/i18n/navigation";
 
-import { BillingPortalClient } from "@/components/billing/BillingPortalClient";
-import { BillingPortalSkeleton } from "@/components/billing/BillingSkeletons";
+export default async function BillingPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { locale } = await params;
+  const sp = await searchParams;
+  const q = new URLSearchParams();
 
-function BillingPortalFallback() {
-  return <BillingPortalSkeleton />;
-}
+  const tab = sp.tab;
+  q.set("tab", typeof tab === "string" ? tab : "plan");
 
-export default function BillingPage() {
-  return (
-    <Suspense fallback={<BillingPortalFallback />}>
-      <BillingPortalClient />
-    </Suspense>
-  );
+  for (const key of ["invoice", "checkout"] as const) {
+    const value = sp[key];
+    if (typeof value === "string") q.set(key, value);
+  }
+
+  redirect({ href: `/settings?${q.toString()}`, locale });
 }

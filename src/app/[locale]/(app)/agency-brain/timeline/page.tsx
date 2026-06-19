@@ -1,9 +1,5 @@
-"use client";
-
-import { TimelineContent } from "@/components/agency-brain/TimelineContent";
-import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
+import { AgencyBrainComingSoon } from "@/components/agency-brain/AgencyBrainComingSoon";
 
 export default function TimelinePage() {
-  const { clientSlug } = useAgencyBrainClient();
-  return <TimelineContent clientId={clientSlug} />;
+  return <AgencyBrainComingSoon moduleId="timeline" />;
 }

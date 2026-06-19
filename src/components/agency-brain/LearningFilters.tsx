@@ -57,7 +57,14 @@ export function LearningFilters({
   embedded = false,
   clients,
   clientSlug,
-  onClientChange
+  onClientChange,
+  hideStatus = false,
+  hideDateFilters = false,
+  hidePagination = false,
+  clientInExpanded = false,
+  hidePrimaryRow = false,
+  expanded: controlledExpanded,
+  onExpandedChange
 }: {
   search: string;
   category: LearningCategory | "";
@@ -91,9 +98,21 @@ export function LearningFilters({
   clients?: { id: string; slug: string; name: string }[];
   clientSlug?: string;
   onClientChange?: (slug: string) => void;
+  hideStatus?: boolean;
+  hideDateFilters?: boolean;
+  hidePagination?: boolean;
+  clientInExpanded?: boolean;
+  hidePrimaryRow?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
 }) {
   const t = useTranslations("agencyBrain");
-  const [expanded, setExpanded] = useState(false);
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  const expanded = controlledExpanded ?? internalExpanded;
+  const toggleExpanded = () => {
+    if (onExpandedChange) onExpandedChange(!expanded);
+    else setInternalExpanded((v) => !v);
+  };
 
   const activeFilterCount = useMemo(
     () =>
@@ -112,14 +131,16 @@ export function LearningFilters({
 
   return (
     <div className={embedded ? "space-y-1.5" : "shrink-0 space-y-1.5 rounded-xl border border-slate-200 bg-white p-2 shadow-sm"}>
+      {!hidePrimaryRow ? (
       <div className="flex flex-wrap items-center gap-1.5">
-        {clients && clients.length > 0 && onClientChange ? (
+        {clients && clients.length > 0 && onClientChange && !clientInExpanded ? (
           <select
             className="ui-select !w-auto !py-1 text-xs"
             value={clientSlug ?? ""}
             onChange={(e) => onClientChange(e.target.value)}
-            aria-label={t("clientLabel")}
+            aria-label={t("clientPickerLabel")}
           >
+            <option value="">{t("clientPickerPlaceholder")}</option>
             {clients.map((c) => (
               <option key={c.id} value={c.slug}>
                 {c.name}
@@ -160,7 +181,7 @@ export function LearningFilters({
               ? "border-violet-300 bg-violet-50 text-violet-800"
               : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
           }`}
-          onClick={() => setExpanded((v) => !v)}
+          onClick={toggleExpanded}
           aria-expanded={expanded}
         >
           {expanded ? t("collapseFilters") : t("expandFilters")}
@@ -172,34 +193,33 @@ export function LearningFilters({
         </button>
 
         <div className="ml-auto flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 sm:text-[11px]">
-          <span>{t("resultsCount", { count: total })}</span>
-          {listLoading ? <span className="text-slate-400">{t("updating")}</span> : null}
-          {totalPages > 1 ? (
+          {!hidePagination ? (
             <>
-              <button
-                type="button"
-                className="rounded border border-slate-200 px-1.5 py-0.5 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
-                disabled={page <= 1}
-                onClick={() => onPageChange(Math.max(1, page - 1))}
-              >
-                {t("prevPage")}
-              </button>
-              <span>{t("pageOf", { page, total: totalPages })}</span>
-              <button
-                type="button"
-                className="rounded border border-slate-200 px-1.5 py-0.5 font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
-                disabled={page >= totalPages}
-                onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-              >
-                {t("nextPage")}
-              </button>
+              <span>{t("resultsCount", { count: total })}</span>
+              {listLoading ? <span className="text-slate-400">{t("updating")}</span> : null}
             </>
           ) : null}
         </div>
       </div>
+      ) : null}
 
       {expanded ? (
         <div className="animate-fade-in space-y-2 rounded-lg border border-slate-100 bg-slate-50/80 p-2">
+          {clients && clients.length > 0 && onClientChange && clientInExpanded ? (
+            <select
+              className="ui-select !py-1 text-xs"
+              value={clientSlug ?? ""}
+              onChange={(e) => onClientChange(e.target.value)}
+              aria-label={t("clientPickerLabel")}
+            >
+              <option value="">{t("clientPickerPlaceholder")}</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          ) : null}
           <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
             <select
               className="ui-select !py-1 text-xs"
@@ -225,18 +245,20 @@ export function LearningFilters({
                 </option>
               ))}
             </select>
-            <select
-              className="ui-select !py-1 text-xs"
-              value={status}
-              onChange={(e) => onStatusChange(e.target.value as LearningStatus | "")}
-            >
-              <option value="">{t("filterAllStatus")}</option>
-              {(["SUGGESTED", "APPROVED", "REJECTED", "ARCHIVED"] as LearningStatus[]).map((s) => (
-                <option key={s} value={s}>
-                  {t(`status.${s}`)}
-                </option>
-              ))}
-            </select>
+            {!hideStatus ? (
+              <select
+                className="ui-select !py-1 text-xs"
+                value={status}
+                onChange={(e) => onStatusChange(e.target.value as LearningStatus | "")}
+              >
+                <option value="">{t("filterAllStatus")}</option>
+                {(["SUGGESTED", "APPROVED", "REJECTED", "ARCHIVED"] as LearningStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {t(`status.${s}`)}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <select
               className="ui-select !py-1 text-xs"
               value={source}
@@ -263,26 +285,53 @@ export function LearningFilters({
             </select>
           </div>
 
-          <div className="grid gap-1.5 sm:grid-cols-2">
-            <div>
-              <label className="mb-0.5 block text-[10px] text-slate-500">{t("filterDateFrom")}</label>
-              <input
-                type="date"
-                className="ui-input !py-1 text-xs"
-                value={dateFrom}
-                onChange={(e) => onDateFromChange(e.target.value)}
-              />
+          {!hideDateFilters ? (
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              <div>
+                <label className="mb-0.5 block text-[10px] text-slate-500">{t("filterDateFrom")}</label>
+                <input
+                  type="date"
+                  className="ui-input !py-1 text-xs"
+                  value={dateFrom}
+                  onChange={(e) => onDateFromChange(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[10px] text-slate-500">{t("filterDateTo")}</label>
+                <input
+                  type="date"
+                  className="ui-input !py-1 text-xs"
+                  value={dateTo}
+                  onChange={(e) => onDateToChange(e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <label className="mb-0.5 block text-[10px] text-slate-500">{t("filterDateTo")}</label>
-              <input
-                type="date"
-                className="ui-input !py-1 text-xs"
-                value={dateTo}
-                onChange={(e) => onDateToChange(e.target.value)}
-              />
+          ) : null}
+
+          {hidePrimaryRow ? (
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              <select
+                className="ui-select !py-1 text-xs"
+                value={sortBy}
+                onChange={(e) => onSortByChange(e.target.value)}
+                aria-label={t("sortLabel")}
+              >
+                {sortOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="ui-select !py-1 text-xs"
+                value={sortDir}
+                onChange={(e) => onSortDirChange(e.target.value as "asc" | "desc")}
+              >
+                <option value="desc">{t("sortDir.desc")}</option>
+                <option value="asc">{t("sortDir.asc")}</option>
+              </select>
             </div>
-          </div>
+          ) : null}
 
           <div className="flex flex-wrap gap-1">
             <button

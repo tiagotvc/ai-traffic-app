@@ -39,6 +39,8 @@
     "reflect-metadata": "latest",
     "server-only": "latest",
     "stripe": "^22.2.0",
+    "inngest": "^3.35.1",
+    "@supabase/supabase-js": "^2.49.8",
     "typeorm": "latest",
     "zod": "latest"
   },

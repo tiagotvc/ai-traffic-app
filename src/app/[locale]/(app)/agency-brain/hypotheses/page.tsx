@@ -1,9 +1,5 @@
-"use client";
+import { BrainHypothesesPage } from "@/components/agency-brain/insights/BrainFeedPage";
 
-import { HypothesesContent } from "@/components/agency-brain/HypothesesContent";
-import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
-
-export default function HypothesesPage() {
-  const { clientSlug } = useAgencyBrainClient();
-  return <HypothesesContent clientId={clientSlug} />;
+export default function AgencyBrainHypothesesPage() {
+  return <BrainHypothesesPage />;
 }

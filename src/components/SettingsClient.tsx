@@ -11,30 +11,44 @@ import { WorkspaceTeamSection } from "@/components/WorkspaceTeamSection";
 
 type SettingsTab = "general" | "team" | "integrations" | "webhooks" | "data";
 
+export type { SettingsTab };
+
 const VALID_TABS = new Set<SettingsTab>(["general", "team", "integrations", "webhooks", "data"]);
 
-function parseTab(raw: string | null): SettingsTab {
+export function parseSettingsTab(raw: string | null): SettingsTab {
   if (raw && VALID_TABS.has(raw as SettingsTab)) return raw as SettingsTab;
   return "general";
+}
+
+function parseTab(raw: string | null): SettingsTab {
+  return parseSettingsTab(raw);
 }
 
 export function SettingsClient({
   locale,
   metaOAuthConfigured,
   metaOAuthError,
-  connectMetaSlot
+  connectMetaSlot,
+  embedded = false,
+  activeTab: controlledTab,
+  onActiveTabChange
 }: {
   locale: string;
   metaOAuthConfigured: boolean;
   metaOAuthError?: string | null;
   connectMetaSlot: ReactNode;
+  embedded?: boolean;
+  activeTab?: SettingsTab;
+  onActiveTabChange?: (tab: SettingsTab) => void;
 }) {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>(() => parseTab(searchParams.get("tab")));
+  const [internalTab, setInternalTab] = useState<SettingsTab>(() => parseTab(searchParams.get("tab")));
+  const activeTab = controlledTab ?? internalTab;
+  const setActiveTab = onActiveTabChange ?? setInternalTab;
 
   const [brandName, setBrandName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
@@ -103,8 +117,11 @@ export function SettingsClient({
   }, [loadTenant]);
 
   useEffect(() => {
-    setActiveTab(parseTab(searchParams.get("tab")));
-  }, [searchParams]);
+    const tab = parseTab(searchParams.get("tab"));
+    if (VALID_TABS.has(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, setActiveTab]);
 
   function selectTab(tab: SettingsTab) {
     setActiveTab(tab);
@@ -121,11 +138,8 @@ export function SettingsClient({
     { key: "data", label: t("tabData") }
   ];
 
-  return (
-    <div className="space-y-4">
-      <PageTabs tabs={tabs} active={activeTab} onChange={selectTab} />
-
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+  const panels = (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         {activeTab === "general" ? (
           <div className="space-y-4">
             <SettingsSection title={t("accountTitle")} subtitle={t("accountSubtitle")}>
@@ -459,7 +473,17 @@ export function SettingsClient({
             </SettingsSection>
           </div>
         ) : null}
-      </div>
+    </div>
+  );
+
+  if (embedded) {
+    return panels;
+  }
+
+  return (
+    <div className="space-y-4">
+      <PageTabs tabs={tabs} active={activeTab} onChange={selectTab} />
+      {panels}
     </div>
   );
 }

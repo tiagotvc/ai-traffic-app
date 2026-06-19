@@ -1,9 +1,5 @@
-"use client";
-
-import { ChatContent } from "@/components/agency-brain/ChatContent";
-import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
+import { AgencyBrainComingSoon } from "@/components/agency-brain/AgencyBrainComingSoon";
 
 export default function ChatPage() {
-  const { clientSlug } = useAgencyBrainClient();
-  return <ChatContent clientId={clientSlug} />;
+  return <AgencyBrainComingSoon moduleId="chat" />;
 }

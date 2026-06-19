@@ -1,125 +1,99 @@
 "use client";
 
-import { useLocale } from "next-intl";
-import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type AppLocale } from "@/i18n/routing";
 
-const LOCALE_LABELS: Record<AppLocale, string> = {
-  "pt-BR": "ptBR",
-  en: "en"
+const LOCALE_SHORT: Record<AppLocale, string> = {
+  "pt-BR": "PT",
+  en: "EN"
 };
 
 export function LanguageSwitcher({
   variant = "default",
-  collapsed = false
+  collapsed = false,
+  hideLabel = false
 }: {
   variant?: "default" | "sidebar";
   collapsed?: boolean;
+  hideLabel?: boolean;
 }) {
   const t = useTranslations("common");
   const locale = useLocale() as AppLocale;
   const pathname = usePathname();
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    const timer = window.setTimeout(() => {
-      document.addEventListener("click", onDoc);
-    }, 0);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener("click", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  const wrap =
-    variant === "sidebar"
-      ? collapsed
-        ? "flex justify-center px-0 py-1"
-        : "px-1 py-1"
-      : "mt-3 border-t border-surface-line pt-3";
-  const labelClass = variant === "sidebar" ? "text-[11px] text-slate-500" : "text-[11px] text-slate-500";
-
-  const triggerClass =
-    variant === "sidebar"
-      ? collapsed
-        ? "flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-sm text-slate-200 hover:bg-white/10"
-        : "flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-slate-200 hover:bg-white/10"
-      : "flex w-full items-center justify-between rounded-lg border border-surface-line bg-white px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-50";
 
   function pick(next: AppLocale) {
+    if (next === locale) return;
     router.replace(pathname, { locale: next });
-    setOpen(false);
   }
 
-  const menu = (
-    <div
-      className={`absolute z-[200] min-w-[140px] overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg ${
-        variant === "sidebar"
-          ? collapsed
-            ? "bottom-full left-0 mb-1"
-            : "bottom-full left-0 right-0 mb-1"
-          : "left-0 right-0 mt-1"
-      }`}
-      role="listbox"
-    >
-      {routing.locales.map((loc) => {
-        const active = loc === locale;
-        return (
-          <button
-            key={loc}
-            type="button"
-            role="option"
-            aria-selected={active}
-            onClick={() => pick(loc)}
-            className={`flex w-full px-3 py-2 text-left text-xs ${
-              active ? "bg-violet-50 font-medium text-violet-700" : "text-slate-800 hover:bg-slate-50"
-            }`}
-          >
-            {t(LOCALE_LABELS[loc])}
-          </button>
-        );
-      })}
-    </div>
-  );
+  if (variant === "sidebar") {
+    return (
+      <div className={collapsed ? "flex justify-center px-0 py-1" : "px-1 py-1"}>
+        <div
+          className={`flex gap-0.5 rounded-full border border-white/10 bg-white/[0.06] p-1 ${
+            collapsed ? "flex-col" : "w-full"
+          }`}
+          role="group"
+          aria-label={t("language")}
+        >
+          {routing.locales.map((loc) => {
+            const active = loc === locale;
+            return (
+              <button
+                key={loc}
+                type="button"
+                onClick={() => pick(loc)}
+                aria-pressed={active}
+                title={t(loc === "pt-BR" ? "ptBR" : "en")}
+                className={`rounded-full text-[11px] font-semibold tracking-wide transition-all duration-200 ${
+                  collapsed ? "h-7 w-7" : "flex-1 px-3 py-1.5"
+                } ${
+                  active
+                    ? "bg-violet-600 text-white shadow-md shadow-violet-900/40"
+                    : "text-slate-400 hover:bg-white/10 hover:text-slate-200"
+                }`}
+              >
+                {LOCALE_SHORT[loc]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const wrap = "mt-3 border-t border-surface-line pt-3";
+  const labelClass = "text-[11px] text-slate-500";
 
   return (
-    <div className={wrap} ref={rootRef}>
-      {!(variant === "sidebar" && collapsed) ? (
-        <div className={labelClass}>{t("language")}</div>
-      ) : null}
-      <div className={`relative ${variant === "sidebar" && !collapsed ? "mt-1" : ""}`}>
-        <button
-          type="button"
-          title={t("language")}
-          onClick={() => setOpen((o) => !o)}
-          className={triggerClass}
-          aria-expanded={open}
-          aria-haspopup="listbox"
+    <div className={wrap}>
+      {!hideLabel ? <div className={labelClass}>{t("language")}</div> : null}
+      <div className="relative mt-1">
+        <div
+          className="flex gap-0.5 rounded-full border border-surface-line bg-slate-100 p-1"
+          role="group"
+          aria-label={t("language")}
         >
-          {collapsed ? (
-            <span aria-hidden>🌐</span>
-          ) : (
-            <>
-              <span>{t(LOCALE_LABELS[locale])}</span>
-              <span className="text-slate-400">{open ? "▲" : "▼"}</span>
-            </>
-          )}
-        </button>
-        {open ? menu : null}
+          {routing.locales.map((loc) => {
+            const active = loc === locale;
+            return (
+              <button
+                key={loc}
+                type="button"
+                onClick={() => pick(loc)}
+                aria-pressed={active}
+                className={`flex-1 rounded-full px-2 py-1.5 text-xs font-medium transition-all duration-200 ${
+                  active ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:bg-white"
+                }`}
+              >
+                {t(loc === "pt-BR" ? "ptBR" : "en")}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

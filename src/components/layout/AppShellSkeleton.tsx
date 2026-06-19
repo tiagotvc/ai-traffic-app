@@ -14,6 +14,47 @@ import { FREE_LIMITS } from "@/lib/billing/types";
 
 const STORAGE_KEY = "traffic-ai-sidebar-collapsed";
 const HEARTBEAT_KEY = "traffic-ai-heartbeat";
+const ENTITLEMENTS_CACHE_KEY = "traffic-ai-shell-entitlements";
+
+type CachedEntitlements = {
+  planSlug: string;
+  planName: string;
+  subscriptionStatus: string;
+  limits: PlanLimits;
+  isPlatformAdmin?: boolean;
+};
+
+function readEntitlementsCache(): CachedEntitlements | null {
+  try {
+    const raw = sessionStorage.getItem(ENTITLEMENTS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedEntitlements;
+    if (!parsed?.limits) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeEntitlementsCache(data: CachedEntitlements) {
+  try {
+    sessionStorage.setItem(ENTITLEMENTS_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    /* ignore */
+  }
+}
+
+function limitsToBrainFeatures(limits: PlanLimits): AgencyBrainFeatureFlags {
+  return {
+    allowCreativeMemoryAi: limits.allowCreativeMemoryAi ?? true,
+    allowAgencyBrainHypotheses: limits.allowAgencyBrainHypotheses ?? true,
+    allowAgencyBrainDna: limits.allowAgencyBrainDna ?? true,
+    allowAgencyBrainTimeline: limits.allowAgencyBrainTimeline ?? false,
+    allowAgencyBrainExperiments: limits.allowAgencyBrainExperiments ?? false,
+    allowAgencyBrainActionPlans: limits.allowAgencyBrainActionPlans ?? false,
+    allowAgencyBrainChat: limits.allowAgencyBrainChat ?? false
+  };
+}
 
 const DEFAULT_BRAIN_FEATURES: AgencyBrainFeatureFlags = {
   allowCreativeMemoryAi: true,
@@ -35,6 +76,8 @@ function sidebarProps(
   allowCreativeMemoryAi: boolean,
   agencyBrainFeatures: AgencyBrainFeatureFlags,
   planLimits: PlanLimits,
+  planUsage: TenantUsage | undefined,
+  planLimitsReady: boolean,
   platformAdmin: boolean,
   collapsed: boolean,
   onToggleCollapse: () => void,
@@ -50,6 +93,7 @@ function sidebarProps(
     allowCreativeMemoryAi,
     agencyBrainFeatures,
     planLimits,
+    planLimitsReady,
     isPlatformAdmin: platformAdmin,
     collapsed,
     onToggleCollapse,
@@ -84,7 +128,18 @@ export function AppShellSkeleton({
   const [agencyBrainFeatures, setAgencyBrainFeatures] =
     useState<AgencyBrainFeatureFlags>(DEFAULT_BRAIN_FEATURES);
   const [planLimits, setPlanLimits] = useState<PlanLimits>(FREE_LIMITS);
+  const [planLimitsReady, setPlanLimitsReady] = useState(false);
   const [platformAdmin, setPlatformAdmin] = useState(isPlatformAdmin);
+
+  const applyEntitlements = useCallback((e: CachedEntitlements) => {
+    setPlanSlug(e.planSlug);
+    setPlanName(e.planName);
+    setSubscriptionStatus(e.subscriptionStatus);
+    setPlanLimits(e.limits);
+    setAllowCreativeMemoryAi(e.limits.allowCreativeMemoryAi ?? true);
+    setAgencyBrainFeatures(limitsToBrainFeatures(e.limits));
+    if (e.isPlatformAdmin != null) setPlatformAdmin(!!e.isPlatformAdmin);
+  }, []);
 
   useEffect(() => {
     try {
@@ -94,6 +149,14 @@ export function AppShellSkeleton({
     }
     setReady(true);
   }, []);
+
+  useEffect(() => {
+    const cached = readEntitlementsCache();
+    if (cached) {
+      applyEntitlements(cached);
+      setPlanLimitsReady(true);
+    }
+  }, [applyEntitlements]);
 
   useEffect(() => {
     setPlatformAdmin(isPlatformAdmin);
@@ -130,27 +193,22 @@ export function AppShellSkeleton({
           status?: string;
           limits?: PlanLimits;
         };
-        setPlanSlug(e.planSlug ?? "free");
-        setPlanName(e.planName ?? "Free");
-        setSubscriptionStatus(e.status ?? "active");
         const limits = e.limits;
-        if (limits) {
-          setPlanLimits(limits);
-          setAllowCreativeMemoryAi(limits.allowCreativeMemoryAi ?? true);
-          setAgencyBrainFeatures({
-            allowCreativeMemoryAi: limits.allowCreativeMemoryAi ?? true,
-            allowAgencyBrainHypotheses: limits.allowAgencyBrainHypotheses ?? true,
-            allowAgencyBrainDna: limits.allowAgencyBrainDna ?? true,
-            allowAgencyBrainTimeline: limits.allowAgencyBrainTimeline ?? false,
-            allowAgencyBrainExperiments: limits.allowAgencyBrainExperiments ?? false,
-            allowAgencyBrainActionPlans: limits.allowAgencyBrainActionPlans ?? false,
-            allowAgencyBrainChat: limits.allowAgencyBrainChat ?? false
-          });
-        }
-        if (j.isPlatformAdmin != null) setPlatformAdmin(!!j.isPlatformAdmin);
+        if (!limits) return;
+
+        const cached: CachedEntitlements = {
+          planSlug: e.planSlug ?? "free",
+          planName: e.planName ?? "Free",
+          subscriptionStatus: e.status ?? "active",
+          limits,
+          isPlatformAdmin: j.isPlatformAdmin != null ? !!j.isPlatformAdmin : undefined
+        };
+        applyEntitlements(cached);
+        writeEntitlementsCache(cached);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {})
+      .finally(() => setPlanLimitsReady(true));
+  }, [applyEntitlements]);
 
   useEffect(() => {
     loadShellData();
@@ -201,6 +259,8 @@ export function AppShellSkeleton({
     allowCreativeMemoryAi,
     agencyBrainFeatures,
     planLimits,
+    undefined,
+    planLimitsReady,
     platformAdmin,
     ready ? collapsed : false,
     toggleCollapsed
@@ -208,7 +268,7 @@ export function AppShellSkeleton({
 
   return (
     <PublishPanelProvider>
-      <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#f4f6f9] lg:flex-row">
+      <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#f4f6f9] dark:bg-slate-950 lg:flex-row">
         {/* Mobile top bar */}
         <header className="flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3 lg:hidden print:hidden">
           <button

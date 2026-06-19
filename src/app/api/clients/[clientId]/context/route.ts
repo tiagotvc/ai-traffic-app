@@ -4,6 +4,12 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 
+const CompetitorSchema = z.object({
+  name: z.string().min(1).max(120),
+  pageId: z.string().max(64).optional(),
+  pageUrl: z.string().max(500).optional()
+});
+
 const BodySchema = z.object({
   aiContext: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   niche: z
@@ -17,7 +23,9 @@ const BodySchema = z.object({
       "outro"
     ])
     .nullable()
-    .optional()
+    .optional(),
+  marketCountry: z.string().min(2).max(8).optional(),
+  competitors: z.array(CompetitorSchema).optional()
 });
 
 export async function GET(
@@ -34,7 +42,9 @@ export async function GET(
   return NextResponse.json({
     ok: true,
     aiContext: client.aiContext,
-    niche: client.niche ?? null
+    niche: client.niche ?? null,
+    marketCountry: client.marketCountry ?? "BR",
+    competitors: Array.isArray(client.competitors) ? client.competitors : []
   });
 }
 
@@ -66,7 +76,21 @@ export async function PATCH(
     client.niche = body.niche;
   }
 
+  if (body.marketCountry !== undefined) {
+    client.marketCountry = body.marketCountry.trim().toUpperCase();
+  }
+
+  if (body.competitors !== undefined) {
+    client.competitors = body.competitors;
+  }
+
   await clientRepo.save(client);
 
-  return NextResponse.json({ ok: true, aiContext: client.aiContext, niche: client.niche });
+  return NextResponse.json({
+    ok: true,
+    aiContext: client.aiContext,
+    niche: client.niche,
+    marketCountry: client.marketCountry ?? "BR",
+    competitors: client.competitors ?? []
+  });
 }

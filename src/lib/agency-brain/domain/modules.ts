@@ -6,6 +6,7 @@ export const AGENCY_BRAIN_MODULES = [
   "dna",
   "timeline",
   "experiments",
+  "labs",
   "action-plans",
   "chat"
 ] as const;
@@ -21,8 +22,32 @@ export type AgencyBrainModuleMeta = {
   navPillar: AgencyBrainNavPillar;
   phase: 1 | 2 | 3 | 4 | 5 | 6;
   featureFlag?: keyof AgencyBrainFeatureFlags;
-  navAccent?: "cyan";
+  navAccent?: "pink";
+  /** Visible in nav but not navigable (future release). */
+  comingSoon?: boolean;
+  /** Shown in MVP sidebar (single-link mode hides modules with false). */
+  mvpVisible?: boolean;
 };
+
+/** MVP sidebar: learnings + hypotheses submenus. */
+export const AGENCY_BRAIN_MVP_NAV_ITEMS = [
+  {
+    id: "learnings" as const,
+    navKey: "agencyBrainLearnings",
+    href: "/agency-brain"
+  },
+  {
+    id: "hypotheses" as const,
+    navKey: "agencyBrainHypotheses",
+    href: "/agency-brain/hypotheses"
+  }
+];
+
+/** MVP sidebar parent entry. */
+export const AGENCY_BRAIN_MVP_NAV = {
+  route: "/agency-brain",
+  navKey: "agencyBrainInsights"
+} as const;
 
 export type AgencyBrainFeatureFlags = {
   allowCreativeMemoryAi: boolean;
@@ -42,7 +67,8 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     route: "/agency-brain/learnings",
     navKey: "agencyBrainLearnings",
     navPillar: "memory",
-    phase: 1
+    phase: 1,
+    mvpVisible: false
   },
   {
     id: "hypotheses",
@@ -50,14 +76,8 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     navKey: "agencyBrainHypotheses",
     navPillar: "memory",
     phase: 1,
-    featureFlag: "allowAgencyBrainHypotheses"
-  },
-  {
-    id: "suggestions",
-    route: "/agency-brain/suggestions",
-    navKey: "agencyBrainActionCenter",
-    navPillar: "actions",
-    phase: 1
+    featureFlag: "allowAgencyBrainHypotheses",
+    mvpVisible: false
   },
   {
     id: "dna",
@@ -65,24 +85,16 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     navKey: "agencyBrainDna",
     navPillar: "memory",
     phase: 1,
-    featureFlag: "allowAgencyBrainDna"
+    featureFlag: "allowAgencyBrainDna",
+    mvpVisible: false
   },
   {
-    id: "timeline",
-    route: "/agency-brain/timeline",
-    navKey: "agencyBrainTimeline",
-    navPillar: "analysis",
-    phase: 2,
-    featureFlag: "allowAgencyBrainTimeline"
-  },
-  {
-    id: "experiments",
-    route: "/agency-brain/experiments",
-    navKey: "agencyBrainExperiments",
-    navPillar: "analysis",
-    phase: 3,
-    featureFlag: "allowAgencyBrainExperiments",
-    navAccent: "cyan"
+    id: "suggestions",
+    route: "/agency-brain/suggestions",
+    navKey: "agencyBrainActionCenter",
+    navPillar: "actions",
+    phase: 1,
+    mvpVisible: false
   },
   {
     id: "action-plans",
@@ -90,7 +102,30 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     navKey: "agencyBrainActionPlans",
     navPillar: "actions",
     phase: 4,
-    featureFlag: "allowAgencyBrainActionPlans"
+    featureFlag: "allowAgencyBrainActionPlans",
+    comingSoon: true,
+    mvpVisible: false
+  },
+  {
+    id: "timeline",
+    route: "/agency-brain/timeline",
+    navKey: "agencyBrainTimeline",
+    navPillar: "analysis",
+    phase: 2,
+    featureFlag: "allowAgencyBrainTimeline",
+    comingSoon: true,
+    mvpVisible: false
+  },
+  {
+    id: "labs",
+    route: "/agency-brain/labs",
+    navKey: "agencyBrainLabs",
+    navPillar: "analysis",
+    phase: 3,
+    featureFlag: "allowAgencyBrainExperiments",
+    navAccent: "pink",
+    comingSoon: true,
+    mvpVisible: false
   },
   {
     id: "chat",
@@ -98,7 +133,9 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     navKey: "agencyBrainChat",
     navPillar: "analysis",
     phase: 5,
-    featureFlag: "allowAgencyBrainChat"
+    featureFlag: "allowAgencyBrainChat",
+    comingSoon: true,
+    mvpVisible: false
   }
 ];
 

@@ -36,5 +36,13 @@ export class Client extends AppBaseEntity {
   /** Market segment for Agency Brain context */
   @Column({ type: "text", nullable: true })
   niche?: string | null;
+
+  /** Primary market country code (BR, EU, UK, US, etc.) */
+  @Column({ type: "text", nullable: true })
+  marketCountry?: string | null;
+
+  /** Competitors for market scan — [{ name, pageId?, pageUrl? }] */
+  @Column({ type: "jsonb", default: [] })
+  competitors!: unknown;
 }
 

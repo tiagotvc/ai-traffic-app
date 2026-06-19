@@ -61,7 +61,7 @@ export function AppShell({
 
   return (
     <PublishPanelProvider>
-      <div className="flex h-screen overflow-hidden bg-[#f4f6f9]">
+      <div className="flex h-screen overflow-hidden bg-[#f4f6f9] dark:bg-slate-950">
         <AppSidebar
           userName={userName}
           userEmail={userEmail}
