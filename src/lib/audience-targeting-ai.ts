@@ -2,8 +2,11 @@ import "server-only";
 
 import { z } from "zod";
 
-import type { TargetingItem } from "@/components/MetaTargetingSelect";
-import type { DraftTargeting } from "@/lib/campaign-draft";
+import {
+  TRAFFIC_AI_AUDIENCE_PREFIX,
+  type AudienceTargetingSuggestion,
+  type AudienceTargetingSuggestionItem
+} from "@/lib/audience-targeting-shared";
 import { llmGenerateJson } from "@/lib/llm/generate-json";
 import type { LlmProviderId } from "@/lib/llm/types";
 import {
@@ -11,7 +14,12 @@ import {
   searchAdTargetingCategories
 } from "@/lib/meta-graph";
 
-export const TRAFFIC_AI_AUDIENCE_PREFIX = "[Traffic AI]";
+export {
+  TRAFFIC_AI_AUDIENCE_PREFIX,
+  applySuggestionToDraftTargeting,
+  type AudienceTargetingSuggestion,
+  type AudienceTargetingSuggestionItem
+} from "@/lib/audience-targeting-shared";
 
 export const AudienceTargetingBriefSchema = z.object({
   businessDescription: z.string().min(3).max(500),
@@ -46,25 +54,6 @@ const PickSchema = z.object({
   demographicIds: z.array(z.string()).max(6),
   reasoning: z.string().optional()
 });
-
-export type AudienceTargetingSuggestionItem = {
-  type: "interest" | "behavior" | "demographic";
-  id: string;
-  name: string;
-  reason?: string;
-};
-
-export type AudienceTargetingSuggestion = {
-  title: string;
-  summary: string;
-  name: string;
-  targeting: Record<string, unknown>;
-  items: AudienceTargetingSuggestionItem[];
-  includeCustomAudienceIds: string[];
-  excludeCustomAudienceIds: string[];
-  provider: LlmProviderId;
-  modelUsed: string;
-};
 
 type CatalogItem = {
   type: "interest" | "behavior" | "demographic";
@@ -220,80 +209,6 @@ export function suggestionItemsFromPick(
   }
 
   return items;
-}
-
-export function applySuggestionToDraftTargeting(
-  current: DraftTargeting,
-  suggestion: AudienceTargetingSuggestion
-): DraftTargeting {
-  const targeting = suggestion.targeting;
-  const flex = targeting.flexible_spec as Array<Record<string, unknown>> | undefined;
-
-  const interests: TargetingItem[] = [];
-  const detailedGroups: DraftTargeting["detailedGroups"] = [];
-
-  if (flex?.length) {
-    for (const spec of flex) {
-      const groupItems: TargetingItem[] = [];
-      const interestsRaw = (spec.interests as Array<{ id: string; name?: string }>) ?? [];
-      const behaviorsRaw = (spec.behaviors as Array<{ id: string; name?: string }>) ?? [];
-      const demoRaw = (spec.life_events as Array<{ id: string; name?: string }>) ?? [];
-
-      for (const i of interestsRaw) {
-        groupItems.push({
-          value: i.id,
-          label: i.name ?? i.id,
-          meta: { kind: "interest" }
-        });
-      }
-      for (const b of behaviorsRaw) {
-        groupItems.push({
-          value: b.id,
-          label: b.name ?? b.id,
-          meta: { kind: "behavior" }
-        });
-      }
-      for (const d of demoRaw) {
-        groupItems.push({
-          value: d.id,
-          label: d.name ?? d.id,
-          meta: { kind: "demographic" }
-        });
-      }
-      if (groupItems.length) detailedGroups.push({ items: groupItems });
-    }
-  }
-
-  for (const item of suggestion.items.filter((i) => i.type === "interest")) {
-    if (!interests.some((x) => x.value === item.id)) {
-      interests.push({ value: item.id, label: item.name, meta: { kind: "interest" } });
-    }
-  }
-
-  const ageMin = typeof targeting.age_min === "number" ? targeting.age_min : current.ageMin;
-  const ageMax = typeof targeting.age_max === "number" ? targeting.age_max : current.ageMax;
-  const genders = targeting.genders as number[] | undefined;
-  let gender: DraftTargeting["gender"] = current.gender;
-  if (genders?.length === 1 && genders[0] === 1) gender = "male";
-  if (genders?.length === 1 && genders[0] === 2) gender = "female";
-
-  const includeIds = [
-    ...new Set([...current.customAudienceIds, ...suggestion.includeCustomAudienceIds])
-  ];
-  const excludeIds = [
-    ...new Set([...current.excludedAudienceIds, ...suggestion.excludeCustomAudienceIds])
-  ];
-
-  return {
-    ...current,
-    ageMin,
-    ageMax,
-    gender,
-    interests: detailedGroups.length ? [] : interests.length ? interests : current.interests,
-    detailedGroups: detailedGroups.length ? detailedGroups : current.detailedGroups,
-    customAudienceIds: includeIds,
-    excludedAudienceIds: excludeIds
-  };
 }
 
 export async function generateAudienceTargetingSuggestion(args: {

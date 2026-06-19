@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
-import type { AudienceTargetingSuggestion } from "@/lib/audience-targeting-ai";
+import type { AudienceTargetingSuggestion } from "@/lib/audience-targeting-shared";
 
 type LlmProviderId = "gemini" | "claude";
 

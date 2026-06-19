@@ -8,7 +8,7 @@ import type { PublishAudience } from "@/hooks/usePublishAssets";
 import {
   applySuggestionToDraftTargeting,
   type AudienceTargetingSuggestion
-} from "@/lib/audience-targeting-ai";
+} from "@/lib/audience-targeting-shared";
 import type { DraftTargeting } from "@/lib/campaign-draft";
 
 type Props = {
