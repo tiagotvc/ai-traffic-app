@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { coercePlacements, defaultPlacements, type PlacementConfig } from "@/lib/campaign-placements";
 import { defaultUtm, type UtmFields } from "@/lib/campaign-utm";
+import { validateAdCreativeForMeta } from "@/lib/meta-ad-creative";
 import { normalizeMessageTemplateDraft } from "@/lib/meta-welcome-message";
 
 export const CAMPAIGN_OBJECTIVES = [
@@ -699,9 +700,8 @@ export function validateAdStep(d: CampaignDraftPayload): string | null {
   for (const ad of d.ads) {
     if (!ad.name.trim()) return "adNameRequired";
     if (!ad.pageId.trim()) return "pageRequired";
-    if (!adHasMedia(ad)) return "mediaRequired";
-    if (!ad.titles.some((x) => x.trim())) return "titlesRequired";
-    if (!ad.bodies.some((x) => x.trim())) return "bodiesRequired";
+    const creativeErr = validateAdCreativeForMeta(ad);
+    if (creativeErr) return creativeErr;
     if (d.objective === "leads" && ad.destinationType === "instant_form") {
       if (!ad.leadFormId) return "leadFormRequired";
     } else if (ad.destinationType === "whatsapp" || ad.destinationType === "instant_form") {

@@ -277,6 +277,7 @@ export function CampaignDraftProvider({
     if (isInheritedCampaignDraft(payloadRef.current)) return;
     const p = payloadRef.current;
     const name = draftNameRef.current || p.campaign.name || "Rascunho";
+    const clientId = clients.find((c) => c.slug === p.clientSlug || c.id === p.clientSlug)?.id ?? null;
     setSaving(true);
     setSaveError(null);
     try {
@@ -284,7 +285,7 @@ export function CampaignDraftProvider({
         const res = await fetch(`/api/campaign-templates/${encodeURIComponent(draftIdRef.current)}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name, payload: p })
+          body: JSON.stringify({ name, payload: p, clientId })
         });
         const j = await res.json();
         if (!j.ok) throw new Error(j.error ?? "saveFailed");
@@ -292,7 +293,7 @@ export function CampaignDraftProvider({
         const res = await fetch("/api/campaign-templates", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name, payload: p })
+          body: JSON.stringify({ name, payload: p, clientId })
         });
         const j = (await res.json()) as { ok?: boolean; template?: { id: string }; error?: string };
         if (!j.ok || !j.template) throw new Error(j.error ?? "saveFailed");
@@ -312,7 +313,7 @@ export function CampaignDraftProvider({
     } finally {
       setSaving(false);
     }
-  }, []);
+  }, [clients]);
 
   const scheduleSave = useCallback(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);

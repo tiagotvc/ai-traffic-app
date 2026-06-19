@@ -78,6 +78,8 @@ type CampaignRow = {
   status?: string;
   objective?: string | null;
   preset?: string;
+  isDraft?: boolean;
+  draftTemplateId?: string;
 };
 
 type ClientOption = { id: string; slug: string; name: string };
@@ -197,7 +199,7 @@ export function CampaignsHubClient() {
   const displayRows = useMemo(() => {
     let list = rows;
     if (metaFilters.length) {
-      list = list.filter((r) => matchesCampaignFilters(r, metaFilters));
+      list = list.filter((r) => r.isDraft || matchesCampaignFilters(r, metaFilters));
     }
     if (q.trim()) {
       const qq = q.toLowerCase();
@@ -211,8 +213,23 @@ export function CampaignsHubClient() {
     return list;
   }, [rows, metaFilters, q]);
 
+  const draftDisplayRows = useMemo(
+    () => displayRows.filter((r) => r.isDraft),
+    [displayRows]
+  );
+  const publishedDisplayRows = useMemo(
+    () => displayRows.filter((r) => !r.isDraft),
+    [displayRows]
+  );
+
   function campaignPreset(row: CampaignRow): string {
+    if (row.isDraft) return "default";
     return presets[row.metaCampaignId] ?? row.preset ?? "default";
+  }
+
+  function draftResumeHref(r: CampaignRow): string {
+    const qs = r.clientSlug ? `?client=${encodeURIComponent(r.clientSlug)}` : "";
+    return `/campaigns/new/${r.draftTemplateId ?? r.metaCampaignId.replace(/^draft:/, "")}${qs}`;
   }
 
   function mergePresetsFromResponse(j: { presets?: Record<string, string>; rows?: CampaignRow[] }) {
@@ -434,7 +451,9 @@ export function CampaignsHubClient() {
     if (page > pageCount) setPage(1);
   }, [page, pageCount]);
 
-  const pickCampaign = (r: CampaignRow) => {    setSelectedId(r.metaCampaignId);
+  const pickCampaign = (r: CampaignRow) => {
+    if (r.isDraft) return;
+    setSelectedId(r.metaCampaignId);
     setSelectedSlug(r.clientSlug);
     setSelectedRow(r);
     rememberCampaign(r.metaCampaignId, r.clientSlug);
@@ -490,7 +509,16 @@ export function CampaignsHubClient() {
       case "campaign":
         return (
           <td key={col} className="max-w-md px-4 py-3 text-left align-top">
-            <div className="whitespace-normal break-words font-medium text-slate-900">{r.campaignName}</div>
+            {r.isDraft ? (
+              <Link
+                href={draftResumeHref(r)}
+                className="block whitespace-normal break-words font-medium text-violet-800 hover:underline"
+              >
+                {r.campaignName}
+              </Link>
+            ) : (
+              <div className="whitespace-normal break-words font-medium text-slate-900">{r.campaignName}</div>
+            )}
           </td>
         );
       case "campaignId":
@@ -562,9 +590,13 @@ export function CampaignsHubClient() {
       case "status":
         return (
           <td key={col} className={`${center} text-center`}>
-            <Badge variant={r.status === "ACTIVE" ? "success" : "neutral"}>
-              {r.status === "ACTIVE" ? t("statusActive") : t("statusInactive")}
-            </Badge>
+            {r.isDraft ? (
+              <Badge variant="warning">{t("statusDraft")}</Badge>
+            ) : (
+              <Badge variant={r.status === "ACTIVE" ? "success" : "neutral"}>
+                {r.status === "ACTIVE" ? t("statusActive") : t("statusInactive")}
+              </Badge>
+            )}
           </td>
         );
       case "alerts":
@@ -828,11 +860,60 @@ export function CampaignsHubClient() {
             />
           ) : rows.length === 0 ? (
             <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
-          ) : displayRows.length === 0 ? (
+          ) : publishedDisplayRows.length === 0 && draftDisplayRows.length === 0 ? (
             <div className="ui-card p-8 text-center text-sm text-slate-500">{t("emptyFiltered")}</div>
           ) : (
-            groupKeys.map((preset) => {
-              const list = displayRows.filter((r) => campaignPreset(r) === preset);
+            <>
+              {draftDisplayRows.length > 0 ? (
+                <div className="ui-card overflow-hidden border-violet-200">
+                  <div className="flex items-center justify-between border-b border-violet-100 bg-violet-50/60 px-4 py-3">
+                    <div className="text-sm font-semibold text-violet-900">
+                      {t("draftsSectionTitle")}{" "}
+                      <span className="font-normal text-violet-600">({draftDisplayRows.length})</span>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[680px] text-sm">
+                      <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                        <tr>
+                          <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>{t("filterStatus")}</th>
+                          <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>{t("colCampaign")}</th>
+                          <th className="whitespace-nowrap px-3 py-2 text-center">{t("colClient")}</th>
+                          <th className="whitespace-nowrap px-3 py-2 text-center">{t("resumeDraft")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {draftDisplayRows.map((r) => (
+                          <tr key={r.metaCampaignId} className="group border-t border-slate-100 hover:bg-violet-50/40">
+                            <td className={STICKY_STATUS_TD}>
+                              <Badge variant="warning">{t("statusDraft")}</Badge>
+                            </td>
+                            <td className={STICKY_NAME_TD}>
+                              <Link
+                                href={draftResumeHref(r)}
+                                className="block whitespace-normal break-words text-left font-medium text-violet-800 hover:underline"
+                              >
+                                {r.campaignName}
+                              </Link>
+                            </td>
+                            <td className="truncate px-3 py-2.5 text-center text-slate-600">{r.clientName}</td>
+                            <td className="px-3 py-2.5 text-center">
+                              <Link
+                                href={draftResumeHref(r)}
+                                className="text-xs font-medium text-violet-700 hover:underline"
+                              >
+                                {t("resumeDraft")}
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+              {groupKeys.map((preset) => {
+              const list = publishedDisplayRows.filter((r) => campaignPreset(r) === preset);
               if (!list.length) return null;
               const groupMetricColumns = metricsColumnsForPreset(preset, customTypesMap);
               const groupSort = groupSorts[preset];
@@ -986,7 +1067,8 @@ export function CampaignsHubClient() {
                   </div>
                 </div>
               );
-            })
+            })}
+            </>
           )}
         </div>
       ) : (
@@ -1026,19 +1108,20 @@ export function CampaignsHubClient() {
                     ))}
                   </tr>
                 ))
-              ) : rows.length === 0 ? (
+              ) : displayRows.length === 0 ? (
                 <tr>
                   <td colSpan={visibleColumns.length} className="px-4 py-8 text-center text-slate-500">
-                    {t("empty")}
+                    {t("emptyFiltered")}
                   </td>
                 </tr>
               ) : (
-                rows.map((r) => (                  <tr
+                displayRows.map((r) => (
+                  <tr
                     key={r.metaCampaignId}
-                    className={`cursor-pointer border-t border-slate-100 hover:bg-violet-50/40 ${
-                      selectedId === r.metaCampaignId ? "bg-violet-50/60" : ""
-                    }`}
-                    onClick={() => pickCampaign(r)}
+                    className={`border-t border-slate-100 hover:bg-violet-50/40 ${
+                      r.isDraft ? "" : "cursor-pointer"
+                    } ${!r.isDraft && selectedId === r.metaCampaignId ? "bg-violet-50/60" : ""}`}
+                    onClick={() => !r.isDraft && pickCampaign(r)}
                   >
                     {visibleColumns.map((col) => renderCell(col, r))}
                   </tr>

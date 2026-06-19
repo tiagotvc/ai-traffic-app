@@ -7,7 +7,8 @@ import { CampaignDraftPayloadSchema } from "@/lib/campaign-draft";
 
 const PatchSchema = z.object({
   name: z.string().min(1).optional(),
-  payload: CampaignDraftPayloadSchema.optional()
+  payload: CampaignDraftPayloadSchema.optional(),
+  clientId: z.string().uuid().nullable().optional()
 });
 
 type RouteCtx = { params: Promise<{ id: string }> };
@@ -34,6 +35,7 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   }
   if (body.name !== undefined) template.name = body.name;
   if (body.payload !== undefined) template.payload = body.payload;
+  if (body.clientId !== undefined) template.clientId = body.clientId;
   await repo.save(template);
   return NextResponse.json({ ok: true, template });
 }

@@ -91,29 +91,13 @@ export function AdStep() {
     scrollToAdForm();
   }
 
-  function addBlankAd() {
-    const newId = newDraftId();
+  function removeAd(adId: string) {
+    if (payload.ads.length <= 1) return;
     updatePayload((p) => {
-      const base = getActiveAd(p);
-      const blank: AdDraftItem = {
-        ...defaultAdItem(locale),
-        id: newId,
-        name: `${base.name} 2`,
-        pageId: base.pageId,
-        instagramActorId: base.instagramActorId,
-        pixelId: base.pixelId,
-        linkUrl: base.linkUrl,
-        destinationType: base.destinationType,
-        leadFormId: base.leadFormId,
-        urlParams: base.urlParams,
-        callToAction: base.callToAction,
-        whatsappWelcomeMessage: base.whatsappWelcomeMessage,
-        tracking: { ...base.tracking },
-        targetAdsetIds: [...base.targetAdsetIds]
-      };
-      return { ...p, ads: [...p.ads, blank], activeAdId: newId };
+      const ads = p.ads.filter((a) => a.id !== adId);
+      const activeAdId = p.activeAdId === adId ? ads[0]!.id : p.activeAdId;
+      return { ...p, ads, activeAdId };
     });
-    scrollToAdForm();
   }
 
   function handleImport(imported: ImportedAdConfig, mode: "copy" | "media" | "all") {
@@ -278,26 +262,31 @@ export function AdStep() {
 
       <div className="flex flex-wrap items-center gap-2">
         {payload.ads.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            onClick={() => selectAd(a.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs ${
-              ad.id === a.id
-                ? "bg-violet-100 font-medium text-violet-800"
-                : "bg-slate-100 text-slate-600"
-            }`}
-          >
-            {a.name || t("treeAd")}
-          </button>
+          <span key={a.id} className="inline-flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => selectAd(a.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs ${
+                ad.id === a.id
+                  ? "bg-violet-100 font-medium text-violet-800"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              {a.name || t("treeAd")}
+            </button>
+            {payload.ads.length > 1 ? (
+              <button
+                type="button"
+                onClick={() => removeAd(a.id)}
+                className="rounded-md px-1 py-0.5 text-xs text-slate-400 hover:bg-red-50 hover:text-red-600"
+                title={t("removeAd")}
+                aria-label={t("removeAd")}
+              >
+                ×
+              </button>
+            ) : null}
+          </span>
         ))}
-        <button
-          type="button"
-          onClick={() => addBlankAd()}
-          className="rounded-lg border border-dashed border-violet-300 px-3 py-1.5 text-xs text-violet-700"
-        >
-          {t("addAd")}
-        </button>
       </div>
 
       <div className="relative">
@@ -703,14 +692,14 @@ export function AdStep() {
           <button
             type="button"
             onClick={() => addAd("same_text")}
-            className="ui-btn-secondary flex-1 text-xs"
+            className="ui-btn-secondary flex-1 text-xs transition-transform duration-200 hover:scale-[1.03] hover:border-violet-300 hover:bg-violet-50 hover:text-violet-800"
           >
             {t("presetSameText")}
           </button>
           <button
             type="button"
             onClick={() => addAd("same_image")}
-            className="ui-btn-secondary flex-1 text-xs"
+            className="ui-btn-secondary flex-1 text-xs transition-transform duration-200 hover:scale-[1.03] hover:border-violet-300 hover:bg-violet-50 hover:text-violet-800"
           >
             {t("presetSameImage")}
           </button>

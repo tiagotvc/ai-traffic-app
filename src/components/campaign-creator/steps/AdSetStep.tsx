@@ -42,6 +42,22 @@ export function AdSetStep() {
     updatePayload({ activeAdsetId: id });
   }
 
+  function removeAdset(adsetId: string) {
+    if (payload.adsets.length <= 1 || addAdsetMode) return;
+    updatePayload((p) => {
+      const adsets = p.adsets.filter((a) => a.id !== adsetId);
+      const activeAdsetId = p.activeAdsetId === adsetId ? adsets[0]!.id : p.activeAdsetId;
+      const ads = p.ads.map((ad) => {
+        if (ad.targetAdsetIds.includes("__all__")) return ad;
+        const targets = ad.targetAdsetIds.filter((id) => id !== adsetId);
+        if (targets.length > 0) return { ...ad, targetAdsetIds: targets };
+        return { ...ad, targetAdsetIds: [activeAdsetId] };
+      });
+      const activeAdId = ads.some((a) => a.id === p.activeAdId) ? p.activeAdId : ads[0]?.id ?? p.activeAdId;
+      return { ...p, adsets, activeAdsetId, ads, activeAdId };
+    });
+  }
+
   return (
     <div className="space-y-4">
       {!payload.clientSlug ? (
@@ -53,18 +69,30 @@ export function AdSetStep() {
       {payload.adsets.length > 1 ? (
         <div className="flex flex-wrap gap-2">
           {payload.adsets.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => selectAdset(a.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs ${
-                adset.id === a.id
-                  ? "bg-violet-100 font-medium text-violet-800"
-                  : "bg-slate-100 text-slate-600"
-              }`}
-            >
-              {a.name || t("treeAdset")}
-            </button>
+            <span key={a.id} className="inline-flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => selectAdset(a.id)}
+                className={`rounded-lg px-3 py-1.5 text-xs ${
+                  adset.id === a.id
+                    ? "bg-violet-100 font-medium text-violet-800"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {a.name || t("treeAdset")}
+              </button>
+              {!addAdsetMode ? (
+                <button
+                  type="button"
+                  onClick={() => removeAdset(a.id)}
+                  className="rounded-md px-1 py-0.5 text-xs text-slate-400 hover:bg-red-50 hover:text-red-600"
+                  title={t("removeAdset")}
+                  aria-label={t("removeAdset")}
+                >
+                  ×
+                </button>
+              ) : null}
+            </span>
           ))}
         </div>
       ) : null}

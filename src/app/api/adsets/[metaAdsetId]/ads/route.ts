@@ -8,6 +8,7 @@ import { defaultPlacements } from "@/lib/campaign-placements";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
 import { requireMetaPublishConfig } from "@/lib/client-publish-config";
 import { publishAdToAdset } from "@/lib/meta-campaign";
+import { MetaCreativeValidationError } from "@/lib/meta-ad-creative";
 import { fetchAdSetDetail } from "@/lib/meta-graph";
 
 const BodySchema = z.object({
@@ -101,7 +102,11 @@ export async function POST(
 
     return NextResponse.json({ ok: true, ...result, adsetId: metaAdsetId });
   } catch (err) {
+    const code = err instanceof MetaCreativeValidationError ? err.code : undefined;
     const msg = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: code ?? msg, message: code ?? msg },
+      { status: code ? 400 : 500 }
+    );
   }
 }

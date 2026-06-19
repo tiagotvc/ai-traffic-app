@@ -3,6 +3,7 @@ import type { AdDraftItem, AdSetDraftItem, CampaignDraftPayload } from "@/lib/ca
 import { draftTargetingToApi, resolveAdTargetAdsets } from "@/lib/campaign-draft";
 import { defaultPlacements, placementsToMetaTargeting } from "@/lib/campaign-placements";
 import { composeAdLinkUrl, defaultUtm, type UtmTokenContext } from "@/lib/campaign-utm";
+import { buildMetaAssetFeedSpec } from "@/lib/meta-ad-creative";
 import { mapLimit } from "@/lib/concurrency";
 import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
 import { pickInstagramActorId } from "@/lib/meta-instagram";
@@ -293,15 +294,11 @@ async function createAdForAdset(args: {
         ? "SIGN_UP"
         : cta);
 
-  const assetFeedSpec: Record<string, unknown> = {
-    ...(ad.format === "video" && ad.videoIds.length
-      ? { videos: ad.videoIds.map((video_id) => ({ video_id })) }
-      : { images: ad.imageHashes.map((hash) => ({ hash })) }),
-    titles: ad.titles.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
-    bodies: ad.bodies.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
-    link_urls: [{ website_url: resolvedLink }],
-    call_to_action_types: [resolvedCta]
-  };
+  const assetFeedSpec = buildMetaAssetFeedSpec({
+    ad,
+    resolvedLink,
+    resolvedCta
+  });
 
   const instagramId = pickInstagramActorId(
     [ad.instagramActorId, settings?.instagramActorId],
