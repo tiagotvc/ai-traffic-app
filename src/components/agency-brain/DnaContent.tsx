@@ -3,6 +3,9 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
+import { AgencyBrainEmptyGuide } from "@/components/agency-brain/AgencyBrainEmptyGuide";
+import { AgencyBrainModuleIntro } from "@/components/agency-brain/AgencyBrainModuleIntro";
+import { ClientMarketContextPanel } from "@/components/agency-brain/ClientMarketContextPanel";
 import { FeedbackBanner, type FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
 import type { ClientDnaPayload, DnaBucket } from "@/lib/agency-brain/domain/schemas";
 
@@ -162,6 +165,10 @@ export function DnaContent({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
+      <AgencyBrainModuleIntro moduleId="dna" compact />
+
+      <ClientMarketContextPanel clientId={clientId} />
+
       <div className="flex flex-wrap justify-end gap-2">
         <button
           type="button"
@@ -186,7 +193,11 @@ export function DnaContent({ clientId }: { clientId: string }) {
         <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
       ) : !dna ? (
         <div className="space-y-4">
-          <div className="ui-card p-8 text-center text-sm text-slate-500">{t("dnaEmpty")}</div>
+          <AgencyBrainEmptyGuide
+            title={t("mvp_dna_emptyTitle")}
+            description={t("dnaEmpty")}
+            steps={[t("mvp_dna_step1"), t("mvp_dna_step2"), t("mvp_dna_step3")]}
+          />
           {nichePatterns.length > 0 ? (
             <div className="ui-card p-4">
               <h3 className="font-semibold text-slate-900">{t("nicheInsightsTitle")}</h3>

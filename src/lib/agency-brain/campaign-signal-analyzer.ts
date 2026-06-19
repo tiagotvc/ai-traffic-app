@@ -47,6 +47,33 @@ function pctDelta(actual: number, baseline: number): number {
   return ((actual - baseline) / baseline) * 100;
 }
 
+/** Ignora variações insignificantes ou valores quase iguais após arredondamento. */
+function isMeaningfulMetricDelta(
+  actual: number | null,
+  baseline: number | null,
+  deltaPercent: number,
+  minAbsDeltaPct = 8,
+  minRelativeDiff = 0.03
+): boolean {
+  if (actual == null || baseline == null || baseline <= 0) return false;
+  if (Math.abs(deltaPercent) < minAbsDeltaPct) return false;
+  const relativeDiff = Math.abs(actual - baseline) / baseline;
+  return relativeDiff >= minRelativeDiff;
+}
+
+function resolveCpaBaseline(
+  prevCpa: number | null,
+  baseline30Cpa: number | null
+): { cpa: number | null; kind: CampaignSignal["baseline"]["kind"] } {
+  if (prevCpa != null && prevCpa > 0) {
+    return { cpa: prevCpa, kind: "previousWindow" };
+  }
+  if (baseline30Cpa != null && baseline30Cpa > 0) {
+    return { cpa: baseline30Cpa, kind: "campaign30d" };
+  }
+  return { cpa: null, kind: "previousWindow" };
+}
+
 export function analyzeClientCampaigns(input: {
   clientId: string;
   current: CampaignMetricsRow[];
@@ -73,28 +100,35 @@ export function analyzeClientCampaigns(input: {
     const prevCtr = prev?.ctr ?? null;
     const prevRoas = prev?.roas ?? null;
 
-    const effectiveCpa = base30?.cpa ?? null;
-    const effectiveCtr = base30?.ctr ?? null;
-    const effectiveRoas = base30?.roas ?? null;
+    const baseline30Cpa = base30?.cpa ?? null;
+    const baseline30Ctr = base30?.ctr ?? null;
+    const baseline30Roas = base30?.roas ?? null;
 
-    const baselineSpend = base30?.spend ?? prev?.spend ?? 0;
-    const baselineConversions = base30?.conversions ?? prev?.conversions ?? 0;
+    const cpaBaseline = resolveCpaBaseline(prevCpa, baseline30Cpa);
+    const ctrBaseline = prevCtr ?? baseline30Ctr;
+    const roasBaseline = prevRoas ?? baseline30Roas;
 
-    const baselineKind: CampaignSignal["baseline"]["kind"] = base30 ? "campaign30d" : "previousWindow";
+    const baselineSpend = prev?.spend ?? base30?.spend ?? 0;
+    const baselineConversions = prev?.conversions ?? base30?.conversions ?? 0;
 
     const baseline = {
-      kind: baselineKind,
+      kind: cpaBaseline.kind,
       windowDays,
-      cpa: base30 ? effectiveCpa : prevCpa,
-      ctr: base30 ? effectiveCtr : prevCtr,
-      roas: base30 ? effectiveRoas : prevRoas,
+      cpa: cpaBaseline.cpa,
+      ctr: ctrBaseline,
+      roas: roasBaseline,
       spend: baselineSpend,
       conversions: baselineConversions
     };
 
-    const cpaDelta = effectiveCpa != null && campaign.cpa != null ? pctDelta(campaign.cpa, effectiveCpa) : campaign.cpaDeltaPct ?? 0;
-    const ctrDelta = effectiveCtr != null ? pctDelta(campaign.ctr, effectiveCtr) : campaign.ctrDeltaPct ?? 0;
-    const roasDelta = effectiveRoas != null ? pctDelta(campaign.roas, effectiveRoas) : campaign.roasDeltaPct ?? 0;
+    const cpaDelta =
+      campaign.cpa != null && cpaBaseline.cpa != null
+        ? pctDelta(campaign.cpa, cpaBaseline.cpa)
+        : 0;
+    const ctrDelta =
+      ctrBaseline != null ? pctDelta(campaign.ctr, ctrBaseline) : campaign.ctrDeltaPct ?? 0;
+    const roasDelta =
+      roasBaseline != null ? pctDelta(campaign.roas, roasBaseline) : campaign.roasDeltaPct ?? 0;
 
     const spendRatio = totalSpend > 0 ? campaign.spend / totalSpend : 0;
 
@@ -123,8 +157,12 @@ export function analyzeClientCampaigns(input: {
       });
     }
 
-    // CPA eficiente (menor é melhor)
-    if (campaign.cpa != null && campaign.conversions >= 3) {
+    // CPA eficiente (menor é melhor) — baseline e delta sempre alinhados
+    if (
+      campaign.cpa != null &&
+      campaign.conversions >= 3 &&
+      isMeaningfulMetricDelta(campaign.cpa, cpaBaseline.cpa, cpaDelta)
+    ) {
       if (cpaDelta <= thresholds.cpaStrongPct) {
         pushSignal("cpa_efficient", "strong", cpaDelta);
       } else if (cpaDelta <= thresholds.cpaWeakPct) {
@@ -133,13 +171,21 @@ export function analyzeClientCampaigns(input: {
     }
 
     // CTR forte
-    if (campaign.impressions >= 300 && ctrDelta >= thresholds.ctrWeakPct) {
+    if (
+      campaign.impressions >= 300 &&
+      isMeaningfulMetricDelta(campaign.ctr, ctrBaseline, ctrDelta, 10, 0.05) &&
+      ctrDelta >= thresholds.ctrWeakPct
+    ) {
       if (ctrDelta >= thresholds.ctrStrongPct) pushSignal("ctr_strong", "strong", ctrDelta);
       else pushSignal("ctr_strong", "medium", ctrDelta);
     }
 
     // ROAS em alta
-    if (roasDelta >= thresholds.roasLiftWeakPct && campaign.spend >= spendThreshold * 0.3) {
+    if (
+      roasDelta >= thresholds.roasLiftWeakPct &&
+      campaign.spend >= spendThreshold * 0.3 &&
+      isMeaningfulMetricDelta(campaign.roas, roasBaseline, roasDelta, 10, 0.05)
+    ) {
       if (roasDelta >= thresholds.roasLiftStrongPct) pushSignal("roas_lift", "medium", roasDelta);
       else pushSignal("roas_lift", "weak", roasDelta);
     }
@@ -210,7 +256,16 @@ export function analyzeClientCampaigns(input: {
     }
   }
 
-  // Ordena por prioridade.
-  return signals.sort((a, b) => b.priorityScore - a.priorityScore);
+  // Ordena por prioridade e mantém no máximo um sinal por campanha.
+  const sorted = signals.sort((a, b) => b.priorityScore - a.priorityScore);
+  const byCampaign = new Map<string, CampaignSignal>();
+  for (const signal of sorted) {
+    const key = signal.campaign.metaCampaignId;
+    const existing = byCampaign.get(key);
+    if (!existing || signal.priorityScore > existing.priorityScore) {
+      byCampaign.set(key, signal);
+    }
+  }
+  return Array.from(byCampaign.values()).sort((a, b) => b.priorityScore - a.priorityScore);
 }
 

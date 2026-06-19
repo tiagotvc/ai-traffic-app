@@ -62,6 +62,17 @@ export function useAgencyBrain(clientId: string) {
 
   const load = useCallback(
     async (opts?: { initial?: boolean }) => {
+      if (!clientId) {
+        setSummary(null);
+        setLearnings([]);
+        setTotal(0);
+        setClientName("");
+        setCampaigns([]);
+        setLoading(false);
+        setListLoading(false);
+        return;
+      }
+
       if (opts?.initial) setLoading(true);
       else setListLoading(true);
 
@@ -133,11 +144,14 @@ export function useAgencyBrain(clientId: string) {
   );
 
   useEffect(() => {
+    if (!clientId) return;
     void load({ initial: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId]);
 
   useEffect(() => {
-    if (!loading) void load();
+    if (!clientId || loading) return;
+    void load();
   }, [
     debouncedSearch,
     category,

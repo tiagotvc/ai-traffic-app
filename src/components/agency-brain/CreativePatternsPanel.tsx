@@ -49,7 +49,13 @@ const TIER_STYLES: Record<CreativePatternRow["tier"], string> = {
   underperformer: "border-rose-200 bg-rose-50/80"
 };
 
-export function CreativePatternsPanel({ clientId }: { clientId: string }) {
+export function CreativePatternsPanel({
+  clientId,
+  embedded = false
+}: {
+  clientId: string;
+  embedded?: boolean;
+}) {
   const t = useTranslations("creativePatterns");
   const [rows, setRows] = useState<CreativePatternRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,15 +86,17 @@ export function CreativePatternsPanel({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900">{t("title")}</h2>
-          <p className="text-xs text-slate-500">{t("subtitle")}</p>
+      {!embedded ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">{t("title")}</h2>
+            <p className="text-xs text-slate-500">{t("subtitle")}</p>
+          </div>
+          <Link href="/creatives" className="text-xs font-medium text-violet-600 hover:underline">
+            {t("openLibrary")}
+          </Link>
         </div>
-        <Link href="/creatives" className="text-xs font-medium text-violet-600 hover:underline">
-          {t("openLibrary")}
-        </Link>
-      </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-px">
         {(["all", "winner", "fatigue", "underperformer"] as const).map((key) => (

@@ -6,6 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAgencyBrainAi } from "@/components/agency-brain/AgencyBrainAiContext";
 import { BrainListCard } from "@/components/agency-brain/BrainListCard";
 import { BrainListToolbar } from "@/components/agency-brain/BrainListToolbar";
+import { AgencyBrainEmptyGuide } from "@/components/agency-brain/AgencyBrainEmptyGuide";
+import { AgencyBrainModuleIntro } from "@/components/agency-brain/AgencyBrainModuleIntro";
 import { FeedbackBanner, type FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
 import { parseAiAnalysisResponse } from "@/components/agency-brain/handleAiAnalysisResponse";
 import { Badge } from "@/components/ui/Badge";
@@ -210,6 +212,8 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
+      <AgencyBrainModuleIntro moduleId="hypotheses" compact />
+
       <div className="flex flex-wrap justify-end gap-2">
         <button
           type="button"
@@ -290,7 +294,15 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
       {loading ? (
         <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
       ) : items.length === 0 ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("hypothesesEmpty")}</div>
+        <AgencyBrainEmptyGuide
+          title={t("mvp_hypotheses_emptyTitle")}
+          description={t("hypothesesEmpty")}
+          steps={[
+            t("mvp_hypotheses_step1"),
+            t("mvp_hypotheses_step2"),
+            t("mvp_hypotheses_step3")
+          ]}
+        />
       ) : (
         <div className="space-y-3">
           {items.map((item) => {

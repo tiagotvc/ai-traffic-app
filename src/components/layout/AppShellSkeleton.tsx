@@ -259,6 +259,7 @@ export function AppShellSkeleton({
     allowCreativeMemoryAi,
     agencyBrainFeatures,
     planLimits,
+    undefined,
     planLimitsReady,
     platformAdmin,
     ready ? collapsed : false,

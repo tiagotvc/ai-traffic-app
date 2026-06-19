@@ -1,12 +1,5 @@
-"use client";
-
-import { AgencyBrainClientGate } from "@/components/agency-brain/AgencyBrainClientGate";
-import { TimelineContent } from "@/components/agency-brain/TimelineContent";
+import { AgencyBrainComingSoon } from "@/components/agency-brain/AgencyBrainComingSoon";
 
 export default function TimelinePage() {
-  return (
-    <AgencyBrainClientGate>
-      {(clientSlug) => <TimelineContent clientId={clientSlug} />}
-    </AgencyBrainClientGate>
-  );
+  return <AgencyBrainComingSoon moduleId="timeline" />;
 }

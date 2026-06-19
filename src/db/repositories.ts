@@ -54,7 +54,7 @@ import type { ClientExperiment } from "@/db/entities/ClientExperiment";
 import type { ClientActionPlan } from "@/db/entities/ClientActionPlan";
 import type { ClientActionPlanItem } from "@/db/entities/ClientActionPlanItem";
 import type { TenantAddon } from "@/db/entities/TenantAddon";
-import type { MessageTemplate } from "@/db/entities/MessageTemplate";
+import type { MarketMemory } from "@/db/entities/MarketMemory";
 import type { VideoUploadSession } from "@/db/entities/VideoUploadSession";
 import type { VideoUploadPart } from "@/db/entities/VideoUploadPart";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
@@ -119,7 +119,8 @@ const ENTITY = {
   ClientExperiment: "ClientExperiment",
   ClientActionPlan: "ClientActionPlan",
   ClientActionPlanItem: "ClientActionPlanItem",
-  TenantAddon: "TenantAddon"
+  TenantAddon: "TenantAddon",
+  MarketMemory: "MarketMemory"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -208,6 +209,7 @@ export async function repositories() {
     clientExperiment: repositoryFor<ClientExperiment>(ds, ENTITY.ClientExperiment),
     clientActionPlan: repositoryFor<ClientActionPlan>(ds, ENTITY.ClientActionPlan),
     clientActionPlanItem: repositoryFor<ClientActionPlanItem>(ds, ENTITY.ClientActionPlanItem),
-    tenantAddon: repositoryFor<TenantAddon>(ds, ENTITY.TenantAddon)
+    tenantAddon: repositoryFor<TenantAddon>(ds, ENTITY.TenantAddon),
+    marketMemory: repositoryFor<MarketMemory>(ds, ENTITY.MarketMemory)
   };
 }

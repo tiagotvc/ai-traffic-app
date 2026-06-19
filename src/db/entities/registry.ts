@@ -60,6 +60,7 @@ import { ClientTimelineEvent } from "./ClientTimelineEvent";
 import { ClientExperiment } from "./ClientExperiment";
 import { ClientActionPlan } from "./ClientActionPlan";
 import { ClientActionPlanItem } from "./ClientActionPlanItem";
+import { MarketMemory } from "./MarketMemory";
 import { TenantAddon } from "./TenantAddon";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
@@ -122,7 +123,8 @@ export {
   ClientExperiment,
   ClientActionPlan,
   ClientActionPlanItem,
-  TenantAddon
+  TenantAddon,
+  MarketMemory
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -206,7 +208,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: ClientExperiment, name: "ClientExperiment" },
   { ctor: ClientActionPlan, name: "ClientActionPlan" },
   { ctor: ClientActionPlanItem, name: "ClientActionPlanItem" },
-  { ctor: TenantAddon, name: "TenantAddon" }
+  { ctor: TenantAddon, name: "TenantAddon" },
+  { ctor: MarketMemory, name: "MarketMemory" }
 ]);
 
 export const typeOrmEntities = [
@@ -268,5 +271,6 @@ export const typeOrmEntities = [
   ClientExperiment,
   ClientActionPlan,
   ClientActionPlanItem,
-  TenantAddon
+  TenantAddon,
+  MarketMemory
 ] as const;

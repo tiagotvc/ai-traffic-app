@@ -49,18 +49,51 @@ function titleForLearning(signal: CampaignSignal): string {
 }
 
 function descriptionForLearning(signal: CampaignSignal): string {
-  const delta = Math.abs(signal.deltaPercent).toFixed(0);
   const baseline = signal.baseline;
+  const delta = signal.deltaPercent;
+  const absDelta = Math.abs(delta).toFixed(0);
+  const baselineLabel =
+    baseline.kind === "previousWindow" ? "semana anterior" : "média 30 dias";
+
   if (signal.type === "cpa_efficient" && signal.campaign.cpa != null && baseline.cpa != null) {
-    return `CPA R$ ${signal.campaign.cpa.toFixed(2)} vs baseline R$ ${baseline.cpa.toFixed(2)} (${delta}% melhor). Considere escalar.`;
+    if (Math.abs(delta) < 8) {
+      return `CPA R$ ${signal.campaign.cpa.toFixed(2)} estável vs ${baselineLabel} (R$ ${baseline.cpa.toFixed(2)}).`;
+    }
+    return `CPA R$ ${signal.campaign.cpa.toFixed(2)} vs ${baselineLabel} R$ ${baseline.cpa.toFixed(2)} (${absDelta}% melhor). Considere escalar.`;
   }
-  if (signal.type === "ctr_strong") {
-    return `CTR ${signal.campaign.ctr.toFixed(2)}% vs baseline ${baseline.ctr?.toFixed(2) ?? "—"}% (+${delta}%).`;
+  if (signal.type === "ctr_strong" && baseline.ctr != null) {
+    return `CTR ${signal.campaign.ctr.toFixed(2)}% vs ${baselineLabel} ${baseline.ctr.toFixed(2)}% (+${absDelta}%).`;
   }
-  if (signal.type === "roas_lift") {
-    return `ROAS ${signal.campaign.roas.toFixed(2)} vs baseline ${baseline.roas?.toFixed(2) ?? "—"} (+${delta}%).`;
+  if (signal.type === "roas_lift" && baseline.roas != null) {
+    return `ROAS ${signal.campaign.roas.toFixed(2)} vs ${baselineLabel} ${baseline.roas.toFixed(2)} (+${absDelta}%).`;
   }
-  return `Métrica com variação de ${delta}% vs baseline da campanha.`;
+  return `Variação de ${absDelta}% vs ${baselineLabel}.`;
+}
+
+function evidenceBaselineValue(signal: CampaignSignal): number | undefined {
+  switch (signal.type) {
+    case "cpa_efficient":
+      return signal.baseline.cpa ?? undefined;
+    case "ctr_strong":
+      return signal.baseline.ctr ?? undefined;
+    case "roas_lift":
+      return signal.baseline.roas ?? undefined;
+    default:
+      return signal.baseline.cpa ?? signal.baseline.ctr ?? undefined;
+  }
+}
+
+function evidenceActualValue(signal: CampaignSignal): number | undefined {
+  switch (signal.type) {
+    case "cpa_efficient":
+      return signal.campaign.cpa ?? undefined;
+    case "ctr_strong":
+      return signal.campaign.ctr;
+    case "roas_lift":
+      return signal.campaign.roas;
+    default:
+      return signal.campaign.cpa ?? signal.campaign.ctr;
+  }
 }
 
 export function signalsToLearningDrafts(
@@ -103,8 +136,8 @@ export function signalsToLearningDrafts(
           ruleId,
           reason: `Signal ${signal.type} tier ${signal.tier}`,
           deltaPercent: signal.deltaPercent,
-          baselineValue: signal.baseline.cpa ?? signal.baseline.ctr ?? undefined,
-          actualValue: signal.campaign.cpa ?? signal.campaign.ctr,
+          baselineValue: evidenceBaselineValue(signal),
+          actualValue: evidenceActualValue(signal),
           metaCampaignId: signal.campaign.metaCampaignId,
           campaignName: signal.campaign.campaignName,
           comparedTo: signal.baseline.kind

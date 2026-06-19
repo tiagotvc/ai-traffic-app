@@ -1,103 +1,247 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { AgencyBrainAiBar } from "@/components/agency-brain/AgencyBrainAiBar";
+import { AgencyBrainEmptyGuide } from "@/components/agency-brain/AgencyBrainEmptyGuide";
 import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
-import { BrainSummaryCards } from "@/components/agency-brain/BrainMemoryDashboard";
+import { AgencyLearningCard } from "@/components/agency-brain/AgencyLearningCard";
 import { CreativePatternsPanel } from "@/components/agency-brain/CreativePatternsPanel";
 import { FeedbackSnackbar } from "@/components/agency-brain/FeedbackSnackbar";
-import { LearningCard } from "@/components/agency-brain/LearningCard";
+import type { LearningContentFilterId } from "@/components/agency-brain/LearningContentFilter";
+import { LearningsFeedTimeline } from "@/components/agency-brain/LearningsFeedTimeline";
+import { LearningsHero } from "@/components/agency-brain/LearningsHero";
+import {
+  LearningsFilterBar,
+  type CategoryChipId,
+  type FeedViewId
+} from "@/components/agency-brain/LearningsFilterBar";
 import { LearningFilters } from "@/components/agency-brain/LearningFilters";
 import { LearningFormModal } from "@/components/agency-brain/LearningFormModal";
+import { LearningPagination } from "@/components/agency-brain/LearningPagination";
+import { MarketLearningsPanel } from "@/components/agency-brain/MarketLearningsPanel";
 import { useAgencyBrain } from "@/components/agency-brain/useAgencyBrain";
+import { useAgencyLearnings } from "@/components/agency-brain/useAgencyLearnings";
+import { useMarketLearnings } from "@/components/agency-brain/useMarketLearnings";
+import {
+  type LearningLensId
+} from "@/lib/agency-brain/learning-lens-catalog";
+import type { LearningScopeId } from "@/lib/agency-brain/learning-scopes";
 import type { LearningDto } from "@/lib/agency-brain/types";
+
+function statusForFeedView(view: FeedViewId): "SUGGESTED" | "APPROVED" {
+  return view === "insights" ? "SUGGESTED" : "APPROVED";
+}
 
 export function AgencyBrainContent({ clientId }: { clientId: string }) {
   const t = useTranslations("agencyBrain");
   const { clients, onClientChange } = useAgencyBrainClient();
   const brain = useAgencyBrain(clientId);
 
+  const [scope, setScope] = useState<LearningScopeId>("client");
+  const [feedView, setFeedView] = useState<FeedViewId>("insights");
+  const [categoryChip, setCategoryChip] = useState<CategoryChipId>("ALL");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const agency = useAgencyLearnings(scope === "agency");
+  const market = useMarketLearnings(clientId, scope === "market");
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<LearningDto | null>(null);
-  const [tab, setTab] = useState<"learnings" | "patterns">("learnings");
+  const [contentFilter, setContentFilter] = useState<LearningContentFilterId>("learnings");
+
+  const showPatterns = contentFilter === "patterns" && scope === "client";
+  const showLearningsList =
+    contentFilter === "learnings" && (scope === "client" || scope === "agency");
+  const showMarketPanel = contentFilter === "learnings" && scope === "market";
+  const showFeedControls = contentFilter === "learnings" && scope !== "market";
+
+  useEffect(() => {
+    if (scope === "client" && contentFilter === "learnings") {
+      brain.setStatus(statusForFeedView(feedView));
+    }
+  }, [clientId, scope, contentFilter, feedView]);
+
+  function applyClientLens(lensId: LearningLensId) {
+    const status = statusForFeedView(feedView);
+
+    if (lensId === "ALL") {
+      brain.setCategory("");
+      brain.setImpact("");
+      brain.setStatus(status);
+    } else if (lensId === "HIGH_IMPACT") {
+      brain.setCategory("");
+      brain.setImpact("HIGH");
+      brain.setStatus(status);
+    } else {
+      brain.setCategory(lensId);
+      brain.setImpact("");
+      brain.setStatus(status);
+    }
+    brain.setPage(1);
+  }
+
+  function handleCategoryChip(chip: CategoryChipId) {
+    setCategoryChip(chip);
+    const lensId: LearningLensId = chip === "ALL" ? "ALL" : chip;
+
+    if (scope === "agency") {
+      if (lensId === "ALL") {
+        agency.setCategory("");
+        agency.setImpact("");
+      } else {
+        agency.setCategory(lensId);
+        agency.setImpact("");
+      }
+      agency.setPage(1);
+      return;
+    }
+
+    applyClientLens(lensId);
+  }
+
+  function handleFeedViewChange(view: FeedViewId) {
+    setFeedView(view);
+    brain.setStatus(statusForFeedView(view));
+    brain.setPage(1);
+  }
+
+  function handleScopeSelect(next: LearningScopeId) {
+    setScope(next);
+    if (next === "client") brain.setPage(1);
+    if (next === "agency") agency.setPage(1);
+  }
+
+  const feedbackMessage = scope === "market" ? market.message : brain.message;
+  const showClientActions = scope === "client" && contentFilter === "learnings";
+
+  const advancedActiveCount = useMemo(() => {
+    const contentExtra = contentFilter === "patterns" ? 1 : 0;
+    if (scope === "agency") {
+      return (
+        [agency.category, agency.impact, agency.source, agency.confidence, agency.tagFilter].filter(
+          Boolean
+        ).length + contentExtra
+      );
+    }
+    return (
+      [
+        brain.category,
+        brain.impact,
+        brain.source,
+        brain.confidence,
+        brain.dateFrom,
+        brain.dateTo,
+        brain.tagFilter
+      ].filter(Boolean).length + contentExtra
+    );
+  }, [scope, agency, brain, contentFilter]);
+
+  const listSearch = scope === "agency" ? agency.search : brain.search;
+  const onListSearchChange = scope === "agency" ? agency.setSearch : brain.setSearch;
 
   return (
-    <>
-      <div className="flex min-h-0 flex-1 flex-col gap-2">
-        {/* Page header: title + actions */}
-        <div className="shrink-0 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
-                {t("title")}
-              </h1>
-              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
-                {t("beta")}
-              </span>
-            </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="shrink-0 space-y-4">
+        <LearningsHero
+          showActions={showClientActions}
+          summary={brain.summary}
+          detecting={brain.detecting}
+          aiAnalyzing={brain.aiAnalyzing}
+          aiDisabled={brain.aiDisabled}
+          onDetectPatterns={() => void brain.handleDetectPatterns()}
+          onAiAnalyze={() => void brain.handleAiAnalyze()}
+          onNewLearning={() => {
+            setEditing(null);
+            setModalOpen(true);
+          }}
+        />
 
-            <div className="flex flex-wrap items-center gap-1.5">
-              <AgencyBrainAiBar variant="compact" />
-              {tab === "learnings" ? (
-                <>
-                  <button
-                    type="button"
-                    className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
-                    onClick={() => void brain.handleDetectPatterns()}
-                    disabled={brain.detecting || brain.aiAnalyzing}
-                  >
-                    {brain.detecting ? t("detecting") : t("detectPatterns")}
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-500 disabled:opacity-50"
-                    onClick={() => void brain.handleAiAnalyze()}
-                    disabled={brain.detecting || brain.aiAnalyzing || brain.aiDisabled}
-                    title={brain.aiDisabled ? t("aiLimit") : undefined}
-                  >
-                    {brain.aiAnalyzing ? t("analyzingWithAi") : t("analyzeWithAi")}
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-                    onClick={() => {
-                      setEditing(null);
-                      setModalOpen(true);
-                    }}
-                  >
-                    {t("newLearning")}
-                  </button>
-                </>
-              ) : null}
-            </div>
-          </div>
+        <LearningsFilterBar
+          scope={scope}
+          onScopeChange={handleScopeSelect}
+          feedView={feedView}
+          onFeedViewChange={handleFeedViewChange}
+          categoryChip={categoryChip}
+          onCategoryChipChange={handleCategoryChip}
+          search={listSearch}
+          onSearchChange={onListSearchChange}
+          advancedOpen={advancedOpen}
+          onAdvancedToggle={() => setAdvancedOpen((v) => !v)}
+          advancedActiveCount={advancedActiveCount}
+          showFeedControls={showFeedControls}
+        />
 
-          <div className="flex gap-6 border-b border-slate-200">
-            {(["learnings", "patterns"] as const).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setTab(key)}
-                className={`-mb-px border-b-2 pb-2.5 text-sm font-medium transition ${
-                  tab === key
-                    ? "border-violet-600 text-violet-700"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
-              >
-                {key === "learnings" ? t("tabLearnings") : t("tabPatterns")}
-              </button>
-            ))}
-          </div>
+        {advancedOpen ? (
+          <div className="rounded-lg border border-slate-200/80 bg-white/50 p-2">
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              {t("filterContentLabel")}
+            </label>
+            <select
+              className="ui-select mb-2 !py-1 text-xs"
+              value={contentFilter}
+              onChange={(e) => {
+                const next = e.target.value as LearningContentFilterId;
+                setContentFilter(next);
+                if (next === "patterns") setScope("client");
+              }}
+            >
+              <option value="learnings">{t("contentFilterLearnings")}</option>
+              <option value="patterns">{t("contentFilterPatterns")}</option>
+            </select>
 
-          {tab === "patterns" ? (
-            <CreativePatternsPanel clientId={clientId} />
-          ) : (
-            <>
-              <BrainSummaryCards summary={brain.summary} compact />
-
+            {scope === "agency" ? (
               <LearningFilters
+                embedded
+                hidePrimaryRow
+                expanded={advancedOpen}
+                onExpandedChange={setAdvancedOpen}
+                clientInExpanded
+                clients={clients}
+                clientSlug={clientId}
+                onClientChange={onClientChange}
+                search={agency.search}
+                category={agency.category}
+                impact={agency.impact}
+                status=""
+                source={agency.source}
+                confidence={agency.confidence}
+                dateFrom=""
+                dateTo=""
+                tagFilter={agency.tagFilter}
+                onSearchChange={agency.setSearch}
+                onCategoryChange={agency.setCategory}
+                onImpactChange={agency.setImpact}
+                onStatusChange={() => undefined}
+                onSourceChange={agency.setSource}
+                onConfidenceChange={agency.setConfidence}
+                onDateFromChange={() => undefined}
+                onDateToChange={() => undefined}
+                onTagFilterChange={agency.setTagFilter}
+                sortBy={agency.sortBy}
+                sortDir={agency.sortDir}
+                sortOptions={[
+                  { value: "createdAt", label: t("sortBy.createdAt") },
+                  { value: "confidenceScore", label: t("sortBy.confidence") },
+                  { value: "impact", label: t("sortBy.impact") }
+                ]}
+                onSortByChange={(v) => agency.setSortBy(v as typeof agency.sortBy)}
+                onSortDirChange={agency.setSortDir}
+                total={agency.total}
+                listLoading={agency.listLoading}
+                page={agency.page}
+                totalPages={agency.totalPages}
+                onPageChange={agency.setPage}
+                hideStatus
+                hideDateFilters
+                hidePagination
+              />
+            ) : (
+              <LearningFilters
+                embedded
+                hidePrimaryRow
+                expanded={advancedOpen}
+                onExpandedChange={setAdvancedOpen}
+                clientInExpanded
                 clients={clients}
                 clientSlug={clientId}
                 onClientChange={onClientChange}
@@ -111,7 +255,10 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
                 dateTo={brain.dateTo}
                 tagFilter={brain.tagFilter}
                 onSearchChange={brain.setSearch}
-                onCategoryChange={brain.setCategory}
+                onCategoryChange={(c) => {
+                  brain.setCategory(c);
+                  setCategoryChip(c || "ALL");
+                }}
                 onImpactChange={brain.setImpact}
                 onStatusChange={brain.setStatus}
                 onSourceChange={brain.setSource}
@@ -129,43 +276,65 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
                 page={brain.page}
                 totalPages={brain.totalPages}
                 onPageChange={brain.setPage}
+                hideStatus
+                hidePagination
               />
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        ) : null}
+      </div>
 
-        {tab === "learnings" ? (
-          <>
-            <div className="learnings-scroll min-h-0 flex-1 overflow-y-auto pr-0.5">
+      <div className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
+        {showPatterns ? (
+          <div className="learnings-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
+            <CreativePatternsPanel clientId={clientId} embedded />
+          </div>
+        ) : null}
+
+        {showLearningsList && scope === "client" ? (
+          <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="learnings-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
               {brain.loading ? (
                 <div className="flex h-full min-h-[120px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 text-sm text-slate-500">
                   {t("loading")}
                 </div>
               ) : brain.learnings.length === 0 ? (
-                <div className="flex h-full min-h-[120px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 text-sm text-slate-500">
-                  {t("empty")}
-                </div>
+                <AgencyBrainEmptyGuide
+                  title={
+                    feedView === "insights"
+                      ? t("memoryViewEmptyReview")
+                      : t("memoryViewEmptySaved")
+                  }
+                  description={t("empty")}
+                  steps={[
+                    t("mvp_learnings_step1"),
+                    t("mvp_learnings_step2"),
+                    t("mvp_learnings_step3")
+                  ]}
+                />
               ) : (
-                <div className="space-y-2 pb-1">
-                  {brain.learnings.map((learning, index) => (
-                    <LearningCard
-                      key={learning.id}
-                      learning={learning}
-                      clientId={clientId}
-                      index={index}
-                      actionLoadingId={brain.actionLoadingId}
-                      onApprove={(id) => void brain.patchAction(id, "approve")}
-                      onReject={(id) => void brain.patchAction(id, "reject")}
-                      onArchive={(id) => void brain.patchAction(id, "archive")}
-                      onEdit={(item) => {
-                        setEditing(item);
-                        setModalOpen(true);
-                      }}
-                    />
-                  ))}
-                </div>
+                <LearningsFeedTimeline
+                  learnings={brain.learnings}
+                  clientId={clientId}
+                  actionLoadingId={brain.actionLoadingId}
+                  onApprove={(id) => void brain.patchAction(id, "approve")}
+                  onReject={(id) => void brain.patchAction(id, "reject")}
+                  onArchive={(id) => void brain.patchAction(id, "archive")}
+                  onEdit={(item) => {
+                    setEditing(item);
+                    setModalOpen(true);
+                  }}
+                />
               )}
             </div>
+
+            <LearningPagination
+              page={brain.page}
+              totalPages={brain.totalPages}
+              total={brain.total}
+              listLoading={brain.listLoading}
+              onPageChange={brain.setPage}
+            />
 
             <LearningFormModal
               open={modalOpen}
@@ -184,11 +353,66 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
               campaigns={brain.campaigns}
               saving={brain.saving}
             />
-          </>
+          </div>
+        ) : null}
+
+        {showLearningsList && scope === "agency" ? (
+          <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="learnings-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
+              {agency.loading ? (
+                <div className="flex h-full min-h-[120px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 text-sm text-slate-500">
+                  {t("loading")}
+                </div>
+              ) : agency.items.length === 0 ? (
+                <AgencyBrainEmptyGuide
+                  title={t("learningScopeAgencyEmptyTitle")}
+                  description={t("learningScopeAgencyEmpty")}
+                  steps={[t("mvp_learnings_step1"), t("learningScopeAgencyEmptyStep")]}
+                />
+              ) : (
+                <div className="space-y-4 pb-2">
+                  {agency.items.map((learning, index) => (
+                    <AgencyLearningCard key={learning.id} learning={learning} index={index} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <LearningPagination
+              page={agency.page}
+              totalPages={agency.totalPages}
+              total={agency.total}
+              listLoading={agency.listLoading}
+              onPageChange={agency.setPage}
+            />
+          </div>
+        ) : null}
+
+        {showMarketPanel ? (
+          <div className="learnings-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
+            <MarketLearningsPanel
+              clientId={clientId}
+              items={market.items}
+              niche={market.niche}
+              aggregated={market.aggregated}
+              loading={market.loading}
+              scanning={market.scanning}
+              synthesizing={market.synthesizing}
+              aiDisabled={market.aiDisabled}
+              hasScan={market.hasScan}
+              coverageLevel={market.coverageLevel}
+              adsAnalyzed={market.adsAnalyzed}
+              competitorsScanned={market.competitorsScanned}
+              apiConfigured={market.apiConfigured}
+              scannedAt={market.scannedAt}
+              onScan={() => void market.handleScan()}
+              onSynthesize={() => void market.handleSynthesize()}
+            />
+          </div>
         ) : null}
       </div>
 
-      <FeedbackSnackbar message={brain.message} />
-    </>
+      <FeedbackSnackbar message={feedbackMessage} />
+    </div>
   );
 }

@@ -40,6 +40,7 @@ import { MessageTemplates1735830700000 } from "./0037-MessageTemplates";
 import { ClientMetaSettingsDefaultUtm1735830800000 } from "./0038-ClientMetaSettingsDefaultUtm";
 import { VideoUploadSessions1735830900000 } from "./0039-VideoUploadSessions";
 import { AudienceInsightBreakdowns1735831000000 } from "./0040-AudienceInsightBreakdowns";
+import { MarketMemoryAndClientCompetitors1735831100000 } from "./0041-MarketMemoryAndClientCompetitors";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -80,9 +81,10 @@ export const appMigrations = [
   TenantMemberCampaignTableLayouts1735830400000,
   CustomMetrics1735830500000,
   TenantWebhooks_1735830600000,
-  LabsCore1735830700000
+  LabsCore1735830700000,
   MessageTemplates1735830700000,
   ClientMetaSettingsDefaultUtm1735830800000,
   VideoUploadSessions1735830900000,
-  AudienceInsightBreakdowns1735831000000
+  AudienceInsightBreakdowns1735831000000,
+  MarketMemoryAndClientCompetitors1735831100000
 ];

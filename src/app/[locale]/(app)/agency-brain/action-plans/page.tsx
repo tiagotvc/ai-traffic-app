@@ -1,12 +1,5 @@
-"use client";
-
-import { ActionPlansContent } from "@/components/agency-brain/ActionPlansContent";
-import { AgencyBrainClientGate } from "@/components/agency-brain/AgencyBrainClientGate";
+import { AgencyBrainComingSoon } from "@/components/agency-brain/AgencyBrainComingSoon";
 
 export default function ActionPlansPage() {
-  return (
-    <AgencyBrainClientGate>
-      {(clientSlug) => <ActionPlansContent clientId={clientSlug} />}
-    </AgencyBrainClientGate>
-  );
+  return <AgencyBrainComingSoon moduleId="action-plans" />;
 }
