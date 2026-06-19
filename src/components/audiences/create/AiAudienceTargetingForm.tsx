@@ -217,15 +217,24 @@ export function AiAudienceTargetingForm({
           />
           Claude
           {!providers.claude ? (
-            <span className="text-[10px] text-amber-600">({t("aiProviderOff")})</span>
+            <span
+              className="text-[10px] text-amber-600"
+              title={t("aiProviderClaudeHint")}
+            >
+              ({t("aiProviderOff")})
+            </span>
           ) : null}
         </label>
       </div>
 
+      {!providers.claude ? (
+        <p className="text-[10px] leading-snug text-amber-700">{t("aiProviderClaudeHint")}</p>
+      ) : null}
+
       {showDemographics ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
-            <label className="text-xs font-medium text-slate-600">{t("ageMin")}</label>
+            <label className="text-xs font-medium text-slate-600">{t("aiDemographicAgeMin")}</label>
             <input
               type="number"
               min={13}
@@ -239,7 +248,7 @@ export function AiAudienceTargetingForm({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600">{t("ageMax")}</label>
+            <label className="text-xs font-medium text-slate-600">{t("aiDemographicAgeMax")}</label>
             <input
               type="number"
               min={13}
@@ -253,7 +262,7 @@ export function AiAudienceTargetingForm({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600">{t("gender")}</label>
+            <label className="text-xs font-medium text-slate-600">{t("aiDemographicGender")}</label>
             <select
               value={gender}
               onChange={(e) =>
@@ -264,9 +273,9 @@ export function AiAudienceTargetingForm({
               className="ui-select mt-1 w-full text-sm"
               disabled={disabled}
             >
-              <option value="all">{t("genderAll")}</option>
-              <option value="female">{t("genderFemale")}</option>
-              <option value="male">{t("genderMale")}</option>
+              <option value="all">{t("aiDemographicGenderAll")}</option>
+              <option value="female">{t("aiDemographicGenderFemale")}</option>
+              <option value="male">{t("aiDemographicGenderMale")}</option>
             </select>
           </div>
         </div>

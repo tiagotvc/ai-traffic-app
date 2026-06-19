@@ -92,8 +92,17 @@ export async function POST(req: Request) {
       providers: getLlmProvidersStatus()
     });
   } catch (e) {
+    console.error("[audience-targeting] suggestion failed", {
+      provider,
+      clientId,
+      adAccountId,
+      error: e instanceof Error ? e.message : e
+    });
     const classified = classifyLlmError(e, provider as LlmProviderId);
-    return NextResponse.json({ ok: false, error: classified.message }, { status: 502 });
+    return NextResponse.json(
+      { ok: false, error: classified.message, errorCode: classified.code },
+      { status: 502 }
+    );
   }
 }
 

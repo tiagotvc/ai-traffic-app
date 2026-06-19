@@ -87,10 +87,40 @@ export function classifyAnthropicError(err: unknown): LlmError {
   const message = err instanceof Error ? err.message : String(err);
   const lower = message.toLowerCase();
 
+  const anthropicDetail = extractAnthropicApiMessage(message);
+
+  if (
+    message.includes("401") ||
+    lower.includes("authentication") ||
+    lower.includes("invalid x-api-key") ||
+    lower.includes("invalid api key")
+  ) {
+    return {
+      code: "NO_API_KEY",
+      message:
+        anthropicDetail ??
+        "Chave da Claude inválida. Verifique ANTHROPIC_API_KEY no Vercel e na console da Anthropic."
+    };
+  }
+
+  if (
+    message.includes("402") ||
+    lower.includes("credit balance") ||
+    lower.includes("billing") ||
+    lower.includes("purchase credits")
+  ) {
+    return {
+      code: "SERVICE_UNAVAILABLE",
+      message:
+        anthropicDetail ??
+        "Saldo ou créditos da Anthropic insuficientes. Adicione créditos em console.anthropic.com."
+    };
+  }
+
   if (message.includes("429") || lower.includes("rate limit") || lower.includes("quota")) {
     return {
       code: "RATE_LIMIT",
-      message: "Limite de requisições da Claude atingido. Tente novamente em 1–2 minutos."
+      message: anthropicDetail ?? "Limite de requisições da Claude atingido. Tente novamente em 1–2 minutos."
     };
   }
 
@@ -102,14 +132,23 @@ export function classifyAnthropicError(err: unknown): LlmError {
   ) {
     return {
       code: "SERVICE_UNAVAILABLE",
-      message: "Claude temporariamente indisponível. Tente novamente em instantes."
+      message: anthropicDetail ?? "Claude temporariamente indisponível. Tente novamente em instantes."
+    };
+  }
+
+  if (message.includes("404") || lower.includes("model:") || lower.includes("not_found")) {
+    return {
+      code: "SERVICE_UNAVAILABLE",
+      message:
+        anthropicDetail ??
+        "Modelo Claude inválido. Ajuste ANTHROPIC_MODEL (ex.: claude-sonnet-4-20250514) no Vercel."
     };
   }
 
   if (err instanceof z.ZodError || lower.includes("zod")) {
     return {
       code: "SCHEMA_ERROR",
-      message: "A Claude retornou um formato inesperado. Tente novamente."
+      message: "A Claude retornou um formato inesperado. Tente novamente ou use o Gemini."
     };
   }
 
@@ -124,5 +163,23 @@ export function classifyAnthropicError(err: unknown): LlmError {
     };
   }
 
-  return { code: "UNKNOWN", message: "Erro ao processar resposta da Claude." };
+  return {
+    code: "UNKNOWN",
+    message: anthropicDetail ?? "Erro ao processar resposta da Claude."
+  };
+}
+
+function extractAnthropicApiMessage(message: string): string | undefined {
+  const jsonStart = message.indexOf("{");
+  if (jsonStart < 0) return undefined;
+  try {
+    const body = JSON.parse(message.slice(jsonStart)) as {
+      error?: { message?: string; type?: string };
+    };
+    const apiMessage = body.error?.message?.trim();
+    if (!apiMessage) return undefined;
+    return `Claude: ${apiMessage}`;
+  } catch {
+    return undefined;
+  }
 }
