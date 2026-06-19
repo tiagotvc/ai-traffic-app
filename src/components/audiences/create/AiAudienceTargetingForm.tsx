@@ -454,7 +454,7 @@ export function AiAudienceTargetingForm({
           type="button"
           disabled={disabled || pending || !canGenerate}
           onClick={generatePersonaPreview}
-          className="ui-btn-secondary w-full text-sm"
+          className="ui-btn-primary w-full text-sm"
         >
           {pending ? t("aiAudiencePreviewGenerating") : t("aiAudiencePreviewGenerate")}
         </button>
@@ -539,7 +539,7 @@ export function AiAudienceTargetingForm({
               type="button"
               disabled={disabled || pending}
               onClick={searchMetaAndBuild}
-              className="ui-btn-primary text-xs"
+              className="ui-btn-primary w-full text-sm"
             >
               {pending ? t("aiAudienceGenerating") : t("aiAudienceSearchMeta")}
             </button>

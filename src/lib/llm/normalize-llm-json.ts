@@ -54,6 +54,19 @@ export function normalizeStringArray(value: unknown): string[] {
     .filter(Boolean);
 }
 
+export function clampUniqueStrings(items: string[], max: number): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of items) {
+    const key = item.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 export function pickStringArray(record: Record<string, unknown>, ...keys: string[]): string[] {
   for (const key of keys) {
     if (key in record) return normalizeStringArray(record[key]);
@@ -85,29 +98,38 @@ export function normalizeSearchPlanRaw(raw: unknown): unknown {
         : record;
   const planRecord = nested === record ? record : nested;
   return {
-    interestQueries: pickStringArray(
-      planRecord,
-      "interestQueries",
-      "interest_queries",
-      "interests",
-      "interestSearch",
-      "interest_search"
+    interestQueries: clampUniqueStrings(
+      pickStringArray(
+        planRecord,
+        "interestQueries",
+        "interest_queries",
+        "interests",
+        "interestSearch",
+        "interest_search"
+      ),
+      8
     ),
-    behaviorQueries: pickStringArray(
-      planRecord,
-      "behaviorQueries",
-      "behavior_queries",
-      "behaviors",
-      "behaviorSearch",
-      "behavior_search"
+    behaviorQueries: clampUniqueStrings(
+      pickStringArray(
+        planRecord,
+        "behaviorQueries",
+        "behavior_queries",
+        "behaviors",
+        "behaviorSearch",
+        "behavior_search"
+      ),
+      6
     ),
-    demographicQueries: pickStringArray(
-      planRecord,
-      "demographicQueries",
-      "demographic_queries",
-      "demographics",
-      "demographicSearch",
-      "demographic_search"
+    demographicQueries: clampUniqueStrings(
+      pickStringArray(
+        planRecord,
+        "demographicQueries",
+        "demographic_queries",
+        "demographics",
+        "demographicSearch",
+        "demographic_search"
+      ),
+      4
     )
   };
 }
@@ -133,15 +155,21 @@ export function normalizePersonaRaw(raw: unknown): unknown {
       pickString(record, "personaName", "persona_name", "name", "title", "nome") ?? "",
     narrative:
       pickString(record, "narrative", "summary", "description", "persona", "resumo") ?? "",
-    traits: pickStringArray(record, "traits", "caracteristicas", "characteristics"),
-    lifestyleCorrelates: pickStringArray(
-      record,
-      "lifestyleCorrelates",
-      "lifestyle_correlates",
-      "correlates",
-      "correlatos",
-      "metaSearchAngles",
-      "meta_search_angles"
+    traits: clampUniqueStrings(
+      pickStringArray(record, "traits", "caracteristicas", "characteristics"),
+      8
+    ),
+    lifestyleCorrelates: clampUniqueStrings(
+      pickStringArray(
+        record,
+        "lifestyleCorrelates",
+        "lifestyle_correlates",
+        "correlates",
+        "correlatos",
+        "metaSearchAngles",
+        "meta_search_angles"
+      ),
+      12
     ),
     searchPlan,
     suggestedGender
@@ -163,14 +191,23 @@ export function normalizeAudiencePickRaw(raw: unknown): unknown {
     age_min: pickNumber(record, "age_min", "ageMin", "age_minimo"),
     age_max: pickNumber(record, "age_max", "ageMax", "age_maximo"),
     genders: normalizeGenders(firstDefined(record.genders, record.gender, record.genero)),
-    interestIds: pickStringArray(record, "interestIds", "interest_ids", "interests"),
-    behaviorIds: pickStringArray(record, "behaviorIds", "behavior_ids", "behaviors"),
-    demographicIds: pickStringArray(
-      record,
-      "demographicIds",
-      "demographic_ids",
-      "demographics",
-      "life_events"
+    interestIds: clampUniqueStrings(
+      pickStringArray(record, "interestIds", "interest_ids", "interests"),
+      12
+    ),
+    behaviorIds: clampUniqueStrings(
+      pickStringArray(record, "behaviorIds", "behavior_ids", "behaviors"),
+      8
+    ),
+    demographicIds: clampUniqueStrings(
+      pickStringArray(
+        record,
+        "demographicIds",
+        "demographic_ids",
+        "demographics",
+        "life_events"
+      ),
+      6
     ),
     reasoning: pickString(record, "reasoning", "reason", "raciocinio")
   };
