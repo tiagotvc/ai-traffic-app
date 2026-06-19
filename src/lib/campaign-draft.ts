@@ -68,6 +68,7 @@ export const TargetingItemSchema = z.object({
       type: z.string().optional(),
       countryCode: z.string().optional(),
       kind: z.string().optional(),
+      bucket: z.string().optional(),
       radius: z.number().optional(),
       distanceUnit: z.enum(["mile", "kilometer"]).optional()
     })

@@ -109,16 +109,17 @@ function sanitizeGeoLocations(raw: unknown): Record<string, unknown> {
 export function sanitizeTargetingForMeta(
   targeting: Record<string, unknown>
 ): Record<string, unknown> {
+  const ageMin = clampAge(targeting.age_min, 18);
+  const ageMax = clampAge(targeting.age_max, 65);
   const out: Record<string, unknown> = {
     geo_locations: sanitizeGeoLocations(targeting.geo_locations),
-    age_min: clampAge(targeting.age_min, 18),
-    age_max: clampAge(targeting.age_max, 65)
+    age_min: ageMin,
+    age_max: ageMax
   };
 
-  if (out.age_min > out.age_max) {
-    const min = out.age_min as number;
-    out.age_min = out.age_max;
-    out.age_max = min;
+  if (ageMin > ageMax) {
+    out.age_min = ageMax;
+    out.age_max = ageMin;
   }
 
   const genders = targeting.genders;

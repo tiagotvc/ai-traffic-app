@@ -1,8 +1,8 @@
 import "server-only";
 
 import { getClientBySlugOrId } from "@/lib/app-context";
-import { getRepositories } from "@/db/repositories";
-import { ClientSavedTargeting } from "@/db/entities/ClientSavedTargeting";
+import { repositories } from "@/db/repositories";
+import type { ClientSavedTargeting } from "@/db/entities/ClientSavedTargeting";
 import { sanitizeTargetingForMeta } from "@/lib/meta-targeting-sanitize";
 
 export const LOCAL_SAVED_TARGETING_PREFIX = "traffic-ai:";
@@ -37,7 +37,8 @@ export async function saveClientSavedTargeting(args: {
     ? args.adAccountId
     : `act_${args.adAccountId}`;
 
-  const row = getRepositories().clientSavedTargeting.create({
+  const { clientSavedTargeting: repo } = await repositories();
+  const row = repo.create({
     tenantId: args.tenantId,
     clientId: client.id,
     metaAdAccountId,
@@ -46,7 +47,7 @@ export async function saveClientSavedTargeting(args: {
     metaSavedAudienceId: args.metaSavedAudienceId ?? null
   });
 
-  return getRepositories().clientSavedTargeting.save(row);
+  return repo.save(row);
 }
 
 export async function listClientSavedTargeting(args: {
@@ -61,7 +62,8 @@ export async function listClientSavedTargeting(args: {
     ? args.adAccountId
     : `act_${args.adAccountId}`;
 
-  return getRepositories().clientSavedTargeting.find({
+  const { clientSavedTargeting: repo } = await repositories();
+  return repo.find({
     where: {
       tenantId: args.tenantId,
       clientId: client.id,
@@ -75,7 +77,8 @@ export async function getClientSavedTargetingById(args: {
   tenantId: string;
   id: string;
 }): Promise<ClientSavedTargeting | null> {
-  return getRepositories().clientSavedTargeting.findOne({
+  const { clientSavedTargeting: repo } = await repositories();
+  return repo.findOne({
     where: { tenantId: args.tenantId, id: args.id }
   });
 }
