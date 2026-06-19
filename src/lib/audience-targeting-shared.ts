@@ -23,6 +23,23 @@ export type AudienceTargetingSuggestion = {
   modelUsed: string;
 };
 
+export type AudiencePersonaSearchPlan = {
+  interestQueries: string[];
+  behaviorQueries: string[];
+  demographicQueries: string[];
+};
+
+export type AudiencePersonaPreview = {
+  personaName: string;
+  narrative: string;
+  traits: string[];
+  lifestyleCorrelates: string[];
+  searchPlan: AudiencePersonaSearchPlan;
+  suggestedGender?: "all" | "male" | "female";
+  provider: LlmProviderId;
+  modelUsed: string;
+};
+
 export function applySuggestionToDraftTargeting(
   current: DraftTargeting,
   suggestion: AudienceTargetingSuggestion

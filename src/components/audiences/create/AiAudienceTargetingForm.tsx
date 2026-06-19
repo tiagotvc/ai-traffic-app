@@ -3,7 +3,10 @@
 import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
-import type { AudienceTargetingSuggestion } from "@/lib/audience-targeting-shared";
+import type {
+  AudiencePersonaPreview,
+  AudienceTargetingSuggestion
+} from "@/lib/audience-targeting-shared";
 
 type LlmProviderId = "gemini" | "claude";
 
@@ -58,6 +61,7 @@ export function AiAudienceTargetingForm({
   const [includeIds, setIncludeIds] = useState<string[]>([]);
   const [excludeIds, setExcludeIds] = useState<string[]>([]);
   const [suggestion, setSuggestion] = useState<AudienceTargetingSuggestion | null>(null);
+  const [personaPreview, setPersonaPreview] = useState<AudiencePersonaPreview | null>(null);
   const [audienceMode, setAudienceMode] = useState<"include" | "exclude" | null>(null);
   const [audienceSearch, setAudienceSearch] = useState("");
   const [pending, startTransition] = useTransition();
@@ -112,6 +116,7 @@ export function AiAudienceTargetingForm({
 
   function resetForm() {
     setSuggestion(null);
+    setPersonaPreview(null);
     setBusinessDescription("");
     setTargetProfile("");
     setBehaviors("");
@@ -122,7 +127,48 @@ export function AiAudienceTargetingForm({
     setAudienceSearch("");
   }
 
-  function generate() {
+  function buildBriefPayload() {
+    return {
+      clientId: clientSlug,
+      adAccountId,
+      provider,
+      businessDescription: businessDescription.trim(),
+      targetProfile: targetProfile.trim(),
+      behaviors: behaviors.trim() || undefined,
+      lifestyleHints: lifestyleHints.trim() || undefined,
+      ageMin,
+      ageMax,
+      gender,
+      countries,
+      includeCustomAudienceIds: includeIds,
+      excludeCustomAudienceIds: excludeIds
+    };
+  }
+
+  function generatePersonaPreview() {
+    setError(null);
+    setSuggestion(null);
+    setPersonaPreview(null);
+    startTransition(async () => {
+      const res = await fetch("/api/ai/audience-targeting", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...buildBriefPayload(),
+          phase: "persona"
+        })
+      });
+      const j = await res.json();
+      if (j.ok && j.persona) {
+        setPersonaPreview(j.persona as AudiencePersonaPreview);
+      } else {
+        reportError(j.error ?? t("aiAudiencePreviewFailed"));
+      }
+    });
+  }
+
+  function searchMetaAndBuild() {
+    if (!personaPreview) return;
     setError(null);
     setSuggestion(null);
     startTransition(async () => {
@@ -130,19 +176,9 @@ export function AiAudienceTargetingForm({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          clientId: clientSlug,
-          adAccountId,
-          provider,
-          businessDescription: businessDescription.trim(),
-          targetProfile: targetProfile.trim(),
-          behaviors: behaviors.trim() || undefined,
-          lifestyleHints: lifestyleHints.trim() || undefined,
-          ageMin,
-          ageMax,
-          gender,
-          countries,
-          includeCustomAudienceIds: includeIds,
-          excludeCustomAudienceIds: excludeIds
+          ...buildBriefPayload(),
+          phase: "targeting",
+          persona: personaPreview
         })
       });
       const j = await res.json();
@@ -413,14 +449,113 @@ export function AiAudienceTargetingForm({
         </div>
       ) : null}
 
-      <button
-        type="button"
-        disabled={disabled || pending || !canGenerate}
-        onClick={generate}
-        className="ui-btn-secondary w-full text-sm"
-      >
-        {pending ? t("aiAudienceGenerating") : t("aiAudienceGenerate")}
-      </button>
+      {!personaPreview ? (
+        <button
+          type="button"
+          disabled={disabled || pending || !canGenerate}
+          onClick={generatePersonaPreview}
+          className="ui-btn-secondary w-full text-sm"
+        >
+          {pending ? t("aiAudiencePreviewGenerating") : t("aiAudiencePreviewGenerate")}
+        </button>
+      ) : null}
+
+      {personaPreview && !suggestion ? (
+        <div className="space-y-3 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+              {t("aiAudiencePreviewTitle")}
+            </p>
+            <p className="mt-0.5 text-[10px] text-sky-700">{t("aiAudiencePreviewHint")}</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-slate-900">{personaPreview.personaName}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-700">{personaPreview.narrative}</p>
+          </div>
+
+          {personaPreview.traits.length > 0 ? (
+            <div>
+              <p className="text-[10px] font-medium text-slate-600">{t("aiAudiencePreviewTraits")}</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {personaPreview.traits.map((trait) => (
+                  <span
+                    key={trait}
+                    className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-700 ring-1 ring-sky-200"
+                  >
+                    {trait}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {personaPreview.lifestyleCorrelates.length > 0 ? (
+            <div>
+              <p className="text-[10px] font-medium text-slate-600">
+                {t("aiAudiencePreviewCorrelates")}
+              </p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {personaPreview.lifestyleCorrelates.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] text-sky-900"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div>
+            <p className="text-[10px] font-medium text-slate-600">
+              {t("aiAudiencePreviewSearchTerms")}
+            </p>
+            <ul className="mt-1 space-y-1 text-[10px] text-slate-600">
+              {personaPreview.searchPlan.interestQueries.length > 0 ? (
+                <li>
+                  <span className="font-medium">{t("aiAudiencePreviewInterests")}:</span>{" "}
+                  {personaPreview.searchPlan.interestQueries.join(" · ")}
+                </li>
+              ) : null}
+              {personaPreview.searchPlan.behaviorQueries.length > 0 ? (
+                <li>
+                  <span className="font-medium">{t("aiAudiencePreviewBehaviors")}:</span>{" "}
+                  {personaPreview.searchPlan.behaviorQueries.join(" · ")}
+                </li>
+              ) : null}
+              {personaPreview.searchPlan.demographicQueries.length > 0 ? (
+                <li>
+                  <span className="font-medium">{t("aiAudiencePreviewDemographics")}:</span>{" "}
+                  {personaPreview.searchPlan.demographicQueries.join(" · ")}
+                </li>
+              ) : null}
+            </ul>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              type="button"
+              disabled={disabled || pending}
+              onClick={searchMetaAndBuild}
+              className="ui-btn-primary text-xs"
+            >
+              {pending ? t("aiAudienceGenerating") : t("aiAudienceSearchMeta")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPersonaPreview(null);
+                setSuggestion(null);
+              }}
+              className="text-xs text-slate-500 underline"
+            >
+              {t("aiAudienceDiscardPreview")}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
 

@@ -77,9 +77,16 @@ export function normalizeGenders(value: unknown): Array<1 | 2> | undefined {
 
 export function normalizeSearchPlanRaw(raw: unknown): unknown {
   const record = unwrapLlmObject(raw);
+  const nested =
+    record.searchPlan && typeof record.searchPlan === "object"
+      ? (record.searchPlan as Record<string, unknown>)
+      : record.metaSearchPlan && typeof record.metaSearchPlan === "object"
+        ? (record.metaSearchPlan as Record<string, unknown>)
+        : record;
+  const planRecord = nested === record ? record : nested;
   return {
     interestQueries: pickStringArray(
-      record,
+      planRecord,
       "interestQueries",
       "interest_queries",
       "interests",
@@ -87,7 +94,7 @@ export function normalizeSearchPlanRaw(raw: unknown): unknown {
       "interest_search"
     ),
     behaviorQueries: pickStringArray(
-      record,
+      planRecord,
       "behaviorQueries",
       "behavior_queries",
       "behaviors",
@@ -95,7 +102,7 @@ export function normalizeSearchPlanRaw(raw: unknown): unknown {
       "behavior_search"
     ),
     demographicQueries: pickStringArray(
-      record,
+      planRecord,
       "demographicQueries",
       "demographic_queries",
       "demographics",
@@ -104,6 +111,48 @@ export function normalizeSearchPlanRaw(raw: unknown): unknown {
     )
   };
 }
+
+export function normalizePersonaRaw(raw: unknown): unknown {
+  const record = unwrapLlmObject(raw);
+  const searchPlan = normalizeSearchPlanRaw(
+    record.searchPlan ?? record.metaSearchPlan ?? record
+  ) as AudiencePersonaSearchPlanShape;
+
+  const genderRaw = pickString(record, "suggestedGender", "suggested_gender", "gender");
+  let suggestedGender: "all" | "male" | "female" | undefined;
+  if (genderRaw === "male" || genderRaw === "homens" || genderRaw === "masculino") {
+    suggestedGender = "male";
+  } else if (genderRaw === "female" || genderRaw === "mulheres" || genderRaw === "feminino") {
+    suggestedGender = "female";
+  } else if (genderRaw === "all" || genderRaw === "todos") {
+    suggestedGender = "all";
+  }
+
+  return {
+    personaName:
+      pickString(record, "personaName", "persona_name", "name", "title", "nome") ?? "",
+    narrative:
+      pickString(record, "narrative", "summary", "description", "persona", "resumo") ?? "",
+    traits: pickStringArray(record, "traits", "caracteristicas", "characteristics"),
+    lifestyleCorrelates: pickStringArray(
+      record,
+      "lifestyleCorrelates",
+      "lifestyle_correlates",
+      "correlates",
+      "correlatos",
+      "metaSearchAngles",
+      "meta_search_angles"
+    ),
+    searchPlan,
+    suggestedGender
+  };
+}
+
+type AudiencePersonaSearchPlanShape = {
+  interestQueries: string[];
+  behaviorQueries: string[];
+  demographicQueries: string[];
+};
 
 export function normalizeAudiencePickRaw(raw: unknown): unknown {
   const record = unwrapLlmObject(raw);
