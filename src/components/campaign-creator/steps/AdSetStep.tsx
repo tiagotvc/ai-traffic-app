@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
+import { AiAudienceTargetingPanel } from "@/components/campaign-creator/AiAudienceTargetingPanel";
 import { AudiencePicker } from "@/components/campaign-creator/AudiencePicker";
 import { AdSetBatchPanel } from "@/components/campaign-creator/AdSetBatchPanel";
 import { GeoRadiusMapPicker } from "@/components/campaign-creator/GeoRadiusMapPicker";
@@ -162,6 +163,16 @@ export function AdSetStep() {
 
       <div className="ui-card space-y-3 p-4">
         <h3 className="text-sm font-semibold text-slate-900">{tAds("audienceTitle")}</h3>
+
+        <AiAudienceTargetingPanel
+          clientSlug={payload.clientSlug}
+          adAccountId={payload.adAccountId}
+          audiences={audiences}
+          audiencesLoading={audiencesLoading}
+          currentTargeting={targeting}
+          onApplyTargeting={(next) => patchTargeting(next)}
+          disabled={clientRequired}
+        />
 
         <AudiencePicker
           audiences={audiences}

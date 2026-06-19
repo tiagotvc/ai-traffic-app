@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
+import { AiAudienceTargetingForm } from "./AiAudienceTargetingForm";
 import type { AudienceCreateContext } from "./types";
 
 type SavedItem = {
@@ -33,7 +34,7 @@ function summarizeTargeting(targeting: Record<string, unknown>): string[] {
   return lines.length ? lines : ["Targeting copiado do modelo"];
 }
 
-export function SavedAudienceWizard({ ctx, onBack }: Props) {
+function SavedAudienceCopySection({ ctx, onBack }: Props) {
   const t = useTranslations("audiences");
   const [pending, startTransition] = useTransition();
   const [items, setItems] = useState<SavedItem[]>([]);
@@ -75,6 +76,7 @@ export function SavedAudienceWizard({ ctx, onBack }: Props) {
       const j = await res.json();
       if (j.ok) {
         ctx.onSuccess(t("savedAudienceCreated"));
+        ctx.onRefresh();
         onBack();
       } else {
         ctx.onError(j.error ?? t("createdFailed"));
@@ -82,64 +84,109 @@ export function SavedAudienceWizard({ ctx, onBack }: Props) {
     });
   };
 
+  if (loading) return <p className="text-sm text-slate-500">{t("loadingOptions")}</p>;
+  if (items.length === 0) return <p className="text-sm text-slate-500">{t("noSavedAudiences")}</p>;
+
+  return (
+    <div className="mt-3 space-y-3">
+      <div>
+        <label className="text-xs font-medium text-slate-500">{t("selectSavedTemplate")}</label>
+        <select
+          value={templateId}
+          onChange={(e) => setTemplateId(e.target.value)}
+          className="ui-select mt-1 w-full"
+        >
+          {items.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {selected ? (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-semibold text-slate-600">{t("targetingPreview")}</p>
+          <ul className="mt-2 space-y-1 text-xs text-slate-700">
+            {summarizeTargeting(selected.targeting).map((line) => (
+              <li key={line}>• {line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div>
+        <label className="text-xs font-medium text-slate-500">{t("audienceName")}</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={selected ? `${selected.name} (cópia)` : ""}
+          className="ui-input mt-1 w-full text-sm"
+        />
+      </div>
+
+      <div className="flex justify-end">
+        <button type="button" disabled={pending || !templateId} onClick={submit} className="ui-btn-secondary text-sm">
+          {pending ? t("creating") : t("createSavedAudience")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function SavedAudienceWizard({ ctx, onBack }: Props) {
+  const tAudiences = useTranslations("audiences");
+  const tCreator = useTranslations("campaignCreator");
+  const [ageMin, setAgeMin] = useState(18);
+  const [ageMax, setAgeMax] = useState(65);
+  const [gender, setGender] = useState<"all" | "male" | "female">("all");
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">{t("createType.saved.title")}</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">{tAudiences("createType.saved.title")}</h2>
+          <p className="mt-1 text-xs text-slate-500">{tAudiences("createType.saved.desc")}</p>
+        </div>
         <button type="button" onClick={onBack} className="ui-btn-secondary text-sm">
-          {t("back")}
+          {tAudiences("back")}
         </button>
       </div>
 
-      {loading ? (
-        <p className="text-sm text-slate-500">{t("loadingOptions")}</p>
-      ) : items.length === 0 ? (
-        <p className="text-sm text-slate-500">{t("noSavedAudiences")}</p>
-      ) : (
-        <>
-          <div>
-            <label className="text-xs font-medium text-slate-500">{t("selectSavedTemplate")}</label>
-            <select
-              value={templateId}
-              onChange={(e) => setTemplateId(e.target.value)}
-              className="ui-select mt-1 w-full"
-            >
-              {items.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.name}
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/80 to-white p-4">
+        <p className="text-sm font-semibold text-slate-900">{tCreator("aiAudienceTitle")}</p>
+        <p className="mt-0.5 text-[11px] text-slate-500">{tCreator("aiAudienceHint")}</p>
 
-          {selected ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs font-semibold text-slate-600">{t("targetingPreview")}</p>
-              <ul className="mt-2 space-y-1 text-xs text-slate-700">
-                {summarizeTargeting(selected.targeting).map((line) => (
-                  <li key={line}>• {line}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+        <div className="mt-4">
+          <AiAudienceTargetingForm
+            clientSlug={ctx.clientSlug}
+            adAccountId={ctx.adAccountId}
+            audiences={ctx.audiences.map((a) => ({ id: a.id, name: a.name }))}
+            showDemographics
+            ageMin={ageMin}
+            ageMax={ageMax}
+            gender={gender}
+            onDemographicsChange={(patch) => {
+              if (patch.ageMin !== undefined) setAgeMin(patch.ageMin);
+              if (patch.ageMax !== undefined) setAgeMax(patch.ageMax);
+              if (patch.gender !== undefined) setGender(patch.gender);
+            }}
+            onSaved={() => {
+              ctx.onSuccess(tAudiences("savedAudienceCreated"));
+              ctx.onRefresh();
+              onBack();
+            }}
+            onError={ctx.onError}
+          />
+        </div>
+      </div>
 
-          <div>
-            <label className="text-xs font-medium text-slate-500">{t("audienceName")}</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={selected ? `${selected.name} (cópia)` : ""}
-              className="ui-input mt-1 w-full text-sm"
-            />
-          </div>
-
-          <div className="flex justify-end">
-            <button type="button" disabled={pending || !templateId} onClick={submit} className="ui-btn-primary">
-              {pending ? t("creating") : t("createSavedAudience")}
-            </button>
-          </div>
-        </>
-      )}
+      <details className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+        <summary className="cursor-pointer text-xs font-medium text-slate-600">
+          {tAudiences("savedCopyAdvanced")}
+        </summary>
+        <SavedAudienceCopySection ctx={ctx} onBack={onBack} />
+      </details>
     </div>
   );
 }

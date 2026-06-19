@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import type { AudienceCreateContext } from "./types";
@@ -28,6 +28,21 @@ export function AiAudienceWizard({ ctx, onBack }: Props) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [creating, setCreating] = useState(false);
+  const [provider, setProvider] = useState<"gemini" | "claude">("gemini");
+  const [providers, setProviders] = useState({ gemini: false, claude: false });
+
+  useEffect(() => {
+    fetch("/api/ai/audience-targeting")
+      .then((r) => r.json())
+      .then((j: { providers?: { gemini: boolean; claude: boolean } }) => {
+        if (j.providers) {
+          setProviders(j.providers);
+          if (j.providers.gemini) setProvider("gemini");
+          else if (j.providers.claude) setProvider("claude");
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const generate = () => {
     startTransition(async () => {
@@ -39,7 +54,8 @@ export function AiAudienceWizard({ ctx, onBack }: Props) {
           adAccountId: ctx.adAccountId,
           baseAudienceIds: baseIds,
           prompt,
-          count
+          count,
+          provider
         })
       });
       const j = await res.json();
@@ -134,6 +150,28 @@ export function AiAudienceWizard({ ctx, onBack }: Props) {
       </div>
 
       <p className="text-xs text-slate-500">{t("aiDesc")}</p>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+        <span className="text-[10px] font-medium uppercase text-slate-500">{t("aiProviderLabel")}</span>
+        <label className="flex items-center gap-1.5 text-xs">
+          <input
+            type="radio"
+            checked={provider === "gemini"}
+            onChange={() => setProvider("gemini")}
+            disabled={!providers.gemini}
+          />
+          Gemini
+        </label>
+        <label className="flex items-center gap-1.5 text-xs">
+          <input
+            type="radio"
+            checked={provider === "claude"}
+            onChange={() => setProvider("claude")}
+            disabled={!providers.claude}
+          />
+          Claude
+        </label>
+      </div>
 
       <div>
         <label className="text-xs font-medium text-slate-500">{t("aiBaseAudiences")}</label>

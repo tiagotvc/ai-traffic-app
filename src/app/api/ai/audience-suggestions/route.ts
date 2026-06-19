@@ -8,8 +8,9 @@ import {
 } from "@/lib/audience-insight-breakdowns";
 import { validateClientAdAccount } from "@/lib/audience-api-helpers";
 import { queryCommandCenterCampaigns } from "@/lib/command-center-query";
-import { classifyGeminiError, geminiGenerateJson } from "@/lib/gemini";
-import { getGeminiApiKey } from "@/lib/creative-memory/ai-usage";
+import { classifyLlmError, llmGenerateJson } from "@/lib/llm/generate-json";
+import { getApiKeyForProvider } from "@/lib/llm/keys";
+import type { LlmProviderId } from "@/lib/llm/types";
 import { fetchCustomAudiences } from "@/lib/meta-graph";
 import {
   ENGAGEMENT_ACTIONS,
@@ -22,7 +23,8 @@ const BodySchema = z.object({
   adAccountId: z.string().min(1),
   baseAudienceIds: z.array(z.string()).default([]),
   prompt: z.string().min(3).max(2000),
-  count: z.number().int().min(1).max(5).default(3)
+  count: z.number().int().min(1).max(5).default(3),
+  provider: z.enum(["gemini", "claude"]).default("gemini")
 });
 
 const SuggestionSchema = z.object({
@@ -44,12 +46,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
 
-  const apiKey = getGeminiApiKey();
+  const body = BodySchema.parse(await req.json().catch(() => ({})));
+
+  const apiKey = getApiKeyForProvider(body.provider as LlmProviderId);
   if (!apiKey) {
-    return NextResponse.json({ ok: false, error: "Gemini não configurado" }, { status: 503 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          body.provider === "claude"
+            ? "Claude não configurada. Adicione ANTHROPIC_API_KEY."
+            : "Gemini não configurado."
+      },
+      { status: 503 }
+    );
   }
 
-  const body = BodySchema.parse(await req.json().catch(() => ({})));
   const validation = await validateClientAdAccount(tenant.id, body.clientId, body.adAccountId);
   if (!validation.ok) {
     return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status });
@@ -116,14 +128,16 @@ Responda JSON: { "suggestions": [...] }`;
   ].join("\n");
 
   try {
-    const result = await geminiGenerateJson({
-      apiKey,
+    const result = await llmGenerateJson({
+      provider: body.provider as LlmProviderId,
       prompt,
       schema: SuggestionSchema
     });
     return NextResponse.json({
       ok: true,
       suggestions: result.data.suggestions.slice(0, body.count),
+      provider: result.provider,
+      modelUsed: result.modelUsed,
       contextUsed: {
         breakdownCount: breakdowns.length,
         campaignCount: topCampaigns.length,
@@ -131,7 +145,7 @@ Responda JSON: { "suggestions": [...] }`;
       }
     });
   } catch (e) {
-    const classified = classifyGeminiError(e);
+    const classified = classifyLlmError(e, body.provider as LlmProviderId);
     return NextResponse.json({ ok: false, error: classified.message }, { status: 502 });
   }
 }
