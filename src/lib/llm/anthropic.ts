@@ -25,6 +25,8 @@ async function callAnthropicRaw(args: {
       model: args.model,
       max_tokens: 8192,
       temperature: args.temperature,
+      system:
+        "Responda somente com um objeto JSON válido, sem markdown, sem explicações e sem texto fora do JSON.",
       messages: [{ role: "user", content: args.prompt }]
     })
   });
@@ -51,6 +53,21 @@ async function callAnthropicRaw(args: {
   return { ok: true, text };
 }
 
+function formatZodIssues(err: z.ZodError): string {
+  return err.issues
+    .slice(0, 4)
+    .map((issue) => `${issue.path.join(".") || "root"}: ${issue.message}`)
+    .join("; ");
+}
+
+async function parseAnthropicJson<T>(args: {
+  text: string;
+  schema: z.ZodType<T>;
+}): Promise<T> {
+  const parsed = extractJsonFromLlmText(args.text);
+  return args.schema.parse(parsed);
+}
+
 export async function anthropicGenerateJson<T>(args: {
   apiKey: string;
   prompt: string;
@@ -59,28 +76,54 @@ export async function anthropicGenerateJson<T>(args: {
   modelId?: string;
 }): Promise<LlmGenerateJsonResult<T>> {
   const model = args.modelId?.trim() || getAnthropicModel();
-  const result = await callAnthropicRaw({
-    apiKey: args.apiKey,
-    model,
-    prompt: args.prompt,
-    temperature: args.temperature ?? 0.25
-  });
+  const basePrompt = `${args.prompt}\n\nIMPORTANTE: retorne APENAS um objeto JSON válido, sem markdown.`;
+  let lastError: unknown;
 
-  if (!result.ok) {
-    if (isRetryableAnthropicStatus(result.status)) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const prompt =
+      attempt === 0
+        ? basePrompt
+        : `${basePrompt}\n\nA tentativa anterior não passou na validação. Corrija o JSON e use exatamente os nomes de campo pedidos no prompt.`;
+
+    const result = await callAnthropicRaw({
+      apiKey: args.apiKey,
+      model,
+      prompt,
+      temperature: args.temperature ?? 0.25
+    });
+
+    if (!result.ok) {
+      if (isRetryableAnthropicStatus(result.status)) {
+        throw new Error(`Anthropic error: ${result.status} ${JSON.stringify(result.body)}`);
+      }
       throw new Error(`Anthropic error: ${result.status} ${JSON.stringify(result.body)}`);
     }
-    throw new Error(`Anthropic error: ${result.status} ${JSON.stringify(result.body)}`);
+
+    try {
+      const data = await parseAnthropicJson({ text: result.text, schema: args.schema });
+      return {
+        data,
+        provider: "claude",
+        modelRequested: model,
+        modelUsed: model
+      };
+    } catch (err) {
+      lastError = err;
+      if (err instanceof z.ZodError) {
+        console.warn("[anthropic] schema validation failed", {
+          attempt: attempt + 1,
+          issues: formatZodIssues(err),
+          preview: result.text.slice(0, 500)
+        });
+      }
+      if (attempt === 0 && (err instanceof z.ZodError || err instanceof SyntaxError)) {
+        continue;
+      }
+      throw err;
+    }
   }
 
-  const parsed = extractJsonFromLlmText(result.text);
-  const data = args.schema.parse(parsed);
-  return {
-    data,
-    provider: "claude",
-    modelRequested: model,
-    modelUsed: model
-  };
+  throw lastError instanceof Error ? lastError : new Error("Claude JSON parse failed");
 }
 
 export function classifyAnthropicError(err: unknown): LlmError {
@@ -145,10 +188,20 @@ export function classifyAnthropicError(err: unknown): LlmError {
     };
   }
 
-  if (err instanceof z.ZodError || lower.includes("zod")) {
+  if (lower.includes("não selecionou segmentos válidos")) {
     return {
       code: "SCHEMA_ERROR",
-      message: "A Claude retornou um formato inesperado. Tente novamente ou use o Gemini."
+      message
+    };
+  }
+
+  if (err instanceof z.ZodError || lower.includes("zod")) {
+    const detail = err instanceof z.ZodError ? formatZodIssues(err) : undefined;
+    return {
+      code: "SCHEMA_ERROR",
+      message: detail
+        ? `A Claude retornou um formato inesperado (${detail}). Tente novamente ou use o Gemini.`
+        : "A Claude retornou um formato inesperado. Tente novamente ou use o Gemini."
     };
   }
 
@@ -165,7 +218,7 @@ export function classifyAnthropicError(err: unknown): LlmError {
 
   return {
     code: "UNKNOWN",
-    message: anthropicDetail ?? "Erro ao processar resposta da Claude."
+    message: anthropicDetail ?? message ?? "Erro ao processar resposta da Claude."
   };
 }
 

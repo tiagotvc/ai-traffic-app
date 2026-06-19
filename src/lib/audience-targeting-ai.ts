@@ -8,6 +8,11 @@ import {
   type AudienceTargetingSuggestionItem
 } from "@/lib/audience-targeting-shared";
 import { llmGenerateJson } from "@/lib/llm/generate-json";
+import {
+  normalizeAudiencePickRaw,
+  normalizeSearchPlanRaw,
+  normalizeStringArray
+} from "@/lib/llm/normalize-llm-json";
 import type { LlmProviderId } from "@/lib/llm/types";
 import {
   searchAdInterests,
@@ -36,24 +41,30 @@ export const AudienceTargetingBriefSchema = z.object({
 
 export type AudienceTargetingBrief = z.infer<typeof AudienceTargetingBriefSchema>;
 
-const SearchPlanSchema = z.object({
-  interestQueries: z.array(z.string()).max(8),
-  behaviorQueries: z.array(z.string()).max(6),
-  demographicQueries: z.array(z.string()).max(4)
-});
+const SearchPlanSchema = z.preprocess(
+  normalizeSearchPlanRaw,
+  z.object({
+    interestQueries: z.array(z.string()).max(8).default([]),
+    behaviorQueries: z.array(z.string()).max(6).default([]),
+    demographicQueries: z.array(z.string()).max(4).default([])
+  })
+);
 
-const PickSchema = z.object({
-  title: z.string(),
-  summary: z.string(),
-  name: z.string(),
-  age_min: z.number().int().min(13).max(65).optional(),
-  age_max: z.number().int().min(13).max(65).optional(),
-  genders: z.array(z.union([z.literal(1), z.literal(2)])).optional(),
-  interestIds: z.array(z.string()).max(12),
-  behaviorIds: z.array(z.string()).max(8),
-  demographicIds: z.array(z.string()).max(6),
-  reasoning: z.string().optional()
-});
+const PickSchema = z.preprocess(
+  normalizeAudiencePickRaw,
+  z.object({
+    title: z.string().min(1),
+    summary: z.string().min(1),
+    name: z.string().min(1),
+    age_min: z.number().int().min(13).max(65).optional(),
+    age_max: z.number().int().min(13).max(65).optional(),
+    genders: z.array(z.union([z.literal(1), z.literal(2)])).optional(),
+    interestIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(12)).default([]),
+    behaviorIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(8)).default([]),
+    demographicIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(6)).default([]),
+    reasoning: z.string().optional()
+  })
+);
 
 type CatalogItem = {
   type: "interest" | "behavior" | "demographic";
@@ -283,7 +294,20 @@ export async function generateAudienceTargetingSuggestion(args: {
     temperature: 0.2
   });
 
-  const pick = pickResult.data;
+  const catalogIds = new Set(catalog.map((c) => c.id));
+  const pick = {
+    ...pickResult.data,
+    interestIds: pickResult.data.interestIds.filter((id) => catalogIds.has(id)),
+    behaviorIds: pickResult.data.behaviorIds.filter((id) => catalogIds.has(id)),
+    demographicIds: pickResult.data.demographicIds.filter((id) => catalogIds.has(id))
+  };
+
+  if (!pick.interestIds.length && !pick.behaviorIds.length && !pick.demographicIds.length) {
+    throw new Error(
+      "A IA não selecionou segmentos válidos da Meta. Tente novamente ou use o Gemini."
+    );
+  }
+
   const targeting = buildMetaTargetingFromSuggestion({
     pick,
     catalog,

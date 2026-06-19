@@ -58,7 +58,8 @@ export function AiAudienceTargetingForm({
   const [includeIds, setIncludeIds] = useState<string[]>([]);
   const [excludeIds, setExcludeIds] = useState<string[]>([]);
   const [suggestion, setSuggestion] = useState<AudienceTargetingSuggestion | null>(null);
-  const [audienceMode, setAudienceMode] = useState<"include" | "exclude">("include");
+  const [audienceMode, setAudienceMode] = useState<"include" | "exclude" | null>(null);
+  const [audienceSearch, setAudienceSearch] = useState("");
   const [pending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +78,18 @@ export function AiAudienceTargetingForm({
   }, []);
 
   const activeCustomIds = audienceMode === "include" ? includeIds : excludeIds;
+  const audienceSearchNorm = audienceSearch.trim().toLowerCase();
+  const filteredAudiences = audienceSearchNorm
+    ? audiences.filter((a) => a.name.toLowerCase().includes(audienceSearchNorm))
+    : audiences;
+
+  function openAudiencePicker(mode: "include" | "exclude") {
+    setAudienceMode((prev) => {
+      if (prev === mode) return mode;
+      setAudienceSearch("");
+      return mode;
+    });
+  }
 
   function toggleCustomAudience(id: string) {
     if (audienceMode === "include") {
@@ -105,6 +118,8 @@ export function AiAudienceTargetingForm({
     setLifestyleHints("");
     setIncludeIds([]);
     setExcludeIds([]);
+    setAudienceMode(null);
+    setAudienceSearch("");
   }
 
   function generate() {
@@ -334,46 +349,67 @@ export function AiAudienceTargetingForm({
         <div className="rounded-lg border border-slate-200 bg-white p-3">
           <p className="text-xs font-medium text-slate-700">{t("aiAudienceIncludeCustom")}</p>
           <p className="mt-0.5 text-[10px] text-slate-500">{t("aiAudienceIncludeCustomHint")}</p>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setAudienceMode("include")}
+              onClick={() => openAudiencePicker("include")}
               className={`rounded px-2 py-1 text-[10px] font-medium ${
                 audienceMode === "include" ? "bg-violet-600 text-white" : "bg-slate-100"
               }`}
             >
               {t("aiAudienceModeInclude")}
+              {includeIds.length > 0 ? (
+                <span className="ml-1 rounded-full bg-white/25 px-1.5">{includeIds.length}</span>
+              ) : null}
             </button>
             <button
               type="button"
-              onClick={() => setAudienceMode("exclude")}
+              onClick={() => openAudiencePicker("exclude")}
               className={`rounded px-2 py-1 text-[10px] font-medium ${
                 audienceMode === "exclude" ? "bg-slate-700 text-white" : "bg-slate-100"
               }`}
             >
               {t("aiAudienceModeExclude")}
+              {excludeIds.length > 0 ? (
+                <span className="ml-1 rounded-full bg-white/25 px-1.5">{excludeIds.length}</span>
+              ) : null}
             </button>
           </div>
-          <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
-            {audiencesLoading ? (
-              <p className="text-[10px] text-slate-400">{t("savedAudiencesLoading")}</p>
-            ) : (
-              audiences.map((a) => (
-                <label
-                  key={a.id}
-                  className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-slate-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={activeCustomIds.includes(a.id)}
-                    onChange={() => toggleCustomAudience(a.id)}
-                    disabled={disabled}
-                  />
-                  <span className="truncate">{a.name}</span>
-                </label>
-              ))
-            )}
-          </div>
+
+          {audienceMode ? (
+            <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+              <input
+                type="search"
+                value={audienceSearch}
+                onChange={(e) => setAudienceSearch(e.target.value)}
+                placeholder={t("savedAudiencesSearch")}
+                className="ui-input w-full text-sm"
+                disabled={disabled}
+              />
+              <div className="max-h-40 space-y-1 overflow-y-auto">
+                {audiencesLoading ? (
+                  <p className="text-[10px] text-slate-400">{t("savedAudiencesLoading")}</p>
+                ) : filteredAudiences.length === 0 ? (
+                  <p className="text-[10px] text-slate-400">{t("savedAudiencesNoMatch")}</p>
+                ) : (
+                  filteredAudiences.map((a) => (
+                    <label
+                      key={a.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-slate-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={activeCustomIds.includes(a.id)}
+                        onChange={() => toggleCustomAudience(a.id)}
+                        disabled={disabled}
+                      />
+                      <span className="truncate">{a.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
