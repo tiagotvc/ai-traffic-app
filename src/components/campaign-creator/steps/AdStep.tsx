@@ -300,15 +300,26 @@ export function AdStep() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="relative">
         <button
           type="button"
-          onClick={() => setImportOpen(true)}
+          data-import-ad-trigger
+          onClick={() => setImportOpen((v) => !v)}
           disabled={clientRequired || !payload.adAccountId}
-          className="ui-btn-secondary text-xs"
+          className={`ui-btn-secondary text-xs ${importOpen ? "ring-2 ring-violet-300" : ""}`}
         >
           {t("importAdConfig")}
         </button>
+        <ImportAdConfigModal
+          open={importOpen}
+          inline
+          onClose={() => setImportOpen(false)}
+          clientSlug={payload.clientSlug}
+          adAccountId={payload.adAccountId}
+          defaultCampaignId={payload.meta?.targetMetaCampaignId}
+          defaultAdsetId={payload.meta?.targetMetaAdsetId}
+          onImport={handleImport}
+        />
       </div>
 
       <FormField label={t("adName")}>
@@ -666,16 +677,6 @@ export function AdStep() {
         }
         clientSlug={payload.clientSlug}
         adAccountId={payload.adAccountId}
-      />
-
-      <ImportAdConfigModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        clientSlug={payload.clientSlug}
-        adAccountId={payload.adAccountId}
-        defaultCampaignId={payload.meta?.targetMetaCampaignId}
-        defaultAdsetId={payload.meta?.targetMetaAdsetId}
-        onImport={handleImport}
       />
 
       <div className="ui-card space-y-2 p-4">
