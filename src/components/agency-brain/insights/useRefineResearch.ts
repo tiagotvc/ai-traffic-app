@@ -47,7 +47,7 @@ export function useRefineResearch(clientId: string, onComplete?: () => void) {
         }
       );
       scanJson = await scanRes.json();
-      if (scanRes.ok && scanJson.ok) {
+      if (scanRes.ok && scanJson?.ok) {
         adsAnalyzed = Number(scanJson.adsAnalyzed ?? 0);
       }
 
@@ -56,7 +56,7 @@ export function useRefineResearch(clientId: string, onComplete?: () => void) {
         { method: "POST" }
       );
       detectJson = await detectRes.json();
-      if (detectRes.ok && detectJson.ok) {
+      if (detectRes.ok && detectJson?.ok) {
         patternsCreated = Number(detectJson.created ?? 0);
       }
 
@@ -65,7 +65,7 @@ export function useRefineResearch(clientId: string, onComplete?: () => void) {
         { method: "POST" }
       );
       aiJson = await aiRes.json();
-      const aiParsed = parseAiAnalysisResponse(aiRes, aiJson, {
+      const aiParsed = parseAiAnalysisResponse(aiRes, aiJson ?? {}, {
         aiLimit: tBrain("aiLimit"),
         aiNoKey: tBrain("aiNoKey"),
         aiRateLimit: tBrain("aiRateLimit"),
@@ -95,7 +95,7 @@ export function useRefineResearch(clientId: string, onComplete?: () => void) {
         return;
       }
 
-      if (aiJson.ok) {
+      if (aiJson?.ok) {
         aiLearningsCreated = Number(aiJson.created ?? 0);
       }
 
@@ -109,9 +109,9 @@ export function useRefineResearch(clientId: string, onComplete?: () => void) {
           }
         );
         synthJson = await synthRes.json();
-        if (synthRes.ok && synthJson.ok) {
+        if (synthRes.ok && synthJson?.ok) {
           marketInsights = Number(synthJson.aiGenerated ?? 0);
-        } else if (!synthRes.ok || !synthJson.ok) {
+        } else if (!synthRes.ok || !synthJson?.ok) {
           logRefineRun(clientId, {
             adsAnalyzed,
             patternsCreated,
@@ -125,7 +125,7 @@ export function useRefineResearch(clientId: string, onComplete?: () => void) {
           });
           setMessage({
             type: "warn",
-            text: synthJson.error ?? tBrain("marketInsightAiError")
+            text: (synthJson?.error as string | undefined) ?? tBrain("marketInsightAiError")
           });
           await refreshAiStatus();
           onComplete?.();

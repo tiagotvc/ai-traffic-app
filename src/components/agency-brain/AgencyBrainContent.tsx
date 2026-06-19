@@ -72,6 +72,10 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
       brain.setCategory("");
       brain.setImpact("HIGH");
       brain.setStatus(status);
+    } else if (lensId === "PENDING") {
+      brain.setCategory("");
+      brain.setImpact("");
+      brain.setStatus("SUGGESTED");
     } else {
       brain.setCategory(lensId);
       brain.setImpact("");

@@ -16,6 +16,7 @@ import type { ClientGoal } from "@/db/entities/ClientGoal";
 import type { ClientMetaSettings } from "@/db/entities/ClientMetaSettings";
 import type { ClientTag } from "@/db/entities/ClientTag";
 import type { CreativeAsset } from "@/db/entities/CreativeAsset";
+import type { MessageTemplate } from "@/db/entities/MessageTemplate";
 import type { LookalikeJob } from "@/db/entities/LookalikeJob";
 import type { AudienceInsightBreakdown } from "@/db/entities/AudienceInsightBreakdown";
 import type { MetaAdAccountInventory } from "@/db/entities/MetaAdAccountInventory";

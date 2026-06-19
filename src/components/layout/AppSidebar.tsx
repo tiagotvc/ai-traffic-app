@@ -72,7 +72,6 @@ export function AppSidebar({
   allowCreativeMemoryAi = true,
   agencyBrainFeatures,
   planLimits = FREE_LIMITS,
-  planUsage,
   planLimitsReady = true,
   isPlatformAdmin = false,
   collapsed,
