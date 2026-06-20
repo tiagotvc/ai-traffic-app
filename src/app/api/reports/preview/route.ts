@@ -11,6 +11,7 @@ export async function GET(req: Request) {
   const { tenant } = await getAppContext();
   const url = new URL(req.url);
   const clientId = url.searchParams.get("clientId")?.trim();
+  const adAccountId = url.searchParams.get("adAccountId")?.trim() || null;
   const locale = url.searchParams.get("locale")?.trim() || "pt-BR";
   const reportType = url.searchParams.get("type") === "complete" ? "complete" : "simple";
   const goalLabel = url.searchParams.get("goalLabel")?.trim() || "Conversões";
@@ -45,6 +46,7 @@ export async function GET(req: Request) {
   const payload = await buildReportPreview({
     tenantId: tenant.id,
     clientParam: clientId,
+    adAccountId,
     current,
     previous,
     locale,

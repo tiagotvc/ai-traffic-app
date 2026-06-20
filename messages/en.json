@@ -1548,7 +1548,12 @@
     "recommendationsTitle": "Ideas for the next period",
     "recommendationsSubtitle": "Suggestions based on performance in the selected period.",
     "creativesRankingTitle": "Top creatives",
-    "creativesRankingSubtitle": "Best-performing creatives in the period, by campaign type."
+    "creativesRankingSubtitle": "Top 3 creatives in the period, by campaign type.",
+    "adAccountLabel": "Ad account",
+    "allAdAccounts": "All linked accounts",
+    "adAccountHint": "Filter by account before previewing or exporting.",
+    "claudeAnalysisBadge": "Claude analysis",
+    "claudeAnalysisFallback": "Automatic analysis (Claude not configured)"
   },
   "creatives": {
     "breadcrumb": "Creatives › Ranking",

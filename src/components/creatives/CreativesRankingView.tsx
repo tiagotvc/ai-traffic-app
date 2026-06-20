@@ -25,11 +25,16 @@ export function CreativesRankingView({
   clientId,
   clientSlug,
   periodQuery = "",
+  adAccountId,
+  maxBest,
   accountsLoading = false
 }: {
   clientId: string;
   clientSlug?: string;
   periodQuery?: string;
+  adAccountId?: string;
+  /** When set, only show top N best creatives per group (hides promising/zero spend). */
+  maxBest?: number;
   accounts?: Array<{ metaAdAccountId: string; label: string }>;
   accountsLoading?: boolean;
 }) {
@@ -64,7 +69,10 @@ export function CreativesRankingView({
 
     setLoading(true);
     setLoadError(null);
-    fetch(`/api/creatives/performance?clientId=${encodeURIComponent(clientId)}&${periodQuery}`)
+    const params = new URLSearchParams(periodQuery);
+    params.set("clientId", clientId);
+    if (adAccountId) params.set("adAccountId", adAccountId);
+    fetch(`/api/creatives/performance?${params.toString()}`)
       .then(async (r) => {
         const text = await r.text();
         let j: Record<string, unknown> = {};
@@ -90,7 +98,7 @@ export function CreativesRankingView({
         setLoadError(e.message || t("errorLoad"));
       })
       .finally(() => setLoading(false));
-  }, [clientId, periodQuery, accountsLoading, t]);
+  }, [clientId, periodQuery, adAccountId, accountsLoading, t]);
 
   useEffect(() => {
     load();
@@ -170,8 +178,10 @@ export function CreativesRankingView({
       {banner}
       {groups.map((g) => {
         const cols = presetMetricsFor(g.preset);
+        const best = maxBest != null ? g.best.slice(0, maxBest) : g.best;
         const zeroOpen = expandedZero[g.preset];
-        const totalCount = g.best.length + g.promising.length + g.noSpend.length;
+        const totalCount = maxBest != null ? best.length : g.best.length + g.promising.length + g.noSpend.length;
+        const reportMode = maxBest != null;
         return (
           <div key={g.preset} className="ui-card overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
@@ -185,16 +195,18 @@ export function CreativesRankingView({
               <Badge variant="brand">{tPresets(g.preset)}</Badge>
             </div>
 
-            {g.best.length ? (
+            {best.length ? (
               <CreativeCardGrid
-                creatives={g.best}
+                creatives={best}
                 metrics={cols}
                 primaryMetric={g.primaryMetric}
                 clientSlug={clientSlug ?? ""}
               />
+            ) : reportMode ? (
+              <p className="px-4 py-6 text-center text-sm text-slate-500">{t("empty")}</p>
             ) : null}
 
-            {g.promising.length ? (
+            {!reportMode && g.promising.length ? (
               <div className="border-t border-slate-100">
                 <div className="flex items-start gap-2 bg-amber-50/60 px-4 py-2.5">
                   <span className="text-amber-600">✦</span>
@@ -213,7 +225,7 @@ export function CreativesRankingView({
               </div>
             ) : null}
 
-            {g.noSpend.length ? (
+            {!reportMode && g.noSpend.length ? (
               <div className="border-t border-slate-100">
                 <div className="px-4 py-2.5">
                   <button

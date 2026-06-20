@@ -33,12 +33,14 @@ export function ReportPreview({
   data,
   selectedMetrics,
   reportType,
-  periodQuery
+  periodQuery,
+  adAccountId
 }: {
   data: ReportPreviewPayload;
   selectedMetrics: MetricKey[];
   reportType: "simple" | "complete";
   periodQuery: string;
+  adAccountId?: string;
 }) {
   const t = useTranslations("reports");
   const tMetrics = useTranslations("metrics");
@@ -103,6 +105,12 @@ export function ReportPreview({
             {data.period.currentLabel}
             <span className="mx-2 text-slate-300">·</span>
             {reportType === "complete" ? t("typeComplete") : t("typeSimple")}
+            {data.adAccount?.label ? (
+              <>
+                <span className="mx-2 text-slate-300">·</span>
+                {data.adAccount.label}
+              </>
+            ) : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -131,8 +139,25 @@ export function ReportPreview({
       </section>
 
       <section className="ui-card p-4">
-        <div className="text-sm font-semibold text-slate-900">{t("narrativeTitle")}</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-sm font-semibold text-slate-900">{t("narrativeTitle")}</div>
+          {data.aiAnalysis ? (
+            <Badge variant="brand">{t("claudeAnalysisBadge")}</Badge>
+          ) : reportType === "complete" ? (
+            <Badge variant="neutral">{t("claudeAnalysisFallback")}</Badge>
+          ) : null}
+        </div>
         <p className="mt-3 text-sm leading-relaxed text-slate-700">{data.narrative}</p>
+        {data.aiAnalysis?.keyFindings.length ? (
+          <ul className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+            {data.aiAnalysis.keyFindings.map((item, i) => (
+              <li key={i} className="text-sm text-slate-600">
+                <span className="mr-1.5 text-violet-600">•</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </section>
 
       <section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -321,6 +346,8 @@ export function ReportPreview({
           clientId={data.client.id}
           clientSlug={data.client.slug}
           periodQuery={periodQuery}
+          adAccountId={adAccountId ?? data.adAccount?.metaAdAccountId}
+          maxBest={3}
         />
       </section>
     </div>

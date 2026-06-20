@@ -14,6 +14,8 @@ import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 
 type ClientOption = { id: string; slug: string; name: string };
 
+type AdAccountOption = { id: string; metaAdAccountId: string; label: string };
+
 type ScheduleRow = {
   id: string;
   name: string;
@@ -50,6 +52,9 @@ export function ReportsClient() {
 
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [selectedClientSlug, setSelectedClientSlug] = useState("");
+  const [adAccounts, setAdAccounts] = useState<AdAccountOption[]>([]);
+  const [adAccountsLoading, setAdAccountsLoading] = useState(false);
+  const [selectedAdAccountId, setSelectedAdAccountId] = useState("");
   const [reportType, setReportType] = useState<"simple" | "complete">("simple");
   const [period, setPeriod] = useState<PeriodState>({ preset: "thisWeek", since: "", until: "" });
   const [selectedMetrics, setSelectedMetrics] = useState<MetricKey[]>(DEFAULT_REPORT_METRICS);
@@ -74,6 +79,24 @@ export function ReportsClient() {
       .then((j) => setSchedules(j.schedules ?? []))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!selectedClientSlug) {
+      setAdAccounts([]);
+      setSelectedAdAccountId("");
+      return;
+    }
+    setAdAccountsLoading(true);
+    fetch(`/api/clients/${encodeURIComponent(selectedClientSlug)}/ad-accounts`)
+      .then((r) => r.json())
+      .then((j: { linked?: AdAccountOption[] }) => {
+        const linked = j.linked ?? [];
+        setAdAccounts(linked);
+        setSelectedAdAccountId("");
+      })
+      .catch(() => setAdAccounts([]))
+      .finally(() => setAdAccountsLoading(false));
+  }, [selectedClientSlug]);
 
   useEffect(() => {
     fetch("/api/clients?minimal=1")
@@ -117,6 +140,7 @@ export function ReportsClient() {
     qs.set("type", reportType);
     qs.set("locale", locale);
     qs.set("goalLabel", goalLabel);
+    if (selectedAdAccountId) qs.set("adAccountId", selectedAdAccountId);
 
     try {
       const res = await fetch(`/api/reports/preview?${qs}`);
@@ -138,20 +162,27 @@ export function ReportsClient() {
     } finally {
       setPreviewLoading(false);
     }
-  }, [selectedClient, periodQuery, reportType, locale, t, tMetrics, selectedMetrics]);
+  }, [selectedClient, periodQuery, reportType, locale, t, tMetrics, selectedMetrics, selectedAdAccountId]);
 
   function exportPdf() {
     if (!selectedClient) return;
     setMessage(null);
     startTransition(async () => {
-      const days = period.preset === "last30" ? 30 : period.preset === "last14" ? 14 : 7;
+      const goalMetricGuess = selectedMetrics.includes("messages") ? "messages" : "conversions";
+      const goalLabel = tMetrics(METRIC_BY_KEY[goalMetricGuess].label);
       const res = await fetch("/api/reports/pdf", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           clientId: selectedClient.slug,
-          days,
-          template: reportType === "complete" ? "executive" : "performance",
+          adAccountId: selectedAdAccountId || undefined,
+          reportType,
+          locale,
+          goalLabel,
+          preset: period.preset,
+          since: period.since || undefined,
+          until: period.until || undefined,
+          selectedMetrics,
           ...(reportEmail.trim() ? { email: reportEmail.trim() } : {})
         })
       });
@@ -278,6 +309,27 @@ export function ReportsClient() {
             </div>
 
             <div>
+              <div className="ui-label">{t("adAccountLabel")}</div>
+              <select
+                value={selectedAdAccountId}
+                onChange={(e) => {
+                  setSelectedAdAccountId(e.target.value);
+                  setPreview(null);
+                }}
+                disabled={adAccountsLoading || !adAccounts.length}
+                className="ui-select mt-1 w-full"
+              >
+                <option value="">{t("allAdAccounts")}</option>
+                {adAccounts.map((a) => (
+                  <option key={a.id} value={a.metaAdAccountId}>
+                    {a.label || a.metaAdAccountId}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-slate-400">{t("adAccountHint")}</p>
+            </div>
+
+            <div>
               <div className="ui-label">{t("reportTypeLabel")}</div>
               <div className="mt-1 flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                 {(
@@ -370,6 +422,7 @@ export function ReportsClient() {
                 selectedMetrics={selectedMetrics}
                 reportType={reportType}
                 periodQuery={periodQuery}
+                adAccountId={selectedAdAccountId || undefined}
               />
             </div>
           ) : (

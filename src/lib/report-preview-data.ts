@@ -13,6 +13,7 @@ import {
   resolveDashboardScope
 } from "@/lib/dashboard-query";
 import { pctDelta, type Range } from "@/lib/dashboard-ranges";
+import { generateReportClaudeAnalysis } from "@/lib/report-ai-analysis";
 import {
   generateReportNarrative,
   generateReportRecommendations
@@ -66,11 +67,12 @@ function goalMetricFor(objective: GoalObjective, dominantPreset: string): Metric
   return "conversions";
 }
 
-async function dominantPresetForClient(tenantId: string, clientId: string): Promise<string> {
-  const { campaignPreset: presetRepo, campaignMetricSnapshot: campRepo, adAccount: adAccountRepo } =
-    await repositories();
-  const accounts = await adAccountRepo.find({ where: { clientId } });
-  const accountIds = accounts.map((a) => a.id);
+async function dominantPresetForClient(
+  tenantId: string,
+  clientId: string,
+  accountIds: string[]
+): Promise<string> {
+  const { campaignPreset: presetRepo, campaignMetricSnapshot: campRepo } = await repositories();
   if (!accountIds.length) return "default";
 
   const presetRows = await presetRepo.find({ where: { tenantId } });
@@ -183,6 +185,7 @@ function formatRangeLabel(range: Range, locale: string): string {
 export async function buildReportPreview(input: {
   tenantId: string;
   clientParam: string;
+  adAccountId?: string | null;
   current: Range;
   previous: Range;
   locale: string;
@@ -192,8 +195,27 @@ export async function buildReportPreview(input: {
   const client = await getClientBySlugOrId(input.tenantId, input.clientParam);
   if (!client) return { ok: false, error: "client_not_found" };
 
-  const { accountIds } = await resolveDashboardScope(input.tenantId, slugify(client.name));
-  const dominantPreset = await dominantPresetForClient(input.tenantId, client.id);
+  const clientSlug = slugify(client.name);
+  const { accountIds, adAccounts } = await resolveDashboardScope(
+    input.tenantId,
+    clientSlug,
+    input.adAccountId ?? null
+  );
+  const matchedAccount =
+    input.adAccountId && adAccounts.length
+      ? adAccounts.find(
+          (a) => a.id === input.adAccountId || a.metaAdAccountId === input.adAccountId
+        )
+      : undefined;
+  const selectedAccount = matchedAccount
+    ? {
+        id: matchedAccount.id,
+        metaAdAccountId: matchedAccount.metaAdAccountId,
+        label: matchedAccount.label ?? matchedAccount.metaAdAccountId
+      }
+    : null;
+
+  const dominantPreset = await dominantPresetForClient(input.tenantId, client.id, accountIds);
 
   const { clientGoal: goalRepo } = await repositories();
   const goalRow = await goalRepo.findOne({ where: { clientId: client.id } });
@@ -287,16 +309,37 @@ export async function buildReportPreview(input: {
         })
       : [];
 
+  let aiAnalysis = null;
+  if (input.reportType === "complete") {
+    aiAnalysis = await generateReportClaudeAnalysis({
+      locale: input.locale,
+      clientName: client.name,
+      accountLabel: selectedAccount?.label,
+      periodLabel: currentLabel,
+      prevPeriodLabel: previousLabel,
+      summary,
+      previousSummary,
+      goalMetric,
+      goalLabel: input.goalLabel,
+      campaigns
+    });
+  }
+
+  const finalRecommendations =
+    aiAnalysis?.recommendations.length ? aiAnalysis.recommendations : recommendations;
+  const finalNarrative = aiAnalysis?.executiveSummary ?? narrative;
+
   return {
     ok: true,
     client: {
       id: client.id,
-      slug: slugify(client.name),
+      slug: clientSlug,
       name: client.name,
       dominantPreset,
       goalObjective,
       goalMetric
     },
+    adAccount: selectedAccount,
     period: {
       current: input.current,
       previous: input.previous,
@@ -309,8 +352,9 @@ export async function buildReportPreview(input: {
     previousSeries,
     campaigns,
     comparisonBars,
-    narrative,
-    recommendations
+    narrative: finalNarrative,
+    recommendations: finalRecommendations,
+    aiAnalysis
   };
 }
 

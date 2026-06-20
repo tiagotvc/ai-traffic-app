@@ -3,6 +3,13 @@ import type { MetricKey } from "@/lib/dashboard-metrics";
 import type { Range } from "@/lib/dashboard-ranges";
 import type { ReportRecommendation } from "@/lib/report-narrative";
 
+export type ReportAiAnalysis = {
+  provider: "claude";
+  executiveSummary: string;
+  keyFindings: string[];
+  recommendations: ReportRecommendation[];
+};
+
 export type ReportSummary = Partial<Record<MetricKey, number>>;
 
 export type CampaignSpendRow = {
@@ -24,6 +31,11 @@ export type ReportPreviewPayload = {
     goalObjective: GoalObjective;
     goalMetric: MetricKey;
   };
+  adAccount?: {
+    id: string;
+    metaAdAccountId: string;
+    label: string;
+  } | null;
   period: {
     current: Range;
     previous: Range;
@@ -38,6 +50,7 @@ export type ReportPreviewPayload = {
   comparisonBars: Array<{ key: MetricKey; current: number; previous: number; delta: number | null }>;
   narrative: string;
   recommendations: ReportRecommendation[];
+  aiAnalysis?: ReportAiAnalysis | null;
 };
 
 export const DEFAULT_REPORT_METRICS: MetricKey[] = ["spend", "clicks", "cpm", "ctr", "conversions"];
