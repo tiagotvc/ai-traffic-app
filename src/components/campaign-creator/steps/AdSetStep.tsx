@@ -46,7 +46,10 @@ export function AdSetStep() {
     if (payload.adsets.length <= 1 || addAdsetMode) return;
     updatePayload((p) => {
       const adsets = p.adsets.filter((a) => a.id !== adsetId);
-      const activeAdsetId = p.activeAdsetId === adsetId ? adsets[0]!.id : p.activeAdsetId;
+      const fallbackAdsetId = adsets[0]?.id;
+      if (!fallbackAdsetId) return p;
+      const activeAdsetId =
+        p.activeAdsetId === adsetId || !p.activeAdsetId ? fallbackAdsetId : p.activeAdsetId;
       const ads = p.ads.map((ad) => {
         if (ad.targetAdsetIds.includes("__all__")) return ad;
         const targets = ad.targetAdsetIds.filter((id) => id !== adsetId);

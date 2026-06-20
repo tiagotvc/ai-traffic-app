@@ -1,7 +1,16 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+
+import { PageHeader } from "@/components/layout/PageHeader";
+import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
+import { ReportMetricPicker } from "@/components/reports/ReportMetricPicker";
+import { ReportPreview } from "@/components/reports/ReportPreview";
+import { CardsRowSkeleton, ChartCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { DEFAULT_REPORT_METRICS, type ReportPreviewPayload } from "@/lib/report-preview-types";
+import type { MetricKey } from "@/lib/dashboard-metrics";
+import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 
 type ClientOption = { id: string; slug: string; name: string };
 
@@ -16,11 +25,6 @@ type ScheduleRow = {
   enabled: boolean;
   nextRunAt: string | null;
 };
-
-const READY_REPORTS = [
-  { id: "performance", icon: "📊", days: 7 },
-  { id: "executive", icon: "📈", days: 30 }
-] as const;
 
 function formatNextRun(iso: string | null, locale: string) {
   if (!iso) return "—";
@@ -40,22 +44,30 @@ function formatNextRun(iso: string | null, locale: string) {
 export function ReportsClient() {
   const t = useTranslations("reports");
   const tCommon = useTranslations("common");
+  const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [isPending, startTransition] = useTransition();
+
   const [clients, setClients] = useState<ClientOption[]>([]);
-  const [selectedClients, setSelectedClients] = useState<Record<string, boolean>>({});
-  const [scope, setScope] = useState<"client" | "group">("client");
-  const [template, setTemplate] = useState("performance");
-  const [format, setFormat] = useState<"pdf" | "whatsapp">("pdf");
-  const [whatsText, setWhatsText] = useState("");
+  const [selectedClientSlug, setSelectedClientSlug] = useState("");
+  const [reportType, setReportType] = useState<"simple" | "complete">("simple");
+  const [period, setPeriod] = useState<PeriodState>({ preset: "thisWeek", since: "", until: "" });
+  const [selectedMetrics, setSelectedMetrics] = useState<MetricKey[]>(DEFAULT_REPORT_METRICS);
+  const [preview, setPreview] = useState<ReportPreviewPayload | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [clientQ, setClientQ] = useState("");
+  const [reportEmail, setReportEmail] = useState("");
   const [schedules, setSchedules] = useState<ScheduleRow[]>([]);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [scheduleName, setScheduleName] = useState("");
   const [scheduleFreq, setScheduleFreq] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [scheduleEmail, setScheduleEmail] = useState("");
-  const [reportEmail, setReportEmail] = useState("");
+
+  const periodQuery = useMemo(() => periodStateToQuery(period).toString(), [period]);
+
+  const selectedClient = clients.find((c) => c.slug === selectedClientSlug) ?? clients[0];
+
   const loadSchedules = useCallback(() => {
     fetch("/api/report-schedules")
       .then((r) => r.json())
@@ -69,60 +81,77 @@ export function ReportsClient() {
       .then((j: { clients?: ClientOption[] }) => {
         const list = j.clients ?? [];
         setClients(list);
-        const sel: Record<string, boolean> = {};
-        if (list[0]) sel[list[0].id] = true;
-        setSelectedClients(sel);
+        if (list[0]) setSelectedClientSlug(list[0].slug);
       })
       .catch(() => {});
     loadSchedules();
   }, [loadSchedules]);
 
-  const filteredClients = clients.filter((c) =>
-    c.name.toLowerCase().includes(clientQ.toLowerCase())
-  );
+  useEffect(() => {
+    setPeriod((current) => {
+      if (reportType === "complete" && current.preset !== "last30" && current.preset !== "custom") {
+        return { preset: "last30", since: "", until: "" };
+      }
+      if (reportType === "simple" && current.preset === "last30") {
+        return { preset: "thisWeek", since: "", until: "" };
+      }
+      return current;
+    });
+    setPreview(null);
+  }, [reportType]);
 
-  const selectedClientIds = Object.entries(selectedClients)
-    .filter(([, on]) => on)
-    .map(([id]) => id);
-
-  const primaryClient = clients.find((c) => selectedClients[c.id]) ?? clients[0];
-
-  function generateReport() {
+  const loadPreview = useCallback(async () => {
+    if (!selectedClient) {
+      setPreviewError(t("selectClientRequired"));
+      return;
+    }
+    setPreviewLoading(true);
+    setPreviewError(null);
     setMessage(null);
-    const clientId =
-      scope === "client" && primaryClient
-        ? primaryClient.slug
-        : selectedClientIds[0]
-          ? clients.find((c) => c.id === selectedClientIds[0])?.slug
-          : undefined;
 
-    startTransition(async () => {
-      if (format === "whatsapp") {
-        const res = await fetch("/api/reports/whatsapp", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ clientId, days: 7 })
-        });
-        const json = (await res.json().catch(() => null)) as {
-          ok?: boolean;
-          text?: string;
-          error?: string;
-        };
-        if (!res.ok || !json?.ok) {
-          setMessage(json?.error ?? t("generateFailed"));
-          return;
-        }
-        setWhatsText(json.text ?? "");
-        setMessage(t("whatsappGenerated"));
+    const goalMetricGuess = selectedMetrics.includes("messages") ? "messages" : "conversions";
+    const goalLabel = tMetrics(METRIC_BY_KEY[goalMetricGuess].label);
+
+    const qs = new URLSearchParams(periodQuery);
+    qs.set("clientId", selectedClient.slug);
+    qs.set("type", reportType);
+    qs.set("locale", locale);
+    qs.set("goalLabel", goalLabel);
+
+    try {
+      const res = await fetch(`/api/reports/preview?${qs}`);
+      const json = (await res.json()) as ReportPreviewPayload & { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setPreview(null);
+        setPreviewError(json.error ?? t("previewFailed"));
         return;
       }
+      setPreview(json);
+      if (json.client.goalMetric && !selectedMetrics.includes(json.client.goalMetric)) {
+        setSelectedMetrics((cur) =>
+          cur.includes(json.client.goalMetric) ? cur : [...cur, json.client.goalMetric]
+        );
+      }
+    } catch {
+      setPreview(null);
+      setPreviewError(t("previewFailed"));
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [selectedClient, periodQuery, reportType, locale, t, tMetrics, selectedMetrics]);
+
+  function exportPdf() {
+    if (!selectedClient) return;
+    setMessage(null);
+    startTransition(async () => {
+      const days = period.preset === "last30" ? 30 : period.preset === "last14" ? 14 : 7;
       const res = await fetch("/api/reports/pdf", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          clientId,
-          days: READY_REPORTS.find((r) => r.id === template)?.days ?? 7,
-          template,
+          clientId: selectedClient.slug,
+          days,
+          template: reportType === "complete" ? "executive" : "performance",
           ...(reportEmail.trim() ? { email: reportEmail.trim() } : {})
         })
       });
@@ -143,7 +172,7 @@ export function ReportsClient() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `relatorio-${primaryClient?.slug ?? "cliente"}.pdf`;
+      a.download = `relatorio-${selectedClient.slug}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       setMessage(t("pdfDownloaded"));
@@ -161,8 +190,8 @@ export function ReportsClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: scheduleName.trim(),
-          clientId: primaryClient?.slug ?? primaryClient?.id ?? null,
-          format,
+          clientId: selectedClient?.slug ?? null,
+          format: "pdf",
           frequency: scheduleFreq,
           hourUtc: 12,
           recipients: [scheduleEmail.trim()],
@@ -203,69 +232,153 @@ export function ReportsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500">{t("breadcrumb")}</p>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-slate-900">
-            <span className="text-violet-600">📊</span>
-            {t("title")}
-          </h1>
-          <p className="mt-1 max-w-xl text-sm text-slate-500">{t("pageSubtitle")}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="ui-btn-secondary">
-            {t("whiteLabelModels")}
-          </button>
-          <button type="button" className="ui-btn-primary" onClick={generateReport} disabled={isPending}>
-            {isPending ? tCommon("generating") : t("generateNew")}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={t("title")}
+        subtitle={t("pageSubtitleNew")}
+        breadcrumbs={t("breadcrumb")}
+        actions={
+          preview ? (
+            <>
+              <button type="button" className="ui-btn-secondary" onClick={loadPreview} disabled={previewLoading}>
+                {previewLoading ? tCommon("loading") : t("refreshPreview")}
+              </button>
+              <button
+                type="button"
+                className="ui-btn-primary"
+                onClick={exportPdf}
+                disabled={isPending || !selectedClient}
+              >
+                {isPending ? tCommon("generating") : t("exportPdf")}
+              </button>
+            </>
+          ) : null
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_1fr]">
+        <aside className="space-y-4">
+          <div className="ui-card space-y-4 p-4">
+            <div>
+              <div className="ui-label">{t("clientLabel")}</div>
+              <select
+                value={selectedClientSlug}
+                onChange={(e) => {
+                  setSelectedClientSlug(e.target.value);
+                  setPreview(null);
+                }}
+                className="ui-select mt-1 w-full"
+              >
+                {clients.map((c) => (
+                  <option key={c.id} value={c.slug}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-slate-400">{t("oneClientHint")}</p>
+            </div>
+
+            <div>
+              <div className="ui-label">{t("reportTypeLabel")}</div>
+              <div className="mt-1 flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                {(
+                  [
+                    ["simple", t("typeSimple")],
+                    ["complete", t("typeComplete")]
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setReportType(key);
+                      setPreview(null);
+                    }}
+                    className={`flex-1 rounded-lg py-1.5 text-xs font-medium ${
+                      reportType === key ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                {reportType === "simple" ? t("typeSimpleHint") : t("typeCompleteHint")}
+              </p>
+            </div>
+
+            <div>
+              <div className="ui-label">{t("periodLabel")}</div>
+              <div className="mt-1">
+                <PeriodFilter
+                  value={period}
+                  onChange={(next) => {
+                    setPeriod(next);
+                    setPreview(null);
+                  }}
+                />
+              </div>
+            </div>
+
+            <ReportMetricPicker selected={selectedMetrics} onChange={setSelectedMetrics} />
+
+            <button
+              type="button"
+              className="ui-btn-primary w-full"
+              onClick={() => void loadPreview()}
+              disabled={previewLoading || !selectedClient}
+            >
+              {previewLoading ? tCommon("loading") : t("previewReport")}
+            </button>
+
+            {previewError ? <p className="text-xs text-rose-600">{previewError}</p> : null}
+          </div>
+
+          <div className="ui-card space-y-3 p-4">
+            <div className="text-sm font-semibold text-slate-900">{t("exportSectionTitle")}</div>
+            <p className="text-xs text-slate-500">{t("exportSectionHint")}</p>
+            <label className="block text-xs font-medium text-slate-600">{t("emailOptional")}</label>
+            <input
+              type="email"
+              value={reportEmail}
+              onChange={(e) => setReportEmail(e.target.value)}
+              placeholder={t("emailPlaceholder")}
+              className="ui-input w-full"
+            />
+            <button
+              type="button"
+              className="ui-btn-secondary w-full"
+              onClick={exportPdf}
+              disabled={isPending || !preview || !selectedClient}
+            >
+              {isPending ? tCommon("generating") : t("exportPdf")}
+            </button>
+            {message ? <p className="text-xs text-slate-500">{message}</p> : null}
+          </div>
+        </aside>
+
         <div className="min-w-0 space-y-6">
-          <section>
-            <h2 className="text-sm font-semibold text-slate-900">{t("readyTitle")}</h2>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {READY_REPORTS.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setTemplate(r.id)}
-                  className={`ui-card flex flex-col p-4 text-left transition hover:border-violet-300 hover:shadow-md ${
-                    template === r.id ? "border-violet-400 ring-2 ring-violet-200" : ""
-                  }`}
-                >
-                  <span className="text-2xl">{r.icon}</span>
-                  <span className="mt-2 text-sm font-semibold text-slate-900">
-                    {t(`ready.${r.id}.title`)}
-                  </span>
-                  <span className="mt-1 line-clamp-2 text-xs text-slate-500">
-                    {t(`ready.${r.id}.desc`)}
-                  </span>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                      {t("templateAvailable")}
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      {t("periodDays", { count: r.days })}
-                    </span>
-                  </div>
-                </button>
-              ))}
+          {previewLoading && !preview ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-64" />
+              <CardsRowSkeleton />
+              <ChartCardSkeleton />
             </div>
-            <div className="mt-4">
-              <label className="block text-xs font-medium text-slate-600">{t("emailOptional")}</label>
-              <input
-                type="email"
-                value={reportEmail}
-                onChange={(e) => setReportEmail(e.target.value)}
-                placeholder={t("emailPlaceholder")}
-                className="ui-input mt-1 w-full max-w-md"
+          ) : preview ? (
+            <div className="ui-card p-4 sm:p-6">
+              <ReportPreview
+                data={preview}
+                selectedMetrics={selectedMetrics}
+                reportType={reportType}
+                periodQuery={periodQuery}
               />
-              <p className="mt-1 text-[11px] text-slate-400">{t("emailHint")}</p>
             </div>
-          </section>
+          ) : (
+            <div className="ui-card flex min-h-[320px] flex-col items-center justify-center p-8 text-center">
+              <div className="text-4xl">📊</div>
+              <h2 className="mt-3 text-lg font-semibold text-slate-900">{t("emptyPreviewTitle")}</h2>
+              <p className="mt-2 max-w-md text-sm text-slate-500">{t("emptyPreviewHint")}</p>
+            </div>
+          )}
 
           <section className="ui-card overflow-hidden">
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
@@ -370,156 +483,7 @@ export function ReportsClient() {
               </table>
             </div>
           </section>
-
-          <section>
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">{t("templatesTitle")}</h2>
-              <button type="button" className="text-xs font-medium text-violet-600 hover:underline">
-                {t("viewAllTemplates")}
-              </button>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <button
-                type="button"
-                className="flex min-h-[120px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 p-4 text-center transition hover:border-violet-300"
-              >
-                <span className="text-2xl text-violet-600">+</span>
-                <span className="mt-2 text-xs font-medium text-slate-600">{t("createTemplate")}</span>
-              </button>
-              {[1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className="min-h-[120px] rounded-2xl border border-slate-200 bg-gradient-to-br from-violet-50 to-slate-50 p-3 shadow-sm"
-                >
-                  <div className="text-xs font-semibold text-slate-800">
-                    {t("templatePreview", { n })}
-                  </div>
-                  <div className="mt-2 h-16 rounded-lg bg-white/80" />
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
-
-        <aside className="space-y-4">
-          <div className="ui-card p-4">
-            <h2 className="text-sm font-semibold text-slate-900">{t("generatePanelTitle")}</h2>
-
-            <div className="mt-3 flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-              {(
-                [
-                  ["client", t("scopeClient")],
-                  ["group", t("scopeGroup")]
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setScope(key)}
-                  className={`flex-1 rounded-lg py-1.5 text-xs font-medium ${
-                    scope === key ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <input
-              value={clientQ}
-              onChange={(e) => setClientQ(e.target.value)}
-              placeholder={t("searchClients")}
-              className="ui-input mt-3"
-            />
-
-            <div className="mt-2 max-h-36 space-y-1 overflow-y-auto">
-              {filteredClients.map((c) => (
-                <label
-                  key={c.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={!!selectedClients[c.id]}
-                    onChange={(e) =>
-                      setSelectedClients((p) => ({ ...p, [c.id]: e.target.checked }))
-                    }
-                    className="accent-violet-600"
-                  />
-                  <span className="text-sm text-slate-800">{c.name}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className="mt-3 space-y-3">
-              <div>
-                <div className="ui-label">{t("modelLabel")}</div>
-                <select
-                  value={template}
-                  onChange={(e) => setTemplate(e.target.value)}
-                  className="ui-select mt-1"
-                >
-                  {READY_REPORTS.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {t(`ready.${r.id}.title`)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <div className="ui-label">{t("periodLabel")}</div>
-                <div className="ui-input mt-1 flex items-center justify-between text-slate-600">
-                  <span>{t("periodValue")}</span>
-                  <span className="text-slate-400">▾</span>
-                </div>
-              </div>
-              <div>
-                <div className="ui-label">{t("formatLabel")}</div>
-                <div className="mt-1 flex gap-2">
-                  {(
-                    [
-                      ["pdf", "PDF"],
-                      ["whatsapp", "WhatsApp"]
-                    ] as const
-                  ).map(([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setFormat(key)}
-                      className={`flex-1 rounded-xl border py-2 text-xs font-medium ${
-                        format === key
-                          ? "border-violet-500 bg-violet-50 text-violet-700"
-                          : "border-slate-200 bg-white text-slate-600"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              disabled={isPending || (scope === "client" && !primaryClient)}
-              onClick={generateReport}
-              className="ui-btn-primary mt-4 w-full"
-            >
-              {isPending ? tCommon("generating") : t("generateNew")}
-            </button>
-
-            {message ? <p className="mt-2 text-xs text-slate-500">{message}</p> : null}
-
-            {format === "whatsapp" && whatsText ? (
-              <textarea readOnly value={whatsText} className="ui-textarea mt-3 h-28 text-xs" />
-            ) : null}
-          </div>
-
-          <div className="ui-card p-4">
-            <h3 className="text-sm font-semibold text-slate-900">{t("recentTitle")}</h3>
-            <p className="mt-2 text-xs text-slate-500">{t("recentHint")}</p>
-          </div>
-        </aside>
       </div>
     </div>
   );

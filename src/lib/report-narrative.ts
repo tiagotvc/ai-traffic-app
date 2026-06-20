@@ -1,7 +1,9 @@
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import { pctDelta } from "@/lib/dashboard-ranges";
 
-export type ReportSummary = Partial<Record<MetricKey, number>>;
+import type { ReportSummary } from "@/lib/report-preview-types";
+
+export type { ReportSummary };
 
 export type NarrativeSegment = {
   id: string;
