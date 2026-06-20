@@ -8,7 +8,7 @@ export type PublishPanelOptions = {
   clientSlug?: string;
   metaCampaignId?: string;
   adsetId?: string;
-  mode?: "add-ad" | "full";
+  mode?: "add-ad" | "add-adset" | "full";
 };
 
 type PublishPanelContextValue = {
@@ -32,6 +32,7 @@ export function PublishPanelProvider({ children }: { children: ReactNode }) {
       if (opts?.metaCampaignId) params.set("fromCampaign", opts.metaCampaignId);
       if (opts?.adsetId) params.set("adset", opts.adsetId);
       if (opts?.mode === "add-ad") params.set("mode", "add-ad");
+      if (opts?.mode === "add-adset") params.set("mode", "add-adset");
       const qs = params.toString() ? `?${params.toString()}` : "";
       router.push(`/campaigns/new${qs}`);
     },

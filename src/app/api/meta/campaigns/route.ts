@@ -7,6 +7,7 @@ import { CampaignDraftPayloadSchema } from "@/lib/campaign-draft";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
 import { requireMetaPublishConfig } from "@/lib/client-publish-config";
 import { createCampaignFromDraft, createFullMetaCampaign } from "@/lib/meta-campaign";
+import { MetaCreativeValidationError } from "@/lib/meta-ad-creative";
 
 const LegacyBodySchema = z.object({
   clientId: z.string().min(1),
@@ -153,9 +154,13 @@ export async function POST(req: Request) {
       await auditCreate(tenant.id, client.id, body, result, true);
       return NextResponse.json({ ok: true, ...result, publishSource: publish.source });
     } catch (err) {
+      const code = err instanceof MetaCreativeValidationError ? err.code : undefined;
       const msg = err instanceof Error ? err.message : "Unknown error";
       await auditCreate(tenant.id, client.id, body, null, false, msg);
-      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, error: code ?? msg, message: code ?? msg },
+        { status: code ? 400 : 500 }
+      );
     }
   }
 

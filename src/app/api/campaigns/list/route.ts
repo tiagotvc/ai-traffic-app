@@ -5,6 +5,7 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
 import { getCampaignPresetsMap, withCampaignPresets } from "@/lib/campaign-preset-store";
 import { filterCampaignRowsByStatus } from "@/lib/campaign-status-filter";
+import { loadCampaignDraftListRows } from "@/lib/campaign-draft-list";
 import { filterZeroActivityRows } from "@/lib/campaign-list-filters";
 import { enrichCampaignRowsFromMeta } from "@/lib/campaign-metrics-enrich";
 import { loadCampaignMetadataFromMetaParallel } from "@/lib/campaign-meta-loader";
@@ -116,10 +117,20 @@ export async function GET(req: Request) {
       rows = filterZeroActivityRows(rows, { hideZeroActivity: !showZero });
       total = rows.length;
 
+      const draftRows =
+        offset === 0
+          ? await loadCampaignDraftListRows({
+              tenantId: tenant.id,
+              clientIds,
+              searchQ,
+              objectiveRaw
+            })
+          : [];
+
       const res = NextResponse.json({
         ok: true,
-        rows: withCampaignPresets(rows, presetMap),
-        total,
+        rows: [...draftRows, ...withCampaignPresets(rows, presetMap)],
+        total: total + draftRows.length,
         totals: cc.totals ?? {
           spend: 0,
           conversions: 0,
@@ -300,7 +311,17 @@ export async function GET(req: Request) {
 
   rows = filterZeroActivityRows(rows, { hideZeroActivity: !showZero });
 
-  const total = rows.length;
+  const draftRows =
+    offset === 0
+      ? await loadCampaignDraftListRows({
+          tenantId: tenant.id,
+          clientIds,
+          searchQ,
+          objectiveRaw
+        })
+      : [];
+
+  const total = rows.length + (offset === 0 ? draftRows.length : 0);
   const totals = {
     spend: rows.reduce((s, r) => s + (r.spend ?? 0), 0),
     conversions: rows.reduce((s, r) => s + (r.conversions ?? 0), 0),
@@ -312,7 +333,7 @@ export async function GET(req: Request) {
 
   const res = NextResponse.json({
     ok: true,
-    rows: withCampaignPresets(rows, presetMap),
+    rows: [...draftRows, ...withCampaignPresets(rows, presetMap)],
     total,
     totals,
     presets: presetMap,

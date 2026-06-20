@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { coercePlacements, defaultPlacements, type PlacementConfig } from "@/lib/campaign-placements";
 import { defaultUtm, type UtmFields } from "@/lib/campaign-utm";
+import { validateAdCreativeForMeta } from "@/lib/meta-ad-creative";
 import { normalizeMessageTemplateDraft } from "@/lib/meta-welcome-message";
 
 export const CAMPAIGN_OBJECTIVES = [
@@ -68,6 +69,7 @@ export const TargetingItemSchema = z.object({
       type: z.string().optional(),
       countryCode: z.string().optional(),
       kind: z.string().optional(),
+      bucket: z.string().optional(),
       radius: z.number().optional(),
       distanceUnit: z.enum(["mile", "kilometer"]).optional()
     })
@@ -180,7 +182,7 @@ export const CampaignDraftPayloadV2Schema = z.object({
       adsetIds: z.array(z.string()).optional(),
       adIds: z.array(z.string()).optional(),
       publishedAt: z.string().optional(),
-      publishMode: z.enum(["add_ad"]).optional(),
+      publishMode: z.enum(["add_ad", "add_adset"]).optional(),
       targetMetaAdsetId: z.string().optional(),
       targetMetaCampaignId: z.string().optional(),
       targetAdsetName: z.string().optional(),
@@ -216,7 +218,7 @@ function defaultTargeting(): DraftTargeting {
   };
 }
 
-function defaultAdSetItem(locale: string, name?: string): AdSetDraftItem {
+export function defaultAdSetItem(locale: string, name?: string): AdSetDraftItem {
   const isEn = locale === "en";
   return {
     id: newDraftId(),
@@ -604,7 +606,13 @@ export function draftTargetingToApi(t: DraftTargeting) {
           for (const item of group.items) {
             const kind = item.meta?.kind ?? "interest";
             const bucket =
-              kind === "behavior" ? "behaviors" : kind === "demographic" ? "life_events" : "interests";
+              kind === "behavior"
+                ? "behaviors"
+                : kind === "demographic"
+                  ? typeof item.meta?.bucket === "string" && item.meta.bucket
+                    ? item.meta.bucket
+                    : "life_events"
+                  : "interests";
             if (!spec[bucket]) spec[bucket] = [];
             spec[bucket]!.push({ id: item.value, name: item.label });
           }
@@ -660,11 +668,24 @@ export function isAddAdDraft(d: CampaignDraftPayload): boolean {
   return d.meta?.publishMode === "add_ad";
 }
 
+export function isAddAdsetDraft(d: CampaignDraftPayload): boolean {
+  return d.meta?.publishMode === "add_adset";
+}
+
+export function isInheritedCampaignDraft(d: CampaignDraftPayload): boolean {
+  return isAddAdDraft(d) || isAddAdsetDraft(d);
+}
+
 export function validatePublishDraft(d: CampaignDraftPayload): string | null {
   if (isAddAdDraft(d)) {
     if (!d.clientSlug.trim()) return "clientRequired";
     if (!d.adAccountId.trim()) return "adAccountRequired";
     return validateAdStep(d);
+  }
+  if (isAddAdsetDraft(d)) {
+    if (!d.clientSlug.trim()) return "clientRequired";
+    if (!d.adAccountId.trim()) return "adAccountRequired";
+    return validateAdSetStep(d) ?? validateAdStep(d);
   }
   return (
     validateCampaignStep(d) ?? validateAdSetStep(d) ?? validateAdStep(d)
@@ -679,9 +700,8 @@ export function validateAdStep(d: CampaignDraftPayload): string | null {
   for (const ad of d.ads) {
     if (!ad.name.trim()) return "adNameRequired";
     if (!ad.pageId.trim()) return "pageRequired";
-    if (!adHasMedia(ad)) return "mediaRequired";
-    if (!ad.titles.some((x) => x.trim())) return "titlesRequired";
-    if (!ad.bodies.some((x) => x.trim())) return "bodiesRequired";
+    const creativeErr = validateAdCreativeForMeta(ad);
+    if (creativeErr) return creativeErr;
     if (d.objective === "leads" && ad.destinationType === "instant_form") {
       if (!ad.leadFormId) return "leadFormRequired";
     } else if (ad.destinationType === "whatsapp" || ad.destinationType === "instant_form") {

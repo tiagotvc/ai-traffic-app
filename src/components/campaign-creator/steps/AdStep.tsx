@@ -91,29 +91,13 @@ export function AdStep() {
     scrollToAdForm();
   }
 
-  function addBlankAd() {
-    const newId = newDraftId();
+  function removeAd(adId: string) {
+    if (payload.ads.length <= 1) return;
     updatePayload((p) => {
-      const base = getActiveAd(p);
-      const blank: AdDraftItem = {
-        ...defaultAdItem(locale),
-        id: newId,
-        name: `${base.name} 2`,
-        pageId: base.pageId,
-        instagramActorId: base.instagramActorId,
-        pixelId: base.pixelId,
-        linkUrl: base.linkUrl,
-        destinationType: base.destinationType,
-        leadFormId: base.leadFormId,
-        urlParams: base.urlParams,
-        callToAction: base.callToAction,
-        whatsappWelcomeMessage: base.whatsappWelcomeMessage,
-        tracking: { ...base.tracking },
-        targetAdsetIds: [...base.targetAdsetIds]
-      };
-      return { ...p, ads: [...p.ads, blank], activeAdId: newId };
+      const ads = p.ads.filter((a) => a.id !== adId);
+      const activeAdId = p.activeAdId === adId ? ads[0]!.id : p.activeAdId;
+      return { ...p, ads, activeAdId };
     });
-    scrollToAdForm();
   }
 
   function handleImport(imported: ImportedAdConfig, mode: "copy" | "media" | "all") {
@@ -278,37 +262,53 @@ export function AdStep() {
 
       <div className="flex flex-wrap items-center gap-2">
         {payload.ads.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            onClick={() => selectAd(a.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs ${
-              ad.id === a.id
-                ? "bg-[rgba(124,58,237,0.1)] font-medium text-[var(--violet)]"
-                : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
-            }`}
-          >
-            {a.name || t("treeAd")}
-          </button>
+          <span key={a.id} className="inline-flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => selectAd(a.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs ${
+                ad.id === a.id
+                  ? "bg-[rgba(124,58,237,0.1)] font-medium text-[var(--violet)]"
+                  : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
+              }`}
+            >
+              {a.name || t("treeAd")}
+            </button>
+            {payload.ads.length > 1 ? (
+              <button
+                type="button"
+                onClick={() => removeAd(a.id)}
+                className="rounded-md px-1 py-0.5 text-xs text-[var(--text-dimmer)] hover:bg-red-50 hover:text-red-600"
+                title={t("removeAd")}
+                aria-label={t("removeAd")}
+              >
+                ×
+              </button>
+            ) : null}
+          </span>
         ))}
-        <button
-          type="button"
-          onClick={() => addBlankAd()}
-          className="rounded-lg border border-dashed border-violet-300 px-3 py-1.5 text-xs text-[var(--violet)]"
-        >
-          {t("addAd")}
-        </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="relative">
         <button
           type="button"
-          onClick={() => setImportOpen(true)}
+          data-import-ad-trigger
+          onClick={() => setImportOpen((v) => !v)}
           disabled={clientRequired || !payload.adAccountId}
-          className="ui-btn-secondary text-xs"
+          className={`ui-btn-secondary text-xs ${importOpen ? "ring-2 ring-violet-300" : ""}`}
         >
           {t("importAdConfig")}
         </button>
+        <ImportAdConfigModal
+          open={importOpen}
+          inline
+          onClose={() => setImportOpen(false)}
+          clientSlug={payload.clientSlug}
+          adAccountId={payload.adAccountId}
+          defaultCampaignId={payload.meta?.targetMetaCampaignId}
+          defaultAdsetId={payload.meta?.targetMetaAdsetId}
+          onImport={handleImport}
+        />
       </div>
 
       <FormField label={t("adName")}>
@@ -668,16 +668,6 @@ export function AdStep() {
         adAccountId={payload.adAccountId}
       />
 
-      <ImportAdConfigModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        clientSlug={payload.clientSlug}
-        adAccountId={payload.adAccountId}
-        defaultCampaignId={payload.meta?.targetMetaCampaignId}
-        defaultAdsetId={payload.meta?.targetMetaAdsetId}
-        onImport={handleImport}
-      />
-
       <div className="ui-card space-y-2 p-4">
         <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("trackingSection")}</h3>
         <label className="flex items-center gap-2 text-xs">
@@ -702,14 +692,14 @@ export function AdStep() {
           <button
             type="button"
             onClick={() => addAd("same_text")}
-            className="ui-btn-secondary flex-1 text-xs"
+            className="ui-btn-secondary flex-1 text-xs transition-transform duration-200 hover:scale-[1.03] hover:border-violet-300 hover:bg-violet-50 hover:text-violet-800"
           >
             {t("presetSameText")}
           </button>
           <button
             type="button"
             onClick={() => addAd("same_image")}
-            className="ui-btn-secondary flex-1 text-xs"
+            className="ui-btn-secondary flex-1 text-xs transition-transform duration-200 hover:scale-[1.03] hover:border-violet-300 hover:bg-violet-50 hover:text-violet-800"
           >
             {t("presetSameImage")}
           </button>

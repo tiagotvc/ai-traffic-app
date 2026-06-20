@@ -6,7 +6,7 @@ export type TargetingItem = {
   value: string;
   label: string;
   sub?: string;
-  meta?: { type?: string; countryCode?: string; kind?: string };
+  meta?: { type?: string; countryCode?: string; kind?: string; bucket?: string };
 };
 
 type SearchType = "interest" | "geo" | "locale" | "behavior" | "demographic";

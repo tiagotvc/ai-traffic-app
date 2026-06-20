@@ -22,19 +22,26 @@ export function CampaignCreatorFooter({
 }) {
   const t = useTranslations("campaignCreator");
   const tCommon = useTranslations("common");
-  const { activeNode, setActiveNode, payload, saving, lastSavedAt, addAdMode } = useCampaignDraft();
+  const { activeNode, setActiveNode, payload, saving, lastSavedAt, addAdMode, addAdsetMode, inheritCampaignMode } =
+    useCampaignDraft();
 
   const err = addAdMode
     ? activeNode === "ad"
       ? validatePublishDraft(payload)
       : null
-    : activeNode === "campaign"
-      ? validateCampaignStep(payload)
-      : activeNode === "adset"
+    : addAdsetMode
+      ? activeNode === "adset"
         ? validateAdSetStep(payload)
         : activeNode === "ad"
           ? validateAdStep(payload)
-          : null;
+          : null
+      : activeNode === "campaign"
+        ? validateCampaignStep(payload)
+        : activeNode === "adset"
+          ? validateAdSetStep(payload)
+          : activeNode === "ad"
+            ? validateAdStep(payload)
+            : null;
 
   function goNext() {
     const n = nextNode(activeNode);
@@ -50,16 +57,20 @@ export function CampaignCreatorFooter({
     <footer className="flex shrink-0 items-center justify-between border-t border-[var(--border-color)] bg-[var(--surface-card)] px-4 py-3">
       <Link
         href={
-          addAdMode && payload.meta?.targetMetaCampaignId
-            ? `/campaigns/${payload.meta.targetMetaCampaignId}/ads${
-                payload.clientSlug
-                  ? `?client=${encodeURIComponent(payload.clientSlug)}${
-                      payload.meta.targetMetaAdsetId
-                        ? `&adset=${encodeURIComponent(payload.meta.targetMetaAdsetId)}`
-                        : ""
-                    }`
-                  : ""
-              }`
+          inheritCampaignMode && payload.meta?.targetMetaCampaignId
+            ? addAdsetMode
+              ? `/campaigns/${payload.meta.targetMetaCampaignId}/adsets${
+                  payload.clientSlug ? `?client=${encodeURIComponent(payload.clientSlug)}` : ""
+                }`
+              : `/campaigns/${payload.meta.targetMetaCampaignId}/ads${
+                  payload.clientSlug
+                    ? `?client=${encodeURIComponent(payload.clientSlug)}${
+                        payload.meta.targetMetaAdsetId
+                          ? `&adset=${encodeURIComponent(payload.meta.targetMetaAdsetId)}`
+                          : ""
+                      }`
+                    : ""
+                }`
             : "/campaigns"
         }
         className="ui-btn-secondary text-xs"
@@ -70,7 +81,7 @@ export function CampaignCreatorFooter({
         {lastSavedAt && !saving ? (
           <span className="hidden text-[11px] text-emerald-600 sm:inline">{t("allSaved")}</span>
         ) : null}
-        {activeNode !== "campaign" && !(addAdMode && activeNode === "ad") ? (
+        {activeNode !== "campaign" && !(addAdMode && activeNode === "ad") && !(addAdsetMode && activeNode === "adset") ? (
           <button type="button" className="ui-btn-secondary text-xs" onClick={goPrev}>
             {t("back")}
           </button>
@@ -82,7 +93,7 @@ export function CampaignCreatorFooter({
             disabled={publishing}
             onClick={onPublish}
           >
-            {publishing ? tCommon("sending") : addAdMode ? t("publishAd") : t("publish")}
+            {publishing ? tCommon("sending") : addAdMode ? t("publishAd") : addAdsetMode ? t("publishAdset") : t("publish")}
           </button>
         ) : (
           <button

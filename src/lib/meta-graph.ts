@@ -573,6 +573,55 @@ export async function searchAdTargetingCategories(
   }));
 }
 
+export type MetaTargetingValidationItem = {
+  id: string;
+  name?: string;
+  type?: string;
+  valid?: boolean;
+};
+
+/** Valida IDs de interesse/comportamento/demografia e retorna o bucket correto (type). */
+export async function validateTargetingIdList(
+  accessToken: string,
+  adAccountId: string,
+  ids: string[]
+): Promise<MetaTargetingValidationItem[]> {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+  if (!unique.length) return [];
+
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const chunks: string[][] = [];
+  for (let i = 0; i < unique.length; i += 40) {
+    chunks.push(unique.slice(i, i + 40));
+  }
+
+  const out: MetaTargetingValidationItem[] = [];
+  for (const chunk of chunks) {
+    const idList = encodeURIComponent(JSON.stringify(chunk));
+    const data = await metaFetch<{
+      data: Array<{
+        id?: string;
+        name?: string;
+        type?: string;
+        valid?: boolean;
+      }>;
+    }>(
+      `/${encodeURIComponent(act)}/targetingvalidation?id_list=${idList}`,
+      accessToken
+    );
+    for (const row of data.data ?? []) {
+      if (!row.id) continue;
+      out.push({
+        id: String(row.id),
+        name: row.name,
+        type: row.type,
+        valid: row.valid
+      });
+    }
+  }
+  return out;
+}
+
 export type MetaInstagramAccount = { id: string; username?: string };
 
 /** Contas do Instagram utilizáveis por uma conta de anúncio. */

@@ -3,7 +3,10 @@
 import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
-import type { AudienceTargetingSuggestion } from "@/lib/audience-targeting-shared";
+import type {
+  AudiencePersonaPreview,
+  AudienceTargetingSuggestion
+} from "@/lib/audience-targeting-shared";
 
 type LlmProviderId = "gemini" | "claude";
 
@@ -26,7 +29,12 @@ export type AiAudienceTargetingFormProps = {
     ageMax?: number;
     gender?: "all" | "male" | "female";
   }) => void;
-  onSaved?: (result: { name: string; metaAudienceId?: string }) => void;
+  onSaved?: (result: {
+    name: string;
+    metaAudienceId?: string;
+    storage?: "meta" | "local";
+    warning?: string;
+  }) => void;
   onApproveApply?: (suggestion: AudienceTargetingSuggestion) => Promise<void> | void;
   onError?: (message: string) => void;
 };
@@ -58,7 +66,9 @@ export function AiAudienceTargetingForm({
   const [includeIds, setIncludeIds] = useState<string[]>([]);
   const [excludeIds, setExcludeIds] = useState<string[]>([]);
   const [suggestion, setSuggestion] = useState<AudienceTargetingSuggestion | null>(null);
-  const [audienceMode, setAudienceMode] = useState<"include" | "exclude">("include");
+  const [personaPreview, setPersonaPreview] = useState<AudiencePersonaPreview | null>(null);
+  const [audienceMode, setAudienceMode] = useState<"include" | "exclude" | null>(null);
+  const [audienceSearch, setAudienceSearch] = useState("");
   const [pending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +87,18 @@ export function AiAudienceTargetingForm({
   }, []);
 
   const activeCustomIds = audienceMode === "include" ? includeIds : excludeIds;
+  const audienceSearchNorm = audienceSearch.trim().toLowerCase();
+  const filteredAudiences = audienceSearchNorm
+    ? audiences.filter((a) => a.name.toLowerCase().includes(audienceSearchNorm))
+    : audiences;
+
+  function openAudiencePicker(mode: "include" | "exclude") {
+    setAudienceMode((prev) => {
+      if (prev === mode) return mode;
+      setAudienceSearch("");
+      return mode;
+    });
+  }
 
   function toggleCustomAudience(id: string) {
     if (audienceMode === "include") {
@@ -99,15 +121,59 @@ export function AiAudienceTargetingForm({
 
   function resetForm() {
     setSuggestion(null);
+    setPersonaPreview(null);
     setBusinessDescription("");
     setTargetProfile("");
     setBehaviors("");
     setLifestyleHints("");
     setIncludeIds([]);
     setExcludeIds([]);
+    setAudienceMode(null);
+    setAudienceSearch("");
   }
 
-  function generate() {
+  function buildBriefPayload() {
+    return {
+      clientId: clientSlug,
+      adAccountId,
+      provider,
+      businessDescription: businessDescription.trim(),
+      targetProfile: targetProfile.trim(),
+      behaviors: behaviors.trim() || undefined,
+      lifestyleHints: lifestyleHints.trim() || undefined,
+      ageMin,
+      ageMax,
+      gender,
+      countries,
+      includeCustomAudienceIds: includeIds,
+      excludeCustomAudienceIds: excludeIds
+    };
+  }
+
+  function generatePersonaPreview() {
+    setError(null);
+    setSuggestion(null);
+    setPersonaPreview(null);
+    startTransition(async () => {
+      const res = await fetch("/api/ai/audience-targeting", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...buildBriefPayload(),
+          phase: "persona"
+        })
+      });
+      const j = await res.json();
+      if (j.ok && j.persona) {
+        setPersonaPreview(j.persona as AudiencePersonaPreview);
+      } else {
+        reportError(j.error ?? t("aiAudiencePreviewFailed"));
+      }
+    });
+  }
+
+  function searchMetaAndBuild() {
+    if (!personaPreview) return;
     setError(null);
     setSuggestion(null);
     startTransition(async () => {
@@ -115,19 +181,9 @@ export function AiAudienceTargetingForm({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          clientId: clientSlug,
-          adAccountId,
-          provider,
-          businessDescription: businessDescription.trim(),
-          targetProfile: targetProfile.trim(),
-          behaviors: behaviors.trim() || undefined,
-          lifestyleHints: lifestyleHints.trim() || undefined,
-          ageMin,
-          ageMax,
-          gender,
-          countries,
-          includeCustomAudienceIds: includeIds,
-          excludeCustomAudienceIds: excludeIds
+          ...buildBriefPayload(),
+          phase: "targeting",
+          persona: personaPreview
         })
       });
       const j = await res.json();
@@ -155,12 +211,23 @@ export function AiAudienceTargetingForm({
           provider: suggestion.provider
         })
       });
-      const j = await res.json();
+      const j = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        savedAudienceId?: string;
+        storage?: "meta" | "local";
+        warning?: string;
+      };
       if (!j.ok) {
         reportError(j.error ?? t("aiAudienceSaveFailed"));
         return;
       }
-      onSaved?.({ name: suggestion.name, metaAudienceId: j.savedAudienceId });
+      onSaved?.({
+        name: suggestion.name,
+        metaAudienceId: j.savedAudienceId,
+        storage: j.storage,
+        warning: j.warning
+      });
       resetForm();
     } catch {
       reportError(t("aiAudienceSaveFailed"));
@@ -217,15 +284,24 @@ export function AiAudienceTargetingForm({
           />
           Claude
           {!providers.claude ? (
-            <span className="text-[10px] text-amber-600">({t("aiProviderOff")})</span>
+            <span
+              className="text-[10px] text-amber-600"
+              title={t("aiProviderClaudeHint")}
+            >
+              ({t("aiProviderOff")})
+            </span>
           ) : null}
         </label>
       </div>
 
+      {!providers.claude ? (
+        <p className="text-[10px] leading-snug text-amber-700">{t("aiProviderClaudeHint")}</p>
+      ) : null}
+
       {showDemographics ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
-            <label className="text-xs font-medium text-[var(--text-dim)]">{t("ageMin")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicAgeMin")}</label>
             <input
               type="number"
               min={13}
@@ -239,7 +315,7 @@ export function AiAudienceTargetingForm({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-[var(--text-dim)]">{t("ageMax")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicAgeMax")}</label>
             <input
               type="number"
               min={13}
@@ -253,7 +329,7 @@ export function AiAudienceTargetingForm({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-[var(--text-dim)]">{t("gender")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicGender")}</label>
             <select
               value={gender}
               onChange={(e) =>
@@ -264,9 +340,9 @@ export function AiAudienceTargetingForm({
               className="ui-select mt-1 w-full text-sm"
               disabled={disabled}
             >
-              <option value="all">{t("genderAll")}</option>
-              <option value="female">{t("genderFemale")}</option>
-              <option value="male">{t("genderMale")}</option>
+              <option value="all">{t("aiDemographicGenderAll")}</option>
+              <option value="female">{t("aiDemographicGenderFemale")}</option>
+              <option value="male">{t("aiDemographicGenderMale")}</option>
             </select>
           </div>
         </div>
@@ -325,57 +401,176 @@ export function AiAudienceTargetingForm({
         <div className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] p-3">
           <p className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceIncludeCustom")}</p>
           <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{t("aiAudienceIncludeCustomHint")}</p>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setAudienceMode("include")}
+              onClick={() => openAudiencePicker("include")}
               className={`rounded px-2 py-1 text-[10px] font-medium ${
                 audienceMode === "include" ? "bg-[var(--violet)] text-white" : "bg-[var(--surface-bg)]"
               }`}
             >
               {t("aiAudienceModeInclude")}
+              {includeIds.length > 0 ? (
+                <span className="ml-1 rounded-full bg-white/25 px-1.5">{includeIds.length}</span>
+              ) : null}
             </button>
             <button
               type="button"
-              onClick={() => setAudienceMode("exclude")}
+              onClick={() => openAudiencePicker("exclude")}
               className={`rounded px-2 py-1 text-[10px] font-medium ${
                 audienceMode === "exclude" ? "bg-slate-700 text-white" : "bg-[var(--surface-bg)]"
               }`}
             >
               {t("aiAudienceModeExclude")}
+              {excludeIds.length > 0 ? (
+                <span className="ml-1 rounded-full bg-white/25 px-1.5">{excludeIds.length}</span>
+              ) : null}
             </button>
           </div>
-          <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
-            {audiencesLoading ? (
-              <p className="text-[10px] text-[var(--text-dimmer)]">{t("savedAudiencesLoading")}</p>
-            ) : (
-              audiences.map((a) => (
-                <label
-                  key={a.id}
-                  className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-[var(--surface-bg)]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={activeCustomIds.includes(a.id)}
-                    onChange={() => toggleCustomAudience(a.id)}
-                    disabled={disabled}
-                  />
-                  <span className="truncate">{a.name}</span>
-                </label>
-              ))
-            )}
-          </div>
+          {audienceMode ? (
+            <div className="mt-3 space-y-2 border-t border-[var(--border-color)] pt-3">
+              <input
+                type="search"
+                value={audienceSearch}
+                onChange={(e) => setAudienceSearch(e.target.value)}
+                placeholder={t("savedAudiencesSearch")}
+                className="ui-input w-full text-sm"
+                disabled={disabled}
+              />
+              <div className="max-h-40 space-y-1 overflow-y-auto">
+                {audiencesLoading ? (
+                  <p className="text-[10px] text-[var(--text-dimmer)]">{t("savedAudiencesLoading")}</p>
+                ) : filteredAudiences.length === 0 ? (
+                  <p className="text-[10px] text-[var(--text-dimmer)]">{t("savedAudiencesNoMatch")}</p>
+                ) : (
+                  filteredAudiences.map((a) => (
+                    <label
+                      key={a.id}
+                      className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-[var(--surface-bg)]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={activeCustomIds.includes(a.id)}
+                        onChange={() => toggleCustomAudience(a.id)}
+                        disabled={disabled}
+                      />
+                      <span className="truncate">{a.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
-      <button
-        type="button"
-        disabled={disabled || pending || !canGenerate}
-        onClick={generate}
-        className="ui-btn-secondary w-full text-sm"
-      >
-        {pending ? t("aiAudienceGenerating") : t("aiAudienceGenerate")}
-      </button>
+      {!personaPreview ? (
+        <button
+          type="button"
+          disabled={disabled || pending || !canGenerate}
+          onClick={generatePersonaPreview}
+          className="ui-btn-primary w-full text-sm"
+        >
+          {pending ? t("aiAudiencePreviewGenerating") : t("aiAudiencePreviewGenerate")}
+        </button>
+      ) : null}
+
+      {personaPreview && !suggestion ? (
+        <div className="space-y-3 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+              {t("aiAudiencePreviewTitle")}
+            </p>
+            <p className="mt-0.5 text-[10px] text-sky-700">{t("aiAudiencePreviewHint")}</p>
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-slate-900">{personaPreview.personaName}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-700">{personaPreview.narrative}</p>
+          </div>
+
+          {personaPreview.traits.length > 0 ? (
+            <div>
+              <p className="text-[10px] font-medium text-slate-600">{t("aiAudiencePreviewTraits")}</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {personaPreview.traits.map((trait) => (
+                  <span
+                    key={trait}
+                    className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-700 ring-1 ring-sky-200"
+                  >
+                    {trait}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {personaPreview.lifestyleCorrelates.length > 0 ? (
+            <div>
+              <p className="text-[10px] font-medium text-slate-600">
+                {t("aiAudiencePreviewCorrelates")}
+              </p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {personaPreview.lifestyleCorrelates.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] text-sky-900"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div>
+            <p className="text-[10px] font-medium text-slate-600">
+              {t("aiAudiencePreviewSearchTerms")}
+            </p>
+            <ul className="mt-1 space-y-1 text-[10px] text-slate-600">
+              {personaPreview.searchPlan.interestQueries.length > 0 ? (
+                <li>
+                  <span className="font-medium">{t("aiAudiencePreviewInterests")}:</span>{" "}
+                  {personaPreview.searchPlan.interestQueries.join(" · ")}
+                </li>
+              ) : null}
+              {personaPreview.searchPlan.behaviorQueries.length > 0 ? (
+                <li>
+                  <span className="font-medium">{t("aiAudiencePreviewBehaviors")}:</span>{" "}
+                  {personaPreview.searchPlan.behaviorQueries.join(" · ")}
+                </li>
+              ) : null}
+              {personaPreview.searchPlan.demographicQueries.length > 0 ? (
+                <li>
+                  <span className="font-medium">{t("aiAudiencePreviewDemographics")}:</span>{" "}
+                  {personaPreview.searchPlan.demographicQueries.join(" · ")}
+                </li>
+              ) : null}
+            </ul>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              type="button"
+              disabled={disabled || pending}
+              onClick={searchMetaAndBuild}
+              className="ui-btn-primary w-full text-sm"
+            >
+              {pending ? t("aiAudienceGenerating") : t("aiAudienceSearchMeta")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPersonaPreview(null);
+                setSuggestion(null);
+              }}
+              className="text-xs text-slate-500 underline"
+            >
+              {t("aiAudienceDiscardPreview")}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
 

@@ -23,6 +23,23 @@ export type AudienceTargetingSuggestion = {
   modelUsed: string;
 };
 
+export type AudiencePersonaSearchPlan = {
+  interestQueries: string[];
+  behaviorQueries: string[];
+  demographicQueries: string[];
+};
+
+export type AudiencePersonaPreview = {
+  personaName: string;
+  narrative: string;
+  traits: string[];
+  lifestyleCorrelates: string[];
+  searchPlan: AudiencePersonaSearchPlan;
+  suggestedGender?: "all" | "male" | "female";
+  provider: LlmProviderId;
+  modelUsed: string;
+};
+
 export function applySuggestionToDraftTargeting(
   current: DraftTargeting,
   suggestion: AudienceTargetingSuggestion
@@ -38,7 +55,6 @@ export function applySuggestionToDraftTargeting(
       const groupItems: TargetingItem[] = [];
       const interestsRaw = (spec.interests as Array<{ id: string; name?: string }>) ?? [];
       const behaviorsRaw = (spec.behaviors as Array<{ id: string; name?: string }>) ?? [];
-      const demoRaw = (spec.life_events as Array<{ id: string; name?: string }>) ?? [];
 
       for (const i of interestsRaw) {
         groupItems.push({
@@ -54,13 +70,19 @@ export function applySuggestionToDraftTargeting(
           meta: { kind: "behavior" }
         });
       }
-      for (const d of demoRaw) {
-        groupItems.push({
-          value: d.id,
-          label: d.name ?? d.id,
-          meta: { kind: "demographic" }
-        });
+
+      for (const [key, value] of Object.entries(spec)) {
+        if (key === "interests" || key === "behaviors") continue;
+        const rows = value as Array<{ id: string; name?: string }> | undefined;
+        for (const d of rows ?? []) {
+          groupItems.push({
+            value: d.id,
+            label: d.name ?? d.id,
+            meta: { kind: "demographic", bucket: key }
+          });
+        }
       }
+
       if (groupItems.length) detailedGroups.push({ items: groupItems });
     }
   }

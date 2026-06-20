@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
 import { AiAudienceTargetingPanel } from "@/components/campaign-creator/AiAudienceTargetingPanel";
 import { AudiencePicker } from "@/components/campaign-creator/AudiencePicker";
+import { SavedTargetingPicker } from "@/components/campaign-creator/SavedTargetingPicker";
 import { AdSetBatchPanel } from "@/components/campaign-creator/AdSetBatchPanel";
 import { GeoRadiusMapPicker } from "@/components/campaign-creator/GeoRadiusMapPicker";
 import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
@@ -17,7 +18,7 @@ import type { DraftTargeting } from "@/lib/campaign-draft";
 export function AdSetStep() {
   const t = useTranslations("campaignCreator");
   const tAds = useTranslations("ads");
-  const { payload, updatePayload } = useCampaignDraft();
+  const { payload, updatePayload, addAdsetMode } = useCampaignDraft();
   const { audiences, audiencesLoading, pixels, customConversions } = usePublishAssets(
     payload.clientSlug,
     payload.adAccountId
@@ -41,6 +42,25 @@ export function AdSetStep() {
     updatePayload({ activeAdsetId: id });
   }
 
+  function removeAdset(adsetId: string) {
+    if (payload.adsets.length <= 1 || addAdsetMode) return;
+    updatePayload((p) => {
+      const adsets = p.adsets.filter((a) => a.id !== adsetId);
+      const fallbackAdsetId = adsets[0]?.id;
+      if (!fallbackAdsetId) return p;
+      const activeAdsetId =
+        p.activeAdsetId === adsetId || !p.activeAdsetId ? fallbackAdsetId : p.activeAdsetId;
+      const ads = p.ads.map((ad) => {
+        if (ad.targetAdsetIds.includes("__all__")) return ad;
+        const targets = ad.targetAdsetIds.filter((id) => id !== adsetId);
+        if (targets.length > 0) return { ...ad, targetAdsetIds: targets };
+        return { ...ad, targetAdsetIds: [activeAdsetId] };
+      });
+      const activeAdId = ads.some((a) => a.id === p.activeAdId) ? p.activeAdId : ads[0]?.id ?? p.activeAdId;
+      return { ...p, adsets, activeAdsetId, ads, activeAdId };
+    });
+  }
+
   return (
     <div className="space-y-4">
       {!payload.clientSlug ? (
@@ -52,23 +72,41 @@ export function AdSetStep() {
       {payload.adsets.length > 1 ? (
         <div className="flex flex-wrap gap-2">
           {payload.adsets.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => selectAdset(a.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs ${
-                adset.id === a.id
-                  ? "bg-[rgba(124,58,237,0.1)] font-medium text-[var(--violet)]"
-                  : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
-              }`}
-            >
-              {a.name || t("treeAdset")}
-            </button>
+            <span key={a.id} className="inline-flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => selectAdset(a.id)}
+                className={`rounded-lg px-3 py-1.5 text-xs ${
+                  adset.id === a.id
+                    ? "bg-[rgba(124,58,237,0.1)] font-medium text-[var(--violet)]"
+                    : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
+                }`}
+              >
+                {a.name || t("treeAdset")}
+              </button>
+              {!addAdsetMode ? (
+                <button
+                  type="button"
+                  onClick={() => removeAdset(a.id)}
+                  className="rounded-md px-1 py-0.5 text-xs text-[var(--text-dimmer)] hover:bg-red-50 hover:text-red-600"
+                  title={t("removeAdset")}
+                  aria-label={t("removeAdset")}
+                >
+                  ×
+                </button>
+              ) : null}
+            </span>
           ))}
         </div>
       ) : null}
 
-      <AdSetBatchPanel />
+      {addAdsetMode && payload.meta?.targetMetaCampaignId ? (
+        <p className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+          {t("addAdsetContext", { campaign: payload.campaign.name || payload.meta.targetMetaCampaignId })}
+        </p>
+      ) : null}
+
+      {!addAdsetMode ? <AdSetBatchPanel /> : null}
 
       <FormField label={t("adsetName")}>
         <input
@@ -172,6 +210,18 @@ export function AdSetStep() {
           currentTargeting={targeting}
           onApplyTargeting={(next) => patchTargeting(next)}
           disabled={clientRequired}
+        />
+
+        <SavedTargetingPicker
+          clientSlug={payload.clientSlug}
+          adAccountId={payload.adAccountId}
+          disabled={clientRequired}
+          onApply={(next, audienceName) => {
+            patchTargeting(next);
+            if (!adset.name.trim() || adset.name.startsWith("Novo conjunto") || adset.name.startsWith("New Ad Set")) {
+              patchAdset({ name: audienceName.slice(0, 120) });
+            }
+          }}
         />
 
         <AudiencePicker

@@ -191,6 +191,81 @@ export async function GET(
     const clientCtx = await resolveCampaignClientContext(tenant.id, metaCampaignId);
     const adAccountId = clientCtx?.metaAdAccountId ?? null;
     const adsets = await fetchAdSetsForCampaign(token, metaCampaignId);
+
+    if (mode === "add-adset") {
+      const templateAdset = adsets[0];
+      let inheritedAd: ReturnType<typeof extractInheritedAdDefaults> | undefined;
+      let inheritedAdset: ReturnType<typeof extractInheritedAdsetFromMeta> | undefined;
+
+      if (templateAdset) {
+        const adsetDetail = await fetchAdSetDetail(token, templateAdset.id);
+        inheritedAdset = extractInheritedAdsetFromMeta(
+          adsetDetail,
+          templateAdset.name ?? "Conjunto"
+        );
+        const ads = await fetchAdsForAdSet(token, templateAdset.id);
+        const firstAd = ads[0];
+        let creativeData: CreativeSnapshot | null = null;
+        if (firstAd?.id) {
+          try {
+            creativeData = await fetchAdWithCreative(token, firstAd.id);
+          } catch {
+            /* optional */
+          }
+        }
+        const igAccounts = adAccountId
+          ? await fetchInstagramAccountsForAdAccount(token, adAccountId)
+          : [];
+        const resolvedMeta = clientCtx
+          ? await getResolvedClientMeta(tenant.id, clientCtx.clientSlug)
+          : null;
+        inheritedAd = extractInheritedAdDefaults(
+          creativeData,
+          adsetDetail,
+          igAccounts.map((a) => a.id),
+          {
+            pageId: resolvedMeta?.publish.pageId,
+            linkUrl: resolvedMeta?.publish.linkUrl,
+            instagramActorId: resolvedMeta?.settings.instagramActorId,
+            pixelId: inheritedAdset.pixelId ?? resolvedMeta?.settings.metaPixelId,
+            leadFormId: resolvedMeta?.settings.metaLeadFormId
+          }
+        );
+      }
+
+      const objective =
+        OBJECTIVE_REVERSE[campaign.objective ?? ""] ?? defaultCampaignDraft("pt-BR").objective;
+      const dailyBudgetBRL = campaign.daily_budget
+        ? Number(campaign.daily_budget) / 100
+        : templateAdset?.daily_budget
+          ? Number(templateAdset.daily_budget) / 100
+          : 150;
+
+      const patch: Partial<CampaignDraftPayload> = {
+        objective,
+        campaign: {
+          name: campaign.name ?? "",
+          budgetLevel: campaign.daily_budget ? "campaign" : "adset",
+          dailyBudgetBRL,
+          bidStrategy: "lowest_cost",
+          specialAdCategories: [],
+          abTestEnabled: false
+        },
+        copyFromCampaignEnabled: false,
+        copyFromCampaignId: null
+      };
+
+      return NextResponse.json({
+        ok: true,
+        patch,
+        adAccountId,
+        clientSlug: clientCtx?.clientSlug,
+        campaignName: campaign.name ?? "",
+        inheritedAdset,
+        inheritedAd
+      });
+    }
+
     const selectedAdset =
       (adsetParam ? adsets.find((a) => a.id === adsetParam) : null) ?? adsets[0];
     if (!selectedAdset) {

@@ -3,6 +3,7 @@ import type { AdDraftItem, AdSetDraftItem, CampaignDraftPayload } from "@/lib/ca
 import { draftTargetingToApi, resolveAdTargetAdsets } from "@/lib/campaign-draft";
 import { defaultPlacements, placementsToMetaTargeting } from "@/lib/campaign-placements";
 import { composeAdLinkUrl, defaultUtm, type UtmTokenContext } from "@/lib/campaign-utm";
+import { buildMetaAssetFeedSpec } from "@/lib/meta-ad-creative";
 import { mapLimit } from "@/lib/concurrency";
 import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
 import { pickInstagramActorId } from "@/lib/meta-instagram";
@@ -293,15 +294,11 @@ async function createAdForAdset(args: {
         ? "SIGN_UP"
         : cta);
 
-  const assetFeedSpec: Record<string, unknown> = {
-    ...(ad.format === "video" && ad.videoIds.length
-      ? { videos: ad.videoIds.map((video_id) => ({ video_id })) }
-      : { images: ad.imageHashes.map((hash) => ({ hash })) }),
-    titles: ad.titles.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
-    bodies: ad.bodies.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
-    link_urls: [{ website_url: resolvedLink }],
-    call_to_action_types: [resolvedCta]
-  };
+  const assetFeedSpec = buildMetaAssetFeedSpec({
+    ad,
+    resolvedLink,
+    resolvedCta
+  });
 
   const instagramId = pickInstagramActorId(
     [ad.instagramActorId, settings?.instagramActorId],
@@ -366,6 +363,82 @@ export async function publishAdToAdset(
     settings: input.settings,
     allowedInstagramActorIds
   });
+}
+
+export async function publishAdsetToCampaign(input: {
+  accessToken: string;
+  adAccountId: string;
+  metaCampaignId: string;
+  adset: AdSetDraftItem;
+  ad: AdDraftItem;
+  objective: CampaignObjectiveKey;
+  campaign: CampaignDraftPayload["campaign"];
+  pageId: string;
+  linkUrl: string;
+  settings?: ClientMetaSettings;
+  callToAction?: string;
+  campaignName?: string;
+  isCampaignBudget?: boolean;
+}): Promise<{ adsetId: string; adId: string; creativeId: string }> {
+  const actId = normalizeAdAccountId(input.adAccountId);
+  const token = input.accessToken;
+  const objective = input.objective;
+  const dailyBudgetMinor = Math.max(100, Math.round(input.campaign.dailyBudgetBRL * 100));
+  const settings = input.settings;
+  const cta = input.callToAction ?? settings?.defaultCta ?? "LEARN_MORE";
+  const campaignName = input.campaignName ?? input.campaign.name ?? "Campanha";
+  const isCbo = input.isCampaignBudget ?? input.campaign.budgetLevel === "campaign";
+
+  const adsetName = input.adset.name.trim() || `${campaignName} — Ad Set`;
+  const startTime = parseScheduleTime(input.adset.schedule.start, 3600);
+  const targeting = resolveTargeting(input.adset, settings);
+
+  const adsetBody: Record<string, string> = {
+    name: adsetName,
+    campaign_id: input.metaCampaignId,
+    billing_event: "IMPRESSIONS",
+    optimization_goal: resolveOptimizationGoal(objective, input.adset),
+    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    targeting: JSON.stringify(targeting),
+    status: "PAUSED",
+    start_time: String(startTime)
+  };
+
+  const destinationType = resolveDestinationType(input.adset);
+  if (destinationType) adsetBody.destination_type = destinationType;
+  if (!isCbo) adsetBody.daily_budget = String(dailyBudgetMinor);
+
+  if (input.adset.schedule.end) {
+    const endTime = parseScheduleTime(input.adset.schedule.end, 86400 * 7);
+    if (endTime > startTime) adsetBody.end_time = String(endTime);
+  }
+
+  const promoted = buildPromotedObject(objective, input.ad, input.adset, input.pageId, settings);
+  if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
+
+  const metaAdset = await metaPost<{ id: string }>(`/${actId}/adsets`, token, adsetBody);
+
+  const igAccounts = await fetchInstagramAccountsForAdAccount(token, input.adAccountId);
+  const allowedInstagramActorIds = igAccounts.map((a) => a.id);
+  const adName = input.ad.name.trim() || `${campaignName} — ${adsetName} — Ad`;
+
+  const { adId, creativeId } = await createAdForAdset({
+    token,
+    actId,
+    campaignName,
+    adsetId: metaAdset.id,
+    adset: input.adset,
+    ad: input.ad,
+    adName,
+    objective,
+    pageId: input.pageId,
+    linkUrl: input.linkUrl,
+    cta,
+    settings,
+    allowedInstagramActorIds
+  });
+
+  return { adsetId: metaAdset.id, adId, creativeId };
 }
 
 export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promise<PublishDraftV2Result> {

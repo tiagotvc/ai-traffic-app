@@ -23,10 +23,19 @@ function NewCampaignContent() {
     [mode, fromCampaign, adset, client]
   );
 
+  const initialAddAdset = useMemo(
+    () =>
+      mode === "add-adset" && fromCampaign
+        ? { fromCampaignId: fromCampaign, clientSlug: client }
+        : undefined,
+    [mode, fromCampaign, client]
+  );
+
   return (
     <CampaignCreatorClient
       initialClientSlug={client}
       initialAddAd={initialAddAd}
+      initialAddAdset={initialAddAdset}
       variant="uxpilot"
     />
   );

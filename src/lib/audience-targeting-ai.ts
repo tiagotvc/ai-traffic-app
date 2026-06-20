@@ -4,15 +4,25 @@ import { z } from "zod";
 
 import {
   TRAFFIC_AI_AUDIENCE_PREFIX,
+  type AudiencePersonaPreview,
   type AudienceTargetingSuggestion,
   type AudienceTargetingSuggestionItem
 } from "@/lib/audience-targeting-shared";
 import { llmGenerateJson } from "@/lib/llm/generate-json";
+import {
+  normalizeAudiencePickRaw,
+  normalizePersonaRaw,
+  normalizeSearchPlanRaw,
+  normalizeStringArray
+} from "@/lib/llm/normalize-llm-json";
 import type { LlmProviderId } from "@/lib/llm/types";
 import {
   searchAdInterests,
-  searchAdTargetingCategories
+  searchAdTargetingCategories,
+  validateTargetingIdList
 } from "@/lib/meta-graph";
+import { resolveFlexBucket, type MetaFlexSpecBucket } from "@/lib/meta-targeting-flex";
+import { sanitizeTargetingForMeta } from "@/lib/meta-targeting-sanitize";
 
 export {
   TRAFFIC_AI_AUDIENCE_PREFIX,
@@ -36,30 +46,52 @@ export const AudienceTargetingBriefSchema = z.object({
 
 export type AudienceTargetingBrief = z.infer<typeof AudienceTargetingBriefSchema>;
 
-const SearchPlanSchema = z.object({
-  interestQueries: z.array(z.string()).max(8),
-  behaviorQueries: z.array(z.string()).max(6),
-  demographicQueries: z.array(z.string()).max(4)
+const PersonaCoreSchema = z.object({
+  personaName: z.string().min(1),
+  narrative: z.string().min(1),
+  traits: z.array(z.string()).min(1).max(8),
+  lifestyleCorrelates: z.array(z.string()).max(12).default([]),
+  searchPlan: z.preprocess(
+    normalizeSearchPlanRaw,
+    z.object({
+      interestQueries: z.array(z.string()).max(8).default([]),
+      behaviorQueries: z.array(z.string()).max(6).default([]),
+      demographicQueries: z.array(z.string()).max(4).default([])
+    })
+  ),
+  suggestedGender: z.enum(["all", "male", "female"]).optional()
 });
 
-const PickSchema = z.object({
-  title: z.string(),
-  summary: z.string(),
-  name: z.string(),
-  age_min: z.number().int().min(13).max(65).optional(),
-  age_max: z.number().int().min(13).max(65).optional(),
-  genders: z.array(z.union([z.literal(1), z.literal(2)])).optional(),
-  interestIds: z.array(z.string()).max(12),
-  behaviorIds: z.array(z.string()).max(8),
-  demographicIds: z.array(z.string()).max(6),
-  reasoning: z.string().optional()
+export const AudiencePersonaPreviewSchema = z.preprocess(normalizePersonaRaw, PersonaCoreSchema);
+
+export const AudiencePersonaPreviewPayloadSchema = PersonaCoreSchema.extend({
+  provider: z.enum(["gemini", "claude"]).optional(),
+  modelUsed: z.string().optional()
 });
+
+const PickSchema = z.preprocess(
+  normalizeAudiencePickRaw,
+  z.object({
+    title: z.string().min(1),
+    summary: z.string().min(1),
+    name: z.string().min(1),
+    genders: z.array(z.union([z.literal(1), z.literal(2)])).optional(),
+    interestIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(12)).default([]),
+    behaviorIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(8)).default([]),
+    demographicIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(6)).default([]),
+    reasoning: z.string().optional()
+  })
+);
+
+type SearchPlan = z.infer<typeof PersonaCoreSchema>["searchPlan"];
 
 type CatalogItem = {
   type: "interest" | "behavior" | "demographic";
   id: string;
   name: string;
   audienceSize?: number;
+  path?: string[];
+  flexBucket?: MetaFlexSpecBucket;
 };
 
 function dedupeCatalog(items: CatalogItem[]): CatalogItem[] {
@@ -70,17 +102,21 @@ function dedupeCatalog(items: CatalogItem[]): CatalogItem[] {
   return [...map.values()];
 }
 
-async function buildCatalog(
-  accessToken: string,
-  plan: z.infer<typeof SearchPlanSchema>
-): Promise<CatalogItem[]> {
+async function buildCatalog(accessToken: string, plan: SearchPlan): Promise<CatalogItem[]> {
   const rows: CatalogItem[] = [];
 
   await Promise.all([
     ...plan.interestQueries.map(async (q) => {
       const hits = await searchAdInterests(accessToken, q);
       for (const h of hits.slice(0, 8)) {
-        rows.push({ type: "interest", id: h.id, name: h.name, audienceSize: h.audienceSize });
+        rows.push({
+          type: "interest",
+          id: h.id,
+          name: h.name,
+          audienceSize: h.audienceSize,
+          path: h.path,
+          flexBucket: "interests"
+        });
       }
     }),
     ...plan.behaviorQueries.map(async (q) => {
@@ -90,27 +126,50 @@ async function buildCatalog(
           type: "behavior",
           id: h.id,
           name: h.name,
-          audienceSize: h.audience_size
+          audienceSize: h.audience_size,
+          path: h.path,
+          flexBucket: resolveFlexBucket({ path: h.path, itemType: "behavior" })
         });
       }
     }),
     ...plan.demographicQueries.map(async (q) => {
-      const [demo, life] = await Promise.all([
-        searchAdTargetingCategories(accessToken, q, "demographics"),
-        searchAdTargetingCategories(accessToken, q, "life_events")
-      ]);
-      for (const h of [...demo, ...life].slice(0, 6)) {
+      const hits = await searchAdTargetingCategories(accessToken, q, "demographics");
+      for (const h of hits.slice(0, 6)) {
         rows.push({
           type: "demographic",
           id: h.id,
           name: h.name,
-          audienceSize: h.audience_size
+          audienceSize: h.audience_size,
+          path: h.path,
+          flexBucket: resolveFlexBucket({ path: h.path, itemType: "demographic" })
         });
       }
     })
   ]);
 
   return dedupeCatalog(rows);
+}
+
+async function enrichCatalogWithValidation(
+  accessToken: string,
+  adAccountId: string,
+  catalog: CatalogItem[]
+): Promise<CatalogItem[]> {
+  const validated = await validateTargetingIdList(
+    accessToken,
+    adAccountId,
+    catalog.map((c) => c.id)
+  );
+  const typeById = new Map(validated.map((v) => [v.id, v.type]));
+
+  return catalog.map((item) => ({
+    ...item,
+    flexBucket: resolveFlexBucket({
+      path: item.path,
+      itemType: item.type,
+      validatedType: typeById.get(item.id)
+    })
+  }));
 }
 
 function formatCatalogForPrompt(catalog: CatalogItem[]): string {
@@ -127,23 +186,30 @@ function formatCatalogForPrompt(catalog: CatalogItem[]): string {
 function buildFlexibleSpec(pick: z.infer<typeof PickSchema>, catalog: Map<string, CatalogItem>) {
   const spec: Record<string, Array<{ id: string; name: string }>> = {};
 
+  const add = (id: string, row: CatalogItem) => {
+    const bucket =
+      row.flexBucket ??
+      resolveFlexBucket({ path: row.path, itemType: row.type, validatedType: undefined });
+    if (!spec[bucket]) spec[bucket] = [];
+    if (!spec[bucket]!.some((x) => x.id === id)) {
+      spec[bucket]!.push({ id, name: row.name });
+    }
+  };
+
   for (const id of pick.interestIds) {
     const row = catalog.get(id);
     if (!row || row.type !== "interest") continue;
-    if (!spec.interests) spec.interests = [];
-    spec.interests.push({ id, name: row.name });
+    add(id, row);
   }
   for (const id of pick.behaviorIds) {
     const row = catalog.get(id);
     if (!row || row.type !== "behavior") continue;
-    if (!spec.behaviors) spec.behaviors = [];
-    spec.behaviors.push({ id, name: row.name });
+    add(id, row);
   }
   for (const id of pick.demographicIds) {
     const row = catalog.get(id);
     if (!row || row.type !== "demographic") continue;
-    if (!spec.life_events) spec.life_events = [];
-    spec.life_events.push({ id, name: row.name });
+    add(id, row);
   }
 
   return Object.keys(spec).length ? [spec] : [];
@@ -159,8 +225,8 @@ export function buildMetaTargetingFromSuggestion(args: {
 
   const targeting: Record<string, unknown> = {
     geo_locations: { countries: args.brief.countries.length ? args.brief.countries : ["BR"] },
-    age_min: args.pick.age_min ?? args.brief.ageMin ?? 18,
-    age_max: args.pick.age_max ?? args.brief.ageMax ?? 65
+    age_min: args.brief.ageMin ?? 18,
+    age_max: args.brief.ageMax ?? 65
   };
 
   if (args.pick.genders?.length) targeting.genders = args.pick.genders;
@@ -178,7 +244,7 @@ export function buildMetaTargetingFromSuggestion(args: {
     }));
   }
 
-  return targeting;
+  return sanitizeTargetingForMeta(targeting);
 }
 
 export function ensureTrafficAiAudienceName(name: string, clientName?: string): string {
@@ -211,20 +277,28 @@ export function suggestionItemsFromPick(
   return items;
 }
 
-export async function generateAudienceTargetingSuggestion(args: {
-  accessToken: string;
-  provider: LlmProviderId;
-  brief: AudienceTargetingBrief;
-  clientName?: string;
-  customAudiences?: Array<{ id: string; name?: string; subtype?: string }>;
-}): Promise<AudienceTargetingSuggestion> {
-  const brief = AudienceTargetingBriefSchema.parse(args.brief);
-
-  const searchPrompt = [
+function buildPersonaPrompt(brief: AudienceTargetingBrief): string {
+  return [
     "Você é especialista em segmentação Meta Ads no Brasil.",
-    "Com base no briefing, gere termos de busca em português para encontrar interesses, comportamentos e demografia na API da Meta.",
-    "IMPORTANTE: renda e profissão NÃO são campos diretos — traduza em interesses/comportamentos correlatos (ex.: renda alta → viagens, marcas premium, golf).",
-    "Responda APENAS JSON: { interestQueries: string[], behaviorQueries: string[], demographicQueries: string[] }",
+    "Sua tarefa NÃO é escolher um público pronto nem inventar IDs da Meta.",
+    "Com base no briefing, construa uma PERSONA (perfil ideal) e traduza renda/profissão em correlatos de estilo de vida.",
+    "Ex.: renda alta → viaja com frequência, marcas premium, golf — nunca use campos literais de renda ou cargo.",
+    "Depois derive termos de busca em português para a API de targeting da Meta (interesses, comportamentos, demografia).",
+    "NÃO defina faixa etária — idade é definida manualmente pelo usuário no formulário.",
+    "",
+    "Responda APENAS JSON:",
+    "{",
+    '  "personaName": string,',
+    '  "narrative": string,',
+    '  "traits": string[],',
+    '  "lifestyleCorrelates": string[],',
+    '  "searchPlan": {',
+    '    "interestQueries": string[] (máx. 8),',
+    '    "behaviorQueries": string[] (máx. 6),',
+    '    "demographicQueries": string[] (máx. 4)',
+    "  },",
+    '  "suggestedGender"?: "all" | "male" | "female"',
+    "}",
     "",
     "Briefing:",
     JSON.stringify({
@@ -235,25 +309,68 @@ export async function generateAudienceTargetingSuggestion(args: {
       countries: brief.countries
     })
   ].join("\n");
+}
 
-  const searchPlan = await llmGenerateJson({
+export async function generateAudiencePersonaPreview(args: {
+  provider: LlmProviderId;
+  brief: AudienceTargetingBrief;
+}): Promise<AudiencePersonaPreview> {
+  const brief = AudienceTargetingBriefSchema.parse(args.brief);
+  const result = await llmGenerateJson({
     provider: args.provider,
-    prompt: searchPrompt,
-    schema: SearchPlanSchema,
-    temperature: 0.35
+    prompt: buildPersonaPrompt(brief),
+    schema: AudiencePersonaPreviewSchema,
+    temperature: 0.4
   });
 
-  const catalog = await buildCatalog(args.accessToken, searchPlan.data);
-  if (!catalog.length) {
+  const persona = result.data;
+  const hasQueries =
+    persona.searchPlan.interestQueries.length > 0 ||
+    persona.searchPlan.behaviorQueries.length > 0 ||
+    persona.searchPlan.demographicQueries.length > 0;
+
+  if (!hasQueries) {
     throw new Error(
-      "Nenhum interesse ou comportamento encontrado na Meta para este briefing. Tente descrever com outras palavras."
+      "A prévia não gerou termos de busca para a Meta. Tente descrever o perfil com mais detalhes."
     );
   }
 
+  return {
+    ...persona,
+    provider: args.provider,
+    modelUsed: result.modelUsed
+  };
+}
+
+export async function generateAudienceTargetingSuggestion(args: {
+  accessToken: string;
+  adAccountId: string;
+  provider: LlmProviderId;
+  brief: AudienceTargetingBrief;
+  persona: AudiencePersonaPreview;
+  clientName?: string;
+  customAudiences?: Array<{ id: string; name?: string; subtype?: string }>;
+}): Promise<AudienceTargetingSuggestion> {
+  const brief = AudienceTargetingBriefSchema.parse(args.brief);
+  const persona = AudiencePersonaPreviewSchema.parse(args.persona);
+
+  const rawCatalog = await buildCatalog(args.accessToken, persona.searchPlan);
+  if (!rawCatalog.length) {
+    throw new Error(
+      "Nenhum interesse ou comportamento encontrado na Meta para esta persona. Ajuste a prévia ou tente outros termos."
+    );
+  }
+
+  const catalog = await enrichCatalogWithValidation(
+    args.accessToken,
+    args.adAccountId,
+    rawCatalog
+  );
+
   const pickPrompt = [
-    "Selecione segmentos APENAS usando IDs do catálogo abaixo. Não invente IDs.",
+    "Você recebeu uma PERSONA já validada pelo usuário e um CATÁLOGO real da Meta (IDs verificados).",
+    "NÃO invente público nem IDs. Selecione somente segmentos do catálogo que combinem com a persona.",
     `Nome do público salvo deve começar com "${TRAFFIC_AI_AUDIENCE_PREFIX}" e ser descritivo.`,
-    "Monte um público salvo (saved audience) com interesses/comportamentos/demografia.",
     brief.includeCustomAudienceIds.length
       ? `Inclua estes custom audiences no targeting final (já reservados): ${brief.includeCustomAudienceIds.join(", ")}`
       : "",
@@ -265,10 +382,20 @@ export async function generateAudienceTargetingSuggestion(args: {
       : "",
     "",
     "Responda APENAS JSON:",
-    "{ title, summary, name, age_min?, age_max?, genders?: [1|2], interestIds: string[], behaviorIds: string[], demographicIds: string[], reasoning? }",
+    "{ title, summary, name, genders?: [1|2], interestIds: string[], behaviorIds: string[], demographicIds: string[], reasoning? }",
+    "Não inclua age_min nem age_max — a idade vem do formulário do usuário.",
     "",
-    "Briefing:",
-    JSON.stringify(brief),
+    "Persona:",
+    JSON.stringify({
+      personaName: persona.personaName,
+      narrative: persona.narrative,
+      traits: persona.traits,
+      lifestyleCorrelates: persona.lifestyleCorrelates,
+      suggestedGender: persona.suggestedGender ?? brief.gender
+    }),
+    "",
+    "Idade definida pelo usuário (não altere):",
+    JSON.stringify({ ageMin: brief.ageMin ?? 18, ageMax: brief.ageMax ?? 65 }),
     "",
     "Catálogo (use somente estes IDs):",
     formatCatalogForPrompt(catalog)
@@ -283,16 +410,32 @@ export async function generateAudienceTargetingSuggestion(args: {
     temperature: 0.2
   });
 
-  const pick = pickResult.data;
+  const catalogIds = new Set(catalog.map((c) => c.id));
+  const pick = {
+    ...pickResult.data,
+    interestIds: pickResult.data.interestIds.filter((id) => catalogIds.has(id)),
+    behaviorIds: pickResult.data.behaviorIds.filter((id) => catalogIds.has(id)),
+    demographicIds: pickResult.data.demographicIds.filter((id) => catalogIds.has(id))
+  };
+
+  if (!pick.interestIds.length && !pick.behaviorIds.length && !pick.demographicIds.length) {
+    throw new Error(
+      "A IA não selecionou segmentos válidos da Meta. Tente novamente ou use o Gemini."
+    );
+  }
+
   const targeting = buildMetaTargetingFromSuggestion({
     pick,
     catalog,
-    brief
+    brief: {
+      ...brief,
+      gender: persona.suggestedGender ?? brief.gender
+    }
   });
 
   return {
     title: pick.title,
-    summary: pick.summary,
+    summary: `${persona.personaName}: ${pick.summary}`,
     name: ensureTrafficAiAudienceName(pick.name, args.clientName),
     targeting,
     items: suggestionItemsFromPick(pick, catalog),

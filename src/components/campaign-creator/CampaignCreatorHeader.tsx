@@ -9,7 +9,7 @@ import { Link } from "@/i18n/navigation";
 
 export function CampaignCreatorHeader() {
   const t = useTranslations("campaignCreator");
-  const { payload, saving, lastSavedAt, addAdMode } = useCampaignDraft();
+  const { payload, saving, lastSavedAt, addAdMode, addAdsetMode, inheritCampaignMode } = useCampaignDraft();
   const [tab, setTab] = useState<"edit" | "analyze">("edit");
 
   return (
@@ -17,24 +17,34 @@ export function CampaignCreatorHeader() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-[var(--text-dim)]">
-            {addAdMode && payload.meta?.targetMetaCampaignId ? (
+            {inheritCampaignMode && payload.meta?.targetMetaCampaignId ? (
               <>
                 <Link
-                  href={`/campaigns/${payload.meta.targetMetaCampaignId}/ads${
-                    payload.clientSlug
-                      ? `?client=${encodeURIComponent(payload.clientSlug)}${
-                          payload.meta.targetMetaAdsetId
-                            ? `&adset=${encodeURIComponent(payload.meta.targetMetaAdsetId)}`
+                  href={
+                    addAdsetMode
+                      ? `/campaigns/${payload.meta.targetMetaCampaignId}/adsets${
+                          payload.clientSlug
+                            ? `?client=${encodeURIComponent(payload.clientSlug)}`
                             : ""
                         }`
-                      : ""
-                  }`}
+                      : `/campaigns/${payload.meta.targetMetaCampaignId}/ads${
+                          payload.clientSlug
+                            ? `?client=${encodeURIComponent(payload.clientSlug)}${
+                                payload.meta.targetMetaAdsetId
+                                  ? `&adset=${encodeURIComponent(payload.meta.targetMetaAdsetId)}`
+                                  : ""
+                              }`
+                            : ""
+                        }`
+                  }
                   className="ui-link"
                 >
                   {payload.campaign.name || t("breadcrumbCampaigns")}
                 </Link>
                 {" › "}
-                <span className="text-[var(--text-dim)]">{t("addAdTitle")}</span>
+                <span className="text-[var(--text-dim)]">
+                  {addAdsetMode ? t("addAdsetTitle") : t("addAdTitle")}
+                </span>
               </>
             ) : (
               <>
@@ -48,7 +58,7 @@ export function CampaignCreatorHeader() {
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <h1 className="font-heading text-lg font-semibold text-[var(--text-main)]">
-              {addAdMode ? t("addAdTitle") : t("title")}
+              {addAdsetMode ? t("addAdsetTitle") : addAdMode ? t("addAdTitle") : t("title")}
             </h1>
             <Badge variant="warning">{t("draftStatus")}</Badge>
             {saving ? (

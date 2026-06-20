@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
-import { getAppContext } from "@/lib/app-context";
+import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { resolveMetaTokensForApi } from "@/lib/campaign-detail-api";
+import {
+  AdDraftItemSchema,
+  AdSetDraftItemSchema
+} from "@/lib/campaign-draft";
+import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
+import { requireMetaPublishConfig } from "@/lib/client-publish-config";
+import { publishAdsetToCampaign } from "@/lib/meta-campaign";
 import {
   fetchAdSetInsightsForCampaign,
   fetchAdSetsForCampaign,
+  fetchCampaign,
   type MetaAdSetInsight
 } from "@/lib/meta-graph";
 import { type MetricKey } from "@/lib/dashboard-metrics";
@@ -161,4 +170,95 @@ export async function GET(
 
   const res = NextResponse.json({ ok: true, adsets, preset });
   return applyServerTiming(res, { total: Date.now() - t0, meta: metaMs, db: Date.now() - t0 - metaMs });
+}
+
+const CreateAdsetBodySchema = z.object({
+  clientId: z.string().min(1),
+  adAccountId: z.string().min(1),
+  objective: z.enum(["awareness", "traffic", "engagement", "leads", "app", "sales"]),
+  adset: AdSetDraftItemSchema,
+  ad: AdDraftItemSchema,
+  campaignName: z.string().optional(),
+  campaign: z.object({
+    name: z.string(),
+    budgetLevel: z.enum(["campaign", "adset"]),
+    dailyBudgetBRL: z.number(),
+    bidStrategy: z.enum(["lowest_cost"]),
+    specialAdCategories: z.array(z.string()),
+    abTestEnabled: z.boolean()
+  })
+});
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ metaCampaignId: string }> }
+) {
+  const { tenant, metaAccessToken } = await getAppContext();
+  if (!metaAccessToken) {
+    return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
+  }
+
+  const { metaCampaignId } = await params;
+  const body = CreateAdsetBodySchema.parse(await req.json().catch(() => ({})));
+  const client = await getClientBySlugOrId(tenant.id, body.clientId);
+  if (!client) {
+    return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
+  }
+
+  const { adAccount: adAccountRepo } = await repositories();
+  const linked = await adAccountRepo.findOne({
+    where: { clientId: client.id, metaAdAccountId: body.adAccountId }
+  });
+  if (!linked) {
+    return NextResponse.json({ ok: false, error: "Conta não vinculada ao cliente" }, { status: 403 });
+  }
+
+  let publish;
+  try {
+    publish = requireMetaPublishConfig({
+      metaPageId: body.ad.pageId || client.metaPageId,
+      metaLinkUrl: body.ad.linkUrl || client.metaLinkUrl
+    });
+  } catch {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "CLIENT_PUBLISH_CONFIG_REQUIRED",
+        message: "Configure página e URL de destino do cliente."
+      },
+      { status: 400 }
+    );
+  }
+
+  const settings = await getOrCreateClientMetaSettings(client.id);
+  let isCampaignBudget = body.campaign.budgetLevel === "campaign";
+  try {
+    const remoteCampaign = await fetchCampaign(metaAccessToken, metaCampaignId);
+    isCampaignBudget = Boolean(remoteCampaign.daily_budget);
+  } catch {
+    /* usa draft */
+  }
+
+  try {
+    const result = await publishAdsetToCampaign({
+      accessToken: metaAccessToken,
+      adAccountId: body.adAccountId,
+      metaCampaignId,
+      adset: body.adset,
+      ad: body.ad,
+      objective: body.objective,
+      campaign: body.campaign,
+      pageId: publish.metaPageId,
+      linkUrl: publish.metaLinkUrl,
+      settings,
+      callToAction: settings.defaultCta,
+      campaignName: body.campaignName,
+      isCampaignBudget
+    });
+
+    return NextResponse.json({ ok: true, ...result });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Erro ao criar conjunto";
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
 }
