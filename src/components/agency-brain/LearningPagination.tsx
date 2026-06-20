@@ -45,11 +45,11 @@ export function LearningPagination({
   if (total === 0) return null;
 
   return (
-    <div className="mb-3 shrink-0 border-t border-slate-200/70 bg-[#f4f6f9] px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950 lg:mb-3.5">
+    <div className="mb-3 shrink-0 border-t border-[var(--border-color)] bg-[var(--surface-bg)] px-3 py-2.5  lg:mb-3.5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[11px] text-slate-500">
+        <div className="flex items-center gap-2 text-[11px] text-[var(--text-dim)]">
           <span>{t("resultsCount", { count: total })}</span>
-          {listLoading ? <span className="text-slate-400">{t("updating")}</span> : null}
+          {listLoading ? <span className="text-[var(--text-dimmer)]">{t("updating")}</span> : null}
         </div>
 
         {totalPages > 1 ? (
@@ -59,7 +59,7 @@ export function LearningPagination({
           >
             <button
               type="button"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] text-[var(--text-dim)] transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-35"
               disabled={page <= 1}
               onClick={() => onPageChange(Math.max(1, page - 1))}
               aria-label={t("prevPage")}
@@ -81,8 +81,8 @@ export function LearningPagination({
                     className={[
                       "min-w-[2rem] rounded-lg px-2 py-1 text-xs font-semibold tabular-nums transition",
                       active
-                        ? "bg-violet-600 text-white shadow-sm"
-                        : "text-slate-600 hover:bg-violet-50 hover:text-violet-700"
+                        ? "bg-[var(--amber-bright)] text-white shadow-sm"
+                        : "text-[var(--text-dim)] hover:bg-[var(--amber)]/10 hover:text-[var(--amber-bright)]"
                     ].join(" ")}
                   >
                     {pageNum}
@@ -93,7 +93,7 @@ export function LearningPagination({
 
             <button
               type="button"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] text-[var(--text-dim)] transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-35"
               disabled={page >= totalPages}
               onClick={() => onPageChange(Math.min(totalPages, page + 1))}
               aria-label={t("nextPage")}
@@ -102,7 +102,7 @@ export function LearningPagination({
             </button>
           </nav>
         ) : (
-          <span className="text-[11px] font-medium tabular-nums text-slate-500">
+          <span className="text-[11px] font-medium tabular-nums text-[var(--text-dim)]">
             {t("pageOf", { page, total: totalPages })}
           </span>
         )}

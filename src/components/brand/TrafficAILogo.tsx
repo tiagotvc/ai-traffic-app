@@ -23,10 +23,8 @@ export function TrafficAILogo({
   return (
     <div className="flex items-center gap-3">
       <div
-        className={`flex shrink-0 items-center justify-center font-bold shadow-lg ${s.box} ${
-          isDark
-            ? "bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-violet-500/30 ring-1 ring-white/20"
-            : "bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-violet-600/25 ring-1 ring-violet-200/50"
+        className={`flex shrink-0 items-center justify-center bg-gradient-to-br from-[var(--violet)] to-[var(--violet-bright)] font-bold text-white shadow-lg ${s.box} ${
+          isDark ? "shadow-[var(--violet)]/30 ring-1 ring-white/20" : "shadow-[var(--violet)]/25 ring-1 ring-[rgba(124,58,237,0.35)]"
         }`}
       >
         <span className={s.mark}>∞</span>
@@ -34,15 +32,15 @@ export function TrafficAILogo({
       {showText ? (
         <div>
           <div
-            className={`font-bold tracking-wide ${s.text} ${
-              isDark ? "text-white" : "text-slate-900"
+            className={`font-heading font-bold tracking-wide ${s.text} ${
+              isDark ? "text-white" : "text-[var(--text-main)]"
             }`}
           >
             Traffic AI
           </div>
           {productLabel ? (
             <div
-              className={`${s.sub} ${isDark ? "text-violet-200/80" : "text-slate-500"}`}
+              className={`${s.sub} ${isDark ? "text-[var(--amber-bright)]/80" : "text-[var(--text-dimmer)]"}`}
             >
               {productLabel}
             </div>

@@ -84,7 +84,7 @@ export function BillingInvoiceDrawer({
         <button
           type="button"
           onClick={onClose}
-          className="w-full rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+          className="w-full rounded-xl border border-[var(--border-color)] py-3 text-sm font-semibold text-[var(--text-dim)] transition hover:bg-[var(--surface-thead)]"
         >
           {t("close")}
         </button>

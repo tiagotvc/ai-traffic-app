@@ -27,7 +27,7 @@ export function LearningMemoryViewPicker({
   ];
 
   return (
-    <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50/90 p-1">
+    <div className="flex gap-1 rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)] p-1">
       {options.map((opt) => {
         const active = selected === opt.id;
         return (
@@ -42,7 +42,7 @@ export function LearningMemoryViewPicker({
                 ? opt.id === "review"
                   ? "bg-amber-100 text-amber-900 shadow-sm ring-1 ring-amber-200/80"
                   : "bg-emerald-100 text-emerald-900 shadow-sm ring-1 ring-emerald-200/80"
-                : "text-slate-600 hover:bg-white hover:text-slate-800"
+                : "text-[var(--text-dim)] hover:bg-white hover:text-[var(--text-main)]"
             ].join(" ")}
           >
             {t(opt.labelKey)}
@@ -50,7 +50,7 @@ export function LearningMemoryViewPicker({
               <span
                 className={[
                   "min-w-[1.125rem] rounded-full px-1 py-px text-center text-[10px] font-bold tabular-nums",
-                  active ? "bg-white/80" : "bg-slate-200/80 text-slate-600"
+                  active ? "bg-white/80" : "bg-[var(--border-color)]/80 text-[var(--text-dim)]"
                 ].join(" ")}
               >
                 {opt.count}

@@ -19,9 +19,9 @@ export function UtmBuilder({ value, onChange, disabled }: Props) {
   }
 
   return (
-    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
-      <p className="text-xs font-medium text-slate-700">{t("utmBuilderTitle")}</p>
-      <p className="text-[10px] text-slate-500">{t("utmBuilderHint")}</p>
+    <div className="space-y-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)]/50 p-3">
+      <p className="text-xs font-medium text-[var(--text-dim)]">{t("utmBuilderTitle")}</p>
+      <p className="text-[10px] text-[var(--text-dim)]">{t("utmBuilderHint")}</p>
       <div className="grid gap-2 sm:grid-cols-2">
         <FormField label="utm_source">
           <input

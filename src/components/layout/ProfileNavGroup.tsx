@@ -136,7 +136,7 @@ export function ProfileNavGroup({ collapsed, pathname, isPlatformAdmin = false, 
             {t("myProfile")}
           </Link>
 
-          <p className="px-3 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+          <p className="px-3 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#64748b]">
             {t("profileAdminSection")}
           </p>
           {ADMIN_LINKS.map((link) => (

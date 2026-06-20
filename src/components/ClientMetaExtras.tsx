@@ -108,7 +108,7 @@ export function ClientMetaExtras({
           <Field label={t("metaLeadFormId")} value={metaLeadFormId} onChange={setMetaLeadFormId} />
           <Field label={t("instagramActorId")} value={instagramActorId} onChange={setInstagramActorId} />
           <div>
-            <div className="text-xs text-slate-500">{t("defaultCta")}</div>
+            <div className="text-xs text-[var(--text-dim)]">{t("defaultCta")}</div>
             <select
               value={defaultCta}
               onChange={(e) => setDefaultCta(e.target.value)}
@@ -120,7 +120,7 @@ export function ClientMetaExtras({
             </select>
           </div>
           <div>
-            <div className="text-xs text-slate-500">{t("syncPriority")}</div>
+            <div className="text-xs text-[var(--text-dim)]">{t("syncPriority")}</div>
             <select
               value={syncPriority}
               onChange={(e) => setSyncPriority(e.target.value)}
@@ -133,8 +133,8 @@ export function ClientMetaExtras({
           </div>
           <Field label={t("tags")} value={tags} onChange={setTags} placeholder="ecommerce, local" />
         </div>
-        <div className="mt-3 rounded-xl border border-slate-200 p-3">
-          <div className="text-xs font-medium text-slate-600">{t("defaultUtmTitle")}</div>
+        <div className="mt-3 rounded-xl border border-[var(--border-color)] p-3">
+          <div className="text-xs font-medium text-[var(--text-dim)]">{t("defaultUtmTitle")}</div>
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Field label="utm_source" value={defaultUtmSource} onChange={setDefaultUtmSource} />
             <Field label="utm_medium" value={defaultUtmMedium} onChange={setDefaultUtmMedium} />
@@ -153,7 +153,7 @@ export function ClientMetaExtras({
             <Field label="utm_term" value={defaultUtmTerm} onChange={setDefaultUtmTerm} />
           </div>
         </div>
-        <label className="mt-3 flex items-center gap-2 text-xs text-slate-600">
+        <label className="mt-3 flex items-center gap-2 text-xs text-[var(--text-dim)]">
           <input
             type="checkbox"
             checked={syncEnabled}
@@ -162,7 +162,7 @@ export function ClientMetaExtras({
           />
           {t("syncEnabled")}
         </label>
-        <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+        <label className="mt-2 flex items-center gap-2 text-xs text-[var(--text-dim)]">
           <input
             type="checkbox"
             checked={automationEnabled}
@@ -175,7 +175,7 @@ export function ClientMetaExtras({
           <button
             disabled={isPending}
             onClick={saveSettings}
-            className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500"
+            className="ui-btn-primary text-xs"
           >
             {t("saveMetaAdvanced")}
           </button>
@@ -188,7 +188,7 @@ export function ClientMetaExtras({
           {audiences.map((a) => (
             <label
               key={a.id}
-              className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 p-2 text-xs"
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--border-color)] p-2 text-xs"
             >
               <input
                 type="checkbox"
@@ -201,20 +201,20 @@ export function ClientMetaExtras({
                 className="accent-violet-600"
               />
               <span>
-                {a.name ?? a.id} <span className="text-slate-500">({a.subtype})</span>
+                {a.name ?? a.id} <span className="text-[var(--text-dim)]">({a.subtype})</span>
               </span>
             </label>
           ))}
         </div>
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-[var(--text-dim)]">
           {t("audiencesManageHint")}{" "}
-          <Link href="/audiences" className="font-semibold text-violet-600 underline">
+          <Link href="/audiences" className="font-semibold text-[var(--violet)] underline">
             {t("openAudiencesPage")}
           </Link>
         </p>
       </div>
 
-      {message ? <div className="text-xs text-slate-500">{message}</div> : null}
+      {message ? <div className="text-xs text-[var(--text-dim)]">{message}</div> : null}
     </>
   );
 }
@@ -232,7 +232,7 @@ function Field({
 }) {
   return (
     <div>
-      <div className="text-xs text-slate-500">{label}</div>
+      <div className="text-xs text-[var(--text-dim)]">{label}</div>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}

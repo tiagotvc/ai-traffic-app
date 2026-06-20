@@ -40,13 +40,13 @@ export function AgencyBrainModuleIntro({
 
   if (compact) {
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
-        <span className="text-[11px] font-medium text-slate-500">{t("mvp_related")}</span>
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)] px-3 py-2">
+        <span className="text-[11px] font-medium text-[var(--text-dim)]">{t("mvp_related")}</span>
         {related.map((id) => (
           <Link
             key={id}
             href={MODULE_ROUTES[id]}
-            className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-700"
+            className="rounded-full border border-[var(--border-color)] bg-white px-2.5 py-0.5 text-[11px] font-medium text-[var(--text-dim)] transition hover:border-[rgba(124,58,237,0.2)] hover:text-violet-700"
           >
             {tNav(MODULE_NAV_KEYS[id])}
           </Link>
@@ -56,15 +56,15 @@ export function AgencyBrainModuleIntro({
   }
 
   return (
-    <div className="rounded-xl border border-violet-100 bg-gradient-to-br from-violet-50/90 via-white to-white px-4 py-3 shadow-sm">
-      <p className="text-sm font-semibold text-slate-900">{t(`mvp_${moduleId}_title`)}</p>
-      <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{t(`mvp_${moduleId}_hint`)}</p>
+    <div className="rounded-xl border border-[rgba(124,58,237,0.15)] bg-gradient-to-br from-violet-50/90 via-white to-white px-4 py-3 shadow-sm">
+      <p className="text-sm font-semibold text-[var(--text-main)]">{t(`mvp_${moduleId}_title`)}</p>
+      <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-dim)]">{t(`mvp_${moduleId}_hint`)}</p>
       <div className="mt-2.5 flex flex-wrap gap-1.5">
         {related.map((id) => (
           <Link
             key={id}
             href={MODULE_ROUTES[id]}
-            className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-700"
+            className="rounded-full border border-[var(--border-color)] bg-white px-2.5 py-0.5 text-[11px] font-medium text-[var(--text-dim)] transition hover:border-[rgba(124,58,237,0.2)] hover:text-violet-700"
           >
             {tNav(MODULE_NAV_KEYS[id])}
           </Link>

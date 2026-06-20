@@ -16,7 +16,7 @@ export function HypothesisFeedCard({
   const t = useTranslations("brainInsights");
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+    <article className="ui-card p-5 transition hover:shadow-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">
           {t("badgeHypothesis")}
@@ -24,28 +24,28 @@ export function HypothesisFeedCard({
         <StatusBadge kind="hypothesis" status={hypothesis.status} />
       </div>
 
-      <h2 className="mt-3 text-base font-semibold leading-snug text-slate-900 sm:text-lg">
+      <h2 className="mt-3 text-base font-semibold leading-snug text-[var(--text-main)] sm:text-lg">
         {hypothesis.title}
       </h2>
 
-      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">
+      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[var(--text-dim)]">
         {hypothesis.description}
       </p>
 
       <dl className="mt-3 space-y-1 text-sm">
         <div className="flex flex-wrap gap-x-1">
-          <dt className="text-slate-500">{t("expectedOutcomeLabel")}</dt>
-          <dd className="font-medium text-slate-800">{hypothesis.expectedOutcome}</dd>
+          <dt className="text-[var(--text-dim)]">{t("expectedOutcomeLabel")}</dt>
+          <dd className="font-medium text-[var(--text-main)]">{hypothesis.expectedOutcome}</dd>
         </div>
         {learningTitle ? (
           <div className="flex flex-wrap gap-x-1">
-            <dt className="text-slate-500">{t("originLearningLabel")}</dt>
-            <dd className="text-slate-700">{learningTitle}</dd>
+            <dt className="text-[var(--text-dim)]">{t("originLearningLabel")}</dt>
+            <dd className="text-[var(--text-dim)]">{learningTitle}</dd>
           </div>
         ) : null}
       </dl>
 
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+      <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--border-color)] pt-4">
         <Link
           href={`/agency-brain/hypotheses/${hypothesis.id}`}
           className="ui-btn-secondary !px-3 !py-1.5 text-xs"
@@ -53,7 +53,7 @@ export function HypothesisFeedCard({
           {t("viewPlan")}
         </Link>
         {hypothesis.status === "pending" || hypothesis.status === "testing" ? (
-          <span className="text-xs text-slate-400">{t("updateStatusHint")}</span>
+          <span className="text-xs text-[var(--text-dimmer)]">{t("updateStatusHint")}</span>
         ) : null}
       </div>
     </article>

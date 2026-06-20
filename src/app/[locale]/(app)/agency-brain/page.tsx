@@ -1,5 +1,5 @@
-import { BrainLearningsPage } from "@/components/agency-brain/insights/BrainFeedPage";
+import { AgencyBrainView } from "@/uxpilot-ui/adapters/AgencyBrainView";
 
 export default function AgencyBrainPage() {
-  return <BrainLearningsPage />;
+  return <AgencyBrainView />;
 }

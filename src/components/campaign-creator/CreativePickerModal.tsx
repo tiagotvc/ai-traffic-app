@@ -225,16 +225,16 @@ export function CreativePickerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-[var(--surface-card)] p-6 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{t("creativeModalTitle")}</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("creativeModalTitle")}</h2>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">
               {mediaKind === "video" ? t("creativeModalHintVideo") : t("creativeModalHint")}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} className="text-[var(--text-dimmer)] hover:text-[var(--text-dim)]">
             ✕
           </button>
         </div>
@@ -284,17 +284,17 @@ export function CreativePickerModal({
               type="button"
               onClick={() => toggle(a.id)}
               className={`overflow-hidden rounded-xl border-2 text-left transition ${
-                selected.has(a.id) ? "border-violet-500 ring-2 ring-violet-200" : "border-slate-200"
+                selected.has(a.id) ? "border-violet-500 ring-2 ring-violet-200" : "border-[var(--border-color)]"
               }`}
             >
-              <div className="aspect-square bg-slate-100">
+              <div className="aspect-square bg-[var(--surface-bg)]">
                 {a.kind === "video" && a.url?.startsWith("blob:") ? (
                   <video src={a.url} className="h-full w-full object-cover" muted playsInline />
                 ) : a.url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={a.url} alt={a.label} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center px-1 text-center text-[10px] text-slate-400">
+                  <div className="flex h-full flex-col items-center justify-center px-1 text-center text-[10px] text-[var(--text-dimmer)]">
                     {a.kind === "video" ? (
                       <span className="text-lg">▶</span>
                     ) : null}
@@ -302,18 +302,18 @@ export function CreativePickerModal({
                   </div>
                 )}
               </div>
-              <p className="truncate p-1.5 text-[10px] text-slate-600">{a.label}</p>
+              <p className="truncate p-1.5 text-[10px] text-[var(--text-dim)]">{a.label}</p>
             </button>
           ))}
         </div>
 
         {allAssets.length === 0 ? (
-          <p className="mt-4 text-center text-xs text-slate-400">
+          <p className="mt-4 text-center text-xs text-[var(--text-dimmer)]">
             {mediaKind === "video" ? t("creativeEmptyVideo") : t("creativeEmptyImage")}
           </p>
         ) : null}
 
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-[var(--text-dim)]">
           {mediaKind === "video"
             ? t("creativeSelectedVideos", { count: selectedIds.length })
             : t("creativeSelected", { count: selectedIds.length })}

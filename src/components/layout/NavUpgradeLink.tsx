@@ -23,8 +23,8 @@ export function NavUpgradeLink({
     collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2 text-[13px]"
   } ${
     active
-      ? "bg-white/5 font-medium text-slate-500"
-      : "font-medium text-slate-500/80 hover:bg-white/5 hover:text-slate-400"
+      ? "bg-white/5 font-medium text-[#64748b]"
+      : "font-medium text-[#64748b]/80 hover:bg-white/5 hover:text-[#94a3b8]"
   }`;
 
   return (

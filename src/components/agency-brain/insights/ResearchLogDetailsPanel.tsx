@@ -11,24 +11,24 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
   if (!hasLogDetails(details)) return null;
 
   return (
-    <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+    <div className="mt-3 space-y-3 border-t border-[var(--border-color)] pt-3">
       {(details.niche || details.marketCountry || details.dateRange) && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--text-dim)]">
           {details.niche ? (
             <span>
-              {t("logDetailNiche")}: <strong className="text-slate-700">{details.niche}</strong>
+              {t("logDetailNiche")}: <strong className="text-[var(--text-dim)]">{details.niche}</strong>
             </span>
           ) : null}
           {details.marketCountry ? (
             <span>
               {t("logDetailCountry")}:{" "}
-              <strong className="text-slate-700">{details.marketCountry}</strong>
+              <strong className="text-[var(--text-dim)]">{details.marketCountry}</strong>
             </span>
           ) : null}
           {details.dateRange ? (
             <span>
               {t("logDetailPeriod")}:{" "}
-              <strong className="text-slate-700">{details.dateRange}</strong>
+              <strong className="text-[var(--text-dim)]">{details.dateRange}</strong>
             </span>
           ) : null}
         </div>
@@ -36,7 +36,7 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
 
       {details.searchTerms && details.searchTerms.length > 0 ? (
         <section>
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("logDetailSearchTerms")}
           </h4>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -54,17 +54,17 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
 
       {details.competitors && details.competitors.length > 0 ? (
         <section>
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("logDetailCompetitors")}
           </h4>
           <ul className="mt-1.5 space-y-1">
             {details.competitors.map((c) => (
               <li
                 key={c.name}
-                className="flex items-center justify-between rounded-md bg-slate-50 px-2.5 py-1 text-xs text-slate-700"
+                className="flex items-center justify-between rounded-md bg-[var(--surface-thead)] px-2.5 py-1 text-xs text-[var(--text-dim)]"
               >
                 <span className="font-medium">{c.name}</span>
-                <span className="text-slate-500">
+                <span className="text-[var(--text-dim)]">
                   {t("logDetailAdsFound", { count: c.adsFound })}
                 </span>
               </li>
@@ -75,18 +75,18 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
 
       {details.adSamples && details.adSamples.length > 0 ? (
         <section>
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("logDetailAdSamples")}
           </h4>
           <ul className="mt-1.5 space-y-2">
             {details.adSamples.map((ad, index) => (
               <li
                 key={`${ad.advertiser}-${index}`}
-                className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2"
+                className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)] px-3 py-2"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="text-xs font-semibold text-slate-800">{ad.advertiser}</p>
-                  <div className="flex flex-wrap gap-1.5 text-[10px] text-slate-500">
+                  <p className="text-xs font-semibold text-[var(--text-main)]">{ad.advertiser}</p>
+                  <div className="flex flex-wrap gap-1.5 text-[10px] text-[var(--text-dim)]">
                     {ad.format ? (
                       <span className="rounded bg-white px-1.5 py-px">{ad.format}</span>
                     ) : null}
@@ -95,10 +95,10 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
                     ) : null}
                   </div>
                 </div>
-                <p className="mt-1 text-sm leading-snug text-slate-700">&ldquo;{ad.hook}&rdquo;</p>
+                <p className="mt-1 text-sm leading-snug text-[var(--text-dim)]">&ldquo;{ad.hook}&rdquo;</p>
                 {ad.cta ? (
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    CTA: <span className="font-medium text-slate-600">{ad.cta}</span>
+                  <p className="mt-1 text-[11px] text-[var(--text-dim)]">
+                    CTA: <span className="font-medium text-[var(--text-dim)]">{ad.cta}</span>
                   </p>
                 ) : null}
                 {ad.libraryUrl ? (
@@ -106,7 +106,7 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
                     href={ad.libraryUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1.5 inline-block text-[11px] font-medium text-violet-600 hover:text-violet-800"
+                    className="mt-1.5 inline-block text-[11px] ui-link font-medium"
                   >
                     {t("logDetailViewAd")}
                   </a>
@@ -119,12 +119,12 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
 
       {details.topHooks && details.topHooks.length > 0 ? (
         <section>
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("logDetailTopHooks")}
           </h4>
-          <ul className="mt-1.5 space-y-1 text-xs text-slate-600">
+          <ul className="mt-1.5 space-y-1 text-xs text-[var(--text-dim)]">
             {details.topHooks.map((h) => (
-              <li key={h.hook} className="rounded-md bg-violet-50/50 px-2 py-1">
+              <li key={h.hook} className="rounded-md bg-[rgba(124,58,237,0.06)]/50 px-2 py-1">
                 &ldquo;{h.hook}&rdquo; — {t("logDetailHookStats", { count: h.count, days: h.avgDays ?? 0 })}
               </li>
             ))}
@@ -134,7 +134,7 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
 
       {details.campaignsAnalyzed && details.campaignsAnalyzed.length > 0 ? (
         <section>
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("logDetailCampaigns")}
           </h4>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -152,14 +152,14 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
 
       {details.campaignPatterns && details.campaignPatterns.length > 0 ? (
         <section>
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("logDetailPatterns")}
           </h4>
           <ul className="mt-1.5 space-y-1.5">
             {details.campaignPatterns.map((p) => (
               <li key={p.label} className="text-xs">
-                <p className="font-medium text-slate-800">{p.label}</p>
-                {p.detail ? <p className="text-slate-500">{p.detail}</p> : null}
+                <p className="font-medium text-[var(--text-main)]">{p.label}</p>
+                {p.detail ? <p className="text-[var(--text-dim)]">{p.detail}</p> : null}
               </li>
             ))}
           </ul>
@@ -168,14 +168,14 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
 
       {details.aiSuggestions && details.aiSuggestions.length > 0 ? (
         <section>
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("logDetailAiSuggestions")}
           </h4>
           <ul className="mt-1.5 space-y-1.5">
             {details.aiSuggestions.map((s) => (
               <li key={s.title} className="text-xs">
-                <p className="font-medium text-slate-800">{s.title}</p>
-                {s.body ? <p className="text-slate-500">{s.body}</p> : null}
+                <p className="font-medium text-[var(--text-main)]">{s.title}</p>
+                {s.body ? <p className="text-[var(--text-dim)]">{s.body}</p> : null}
               </li>
             ))}
           </ul>
@@ -184,14 +184,14 @@ export function ResearchLogDetailsPanel({ details }: { details: ResearchLogDetai
 
       {details.synthesisItems && details.synthesisItems.length > 0 ? (
         <section>
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("logDetailSynthesis")}
           </h4>
           <ul className="mt-1.5 space-y-1.5">
             {details.synthesisItems.map((s) => (
               <li key={s.title} className="text-xs">
-                <p className="font-medium text-slate-800">{s.title}</p>
-                {s.body ? <p className="text-slate-500">{s.body}</p> : null}
+                <p className="font-medium text-[var(--text-main)]">{s.title}</p>
+                {s.body ? <p className="text-[var(--text-dim)]">{s.body}</p> : null}
               </li>
             ))}
           </ul>

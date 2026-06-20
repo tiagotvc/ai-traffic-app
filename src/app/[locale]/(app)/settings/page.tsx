@@ -1,9 +1,7 @@
-import { getTranslations } from "next-intl/server";
-
 import { auth } from "@/auth";
 import { ConnectMetaButton } from "@/components/ConnectMetaButton";
-import { ProfileClient } from "@/components/profile/ProfileClient";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
+import { SettingsView } from "@/uxpilot-ui/adapters/SettingsView";
 
 export default async function SettingsPage({
   params
@@ -17,7 +15,7 @@ export default async function SettingsPage({
     (session as { metaOAuthError?: string } | null)?.metaOAuthError ?? null;
 
   return (
-    <ProfileClient
+    <SettingsView
       locale={locale}
       metaOAuthConfigured={metaOAuthConfigured}
       metaOAuthError={metaOAuthError}

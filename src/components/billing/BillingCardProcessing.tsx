@@ -61,18 +61,18 @@ export function BillingCardProcessing({
     <div className="mx-auto max-w-md space-y-5">
       <BillingBackLink href="/billing" />
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-lg">
+      <div className="overflow-hidden rounded-2xl border border-[var(--border-color)]/80 bg-white shadow-lg">
         <div className="bg-gradient-to-br from-violet-600 via-violet-500 to-indigo-500 px-6 py-5 text-white">
           <h1 className="text-xl font-bold">{t("cardProcessingTitle")}</h1>
           <p className="mt-2 text-sm text-violet-100">{t("cardProcessingHint")}</p>
         </div>
 
         <div className="space-y-5 px-6 py-5">
-          <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-            <p className="text-xs font-medium text-slate-500">{plan.name}</p>
-            <p className="text-2xl font-bold text-slate-900">
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/80 px-4 py-3">
+            <p className="text-xs font-medium text-[var(--text-dim)]">{plan.name}</p>
+            <p className="text-2xl font-bold text-[var(--text-main)]">
               {formatMoney(pricing.finalCents, currency)}
-              <span className="ml-1 text-sm font-normal text-slate-500">{period}</span>
+              <span className="ml-1 text-sm font-normal text-[var(--text-dim)]">{period}</span>
             </p>
           </div>
 
@@ -89,17 +89,17 @@ export function BillingCardProcessing({
               {t("cardFailedHint")}
             </div>
           ) : (
-            <div className="flex items-center justify-center gap-2 py-6 text-sm text-slate-500">
-              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-violet-500" />
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-[var(--text-dim)]">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[rgba(124,58,237,0.06)]0" />
               {t("cardWaiting")}
             </div>
           )}
         </div>
 
-        <div className="border-t border-slate-100 bg-slate-50/50 px-6 py-4">
+        <div className="border-t border-[var(--border-color)] bg-[var(--surface-thead)]/50 px-6 py-4">
           <Link
             href="/billing"
-            className="block rounded-xl py-2.5 text-center text-sm font-semibold text-violet-600 transition hover:bg-violet-50"
+            className="block rounded-xl py-2.5 text-center text-sm font-semibold text-[var(--violet)] transition hover:bg-[rgba(124,58,237,0.06)]"
           >
             {t("backToPortal")}
           </Link>

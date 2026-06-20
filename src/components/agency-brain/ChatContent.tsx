@@ -105,12 +105,12 @@ export function ChatContent({ clientId }: { clientId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-dim)]">
           <input
             type="checkbox"
             checked={meetingMode}
             onChange={(e) => setMeetingMode(e.target.checked)}
-            className="rounded border-slate-300"
+            className="rounded border-[var(--border-color)]"
           />
           {t("chatMeetingMode")}
         </label>
@@ -127,7 +127,7 @@ export function ChatContent({ clientId }: { clientId: string }) {
       </div>
 
       {meetingMode ? (
-        <p className="text-xs text-slate-500">{t("chatMeetingHint")}</p>
+        <p className="text-xs text-[var(--text-dim)]">{t("chatMeetingHint")}</p>
       ) : null}
 
       <FeedbackBanner message={message} />
@@ -135,18 +135,18 @@ export function ChatContent({ clientId }: { clientId: string }) {
       <div className="ui-card flex min-h-[400px] flex-col">
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           {messages.length === 0 ? (
-            <p className="text-center text-sm text-slate-500">{t("chatEmpty")}</p>
+            <p className="text-center text-sm text-[var(--text-dim)]">{t("chatEmpty")}</p>
           ) : (
             messages.map((msg, i) => (
               <div
                 key={i}
                 className={`rounded-xl px-4 py-3 text-sm ${
                   msg.role === "user"
-                    ? "ml-8 bg-violet-100 text-violet-900"
-                    : "mr-8 bg-slate-100 text-slate-800"
+                    ? "ml-8 bg-[rgba(124,58,237,0.1)] text-[var(--violet)]"
+                    : "mr-8 bg-[var(--surface-thead)] text-[var(--text-main)]"
                 }`}
               >
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
                   {msg.role === "user" ? t("chatYou") : t("chatAssistant")}
                 </p>
                 <p className="mt-1 whitespace-pre-wrap">{msg.text}</p>
@@ -154,11 +154,11 @@ export function ChatContent({ clientId }: { clientId: string }) {
             ))
           )}
           {sending ? (
-            <p className="text-center text-xs text-slate-400">{t("chatThinking")}</p>
+            <p className="text-center text-xs text-[var(--text-dimmer)]">{t("chatThinking")}</p>
           ) : null}
         </div>
 
-        <div className="border-t border-slate-200 p-4">
+        <div className="border-t border-[var(--border-color)] p-4">
           <div className="flex gap-2">
             <input
               className="ui-input flex-1"

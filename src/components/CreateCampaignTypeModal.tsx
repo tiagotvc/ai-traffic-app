@@ -82,15 +82,15 @@ export function CreateCampaignTypeModal({
         className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 className="text-base font-semibold text-slate-900">{t("createType")}</h2>
-        <p className="mt-1 text-xs text-slate-500">{t("createTypeHint")}</p>
+        <h2 className="text-base font-semibold text-[var(--text-main)]">{t("createType")}</h2>
+        <p className="mt-1 text-xs text-[var(--text-dim)]">{t("createTypeHint")}</p>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t("typeName")}
           className="ui-input mt-3 w-full text-sm"
         />
-        <label className="mt-2 flex items-center gap-2 text-xs text-slate-600">
+        <label className="mt-2 flex items-center gap-2 text-xs text-[var(--text-dim)]">
           <input
             type="checkbox"
             checked={shared}
@@ -204,7 +204,7 @@ export function CampaignTypeSelectCompact({
         </div>
       ) : (
         <span
-          className="inline-flex h-7 w-10 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600"
+          className="inline-flex h-7 w-10 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-[var(--text-dim)]"
           title={abbrev}
         >
           {abbrev}

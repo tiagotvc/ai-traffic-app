@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
+import { DsPageHeader } from "@/design-system";
 import { Link } from "@/i18n/navigation";
 import { formatBRL, formatRoas } from "@/lib/format";
 
@@ -70,16 +71,16 @@ export function CampaignsListClient() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500">{t("breadcrumb")}</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("title")}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
-        </div>
-        <Link href="/campaigns/new" className="ui-btn-primary">
-          {t("newCampaign")}
-        </Link>
-      </div>
+      <DsPageHeader
+        breadcrumbs={t("breadcrumb")}
+        title={t("title")}
+        subtitle={t("subtitle")}
+        actions={
+          <Link href="/campaigns/new" className="ui-btn-primary">
+            {t("newCampaign")}
+          </Link>
+        }
+      />
 
       <div className="flex flex-wrap gap-2">
         <input
@@ -88,7 +89,7 @@ export function CampaignsListClient() {
           placeholder={t("search")}
           className="ui-input min-w-[220px] flex-1"
         />
-        <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
+        <label className="flex items-center gap-2 rounded-xl border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-dim)]">
           <input
             type="checkbox"
             checked={onlyAlerts}
@@ -105,7 +106,7 @@ export function CampaignsListClient() {
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+            <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
               <tr>
                 <th className="px-4 py-3">{t("colCampaign")}</th>
                 <th className="px-3 py-3">{t("colClient")}</th>
@@ -120,31 +121,31 @@ export function CampaignsListClient() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-[var(--text-dim)]">
                     {t("loading")}
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-[var(--text-dim)]">
                     {t("empty")}
                   </td>
                 </tr>
               ) : (
                 filtered.map((r) => (
-                  <tr key={r.metaCampaignId} className="border-t border-slate-100 hover:bg-violet-50/40">
+                  <tr key={r.metaCampaignId} className="border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
                     <td className="px-4 py-3">
                       <Link
                         href={`/campaigns/${r.metaCampaignId}?client=${encodeURIComponent(r.clientSlug)}`}
                         onClick={() => rememberCampaign(r.metaCampaignId, r.clientSlug)}
-                        className="font-medium text-slate-900 hover:text-violet-600"
+                        className="ui-link font-medium"
                       >
                         {r.campaignName}
                       </Link>
-                      <div className="text-[10px] text-slate-400">{r.metaCampaignId}</div>
+                      <div className="text-[10px] text-[var(--text-dimmer)]">{r.metaCampaignId}</div>
                     </td>
                     <td className="px-3 py-3">{r.clientName}</td>
-                    <td className="px-3 py-3 text-slate-500">{r.accountLabel}</td>
+                    <td className="px-3 py-3 text-[var(--text-dim)]">{r.accountLabel}</td>
                     <td className="px-3 py-3 font-medium">{formatBRL(r.spend, locale)}</td>
                     <td className="px-3 py-3">{r.conversions}</td>
                     <td className="px-3 py-3">
@@ -155,7 +156,7 @@ export function CampaignsListClient() {
                       {r.hasAlert ? (
                         <Badge variant="danger">{r.alertCount}</Badge>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-[var(--text-dimmer)]">—</span>
                       )}
                     </td>
                   </tr>
@@ -163,12 +164,12 @@ export function CampaignsListClient() {
               )}
             </tbody>
             {!loading && filtered.length > 0 ? (
-              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+              <tfoot className="border-t-2 border-[var(--border-color)] bg-[var(--surface-thead)]">
                 <tr>
-                  <td colSpan={3} className="px-4 py-3 text-left font-semibold text-slate-800">
+                  <td colSpan={3} className="px-4 py-3 text-left font-semibold text-[var(--text-main)]">
                     {t("rowTotal")} ({filtered.length})
                   </td>
-                  <td className="px-3 py-3 text-center font-semibold tabular-nums text-slate-900">
+                  <td className="px-3 py-3 text-center font-semibold tabular-nums text-[var(--text-main)]">
                     {formatBRL(totals.spend, locale)}
                   </td>
                   <td className="px-3 py-3 text-center font-semibold tabular-nums">
@@ -180,7 +181,7 @@ export function CampaignsListClient() {
                   <td className="px-3 py-3 text-center font-semibold tabular-nums">
                     {formatRoas(totals.roas, locale)}
                   </td>
-                  <td className="px-3 py-3 text-center text-slate-400">—</td>
+                  <td className="px-3 py-3 text-center text-[var(--text-dimmer)]">—</td>
                 </tr>
               </tfoot>
             ) : null}

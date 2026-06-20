@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { CreateClientWizard } from "@/components/CreateClientWizard";
+import { DsPageHeader } from "@/design-system";
 import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
@@ -106,17 +107,17 @@ export function ClientsHubClient() {
 
   return (
     <div className="space-y-4">
+      <DsPageHeader title={t("title")} subtitle={t("subtitle")} />
+
       <div className="ui-card p-4">
-        <div className="text-lg font-bold text-slate-900">{t("title")}</div>
-        <div className="text-sm text-slate-500">{t("subtitle")}</div>
-        <div className="mt-4">
+        <div className="mt-0">
           <CreateClientWizard onCreated={reload} />
         </div>
       </div>
 
       {deletableClients.length > 0 ? (
         <div className="ui-card flex flex-wrap items-center gap-3 px-4 py-3">
-          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-700">
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-[var(--text-main)]">
             <input
               type="checkbox"
               className="accent-violet-600"
@@ -134,12 +135,12 @@ export function ClientsHubClient() {
             />
             {t("selectAll")}
           </label>
-          <span className="text-xs text-slate-500">{t("selectedCount", { count: selectedIds.length })}</span>
+          <span className="text-xs text-[var(--text-dim)]">{t("selectedCount", { count: selectedIds.length })}</span>
           <button
             type="button"
             disabled={isPending || selectedIds.length === 0}
             onClick={handleBulkDelete}
-            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-40"
+            className="ui-btn-danger px-3 py-1.5 text-xs disabled:opacity-40"
           >
             {t("bulkDelete")}
           </button>
@@ -148,7 +149,7 @@ export function ClientsHubClient() {
               type="button"
               disabled={isPending}
               onClick={() => setSelected({})}
-              className="text-xs text-slate-500 hover:text-slate-800"
+              className="text-xs text-[var(--text-dim)] hover:text-[var(--text-main)]"
             >
               {t("clearSelection")}
             </button>
@@ -163,8 +164,8 @@ export function ClientsHubClient() {
           return (
             <div
               key={c.id}
-              className={`ui-card p-4 transition hover:border-brand/40 hover:shadow-cardHover ${
-                selected[c.id] ? "ring-2 ring-violet-200" : ""
+              className={`ui-card p-4 transition hover:border-[var(--amber)]/40 hover:shadow-cardHover ${
+                selected[c.id] ? "ring-2 ring-[rgba(245,166,35,0.25)]" : ""
               }`}
             >
               <div className="flex items-start justify-between gap-2">
@@ -193,7 +194,7 @@ export function ClientsHubClient() {
                       <span className="shrink-0 text-[10px] text-emerald-500">{t("ok")}</span>
                     )}
                   </div>
-                  <div className="mt-2 text-xs text-slate-500">
+                  <div className="mt-2 text-xs text-[var(--text-dim)]">
                     {t("accounts", { count: c.accounts })}
                   </div>
                 </Link>
@@ -213,9 +214,9 @@ export function ClientsHubClient() {
               {/* Prévia da semana — métricas do tipo dominante das campanhas do cliente */}
               <Link
                 href={`/clients/${c.slug}`}
-                className="mt-3 block rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 hover:bg-slate-100"
+                className="mt-3 block rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-2.5 hover:bg-[var(--row-hover)]"
               >
-                <div className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                <div className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
                   {t("todaySummary")}
                 </div>
                 <div className="mt-1.5 grid grid-cols-3 gap-2">
@@ -223,10 +224,10 @@ export function ClientsHubClient() {
                     .slice(0, 3)
                     .map((key) => (
                       <div key={key}>
-                        <div className="text-[10px] text-slate-500">
+                        <div className="text-[10px] text-[var(--text-dim)]">
                           {tMetrics(METRIC_BY_KEY[key].label)}
                         </div>
-                        <div className="text-sm font-semibold text-slate-800">
+                        <div className="text-sm font-semibold text-[var(--text-main)]">
                           {formatMetricValue(key, c.metrics?.[key] ?? 0, locale)}
                         </div>
                       </div>
@@ -237,7 +238,7 @@ export function ClientsHubClient() {
               <div className="mt-2 flex justify-end">
                 <Link
                   href={`/clients/${c.slug}/settings`}
-                  className="text-xs font-medium text-violet-600 hover:text-violet-500"
+                  className="ui-link text-xs"
                 >
                   {t("edit")}
                 </Link>

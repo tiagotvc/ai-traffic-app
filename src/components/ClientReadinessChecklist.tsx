@@ -41,23 +41,25 @@ export function ClientReadinessChecklist({ clientId }: { clientId: string }) {
 
   return (
     <div
-      className={`rounded-xl border p-3 text-xs ${
-        allOk ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50/80"
+      className={`ui-card p-3 text-xs ${
+        allOk
+          ? "border-[rgba(16,185,129,0.25)] bg-[rgba(16,185,129,0.06)]"
+          : "border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.08)]"
       }`}
     >
-      <div className="font-semibold text-slate-800">
+      <div className="font-semibold text-[var(--text-main)]">
         {t("readinessTitle")} ({done}/{items.length})
       </div>
       <ul className="mt-2 space-y-1">
         {items.map((i) => (
           <li key={i.id} className="flex items-center gap-2">
-            <span className={i.ok ? "text-emerald-600" : "text-amber-700"}>{i.ok ? "✓" : "○"}</span>
+            <span className={i.ok ? "text-[var(--success)]" : "text-[var(--amber)]"}>{i.ok ? "✓" : "○"}</span>
             {i.href && !i.ok ? (
-              <Link href={i.href} className="text-violet-700 underline">
+              <Link href={i.href} className="ui-link underline">
                 {i.label}
               </Link>
             ) : (
-              <span className="text-slate-700">{i.label}</span>
+              <span className="text-[var(--text-dim)]">{i.label}</span>
             )}
           </li>
         ))}

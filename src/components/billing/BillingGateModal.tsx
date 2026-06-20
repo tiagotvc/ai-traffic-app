@@ -16,11 +16,11 @@ export function BillingGateModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="text-lg font-bold text-slate-900">
+      <div className="ui-card w-full max-w-md p-6 shadow-xl">
+        <h2 className="font-heading text-lg font-bold text-[var(--text-main)]">
           {status === "suspended" ? t("modalSuspendedTitle") : t("modalPastDueTitle")}
         </h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-[var(--text-dim)]">
           {status === "suspended" ? t("modalSuspendedBody") : t("modalPastDueBody")}
         </p>
         <div className="mt-6 flex flex-wrap gap-2">

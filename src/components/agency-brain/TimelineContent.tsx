@@ -22,7 +22,7 @@ function SuggestionOutcomeBlock({
 
   if (status === "pending" && readyIn != null) {
     return (
-      <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+      <p className="mt-2 rounded-lg bg-[var(--surface-thead)] px-3 py-2 text-xs text-[var(--text-dim)]">
         {t("timelineOutcomePending", { days: readyIn })}
       </p>
     );
@@ -74,27 +74,27 @@ export function TimelineContent({ clientId }: { clientId: string }) {
       <FeedbackBanner message={message} />
 
       {loading ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("loading")}</div>
       ) : events.length === 0 ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("timelineEmpty")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("timelineEmpty")}</div>
       ) : (
         <div className="relative space-y-0">
-          <div className="absolute left-4 top-2 bottom-2 w-px bg-slate-200" />
+          <div className="absolute left-4 top-2 bottom-2 w-px bg-[var(--border-color)]" />
           {events.map((event) => (
             <div key={event.id} className="relative flex gap-4 pb-6 pl-10">
               <span
-                className="absolute left-2.5 top-1.5 h-3 w-3 rounded-full border-2 border-white bg-violet-500 shadow"
+                className="absolute left-2.5 top-1.5 h-3 w-3 rounded-full border-2 border-white bg-[rgba(124,58,237,0.06)]0 shadow"
               />
               <div className="ui-card min-w-0 flex-1 p-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold text-slate-900">{event.title}</h3>
+                  <h3 className="font-heading font-semibold text-[var(--text-main)]">{event.title}</h3>
                   <Badge>{t(`timelineType.${event.type}`)}</Badge>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-[var(--text-dimmer)]">
                     {new Date(event.createdAt).toLocaleString()}
                   </span>
                 </div>
                 {event.description ? (
-                  <p className="mt-2 text-sm text-slate-600">{event.description}</p>
+                  <p className="mt-2 text-sm text-[var(--text-dim)]">{event.description}</p>
                 ) : null}
                 {event.type === "suggestion_executed" && event.metadata ? (
                   <SuggestionOutcomeBlock metadata={event.metadata as Record<string, unknown>} t={t} />

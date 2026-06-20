@@ -1,5 +1,5 @@
-import { ReportsClient } from "@/components/ReportsClient";
+import { ReportsView } from "@/uxpilot-ui/adapters/ReportsView";
 
 export default function ReportsPage() {
-  return <ReportsClient />;
+  return <ReportsView />;
 }

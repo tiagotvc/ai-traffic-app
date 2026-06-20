@@ -88,16 +88,16 @@ export function ActionPlansContent({ clientId }: { clientId: string }) {
       <FeedbackBanner message={message} />
 
       {loading ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("loading")}</div>
       ) : plans.length === 0 ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("actionPlansEmpty")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("actionPlansEmpty")}</div>
       ) : (
         <div className="space-y-3">
           {plans.map((plan) => (
             <div key={plan.id} className="ui-card p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-semibold text-slate-900">{plan.title}</h3>
-                <span className="text-xs text-slate-400">
+                <h3 className="font-heading font-semibold text-[var(--text-main)]">{plan.title}</h3>
+                <span className="text-xs text-[var(--text-dimmer)]">
                   {new Date(plan.generatedAt).toLocaleDateString()}
                 </span>
               </div>
@@ -106,14 +106,14 @@ export function ActionPlansContent({ clientId }: { clientId: string }) {
                   {plan.items.map((item) => (
                     <li
                       key={item.id}
-                      className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+                      className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)] px-3 py-2"
                     >
-                      <span className="text-sm text-slate-700">{item.title}</span>
+                      <span className="text-sm text-[var(--text-dim)]">{item.title}</span>
                       <Badge variant={itemStatusVariant(item.status)}>
                         {t(`actionPlanItemStatus.${item.status}`)}
                       </Badge>
                       {item.dueDate ? (
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-[var(--text-dimmer)]">
                           {new Date(item.dueDate).toLocaleDateString()}
                         </span>
                       ) : null}
@@ -121,7 +121,7 @@ export function ActionPlansContent({ clientId }: { clientId: string }) {
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-sm text-slate-500">{t("actionPlansNoItems")}</p>
+                <p className="mt-2 text-sm text-[var(--text-dim)]">{t("actionPlansNoItems")}</p>
               )}
             </div>
           ))}

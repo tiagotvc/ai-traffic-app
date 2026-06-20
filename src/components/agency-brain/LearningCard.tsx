@@ -22,8 +22,8 @@ function Section({
 }) {
   return (
     <div>
-      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{title}</p>
-      <div className="mt-1.5 text-sm leading-relaxed text-slate-700">{children}</div>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--text-dim)]">{title}</p>
+      <div className="mt-1.5 text-sm leading-relaxed text-[var(--text-dim)]">{children}</div>
     </div>
   );
 }
@@ -61,12 +61,12 @@ export function LearningCard({
   return (
     <article
       className={[
-        "animate-slide-up overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:shadow-md",
+        "ui-card animate-slide-up overflow-hidden transition hover:shadow-md",
         isSuggested
           ? "border-amber-200/90 ring-1 ring-amber-100/80"
           : isApproved
             ? "border-emerald-200/70 ring-1 ring-emerald-100/60"
-            : "border-slate-200"
+            : "border-[var(--border-color)]"
       ].join(" ")}
       style={{ animationDelay: `${Math.min(index, 9) * 35}ms` }}
     >
@@ -76,7 +76,7 @@ export function LearningCard({
             💡
           </span>
           <div className="min-w-0 flex-1">
-            <h3 className="text-base font-semibold leading-snug text-slate-900 sm:text-[17px]">
+            <h3 className="font-heading text-base font-semibold leading-snug text-[var(--text-main)] sm:text-[17px]">
               {learning.title}
             </h3>
             <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold">
@@ -91,7 +91,7 @@ export function LearningCard({
                   <span className="text-emerald-800">{t("insightBadgeSaved")}</span>
                 </>
               ) : (
-                <span className="text-slate-600">{t(`status.${learning.status}`)}</span>
+                <span className="text-[var(--text-dim)]">{t(`status.${learning.status}`)}</span>
               )}
             </p>
           </div>
@@ -99,11 +99,11 @@ export function LearningCard({
 
         <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm">
           <div>
-            <dt className="text-xs text-slate-500">{t("insightMetaImpact")}</dt>
+            <dt className="text-xs text-[var(--text-dim)]">{t("insightMetaImpact")}</dt>
             <dd
               className={[
                 "font-semibold",
-                learning.impact === "HIGH" ? "text-rose-700" : "text-slate-800"
+                learning.impact === "HIGH" ? "text-rose-700" : "text-[var(--text-main)]"
               ].join(" ")}
             >
               {t(`impact.${learning.impact}`)}
@@ -111,8 +111,8 @@ export function LearningCard({
           </div>
           {learning.confidenceScore != null ? (
             <div>
-              <dt className="text-xs text-slate-500">{t("insightMetaConfidence")}</dt>
-              <dd className="font-semibold text-slate-800">
+              <dt className="text-xs text-[var(--text-dim)]">{t("insightMetaConfidence")}</dt>
+              <dd className="font-semibold text-[var(--text-main)]">
                 {formatConfidenceBadge(learning.confidenceScore)}/100
               </dd>
             </div>
@@ -152,7 +152,7 @@ export function LearningCard({
           ) : null}
 
           <Section title={isSuggested ? t("insightSectionAction") : t("insightSectionNextAction")}>
-            <p className="font-medium text-violet-900">{action}</p>
+            <p className="font-medium text-[var(--violet)]">{action}</p>
           </Section>
         </div>
 
@@ -160,14 +160,14 @@ export function LearningCard({
           <div className="mt-4">
             <Link
               href={`/clients/${clientId}/campaigns?campaign=${encodeURIComponent(learning.metaCampaignId)}`}
-              className="text-xs font-semibold text-violet-600 hover:text-violet-800"
+              className="text-xs ui-link font-semibold"
             >
               {t("viewCampaign")} →
             </Link>
           </div>
         ) : null}
 
-        <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+        <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--border-color)] pt-4">
           {isSuggested ? (
             <>
               <button

@@ -64,10 +64,10 @@ export function AudiencePicker({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-violet-100 bg-violet-50/30 p-3">
+    <div className="space-y-3 rounded-xl border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)]/30 p-3">
       <div>
-        <p className="text-sm font-semibold text-slate-900">{t("savedAudiencesTitle")}</p>
-        <p className="mt-0.5 text-[11px] text-slate-500">{t("savedAudiencesHint")}</p>
+        <p className="text-sm font-semibold text-[var(--text-main)]">{t("savedAudiencesTitle")}</p>
+        <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t("savedAudiencesHint")}</p>
       </div>
 
       {!adAccountId ? (
@@ -75,9 +75,9 @@ export function AudiencePicker({
           {t("savedAudiencesNeedAccount")}
         </p>
       ) : loading ? (
-        <p className="text-xs text-slate-500">{t("savedAudiencesLoading")}</p>
+        <p className="text-xs text-[var(--text-dim)]">{t("savedAudiencesLoading")}</p>
       ) : audiences.length === 0 ? (
-        <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+        <p className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2 text-xs text-[var(--text-dim)]">
           {t("savedAudiencesEmpty")}
         </p>
       ) : (
@@ -89,8 +89,8 @@ export function AudiencePicker({
               onClick={() => setMode("include")}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
                 mode === "include"
-                  ? "bg-violet-600 text-white"
-                  : "bg-white text-slate-600 ring-1 ring-slate-200"
+                  ? "bg-[var(--violet)] text-white"
+                  : "bg-[var(--surface-card)] text-[var(--text-dim)] ring-1 ring-[var(--border-color)]"
               }`}
             >
               {tAds("audienceInclude")} ({includeIds.length})
@@ -102,7 +102,7 @@ export function AudiencePicker({
               className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
                 mode === "exclude"
                   ? "bg-slate-700 text-white"
-                  : "bg-white text-slate-600 ring-1 ring-slate-200"
+                  : "bg-[var(--surface-card)] text-[var(--text-dim)] ring-1 ring-[var(--border-color)]"
               }`}
             >
               {tAds("audienceExclude")} ({excludeIds.length})
@@ -117,9 +117,9 @@ export function AudiencePicker({
             disabled={disabled}
           />
 
-          <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1">
+          <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] p-1">
             {filtered.length === 0 ? (
-              <p className="px-2 py-3 text-center text-xs text-slate-500">
+              <p className="px-2 py-3 text-center text-xs text-[var(--text-dim)]">
                 {t("savedAudiencesNoMatch")}
               </p>
             ) : (
@@ -133,7 +133,7 @@ export function AudiencePicker({
                   <label
                     key={a.id}
                     className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-xs transition ${
-                      checked ? "bg-violet-50" : "hover:bg-slate-50"
+                      checked ? "bg-[rgba(124,58,237,0.06)]" : "hover:bg-[var(--surface-bg)]"
                     } ${inOther ? "opacity-50" : ""}`}
                   >
                     <input
@@ -144,13 +144,13 @@ export function AudiencePicker({
                       className="mt-0.5 accent-violet-600"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="font-medium text-slate-800">{a.name}</span>
+                      <span className="font-medium text-[var(--text-main)]">{a.name}</span>
                       {a.subtype ? (
-                        <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+                        <span className="ml-1.5 rounded bg-[var(--surface-bg)] px-1.5 py-0.5 text-[10px] text-[var(--text-dim)]">
                           {subtypeLabel(a.subtype)}
                         </span>
                       ) : null}
-                      <span className="mt-0.5 block truncate font-mono text-[10px] text-slate-400">
+                      <span className="mt-0.5 block truncate font-mono text-[10px] text-[var(--text-dimmer)]">
                         {a.id}
                       </span>
                     </span>
@@ -167,14 +167,14 @@ export function AudiencePicker({
                 return (
                   <span
                     key={`inc-${id}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] text-violet-800"
+                    className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] text-[var(--violet)]"
                   >
                     + {a?.name ?? id}
                     <button
                       type="button"
                       disabled={disabled}
                       onClick={() => onChangeInclude(includeIds.filter((x) => x !== id))}
-                      className="text-violet-500 hover:text-violet-800"
+                      className="text-violet-500 hover:text-[var(--violet)]"
                     >
                       ×
                     </button>
@@ -186,14 +186,14 @@ export function AudiencePicker({
                 return (
                   <span
                     key={`exc-${id}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-700"
+                    className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-[var(--text-dim)]"
                   >
                     − {a?.name ?? id}
                     <button
                       type="button"
                       disabled={disabled}
                       onClick={() => onChangeExclude(excludeIds.filter((x) => x !== id))}
-                      className="text-slate-500 hover:text-slate-800"
+                      className="text-[var(--text-dim)] hover:text-[var(--text-main)]"
                     >
                       ×
                     </button>

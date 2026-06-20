@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { AdminPlansSkeleton } from "@/components/billing/BillingSkeletons";
-import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
+import { DsPageHeader } from "@/design-system";
 import { adminPlanRowStyle } from "@/lib/billing/admin-plan-styles";
 import { resolveLimits } from "@/lib/billing/resolve-limits";
 import { FREE_LIMITS, type ExternalPrices, type PlanLimits } from "@/lib/billing/types";
@@ -77,7 +77,7 @@ function LimitField({
 }) {
   if (type === "checkbox") {
     return (
-      <label className="flex items-center gap-2 text-sm text-slate-800">
+      <label className="flex items-center gap-2 text-sm text-[var(--text-main)]">
         <input
           type="checkbox"
           checked={Boolean(value)}
@@ -90,7 +90,7 @@ function LimitField({
   }
   return (
     <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-700">{label}</span>
+              <span className="mb-1 block font-medium text-[var(--text-dim)]">{label}</span>
       <input
         type="number"
         min={0}
@@ -205,12 +205,12 @@ function PlanEditor({
 
       {open ? (
         <div className={`space-y-4 border-t px-4 py-4 ${style.body}`}>
-          <p className="font-mono text-xs text-slate-400">
+          <p className="font-mono text-xs text-[var(--text-dimmer)]">
             {t("fieldSlug")}: {plan.slug}
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block text-sm sm:col-span-2">
-              <span className="mb-1 block font-medium text-slate-700">{t("fieldName")}</span>
+              <span className="mb-1 block font-medium text-[var(--text-dim)]">{t("fieldName")}</span>
               <input
                 value={draft.name}
                 onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
@@ -218,7 +218,7 @@ function PlanEditor({
               />
             </label>
             <label className="block text-sm sm:col-span-2">
-              <span className="mb-1 block font-medium text-slate-700">{t("fieldDescription")}</span>
+              <span className="mb-1 block font-medium text-[var(--text-dim)]">{t("fieldDescription")}</span>
               <textarea
                 value={draft.description}
                 onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
@@ -226,7 +226,7 @@ function PlanEditor({
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-700">{t("fieldTrialDays")}</span>
+              <span className="mb-1 block font-medium text-[var(--text-dim)]">{t("fieldTrialDays")}</span>
               <input
                 type="number"
                 min={0}
@@ -236,7 +236,7 @@ function PlanEditor({
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-slate-700">{t("fieldSortOrder")}</span>
+              <span className="mb-1 block font-medium text-[var(--text-dim)]">{t("fieldSortOrder")}</span>
               <input
                 type="number"
                 min={0}
@@ -245,7 +245,7 @@ function PlanEditor({
                 className="ui-input w-full"
               />
             </label>
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-800 sm:col-span-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-main)] sm:col-span-2">
               <input
                 type="checkbox"
                 checked={draft.isActive}
@@ -257,14 +257,14 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-700">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
               {t("sectionPricesUsd")}
             </h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">{t("fieldPriceMonthly")} (USD)</span>
+                <span className="mb-1 block font-medium text-[var(--text-dim)]">{t("fieldPriceMonthly")} (USD)</span>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dimmer)]">$</span>
                   <input
                     value={draft.priceMonthlyUsd}
                     onChange={(e) => setDraft((d) => ({ ...d, priceMonthlyUsd: e.target.value }))}
@@ -273,9 +273,9 @@ function PlanEditor({
                 </div>
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">{t("fieldPriceYearly")} (USD)</span>
+                <span className="mb-1 block font-medium text-[var(--text-dim)]">{t("fieldPriceYearly")} (USD)</span>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dimmer)]">$</span>
                   <input
                     value={draft.priceYearlyUsd}
                     onChange={(e) => setDraft((d) => ({ ...d, priceYearlyUsd: e.target.value }))}
@@ -287,15 +287,15 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-700">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
               {t("sectionPricesBrl")}
             </h3>
-            <p className="mb-3 text-xs text-slate-600">{t("sectionPricesBrlHint")}</p>
+            <p className="mb-3 text-xs text-[var(--text-dim)]">{t("sectionPricesBrlHint")}</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">{t("fieldPriceMonthly")} (BRL)</span>
+                <span className="mb-1 block font-medium text-[var(--text-dim)]">{t("fieldPriceMonthly")} (BRL)</span>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-dimmer)]">R$</span>
                   <input
                     value={draft.priceMonthlyBrl}
                     onChange={(e) => setDraft((d) => ({ ...d, priceMonthlyBrl: e.target.value }))}
@@ -304,9 +304,9 @@ function PlanEditor({
                 </div>
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-slate-700">{t("fieldPriceYearly")} (BRL)</span>
+                <span className="mb-1 block font-medium text-[var(--text-dim)]">{t("fieldPriceYearly")} (BRL)</span>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">R$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[var(--text-dimmer)]">R$</span>
                   <input
                     value={draft.priceYearlyBrl}
                     onChange={(e) => setDraft((d) => ({ ...d, priceYearlyBrl: e.target.value }))}
@@ -318,7 +318,7 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-700">
+            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
               {t("sectionLimits")}
             </h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -368,10 +368,10 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-slate-700">
+            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
               {t("sectionNav")}
             </h3>
-            <p className="mb-3 text-xs text-slate-500">{t("sectionNavHint")}</p>
+            <p className="mb-3 text-xs text-[var(--text-dim)]">{t("sectionNavHint")}</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <LimitField
                 label={t("limitNavCampaigns")}
@@ -413,10 +413,10 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-slate-700">
+            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
               {t("sectionAgencyBrain")}
             </h3>
-            <p className="mb-3 text-xs text-slate-500">{t("sectionAgencyBrainHint")}</p>
+            <p className="mb-3 text-xs text-[var(--text-dim)]">{t("sectionAgencyBrainHint")}</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <LimitField
                 label={t("limitCreativeMemoryAi")}
@@ -530,29 +530,29 @@ function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void })
   }
 
   return (
-    <div className="rounded-xl border border-dashed border-violet-300 bg-violet-50/40">
+    <div className="rounded-xl border border-dashed border-violet-300 bg-[rgba(124,58,237,0.06)]/40">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-2.5 px-4 py-3 text-left"
       >
         <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600 text-base font-bold text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--amber)] text-base font-bold text-[#0f1419]">
             +
           </span>
           <div>
-            <p className="font-semibold text-slate-900">{t("createPlanTitle")}</p>
-            <p className="text-xs text-slate-500">{t("createPlanHint")}</p>
+            <p className="font-semibold text-[var(--text-main)]">{t("createPlanTitle")}</p>
+            <p className="text-xs text-[var(--text-dim)]">{t("createPlanHint")}</p>
           </div>
         </div>
-        <span className="text-sm text-violet-600">{open ? "▲" : "▼"}</span>
+        <span className="text-sm text-[var(--violet)]">{open ? "▲" : "▼"}</span>
       </button>
 
       {open ? (
-        <form onSubmit={submit} className="space-y-3 border-t border-violet-200/60 px-4 pb-4 pt-3">
+        <form onSubmit={submit} className="space-y-3 border-t border-[rgba(124,58,237,0.2)]/60 px-4 pb-4 pt-3">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block text-sm">
-              <span className="mb-1 block text-slate-600">{t("fieldSlug")}</span>
+              <span className="mb-1 block text-[var(--text-dim)]">{t("fieldSlug")}</span>
               <input
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
@@ -562,7 +562,7 @@ function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void })
               />
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block text-slate-600">{t("fieldName")}</span>
+              <span className="mb-1 block text-[var(--text-dim)]">{t("fieldName")}</span>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -571,7 +571,7 @@ function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void })
               />
             </label>
             <label className="block text-sm sm:col-span-2 lg:col-span-1">
-              <span className="mb-1 block text-slate-600">{t("fieldDescription")}</span>
+              <span className="mb-1 block text-[var(--text-dim)]">{t("fieldDescription")}</span>
               <input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -579,7 +579,7 @@ function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void })
               />
             </label>
           </div>
-          <p className="text-xs text-slate-500">{t("createPlanDefaults")}</p>
+          <p className="text-xs text-[var(--text-dim)]">{t("createPlanDefaults")}</p>
           {message ? (
             <p className={`text-sm ${message === t("createPlanSuccess") ? "text-emerald-600" : "text-red-600"}`}>
               {message}
@@ -590,7 +590,7 @@ function CreatePlanForm({ onCreated }: { onCreated: (plan: AdminPlan) => void })
           </button>
         </form>
       ) : message && message === t("createPlanSuccess") ? (
-        <p className="border-t border-violet-200/60 px-5 py-3 text-sm text-emerald-600">{message}</p>
+        <p className="border-t border-[rgba(124,58,237,0.2)]/60 px-5 py-3 text-sm text-emerald-600">{message}</p>
       ) : null}
     </div>
   );
@@ -627,10 +627,10 @@ export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] 
 
   return (
     <div className="w-full space-y-4">
-      <CompactPageHeader title={t("plansTitle")} subtitle={t("plansSubtitle")} />
+      <DsPageHeader title={t("plansTitle")} subtitle={t("plansSubtitle")} />
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="ui-alert-danger px-4 py-3 text-sm">
           {error}
           {error === "Forbidden" ? (
             <p className="mt-1 text-xs">{t("forbiddenHint")}</p>

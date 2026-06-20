@@ -54,7 +54,7 @@ export type LearningFilters = {
   dateTo?: string;
   page?: number;
   pageSize?: number;
-  sortBy?: "createdAt" | "confidenceScore" | "impact" | "priority";
+  sortBy?: "createdAt" | "updatedAt" | "confidenceScore" | "impact" | "priority";
   sortDir?: "asc" | "desc";
 };
 

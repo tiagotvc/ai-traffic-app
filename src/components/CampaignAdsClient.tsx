@@ -13,6 +13,7 @@ import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
+import { DsPageHeader } from "@/design-system";
 import { Link, useRouter } from "@/i18n/navigation";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import {
@@ -368,48 +369,74 @@ export function CampaignAdsClient({
   return (
     <div className="space-y-4">
       {!embedded ? (
-        <p className="text-xs text-slate-500">
-          <Link href="/campaigns" className="hover:text-violet-600">
-            {t("navCampaigns")}
-          </Link>
-          {" › "}
-          <Link
-            href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
-            className="hover:text-violet-600"
-          >
-            {campaignName}
-          </Link>
-          {" › "}
-          <span className="text-slate-700">{t("title")}</span>
-        </p>
-      ) : null}
-
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-700">
-              {adsLoading ? "…" : ads.length}
-            </span>
+        <DsPageHeader
+          breadcrumbs={
+            <>
+              <Link href="/campaigns" className="ui-link">
+                {t("navCampaigns")}
+              </Link>
+              {" › "}
+              <Link
+                href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
+                className="ui-link"
+              >
+                {campaignName}
+              </Link>
+              {" › "}
+              <span>{t("title")}</span>
+            </>
+          }
+          title={t("title")}
+          subtitle={t("subtitle")}
+          actions={
+            <>
+              <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs font-bold text-[var(--violet)]">
+                {adsLoading ? "…" : ads.length}
+              </span>
+              <PeriodFilter value={period} onChange={setPeriod} />
+              <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
+                ↻
+              </button>
+              <button
+                type="button"
+                onClick={openNewAd}
+                disabled={!adsetFilter}
+                title={!adsetFilter ? t("newAdSelectAdset") : undefined}
+                className="ui-btn-primary text-sm disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                + {t("newAd")}
+              </button>
+            </>
+          }
+        />
+      ) : (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-heading text-2xl font-bold text-[var(--text-main)]">{t("title")}</h1>
+              <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs font-bold text-[var(--violet)]">
+                {adsLoading ? "…" : ads.length}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
           </div>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
+          <div className="flex flex-wrap gap-2">
+            <PeriodFilter value={period} onChange={setPeriod} />
+            <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
+              ↻
+            </button>
+            <button
+              type="button"
+              onClick={openNewAd}
+              disabled={!adsetFilter}
+              title={!adsetFilter ? t("newAdSelectAdset") : undefined}
+              className="ui-btn-primary text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              + {t("newAd")}
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <PeriodFilter value={period} onChange={setPeriod} />
-          <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
-            ↻
-          </button>
-          <button
-            type="button"
-            onClick={openNewAd}
-            disabled={!adsetFilter}
-            title={!adsetFilter ? t("newAdSelectAdset") : undefined}
-            className="ui-btn-primary text-sm disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            + {t("newAd")}
-          </button>
-        </div>
-      </div>
+      )}
 
       <div className="ui-card flex flex-wrap items-center gap-3 p-4">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
@@ -417,12 +444,12 @@ export function CampaignAdsClient({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-slate-900">{campaignName}</span>
+            <span className="font-semibold text-[var(--text-main)]">{campaignName}</span>
             {campaign ? (
               <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
             ) : null}
           </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-slate-500">
+          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-[var(--text-dim)]">
             <span>ID: {campaign?.id ?? metaCampaignId}</span>
             {campaign ? (
               <>
@@ -483,11 +510,11 @@ export function CampaignAdsClient({
 
       {adsetFilter ? (
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1 font-medium text-violet-700">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[rgba(124,58,237,0.06)] px-3 py-1 font-medium text-[var(--violet)]">
             {t("adsetFilter", { name: adsetFilterName ?? "" })}
             <Link
               href={campaignAdsHref(metaCampaignId, slug)}
-              className="text-violet-500 hover:text-violet-800"
+              className="text-violet-500 hover:text-[var(--violet)]"
               title={t("clearFilter")}
               onClick={() => {
                 clearRememberedAdset(metaCampaignId);
@@ -503,23 +530,23 @@ export function CampaignAdsClient({
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+            <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
               <tr>
                 <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
-                  <button type="button" onClick={() => toggleSort("status")} className="hover:text-slate-700">
+                  <button type="button" onClick={() => toggleSort("status")} className="hover:text-[var(--text-dim)]">
                     {t("colStatus")}
                     {sort?.key === "status" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
                 </th>
                 <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>
-                  <button type="button" onClick={() => toggleSort("name")} className="hover:text-slate-700">
+                  <button type="button" onClick={() => toggleSort("name")} className="hover:text-[var(--text-dim)]">
                     {t("colAd")}
                     {sort?.key === "name" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
                 </th>
                 {!adsetFilter ? (
                   <th className="whitespace-nowrap px-3 py-2 text-center">
-                    <button type="button" onClick={() => toggleSort("adset")} className="hover:text-slate-700">
+                    <button type="button" onClick={() => toggleSort("adset")} className="hover:text-[var(--text-dim)]">
                       {t("colAdset")}
                       {sort?.key === "adset" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                     </button>
@@ -529,7 +556,7 @@ export function CampaignAdsClient({
                   const sortKey = m.kind === "metric" ? m.key : columnRefKey(m);
                   return (
                     <th key={columnRefKey(m)} className="whitespace-nowrap px-3 py-2 text-center">
-                      <button type="button" onClick={() => toggleSort(sortKey)} className="hover:text-slate-700">
+                      <button type="button" onClick={() => toggleSort(sortKey)} className="hover:text-[var(--text-dim)]">
                         {metricColLabel(m)}
                         {sort?.key === sortKey ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                       </button>
@@ -541,7 +568,7 @@ export function CampaignAdsClient({
             <tbody>
               {adsLoading && ads.length === 0 ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-t border-slate-100">
+                  <tr key={i} className="border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
                     <td className={STICKY_STATUS_TD}>
                       <Skeleton className="mx-auto h-5 w-9 rounded-full" />
                     </td>
@@ -567,7 +594,7 @@ export function CampaignAdsClient({
                 <tr>
                   <td
                     colSpan={2 + metricColumns.length + (adsetFilter ? 0 : 1)}
-                    className="px-4 py-8 text-center text-sm text-slate-500"
+                    className="px-4 py-8 text-center text-sm text-[var(--text-dim)]"
                   >
                     {t("empty")}
                   </td>
@@ -576,7 +603,7 @@ export function CampaignAdsClient({
                 paged.map((ad) => {
                   const name = ad.name ?? ad.id;
                   return (
-                    <tr key={ad.id} className="group border-t border-slate-100 hover:bg-violet-50/40">
+                    <tr key={ad.id} className="group border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
                       <td className={STICKY_STATUS_TD}>
                         <CampaignStatusToggle
                           active={ad.status === "ACTIVE"}
@@ -601,21 +628,21 @@ export function CampaignAdsClient({
                               className="h-10 w-10 shrink-0 rounded-lg object-cover transition group-hover/btn:opacity-80"
                             />
                           ) : (
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm font-medium text-slate-500">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-bg)] text-sm font-medium text-[var(--text-dim)]">
                               {(name[0] ?? "A").toUpperCase()}
                             </div>
                           )}
                           <div className="min-w-0">
-                            <div className="whitespace-normal break-words font-medium text-slate-800 group-hover/btn:text-violet-700 group-hover/btn:underline">
+                            <div className="whitespace-normal break-words font-medium text-[var(--text-main)] group-hover/btn:text-[var(--violet)] group-hover/btn:underline">
                               {name}
                             </div>
-                            <div className="text-[10px] text-slate-400">{ad.id}</div>
+                            <div className="text-[10px] text-[var(--text-dimmer)]">{ad.id}</div>
                           </div>
                         </button>
                       </td>
                       {!adsetFilter ? (
                         <td className="px-3 py-2.5 text-center">
-                          <span className="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          <span className="inline-block rounded-md bg-[var(--surface-bg)] px-2 py-0.5 text-xs font-medium text-[var(--text-dim)]">
                             {ad.adsetName ?? ad.adsetId}
                           </span>
                         </td>
@@ -642,14 +669,14 @@ export function CampaignAdsClient({
                 customMetrics={tableLayout.customMetricsMap}
                 middleCells={
                   !adsetFilter ? (
-                    <td className="px-3 py-2.5 text-center text-slate-400">—</td>
+                    <td className="px-3 py-2.5 text-center text-[var(--text-dimmer)]">—</td>
                   ) : null
                 }
               />
             ) : null}
           </table>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-color)] px-4 py-3 text-xs text-[var(--text-dim)]">
           <span>
             {t("pagination", {
               from: filtered.length ? (page - 1) * pageSize + 1 : 0,
@@ -662,18 +689,18 @@ export function CampaignAdsClient({
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded border border-slate-200 px-2 py-1 disabled:opacity-40"
+              className="rounded border border-[var(--border-color)] px-2 py-1 disabled:opacity-40"
             >
               ‹
             </button>
-            <span className="rounded bg-violet-600 px-2 py-1 text-white">
+            <span className="rounded ui-btn-primary px-2 py-1 text-xs">
               {page} / {totalPages}
             </span>
             <button
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded border border-slate-200 px-2 py-1 disabled:opacity-40"
+              className="rounded border border-[var(--border-color)] px-2 py-1 disabled:opacity-40"
             >
               ›
             </button>

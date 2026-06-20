@@ -35,22 +35,22 @@ export function ReviewStep() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">{t("reviewHint")}</p>
-      <div className="ui-card divide-y divide-slate-100">
+      <p className="text-sm text-[var(--text-dim)]">{t("reviewHint")}</p>
+      <div className="ui-card divide-y divide-[var(--border-color)]">
         {rows.map((r) => (
           <div key={r.label} className="flex flex-wrap justify-between gap-2 px-4 py-3 text-sm">
-            <span className="text-slate-500">{r.label}</span>
-            <span className="max-w-[60%] text-right font-medium text-slate-900">{r.value}</span>
+            <span className="text-[var(--text-dim)]">{r.label}</span>
+            <span className="max-w-[60%] text-right font-medium text-[var(--text-main)]">{r.value}</span>
           </div>
         ))}
       </div>
 
       <div className="ui-card overflow-x-auto p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("reviewMatrixTitle")}</h3>
-        <p className="mt-1 text-[11px] text-slate-500">{t("reviewMatrixHint")}</p>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("reviewMatrixTitle")}</h3>
+        <p className="mt-1 text-[11px] text-[var(--text-dim)]">{t("reviewMatrixHint")}</p>
         <table className="mt-3 w-full min-w-[320px] text-left text-xs">
           <thead>
-            <tr className="border-b border-slate-200 text-slate-500">
+            <tr className="border-b border-[var(--border-color)] text-[var(--text-dim)]">
               <th className="py-2 pr-2">{t("treeAdset")}</th>
               {payload.ads.map((ad) => (
                 <th key={ad.id} className="px-2 py-2 text-center">
@@ -61,19 +61,19 @@ export function ReviewStep() {
           </thead>
           <tbody>
             {payload.adsets.map((adset) => (
-              <tr key={adset.id} className="border-b border-slate-100">
-                <td className="py-2 pr-2 font-medium text-slate-800">{adset.name}</td>
+              <tr key={adset.id} className="border-b border-[var(--border-color)]">
+                <td className="py-2 pr-2 font-medium text-[var(--text-main)]">{adset.name}</td>
                 {payload.ads.map((ad) => {
                   const targets = resolveAdTargetAdsets(payload, ad);
                   const willPublish = targets.some((a) => a.id === adset.id);
                   return (
                     <td key={ad.id} className="px-2 py-2 text-center">
                       {willPublish ? (
-                        <span className="text-violet-600" title={t("reviewWillPublish")}>
+                        <span className="text-[var(--violet)]" title={t("reviewWillPublish")}>
                           ✓
                         </span>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-[var(--text-dimmer)]">—</span>
                       )}
                     </td>
                   );
@@ -84,7 +84,7 @@ export function ReviewStep() {
         </table>
       </div>
 
-      <p className="text-xs text-slate-500">{t("publishPausedNote")}</p>
+      <p className="text-xs text-[var(--text-dim)]">{t("publishPausedNote")}</p>
     </div>
   );
 }

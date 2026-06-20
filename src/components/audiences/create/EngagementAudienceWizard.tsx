@@ -147,18 +147,18 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">{t("createType.engagement.title")}</h2>
+        <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("createType.engagement.title")}</h2>
         <button type="button" onClick={onBack} className="ui-btn-secondary text-sm">
           {t("back")}
         </button>
       </div>
 
       {!options ? (
-        <p className="text-sm text-slate-500">{t("loadingOptions")}</p>
+        <p className="text-sm text-[var(--text-dim)]">{t("loadingOptions")}</p>
       ) : (
         <>
           <div>
-            <label className="text-xs font-medium text-slate-500">{t("engagementSourceLabel")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("engagementSourceLabel")}</label>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {(options.engagementSources ?? []).map((src) => (
                 <button
@@ -167,8 +167,8 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
                   onClick={() => setSourceType(src.id as typeof sourceType)}
                   className={`rounded-lg border px-3 py-2 text-xs font-medium ${
                     sourceType === src.id
-                      ? "border-violet-500 bg-violet-50 text-violet-700"
-                      : "border-slate-200"
+                      ? "border-violet-500 bg-[rgba(124,58,237,0.06)] text-[var(--violet)]"
+                      : "border-[var(--border-color)]"
                   }`}
                 >
                   {t(src.labelKey as "engagementSource.page")}
@@ -180,7 +180,7 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
           {sourceType === "video" ? (
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-slate-500">{t("videoOriginFilter")}</label>
+                <label className="text-xs font-medium text-[var(--text-dim)]">{t("videoOriginFilter")}</label>
                 <select
                   value={videoOriginFilter}
                   onChange={(e) => setVideoOriginFilter(e.target.value as VideoOriginFilter)}
@@ -195,17 +195,17 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
 
               {filteredVideos.length ? (
                 <div>
-                  <label className="text-xs font-medium text-slate-500">
+                  <label className="text-xs font-medium text-[var(--text-dim)]">
                     {t("selectEngagementVideos")} ({selectedVideoIds.length})
                   </label>
-                  <div className="mt-2 max-h-56 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
+                  <div className="mt-2 max-h-56 space-y-1 overflow-y-auto rounded-lg border border-[var(--border-color)] p-2">
                     {filteredVideos.map((v) => {
                       const checked = selectedVideoIds.includes(v.id);
                       return (
                         <label
                           key={v.id}
-                          className={`flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-slate-50 ${
-                            checked ? "bg-violet-50" : ""
+                          className={`flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-[var(--surface-bg)] ${
+                            checked ? "bg-[rgba(124,58,237,0.06)]" : ""
                           }`}
                         >
                           <input
@@ -221,8 +221,8 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
                             className="mt-0.5 accent-violet-600"
                           />
                           <span className="min-w-0 flex-1">
-                            <span className="font-medium text-slate-800">{v.title}</span>
-                            <span className="mt-0.5 block text-[10px] text-slate-500">
+                            <span className="font-medium text-[var(--text-main)]">{v.title}</span>
+                            <span className="mt-0.5 block text-[10px] text-[var(--text-dim)]">
                               {originLabel(v.origin, v.originLabel)}
                             </span>
                           </span>
@@ -237,7 +237,7 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
                   <button
                     type="button"
                     onClick={() => void loadOptions()}
-                    className="mt-1 text-xs font-medium text-violet-700 underline"
+                    className="mt-1 text-xs font-medium text-[var(--violet)] underline"
                   >
                     {t("engagementRecheck")}
                   </button>
@@ -246,7 +246,7 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
             </div>
           ) : sourcesForType.length ? (
             <div>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-[var(--text-dim)]">
                 {sourceType === "lead" ? t("selectLeadForm") : t("selectSourceAsset")}
               </label>
               <select
@@ -269,7 +269,7 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
               <button
                 type="button"
                 onClick={() => void loadOptions()}
-                className="mt-1 text-xs font-medium text-violet-700 underline"
+                className="mt-1 text-xs font-medium text-[var(--violet)] underline"
               >
                 {t("engagementRecheck")}
               </button>
@@ -279,7 +279,7 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
           ) : null}
 
           <div>
-            <label className="text-xs font-medium text-slate-500">{t("selectEngagementAction")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("selectEngagementAction")}</label>
             <select
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
@@ -294,10 +294,10 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
           </div>
 
           {fixedRetention ? (
-            <p className="text-xs text-slate-500">{t("pageLikedRetentionNote")}</p>
+            <p className="text-xs text-[var(--text-dim)]">{t("pageLikedRetentionNote")}</p>
           ) : (
             <div>
-              <label className="text-xs font-medium text-slate-500">
+              <label className="text-xs font-medium text-[var(--text-dim)]">
                 {t("retentionDays")} ({retentionDays}d, max {maxDays})
               </label>
               <input
@@ -312,7 +312,7 @@ export function EngagementAudienceWizard({ ctx, onBack }: Props) {
           )}
 
           <div>
-            <label className="text-xs font-medium text-slate-500">{t("audienceName")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("audienceName")}</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}

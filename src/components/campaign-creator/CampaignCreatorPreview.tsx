@@ -38,7 +38,7 @@ export function CampaignCreatorPreview() {
   return (
     <aside className="space-y-4 p-4">
       <div className="ui-card p-4">
-        <h2 className="text-sm font-semibold text-slate-900">{t("campaignScore")}</h2>
+        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("campaignScore")}</h2>
         <div className="mt-3 flex items-center gap-4">
           <div className="relative h-20 w-20 shrink-0">
             <svg className="h-20 w-20 -rotate-90" viewBox="0 0 80 80">
@@ -55,19 +55,19 @@ export function CampaignCreatorPreview() {
                 strokeLinecap="round"
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-lg font-bold text-violet-700">
+            <span className="absolute inset-0 flex items-center justify-center text-lg font-bold text-[var(--violet)]">
               {score}
             </span>
           </div>
-          <p className="text-xs text-slate-500">{t("scoreHint")}</p>
+          <p className="text-xs text-[var(--text-dim)]">{t("scoreHint")}</p>
         </div>
       </div>
 
       <div className="ui-card p-4">
-        <h2 className="text-sm font-semibold text-slate-900">{t("adPreview")}</h2>
-        <p className="mt-1 text-[11px] text-slate-500">{t("adPreviewHint")}</p>
-        <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="bg-slate-100 p-8 text-center text-xs text-slate-400">
+        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("adPreview")}</h2>
+        <p className="mt-1 text-[11px] text-[var(--text-dim)]">{t("adPreviewHint")}</p>
+        <div className="mt-3 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-sm">
+          <div className="bg-[var(--surface-bg)] p-8 text-center text-xs text-[var(--text-dimmer)]">
             {adHasMedia(ad)
               ? ad.format === "video"
                 ? t("videosSelected", { count: ad.videoIds.length })
@@ -75,10 +75,10 @@ export function CampaignCreatorPreview() {
               : t("noMedia")}
           </div>
           <div className="space-y-2 p-3">
-            <p className="text-sm font-semibold text-slate-900">{title}</p>
-            {body ? <p className="text-xs text-slate-600 line-clamp-4">{body}</p> : null}
+            <p className="text-sm font-semibold text-[var(--text-main)]">{title}</p>
+            {body ? <p className="text-xs text-[var(--text-dim)] line-clamp-4">{body}</p> : null}
             {ctaLabel ? (
-              <p className="text-[11px] font-medium text-slate-600">
+              <p className="text-[11px] font-medium text-[var(--text-dim)]">
                 {t("previewCta")}: {ctaLabel}
               </p>
             ) : null}
@@ -90,10 +90,10 @@ export function CampaignCreatorPreview() {
                 compact
               />
             ) : ad.destinationType === "whatsapp" ? (
-              <p className="text-[11px] text-slate-400 italic">{t("messageTemplatePreviewEmpty")}</p>
+              <p className="text-[11px] text-[var(--text-dimmer)] italic">{t("messageTemplatePreviewEmpty")}</p>
             ) : null}
             {showLink ? (
-              <p className="truncate text-[11px] text-violet-600">{ad.linkUrl}</p>
+              <p className="truncate text-[11px] text-[var(--violet)]">{ad.linkUrl}</p>
             ) : ad.destinationType === "whatsapp" && ad.linkUrl ? (
               <p className="text-[11px] text-emerald-700">{t("previewWhatsappLink")}</p>
             ) : null}

@@ -145,7 +145,7 @@ export function CreativePreviewModal({
 
   const tabClass = (active: boolean) =>
     `rounded-lg px-2.5 py-1 text-xs font-medium ${
-      active ? "bg-violet-100 text-violet-700" : "text-slate-500 hover:bg-slate-50"
+      active ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]" : "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
     }`;
 
   const copiesToShow =
@@ -179,7 +179,7 @@ export function CreativePreviewModal({
     if (!items.length) return null;
     return (
       <div>
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</div>
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">{label}</div>
         <div className="mt-1 space-y-1.5">
           {items.map((txt, i) => (
             <button
@@ -187,7 +187,7 @@ export function CreativePreviewModal({
               type="button"
               onClick={() => navigator.clipboard?.writeText(txt)}
               title={t("copied")}
-              className="block w-full whitespace-pre-wrap rounded-lg bg-slate-50 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+              className="block w-full whitespace-pre-wrap rounded-lg bg-[var(--surface-bg)] px-3 py-2 text-left text-sm text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
             >
               {txt}
             </button>
@@ -213,19 +213,19 @@ export function CreativePreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/80 p-4 sm:items-center"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 p-4 sm:items-center"
       onMouseDown={onClose}
     >
       <div
-        className={`my-auto flex max-h-[92vh] w-full flex-col rounded-2xl bg-white shadow-2xl ${panelWidth}`}
+        className={`my-auto flex max-h-[92vh] w-full flex-col rounded-2xl bg-[var(--surface-card)] shadow-2xl ${panelWidth}`}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
-          <div className="min-w-0 truncate text-sm font-semibold text-slate-800">{name}</div>
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] px-4 py-3">
+          <div className="min-w-0 truncate text-sm font-semibold text-[var(--text-main)]">{name}</div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
             aria-label="close"
           >
             ✕
@@ -233,7 +233,7 @@ export function CreativePreviewModal({
         </div>
 
         {hasAds ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-slate-100 px-4 py-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-[var(--border-color)] px-4 py-2">
             <button type="button" onClick={() => setMode("preview")} className={tabClass(mode === "preview")}>
               {t("fmtAd")}
             </button>
@@ -260,21 +260,21 @@ export function CreativePreviewModal({
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-100 p-3">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface-bg)] p-3">
           {mode === "copy" ? (
             <div className="mx-auto w-full max-w-lg space-y-4">
               {detailLoading ? (
-                <p className="py-8 text-center text-sm text-slate-500">{t("copyLoading")}</p>
+                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyLoading")}</p>
               ) : detailError ? (
-                <p className="py-8 text-center text-sm text-slate-500">{t("copyEmpty")}</p>
+                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyEmpty")}</p>
               ) : copiesToShow ? (
                 copiesToShow.map((row) => (
                   <div
                     key={`${row.campaignId}-${row.adId}`}
-                    className="rounded-xl border border-slate-200 bg-white p-3"
+                    className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3"
                   >
-                    <div className="text-sm font-semibold text-slate-800">{row.campaignName}</div>
-                    <div className="text-[11px] text-slate-500">
+                    <div className="text-sm font-semibold text-[var(--text-main)]">{row.campaignName}</div>
+                    <div className="text-[11px] text-[var(--text-dim)]">
                       {t("colAdset")}: {row.adsetName}
                     </div>
                     <div className="mt-3 space-y-3">
@@ -283,7 +283,7 @@ export function CreativePreviewModal({
                   </div>
                 ))
               ) : isCopyEmpty || !mergedCopy ? (
-                <p className="py-8 text-center text-sm text-slate-500">{t("copyEmpty")}</p>
+                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyEmpty")}</p>
               ) : (
                 <CopySection copy={mergedCopy} />
               )}
@@ -291,22 +291,22 @@ export function CreativePreviewModal({
           ) : mode === "usage" ? (
             <div className="mx-auto w-full max-w-lg space-y-3">
               {detailLoading ? (
-                <p className="py-8 text-center text-sm text-slate-500">{t("copyLoading")}</p>
+                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyLoading")}</p>
               ) : !usage || !usage.campaigns.length ? (
-                <p className="py-8 text-center text-sm text-slate-500">{t("usageEmpty")}</p>
+                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("usageEmpty")}</p>
               ) : (
                 <>
                   {usage.placements.length ? (
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">
-                      <div className="text-sm font-semibold text-slate-800">{t("placementsTitle")}</div>
+                    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3">
+                      <div className="text-sm font-semibold text-[var(--text-main)]">{t("placementsTitle")}</div>
                       <div className="mt-2 space-y-2">
                         {usage.placements.map((p) => (
-                          <div key={p.adsetId} className="rounded-lg bg-slate-50 p-2">
-                            <div className="text-xs font-medium text-slate-700">
+                          <div key={p.adsetId} className="rounded-lg bg-[var(--surface-bg)] p-2">
+                            <div className="text-xs font-medium text-[var(--text-dim)]">
                               {p.campaignName} · {p.adsetName}
                             </div>
                             {p.platforms.length ? (
-                              <div className="mt-1 text-[11px] text-slate-600">
+                              <div className="mt-1 text-[11px] text-[var(--text-dim)]">
                                 {t("placementPlatforms")}: {p.platforms.join(", ")}
                               </div>
                             ) : null}
@@ -315,14 +315,14 @@ export function CreativePreviewModal({
                                 {p.positions.map((pos) => (
                                   <span
                                     key={pos}
-                                    className="rounded-md bg-white px-2 py-0.5 text-[10px] text-slate-600 ring-1 ring-slate-200"
+                                    className="rounded-md bg-[var(--surface-card)] px-2 py-0.5 text-[10px] text-[var(--text-dim)] ring-1 ring-[var(--border-color)]"
                                   >
                                     {pos}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <div className="mt-1 text-[11px] text-slate-500">{t("placementAutomatic")}</div>
+                              <div className="mt-1 text-[11px] text-[var(--text-dim)]">{t("placementAutomatic")}</div>
                             )}
                           </div>
                         ))}
@@ -330,19 +330,19 @@ export function CreativePreviewModal({
                     </div>
                   ) : null}
                   {usage.campaigns.map((c) => (
-                    <div key={c.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div key={c.id} className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3">
                       <Link
                         href={`/campaigns/${c.id}?client=${encodeURIComponent(usage.clientSlug)}`}
-                        className="text-sm font-semibold text-violet-700 hover:underline"
+                        className="text-sm font-semibold text-[var(--violet)] hover:underline"
                       >
                         {c.name}
                       </Link>
                       <div className="mt-2 space-y-2">
                         {c.adsets.map((s, i) => (
-                          <div key={s.id ?? i} className="rounded-lg bg-slate-50 p-2">
+                          <div key={s.id ?? i} className="rounded-lg bg-[var(--surface-bg)] p-2">
                             <Link
                               href={`/campaigns/${c.id}/adsets?client=${encodeURIComponent(usage.clientSlug)}`}
-                              className="text-xs font-medium text-slate-700 hover:text-violet-700 hover:underline"
+                              className="ui-link text-xs"
                             >
                               {s.name}
                             </Link>
@@ -351,7 +351,7 @@ export function CreativePreviewModal({
                                 <Link
                                   key={ad.id}
                                   href={`/campaigns/${c.id}/ads?client=${encodeURIComponent(usage.clientSlug)}`}
-                                  className="rounded-md bg-white px-2 py-0.5 text-[11px] text-slate-600 ring-1 ring-slate-200 hover:text-violet-700"
+                                  className="rounded-md bg-[var(--surface-card)] px-2 py-0.5 text-[11px] text-[var(--text-dim)] ring-1 ring-[var(--border-color)] hover:text-[var(--violet-bright)]"
                                 >
                                   {ad.name}
                                 </Link>
@@ -367,7 +367,7 @@ export function CreativePreviewModal({
             </div>
           ) : mode === "preview" && hasAds ? (
             loading || detailLoading ? (
-              <p className="py-8 text-center text-sm text-slate-500">{t("previewLoading")}</p>
+              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("previewLoading")}</p>
             ) : preview && !err ? (
               <div className="mx-auto w-full" style={{ maxWidth: previewW }}>
                 <iframe
@@ -379,20 +379,20 @@ export function CreativePreviewModal({
                     height: previewH,
                     minHeight: 480
                   }}
-                  className="block border-0 bg-white"
+                  className="block border-0 bg-[var(--surface-card)]"
                 />
               </div>
             ) : imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={imageUrl} alt="" className="mx-auto max-w-full rounded-lg object-contain" />
             ) : (
-              <p className="py-8 text-center text-sm text-slate-500">{t("previewUnavailable")}</p>
+              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("previewUnavailable")}</p>
             )
           ) : imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={imageUrl} alt="" className="mx-auto max-w-full rounded-lg object-contain" />
           ) : (
-            <p className="py-8 text-center text-sm text-slate-500">—</p>
+            <p className="py-8 text-center text-sm text-[var(--text-dim)]">—</p>
           )}
         </div>
       </div>

@@ -97,7 +97,7 @@ function ProfileClientInner({
           isBillingTab(activeTab) ? (
             <Link
               href="/billing/plans"
-              className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-500"
+              className="ui-btn-primary text-xs"
             >
               {tBilling("viewPlans")}
             </Link>

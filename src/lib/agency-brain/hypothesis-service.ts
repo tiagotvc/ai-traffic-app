@@ -16,7 +16,8 @@ import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
 import { rebuildClientDna } from "@/lib/agency-brain/dna-builder";
 import {
   applyConfidenceScoreSort,
-  applyCreatedAtSort
+  applyCreatedAtSort,
+  applyUpdatedAtSort
 } from "@/lib/agency-brain/list-sort";
 import { In, MoreThanOrEqual, Not } from "typeorm";
 
@@ -30,7 +31,7 @@ export type HypothesisFilters = {
   category?: LearningCategory;
   page?: number;
   pageSize?: number;
-  sortBy?: "createdAt" | "confidenceScore";
+  sortBy?: "createdAt" | "updatedAt" | "confidenceScore";
   sortDir?: "asc" | "desc";
 };
 
@@ -81,6 +82,8 @@ export async function listHypotheses(
 
   if (sortBy === "confidenceScore") {
     applyConfidenceScoreSort(qb, "h", sortDir);
+  } else if (sortBy === "updatedAt") {
+    applyUpdatedAtSort(qb, "h", sortDir);
   } else {
     applyCreatedAtSort(qb, "h", sortDir);
   }

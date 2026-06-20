@@ -11,8 +11,8 @@ const CATEGORY_VISUALS: Record<LearningCategory, CategoryVisual> = {
   CREATIVE: {
     border: "border-l-violet-500",
     bg: "bg-gradient-to-r from-violet-50/80 to-white",
-    badge: "bg-violet-100 text-violet-800",
-    dot: "bg-violet-500"
+    badge: "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]",
+    dot: "bg-[rgba(124,58,237,0.06)]0"
   },
   AUDIENCE: {
     border: "border-l-blue-500",
@@ -53,7 +53,7 @@ const CATEGORY_VISUALS: Record<LearningCategory, CategoryVisual> = {
   GENERAL: {
     border: "border-l-slate-400",
     bg: "bg-gradient-to-r from-slate-50/80 to-white",
-    badge: "bg-slate-100 text-slate-700",
+    badge: "bg-slate-100 text-[var(--text-dim)]",
     dot: "bg-slate-400"
   }
 };

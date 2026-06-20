@@ -10,12 +10,12 @@ export function BrainBreadcrumb({
   parentHref?: string;
 }) {
   return (
-    <nav className="mb-6 text-sm text-slate-500" aria-label="Breadcrumb">
-      <Link href={parentHref} className="font-medium text-violet-600 hover:text-violet-800">
+    <nav className="mb-6 text-sm text-[var(--text-dim)]" aria-label="Breadcrumb">
+      <Link href={parentHref} className="ui-link font-medium">
         Agency Brain
       </Link>
-      <span className="mx-2 text-slate-300">/</span>
-      <span className="text-slate-700">{title}</span>
+      <span className="mx-2 text-[var(--text-dimmer)]">/</span>
+      <span className="text-[var(--text-dim)]">{title}</span>
     </nav>
   );
 }

@@ -17,7 +17,7 @@ export async function ConnectMarketingPanel({ productLabel }: { productLabel: st
         }}
       />
       <div className="pointer-events-none absolute -right-20 top-10 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-24 left-0 h-80 w-80 rounded-full bg-violet-500/15 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 left-0 h-80 w-80 rounded-full bg-[rgba(124,58,237,0.06)]0/15 blur-3xl" />
 
       <div className="relative z-10">
         <TrafficAILogo size="md" productLabel={productLabel} variant="dark" />

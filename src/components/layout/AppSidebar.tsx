@@ -2,10 +2,25 @@
 
 import { Fragment } from "react";
 import { useTranslations } from "next-intl";
+import {
+  Megaphone,
+  BarChart3,
+  Bell,
+  Brain,
+  ChevronRight as ChevronRightIcon,
+  LayoutDashboard,
+  Target,
+  Trophy,
+  Users
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 
-import { AgencyBrainNavGroup, AgencyBrainNavLocked } from "@/components/layout/AgencyBrainNavGroup";
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
+import {
+  SidebarCollapseButton,
+  SidebarCollapseFab,
+  SidebarLogoIcon
+} from "@/components/layout/SidebarUxChrome";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 import { isNavItemAllowed, type GatedNavId } from "@/lib/billing/nav-permissions";
 import type { PlanLimits } from "@/lib/billing/types";
@@ -23,43 +38,6 @@ type NavItem = {
   icon: React.ReactNode;
   action?: () => void;
   gate?: GatedNavId;
-};
-
-function NavIcon({ d }: { d: string }) {
-  return (
-    <svg
-      className="h-[18px] w-[18px] shrink-0"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={1.75}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
-    </svg>
-  );
-}
-
-const icons = {
-  highlights:
-    "M3 13.5l4.5-4.5 3 3 6-6M21 6h-4M21 6v4M4 20h16",
-  command:
-    "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z",
-  clients:
-    "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z",
-  campaigns:
-    "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z",
-  audiences:
-    "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
-  creatives:
-    "M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.872M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.412 9.71 2.25 12 2.25c2.291 0 4.545.162 6.75.471v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0",
-  creativeMemory:
-    "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z",
-  reports:
-    "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
-  alerts:
-    "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9",
-  automations:
-    "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z"
 };
 
 export function AppSidebar({
@@ -111,21 +89,21 @@ export function AppSidebar({
   };
 
   const items: NavItem[] = [
-    { id: "highlights", href: "/dashboard", label: t("highlights"), icon: <NavIcon d={icons.highlights} /> },
-    { id: "clients", href: "/clients", label: t("clients"), icon: <NavIcon d={icons.clients} /> },
-    { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <NavIcon d={icons.campaigns} />, gate: "campaigns" },
-    { id: "audiences", href: "/audiences", label: t("audiences"), icon: <NavIcon d={icons.audiences} />, gate: "audiences" },
-    { id: "creatives", href: "/creatives", label: t("creatives"), icon: <NavIcon d={icons.creatives} />, gate: "creatives" },
-    { id: "reports", href: "/reports", label: t("reports"), icon: <NavIcon d={icons.reports} />, gate: "reports" },
+    { id: "highlights", href: "/dashboard", label: t("highlights"), icon: <LayoutDashboard size={18} className="shrink-0" /> },
+    { id: "clients", href: "/clients", label: t("clients"), icon: <Users size={18} className="shrink-0" /> },
+    { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <Megaphone size={18} className="shrink-0" />, gate: "campaigns" },
+    { id: "audiences", href: "/audiences", label: t("audiences"), icon: <Target size={18} className="shrink-0" />, gate: "audiences" },
+    { id: "creatives", href: "/creatives", label: t("creatives"), icon: <Trophy size={18} className="shrink-0" />, gate: "creatives" },
+    { id: "agencyBrain", href: "/agency-brain", label: "Agency Brain", icon: <Brain size={18} className="shrink-0" />, beta: true },
+    { id: "reports", href: "/reports", label: t("reports"), icon: <BarChart3 size={18} className="shrink-0" />, gate: "reports" },
     {
       id: "alerts",
       href: "/alerts",
       label: t("alerts"),
       badge: alertCount > 0 ? alertCount : undefined,
-      icon: <NavIcon d={icons.alerts} />,
+      icon: <Bell size={18} className="shrink-0" />,
       gate: "alerts"
-    },
-    { id: "automations", href: "/automations", label: t("automations"), icon: <NavIcon d={icons.automations} />, gate: "automations" }
+    }
   ];
 
   function isActive(item: NavItem) {
@@ -139,58 +117,45 @@ export function AppSidebar({
     if (item.id === "reports") return base === "/reports" || base.startsWith("/reports/");
     if (item.id === "creatives") return base === "/creatives" || base.startsWith("/creatives/");
     if (item.id === "audiences") return base === "/audiences" || base.startsWith("/audiences/");
-    if (item.id === "automations") return base === "/automations" || base.startsWith("/automations/");
+    if (item.id === "agencyBrain") return base === "/agency-brain" || base.startsWith("/agency-brain/");
+    if (item.id === "settings") return base === "/settings" || base.startsWith("/settings/");
     return item.href ? base === item.href || base.startsWith(`${item.href}/`) : false;
   }
 
   return (
     <aside
-      className={`flex h-full shrink-0 flex-col bg-[#0f111a] text-slate-400 print:hidden ${
-        isDrawer ? "w-full" : "border-r border-white/10 transition-[width] duration-200 ease-in-out"
-      } ${!isDrawer ? (effectiveCollapsed ? "w-[72px]" : "w-[260px]") : ""}`}
+      className={`relative flex h-full shrink-0 flex-col text-[#94a3b8] print:hidden ${
+        isDrawer ? "w-full" : "border-r border-[var(--sidebar-border)] transition-[width] duration-300 ease-in-out"
+      } ${!isDrawer ? (effectiveCollapsed ? "w-16" : "w-56") : ""}`}
+      style={{ background: "#0a0f14" }}
     >
       {/* Logo + collapse (desktop sidebar only) */}
       {!isDrawer ? (
       <div
-        className={`flex shrink-0 items-center border-b border-white/10 ${
-          effectiveCollapsed ? "justify-center px-2 py-4" : "justify-between gap-2 px-4 py-4"
+        className={`flex h-16 shrink-0 items-center border-b border-[var(--sidebar-border)] ${
+          effectiveCollapsed ? "justify-center px-2" : "justify-between gap-2 px-3"
         }`}
       >
-        <div className={`flex items-center gap-2.5 ${effectiveCollapsed ? "justify-center" : ""}`}>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-sm font-bold text-white">
-            ∞
-          </div>
+        <div className={`flex min-w-0 items-center gap-2 ${effectiveCollapsed ? "justify-center" : ""}`}>
+          <SidebarLogoIcon />
           {!effectiveCollapsed ? (
-            <span className="text-[15px] font-semibold text-white">Traffic AI</span>
+            <div className="min-w-0">
+              <p className="truncate font-heading text-sm font-bold leading-tight text-[#f8fafc]">
+                AI Traffic
+              </p>
+              <p className="text-[10px] leading-tight" style={{ color: "#f5a623" }}>
+                Agency OS
+              </p>
+            </div>
           ) : null}
         </div>
         {!effectiveCollapsed ? (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title={t("collapseSidebar")}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
-            aria-label={t("collapseSidebar")}
-          >
-            <NavIcon d="M15 19l-7-7 7-7" />
-          </button>
+          <SidebarCollapseButton onClick={onToggleCollapse} title={t("collapseSidebar")} />
         ) : null}
       </div>
       ) : null}
 
-      {effectiveCollapsed && !isDrawer ? (
-        <div className="flex shrink-0 justify-center py-2">
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title={t("expandSidebar")}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
-            aria-label={t("expandSidebar")}
-          >
-            <NavIcon d="M9 5l7 7-7 7" />
-          </button>
-        </div>
-      ) : null}
+      <SidebarCollapseFab collapsed={effectiveCollapsed && !isDrawer} onToggle={onToggleCollapse} />
 
       {/* Nav — scroll interno só se muitos itens */}
       <nav
@@ -212,20 +177,7 @@ export function AppSidebar({
                   icon={item.icon}
                   onNavigate={onNavigate}
                 />
-                {item.id === "creatives" ? (
-                  planLimitsReady && !planLimits.allowCreativeMemoryAi ? (
-                    <AgencyBrainNavLocked collapsed={effectiveCollapsed} onNavigate={onNavigate} />
-                  ) : (
-                    <AgencyBrainNavGroup
-                      collapsed={effectiveCollapsed}
-                      agencyBrainFeatures={brainFeatures}
-                      pathname={pathname}
-                      permissionsReady={planLimitsReady}
-                      isPlatformAdmin={isPlatformAdmin}
-                      onNavigate={onNavigate}
-                    />
-                  )
-                ) : null}
+                {item.id === "creatives" ? null : null}
               </Fragment>
             );
           }
@@ -239,9 +191,19 @@ export function AppSidebar({
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left">
                   <span className="truncate">{item.label}</span>
                   {item.beta ? (
-                    <span className="shrink-0 rounded-full bg-violet-500/20 px-1.5 py-px text-[9px] font-bold uppercase leading-none tracking-wide text-violet-300">
-                      Beta
+                    <span
+                      className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wider"
+                      style={{
+                        background: "rgba(124,58,237,0.25)",
+                        color: "#a78bfa",
+                        border: "1px solid rgba(124,58,237,0.4)"
+                      }}
+                    >
+                      BETA
                     </span>
+                  ) : null}
+                  {item.beta && item.id === "agencyBrain" ? (
+                    <ChevronRightIcon size={12} style={{ color: "#64748b" }} />
                   ) : null}
                 </span>
               ) : null}
@@ -287,20 +249,7 @@ export function AppSidebar({
           return (
             <Fragment key={item.id}>
               {navItem}
-              {item.id === "creatives" ? (
-                planLimitsReady && !planLimits.allowCreativeMemoryAi ? (
-                  <AgencyBrainNavLocked collapsed={effectiveCollapsed} onNavigate={onNavigate} />
-                ) : (
-                  <AgencyBrainNavGroup
-                    collapsed={effectiveCollapsed}
-                    agencyBrainFeatures={brainFeatures}
-                    pathname={pathname}
-                    permissionsReady={planLimitsReady}
-                    isPlatformAdmin={isPlatformAdmin}
-                    onNavigate={onNavigate}
-                  />
-                )
-              ) : null}
+              {item.id === "creatives" ? null : null}
             </Fragment>
           );
         })}

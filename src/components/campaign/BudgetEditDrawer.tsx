@@ -74,32 +74,32 @@ export function BudgetEditDrawer({
       <button
         type="button"
         aria-label={tCommon("close")}
-        className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-[1px]"
+        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"
         onClick={onClose}
       />
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[400px] flex-col border-l border-slate-200 bg-white shadow-2xl">
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[400px] flex-col border-l border-[var(--border-color)] bg-[var(--surface-card)] shadow-2xl">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border-color)] px-5 py-4">
           <div>
-            <p className="text-xs font-medium text-violet-600">{campaignName}</p>
-            <h2 className="text-lg font-bold text-slate-900">{t("budgetDrawerTitle")}</h2>
+            <p className="text-xs font-medium text-[var(--violet)]">{campaignName}</p>
+            <h2 className="font-heading text-lg font-bold text-[var(--text-main)]">{t("budgetDrawerTitle")}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-2 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
           >
             ✕
           </button>
         </header>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
           <div>
-            <div className="text-xs text-slate-500">{t("budgetDrawerCurrent")}</div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">
+            <div className="text-xs text-[var(--text-dim)]">{t("budgetDrawerCurrent")}</div>
+            <div className="mt-1 text-lg font-semibold text-[var(--text-main)]">
               {currentBudget != null ? formatBRL(currentBudget, locale) : "—"}
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600">{t("budgetDrawerNew")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("budgetDrawerNew")}</label>
             <input
               type="number"
               min="1"
@@ -113,7 +113,7 @@ export function BudgetEditDrawer({
             <p className={`text-sm ${isError ? "text-rose-600" : "text-emerald-700"}`}>{message}</p>
           ) : null}
         </div>
-        <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-4">
+        <footer className="shrink-0 border-t border-[var(--border-color)] bg-[var(--surface-card)] px-5 py-4">
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className="ui-btn-secondary flex-1">
               {tCommon("cancel")}

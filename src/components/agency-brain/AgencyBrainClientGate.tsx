@@ -20,8 +20,8 @@ export function AgencyBrainClientGate({
     return (
       <div className="ui-card space-y-4 p-6">
         <div>
-          <p className="text-sm font-medium text-slate-900">{t("selectClientTitle")}</p>
-          <p className="mt-1 text-sm text-slate-500">{hint ?? t("selectClientHint")}</p>
+          <p className="text-sm font-medium text-[var(--text-main)]">{t("selectClientTitle")}</p>
+          <p className="mt-1 text-sm text-[var(--text-dim)]">{hint ?? t("selectClientHint")}</p>
         </div>
         <AgencyBrainClientField />
       </div>

@@ -40,48 +40,48 @@ function MarketPatternCard({
     <article
       className={[
         "animate-slide-up overflow-hidden rounded-xl border bg-white shadow-sm transition hover:shadow-md",
-        isLibrary ? "border-blue-200/80" : "border-slate-200"
+        isLibrary ? "border-blue-200/80" : "border-[var(--border-color)]"
       ].join(" ")}
       style={{ animationDelay: `${Math.min(index, 9) * 35}ms` }}
     >
       <div className="p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("marketPatternDetected")}
           </p>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+          <span className="rounded-full bg-[var(--surface-thead)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-dim)]">
             {t(sourceLabelKey(insight.source) as "marketInsightSourceStatic")}
           </span>
         </div>
 
-        <h3 className="mt-2 text-base font-semibold leading-snug text-slate-900">{patternTitle}</h3>
+        <h3 className="mt-2 text-base font-semibold leading-snug text-[var(--text-main)]">{patternTitle}</h3>
 
         {isLibrary && ev ? (
-          <dl className="mt-3 space-y-1.5 text-sm text-slate-700">
+          <dl className="mt-3 space-y-1.5 text-sm text-[var(--text-dim)]">
             {ev.adsAnalyzed != null ? (
               <div className="flex flex-wrap gap-x-1">
-                <dt className="text-slate-500">{t("marketPatternInAds")}</dt>
+                <dt className="text-[var(--text-dim)]">{t("marketPatternInAds")}</dt>
                 <dd className="font-semibold">{t("marketEvidenceAds", { count: ev.adsAnalyzed })}</dd>
               </div>
             ) : null}
             {ev.avgDaysRunning != null ? (
               <div className="flex flex-wrap gap-x-1">
-                <dt className="text-slate-500">{t("marketPatternAvgDays")}</dt>
+                <dt className="text-[var(--text-dim)]">{t("marketPatternAvgDays")}</dt>
                 <dd className="font-semibold">
                   {t("marketPatternDaysValue", { days: ev.avgDaysRunning })}
                 </dd>
               </div>
             ) : null}
             <div className="flex flex-wrap gap-x-1">
-              <dt className="text-slate-500">{t("marketPatternSource")}</dt>
+              <dt className="text-[var(--text-dim)]">{t("marketPatternSource")}</dt>
               <dd className="font-medium">{t("marketInsightSourceAdLibrary")}</dd>
             </div>
           </dl>
         ) : (
-          <p className="mt-2 text-sm leading-relaxed text-slate-600">{insight.body}</p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">{insight.body}</p>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--border-color)] pt-3">
           {ev?.libraryUrl ? (
             <a
               href={ev.libraryUrl}
@@ -94,7 +94,7 @@ function MarketPatternCard({
           ) : ev ? (
             <button
               type="button"
-              className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+              className="inline-flex items-center rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)] px-3 py-1.5 text-xs font-semibold text-[var(--text-dim)] transition hover:bg-[var(--surface-thead)]"
               onClick={() => onViewEvidence(insight)}
             >
               {t("marketPatternViewEvidence")}
@@ -104,7 +104,7 @@ function MarketPatternCard({
             type="button"
             disabled
             title={t("marketLabsBridgeTooltip")}
-            className="inline-flex items-center rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-xs font-medium text-violet-400"
+            className="inline-flex items-center rounded-lg border border-[rgba(124,58,237,0.2)] bg-white px-3 py-1.5 text-xs font-medium text-violet-400"
           >
             {t("marketPatternDeepDiveLabs")}
           </button>
@@ -177,12 +177,12 @@ export function MarketLearningsPanel({
             <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
               {t("learningScopeMarket")}
             </p>
-            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-900">
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--text-main)]">
               {t("marketHeroTitle")}
             </h2>
-            <p className="mt-1 max-w-lg text-sm text-slate-600">{t("marketHeroSubtitle")}</p>
+            <p className="mt-1 max-w-lg text-sm text-[var(--text-dim)]">{t("marketHeroSubtitle")}</p>
             {niche ? (
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-[var(--text-dim)]">
                 {t("marketInsightNiche", { niche })}
                 {aggregated ? ` · ${t("marketInsightAggregatedHint")}` : ""}
               </p>
@@ -224,19 +224,19 @@ export function MarketLearningsPanel({
               {t("marketLastAnalysis")}
             </p>
             <div className="mt-2 flex flex-wrap gap-4 text-sm">
-              <span className="font-semibold text-slate-900">
+              <span className="font-semibold text-[var(--text-main)]">
                 {t("marketLastAnalysisAds", { count: adsAnalyzed })}
               </span>
-              <span className="text-slate-600">
+              <span className="text-[var(--text-dim)]">
                 {t("marketLastAnalysisCompetitors", { count: competitorsScanned })}
               </span>
-              <span className="text-slate-600">
+              <span className="text-[var(--text-dim)]">
                 {t("marketLastAnalysisPatterns", { count: patternsFound })}
               </span>
             </div>
           </div>
         ) : (
-          <p className="mt-4 text-xs text-slate-500">{t("marketHeroNoScanYet")}</p>
+          <p className="mt-4 text-xs text-[var(--text-dim)]">{t("marketHeroNoScanYet")}</p>
         )}
 
         {!apiConfigured ? (
@@ -249,7 +249,7 @@ export function MarketLearningsPanel({
       </div>
 
       {loading ? (
-        <div className="flex min-h-[160px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 text-sm text-slate-500">
+        <div className="flex min-h-[160px] items-center justify-center ui-card border-dashed bg-[var(--surface-card)]/60 text-sm text-[var(--text-dim)]">
           {t("loading")}
         </div>
       ) : items.length === 0 ? (
@@ -261,7 +261,7 @@ export function MarketLearningsPanel({
         <div className="space-y-3">
           {libraryPatterns.length > 0 ? (
             <section>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
                 {t("marketDiscoveryFeed")}
               </h3>
               <div className="space-y-3">
@@ -279,7 +279,7 @@ export function MarketLearningsPanel({
 
           {otherInsights.length > 0 ? (
             <section>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
                 {t("marketOtherSignals")}
               </h3>
               <div className="space-y-3">
@@ -302,9 +302,9 @@ export function MarketLearningsPanel({
 
 function AgencyBrainEmptyHint({ title, description }: { title: string; description: string }) {
   return (
-    <div className="flex min-h-[160px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 px-4 py-10 text-center">
-      <p className="text-sm font-medium text-slate-700">{title}</p>
-      <p className="mt-1 max-w-md text-xs text-slate-500">{description}</p>
+    <div className="flex min-h-[160px] flex-col items-center justify-center ui-card border-dashed bg-[var(--surface-card)]/60 px-4 py-10 text-center">
+      <p className="text-sm font-medium text-[var(--text-dim)]">{title}</p>
+      <p className="mt-1 max-w-md text-xs text-[var(--text-dim)]">{description}</p>
     </div>
   );
 }

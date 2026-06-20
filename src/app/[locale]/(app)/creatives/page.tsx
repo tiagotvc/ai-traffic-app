@@ -1,5 +1,5 @@
-import { CreativesLibraryClient } from "@/components/CreativesLibraryClient";
+import { CreativesView } from "@/uxpilot-ui/adapters/CreativesView";
 
 export default function CreativesPage() {
-  return <CreativesLibraryClient />;
+  return <CreativesView />;
 }

@@ -134,7 +134,7 @@ export function ExperimentsContent({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-500">{t("experimentsSubtitle")}</p>
+      <p className="text-sm text-[var(--text-dim)]">{t("experimentsSubtitle")}</p>
 
       <div className="flex flex-wrap justify-end gap-2">
         <button
@@ -150,7 +150,7 @@ export function ExperimentsContent({ clientId }: { clientId: string }) {
 
       {showForm ? (
         <div className="ui-card space-y-3 p-4">
-          <h3 className="font-semibold text-slate-900">{t("experimentsNew")}</h3>
+          <h3 className="font-heading font-semibold text-[var(--text-main)]">{t("experimentsNew")}</h3>
           <input
             className="ui-input"
             placeholder={t("experimentsFieldTitle")}
@@ -181,9 +181,9 @@ export function ExperimentsContent({ clientId }: { clientId: string }) {
             </select>
           ) : null}
           {forecastLoading ? (
-            <p className="text-xs text-slate-400">{t("experimentsForecastLoading")}</p>
+            <p className="text-xs text-[var(--text-dimmer)]">{t("experimentsForecastLoading")}</p>
           ) : previewForecast ? (
-            <div className="rounded-lg border border-violet-100 bg-violet-50/50 p-3 text-xs text-violet-900">
+            <div className="rounded-lg border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)]/50 p-3 text-xs text-[var(--violet)]">
               {formatForecastBlock(previewForecast)}
             </div>
           ) : null}
@@ -211,15 +211,15 @@ export function ExperimentsContent({ clientId }: { clientId: string }) {
       ) : null}
 
       {loading ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("loading")}</div>
       ) : items.length === 0 ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("experimentsEmpty")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("experimentsEmpty")}</div>
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
             <div key={item.id} className="ui-card p-4">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-semibold text-slate-900">{item.title}</h3>
+                <h3 className="font-heading font-semibold text-[var(--text-main)]">{item.title}</h3>
                 {item.winner ? (
                   <Badge variant="success">{t("experimentsWinner", { winner: item.winner })}</Badge>
                 ) : (
@@ -228,7 +228,7 @@ export function ExperimentsContent({ clientId }: { clientId: string }) {
                 {item.horizonDays ? (
                   <Badge variant="neutral">{t("experimentsHorizon", { days: item.horizonDays })}</Badge>
                 ) : null}
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-[var(--text-dimmer)]">
                   {new Date(item.createdAt).toLocaleDateString()}
                 </span>
               </div>
@@ -238,17 +238,17 @@ export function ExperimentsContent({ clientId }: { clientId: string }) {
                 </p>
               ) : null}
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-slate-200 p-3">
-                  <p className="text-xs font-medium text-slate-500">{t("experimentsVariantA")}</p>
-                  <p className="mt-1 text-sm text-slate-700">{item.variantA}</p>
+                <div className="rounded-lg border border-[var(--border-color)] p-3">
+                  <p className="text-xs font-medium text-[var(--text-dim)]">{t("experimentsVariantA")}</p>
+                  <p className="mt-1 text-sm text-[var(--text-dim)]">{item.variantA}</p>
                 </div>
-                <div className="rounded-lg border border-slate-200 p-3">
-                  <p className="text-xs font-medium text-slate-500">{t("experimentsVariantB")}</p>
-                  <p className="mt-1 text-sm text-slate-700">{item.variantB}</p>
+                <div className="rounded-lg border border-[var(--border-color)] p-3">
+                  <p className="text-xs font-medium text-[var(--text-dim)]">{t("experimentsVariantB")}</p>
+                  <p className="mt-1 text-sm text-[var(--text-dim)]">{item.variantB}</p>
                 </div>
               </div>
               {item.conclusion ? (
-                <p className="mt-3 text-sm text-slate-600">{item.conclusion}</p>
+                <p className="mt-3 text-sm text-[var(--text-dim)]">{item.conclusion}</p>
               ) : null}
             </div>
           ))}

@@ -31,30 +31,30 @@ function BucketSection({
 }) {
   return (
     <div className="ui-card p-4">
-      <h3 className="font-semibold text-slate-900">{title}</h3>
+      <h3 className="font-heading font-semibold text-[var(--text-main)]">{title}</h3>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <div>
           <p className="text-xs font-medium text-green-700">{worksLabel}</p>
           {bucket.works.length ? (
-            <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-slate-600">
+            <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-[var(--text-dim)]">
               {bucket.works.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-sm text-slate-400">—</p>
+            <p className="mt-1 text-sm text-[var(--text-dimmer)]">—</p>
           )}
         </div>
         <div>
           <p className="text-xs font-medium text-red-700">{doesntWorkLabel}</p>
           {bucket.doesntWork.length ? (
-            <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-slate-600">
+            <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-[var(--text-dim)]">
               {bucket.doesntWork.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-sm text-slate-400">—</p>
+            <p className="mt-1 text-sm text-[var(--text-dimmer)]">—</p>
           )}
         </div>
       </div>
@@ -190,7 +190,7 @@ export function DnaContent({ clientId }: { clientId: string }) {
       <FeedbackBanner message={message} />
 
       {loading ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("loading")}</div>
       ) : !dna ? (
         <div className="space-y-4">
           <AgencyBrainEmptyGuide
@@ -200,12 +200,12 @@ export function DnaContent({ clientId }: { clientId: string }) {
           />
           {nichePatterns.length > 0 ? (
             <div className="ui-card p-4">
-              <h3 className="font-semibold text-slate-900">{t("nicheInsightsTitle")}</h3>
-              <p className="mt-1 text-xs text-slate-500">{t("nicheInsightsHint")}</p>
+              <h3 className="font-heading font-semibold text-[var(--text-main)]">{t("nicheInsightsTitle")}</h3>
+              <p className="mt-1 text-xs text-[var(--text-dim)]">{t("nicheInsightsHint")}</p>
               {nicheAggregated ? (
-                <p className="mt-1 text-xs text-violet-600">{t("nicheInsightsAggregated")}</p>
+                <p className="mt-1 text-xs text-[var(--violet)]">{t("nicheInsightsAggregated")}</p>
               ) : null}
-              <ul className="mt-3 list-disc space-y-1 pl-4 text-sm text-slate-600">
+              <ul className="mt-3 list-disc space-y-1 pl-4 text-sm text-[var(--text-dim)]">
                 {nichePatterns.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
@@ -216,16 +216,16 @@ export function DnaContent({ clientId }: { clientId: string }) {
       ) : (
         <>
           <div className="ui-card p-4">
-            <h3 className="font-semibold text-slate-900">{t("dnaSummary")}</h3>
-            <p className="mt-2 text-sm text-slate-600">{dna.summaryText || t("dnaNoSummary")}</p>
+            <h3 className="font-heading font-semibold text-[var(--text-main)]">{t("dnaSummary")}</h3>
+            <p className="mt-2 text-sm text-[var(--text-dim)]">{dna.summaryText || t("dnaNoSummary")}</p>
             {dna.lastDerivedAt ? (
-              <p className="mt-2 text-xs text-slate-400">
+              <p className="mt-2 text-xs text-[var(--text-dimmer)]">
                 {t("dnaLastDerived", {
                   date: new Date(dna.lastDerivedAt).toLocaleDateString()
                 })}
               </p>
             ) : null}
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-[var(--text-dimmer)]">
               {t("dnaApprovedCount", { count: dna.approvedLearningCount })}
             </p>
           </div>
@@ -246,7 +246,7 @@ export function DnaContent({ clientId }: { clientId: string }) {
 
           {editMode ? (
             <div className="ui-card p-4 space-y-3">
-              <h3 className="font-semibold text-slate-900">{t("dnaOverridesTitle")}</h3>
+              <h3 className="font-heading font-semibold text-[var(--text-main)]">{t("dnaOverridesTitle")}</h3>
               <textarea
                 className="ui-input min-h-[120px] font-mono text-xs"
                 value={overrideText}

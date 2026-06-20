@@ -47,7 +47,7 @@ export function CampaignCreatorFooter({
   }
 
   return (
-    <footer className="flex shrink-0 items-center justify-between border-t border-slate-200 bg-white px-4 py-3">
+    <footer className="flex shrink-0 items-center justify-between border-t border-[var(--border-color)] bg-[var(--surface-card)] px-4 py-3">
       <Link
         href={
           addAdMode && payload.meta?.targetMetaCampaignId

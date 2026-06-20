@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { DsPageHeader } from "@/design-system";
 import { CreativesLibraryView } from "@/components/creatives/CreativesLibraryView";
 import { CreativesRankingView } from "@/components/creatives/CreativesRankingView";
 import { RankingConfigModal } from "@/components/creatives/RankingConfigModal";
@@ -61,15 +62,14 @@ export function CreativesLibraryClient() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500">{t("breadcrumb")}</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("title")}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
-          <PeriodFilter value={period} onChange={setPeriod} />
-          <span className="text-xs text-slate-500">{t("clientLabel")}:</span>
+      <DsPageHeader
+        breadcrumbs={t("breadcrumb")}
+        title={t("title")}
+        subtitle={t("subtitle")}
+        actions={
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <PeriodFilter value={period} onChange={setPeriod} />
+            <span className="text-xs text-[var(--text-dim)]">{t("clientLabel")}:</span>
           <select
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
@@ -124,12 +124,13 @@ export function CreativesLibraryClient() {
               {tPerf("exportPdf")}
             </button>
           ) : null}
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {clientsLoading ? (
         <div className="space-y-3">
-          <p className="text-center text-sm text-slate-500">{tPerf("loading")}</p>
+          <p className="text-center text-sm text-[var(--text-dim)]">{tPerf("loading")}</p>
           <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />
         </div>
       ) : clientId ? (
@@ -138,7 +139,7 @@ export function CreativesLibraryClient() {
             <button
               type="button"
               onClick={() => setView("byCampaign")}
-              className="text-sm font-medium text-violet-600 hover:underline print:hidden"
+              className="ui-link print:hidden"
             >
               ← {tPerf("backToRanking")}
             </button>
@@ -162,7 +163,7 @@ export function CreativesLibraryClient() {
               <button
                 type="button"
                 onClick={() => setView("library")}
-                className="text-sm font-medium text-violet-600 hover:underline"
+                className="ui-link"
               >
                 {tPerf("viewAllCreatives")} →
               </button>

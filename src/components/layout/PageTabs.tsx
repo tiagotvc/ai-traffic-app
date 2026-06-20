@@ -14,24 +14,27 @@ export function PageTabs<T extends string>({
   onChange: (key: T) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-6 border-b border-slate-200">
-      {tabs.map((tab) => (
-        <button
-          key={tab.key}
-          type="button"
-          onClick={() => onChange(tab.key)}
-          className={`-mb-px border-b-2 pb-2.5 text-sm font-medium transition ${
-            active === tab.key
-              ? "border-violet-600 text-violet-700"
-              : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-          }`}
-        >
-          {tab.label}
-          {tab.badge != null ? (
-            <span className="ml-1 font-normal text-slate-400">({tab.badge})</span>
-          ) : null}
-        </button>
-      ))}
+    <div className="flex flex-wrap gap-2 border-b border-[var(--border-color)] pb-0">
+      {tabs.map((tab) => {
+        const isActive = active === tab.key;
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => onChange(tab.key)}
+            className={`tab-transition -mb-px border-b-2 px-1 pb-2.5 text-sm font-medium transition ${
+              isActive
+                ? "border-[var(--amber-bright)] text-[var(--amber)]"
+                : "border-transparent text-[var(--text-dim)] hover:border-[var(--border-hover)] hover:text-[var(--text-main)]"
+            }`}
+          >
+            {tab.label}
+            {tab.badge != null ? (
+              <span className="ml-1 font-normal text-[var(--text-dimmer)]">({tab.badge})</span>
+            ) : null}
+          </button>
+        );
+      })}
     </div>
   );
 }

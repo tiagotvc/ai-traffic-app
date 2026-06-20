@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
+import { DsPageHeader } from "@/design-system";
 
 type CouponRow = {
   id: string;
@@ -72,24 +72,24 @@ export function AdminCouponsClient() {
   }
 
   if (forbidden) {
-    return <p className="text-sm text-slate-600">{t("forbiddenHint")}</p>;
+    return <p className="text-sm text-[var(--text-dim)]">{t("forbiddenHint")}</p>;
   }
 
   return (
     <div className="w-full space-y-4">
-      <CompactPageHeader title={t("couponsTitle")} subtitle={t("couponsSubtitle")} />
+      <DsPageHeader title={t("couponsTitle")} subtitle={t("couponsSubtitle")} />
 
       {message ? (
-        <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+        <div className="ui-alert-info px-4 py-3 text-sm">
           {message}
         </div>
       ) : null}
 
-      <form onSubmit={createCoupon} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500">{t("couponCreate")}</h2>
+      <form onSubmit={createCoupon} className="ui-card p-4">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-[var(--text-dim)]">{t("couponCreate")}</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="text-xs font-semibold text-slate-600">{t("couponCode")}</span>
+            <span className="text-xs font-semibold text-[var(--text-dim)]">{t("couponCode")}</span>
             <input
               required
               value={code}
@@ -99,7 +99,7 @@ export function AdminCouponsClient() {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-semibold text-slate-600">{t("couponPercent")}</span>
+            <span className="text-xs font-semibold text-[var(--text-dim)]">{t("couponPercent")}</span>
             <input
               required
               type="number"
@@ -111,7 +111,7 @@ export function AdminCouponsClient() {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-semibold text-slate-600">{t("couponMaxUses")}</span>
+            <span className="text-xs font-semibold text-[var(--text-dim)]">{t("couponMaxUses")}</span>
             <input
               type="number"
               min={1}
@@ -122,7 +122,7 @@ export function AdminCouponsClient() {
             />
           </label>
           <label className="block">
-            <span className="text-xs font-semibold text-slate-600">{t("couponMinCharge")}</span>
+            <span className="text-xs font-semibold text-[var(--text-dim)]">{t("couponMinCharge")}</span>
             <input
               required
               value={minCharge}
@@ -133,15 +133,15 @@ export function AdminCouponsClient() {
         </div>
         <button
           type="submit"
-          className="mt-3 rounded-lg bg-violet-600 px-4 py-1.5 text-xs font-semibold text-white"
+          className="mt-3 ui-btn-primary text-xs"
         >
           {t("couponCreateBtn")}
         </button>
       </form>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="ui-card overflow-hidden">
         <table className="w-full text-xs">
-          <thead className="bg-slate-50 text-left text-[11px] uppercase text-slate-500">
+          <thead className="bg-[var(--surface-thead)] text-left text-[11px] uppercase text-[var(--text-dim)]">
             <tr>
               <th className="px-3 py-2">{t("couponCode")}</th>
               <th className="px-3 py-2">{t("couponPercent")}</th>
@@ -153,19 +153,19 @@ export function AdminCouponsClient() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-slate-400">
+                <td colSpan={5} className="px-3 py-6 text-center text-[var(--text-dimmer)]">
                   {t("loading")}
                 </td>
               </tr>
             ) : coupons.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-slate-400">
+                <td colSpan={5} className="px-3 py-6 text-center text-[var(--text-dimmer)]">
                   {t("couponEmpty")}
                 </td>
               </tr>
             ) : (
               coupons.map((c) => (
-                <tr key={c.id} className="border-t border-slate-100">
+                <tr key={c.id} className="border-t border-[var(--border-color)]">
                   <td className="px-3 py-2 font-mono font-bold">{c.code}</td>
                   <td className="px-3 py-2">{c.percentOff}%</td>
                   <td className="px-3 py-2">
@@ -178,7 +178,7 @@ export function AdminCouponsClient() {
                       type="button"
                       onClick={() => toggleActive(c)}
                       className={`rounded-lg px-3 py-1 text-xs font-semibold ${
-                        c.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                        c.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-[var(--text-dim)]"
                       }`}
                     >
                       {c.isActive ? t("couponActive") : t("inactive")}

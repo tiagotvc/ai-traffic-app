@@ -343,13 +343,13 @@ export function AdsCreatorClient({
       <div className="ui-alert-warning space-y-2">
         <p>{message}</p>
         <p className="text-xs">
-          <Link href="/settings" className="font-medium text-violet-700 underline">
+          <Link href="/settings" className="font-medium text-[var(--violet)] underline">
             {t("adAccountsSettingsLink")}
           </Link>
           {clientSlug ? (
             <>
               {" · "}
-              <Link href={`/clients/${clientSlug}`} className="font-medium text-violet-700 underline">
+              <Link href={`/clients/${clientSlug}`} className="font-medium text-[var(--violet)] underline">
                 {t("adAccountsClientLink")}
               </Link>
             </>
@@ -386,7 +386,7 @@ export function AdsCreatorClient({
       {adAccountsErrorBlock}
 
       {embedded ? (
-        <p className="rounded-lg bg-violet-50 px-3 py-2 text-[11px] text-violet-800">{t("hierarchyHint")}</p>
+        <p className="rounded-lg bg-[rgba(124,58,237,0.06)] px-3 py-2 text-[11px] text-[var(--violet)]">{t("hierarchyHint")}</p>
       ) : null}
 
       <FormField label={t("clientLabel")}>
@@ -419,7 +419,7 @@ export function AdsCreatorClient({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FormField label={t("adAccount")}>
           {accountsLoading ? (
-            <div className="ui-input text-slate-400">{tCommon("loading")}</div>
+            <div className="ui-input text-[var(--text-dimmer)]">{tCommon("loading")}</div>
           ) : accounts.length > 0 ? (
             <select
               value={adAccountId}
@@ -454,9 +454,9 @@ export function AdsCreatorClient({
         </FormField>
       </div>
 
-      <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
-        <h2 className="text-sm font-semibold text-slate-900">{t("publishTarget")}</h2>
-        <p className="mt-1 text-xs text-slate-500">{t("publishTargetHint")}</p>
+      <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/80 p-4">
+        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("publishTarget")}</h2>
+        <p className="mt-1 text-xs text-[var(--text-dim)]">{t("publishTargetHint")}</p>
         <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
           {pages.length > 1 ? (
             <FormField label={t("page")}>
@@ -528,9 +528,9 @@ export function AdsCreatorClient({
         />
       </FormField>
 
-      <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
-        <h2 className="text-sm font-semibold text-slate-900">{t("audienceTitle")}</h2>
-        <p className="mt-1 text-xs text-slate-500">{t("audienceHint")}</p>
+      <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/80 p-4">
+        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("audienceTitle")}</h2>
+        <p className="mt-1 text-xs text-[var(--text-dim)]">{t("audienceHint")}</p>
 
         <div className="mt-3 grid grid-cols-1 gap-4">
           <FormField label={t("locations")}>
@@ -636,9 +636,9 @@ export function AdsCreatorClient({
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
-        <h2 className="text-sm font-semibold text-slate-900">{t("dynamicCreatives")}</h2>
-        <p className="mt-1 text-xs text-slate-500">{t("dynamicHint")}</p>
+      <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/80 p-4">
+        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("dynamicCreatives")}</h2>
+        <p className="mt-1 text-xs text-[var(--text-dim)]">{t("dynamicHint")}</p>
         <div className="mt-3 grid grid-cols-1 gap-4">
           <FormField label={t("titles")}>
             <textarea
@@ -659,14 +659,14 @@ export function AdsCreatorClient({
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4">
-        <h2 className="text-sm font-semibold text-slate-900">{t("media")}</h2>
-        <p className="mt-1 text-xs text-slate-500">{t("mediaHint")}</p>
+      <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/80 p-4">
+        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("media")}</h2>
+        <p className="mt-1 text-xs text-[var(--text-dim)]">{t("mediaHint")}</p>
         <div className="mt-3 grid grid-cols-1 gap-2">
           {assets.map((a) => (
             <label
               key={a.id}
-              className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-sm transition hover:border-violet-300"
+              className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3 text-sm shadow-sm transition hover:border-violet-300"
             >
               <input
                 type="checkbox"
@@ -674,11 +674,11 @@ export function AdsCreatorClient({
                 onChange={(e) => setSelected((p) => ({ ...p, [a.id]: e.target.checked }))}
                 className="accent-violet-600"
               />
-              <span className="text-xs text-slate-700">{a.label}</span>
+              <span className="text-xs text-[var(--text-dim)]">{a.label}</span>
             </label>
           ))}
         </div>
-        <p className="mt-2 text-xs text-slate-500">{t("selected", { count: selectedIds.length })}</p>
+        <p className="mt-2 text-xs text-[var(--text-dim)]">{t("selected", { count: selectedIds.length })}</p>
       </div>
     </>
   );
@@ -691,9 +691,9 @@ export function AdsCreatorClient({
     <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="text-xs font-medium text-slate-500">{t("breadcrumb")}</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("title")}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
+          <p className="text-xs font-medium text-[var(--text-dim)]">{t("breadcrumb")}</p>
+          <h1 className="font-heading mt-1 text-2xl font-bold text-[var(--text-main)]">{t("title")}</h1>
+          <p className="mt-1 text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
         </div>
         <button
           type="button"
@@ -709,10 +709,10 @@ export function AdsCreatorClient({
         <section className="ui-card space-y-4 p-5 xl:col-span-2">{formFields}</section>
 
         <aside className="ui-card p-5">
-          <h2 className="text-sm font-semibold text-slate-900">{t("preview")}</h2>
-          <p className="mt-1 text-xs text-slate-500">{t("previewHint")}</p>
-          <div className="mt-4 flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50">
-            <p className="px-4 text-center text-xs text-slate-400">{t("previewPlaceholder")}</p>
+          <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("preview")}</h2>
+          <p className="mt-1 text-xs text-[var(--text-dim)]">{t("previewHint")}</p>
+          <div className="mt-4 flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--surface-bg)]">
+            <p className="px-4 text-center text-xs text-[var(--text-dimmer)]">{t("previewPlaceholder")}</p>
           </div>
         </aside>
       </div>

@@ -293,8 +293,8 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map((card) => (
           <div key={card.key} className="ui-card p-4">
-            <div className="text-2xl font-bold text-slate-900">{card.value}</div>
-            <div className="text-xs text-slate-500">{card.label}</div>
+            <div className="text-2xl font-bold text-[var(--text-main)]">{card.value}</div>
+            <div className="text-xs text-[var(--text-dim)]">{card.label}</div>
           </div>
         ))}
       </div>
@@ -369,9 +369,9 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
       />
 
       {loading ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{tClient("loading")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{tClient("loading")}</div>
       ) : items.length === 0 ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{tClient("empty")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{tClient("empty")}</div>
       ) : (
         <div className="space-y-3">
           {items.map((item) => {
@@ -438,13 +438,13 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
                 createdAt={item.createdAt}
                 updatedAt={item.updatedAt}
               >
-                <p className="text-sm text-slate-600">{item.description}</p>
+                <p className="text-sm text-[var(--text-dim)]">{item.description}</p>
                 {item.evidence?.reason ? (
-                  <p className="mt-2 text-xs text-slate-500">{item.evidence.reason}</p>
+                  <p className="mt-2 text-xs text-[var(--text-dim)]">{item.evidence.reason}</p>
                 ) : null}
                 {item.linkedHypothesisIds?.length ? (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-slate-500">{tClient("linkedHypothesis")}:</span>
+                    <span className="text-xs text-[var(--text-dim)]">{tClient("linkedHypothesis")}:</span>
                     {item.linkedHypothesisIds.map((id) => (
                       <Link
                         key={id}
@@ -458,12 +458,12 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
                 ) : null}
                 {learningIds.length > 0 ? (
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-slate-500">{t("linkedLearning")}:</span>
+                    <span className="text-xs text-[var(--text-dim)]">{t("linkedLearning")}:</span>
                     {learningIds.map((id) => (
                       <Link
                         key={id}
                         href={`/agency-brain/learnings?client=${encodeURIComponent(clientId)}`}
-                        className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700 hover:bg-violet-100"
+                        className="rounded-full bg-[rgba(124,58,237,0.06)] px-2 py-0.5 text-[11px] font-medium text-violet-700 hover:bg-[rgba(124,58,237,0.1)]"
                       >
                         {id.slice(0, 8)}…
                       </Link>
@@ -471,7 +471,7 @@ export function SuggestionsContent({ clientId }: { clientId: string }) {
                   </div>
                 ) : null}
                 {item.actionPayload.checklist?.length ? (
-                  <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
+                  <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-[var(--text-dim)]">
                     {item.actionPayload.checklist.map((step) => (
                       <li key={step}>{step}</li>
                     ))}

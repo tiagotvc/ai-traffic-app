@@ -1,5 +1,5 @@
-import { AlertsClient } from "@/components/AlertsClient";
+import { AlertsView } from "@/uxpilot-ui/adapters/AlertsView";
 
 export default function AlertsPage() {
-  return <AlertsClient />;
+  return <AlertsView />;
 }

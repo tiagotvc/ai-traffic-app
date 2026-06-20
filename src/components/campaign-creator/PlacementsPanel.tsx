@@ -26,14 +26,14 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
   const t = useTranslations("campaignCreator");
 
   return (
-    <div className="space-y-3 rounded-xl border border-slate-200 p-3">
+    <div className="space-y-3 rounded-xl border border-[var(--border-color)] p-3">
       <div className="flex gap-2">
         <button
           type="button"
           disabled={disabled}
           onClick={() => onChange({ ...value, mode: "advantage_plus" })}
           className={`rounded-lg px-3 py-1.5 text-xs ${
-            value.mode === "advantage_plus" ? "bg-violet-100 text-violet-800" : "bg-slate-100"
+            value.mode === "advantage_plus" ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]" : "bg-[var(--surface-bg)]"
           }`}
         >
           {t("placementsAdvantage")}
@@ -50,7 +50,7 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
             })
           }
           className={`rounded-lg px-3 py-1.5 text-xs ${
-            value.mode === "manual" ? "bg-violet-100 text-violet-800" : "bg-slate-100"
+            value.mode === "manual" ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]" : "bg-[var(--surface-bg)]"
           }`}
         >
           {t("placementsManual")}
@@ -60,7 +60,7 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
       {value.mode === "manual" ? (
         <>
           <div>
-            <p className="mb-1 text-xs font-medium text-slate-700">{t("placementPlatforms")}</p>
+            <p className="mb-1 text-xs font-medium text-[var(--text-dim)]">{t("placementPlatforms")}</p>
             <div className="flex flex-wrap gap-2">
               {PLACEMENT_PLATFORMS.map((p) => (
                 <label key={p} className="flex items-center gap-1 text-xs">
@@ -78,7 +78,7 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
             </div>
           </div>
           <div>
-            <p className="mb-1 text-xs font-medium text-slate-700">{t("placementDevices")}</p>
+            <p className="mb-1 text-xs font-medium text-[var(--text-dim)]">{t("placementDevices")}</p>
             <div className="flex flex-wrap gap-2">
               {DEVICE_PLATFORMS.map((d) => (
                 <label key={d} className="flex items-center gap-1 text-xs">
@@ -94,7 +94,7 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
             </div>
           </div>
           <div>
-            <p className="mb-1 text-xs font-medium text-slate-700">{t("placementPositions")}</p>
+            <p className="mb-1 text-xs font-medium text-[var(--text-dim)]">{t("placementPositions")}</p>
             <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto">
               {[...FACEBOOK_POSITIONS, ...INSTAGRAM_POSITIONS, ...AUDIENCE_NETWORK_POSITIONS, ...MESSENGER_POSITIONS].map(
                 (pos) => (

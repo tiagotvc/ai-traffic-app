@@ -33,9 +33,9 @@ export function CampaignMetricTableFooter({
   const locale = useLocale();
 
   return (
-    <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+    <tfoot className="border-t-2 border-[var(--border-color)] bg-[var(--surface-thead)]/80">
       <tr>
-        <td className={`${STICKY_STATUS_TF} text-slate-400`}>—</td>
+        <td className={`${STICKY_STATUS_TF} text-[var(--text-dimmer)]`}>—</td>
         <td className={STICKY_NAME_TF}>
           {totalLabel} ({rowCount})
         </td>
@@ -58,7 +58,7 @@ export function CampaignMetricTableFooter({
           return (
             <td
               key={key}
-              className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-900"
+              className="px-3 py-2.5 text-center font-semibold tabular-nums text-[var(--text-main)]"
             >
               {content}
             </td>
@@ -88,7 +88,7 @@ export function CampaignMetricFooterCells({
           col={col}
           row={totals as Record<string, number>}
           customMetrics={customMetrics}
-          className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-900"
+          className="px-3 py-2.5 text-center font-semibold tabular-nums text-[var(--text-main)]"
         />
       ))}
     </>

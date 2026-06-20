@@ -1,5 +1,5 @@
-import { AutomationsRulesView } from "@/components/AutomationsRulesView";
+import { AutomationsView } from "@/uxpilot-ui/adapters/AutomationsView";
 
 export default function AutomationsPage() {
-  return <AutomationsRulesView />;
+  return <AutomationsView />;
 }

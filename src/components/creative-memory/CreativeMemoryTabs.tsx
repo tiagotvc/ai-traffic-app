@@ -25,13 +25,13 @@ export function CreativeMemoryTabs({
   ];
 
   return (
-    <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
+    <div className="flex gap-1 overflow-x-auto border-b border-[var(--border-color)]">
       {tabs.map((item) => {
         const isActive = activeTab === item.id;
         const tabClass = `whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
           isActive
-            ? "border-violet-600 text-violet-600"
-            : "border-transparent text-slate-500 hover:text-slate-700"
+            ? "border-[var(--violet)] text-[var(--violet)]"
+            : "border-transparent text-[var(--text-dim)] hover:text-[var(--text-dim)]"
         }`;
 
         return (

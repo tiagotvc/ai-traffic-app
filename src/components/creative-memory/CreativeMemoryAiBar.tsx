@@ -11,7 +11,7 @@ export function CreativeMemoryAiBar() {
 
   if (loading && !status) {
     return (
-      <div className="ui-card px-4 py-3 text-sm text-slate-500">{t("aiStatusLoading")}</div>
+      <div className="ui-card px-4 py-3 text-sm text-[var(--text-dim)]">{t("aiStatusLoading")}</div>
     );
   }
 
@@ -20,7 +20,7 @@ export function CreativeMemoryAiBar() {
   return (
     <div className="ui-card flex flex-wrap items-center gap-3 px-4 py-3">
       {usage ? (
-        <div className="text-sm text-slate-700">
+        <div className="text-sm text-[var(--text-dim)]">
           {usage.remaining > 0 ? (
             <span>
               {t("aiUsage", {
@@ -41,7 +41,7 @@ export function CreativeMemoryAiBar() {
       ) : null}
 
       {aiDisabled && status?.featureAllowed && status.geminiConfigured ? (
-        <Link href="/billing" className="text-xs font-medium text-violet-600 hover:underline">
+        <Link href="/billing" className="ui-link text-xs font-medium">
           {t("aiUpgrade")}
         </Link>
       ) : null}

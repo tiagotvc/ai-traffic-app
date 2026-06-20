@@ -19,7 +19,7 @@ export function LearningDetailPage({ learningId }: { learningId: string }) {
   const learning = insights.getLearningById(learningId);
   if (!learning) {
     return (
-      <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+      <p className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">
         {t("learningNotFound")}
       </p>
     );
@@ -32,23 +32,23 @@ export function LearningDetailPage({ learningId }: { learningId: string }) {
     <div className="space-y-6">
       <BrainBreadcrumb title={learning.title} />
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
+      <section className="ui-card p-6">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-800">
+          <span className="rounded-md bg-[rgba(124,58,237,0.06)]0/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--violet)]">
             {t("badgeLearning")}
           </span>
           <StatusBadge kind="learning" status={learning.status} />
         </div>
 
-        <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">{learning.title}</h1>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">{learning.description}</p>
+        <h1 className="font-heading mt-3 font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">{learning.title}</h1>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-dim)]">{learning.description}</p>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-slate-500">
+          <span className="text-[var(--text-dim)]">
             {t("confidenceLabel")} <ConfidencePill score={learning.confidenceScore} />
           </span>
-          <span className="text-slate-300">•</span>
-          <span className="flex items-center gap-1.5 text-slate-500">
+          <span className="text-[var(--text-dimmer)]">•</span>
+          <span className="flex items-center gap-1.5 text-[var(--text-dim)]">
             {t("impactLabel")} <ImpactPill level={learning.impactLevel} />
           </span>
         </div>
@@ -58,7 +58,7 @@ export function LearningDetailPage({ learningId }: { learningId: string }) {
             {learning.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600"
+                className="rounded-md bg-[var(--surface-thead)]0/10 px-2 py-0.5 text-[11px] font-medium text-[var(--text-dim)]"
               >
                 {tag}
               </span>
@@ -67,8 +67,8 @@ export function LearningDetailPage({ learningId }: { learningId: string }) {
         ) : null}
 
         {learning.sources.length > 0 ? (
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="mt-4 border-t border-[var(--border-color)] pt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
               {t("sourcesTitle")}
             </p>
             <EvidenceSourcesRow sources={learning.sources} />
@@ -78,15 +78,15 @@ export function LearningDetailPage({ learningId }: { learningId: string }) {
 
       <EvidenceBlock bullets={learning.whyBelieves} />
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-sm font-bold text-slate-900">{t("timelineTitle")}</h2>
+      <section className="ui-card p-6">
+        <h2 className="font-heading text-sm font-bold text-[var(--text-main)]">{t("timelineTitle")}</h2>
         <div className="mt-4">
           <LearningTimeline events={timeline} />
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-sm font-bold text-slate-900">{t("relatedHypothesesTitle")}</h2>
+      <section className="ui-card p-6">
+        <h2 className="font-heading text-sm font-bold text-[var(--text-main)]">{t("relatedHypothesesTitle")}</h2>
         <div className="mt-4">
           <RelatedHypothesesList hypotheses={hypotheses} />
         </div>

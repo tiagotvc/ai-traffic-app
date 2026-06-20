@@ -47,7 +47,7 @@ export function MetaConnectButton({
         </button>
       </form>
 
-      <p className="text-center text-[11px] text-slate-400">{t("metaSecureNote")}</p>
+      <p className="text-center text-[11px] text-[var(--text-dimmer)]">{t("metaSecureNote")}</p>
     </div>
   );
 }

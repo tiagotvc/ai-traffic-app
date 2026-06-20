@@ -31,20 +31,20 @@ export function PublishCampaignSidebar({ onPublished }: { onPublished?: () => vo
       <button
         type="button"
         aria-label={t("closePanel")}
-        className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-[1px]"
+        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"
         onClick={closePanel}
       />
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[480px] flex-col border-l border-slate-200 bg-white shadow-2xl">
-        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[480px] flex-col border-l border-[var(--border-color)] bg-[var(--surface-card)] shadow-2xl">
+        <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border-color)] px-5 py-4">
           <div>
-            <p className="text-xs font-medium text-violet-600">{t("sidebarKicker")}</p>
-            <h2 className="text-lg font-bold text-slate-900">{t("sidebarTitle")}</h2>
-            <p className="mt-1 text-xs text-slate-500">{t("sidebarSubtitle")}</p>
+            <p className="text-xs font-medium text-[var(--violet)]">{t("sidebarKicker")}</p>
+            <h2 className="font-heading text-lg font-bold text-[var(--text-main)]">{t("sidebarTitle")}</h2>
+            <p className="mt-1 text-xs text-[var(--text-dim)]">{t("sidebarSubtitle")}</p>
           </div>
           <button
             type="button"
             onClick={closePanel}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-2 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
           >
             ✕
           </button>
@@ -60,7 +60,7 @@ export function PublishCampaignSidebar({ onPublished }: { onPublished?: () => vo
             }}
           />
         </div>
-        <footer className="shrink-0 border-t border-slate-200 bg-white px-5 py-4">
+        <footer className="shrink-0 border-t border-[var(--border-color)] bg-[var(--surface-card)] px-5 py-4">
           <button
             type="button"
             disabled={footer?.publishDisabled ?? true}

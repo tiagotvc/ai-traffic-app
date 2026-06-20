@@ -125,8 +125,8 @@ export function CampaignStep() {
       </FormField>
 
       <div className="ui-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("copyCampaignTitle")}</h3>
-        <p className="text-[11px] text-slate-500">{t("copyCampaignHint")}</p>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("copyCampaignTitle")}</h3>
+        <p className="text-[11px] text-[var(--text-dim)]">{t("copyCampaignHint")}</p>
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2">
             <input
@@ -153,7 +153,7 @@ export function CampaignStep() {
           !payload.clientSlug ? (
             <p className="text-xs text-amber-700">{t("selectClientFirst")}</p>
           ) : sourcesLoading ? (
-            <p className="text-xs text-slate-400">{t("loading")}</p>
+            <p className="text-xs text-[var(--text-dimmer)]">{t("loading")}</p>
           ) : (
             <select
               value={payload.copyFromCampaignId ?? ""}
@@ -192,7 +192,7 @@ export function CampaignStep() {
       <div className="grid gap-4 md:grid-cols-2">
         <FormField label={tAds("adAccount")}>
           {accountsLoading ? (
-            <div className="ui-input text-slate-400">{t("loading")}</div>
+            <div className="ui-input text-[var(--text-dimmer)]">{t("loading")}</div>
           ) : (
             <select
               value={payload.adAccountId}
@@ -214,15 +214,15 @@ export function CampaignStep() {
           <input
             value={t(`objective_${payload.objective}`)}
             readOnly
-            className="ui-input bg-slate-50"
+            className="ui-input bg-[var(--surface-bg)]"
           />
         </FormField>
       </div>
 
       <div className="ui-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("budgetSection")}</h3>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("budgetSection")}</h3>
         <div className="space-y-2">
-          <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3">
+          <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border-color)] p-3">
             <input
               type="radio"
               name="budgetLevel"
@@ -236,11 +236,11 @@ export function CampaignStep() {
               className="mt-1 accent-violet-600"
             />
             <div>
-              <p className="text-sm font-medium text-slate-900">{t("budgetCbo")}</p>
-              <p className="text-[11px] text-slate-500">{t("budgetCboHint")}</p>
+              <p className="text-sm font-medium text-[var(--text-main)]">{t("budgetCbo")}</p>
+              <p className="text-[11px] text-[var(--text-dim)]">{t("budgetCboHint")}</p>
             </div>
           </label>
-          <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3">
+          <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border-color)] p-3">
             <input
               type="radio"
               name="budgetLevel"
@@ -254,8 +254,8 @@ export function CampaignStep() {
               className="mt-1 accent-violet-600"
             />
             <div>
-              <p className="text-sm font-medium text-slate-900">{t("budgetAbo")}</p>
-              <p className="text-[11px] text-slate-500">{t("budgetAboHint")}</p>
+              <p className="text-sm font-medium text-[var(--text-main)]">{t("budgetAbo")}</p>
+              <p className="text-[11px] text-[var(--text-dim)]">{t("budgetAboHint")}</p>
             </div>
           </label>
         </div>
@@ -276,15 +276,15 @@ export function CampaignStep() {
       </div>
 
       <div className="ui-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("specialCategories")}</h3>
-        <p className="text-[11px] text-slate-500">{t("specialCategoriesHint")}</p>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("specialCategories")}</h3>
+        <p className="text-[11px] text-[var(--text-dim)]">{t("specialCategoriesHint")}</p>
         <div className="flex flex-wrap gap-2">
           {SPECIAL_CATEGORIES.map((cat) => {
             const checked = payload.campaign.specialAdCategories.includes(cat);
             return (
               <label
                 key={cat}
-                className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--border-color)] px-2 py-1 text-xs"
               >
                 <input
                   type="checkbox"
@@ -309,8 +309,8 @@ export function CampaignStep() {
         </div>
       </div>
 
-      <label className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
-        <span className="text-sm text-slate-700">{t("abTest")}</span>
+      <label className="flex items-center justify-between rounded-xl border border-[var(--border-color)] p-3">
+        <span className="text-sm text-[var(--text-dim)]">{t("abTest")}</span>
         <input
           type="checkbox"
           checked={payload.campaign.abTestEnabled}

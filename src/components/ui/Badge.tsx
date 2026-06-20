@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
 const variants = {
-  success: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  warning: "bg-amber-50 text-amber-700 border-amber-200",
-  danger: "bg-red-50 text-red-700 border-red-200",
-  neutral: "bg-slate-100 text-slate-600 border-slate-200",
-  brand: "bg-violet-50 text-violet-700 border-violet-200"
+  success: "bg-[rgba(16,185,129,0.12)] text-[var(--success)] border-[rgba(16,185,129,0.25)]",
+  warning: "bg-[rgba(245,166,35,0.12)] text-[var(--amber)] border-[rgba(245,166,35,0.25)]",
+  danger: "bg-[rgba(239,68,68,0.12)] text-[var(--danger)] border-[rgba(239,68,68,0.25)]",
+  neutral: "bg-[var(--surface-thead)] text-[var(--text-dim)] border-[var(--border-color)]",
+  brand: "bg-[rgba(79,70,229,0.12)] text-[var(--violet)] border-[rgba(79,70,229,0.25)]"
 } as const;
 
 export function Badge({

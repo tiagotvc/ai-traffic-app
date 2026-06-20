@@ -8,7 +8,8 @@ import type {
   ImpactLevel,
   InsightHypothesis,
   InsightLearning,
-  LearningStatus
+  LearningStatus,
+  EvidenceSource
 } from "@/lib/agency-brain/insights/types";
 
 function mapImpact(impact: string): ImpactLevel {
@@ -26,7 +27,21 @@ function mapLearningStatus(status: LearningDto["status"]): LearningStatus {
   }
 }
 
+function mapSource(source: LearningDto["source"]): EvidenceSource {
+  switch (source) {
+    case "AI":
+      return { type: "agency", label: "IA", detail: "Análise gerada por IA" };
+    case "IMPORTED":
+      return { type: "meta_ads", label: "Meta Ads", detail: "Importado de campanhas" };
+    case "RULE":
+      return { type: "agency", label: "Regra", detail: "Detectado por regra automática" };
+    default:
+      return { type: "agency", label: "Agência", detail: "Registro manual" };
+  }
+}
+
 export function learningDtoToInsight(dto: LearningDto): InsightLearning {
+  const evidenceReason = dto.evidence?.reason ?? dto.description ?? "";
   return {
     id: dto.id,
     title: dto.title,
@@ -35,9 +50,9 @@ export function learningDtoToInsight(dto: LearningDto): InsightLearning {
     impactLevel: mapImpact(dto.impact),
     status: mapLearningStatus(dto.status),
     tags: dto.tags ?? [],
-    evidenceSummary: dto.evidence?.reason ?? dto.description ?? "",
-    sources: [],
-    whyBelieves: [],
+    evidenceSummary: evidenceReason,
+    sources: [mapSource(dto.source)],
+    whyBelieves: evidenceReason ? [evidenceReason] : [],
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt
   };

@@ -10,6 +10,14 @@ export function applyCreatedAtSort<T extends object>(
   qb.orderBy(`${alias}.createdAt`, sortDir.toUpperCase() as "ASC" | "DESC");
 }
 
+export function applyUpdatedAtSort<T extends object>(
+  qb: SelectQueryBuilder<T>,
+  alias: string,
+  sortDir: BrainSortDir
+): void {
+  qb.orderBy(`${alias}.updatedAt`, sortDir.toUpperCase() as "ASC" | "DESC");
+}
+
 export function applyConfidenceScoreSort<T extends object>(
   qb: SelectQueryBuilder<T>,
   alias: string,

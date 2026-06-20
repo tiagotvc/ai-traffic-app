@@ -42,13 +42,13 @@ export function LearningScopePicker({
       className={
         compact
           ? "min-w-0 flex-1"
-          : "rounded-xl border border-slate-200/90 bg-gradient-to-r from-white/80 to-slate-50/50 px-3 py-2.5"
+          : "rounded-xl border border-[var(--border-color)] bg-gradient-to-r from-white/80 to-slate-50/50 px-3 py-2.5"
       }
     >
       {!compact ? (
         <div className="mb-2 flex items-baseline justify-between gap-2">
-          <p className="text-[11px] font-medium text-slate-600">{t("learningScopeTitle")}</p>
-          <p className="text-[10px] text-slate-400">{t("learningScopeSubtitle")}</p>
+          <p className="text-[11px] font-medium text-[var(--text-dim)]">{t("learningScopeTitle")}</p>
+          <p className="text-[10px] text-[var(--text-dimmer)]">{t("learningScopeSubtitle")}</p>
         </div>
       ) : null}
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -70,14 +70,14 @@ export function LearningScopePicker({
                   "focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-1",
                   isActive
                     ? `${entry.activeBg} ${entry.activeText} shadow-sm ring-1 ring-slate-200/80`
-                    : "text-slate-600 hover:bg-white hover:text-slate-800"
+                    : "text-[var(--text-dim)] hover:bg-white hover:text-[var(--text-main)]"
                 ].join(" ")}
               >
                 <ScopeIcon
                   path={entry.iconPath}
                   className={[
                     "h-3.5 w-3.5 shrink-0",
-                    isActive ? "opacity-90" : "text-slate-400 group-hover:text-slate-500"
+                    isActive ? "opacity-90" : "text-[var(--text-dimmer)] group-hover:text-[var(--text-dim)]"
                   ].join(" ")}
                 />
                 <span className="whitespace-nowrap text-[11px] font-medium">{label}</span>
@@ -85,7 +85,7 @@ export function LearningScopePicker({
                   <span
                     className={[
                       "min-w-[1.125rem] rounded-full px-1 py-px text-center text-[9px] font-semibold tabular-nums",
-                      isActive ? "bg-white/70 text-inherit" : "bg-slate-100 text-slate-500"
+                      isActive ? "bg-white/70 text-inherit" : "bg-[var(--surface-thead)] text-[var(--text-dim)]"
                     ].join(" ")}
                   >
                     {count}
@@ -97,7 +97,7 @@ export function LearningScopePicker({
                 role="tooltip"
                 className={[
                   "pointer-events-none absolute bottom-[calc(100%+4px)] left-1/2 z-20 w-48 -translate-x-1/2",
-                  "rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] leading-snug text-slate-600 shadow-md",
+                  "rounded-md border border-[var(--border-color)] bg-white px-2 py-1.5 text-[10px] leading-snug text-[var(--text-dim)] shadow-md",
                   "opacity-0 transition-opacity duration-150 group-hover:opacity-100",
                   "before:absolute before:left-1/2 before:top-full before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-white"
                 ].join(" ")}

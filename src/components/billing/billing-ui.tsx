@@ -25,23 +25,23 @@ const INVOICE_STATUS_STYLE: Record<
   confirmed: { dot: "bg-sky-400", bg: "bg-sky-50", text: "text-sky-800" },
   paid: { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-800" },
   overdue: { dot: "bg-red-500", bg: "bg-red-50", text: "text-red-800" },
-  refunded: { dot: "bg-slate-400", bg: "bg-slate-100", text: "text-slate-700" },
-  canceled: { dot: "bg-slate-300", bg: "bg-slate-100", text: "text-slate-600" }
+  refunded: { dot: "bg-slate-400", bg: "bg-slate-100", text: "text-[var(--text-dim)]" },
+  canceled: { dot: "bg-slate-300", bg: "bg-slate-100", text: "text-[var(--text-dim)]" }
 };
 
 const NF_STATUS_STYLE: Record<NfStatusKey, { dot: string; bg: string; text: string }> = {
   pending: { dot: "bg-amber-400", bg: "bg-amber-50", text: "text-amber-800" },
   issued: { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-800" },
   error: { dot: "bg-red-500", bg: "bg-red-50", text: "text-red-800" },
-  not_applicable: { dot: "bg-slate-300", bg: "bg-slate-50", text: "text-slate-500" }
+  not_applicable: { dot: "bg-slate-300", bg: "bg-[var(--surface-thead)]", text: "text-[var(--text-dim)]" }
 };
 
 const SUB_STATUS_STYLE: Record<string, { dot: string; bg: string; text: string }> = {
-  trialing: { dot: "bg-violet-500", bg: "bg-violet-50", text: "text-violet-800" },
+  trialing: { dot: "bg-[rgba(124,58,237,0.06)]0", bg: "bg-[rgba(124,58,237,0.06)]", text: "text-[var(--violet)]" },
   active: { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-800" },
   past_due: { dot: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-900" },
   suspended: { dot: "bg-red-500", bg: "bg-red-50", text: "text-red-800" },
-  canceled: { dot: "bg-slate-400", bg: "bg-slate-100", text: "text-slate-600" }
+  canceled: { dot: "bg-slate-400", bg: "bg-slate-100", text: "text-[var(--text-dim)]" }
 };
 
 export function billingCurrency(provider?: string, locale?: string | null) {
@@ -114,7 +114,7 @@ export function NfStatusBadge({ status, pdfUrl }: { status: string; pdfUrl?: str
         href={pdfUrl}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:underline"
+        className="inline-flex items-center gap-1.5 text-xs ui-link"
       >
         {t("downloadNf")}
       </a>
@@ -197,9 +197,9 @@ export function BillingDrawerShell({
           </div>
           {headerExtra ? <div className="mt-5">{headerExtra}</div> : null}
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/50 px-6 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface-thead)]/50 px-6 py-5">{children}</div>
         {footer ? (
-          <footer className="shrink-0 border-t border-slate-200 bg-white px-6 py-4">{footer}</footer>
+          <footer className="shrink-0 border-t border-[var(--border-color)] bg-white px-6 py-4">{footer}</footer>
         ) : null}
       </aside>
     </>,
@@ -260,7 +260,7 @@ export function UpgradePromoCard({
         </div>
         <Link
           href={ctaHref}
-          className={`flex w-full items-center justify-center gap-1.5 rounded-lg bg-white font-bold text-violet-700 transition hover:bg-violet-50 ${
+          className={`flex w-full items-center justify-center gap-1.5 rounded-lg bg-white font-bold text-violet-700 transition hover:bg-[rgba(124,58,237,0.06)] ${
             compact ? "py-2 text-xs" : "rounded-xl py-3.5 text-sm font-extrabold shadow-lg hover:shadow-xl"
           }`}
         >

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { AgencyBrainAiBar } from "@/components/agency-brain/AgencyBrainAiBar";
 import type { BrainSummary } from "@/lib/agency-brain/types";
+import { DsBadge } from "@/design-system";
 
 type LearningsHeroProps = {
   showActions: boolean;
@@ -35,19 +36,17 @@ export function LearningsHero({
           <span className="text-xl" aria-hidden>
             🧠
           </span>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
+          <h1 className="font-heading text-xl font-bold tracking-tight text-[var(--text-main)] sm:text-2xl">
             {t("brainFeedTitle")}
           </h1>
-          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
-            {t("beta")}
-          </span>
+          <DsBadge tone="beta">{t("beta")}</DsBadge>
         </div>
-        <p className="mt-1 max-w-2xl text-sm text-slate-600">{t("brainFeedSubtitle")}</p>
+        <p className="mt-1 max-w-2xl text-sm text-[var(--text-dim)]">{t("brainFeedSubtitle")}</p>
 
         {summary ? (
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--text-dim)]">
             <span>
-              <strong className="font-semibold text-slate-900">{summary.total}</strong>{" "}
+              <strong className="font-semibold text-[var(--text-main)]">{summary.total}</strong>{" "}
               {t("brainStatMemories")}
             </span>
             <span>
@@ -67,7 +66,7 @@ export function LearningsHero({
           <AgencyBrainAiBar variant="compact" />
           <button
             type="button"
-            className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-white disabled:opacity-50"
+            className="inline-flex items-center rounded-lg border border-[var(--border-color)] bg-white/80 px-2.5 py-1.5 text-xs font-medium text-[var(--text-dim)] shadow-sm transition hover:bg-white disabled:opacity-50"
             onClick={onDetectPatterns}
             disabled={detecting || aiAnalyzing}
           >
@@ -75,7 +74,7 @@ export function LearningsHero({
           </button>
           <button
             type="button"
-            className="inline-flex items-center rounded-lg bg-violet-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-500 disabled:opacity-50"
+            className="ui-btn-brand px-2.5 py-1.5 text-xs disabled:opacity-50"
             onClick={onAiAnalyze}
             disabled={detecting || aiAnalyzing || aiDisabled}
             title={aiDisabled ? t("aiLimit") : undefined}
@@ -84,7 +83,7 @@ export function LearningsHero({
           </button>
           <button
             type="button"
-            className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white/80 px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-white"
+            className="ui-btn-primary px-2.5 py-1.5 text-xs"
             onClick={onNewLearning}
           >
             {t("newLearning")}

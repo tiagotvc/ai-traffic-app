@@ -88,27 +88,27 @@ export function LookalikeAudienceWizard({ ctx, onBack }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">{t("createType.lookalike.title")}</h2>
+        <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("createType.lookalike.title")}</h2>
         <button type="button" onClick={onBack} className="ui-btn-secondary text-sm">
           {t("back")}
         </button>
       </div>
 
-      <p className="text-xs text-slate-500">{t("lookalikeMinNote")}</p>
+      <p className="text-xs text-[var(--text-dim)]">{t("lookalikeMinNote")}</p>
 
       <div>
         <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-slate-500">{t("seedAudience")}</label>
-          <button type="button" onClick={handleSelectAll} className="text-xs text-violet-600 underline">
+          <label className="text-xs font-medium text-[var(--text-dim)]">{t("seedAudience")}</label>
+          <button type="button" onClick={handleSelectAll} className="text-xs text-[var(--violet)] underline">
             {selectAll ? t("deselectAll") : t("selectAllSeeds")}
           </button>
         </div>
-        <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2">
+        <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-xl border border-[var(--border-color)] p-2">
           {seeds.length === 0 ? (
-            <p className="text-xs text-slate-500">{t("noSeeds")}</p>
+            <p className="text-xs text-[var(--text-dim)]">{t("noSeeds")}</p>
           ) : (
             seeds.map((s) => (
-              <label key={s.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50">
+              <label key={s.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[var(--surface-bg)]">
                 <input
                   type="checkbox"
                   checked={selectedSeeds.includes(s.id)}
@@ -123,7 +123,7 @@ export function LookalikeAudienceWizard({ ctx, onBack }: Props) {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("stepCountry")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("stepCountry")}</label>
         <div className="mt-2 flex flex-wrap gap-2">
           {COUNTRIES.map((c) => (
             <button
@@ -131,7 +131,7 @@ export function LookalikeAudienceWizard({ ctx, onBack }: Props) {
               type="button"
               onClick={() => setCountry(c)}
               className={`rounded-lg border px-3 py-1.5 text-sm font-semibold ${
-                country === c ? "border-violet-500 bg-violet-50 text-violet-700" : "border-slate-200"
+                country === c ? "border-violet-500 bg-[rgba(124,58,237,0.06)] text-[var(--violet)]" : "border-[var(--border-color)]"
               }`}
             >
               {c}
@@ -141,7 +141,7 @@ export function LookalikeAudienceWizard({ ctx, onBack }: Props) {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("lookalikeRatioSlider")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("lookalikeRatioSlider")}</label>
         <div className="mt-2 flex flex-wrap gap-2">
           {RATIOS.map((r) => (
             <button
@@ -150,8 +150,8 @@ export function LookalikeAudienceWizard({ ctx, onBack }: Props) {
               onClick={() => toggleRatio(r)}
               className={`rounded-lg border px-3 py-1.5 text-sm font-semibold ${
                 selectedRatios.includes(r)
-                  ? "border-violet-500 bg-violet-50 text-violet-700"
-                  : "border-slate-200"
+                  ? "border-violet-500 bg-[rgba(124,58,237,0.06)] text-[var(--violet)]"
+                  : "border-[var(--border-color)]"
               }`}
             >
               {Math.round(r * 100)}%
@@ -161,7 +161,7 @@ export function LookalikeAudienceWizard({ ctx, onBack }: Props) {
       </div>
 
       {totalJobs > 0 ? (
-        <p className="text-sm text-slate-600">{t("lookalikeBatchPreview", { count: totalJobs })}</p>
+        <p className="text-sm text-[var(--text-dim)]">{t("lookalikeBatchPreview", { count: totalJobs })}</p>
       ) : null}
 
       <div className="flex justify-end">

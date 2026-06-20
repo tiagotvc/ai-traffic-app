@@ -1,0 +1,18 @@
+{
+  "syncedAt": "2026-06-20T04:15:56.468Z",
+  "source": "uxpilot-v2\\src",
+  "fileCount": 39,
+  "contentPages": [
+    "Dashboard.tsx",
+    "AgencyBrain.tsx",
+    "Campaigns.tsx",
+    "Alerts.tsx",
+    "Audiences.tsx",
+    "Creatives.tsx",
+    "Reports.tsx",
+    "Settings.tsx",
+    "Support.tsx",
+    "About.tsx",
+    "Terms.tsx"
+  ]
+}

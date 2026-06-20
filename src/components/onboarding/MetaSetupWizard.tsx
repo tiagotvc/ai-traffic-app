@@ -94,7 +94,7 @@ export function MetaSetupWizard({
           <span
             key={s}
             className={`h-2 w-2 rounded-full ${
-              i <= stepIndex ? "bg-violet-600" : "bg-slate-200"
+              i <= stepIndex ? "bg-[var(--amber)]" : "bg-[var(--border-color)]"
             }`}
           />
         ))}
@@ -106,22 +106,22 @@ export function MetaSetupWizard({
     <div className="mx-auto max-w-3xl">
       <div className="ui-card p-6 sm:p-8">
         {dots()}
-        <h1 className="text-xl font-bold text-slate-900">{t(`steps.${step}.title`)}</h1>
-        <p className="mt-2 text-sm text-slate-600">{t(`steps.${step}.subtitle`)}</p>
+        <h1 className="font-heading text-xl font-bold text-[var(--text-main)]">{t(`steps.${step}.title`)}</h1>
+        <p className="mt-2 text-sm text-[var(--text-dim)]">{t(`steps.${step}.subtitle`)}</p>
 
         {step === "connect" ? (
           <div className="mt-6 space-y-4">
-            <ul className="space-y-2 text-sm text-slate-600">
+            <ul className="space-y-2 text-sm text-[var(--text-dim)]">
               {(["perm1", "perm2", "perm3"] as const).map((k) => (
                 <li key={k} className="flex gap-2">
-                  <span className="text-violet-600">✓</span>
+                  <span className="text-[var(--violet)]">✓</span>
                   {t(k)}
                 </li>
               ))}
             </ul>
             <a
               href={`/api/meta/oauth/start?redirectTo=${encodeURIComponent(`/${locale}/onboarding/meta/setup?metaConnected=1`)}`}
-              className="inline-flex rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-500"
+              className="inline-flex ui-btn-primary"
             >
               {t("connectButton")}
             </a>
@@ -134,7 +134,7 @@ export function MetaSetupWizard({
               <button
                 type="button"
                 onClick={runDiscover}
-                className="mb-4 text-sm font-medium text-violet-600 hover:underline"
+                className="mb-4 text-sm ui-link"
               >
                 {t("syncAssets")}
               </button>
@@ -144,11 +144,11 @@ export function MetaSetupWizard({
         ) : null}
 
         {step === "assets" ? (
-          <div className="mt-6 space-y-4 text-sm text-slate-600">
+          <div className="mt-6 space-y-4 text-sm text-[var(--text-dim)]">
             <p>{t("assetsHint")}</p>
             <Link
               href="/settings/meta-assets"
-              className="inline-flex rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="inline-flex ui-btn-secondary"
             >
               {t("openAssetsHub")} →
             </Link>
@@ -160,11 +160,11 @@ export function MetaSetupWizard({
             {terms.map((term) => (
               <div
                 key={term.id}
-                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 p-4"
+                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[var(--border-color)] p-4"
               >
                 <div>
-                  <div className="font-medium text-slate-900">{term.title}</div>
-                  <p className="mt-1 text-xs text-slate-500">{term.description}</p>
+                  <div className="font-medium text-[var(--text-main)]">{term.title}</div>
+                  <p className="mt-1 text-xs text-[var(--text-dim)]">{term.description}</p>
                   <span
                     className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                       term.status === "accepted"
@@ -180,7 +180,7 @@ export function MetaSetupWizard({
                     href={term.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-[var(--border-color)] px-3 py-1.5 text-xs font-semibold text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
                   >
                     {t("openOnFacebook")} ↗
                   </a>
@@ -193,12 +193,12 @@ export function MetaSetupWizard({
         {step === "verify" ? (
           <div className="mt-6 space-y-2">
             {probes.length === 0 ? (
-              <p className="text-sm text-slate-500">{t("verifyLoading")}</p>
+              <p className="text-sm text-[var(--text-dim)]">{t("verifyLoading")}</p>
             ) : (
               probes.map((p) => (
                 <div
                   key={p.account}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm"
+                  className="flex items-center justify-between rounded-lg border border-[var(--border-color)] px-3 py-2 text-sm"
                 >
                   <span>{p.label}</span>
                   <span
@@ -212,12 +212,12 @@ export function MetaSetupWizard({
           </div>
         ) : null}
 
-        <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-4">
+        <div className="mt-8 flex items-center justify-between border-t border-[var(--border-color)] pt-4">
           {stepIndex > 0 ? (
             <button
               type="button"
               onClick={() => setStep(STEPS[stepIndex - 1])}
-              className="text-sm font-medium text-slate-500 hover:text-slate-700"
+              className="text-sm font-medium text-[var(--text-dim)] hover:text-[var(--text-dim)]"
             >
               ← {t("back")}
             </button>
@@ -228,21 +228,21 @@ export function MetaSetupWizard({
             <button
               type="button"
               onClick={() => setStep(STEPS[stepIndex + 1])}
-              className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+              className="ui-btn-primary"
             >
               {t("continue")}
             </button>
           ) : (
             <Link
               href="/dashboard"
-              className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+              className="ui-btn-primary"
             >
               {t("finish")}
             </Link>
           )}
         </div>
       </div>
-      <p className="mt-3 text-center text-xs text-slate-500">{t("manageLater")}</p>
+      <p className="mt-3 text-center text-xs text-[var(--text-dim)]">{t("manageLater")}</p>
     </div>
   );
 }

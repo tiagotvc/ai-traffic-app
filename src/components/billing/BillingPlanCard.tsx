@@ -54,8 +54,8 @@ export function BillingPlanCard({
     : null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-violet-100 bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-white">
+    <div className="ui-card overflow-hidden">
+      <div className="border-b border-[rgba(124,58,237,0.15)] bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-white">
         <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-200">
           {t("currentPlan")}
         </p>
@@ -74,14 +74,14 @@ export function BillingPlanCard({
 
       <div className="space-y-3 p-4">
         {showDemoCountdown ? (
-          <div className="rounded-lg border border-violet-100 bg-violet-50/70 p-3">
+          <div className="rounded-lg border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)]/70 p-3">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-violet-900">{t("demoProgress")}</span>
+              <span className="font-medium text-[var(--violet)]">{t("demoProgress")}</span>
               <span className="font-bold text-violet-700">{t("trialDaysLeft", { days: daysLeft })}</span>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-violet-100">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(124,58,237,0.1)]">
               <div
-                className="h-full rounded-full bg-violet-500 transition-all"
+                className="h-full rounded-full bg-[rgba(124,58,237,0.06)]0 transition-all"
                 style={{ width: `${Math.max(8, trialPct)}%` }}
               />
             </div>
@@ -108,15 +108,15 @@ export function BillingPlanCard({
               <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
                 {t("nextRenewal")}
               </p>
-              <p className="text-sm font-bold text-slate-900">{renewalDate}</p>
+              <p className="text-sm font-bold text-[var(--text-main)]">{renewalDate}</p>
               <p className="text-[11px] text-emerald-800">{t("renewalHint", { cycle: cycleLabel })}</p>
             </div>
           </div>
         ) : null}
 
         {!showDemoCountdown && !isPaid && renewalDate ? (
-          <p className="text-xs text-slate-600">
-            {t("trialEnds")} <span className="font-semibold text-slate-900">{renewalDate}</span>
+          <p className="text-xs text-[var(--text-dim)]">
+            {t("trialEnds")} <span className="font-semibold text-[var(--text-main)]">{renewalDate}</span>
           </p>
         ) : null}
 
@@ -124,13 +124,13 @@ export function BillingPlanCard({
           <button
             type="button"
             onClick={onCancel}
-            className="text-[11px] font-medium text-slate-400 transition hover:text-slate-600"
+            className="text-[11px] font-medium text-[var(--text-dimmer)] transition hover:text-[var(--text-dim)]"
           >
             {cancelAtPeriodEnd ? t("cancelPending") : t("cancelSubscription")}
           </button>
         ) : null}
         {isPaid && !canManageBilling ? (
-          <p className="text-[11px] text-slate-400">{t("cancelContactAdmin")}</p>
+          <p className="text-[11px] text-[var(--text-dimmer)]">{t("cancelContactAdmin")}</p>
         ) : null}
       </div>
     </div>

@@ -3,10 +3,12 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
+import { DsPageHeader } from "@/design-system";
 import { ClientMetaExtras } from "@/components/ClientMetaExtras";
 import { ClientReadinessChecklist } from "@/components/ClientReadinessChecklist";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
-import { SyncNowButton } from "@/components/SyncNowButton";
+import { TableSkeleton } from "@/components/ui/Skeleton";
+import { UxFormCard } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 import { Link, useRouter } from "@/i18n/navigation";
 import { CLIENT_NICHE_OPTIONS } from "@/lib/client-niches";
 import { formatBRL, formatRoas } from "@/lib/format";
@@ -178,30 +180,31 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
 
   if (!data) {
     return (
-      <div className="ui-card p-8 text-center text-sm text-slate-500">
-        {feedback?.text ?? t("loading")}
+      <div className="space-y-4">
+        <div className="h-8 w-48 animate-pulse rounded-lg" style={{ background: "var(--surface-card)" }} />
+        <TableSkeleton rows={6} />
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div>
-        <Link href="/clients" className="text-xs font-medium text-slate-500 hover:text-slate-700">
-          ← Clientes
-        </Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">{data.name}</h1>
-      </div>
+      <DsPageHeader
+        breadcrumbs={
+          <Link href="/clients" className="ui-link text-xs">
+            ← Clientes
+          </Link>
+        }
+        title={data.name}
+      />
       <ClientDetailTabs clientSlug={clientId} activeTab="settings" />
 
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       {feedback ? (
         <div
-          className={`lg:col-span-3 rounded-xl border px-4 py-3 text-sm ${
-            feedback.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-red-200 bg-red-50 text-red-800"
-          }`}
+          className={`lg:col-span-3 ${
+            feedback.type === "success" ? "ui-alert-success" : "ui-alert-danger"
+          } text-sm`}
           role="status"
         >
           {feedback.text}
@@ -210,17 +213,17 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
 
       <section className="lg:col-span-2 space-y-3">
         {showOnboarding ? (
-          <div className="ui-card border-violet-200 bg-violet-50/40 p-4">
+          <div className="ui-card ui-alert-info p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-slate-900">{t("onboardingTitle")}</div>
-                <p className="mt-2 text-xs text-slate-600">{t("onboardingIntro")}</p>
-                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-slate-600">
+                <div className="text-sm font-semibold text-[var(--text-main)]">{t("onboardingTitle")}</div>
+                <p className="mt-2 text-xs text-[var(--text-dim)]">{t("onboardingIntro")}</p>
+                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-[var(--text-dim)]">
                   <li>{t("onboardingClient")}</li>
                   <li>{t("onboardingAdAccount")}</li>
                   <li>{t("onboardingCampaign")}</li>
                 </ul>
-                <p className="mt-3 text-xs font-medium text-violet-800">{t("onboardingSteps")}</p>
+                <p className="mt-3 text-xs font-medium text-[var(--violet)]">{t("onboardingSteps")}</p>
               </div>
               <button
                 type="button"
@@ -232,7 +235,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                     /* ignore */
                   }
                 }}
-                className="shrink-0 rounded-lg border border-violet-200 bg-white px-2 py-1 text-[11px] font-medium text-violet-700 hover:bg-violet-50"
+                className="ui-btn-secondary shrink-0 px-2 py-1 text-[11px]"
               >
                 {t("onboardingDismiss")}
               </button>
@@ -246,13 +249,13 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold">{data.name}</div>
-              <div className="mt-1 text-xs text-slate-500">{t("active")}</div>
+              <div className="mt-1 text-xs text-[var(--text-dim)]">{t("active")}</div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <SyncNowButton clientId={clientId} compact />
               <Link
                 href={`/campaigns?client=${encodeURIComponent(data.slug)}`}
-                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
               >
                 {t("viewCampaigns")}
               </Link>
@@ -261,7 +264,8 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                   type="button"
                   disabled={isPending}
                   onClick={handleDeleteClient}
-                  className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+                  className="rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-60"
+                  style={{ borderColor: "rgba(239,68,68,0.35)", color: "#ef4444" }}
                 >
                   {t("deleteClient")}
                 </button>
@@ -276,9 +280,9 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
           </div>
         </div>
 
-        <div className="ui-card p-4">
-          <div className="text-sm font-semibold">{t("goalsTitle")}</div>
-          <div className="mt-1 text-xs text-slate-500">{t("goalsHint")}</div>
+        <UxFormCard>
+          <div className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>{t("goalsTitle")}</div>
+          <div className="mt-1 text-xs" style={{ color: "var(--text-dim)" }}>{t("goalsHint")}</div>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <GoalField label={t("maxCpl")} value={goals.maxCpl} onChange={(v) => setGoals((g) => ({ ...g, maxCpl: v }))} />
             <GoalField label={t("maxCpa")} value={goals.maxCpa} onChange={(v) => setGoals((g) => ({ ...g, maxCpa: v }))} />
@@ -291,7 +295,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
               onChange={(v) => setGoals((g) => ({ ...g, maxSpendWithoutConversion: v }))}
             />
           </div>
-          <label className="mt-3 flex items-center gap-2 text-xs text-slate-600">
+          <label className="mt-3 flex items-center gap-2 text-xs text-[var(--text-dim)]">
             <input
               type="checkbox"
               checked={goals.enabled ?? true}
@@ -301,7 +305,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
             {t("goalsEnabled")}
           </label>
           <div className="mt-3 flex justify-end">
-            <button
+            <UxSaveButton
               disabled={isPending}
               onClick={() => {
                 startTransition(async () => {
@@ -314,28 +318,22 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                   notify(j.ok ? "success" : "error", j.ok ? t("goalsSaved") : j.error ?? t("loadError"));
                 });
               }}
-              className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
-            >
-              {t("saveGoals")}
-            </button>
+              label={t("saveGoals")}
+            />
           </div>
-        </div>
+        </UxFormCard>
 
-        <div className="ui-card p-4">
-          <div className="text-sm font-semibold">{t("publishTitle")}</div>
-          <div className="mt-1 text-xs text-slate-500">{t("publishHint")}</div>
+        <UxFormCard>
+          <div className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>{t("publishTitle")}</div>
+          <div className="mt-1 text-xs" style={{ color: "var(--text-dim)" }}>{t("publishHint")}</div>
           {!publishReady ? (
-            <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {t("publishIncomplete")}
-            </div>
+            <div className="ui-alert-warning mt-2">{t("publishIncomplete")}</div>
           ) : (
-            <div className="mt-2 rounded-xl border border-emerald-900/50 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-200">
-              {t("publishReady")}
-            </div>
+            <div className="ui-alert-success mt-2">{t("publishReady")}</div>
           )}
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <div className="text-xs text-slate-500">{t("metaPageId")}</div>
+              <div className="ui-label">{t("metaPageId")}</div>
               {filteredPages.length > 0 ? (
                 <select
                   value={metaPageId}
@@ -350,16 +348,16 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                   ))}
                 </select>
               ) : (
-                <div className="mt-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <div className="ui-alert-warning mt-1">
                   {t("noPagesHint")}{" "}
-                  <Link href="/settings/meta-assets" className="font-medium text-violet-700 underline">
+                  <Link href="/settings/meta-assets" className="ui-link">
                     {t("refreshMetaAssets")}
                   </Link>
                 </div>
               )}
             </div>
             <div>
-              <div className="text-xs text-slate-500">{t("metaLinkUrl")}</div>
+              <div className="ui-label">{t("metaLinkUrl")}</div>
               <input
                 value={metaLinkUrl}
                 onChange={(e) => setMetaLinkUrl(e.target.value)}
@@ -369,7 +367,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
             </div>
           </div>
           <div className="mt-3 flex justify-end">
-            <button
+            <UxSaveButton
               disabled={isPending}
               onClick={() => {
                 startTransition(async () => {
@@ -386,23 +384,21 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                   notify(j.ok ? "success" : "error", j.ok ? t("publishSaved") : j.error ?? t("loadError"));
                 });
               }}
-              className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
-            >
-              {t("savePublish")}
-            </button>
+              label={t("savePublish")}
+            />
           </div>
-        </div>
+        </UxFormCard>
 
         <ClientMetaExtras
           clientId={clientId}
           defaultAdAccountId={linkedMetaIds[0] ?? data.accounts[0]?.metaAdAccountId ?? ""}
         />
 
-        <div className="ui-card p-4">
-          <div className="text-sm font-semibold">{t("agencyBrainTitle")}</div>
-          <p className="mt-1 text-xs text-slate-500">{t("agencyBrainHint")}</p>
+        <UxFormCard>
+          <div className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>{t("agencyBrainTitle")}</div>
+          <p className="mt-1 text-xs" style={{ color: "var(--text-dim)" }}>{t("agencyBrainHint")}</p>
           <div className="mt-3">
-            <div className="text-xs text-slate-500">{t("nicheLabel")}</div>
+            <div className="ui-label">{t("nicheLabel")}</div>
             <select
               value={clientNiche}
               onChange={(e) => setClientNiche(e.target.value)}
@@ -414,11 +410,10 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-[10px] text-slate-500">{t("nicheHint")}</p>
+            <p className="mt-1 text-[10px] text-[var(--text-dimmer)]">{t("nicheHint")}</p>
           </div>
           <div className="mt-3 flex justify-end">
-            <button
-              type="button"
+            <UxSaveButton
               disabled={isPending}
               onClick={() => {
                 startTransition(async () => {
@@ -440,19 +435,17 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                   );
                 });
               }}
-              className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
-            >
-              {isPending ? "…" : t("nicheSave")}
-            </button>
+              label={isPending ? "…" : t("nicheSave")}
+            />
           </div>
-        </div>
+        </UxFormCard>
 
-        <div className="ui-card p-4">
-          <div className="text-sm font-semibold">{t("adAccounts")}</div>
-          <p className="mt-1 text-xs text-slate-500">{t("adAccountsHint")}</p>
+        <UxFormCard>
+          <div className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>{t("adAccounts")}</div>
+          <p className="mt-1 text-xs" style={{ color: "var(--text-dim)" }}>{t("adAccountsHint")}</p>
           {businesses.length > 0 ? (
             <div className="mt-3">
-              <div className="text-xs text-slate-500">{t("clientBmLabel")}</div>
+              <div className="ui-label">{t("clientBmLabel")}</div>
               <select
                 value={bmFilter}
                 onChange={(e) => setBmFilter(e.target.value)}
@@ -468,7 +461,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                     </option>
                   ))}
               </select>
-              <p className="mt-1 text-[10px] text-slate-500">{t("clientBmHint")}</p>
+              <p className="mt-1 text-[10px] text-[var(--text-dimmer)]">{t("clientBmHint")}</p>
             </div>
           ) : null}
           <div className="mt-3 space-y-2">
@@ -476,7 +469,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
               filteredAccounts.map((a) => (
                 <label
                   key={a.metaAdAccountId}
-                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-600"
+                  className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3 text-xs text-[var(--text-dim)]"
                 >
                   <input
                     type="checkbox"
@@ -493,22 +486,22 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                   <span className="flex-1">
                     {a.label}
                     {a.metaBusinessName ? (
-                      <span className="ml-1 text-[10px] text-slate-400">· {a.metaBusinessName}</span>
+                      <span className="ml-1 text-[10px] text-[var(--text-dimmer)]">· {a.metaBusinessName}</span>
                     ) : null}
                   </span>
                 </label>
               ))
             ) : (
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-[var(--text-dim)]">
                 {t("noAccounts")}{" "}
-                <Link href="/settings/meta-assets" className="text-violet-600 underline">
+                <Link href="/settings/meta-assets" className="ui-link">
                   {t("refreshMetaAssets")}
                 </Link>
               </div>
             )}
           </div>
           <div className="mt-3 flex justify-end">
-            <button
+            <UxSaveButton
               disabled={isPending}
               onClick={() => {
                 startTransition(async () => {
@@ -537,22 +530,20 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                   notify(j.ok ? "success" : "error", j.ok ? t("accountsSaved") : j.error ?? t("loadError"));
                 });
               }}
-              className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
-            >
-              {isPending ? "…" : t("saveAccounts")}
-            </button>
+              label={isPending ? "…" : t("saveAccounts")}
+            />
           </div>
-        </div>
+        </UxFormCard>
 
         {!isProtectedClient(data.name, data.slug) ? (
-          <div className="ui-card border border-rose-100 bg-rose-50/40 p-4">
-            <div className="text-sm font-semibold text-rose-900">{t("deleteZoneTitle")}</div>
-            <p className="mt-1 text-xs text-slate-600">{t("deleteHint")}</p>
+          <div className="ui-card ui-alert-danger p-4">
+            <div className="text-sm font-semibold text-[var(--danger)]">{t("deleteZoneTitle")}</div>
+            <p className="mt-1 text-xs text-[var(--text-dim)]">{t("deleteHint")}</p>
             <button
               type="button"
               disabled={isPending}
               onClick={handleDeleteClient}
-              className="mt-3 rounded-xl border border-rose-300 bg-white px-3 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-50 disabled:opacity-60"
+              className="ui-btn-danger mt-3 px-3 py-2 text-xs disabled:opacity-60"
             >
               {isPending ? "…" : t("deleteClient")}
             </button>
@@ -564,10 +555,10 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
       <aside className="space-y-3">
         <div className="ui-card p-4">
           <div className="text-sm font-semibold">{t("aiQuick")}</div>
-          <div className="mt-2 text-xs text-slate-500">{t("aiQuickHint")}</div>
+          <div className="mt-2 text-xs text-[var(--text-dim)]">{t("aiQuickHint")}</div>
           <Link
             href="/agency-brain/suggestions"
-            className="mt-3 inline-block rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            className="ui-btn-secondary mt-3 inline-block px-3 py-2 text-xs"
           >
             {t("openActionCenter")}
           </Link>
@@ -580,8 +571,8 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3">
-      <div className="text-xs text-slate-500">{label}</div>
+    <div className="ui-card p-3">
+      <div className="ui-label">{label}</div>
       <div className="mt-1 text-sm font-semibold">{value}</div>
     </div>
   );
@@ -598,14 +589,45 @@ function GoalField({
 }) {
   return (
     <div>
-      <div className="text-xs text-slate-500">{label}</div>
+      <label className="font-body text-xs font-medium" style={{ color: "var(--text-dim)" }}>{label}</label>
       <input
         type="number"
         step="0.01"
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
-        className="mt-1 w-full rounded-xl ui-input"
+        className="mt-1.5 w-full rounded-xl border px-4 py-2.5 font-body text-sm outline-none"
+        style={{
+          background: "var(--surface-bg)",
+          borderColor: "var(--border-color)",
+          color: "var(--text-main)"
+        }}
       />
     </div>
+  );
+}
+
+function UxSaveButton({
+  label,
+  disabled,
+  onClick
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="rounded-xl px-5 py-2.5 font-heading text-xs font-bold shadow-md transition-all hover:brightness-110 disabled:opacity-60"
+      style={{
+        background: "linear-gradient(135deg, #f5a623, #e8920d)",
+        color: "#0f1419",
+        boxShadow: "0 4px 12px rgba(245,166,35,0.3)"
+      }}
+    >
+      {label}
+    </button>
   );
 }

@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Plus } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -13,9 +14,12 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 
+import { DsPageHeader } from "@/design-system";
 import { CampaignHeaderCell } from "@/components/CampaignHeaderCell";
 import { CampaignManagerClient } from "@/components/CampaignManagerClient";
 import { rememberCampaign } from "@/components/CampaignsListClient";
+import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { Badge } from "@/components/ui/Badge";
@@ -88,17 +92,17 @@ const PAGE_SIZES = [25, 50, 100, 200] as const;
 
 /** Colunas fixas à esquerda ao rolar métricas (status + campanha). */
 const STICKY_STATUS_TH =
-  "sticky left-0 z-30 w-14 min-w-[3.5rem] bg-slate-50 px-2 py-2 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
+  "sticky left-0 z-30 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
 const STICKY_STATUS_TD =
-  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-white px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)] group-hover:bg-violet-50/40";
+  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-card)] px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)] group-hover:bg-[var(--row-hover)]";
 const STICKY_NAME_TH =
-  "sticky left-14 z-20 min-w-[10rem] bg-slate-50 px-4 py-2 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
+  "sticky left-14 z-20 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
 const STICKY_NAME_TD =
-  "sticky left-14 z-10 min-w-[10rem] bg-white px-4 py-2.5 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)] group-hover:bg-violet-50/40";
+  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-card)] px-4 py-2.5 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)] group-hover:bg-[var(--row-hover)]";
 const STICKY_STATUS_TF =
-  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-slate-50/95 px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
+  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
 const STICKY_NAME_TF =
-  "sticky left-14 z-10 min-w-[10rem] bg-slate-50/95 px-4 py-2.5 text-left align-top font-semibold text-slate-800 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
+  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2.5 text-left align-top font-semibold text-[var(--text-main)] shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
 
 function statusVariant(status?: string): "success" | "warning" | "neutral" {
   if (status === "ACTIVE") return "success";
@@ -106,12 +110,13 @@ function statusVariant(status?: string): "success" | "warning" | "neutral" {
   return "neutral";
 }
 
-export function CampaignsHubClient() {
+export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: boolean } = {}) {
   const t = useTranslations("campaignsPage");
   const tMetrics = useTranslations("metrics");
   const tPresets = useTranslations("campaignTypes");
   const locale = useLocale();
   const searchParams = useSearchParams();
+  const strip = useCommandStripOptional();
   const { openPanel } = usePublishPanel();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
@@ -148,7 +153,14 @@ export function CampaignsHubClient() {
     leads: 0
   });
   const [clients, setClients] = useState<ClientOption[]>([]);
-  const [clientFilter, setClientFilter] = useState("");
+  const [localClientFilter, setLocalClientFilter] = useState("");
+  const [localPeriod, setLocalPeriod] = useState<PeriodState>({ preset: "last7", since: "", until: "" });
+  const clientFilter = useUxChrome ? (strip?.clientFilter ?? "") : localClientFilter;
+  const period = useUxChrome ? (strip?.period ?? localPeriod) : localPeriod;
+  const setClientFilter = useUxChrome
+    ? (value: string) => strip?.setClientFilter(value)
+    : setLocalClientFilter;
+  const setPeriod = useUxChrome ? (value: PeriodState) => strip?.setPeriod(value) : setLocalPeriod;
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
@@ -156,7 +168,6 @@ export function CampaignsHubClient() {
   const [showZeroActivity, setShowZeroActivity] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveFilter>("ALL");
-  const [period, setPeriod] = useState<PeriodState>({ preset: "last7", since: "", until: "" });
   const [pageSize, setPageSize] = useState<number>(50);
   const [page, setPage] = useState(1);
   const [columns, setColumns] = useState<CampaignColumnId[]>(() => loadCampaignColumns());
@@ -191,8 +202,39 @@ export function CampaignsHubClient() {
 
   useEffect(() => {
     const clientFromUrl = searchParams.get("client");
-    if (clientFromUrl) setClientFilter(clientFromUrl);
-  }, [searchParams]);
+    if (!clientFromUrl) return;
+    if (useUxChrome) {
+      if (strip?.clientFilter !== clientFromUrl) strip?.setClientFilter(clientFromUrl);
+    } else {
+      setLocalClientFilter(clientFromUrl);
+    }
+  }, [searchParams, useUxChrome, strip]);
+
+  const newCampaignSlot = useMemo(
+    () => (
+      <Link
+        href="/campaigns/new"
+        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95"
+        style={{
+          background: "linear-gradient(135deg, #f5a623, #e8920d)",
+          color: "#0f1419",
+          fontFamily: "var(--font-heading)"
+        }}
+      >
+        <Plus size={15} />
+        {t("newCampaign")}
+      </Link>
+    ),
+    [t]
+  );
+
+  useCommandStripPage(
+    useUxChrome
+      ? {
+          trailingSlot: newCampaignSlot
+        }
+      : {}
+  );
 
   const displayRows = useMemo(() => {
     let list = rows;
@@ -490,12 +532,12 @@ export function CampaignsHubClient() {
       case "campaign":
         return (
           <td key={col} className="max-w-md px-4 py-3 text-left align-top">
-            <div className="whitespace-normal break-words font-medium text-slate-900">{r.campaignName}</div>
+            <div className="whitespace-normal break-words font-medium text-[var(--text-main)]">{r.campaignName}</div>
           </td>
         );
       case "campaignId":
         return (
-          <td key={col} className={`${center} text-[10px] text-slate-400`}>
+          <td key={col} className={`${center} text-[10px] text-[var(--text-dimmer)]`}>
             {r.metaCampaignId}
           </td>
         );
@@ -506,10 +548,10 @@ export function CampaignsHubClient() {
           </td>
         );
       case "account":
-        return <td key={col} className={`${center} text-slate-500`}>{r.accountLabel}</td>;
+        return <td key={col} className={`${center} text-[var(--text-dim)]`}>{r.accountLabel}</td>;
       case "spend":
         return (
-          <td key={col} className={`${center} font-medium text-slate-900`}>
+          <td key={col} className={`${center} font-medium text-[var(--text-main)]`}>
             {formatBRL(r.spend, locale)}
           </td>
         );
@@ -573,7 +615,7 @@ export function CampaignsHubClient() {
             {r.hasAlert ? (
               <Badge variant="danger">{r.alertCount}</Badge>
             ) : (
-              <span className="text-slate-400">—</span>
+              <span className="text-[var(--text-dimmer)]">—</span>
             )}
           </td>
         );
@@ -586,7 +628,7 @@ export function CampaignsHubClient() {
     const center = "px-3 py-3 text-center font-semibold tabular-nums";
     if (col === labelCol) {
       return (
-        <td key={col} className="px-4 py-3 text-left font-semibold text-slate-800">
+        <td key={col} className="px-4 py-3 text-left font-semibold text-[var(--text-main)]">
           {t("rowTotal")} ({total})
         </td>
       );
@@ -594,7 +636,7 @@ export function CampaignsHubClient() {
     switch (col) {
       case "spend":
         return (
-          <td key={col} className={`${center} text-slate-900`}>
+          <td key={col} className={`${center} text-[var(--text-main)]`}>
             {formatBRL(totals.spend, locale)}
           </td>
         );
@@ -624,7 +666,7 @@ export function CampaignsHubClient() {
         );
       default:
         return (
-          <td key={col} className={`${center} text-slate-400`}>
+          <td key={col} className={`${center} text-[var(--text-dimmer)]`}>
             —
           </td>
         );
@@ -635,41 +677,41 @@ export function CampaignsHubClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500">{t("breadcrumb")}</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("title")}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitleList")}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SyncRefreshButton />
-          <button
-            type="button"
-            onClick={() => load({ live: true, refresh: true })}
-            className="ui-btn-secondary text-sm"
-          >
-            {t("refreshLive")}
-          </button>
-          <button
-            type="button"
-            onClick={() => openPanel({ clientSlug: clientFilter || selectedSlug || undefined })}
-            className="ui-btn-primary text-sm"
-          >
-            {t("newCampaign")}
-          </button>
-        </div>
-      </div>
+      <DsPageHeader
+        breadcrumbs={t("breadcrumb")}
+        title={t("title")}
+        subtitle={t("subtitleList")}
+        actions={
+          <>
+            {!useUxChrome ? <SyncRefreshButton /> : null}
+            <button
+              type="button"
+              onClick={() => load({ live: true, refresh: true })}
+              className="ui-btn-secondary text-sm"
+            >
+              {t("refreshLive")}
+            </button>
+            {!useUxChrome ? (
+              <button
+                type="button"
+                onClick={() => openPanel({ clientSlug: clientFilter || selectedSlug || undefined })}
+                className="ui-btn-primary text-sm"
+              >
+                {t("newCampaign")}
+              </button>
+            ) : null}
+          </>
+        }
+      />
 
       {loading && period.preset === "today" ? (
-        <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-800">
-          {t("loadingMetaToday")}
-        </div>
+        <div className="ui-alert-info">{t("loadingMetaToday")}</div>
       ) : null}
 
       {enrichError ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="ui-alert-warning">
           <p>{enrichError}</p>
-          <p className="mt-1 text-amber-800">{t("enrichRateLimitHint")}</p>
+          <p className="mt-1">{t("enrichRateLimitHint")}</p>
         </div>
       ) : null}
 
@@ -677,8 +719,8 @@ export function CampaignsHubClient() {
         <span
           className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
             metricsSource === "live" || metricsSource === "live-cached"
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-slate-100 text-slate-600"
+              ? "bg-[rgba(16,185,129,0.12)] text-[var(--success)]"
+              : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
           }`}
           title={
             metricsSource === "live-cached"
@@ -697,28 +739,30 @@ export function CampaignsHubClient() {
       </div>
 
       <div className="flex flex-wrap items-end gap-3 ui-card p-4">
-        <div>
-          <div className="text-xs text-slate-500">{t("filterClient")}</div>
-          <select
-            value={clientFilter}
-            onChange={(e) => {
-              setClientFilter(e.target.value);
-              setSelectedId(null);
-              setSelectedRow(null);
-              setPage(1);
-            }}
-            className="mt-1 min-w-[200px] rounded-xl ui-select"
-          >
-            <option value="">{t("allClients")}</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!useUxChrome ? (
+          <div>
+            <div className="text-xs text-[var(--text-dim)]">{t("filterClient")}</div>
+            <select
+              value={clientFilter}
+              onChange={(e) => {
+                setClientFilter(e.target.value);
+                setSelectedId(null);
+                setSelectedRow(null);
+                setPage(1);
+              }}
+              className="mt-1 min-w-[200px] rounded-xl ui-select"
+            >
+              <option value="">{t("allClients")}</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
         <div className="min-w-[200px] flex-1">
-          <div className="text-xs text-slate-500">{t("search")}</div>
+          <div className="text-xs text-[var(--text-dim)]">{t("search")}</div>
           <MetaFilterSearchBar
             className="mt-1"
             value={qInput}
@@ -731,7 +775,7 @@ export function CampaignsHubClient() {
           />
         </div>
         <div>
-          <div className="text-xs text-slate-500">{t("filterStatus")}</div>
+          <div className="text-xs text-[var(--text-dim)]">{t("filterStatus")}</div>
           <select
             value={statusFilter}
             onChange={(e) => {
@@ -746,7 +790,7 @@ export function CampaignsHubClient() {
           </select>
         </div>
         <div>
-          <div className="text-xs text-slate-500">{t("filterObjective")}</div>
+          <div className="text-xs text-[var(--text-dim)]">{t("filterObjective")}</div>
           <select
             value={objectiveFilter}
             onChange={(e) => {
@@ -761,15 +805,17 @@ export function CampaignsHubClient() {
             <option value="traffic">{t("objectiveTraffic")}</option>
           </select>
         </div>
-        <PeriodFilter
-          value={period}
-          onChange={(next) => {
-            setPeriod(next);
-            setPage(1);
-          }}
-        />
+        {!useUxChrome ? (
+          <PeriodFilter
+            value={period}
+            onChange={(next) => {
+              setPeriod(next);
+              setPage(1);
+            }}
+          />
+        ) : null}
         <div>
-          <div className="text-xs text-slate-500">{t("pageSizeLabel")}</div>
+          <div className="text-xs text-[var(--text-dim)]">{t("pageSizeLabel")}</div>
           <select
             value={pageSize}
             onChange={(e) => {
@@ -786,7 +832,7 @@ export function CampaignsHubClient() {
             ))}
           </select>
         </div>
-        <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
+        <label className="flex items-center gap-2 rounded-xl border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-dim)]">
           <input
             type="checkbox"
             checked={showZeroActivity}
@@ -798,7 +844,7 @@ export function CampaignsHubClient() {
           />
           {t("showZeroActivity")}
         </label>
-        <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
+        <label className="flex items-center gap-2 rounded-xl border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-dim)]">
           <input
             type="checkbox"
             checked={onlyAlerts}
@@ -814,7 +860,7 @@ export function CampaignsHubClient() {
       </div>
 
       {clientFilter ? (
-        <p className="text-xs text-violet-800">
+        <p className="ui-alert-info text-xs">
           {t("clientScopeHint", { client: clientLabel })}
         </p>
       ) : null}
@@ -827,9 +873,9 @@ export function CampaignsHubClient() {
               columns={["wide", "text", "badge", "select", "metric", "metric", "metric"]}
             />
           ) : rows.length === 0 ? (
-            <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
+            <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("empty")}</div>
           ) : displayRows.length === 0 ? (
-            <div className="ui-card p-8 text-center text-sm text-slate-500">{t("emptyFiltered")}</div>
+            <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("emptyFiltered")}</div>
           ) : (
             groupKeys.map((preset) => {
               const list = displayRows.filter((r) => campaignPreset(r) === preset);
@@ -844,21 +890,21 @@ export function CampaignsHubClient() {
               );
               return (
                 <div key={preset} className="ui-card overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-                    <div className="text-sm font-semibold text-slate-800">
+                  <div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
+                    <div className="text-sm font-semibold text-[var(--text-main)]">
                       {groupLabel(preset)}{" "}
-                      <span className="font-normal text-slate-400">({list.length})</span>
+                      <span className="font-normal text-[var(--text-dimmer)]">({list.length})</span>
                     </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[680px] text-sm">
-                      <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                      <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
                         <tr>
                           <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
                             <button
                               type="button"
                               onClick={() => toggleGroupSort(preset, "status")}
-                              className="hover:text-slate-700"
+                              className="hover:text-[var(--text-main)]"
                             >
                               {t("colStatus")}
                               {groupSort?.key === "status"
@@ -872,7 +918,7 @@ export function CampaignsHubClient() {
                             <button
                               type="button"
                               onClick={() => toggleGroupSort(preset, "name")}
-                              className="hover:text-slate-700"
+                              className="hover:text-[var(--text-main)]"
                             >
                               {t("colCampaign")}
                               {groupSort?.key === "name"
@@ -886,7 +932,7 @@ export function CampaignsHubClient() {
                             <button
                               type="button"
                               onClick={() => toggleGroupSort(preset, "client")}
-                              className="hover:text-slate-700"
+                              className="hover:text-[var(--text-main)]"
                             >
                               {t("colClient")}
                               {groupSort?.key === "client"
@@ -910,7 +956,7 @@ export function CampaignsHubClient() {
                         {sorted.map((r) => (
                           <tr
                             key={r.metaCampaignId}
-                            className="group border-t border-slate-100 hover:bg-violet-50/40"
+                            className="group border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]"
                           >
                             <td className={STICKY_STATUS_TD}>
                               <CampaignStatusToggle
@@ -924,12 +970,12 @@ export function CampaignsHubClient() {
                               <button
                                 type="button"
                                 onClick={() => pickCampaign(r)}
-                                className="block w-full whitespace-normal break-words text-left font-medium text-slate-800 hover:text-violet-700 hover:underline"
+                                className="ui-link block w-full whitespace-normal break-words text-left font-medium"
                               >
                                 {r.campaignName}
                               </button>
                             </td>
-                            <td className="truncate px-3 py-2.5 text-center text-slate-600">{r.clientName}</td>
+                            <td className="truncate px-3 py-2.5 text-center text-[var(--text-dim)]">{r.clientName}</td>
                             <td className="relative px-3 py-2.5 text-center">
                               <CampaignTypeSelectCompact
                                 value={campaignPreset(r)}
@@ -948,14 +994,14 @@ export function CampaignsHubClient() {
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+                      <tfoot className="border-t-2 border-[var(--border-color)] bg-[var(--surface-thead)]/80">
                         <tr>
-                          <td className={`${STICKY_STATUS_TF} text-slate-400`}>—</td>
+                          <td className={`${STICKY_STATUS_TF} text-[var(--text-dimmer)]`}>—</td>
                           <td className={STICKY_NAME_TF}>
                             {t("rowTotal")} ({list.length})
                           </td>
-                          <td className="px-3 py-2.5 text-center text-slate-400">—</td>
-                          <td className="px-3 py-2.5 text-center text-slate-400">—</td>
+                          <td className="px-3 py-2.5 text-center text-[var(--text-dimmer)]">—</td>
+                          <td className="px-3 py-2.5 text-center text-[var(--text-dimmer)]">—</td>
                           {groupMetricColumns.map((col) => {
                             const key = columnRefKey(col);
                             const val = groupTotals[key];
@@ -974,7 +1020,7 @@ export function CampaignsHubClient() {
                             return (
                               <td
                                 key={key}
-                                className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-900"
+                                className="px-3 py-2.5 text-center font-semibold tabular-nums text-[var(--text-main)]"
                               >
                                 {content}
                               </td>
@@ -993,7 +1039,7 @@ export function CampaignsHubClient() {
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+            <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
               <tr>
                 <DndContext
                   sensors={sensors}
@@ -1018,7 +1064,7 @@ export function CampaignsHubClient() {
             <tbody>
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="border-t border-slate-100">
+                  <tr key={i} className="border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
                     {visibleColumns.map((col) => (
                       <td key={col} className="px-3 py-3 first:pl-4">
                         <Skeleton className="h-4 w-full max-w-[120px]" />
@@ -1028,15 +1074,15 @@ export function CampaignsHubClient() {
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={visibleColumns.length} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={visibleColumns.length} className="px-4 py-8 text-center text-[var(--text-dim)]">
                     {t("empty")}
                   </td>
                 </tr>
               ) : (
                 rows.map((r) => (                  <tr
                     key={r.metaCampaignId}
-                    className={`cursor-pointer border-t border-slate-100 hover:bg-violet-50/40 ${
-                      selectedId === r.metaCampaignId ? "bg-violet-50/60" : ""
+                    className={`cursor-pointer border-t border-[var(--border-color)] hover:bg-[var(--row-hover)] ${
+                      selectedId === r.metaCampaignId ? "bg-[rgba(245,166,35,0.08)]" : ""
                     }`}
                     onClick={() => pickCampaign(r)}
                   >
@@ -1046,7 +1092,7 @@ export function CampaignsHubClient() {
               )}
             </tbody>
             {loading ? (
-              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+              <tfoot className="border-t-2 border-[var(--border-color)] bg-[var(--surface-thead)]/80">
                 <tr>
                   {visibleColumns.map((col) => (
                     <td key={col} className="px-3 py-3 first:pl-4">
@@ -1056,7 +1102,7 @@ export function CampaignsHubClient() {
                 </tr>
               </tfoot>
             ) : rows.length > 0 ? (
-              <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+              <tfoot className="border-t-2 border-[var(--border-color)] bg-[var(--surface-thead)]/80">
                 <tr>
                   {visibleColumns.map((col) => renderTotalCell(col, totalLabelCol))}
                 </tr>
@@ -1064,8 +1110,8 @@ export function CampaignsHubClient() {
             ) : null}
           </table>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3">
-          <span className="text-sm font-medium text-slate-700">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-color)] bg-[var(--surface-thead)] px-4 py-3">
+          <span className="text-sm font-medium text-[var(--text-main)]">
             {t("pagination", {
               from: total ? (page - 1) * pageSize + 1 : 0,
               to: Math.min(page * pageSize, total),
@@ -1082,7 +1128,7 @@ export function CampaignsHubClient() {
             >
               ‹
             </button>
-            <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm">
+            <span className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-1.5 text-sm font-semibold text-[var(--text-main)] shadow-sm">
               {page} / {pageCount}
             </span>
             <button
@@ -1102,10 +1148,10 @@ export function CampaignsHubClient() {
       {selectedId ? (
         <div ref={detailRef} className="space-y-2 scroll-mt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-800">{t("detailTitle")}</h2>
+            <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("detailTitle")}</h2>
             <Link
               href={`/campaigns/${selectedId}?client=${encodeURIComponent(selectedSlug)}`}
-              className="text-xs font-medium text-violet-600 underline"
+              className="ui-link text-xs"
             >
               {t("openFullPage")}
             </Link>
@@ -1124,11 +1170,11 @@ export function CampaignsHubClient() {
           />
         </div>
       ) : total > 0 ? (
-        <p className="text-center text-sm text-slate-500">{t("pickRowHint")}</p>
+        <p className="text-center text-sm text-[var(--text-dim)]">{t("pickRowHint")}</p>
       ) : (
         <div className="ui-card space-y-4 p-8 text-center">
-          <p className="text-lg font-semibold text-slate-800">{t("emptyTitle")}</p>
-          <p className="mx-auto max-w-lg text-sm text-slate-500">{t("emptyExplain")}</p>
+          <p className="text-lg font-semibold text-[var(--text-main)]">{t("emptyTitle")}</p>
+          <p className="mx-auto max-w-lg text-sm text-[var(--text-dim)]">{t("emptyExplain")}</p>
           <div className="flex flex-wrap justify-center gap-2">
             <button type="button" onClick={() => openPanel()} className="ui-btn-primary">
               {t("createFirst")}

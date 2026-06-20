@@ -28,11 +28,11 @@ export function CampaignTableSimpleFooter({
   useLocale();
 
   return (
-    <tfoot className="border-t-2 border-slate-200 bg-slate-50/80">
+    <tfoot className="border-t-2 border-[var(--border-color)] bg-[var(--surface-thead)]/80">
       <tr>
         <td
           colSpan={leadingColSpan}
-          className="px-4 py-2.5 text-left text-sm font-semibold text-slate-800"
+          className="px-4 py-2.5 text-left text-sm font-semibold text-[var(--text-main)]"
         >
           {totalLabel} ({rowCount})
         </td>
@@ -42,11 +42,11 @@ export function CampaignTableSimpleFooter({
             col={col}
             row={totals as Record<string, number>}
             customMetrics={customMetrics}
-            className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-900"
+            className="px-3 py-2.5 text-center font-semibold tabular-nums text-[var(--text-main)]"
           />
         ))}
         {trailingColSpan > 0 ? (
-          <td colSpan={trailingColSpan} className="px-3 py-2.5 text-center text-slate-400">
+          <td colSpan={trailingColSpan} className="px-3 py-2.5 text-center text-[var(--text-dimmer)]">
             —
           </td>
         ) : null}

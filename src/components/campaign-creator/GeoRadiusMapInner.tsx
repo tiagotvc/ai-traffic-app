@@ -94,7 +94,7 @@ export function GeoRadiusMapInner({ locations, onAdd }: Props) {
         }
         onRemove={() => {}}
       />
-      <div className="h-64 overflow-hidden rounded-xl border border-slate-200">
+      <div className="h-64 overflow-hidden rounded-xl border border-[var(--border-color)]">
         <MapContainer
           center={BRAZIL_CENTER}
           zoom={4}
@@ -127,7 +127,7 @@ export function GeoRadiusMapInner({ locations, onAdd }: Props) {
           })}
         </MapContainer>
       </div>
-      <p className="text-[10px] text-slate-400">{t("mapClickHint")}</p>
+      <p className="text-[10px] text-[var(--text-dimmer)]">{t("mapClickHint")}</p>
     </div>
   );
 }

@@ -51,18 +51,18 @@ export function BillingCheckoutSummary({
         className={`overflow-hidden rounded-2xl border shadow-sm ${
           isPremium
             ? "border-slate-700 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"
-            : "border-violet-100 bg-gradient-to-br from-violet-50 via-white to-slate-50"
+            : "border-[rgba(124,58,237,0.15)] bg-gradient-to-br from-violet-50 via-white to-slate-50"
         }`}
       >
         <div
-          className={`px-6 py-5 ${isPremium ? "border-b border-slate-700" : "border-b border-violet-100/80 bg-violet-600/5"}`}
+          className={`px-6 py-5 ${isPremium ? "border-b border-slate-700" : "border-b border-amber-100/80 bg-[var(--amber)]/5"}`}
         >
           {plans && onPlanChange ? (
             <div
               className={`mb-5 rounded-xl border p-4 ${
                 isPremium
-                  ? "border-slate-600/60 bg-white shadow-sm [&_.checkout-plan-switcher-header]:text-slate-500 [&_.checkout-plan-switcher-link]:text-violet-600"
-                  : "border-slate-200/80 bg-white/80"
+                  ? "border-slate-600/60 bg-white shadow-sm [&_.checkout-plan-switcher-header]:text-[var(--text-dim)] [&_.checkout-plan-switcher-link]:text-[var(--violet)]"
+                  : "border-[var(--border-color)]/80 bg-white/80"
               }`}
             >
               <CheckoutPlanSwitcher
@@ -78,15 +78,15 @@ export function BillingCheckoutSummary({
           ) : (
             <>
               <p
-                className={`text-xs font-semibold uppercase tracking-wide ${isPremium ? "text-amber-400" : "text-violet-600"}`}
+                className={`text-xs font-semibold uppercase tracking-wide ${isPremium ? "text-amber-400" : "text-[var(--violet)]"}`}
               >
                 {t("yourPlan")}
               </p>
-              <h2 className={`mt-1 text-2xl font-bold ${isPremium ? "text-white" : "text-slate-900"}`}>
+              <h2 className={`mt-1 text-2xl font-bold ${isPremium ? "text-white" : "text-[var(--text-main)]"}`}>
                 {plan.name}
               </h2>
               {plan.description ? (
-                <p className={`mt-2 text-sm leading-relaxed ${isPremium ? "text-slate-300" : "text-slate-500"}`}>
+                <p className={`mt-2 text-sm leading-relaxed ${isPremium ? "text-slate-300" : "text-[var(--text-dim)]"}`}>
                   {plan.description}
                 </p>
               ) : null}
@@ -96,14 +96,14 @@ export function BillingCheckoutSummary({
           <div className={`flex flex-wrap gap-2 ${plans && onPlanChange ? "" : "mt-4"}`}>
             <span
               className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                isPremium ? "bg-white/15 text-white" : "bg-violet-100 text-violet-700"
+                isPremium ? "bg-white/15 text-white" : "bg-[rgba(124,58,237,0.1)] text-violet-700"
               }`}
             >
               {cycle === "yearly" ? t("yearly") : t("monthly")}
             </span>
             <span
               className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                isPremium ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600"
+                isPremium ? "bg-white/15 text-white" : "bg-slate-100 text-[var(--text-dim)]"
               }`}
             >
               {paymentLabel}
@@ -117,17 +117,17 @@ export function BillingCheckoutSummary({
         </div>
 
         <div className={`px-6 py-5 ${isPremium ? "text-white" : ""}`}>
-          <p className={`text-xs font-semibold uppercase tracking-wide ${isPremium ? "text-slate-400" : "text-slate-500"}`}>
+          <p className={`text-xs font-semibold uppercase tracking-wide ${isPremium ? "text-[var(--text-dimmer)]" : "text-[var(--text-dim)]"}`}>
             {t("checkoutTotal")}
           </p>
           {pricing.discountPercent > 0 ? (
-            <p className={`mt-1 text-sm line-through ${isPremium ? "text-slate-500" : "text-slate-400"}`}>
+            <p className={`mt-1 text-sm line-through ${isPremium ? "text-[var(--text-dim)]" : "text-[var(--text-dimmer)]"}`}>
               {formatMoney(pricing.listCents, currency)}
             </p>
           ) : null}
           <p className="mt-1 text-4xl font-extrabold tracking-tight">
             {formatMoney(displayTotal, currency)}
-            <span className={`ml-1 text-base font-medium ${isPremium ? "text-slate-400" : "text-slate-500"}`}>
+            <span className={`ml-1 text-base font-medium ${isPremium ? "text-[var(--text-dimmer)]" : "text-[var(--text-dim)]"}`}>
               {cycle === "yearly" ? t("perYear") : t("perMonth")}
             </span>
           </p>
@@ -140,7 +140,7 @@ export function BillingCheckoutSummary({
             </p>
           ) : null}
           {installmentSim && installmentSim.feeValueCents > 0 ? (
-            <p className={`mt-1 text-xs ${isPremium ? "text-slate-400" : "text-slate-500"}`}>
+            <p className={`mt-1 text-xs ${isPremium ? "text-[var(--text-dimmer)]" : "text-[var(--text-dim)]"}`}>
               {t("installmentFee", {
                 percent: installmentSim.feePercentage,
                 value: formatMoney(installmentSim.feeValueCents, currency)
@@ -150,14 +150,14 @@ export function BillingCheckoutSummary({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">
+      <div className="rounded-2xl border border-[var(--border-color)] bg-white p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
           {t("checkoutOrderSummary")}
         </h3>
         <dl className="space-y-3 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-slate-500">{t("checkoutSubtotal")}</dt>
-            <dd className="font-semibold text-slate-900">{formatMoney(pricing.listCents, currency)}</dd>
+            <dt className="text-[var(--text-dim)]">{t("checkoutSubtotal")}</dt>
+            <dd className="font-semibold text-[var(--text-main)]">{formatMoney(pricing.listCents, currency)}</dd>
           </div>
           {pricing.discountPercent > 0 ? (
             <div className="flex justify-between gap-4 text-emerald-700">
@@ -174,13 +174,13 @@ export function BillingCheckoutSummary({
             </div>
           ) : null}
           {installmentSim && installmentSim.feeValueCents > 0 ? (
-            <div className="flex justify-between gap-4 text-slate-600">
+            <div className="flex justify-between gap-4 text-[var(--text-dim)]">
               <dt>{t("installmentTotalWithFees")}</dt>
               <dd className="font-semibold">{formatMoney(installmentSim.feeValueCents, currency)}</dd>
             </div>
           ) : null}
-          <div className="flex justify-between gap-4 border-t border-slate-100 pt-3">
-            <dt className="font-bold text-slate-900">{t("checkoutTotal")}</dt>
+          <div className="flex justify-between gap-4 border-t border-[var(--border-color)] pt-3">
+            <dt className="font-bold text-[var(--text-main)]">{t("checkoutTotal")}</dt>
             <dd className="text-lg font-extrabold text-violet-700">
               {formatMoney(displayTotal, currency)}
             </dd>
@@ -188,17 +188,17 @@ export function BillingCheckoutSummary({
         </dl>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-slate-500">
+      <div className="rounded-2xl border border-[var(--border-color)] bg-white p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
           {t("checkoutIncludes")}
         </h3>
         <PlanLimitsGrid limits={plan.limits} />
       </div>
 
       {paymentProvider === "stripe" ? (
-        <div className="rounded-xl border border-violet-100 bg-violet-50/60 px-4 py-3 text-sm text-violet-900">
+        <div className="rounded-xl border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)]/60 px-4 py-3 text-sm text-[var(--violet)]">
           <p className="font-semibold">{t("checkoutStripeTaxTitle")}</p>
-          <p className="mt-1 text-violet-800/90">{t("checkoutStripeTaxHint")}</p>
+          <p className="mt-1 text-[var(--violet)]/90">{t("checkoutStripeTaxHint")}</p>
         </div>
       ) : (
         <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
@@ -207,7 +207,7 @@ export function BillingCheckoutSummary({
         </div>
       )}
 
-      <p className="text-center text-xs text-slate-400">
+      <p className="text-center text-xs text-[var(--text-dimmer)]">
         {paymentProvider === "stripe" ? t("checkoutStripeSecureHint") : t("checkoutSecureHint")}
       </p>
     </div>

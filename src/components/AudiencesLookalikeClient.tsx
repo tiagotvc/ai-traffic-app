@@ -2,21 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { Eye, Filter, Plus, RefreshCw, Search, Target, Users } from "lucide-react";
 
-import { AiAudienceWizard } from "@/components/audiences/create/AiAudienceWizard";
-import { CreateAudienceHub } from "@/components/audiences/create/CreateAudienceHub";
-import { EngagementAudienceWizard } from "@/components/audiences/create/EngagementAudienceWizard";
-import { LookalikeAudienceWizard } from "@/components/audiences/create/LookalikeAudienceWizard";
-import { AppAudiencePanel, CustomerListPanel } from "@/components/audiences/create/ReadOnlyPanels";
-import { CombineAudienceWizard, SavedAudienceWizard } from "@/components/audiences/create/SavedCombineWizards";
-import { TosBanner } from "@/components/audiences/create/TosBanner";
-import type { AudienceCreateContext, CreateAudienceType, SavedAudienceSummary } from "@/components/audiences/create/types";
-import { WebsiteAudienceWizard } from "@/components/audiences/create/WebsiteAudienceWizard";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
+import { DsPageHeader } from "@/design-system";
+import type { AudienceCreateContext, SavedAudienceSummary } from "@/components/audiences/create/types";
 import { AudienceDetailModal } from "@/components/audiences/AudienceDetailModal";
 import { Badge } from "@/components/ui/Badge";
 import { OutlineIcon } from "@/components/ui/OutlineIcon";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
+import { AudienceCreatorUxPage } from "@/uxpilot-ui/adapters/AudienceCreatorUxPage";
 
 const AUDIENCES_ICON_PATH =
   "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z";
@@ -41,13 +39,12 @@ function kindBadge(kind: string) {
   return "success" as const;
 }
 
-export function AudiencesLookalikeClient() {
+export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?: boolean } = {}) {
   const t = useTranslations("audiences");
+  const strip = useCommandStripOptional();
   const [isPending, startTransition] = useTransition();
 
   const [view, setView] = useState<"list" | "create">("list");
-  const [createType, setCreateType] = useState<CreateAudienceType | null>(null);
-  const [tosBlocked, setTosBlocked] = useState(false);
   const [hubLoading, setHubLoading] = useState(true);
   const [audiencesLoading, setAudiencesLoading] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -69,9 +66,36 @@ export function AudiencesLookalikeClient() {
   const [adAccountId, setAdAccountId] = useState("");
   const [listTab, setListTab] = useState<"saved" | "excluded" | "templates">("saved");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
   const [detailAudience, setDetailAudience] = useState<SavedAudienceSummary | null>(null);
   const clientsRef = useRef(clients);
   clientsRef.current = clients;
+
+  useCommandStripPage(useUxChrome ? {} : {});
+
+  useEffect(() => {
+    if (!useUxChrome || !strip) return;
+    strip.setAdAccounts(accounts.map((a) => ({ id: a.metaAdAccountId, label: a.label })));
+  }, [useUxChrome, accounts, strip]);
+
+  useEffect(() => {
+    if (!useUxChrome || !strip || hubLoading) return;
+    if (strip.clientFilter && strip.clientFilter !== clientSlug) {
+      setClientSlug(strip.clientFilter);
+      return;
+    }
+    if (!strip.clientFilter && clientSlug) {
+      strip.setClientFilter(clientSlug);
+    }
+  }, [useUxChrome, strip, strip?.clientFilter, clientSlug, hubLoading]);
+
+  useEffect(() => {
+    if (!useUxChrome || !strip) return;
+    if (strip.accountFilter && strip.accountFilter !== adAccountId) {
+      setAdAccountId(strip.accountFilter);
+    }
+  }, [useUxChrome, strip, strip?.accountFilter, adAccountId]);
 
   const loadContext = useCallback(async () => {
     setHubLoading(true);
@@ -163,6 +187,10 @@ export function AudiencesLookalikeClient() {
 
   const client = clients.find((c) => c.slug === clientSlug) ?? clients[0];
 
+  useEffect(() => {
+    setPage(1);
+  }, [listTab, search, clientSlug, adAccountId]);
+
   const filteredAudiences = useMemo(() => {
     let list = audiences;
     if (listTab === "excluded" && client) {
@@ -180,6 +208,12 @@ export function AudiencesLookalikeClient() {
     }
     return list;
   }, [audiences, listTab, client, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAudiences.length / PAGE_SIZE));
+  const pagedAudiences = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredAudiences.slice(start, start + PAGE_SIZE);
+  }, [filteredAudiences, page]);
 
   const createCtx: AudienceCreateContext | null =
     client && adAccountId
@@ -221,7 +255,7 @@ export function AudiencesLookalikeClient() {
   const selectors = (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
       <div className="flex items-center gap-2">
-        <span className="shrink-0 text-xs font-medium text-slate-500">{t("selectClient")}</span>
+        <span className="shrink-0 text-xs font-medium text-[var(--text-dim)]">{t("selectClient")}</span>
         <select
           value={clientSlug}
           onChange={(e) => setClientSlug(e.target.value)}
@@ -237,7 +271,7 @@ export function AudiencesLookalikeClient() {
       </div>
       {accounts.length > 1 ? (
         <div className="flex items-center gap-2">
-          <span className="shrink-0 text-xs font-medium text-slate-500">{t("selectAdAccount")}</span>
+          <span className="shrink-0 text-xs font-medium text-[var(--text-dim)]">{t("selectAdAccount")}</span>
           <select
             value={adAccountId}
             onChange={(e) => setAdAccountId(e.target.value)}
@@ -263,49 +297,30 @@ export function AudiencesLookalikeClient() {
     </div>
   );
 
-  const renderCreateWizard = () => {
-    if (!createCtx) return <p className="text-sm text-slate-500">{t("selectClientFirst")}</p>;
-    const backToHub = () => setCreateType(null);
-    const backToList = () => {
-      setCreateType(null);
-      setView("list");
-    };
-
-    if (!createType) {
-      return (
-        <CreateAudienceHub
-          disabled={tosBlocked}
-          onSelect={(type) => {
-            setCreateType(type);
-            setError(null);
-            setMessage(null);
-          }}
+  if (view === "create") {
+    return (
+      <>
+        <AudienceDetailModal
+          open={!!detailAudience}
+          onClose={() => setDetailAudience(null)}
+          summary={detailAudience}
+          clientSlug={clientSlug}
+          adAccountId={adAccountId}
         />
-      );
-    }
-
-    const wizardProps = { ctx: createCtx, onBack: backToHub };
-    switch (createType) {
-      case "website":
-        return <WebsiteAudienceWizard {...wizardProps} />;
-      case "engagement":
-        return <EngagementAudienceWizard {...wizardProps} />;
-      case "lookalike":
-        return <LookalikeAudienceWizard {...wizardProps} />;
-      case "customer_list":
-        return <CustomerListPanel {...wizardProps} />;
-      case "app":
-        return <AppAudiencePanel {...wizardProps} />;
-      case "saved":
-        return <SavedAudienceWizard {...wizardProps} />;
-      case "combine":
-        return <CombineAudienceWizard {...wizardProps} />;
-      case "ai":
-        return <AiAudienceWizard {...wizardProps} />;
-      default:
-        return null;
-    }
-  };
+        {createCtx ? (
+          <AudienceCreatorUxPage
+            ctx={createCtx}
+            clients={clients.map((c) => ({ slug: c.slug, name: c.name }))}
+            clientSlug={clientSlug}
+            onClientChange={setClientSlug}
+            onBack={() => setView("list")}
+          />
+        ) : (
+          <p className="py-12 text-center text-sm text-[var(--text-dim)]">{t("selectClientFirst")}</p>
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -316,77 +331,145 @@ export function AudiencesLookalikeClient() {
         clientSlug={clientSlug}
         adAccountId={adAccountId}
       />
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500">
-            {view === "create" ? t("breadcrumbCreate") : t("breadcrumbList")}
-          </p>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-slate-900">
-            <OutlineIcon d={AUDIENCES_ICON_PATH} className="h-7 w-7 text-violet-600" />
-            {t("title")}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {view === "list" ? (
+      {useUxChrome && view === "list" ? (
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="mb-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
+              Públicos
+            </p>
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-lg"
+                style={{ background: "rgba(245,166,35,0.15)" }}
+              >
+                <Users size={16} style={{ color: "#f5a623" }} />
+              </div>
+              <h1 className="font-heading text-2xl font-bold" style={{ color: "var(--text-main)" }}>
+                {t("title")}
+              </h1>
+            </div>
+            <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
+              {t("subtitle")}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
                 setView("create");
-                setCreateType(null);
+                setError(null);
+                setMessage(null);
               }}
               disabled={!metaConnected || !adAccountId}
-              className="ui-btn-primary text-sm"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 font-heading text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-50"
+              style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
             >
+              <Plus size={14} />
               {t("createNewAudience")}
             </button>
-          ) : (
+          </div>
+        </div>
+      ) : (
+      <DsPageHeader
+        breadcrumbs={view === "create" ? t("breadcrumbCreate") : t("breadcrumbList")}
+        title={t("title")}
+        subtitle={t("subtitle")}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {view === "list" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setView("create");
+                  setError(null);
+                  setMessage(null);
+                }}
+                disabled={!metaConnected || !adAccountId}
+                className="ui-btn-primary text-sm"
+              >
+                {t("createNewAudience")}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setView("list")}
+                className="ui-btn-secondary text-sm"
+              >
+                {t("backToList")}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => {
-                setView("list");
-                setCreateType(null);
-              }}
+              onClick={() => void loadAudiences(true)}
+              disabled={!adAccountId || audiencesLoading}
               className="ui-btn-secondary text-sm"
             >
-              {t("backToList")}
+              {t("refresh")}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void loadAudiences(true)}
-            disabled={!adAccountId || audiencesLoading}
-            className="ui-btn-secondary text-sm"
-          >
-            {t("refresh")}
-          </button>
-        </div>
-      </div>
+          </div>
+        }
+      />
+      )}
 
       {!hubLoading && !metaConnected ? (
         <div className="ui-alert-warning text-sm">
           {t("metaRequired")}{" "}
-          <Link href="/settings" className="font-semibold text-violet-700 underline">
+          <Link href="/settings" className="ui-link">
             {t("connectMeta")}
           </Link>
         </div>
       ) : null}
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+        <div className="ui-alert-danger text-sm">{error}</div>
       ) : null}
       {message ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <div className="ui-alert-success text-sm">
           {message}
         </div>
       ) : null}
 
-      {view === "list" ? (
-        <div className="space-y-4">
-          <div className="ui-card p-4">{selectors}</div>
+      <div className="space-y-4">
+          {!useUxChrome ? <div className="ui-card p-4">{selectors}</div> : null}
 
-          <div className="ui-card overflow-hidden p-0">
-            <div className="flex border-b border-slate-100">
+          {useUxChrome ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <FilterSelectDropdown
+                icon={<Filter size={14} style={{ color: "#f5a623" }} />}
+                label=""
+                placeholder={t("tabSaved")}
+                options={[
+                  { value: "saved", label: t("tabSaved") },
+                  { value: "excluded", label: t("tabExcluded") },
+                  { value: "templates", label: t("tabTemplates") }
+                ]}
+                value={listTab}
+                onChange={(v) => setListTab(v as typeof listTab)}
+              />
+              {listTab !== "templates" ? (
+                <div
+                  className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border px-3 py-1.5 sm:max-w-xs"
+                  style={{ background: "var(--surface-card)", borderColor: "#f5a623" }}
+                >
+                  <Search size={14} style={{ color: "var(--text-dimmer)" }} />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={t("searchAudiences")}
+                    className="w-full bg-transparent font-body text-sm outline-none"
+                    style={{ color: "var(--text-main)" }}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div
+            className="overflow-hidden rounded-xl border"
+            style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
+          >
+            {!useUxChrome ? (
+            <div className="flex border-b border-[var(--border-color)]">
               {(
                 [
                   ["saved", t("tabSaved")],
@@ -400,17 +483,18 @@ export function AudiencesLookalikeClient() {
                   onClick={() => setListTab(key)}
                   className={`flex-1 px-3 py-3 text-xs font-medium sm:text-sm ${
                     listTab === key
-                      ? "border-b-2 border-violet-600 text-violet-600"
-                      : "text-slate-500"
+                      ? "border-b-2 border-[var(--amber)] text-[var(--amber)]"
+                      : "text-[var(--text-dim)]"
                   }`}
                 >
                   {label}
                 </button>
               ))}
             </div>
+            ) : null}
 
-            {listTab !== "templates" ? (
-              <div className="border-b border-slate-100 p-3">
+            {listTab !== "templates" && !useUxChrome ? (
+              <div className="border-b border-[var(--border-color)] p-3">
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -420,49 +504,177 @@ export function AudiencesLookalikeClient() {
               </div>
             ) : null}
 
-            <div className="p-3">
-              {hubLoading || accountsLoading ? (
-                <TableSkeleton rows={4} />
-              ) : !clientSlug || !adAccountId ? (
-                <p className="py-8 text-center text-sm text-slate-500">{t("selectClientFirst")}</p>
-              ) : audiencesLoading ? (
-                <TableSkeleton rows={6} />
-              ) : listTab === "templates" ? (
-                <div className="space-y-2">
+            {useUxChrome && listTab !== "templates" ? (
+              <div
+                className="border-b px-5 py-3 text-sm font-body"
+                style={{
+                  background: "rgba(245,166,35,0.07)",
+                  borderColor: "rgba(245,166,35,0.2)",
+                  color: "var(--text-dim)"
+                }}
+              >
+                Públicos sincronizados diretamente da Meta. Criativos com menos de 100 impressões no período não entram na classificação. Mantenha seus públicos organizados para facilitar o uso em novas campanhas.
+              </div>
+            ) : null}
+
+            {hubLoading || accountsLoading ? (
+              <TableSkeleton bare rows={4} columns={["media", "badge", "select", "wide"]} />
+            ) : !clientSlug || !adAccountId ? (
+              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("selectClientFirst")}</p>
+            ) : audiencesLoading ? (
+              <TableSkeleton bare rows={6} columns={["media", "badge", "select", "wide"]} />
+            ) : listTab === "templates" ? (
+              <div className={useUxChrome ? "divide-y" : "space-y-2 p-3"} style={useUxChrome ? { borderColor: "var(--border-color)" } : undefined}>
                   {templateGroups.map((g) => (
                     <Link
                       key={g.clientSlug}
                       href={`/clients/${g.clientSlug}`}
-                      className="block rounded-xl border border-slate-100 p-3 hover:bg-slate-50"
+                      className={
+                        useUxChrome
+                          ? "flex items-center gap-4 px-5 py-4 transition-colors hover:bg-[var(--row-hover)]"
+                          : "block rounded-xl border border-[var(--border-color)] p-3 hover:bg-[var(--row-hover)]"
+                      }
                     >
-                      <div className="font-medium text-slate-900">{g.clientName}</div>
-                      <div className="text-xs text-slate-500">
-                        {g.objective} · {t("templateCount", { count: g.templateCount })}
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                        style={{ background: "rgba(245,166,35,0.12)" }}
+                      >
+                        <Users size={16} style={{ color: "#f5a623" }} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-[var(--text-main)]">{g.clientName}</div>
+                        <div className="text-xs text-[var(--text-dim)]">
+                          {g.objective} · {t("templateCount", { count: g.templateCount })}
+                        </div>
                       </div>
                     </Link>
                   ))}
                   {!templateGroups.length ? (
-                    <p className="text-xs text-slate-500">{t("noTemplates")}</p>
+                    <p className="text-xs text-[var(--text-dim)]">{t("noTemplates")}</p>
                   ) : null}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {filteredAudiences.map((a) => {
+                <div className={useUxChrome ? "" : "space-y-2"}>
+                  {pagedAudiences.map((a, index) => {
                     const attached = client?.defaultCustomAudienceIds.includes(a.id);
+                    if (useUxChrome) {
+                      const kindColor =
+                        a.kind === "lookalike"
+                          ? { bg: "rgba(16,185,129,0.12)", color: "#10b981" }
+                          : a.kind === "engagement"
+                            ? { bg: "rgba(245,166,35,0.13)", color: "#f59e0b" }
+                            : { bg: "rgba(79,70,229,0.12)", color: "#818cf8" };
+                      return (
+                        <div
+                          key={`${a.adAccountId}-${a.id}`}
+                          className="group flex items-center gap-4 px-5 py-4 transition-colors"
+                          style={{
+                            borderBottom:
+                              index === pagedAudiences.length - 1 && page >= totalPages
+                                ? "none"
+                                : "1px solid var(--border-color)"
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "var(--row-hover)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "transparent";
+                          }}
+                        >
+                          <div
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+                            style={{ background: "rgba(79,70,229,0.1)" }}
+                          >
+                            <Users size={16} style={{ color: "#818cf8" }} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className="mb-1.5 truncate font-body text-sm font-semibold"
+                              style={{ color: "var(--text-main)" }}
+                            >
+                              {a.name}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span
+                                className="rounded-full px-2 py-0.5 font-body text-[11px] font-medium"
+                                style={{ background: kindColor.bg, color: kindColor.color }}
+                              >
+                                {t(`kind.${a.kind}`)}
+                              </span>
+                              {a.subtype ? (
+                                <span
+                                  className="rounded-full px-2 py-0.5 font-body text-[11px] font-medium"
+                                  style={{
+                                    background: "rgba(236,72,153,0.1)",
+                                    color: "#f472b6",
+                                    border: "1px solid rgba(236,72,153,0.15)"
+                                  }}
+                                >
+                                  {a.subtype}
+                                </span>
+                              ) : null}
+                              <span className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
+                                {a.sourceLabel}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mr-4 hidden shrink-0 text-right sm:block">
+                            <span className="block font-body text-[10px]" style={{ color: "var(--text-dimmer)" }}>
+                              {a.country ?? "BR"}
+                            </span>
+                            <span className="font-body text-xs font-semibold" style={{ color: "var(--text-dim)" }}>
+                              {a.approximateCount != null
+                                ? `~${a.approximateCount.toLocaleString()}`
+                                : a.ratioPct != null
+                                  ? `${a.ratioPct}%`
+                                  : "—"}
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setDetailAudience(a)}
+                              className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-body text-xs font-medium transition-all"
+                              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                            >
+                              <Eye size={12} />
+                              {t("viewDetails")}
+                            </button>
+                            {listTab === "saved" ? (
+                              <button
+                                type="button"
+                                onClick={() => toggleAttach(a.id, !attached)}
+                                title={t("attachDefaultHint")}
+                                disabled={isPending}
+                                className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-body text-xs font-medium transition-all"
+                                style={{
+                                  borderColor: attached ? "rgba(245,166,35,0.35)" : "var(--border-color)",
+                                  color: attached ? "#f5a623" : "var(--text-dim)",
+                                  background: attached ? "rgba(245,166,35,0.08)" : "transparent"
+                                }}
+                              >
+                                <Target size={12} />
+                                {attached ? t("detachDefault") : t("attachDefault")}
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    }
                     return (
-                      <div key={`${a.adAccountId}-${a.id}`} className="rounded-xl border border-slate-100 p-3">
+                      <div key={`${a.adAccountId}-${a.id}`} className="rounded-xl border border-[var(--border-color)] p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <div className="font-medium text-slate-900">{a.name}</div>
+                            <div className="font-medium text-[var(--text-main)]">{a.name}</div>
                             <div className="mt-1 flex flex-wrap items-center gap-2">
                               <Badge variant={kindBadge(a.kind)}>{t(`kind.${a.kind}`)}</Badge>
                               {a.subtype ? (
-                                <span className="text-[11px] text-slate-400">{a.subtype}</span>
+                                <span className="text-[11px] text-[var(--text-dimmer)]">{a.subtype}</span>
                               ) : null}
                             </div>
-                            <div className="mt-1 text-[11px] text-slate-500">{a.sourceLabel}</div>
+                            <div className="mt-1 text-[11px] text-[var(--text-dim)]">{a.sourceLabel}</div>
                           </div>
-                          <div className="shrink-0 text-right text-[10px] text-slate-400">
+                          <div className="shrink-0 text-right text-[10px] text-[var(--text-dimmer)]">
                             {a.country ?? "BR"}
                             {a.ratioPct != null ? ` · ${a.ratioPct}%` : ""}
                             {a.approximateCount != null ? (
@@ -474,7 +686,7 @@ export function AudiencesLookalikeClient() {
                           <button
                             type="button"
                             onClick={() => setDetailAudience(a)}
-                            className="rounded-lg border border-slate-200 px-3 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+                            className="ui-btn-secondary px-3 py-1 text-[11px]"
                           >
                             {t("viewDetails")}
                           </button>
@@ -486,8 +698,8 @@ export function AudiencesLookalikeClient() {
                               disabled={isPending}
                               className={`rounded-lg border px-3 py-1 text-[11px] font-medium ${
                                 attached
-                                  ? "border-violet-200 bg-violet-50 text-violet-700"
-                                  : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                  ? "border-[rgba(245,166,35,0.3)] bg-[rgba(245,166,35,0.08)] text-[var(--amber)]"
+                                  : "border-[var(--border-color)] text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
                               }`}
                             >
                               {attached ? t("detachDefault") : t("attachDefault")}
@@ -498,20 +710,52 @@ export function AudiencesLookalikeClient() {
                     );
                   })}
                   {!filteredAudiences.length ? (
-                    <p className="py-8 text-center text-sm text-slate-500">
+                    <p className="py-8 text-center text-sm text-[var(--text-dim)]">
                       {!metaConnected ? t("metaRequired") : t("noAudiences")}
                     </p>
                   ) : null}
+                  {totalPages > 1 ? (
+                    <div
+                      className="flex items-center justify-between border-t px-5 py-3"
+                      style={{ borderColor: "var(--border-color)" }}
+                    >
+                      <p className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
+                        {filteredAudiences.length} público{filteredAudiences.length === 1 ? "" : "s"}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={page <= 1}
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          className="rounded-lg border px-3 py-1 font-body text-xs disabled:opacity-40"
+                          style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                        >
+                          Anterior
+                        </button>
+                        <span className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
+                          {page} / {totalPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={page >= totalPages}
+                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                          className="rounded-lg border px-3 py-1 font-body text-xs disabled:opacity-40"
+                          style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                        >
+                          Próxima
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
-            </div>
 
             {lookalikeJobs.length ? (
-              <div className="border-t border-slate-100 p-3">
-                <div className="text-xs font-semibold text-slate-500">{t("recentJobs")}</div>
+              <div className="border-t border-[var(--border-color)] p-3">
+                <div className="text-xs font-semibold text-[var(--text-dim)]">{t("recentJobs")}</div>
                 <ul className="mt-2 space-y-1 text-xs">
                   {lookalikeJobs.slice(0, 5).map((j) => (
-                    <li key={j.id} className="flex justify-between text-slate-600">
+                    <li key={j.id} className="flex justify-between text-[var(--text-dim)]">
                       <span className="truncate">{j.name}</span>
                       <Badge
                         variant={
@@ -527,15 +771,6 @@ export function AudiencesLookalikeClient() {
             ) : null}
           </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="ui-card p-4">{selectors}</div>
-          {adAccountId ? (
-            <TosBanner clientSlug={clientSlug} adAccountId={adAccountId} onBlocked={setTosBlocked} />
-          ) : null}
-          <div className="ui-card p-5">{renderCreateWizard()}</div>
-        </div>
-      )}
     </div>
   );
 }

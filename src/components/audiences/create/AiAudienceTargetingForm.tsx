@@ -190,8 +190,8 @@ export function AiAudienceTargetingForm({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-        <span className="text-[10px] font-medium uppercase text-slate-500">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2">
+        <span className="text-[10px] font-medium uppercase text-[var(--text-dim)]">
           {t("aiProviderLabel")}
         </span>
         <label className="flex items-center gap-1.5 text-xs">
@@ -225,7 +225,7 @@ export function AiAudienceTargetingForm({
       {showDemographics ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
-            <label className="text-xs font-medium text-slate-600">{t("ageMin")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("ageMin")}</label>
             <input
               type="number"
               min={13}
@@ -239,7 +239,7 @@ export function AiAudienceTargetingForm({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600">{t("ageMax")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("ageMax")}</label>
             <input
               type="number"
               min={13}
@@ -253,7 +253,7 @@ export function AiAudienceTargetingForm({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-slate-600">{t("gender")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("gender")}</label>
             <select
               value={gender}
               onChange={(e) =>
@@ -273,7 +273,7 @@ export function AiAudienceTargetingForm({
       ) : null}
 
       <div>
-        <label className="text-xs font-medium text-slate-600">{t("aiAudienceBusiness")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBusiness")}</label>
         <textarea
           value={businessDescription}
           onChange={(e) => setBusinessDescription(e.target.value)}
@@ -285,7 +285,7 @@ export function AiAudienceTargetingForm({
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-600">{t("aiAudienceProfile")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceProfile")}</label>
         <textarea
           value={targetProfile}
           onChange={(e) => setTargetProfile(e.target.value)}
@@ -297,7 +297,7 @@ export function AiAudienceTargetingForm({
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-600">{t("aiAudienceBehaviors")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBehaviors")}</label>
         <textarea
           value={behaviors}
           onChange={(e) => setBehaviors(e.target.value)}
@@ -309,7 +309,7 @@ export function AiAudienceTargetingForm({
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-600">{t("aiAudienceLifestyle")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceLifestyle")}</label>
         <textarea
           value={lifestyleHints}
           onChange={(e) => setLifestyleHints(e.target.value)}
@@ -318,19 +318,19 @@ export function AiAudienceTargetingForm({
           placeholder={t("aiAudienceLifestylePh")}
           disabled={disabled}
         />
-        <p className="mt-1 text-[10px] text-slate-500">{t("aiAudienceLifestyleHint")}</p>
+        <p className="mt-1 text-[10px] text-[var(--text-dim)]">{t("aiAudienceLifestyleHint")}</p>
       </div>
 
       {audiences.length > 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
-          <p className="text-xs font-medium text-slate-700">{t("aiAudienceIncludeCustom")}</p>
-          <p className="mt-0.5 text-[10px] text-slate-500">{t("aiAudienceIncludeCustomHint")}</p>
+        <div className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] p-3">
+          <p className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceIncludeCustom")}</p>
+          <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{t("aiAudienceIncludeCustomHint")}</p>
           <div className="mt-2 flex gap-2">
             <button
               type="button"
               onClick={() => setAudienceMode("include")}
               className={`rounded px-2 py-1 text-[10px] font-medium ${
-                audienceMode === "include" ? "bg-violet-600 text-white" : "bg-slate-100"
+                audienceMode === "include" ? "bg-[var(--violet)] text-white" : "bg-[var(--surface-bg)]"
               }`}
             >
               {t("aiAudienceModeInclude")}
@@ -339,7 +339,7 @@ export function AiAudienceTargetingForm({
               type="button"
               onClick={() => setAudienceMode("exclude")}
               className={`rounded px-2 py-1 text-[10px] font-medium ${
-                audienceMode === "exclude" ? "bg-slate-700 text-white" : "bg-slate-100"
+                audienceMode === "exclude" ? "bg-slate-700 text-white" : "bg-[var(--surface-bg)]"
               }`}
             >
               {t("aiAudienceModeExclude")}
@@ -347,12 +347,12 @@ export function AiAudienceTargetingForm({
           </div>
           <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
             {audiencesLoading ? (
-              <p className="text-[10px] text-slate-400">{t("savedAudiencesLoading")}</p>
+              <p className="text-[10px] text-[var(--text-dimmer)]">{t("savedAudiencesLoading")}</p>
             ) : (
               audiences.map((a) => (
                 <label
                   key={a.id}
-                  className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-slate-50"
+                  className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-[var(--surface-bg)]"
                 >
                   <input
                     type="checkbox"
@@ -380,14 +380,14 @@ export function AiAudienceTargetingForm({
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
 
       {suggestion ? (
-        <div className="space-y-3 rounded-xl border border-violet-200 bg-white p-4">
+        <div className="space-y-3 rounded-xl border border-[rgba(124,58,237,0.2)] bg-[var(--surface-card)] p-4">
           <div>
-            <p className="text-sm font-semibold text-slate-900">{suggestion.title}</p>
-            <p className="mt-1 text-xs text-slate-600">{suggestion.summary}</p>
-            <p className="mt-2 text-[10px] text-slate-400">
+            <p className="text-sm font-semibold text-[var(--text-main)]">{suggestion.title}</p>
+            <p className="mt-1 text-xs text-[var(--text-dim)]">{suggestion.summary}</p>
+            <p className="mt-2 text-[10px] text-[var(--text-dimmer)]">
               {t("aiAudienceSavedName")}: <span className="font-medium">{suggestion.name}</span>
             </p>
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[10px] text-[var(--text-dimmer)]">
               {t("aiAudienceModel")}: {suggestion.provider} / {suggestion.modelUsed}
             </p>
           </div>
@@ -396,7 +396,7 @@ export function AiAudienceTargetingForm({
             {suggestion.items.map((item) => (
               <span
                 key={`${item.type}-${item.id}`}
-                className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] text-violet-800"
+                className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] text-[var(--violet)]"
               >
                 {item.type === "interest"
                   ? t("aiAudienceChipInterest")
@@ -430,7 +430,7 @@ export function AiAudienceTargetingForm({
             <button
               type="button"
               onClick={() => setSuggestion(null)}
-              className="text-xs text-slate-500 underline"
+              className="text-xs text-[var(--text-dim)] underline"
             >
               {t("aiAudienceDiscard")}
             </button>

@@ -84,13 +84,13 @@ function SavedAudienceCopySection({ ctx, onBack }: Props) {
     });
   };
 
-  if (loading) return <p className="text-sm text-slate-500">{t("loadingOptions")}</p>;
-  if (items.length === 0) return <p className="text-sm text-slate-500">{t("noSavedAudiences")}</p>;
+  if (loading) return <p className="text-sm text-[var(--text-dim)]">{t("loadingOptions")}</p>;
+  if (items.length === 0) return <p className="text-sm text-[var(--text-dim)]">{t("noSavedAudiences")}</p>;
 
   return (
     <div className="mt-3 space-y-3">
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("selectSavedTemplate")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("selectSavedTemplate")}</label>
         <select
           value={templateId}
           onChange={(e) => setTemplateId(e.target.value)}
@@ -105,9 +105,9 @@ function SavedAudienceCopySection({ ctx, onBack }: Props) {
       </div>
 
       {selected ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <p className="text-xs font-semibold text-slate-600">{t("targetingPreview")}</p>
-          <ul className="mt-2 space-y-1 text-xs text-slate-700">
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-3">
+          <p className="text-xs font-semibold text-[var(--text-dim)]">{t("targetingPreview")}</p>
+          <ul className="mt-2 space-y-1 text-xs text-[var(--text-dim)]">
             {summarizeTargeting(selected.targeting).map((line) => (
               <li key={line}>• {line}</li>
             ))}
@@ -116,7 +116,7 @@ function SavedAudienceCopySection({ ctx, onBack }: Props) {
       ) : null}
 
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("audienceName")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("audienceName")}</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -145,17 +145,17 @@ export function SavedAudienceWizard({ ctx, onBack }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">{tAudiences("createType.saved.title")}</h2>
-          <p className="mt-1 text-xs text-slate-500">{tAudiences("createType.saved.desc")}</p>
+          <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{tAudiences("createType.saved.title")}</h2>
+          <p className="mt-1 text-xs text-[var(--text-dim)]">{tAudiences("createType.saved.desc")}</p>
         </div>
         <button type="button" onClick={onBack} className="ui-btn-secondary text-sm">
           {tAudiences("back")}
         </button>
       </div>
 
-      <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/80 to-white p-4">
-        <p className="text-sm font-semibold text-slate-900">{tCreator("aiAudienceTitle")}</p>
-        <p className="mt-0.5 text-[11px] text-slate-500">{tCreator("aiAudienceHint")}</p>
+      <div className="rounded-xl border border-[rgba(124,58,237,0.2)] bg-gradient-to-br from-violet-50/80 to-[var(--surface-card)] p-4">
+        <p className="text-sm font-semibold text-[var(--text-main)]">{tCreator("aiAudienceTitle")}</p>
+        <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{tCreator("aiAudienceHint")}</p>
 
         <div className="mt-4">
           <AiAudienceTargetingForm
@@ -181,8 +181,8 @@ export function SavedAudienceWizard({ ctx, onBack }: Props) {
         </div>
       </div>
 
-      <details className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
-        <summary className="cursor-pointer text-xs font-medium text-slate-600">
+      <details className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)]/50 p-3">
+        <summary className="cursor-pointer text-xs font-medium text-[var(--text-dim)]">
           {tAudiences("savedCopyAdvanced")}
         </summary>
         <SavedAudienceCopySection ctx={ctx} onBack={onBack} />
@@ -247,19 +247,19 @@ export function CombineAudienceWizard({ ctx, onBack }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">{t("createType.combine.title")}</h2>
+        <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("createType.combine.title")}</h2>
         <button type="button" onClick={onBack} className="ui-btn-secondary text-sm">
           {t("back")}
         </button>
       </div>
 
-      <p className="text-xs text-slate-500">{t("combineDesc")}</p>
+      <p className="text-xs text-[var(--text-dim)]">{t("combineDesc")}</p>
 
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("combineInclude")}</label>
-        <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2">
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("combineInclude")}</label>
+        <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-[var(--border-color)] p-2">
           {customAudiences.map((a) => (
-            <label key={`inc-${a.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-slate-50">
+            <label key={`inc-${a.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--surface-bg)]">
               <input
                 type="checkbox"
                 checked={includeIds.includes(a.id)}
@@ -272,10 +272,10 @@ export function CombineAudienceWizard({ ctx, onBack }: Props) {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("combineExclude")}</label>
-        <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2">
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("combineExclude")}</label>
+        <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-[var(--border-color)] p-2">
           {customAudiences.map((a) => (
-            <label key={`exc-${a.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-slate-50">
+            <label key={`exc-${a.id}`} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--surface-bg)]">
               <input
                 type="checkbox"
                 checked={excludeIds.includes(a.id)}
@@ -288,7 +288,7 @@ export function CombineAudienceWizard({ ctx, onBack }: Props) {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("audienceName")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("audienceName")}</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}

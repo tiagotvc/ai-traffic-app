@@ -9,6 +9,7 @@ import { CreativeCardGrid, type CreativeItem } from "@/components/creatives/Crea
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
+import { DsPageHeader } from "@/design-system";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import { type MetricKey } from "@/lib/dashboard-metrics";
 
@@ -134,31 +135,42 @@ export function CampaignCreativesClient({
   return (
     <div className="space-y-4">
       {!embedded ? (
-        <p className="text-xs text-slate-500">
-          <Link href="/campaigns" className="hover:text-violet-600">
-            {t("navCampaigns")}
-          </Link>
-          {" › "}
-          <Link
-            href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
-            className="hover:text-violet-600"
-          >
-            {campaign.name}
-          </Link>
-          {" › "}
-          <span className="text-slate-700">{t("title")}</span>
-        </p>
-      ) : null}
-
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
+        <DsPageHeader
+          breadcrumbs={
+            <>
+              <Link href="/campaigns" className="ui-link">
+                {t("navCampaigns")}
+              </Link>
+              {" › "}
+              <Link
+                href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
+                className="ui-link"
+              >
+                {campaign.name}
+              </Link>
+              {" › "}
+              <span>{t("title")}</span>
+            </>
+          }
+          title={t("title")}
+          subtitle={t("subtitle")}
+          actions={
+            <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
+              ↻
+            </button>
+          }
+        />
+      ) : (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h1 className="font-heading text-2xl font-bold text-[var(--text-main)]">{t("title")}</h1>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
+          </div>
+          <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
+            ↻
+          </button>
         </div>
-        <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
-          ↻
-        </button>
-      </div>
+      )}
 
       <div className="ui-card flex flex-wrap items-center gap-3 p-4">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
@@ -166,10 +178,10 @@ export function CampaignCreativesClient({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-slate-900">{campaign.name}</span>
+            <span className="font-semibold text-[var(--text-main)]">{campaign.name}</span>
             <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
           </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-slate-500">
+          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-[var(--text-dim)]">
             <span>ID: {campaign.id}</span>
             <span>
               {t("client")}: {campaign.clientName}
@@ -196,7 +208,7 @@ export function CampaignCreativesClient({
         {creativesLoading ? (
           <TableSkeleton bare rows={4} columns={["media", "metric", "metric", "metric"]} />
         ) : creatives.length === 0 ? (
-          <p className="p-8 text-center text-sm text-slate-500">{t("empty")}</p>
+          <p className="p-8 text-center text-sm text-[var(--text-dim)]">{t("empty")}</p>
         ) : (
           <CreativeCardGrid
             creatives={creatives}

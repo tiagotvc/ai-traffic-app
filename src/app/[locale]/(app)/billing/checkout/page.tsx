@@ -3,7 +3,7 @@ import { BillingCheckoutClient } from "@/components/billing/BillingCheckoutClien
 
 export default function BillingCheckoutPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-slate-500">…</p>}>
+    <Suspense fallback={<p className="text-sm text-[var(--text-dim)]">…</p>}>
       <BillingCheckoutClient />
     </Suspense>
   );

@@ -31,19 +31,19 @@ export function BillingPlansClient() {
       <BillingBackLink href="/billing" />
 
       <div className="text-center">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{t("plansTitle")}</h1>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">{t("plansSubtitle")}</p>
+        <h1 className="font-heading text-3xl font-extrabold tracking-tight text-[var(--text-main)]">{t("plansTitle")}</h1>
+        <p className="mx-auto mt-2 max-w-xl text-sm text-[var(--text-dim)]">{t("plansSubtitle")}</p>
       </div>
 
       <div className="flex justify-center">
-        <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100/80 p-1.5 shadow-inner">
+        <div className="inline-flex rounded-2xl border border-[var(--border-color)] bg-slate-100/80 p-1.5 shadow-inner">
           <button
             type="button"
             onClick={() => setCycle("monthly")}
             className={`rounded-xl px-6 py-2.5 text-sm font-bold transition ${
               cycle === "monthly"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-white text-[var(--text-main)] shadow-sm"
+                : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
             }`}
           >
             {t("monthly")}
@@ -53,8 +53,8 @@ export function BillingPlansClient() {
             onClick={() => setCycle("yearly")}
             className={`rounded-xl px-6 py-2.5 text-sm font-bold transition ${
               cycle === "yearly"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-700"
+                ? "bg-white text-[var(--text-main)] shadow-sm"
+                : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
             }`}
           >
             {t("yearly")}
@@ -71,9 +71,9 @@ export function BillingPlansClient() {
         ))}
       </div>
 
-      <p className="text-center text-xs text-slate-400">
+      <p className="text-center text-xs text-[var(--text-dimmer)]">
         {isBr ? t("plansFootnoteBr") : t("plansFootnote")}{" "}
-        <Link href="/billing" className="font-medium text-violet-600 hover:underline">
+        <Link href="/billing" className="ui-link">
           {t("backToPortal")}
         </Link>
       </p>

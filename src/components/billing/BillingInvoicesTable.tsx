@@ -41,7 +41,7 @@ export function BillingInvoicesTable({
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[560px] text-left text-xs">
-        <thead className="bg-white text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <thead className="bg-white text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
           <tr>
             <th className="px-4 py-2">{t("colDate")}</th>
             <th className="px-4 py-2 text-center">{t("colAmount")}</th>
@@ -50,7 +50,7 @@ export function BillingInvoicesTable({
             <th className="px-4 py-2" />
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-[var(--border-color)]">
           {invoices.map((inv) => {
             const { symbol, amount } = formatBillingAmountParts(inv.amountCents, inv.provider);
             const isPending = inv.status === "pending" || inv.status === "confirmed";
@@ -60,10 +60,10 @@ export function BillingInvoicesTable({
             return (
               <Fragment key={inv.id}>
                 <tr
-                  className={`transition ${isOpen ? "bg-violet-50/60" : "hover:bg-violet-50/40"}`}
+                  className={`transition ${isOpen ? "bg-[rgba(124,58,237,0.06)]/60" : "hover:bg-[rgba(124,58,237,0.06)]/40"}`}
                 >
                   <td className="px-4 py-2.5">
-                    <p className="font-medium text-slate-800">
+                    <p className="font-medium text-[var(--text-main)]">
                       {new Date(inv.createdAt).toLocaleDateString(undefined, {
                         day: "2-digit",
                         month: "short",
@@ -71,7 +71,7 @@ export function BillingInvoicesTable({
                       })}
                     </p>
                     {inv.dueDate && isDueDateValid(inv.dueDate, inv.createdAt) ? (
-                      <p className="mt-0.5 text-[11px] text-slate-400">
+                      <p className="mt-0.5 text-[11px] text-[var(--text-dimmer)]">
                         {t("dueDate")}: {new Date(inv.dueDate + "T12:00:00").toLocaleDateString()}
                       </p>
                     ) : null}
@@ -79,7 +79,7 @@ export function BillingInvoicesTable({
                   <td className="px-4 py-2.5 text-center">
                     <span
                       className={`text-base font-bold tabular-nums ${
-                        isPaid ? "text-emerald-600" : isPending ? "text-violet-600" : "text-slate-700"
+                        isPaid ? "text-emerald-600" : isPending ? "text-[var(--violet)]" : "text-[var(--text-dim)]"
                       }`}
                     >
                       {symbol}
@@ -98,8 +98,8 @@ export function BillingInvoicesTable({
                       onClick={() => onToggle(inv.id)}
                       className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-bold transition ${
                         isOpen
-                          ? "border-violet-300 bg-violet-100 text-violet-800"
-                          : "border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                          ? "border-violet-300 bg-[rgba(124,58,237,0.1)] text-[var(--violet)]"
+                          : "border-[rgba(124,58,237,0.2)] bg-[rgba(124,58,237,0.06)] text-violet-700 hover:bg-[rgba(124,58,237,0.1)]"
                       }`}
                     >
                       <svg
@@ -116,7 +116,7 @@ export function BillingInvoicesTable({
                     {inv.status === "paid" ? (
                       <button
                         type="button"
-                        className="ml-2 text-[11px] text-slate-400 underline hover:text-slate-600"
+                        className="ml-2 text-[11px] text-[var(--text-dimmer)] underline hover:text-[var(--text-dim)]"
                         onClick={() => onRequestRefund(inv.id)}
                       >
                         {t("requestRefund")}
@@ -126,7 +126,7 @@ export function BillingInvoicesTable({
                 </tr>
                 {isOpen ? (
                   <tr>
-                    <td colSpan={5} className="border-t border-violet-100 bg-violet-50/30 p-0">
+                    <td colSpan={5} className="border-t border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)]/30 p-0">
                       <BillingInvoiceDetailPanel
                         invoiceId={inv.id}
                         onUpdated={onUpdated}
@@ -140,7 +140,7 @@ export function BillingInvoicesTable({
           })}
           {invoices.length === 0 ? (
             <tr>
-              <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+              <td colSpan={5} className="px-4 py-10 text-center text-[var(--text-dim)]">
                 {t("noInvoices")}
               </td>
             </tr>

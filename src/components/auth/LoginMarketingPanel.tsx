@@ -30,7 +30,7 @@ export async function LoginMarketingPanel({ productLabel }: { productLabel: stri
           backgroundSize: "32px 32px"
         }}
       />
-      <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-violet-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[rgba(124,58,237,0.06)]0/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-indigo-400/15 blur-3xl" />
 
       <div className="relative z-10">

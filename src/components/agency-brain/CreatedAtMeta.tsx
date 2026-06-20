@@ -24,10 +24,10 @@ export function CreatedAtMeta({
   if (!createdLabel && !updatedLabel) return null;
 
   return (
-    <div className={`text-xs text-slate-400 ${className}`.trim()}>
+    <div className={`text-xs text-[var(--text-dimmer)] ${className}`.trim()}>
       {createdLabel ? <span>{createdLabel}</span> : null}
       {updatedLabel ? (
-        <span className="block text-[11px] text-slate-400">
+        <span className="block text-[11px] text-[var(--text-dimmer)]">
           {t("createdAtUpdated", { date: updatedLabel })}
         </span>
       ) : null}

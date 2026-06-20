@@ -24,7 +24,7 @@ export function CampaignStatusToggle({
         onChange();
       }}
       className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1 disabled:cursor-wait disabled:opacity-60 ${
-        active ? "bg-emerald-500" : "bg-slate-300/80"
+        active ? "bg-emerald-500" : "bg-[var(--text-dimmer)]/80"
       }`}
     >
       <span

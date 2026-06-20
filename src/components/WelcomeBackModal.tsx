@@ -24,31 +24,32 @@ export function WelcomeBackModal({ events }: { events: WelcomeBackEvent[] }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+      <div className="ui-card w-full max-w-lg p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold">{t("title")}</div>
-            <div className="mt-1 text-xs text-slate-500">{t("subtitle")}</div>
+            <div className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("title")}</div>
+            <div className="mt-1 text-xs text-[var(--text-dimmer)]">{t("subtitle")}</div>
           </div>
-          <button
-            onClick={() => setOpen(false)}
-            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
-          >
+          <button type="button" onClick={() => setOpen(false)} className="ui-btn-secondary !px-2 !py-1 text-xs">
             {tCommon("close")}
           </button>
         </div>
 
         <div className="mt-4 space-y-2">
           {events.slice(0, 8).map((e) => (
-            <div key={e.id} className="rounded-xl border border-slate-200 bg-white p-3">
+            <div key={e.id} className="ui-card p-3">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-xs font-semibold text-slate-700">{e.kind}</div>
-                <div className={`text-[11px] ${e.success ? "text-emerald-400" : "text-rose-300"}`}>
+                <div className="text-xs font-semibold text-[var(--text-dim)]">{e.kind}</div>
+                <div className={`text-[11px] ${e.success ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
                   {e.success ? "OK" : tCommon("error")}
                 </div>
               </div>
-              <div className="mt-1 text-xs text-slate-500">{new Date(e.createdAt).toLocaleString()}</div>
-              {e.errorMessage ? <div className="mt-1 text-xs text-rose-300">{e.errorMessage}</div> : null}
+              <div className="mt-1 text-xs text-[var(--text-dimmer)]">
+                {new Date(e.createdAt).toLocaleString()}
+              </div>
+              {e.errorMessage ? (
+                <div className="mt-1 text-xs text-[var(--danger)]">{e.errorMessage}</div>
+              ) : null}
             </div>
           ))}
         </div>

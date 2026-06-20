@@ -87,15 +87,15 @@ export function SyncStatusBanner({ clientId }: { clientId?: string }) {
   const err = data.lastRun?.lastError;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-      <span className="font-medium text-slate-800">{t("lastUpdate")}:</span> {label}
+    <div className="ui-card bg-[var(--surface-thead)] px-3 py-2 text-xs text-[var(--text-dim)]">
+      <span className="font-medium text-[var(--text-main)]">{t("lastUpdate")}:</span> {label}
       {data.lastRun ? (
-        <span className="ml-2 text-slate-500">
+        <span className="ml-2 text-[var(--text-dimmer)]">
           · {data.lastRun.accountsDone}/{data.lastRun.accountsTotal} {t("accountsSynced")}
         </span>
       ) : null}
-      {err ? <div className="mt-1 text-red-600">{err}</div> : null}
-      {contextHint ? <div className="mt-1 text-slate-600">{contextHint}</div> : null}
+      {err ? <div className="mt-1 text-[var(--danger)]">{err}</div> : null}
+      {contextHint ? <div className="mt-1 text-[var(--text-dim)]">{contextHint}</div> : null}
     </div>
   );
 }

@@ -211,20 +211,20 @@ export function AdStep() {
   return (
     <div ref={topRef} className="space-y-4">
       {clientRequired ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="ui-alert-warning px-3 py-2 text-xs text-amber-800">
           {t("selectClientFirst")}
         </p>
       ) : null}
 
       {addAdMode && payload.meta?.targetAdsetName ? (
-        <p className="rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-violet-800">
+        <p className="rounded-xl border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)] px-3 py-2 text-xs text-[var(--violet)]">
           {t("addAdContext", { adset: payload.meta.targetAdsetName })}
         </p>
       ) : null}
 
       {!addAdMode ? (
         <div className="ui-card space-y-3 p-4">
-          <h3 className="text-sm font-semibold text-slate-900">{t("adAssignmentTitle")}</h3>
+          <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("adAssignmentTitle")}</h3>
           <div className="space-y-2 text-sm">
             <label className="flex items-center gap-2">
               <input
@@ -284,8 +284,8 @@ export function AdStep() {
             onClick={() => selectAd(a.id)}
             className={`rounded-lg px-3 py-1.5 text-xs ${
               ad.id === a.id
-                ? "bg-violet-100 font-medium text-violet-800"
-                : "bg-slate-100 text-slate-600"
+                ? "bg-[rgba(124,58,237,0.1)] font-medium text-[var(--violet)]"
+                : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
             }`}
           >
             {a.name || t("treeAd")}
@@ -294,7 +294,7 @@ export function AdStep() {
         <button
           type="button"
           onClick={() => addBlankAd()}
-          className="rounded-lg border border-dashed border-violet-300 px-3 py-1.5 text-xs text-violet-700"
+          className="rounded-lg border border-dashed border-violet-300 px-3 py-1.5 text-xs text-[var(--violet)]"
         >
           {t("addAd")}
         </button>
@@ -322,36 +322,36 @@ export function AdStep() {
 
       <div className="ui-card space-y-3 p-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-900">{t("identitySection")}</h3>
+          <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("identitySection")}</h3>
           {inheritedLocked ? (
-            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+            <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] font-medium text-[var(--violet)]">
               {t("inheritedFromAdset")}
             </span>
           ) : null}
         </div>
         {inheritedLocked ? (
-          <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600">
+          <div className="space-y-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] p-3 text-xs text-[var(--text-dim)]">
             <p>
-              <span className="font-medium text-slate-700">{tAds("page")}:</span>{" "}
+              <span className="font-medium text-[var(--text-dim)]">{tAds("page")}:</span>{" "}
               {(pages.find((p) => p.metaPageId === ad.pageId)?.name ?? ad.pageId) || "—"}
             </p>
             {ad.instagramActorId ? (
               <p>
-                <span className="font-medium text-slate-700">{tAds("instagram")}:</span> @
+                <span className="font-medium text-[var(--text-dim)]">{tAds("instagram")}:</span> @
                 {instagramAccounts.find((i) => i.id === ad.instagramActorId)?.username ??
                   ad.instagramActorId}
               </p>
             ) : null}
             {adset.pixelId ? (
               <p>
-                <span className="font-medium text-slate-700">{tAds("pixel")}:</span>{" "}
+                <span className="font-medium text-[var(--text-dim)]">{tAds("pixel")}:</span>{" "}
                 {pixels.find((p) => p.id === adset.pixelId)?.name ?? adset.pixelId}
               </p>
             ) : null}
             <button
               type="button"
               onClick={() => setIdentityUnlocked(true)}
-              className="text-[11px] text-violet-600 hover:underline"
+              className="text-[11px] text-[var(--violet)] hover:underline"
             >
               {t("unlockInheritedIdentity")}
             </button>
@@ -364,7 +364,7 @@ export function AdStep() {
                 <button
                   type="button"
                   onClick={() => void loadAssets(payload.adAccountId)}
-                  className="mt-1 font-medium text-violet-700 underline"
+                  className="mt-1 font-medium text-[var(--violet)] underline"
                 >
                   {t("identityRecheck")}
                 </button>
@@ -426,7 +426,7 @@ export function AdStep() {
       </div>
 
       <div className="ui-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("destinationSection")}</h3>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("destinationSection")}</h3>
         <FormField label={t("destinationType")}>
           <select
             value={ad.destinationType}
@@ -532,18 +532,18 @@ export function AdStep() {
       </div>
 
       <div className="ui-card space-y-3 p-4">
-        <div className="flex gap-2 border-b border-slate-100 pb-2">
+        <div className="flex gap-2 border-b border-[var(--border-color)] pb-2">
           <button
             type="button"
             onClick={() => setCopyMode("manual")}
-            className={`text-xs font-medium ${copyMode === "manual" ? "text-violet-700" : "text-slate-500"}`}
+            className={`text-xs font-medium ${copyMode === "manual" ? "text-[var(--violet)]" : "text-[var(--text-dim)]"}`}
           >
             {t("copyTabManual")}
           </button>
           <button
             type="button"
             onClick={() => setCopyMode("ai")}
-            className={`text-xs font-medium ${copyMode === "ai" ? "text-violet-700" : "text-slate-500"}`}
+            className={`text-xs font-medium ${copyMode === "ai" ? "text-[var(--violet)]" : "text-[var(--text-dim)]"}`}
           >
             {t("copyTabAi")}
           </button>
@@ -589,7 +589,7 @@ export function AdStep() {
       </div>
 
       <div className="ui-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{tAds("media")}</h3>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{tAds("media")}</h3>
         <div className="flex gap-2">
           <button
             type="button"
@@ -597,8 +597,8 @@ export function AdStep() {
             disabled={clientRequired}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
               ad.format === "single_image"
-                ? "border-violet-500 bg-violet-50 text-violet-700"
-                : "border-slate-200 text-slate-600 hover:border-slate-300"
+                ? "border-violet-500 bg-[rgba(124,58,237,0.06)] text-[var(--violet)]"
+                : "border-[var(--border-color)] text-[var(--text-dim)] hover:border-[var(--border-color)]"
             }`}
           >
             {t("formatImage")}
@@ -609,8 +609,8 @@ export function AdStep() {
             disabled={clientRequired}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
               ad.format === "video"
-                ? "border-violet-500 bg-violet-50 text-violet-700"
-                : "border-slate-200 text-slate-600 hover:border-slate-300"
+                ? "border-violet-500 bg-[rgba(124,58,237,0.06)] text-[var(--violet)]"
+                : "border-[var(--border-color)] text-[var(--text-dim)] hover:border-[var(--border-color)]"
             }`}
           >
             {t("formatVideo")}
@@ -624,7 +624,7 @@ export function AdStep() {
         >
           {t("creativeOpenModal")}
         </button>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-[var(--text-dim)]">
           {ad.format === "video"
             ? t("creativeSelectedVideos", {
                 count: ad.videoIds.length
@@ -636,7 +636,7 @@ export function AdStep() {
             {mediaPreviews.map((m) => (
               <div
                 key={m.id}
-                className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+                className="overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)]"
               >
                 {m.kind === "video" && m.url?.startsWith("blob:") ? (
                   <video src={m.url} className="h-16 w-16 object-cover" muted playsInline />
@@ -644,7 +644,7 @@ export function AdStep() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={m.url} alt={m.label} className="h-16 w-16 object-cover" />
                 ) : (
-                  <div className="flex h-16 w-16 flex-col items-center justify-center px-1 text-center text-[9px] text-slate-500">
+                  <div className="flex h-16 w-16 flex-col items-center justify-center px-1 text-center text-[9px] text-[var(--text-dim)]">
                     {m.kind === "video" ? <span className="text-sm">▶</span> : null}
                     {m.label}
                   </div>
@@ -679,7 +679,7 @@ export function AdStep() {
       />
 
       <div className="ui-card space-y-2 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("trackingSection")}</h3>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("trackingSection")}</h3>
         <label className="flex items-center gap-2 text-xs">
           <input
             type="checkbox"
@@ -695,9 +695,9 @@ export function AdStep() {
         </label>
       </div>
 
-      <div className="ui-card space-y-3 border-dashed border-violet-200 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("addAnotherAdTitle")}</h3>
-        <p className="text-xs text-slate-500">{t("addAnotherAdHint")}</p>
+      <div className="ui-card space-y-3 border-dashed border-[rgba(124,58,237,0.2)] p-4">
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("addAnotherAdTitle")}</h3>
+        <p className="text-xs text-[var(--text-dim)]">{t("addAnotherAdHint")}</p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"

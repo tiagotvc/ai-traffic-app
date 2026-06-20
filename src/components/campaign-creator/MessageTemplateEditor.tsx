@@ -102,8 +102,8 @@ export function MessageTemplateEditor({
   return (
     <div className="space-y-4 rounded-xl border border-emerald-200/80 bg-emerald-50/30 p-4">
       <div>
-        <h4 className="text-sm font-semibold text-slate-900">{t("messageTemplateSectionTitle")}</h4>
-        <p className="mt-1 text-[11px] text-slate-500">{t("messageTemplateSectionHint")}</p>
+        <h4 className="text-sm font-semibold text-[var(--text-main)]">{t("messageTemplateSectionTitle")}</h4>
+        <p className="mt-1 text-[11px] text-[var(--text-dim)]">{t("messageTemplateSectionHint")}</p>
       </div>
 
       <FormField label={t("messageTemplateLibrary")}>
@@ -177,7 +177,7 @@ export function MessageTemplateEditor({
           rows={3}
           disabled={disabled}
         />
-        <p className="mt-1 text-[10px] text-slate-500">{t("messageIcebreakersHint")}</p>
+        <p className="mt-1 text-[10px] text-[var(--text-dim)]">{t("messageIcebreakersHint")}</p>
       </FormField>
 
       <MessageTemplatePreview channel={channel} greeting={greeting} icebreakers={icebreakers} />

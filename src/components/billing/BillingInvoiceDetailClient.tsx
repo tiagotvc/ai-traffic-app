@@ -15,7 +15,7 @@ export function BillingInvoiceDetailClient({ invoiceId }: { invoiceId: string })
 
   return (
     <div className="flex min-h-[30vh] items-center justify-center">
-      <p className="text-sm text-slate-500">{t("loading")}</p>
+      <p className="text-sm text-[var(--text-dim)]">{t("loading")}</p>
     </div>
   );
 }

@@ -10,7 +10,7 @@ export function RelatedHypothesesList({ hypotheses }: { hypotheses: InsightHypot
   const t = useTranslations("brainInsights");
 
   if (hypotheses.length === 0) {
-    return <p className="text-sm text-slate-500">{t("noRelatedHypotheses")}</p>;
+    return <p className="text-sm text-[var(--text-dim)]">{t("noRelatedHypotheses")}</p>;
   }
 
   return (
@@ -19,9 +19,9 @@ export function RelatedHypothesesList({ hypotheses }: { hypotheses: InsightHypot
         <li key={h.id}>
           <Link
             href={`/agency-brain/hypotheses/${h.id}`}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 transition hover:border-violet-200 hover:bg-violet-50/30"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border-color)] bg-white px-4 py-3 transition hover:border-[rgba(124,58,237,0.2)] hover:bg-[rgba(124,58,237,0.06)]/30"
           >
-            <span className="text-sm font-medium text-slate-900">{h.title}</span>
+            <span className="text-sm font-medium text-[var(--text-main)]">{h.title}</span>
             <StatusBadge kind="hypothesis" status={h.status} />
           </Link>
         </li>

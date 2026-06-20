@@ -44,7 +44,7 @@ export function AdSetStep() {
   return (
     <div className="space-y-4">
       {!payload.clientSlug ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="ui-alert-warning px-3 py-2 text-xs text-amber-800">
           {t("selectClientFirst")}
         </p>
       ) : null}
@@ -58,8 +58,8 @@ export function AdSetStep() {
               onClick={() => selectAdset(a.id)}
               className={`rounded-lg px-3 py-1.5 text-xs ${
                 adset.id === a.id
-                  ? "bg-violet-100 font-medium text-violet-800"
-                  : "bg-slate-100 text-slate-600"
+                  ? "bg-[rgba(124,58,237,0.1)] font-medium text-[var(--violet)]"
+                  : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
               }`}
             >
               {a.name || t("treeAdset")}
@@ -162,7 +162,7 @@ export function AdSetStep() {
       ) : null}
 
       <div className="ui-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{tAds("audienceTitle")}</h3>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{tAds("audienceTitle")}</h3>
 
         <AiAudienceTargetingPanel
           clientSlug={payload.clientSlug}
@@ -185,7 +185,7 @@ export function AdSetStep() {
           disabled={clientRequired}
         />
 
-        <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
           {t("audienceOrDivider")}
         </p>
 
@@ -309,7 +309,7 @@ export function AdSetStep() {
             }
           />
         </FormField>
-        <label className="flex items-center gap-2 text-xs text-slate-600">
+        <label className="flex items-center gap-2 text-xs text-[var(--text-dim)]">
           <input
             type="checkbox"
             checked={targeting.advantageAudience}
@@ -319,9 +319,9 @@ export function AdSetStep() {
           />
           {t("advantageAudience")}
         </label>
-        <div className="space-y-2 rounded-lg border border-dashed border-slate-200 p-3">
+        <div className="space-y-2 rounded-lg border border-dashed border-[var(--border-color)] p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-medium text-slate-700">{t("detailedTargetingTitle")}</p>
+            <p className="text-xs font-medium text-[var(--text-dim)]">{t("detailedTargetingTitle")}</p>
             <button
               type="button"
               disabled={clientRequired}
@@ -330,16 +330,16 @@ export function AdSetStep() {
                   detailedGroups: [...targeting.detailedGroups, { items: [] }]
                 })
               }
-              className="text-[11px] text-violet-600 hover:underline"
+              className="text-[11px] text-[var(--violet)] hover:underline"
             >
               {t("detailedTargetingAddGroup")}
             </button>
           </div>
-          <p className="text-[10px] text-slate-500">{t("detailedTargetingHint")}</p>
+          <p className="text-[10px] text-[var(--text-dim)]">{t("detailedTargetingHint")}</p>
           {targeting.detailedGroups.map((group, idx) => (
-            <div key={idx} className="rounded-lg border border-slate-100 bg-slate-50/80 p-2">
+            <div key={idx} className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)]/80 p-2">
               <div className="mb-1 flex items-center justify-between">
-                <span className="text-[10px] font-medium text-slate-600">
+                <span className="text-[10px] font-medium text-[var(--text-dim)]">
                   {t("detailedTargetingGroup", { n: idx + 1 })}
                 </span>
                 <button
@@ -402,7 +402,7 @@ export function AdSetStep() {
       </div>
 
       <div className="ui-card space-y-3 p-4">
-        <h3 className="text-sm font-semibold text-slate-900">{t("scheduleSection")}</h3>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("scheduleSection")}</h3>
         <div className="grid gap-3 md:grid-cols-2">
           <FormField label={t("scheduleStart")}>
             <input

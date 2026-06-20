@@ -89,16 +89,16 @@ export function CreativePatternsPanel({
       {!embedded ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">{t("title")}</h2>
-            <p className="text-xs text-slate-500">{t("subtitle")}</p>
+            <h2 className="text-sm font-semibold text-[var(--text-main)]">{t("title")}</h2>
+            <p className="text-xs text-[var(--text-dim)]">{t("subtitle")}</p>
           </div>
-          <Link href="/creatives" className="text-xs font-medium text-violet-600 hover:underline">
+          <Link href="/creatives" className="ui-link text-xs font-medium">
             {t("openLibrary")}
           </Link>
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-px">
+      <div className="flex flex-wrap gap-1 border-b border-[var(--border-color)] pb-px">
         {(["all", "winner", "fatigue", "underperformer"] as const).map((key) => (
           <button
             key={key}
@@ -106,8 +106,8 @@ export function CreativePatternsPanel({
             onClick={() => setFilter(key)}
             className={`-mb-px border-b-2 px-3 pb-2 text-xs font-medium transition ${
               filter === key
-                ? "border-slate-700 text-slate-900"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                ? "border-[var(--border-color)] text-[var(--text-main)]"
+                : "border-transparent text-[var(--text-dim)] hover:text-[var(--text-dim)]"
             }`}
           >
             {t(`filter.${key}`)}
@@ -117,9 +117,9 @@ export function CreativePatternsPanel({
       </div>
 
       {loading ? (
-        <div className="text-sm text-slate-500">{t("loading")}</div>
+        <div className="text-sm text-[var(--text-dim)]">{t("loading")}</div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+        <div className="ui-card border-dashed p-6 text-center text-sm text-[var(--text-dim)]">
           {t("empty")}
         </div>
       ) : (
@@ -142,8 +142,8 @@ export function CreativePatternsPanel({
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-slate-900">{row.name}</div>
-                <div className="mt-1 text-[11px] text-slate-600">
+                <div className="truncate text-sm font-semibold text-[var(--text-main)]">{row.name}</div>
+                <div className="mt-1 text-[11px] text-[var(--text-dim)]">
                   {t("metrics", {
                     spend: row.spend.toFixed(0),
                     ctr: row.ctr.toFixed(2),
@@ -151,7 +151,7 @@ export function CreativePatternsPanel({
                     freq: row.frequency.toFixed(1)
                   })}
                 </div>
-                <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
                   {t(`tier.${row.tier}`)}
                 </div>
               </div>

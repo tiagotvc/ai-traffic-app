@@ -11,7 +11,7 @@ import type { AgencyLearningDto } from "@/lib/agency-brain/agency-learnings-serv
 import { getCategoryVisual } from "@/lib/agency-brain/learning-visuals";
 
 function confidenceScoreClass(score: number | null): string {
-  if (score == null) return "bg-slate-100 text-slate-600";
+  if (score == null) return "bg-[var(--surface-thead)] text-[var(--text-dim)]";
   if (score >= 80) return "bg-green-100 text-green-800";
   if (score >= 50) return "bg-yellow-100 text-yellow-800";
   return "bg-red-100 text-red-800";
@@ -30,7 +30,7 @@ export function AgencyLearningCard({
 
   return (
     <article
-      className={`animate-slide-up overflow-hidden rounded-xl border border-slate-300 border-l-4 ${visual.border} ${visual.bg} shadow-sm transition hover:border-sky-300 hover:shadow-md hover:shadow-sky-100/50`}
+      className={`animate-slide-up overflow-hidden rounded-xl border border-[var(--border-color)] border-l-4 ${visual.border} ${visual.bg} shadow-sm transition hover:border-sky-300 hover:shadow-md hover:shadow-sky-100/50`}
       style={{ animationDelay: `${Math.min(index, 9) * 35}ms` }}
     >
       <div className="flex items-start gap-2 p-2.5 sm:p-3">
@@ -42,7 +42,7 @@ export function AgencyLearningCard({
         >
           <div className="flex flex-wrap items-center gap-1.5">
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${visual.dot}`} aria-hidden />
-            <h3 className="truncate text-sm font-semibold text-slate-900">{learning.title}</h3>
+            <h3 className="truncate text-sm font-semibold text-[var(--text-main)]">{learning.title}</h3>
             <Link
               href={`/agency-brain/learnings?client=${encodeURIComponent(learning.clientSlug)}`}
               className="shrink-0 rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-800 hover:bg-sky-200"
@@ -77,7 +77,7 @@ export function AgencyLearningCard({
 
         <button
           type="button"
-          className="shrink-0 rounded p-0.5 text-slate-400 transition hover:bg-white/60 hover:text-slate-600"
+          className="shrink-0 rounded p-0.5 text-[var(--text-dimmer)] transition hover:bg-white/60 hover:text-[var(--text-dim)]"
           onClick={() => setExpanded((v) => !v)}
           aria-label={expanded ? t("collapseCard") : t("expandCard")}
         >
@@ -108,12 +108,12 @@ export function AgencyLearningCard({
             <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${visual.badge}`}>
               {t(`category.${learning.category}`)}
             </span>
-            <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] text-slate-600">
+            <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] text-[var(--text-dim)]">
               {t(`impact.${learning.impact}`)}
             </span>
           </div>
-          <p className="text-xs leading-relaxed text-slate-600">{learning.description}</p>
-          <div className="mt-1.5 flex flex-wrap gap-2 text-[10px] text-slate-400">
+          <p className="text-xs leading-relaxed text-[var(--text-dim)]">{learning.description}</p>
+          <div className="mt-1.5 flex flex-wrap gap-2 text-[10px] text-[var(--text-dimmer)]">
             <span>{t(`source.${learning.source}`)}</span>
             <span>·</span>
             <span>{t(`confidence.${learning.confidence}`)}</span>
@@ -123,7 +123,7 @@ export function AgencyLearningCard({
               {learning.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] text-slate-600"
+                  className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] text-[var(--text-dim)]"
                 >
                   {tag}
                 </span>

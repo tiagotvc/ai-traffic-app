@@ -30,6 +30,7 @@ export function SettingsClient({
   metaOAuthError,
   connectMetaSlot,
   embedded = false,
+  bare = false,
   activeTab: controlledTab,
   onActiveTabChange
 }: {
@@ -38,6 +39,7 @@ export function SettingsClient({
   metaOAuthError?: string | null;
   connectMetaSlot: ReactNode;
   embedded?: boolean;
+  bare?: boolean;
   activeTab?: SettingsTab;
   onActiveTabChange?: (tab: SettingsTab) => void;
 }) {
@@ -139,24 +141,24 @@ export function SettingsClient({
   ];
 
   const panels = (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className={bare ? "space-y-4" : "ui-card p-4"}>
         {activeTab === "general" ? (
           <div className="space-y-4">
             <SettingsSection title={t("accountTitle")} subtitle={t("accountSubtitle")}>
               {account ? (
                 <div className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg bg-slate-50 px-3 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    <div className="rounded-lg bg-[var(--surface-bg)] px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
                         E-mail
                       </p>
-                      <p className="mt-0.5 text-sm font-medium text-slate-800">{account.email}</p>
+                      <p className="mt-0.5 text-sm font-medium text-[var(--text-main)]">{account.email}</p>
                     </div>
-                    <div className="rounded-lg bg-slate-50 px-3 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    <div className="rounded-lg bg-[var(--surface-bg)] px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
                         {t("accountLoginMethods")}
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-600">
+                      <p className="mt-0.5 text-xs text-[var(--text-dim)]">
                         {[
                           account.hasPassword ? t("accountMethodPassword") : null,
                           account.hasGoogle ? "Google" : null,
@@ -169,9 +171,9 @@ export function SettingsClient({
                   </div>
 
                   {account.hasPassword ? (
-                    <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-                      <p className="text-xs font-semibold text-slate-800">{t("passwordTitle")}</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">{t("passwordHint")}</p>
+                    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] p-3">
+                      <p className="text-xs font-semibold text-[var(--text-main)]">{t("passwordTitle")}</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t("passwordHint")}</p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-3">
                         <SettingsField label={t("currentPassword")}>
                           <input
@@ -233,18 +235,18 @@ export function SettingsClient({
                               setPasswordMessage(t("passwordChanged"));
                             });
                           }}
-                          className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+                          className="ui-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
                         >
                           {passwordPending ? tCommon("loading") : t("passwordChangeBtn")}
                         </button>
                       </SettingsSaveRow>
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500">{t("passwordOAuthOnly")}</p>
+                    <p className="text-xs text-[var(--text-dim)]">{t("passwordOAuthOnly")}</p>
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">{tCommon("loading")}</p>
+                <p className="text-xs text-[var(--text-dim)]">{tCommon("loading")}</p>
               )}
             </SettingsSection>
 
@@ -282,7 +284,7 @@ export function SettingsClient({
                         setMessage(json?.ok ? t("saved") : json?.error ?? t("saveFailed"));
                       });
                     }}
-                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+                    className="ui-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
                   >
                     {isPending ? tCommon("loading") : tCommon("save")}
                   </button>
@@ -294,12 +296,12 @@ export function SettingsClient({
               title={t("agencyBrainPrivacyTitle")}
               subtitle={t("agencyBrainPrivacyHint")}
             >
-              <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+              <label className="flex cursor-pointer items-start gap-2 text-sm text-[var(--text-main)]">
                 <input
                   type="checkbox"
                   checked={nicheShareOptIn}
                   onChange={(e) => setNicheShareOptIn(e.target.checked)}
-                  className="mt-0.5 rounded border-slate-300"
+                  className="mt-0.5 rounded border-[var(--border-color)]"
                 />
                 <span className="text-xs">{t("agencyBrainNicheShareOptIn")}</span>
               </label>
@@ -322,7 +324,7 @@ export function SettingsClient({
                         );
                       });
                     }}
-                    className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+                    className="ui-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
                   >
                     {nicheSharePending ? tCommon("loading") : tCommon("save")}
                   </button>
@@ -348,8 +350,8 @@ export function SettingsClient({
         {activeTab === "webhooks" ? (
           <div className="space-y-4">
             <div>
-              <h2 className="text-sm font-semibold text-slate-900">{t("webhooksTitle")}</h2>
-              <p className="text-[11px] text-slate-500">{t("webhooksSubtitle")}</p>
+              <h2 className="text-sm font-semibold text-[var(--text-main)]">{t("webhooksTitle")}</h2>
+              <p className="text-[11px] text-[var(--text-dim)]">{t("webhooksSubtitle")}</p>
             </div>
             <SettingsSection title={t("webhookAlertLabel")} subtitle={t("webhookAlertHint")}>
               <SettingsField label="URL">
@@ -387,7 +389,7 @@ export function SettingsClient({
                     setWebhookMessage(json?.ok ? t("webhookSaved") : json?.error ?? t("saveFailed"));
                   });
                 }}
-                className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+                className="ui-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
               >
                 {webhookPending ? tCommon("loading") : tCommon("save")}
               </button>
@@ -398,8 +400,8 @@ export function SettingsClient({
         {activeTab === "data" ? (
           <div className="space-y-4">
             <SettingsSection title={t("demoDataTitle")} subtitle={t("demoDataHint")}>
-              <p className="text-[11px] text-slate-400">{t("demoDataNames")}</p>
-              {purgeMessage ? <p className="mt-2 text-xs text-slate-600">{purgeMessage}</p> : null}
+              <p className="text-[11px] text-[var(--text-dimmer)]">{t("demoDataNames")}</p>
+              {purgeMessage ? <p className="mt-2 text-xs text-[var(--text-dim)]">{purgeMessage}</p> : null}
               <button
                 type="button"
                 disabled={purgePending}
@@ -433,7 +435,7 @@ export function SettingsClient({
               subtitle={t("resetDataHint")}
               accent="danger"
             >
-              <p className="text-[11px] text-slate-400">{t("resetDataKeeps")}</p>
+              <p className="text-[11px] text-[var(--text-dimmer)]">{t("resetDataKeeps")}</p>
               <SettingsField label={t("resetDataConfirmLabel")}>
                 <input
                   value={resetText}
@@ -442,7 +444,7 @@ export function SettingsClient({
                   className="ui-input !py-1.5 font-mono text-sm"
                 />
               </SettingsField>
-              {resetMessage ? <p className="mt-2 text-xs text-slate-600">{resetMessage}</p> : null}
+              {resetMessage ? <p className="mt-2 text-xs text-[var(--text-dim)]">{resetMessage}</p> : null}
               <button
                 type="button"
                 disabled={resetPending || resetText !== "RESET"}

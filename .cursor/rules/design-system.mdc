@@ -1,0 +1,30 @@
+---
+description: Traffic AI design system — UX Pilot v1 tokens, ui-* classes, and Ds* components
+globs: src/**/*.{tsx,ts,css}
+alwaysApply: true
+---
+
+# Design System — Traffic AI (UX Pilot v1)
+
+Always follow `docs/design-system.md` when building or editing UI.
+
+## Quick rules
+
+- Page background: `bg-[var(--surface-bg)]` or `.ui-surface`
+- Cards: `.ui-card` or `DsCard` — never ad-hoc `border-slate-200 bg-white`
+- Primary CTA (sync, create, save): `.ui-btn-primary` (amber gradient)
+- AI / Agency Brain actions: `.ui-btn-brand` (violet gradient)
+- Secondary actions: `.ui-btn-secondary`
+- Page titles: `font-heading text-[var(--text-main)]`
+- Body/labels: `text-[var(--text-dim)]` / `text-[var(--text-dimmer)]`
+- Links: `.ui-link` (violet) or `.ui-link-amber`
+- Sidebar stays dark `#0a0f14`; active nav item uses amber, not cyan/violet
+- Tables: header `--surface-thead`, hover `--row-hover`, use `DsTableShell` when possible
+- KPI cards: `.kpi-card-hover`, colored metric values, `DsTrendBadge` for deltas
+- Agency Brain blocks: `.ui-brain-shelf` or `--brain-shelf-bg`
+
+## Imports
+
+Prefer `@/design-system` components over one-off styled divs for headers, badges, cards, and tables.
+
+Reference mock: `uxpilot-export/src/` (do not import from there in app code).

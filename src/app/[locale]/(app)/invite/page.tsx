@@ -15,10 +15,10 @@ export default async function InvitePage({
 
   return (
     <div className="mx-auto max-w-lg space-y-4 py-8">
-      <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-      <p className="text-sm text-slate-500">{t("subtitle")}</p>
+      <h1 className="font-heading text-2xl font-bold text-[var(--text-main)]">{t("title")}</h1>
+      <p className="text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
       <div className="ui-card p-5">
-        <Suspense fallback={<p className="text-sm text-slate-500">{t("accepting")}</p>}>
+        <Suspense fallback={<p className="text-sm text-[var(--text-dim)]">{t("accepting")}</p>}>
           <InviteAcceptClient isLoggedIn={!!session?.user} locale={locale} />
         </Suspense>
       </div>

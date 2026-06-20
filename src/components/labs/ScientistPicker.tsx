@@ -31,7 +31,7 @@ export function ScientistPicker({ selected, onToggle }: ScientistPickerProps) {
 
   return (
     <div
-      className="rounded-xl border border-dashed border-violet-200/80 bg-gradient-to-b from-violet-50/40 to-slate-50/30 p-3 sm:p-4"
+      className="rounded-xl border border-dashed border-[rgba(124,58,237,0.2)]/80 bg-gradient-to-b from-violet-50/40 to-slate-50/30 p-3 sm:p-4"
       style={{
         backgroundImage:
           "radial-gradient(circle at 1px 1px, rgb(139 92 246 / 0.06) 1px, transparent 0)",
@@ -88,7 +88,7 @@ export function ScientistPicker({ selected, onToggle }: ScientistPickerProps) {
                 <span
                   className={[
                     "relative mt-1.5 rounded px-1 py-px text-[8px] font-semibold uppercase tracking-wide",
-                    isSelected ? "bg-white/15 text-white/90" : "bg-slate-100 text-slate-500"
+                    isSelected ? "bg-white/15 text-white/90" : "bg-[var(--surface-thead)] text-[var(--text-dim)]"
                   ].join(" ")}
                 >
                   {role}
@@ -97,7 +97,7 @@ export function ScientistPicker({ selected, onToggle }: ScientistPickerProps) {
                 <p
                   className={[
                     "relative mt-1 text-xs font-semibold leading-tight",
-                    isSelected ? "text-white" : "text-slate-800"
+                    isSelected ? "text-white" : "text-[var(--text-main)]"
                   ].join(" ")}
                 >
                   {label}
@@ -106,7 +106,7 @@ export function ScientistPicker({ selected, onToggle }: ScientistPickerProps) {
                 <p
                   className={[
                     "relative mt-0.5 line-clamp-2 text-[10px] leading-snug",
-                    isSelected ? "text-white/80" : "text-slate-500"
+                    isSelected ? "text-white/80" : "text-[var(--text-dim)]"
                   ].join(" ")}
                 >
                   {brief}
@@ -115,7 +115,7 @@ export function ScientistPicker({ selected, onToggle }: ScientistPickerProps) {
                 <span
                   className={[
                     "relative mt-1 rounded-full px-1.5 py-px text-[10px] font-medium tabular-nums",
-                    isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                    isSelected ? "bg-white/20 text-white" : "bg-[var(--surface-thead)] text-[var(--text-dim)]"
                   ].join(" ")}
                 >
                   {entry.credits} cr

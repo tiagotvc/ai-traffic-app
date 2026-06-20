@@ -180,8 +180,8 @@ export function CreativesLibraryView({
           {STAT_KEYS.map((key) => (
             <div key={key} className="ui-card p-3">
               <div className="text-lg">{key === "total" ? "📦" : "📊"}</div>
-              <div className="mt-1 text-xs text-slate-500">{t(`stats.${key}`)}</div>
-              <div className="mt-1 text-lg font-bold text-slate-900">
+              <div className="mt-1 text-xs text-[var(--text-dim)]">{t(`stats.${key}`)}</div>
+              <div className="mt-1 text-lg font-bold text-[var(--text-main)]">
                 {loading
                   ? "…"
                   : key === "total"
@@ -235,7 +235,7 @@ export function CreativesLibraryView({
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
         <div className="min-w-0">
-          <div className="flex flex-wrap gap-1 border-b border-slate-200">
+          <div className="flex flex-wrap gap-1 border-b border-[var(--border-color)]">
             {(
               [
                 ["all", t("tabAll", { count: loading ? "…" : counts.all })],
@@ -254,8 +254,8 @@ export function CreativesLibraryView({
                 }}
                 className={`border-b-2 px-3 py-2 text-sm font-medium ${
                   tab === key
-                    ? "border-violet-600 text-violet-600"
-                    : "border-transparent text-slate-500"
+                    ? "border-[var(--violet)] text-[var(--violet)]"
+                    : "border-transparent text-[var(--text-dim)]"
                 }`}
               >
                 {label}
@@ -266,7 +266,7 @@ export function CreativesLibraryView({
           <div className="ui-card mt-0 overflow-hidden rounded-t-none">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
                   <tr>
                     <th className="w-10 px-3 py-3" />
                     <th className="px-3 py-3">{t("colCreative")}</th>
@@ -281,15 +281,15 @@ export function CreativesLibraryView({
                 <tbody>
                   {loading && rows.length === 0 ? (
                     Array.from({ length: 6 }).map((_, i) => (
-                      <tr key={i} className="border-t border-slate-100">
+                      <tr key={i} className="border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
                         <td colSpan={8} className="px-4 py-4">
-                          <div className="h-12 animate-pulse rounded-lg bg-slate-100" />
+                          <div className="h-12 animate-pulse rounded-lg bg-[var(--surface-bg)]" />
                         </td>
                       </tr>
                     ))
                   ) : paged.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
+                      <td colSpan={8} className="px-4 py-8 text-center text-sm text-[var(--text-dim)]">
                         {t("empty")}
                       </td>
                     </tr>
@@ -298,8 +298,8 @@ export function CreativesLibraryView({
                       <tr
                         key={row.id}
                         onClick={() => setSelectedId(row.id)}
-                        className={`cursor-pointer border-t border-slate-100 transition hover:bg-violet-50/50 ${
-                          selectedId === row.id ? "bg-violet-50" : ""
+                        className={`cursor-pointer border-t border-[var(--border-color)] transition hover:bg-[rgba(124,58,237,0.06)]/50 ${
+                          selectedId === row.id ? "bg-[rgba(124,58,237,0.06)]" : ""
                         }`}
                       >
                         <td className="px-3 py-3">
@@ -319,24 +319,24 @@ export function CreativesLibraryView({
                                 className="h-12 w-12 shrink-0 rounded-lg object-cover"
                               />
                             ) : (
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-lg">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-bg)] text-lg">
                                 {typeIcon(row.type)}
                               </div>
                             )}
                             <div className="min-w-0">
-                              <div className="font-medium text-slate-900">{row.title}</div>
-                              <div className="line-clamp-1 text-xs text-slate-500">{row.description}</div>
-                              <span className="mt-1 inline-block rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                              <div className="font-medium text-[var(--text-main)]">{row.title}</div>
+                              <div className="line-clamp-1 text-xs text-[var(--text-dim)]">{row.description}</div>
+                              <span className="mt-1 inline-block rounded-md bg-[rgba(124,58,237,0.06)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--violet)]">
                                 {row.format}
                               </span>
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-slate-600">
+                        <td className="px-3 py-3 text-[var(--text-dim)]">
                           <div className="font-medium">{row.clientName}</div>
-                          <div className="text-xs text-slate-400">{row.campaignName}</div>
+                          <div className="text-xs text-[var(--text-dimmer)]">{row.campaignName}</div>
                         </td>
-                        <td className="px-3 py-3 text-slate-600">{row.format}</td>
+                        <td className="px-3 py-3 text-[var(--text-dim)]">{row.format}</td>
                         <td className="px-3 py-3">
                           <Badge variant={statusVariant(row.status)}>{t(`status.${row.status}`)}</Badge>
                         </td>
@@ -344,27 +344,27 @@ export function CreativesLibraryView({
                           <span
                             className={`rounded-md px-2 py-0.5 text-[11px] font-medium ${
                               row.performance === "very_high" || row.performance === "high"
-                                ? "bg-emerald-50 text-emerald-700"
+                                ? "bg-[rgba(16,185,129,0.12)] text-[var(--success)]"
                                 : row.performance === "medium"
                                   ? "bg-amber-50 text-amber-700"
-                                  : "bg-slate-100 text-slate-600"
+                                  : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
                             }`}
                           >
                             {perfLabel(row.performance, t)}
                           </span>
-                          <div className="text-xs font-semibold text-slate-800">{row.metricLabel}</div>
+                          <div className="text-xs font-semibold text-[var(--text-main)]">{row.metricLabel}</div>
                         </td>
-                        <td className="px-3 py-3 text-xs text-slate-500">
+                        <td className="px-3 py-3 text-xs text-[var(--text-dim)]">
                           {t("usage", { ads: row.usageAds, campaigns: row.usageCampaigns })}
                         </td>
-                        <td className="px-3 py-3 text-slate-400">⋮</td>
+                        <td className="px-3 py-3 text-[var(--text-dimmer)]">⋮</td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-color)] px-4 py-3 text-xs text-[var(--text-dim)]">
               <span>
                 {t("pagination", {
                   from: filtered.length ? (page - 1) * pageSize + 1 : 0,
@@ -377,16 +377,16 @@ export function CreativesLibraryView({
                   type="button"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
-                  className="rounded border border-slate-200 px-2 py-1 disabled:opacity-40"
+                  className="rounded border border-[var(--border-color)] px-2 py-1 disabled:opacity-40"
                 >
                   ‹
                 </button>
-                <span className="rounded bg-violet-600 px-2 py-1 text-white">{page}</span>
+                <span className="rounded ui-btn-primary px-2 py-1 text-xs">{page}</span>
                 <button
                   type="button"
                   disabled={page * pageSize >= filtered.length}
                   onClick={() => setPage((p) => p + 1)}
-                  className="rounded border border-slate-200 px-2 py-1 disabled:opacity-40"
+                  className="rounded border border-[var(--border-color)] px-2 py-1 disabled:opacity-40"
                 >
                   ›
                 </button>
@@ -398,8 +398,8 @@ export function CreativesLibraryView({
         {selected ? (
           <aside className="ui-card sticky top-0 max-h-[calc(100vh-8rem)] overflow-y-auto p-4">
             <div className="flex items-start justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">{t("detailTitle")}</h2>
-              <button type="button" onClick={() => setSelectedId(null)} className="text-slate-400 hover:text-slate-600">
+              <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("detailTitle")}</h2>
+              <button type="button" onClick={() => setSelectedId(null)} className="text-[var(--text-dimmer)] hover:text-[var(--text-dim)]">
                 ✕
               </button>
             </div>
@@ -414,39 +414,39 @@ export function CreativesLibraryView({
                 <img
                   src={selected.imageUrl ?? selected.thumbnailUrl ?? ""}
                   alt=""
-                  className="h-44 w-full rounded-xl bg-slate-50 object-contain"
+                  className="h-44 w-full rounded-xl bg-[var(--surface-bg)] object-contain"
                 />
               </button>
             ) : (
-              <div className="mt-4 flex h-32 items-center justify-center rounded-xl bg-slate-100 text-4xl">
+              <div className="mt-4 flex h-32 items-center justify-center rounded-xl bg-[var(--surface-bg)] text-4xl">
                 {typeIcon(selected.type)}
               </div>
             )}
-            <div className="mt-3 font-semibold text-slate-900">{selected.title}</div>
+            <div className="mt-3 font-semibold text-[var(--text-main)]">{selected.title}</div>
             <Badge variant="brand">{selected.format}</Badge>
-            <p className="mt-2 text-xs text-slate-500">ID: {selected.id.slice(0, 8)}…</p>
+            <p className="mt-2 text-xs text-[var(--text-dim)]">ID: {selected.id.slice(0, 8)}…</p>
 
-            <section className="mt-4 border-t border-slate-100 pt-4">
-              <h3 className="text-xs font-semibold uppercase text-slate-500">{t("detailInfo")}</h3>
+            <section className="mt-4 border-t border-[var(--border-color)] pt-4">
+              <h3 className="text-xs font-semibold uppercase text-[var(--text-dim)]">{t("detailInfo")}</h3>
               <dl className="mt-2 space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-slate-500">{t("detailClient")}</dt>
+                  <dt className="text-[var(--text-dim)]">{t("detailClient")}</dt>
                   <dd>
                     {selected.clientSlug ? (
-                      <Link href={`/clients/${selected.clientSlug}`} className="font-medium text-violet-600">
+                      <Link href={`/clients/${selected.clientSlug}`} className="font-medium text-[var(--violet)]">
                         {selected.clientName}
                       </Link>
                     ) : (
-                      <span className="text-slate-800">{selected.clientName}</span>
+                      <span className="text-[var(--text-main)]">{selected.clientName}</span>
                     )}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-slate-500">{t("detailCampaign")}</dt>
-                  <dd className="text-slate-800">{selected.campaignName}</dd>
+                  <dt className="text-[var(--text-dim)]">{t("detailCampaign")}</dt>
+                  <dd className="text-[var(--text-main)]">{selected.campaignName}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-slate-500">{t("detailStatus")}</dt>
+                  <dt className="text-[var(--text-dim)]">{t("detailStatus")}</dt>
                   <dd>
                     <Badge variant={statusVariant(selected.status)}>{t(`status.${selected.status}`)}</Badge>
                   </dd>
@@ -454,8 +454,8 @@ export function CreativesLibraryView({
               </dl>
             </section>
 
-            <section className="mt-4 border-t border-slate-100 pt-4">
-              <h3 className="text-xs font-semibold uppercase text-slate-500">{t("detailPerformance")}</h3>
+            <section className="mt-4 border-t border-[var(--border-color)] pt-4">
+              <h3 className="text-xs font-semibold uppercase text-[var(--text-dim)]">{t("detailPerformance")}</h3>
               <div className="mt-2 grid grid-cols-2 gap-2 text-center text-xs">
                 {(
                   [
@@ -467,13 +467,13 @@ export function CreativesLibraryView({
                     ])
                   ].slice(0, 6) as MetricKey[]
                 ).map((key) => (
-                  <div key={key} className="rounded-lg border border-slate-100 bg-slate-50 p-2">
-                    <div className="font-bold text-slate-900">
+                  <div key={key} className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] p-2">
+                    <div className="font-bold text-[var(--text-main)]">
                       {selected.metrics
                         ? formatMetricValue(key, selected.metrics[key] ?? 0, locale)
                         : "—"}
                     </div>
-                    <div className="text-slate-500">{tMetrics(METRIC_BY_KEY[key].label)}</div>
+                    <div className="text-[var(--text-dim)]">{tMetrics(METRIC_BY_KEY[key].label)}</div>
                   </div>
                 ))}
               </div>

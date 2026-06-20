@@ -88,8 +88,8 @@ export function InviteAcceptClient({
   if (!token) {
     return (
       <div className="space-y-2">
-        <p className="text-sm text-slate-600">{t("missingToken")}</p>
-        <p className="text-xs text-slate-500">{t("missingTokenHint")}</p>
+        <p className="text-sm text-[var(--text-dim)]">{t("missingToken")}</p>
+        <p className="text-xs text-[var(--text-dim)]">{t("missingTokenHint")}</p>
       </div>
     );
   }
@@ -97,12 +97,12 @@ export function InviteAcceptClient({
   if (preview) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-[var(--text-dim)]">
           {t("preview", { workspace: preview.workspaceName, email: preview.email })}
         </p>
         {!isLoggedIn ? (
           <>
-            <p className="text-sm text-slate-600">{t("loginRequired")}</p>
+            <p className="text-sm text-[var(--text-dim)]">{t("loginRequired")}</p>
             <Link
               href={`/login?callbackUrl=${encodeURIComponent(`/${locale}/invite?token=${encodeURIComponent(token)}`)}`}
               className="ui-btn-primary inline-block text-center"
@@ -111,7 +111,7 @@ export function InviteAcceptClient({
             </Link>
           </>
         ) : status === "loading" || status === "idle" ? (
-          <p className="text-sm text-slate-600">{t("accepting")}</p>
+          <p className="text-sm text-[var(--text-dim)]">{t("accepting")}</p>
         ) : status === "ok" ? (
           <div className="space-y-3">
             <p className="text-sm text-emerald-700">{t("accepted")}</p>
@@ -122,7 +122,7 @@ export function InviteAcceptClient({
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-red-700">{t("failed", { error: error ?? "" })}</p>
-            <Link href="/settings" className="text-sm font-medium text-violet-600 underline">
+            <Link href="/settings" className="text-sm font-medium ui-link">
               {t("settingsLink")}
             </Link>
           </div>
@@ -134,7 +134,7 @@ export function InviteAcceptClient({
   if (!isLoggedIn) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-slate-600">{t("loginRequired")}</p>
+        <p className="text-sm text-[var(--text-dim)]">{t("loginRequired")}</p>
         <Link
           href={`/login?callbackUrl=${encodeURIComponent(`/${locale}/invite?token=${encodeURIComponent(token)}`)}`}
           className="ui-btn-primary inline-block text-center"
@@ -146,7 +146,7 @@ export function InviteAcceptClient({
   }
 
   if (status === "loading" || status === "idle") {
-    return <p className="text-sm text-slate-600">{t("accepting")}</p>;
+    return <p className="text-sm text-[var(--text-dim)]">{t("accepting")}</p>;
   }
 
   if (status === "ok") {
@@ -163,7 +163,7 @@ export function InviteAcceptClient({
   return (
     <div className="space-y-3">
       <p className="text-sm text-red-700">{t("failed", { error: error ?? "" })}</p>
-      <Link href="/settings" className="text-sm font-medium text-violet-600 underline">
+      <Link href="/settings" className="text-sm font-medium ui-link">
         {t("settingsLink")}
       </Link>
     </div>

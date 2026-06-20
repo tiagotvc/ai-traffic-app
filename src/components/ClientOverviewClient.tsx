@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -12,12 +12,13 @@ import {
   YAxis
 } from "recharts";
 
+import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { Link } from "@/i18n/navigation";
+import { DsPageHeader } from "@/design-system";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
-import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
-import { SyncRefreshButton } from "@/components/SyncRefreshButton";
-import { Badge } from "@/components/ui/Badge";
+import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { ChartContainer } from "@/components/ui/ChartContainer";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -34,8 +35,8 @@ import { buildQuery, formatDayLabel, pctDelta, resolveRanges } from "@/lib/dashb
 import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
-import { CampaignTableSimpleFooter } from "@/components/campaign/CampaignTableSimpleFooter";
-import { CampaignTypeSelect } from "@/components/CreateCampaignTypeModal";
+import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
+import { CampaignTypeSelectCompact } from "@/components/CreateCampaignTypeModal";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
@@ -103,11 +104,18 @@ function campaignMetric(row: CampaignRow, key: MetricKey): number {
   }
 }
 
-function statusVariant(status?: string): "success" | "warning" | "neutral" {
-  if (status === "ACTIVE") return "success";
-  if (status === "PAUSED") return "warning";
-  return "neutral";
-}
+const STICKY_STATUS_TH =
+  "sticky left-0 z-30 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
+const STICKY_STATUS_TD =
+  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-card)] px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)] group-hover:bg-[var(--row-hover)]";
+const STICKY_NAME_TH =
+  "sticky left-14 z-20 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
+const STICKY_NAME_TD =
+  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-card)] px-4 py-2.5 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)] group-hover:bg-[var(--row-hover)]";
+const STICKY_STATUS_TF =
+  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
+const STICKY_NAME_TF =
+  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2.5 text-left align-top font-semibold text-[var(--text-main)] shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
 
 export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const t = useTranslations("clientOverview");
@@ -117,6 +125,13 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const locale = useLocale();
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
+  const strip = useCommandStripOptional();
+
+  useCommandStripPage({});
+
+  useEffect(() => {
+    strip?.setClientFilter(clientId);
+  }, [clientId, strip]);
 
   const customMetricNames = Object.fromEntries(
     tableLayout.customMetrics.map((m) => [m.id, m.name])
@@ -124,7 +139,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
 
   const [name, setName] = useState("");
   const [dominantPreset, setDominantPreset] = useState<string>("default");
-  const [period, setPeriod] = useState<PeriodState>({ preset: "thisWeek", since: "", until: "" });
+  const period: PeriodState = strip?.period ?? { preset: "thisWeek", since: "", until: "" };
   const [userChartMetrics, setUserChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
   const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
@@ -134,6 +149,8 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([]);
   const [presets, setPresets] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
+  const [, startStatusTransition] = useTransition();
 
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
@@ -251,6 +268,35 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
     });
   }
 
+  function toggleCampaignStatus(metaCampaignId: string, currentStatus?: string) {
+    const action = currentStatus === "ACTIVE" ? "pause" : "activate";
+    setStatusPendingId(metaCampaignId);
+    startStatusTransition(async () => {
+      try {
+        const res = await fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/actions`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action })
+        });
+        const j = await res.json();
+        if (j.ok) {
+          const next = action === "activate" ? "ACTIVE" : "PAUSED";
+          setCampaigns((prev) =>
+            prev.map((c) => (c.metaCampaignId === metaCampaignId ? { ...c, status: next } : c))
+          );
+        }
+      } finally {
+        setStatusPendingId(null);
+      }
+    });
+  }
+
+  function statusLabel(status?: string) {
+    if (status === "ACTIVE") return tCampaigns("statusActive");
+    if (status === "PAUSED") return tCampaigns("statusPaused");
+    return tCampaigns("statusInactive");
+  }
+
   useEffect(() => {
     fetch("/api/clients")
       .then((r) => r.json())
@@ -343,23 +389,14 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Link href="/clients" className="text-xs font-medium text-slate-500 hover:text-slate-700">
+      <DsPageHeader
+        breadcrumbs={
+          <Link href="/clients" className="ui-link">
             ← {t("breadcrumb")}
           </Link>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-            {name || t("client")}
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SyncRefreshButton clientId={clientId} />
-          <PeriodFilter value={period} onChange={setPeriod} />
-          <Link href={`/clients/${clientId}/settings`} className="ui-btn-secondary text-sm">
-            {t("editButton")}
-          </Link>
-        </div>
-      </div>
+        }
+        title={name || t("client")}
+      />
 
       <ClientDetailTabs clientSlug={clientId} activeTab="overview" />
 
@@ -384,7 +421,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           <button
             type="button"
             onClick={() => setMetricsModalOpen(true)}
-            className="text-xs font-semibold text-violet-600 hover:text-violet-500"
+            className="ui-link text-xs font-semibold"
           >
             + {t("seeMore")}
           </button>
@@ -405,8 +442,8 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
                   active
                     ? "border-transparent text-white"
                     : disabled
-                      ? "cursor-not-allowed border-slate-200 text-slate-300"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      ? "cursor-not-allowed border-[var(--border-color)] text-[var(--text-dimmer)]"
+                      : "border-[var(--border-color)] text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                 }`}
                 style={active ? { background: def.color } : undefined}
               >
@@ -460,7 +497,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
               </LineChart>
           </ChartContainer>
         ) : (
-          <div className="mt-4 flex h-56 items-center justify-center rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">
+          <div className="mt-4 flex h-56 items-center justify-center rounded-xl border border-dashed border-[var(--border-color)] text-xs text-[var(--text-dim)]">
             {t("noChartData")}
           </div>
         )}
@@ -468,52 +505,54 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
 
       {/* Campanhas ativas */}
       <div className="ui-card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-          <div className="text-sm font-semibold text-slate-800">{t("campaignsTitle")}</div>
+        <div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
+          <div className="text-sm font-semibold text-[var(--text-main)]">{t("campaignsTitle")}</div>
           <CampaignTableColumnsButton />
         </div>
         {loading ? (
           <TableSkeleton bare rows={4} columns={["media", "badge", "select", "wide"]} />
         ) : campaigns.length === 0 ? (
-          <p className="p-6 text-center text-sm text-slate-500">{t("noCampaigns")}</p>
+          <p className="p-6 text-center text-sm text-[var(--text-dim)]">{t("noCampaigns")}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                  <th className="px-4 py-2 font-medium">{t("colCampaign")}</th>
-                  <th className="px-3 py-2 font-medium">{t("colStatus")}</th>
-                  <th className="px-3 py-2 font-medium">{tPresets("label")}</th>
+            <table className="w-full min-w-[680px] text-sm">
+              <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
+                <tr>
+                  <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>{t("colStatus")}</th>
+                  <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>{t("colCampaign")}</th>
+                  <th className="whitespace-nowrap px-3 py-2 text-center">{tPresets("label")}</th>
                   <CampaignTableHead
                     columns={metricColumns}
                     customMetricNames={customMetricNames}
                   />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {campaigns.map((c) => {
                   const preset = presets[c.metaCampaignId] ?? c.preset ?? "default";
                   return (
-                    <tr key={c.metaCampaignId} className="align-top hover:bg-slate-50/60">
-                      <td className="px-4 py-3">
+                    <tr
+                      key={c.metaCampaignId}
+                      className="group border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]"
+                    >
+                      <td className={STICKY_STATUS_TD}>
+                        <CampaignStatusToggle
+                          active={c.status === "ACTIVE"}
+                          disabled={statusPendingId === c.metaCampaignId}
+                          ariaLabel={statusLabel(c.status)}
+                          onChange={() => toggleCampaignStatus(c.metaCampaignId, c.status)}
+                        />
+                      </td>
+                      <td className={STICKY_NAME_TD}>
                         <Link
                           href={`/campaigns/${c.metaCampaignId}?client=${encodeURIComponent(c.clientSlug || clientId)}`}
-                          className="font-medium text-slate-800 hover:text-violet-700 hover:underline"
+                          className="ui-link block w-full whitespace-normal break-words text-left font-medium"
                         >
                           {c.campaignName}
                         </Link>
                       </td>
-                      <td className="px-3 py-3">
-                        <Badge variant={statusVariant(c.status)}>
-                        {c.status === "ACTIVE"
-                          ? tCampaigns("statusActive")
-                          : c.status === "PAUSED"
-                            ? tCampaigns("statusPaused")
-                            : tCampaigns("statusInactive")}
-                      </Badge>
-                      </td>
-                      <td className="px-3 py-3">
-                        <CampaignTypeSelect
+                      <td className="relative px-3 py-2.5 text-center">
+                        <CampaignTypeSelectCompact
                           value={preset}
                           customTypes={customTypes}
                           onChange={(p) => changePreset(c.metaCampaignId, p)}
@@ -525,21 +564,45 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
                           col={col}
                           row={c}
                           customMetrics={tableLayout.customMetricsMap}
-                          className="px-4 py-3"
                         />
                       ))}
                     </tr>
                   );
                 })}
               </tbody>
-              <CampaignTableSimpleFooter
-                rowCount={campaigns.length}
-                totalLabel={tCampaigns("rowTotal")}
-                leadingColSpan={3}
-                metricColumns={metricColumns}
-                totals={campaignTotals}
-                customMetrics={tableLayout.customMetricsMap}
-              />
+              <tfoot className="border-t-2 border-[var(--border-color)] bg-[var(--surface-thead)]/80">
+                <tr>
+                  <td className={`${STICKY_STATUS_TF} text-[var(--text-dimmer)]`}>—</td>
+                  <td className={STICKY_NAME_TF}>
+                    {tCampaigns("rowTotal")} ({campaigns.length})
+                  </td>
+                  <td className="px-3 py-2.5 text-center text-[var(--text-dimmer)]">—</td>
+                  {metricColumns.map((col) => {
+                    const key = columnRefKey(col);
+                    const val = campaignTotals[key];
+                    let content = "—";
+                    if (val != null && col.kind === "metric") {
+                      content = formatMetricValue(col.key, val, locale);
+                    } else if (val != null && col.kind === "custom") {
+                      const fmt = tableLayout.customMetricsMap[col.id]?.format ?? "number";
+                      if (fmt === "currency") content = formatBRL(val, locale);
+                      else if (fmt === "percent") content = formatPercent(val, 2, locale);
+                      else if (fmt === "multiplier") content = formatRoas(val, locale);
+                      else content = String(Math.round(val * 100) / 100);
+                    } else if (val != null) {
+                      content = String(val);
+                    }
+                    return (
+                      <td
+                        key={key}
+                        className="px-3 py-2.5 text-center font-semibold tabular-nums text-[var(--text-main)]"
+                      >
+                        {content}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

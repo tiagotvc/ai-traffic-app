@@ -16,7 +16,7 @@ export function LearningsViewTabs({
   const t = useTranslations("brainInsights");
 
   return (
-    <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
+    <div className="flex gap-1 rounded-lg bg-[var(--surface-thead)] p-0.5">
       {VIEWS.map((view) => {
         const active = selected === view;
         return (
@@ -28,8 +28,8 @@ export function LearningsViewTabs({
             className={[
               "rounded-md px-2.5 py-1 text-xs font-medium transition",
               active
-                ? "bg-white text-violet-800 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
+                ? "bg-white text-[var(--violet)] shadow-sm"
+                : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
             ].join(" ")}
           >
             {t(`learningsView.${view}`)}

@@ -69,27 +69,27 @@ export function MetricPickerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onMouseDown={onClose}
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-[var(--surface-card)] shadow-xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="border-b border-slate-100 px-5 py-4">
+        <div className="border-b border-[var(--border-color)] px-5 py-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-slate-900">{t("metricsModalTitle")}</h2>
+            <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">{t("metricsModalTitle")}</h2>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="rounded-lg p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
               aria-label="close"
             >
               ✕
             </button>
           </div>
-          <p className="mt-1 text-xs text-slate-500">{t("metricsModalHint")}</p>
+          <p className="mt-1 text-xs text-[var(--text-dim)]">{t("metricsModalHint")}</p>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -103,7 +103,7 @@ export function MetricPickerModal({
           {METRIC_CATEGORIES.map((cat) =>
             grouped[cat].length ? (
               <div key={cat} className="mb-4 last:mb-0">
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
                   {tCat(cat)}
                 </div>
                 <div className="divide-y divide-slate-50">
@@ -114,7 +114,7 @@ export function MetricPickerModal({
                       <label
                         key={m.key}
                         className={`flex cursor-pointer items-center gap-3 py-2 ${
-                          disabled ? "cursor-not-allowed opacity-40" : "hover:bg-slate-50"
+                          disabled ? "cursor-not-allowed opacity-40" : "hover:bg-[var(--surface-bg)]"
                         }`}
                       >
                         <input
@@ -122,13 +122,13 @@ export function MetricPickerModal({
                           checked={checked}
                           disabled={disabled}
                           onChange={() => toggle(m.key)}
-                          className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                          className="h-4 w-4 rounded border-[var(--border-color)] text-[var(--violet)] focus:ring-violet-500"
                         />
                         <span
                           className="h-2.5 w-2.5 shrink-0 rounded-full"
                           style={{ background: m.color }}
                         />
-                        <span className="text-sm text-slate-700">{tMetrics(m.label)}</span>
+                        <span className="text-sm text-[var(--text-dim)]">{tMetrics(m.label)}</span>
                       </label>
                     );
                   })}
@@ -139,8 +139,8 @@ export function MetricPickerModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-5 py-3">
-          <span className="text-xs text-slate-500">{t("metricsSelected", { count: draft.length })}</span>
+        <div className="flex items-center justify-between gap-2 border-t border-[var(--border-color)] px-5 py-3">
+          <span className="text-xs text-[var(--text-dim)]">{t("metricsSelected", { count: draft.length })}</span>
           <div className="flex items-center gap-2">
             <button type="button" className="ui-btn-secondary" onClick={onClose}>
               {t("cancel")}

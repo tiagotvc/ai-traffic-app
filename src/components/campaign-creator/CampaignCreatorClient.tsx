@@ -9,10 +9,17 @@ import { CampaignCreatorPreview } from "@/components/campaign-creator/CampaignCr
 import { CampaignCreatorStepPanel } from "@/components/campaign-creator/CampaignCreatorStepPanel";
 import { CampaignCreatorTree } from "@/components/campaign-creator/CampaignCreatorTree";
 import {
+  CampaignCreatorUxFooter,
+  CampaignCreatorUxHeader,
+  CampaignCreatorUxScorePanel,
+  CampaignCreatorUxStepper
+} from "@/uxpilot-ui/adapters/CampaignCreatorUxChrome";
+import {
   CampaignDraftProvider,
   useCampaignDraft
 } from "@/components/campaign-creator/CampaignDraftContext";
 import { ObjectiveSelectModal } from "@/components/campaign-creator/ObjectiveSelectModal";
+import { ObjectiveStep } from "@/components/campaign-creator/steps/ObjectiveStep";
 import { AdSetStep } from "@/components/campaign-creator/steps/AdSetStep";
 import { AdStep } from "@/components/campaign-creator/steps/AdStep";
 import { CampaignStep } from "@/components/campaign-creator/steps/CampaignStep";
@@ -22,7 +29,7 @@ import { getActiveAd, isAddAdDraft, type CreatorNode, validatePublishDraft } fro
 
 const STEP_ORDER: CreatorNode[] = ["campaign", "adset", "ad", "review"];
 
-function CampaignCreatorInner() {
+function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "uxpilot" }) {
   const t = useTranslations("campaignCreator");
   const router = useRouter();
   const {
@@ -130,10 +137,62 @@ function CampaignCreatorInner() {
     });
   }, [draftId, flushSave, payload, router, t]);
 
+  useEffect(() => {
+    if (variant !== "uxpilot") return;
+    const shell = document.querySelector<HTMLElement>("[data-campaign-creator-shell]")?.closest("main");
+    if (!shell) return;
+    const prev = shell.style.overflow;
+    shell.style.overflow = "hidden";
+    return () => {
+      shell.style.overflow = prev;
+    };
+  }, [variant]);
+
   if (addAdLoading) {
     return (
-      <div className="-mx-6 -my-6 flex min-h-[calc(100vh-4rem)] items-center justify-center bg-[var(--surface)]">
-        <p className="text-sm text-slate-500">{t("addAdLoading")}</p>
+      <div
+        className={
+          variant === "uxpilot"
+            ? "flex h-full items-center justify-center"
+            : "-mx-6 -my-6 flex min-h-[calc(100vh-4rem)] items-center justify-center bg-[var(--surface)]"
+        }
+      >
+        <p className="text-sm text-[var(--text-dim)]">{t("addAdLoading")}</p>
+      </div>
+    );
+  }
+
+  const stepPanel = (
+    <CampaignCreatorStepPanel stepKey={activeNode} direction={stepDirection}>
+      {!addAdMode && activeNode === "campaign" ? <CampaignStep /> : null}
+      {!addAdMode && activeNode === "adset" ? <AdSetStep /> : null}
+      {activeNode === "ad" ? <AdStep /> : null}
+      {activeNode === "review" ? <ReviewStep /> : null}
+    </CampaignCreatorStepPanel>
+  );
+
+  if (variant === "uxpilot") {
+    const onObjectivePhase = !addAdMode && !objectiveChosen;
+    return (
+      <div
+        className="flex h-full min-h-0 flex-col overflow-hidden"
+        style={{ background: "var(--surface-bg)" }}
+      >
+        <CampaignCreatorUxHeader onObjectivePhase={onObjectivePhase} />
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <CampaignCreatorUxStepper onObjectivePhase={onObjectivePhase} />
+          <main className="min-w-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin", background: "var(--surface-bg)" }}>
+            <div className="mx-auto w-full max-w-3xl space-y-4 px-6 py-6">
+              {onObjectivePhase ? <ObjectiveStep /> : stepPanel}
+              {publishError ? <p className="text-xs text-red-600">{publishError}</p> : null}
+            </div>
+          </main>
+          <CampaignCreatorUxScorePanel
+            onPublish={handlePublish}
+            publishing={isPending}
+            onObjectivePhase={onObjectivePhase}
+          />
+        </div>
       </div>
     );
   }
@@ -148,7 +207,7 @@ function CampaignCreatorInner() {
       />
       <CampaignCreatorHeader />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="hidden w-56 shrink-0 border-r border-slate-200 bg-white lg:block">
+        <div className="hidden w-56 shrink-0 border-r border-[var(--border-color)] bg-[var(--surface-card)] lg:block">
           <CampaignCreatorTree />
         </div>
         <main className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6">
@@ -165,7 +224,7 @@ function CampaignCreatorInner() {
             {publishError ? <p className="text-xs text-red-600">{publishError}</p> : null}
           </div>
         </main>
-        <div className="hidden w-72 shrink-0 border-l border-slate-200 bg-white xl:block">
+        <div className="hidden w-72 shrink-0 border-l border-[var(--border-color)] bg-[var(--surface-card)] xl:block">
           <CampaignCreatorPreview />
         </div>
       </div>
@@ -177,7 +236,8 @@ function CampaignCreatorInner() {
 export function CampaignCreatorClient({
   initialDraftId,
   initialClientSlug,
-  initialAddAd
+  initialAddAd,
+  variant = "uxpilot"
 }: {
   initialDraftId?: string;
   initialClientSlug?: string;
@@ -186,6 +246,7 @@ export function CampaignCreatorClient({
     adsetId: string;
     clientSlug?: string;
   };
+  variant?: "legacy" | "uxpilot";
 }) {
   return (
     <CampaignDraftProvider
@@ -193,7 +254,7 @@ export function CampaignCreatorClient({
       initialClientSlug={initialClientSlug}
       initialAddAd={initialAddAd}
     >
-      <CampaignCreatorInner />
+      <CampaignCreatorInner variant={variant} />
     </CampaignDraftProvider>
   );
 }

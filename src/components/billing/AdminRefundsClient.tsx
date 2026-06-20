@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
+import { DsPageHeader } from "@/design-system";
 
 type RefundRow = {
   id: string;
@@ -45,12 +45,12 @@ export function AdminRefundsClient() {
 
   return (
     <div className="w-full space-y-4">
-      <CompactPageHeader title={t("title")} subtitle={t("refundsSubtitle")} />
+      <DsPageHeader title={t("title")} subtitle={t("refundsSubtitle")} />
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-[11px] uppercase">
+            <thead className="bg-[var(--surface-thead)] text-[11px] uppercase">
               <tr>
                 <th className="px-3 py-2">{t("colDate")}</th>
                 <th className="px-3 py-2">{t("colProvider")}</th>

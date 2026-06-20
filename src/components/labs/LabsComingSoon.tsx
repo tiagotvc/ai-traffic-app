@@ -7,7 +7,7 @@ export function LabsComingSoon() {
 
   return (
     <div className="ui-card mx-auto max-w-lg p-10 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-violet-600">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(124,58,237,0.06)]0/10 text-[var(--violet)]">
         <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
           <path
             strokeLinecap="round"
@@ -16,11 +16,11 @@ export function LabsComingSoon() {
           />
         </svg>
       </div>
-      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-violet-600">
+      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[var(--violet)]">
         {t("labsComingSoonBadge")}
       </p>
-      <h2 className="mt-2 text-xl font-bold text-slate-900">{t("labsComingSoonTitle")}</h2>
-      <p className="mt-2 text-sm text-slate-600">{t("labsComingSoonBody")}</p>
+      <h2 className="mt-2 text-xl font-bold text-[var(--text-main)]">{t("labsComingSoonTitle")}</h2>
+      <p className="mt-2 text-sm text-[var(--text-dim)]">{t("labsComingSoonBody")}</p>
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
-import { PageHeader } from "@/components/layout/PageHeader";
+import { DsPageHeader } from "@/design-system";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
@@ -89,10 +89,10 @@ export function AlertsClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <DsPageHeader
+        breadcrumbs={t("breadcrumb")}
         title={t("title")}
         subtitle={t("variationsSubtitle")}
-        breadcrumbs={t("breadcrumb")}
         actions={
           <>
             <SyncNowButton />
@@ -105,14 +105,16 @@ export function AlertsClient() {
 
       {/* Controles: período + nível + cliente */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5 shadow-sm">
+        <div className="inline-flex rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-0.5 shadow-sm">
           {PERIOD_OPTIONS.map((d) => (
             <button
               key={d}
               type="button"
               onClick={() => setDays(d)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                days === d ? "bg-violet-100 text-violet-700" : "text-slate-500 hover:bg-slate-50"
+                days === d
+                  ? "bg-[rgba(245,166,35,0.15)] text-[var(--amber)]"
+                  : "text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
               }`}
             >
               {t("periodDays", { days: d })}
@@ -120,14 +122,16 @@ export function AlertsClient() {
           ))}
         </div>
 
-        <div className="inline-flex rounded-xl border border-slate-200 bg-white p-0.5 shadow-sm">
+        <div className="inline-flex rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-0.5 shadow-sm">
           {LEVELS.map((l) => (
             <button
               key={l}
               type="button"
               onClick={() => setLevel(l)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                level === l ? "bg-violet-100 text-violet-700" : "text-slate-500 hover:bg-slate-50"
+                level === l
+                  ? "bg-[rgba(245,166,35,0.15)] text-[var(--amber)]"
+                  : "text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
               }`}
             >
               {levelLabel(l)}
@@ -163,7 +167,7 @@ export function AlertsClient() {
 
       <div className="ui-card overflow-hidden">
         {loading ? (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-[var(--border-color)]">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="space-y-2 p-4">
                 <div className="flex items-center gap-2">
@@ -176,9 +180,9 @@ export function AlertsClient() {
             ))}
           </div>
         ) : items.length === 0 ? (
-          <p className="p-10 text-center text-sm text-slate-500">{t("emptyVariations")}</p>
+          <p className="p-10 text-center text-sm text-[var(--text-dim)]">{t("emptyVariations")}</p>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-[var(--border-color)]">
             {items.map((it) => {
               const good = it.severity === "positive";
               const arrow = it.direction === "up" ? "▲" : "▼";
@@ -193,7 +197,7 @@ export function AlertsClient() {
                 <div
                   key={it.id}
                   className={`flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between ${
-                    it.severity === "critical" ? "bg-rose-50/30" : ""
+                    it.severity === "critical" ? "bg-[rgba(239,68,68,0.06)]" : ""
                   }`}
                 >
                   <div className="min-w-0 flex-1">
@@ -206,21 +210,21 @@ export function AlertsClient() {
                             : t("severityWarning")}
                       </Badge>
                       {it.entityName ? (
-                        <span className="text-xs font-medium text-slate-500">{it.entityName}</span>
+                        <span className="text-xs font-medium text-[var(--text-dim)]">{it.entityName}</span>
                       ) : (
-                        <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
                           {t("levelGeneral")}
                         </span>
                       )}
                     </div>
-                    <div className="mt-1.5 text-sm text-slate-800">
+                    <div className="mt-1.5 text-sm text-[var(--text-main)]">
                       <span className="font-semibold">{metricLabel}</span> {verb}{" "}
                       <span className={`font-semibold ${deltaColor}`}>
                         {arrow} {Math.abs(it.deltaPct).toFixed(0)}%
                       </span>{" "}
-                      <span className="text-slate-400">{t("vsPrevious")}</span>
+                      <span className="text-[var(--text-dimmer)]">{t("vsPrevious")}</span>
                     </div>
-                    <div className="mt-0.5 text-xs text-slate-500">
+                    <div className="mt-0.5 text-xs text-[var(--text-dim)]">
                       {t("fromTo", {
                         prev: formatMetricValue(it.metric, it.previousValue, locale),
                         cur: formatMetricValue(it.metric, it.currentValue, locale)

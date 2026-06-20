@@ -2,6 +2,8 @@ export type PeriodPreset =
   | "today"
   | "yesterday"
   | "thisWeek"
+  | "thisMonth"
+  | "thisQuarter"
   | "last7"
   | "last14"
   | "last15"
@@ -82,6 +84,34 @@ export function thisWeekRange(timeZone = DEFAULT_REPORT_TZ) {
   return { since, until, days };
 }
 
+export function startOfMonthIso(timeZone = DEFAULT_REPORT_TZ) {
+  const today = todayIso(timeZone);
+  return `${today.slice(0, 7)}-01`;
+}
+
+export function startOfQuarterIso(timeZone = DEFAULT_REPORT_TZ) {
+  const today = todayIso(timeZone);
+  const month = Number(today.slice(5, 7));
+  const quarterStartMonth = Math.floor((month - 1) / 3) * 3 + 1;
+  return `${today.slice(0, 4)}-${String(quarterStartMonth).padStart(2, "0")}-01`;
+}
+
+/** Este mês: do dia 1 até ontem (padrão Meta). */
+export function thisMonthRange(timeZone = DEFAULT_REPORT_TZ) {
+  const since = startOfMonthIso(timeZone);
+  const until = yesterdayIso();
+  const days = Math.max(1, Math.round((Date.parse(until) - Date.parse(since)) / 86_400_000) + 1);
+  return { since, until, days };
+}
+
+/** Trimestre atual: do 1º dia do trimestre até ontem. */
+export function thisQuarterRange(timeZone = DEFAULT_REPORT_TZ) {
+  const since = startOfQuarterIso(timeZone);
+  const until = yesterdayIso();
+  const days = Math.max(1, Math.round((Date.parse(until) - Date.parse(since)) / 86_400_000) + 1);
+  return { since, until, days };
+}
+
 export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
   const period = url.searchParams.get("period")?.trim() as PeriodPreset | undefined;
   const sinceParam = url.searchParams.get("since")?.trim();
@@ -105,6 +135,16 @@ export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
   if (period === "thisWeek") {
     const r = thisWeekRange();
     return { preset: "thisWeek", since: r.since, until: r.until, days: r.days, allTime: false };
+  }
+
+  if (period === "thisMonth") {
+    const r = thisMonthRange();
+    return { preset: "thisMonth", since: r.since, until: r.until, days: r.days, allTime: false };
+  }
+
+  if (period === "thisQuarter") {
+    const r = thisQuarterRange();
+    return { preset: "thisQuarter", since: r.since, until: r.until, days: r.days, allTime: false };
   }
 
   if (period === "last15") {
@@ -206,6 +246,9 @@ export function periodToSearchParams(period: {
     // server recomputa a partir do preset (segunda → hoje)
     return qs;
   }
+  if (period.preset === "thisMonth" || period.preset === "thisQuarter") {
+    return qs;
+  }
   if (period.preset === "custom" && period.since && period.until) {
     qs.set("since", period.since);
     qs.set("until", period.until);
@@ -226,6 +269,18 @@ export function periodStateToParsed(state: {
   since: string;
   until: string;
 }): ParsedPeriod {
+  if (state.preset === "thisMonth") {
+    const r = thisMonthRange();
+    return { preset: "thisMonth", since: r.since, until: r.until, days: r.days, allTime: false };
+  }
+  if (state.preset === "thisQuarter") {
+    const r = thisQuarterRange();
+    return { preset: "thisQuarter", since: r.since, until: r.until, days: r.days, allTime: false };
+  }
+  if (state.preset === "thisWeek") {
+    const r = thisWeekRange();
+    return { preset: "thisWeek", since: r.since, until: r.until, days: r.days, allTime: false };
+  }
   return {
     preset: state.preset,
     since: state.preset === "custom" ? state.since || null : null,
@@ -239,9 +294,13 @@ export function periodStateToParsed(state: {
             ? 15
             : state.preset === "last30"
               ? 30
-              : state.preset === "today" || state.preset === "yesterday"
-                ? 1
-                : null,
+              : state.preset === "thisMonth"
+                ? thisMonthRange().days
+                : state.preset === "thisQuarter"
+                  ? thisQuarterRange().days
+                  : state.preset === "today" || state.preset === "yesterday"
+                    ? 1
+                    : null,
     allTime: state.preset === "all"
   };
 }
@@ -260,6 +319,18 @@ export function periodToMetaInsightsRange(period: ParsedPeriod): {
   if (period.preset === "custom" && period.since && period.until) {
     return { since: period.since, until: period.until };
   }
+  if (period.preset === "thisMonth") {
+    const r = thisMonthRange();
+    return { since: r.since, until: r.until };
+  }
+  if (period.preset === "thisQuarter") {
+    const r = thisQuarterRange();
+    return { since: r.since, until: r.until };
+  }
+  if (period.preset === "thisWeek") {
+    const r = thisWeekRange();
+    return { since: r.since, until: r.until };
+  }
   const fallback = rollingDaysEndingYesterday(period.days ?? 7);
   return {
     since: period.since ?? fallback.since,
@@ -274,6 +345,8 @@ export function formatPeriodLabel(
     today: string;
     yesterday: string;
     thisWeek: string;
+    thisMonth: string;
+    thisQuarter: string;
     last7: string;
     last14: string;
     last15: string;
@@ -286,6 +359,8 @@ export function formatPeriodLabel(
   if (period.preset === "today") return labels.today;
   if (period.preset === "yesterday") return labels.yesterday;
   if (period.preset === "thisWeek") return labels.thisWeek;
+  if (period.preset === "thisMonth") return labels.thisMonth;
+  if (period.preset === "thisQuarter") return labels.thisQuarter;
   if (period.preset === "last7") return labels.last7;
   if (period.preset === "last14") return labels.last14;
   if (period.preset === "last15") return labels.last15;

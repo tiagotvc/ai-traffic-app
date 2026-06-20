@@ -37,7 +37,7 @@ export function CampaignHeaderCell({
       <div className={`flex items-center gap-1.5 ${isCampaign ? "" : "justify-center"}`}>
         <button
           type="button"
-          className="cursor-grab text-slate-300 hover:text-slate-500 active:cursor-grabbing"
+          className="cursor-grab text-[var(--text-dimmer)] hover:text-[var(--text-dim)] active:cursor-grabbing"
           aria-label="Reordenar coluna"
           {...attributes}
           {...listeners}
@@ -47,10 +47,10 @@ export function CampaignHeaderCell({
         <button
           type="button"
           onClick={() => onSort(col)}
-          className="flex items-center gap-1 uppercase tracking-wide hover:text-slate-800"
+          className="flex items-center gap-1 uppercase tracking-wide hover:text-[var(--text-main)]"
         >
           <span>{label}</span>
-          <span className="text-[10px] text-violet-600">
+          <span className="text-[10px] text-[var(--violet)]">
             {sortActive ? (sortDir === "asc" ? "▲" : "▼") : ""}
           </span>
         </button>

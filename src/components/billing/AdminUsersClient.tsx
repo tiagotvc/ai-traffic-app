@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { AdminUsersListSkeleton } from "@/components/billing/BillingSkeletons";
-import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
+import { DsPageHeader } from "@/design-system";
 import {
   ADMIN_USERS_ROW_GRID,
   AdminIcon,
@@ -73,7 +73,7 @@ function formatDate(iso: string) {
 }
 
 const HDR =
-  "flex min-h-[28px] items-center text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap";
+  "flex min-h-[28px] items-center text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-dimmer)] whitespace-nowrap";
 
 const CELL = "flex min-h-[28px] items-center";
 
@@ -95,7 +95,7 @@ function RoleBadge({
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
+    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-[var(--text-dim)]">
       {userLabel}
     </span>
   );
@@ -145,12 +145,12 @@ export function AdminUsersClient() {
   return (
     <div className="flex min-h-[calc(100dvh-7.5rem)] flex-col">
       <div className={`flex-1 space-y-4 ${loading ? "opacity-60" : ""}`}>
-        <CompactPageHeader
+        <DsPageHeader
           title={t("usersTitle")}
           subtitle={t("usersSubtitle")}
-          badge={
-            <div className="rounded-xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white px-3 py-2 shadow-sm">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-600">
+          actions={
+            <div className="rounded-xl border border-[rgba(124,58,237,0.15)] bg-gradient-to-br from-violet-50 to-white px-3 py-2 shadow-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--violet)]">
                 {t("usersTotal", { count: total })}
               </p>
             </div>
@@ -158,7 +158,7 @@ export function AdminUsersClient() {
         />
 
         <form onSubmit={onSearch} className="relative max-w-xl">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dimmer)]">
             <AdminIcon name="search" className="h-3.5 w-3.5" />
           </span>
           <input
@@ -166,11 +166,11 @@ export function AdminUsersClient() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("usersSearchPlaceholder")}
-            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-24 text-xs text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+            className="w-full rounded-xl border border-[var(--border-color)] bg-white py-2 pl-9 pr-24 text-xs text-[var(--text-main)] shadow-sm transition placeholder:text-[var(--text-dimmer)] focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
           />
           <button
             type="submit"
-            className="absolute right-1 top-1/2 -translate-y-1/2 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700"
+            className="absolute right-1 top-1/2 -translate-y-1/2 ui-btn-primary text-xs"
           >
             {t("usersSearchBtn")}
           </button>
@@ -188,13 +188,13 @@ export function AdminUsersClient() {
 
           <div className="space-y-2.5">
             {users.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 px-4 py-12 text-center">
-                <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-color)] bg-white/60 px-4 py-12 text-center">
+                <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-[var(--text-dimmer)]">
                   <AdminIcon name="user" className="h-5 w-5" />
                 </span>
-                <p className="font-medium text-slate-700">{t("usersEmpty")}</p>
+                <p className="font-medium text-[var(--text-dim)]">{t("usersEmpty")}</p>
                 {search ? (
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 text-sm text-[var(--text-dimmer)]">
                     {t("usersSearchPlaceholder")}: “{search}”
                   </p>
                 ) : null}
@@ -203,13 +203,13 @@ export function AdminUsersClient() {
               users.map((u) => (
                 <article
                   key={u.id}
-                  className={`group ${ADMIN_USERS_ROW_GRID} rounded-xl border border-slate-200/90 bg-white py-2.5 shadow-sm transition hover:border-slate-300 hover:shadow-md`}
+                  className={`group ${ADMIN_USERS_ROW_GRID} rounded-xl border border-[var(--border-color)]/90 bg-white py-2.5 shadow-sm transition hover:border-slate-300 hover:shadow-md`}
                 >
                   <div className={`${CELL} min-w-0 gap-3.5`}>
                     <UserAvatar name={u.name} email={u.email} />
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-900">{u.name || "—"}</p>
-                      <p className="mt-0.5 truncate text-xs text-slate-500">{u.email}</p>
+                      <p className="truncate font-semibold text-[var(--text-main)]">{u.name || "—"}</p>
+                      <p className="mt-0.5 truncate text-xs text-[var(--text-dim)]">{u.email}</p>
                     </div>
                   </div>
 
@@ -233,14 +233,14 @@ export function AdminUsersClient() {
                     />
                   </div>
 
-                  <div className={`${CELL} whitespace-nowrap text-xs text-slate-500`}>
+                  <div className={`${CELL} whitespace-nowrap text-xs text-[var(--text-dim)]`}>
                     {formatDate(u.createdAt)}
                   </div>
 
                   <div className={`${CELL} justify-end`}>
                     <Link
                       href={`/admin/users/${u.id}`}
-                      className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[11px] font-semibold text-violet-700 shadow-sm transition group-hover:border-violet-300 group-hover:bg-violet-100"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[rgba(124,58,237,0.2)] bg-[rgba(124,58,237,0.06)] px-2.5 py-1.5 text-[11px] font-semibold text-violet-700 shadow-sm transition group-hover:border-violet-300 group-hover:bg-[rgba(124,58,237,0.1)]"
                     >
                       {t("usersManage")}
                       <AdminIcon name="chevron" className="h-3.5 w-3.5" />
@@ -253,26 +253,26 @@ export function AdminUsersClient() {
         </div>
       </div>
 
-      <footer className="sticky bottom-0 z-10 -mx-6 mt-6 border-t border-slate-200/80 bg-[#f4f6f9]/90 px-6 py-3 backdrop-blur-md lg:-mx-8 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+      <footer className="sticky bottom-0 z-10 -mx-6 mt-6 border-t border-[var(--border-color)]/80 bg-[var(--surface-bg)]/90 px-6 py-3 backdrop-blur-md lg:-mx-8 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-dim)]">
           <span>{t("usersTotal", { count: total })}</span>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               disabled={page <= 1 || loading}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-[var(--border-color)] bg-white px-2.5 py-1.5 font-medium text-[var(--text-dim)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("usersPrev")}
             </button>
-            <span className="min-w-[4rem] text-center font-medium text-slate-700">
+            <span className="min-w-[4rem] text-center font-medium text-[var(--text-dim)]">
               {page} / {totalPages}
             </span>
             <button
               type="button"
               disabled={page >= totalPages || loading}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-[var(--border-color)] bg-white px-2.5 py-1.5 font-medium text-[var(--text-dim)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("usersNext")}
             </button>

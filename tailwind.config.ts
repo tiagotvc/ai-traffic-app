@@ -7,26 +7,45 @@ export default {
     extend: {
       colors: {
         sidebar: {
-          DEFAULT: "#0f172a",
-          hover: "#1e293b",
-          line: "#1e293b"
+          DEFAULT: "var(--sidebar-bg)",
+          border: "var(--sidebar-border)"
         },
         brand: {
-          DEFAULT: "#7c3aed",
-          dark: "#6d28d9",
+          DEFAULT: "var(--violet-bright)",
+          dark: "var(--violet)",
           light: "#ede9fe",
           muted: "#a78bfa"
         },
+        amber: {
+          DEFAULT: "var(--amber)",
+          bright: "var(--amber-bright)"
+        },
         surface: {
-          DEFAULT: "#f1f5f9",
-          card: "#ffffff",
-          muted: "#f8fafc",
-          line: "#e2e8f0"
+          DEFAULT: "var(--surface-bg)",
+          card: "var(--surface-card)",
+          header: "var(--surface-header)",
+          thead: "var(--surface-thead)",
+          line: "var(--border-color)"
+        },
+        ds: {
+          main: "var(--text-main)",
+          dim: "var(--text-dim)",
+          dimmer: "var(--text-dimmer)",
+          success: "var(--success)",
+          danger: "var(--danger)",
+          violet: "var(--violet)"
         }
       },
+      fontFamily: {
+        heading: ["var(--font-heading)", "ui-sans-serif", "system-ui", "sans-serif"],
+        body: ["var(--font-body)", "ui-sans-serif", "system-ui", "sans-serif"]
+      },
       boxShadow: {
-        card: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)",
-        cardHover: "0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06)"
+        card: "0 1px 8px rgba(0, 0, 0, 0.05)",
+        cardHover: "0 12px 32px rgba(0, 0, 0, 0.08)"
+      },
+      borderRadius: {
+        ds: "0.625rem"
       }
     }
   },

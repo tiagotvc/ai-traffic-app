@@ -105,7 +105,7 @@ export function LabsCreateExperimentModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
       role="presentation"
     >
@@ -116,7 +116,7 @@ export function LabsCreateExperimentModal({
         aria-modal="true"
         aria-labelledby="labs-create-title"
       >
-        <div className="shrink-0 border-b border-violet-100 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-5 py-4 text-white">
+        <div className="shrink-0 border-b border-violet-500/20 bg-gradient-to-r from-[var(--violet)] to-fuchsia-600 px-5 py-4 text-white">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 id="labs-create-title" className="text-lg font-semibold">
@@ -196,8 +196,8 @@ export function LabsCreateExperimentModal({
           </FormField>
 
           <div>
-            <p className="text-sm font-medium text-slate-800">{t("labsSquadTitle")}</p>
-            <p className="mt-0.5 text-xs text-slate-500">{t("labsSquadHint")}</p>
+            <p className="text-sm font-medium text-[var(--text-main)]">{t("labsSquadTitle")}</p>
+            <p className="mt-0.5 text-xs text-[var(--text-dim)]">{t("labsSquadHint")}</p>
             <div className="mt-3">
               <ScientistPicker selected={form.selectedScientists} onToggle={toggleScientist} />
             </div>
@@ -209,8 +209,8 @@ export function LabsCreateExperimentModal({
           />
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-5 py-4">
-          <p className="text-xs text-slate-500">{t("labsRunDurationHint")}</p>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--border-color)] bg-[var(--surface-thead)] px-5 py-4">
+          <p className="text-xs text-[var(--text-dim)]">{t("labsRunDurationHint")}</p>
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className="ui-btn-secondary text-sm">
               {t("labsModalCancel")}

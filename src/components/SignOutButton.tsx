@@ -36,8 +36,8 @@ export function SignOutButton({
 
   const className =
     variant === "sidebar"
-      ? "mx-auto flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
-      : "mt-3 w-full rounded-xl border border-surface-line bg-white px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60";
+      ? "mx-auto flex h-8 w-8 items-center justify-center rounded-full text-[#94a3b8] transition hover:bg-white/10 hover:text-white disabled:opacity-60"
+      : "ui-btn-secondary mt-3 w-full !px-3 !py-2 text-xs disabled:opacity-60";
 
   return (
     <button

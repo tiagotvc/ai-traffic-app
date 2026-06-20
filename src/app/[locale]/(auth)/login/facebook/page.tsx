@@ -25,7 +25,7 @@ export default async function FacebookLoginHandoffPage({
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 to-white">
-      <div className="border-b border-slate-100 bg-white px-6 py-5">
+      <div className="border-b border-[var(--border-color)] bg-white px-6 py-5">
         <TrafficAILogo size="sm" productLabel={tCommon("product")} variant="light" />
       </div>
 

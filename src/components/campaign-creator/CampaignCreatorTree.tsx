@@ -39,20 +39,20 @@ export function CampaignCreatorTree() {
           onClick={() => setActiveNode("campaign")}
           className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition ${
             activeNode === "campaign"
-              ? "bg-violet-50 font-medium text-violet-800"
-              : "text-slate-700 hover:bg-slate-50"
+              ? "bg-[rgba(124,58,237,0.06)] font-medium text-[var(--violet)]"
+              : "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
           }`}
         >
           <OutlineIcon d={FOLDER_PATH} className="h-4 w-4 shrink-0" />
           <span className="truncate">{campaignLabel}</span>
         </button>
       ) : (
-        <p className="px-3 py-2 text-xs font-medium text-slate-600">{payload.meta?.targetAdsetName}</p>
+        <p className="px-3 py-2 text-xs font-medium text-[var(--text-dim)]">{payload.meta?.targetAdsetName}</p>
       )}
 
       {!addAdMode ? (
-        <div className="ml-2 space-y-0.5 border-l border-slate-200 pl-2">
-          <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+        <div className="ml-2 space-y-0.5 border-l border-[var(--border-color)] pl-2">
+          <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
             {t("treeAdset")}
           </p>
           {payload.adsets.map((adset) => (
@@ -63,10 +63,10 @@ export function CampaignCreatorTree() {
               onClick={() => goAdset(adset.id)}
               className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs transition ${
                 activeNode === "adset" && payload.activeAdsetId === adset.id
-                  ? "bg-violet-50 font-medium text-violet-800"
+                  ? "bg-[rgba(124,58,237,0.06)] font-medium text-[var(--violet)]"
                   : visited("adset")
-                    ? "text-slate-700 hover:bg-slate-50"
-                    : "cursor-not-allowed text-slate-300"
+                    ? "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
+                    : "cursor-not-allowed text-[var(--text-dimmer)]"
               }`}
             >
               <OutlineIcon d={GRID_PATH} className="h-3.5 w-3.5 shrink-0" />
@@ -76,8 +76,8 @@ export function CampaignCreatorTree() {
         </div>
       ) : null}
 
-      <div className="ml-2 space-y-0.5 border-l border-slate-200 pl-2">
-        <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+      <div className="ml-2 space-y-0.5 border-l border-[var(--border-color)] pl-2">
+        <p className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
           {t("treeAd")}
         </p>
         {payload.ads.map((adItem) => (
@@ -88,10 +88,10 @@ export function CampaignCreatorTree() {
             onClick={() => goAd(adItem.id)}
             className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs transition ${
               activeNode === "ad" && payload.activeAdId === adItem.id
-                ? "bg-violet-50 font-medium text-violet-800"
+                ? "bg-[rgba(124,58,237,0.06)] font-medium text-[var(--violet)]"
                 : visited("ad")
-                  ? "text-slate-700 hover:bg-slate-50"
-                  : "cursor-not-allowed text-slate-300"
+                  ? "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
+                  : "cursor-not-allowed text-[var(--text-dimmer)]"
             }`}
           >
             <OutlineIcon d={DOC_PATH} className="h-3.5 w-3.5 shrink-0" />
@@ -106,10 +106,10 @@ export function CampaignCreatorTree() {
         onClick={() => visited("review") && setActiveNode("review")}
         className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition ${
           activeNode === "review"
-            ? "bg-violet-50 font-medium text-violet-800"
+            ? "bg-[rgba(124,58,237,0.06)] font-medium text-[var(--violet)]"
             : visited("review")
-              ? "text-slate-700 hover:bg-slate-50"
-              : "cursor-not-allowed text-slate-300"
+              ? "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
+              : "cursor-not-allowed text-[var(--text-dimmer)]"
         }`}
       >
         <span className="text-base">✓</span>

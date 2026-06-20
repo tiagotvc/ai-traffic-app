@@ -65,7 +65,7 @@ export function SocialLoginButtons({
           <button
             type="submit"
             disabled={googlePending}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--border-color)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--text-main)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:opacity-70"
           >
             <GoogleIcon />
             {googlePending ? t("signingIn") : t("continueWithGoogle")}

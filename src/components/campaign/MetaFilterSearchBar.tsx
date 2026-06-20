@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Search } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import {
@@ -65,13 +66,15 @@ export function MetaFilterSearchBar({
   onChange,
   filters,
   onFiltersChange,
-  className = ""
+  className = "",
+  variant = "default"
 }: {
   value: string;
   onChange: (v: string) => void;
   filters: AppliedCampaignFilter[];
   onFiltersChange: (next: AppliedCampaignFilter[]) => void;
   className?: string;
+  variant?: "default" | "filterPill";
 }) {
   const t = useTranslations("campaignFilters");
   const listId = useId();
@@ -184,19 +187,43 @@ export function MetaFilterSearchBar({
         : ROOT_MENU
       : [];
 
+  const isFilterPill = variant === "filterPill";
+  const pillBorder = open ? "var(--amber-bright)" : "var(--border-color)";
+
   return (
-    <div ref={rootRef} className={`relative min-w-[200px] flex-1 ${className}`}>
-      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-1.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-100">
+    <div
+      ref={rootRef}
+      className={`relative ${isFilterPill ? "min-w-[280px] flex-[2]" : "min-w-[200px] flex-1"} ${className}`}
+    >
+      <div
+        className={
+          isFilterPill
+            ? "flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-all duration-200"
+            : "flex flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] px-2 py-1.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-100"
+        }
+        style={
+          isFilterPill
+            ? {
+                color: "var(--text-main)",
+                background: "var(--filter-btn-bg)",
+                borderColor: pillBorder
+              }
+            : undefined
+        }
+      >
+        {isFilterPill ? (
+          <Search size={14} className="shrink-0" style={{ color: "var(--text-dim)" }} />
+        ) : null}
         {filters.map((f) => (
           <span
             key={filterId(f)}
-            className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800"
+            className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs font-medium text-[var(--violet)]"
           >
             {chipLabel(f)}
             <button
               type="button"
               onClick={() => removeFilter(filterId(f))}
-              className="text-violet-500 hover:text-violet-900"
+              className="text-violet-500 hover:text-[var(--violet)]"
               aria-label={t("removeFilter")}
             >
               ×
@@ -221,7 +248,7 @@ export function MetaFilterSearchBar({
               ? t("placeholderField", { field: t(pendingField) })
               : t("placeholder")
           }
-          className="min-w-[120px] flex-1 border-0 bg-transparent px-1 py-1 text-sm outline-none"
+          className="min-w-[80px] flex-1 border-0 bg-transparent px-0 py-0 text-sm font-body outline-none"
           aria-expanded={open}
           aria-controls={listId}
         />
@@ -230,13 +257,19 @@ export function MetaFilterSearchBar({
       {open ? (
         <div
           id={listId}
-          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-80 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+          className={`absolute left-0 right-0 top-full z-50 max-h-80 overflow-y-auto rounded-lg border py-1 shadow-2xl ${
+            isFilterPill ? "mt-2" : "mt-1 rounded-xl"
+          }`}
+          style={{
+            background: "var(--dropdown-bg, var(--surface-card))",
+            borderColor: "var(--border-color)"
+          }}
         >
           {panel.type === "root" ? (
             <>
               {menuItems.map((entry, i) => {
                 if (entry.kind === "divider") {
-                  return <div key={`d-${i}`} className="my-1 border-t border-slate-100" />;
+                  return <div key={`d-${i}`} className="my-1 border-t border-[var(--border-color)]" />;
                 }
                 if (entry.kind === "toggle_more") {
                   const showMore = panel.showMore;
@@ -244,11 +277,18 @@ export function MetaFilterSearchBar({
                     <button
                       key="toggle"
                       type="button"
-                      className="flex w-full items-center px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-50"
+                      className="flex w-full items-center px-3 py-2 text-left text-sm font-body transition-colors"
+                      style={{ color: "var(--text-dim)" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "";
+                      }}
                       onClick={() => setPanel({ type: "root", showMore: !showMore })}
                     >
                       {showMore ? t("seeLess") : t("seeMore")}
-                      <span className="ml-auto text-slate-400">{showMore ? "▲" : "▼"}</span>
+                      <span className="ml-auto text-[var(--text-dimmer)]">{showMore ? "▲" : "▼"}</span>
                     </button>
                   );
                 }
@@ -258,11 +298,18 @@ export function MetaFilterSearchBar({
                     key={entry.field}
                     type="button"
                     disabled={disabled}
-                    className="flex w-full items-center px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                    className="flex w-full items-center px-3 py-2 text-left text-sm font-body transition-colors disabled:cursor-not-allowed disabled:text-[var(--text-dimmer)]"
+                    style={{ color: disabled ? "var(--text-dimmer)" : "var(--text-dim)" }}
+                    onMouseEnter={(e) => {
+                      if (!disabled) e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "";
+                    }}
                     onClick={() => onPickField(entry.field, entry.hasSubmenu)}
                   >
                     {labelForField(entry.field)}
-                    {entry.hasSubmenu ? <span className="ml-auto text-slate-400">›</span> : null}
+                    {entry.hasSubmenu ? <span className="ml-auto text-[var(--text-dimmer)]">›</span> : null}
                   </button>
                 );
               })}
@@ -273,7 +320,7 @@ export function MetaFilterSearchBar({
             <>
               <button
                 type="button"
-                className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="flex w-full items-center gap-2 border-b border-[var(--border-color)] px-3 py-2 text-left text-sm font-medium text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                 onClick={() => setPanel({ type: "root", showMore: false })}
               >
                 ‹ {t("budget_menu")}
@@ -282,7 +329,7 @@ export function MetaFilterSearchBar({
                 <button
                   key={field}
                   type="button"
-                  className="flex w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  className="flex w-full px-3 py-2 text-left text-sm text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                   onClick={() => {
                     setPendingField(field);
                     setPanel({ type: "budget_value", field });
@@ -298,7 +345,7 @@ export function MetaFilterSearchBar({
             <>
               <button
                 type="button"
-                className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="flex w-full items-center gap-2 border-b border-[var(--border-color)] px-3 py-2 text-left text-sm font-medium text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                 onClick={() => setPanel({ type: "root", showMore: false })}
               >
                 ‹ {t("audience_menu")}
@@ -309,12 +356,12 @@ export function MetaFilterSearchBar({
                   type="button"
                   disabled
                   title={t("audienceUnavailable")}
-                  className="flex w-full px-3 py-2 text-left text-sm text-slate-300"
+                  className="flex w-full px-3 py-2 text-left text-sm text-[var(--text-dimmer)]"
                 >
                   {labelForField(field)}
                 </button>
               ))}
-              <p className="px-3 py-2 text-[11px] text-slate-400">{t("audienceUnavailable")}</p>
+              <p className="px-3 py-2 text-[11px] text-[var(--text-dimmer)]">{t("audienceUnavailable")}</p>
             </>
           ) : null}
 
@@ -322,7 +369,7 @@ export function MetaFilterSearchBar({
             <>
               <button
                 type="button"
-                className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="flex w-full items-center gap-2 border-b border-[var(--border-color)] px-3 py-2 text-left text-sm font-medium text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                 onClick={() => setPanel({ type: "root", showMore: false })}
               >
                 ‹ {t("objective")}
@@ -331,7 +378,7 @@ export function MetaFilterSearchBar({
                 <button
                   key={v}
                   type="button"
-                  className="flex w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  className="flex w-full px-3 py-2 text-left text-sm text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                   onClick={() => addFilter({ field: "objective", value: v })}
                 >
                   {t(`objective_${v}`)}
@@ -344,7 +391,7 @@ export function MetaFilterSearchBar({
             <>
               <button
                 type="button"
-                className="flex w-full items-center gap-2 border-b border-slate-100 px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="flex w-full items-center gap-2 border-b border-[var(--border-color)] px-3 py-2 text-left text-sm font-medium text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                 onClick={() => setPanel({ type: "root", showMore: false })}
               >
                 ‹ {t("delivery")}
@@ -353,7 +400,7 @@ export function MetaFilterSearchBar({
                 <button
                   key={v}
                   type="button"
-                  className="flex w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  className="flex w-full px-3 py-2 text-left text-sm text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                   onClick={() => addFilter({ field: "delivery", value: v })}
                 >
                   {t(`delivery_${v}`)}
@@ -366,7 +413,7 @@ export function MetaFilterSearchBar({
             <div className="p-3">
               <button
                 type="button"
-                className="mb-2 flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-violet-600"
+                className="mb-2 flex items-center gap-1 text-xs font-medium text-[var(--text-dim)] hover:text-[var(--violet-bright)]"
                 onClick={() =>
                   setPanel(
                     BUDGET_SUBMENU.includes(panel.field)

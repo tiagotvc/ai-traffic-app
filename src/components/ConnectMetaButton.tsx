@@ -31,10 +31,7 @@ export async function ConnectMetaButton({
     );
   }
 
-  const btnClass =
-    variant === "secondary"
-      ? "rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-      : "rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500";
+  const btnClass = variant === "secondary" ? "ui-btn-secondary text-xs" : "ui-btn-primary text-xs";
 
   return (
     <form

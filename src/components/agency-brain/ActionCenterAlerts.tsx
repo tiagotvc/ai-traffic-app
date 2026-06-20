@@ -38,7 +38,7 @@ export function ActionCenterAlerts({ clientId }: { clientId: string }) {
           <h2 className="text-sm font-semibold text-rose-800">{t("criticalAlertsTitle")}</h2>
           <p className="text-xs text-rose-600/80">{t("criticalAlertsSubtitle")}</p>
         </div>
-        <Link href="/alerts" className="text-xs font-medium text-violet-600 hover:underline">
+        <Link href="/alerts" className="ui-link text-xs font-medium">
           {t("viewAllAlerts")}
         </Link>
       </div>
@@ -46,10 +46,10 @@ export function ActionCenterAlerts({ clientId }: { clientId: string }) {
         {alerts.map((a) => (
           <div
             key={a.id}
-            className="rounded-lg border border-rose-100 bg-white/90 px-3 py-2 text-xs text-slate-700"
+            className="rounded-lg border border-rose-100 bg-white/90 px-3 py-2 text-xs text-[var(--text-dim)]"
           >
             <div className="font-semibold text-rose-800">{a.title}</div>
-            {a.description ? <p className="mt-0.5 text-slate-600">{a.description}</p> : null}
+            {a.description ? <p className="mt-0.5 text-[var(--text-dim)]">{a.description}</p> : null}
           </div>
         ))}
       </div>

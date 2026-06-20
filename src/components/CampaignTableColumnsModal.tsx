@@ -1,14 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, Columns3, Plus, Settings, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   buildMetricCatalogTree,
   catalogNodeToColumnRef,
   columnRefToCatalogId,
   filterCatalogTree,
-  flattenCatalog,
   type MetricCatalogNode
 } from "@/lib/meta-metrics-catalog";
 import {
@@ -18,10 +18,42 @@ import {
   type TableColumnRef
 } from "@/lib/campaign-table-layout";
 import type { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
-import type { MetricKey } from "@/lib/dashboard-metrics";
 import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
+import { UxModalPortal } from "@/uxpilot-ui/adapters/UxModalPortal";
 
 type LayoutHook = ReturnType<typeof useCampaignTableLayout>;
+
+const uxInputClass =
+  "w-full rounded-lg border px-3 py-2 text-sm font-body outline-none transition-colors";
+const uxInputStyle = {
+  color: "var(--text-main)",
+  background: "var(--surface-bg)",
+  borderColor: "var(--border-color)"
+} as const;
+
+function UxInput({
+  className = "",
+  style,
+  onFocus,
+  onBlur,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={`${uxInputClass} ${className}`}
+      style={{ ...uxInputStyle, ...style }}
+      onFocus={(e) => {
+        e.currentTarget.style.borderColor = "var(--amber-bright, #f5a623)";
+        onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        e.currentTarget.style.borderColor = "var(--border-color)";
+        onBlur?.(e);
+      }}
+    />
+  );
+}
 
 export function MetricCatalogPicker({
   selected,
@@ -84,10 +116,17 @@ export function MetricCatalogPicker({
           <div key={node.id} className={depth ? "ml-3" : ""}>
             <button
               type="button"
-              className="flex w-full items-center gap-1 py-1 text-left text-xs font-semibold text-slate-600"
+              className="flex w-full items-center gap-1.5 rounded-lg py-1.5 text-left text-xs font-heading font-semibold transition-colors"
+              style={{ color: "var(--text-dim)" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "";
+              }}
               onClick={() => setExpanded((e) => ({ ...e, [node.id]: !open }))}
             >
-              <span>{open ? "▼" : "▶"}</span>
+              <span style={{ color: "var(--amber-bright, #f5a623)" }}>{open ? "▼" : "▶"}</span>
               {nodeLabel(node)}
             </button>
             {open ? <div className="mb-2">{renderNodes(node.children, depth + 1)}</div> : null}
@@ -102,16 +141,24 @@ export function MetricCatalogPicker({
       return (
         <label
           key={node.id}
-          className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-xs ${
-            disabled ? "cursor-not-allowed opacity-40" : "hover:bg-slate-50"
+          className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-body transition-colors ${
+            disabled ? "cursor-not-allowed opacity-40" : ""
           }`}
+          style={{ color: "var(--text-main)" }}
+          onMouseEnter={(e) => {
+            if (!disabled) e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "";
+          }}
         >
           <input
             type="checkbox"
             checked={checked}
             disabled={disabled}
             onChange={() => toggleNode(node)}
-            className="accent-violet-600"
+            className="h-4 w-4 shrink-0 rounded border"
+            style={{ accentColor: "var(--amber-bright, #f5a623)" }}
           />
           <span>{node.metricKey ? tMetrics(METRIC_BY_KEY[node.metricKey].label) : node.label}</span>
         </label>
@@ -121,16 +168,105 @@ export function MetricCatalogPicker({
 
   return (
     <div>
-      <input
+      <UxInput
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t("searchMetrics")}
-        className="ui-input mb-2 text-xs"
+        className="mb-3"
       />
-      <p className="mb-2 text-[11px] text-slate-500">
+      <p className="mb-3 text-xs font-body" style={{ color: "var(--text-dim)" }}>
         {t("selectedCount", { count: selected.length, max })}
       </p>
-      <div className="max-h-64 overflow-y-auto">{renderNodes(filtered)}</div>
+      <div
+        className="max-h-64 overflow-y-auto rounded-xl p-2"
+        style={{
+          background: "var(--surface-bg)",
+          border: "1px solid var(--border-color)",
+          scrollbarWidth: "thin"
+        }}
+      >
+        {renderNodes(filtered)}
+      </div>
+    </div>
+  );
+}
+
+function LayoutSelect({
+  value,
+  options,
+  onChange
+}: {
+  value: string;
+  options: Array<{ id: string; name: string }>;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const selected = options.find((o) => o.id === value);
+
+  return (
+    <div ref={ref} className="relative min-w-[180px]">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all duration-200"
+        style={{
+          color: "var(--text-main)",
+          background: "var(--filter-btn-bg)",
+          borderColor: open ? "var(--amber-bright, #f5a623)" : "var(--border-color)"
+        }}
+        aria-expanded={open}
+      >
+        <Settings size={14} style={{ color: "var(--text-dim)" }} />
+        <span className="truncate font-body text-sm">{selected?.name ?? options[0]?.name ?? "—"}</span>
+        <ChevronDown
+          size={14}
+          className={`ml-auto shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          style={{ color: "var(--text-dim)" }}
+        />
+      </button>
+      {open ? (
+        <div
+          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border py-1 shadow-2xl"
+          style={{
+            background: "var(--dropdown-bg, var(--surface-card))",
+            borderColor: "var(--border-color)"
+          }}
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              className="flex w-full px-3 py-2 text-left text-sm font-body transition-colors"
+              style={{
+                color: opt.id === value ? "var(--amber-bright, #f5a623)" : "var(--text-main)",
+                background: opt.id === value ? "var(--row-hover, var(--surface-bg))" : "transparent"
+              }}
+              onMouseEnter={(e) => {
+                if (opt.id !== value) e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";
+              }}
+              onMouseLeave={(e) => {
+                if (opt.id !== value) e.currentTarget.style.background = "transparent";
+              }}
+              onClick={() => {
+                onChange(opt.id);
+                setOpen(false);
+              }}
+            >
+              {opt.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -212,62 +348,119 @@ export function CampaignTableColumnsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onMouseDown={onClose}>
+    <UxModalPortal open={open} onClose={onClose}>
       <div
-        className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-        onMouseDown={(e) => e.stopPropagation()}
+        className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl shadow-2xl"
+        style={{ background: "var(--surface-card)", border: "1px solid var(--border-color)" }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h2 className="text-base font-semibold text-slate-900">{t("columnsTitle")}</h2>
-          <p className="mt-1 text-xs text-slate-500">{t("columnsHint")}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <select
-              className="ui-select text-xs"
-              value={layout.activeLayoutId}
-              onChange={(e) => void layout.setActiveLayout(e.target.value)}
+        <div className="relative flex-shrink-0" style={{ borderBottom: "1px solid var(--border-color)" }}>
+          <div
+            className="absolute left-0 right-0 top-0 h-[3px] rounded-t-2xl"
+            style={{ background: "linear-gradient(90deg, #f5a623, #f59e0b88)" }}
+          />
+          <div className="flex items-start justify-between gap-3 px-6 pb-4 pt-6">
+            <div className="flex min-w-0 items-start gap-3">
+              <div
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+                style={{
+                  background: "rgba(245,166,35,0.12)",
+                  border: "1px solid rgba(245,166,35,0.25)"
+                }}
+              >
+                <Columns3 size={18} style={{ color: "#f5a623" }} />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-heading text-lg font-bold leading-tight" style={{ color: "var(--text-main)" }}>
+                  {t("columnsTitle")}
+                </h2>
+                <p className="mt-1 text-sm font-body" style={{ color: "var(--text-dim)" }}>
+                  {t("columnsHint")}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors"
+              style={{ background: "var(--surface-bg)", border: "1px solid var(--border-color)" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#f5a623";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border-color)";
+              }}
             >
-              {layout.layouts.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-            <button type="button" className="ui-btn-secondary text-xs" onClick={() => setShowSaveAs(true)}>
+              <X size={14} style={{ color: "var(--text-dim)" }} />
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
+            <LayoutSelect
+              value={layout.activeLayoutId}
+              options={layout.layouts.map((l) => ({ id: l.id, name: l.name }))}
+              onChange={(id) => void layout.setActiveLayout(id)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowSaveAs((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-body transition-colors"
+              style={{
+                color: "var(--text-dim)",
+                background: "var(--surface-bg)",
+                borderColor: showSaveAs ? "var(--amber-bright, #f5a623)" : "var(--border-color)"
+              }}
+            >
+              <Plus size={14} />
               {t("saveView")}
             </button>
           </div>
+
           {showSaveAs ? (
-            <div className="mt-2 flex gap-2">
-              <input
+            <div className="flex gap-2 px-6 pb-4">
+              <UxInput
                 value={saveName}
                 onChange={(e) => setSaveName(e.target.value)}
                 placeholder={t("viewNamePrompt")}
-                className="ui-input flex-1 text-xs"
+                className="flex-1"
               />
-              <button type="button" className="ui-btn-primary text-xs" onClick={() => void saveAs()}>
+              <button
+                type="button"
+                onClick={() => void saveAs()}
+                className="rounded-lg px-4 py-2 text-sm font-heading font-semibold"
+                style={{ background: "#f5a623", color: "#111" }}
+              >
                 {t("save")}
               </button>
             </div>
           ) : null}
-          <div className="mt-3 flex gap-2 border-b border-slate-100 pb-2">
-            <button
-              type="button"
-              className={`text-xs font-medium ${tab === "columns" ? "text-violet-700" : "text-slate-500"}`}
-              onClick={() => setTab("columns")}
+
+          <div className="px-6 pb-4">
+            <div
+              className="inline-flex gap-1 rounded-xl p-1"
+              style={{ background: "var(--surface-bg)", border: "1px solid var(--border-color)" }}
             >
-              {t("tabColumns")}
-            </button>
-            <button
-              type="button"
-              className={`text-xs font-medium ${tab === "formula" ? "text-violet-700" : "text-slate-500"}`}
-              onClick={() => setTab("formula")}
-            >
-              {t("tabFormula")}
-            </button>
+              {(["columns", "formula"] as const).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key)}
+                  className="rounded-lg px-4 py-2 text-sm font-body font-medium transition-all"
+                  style={{
+                    color: tab === key ? "var(--text-main)" : "var(--text-dim)",
+                    background: tab === key ? "var(--surface-card)" : "transparent",
+                    border: tab === key ? "1px solid var(--amber-bright, #f5a623)" : "1px solid transparent",
+                    boxShadow: tab === key ? "0 1px 4px rgba(0,0,0,0.08)" : "none"
+                  }}
+                >
+                  {key === "columns" ? t("tabColumns") : t("tabFormula")}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-3">
+        <div className="flex-1 overflow-y-auto px-6 py-4" style={{ scrollbarWidth: "thin" }}>
           {tab === "columns" ? (
             <MetricCatalogPicker
               selected={metricCols}
@@ -275,48 +468,88 @@ export function CampaignTableColumnsModal({
               customMetrics={layout.customMetrics}
             />
           ) : (
-            <div className="space-y-3 text-sm">
-              <input
+            <div className="space-y-4">
+              <UxInput
                 value={formulaName}
                 onChange={(e) => setFormulaName(e.target.value)}
                 placeholder={t("formulaName")}
-                className="ui-input w-full text-xs"
               />
-              <input
+              <UxInput
                 value={formulaExpr}
                 onChange={(e) => setFormulaExpr(e.target.value)}
                 placeholder={t("formulaPlaceholder")}
-                className="ui-input w-full font-mono text-xs"
+                className="font-mono"
               />
-              <label className="flex items-center gap-2 text-xs text-slate-600">
+              <label
+                className="flex cursor-pointer items-center gap-2.5 text-sm font-body"
+                style={{ color: "var(--text-dim)" }}
+              >
                 <input
                   type="checkbox"
                   checked={formulaShared}
                   onChange={(e) => setFormulaShared(e.target.checked)}
-                  className="accent-violet-600"
+                  className="h-4 w-4 rounded"
+                  style={{ accentColor: "var(--amber-bright, #f5a623)" }}
                 />
                 {t("formulaShared")}
               </label>
-              {formulaError ? <p className="text-xs text-red-600">{formulaError}</p> : null}
-              <button type="button" className="ui-btn-primary text-xs" onClick={() => void createFormula()}>
+              {formulaError ? (
+                <p className="text-sm font-body text-red-500">{formulaError}</p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void createFormula()}
+                className="rounded-lg px-4 py-2 text-sm font-heading font-semibold"
+                style={{ background: "#7c3aed", color: "#fff" }}
+              >
                 {t("createFormula")}
               </button>
             </div>
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-3">
-          <button type="button" className="ui-btn-secondary text-xs" onClick={() => void layout.resetToDefault()}>
+        <div
+          className="flex flex-shrink-0 flex-wrap items-center justify-between gap-3 px-6 py-4"
+          style={{ borderTop: "1px solid var(--border-color)" }}
+        >
+          <button
+            type="button"
+            onClick={() => void layout.resetToDefault()}
+            className="text-sm font-body transition-colors"
+            style={{ color: "var(--text-dim)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--text-main)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-dim)";
+            }}
+          >
             {t("resetDefault")}
           </button>
-          <button type="button" className="ui-btn-secondary text-xs" onClick={onClose}>
-            {t("cancel")}
-          </button>
-          <button type="button" className="ui-btn-primary text-xs" onClick={() => void apply()}>
-            {t("apply")}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border px-5 py-2 text-sm font-body font-medium transition-colors"
+              style={{
+                borderColor: "var(--border-color)",
+                color: "var(--text-dim)",
+                background: "var(--surface-card)"
+              }}
+            >
+              {t("cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={() => void apply()}
+              className="rounded-lg px-5 py-2 text-sm font-heading font-semibold"
+              style={{ background: "#f5a623", color: "#111" }}
+            >
+              {t("apply")}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </UxModalPortal>
   );
 }

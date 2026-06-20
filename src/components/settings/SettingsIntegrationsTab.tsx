@@ -52,26 +52,26 @@ function IntegrationCard({
   disabled?: boolean;
 }) {
   const toneClass = {
-    connected: "border-emerald-200 bg-emerald-50/40",
-    disconnected: "border-slate-200 bg-white",
-    neutral: "border-slate-200 bg-white",
-    soon: "border-dashed border-slate-200 bg-slate-50/60 opacity-80"
+    connected: "border-[rgba(16,185,129,0.25)] bg-[rgba(16,185,129,0.06)]",
+    disconnected: "border-[var(--border-color)] bg-[var(--surface-card)]",
+    neutral: "border-[var(--border-color)] bg-[var(--surface-card)]",
+    soon: "border-dashed border-[var(--border-color)] bg-[var(--surface-thead)] opacity-80"
   }[statusTone];
 
   return (
-    <article className={`rounded-xl border p-4 shadow-sm ${toneClass}`}>
+    <article className={`ui-card p-4 ${toneClass}`}>
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[rgba(79,70,229,0.12)] text-[var(--violet)]">
           {icon}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">{name}</h3>
+            <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{name}</h3>
             {status}
           </div>
-          <p className="mt-1 text-xs text-slate-500">{description}</p>
+          <p className="mt-1 text-xs text-[var(--text-dimmer)]">{description}</p>
           {!disabled && actions ? <div className="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
-          {footer ? <div className="mt-3 border-t border-slate-100 pt-3">{footer}</div> : null}
+          {footer ? <div className="mt-3 border-t border-[var(--border-color)] pt-3">{footer}</div> : null}
         </div>
       </div>
     </article>
@@ -152,13 +152,13 @@ export function SettingsIntegrationsTab({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-slate-900">{t("integrationsPageTitle")}</h2>
-        <p className="text-[11px] text-slate-500">{t("integrationsPageSubtitle")}</p>
+        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("integrationsPageTitle")}</h2>
+        <p className="text-[11px] text-[var(--text-dimmer)]">{t("integrationsPageSubtitle")}</p>
       </div>
 
       {!metaOAuthConfigured ? <MetaSetupCallout /> : null}
       {message ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+        <div className="ui-alert-danger">
           {message}
         </div>
       ) : null}
@@ -172,8 +172,8 @@ export function SettingsIntegrationsTab({
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
               metaConnected
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-slate-100 text-slate-500"
+                ? "bg-[rgba(16,185,129,0.12)] text-[var(--success)]"
+                : "bg-[var(--surface-thead)] text-[var(--text-dimmer)]"
             }`}
           >
             {metaConnected === null
@@ -188,13 +188,13 @@ export function SettingsIntegrationsTab({
             {connectMetaSlot}
             <Link
               href="/settings/meta-assets"
-              className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="ui-btn-secondary !px-3 !py-1.5 text-xs"
             >
               {t("metaAssetsLink")}
             </Link>
             <Link
               href="/clients"
-              className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="ui-btn-secondary !px-3 !py-1.5 text-xs"
             >
               {t("publishClientsLink")}
             </Link>
@@ -202,12 +202,12 @@ export function SettingsIntegrationsTab({
         }
         footer={
           <>
-            <p className="text-[11px] text-slate-500">{t("publishPerClient")}</p>
+            <p className="text-[11px] text-[var(--text-dimmer)]">{t("publishPerClient")}</p>
             {wsMeta ? (
               <div className="mt-3 space-y-2">
-                <p className="text-xs font-semibold text-slate-700">{t("workspaceMetaTitle")}</p>
-                <p className="text-[11px] text-slate-500">{t("workspaceMetaHint")}</p>
-                <p className="text-xs text-slate-600">
+                <p className="text-xs font-semibold text-[var(--text-dim)]">{t("workspaceMetaTitle")}</p>
+                <p className="text-[11px] text-[var(--text-dimmer)]">{t("workspaceMetaHint")}</p>
+                <p className="text-xs text-[var(--text-dim)]">
                   {wsMeta.workspaceConnectionName
                     ? t("workspaceMetaResponsible", { name: wsMeta.workspaceConnectionName })
                     : t("workspaceMetaNone")}
@@ -225,7 +225,7 @@ export function SettingsIntegrationsTab({
                           }
                           runWorkspaceMetaAction({ action: "claim" }, "workspaceMetaClaimed");
                         }}
-                        className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+                        className="ui-btn-primary !px-3 !py-1.5 text-xs disabled:opacity-60"
                       >
                         {t("workspaceMetaClaim")}
                       </button>
@@ -237,18 +237,18 @@ export function SettingsIntegrationsTab({
                         if (!window.confirm(t("workspaceMetaDisconnectConfirm"))) return;
                         runWorkspaceMetaAction({ action: "disconnect" }, "workspaceMetaDisconnected");
                       }}
-                      className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+                      className="ui-btn-danger !px-3 !py-1.5 text-xs disabled:opacity-60"
                     >
                       {t("workspaceMetaDisconnect")}
                     </button>
                   </div>
                 ) : wsMeta.workspaceConnectionName ? (
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-[var(--text-dimmer)]">
                     {t("workspaceMetaManagedBy", { name: wsMeta.workspaceConnectionName })}
                   </p>
                 ) : null}
                 {wsMetaMessage ? (
-                  <p className="text-[11px] text-slate-500">{wsMetaMessage}</p>
+                  <p className="text-[11px] text-[var(--text-dimmer)]">{wsMetaMessage}</p>
                 ) : null}
               </div>
             ) : null}
@@ -262,7 +262,7 @@ export function SettingsIntegrationsTab({
           description={t("integrationWhatsappDesc")}
           icon={INTEGRATION_ICONS.whatsapp}
           status={
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+            <span className="rounded-full bg-[var(--surface-thead)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-dimmer)]">
               {t("integrationComingSoon")}
             </span>
           }
@@ -274,7 +274,7 @@ export function SettingsIntegrationsTab({
           description={t("integrationGoogleAdsDesc")}
           icon={INTEGRATION_ICONS.google}
           status={
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+            <span className="rounded-full bg-[var(--surface-thead)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-dimmer)]">
               {t("integrationComingSoon")}
             </span>
           }

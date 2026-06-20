@@ -1,0 +1,138 @@
+"use client";
+
+import { ChevronDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { cn } from "@/lib/cn";
+
+export type FilterSelectOption = {
+  value: string;
+  label: string;
+};
+
+type Props = {
+  icon: React.ReactNode;
+  label: string;
+  placeholder: string;
+  options: FilterSelectOption[];
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  menuPlacement?: "bottom" | "top";
+};
+
+export function FilterSelectDropdown({
+  icon,
+  label,
+  placeholder,
+  options,
+  value,
+  onChange,
+  disabled = false,
+  menuPlacement = "bottom"
+}: Props) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const selectedLabel = value
+    ? (options.find((o) => o.value === value)?.label ?? value)
+    : placeholder;
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        className={cn(
+          "flex w-full items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-all duration-200",
+          disabled && "cursor-not-allowed opacity-60"
+        )}
+        style={{
+          color: "var(--text-main)",
+          background: "var(--filter-btn-bg)",
+          borderColor: open ? "var(--amber-bright)" : "var(--border-color)"
+        }}
+        aria-expanded={open}
+      >
+        <span className="shrink-0" style={{ color: "var(--text-dim)" }}>
+          {icon}
+        </span>
+        <span
+          className="mr-1 hidden font-body text-xs font-medium sm:inline"
+          style={{ color: "var(--text-dim)" }}
+        >
+          {label}:
+        </span>
+        <span className="max-w-[140px] truncate font-body text-sm">{selectedLabel}</span>
+        <ChevronDown
+          size={14}
+          className={cn("ml-auto shrink-0 transition-transform", open && "rotate-180")}
+          style={{ color: "var(--text-dim)" }}
+        />
+      </button>
+      {open ? (
+        <div
+          className={cn(
+            "absolute left-0 z-50 w-full overflow-hidden rounded-lg border shadow-2xl",
+            menuPlacement === "top" ? "bottom-full mb-1" : "top-full mt-1"
+          )}
+          style={{
+            background: "var(--dropdown-bg, var(--surface-card))",
+            borderColor: "var(--border-color)"
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
+            className="block w-full px-3 py-2 text-left font-body text-sm transition-colors"
+            style={{
+              color: !value ? "var(--amber-bright)" : "var(--text-dim)"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "";
+            }}
+          >
+            {placeholder}
+          </button>
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              className="block w-full px-3 py-2 text-left font-body text-sm transition-colors"
+              style={{
+                color: value === opt.value ? "var(--amber-bright)" : "var(--text-dim)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "";
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}

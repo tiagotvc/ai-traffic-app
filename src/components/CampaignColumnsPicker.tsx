@@ -50,12 +50,12 @@ export function CampaignColumnsPicker({
       </button>
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl">
-            <h3 className="text-sm font-semibold text-slate-900">{t("columnsTitle")}</h3>
-            <p className="mt-1 text-xs text-slate-500">{t("columnsHint")}</p>
+          <div className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl bg-[var(--surface-card)] p-4 shadow-xl">
+            <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("columnsTitle")}</h3>
+            <p className="mt-1 text-xs text-[var(--text-dim)]">{t("columnsHint")}</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {ALL_CAMPAIGN_COLUMNS.map((id) => (
-                <label key={id} className="flex items-center gap-2 rounded-lg border border-slate-100 px-2 py-1.5 text-xs">
+                <label key={id} className="flex items-center gap-2 rounded-lg border border-[var(--border-color)] px-2 py-1.5 text-xs">
                   <input
                     type="checkbox"
                     checked={cols.includes(id)}

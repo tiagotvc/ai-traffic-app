@@ -70,35 +70,35 @@ export function RankingConfigModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
       onMouseDown={onClose}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-[var(--surface-card)] shadow-2xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-slate-100 px-5 py-3">
+        <div className="border-b border-[var(--border-color)] px-5 py-3">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-900">{t("cfgTitle")}</h2>
+            <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("cfgTitle")}</h2>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="rounded-lg p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
               aria-label="close"
             >
               ✕
             </button>
           </div>
-          <p className="mt-1 text-xs text-slate-500">{t("cfgSubtitle")}</p>
+          <p className="mt-1 text-xs text-[var(--text-dim)]">{t("cfgSubtitle")}</p>
         </div>
 
         {!config ? (
-          <div className="p-8 text-center text-sm text-slate-500">…</div>
+          <div className="p-8 text-center text-sm text-[var(--text-dim)]">…</div>
         ) : (
           <>
             <div className="flex-1 overflow-y-auto px-5 py-4">
               <label className="block">
-                <span className="text-xs font-medium text-slate-600">{t("cfgMinImpr")}</span>
+                <span className="text-xs font-medium text-[var(--text-dim)]">{t("cfgMinImpr")}</span>
                 <input
                   type="number"
                   min={0}
@@ -118,9 +118,9 @@ export function RankingConfigModal({
                   return (
                     <div
                       key={preset}
-                      className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-2.5"
+                      className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border-color)] p-2.5"
                     >
-                      <span className="min-w-[110px] text-sm font-medium text-slate-700">
+                      <span className="min-w-[110px] text-sm font-medium text-[var(--text-dim)]">
                         {tPresets(preset)}
                       </span>
                       <select
@@ -148,11 +148,11 @@ export function RankingConfigModal({
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-5 py-3">
+            <div className="flex items-center justify-between gap-2 border-t border-[var(--border-color)] px-5 py-3">
               <button
                 type="button"
                 onClick={() => defaults && setConfig(defaults)}
-                className="text-xs font-medium text-slate-500 hover:text-slate-700"
+                className="text-xs font-medium text-[var(--text-dim)] hover:text-[var(--text-dim)]"
               >
                 {t("cfgReset")}
               </button>

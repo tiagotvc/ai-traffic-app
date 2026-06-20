@@ -18,7 +18,7 @@ export function AgencyBrainComingSoon({ moduleId }: { moduleId: AgencyBrainModul
 
   return (
     <div className="ui-card mx-auto max-w-lg p-10 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-thead)] text-[var(--text-dim)]">
         <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
           <path
             strokeLinecap="round"
@@ -27,12 +27,12 @@ export function AgencyBrainComingSoon({ moduleId }: { moduleId: AgencyBrainModul
           />
         </svg>
       </div>
-      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-violet-600">
+      <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[var(--violet)]">
         {t("comingSoonBadge")}
       </p>
-      <h2 className="mt-2 text-xl font-bold text-slate-900">{t(`comingSoon_${moduleId}_title`)}</h2>
-      <p className="mt-2 text-sm text-slate-600">{t(`comingSoon_${moduleId}_body`)}</p>
-      <p className="mt-4 text-xs text-slate-400">{t("comingSoonMvpHint")}</p>
+      <h2 className="mt-2 text-xl font-bold text-[var(--text-main)]">{t(`comingSoon_${moduleId}_title`)}</h2>
+      <p className="mt-2 text-sm text-[var(--text-dim)]">{t(`comingSoon_${moduleId}_body`)}</p>
+      <p className="mt-4 text-xs text-[var(--text-dimmer)]">{t("comingSoonMvpHint")}</p>
     </div>
   );
 }

@@ -77,10 +77,10 @@ export function AdSetsHubClient() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      <aside className="w-full shrink-0 border-b border-slate-200 bg-white lg:w-[260px] lg:border-b-0 lg:border-r">
-        <div className="border-b border-slate-100 p-4">
-          <h1 className="text-lg font-bold text-slate-900">{t("hubTitle")}</h1>
-          <p className="text-xs text-slate-500">{t("hubSubtitle")}</p>
+      <aside className="w-full shrink-0 border-b border-[var(--border-color)] bg-[var(--surface-card)] lg:w-[260px] lg:border-b-0 lg:border-r">
+        <div className="border-b border-[var(--border-color)] p-4">
+          <h1 className="font-heading text-lg font-bold text-[var(--text-main)]">{t("hubTitle")}</h1>
+          <p className="text-xs text-[var(--text-dim)]">{t("hubSubtitle")}</p>
         </div>
         <div className="p-3">
           <input
@@ -98,9 +98,9 @@ export function AdSetsHubClient() {
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className="space-y-2 p-3 text-center text-xs text-slate-500">
+            <div className="space-y-2 p-3 text-center text-xs text-[var(--text-dim)]">
               <p>{t("noCampaigns")}</p>
-              <Link href="/campaigns" className="text-violet-600 hover:underline">
+              <Link href="/campaigns" className="text-[var(--violet)] hover:underline">
                 {t("viewAllCampaigns")}
               </Link>
             </div>
@@ -112,13 +112,13 @@ export function AdSetsHubClient() {
                 onClick={() => select(r)}
                 className={`mb-1 w-full rounded-xl border p-3 text-left text-sm ${
                   selectedId === r.metaCampaignId
-                    ? "border-violet-400 bg-violet-50"
-                    : "border-slate-100 hover:bg-slate-50"
+                    ? "border-violet-400 bg-[rgba(124,58,237,0.06)]"
+                    : "border-[var(--border-color)] hover:bg-[var(--surface-bg)]"
                 }`}
               >
-                <div className="font-semibold text-slate-900">{r.campaignName}</div>
-                <div className="text-[11px] text-slate-500">{r.clientName}</div>
-                <div className="mt-1 flex justify-between text-[10px] text-slate-400">
+                <div className="font-semibold text-[var(--text-main)]">{r.campaignName}</div>
+                <div className="text-[11px] text-[var(--text-dim)]">{r.clientName}</div>
+                <div className="mt-1 flex justify-between text-[10px] text-[var(--text-dimmer)]">
                   <span>{formatBRL(r.spend)}</span>
                   <span>ROAS {formatRoas(r.roas)}</span>
                 </div>
@@ -128,7 +128,7 @@ export function AdSetsHubClient() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto bg-slate-50/50 p-4 lg:p-6">
+      <main className="min-w-0 flex-1 overflow-y-auto bg-[var(--surface-bg)]/50 p-4 lg:p-6">
         {selectedId ? (
           <CampaignAdSetsClient
             metaCampaignId={selectedId}
@@ -136,10 +136,10 @@ export function AdSetsHubClient() {
             embedded
           />
         ) : (
-          <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+          <div className="flex min-h-[400px] items-center justify-center rounded-2xl border border-dashed border-[var(--border-color)] bg-[var(--surface-card)] p-8 text-center">
             <div>
-              <p className="font-semibold text-slate-800">{t("pickCampaign")}</p>
-              <p className="mt-2 text-sm text-slate-500">{t("pickCampaignHint")}</p>
+              <p className="font-semibold text-[var(--text-main)]">{t("pickCampaign")}</p>
+              <p className="mt-2 text-sm text-[var(--text-dim)]">{t("pickCampaignHint")}</p>
             </div>
           </div>
         )}

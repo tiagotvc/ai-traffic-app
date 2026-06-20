@@ -70,7 +70,7 @@ export function CreativesByCampaignView({
 
   const banner =
     warnings.length > 0 ? (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div className="ui-alert-warning px-4 py-3 text-sm text-amber-800">
         <p className="font-medium">{t("accessWarningTitle")}</p>
         <p className="mt-0.5 text-xs">
           {t("accessWarningBody")} {warnings.map((w) => w.label).join(", ")}
@@ -82,7 +82,7 @@ export function CreativesByCampaignView({
     return (
       <div className="space-y-4">
         {banner}
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("empty")}</div>
       </div>
     );
   }
@@ -92,15 +92,15 @@ export function CreativesByCampaignView({
       {banner}
       {campaigns.map((camp) => (
         <div key={camp.campaignId} className="ui-card overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] px-4 py-3">
             <div className="min-w-0">
               <Link
                 href={`/campaigns/${camp.campaignId}?client=${encodeURIComponent(clientSlug ?? "")}`}
-                className="block truncate text-sm font-semibold text-slate-800 hover:text-violet-700 hover:underline"
+                className="block truncate text-sm font-semibold text-[var(--text-main)] hover:text-[var(--violet-bright)] hover:underline"
               >
                 {camp.campaignName}
               </Link>
-              <div className="text-[11px] text-slate-400">{rankHint(camp.primaryMetric)}</div>
+              <div className="text-[11px] text-[var(--text-dimmer)]">{rankHint(camp.primaryMetric)}</div>
             </div>
             <Badge variant="brand">{tPresets(camp.preset)}</Badge>
           </div>

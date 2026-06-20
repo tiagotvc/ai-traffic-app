@@ -143,16 +143,16 @@ export function AiAudienceWizard({ ctx, onBack }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">{t("createType.ai.title")}</h2>
+        <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("createType.ai.title")}</h2>
         <button type="button" onClick={onBack} className="ui-btn-secondary text-sm">
           {t("back")}
         </button>
       </div>
 
-      <p className="text-xs text-slate-500">{t("aiDesc")}</p>
+      <p className="text-xs text-[var(--text-dim)]">{t("aiDesc")}</p>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-        <span className="text-[10px] font-medium uppercase text-slate-500">{t("aiProviderLabel")}</span>
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] px-3 py-2">
+        <span className="text-[10px] font-medium uppercase text-[var(--text-dim)]">{t("aiProviderLabel")}</span>
         <label className="flex items-center gap-1.5 text-xs">
           <input
             type="radio"
@@ -174,10 +174,10 @@ export function AiAudienceWizard({ ctx, onBack }: Props) {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("aiBaseAudiences")}</label>
-        <div className="mt-2 max-h-32 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2">
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiBaseAudiences")}</label>
+        <div className="mt-2 max-h-32 space-y-1 overflow-y-auto rounded-xl border border-[var(--border-color)] p-2">
           {ctx.audiences.slice(0, 30).map((a) => (
-            <label key={a.id} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-slate-50">
+            <label key={a.id} className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-[var(--surface-bg)]">
               <input
                 type="checkbox"
                 checked={baseIds.includes(a.id)}
@@ -194,7 +194,7 @@ export function AiAudienceWizard({ ctx, onBack }: Props) {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("aiPrompt")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiPrompt")}</label>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -205,7 +205,7 @@ export function AiAudienceWizard({ ctx, onBack }: Props) {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-500">{t("aiCount")}</label>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiCount")}</label>
         <input
           type="number"
           min={1}
@@ -220,18 +220,18 @@ export function AiAudienceWizard({ ctx, onBack }: Props) {
         type="button"
         disabled={pending || prompt.trim().length < 3}
         onClick={generate}
-        className="ui-btn-secondary"
+        className="ui-btn-brand"
       >
         {pending ? t("aiGenerating") : t("aiGenerate")}
       </button>
 
       {suggestions.length > 0 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-800">{t("aiSuggestionsTitle")}</h3>
+          <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("aiSuggestionsTitle")}</h3>
           {suggestions.map((s, i) => (
             <label
               key={i}
-              className="block cursor-pointer rounded-xl border border-slate-200 p-3 hover:border-violet-300"
+              className="block cursor-pointer rounded-xl border border-[var(--border-color)] p-3 hover:border-violet-300"
             >
               <div className="flex items-start gap-2">
                 <input
@@ -248,12 +248,12 @@ export function AiAudienceWizard({ ctx, onBack }: Props) {
                   className="mt-1"
                 />
                 <div>
-                  <div className="font-medium text-slate-900">{s.title}</div>
-                  <div className="mt-1 text-xs text-slate-600">{s.description}</div>
-                  <div className="mt-1 text-[10px] text-slate-400">
+                  <div className="font-medium text-[var(--text-main)]">{s.title}</div>
+                  <div className="mt-1 text-xs text-[var(--text-dim)]">{s.description}</div>
+                  <div className="mt-1 text-[10px] text-[var(--text-dimmer)]">
                     {s.type} · {s.name}
                   </div>
-                  {s.reason ? <div className="mt-1 text-[10px] text-violet-600">{s.reason}</div> : null}
+                  {s.reason ? <div className="mt-1 text-[10px] text-[var(--violet)]">{s.reason}</div> : null}
                 </div>
               </div>
             </label>

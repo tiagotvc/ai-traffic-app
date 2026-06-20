@@ -29,9 +29,9 @@ const CATEGORIES: LearningCategory[] = [
 ];
 
 function confidenceScoreClass(score: number): string {
-  if (score >= 80) return "bg-green-100 text-green-800";
-  if (score >= 50) return "bg-yellow-100 text-yellow-800";
-  return "bg-red-100 text-red-800";
+  if (score >= 80) return "bg-emerald-500/10 text-emerald-800";
+  if (score >= 50) return "bg-amber-500/10 text-amber-800";
+  return "bg-rose-500/10 text-rose-800";
 }
 
 function statusVariant(status: HypothesisDto["status"]): "neutral" | "success" | "warning" | "danger" {
@@ -292,7 +292,7 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
       />
 
       {loading ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("loading")}</div>
       ) : items.length === 0 ? (
         <AgencyBrainEmptyGuide
           title={t("mvp_hypotheses_emptyTitle")}
@@ -368,9 +368,9 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
                 createdAt={item.createdAt}
                 updatedAt={item.updatedAt}
               >
-                <p className="text-sm text-slate-600">{item.description}</p>
+                <p className="text-sm text-[var(--text-dim)]">{item.description}</p>
                 {item.promotedLearningId ? (
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-[var(--text-dim)]">
                     {t("hypothesesPromotedLearning", { id: item.promotedLearningId.slice(0, 8) })}
                   </p>
                 ) : null}

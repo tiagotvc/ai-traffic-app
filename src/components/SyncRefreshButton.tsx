@@ -151,11 +151,11 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
     <div className="inline-flex flex-col items-end gap-1">
       {backfill ? (
         <div
-          className="w-full min-w-[220px] rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900"
+          className="ui-alert-info w-full min-w-[220px]"
           role="status"
         >
           <div className="font-medium">{t("backfillRunning")}</div>
-          <div className="mt-1 text-violet-700">
+          <div className="mt-1 text-[var(--violet)]">
             {t("backfillProgress", {
               accountsDone: backfill.accountsDone,
               accountsTotal: backfill.accountsTotal,
@@ -163,9 +163,9 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
               daysTotal: backfill.daysTotal
             })}
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-violet-200">
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(79,70,229,0.15)]">
             <div
-              className="h-full rounded-full bg-violet-600 transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-[var(--violet)] to-[var(--violet-bright)] transition-all"
               style={{ width: `${backfillPct}%` }}
             />
           </div>
@@ -173,7 +173,7 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
       ) : null}
       <div className="inline-flex items-center gap-2">
         <span
-          className={`text-xs ${error ? "text-rose-600" : "text-slate-500"}`}
+          className={`text-xs ${error ? "text-rose-600" : "text-[var(--text-dim)]"}`}
           title={error ?? undefined}
         >
           {error
@@ -188,7 +188,7 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
           disabled={disabled}
           aria-label={t("now")}
           title={cooldownSec > 0 ? t("cooldownHint", { minutes: cooldownMins }) : t("now")}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-violet-600 shadow-sm transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="ui-btn-secondary !h-8 !w-8 !p-0 text-[var(--violet)] hover:border-[rgba(79,70,229,0.25)] hover:bg-[rgba(79,70,229,0.06)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <svg
             className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`}
@@ -210,7 +210,7 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
           disabled={isBackfillPending || isPending || cooldownSec > 0 || !!backfill}
           aria-label="Backfill histórico"
           title="Backfill histórico (90d)"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-violet-600 shadow-sm transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="ui-btn-secondary !h-8 !w-8 !p-0 text-[var(--violet)] hover:border-[rgba(79,70,229,0.25)] hover:bg-[rgba(79,70,229,0.06)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <svg
             className={`h-4 w-4 ${isBackfillPending ? "animate-spin" : ""}`}

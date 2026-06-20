@@ -36,14 +36,14 @@ export function AdSetBatchPanel() {
   return (
     <div className="ui-card space-y-4 p-4">
       <div>
-        <h3 className="text-sm font-semibold text-slate-900">{t("batchTitle")}</h3>
-        <p className="mt-1 text-[11px] text-slate-500">{t("batchHint")}</p>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("batchTitle")}</h3>
+        <p className="mt-1 text-[11px] text-[var(--text-dim)]">{t("batchHint")}</p>
       </div>
 
       <div>
-        <div className="flex items-center justify-between text-xs text-slate-600">
+        <div className="flex items-center justify-between text-xs text-[var(--text-dim)]">
           <span>{t("batchExtraCount", { count: batch.extraCount })}</span>
-          <span className="font-medium text-violet-700">
+          <span className="font-medium text-[var(--violet)]">
             {batch.extraCount > 0 ? `+${batch.extraCount}` : t("batchNone")}
           </span>
         </div>
@@ -61,7 +61,7 @@ export function AdSetBatchPanel() {
           }
           className="mt-2 w-full accent-violet-600"
         />
-        <div className="mt-1 flex justify-between text-[10px] text-slate-400">
+        <div className="mt-1 flex justify-between text-[10px] text-[var(--text-dimmer)]">
           {Array.from({ length: 11 }, (_, i) => (
             <span key={i}>{i === 0 ? "0" : i}</span>
           ))}
@@ -71,14 +71,14 @@ export function AdSetBatchPanel() {
       {batch.extraCount > 0 ? (
         <>
           <div>
-            <p className="text-xs font-medium text-slate-600">{t("batchVariationAxes")}</p>
+            <p className="text-xs font-medium text-[var(--text-dim)]">{t("batchVariationAxes")}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {AXES.map((axis) => {
                 const checked = batch.variationAxes.includes(axis);
                 return (
                   <label
                     key={axis}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-2 py-1 text-xs"
+                    className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--border-color)] px-2 py-1 text-xs"
                   >
                     <input
                       type="checkbox"
@@ -101,7 +101,7 @@ export function AdSetBatchPanel() {
 
           {batch.variationAxes.includes("location") ? (
             <div>
-              <p className="text-xs font-medium text-slate-600">{t("batchLocationVariants")}</p>
+              <p className="text-xs font-medium text-[var(--text-dim)]">{t("batchLocationVariants")}</p>
               <MetaTargetingSelect
                 type="geo"
                 placeholder={t("batchAddLocation")}
@@ -120,7 +120,7 @@ export function AdSetBatchPanel() {
 
           {batch.variationAxes.includes("ageRange") ? (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-600">{t("batchAgeRanges")}</p>
+              <p className="text-xs font-medium text-[var(--text-dim)]">{t("batchAgeRanges")}</p>
               {batch.ageRanges.map((range, i) => (
                 <div key={i} className="flex flex-wrap items-center gap-2">
                   <input
@@ -145,7 +145,7 @@ export function AdSetBatchPanel() {
                     }}
                     className="ui-input w-16 text-xs"
                   />
-                  <span className="text-xs text-slate-400">—</span>
+                  <span className="text-xs text-[var(--text-dimmer)]">—</span>
                   <input
                     type="number"
                     min={13}
@@ -170,7 +170,7 @@ export function AdSetBatchPanel() {
                     ]
                   })
                 }
-                className="text-xs text-violet-600 hover:underline"
+                className="text-xs text-[var(--violet)] hover:underline"
               >
                 {t("batchAddAgeRange")}
               </button>
@@ -179,7 +179,7 @@ export function AdSetBatchPanel() {
 
           {batch.variationAxes.includes("gender") ? (
             <div>
-              <p className="text-xs font-medium text-slate-600">{t("batchGenderVariants")}</p>
+              <p className="text-xs font-medium text-[var(--text-dim)]">{t("batchGenderVariants")}</p>
               <div className="mt-1 flex flex-wrap gap-2">
                 {(["all", "male", "female"] as const).map((g) => {
                   const checked = batch.genderVariants.includes(g);
@@ -206,10 +206,10 @@ export function AdSetBatchPanel() {
           ) : null}
 
           <div className="overflow-x-auto">
-            <p className="mb-2 text-xs font-medium text-slate-600">{t("batchPreview")}</p>
+            <p className="mb-2 text-xs font-medium text-[var(--text-dim)]">{t("batchPreview")}</p>
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
+                <tr className="border-b border-[var(--border-color)] text-[var(--text-dim)]">
                   <th className="py-1 pr-2">#</th>
                   <th className="py-1 pr-2">{t("adsetName")}</th>
                   <th className="py-1">{t("audienceSummary")}</th>
@@ -217,10 +217,10 @@ export function AdSetBatchPanel() {
               </thead>
               <tbody>
                 {preview.map((row, i) => (
-                  <tr key={row.id} className="border-b border-slate-100">
-                    <td className="py-1.5 pr-2 text-slate-400">{i + 1}</td>
-                    <td className="py-1.5 pr-2 font-medium text-slate-800">{row.name}</td>
-                    <td className="py-1.5 text-slate-600">
+                  <tr key={row.id} className="border-b border-[var(--border-color)]">
+                    <td className="py-1.5 pr-2 text-[var(--text-dimmer)]">{i + 1}</td>
+                    <td className="py-1.5 pr-2 font-medium text-[var(--text-main)]">{row.name}</td>
+                    <td className="py-1.5 text-[var(--text-dim)]">
                       {row.targeting.locations[0]?.label ?? "—"} · {row.targeting.ageMin}-
                       {row.targeting.ageMax}
                     </td>

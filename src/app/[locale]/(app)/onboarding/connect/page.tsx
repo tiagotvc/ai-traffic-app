@@ -30,7 +30,7 @@ type ComingSoonPlatform = { key: "tiktok" | "snapchat"; mark: string; ring: stri
 
 const COMING_SOON: ComingSoonPlatform[] = [
 
-  { key: "tiktok", mark: "♪", ring: "ring-slate-300 text-slate-800" },
+  { key: "tiktok", mark: "♪", ring: "ring-slate-300 text-[var(--text-main)]" },
 
   { key: "snapchat", mark: "👻", ring: "ring-amber-200 text-amber-500" }
 
@@ -122,7 +122,7 @@ export default async function ConnectPlatformPage({
 
         <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-white lg:min-h-screen">
 
-          <div className="border-b border-slate-100 bg-gradient-to-r from-violet-950 to-indigo-950 px-6 py-6 text-white lg:hidden">
+          <div className="border-b border-[var(--border-color)] bg-gradient-to-r from-violet-950 to-indigo-950 px-6 py-6 text-white lg:hidden">
 
             <TrafficAILogo size="sm" productLabel={tCommon("product")} variant="dark" />
 
@@ -134,19 +134,19 @@ export default async function ConnectPlatformPage({
 
             <div className="w-full max-w-[440px]">
 
-              <p className="text-xs font-semibold uppercase tracking-wider text-violet-600">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--violet)]">
 
                 {t("breadcrumb")}
 
               </p>
 
-              <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              <h1 className="mt-2 font-heading text-2xl font-bold tracking-tight text-[var(--text-main)] sm:text-3xl">
 
                 {t("title")}
 
               </h1>
 
-              <p className="mt-2 text-sm leading-relaxed text-slate-500">{t("subtitle")}</p>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">{t("subtitle")}</p>
 
 
 
@@ -154,9 +154,9 @@ export default async function ConnectPlatformPage({
 
                 <div className="mb-3 flex items-center gap-2">
 
-                  <span className="text-sm font-semibold text-slate-800">{t("metaAds")}</span>
+                  <span className="text-sm font-semibold text-[var(--text-main)]">{t("metaAds")}</span>
 
-                  <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                  <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
 
                     {t("metaPrimary")}
 
@@ -182,7 +182,7 @@ export default async function ConnectPlatformPage({
 
               <div className="mt-8">
 
-                <div className="text-sm font-semibold text-slate-700">{t("otherPlatforms")}</div>
+                <div className="text-sm font-semibold text-[var(--text-dim)]">{t("otherPlatforms")}</div>
 
                 <div className="mt-3 space-y-2">
 
@@ -194,7 +194,7 @@ export default async function ConnectPlatformPage({
 
                         type="submit"
 
-                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[var(--border-color)] bg-white px-4 py-3.5 text-left shadow-sm transition hover:border-slate-300 hover:bg-[var(--surface-thead)]"
 
                       >
 
@@ -208,19 +208,19 @@ export default async function ConnectPlatformPage({
 
                           <span>
 
-                            <span className="block text-sm font-medium text-slate-800">
+                            <span className="block text-sm font-medium text-[var(--text-main)]">
 
                               {t("google")}
 
                             </span>
 
-                            <span className="block text-xs text-slate-500">{t("googleHint")}</span>
+                            <span className="block text-xs text-[var(--text-dim)]">{t("googleHint")}</span>
 
                           </span>
 
                         </span>
 
-                        <span aria-hidden className="text-slate-400">→</span>
+                        <span aria-hidden className="text-[var(--text-dimmer)]">→</span>
 
                       </button>
 
@@ -228,11 +228,11 @@ export default async function ConnectPlatformPage({
 
                   ) : (
 
-                    <div className="flex cursor-not-allowed items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3.5 opacity-80">
+                    <div className="flex cursor-not-allowed items-center justify-between gap-3 rounded-2xl border border-[var(--border-color)] bg-[var(--surface-thead)]/60 px-4 py-3.5 opacity-80">
 
-                      <span className="text-sm font-medium text-slate-700">{t("google")}</span>
+                      <span className="text-sm font-medium text-[var(--text-dim)]">{t("google")}</span>
 
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-[var(--text-dim)]">
 
                         {t("comingSoon")}
 
@@ -250,7 +250,7 @@ export default async function ConnectPlatformPage({
 
                       key={p.key}
 
-                      className="flex cursor-not-allowed items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3.5 opacity-80"
+                      className="flex cursor-not-allowed items-center justify-between gap-3 rounded-2xl border border-[var(--border-color)] bg-[var(--surface-thead)]/60 px-4 py-3.5 opacity-80"
 
                       aria-disabled
 
@@ -268,11 +268,11 @@ export default async function ConnectPlatformPage({
 
                         </span>
 
-                        <span className="text-sm font-medium text-slate-700">{t(p.key)}</span>
+                        <span className="text-sm font-medium text-[var(--text-dim)]">{t(p.key)}</span>
 
                       </span>
 
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-[var(--text-dim)]">
 
                         {t("comingSoon")}
 
@@ -294,7 +294,7 @@ export default async function ConnectPlatformPage({
 
                   href="/dashboard"
 
-                  className="text-sm font-semibold text-violet-600 transition hover:text-violet-500"
+                  className="text-sm font-semibold text-[var(--violet)] transition hover:text-violet-500"
 
                 >
 

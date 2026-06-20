@@ -4,18 +4,18 @@ import type { ReactNode } from "react";
 import { adminPlanTier } from "@/lib/billing/admin-plan-styles";
 
 export const PLAN_BADGE: Record<string, string> = {
-  free: "bg-slate-100 text-slate-700 ring-slate-200/80",
-  basic: "bg-violet-50 text-violet-700 ring-violet-200/80",
-  advanced: "bg-violet-100 text-violet-800 ring-violet-300/60",
+  free: "bg-slate-100 text-[var(--text-dim)] ring-slate-200/80",
+  basic: "bg-[rgba(124,58,237,0.06)] text-violet-700 ring-violet-200/80",
+  advanced: "bg-[rgba(124,58,237,0.1)] text-[var(--violet)] ring-violet-300/60",
   agency: "bg-gradient-to-r from-amber-100 to-orange-100 text-amber-900 ring-amber-300/60"
 };
 
 export const STATUS_BADGE: Record<string, { className: string; dot: string }> = {
   active: { className: "bg-emerald-50 text-emerald-800 ring-emerald-200/80", dot: "bg-emerald-500" },
   trialing: { className: "bg-blue-50 text-blue-800 ring-blue-200/80", dot: "bg-blue-500" },
-  past_due: { className: "bg-amber-50 text-amber-800 ring-amber-200/80", dot: "bg-amber-500" },
+  past_due: { className: "bg-[rgba(245,166,35,0.12)] text-[var(--amber)] ring-amber-200/80", dot: "bg-amber-500" },
   suspended: { className: "bg-red-50 text-red-800 ring-red-200/80", dot: "bg-red-500" },
-  canceled: { className: "bg-slate-100 text-slate-600 ring-slate-200/80", dot: "bg-slate-400" }
+  canceled: { className: "bg-slate-100 text-[var(--text-dim)] ring-slate-200/80", dot: "bg-slate-400" }
 };
 
 export function planBadgeClass(slug: string) {
@@ -206,9 +206,9 @@ export function AdminSection({
   className?: string;
 }) {
   const accents = {
-    violet: "border-violet-100 from-violet-50/80 to-white text-violet-600",
+    violet: "border-[rgba(124,58,237,0.15)] from-violet-50/80 to-white text-[var(--violet)]",
     amber: "border-amber-200/80 from-amber-50/90 via-white to-orange-50/50 text-amber-600",
-    slate: "border-slate-200 from-slate-50/80 to-white text-slate-600",
+    slate: "border-[var(--border-color)] from-slate-50/80 to-white text-[var(--text-dim)]",
     emerald: "border-emerald-100 from-emerald-50/80 to-white text-emerald-600"
   };
 
@@ -221,8 +221,8 @@ export function AdminSection({
           <AdminIcon name={icon} className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-          {subtitle ? <p className="mt-0.5 text-[11px] text-slate-500">{subtitle}</p> : null}
+          <h2 className="text-sm font-semibold text-[var(--text-main)]">{title}</h2>
+          {subtitle ? <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{subtitle}</p> : null}
         </div>
       </div>
       <div className="bg-white/90 p-4">{children}</div>
@@ -243,22 +243,22 @@ export function AdminField({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-xs font-semibold text-slate-600">{label}</span>
+      <span className="text-xs font-semibold text-[var(--text-dim)]">{label}</span>
       <div className="relative">
         {icon ? (
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dimmer)]">
             <AdminIcon name={icon} className="h-4 w-4" />
           </span>
         ) : null}
         {children}
       </div>
-      {hint ? <p className="text-xs text-slate-400">{hint}</p> : null}
+      {hint ? <p className="text-xs text-[var(--text-dimmer)]">{hint}</p> : null}
     </label>
   );
 }
 
 const fieldBase =
-  "w-full rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 hover:border-slate-300 focus:border-violet-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-100";
+  "w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/50 text-sm text-[var(--text-main)] shadow-sm transition placeholder:text-[var(--text-dimmer)] hover:border-slate-300 focus:border-violet-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-100";
 
 export function AdminInput({
   icon,
@@ -317,8 +317,8 @@ export function AdminSaveButton({
   disabled?: boolean;
 }) {
   const variants = {
-    violet: "bg-violet-600 hover:bg-violet-700 focus:ring-violet-200",
-    amber: "bg-amber-500 hover:bg-amber-600 focus:ring-amber-200"
+    violet: "ui-btn-primary",
+    amber: "ui-btn-primary"
   };
 
   return (
@@ -326,7 +326,7 @@ export function AdminSaveButton({
       type="button"
       disabled={loading || disabled}
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]}`}
+      className={`${variants[variant]} disabled:cursor-not-allowed disabled:opacity-50`}
     >
       {loading ? (
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -358,7 +358,7 @@ export const ADDON_META: Record<
   },
   extraAdAccounts: {
     icon: "ads",
-    color: "text-violet-600",
+    color: "text-[var(--violet)]",
     ring: "ring-violet-100",
     gradient: "from-violet-50 to-white"
   },
@@ -410,7 +410,7 @@ export function AddonStepperCard({
 
   return (
     <div
-      className={`rounded-xl border border-slate-200/80 bg-gradient-to-br p-3 shadow-sm ${meta.gradient}`}
+      className={`rounded-xl border border-[var(--border-color)]/80 bg-gradient-to-br p-3 shadow-sm ${meta.gradient}`}
     >
       <div className="flex items-start gap-2.5">
         <span
@@ -419,10 +419,10 @@ export function AddonStepperCard({
           <AdminIcon name={meta.icon} className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-slate-900">{label}</p>
+          <p className="text-xs font-semibold text-[var(--text-main)]">{label}</p>
           {baseLimit !== undefined ? (
-            <p className="mt-0.5 text-xs text-slate-500">
-              {planLabel}: {baseLimit} → <span className="font-semibold text-slate-700">{effective}</span>
+            <p className="mt-0.5 text-xs text-[var(--text-dim)]">
+              {planLabel}: {baseLimit} → <span className="font-semibold text-[var(--text-dim)]">{effective}</span>
             </p>
           ) : null}
         </div>
@@ -432,21 +432,21 @@ export function AddonStepperCard({
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] bg-white text-base font-medium text-[var(--text-dim)] shadow-sm transition hover:border-slate-300 hover:bg-[var(--surface-thead)]"
           aria-label="-1"
         >
           −
         </button>
         <div className="flex flex-1 flex-col items-center">
-          <span className="text-lg font-bold tabular-nums text-slate-900">+{value}</span>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+          <span className="text-lg font-bold tabular-nums text-[var(--text-main)]">+{value}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
             {extraLabel}
           </span>
         </div>
         <button
           type="button"
           onClick={() => onChange(value + 1)}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-medium text-slate-600 shadow-sm transition hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] bg-white text-base font-medium text-[var(--text-dim)] shadow-sm transition hover:border-violet-300 hover:bg-[rgba(124,58,237,0.06)] hover:text-violet-700"
           aria-label="+1"
         >
           +

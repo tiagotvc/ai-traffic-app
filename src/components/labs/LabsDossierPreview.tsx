@@ -14,15 +14,15 @@ export function LabsDossierPreview({ dossier }: { dossier: Dossier }) {
   return (
     <div className="space-y-4">
       {summary && (
-        <div className="rounded-xl border border-violet-100 bg-violet-50/40 p-4">
+        <div className="rounded-xl border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)]/40 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
             {t("labsDossierSummary")}
           </p>
           {summary.headline ? (
-            <p className="mt-2 text-sm font-medium text-slate-900">{String(summary.headline)}</p>
+            <p className="mt-2 text-sm font-medium text-[var(--text-main)]">{String(summary.headline)}</p>
           ) : null}
           {summary.objective ? (
-            <p className="mt-1 text-sm text-slate-600">{String(summary.objective)}</p>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">{String(summary.objective)}</p>
           ) : null}
           {summary.note ? (
             <p className="mt-2 text-xs text-amber-800/90">{String(summary.note)}</p>
@@ -32,17 +32,17 @@ export function LabsDossierPreview({ dossier }: { dossier: Dossier }) {
 
       {highlights.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("labsDossierHighlights")}
           </p>
           <ul className="space-y-2">
             {highlights.map((h, i) => (
               <li
                 key={i}
-                className="rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm shadow-sm"
+                className="rounded-lg border border-[var(--border-color)] bg-white px-3 py-2 text-sm shadow-sm"
               >
-                <p className="font-medium text-slate-800">{h.title}</p>
-                <p className="mt-0.5 text-slate-600">{h.text}</p>
+                <p className="font-medium text-[var(--text-main)]">{h.title}</p>
+                <p className="mt-0.5 text-[var(--text-dim)]">{h.text}</p>
               </li>
             ))}
           </ul>
@@ -51,15 +51,15 @@ export function LabsDossierPreview({ dossier }: { dossier: Dossier }) {
 
       {hypotheses.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("labsDossierHypotheses")}
           </p>
-          <ol className="list-decimal space-y-1 pl-5 text-sm text-slate-700">
+          <ol className="list-decimal space-y-1 pl-5 text-sm text-[var(--text-dim)]">
             {hypotheses.map((h, i) => (
               <li key={i}>
                 {String(h.name)}
                 {h.confidence != null && (
-                  <span className="ml-1 text-xs text-slate-400">
+                  <span className="ml-1 text-xs text-[var(--text-dimmer)]">
                     ({Math.round(Number(h.confidence) * 100)}%)
                   </span>
                 )}
@@ -71,10 +71,10 @@ export function LabsDossierPreview({ dossier }: { dossier: Dossier }) {
 
       {nextSteps.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
             {t("labsDossierNextSteps")}
           </p>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+          <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--text-dim)]">
             {nextSteps.map((step, i) => (
               <li key={i}>{step}</li>
             ))}

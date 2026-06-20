@@ -6,9 +6,9 @@ import type { EvidenceSource, EvidenceSourceType } from "@/lib/agency-brain/insi
 
 const SOURCE_STYLES: Record<EvidenceSourceType, string> = {
   meta_ads: "bg-blue-50 text-blue-800 border-blue-100",
-  agency: "bg-violet-50 text-violet-800 border-violet-100",
+  agency: "bg-[rgba(124,58,237,0.06)] text-[var(--violet)] border-[rgba(124,58,237,0.15)]",
   market: "bg-emerald-50 text-emerald-800 border-emerald-100",
-  competitor: "bg-amber-50 text-amber-800 border-amber-100",
+  competitor: "bg-amber-500/10 text-amber-800 border-amber-100",
   hypothesis: "bg-sky-50 text-sky-800 border-sky-100"
 };
 
@@ -33,7 +33,44 @@ function SourceIcon({ type }: { type: EvidenceSourceType }) {
   );
 }
 
-export function EvidenceSourcePill({ source, compact }: { source: EvidenceSource; compact?: boolean }) {
+const SOURCE_UX: Record<
+  EvidenceSourceType,
+  { color: string; bg: string }
+> = {
+  meta_ads: { color: "#1877F2", bg: "rgba(24,119,242,0.09)" },
+  agency: { color: "#7c3aed", bg: "rgba(124,58,237,0.09)" },
+  market: { color: "#10b981", bg: "rgba(16,185,129,0.09)" },
+  competitor: { color: "#f5a623", bg: "rgba(245,166,35,0.09)" },
+  hypothesis: { color: "#6366f1", bg: "rgba(99,102,241,0.09)" }
+};
+
+export function EvidenceSourcePill({
+  source,
+  compact,
+  variant = "default"
+}: {
+  source: EvidenceSource;
+  compact?: boolean;
+  variant?: "default" | "uxpilot";
+}) {
+  if (variant === "uxpilot") {
+    const ux = SOURCE_UX[source.type];
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium"
+        style={{
+          background: ux.bg,
+          color: ux.color,
+          borderColor: `${ux.color}22`
+        }}
+        title={source.detail}
+      >
+        <SourceIcon type={source.type} />
+        {source.label}
+      </span>
+    );
+  }
+
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${SOURCE_STYLES[source.type]}`}
@@ -50,29 +87,62 @@ export function EvidenceSourcePill({ source, compact }: { source: EvidenceSource
 
 export function EvidenceSourcesRow({
   sources,
-  compact
+  compact,
+  variant = "default"
 }: {
   sources: EvidenceSource[];
   compact?: boolean;
+  variant?: "default" | "uxpilot";
 }) {
   if (sources.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-1.5">
       {sources.map((source) => (
-        <EvidenceSourcePill key={`${source.type}-${source.label}`} source={source} compact={compact} />
+        <EvidenceSourcePill
+          key={`${source.type}-${source.label}`}
+          source={source}
+          compact={compact}
+          variant={variant}
+        />
       ))}
     </div>
   );
 }
 
-export function EvidenceSourcesLegend() {
+const SOURCE_LEGEND_UX: Array<{ type: EvidenceSourceType; color: string; bg: string }> = [
+  { type: "meta_ads", color: "#1877F2", bg: "rgba(24,119,242,0.08)" },
+  { type: "agency", color: "#7c3aed", bg: "rgba(124,58,237,0.08)" },
+  { type: "market", color: "#10b981", bg: "rgba(16,185,129,0.08)" },
+  { type: "competitor", color: "#f5a623", bg: "rgba(245,166,35,0.08)" },
+  { type: "hypothesis", color: "#6366f1", bg: "rgba(99,102,241,0.08)" }
+];
+
+export function EvidenceSourcesLegend({ variant = "default" }: { variant?: "default" | "uxpilot" }) {
   const t = useTranslations("brainInsights");
+
+  if (variant === "uxpilot") {
+    return (
+      <>
+        {SOURCE_LEGEND_UX.map((s) => (
+          <span
+            key={s.type}
+            className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium"
+            style={{ background: s.bg, color: s.color, borderColor: `${s.color}33` }}
+          >
+            <SourceIcon type={s.type} />
+            {t(`sourceType.${s.type}`)}
+          </span>
+        ))}
+      </>
+    );
+  }
+
   const types: EvidenceSourceType[] = ["meta_ads", "agency", "market", "competitor", "hypothesis"];
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-      <span className="font-medium text-slate-600">{t("sourcesLegend")}</span>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-dim)]">
+      <span className="font-medium text-[var(--text-dim)]">{t("sourcesLegend")}</span>
       {types.map((type) => (
         <span key={type} className="inline-flex items-center gap-1">
           <SourceIcon type={type} />

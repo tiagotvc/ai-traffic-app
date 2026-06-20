@@ -12,12 +12,12 @@ export function BillingPortalSkeleton() {
         <Skeleton className="h-8 w-24 rounded-lg" />
       </div>
       <div className="space-y-4">
-        <div className="flex gap-6 border-b border-slate-200 pb-2.5">
+        <div className="flex gap-6 border-b border-[var(--border-color)] pb-2.5">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-5 w-20" />
           ))}
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="ui-card p-4">
           <Skeleton className="h-40 w-full rounded-xl" />
           <Skeleton className="mt-4 h-24 w-full rounded-xl" />
         </div>
@@ -52,7 +52,7 @@ export function BillingPlansSkeleton() {
 export function CheckoutSummarySkeleton() {
   return (
     <div className="space-y-5">
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="overflow-hidden ui-card p-6">
         <div className="grid gap-3 sm:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-28 w-full rounded-2xl" />
@@ -93,7 +93,7 @@ export function AdminPlansSkeleton() {
       </div>
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+          <div key={i} className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-white p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <Skeleton className="h-3 w-14" />
@@ -101,7 +101,7 @@ export function AdminPlansSkeleton() {
               </div>
               <Skeleton className="h-3 w-3" />
             </div>
-            <div className="mt-4 grid gap-3 border-t border-slate-100 pt-4 lg:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid gap-3 border-t border-[var(--border-color)] pt-4 lg:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, j) => (
                 <Skeleton key={j} className="h-10 w-full rounded-lg" />
               ))}
@@ -134,7 +134,7 @@ export function AdminUsersListSkeleton() {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className={`${ADMIN_USERS_ROW_GRID} rounded-xl border border-slate-200/90 bg-white py-2.5 shadow-sm`}
+              className={`${ADMIN_USERS_ROW_GRID} rounded-xl border border-[var(--border-color)]/90 bg-white py-2.5 shadow-sm`}
             >
               <div className="flex items-center gap-2.5">
                 <Skeleton className="h-9 w-9 shrink-0 rounded-lg" />
@@ -152,7 +152,7 @@ export function AdminUsersListSkeleton() {
           ))}
         </div>
       </div>
-      <div className="-mx-6 mt-6 border-t border-slate-200/80 px-6 py-3 lg:-mx-8 lg:px-8">
+      <div className="-mx-6 mt-6 border-t border-[var(--border-color)]/80 px-6 py-3 lg:-mx-8 lg:px-8">
         <div className="flex items-center justify-between">
           <Skeleton className="h-3 w-24" />
           <div className="flex gap-1.5">
@@ -181,8 +181,8 @@ export function AdminUserDetailSkeleton() {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3">
+          <div key={i} className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-white">
+            <div className="flex items-center gap-2.5 border-b border-[var(--border-color)] px-4 py-3">
               <Skeleton className="h-8 w-8 rounded-lg" />
               <div className="space-y-1.5">
                 <Skeleton className="h-3.5 w-32" />
@@ -200,8 +200,8 @@ export function AdminUserDetailSkeleton() {
             </div>
           </div>
         ))}
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white lg:col-span-2">
-          <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3">
+        <div className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-white lg:col-span-2">
+          <div className="flex items-center gap-2.5 border-b border-[var(--border-color)] px-4 py-3">
             <Skeleton className="h-8 w-8 rounded-lg" />
             <Skeleton className="h-3.5 w-36" />
           </div>
@@ -222,8 +222,8 @@ export function AdminUserDetailSkeleton() {
             ))}
           </div>
         </div>
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white lg:col-span-2">
-          <div className="border-b border-slate-100 px-4 py-3">
+        <div className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-white lg:col-span-2">
+          <div className="border-b border-[var(--border-color)] px-4 py-3">
             <Skeleton className="h-3.5 w-32" />
           </div>
           <div className="grid gap-3 p-4 sm:grid-cols-2">

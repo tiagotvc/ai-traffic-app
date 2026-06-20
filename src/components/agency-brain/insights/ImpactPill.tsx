@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import type { ImpactLevel } from "@/lib/agency-brain/insights/types";
 
 const STYLES: Record<ImpactLevel, string> = {
-  low: "bg-slate-100 text-slate-700",
-  medium: "bg-amber-50 text-amber-800",
-  high: "bg-rose-50 text-rose-800"
+  low: "bg-[var(--surface-thead)]0/10 text-[var(--text-dim)]",
+  medium: "bg-amber-500/10 text-amber-800",
+  high: "bg-rose-500/10 text-rose-800"
 };
 
 export function ImpactPill({ level }: { level: ImpactLevel }) {

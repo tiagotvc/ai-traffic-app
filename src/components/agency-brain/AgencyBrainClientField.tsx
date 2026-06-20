@@ -31,7 +31,7 @@ export function AgencyBrainClientField({ className, hint }: AgencyBrainClientFie
           </option>
         ))}
       </select>
-      {hint ? <p className="mt-1 text-[11px] text-slate-500">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-[11px] text-[var(--text-dim)]">{hint}</p> : null}
     </div>
   );
 }

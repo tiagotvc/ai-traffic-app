@@ -35,7 +35,7 @@ export function BrainListCard({
           disabled={!hasBody}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className={`font-semibold text-slate-900 ${expanded ? "" : "truncate max-w-md"}`}>
+            <h3 className={`font-semibold text-[var(--text-main)] ${expanded ? "" : "truncate max-w-md"}`}>
               {title}
             </h3>
             {badges}
@@ -47,7 +47,7 @@ export function BrainListCard({
         {hasBody ? (
           <button
             type="button"
-            className="flex-shrink-0 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="flex-shrink-0 rounded p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-thead)] hover:text-[var(--text-dim)]"
             onClick={() => setExpanded((v) => !v)}
             aria-label={expanded ? "collapse" : "expand"}
           >
@@ -67,7 +67,7 @@ export function BrainListCard({
         ) : null}
       </div>
       {expanded && children ? (
-        <div className="border-t border-slate-100 px-4 pb-4 pt-3">
+        <div className="border-t border-[var(--border-color)] px-4 pb-4 pt-3">
           <CreatedAtMeta createdAt={createdAt} updatedAt={updatedAt} className="mb-2" />
           {children}
         </div>

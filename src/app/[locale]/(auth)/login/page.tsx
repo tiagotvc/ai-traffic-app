@@ -39,7 +39,7 @@ export default async function LoginPage({
       {/* Form — full height right panel */}
       <div className="flex min-h-screen flex-col bg-white">
         {/* Mobile marketing header (compact) */}
-        <div className="border-b border-slate-100 bg-gradient-to-r from-violet-950 to-indigo-950 px-6 py-8 text-white lg:hidden">
+        <div className="border-b border-[var(--border-color)] bg-gradient-to-r from-violet-950 to-indigo-950 px-6 py-8 text-white lg:hidden">
           <TrafficAILogo size="sm" productLabel={tCommon("product")} variant="dark" />
         </div>
 
@@ -57,7 +57,7 @@ export default async function LoginPage({
           </div>
         </div>
 
-        <div className="px-6 pb-6 text-center text-[11px] text-slate-400 lg:pb-8">
+        <div className="px-6 pb-6 text-center text-[11px] text-[var(--text-dimmer)] lg:pb-8">
           © {new Date().getFullYear()} Traffic AI
         </div>
       </div>

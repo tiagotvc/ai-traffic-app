@@ -20,7 +20,7 @@ export function LearningContentFilter({
     ];
 
   return (
-    <div className="flex shrink-0 gap-1 rounded-lg border border-slate-200 bg-slate-50/80 p-0.5">
+    <div className="flex shrink-0 gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)] p-0.5">
       {options.map((opt) => {
         const active = selected === opt.id;
         return (
@@ -32,8 +32,8 @@ export function LearningContentFilter({
             className={[
               "rounded-md px-2.5 py-1 text-[11px] font-medium transition",
               active
-                ? "bg-white text-violet-800 shadow-sm ring-1 ring-violet-100"
-                : "text-slate-600 hover:text-slate-800"
+                ? "bg-white text-[var(--violet)] shadow-sm ring-1 ring-violet-100"
+                : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
             ].join(" ")}
           >
             {t(opt.labelKey)}

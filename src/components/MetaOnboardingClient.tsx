@@ -55,30 +55,24 @@ export function MetaOnboardingClient() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="ui-card p-6">
-        <h1 className="text-xl font-bold text-slate-900">{t("title")}</h1>
-        <p className="mt-2 text-sm text-slate-600">{t("subtitle")}</p>
+        <h1 className="font-heading text-xl font-bold text-[var(--text-main)]">{t("title")}</h1>
+        <p className="mt-2 text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
 
         {phase === "discovering" ? (
-          <div className="mt-6 flex items-center gap-3 text-sm text-slate-600">
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+          <div className="mt-6 flex items-center gap-3 text-sm text-[var(--text-dim)]">
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--amber-bright)] border-t-transparent" />
             {t("discovering")}
           </div>
         ) : null}
 
         {phase === "error" ? (
           <div className="mt-6 space-y-3">
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              {error}
-            </div>
-            <button
-              type="button"
-              onClick={runDiscover}
-              className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
-            >
+            <div className="ui-alert-danger">{error}</div>
+            <button type="button" onClick={runDiscover} className="ui-btn-primary">
               {t("retry")}
             </button>
-            <p className="text-xs text-slate-500">
-              <Link href="/settings" className="text-violet-600 underline">
+            <p className="text-xs text-[var(--text-dimmer)]">
+              <Link href="/settings" className="ui-link underline">
                 {t("settingsLink")}
               </Link>
             </p>
@@ -87,27 +81,25 @@ export function MetaOnboardingClient() {
 
         {phase === "done" && result ? (
           <div className="mt-6 space-y-4">
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              {t("summary", {
+            <div className="ui-alert-success">{t("summary", {
                 businesses: result.businesses,
                 accounts: result.adAccounts,
                 pages: result.pages
-              })}
-            </div>
+              })}</div>
 
             {result.businessRows.length > 0 ? (
               <div className="space-y-2">
                 {result.businessRows.map((bm) => (
-                  <div key={bm.metaBusinessId} className="rounded-xl border border-slate-200">
+                  <div key={bm.metaBusinessId} className="ui-card overflow-hidden">
                     <button
                       type="button"
                       onClick={() =>
                         setExpanded((e) => (e === bm.metaBusinessId ? null : bm.metaBusinessId))
                       }
-                      className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-800"
+                      className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-[var(--text-main)]"
                     >
                       <span>{bm.name}</span>
-                      <span className="text-xs font-normal text-slate-500">
+                      <span className="text-xs font-normal text-[var(--text-dimmer)]">
                         {t("bmCounts", {
                           accounts: bm.adAccountCount,
                           pages: bm.pageCount
@@ -115,7 +107,7 @@ export function MetaOnboardingClient() {
                       </span>
                     </button>
                     {expanded === bm.metaBusinessId ? (
-                      <div className="border-t border-slate-100 px-4 py-2 text-xs text-slate-500">
+                      <div className="border-t border-[var(--border-color)] px-4 py-2 text-xs text-[var(--text-dimmer)]">
                         ID: {bm.metaBusinessId}
                       </div>
                     ) : null}
@@ -125,16 +117,10 @@ export function MetaOnboardingClient() {
             ) : null}
 
             <div className="flex flex-wrap gap-2 pt-2">
-              <Link
-                href="/clients"
-                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
-              >
+              <Link href="/clients" className="ui-btn-primary">
                 {t("ctaClients")}
               </Link>
-              <Link
-                href="/settings/meta-assets"
-                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
+              <Link href="/settings/meta-assets" className="ui-btn-secondary">
                 {t("ctaAssets")}
               </Link>
             </div>

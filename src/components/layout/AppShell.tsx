@@ -5,7 +5,9 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { PublishPanelHost } from "@/components/publish/PublishPanelHost";
 import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { CommandStripProvider } from "@/components/layout/CommandStripContext";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
+import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 
 const STORAGE_KEY = "traffic-ai-sidebar-collapsed";
@@ -60,8 +62,9 @@ export function AppShell({
   }
 
   return (
+    <UxThemeProvider>
     <PublishPanelProvider>
-      <div className="flex h-screen overflow-hidden bg-[#f4f6f9] dark:bg-slate-950">
+      <div className="flex h-screen overflow-hidden bg-[var(--surface-bg)]">
         <AppSidebar
           userName={userName}
           userEmail={userEmail}
@@ -75,21 +78,30 @@ export function AppShell({
           collapsed={ready ? collapsed : false}
           onToggleCollapse={toggleCollapsed}
         />
-        <main
-          ref={mainRef}
-          onScroll={(e) => setShowTop(e.currentTarget.scrollTop > 400)}
-          className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"
-        >
-          <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
-          <div className="mx-auto w-full max-w-[1600px] px-6 py-6 lg:px-8 lg:py-7">{children}</div>
-        </main>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <CommandStripProvider>
+            <main
+              ref={mainRef}
+              onScroll={(e) => setShowTop(e.currentTarget.scrollTop > 400)}
+              className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 md:px-6"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "var(--scrollbar-color) transparent"
+              }}
+            >
+              <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
+              <div className="mx-auto w-full max-w-[1600px]">{children}</div>
+            </main>
+          </CommandStripProvider>
+        </div>
 
         {showTop ? (
           <button
             type="button"
             onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
             aria-label="Voltar ao topo"
-            className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-violet-600 text-white shadow-lg transition hover:bg-violet-700 print:hidden"
+            className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full text-[#0f1419] shadow-lg transition print:hidden"
+            style={{ background: "linear-gradient(135deg, var(--amber-bright), #e8920d)" }}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
@@ -101,5 +113,6 @@ export function AppShell({
         <PublishPanelHost onPublished={() => window.dispatchEvent(new Event("traffic:campaigns-reload"))} />
       </Suspense>
     </PublishPanelProvider>
+    </UxThemeProvider>
   );
 }

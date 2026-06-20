@@ -17,27 +17,27 @@ type TierStyle = {
 
 const TIER_STYLES: Record<string, TierStyle> = {
   basic: {
-    card: "border-slate-200 bg-white hover:border-violet-200 hover:shadow-md",
-    active: "border-violet-500 bg-violet-50 shadow-md ring-2 ring-violet-200/80",
-    badge: "bg-violet-600 text-white",
-    accent: "text-violet-600",
-    muted: "text-slate-500",
-    title: "text-slate-900"
+    card: "border-[var(--border-color)] bg-white hover:border-[var(--amber)]/40 hover:shadow-md",
+    active: "border-violet-500 bg-[rgba(124,58,237,0.06)] shadow-md ring-2 ring-violet-200/80",
+    badge: "bg-[var(--amber)] text-[#0f1419]",
+    accent: "text-[var(--violet)]",
+    muted: "text-[var(--text-dim)]",
+    title: "text-[var(--text-main)]"
   },
   advanced: {
-    card: "border-violet-200 bg-gradient-to-b from-violet-50 to-white hover:border-violet-300 hover:shadow-md",
+    card: "border-[rgba(124,58,237,0.2)] bg-gradient-to-b from-violet-50 to-white hover:border-violet-300 hover:shadow-md",
     active: "border-violet-500 bg-gradient-to-b from-violet-50 to-white shadow-lg ring-2 ring-violet-200/80",
-    badge: "bg-violet-600 text-white",
+    badge: "bg-[var(--amber)] text-[#0f1419]",
     accent: "text-violet-700",
-    muted: "text-slate-500",
-    title: "text-slate-900"
+    muted: "text-[var(--text-dim)]",
+    title: "text-[var(--text-main)]"
   },
   agency: {
     card: "border-slate-600 bg-gradient-to-b from-slate-800 to-slate-900 hover:border-amber-500/50 hover:shadow-lg",
     active: "border-amber-400 bg-gradient-to-b from-slate-900 to-slate-800 shadow-lg ring-2 ring-amber-400/50",
-    badge: "bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900",
+    badge: "bg-gradient-to-r from-amber-400 to-amber-500 text-[var(--text-main)]",
     accent: "text-amber-400",
-    muted: "text-slate-400",
+    muted: "text-[var(--text-dimmer)]",
     title: "text-white"
   }
 };
@@ -75,12 +75,12 @@ export function CheckoutPlanSwitcher({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="checkout-plan-switcher-header text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <p className="checkout-plan-switcher-header text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
           {t("checkoutChangePlan")}
         </p>
         <Link
           href="/billing/plans"
-          className="checkout-plan-switcher-link text-xs font-semibold text-violet-600 hover:underline"
+          className="checkout-plan-switcher-link text-xs ui-link"
         >
           {t("checkoutComparePlans")}
         </Link>

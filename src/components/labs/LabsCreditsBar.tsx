@@ -19,26 +19,26 @@ export function LabsCreditsBar({
   const pct = Math.min(100, Math.round((estimatedCredits / maxCredits) * 100));
 
   return (
-    <div className="rounded-2xl border border-violet-100 bg-gradient-to-r from-violet-50/80 via-white to-fuchsia-50/60 p-4">
+    <div className="rounded-2xl border border-[rgba(124,58,237,0.15)] bg-gradient-to-r from-violet-50/80 via-white to-fuchsia-50/60 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-violet-600/80">
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--violet)]/80">
             {t("labsCreditsLabel")}
           </p>
-          <p className="mt-0.5 text-sm text-slate-600">
+          <p className="mt-0.5 text-sm text-[var(--text-dim)]">
             {t("labsScientistsCount", { count: selectedScientists.length })}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold tabular-nums text-slate-900">
+          <p className="text-2xl font-bold tabular-nums text-[var(--text-main)]">
             {estimatedCredits}
-            <span className="ml-1 text-sm font-medium text-slate-500">cr</span>
+            <span className="ml-1 text-sm font-medium text-[var(--text-dim)]">cr</span>
           </p>
-          <p className="text-[11px] text-slate-500">{t("labsCreditsEstimated")}</p>
+          <p className="text-[11px] text-[var(--text-dim)]">{t("labsCreditsEstimated")}</p>
         </div>
       </div>
 
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200/70">
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--border-color)]/70">
         <div
           className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-orange-400 transition-all duration-300"
           style={{ width: `${pct}%` }}
@@ -56,7 +56,7 @@ export function LabsCreditsBar({
           </span>
         ))}
         {selectedScientists.length === 0 && (
-          <span className="text-xs text-slate-500">{t("labsScientistsNone")}</span>
+          <span className="text-xs text-[var(--text-dim)]">{t("labsScientistsNone")}</span>
         )}
       </div>
     </div>

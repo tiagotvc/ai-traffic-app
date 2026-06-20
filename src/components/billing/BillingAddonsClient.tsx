@@ -35,8 +35,8 @@ export function BillingAddonsClient() {
       <BillingBackLink href="/billing" />
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t("addonsPageTitle")}</h1>
-        <p className="mt-2 text-sm text-slate-500">{t("addonsPageSubtitle")}</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">{t("addonsPageTitle")}</h1>
+        <p className="mt-2 text-sm text-[var(--text-dim)]">{t("addonsPageSubtitle")}</p>
       </div>
 
       {message ? (
@@ -54,35 +54,35 @@ export function BillingAddonsClient() {
             className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition hover:shadow-lg ${
               selected === addon.key
                 ? "border-violet-400 ring-2 ring-violet-200"
-                : "border-slate-200 bg-white hover:border-violet-200"
+                : "border-[var(--border-color)] bg-white hover:border-[var(--amber)]/40"
             }`}
           >
             <div className={`mb-4 inline-flex rounded-lg bg-gradient-to-r ${addon.color} px-2.5 py-1 text-xs font-bold text-white`}>
               +1
             </div>
-            <p className="font-bold text-slate-900">
+            <p className="font-bold text-[var(--text-main)]">
               {addon.key === "clients"
                 ? t("addonPackClients")
                 : addon.key === "adAccounts"
                   ? t("addonPackAdAccounts")
                   : t("addonPackAi")}
             </p>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-[var(--text-dim)]">
               {addon.key === "clients"
                 ? t("addonPackClientsDesc")
                 : addon.key === "adAccounts"
                   ? t("addonPackAdAccountsDesc")
                   : t("addonPackAiDesc")}
             </p>
-            <p className="mt-4 text-2xl font-bold text-slate-900">
+            <p className="mt-4 text-2xl font-bold text-[var(--text-main)]">
               {formatMoney(addon.priceCents, currency)}
-              <span className="text-sm font-normal text-slate-400"> / {t("monthly").toLowerCase()}</span>
+              <span className="text-sm font-normal text-[var(--text-dimmer)]"> / {t("monthly").toLowerCase()}</span>
             </p>
           </button>
         ))}
       </div>
 
-      <p className="text-center text-xs text-slate-400">{t("addonsFootnote")}</p>
+      <p className="text-center text-xs text-[var(--text-dimmer)]">{t("addonsFootnote")}</p>
     </div>
   );
 }

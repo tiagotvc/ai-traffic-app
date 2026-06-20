@@ -1,5 +1,5 @@
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-md bg-slate-200/80 ${className}`} aria-hidden />;
+  return <div className={`skeleton-shimmer rounded-md ${className}`} aria-hidden />;
 }
 
 /** Linha de cards (KPIs/destaques). */
@@ -7,7 +7,7 @@ export function CardsRowSkeleton({ count = 3 }: { count?: number }) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="ui-card space-y-3 p-5">
+        <div key={i} className="space-y-3 rounded-xl border p-5" style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}>
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-7 w-28" />
           <Skeleton className="h-14 w-full" />
@@ -20,7 +20,7 @@ export function CardsRowSkeleton({ count = 3 }: { count?: number }) {
 /** Card com gráfico. */
 export function ChartCardSkeleton() {
   return (
-    <div className="ui-card space-y-3 p-4">
+    <div className="space-y-3 rounded-xl border p-4" style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}>
       <Skeleton className="h-4 w-40" />
       <Skeleton className="h-56 w-full rounded-xl" />
     </div>
@@ -31,10 +31,10 @@ export function ChartCardSkeleton() {
 export function SupportStripSkeleton({ count = 5 }: { count?: number }) {
   return (
     <div className="ui-card overflow-hidden">
-      <div className="border-b border-slate-100 px-4 py-2.5">
+      <div className="border-b border-[var(--border-color)] px-4 py-2.5">
         <Skeleton className="h-3 w-28" />
       </div>
-      <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 divide-x divide-y divide-[var(--border-color)] sm:grid-cols-3 lg:grid-cols-5">
         {Array.from({ length: count }).map((_, i) => (
           <div key={i} className="space-y-2 px-4 py-3">
             <Skeleton className="h-3 w-16" />
@@ -49,7 +49,7 @@ export function SupportStripSkeleton({ count = 5 }: { count?: number }) {
 /** Lista de itens em duas linhas (ex.: alertas). */
 export function ListSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="ui-card divide-y divide-slate-100 overflow-hidden">
+    <div className="ui-card divide-y divide-[var(--border-color)] overflow-hidden">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="space-y-2 p-4">
           <div className="flex items-center gap-2">
@@ -119,7 +119,7 @@ export function TableSkeleton({
 }) {
   if (!columns) {
     return (
-      <div className={`ui-card divide-y divide-slate-100 overflow-hidden ${className}`}>
+      <div className={`ui-card divide-y divide-[var(--border-color)] overflow-hidden ${className}`}>
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 p-4">
             <Skeleton className="h-9 w-9 shrink-0 rounded-lg" />
@@ -138,7 +138,7 @@ export function TableSkeleton({
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         {head ? (
-            <thead className="bg-slate-50">
+            <thead className="bg-[var(--surface-thead)]">
               <tr>
                 {columns.map((c, i) => (
                   <th key={i} className={`px-4 py-2 ${c === "metric" ? "text-right" : ""}`}>
@@ -148,7 +148,7 @@ export function TableSkeleton({
               </tr>
             </thead>
           ) : null}
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-[var(--border-color)]">
           {Array.from({ length: rows }).map((_, r) => (
             <tr key={r}>
               {columns.map((c, i) => (

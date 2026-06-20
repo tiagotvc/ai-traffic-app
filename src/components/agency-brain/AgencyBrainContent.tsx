@@ -176,8 +176,8 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
         />
 
         {advancedOpen ? (
-          <div className="rounded-lg border border-slate-200/80 bg-white/50 p-2">
-            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <div className="ui-brain-shelf p-2">
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
               {t("filterContentLabel")}
             </label>
             <select
@@ -290,16 +290,16 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
 
       <div className="flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
         {showPatterns ? (
-          <div className="learnings-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
+          <div className="brain-insights-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
             <CreativePatternsPanel clientId={clientId} embedded />
           </div>
         ) : null}
 
         {showLearningsList && scope === "client" ? (
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="learnings-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
+            <div className="brain-insights-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
               {brain.loading ? (
-                <div className="flex h-full min-h-[120px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 text-sm text-slate-500">
+                <div className="flex h-full min-h-[120px] items-center justify-center ui-card border-dashed bg-[var(--surface-card)]/60 text-sm text-[var(--text-dim)]">
                   {t("loading")}
                 </div>
               ) : brain.learnings.length === 0 ? (
@@ -362,9 +362,9 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
 
         {showLearningsList && scope === "agency" ? (
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="learnings-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
+            <div className="brain-insights-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
               {agency.loading ? (
-                <div className="flex h-full min-h-[120px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white/60 text-sm text-slate-500">
+                <div className="flex h-full min-h-[120px] items-center justify-center ui-card border-dashed bg-[var(--surface-card)]/60 text-sm text-[var(--text-dim)]">
                   {t("loading")}
                 </div>
               ) : agency.items.length === 0 ? (
@@ -393,7 +393,7 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
         ) : null}
 
         {showMarketPanel ? (
-          <div className="learnings-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
+          <div className="brain-insights-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
             <MarketLearningsPanel
               clientId={clientId}
               items={market.items}

@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { DsBadge } from "@/design-system";
 import { AgencyBrainAiProvider } from "@/components/agency-brain/AgencyBrainAiContext";
 import {
   AgencyBrainClientProvider,
@@ -55,6 +57,7 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
   const [clients, setClients] = useState<AgencyBrainClientRow[]>([]);
   const [clientSlug, setClientSlug] = useState("");
   const [clientsLoading, setClientsLoading] = useState(true);
+  const strip = useCommandStripOptional();
 
   useEffect(() => {
     const clientFromUrl = searchParams.get("client");
@@ -64,12 +67,20 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
         const list = (j.clients ?? []) as AgencyBrainClientRow[];
         setClients(list);
 
+        const globalSlug =
+          strip?.clientFilter && list.some((c) => c.slug === strip.clientFilter)
+            ? strip.clientFilter
+            : "";
         const slugFromUrl =
           clientFromUrl && list.some((c) => c.slug === clientFromUrl) ? clientFromUrl : "";
-        const slug = slugFromUrl || list[0]?.slug || "";
+        const slug = globalSlug || slugFromUrl || list[0]?.slug || "";
         setClientSlug(slug);
 
-        if (slug && slug !== clientFromUrl) {
+        if (slug && strip && strip.clientFilter !== slug) {
+          strip.setClientFilter(slug);
+        }
+
+        if (slug && slug !== clientFromUrl && !globalSlug) {
           const params = new URLSearchParams(searchParams.toString());
           params.set("client", slug);
           router.replace(`${pathname}?${params.toString()}`);
@@ -80,8 +91,17 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!strip?.clientFilter || clientsLoading) return;
+    if (!clients.some((c) => c.slug === strip.clientFilter)) return;
+    if (strip.clientFilter !== clientSlug) {
+      setClientSlug(strip.clientFilter);
+    }
+  }, [strip?.clientFilter, clientSlug, clients, clientsLoading, strip]);
+
   function handleClientChange(slug: string) {
     setClientSlug(slug);
+    strip?.setClientFilter(slug);
     const params = new URLSearchParams(searchParams.toString());
     if (slug) params.set("client", slug);
     else params.delete("client");
@@ -91,7 +111,7 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
 
   if (clientsLoading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+      <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">
         {t("loadingClients")}
       </div>
     );
@@ -99,7 +119,7 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
 
   if (clients.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+      <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">
         {t("noClients")}
       </div>
     );
@@ -118,13 +138,13 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
   if (isInsightsRoute) {
     return (
       <AgencyBrainAiProvider>
-        {isFeedRoute ? (
-          <div className="-mb-4 flex h-[calc(100vh-1.5rem-0.5rem)] min-h-0 flex-col overflow-hidden lg:-mb-5 lg:h-[calc(100vh-1.75rem-0.5rem)]">
-            <div className="flex h-full min-h-0 flex-1 flex-col">{body}</div>
-          </div>
-        ) : (
-          body
-        )}
+        <AgencyBrainClientProvider
+          clientSlug={clientSlug}
+          clients={clients}
+          onClientChange={handleClientChange}
+        >
+          {children}
+        </AgencyBrainClientProvider>
       </AgencyBrainAiProvider>
     );
   }
@@ -134,14 +154,12 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
       <div className="space-y-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="font-heading font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">
               {mvpModule ? t(`mvp_${mvpModule}_title`) : t("title")}
             </h1>
-            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
-              {t("beta")}
-            </span>
+            <DsBadge tone="beta">{t("beta")}</DsBadge>
           </div>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[var(--text-dim)]">
             {mvpModule ? t(`mvp_${mvpModule}_hint`) : t("subtitle")}
           </p>
         </div>

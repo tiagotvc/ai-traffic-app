@@ -31,7 +31,7 @@ export function LearningsFeedTimeline({
     <div className="space-y-8 pb-2">
       {groups.map((group) => (
         <section key={group.id}>
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--text-dimmer)]">
             {group.label}
           </h2>
           <div className="space-y-4">

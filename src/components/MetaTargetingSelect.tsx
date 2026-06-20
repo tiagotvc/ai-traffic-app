@@ -109,13 +109,13 @@ export function MetaTargetingSelect({
         {selected.map((s) => (
           <span
             key={s.value}
-            className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs text-violet-800"
+            className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs text-[var(--violet)]"
           >
             {s.label}
             <button
               type="button"
               onClick={() => onRemove(s.value)}
-              className="text-violet-500 hover:text-violet-900"
+              className="text-violet-500 hover:text-[var(--violet)]"
               aria-label="Remover"
             >
               ×
@@ -132,9 +132,9 @@ export function MetaTargetingSelect({
         className="ui-input mt-1 w-full disabled:opacity-60"
       />
       {open && (loading || results.length > 0) ? (
-        <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+        <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-lg">
           {loading ? (
-            <div className="px-3 py-2 text-xs text-slate-400">…</div>
+            <div className="px-3 py-2 text-xs text-[var(--text-dimmer)]">…</div>
           ) : (
             results.map((r) => {
               const already = selectedValues.has(r.value);
@@ -149,10 +149,10 @@ export function MetaTargetingSelect({
                     setResults([]);
                     setOpen(false);
                   }}
-                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-violet-50 disabled:opacity-40"
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs hover:bg-[rgba(124,58,237,0.06)] disabled:opacity-40"
                 >
-                  <span className="text-slate-800">{r.label}</span>
-                  {r.sub ? <span className="text-slate-400">{r.sub}</span> : null}
+                  <span className="text-[var(--text-main)]">{r.label}</span>
+                  {r.sub ? <span className="text-[var(--text-dimmer)]">{r.sub}</span> : null}
                 </button>
               );
             })

@@ -43,7 +43,7 @@ export function AiCenterClient() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold">{t("title")}</div>
-          <div className="text-xs text-slate-500">{t("subtitle")}</div>
+          <div className="text-xs text-[var(--text-dim)]">{t("subtitle")}</div>
         </div>
         <button
           disabled={isPending}
@@ -59,7 +59,7 @@ export function AiCenterClient() {
               setRecs(json.recommendations ?? []);
             });
           }}
-          className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-60"
+          className="ui-btn-brand px-3 py-2 text-xs disabled:opacity-60"
         >
           {isPending ? tCommon("generating") : t("generate")}
         </button>
@@ -69,17 +69,17 @@ export function AiCenterClient() {
 
       <div className="mt-4 space-y-3">
         {recs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">
+          <div className="ui-card border-dashed p-4 text-sm text-[var(--text-dim)]">
             {t("empty", { action: t("generateAction") })}
           </div>
         ) : (
           recs.map((r) => (
-            <div key={r.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div key={r.id} className="ui-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-xs text-violet-300">{r.actionType}</div>
+                  <div className="text-xs text-[var(--violet)]">{r.actionType}</div>
                   <div className="mt-1 text-sm font-semibold">{r.targetId ?? "—"}</div>
-                  <div className="mt-2 text-sm text-slate-600">{r.justification}</div>
+                  <div className="mt-2 text-sm text-[var(--text-dim)]">{r.justification}</div>
                 </div>
                 <button
                   disabled={isPending || r.status !== "PENDING"}
@@ -101,7 +101,7 @@ export function AiCenterClient() {
                       );
                     });
                   }}
-                  className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-btn-brand px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {r.status === "APPLIED" ? tCommon("applied") : tCommon("apply")}
                 </button>
@@ -111,14 +111,14 @@ export function AiCenterClient() {
         )}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="mt-4 ui-card p-4">
         <div className="text-sm font-semibold">{t("chatTitle")}</div>
-        <div className="mt-1 text-xs text-slate-500">{t("chatHint")}</div>
+        <div className="mt-1 text-xs text-[var(--text-dim)]">{t("chatHint")}</div>
         <div className="mt-3 flex gap-2">
           <input
             value={chat}
             onChange={(e) => setChat(e.target.value)}
-            className="w-full rounded-xl ui-input text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-600"
+            className="w-full rounded-xl ui-input text-[var(--text-main)] placeholder:text-[var(--text-dim)] focus:outline-none focus:ring-2 focus:ring-[var(--violet)]"
             placeholder={t("chatPlaceholder")}
           />
           <button
@@ -140,7 +140,7 @@ export function AiCenterClient() {
                 setChat("");
               });
             }}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            className="ui-btn-brand px-3 py-2 text-xs disabled:opacity-60"
           >
             {t("send")}
           </button>

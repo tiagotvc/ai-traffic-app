@@ -39,27 +39,27 @@ function ExperimentRow({
     <button
       type="button"
       onClick={() => onSelect(item.id)}
-      className="flex w-full flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-violet-200 hover:bg-violet-50/30"
+      className="flex w-full flex-wrap items-center gap-3 ui-card px-4 py-3 text-left transition hover:border-violet-500/20 hover:bg-[rgba(124,58,237,0.06)]0/5"
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium text-slate-900">{item.name}</span>
+          <span className="font-medium text-[var(--text-main)]">{item.name}</span>
           {running && (
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-500" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-[rgba(124,58,237,0.06)]0" />
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-xs text-slate-500">
+        <p className="mt-0.5 text-xs text-[var(--text-dim)]">
           {item.clientName ? `${item.clientName} · ` : ""}
           {item.product}
           {item.niche ? ` · ${item.niche}` : ""}
         </p>
-        <p className="mt-1 text-[10px] text-slate-400">{formatDate(item.createdAt)}</p>
+        <p className="mt-1 text-[10px] text-[var(--text-dimmer)]">{formatDate(item.createdAt)}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-[var(--text-dim)]">
           {t("labsListScientists", { count: item.selectedScientists.length })}
         </span>
         <Badge variant={item.status === "completed" ? "success" : running ? "neutral" : "neutral"}>
@@ -82,16 +82,16 @@ export function LabsExperimentsList({ items, loading, onSelect }: LabsExperiment
 
   if (loading) {
     return (
-      <div className="ui-card p-8 text-center text-sm text-slate-500">{t("loading")}</div>
+      <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("loading")}</div>
     );
   }
 
   if (items.length === 0) {
     return (
       <div className="ui-card p-8 text-center">
-        <p className="text-sm font-medium text-slate-800">{t("labsEmptyTitle")}</p>
-        <p className="mt-1 text-sm text-slate-500">{t("labsEmpty")}</p>
-        <p className="mt-3 text-xs text-slate-400">{t("labsKnowledgeHint")}</p>
+        <p className="text-sm font-medium text-[var(--text-main)]">{t("labsEmptyTitle")}</p>
+        <p className="mt-1 text-sm text-[var(--text-dim)]">{t("labsEmpty")}</p>
+        <p className="mt-3 text-xs text-[var(--text-dimmer)]">{t("labsKnowledgeHint")}</p>
       </div>
     );
   }
@@ -100,8 +100,8 @@ export function LabsExperimentsList({ items, loading, onSelect }: LabsExperiment
     <div className="space-y-6">
       {running.length > 0 && (
         <section className="ui-card overflow-hidden">
-          <div className="border-b border-slate-100 bg-violet-50/50 px-5 py-3">
-            <h3 className="text-sm font-semibold text-slate-900">
+          <div className="border-b border-[var(--border-color)] bg-[rgba(124,58,237,0.06)]/50 px-5 py-3">
+            <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">
               {t("labsSectionRunning", { count: running.length })}
             </h3>
           </div>
@@ -117,11 +117,11 @@ export function LabsExperimentsList({ items, loading, onSelect }: LabsExperiment
 
       {completed.length > 0 && (
         <section className="ui-card overflow-hidden">
-          <div className="border-b border-slate-100 px-5 py-3">
-            <h3 className="text-sm font-semibold text-slate-900">
+          <div className="border-b border-[var(--border-color)] px-5 py-3">
+            <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">
               {t("labsSectionCompleted", { count: completed.length })}
             </h3>
-            <p className="mt-0.5 text-xs text-slate-500">{t("labsSectionCompletedHint")}</p>
+            <p className="mt-0.5 text-xs text-[var(--text-dim)]">{t("labsSectionCompletedHint")}</p>
           </div>
           <ul className="space-y-2 p-4">
             {completed.map((item) => (
@@ -136,7 +136,7 @@ export function LabsExperimentsList({ items, loading, onSelect }: LabsExperiment
       {failed.length > 0 && (
         <section className="ui-card overflow-hidden">
           <div className="border-b border-red-100 bg-red-50/40 px-5 py-3">
-            <h3 className="text-sm font-semibold text-slate-900">
+            <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">
               {t("labsSectionFailed", { count: failed.length })}
             </h3>
           </div>
@@ -150,7 +150,7 @@ export function LabsExperimentsList({ items, loading, onSelect }: LabsExperiment
         </section>
       )}
 
-      <p className="text-center text-xs text-slate-400">{t("labsKnowledgeHint")}</p>
+      <p className="text-center text-xs text-[var(--text-dimmer)]">{t("labsKnowledgeHint")}</p>
     </div>
   );
 }

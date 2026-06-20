@@ -41,7 +41,7 @@ export function LabsLabHero({ runningCount, totalCount, onNewExperiment }: LabsL
           backgroundSize: "28px 28px"
         }}
       />
-      <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[rgba(124,58,237,0.06)]0/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-fuchsia-500/15 blur-3xl" />
 
       <div className="relative flex flex-wrap items-start justify-between gap-4 p-5 sm:p-6">
@@ -60,9 +60,9 @@ export function LabsLabHero({ runningCount, totalCount, onNewExperiment }: LabsL
           </div>
 
           <h2 className="mt-3 text-xl font-bold tracking-tight sm:text-2xl">{t("labsHeroTitle")}</h2>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-300">{t("labsHeroSubtitle")}</p>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--text-dimmer)]">{t("labsHeroSubtitle")}</p>
 
-          <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
+          <div className="mt-4 flex flex-wrap gap-3 text-xs text-[var(--text-dimmer)]">
             <span className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
               {t("labsHeroScientistsAvailable", { count: total })}
             </span>
@@ -94,7 +94,7 @@ export function LabsLabHero({ runningCount, totalCount, onNewExperiment }: LabsL
           {SCIENTIST_CATALOG.map((entry) => (
             <div
               key={entry.id}
-              className="flex items-center gap-2 rounded-xl border border-violet-400/25 bg-violet-500/10 px-2.5 py-1.5"
+              className="flex items-center gap-2 rounded-xl border border-violet-400/25 bg-[rgba(124,58,237,0.06)]0/10 px-2.5 py-1.5"
               title={`${t(entry.nameKey)} — ${t(entry.briefKey)}`}
             >
               <div
@@ -104,7 +104,7 @@ export function LabsLabHero({ runningCount, totalCount, onNewExperiment }: LabsL
               </div>
               <div className="min-w-0">
                 <p className="truncate text-xs font-medium text-white">{t(entry.nameKey)}</p>
-                <p className="text-[10px] text-slate-400">{t(entry.roleKey)}</p>
+                <p className="text-[10px] text-[var(--text-dimmer)]">{t(entry.roleKey)}</p>
               </div>
               <span className="ml-1 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden />
             </div>

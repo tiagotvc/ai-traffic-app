@@ -10,6 +10,9 @@ const LOCALE_SHORT: Record<AppLocale, string> = {
   en: "EN"
 };
 
+const ACTIVE_PILL =
+  "bg-[var(--amber-bright)] text-[#0f1419] shadow-sm shadow-black/15";
+
 export function LanguageSwitcher({
   variant = "default",
   collapsed = false,
@@ -52,8 +55,8 @@ export function LanguageSwitcher({
                   collapsed ? "h-7 w-7" : "flex-1 px-3 py-1.5"
                 } ${
                   active
-                    ? "bg-violet-600 text-white shadow-md shadow-violet-900/40"
-                    : "text-slate-400 hover:bg-white/10 hover:text-slate-200"
+                    ? ACTIVE_PILL
+                    : "text-[#94a3b8] hover:bg-white/10 hover:text-[#f8fafc]"
                 }`}
               >
                 {LOCALE_SHORT[loc]}
@@ -65,15 +68,15 @@ export function LanguageSwitcher({
     );
   }
 
-  const wrap = "mt-3 border-t border-surface-line pt-3";
-  const labelClass = "text-[11px] text-slate-500";
+  const wrap = "mt-3 border-t border-[var(--border-color)] pt-3";
+  const labelClass = "text-[11px] text-[var(--text-dimmer)]";
 
   return (
     <div className={wrap}>
       {!hideLabel ? <div className={labelClass}>{t("language")}</div> : null}
       <div className="relative mt-1">
         <div
-          className="flex gap-0.5 rounded-full border border-surface-line bg-slate-100 p-1"
+          className="flex gap-0.5 rounded-full border border-[var(--border-color)] bg-[var(--surface-thead)] p-1"
           role="group"
           aria-label={t("language")}
         >
@@ -86,7 +89,9 @@ export function LanguageSwitcher({
                 onClick={() => pick(loc)}
                 aria-pressed={active}
                 className={`flex-1 rounded-full px-2 py-1.5 text-xs font-medium transition-all duration-200 ${
-                  active ? "bg-violet-600 text-white shadow-sm" : "text-slate-600 hover:bg-white"
+                  active
+                    ? ACTIVE_PILL
+                    : "text-[var(--text-dim)] hover:bg-[var(--surface-card)]"
                 }`}
               >
                 {t(loc === "pt-BR" ? "ptBR" : "en")}

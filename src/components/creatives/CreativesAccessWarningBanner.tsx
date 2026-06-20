@@ -36,20 +36,20 @@ export function CreativesAccessWarningBanner({
   }
 
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    <div className="ui-alert-warning">
       <p className="font-medium">{t("accessWarningTitle")}</p>
       {partialData ? (
         <p className="mt-1 text-xs text-amber-800">{t("accessWarningPartialData")}</p>
       ) : null}
       <ul className="mt-2 space-y-2">
         {warnings.map((w) => (
-          <li key={w.account} className="rounded-lg border border-amber-100 bg-white/60 px-3 py-2">
+          <li key={w.account} className="rounded-lg border border-amber-100 bg-[var(--surface-card)]/60 px-3 py-2">
             <div className="font-medium">{w.label}</div>
             <p className="mt-0.5 text-xs text-amber-800">{bodyForWarning(w)}</p>
             {w.suggestedAction === "reconnect_meta" ? (
               <Link
                 href="/settings/meta-assets?reconnect=1"
-                className="mt-1.5 inline-flex text-xs font-semibold text-violet-700 hover:text-violet-600"
+                className="mt-1.5 inline-flex text-xs font-semibold text-[var(--violet)] hover:text-[var(--violet-bright)]"
               >
                 {actionLabel(w.suggestedAction)} →
               </Link>

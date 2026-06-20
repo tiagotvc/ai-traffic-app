@@ -49,17 +49,17 @@ const MOCK_LINKED = new Set(["act_1001"]);
 function Steps({ step }: { step: "bm" | "accounts" }) {
   return (
     <div className="flex items-center gap-2 text-xs font-medium">
-      <span className="flex items-center gap-1.5 text-violet-600">
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100">
+      <span className="flex items-center gap-1.5 text-[var(--violet)]">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(124,58,237,0.1)]">
           <Icon d={ICONS.check} className="h-3 w-3" />
         </span>
         Conectar
       </span>
       <span className="h-px w-5 bg-slate-200" />
-      <span className={`flex items-center gap-1.5 ${step === "accounts" ? "text-violet-600" : "text-slate-900"}`}>
+      <span className={`flex items-center gap-1.5 ${step === "accounts" ? "text-[var(--violet)]" : "text-[var(--text-main)]"}`}>
         <span
           className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
-            step === "accounts" ? "bg-violet-100 text-violet-600" : "bg-violet-600 text-white"
+            step === "accounts" ? "bg-amber-100 text-[var(--amber)]" : "bg-[var(--amber)] text-[#0f1419]"
           }`}
         >
           {step === "accounts" ? <Icon d={ICONS.check} className="h-3 w-3" /> : "2"}
@@ -67,10 +67,10 @@ function Steps({ step }: { step: "bm" | "accounts" }) {
         Business
       </span>
       <span className="h-px w-5 bg-slate-200" />
-      <span className={`flex items-center gap-1.5 ${step === "accounts" ? "text-slate-900" : "text-slate-400"}`}>
+      <span className={`flex items-center gap-1.5 ${step === "accounts" ? "text-[var(--text-main)]" : "text-[var(--text-dimmer)]"}`}>
         <span
           className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
-            step === "accounts" ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-500"
+            step === "accounts" ? "bg-[var(--amber)] text-[#0f1419]" : "bg-slate-200 text-[var(--text-dim)]"
           }`}
         >
           3
@@ -226,35 +226,35 @@ export function ChooseAdAccountsView() {
       {step === "bm" ? (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Escolha o Business Manager</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="text-2xl font-bold text-[var(--text-main)]">Escolha o Business Manager</h1>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">
               Selecione o gerenciador de negócios. Depois você escolhe as contas de anúncio dele.
             </p>
           </div>
 
-          <div className="ui-card divide-y divide-slate-100 overflow-hidden">
+          <div className="ui-card divide-y divide-[var(--border-color)] overflow-hidden">
             {bmLoading ? (
-              <p className="p-8 text-center text-sm text-slate-500">Carregando…</p>
+              <p className="p-8 text-center text-sm text-[var(--text-dim)]">Carregando…</p>
             ) : businesses.length === 0 ? (
-              <p className="p-8 text-center text-sm text-slate-500">Nenhum Business Manager encontrado.</p>
+              <p className="p-8 text-center text-sm text-[var(--text-dim)]">Nenhum Business Manager encontrado.</p>
             ) : (
               businesses.map((b) => (
                 <button
                   key={b.metaBusinessId}
                   type="button"
                   onClick={() => chooseBm(b)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[var(--surface-thead)]"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgba(124,58,237,0.06)] text-[var(--violet)]">
                     <Icon d={ICONS.building} className="h-5 w-5" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-800">{b.name}</span>
-                    <span className="block text-[11px] text-slate-400">
+                    <span className="block truncate text-sm font-medium text-[var(--text-main)]">{b.name}</span>
+                    <span className="block text-[11px] text-[var(--text-dimmer)]">
                       {b.adAccountCount > 0 ? `${b.adAccountCount} conta(s)` : "ver contas"}
                     </span>
                   </span>
-                  <span className="text-slate-300">
+                  <span className="text-[var(--text-dimmer)]">
                     <Icon d={ICONS.chevron} className="h-4 w-4" />
                   </span>
                 </button>
@@ -263,7 +263,7 @@ export function ChooseAdAccountsView() {
           </div>
 
           <div className="flex justify-start">
-            <Link href="/dashboard" className="text-sm font-medium text-slate-500 hover:text-slate-700">
+            <Link href="/dashboard" className="text-sm font-medium text-[var(--text-dim)] hover:text-[var(--text-dim)]">
               Pular por enquanto
             </Link>
           </div>
@@ -274,26 +274,26 @@ export function ChooseAdAccountsView() {
             <button
               type="button"
               onClick={backToBm}
-              className="mb-2 text-sm font-medium text-violet-600 hover:underline"
+              className="mb-2 text-sm ui-link"
             >
               ← Trocar Business Manager
             </button>
-            <h1 className="text-2xl font-bold text-slate-900">Contas de {bm?.name}</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="text-2xl font-bold text-[var(--text-main)]">Contas de {bm?.name}</h1>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">
               Selecione as contas desta BM para trazer ao painel. Cada conta nova vira um cliente.
               As já vinculadas vêm marcadas — desmarcar não remove nada.
             </p>
           </div>
 
           <div className="ui-card overflow-hidden">
-            <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+            <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-color)] px-4 py-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--text-dim)]">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4 accent-violet-600" />
                 Selecionar todas
               </label>
-              <span className="text-xs text-slate-400">{selected.size} selecionadas</span>
+              <span className="text-xs text-[var(--text-dimmer)]">{selected.size} selecionadas</span>
               <div className="relative ml-auto">
-                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-dimmer)]">
                   <Icon d={ICONS.search} className="h-4 w-4" />
                 </span>
                 <input
@@ -305,11 +305,11 @@ export function ChooseAdAccountsView() {
               </div>
             </div>
 
-            <div className="max-h-[52vh] divide-y divide-slate-100 overflow-y-auto">
+            <div className="max-h-[52vh] divide-y divide-[var(--border-color)] overflow-y-auto">
               {accLoading ? (
-                <p className="p-8 text-center text-sm text-slate-500">Carregando contas…</p>
+                <p className="p-8 text-center text-sm text-[var(--text-dim)]">Carregando contas…</p>
               ) : filtered.length === 0 ? (
-                <p className="p-8 text-center text-sm text-slate-500">Nenhuma conta nesta BM.</p>
+                <p className="p-8 text-center text-sm text-[var(--text-dim)]">Nenhuma conta nesta BM.</p>
               ) : (
                 filtered.map((a) => {
                   const isSel = selected.has(a.metaAdAccountId);
@@ -318,8 +318,8 @@ export function ChooseAdAccountsView() {
                   return (
                     <label
                       key={a.metaAdAccountId}
-                      className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-slate-50 ${
-                        isSel ? "bg-violet-50/40" : ""
+                      className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition hover:bg-[var(--surface-thead)] ${
+                        isSel ? "bg-[rgba(124,58,237,0.06)]/40" : ""
                       }`}
                     >
                       <input
@@ -330,25 +330,25 @@ export function ChooseAdAccountsView() {
                       />
                       <span
                         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${
-                          isSel ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-500"
+                          isSel ? "bg-[rgba(124,58,237,0.1)] text-violet-700" : "bg-slate-100 text-[var(--text-dim)]"
                         }`}
                       >
                         {avatarLetter(a.label)}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
-                          <span className="truncate text-sm font-medium text-slate-800">{a.label}</span>
+                          <span className="truncate text-sm font-medium text-[var(--text-main)]">{a.label}</span>
                           {isLinked ? (
                             <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
                               Vinculada
                             </span>
                           ) : null}
                         </span>
-                        <span className="block truncate text-[11px] text-slate-400">{a.metaAdAccountId}</span>
+                        <span className="block truncate text-[11px] text-[var(--text-dimmer)]">{a.metaAdAccountId}</span>
                       </span>
                       {spend ? (
-                        <span className="shrink-0 text-right text-[11px] text-slate-400">
-                          <span className="block font-medium text-slate-600">{spend}</span>
+                        <span className="shrink-0 text-right text-[11px] text-[var(--text-dimmer)]">
+                          <span className="block font-medium text-[var(--text-dim)]">{spend}</span>
                           30 dias
                         </span>
                       ) : null}
@@ -362,7 +362,7 @@ export function ChooseAdAccountsView() {
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
           {permWarn.length ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <div className="ui-alert-warning px-4 py-3 text-sm text-amber-800">
               <p className="font-medium">Contas importadas, mas sem permissão na Meta</p>
               <p className="mt-0.5 text-xs">
                 Estas contas foram vinculadas, porém o acesso (ads_read/ads_management) ainda não foi
@@ -377,7 +377,7 @@ export function ChooseAdAccountsView() {
               <button
                 type="button"
                 onClick={() => router.push("/dashboard")}
-                className="mt-2 text-xs font-semibold text-violet-600 hover:underline"
+                className="mt-2 text-xs ui-link"
               >
                 Entendi, ir para o painel →
               </button>
@@ -385,7 +385,7 @@ export function ChooseAdAccountsView() {
           ) : null}
 
           <div className="flex items-center justify-between gap-3">
-            <button type="button" onClick={backToBm} className="text-sm font-medium text-slate-500 hover:text-slate-700">
+            <button type="button" onClick={backToBm} className="text-sm font-medium text-[var(--text-dim)] hover:text-[var(--text-dim)]">
               Voltar
             </button>
             <button type="button" onClick={continuar} disabled={isPending} className="ui-btn-primary disabled:opacity-60">

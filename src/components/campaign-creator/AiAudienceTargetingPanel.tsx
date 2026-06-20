@@ -58,16 +58,16 @@ export function AiAudienceTargetingPanel({
   }
 
   return (
-    <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50/80 to-white p-4">
+    <div className="rounded-xl border border-[rgba(124,58,237,0.2)] bg-gradient-to-br from-violet-50/80 to-[var(--surface-card)] p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-900">{t("aiAudienceTitle")}</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">{t("aiAudienceHint")}</p>
+          <p className="text-sm font-semibold text-[var(--text-main)]">{t("aiAudienceTitle")}</p>
+          <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t("aiAudienceHint")}</p>
         </div>
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="text-xs font-medium text-violet-700 underline"
+          className="text-xs font-medium text-[var(--violet)] underline"
         >
           {expanded ? t("aiAudienceCollapse") : t("aiAudienceExpand")}
         </button>

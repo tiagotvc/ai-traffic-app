@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@/i18n/navigation";
+import { DsPageHeader } from "@/design-system";
 import { BillingCheckoutSummary } from "@/components/billing/BillingCheckoutSummary";
 import { BillingCardProcessing } from "@/components/billing/BillingCardProcessing";
 import { BillingBackLink, type PlanCardData } from "@/components/billing/PlanLimitsCard";
@@ -38,7 +39,7 @@ type InstallmentSimRow = {
 };
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="mb-1.5 block text-xs font-semibold text-slate-600">{children}</span>;
+  return <span className="mb-1.5 block text-xs font-semibold text-[var(--text-dim)]">{children}</span>;
 }
 
 export function BillingCheckoutClient() {
@@ -308,9 +309,9 @@ export function BillingCheckoutClient() {
     return (
       <div className="mx-auto max-w-3xl space-y-4">
         <BillingBackLink href="/billing/plans" />
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-[var(--text-dim)]">
           {t("planNotFound")}{" "}
-          <Link href="/billing/plans" className="font-semibold text-violet-600 underline">
+          <Link href="/billing/plans" className="font-semibold ui-link">
             {t("choosePlan")}
           </Link>
         </p>
@@ -350,46 +351,46 @@ export function BillingCheckoutClient() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <BillingBackLink href="/billing/plans" />
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">{t("checkoutTitle")}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t("checkoutSubtitle")}</p>
-        </div>
-        <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100/80 p-1.5 shadow-inner">
-          <button
-            type="button"
-            onClick={() => setCycle("monthly")}
-            className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${
-              cycle === "monthly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {t("monthly")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setCycle("yearly")}
-            className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${
-              cycle === "yearly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {t("yearly")}
-            <span className="ml-2 inline-flex rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black text-white">
-              -10%
-            </span>
-          </button>
-        </div>
-      </div>
+      <DsPageHeader
+        breadcrumbs={<BillingBackLink href="/billing/plans" />}
+        title={t("checkoutTitle")}
+        subtitle={t("checkoutSubtitle")}
+        actions={
+          <div className="inline-flex rounded-2xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-1.5 shadow-inner">
+            <button
+              type="button"
+              onClick={() => setCycle("monthly")}
+              className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${
+                cycle === "monthly" ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
+              }`}
+            >
+              {t("monthly")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCycle("yearly")}
+              className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${
+                cycle === "yearly" ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
+              }`}
+            >
+              {t("yearly")}
+              <span className="ml-2 inline-flex rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black text-white">
+                -10%
+              </span>
+            </button>
+          </div>
+        }
+      />
 
       {showRegionToggle ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-sm font-semibold text-slate-700">{t("paymentRegionLabel")}</span>
-          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border-color)] bg-white p-4 shadow-sm">
+          <span className="text-sm font-semibold text-[var(--text-dim)]">{t("paymentRegionLabel")}</span>
+          <div className="inline-flex rounded-xl border border-[var(--border-color)] bg-slate-100 p-1">
             <button
               type="button"
               onClick={() => setPaymentRegion("br")}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                paymentRegion === "br" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                paymentRegion === "br" ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
               }`}
             >
               {t("regionBr")}
@@ -398,14 +399,14 @@ export function BillingCheckoutClient() {
               type="button"
               onClick={() => setPaymentRegion("intl")}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                paymentRegion === "intl" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                paymentRegion === "intl" ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
               }`}
             >
               {t("regionIntl")}
             </button>
           </div>
           {isIntl ? (
-            <p className="text-xs text-slate-500">{t("stripeRedirectHint")}</p>
+            <p className="text-xs text-[var(--text-dim)]">{t("stripeRedirectHint")}</p>
           ) : null}
         </div>
       ) : null}
@@ -432,7 +433,7 @@ export function BillingCheckoutClient() {
 
         <form onSubmit={submit} className="space-y-5 lg:col-span-3">
           {!isIntl ? (
-          <div className="rounded-2xl border border-dashed border-violet-200 bg-violet-50/40 p-5">
+          <div className="rounded-2xl border border-dashed border-[rgba(124,58,237,0.2)] bg-[rgba(124,58,237,0.06)]/40 p-5">
             <FieldLabel>{t("couponLabel")}</FieldLabel>
             <div className="flex flex-wrap gap-2">
               <input
@@ -446,7 +447,7 @@ export function BillingCheckoutClient() {
                 <button
                   type="button"
                   onClick={clearCoupon}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+                  className="rounded-xl border border-[var(--border-color)] bg-white px-4 py-2 text-sm font-semibold text-[var(--text-dim)]"
                 >
                   {t("couponRemove")}
                 </button>
@@ -455,7 +456,7 @@ export function BillingCheckoutClient() {
                   type="button"
                   onClick={applyCoupon}
                   disabled={couponLoading || !couponInput.trim()}
-                  className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  className="ui-btn-primary disabled:opacity-60"
                 >
                   {couponLoading ? t("processing") : t("couponApply")}
                 </button>
@@ -471,8 +472,8 @@ export function BillingCheckoutClient() {
           ) : null}
 
           {!isIntl ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+          <div className="ui-card p-6">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
               {t("paymentDetails")}
             </h3>
 
@@ -484,17 +485,17 @@ export function BillingCheckoutClient() {
                   onClick={() => setBillingType("PIX")}
                   className={`rounded-xl border-2 p-4 text-left transition ${
                     billingType === "PIX"
-                      ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200"
-                      : "border-slate-200 hover:border-violet-200"
+                      ? "border-[var(--amber)] bg-amber-50 ring-2 ring-amber-200"
+                      : "border-[var(--border-color)] hover:border-[var(--amber)]/40"
                   }`}
                 >
                   <span className="flex items-center gap-2">
                     <span className="rounded bg-teal-600 px-1.5 py-0.5 text-[9px] font-black tracking-widest text-white">
                       PIX
                     </span>
-                    <span className="font-bold text-slate-900">PIX</span>
+                    <span className="font-bold text-[var(--text-main)]">PIX</span>
                   </span>
-                  <p className="mt-1 text-xs text-slate-500">{t("monthlyPixHint", { percent: 5 })}</p>
+                  <p className="mt-1 text-xs text-[var(--text-dim)]">{t("monthlyPixHint", { percent: 5 })}</p>
                   <span className="mt-2 inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                     -{pixDiscount}
                   </span>
@@ -504,25 +505,25 @@ export function BillingCheckoutClient() {
                   onClick={() => setBillingType("CREDIT_CARD")}
                   className={`rounded-xl border-2 p-4 text-left transition ${
                     billingType === "CREDIT_CARD"
-                      ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200"
-                      : "border-slate-200 hover:border-violet-200"
+                      ? "border-[var(--amber)] bg-amber-50 ring-2 ring-amber-200"
+                      : "border-[var(--border-color)] hover:border-[var(--amber)]/40"
                   }`}
                 >
-                  <span className="font-bold text-slate-900">{t("creditCard")}</span>
-                  <p className="mt-1 text-xs text-slate-500">{t("checkoutCardHint")}</p>
+                  <span className="font-bold text-[var(--text-main)]">{t("creditCard")}</span>
+                  <p className="mt-1 text-xs text-[var(--text-dim)]">{t("checkoutCardHint")}</p>
                 </button>
               </div>
             </div>
 
             {cycle === "yearly" && billingType === "CREDIT_CARD" ? (
-              <div className="mt-5 space-y-3 rounded-xl border border-slate-100 bg-slate-50 p-4">
+              <div className="mt-5 space-y-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)] p-4">
                 <FieldLabel>{t("installmentMode")}</FieldLabel>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setPayInInstallments(false)}
                     className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
-                      !payInInstallments ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                      !payInInstallments ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
                     }`}
                   >
                     {t("payInFull")}
@@ -531,7 +532,7 @@ export function BillingCheckoutClient() {
                     type="button"
                     onClick={() => setPayInInstallments(true)}
                     className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
-                      payInInstallments ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                      payInInstallments ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
                     }`}
                   >
                     {t("payInstallments")}
@@ -547,8 +548,8 @@ export function BillingCheckoutClient() {
                           key={n}
                           className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 transition ${
                             installmentCount === n
-                              ? "border-violet-400 bg-white ring-2 ring-violet-100"
-                              : "border-slate-200 bg-white hover:border-violet-200"
+                              ? "border-[var(--amber)] bg-white ring-2 ring-amber-100"
+                              : "border-[var(--border-color)] bg-white hover:border-[var(--amber)]/40"
                           }`}
                         >
                           <span className="flex items-center gap-2">
@@ -557,18 +558,18 @@ export function BillingCheckoutClient() {
                               name="installments"
                               checked={installmentCount === n}
                               onChange={() => setInstallmentCount(n)}
-                              className="text-violet-600"
+                              className="text-[var(--violet)]"
                             />
-                            <span className="text-sm font-semibold text-slate-900">
+                            <span className="text-sm font-semibold text-[var(--text-main)]">
                               {t("installmentOption", { count: n })}
                             </span>
                           </span>
-                          <span className="text-right text-xs text-slate-600">
-                            <span className="block font-bold text-slate-900">
+                          <span className="text-right text-xs text-[var(--text-dim)]">
+                            <span className="block font-bold text-[var(--text-main)]">
                               {formatMoney(parcel, currency)} × {n}
                             </span>
                             {sim && sim.feeValueCents > 0 ? (
-                              <span className="text-slate-500">
+                              <span className="text-[var(--text-dim)]">
                                 {t("installmentFeeShort", { value: formatMoney(sim.feeValueCents, currency) })}
                               </span>
                             ) : null}
@@ -583,8 +584,8 @@ export function BillingCheckoutClient() {
           </div>
           ) : null}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+          <div className="ui-card p-6">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
               {t("checkoutBillingInfo")}
             </h3>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -634,8 +635,8 @@ export function BillingCheckoutClient() {
 
           {billingType === "CREDIT_CARD" && !isIntl ? (
             <>
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+              <div className="ui-card p-6">
+                <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
                   {t("checkoutAddress")}
                 </h3>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -687,11 +688,11 @@ export function BillingCheckoutClient() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+              <div className="ui-card p-6">
+                <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
                   {t("creditCard")}
                 </h3>
-                <p className="mt-1 text-xs text-slate-500">{t("checkoutCardSecureHint")}</p>
+                <p className="mt-1 text-xs text-[var(--text-dim)]">{t("checkoutCardSecureHint")}</p>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <label className="block sm:col-span-2">
                     <FieldLabel>{t("cardHolder")}</FieldLabel>
@@ -762,7 +763,7 @@ export function BillingCheckoutClient() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-violet-600 py-4 text-base font-bold text-white shadow-lg shadow-violet-200 transition hover:bg-violet-700 disabled:opacity-60"
+            className="ui-btn-primary w-full py-4 text-base font-bold disabled:opacity-60"
           >
             {loading
               ? t("processing")

@@ -8,11 +8,11 @@ import { hasLogDetails } from "@/lib/agency-brain/insights/research-log-reposito
 import type { ResearchLogEntry, ResearchLogType } from "@/lib/agency-brain/insights/types";
 
 const TYPE_STYLES: Record<ResearchLogType, string> = {
-  refine: "bg-violet-50 text-violet-800 border-violet-100",
-  market_scan: "bg-blue-50 text-blue-800 border-blue-100",
-  pattern_detect: "bg-slate-100 text-slate-700 border-slate-200",
-  ai_analysis: "bg-fuchsia-50 text-fuchsia-800 border-fuchsia-100",
-  market_synthesis: "bg-emerald-50 text-emerald-800 border-emerald-100"
+  refine: "bg-[rgba(124,58,237,0.06)]0/10 text-[var(--violet)] border-violet-500/20",
+  market_scan: "bg-blue-500/10 text-blue-800 border-blue-500/20",
+  pattern_detect: "bg-[var(--surface-thead)]0/10 text-[var(--text-dim)] border-[var(--border-color)]",
+  ai_analysis: "bg-fuchsia-500/10 text-fuchsia-800 border-fuchsia-500/20",
+  market_synthesis: "bg-emerald-500/10 text-emerald-800 border-emerald-500/20"
 };
 
 const STATUS_DOT: Record<ResearchLogEntry["status"], string> = {
@@ -39,7 +39,7 @@ function ResearchLogCard({ log }: { log: ResearchLogEntry }) {
   const showDetails = hasLogDetails(log.details);
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <li className="ui-card px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span
@@ -48,16 +48,16 @@ function ResearchLogCard({ log }: { log: ResearchLogEntry }) {
             {t(`researchLogType.${log.type}`)}
           </span>
           <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[log.status]}`} />
-          <p className="text-sm font-semibold text-slate-900">{log.title}</p>
+          <p className="text-sm font-semibold text-[var(--text-main)]">{log.title}</p>
         </div>
-        <time className="shrink-0 text-xs tabular-nums text-slate-400">
+        <time className="shrink-0 text-xs tabular-nums text-[var(--text-dimmer)]">
           {formatWhen(log.createdAt, locale)}
         </time>
       </div>
 
-      <p className="mt-1.5 text-sm text-slate-600">{log.detail}</p>
+      <p className="mt-1.5 text-sm text-[var(--text-dim)]">{log.detail}</p>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--text-dim)]">
         {log.pointsUsed != null ? (
           <span>{t("researchLogPoints", { count: log.pointsUsed })}</span>
         ) : null}
@@ -77,7 +77,7 @@ function ResearchLogCard({ log }: { log: ResearchLogEntry }) {
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="font-medium text-violet-600 hover:text-violet-800"
+            className="ui-link font-medium"
           >
             {expanded ? t("logDetailHide") : t("logDetailShow")}
           </button>
@@ -94,7 +94,7 @@ export function ResearchLogsList({ logs }: { logs: ResearchLogEntry[] }) {
 
   if (logs.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
+      <p className="ui-card border-dashed px-6 py-12 text-center text-sm text-[var(--text-dim)]">
         {t("researchLogsEmpty")}
       </p>
     );

@@ -18,14 +18,17 @@
     "sync:cron": "tsx scripts/sync-cron.ts",
     "benchmark:meta": "node scripts/benchmark-meta-pages.mjs",
     "redis:ping": "node scripts/redis-ping.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "sync:uxpilot": "node scripts/sync-uxpilot.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "clsx": "^2.1.1",
     "dotenv": "latest",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.462.0",
     "next": "latest",
     "next-auth": "5.0.0-beta.29",
     "next-intl": "latest",
@@ -39,6 +42,7 @@
     "reflect-metadata": "latest",
     "server-only": "latest",
     "stripe": "^22.2.0",
+    "tailwind-merge": "^2.6.0",
     "inngest": "^3.35.1",
     "@supabase/supabase-js": "^2.49.8",
     "typeorm": "latest",

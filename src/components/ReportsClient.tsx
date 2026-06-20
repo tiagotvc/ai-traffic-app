@@ -3,6 +3,8 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
+import { DsPageHeader } from "@/design-system";
+
 type ClientOption = { id: string; slug: string; name: string };
 
 type ScheduleRow = {
@@ -203,51 +205,48 @@ export function ReportsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500">{t("breadcrumb")}</p>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold text-slate-900">
-            <span className="text-violet-600">📊</span>
-            {t("title")}
-          </h1>
-          <p className="mt-1 max-w-xl text-sm text-slate-500">{t("pageSubtitle")}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="ui-btn-secondary">
-            {t("whiteLabelModels")}
-          </button>
-          <button type="button" className="ui-btn-primary" onClick={generateReport} disabled={isPending}>
-            {isPending ? tCommon("generating") : t("generateNew")}
-          </button>
-        </div>
-      </div>
+      <DsPageHeader
+        breadcrumbs={t("breadcrumb")}
+        title={t("title")}
+        subtitle={t("pageSubtitle")}
+        actions={
+          <>
+            <button type="button" className="ui-btn-secondary">
+              {t("whiteLabelModels")}
+            </button>
+            <button type="button" className="ui-btn-primary" onClick={generateReport} disabled={isPending}>
+              {isPending ? tCommon("generating") : t("generateNew")}
+            </button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-6">
           <section>
-            <h2 className="text-sm font-semibold text-slate-900">{t("readyTitle")}</h2>
+            <h2 className="text-sm font-semibold text-[var(--text-main)]">{t("readyTitle")}</h2>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {READY_REPORTS.map((r) => (
                 <button
                   key={r.id}
                   type="button"
                   onClick={() => setTemplate(r.id)}
-                  className={`ui-card flex flex-col p-4 text-left transition hover:border-violet-300 hover:shadow-md ${
-                    template === r.id ? "border-violet-400 ring-2 ring-violet-200" : ""
+                  className={`ui-card flex flex-col p-4 text-left transition hover:border-[var(--amber)]/40 hover:shadow-md ${
+                    template === r.id ? "border-[var(--amber)] ring-2 ring-[rgba(245,166,35,0.2)]" : ""
                   }`}
                 >
                   <span className="text-2xl">{r.icon}</span>
-                  <span className="mt-2 text-sm font-semibold text-slate-900">
+                  <span className="mt-2 text-sm font-semibold text-[var(--text-main)]">
                     {t(`ready.${r.id}.title`)}
                   </span>
-                  <span className="mt-1 line-clamp-2 text-xs text-slate-500">
+                  <span className="mt-1 line-clamp-2 text-xs text-[var(--text-dim)]">
                     {t(`ready.${r.id}.desc`)}
                   </span>
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                    <span className="rounded-md bg-[rgba(16,185,129,0.12)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--success)]">
                       {t("templateAvailable")}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-[var(--text-dimmer)]">
                       {t("periodDays", { count: r.days })}
                     </span>
                   </div>
@@ -255,7 +254,7 @@ export function ReportsClient() {
               ))}
             </div>
             <div className="mt-4">
-              <label className="block text-xs font-medium text-slate-600">{t("emailOptional")}</label>
+              <label className="ui-label block">{t("emailOptional")}</label>
               <input
                 type="email"
                 value={reportEmail}
@@ -263,23 +262,23 @@ export function ReportsClient() {
                 placeholder={t("emailPlaceholder")}
                 className="ui-input mt-1 w-full max-w-md"
               />
-              <p className="mt-1 text-[11px] text-slate-400">{t("emailHint")}</p>
+              <p className="mt-1 text-[11px] text-[var(--text-dimmer)]">{t("emailHint")}</p>
             </div>
           </section>
 
           <section className="ui-card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <h2 className="text-sm font-semibold text-slate-900">{t("scheduledTitle")}</h2>
+            <div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
+              <h2 className="text-sm font-semibold text-[var(--text-main)]">{t("scheduledTitle")}</h2>
               <button
                 type="button"
                 onClick={() => setShowScheduleForm((v) => !v)}
-                className="text-xs font-medium text-violet-600 hover:underline"
+                className="ui-link text-xs"
               >
                 {t("scheduleNew")}
               </button>
             </div>
             {showScheduleForm ? (
-              <div className="space-y-2 border-b border-slate-100 px-4 py-3">
+              <div className="space-y-2 border-b border-[var(--border-color)] px-4 py-3">
                 <input
                   value={scheduleName}
                   onChange={(e) => setScheduleName(e.target.value)}
@@ -308,7 +307,7 @@ export function ReportsClient() {
             ) : null}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
                   <tr>
                     <th className="px-4 py-3">{t("colName")}</th>
                     <th className="px-4 py-3">{t("colFrequency")}</th>
@@ -321,26 +320,26 @@ export function ReportsClient() {
                 <tbody>
                   {schedules.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-[var(--text-dim)]">
                         {t("scheduledEmpty")}
                       </td>
                     </tr>
                   ) : (
                     schedules.map((row) => (
-                      <tr key={row.id} className="border-t border-slate-100">
-                        <td className="px-4 py-3 font-medium text-slate-900">
+                      <tr key={row.id} className="border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
+                        <td className="px-4 py-3 font-medium text-[var(--text-main)]">
                           {row.name}
                           {row.clientName ? (
-                            <div className="text-xs font-normal text-slate-500">{row.clientName}</div>
+                            <div className="text-xs font-normal text-[var(--text-dim)]">{row.clientName}</div>
                           ) : (
-                            <div className="text-xs font-normal text-slate-500">{t("allClients")}</div>
+                            <div className="text-xs font-normal text-[var(--text-dim)]">{t("allClients")}</div>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{t(`freq.${row.frequency}`)}</td>
-                        <td className="px-4 py-3 text-slate-600">
+                        <td className="px-4 py-3 text-[var(--text-dim)]">{t(`freq.${row.frequency}`)}</td>
+                        <td className="px-4 py-3 text-[var(--text-dim)]">
                           {t("recipients", { count: row.recipients.length })}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">
+                        <td className="px-4 py-3 text-[var(--text-dim)]">
                           {formatNextRun(row.nextRunAt, locale)}
                         </td>
                         <td className="px-4 py-3">
@@ -348,7 +347,9 @@ export function ReportsClient() {
                             type="button"
                             onClick={() => toggleSchedule(row.id, row.enabled)}
                             className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                              row.enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"
+                              row.enabled
+                                ? "bg-[rgba(16,185,129,0.12)] text-[var(--success)]"
+                                : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
                             }`}
                           >
                             {row.enabled ? t("statusActive") : t("statusPaused")}
@@ -373,28 +374,28 @@ export function ReportsClient() {
 
           <section>
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">{t("templatesTitle")}</h2>
-              <button type="button" className="text-xs font-medium text-violet-600 hover:underline">
+              <h2 className="text-sm font-semibold text-[var(--text-main)]">{t("templatesTitle")}</h2>
+              <button type="button" className="ui-link text-xs">
                 {t("viewAllTemplates")}
               </button>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <button
                 type="button"
-                className="flex min-h-[120px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/80 p-4 text-center transition hover:border-violet-300"
+                className="ui-card flex min-h-[120px] flex-col items-center justify-center border-2 border-dashed p-4 text-center transition hover:border-[var(--amber)]/40"
               >
-                <span className="text-2xl text-violet-600">+</span>
-                <span className="mt-2 text-xs font-medium text-slate-600">{t("createTemplate")}</span>
+                <span className="text-2xl text-[var(--violet)]">+</span>
+                <span className="mt-2 text-xs font-medium text-[var(--text-dim)]">{t("createTemplate")}</span>
               </button>
               {[1, 2, 3].map((n) => (
                 <div
                   key={n}
-                  className="min-h-[120px] rounded-2xl border border-slate-200 bg-gradient-to-br from-violet-50 to-slate-50 p-3 shadow-sm"
+                  className="ui-card min-h-[120px] bg-gradient-to-br from-[rgba(124,58,237,0.06)] to-[var(--surface-bg)] p-3"
                 >
-                  <div className="text-xs font-semibold text-slate-800">
+                  <div className="text-xs font-semibold text-[var(--text-main)]">
                     {t("templatePreview", { n })}
                   </div>
-                  <div className="mt-2 h-16 rounded-lg bg-white/80" />
+                  <div className="mt-2 h-16 rounded-lg bg-[var(--surface-card)]/80" />
                 </div>
               ))}
             </div>
@@ -403,9 +404,9 @@ export function ReportsClient() {
 
         <aside className="space-y-4">
           <div className="ui-card p-4">
-            <h2 className="text-sm font-semibold text-slate-900">{t("generatePanelTitle")}</h2>
+            <h2 className="text-sm font-semibold text-[var(--text-main)]">{t("generatePanelTitle")}</h2>
 
-            <div className="mt-3 flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <div className="mt-3 flex rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-1">
               {(
                 [
                   ["client", t("scopeClient")],
@@ -417,7 +418,9 @@ export function ReportsClient() {
                   type="button"
                   onClick={() => setScope(key)}
                   className={`flex-1 rounded-lg py-1.5 text-xs font-medium ${
-                    scope === key ? "bg-white text-violet-700 shadow-sm" : "text-slate-500"
+                    scope === key
+                      ? "bg-[var(--surface-card)] text-[var(--amber)] shadow-sm"
+                      : "text-[var(--text-dim)]"
                   }`}
                 >
                   {label}
@@ -436,7 +439,7 @@ export function ReportsClient() {
               {filteredClients.map((c) => (
                 <label
                   key={c.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50"
+                  className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[var(--row-hover)]"
                 >
                   <input
                     type="checkbox"
@@ -446,7 +449,7 @@ export function ReportsClient() {
                     }
                     className="accent-violet-600"
                   />
-                  <span className="text-sm text-slate-800">{c.name}</span>
+                  <span className="text-sm text-[var(--text-main)]">{c.name}</span>
                 </label>
               ))}
             </div>
@@ -468,9 +471,9 @@ export function ReportsClient() {
               </div>
               <div>
                 <div className="ui-label">{t("periodLabel")}</div>
-                <div className="ui-input mt-1 flex items-center justify-between text-slate-600">
+                <div className="ui-input mt-1 flex items-center justify-between text-[var(--text-dim)]">
                   <span>{t("periodValue")}</span>
-                  <span className="text-slate-400">▾</span>
+                  <span className="text-[var(--text-dimmer)]">▾</span>
                 </div>
               </div>
               <div>
@@ -488,8 +491,8 @@ export function ReportsClient() {
                       onClick={() => setFormat(key)}
                       className={`flex-1 rounded-xl border py-2 text-xs font-medium ${
                         format === key
-                          ? "border-violet-500 bg-violet-50 text-violet-700"
-                          : "border-slate-200 bg-white text-slate-600"
+                          ? "border-[var(--amber)] bg-[rgba(245,166,35,0.08)] text-[var(--amber)]"
+                          : "border-[var(--border-color)] bg-[var(--surface-card)] text-[var(--text-dim)]"
                       }`}
                     >
                       {label}
@@ -508,7 +511,7 @@ export function ReportsClient() {
               {isPending ? tCommon("generating") : t("generateNew")}
             </button>
 
-            {message ? <p className="mt-2 text-xs text-slate-500">{message}</p> : null}
+            {message ? <p className="mt-2 text-xs text-[var(--text-dim)]">{message}</p> : null}
 
             {format === "whatsapp" && whatsText ? (
               <textarea readOnly value={whatsText} className="ui-textarea mt-3 h-28 text-xs" />
@@ -516,8 +519,8 @@ export function ReportsClient() {
           </div>
 
           <div className="ui-card p-4">
-            <h3 className="text-sm font-semibold text-slate-900">{t("recentTitle")}</h3>
-            <p className="mt-2 text-xs text-slate-500">{t("recentHint")}</p>
+            <h3 className="text-sm font-semibold text-[var(--text-main)]">{t("recentTitle")}</h3>
+            <p className="mt-2 text-xs text-[var(--text-dim)]">{t("recentHint")}</p>
           </div>
         </aside>
       </div>

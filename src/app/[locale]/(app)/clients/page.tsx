@@ -1,5 +1,5 @@
-import { ClientsHubClient } from "@/components/ClientsHubClient";
+import { ClientsView } from "@/uxpilot-ui/adapters/ClientsView";
 
 export default function ClientsPage() {
-  return <ClientsHubClient />;
+  return <ClientsView />;
 }

@@ -69,20 +69,20 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[var(--surface-card)] p-6 shadow-xl">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{t("objectiveModalTitle")}</h2>
-            <p className="mt-1 text-sm text-slate-500">{t("objectiveModalHint")}</p>
+            <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("objectiveModalTitle")}</h2>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">{t("objectiveModalHint")}</p>
           </div>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button type="button" onClick={onClose} className="text-[var(--text-dimmer)] hover:text-[var(--text-dim)]">
             ✕
           </button>
         </div>
 
         <div className="mt-4">
-          <label className="text-xs font-medium text-slate-600">{t("buyingType")}</label>
+          <label className="text-xs font-medium text-[var(--text-dim)]">{t("buyingType")}</label>
           <select
             className="ui-select mt-1 w-full text-sm"
             value={payload.buyingType}
@@ -92,23 +92,23 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
             <option value="reservation">{t("buyingReservation")}</option>
           </select>
           {payload.buyingType === "reservation" ? (
-            <p className="mt-1 text-[11px] text-slate-500">{t("buyingReservationHint")}</p>
+            <p className="mt-1 text-[11px] text-[var(--text-dim)]">{t("buyingReservationHint")}</p>
           ) : null}
         </div>
 
-        <p className="mt-5 text-xs font-medium text-slate-600">{t("chooseObjective")}</p>
+        <p className="mt-5 text-xs font-medium text-[var(--text-dim)]">{t("chooseObjective")}</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {CAMPAIGN_OBJECTIVES.filter((obj) => availableObjectives.includes(obj)).map((obj) => (
             <button
               key={obj}
               type="button"
               onClick={() => select(obj)}
-              className={`flex items-start gap-3 rounded-xl border p-4 text-left transition hover:border-violet-300 hover:bg-violet-50/50 ${
-                payload.objective === obj ? "border-violet-400 bg-violet-50" : "border-slate-200"
+              className={`flex items-start gap-3 rounded-xl border p-4 text-left transition hover:border-violet-300 hover:bg-[rgba(124,58,237,0.06)]/50 ${
+                payload.objective === obj ? "border-violet-400 bg-[rgba(124,58,237,0.06)]" : "border-[var(--border-color)]"
               }`}
             >
               <svg
-                className="mt-0.5 h-5 w-5 shrink-0 text-violet-600"
+                className="mt-0.5 h-5 w-5 shrink-0 text-[var(--violet)]"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -117,14 +117,14 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
                 <path strokeLinecap="round" strokeLinejoin="round" d={OBJECTIVE_ICONS[obj]} />
               </svg>
               <div>
-                <p className="text-sm font-medium text-slate-900">{t(`objective_${obj}`)}</p>
-                <p className="mt-0.5 text-[11px] text-slate-500">{t(`objective_${obj}_hint`)}</p>
+                <p className="text-sm font-medium text-[var(--text-main)]">{t(`objective_${obj}`)}</p>
+                <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t(`objective_${obj}_hint`)}</p>
               </div>
             </button>
           ))}
         </div>
         <div className="mt-6">
-          <Link href="/campaigns" className="text-xs text-slate-500 hover:text-violet-600">
+          <Link href="/campaigns" className="ui-link text-xs">
             {t("close")}
           </Link>
         </div>

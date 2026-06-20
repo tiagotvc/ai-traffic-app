@@ -77,15 +77,15 @@ export function AutoSyncOnLogin() {
 
   return (
     <div
-      className={`fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border px-4 py-3 text-sm shadow-lg ${
-        error
-          ? "border-red-200 bg-red-50 text-red-800"
-          : "border-violet-200 bg-white text-slate-700"
+      className={`fixed bottom-4 right-4 z-50 max-w-sm px-4 py-3 text-sm shadow-lg ${
+        error ? "ui-alert-danger" : "ui-card border-[rgba(245,166,35,0.25)] text-[var(--text-dim)]"
       }`}
       role="status"
     >
       {syncing ? (
-        <span>{t("autoOnLogin")} {tCommon("syncing").toLowerCase()}…</span>
+        <span>
+          {t("autoOnLogin")} {tCommon("syncing").toLowerCase()}…
+        </span>
       ) : (
         <span>{error}</span>
       )}

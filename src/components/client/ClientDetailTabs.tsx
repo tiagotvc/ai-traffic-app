@@ -32,17 +32,21 @@ export function ClientDetailTabs({
   ];
 
   return (
-    <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
+    <div className="flex gap-1 overflow-x-auto border-b" style={{ borderColor: "var(--border-color)" }}>
       {tabs.map((item) => {
         const isActive = activeTab === item.id;
-        const tabClass = `whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${
-          isActive
-            ? "border-violet-600 text-violet-600"
-            : "border-transparent text-slate-500 hover:text-slate-700"
-        }`;
-
         return (
-          <Link key={item.id} href={clientTabHref(item.id, clientSlug)} className={tabClass}>
+          <Link
+            key={item.id}
+            href={clientTabHref(item.id, clientSlug)}
+            className="whitespace-nowrap rounded-t-lg px-4 py-2 font-body text-sm font-medium transition-all"
+            style={{
+              background: isActive ? "#f5a623" : "transparent",
+              color: isActive ? "#0f1419" : "var(--text-dim)",
+              border: isActive ? "1px solid #f5a623" : "1px solid transparent",
+              fontWeight: isActive ? 600 : 400
+            }}
+          >
             {item.label}
           </Link>
         );

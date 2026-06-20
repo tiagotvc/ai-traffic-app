@@ -90,7 +90,7 @@ export function CreativeCardGrid({
     <>
       <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
         {creatives.map((c, idx) => (
-          <div key={`${c.name}-${idx}`} className="rounded-xl border border-slate-200 p-3">
+          <div key={`${c.name}-${idx}`} className="rounded-xl border border-[var(--border-color)] p-3">
             <div className="flex gap-3">
               {c.thumbnailUrl ? (
                 <button
@@ -110,7 +110,7 @@ export function CreativeCardGrid({
                 <button
                   type="button"
                   onClick={() => setPreviewing(c)}
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-lg"
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-bg)] text-lg"
                 >
                   🖼️
                 </button>
@@ -123,21 +123,21 @@ export function CreativeCardGrid({
                         ★ 1º
                       </span>
                     ) : (
-                      <span className="text-[10px] text-slate-400">#{idx + 1}</span>
+                      <span className="text-[10px] text-[var(--text-dimmer)]">#{idx + 1}</span>
                     )
                   ) : null}
                   <Badge variant={c.status === "ACTIVE" ? "success" : "neutral"}>
                     {statusLabel(c.status)}
                   </Badge>
                 </div>
-                <div className="mt-1 truncate text-xs font-medium text-slate-800" title={c.name}>
+                <div className="mt-1 truncate text-xs font-medium text-[var(--text-main)]" title={c.name}>
                   {c.name}
                 </div>
                 <div className="mt-0.5 flex gap-2">
                   <button
                     type="button"
                     onClick={() => setPreviewing(c)}
-                    className="text-[11px] font-medium text-violet-600 hover:underline"
+                    className="text-[11px] font-medium text-[var(--violet)] hover:underline"
                   >
                     {t("view")}
                   </button>
@@ -149,14 +149,14 @@ export function CreativeCardGrid({
                         setCmpMode("campaign");
                         setComparing(c);
                       }}
-                      className="text-[11px] font-medium text-violet-600 hover:underline"
+                      className="text-[11px] font-medium text-[var(--violet)] hover:underline"
                     >
                       {t("compare")}
                     </button>
                   ) : null}
                 </div>
                 {c.campaigns && c.campaigns.length ? (
-                  <div className="mt-0.5 text-[10px] text-slate-400">
+                  <div className="mt-0.5 text-[10px] text-[var(--text-dimmer)]">
                     {t("usedInCampaigns", { n: c.campaigns.length })}
                   </div>
                 ) : null}
@@ -169,12 +169,12 @@ export function CreativeCardGrid({
                   <div
                     key={m}
                     className={`rounded-md px-2 py-1 ${
-                      isRank ? "bg-violet-50 ring-1 ring-violet-200" : "bg-slate-50"
+                      isRank ? "bg-[rgba(124,58,237,0.06)] ring-1 ring-violet-200" : "bg-[var(--surface-bg)]"
                     }`}
                   >
                     <div
                       className={`text-[9px] uppercase tracking-wide ${
-                        isRank ? "text-violet-500" : "text-slate-400"
+                        isRank ? "text-violet-500" : "text-[var(--text-dimmer)]"
                       }`}
                     >
                       {isRank ? "★ " : ""}
@@ -182,7 +182,7 @@ export function CreativeCardGrid({
                     </div>
                     <div
                       className={`text-xs font-semibold tabular-nums ${
-                        isRank ? "text-violet-800" : "text-slate-800"
+                        isRank ? "text-[var(--violet)]" : "text-[var(--text-main)]"
                       }`}
                     >
                       {formatMetricValue(m, Number(c.metrics[m] ?? 0), locale)}
@@ -207,28 +207,28 @@ export function CreativeCardGrid({
 
       {comparing ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onMouseDown={() => setComparing(null)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-[var(--surface-card)] shadow-2xl"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-5 py-3">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--border-color)] px-5 py-3">
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-800">{comparing.name}</div>
-                <div className="text-xs text-slate-400">{t("comparePerf")}</div>
+                <div className="truncate text-sm font-semibold text-[var(--text-main)]">{comparing.name}</div>
+                <div className="text-xs text-[var(--text-dimmer)]">{t("comparePerf")}</div>
               </div>
               <button
                 type="button"
                 onClick={() => setComparing(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-lg p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
                 aria-label="close"
               >
                 ✕
               </button>
             </div>
-            <div className="flex gap-1 border-b border-slate-100 px-5 py-2">
+            <div className="flex gap-1 border-b border-[var(--border-color)] px-5 py-2">
               {(["campaign", "adset"] as const).map((mode) => (
                 <button
                   key={mode}
@@ -236,8 +236,8 @@ export function CreativeCardGrid({
                   onClick={() => setCmpMode(mode)}
                   className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                     cmpMode === mode
-                      ? "bg-violet-100 text-violet-700"
-                      : "text-slate-500 hover:bg-slate-50"
+                      ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]"
+                      : "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                   }`}
                 >
                   {mode === "campaign" ? t("cmpByCampaign") : t("cmpByAdset")}
@@ -246,7 +246,7 @@ export function CreativeCardGrid({
             </div>
             <div className="overflow-auto">
               <table className="w-full min-w-[520px] text-left text-sm">
-                <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-slate-500">
+                <thead className="bg-[var(--surface-thead)] text-[11px] font-semibold uppercase text-[var(--text-dim)]">
                   <tr>
                     <th className="px-4 py-2">
                       {cmpMode === "adset" ? t("colAdset") : t("colCampaign")}
@@ -258,24 +258,24 @@ export function CreativeCardGrid({
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[var(--border-color)]">
                   {cmpRows.map((b, i) => (
-                    <tr key={`${b.id}-${i}`} className="hover:bg-slate-50/60">
+                    <tr key={`${b.id}-${i}`} className="hover:bg-[var(--surface-bg)]/60">
                       <td className="px-4 py-2.5">
-                        <div className="max-w-[260px] truncate text-slate-800">{b.label}</div>
-                        <div className="text-[10px] text-slate-400">{b.sub}</div>
+                        <div className="max-w-[260px] truncate text-[var(--text-main)]">{b.label}</div>
+                        <div className="text-[10px] text-[var(--text-dimmer)]">{b.sub}</div>
                       </td>
                       {metrics.map((m) => (
-                        <td key={m} className="px-3 py-2.5 text-right tabular-nums text-slate-700">
+                        <td key={m} className="px-3 py-2.5 text-right tabular-nums text-[var(--text-dim)]">
                           {formatMetricValue(m, Number(b.metrics[m] ?? 0), locale)}
                         </td>
                       ))}
                     </tr>
                   ))}
-                  <tr className="bg-violet-50/40 font-semibold">
-                    <td className="px-4 py-2.5 text-violet-800">{t("total")}</td>
+                  <tr className="bg-[rgba(124,58,237,0.06)]/40 font-semibold hover:bg-[var(--row-hover)]">
+                    <td className="px-4 py-2.5 text-[var(--violet)]">{t("total")}</td>
                     {metrics.map((m) => (
-                      <td key={m} className="px-3 py-2.5 text-right tabular-nums text-violet-800">
+                      <td key={m} className="px-3 py-2.5 text-right tabular-nums text-[var(--violet)]">
                         {formatMetricValue(m, Number(comparing.metrics[m] ?? 0), locale)}
                       </td>
                     ))}

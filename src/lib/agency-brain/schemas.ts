@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const brainSortByEnum = z.enum(["createdAt", "confidenceScore", "priority", "impact"]);
+const brainSortByEnum = z.enum(["createdAt", "updatedAt", "confidenceScore", "priority", "impact"]);
 const brainSortDirEnum = z.enum(["asc", "desc"]);
 
 const categoryEnum = z.enum([
@@ -67,7 +67,7 @@ export const ListHypothesesQuerySchema = z.object({
   category: categoryEnum.optional(),
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(10),
-  sortBy: z.enum(["createdAt", "confidenceScore"]).optional(),
+  sortBy: z.enum(["createdAt", "updatedAt", "confidenceScore"]).optional(),
   sortDir: brainSortDirEnum.optional().default("desc")
 });
 

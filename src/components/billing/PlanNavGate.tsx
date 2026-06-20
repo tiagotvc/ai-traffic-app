@@ -23,7 +23,7 @@ export async function PlanNavGate({
 
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center justify-center px-4 py-16 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-thead)] text-[var(--text-dimmer)]">
         <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
           <path
             strokeLinecap="round"
@@ -32,9 +32,9 @@ export async function PlanNavGate({
           />
         </svg>
       </div>
-      <h1 className="mt-4 text-xl font-bold text-slate-900">{t("title")}</h1>
-      <p className="mt-2 text-sm text-slate-600">{t(`nav.${navId}`)}</p>
-      <p className="mt-1 text-xs text-slate-500">
+      <h1 className="mt-4 font-heading text-xl font-bold text-[var(--text-main)]">{t("title")}</h1>
+      <p className="mt-2 text-sm text-[var(--text-dim)]">{t(`nav.${navId}`)}</p>
+      <p className="mt-1 text-xs text-[var(--text-dimmer)]">
         {t("currentPlan", { plan: entitlements.planName })}
       </p>
       <Link href="/billing" className="ui-btn-primary mt-6 text-sm">

@@ -85,7 +85,7 @@ export function CampaignDetailClient({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-sm font-semibold">{campaign.name}</div>
-            <div className="mt-1 text-xs text-slate-500">
+            <div className="mt-1 text-xs text-[var(--text-dim)]">
               {t("status")}: {campaign.status}
             </div>
           </div>
@@ -111,14 +111,14 @@ export function CampaignDetailClient({
           <Kpi label="CPL" value={campaign.kpis.cpl != null ? formatBRL(campaign.kpis.cpl, locale) : "—"} />
           <Kpi label="CPA" value={campaign.kpis.cpa != null ? formatBRL(campaign.kpis.cpa, locale) : "—"} />
         </div>
-        {message ? <div className="mt-2 text-xs text-slate-500">{message}</div> : null}
+        {message ? <div className="mt-2 text-xs text-[var(--text-dim)]">{message}</div> : null}
       </div>
 
       <div className="ui-card p-4">
         <div className="text-sm font-semibold">{t("adsets")}</div>
         <div className="mt-3 space-y-2">
           {adsets.map((a) => (
-            <div key={a.id} className="rounded-xl border border-surface-line bg-slate-50/50 p-3">
+            <div key={a.id} className="rounded-xl border border-surface-line bg-[var(--surface-bg)]/50 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
                   type="button"
@@ -127,7 +127,7 @@ export function CampaignDetailClient({
                     setExpanded(next);
                     if (next) loadAds(a.id);
                   }}
-                  className="text-left text-sm font-medium text-slate-900 hover:text-brand"
+                  className="text-left text-sm font-medium text-[var(--text-main)] hover:text-brand"
                 >
                   {a.name ?? a.id} ({a.status})
                 </button>
@@ -167,7 +167,7 @@ export function CampaignDetailClient({
                 </div>
               </div>
               {expanded === a.id && (
-                <ul className="mt-2 space-y-1 border-t border-surface-line pt-2 text-xs text-slate-600">
+                <ul className="mt-2 space-y-1 border-t border-surface-line pt-2 text-xs text-[var(--text-dim)]">
                   {(adsByAdset[a.id] ?? []).map((ad) => (
                     <li key={ad.id} className="flex justify-between">
                       <span>{ad.name ?? ad.id}</span>
@@ -186,8 +186,8 @@ export function CampaignDetailClient({
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-surface-line bg-slate-50 p-3">
-      <div className="text-[11px] text-slate-500">{label}</div>
+    <div className="rounded-xl border border-surface-line bg-[var(--surface-bg)] p-3">
+      <div className="text-[11px] text-[var(--text-dim)]">{label}</div>
       <div className="mt-1 text-sm font-semibold">{value}</div>
     </div>
   );

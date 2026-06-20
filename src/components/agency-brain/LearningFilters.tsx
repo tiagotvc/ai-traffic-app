@@ -130,7 +130,7 @@ export function LearningFilters({
   );
 
   return (
-    <div className={embedded ? "space-y-1.5" : "shrink-0 space-y-1.5 rounded-xl border border-slate-200 bg-white p-2 shadow-sm"}>
+    <div className={embedded ? "space-y-1.5" : "shrink-0 space-y-1.5 ui-card p-2 shadow-sm"}>
       {!hidePrimaryRow ? (
       <div className="flex flex-wrap items-center gap-1.5">
         {clients && clients.length > 0 && onClientChange && !clientInExpanded ? (
@@ -178,25 +178,25 @@ export function LearningFilters({
           type="button"
           className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition ${
             expanded || activeFilterCount > 0
-              ? "border-violet-300 bg-violet-50 text-violet-800"
-              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              ? "border-violet-300 bg-[rgba(124,58,237,0.06)] text-[var(--violet)]"
+              : "border-[var(--border-color)] bg-white text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
           }`}
           onClick={toggleExpanded}
           aria-expanded={expanded}
         >
           {expanded ? t("collapseFilters") : t("expandFilters")}
           {activeFilterCount > 0 ? (
-            <span className="rounded-full bg-violet-600 px-1 py-0.5 text-[9px] font-bold text-white">
+            <span className="rounded-full bg-[var(--amber-bright)] px-1 py-0.5 text-[9px] font-bold text-white">
               {activeFilterCount}
             </span>
           ) : null}
         </button>
 
-        <div className="ml-auto flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 sm:text-[11px]">
+        <div className="ml-auto flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--text-dim)] sm:text-[11px]">
           {!hidePagination ? (
             <>
               <span>{t("resultsCount", { count: total })}</span>
-              {listLoading ? <span className="text-slate-400">{t("updating")}</span> : null}
+              {listLoading ? <span className="text-[var(--text-dimmer)]">{t("updating")}</span> : null}
             </>
           ) : null}
         </div>
@@ -204,7 +204,7 @@ export function LearningFilters({
       ) : null}
 
       {expanded ? (
-        <div className="animate-fade-in space-y-2 rounded-lg border border-slate-100 bg-slate-50/80 p-2">
+        <div className="animate-fade-in space-y-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)] p-2">
           {clients && clients.length > 0 && onClientChange && clientInExpanded ? (
             <select
               className="ui-select !py-1 text-xs"
@@ -288,7 +288,7 @@ export function LearningFilters({
           {!hideDateFilters ? (
             <div className="grid gap-1.5 sm:grid-cols-2">
               <div>
-                <label className="mb-0.5 block text-[10px] text-slate-500">{t("filterDateFrom")}</label>
+                <label className="mb-0.5 block text-[10px] text-[var(--text-dim)]">{t("filterDateFrom")}</label>
                 <input
                   type="date"
                   className="ui-input !py-1 text-xs"
@@ -297,7 +297,7 @@ export function LearningFilters({
                 />
               </div>
               <div>
-                <label className="mb-0.5 block text-[10px] text-slate-500">{t("filterDateTo")}</label>
+                <label className="mb-0.5 block text-[10px] text-[var(--text-dim)]">{t("filterDateTo")}</label>
                 <input
                   type="date"
                   className="ui-input !py-1 text-xs"
@@ -338,8 +338,8 @@ export function LearningFilters({
               type="button"
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition ${
                 !tagFilter
-                  ? "bg-violet-600 text-white"
-                  : "bg-white text-slate-600 hover:bg-slate-100"
+                  ? "bg-[var(--amber-bright)] text-white"
+                  : "bg-white text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
               }`}
               onClick={() => onTagFilterChange("")}
             >
@@ -351,8 +351,8 @@ export function LearningFilters({
                 type="button"
                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition ${
                   tagFilter === tag
-                    ? "bg-violet-600 text-white"
-                    : "bg-white text-slate-600 hover:bg-slate-100"
+                    ? "bg-[var(--amber-bright)] text-white"
+                    : "bg-white text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
                 }`}
                 onClick={() => onTagFilterChange(tagFilter === tag ? "" : tag)}
               >

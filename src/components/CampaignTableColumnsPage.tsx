@@ -7,6 +7,7 @@ import { MetricCatalogPicker } from "@/components/CampaignTableColumnsModal";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { Link, useRouter } from "@/i18n/navigation";
+import { DsPageHeader } from "@/design-system";
 import { PRESET_METRICS } from "@/lib/campaign-presets";
 import { metricKeysToColumns } from "@/lib/campaign-table-metrics";
 import type { MetricKey } from "@/lib/dashboard-metrics";
@@ -134,17 +135,19 @@ export function CampaignTableColumnsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <Link href="/campaigns" className="text-xs text-slate-500 hover:text-violet-600">
-          ← {t("backToCampaigns")}
-        </Link>
-        <h1 className="mt-2 text-xl font-semibold text-slate-900">{t("columnsTitle")}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t("columnsPageHint")}</p>
-      </div>
+      <DsPageHeader
+        breadcrumbs={
+          <Link href="/campaigns" className="ui-link">
+            ← {t("backToCampaigns")}
+          </Link>
+        }
+        title={t("columnsTitle")}
+        subtitle={t("columnsPageHint")}
+      />
 
       <div className="ui-card space-y-4 p-5">
         <div>
-          <label className="text-xs font-medium text-slate-600">{t("typeNameLabel")}</label>
+          <label className="text-xs font-medium text-[var(--text-dim)]">{t("typeNameLabel")}</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -152,12 +155,12 @@ export function CampaignTableColumnsPage() {
             className="ui-input mt-1 w-full text-sm"
             autoFocus={customSelection === NEW_CUSTOM}
           />
-          <p className="mt-1 text-[11px] text-slate-500">{t("typeNameHint")}</p>
+          <p className="mt-1 text-[11px] text-[var(--text-dim)]">{t("typeNameHint")}</p>
         </div>
 
         {customTypes.length > 0 ? (
           <div>
-            <label className="text-xs font-medium text-slate-600">{t("editExistingTypeLabel")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("editExistingTypeLabel")}</label>
             <select
               className="ui-select mt-1 w-full text-sm"
               value={customSelection}
@@ -174,7 +177,7 @@ export function CampaignTableColumnsPage() {
           </div>
         ) : null}
 
-        <label className="flex items-center gap-2 text-xs text-slate-600">
+        <label className="flex items-center gap-2 text-xs text-[var(--text-dim)]">
           <input
             type="checkbox"
             checked={shared}
@@ -184,17 +187,17 @@ export function CampaignTableColumnsPage() {
           {tTypes("sharedType")}
         </label>
 
-        <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-2">
+        <div className="flex flex-wrap gap-2 border-b border-[var(--border-color)] pb-2">
           <button
             type="button"
-            className={`text-xs font-medium ${tab === "metrics" ? "text-violet-700" : "text-slate-500"}`}
+            className={`text-xs font-medium ${tab === "metrics" ? "text-[var(--violet)]" : "text-[var(--text-dim)]"}`}
             onClick={() => setTab("metrics")}
           >
             {t("tabColumns")}
           </button>
           <button
             type="button"
-            className={`text-xs font-medium ${tab === "formula" ? "text-violet-700" : "text-slate-500"}`}
+            className={`text-xs font-medium ${tab === "formula" ? "text-[var(--violet)]" : "text-[var(--text-dim)]"}`}
             onClick={() => setTab("formula")}
           >
             {t("tabFormula")}
@@ -222,7 +225,7 @@ export function CampaignTableColumnsPage() {
               placeholder={t("formulaPlaceholder")}
               className="ui-input w-full font-mono text-xs"
             />
-            <label className="flex items-center gap-2 text-xs text-slate-600">
+            <label className="flex items-center gap-2 text-xs text-[var(--text-dim)]">
               <input
                 type="checkbox"
                 checked={formulaShared}
@@ -240,7 +243,7 @@ export function CampaignTableColumnsPage() {
 
         {saveError ? <p className="text-xs text-red-600">{saveError}</p> : null}
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
+        <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border-color)] pt-4">
           <button type="button" className="ui-btn-secondary text-xs" onClick={resetToDefaultMetrics}>
             {t("useDefaultMetrics")}
           </button>

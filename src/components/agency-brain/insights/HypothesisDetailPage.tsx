@@ -17,7 +17,7 @@ export function HypothesisDetailPage({ hypothesisId }: { hypothesisId: string })
   const hypothesis = insights.getHypothesisById(hypothesisId);
   if (!hypothesis) {
     return (
-      <p className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+      <p className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">
         {t("hypothesisNotFound")}
       </p>
     );
@@ -30,7 +30,7 @@ export function HypothesisDetailPage({ hypothesisId }: { hypothesisId: string })
     <div className="space-y-6">
       <BrainBreadcrumb title={hypothesis.title} />
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
+      <section className="ui-card p-6">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">
             {t("badgeHypothesis")}
@@ -38,29 +38,29 @@ export function HypothesisDetailPage({ hypothesisId }: { hypothesisId: string })
           <StatusBadge kind="hypothesis" status={hypothesis.status} />
         </div>
 
-        <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">{hypothesis.title}</h1>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">{hypothesis.description}</p>
+        <h1 className="font-heading mt-3 font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">{hypothesis.title}</h1>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-dim)]">{hypothesis.description}</p>
 
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">{t("expectedOutcomeLabel")}</dt>
-            <dd className="mt-0.5 font-medium text-slate-900">{hypothesis.expectedOutcome}</dd>
+            <dt className="text-[var(--text-dim)]">{t("expectedOutcomeLabel")}</dt>
+            <dd className="mt-0.5 font-medium text-[var(--text-main)]">{hypothesis.expectedOutcome}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">{t("targetMetricLabel")}</dt>
-            <dd className="mt-0.5 font-medium text-slate-900">{hypothesis.targetMetric}</dd>
+            <dt className="text-[var(--text-dim)]">{t("targetMetricLabel")}</dt>
+            <dd className="mt-0.5 font-medium text-[var(--text-main)]">{hypothesis.targetMetric}</dd>
           </div>
           <div>
-            <dt className="text-slate-500">{t("testPeriodLabel")}</dt>
-            <dd className="mt-0.5 font-medium text-slate-900">{hypothesis.testPeriod}</dd>
+            <dt className="text-[var(--text-dim)]">{t("testPeriodLabel")}</dt>
+            <dd className="mt-0.5 font-medium text-[var(--text-main)]">{hypothesis.testPeriod}</dd>
           </div>
           {learning ? (
             <div>
-              <dt className="text-slate-500">{t("originLearningLabel")}</dt>
+              <dt className="text-[var(--text-dim)]">{t("originLearningLabel")}</dt>
               <dd className="mt-0.5">
                 <Link
                   href={`/agency-brain/learnings/${learning.id}`}
-                  className="font-medium text-violet-600 hover:text-violet-800"
+                  className="ui-link font-medium"
                 >
                   {learning.title}
                 </Link>
@@ -70,15 +70,15 @@ export function HypothesisDetailPage({ hypothesisId }: { hypothesisId: string })
         </dl>
 
         {hypothesis.resultSummary ? (
-          <p className="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <p className="mt-4 rounded-lg bg-[var(--surface-thead)] px-4 py-3 text-sm text-[var(--text-dim)]">
             {hypothesis.resultSummary}
           </p>
         ) : null}
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="text-sm font-bold text-slate-900">{t("executionPlanTitle")}</h2>
-        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-slate-700">
+      <section className="ui-card p-6">
+        <h2 className="font-heading text-sm font-bold text-[var(--text-main)]">{t("executionPlanTitle")}</h2>
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-[var(--text-dim)]">
           {hypothesis.executionPlan.map((step) => (
             <li key={step}>{step}</li>
           ))}
@@ -86,9 +86,9 @@ export function HypothesisDetailPage({ hypothesisId }: { hypothesisId: string })
       </section>
 
       {canUpdate ? (
-        <section className="rounded-xl border border-slate-200 bg-white p-6">
-          <h2 className="text-sm font-bold text-slate-900">{t("updateStatusTitle")}</h2>
-          <p className="mt-1 text-sm text-slate-500">{t("updateStatusDescription")}</p>
+        <section className="ui-card p-6">
+          <h2 className="font-heading text-sm font-bold text-[var(--text-main)]">{t("updateStatusTitle")}</h2>
+          <p className="mt-1 text-sm text-[var(--text-dim)]">{t("updateStatusDescription")}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {STATUS_ACTIONS.map((status) => (
               <button

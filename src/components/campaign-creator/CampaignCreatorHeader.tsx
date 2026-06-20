@@ -13,10 +13,10 @@ export function CampaignCreatorHeader() {
   const [tab, setTab] = useState<"edit" | "analyze">("edit");
 
   return (
-    <header className="border-b border-slate-200 bg-white px-4 py-3">
+    <header className="border-b border-[var(--border-color)] bg-[var(--surface-card)] px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-[var(--text-dim)]">
             {addAdMode && payload.meta?.targetMetaCampaignId ? (
               <>
                 <Link
@@ -29,41 +29,41 @@ export function CampaignCreatorHeader() {
                         }`
                       : ""
                   }`}
-                  className="hover:text-violet-600"
+                  className="ui-link"
                 >
                   {payload.campaign.name || t("breadcrumbCampaigns")}
                 </Link>
                 {" › "}
-                <span className="text-slate-700">{t("addAdTitle")}</span>
+                <span className="text-[var(--text-dim)]">{t("addAdTitle")}</span>
               </>
             ) : (
               <>
-                <Link href="/campaigns" className="hover:text-violet-600">
+                <Link href="/campaigns" className="ui-link">
                   {t("breadcrumbCampaigns")}
                 </Link>
                 {" › "}
-                <span className="text-slate-700">{payload.campaign.name || t("newCampaign")}</span>
+                <span className="text-[var(--text-dim)]">{payload.campaign.name || t("newCampaign")}</span>
               </>
             )}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold text-slate-900">
+            <h1 className="font-heading text-lg font-semibold text-[var(--text-main)]">
               {addAdMode ? t("addAdTitle") : t("title")}
             </h1>
             <Badge variant="warning">{t("draftStatus")}</Badge>
             {saving ? (
-              <span className="text-[11px] text-slate-400">{t("saving")}</span>
+              <span className="text-[11px] text-[var(--text-dimmer)]">{t("saving")}</span>
             ) : lastSavedAt ? (
-              <span className="text-[11px] text-slate-400">{t("saved")}</span>
+              <span className="text-[11px] text-[var(--text-dimmer)]">{t("saved")}</span>
             ) : null}
           </div>
         </div>
-        <div className="flex items-center gap-1 rounded-xl border border-slate-200 p-0.5">
+        <div className="flex items-center gap-1 rounded-xl border border-[var(--border-color)] p-0.5">
           <button
             type="button"
             onClick={() => setTab("edit")}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-              tab === "edit" ? "bg-violet-50 text-violet-700" : "text-slate-500"
+              tab === "edit" ? "bg-[rgba(124,58,237,0.06)] text-[var(--violet)]" : "text-[var(--text-dim)]"
             }`}
           >
             {t("tabEdit")}
@@ -72,7 +72,7 @@ export function CampaignCreatorHeader() {
             type="button"
             onClick={() => setTab("analyze")}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-              tab === "analyze" ? "bg-violet-50 text-violet-700" : "text-slate-500"
+              tab === "analyze" ? "bg-[rgba(124,58,237,0.06)] text-[var(--violet)]" : "text-[var(--text-dim)]"
             }`}
             title={t("tabAnalyzeHint")}
           >
@@ -81,7 +81,7 @@ export function CampaignCreatorHeader() {
         </div>
       </div>
       {tab === "analyze" ? (
-        <p className="mt-2 text-xs text-slate-500">{t("tabAnalyzeHint")}</p>
+        <p className="mt-2 text-xs text-[var(--text-dim)]">{t("tabAnalyzeHint")}</p>
       ) : null}
     </header>
   );

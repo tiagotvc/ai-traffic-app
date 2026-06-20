@@ -1,26 +1,11 @@
-"use client";
+import { Suspense } from "react";
 
-import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
-
-import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCreatorClient";
+import { NewCampaignView } from "@/uxpilot-ui/adapters/NewCampaignView";
 
 export default function CampaignNewPage() {
-  const searchParams = useSearchParams();
-  const client = searchParams.get("client") ?? undefined;
-  const mode = searchParams.get("mode");
-  const fromCampaign = searchParams.get("fromCampaign");
-  const adset = searchParams.get("adset");
-
-  const initialAddAd = useMemo(
-    () =>
-      mode === "add-ad" && fromCampaign && adset
-        ? { fromCampaignId: fromCampaign, adsetId: adset, clientSlug: client }
-        : undefined,
-    [mode, fromCampaign, adset, client]
-  );
-
   return (
-    <CampaignCreatorClient initialClientSlug={client} initialAddAd={initialAddAd} />
+    <Suspense fallback={null}>
+      <NewCampaignView />
+    </Suspense>
   );
 }

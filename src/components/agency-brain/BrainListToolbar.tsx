@@ -39,7 +39,7 @@ export function BrainListToolbar({
 
   if (compact) {
     return (
-      <div className="shrink-0 space-y-2 rounded-xl border border-slate-200/80 bg-white p-2.5 shadow-sm">
+      <div className="ui-card shrink-0 space-y-2 p-2.5">
         {filters}
 
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -66,14 +66,14 @@ export function BrainListToolbar({
             </select>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-dim)]">
             <span>{t("resultsCount", { count: total })}</span>
-            {listLoading ? <span className="text-slate-400">{t("updating")}</span> : null}
+            {listLoading ? <span className="text-[var(--text-dimmer)]">{t("updating")}</span> : null}
             {totalPages > 1 ? (
               <>
                 <button
                   type="button"
-                  className="rounded-lg border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-lg border border-[var(--border-color)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-dim)] transition hover:bg-[var(--surface-thead)] disabled:opacity-40"
                   disabled={page <= 1}
                   onClick={() => onPageChange(Math.max(1, page - 1))}
                 >
@@ -82,7 +82,7 @@ export function BrainListToolbar({
                 <span>{t("pageOf", { page, total: totalPages })}</span>
                 <button
                   type="button"
-                  className="rounded-lg border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-40"
+                  className="rounded-lg border border-[var(--border-color)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-dim)] transition hover:bg-[var(--surface-thead)] disabled:opacity-40"
                   disabled={page >= totalPages}
                   onClick={() => onPageChange(Math.min(totalPages, page + 1))}
                 >
@@ -102,7 +102,7 @@ export function BrainListToolbar({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <label className="text-xs text-slate-500">{t("sortLabel")}</label>
+          <label className="text-xs text-[var(--text-dim)]">{t("sortLabel")}</label>
           <select
             className="ui-select text-sm"
             value={sortBy}
@@ -124,9 +124,9 @@ export function BrainListToolbar({
           </select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-dim)]">
           <span>{t("resultsCount", { count: total })}</span>
-          {listLoading ? <span className="text-slate-400">{t("updating")}</span> : null}
+          {listLoading ? <span className="text-[var(--text-dimmer)]">{t("updating")}</span> : null}
         </div>
       </div>
 
@@ -140,7 +140,7 @@ export function BrainListToolbar({
           >
             {t("prevPage")}
           </button>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-[var(--text-dim)]">
             {t("pageOf", { page, total: totalPages })}
           </span>
           <button

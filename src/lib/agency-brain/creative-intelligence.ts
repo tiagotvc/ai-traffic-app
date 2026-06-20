@@ -137,7 +137,9 @@ export function aggregateCreativesFromAccountData(input: {
       byCreative.set(key, agg);
     }
     if (!agg.thumbnailUrl && ad.thumbnailUrl) agg.thumbnailUrl = ad.thumbnailUrl;
-    if (!agg.imageUrl && ad.imageUrl) agg.imageUrl = ad.imageUrl;
+    if (ad.imageUrl && (!agg.imageUrl || ad.imageUrl.length > (agg.imageUrl?.length ?? 0))) {
+      agg.imageUrl = ad.imageUrl;
+    }
     if (!agg.firstAdId || ad.status === "ACTIVE") agg.firstAdId = ad.id;
     if (!agg.creativeId && ad.creativeId) agg.creativeId = ad.creativeId;
     agg.ads.add(ad.id);

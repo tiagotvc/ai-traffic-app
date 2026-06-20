@@ -51,7 +51,7 @@ export function CampaignTableHead({
         return (
           <th key={key} className={`whitespace-nowrap px-3 py-2 ${thAlign}`}>
             {onSort && isMetric ? (
-              <button type="button" onClick={() => onSort(key)} className="hover:text-slate-700">
+              <button type="button" onClick={() => onSort(key)} className="hover:text-[var(--text-dim)]">
                 {label(col)}
                 {sortKey === key ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
               </button>
@@ -124,7 +124,7 @@ export function CampaignTableCell({
       default:
         break;
     }
-    return <td className={`${className} ${align} text-slate-700`}>{content}</td>;
+    return <td className={`${className} ${align} text-[var(--text-dim)]`}>{content}</td>;
   }
 
   const val = resolveColumnNumericValue(col, row, customMetrics, evaluateFormula);
@@ -142,5 +142,5 @@ export function CampaignTableCell({
     }
   }
 
-  return <td className={`${className} ${align} text-slate-700`}>{content}</td>;
+  return <td className={`${className} ${align} text-[var(--text-dim)]`}>{content}</td>;
 }

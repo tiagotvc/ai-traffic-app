@@ -172,7 +172,7 @@ export function AutomationsClient() {
         }
       />
 
-      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+      {message ? <p className="text-sm text-[var(--text-dim)]">{message}</p> : null}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <KpiCard label={t("kpiActive")} value={String(stats.active)} />
@@ -189,7 +189,7 @@ export function AutomationsClient() {
                 key={tpl.id}
                 type="button"
                 onClick={() => applyTemplate(tpl)}
-                className="rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-xs text-violet-800"
+                className="ui-btn-secondary !px-2 !py-1 text-xs"
               >
                 {tpl.name}
               </button>
@@ -244,7 +244,7 @@ export function AutomationsClient() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="space-y-4 xl:col-span-2">
           <div className="ui-card p-4">
-            <div className="flex flex-wrap gap-2 border-b border-surface-line pb-3">
+            <div className="flex flex-wrap gap-2 border-b border-[var(--border-color)] pb-3">
               {(
                 [
                   ["all", t("tabAll", { count: rules.length })],
@@ -256,8 +256,10 @@ export function AutomationsClient() {
                   key={key}
                   type="button"
                   onClick={() => setTab(key)}
-                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                    tab === key ? "bg-brand text-white" : "text-slate-600 hover:bg-slate-100"
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                    tab === key
+                      ? "bg-[var(--amber-bright)] text-[#0f1419] shadow-sm"
+                      : "text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
                   }`}
                 >
                   {label}
@@ -272,20 +274,22 @@ export function AutomationsClient() {
             />
           </div>
 
-          <div className="ui-card divide-y divide-surface-line overflow-hidden">
+          <div className="ui-card divide-y divide-[var(--border-color)] overflow-hidden">
             {filtered.map((rule) => (
               <button
                 key={rule.id}
                 type="button"
                 onClick={() => setSelectedId(rule.id)}
-                className={`flex w-full flex-col gap-2 p-4 text-left transition hover:bg-slate-50 ${
-                  selected?.id === rule.id ? "bg-violet-50/80 ring-1 ring-inset ring-violet-200" : ""
+                className={`flex w-full flex-col gap-2 p-4 text-left transition hover:bg-[var(--row-hover)] ${
+                  selected?.id === rule.id
+                    ? "bg-[rgba(245,166,35,0.08)] ring-1 ring-inset ring-[rgba(245,166,35,0.25)]"
+                    : ""
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="font-semibold text-slate-900">{rule.name}</div>
-                    <div className="mt-1 text-xs text-slate-500">{formatCondition(rule.condition)}</div>
+                    <div className="font-semibold text-[var(--text-main)]">{rule.name}</div>
+                    <div className="mt-1 text-xs text-[var(--text-dimmer)]">{formatCondition(rule.condition)}</div>
                   </div>
                   <Badge variant={rule.enabled ? "success" : "neutral"}>
                     {rule.enabled ? t("statusActive") : t("statusPaused")}
@@ -294,23 +298,23 @@ export function AutomationsClient() {
               </button>
             ))}
             {filtered.length === 0 ? (
-              <p className="p-8 text-center text-sm text-slate-500">{t("empty")}</p>
+              <p className="p-8 text-center text-sm text-[var(--text-dimmer)]">{t("empty")}</p>
             ) : null}
           </div>
         </div>
 
         <aside className="ui-card p-4">
-          <h2 className="text-sm font-semibold text-slate-900">{t("detailTitle")}</h2>
+          <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("detailTitle")}</h2>
           {selected ? (
             <div className="mt-4 space-y-4 text-sm">
               <div>
-                <div className="text-lg font-bold text-slate-900">{selected.name}</div>
+                <div className="text-lg font-bold text-[var(--text-main)]">{selected.name}</div>
                 <Badge variant={selected.enabled ? "success" : "neutral"}>
                   {selected.enabled ? t("statusActive") : t("statusPaused")}
                 </Badge>
               </div>
-              <p className="text-slate-700">{formatCondition(selected.condition)}</p>
-              <p className="text-violet-700">{formatAction(selected.action)}</p>
+              <p className="text-[var(--text-dim)]">{formatCondition(selected.condition)}</p>
+              <p className="text-[var(--violet)]">{formatAction(selected.action)}</p>
               <div className="flex flex-col gap-2">
                 <button type="button" className="ui-btn-secondary w-full" onClick={() => toggleRule(selected)}>
                   {selected.enabled ? t("pauseRule") : t("activateRule")}
@@ -325,7 +329,7 @@ export function AutomationsClient() {
               </div>
             </div>
           ) : (
-            <p className="mt-4 text-xs text-slate-500">{t("selectRule")}</p>
+            <p className="mt-4 text-xs text-[var(--text-dimmer)]">{t("selectRule")}</p>
           )}
         </aside>
       </div>

@@ -160,8 +160,8 @@ export function LabsContent() {
         onClose={() => setDetailOpen(false)}
       />
 
-      <p className="text-xs text-slate-500">
-        <Link href="/agency-brain/experiments" className="underline hover:text-violet-600">
+      <p className="text-xs text-[var(--text-dim)]">
+        <Link href="/agency-brain/experiments" className="ui-link">
           {t("labsLegacyExperiments")}
         </Link>
       </p>

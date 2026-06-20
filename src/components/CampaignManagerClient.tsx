@@ -267,7 +267,7 @@ function CampaignDetailSkeleton({ compact }: { compact?: boolean }) {
           </div>
         </>
       ) : null}
-      <div className="flex gap-1 border-b border-slate-200 pb-2">
+      <div className="flex gap-1 border-b border-[var(--border-color)] pb-2">
         {[1, 2, 3, 4, 5].map((n) => (
           <Skeleton key={n} className="h-8 w-20" />
         ))}
@@ -345,7 +345,7 @@ function PerformanceChart({
   return (
     <div className="ui-card p-4 lg:col-span-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{title}</h2>
         <div className="flex flex-wrap gap-1.5">
           {available.map((m) => {
             const def = METRIC_BY_KEY[m];
@@ -361,8 +361,8 @@ function PerformanceChart({
                   on
                     ? "border-transparent text-white"
                     : disabled
-                      ? "cursor-not-allowed border-slate-200 text-slate-300"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                      ? "cursor-not-allowed border-[var(--border-color)] text-[var(--text-dimmer)]"
+                      : "border-[var(--border-color)] text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
                 }`}
                 style={on ? { background: def.color } : undefined}
               >
@@ -419,7 +419,7 @@ function PerformanceChart({
             </LineChart>
         </ChartContainer>
       ) : (
-        <p className="mt-4 text-xs text-slate-500">{noDataLabel}</p>
+        <p className="mt-4 text-xs text-[var(--text-dim)]">{noDataLabel}</p>
       )}
     </div>
   );
@@ -427,7 +427,7 @@ function PerformanceChart({
 
 function DeltaBadge({ value, invert }: { value: number; invert?: boolean }) {
   const good = invert ? value < 0 : value > 0;
-  const cls = good ? "text-emerald-600" : value === 0 ? "text-slate-400" : "text-rose-600";
+  const cls = good ? "text-[var(--success)]" : value === 0 ? "text-[var(--text-dimmer)]" : "text-[var(--danger)]";
   const sign = value > 0 ? "+" : "";
   return (
     <span className={`text-[11px] font-medium ${cls}`}>
@@ -510,6 +510,8 @@ export function CampaignManagerClient({
         today: tPeriod("today"),
         yesterday: tPeriod("yesterday"),
         thisWeek: tPeriod("thisWeek"),
+        thisMonth: tPeriod("thisMonth"),
+        thisQuarter: tPeriod("thisQuarter"),
         last7: tPeriod("last7"),
         last14: tPeriod("last14"),
         last15: tPeriod("last15"),
@@ -710,12 +712,12 @@ export function CampaignManagerClient({
   return (
     <div className="space-y-4">
       {!embedded ? (
-        <p className="text-xs text-slate-500">
-          <Link href="/campaigns" className="hover:text-violet-600">
+        <p className="text-xs text-[var(--text-dim)]">
+          <Link href="/campaigns" className="ui-link">
             {t("navCampaigns")}
           </Link>
           {" › "}
-          <span className="text-slate-700">{campaign.name}</span>
+          <span className="text-[var(--text-main)]">{campaign.name}</span>
           {activeTab === "adsets" ? ` › ${t("adsetsTitle")}` : null}
         </p>
       ) : null}
@@ -723,10 +725,10 @@ export function CampaignManagerClient({
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900">{campaign.name}</h1>
+            <h1 className="font-heading text-2xl font-bold text-[var(--text-main)]">{campaign.name}</h1>
             <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
           </div>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-dim)]">
             <span className="flex items-center gap-1">
               <span className="inline-block h-4 w-4 rounded bg-blue-600 text-[8px] font-bold leading-4 text-white text-center">
                 f
@@ -735,7 +737,7 @@ export function CampaignManagerClient({
             </span>
             <span>
               {t("client")}:{" "}
-              <Link href={`/clients/${slug}`} className="font-medium text-slate-700 hover:text-violet-600">
+              <Link href={`/clients/${slug}`} className="ui-link font-medium">
                 {campaign.clientName}
               </Link>
             </span>
@@ -747,7 +749,7 @@ export function CampaignManagerClient({
             </span>
             <span>
               {t("dailyBudget")}:{" "}
-              <strong className="text-slate-800">
+              <strong className="text-[var(--text-main)]">
                 {campaign.dailyBudget != null ? formatBRL(campaign.dailyBudget, locale) : "—"}
               </strong>
             </span>
@@ -775,10 +777,10 @@ export function CampaignManagerClient({
               {t("actions")} ▾
             </button>
             {actionsOpen ? (
-              <div className="absolute right-0 z-10 mt-1 w-48 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+              <div className="ui-card absolute right-0 z-10 mt-1 w-48 py-1 shadow-lg">
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--row-hover)]"
                   onClick={() => {
                     campaignAction("pause");
                     setActionsOpen(false);
@@ -788,7 +790,7 @@ export function CampaignManagerClient({
                 </button>
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--row-hover)]"
                   onClick={() => {
                     campaignAction("activate");
                     setActionsOpen(false);
@@ -798,7 +800,7 @@ export function CampaignManagerClient({
                 </button>
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--row-hover)]"
                   onClick={() => {
                     openPanel({ clientSlug: slug });
                     setActionsOpen(false);
@@ -860,7 +862,7 @@ export function CampaignManagerClient({
                 <h2 className="text-sm font-semibold">{t("statusCard")}</h2>
                 <dl className="mt-3 space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <dt className="text-slate-500">{t("statusLabel")}</dt>
+                    <dt className="text-[var(--text-dim)]">{t("statusLabel")}</dt>
                     <dd>
                       <Badge variant={statusVariant(campaign.status)}>
                         {statusLabel(campaign.status, t)}
@@ -868,11 +870,11 @@ export function CampaignManagerClient({
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-slate-500">{t("objective")}</dt>
+                    <dt className="text-[var(--text-dim)]">{t("objective")}</dt>
                     <dd className="font-medium">{campaign.objective}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-slate-500">{t("dailyBudget")}</dt>
+                    <dt className="text-[var(--text-dim)]">{t("dailyBudget")}</dt>
                     <dd className="font-medium">
                       {campaign.dailyBudget != null ? formatBRL(campaign.dailyBudget, locale) : "—"}
                     </dd>
@@ -910,19 +912,19 @@ export function CampaignManagerClient({
 
           <aside className="flex max-h-[min(720px,70vh)] flex-col gap-3 overflow-hidden xl:max-h-[calc(100vh-14rem)]">
             <div className="flex shrink-0 items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">{t("adsetsSidebar")}</h2>
+              <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("adsetsSidebar")}</h2>
               {embedded ? (
                 <button
                   type="button"
                   onClick={() => setActiveTab("adsets")}
-                  className="text-xs font-medium text-violet-600 hover:underline"
+                  className="ui-link"
                 >
                   {t("viewAdsets")}
                 </button>
               ) : (
                 <Link
                   href={`/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`}
-                  className="text-xs font-medium text-violet-600"
+                  className="ui-link text-xs"
                 >
                   {t("viewAdsets")}
                 </Link>
@@ -946,14 +948,14 @@ export function CampaignManagerClient({
                     <button
                       type="button"
                       onClick={() => setActiveTab("adsets")}
-                      className="text-left font-semibold text-slate-900 hover:text-violet-700"
+                      className="ui-link text-left font-semibold"
                     >
                       {a.name ?? a.id}
                     </button>
                   ) : (
                     <Link
                       href={`/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`}
-                      className="font-semibold text-slate-900 hover:text-violet-700 hover:underline"
+                      className="ui-link font-semibold"
                     >
                       {a.name ?? a.id}
                     </Link>
@@ -973,22 +975,22 @@ export function CampaignManagerClient({
                   <Metric label={t("reach")} value={formatNumber(a.reach, locale)} />
                   <Metric label="CTR" value={formatPercent(a.ctr, 2, locale)} />
                 </div>
-                <div className="mt-2 text-[11px] text-slate-500">
+                <div className="mt-2 text-[11px] text-[var(--text-dim)]">
                   {t("dailyBudget")}: {a.dailyBudget != null ? formatBRL(a.dailyBudget, locale) : "—"}
                 </div>
-                <div className="mt-3 flex gap-3 border-t border-slate-100 pt-2 text-[11px]">
+                <div className="mt-3 flex gap-3 border-t border-[var(--border-color)] pt-2 text-[11px]">
                   {embedded ? (
                     <button
                       type="button"
                       onClick={() => setActiveTab("adsets")}
-                      className="font-medium text-violet-600 hover:underline"
+                      className="ui-link font-medium"
                     >
                       {t("viewDetail")}
                     </button>
                   ) : (
                     <Link
                       href={`/campaigns/${metaCampaignId}/adsets?client=${encodeURIComponent(slug)}`}
-                      className="font-medium text-violet-600"
+                      className="font-medium text-[var(--violet)]"
                     >
                       {t("viewDetail")}
                     </Link>
@@ -997,12 +999,12 @@ export function CampaignManagerClient({
               </div>
             ))
             )}
-            {!refreshing && !adsets.length ? <p className="text-xs text-slate-500">{t("noAdsets")}</p> : null}
+            {!refreshing && !adsets.length ? <p className="text-xs text-[var(--text-dim)]">{t("noAdsets")}</p> : null}
             </div>
 
             {adsets.length > 0 ? (
-              <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <div className="font-semibold text-slate-700">{t("adsetsSummary")}</div>
+              <div className="shrink-0 rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)] p-3 text-xs">
+                <div className="font-semibold text-[var(--text-dim)]">{t("adsetsSummary")}</div>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <span>
                     {t("totalSpend")}: <strong>{formatBRL(adsetTotals.spend, locale)}</strong>
@@ -1048,10 +1050,10 @@ export function CampaignManagerClient({
           />
         )
       ) : (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("comingSoon")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("comingSoon")}</div>
       )}
 
-      <p className="text-[10px] text-slate-400">{t("dataNote")}</p>
+      <p className="text-[10px] text-[var(--text-dimmer)]">{t("dataNote")}</p>
 
       <BudgetEditDrawer
         open={budgetDrawerOpen}
@@ -1083,8 +1085,8 @@ function KpiCard({
 }) {
   return (
     <div className="ui-card p-4">
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="mt-1 text-xl font-bold text-slate-900">{value}</div>
+      <div className="text-xs text-[var(--text-dim)]">{label}</div>
+      <div className="mt-1 text-xl font-bold text-[var(--text-main)]">{value}</div>
       <DeltaBadge value={delta} invert={invertDelta} />
       <Sparkline values={series} color={color} />
     </div>
@@ -1094,8 +1096,8 @@ function KpiCard({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-slate-400">{label}</div>
-      <div className="font-semibold text-slate-800">{value}</div>
+      <div className="text-[var(--text-dimmer)]">{label}</div>
+      <div className="font-semibold text-[var(--text-main)]">{value}</div>
     </div>
   );
 }
@@ -1119,16 +1121,16 @@ function QuickAction({
 }) {
   const inner = (
     <>
-      <span className={highlight ? "text-violet-600" : "text-slate-500"}>
+      <span className={highlight ? "text-[var(--violet)]" : "text-[var(--text-dim)]"}>
         {loading ? <Spinner className="h-5 w-5" /> : <Icon d={iconPath} className="h-5 w-5" />}
       </span>
-      <span className="text-[10px] font-medium text-slate-600">{label}</span>
+      <span className="text-[10px] font-medium text-[var(--text-dim)]">{label}</span>
     </>
   );
   const cls = `flex flex-col items-center justify-center gap-1 rounded-xl border p-3 transition ${
     highlight
-      ? "border-violet-200 bg-violet-50 hover:bg-violet-100"
-      : "border-slate-200 bg-slate-50 hover:bg-white"
+      ? "border-[rgba(124,58,237,0.2)] bg-[rgba(124,58,237,0.06)] hover:bg-[rgba(124,58,237,0.1)]"
+      : "border-[var(--border-color)] bg-[var(--surface-thead)] hover:bg-[var(--surface-card)]"
   } ${loading ? "pointer-events-none opacity-70" : ""}`;
   if (href) {
     if (external) {
@@ -1284,16 +1286,16 @@ function AdsetsTable({
       <div className="ui-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+            <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
               <tr>
                 <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
-                  <button type="button" onClick={() => toggleSort("status")} className="hover:text-slate-700">
+                  <button type="button" onClick={() => toggleSort("status")} className="hover:text-[var(--text-dim)]">
                     {tAdsets("colStatus")}
                     {sort?.key === "status" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
                 </th>
                 <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>
-                  <button type="button" onClick={() => toggleSort("name")} className="hover:text-slate-700">
+                  <button type="button" onClick={() => toggleSort("name")} className="hover:text-[var(--text-dim)]">
                     {tAdsets("colAdset")}
                     {sort?.key === "name" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
@@ -1302,7 +1304,7 @@ function AdsetsTable({
                   const sortKey = m.kind === "metric" ? m.key : columnRefKey(m);
                   return (
                     <th key={columnRefKey(m)} className="whitespace-nowrap px-3 py-2 text-center">
-                      <button type="button" onClick={() => toggleSort(sortKey)} className="hover:text-slate-700">
+                      <button type="button" onClick={() => toggleSort(sortKey)} className="hover:text-[var(--text-dim)]">
                         {metricColLabel(m)}
                         {sort?.key === sortKey ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                       </button>
@@ -1310,7 +1312,7 @@ function AdsetsTable({
                   );
                 })}
                 <th className="whitespace-nowrap px-3 py-2 text-center">
-                  <button type="button" onClick={() => toggleSort("dailyBudget")} className="hover:text-slate-700">
+                  <button type="button" onClick={() => toggleSort("dailyBudget")} className="hover:text-[var(--text-dim)]">
                     {tAdsets("colBudget")}
                     {sort?.key === "dailyBudget" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
@@ -1321,7 +1323,7 @@ function AdsetsTable({
               {sortedAdsets.map((a, idx) => {
                 const name = a.name ?? a.id;
                 return (
-                  <tr key={a.id} className="group border-t border-slate-100 hover:bg-violet-50/40">
+                  <tr key={a.id} className="group border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
                     <td className={STICKY_STATUS_TD}>
                       <CampaignStatusToggle
                         active={a.status === "ACTIVE"}
@@ -1342,12 +1344,12 @@ function AdsetsTable({
                           <Link
                             href={campaignAdsHref(metaCampaignId, slug, a.id)}
                             onClick={() => rememberAdset(metaCampaignId, a.id, name)}
-                            className="block whitespace-normal break-words font-medium text-slate-800 hover:text-violet-700 hover:underline"
+                            className="ui-link block whitespace-normal break-words font-medium"
                           >
                             {name}
                           </Link>
-                          <div className="text-[10px] text-slate-400">{a.id}</div>
-                          <span className="mt-1 inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                          <div className="text-[10px] text-[var(--text-dimmer)]">{a.id}</div>
+                          <span className="mt-1 inline-block rounded-md bg-[var(--surface-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-dim)]">
                             {inferTag(name, tAdsets)}
                           </span>
                         </div>
@@ -1370,7 +1372,7 @@ function AdsetsTable({
                         customMetrics={tableLayout.customMetricsMap}
                       />
                     ))}
-                    <td className="px-3 py-2.5 text-center tabular-nums text-slate-700">
+                    <td className="px-3 py-2.5 text-center tabular-nums text-[var(--text-dim)]">
                       {a.dailyBudget != null ? formatBRL(a.dailyBudget, locale) : "—"}
                     </td>
                   </tr>
@@ -1385,7 +1387,7 @@ function AdsetsTable({
                 totals={totals}
                 customMetrics={tableLayout.customMetricsMap}
                 trailingCells={
-                  <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-900">
+                  <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-[var(--text-main)]">
                     {formatBRL(
                       sortedAdsets.reduce((s, a) => s + (a.dailyBudget ?? 0), 0),
                       locale
@@ -1397,7 +1399,7 @@ function AdsetsTable({
           </table>
         </div>
         {!sortedAdsets.length ? (
-          <p className="p-8 text-center text-sm text-slate-500">{tAdsets("empty")}</p>
+          <p className="p-8 text-center text-sm text-[var(--text-dim)]">{tAdsets("empty")}</p>
         ) : null}
       </div>
     </div>

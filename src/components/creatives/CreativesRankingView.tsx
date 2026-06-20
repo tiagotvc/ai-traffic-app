@@ -104,7 +104,7 @@ export function CreativesRankingView({
   if (loading && !groups.length) {
     return (
       <div className="space-y-3">
-        <p className="text-center text-sm text-slate-500">{t("loading")}</p>
+        <p className="text-center text-sm text-[var(--text-dim)]">{t("loading")}</p>
         <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />
       </div>
     );
@@ -160,7 +160,7 @@ export function CreativesRankingView({
     return (
       <div className="space-y-4">
         {banner}
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("empty")}</div>
       </div>
     );
   }
@@ -174,13 +174,13 @@ export function CreativesRankingView({
         const totalCount = g.best.length + g.promising.length + g.noSpend.length;
         return (
           <div key={g.preset} className="ui-card overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] px-4 py-3">
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-slate-800">
+                <div className="text-sm font-semibold text-[var(--text-main)]">
                   {tPresets(g.preset)}{" "}
-                  <span className="font-normal text-slate-400">({totalCount})</span>
+                  <span className="font-normal text-[var(--text-dimmer)]">({totalCount})</span>
                 </div>
-                <div className="text-[11px] text-slate-400">{rankHint(g.primaryMetric)}</div>
+                <div className="text-[11px] text-[var(--text-dimmer)]">{rankHint(g.primaryMetric)}</div>
               </div>
               <Badge variant="brand">{tPresets(g.preset)}</Badge>
             </div>
@@ -195,7 +195,7 @@ export function CreativesRankingView({
             ) : null}
 
             {g.promising.length ? (
-              <div className="border-t border-slate-100">
+              <div className="border-t border-[var(--border-color)]">
                 <div className="flex items-start gap-2 bg-amber-50/60 px-4 py-2.5">
                   <span className="text-amber-600">✦</span>
                   <div>
@@ -214,14 +214,14 @@ export function CreativesRankingView({
             ) : null}
 
             {g.noSpend.length ? (
-              <div className="border-t border-slate-100">
+              <div className="border-t border-[var(--border-color)]">
                 <div className="px-4 py-2.5">
                   <button
                     type="button"
                     onClick={() =>
                       setExpandedZero((prev) => ({ ...prev, [g.preset]: !prev[g.preset] }))
                     }
-                    className="text-xs font-medium text-violet-600 hover:underline"
+                    className="text-xs font-medium text-[var(--violet)] hover:underline"
                   >
                     {zeroOpen ? t("showLess") : t("showMoreZero", { n: g.noSpend.length })}
                   </button>

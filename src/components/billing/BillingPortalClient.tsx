@@ -13,6 +13,7 @@ import {
 } from "@/components/billing/billing-ui";
 import { BillingLimitsPanel } from "@/components/billing/BillingLimitsPanel";
 import { BillingPlanCard } from "@/components/billing/BillingPlanCard";
+import { DsPageHeader } from "@/design-system";
 import { PageTabs } from "@/components/layout/PageTabs";
 import type { PlanCardData } from "@/components/billing/PlanLimitsCard";
 import type { Entitlements, PlanLimits } from "@/lib/billing/types";
@@ -222,7 +223,7 @@ export function BillingPortalClient({
   ];
 
   const panels = (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="ui-card p-4">
       {activeTab === "plan" ? (
             <div className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
@@ -252,9 +253,9 @@ export function BillingPortalClient({
                     ctaLabel={t("upgradeNow")}
                   />
                 ) : (
-                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
-                    <p className="text-sm font-semibold text-slate-800">{t("planTabHintTitle")}</p>
-                    <p className="mt-1 text-xs text-slate-500">{t("planTabHintBody")}</p>
+                  <div className="rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
+                    <p className="text-sm font-semibold text-[var(--text-main)]">{t("planTabHintTitle")}</p>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">{t("planTabHintBody")}</p>
                   </div>
                 )}
               </div>
@@ -266,8 +267,8 @@ export function BillingPortalClient({
           {activeTab === "limits" && planLimits && entitlements ? (
             <div>
               <div className="mb-3">
-                <h2 className="text-sm font-semibold text-slate-900">{t("limitsTitle")}</h2>
-                <p className="text-[11px] text-slate-500">{t("limitsSubtitle")}</p>
+                <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("limitsTitle")}</h2>
+                <p className="text-[11px] text-[var(--text-dim)]">{t("limitsSubtitle")}</p>
               </div>
               <BillingLimitsPanel limits={planLimits} usage={entitlements.usage} />
             </div>
@@ -276,8 +277,8 @@ export function BillingPortalClient({
           {activeTab === "billing" ? (
             <div className="space-y-4">
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">{t("invoicesTitle")}</h2>
-                <p className="text-[11px] text-slate-500">{t("invoicesSubtitle")}</p>
+                <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("invoicesTitle")}</h2>
+                <p className="text-[11px] text-[var(--text-dim)]">{t("invoicesSubtitle")}</p>
               </div>
 
               <BillingInvoicesTable
@@ -292,8 +293,8 @@ export function BillingPortalClient({
               />
 
               {refundInvoiceId ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <h3 className="text-sm font-semibold text-slate-900">{t("refundTitle")}</h3>
+                <div className="ui-card bg-[var(--surface-bg)] p-4">
+                  <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("refundTitle")}</h3>
                   <textarea
                     value={refundReason}
                     onChange={(e) => setRefundReason(e.target.value)}
@@ -320,20 +321,20 @@ export function BillingPortalClient({
           {activeTab === "events" ? (
             <div>
               <div className="mb-3">
-                <h2 className="text-sm font-semibold text-slate-900">{t("eventsTitle")}</h2>
-                <p className="text-[11px] text-slate-500">{t("eventsSubtitle")}</p>
+                <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("eventsTitle")}</h2>
+                <p className="text-[11px] text-[var(--text-dim)]">{t("eventsSubtitle")}</p>
               </div>
-              <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100 text-xs">
+              <ul className="divide-y divide-[var(--border-color)] rounded-xl border border-[var(--border-color)] text-xs">
                 {events.map((ev) => (
-                  <li key={ev.id} className="px-3 py-2.5 text-slate-600">
-                    <p className="font-medium text-slate-800">{ev.eventType}</p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
+                  <li key={ev.id} className="px-3 py-2.5 text-[var(--text-dim)]">
+                    <p className="font-medium text-[var(--text-main)]">{ev.eventType}</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--text-dimmer)]">
                       {ev.provider} · {new Date(ev.createdAt).toLocaleString()}
                     </p>
                   </li>
                 ))}
                 {events.length === 0 ? (
-                  <li className="px-3 py-8 text-center text-slate-500">{t("noEvents")}</li>
+                  <li className="px-3 py-8 text-center text-[var(--text-dim)]">{t("noEvents")}</li>
                 ) : null}
               </ul>
             </div>
@@ -345,15 +346,15 @@ export function BillingPortalClient({
     return (
       <div className="space-y-4">
         {message ? (
-          <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+          <div className="ui-alert-info px-3 py-2 text-xs">
             {message}
           </div>
         ) : null}
 
         {sub?.status === "past_due" || sub?.status === "suspended" ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <div className="ui-alert-warning px-3 py-2 text-xs">
             {sub.status === "suspended" ? t("statusSuspended") : t("statusPastDue")}
-            <Link href="/billing/plans" className="ml-2 font-semibold text-violet-700 underline">
+            <Link href="/billing/plans" className="ui-link ml-2">
               {t("regularize")}
             </Link>
           </div>
@@ -366,42 +367,33 @@ export function BillingPortalClient({
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <h1 className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
-            {t("portalTitle")}
-          </h1>
-          <p className="mt-0.5 text-xs text-slate-500">{t("portalSubtitle")}</p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-          {canManageBilling && sub?.paymentProvider === "stripe" && isPaidPlan ? (
-            <button
-              type="button"
-              onClick={openStripePortal}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
-            >
-              {t("updatePaymentMethod")}
-            </button>
-          ) : null}
-          <Link
-            href="/billing/plans"
-            className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-500"
-          >
-            {t("viewPlans")}
-          </Link>
-        </div>
-      </div>
+      <DsPageHeader
+        title={t("portalTitle")}
+        subtitle={t("portalSubtitle")}
+        actions={
+          <>
+            {canManageBilling && sub?.paymentProvider === "stripe" && isPaidPlan ? (
+              <button type="button" onClick={openStripePortal} className="ui-btn-secondary text-xs">
+                {t("updatePaymentMethod")}
+              </button>
+            ) : null}
+            <Link href="/billing/plans" className="ui-btn-primary text-xs">
+              {t("viewPlans")}
+            </Link>
+          </>
+        }
+      />
 
       {message ? (
-        <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-900">
+        <div className="ui-alert-info px-3 py-2 text-xs">
           {message}
         </div>
       ) : null}
 
       {sub?.status === "past_due" || sub?.status === "suspended" ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="ui-alert-warning px-3 py-2 text-xs">
           {sub.status === "suspended" ? t("statusSuspended") : t("statusPastDue")}
-          <Link href="/billing/plans" className="ml-2 font-semibold text-violet-700 underline">
+          <Link href="/billing/plans" className="ui-link ml-2">
             {t("regularize")}
           </Link>
         </div>

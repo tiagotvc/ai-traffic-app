@@ -107,7 +107,7 @@ export function PlanLimitsGrid({ limits }: { limits: PlanLimits }) {
       label: t("limitAdAccounts"),
       max: limits.maxAdAccounts,
       icon: <IconAds />,
-      color: "bg-violet-100 text-violet-600"
+      color: "bg-amber-100 text-[var(--amber)]"
     },
     {
       key: "members",
@@ -145,14 +145,14 @@ export function PlanLimitsGrid({ limits }: { limits: PlanLimits }) {
       label: t("limitAutoSync"),
       enabled: limits.allowAutoSync,
       icon: <IconSync />,
-      color: limits.allowAutoSync ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
+      color: limits.allowAutoSync ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-[var(--text-dimmer)]"
     },
     {
       key: "live",
       label: t("limitLiveMeta"),
       enabled: limits.allowLiveMeta,
       icon: <IconLive />,
-      color: limits.allowLiveMeta ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-400"
+      color: limits.allowLiveMeta ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-[var(--text-dimmer)]"
     }
   ];
 
@@ -161,14 +161,14 @@ export function PlanLimitsGrid({ limits }: { limits: PlanLimits }) {
       {rows.map((row) => (
         <div
           key={row.key}
-          className="flex items-center gap-3 rounded-xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/80 px-3 py-2.5"
+          className="flex items-center gap-3 rounded-xl border border-[var(--border-color)] bg-gradient-to-br from-white to-slate-50/80 px-3 py-2.5"
         >
           <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${row.color}`}>
             {row.icon}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-slate-600">{row.label}</p>
-            <p className="text-base font-bold text-slate-900">{row.max}</p>
+            <p className="text-xs font-medium text-[var(--text-dim)]">{row.label}</p>
+            <p className="text-base font-bold text-[var(--text-main)]">{row.max}</p>
           </div>
         </div>
       ))}
@@ -176,15 +176,15 @@ export function PlanLimitsGrid({ limits }: { limits: PlanLimits }) {
         <div
           key={row.key}
           className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${
-            row.enabled ? "border-emerald-100 bg-emerald-50/50" : "border-slate-100 bg-slate-50/50"
+            row.enabled ? "border-emerald-100 bg-emerald-50/50" : "border-[var(--border-color)] bg-[var(--surface-thead)]/50"
           }`}
         >
           <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${row.color}`}>
             {row.icon}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-slate-600">{row.label}</p>
-            <p className={`text-xs font-bold ${row.enabled ? "text-emerald-700" : "text-slate-400"}`}>
+            <p className="text-xs font-medium text-[var(--text-dim)]">{row.label}</p>
+            <p className={`text-xs font-bold ${row.enabled ? "text-emerald-700" : "text-[var(--text-dimmer)]"}`}>
               {row.enabled ? t("included") : t("notIncluded")}
             </p>
           </div>
@@ -218,7 +218,7 @@ export function BillingLimitsPanel({
       usage: usage.adAccounts,
       max: limits.maxAdAccounts,
       icon: <IconAds />,
-      color: "bg-violet-100 text-violet-600"
+      color: "bg-amber-100 text-[var(--amber)]"
     },
     {
       key: "members",
@@ -260,14 +260,14 @@ export function BillingLimitsPanel({
       label: t("limitAutoSync"),
       enabled: limits.allowAutoSync,
       icon: <IconSync />,
-      color: limits.allowAutoSync ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-400"
+      color: limits.allowAutoSync ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-[var(--text-dimmer)]"
     },
     {
       key: "live",
       label: t("limitLiveMeta"),
       enabled: limits.allowLiveMeta,
       icon: <IconLive />,
-      color: limits.allowLiveMeta ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-400"
+      color: limits.allowLiveMeta ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-[var(--text-dimmer)]"
     }
   ];
 
@@ -276,22 +276,22 @@ export function BillingLimitsPanel({
       {rows.map((row) => (
         <div
           key={row.key}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm"
+          className="rounded-xl border border-[var(--border-color)] bg-white px-3 py-2.5 shadow-sm"
         >
           <div className="flex items-center gap-2">
             <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${row.color}`}>
               {row.icon}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[11px] text-slate-500">{row.label}</p>
+              <p className="truncate text-[11px] text-[var(--text-dim)]">{row.label}</p>
               {row.max != null && row.usage != null ? (
                 <p
                   className={`text-lg font-semibold leading-tight tabular-nums ${
-                    row.usage > row.max ? "text-red-600" : "text-slate-900"
+                    row.usage > row.max ? "text-red-600" : "text-[var(--text-main)]"
                   }`}
                 >
                   {row.usage}
-                  <span className="text-xs font-normal text-slate-400"> / {row.max}</span>
+                  <span className="text-xs font-normal text-[var(--text-dimmer)]"> / {row.max}</span>
                 </p>
               ) : null}
             </div>
@@ -305,15 +305,15 @@ export function BillingLimitsPanel({
         <div
           key={row.key}
           className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 shadow-sm ${
-            row.enabled ? "border-emerald-100 bg-emerald-50/50" : "border-slate-200 bg-slate-50/80"
+            row.enabled ? "border-emerald-100 bg-emerald-50/50" : "border-[var(--border-color)] bg-[var(--surface-thead)]/80"
           }`}
         >
           <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${row.color}`}>
             {row.icon}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] text-slate-500">{row.label}</p>
-            <p className={`text-xs font-semibold ${row.enabled ? "text-emerald-700" : "text-slate-400"}`}>
+            <p className="truncate text-[11px] text-[var(--text-dim)]">{row.label}</p>
+            <p className={`text-xs font-semibold ${row.enabled ? "text-emerald-700" : "text-[var(--text-dimmer)]"}`}>
               {row.enabled ? t("included") : t("notIncluded")}
             </p>
           </div>

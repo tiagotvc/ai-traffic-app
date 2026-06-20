@@ -1,8 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { useEffect, useState } from "react";
+import { Link } from "@/i18n/navigation";
 
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import { sidebarItemClasses, sidebarModuleClasses } from "@/components/layout/sidebar-nav-styles";
@@ -51,8 +51,12 @@ function isHypothesesActive(base: string): boolean {
   return base === "/agency-brain/hypotheses";
 }
 
+function isAutomationsActive(base: string): boolean {
+  return base === "/automations" || base.startsWith("/automations/");
+}
+
 function isAgencyBrainActive(base: string): boolean {
-  return isLearningsActive(base) || isHypothesesActive(base);
+  return isLearningsActive(base) || isHypothesesActive(base) || isAutomationsActive(base);
 }
 
 export function AgencyBrainNavGroup({
@@ -124,7 +128,14 @@ export function AgencyBrainNavGroup({
           <NavIcon d={brainIcon} />
           <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left">
             <span className="truncate">{t(AGENCY_BRAIN_MVP_NAV.navKey)}</span>
-            <span className="shrink-0 rounded-full bg-violet-500/20 px-1.5 py-px text-[9px] font-bold uppercase leading-none tracking-wide text-violet-300">
+            <span
+              className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wider"
+              style={{
+                background: "rgba(124,58,237,0.25)",
+                color: "#a78bfa",
+                border: "1px solid rgba(124,58,237,0.4)"
+              }}
+            >
               Beta
             </span>
           </span>
@@ -132,7 +143,7 @@ export function AgencyBrainNavGroup({
         <button
           type="button"
           onClick={toggleExpanded}
-          className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+          className="rounded-lg p-1.5 text-[#94a3b8] transition hover:bg-white/5 hover:text-[#f8fafc]"
           aria-expanded={expanded}
           aria-label={expanded ? t("collapseSidebar") : t("expandSidebar")}
         >
@@ -156,6 +167,13 @@ export function AgencyBrainNavGroup({
               </Link>
             );
           })}
+          <Link
+            href="/automations"
+            onClick={() => onNavigate?.()}
+            className={sidebarModuleClasses(undefined, isAutomationsActive(base))}
+          >
+            {t("automations")}
+          </Link>
         </div>
       ) : null}
     </div>

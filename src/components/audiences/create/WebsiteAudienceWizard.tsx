@@ -74,20 +74,20 @@ export function WebsiteAudienceWizard({ ctx, onBack }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">{t("createType.website.title")}</h2>
+        <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("createType.website.title")}</h2>
         <button type="button" onClick={onBack} className="ui-btn-secondary text-sm">
           {t("back")}
         </button>
       </div>
 
       {!options ? (
-        <p className="text-sm text-slate-500">{t("loadingOptions")}</p>
+        <p className="text-sm text-[var(--text-dim)]">{t("loadingOptions")}</p>
       ) : !options.pixels.length ? (
         <p className="text-sm text-amber-700">{t("noPixels")}</p>
       ) : (
         <>
           <div>
-            <label className="text-xs font-medium text-slate-500">{t("selectPixel")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("selectPixel")}</label>
             <select
               value={pixelId}
               onChange={(e) => setPixelId(e.target.value)}
@@ -102,7 +102,7 @@ export function WebsiteAudienceWizard({ ctx, onBack }: Props) {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-500">{t("selectEvent")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("selectEvent")}</label>
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {events.map((ev) => (
                 <button
@@ -111,8 +111,8 @@ export function WebsiteAudienceWizard({ ctx, onBack }: Props) {
                   onClick={() => setEventName(ev.metaEvent)}
                   className={`rounded-lg border px-2 py-2 text-xs font-medium ${
                     eventName === ev.metaEvent
-                      ? "border-violet-500 bg-violet-50 text-violet-700"
-                      : "border-slate-200"
+                      ? "border-violet-500 bg-[rgba(124,58,237,0.06)] text-[var(--violet)]"
+                      : "border-[var(--border-color)]"
                   }`}
                 >
                   {ev.isCustom ? ev.labelKey : t(ev.labelKey as "websiteEvent.pageView")}
@@ -122,7 +122,7 @@ export function WebsiteAudienceWizard({ ctx, onBack }: Props) {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-500">
+            <label className="text-xs font-medium text-[var(--text-dim)]">
               {t("retentionDays")} ({retentionDays}d, max {maxDays})
             </label>
             <input
@@ -140,7 +140,7 @@ export function WebsiteAudienceWizard({ ctx, onBack }: Props) {
                   type="button"
                   onClick={() => setRetentionDays(d)}
                   className={`rounded-lg border px-2 py-1 text-xs ${
-                    retentionDays === d ? "border-violet-500 bg-violet-50" : "border-slate-200"
+                    retentionDays === d ? "border-violet-500 bg-[rgba(124,58,237,0.06)]" : "border-[var(--border-color)]"
                   }`}
                 >
                   {d}d
@@ -150,7 +150,7 @@ export function WebsiteAudienceWizard({ ctx, onBack }: Props) {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-500">{t("urlFilterOptional")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("urlFilterOptional")}</label>
             <input
               value={urlContains}
               onChange={(e) => setUrlContains(e.target.value)}
@@ -160,7 +160,7 @@ export function WebsiteAudienceWizard({ ctx, onBack }: Props) {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-500">{t("audienceName")}</label>
+            <label className="text-xs font-medium text-[var(--text-dim)]">{t("audienceName")}</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}

@@ -8,12 +8,12 @@ export function EvidenceBlock({ bullets }: { bullets: string[] }) {
   if (bullets.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5">
-      <h2 className="text-sm font-bold text-slate-900">{t("whyBelievesTitle")}</h2>
+    <section className="ui-card p-5">
+      <h2 className="font-heading text-sm font-bold text-[var(--text-main)]">{t("whyBelievesTitle")}</h2>
       <ul className="mt-3 space-y-2">
         {bullets.map((item) => (
-          <li key={item} className="flex items-start gap-2 text-sm text-slate-700">
-            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" aria-hidden />
+          <li key={item} className="flex items-start gap-2 text-sm text-[var(--text-dim)]">
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[rgba(124,58,237,0.06)]0" aria-hidden />
             {item}
           </li>
         ))}

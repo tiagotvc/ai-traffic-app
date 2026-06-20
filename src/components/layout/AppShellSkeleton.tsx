@@ -7,7 +7,9 @@ import { usePathname } from "next/navigation";
 import { PublishPanelHost } from "@/components/publish/PublishPanelHost";
 import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { CommandStripProvider } from "@/components/layout/CommandStripContext";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
+import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 import type { PlanLimits } from "@/lib/billing/types";
 import { FREE_LIMITS } from "@/lib/billing/types";
@@ -265,14 +267,15 @@ export function AppShellSkeleton({
   );
 
   return (
+    <UxThemeProvider>
     <PublishPanelProvider>
-      <div className="flex h-[100dvh] flex-col overflow-hidden bg-[#f4f6f9] dark:bg-slate-950 lg:flex-row">
+      <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--surface-bg)] lg:flex-row">
         {/* Mobile top bar */}
-        <header className="flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3 lg:hidden print:hidden">
+        <header className="flex shrink-0 items-center gap-3 border-b border-[var(--border-color)] bg-[var(--surface-card)] px-4 py-3 lg:hidden print:hidden">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-700 hover:bg-slate-100"
+            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
             aria-label={t("openMenu", { defaultMessage: "Abrir menu" })}
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -283,10 +286,13 @@ export function AppShellSkeleton({
             ) : null}
           </button>
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-xs font-bold text-white">
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+              style={{ background: "linear-gradient(135deg, #4f46e5, #7c3aed)" }}
+            >
               ∞
             </div>
-            <span className="truncate text-sm font-semibold text-slate-900">Traffic AI</span>
+            <span className="truncate font-heading text-sm font-semibold text-[var(--text-main)]">Traffic AI</span>
           </div>
         </header>
 
@@ -300,11 +306,11 @@ export function AppShellSkeleton({
               onClick={() => setMobileMenuOpen(false)}
             />
             <div className="absolute inset-y-0 left-0 flex w-[min(300px,88vw)] max-w-full flex-col shadow-2xl">
-              <div className="flex shrink-0 items-center justify-end border-b border-white/10 bg-[#0f111a] px-3 py-2">
+              <div className="flex shrink-0 items-center justify-end border-b border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] px-3 py-2">
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-[#94a3b8] hover:bg-white/10 hover:text-white"
                   aria-label={t("closeMenu", { defaultMessage: "Fechar menu" })}
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -329,23 +335,26 @@ export function AppShellSkeleton({
           <AppSidebar {...sharedSidebar} />
         </div>
 
-        <main
-          ref={mainRef}
-          onScroll={(e) => setShowTop(e.currentTarget.scrollTop > 400)}
-          className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"
-        >
-          <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
-          <div className="w-full px-4 py-4 sm:px-5 md:px-6 lg:mx-auto lg:max-w-[1600px] lg:px-8 lg:py-7">
-            {children}
-          </div>
-        </main>
+        <CommandStripProvider>
+          <main
+            ref={mainRef}
+            onScroll={(e) => setShowTop(e.currentTarget.scrollTop > 400)}
+            className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"
+          >
+            <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
+            <div className="w-full px-4 py-4 sm:px-5 md:px-6 lg:mx-auto lg:max-w-[1600px] lg:px-8 lg:py-7">
+              {children}
+            </div>
+          </main>
+        </CommandStripProvider>
 
         {showTop ? (
           <button
             type="button"
             onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
             aria-label="Voltar ao topo"
-            className="fixed bottom-5 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-violet-600 text-white shadow-lg transition hover:bg-violet-700 print:hidden lg:bottom-6 lg:right-6"
+            className="fixed bottom-5 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full text-[#0f1419] shadow-lg transition print:hidden lg:bottom-6 lg:right-6"
+            style={{ background: "linear-gradient(135deg, var(--amber-bright), #e8920d)" }}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
@@ -357,5 +366,6 @@ export function AppShellSkeleton({
         <PublishPanelHost onPublished={() => window.dispatchEvent(new Event("traffic:campaigns-reload"))} />
       </Suspense>
     </PublishPanelProvider>
+    </UxThemeProvider>
   );
 }

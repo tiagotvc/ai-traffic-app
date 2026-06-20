@@ -70,8 +70,8 @@ export function CreateAudienceHub({ onSelect, disabled }: Props) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900">{t("createHubTitle")}</h2>
-      <p className="mt-1 text-sm text-slate-600">{t("createHubDesc")}</p>
+      <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("createHubTitle")}</h2>
+      <p className="mt-1 text-sm text-[var(--text-dim)]">{t("createHubDesc")}</p>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {CREATE_TYPES.map((opt) => (
           <button
@@ -79,11 +79,11 @@ export function CreateAudienceHub({ onSelect, disabled }: Props) {
             type="button"
             disabled={disabled}
             onClick={() => onSelect(opt.id)}
-            className="rounded-xl border border-slate-200 p-4 text-left transition hover:border-violet-300 hover:bg-violet-50/50 disabled:opacity-50"
+            className="rounded-xl border border-[var(--border-color)] p-4 text-left transition hover:border-violet-300 hover:bg-[rgba(124,58,237,0.06)]/50 disabled:opacity-50"
           >
-            <OutlineIcon d={opt.iconPath} className="h-6 w-6 text-violet-600" />
-            <div className="mt-2 font-semibold text-slate-900">{t(`createType.${opt.id}.title`)}</div>
-            <div className="mt-1 text-xs text-slate-500">{t(`createType.${opt.id}.desc`)}</div>
+            <OutlineIcon d={opt.iconPath} className="h-6 w-6 text-[var(--violet)]" />
+            <div className="mt-2 font-semibold text-[var(--text-main)]">{t(`createType.${opt.id}.title`)}</div>
+            <div className="mt-1 text-xs text-[var(--text-dim)]">{t(`createType.${opt.id}.desc`)}</div>
           </button>
         ))}
       </div>

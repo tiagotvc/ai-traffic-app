@@ -13,7 +13,8 @@ import type {
 import {
   applyConfidenceScoreSort,
   applyCreatedAtSort,
-  applyImpactSort
+  applyImpactSort,
+  applyUpdatedAtSort
 } from "@/lib/agency-brain/list-sort";
 import { In, MoreThanOrEqual, Not } from "typeorm";
 
@@ -83,6 +84,8 @@ export async function listClientLearnings(
     applyConfidenceScoreSort(qb, "l", sortDir);
   } else if (sortBy === "impact") {
     applyImpactSort(qb, "l", sortDir);
+  } else if (sortBy === "updatedAt") {
+    applyUpdatedAtSort(qb, "l", sortDir);
   } else {
     applyCreatedAtSort(qb, "l", sortDir);
   }

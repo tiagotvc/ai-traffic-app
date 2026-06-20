@@ -29,10 +29,10 @@ export function BrainSummaryCards({
         {cards.map((card) => (
           <div
             key={card.key}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm"
+            className="ui-card px-3 py-2.5"
           >
-            <div className="text-lg font-semibold leading-tight text-slate-900">{card.value}</div>
-            <div className="mt-0.5 truncate text-[11px] text-slate-500">{card.label}</div>
+            <div className="text-lg font-semibold leading-tight text-[var(--text-main)]">{card.value}</div>
+            <div className="mt-0.5 truncate text-[11px] text-[var(--text-dim)]">{card.label}</div>
           </div>
         ))}
       </div>
@@ -43,8 +43,8 @@ export function BrainSummaryCards({
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {cards.map((card) => (
         <div key={card.key} className="ui-card p-4">
-          <div className="text-2xl font-bold text-slate-900">{card.value}</div>
-          <div className="text-xs text-slate-500">{card.label}</div>
+          <div className="text-2xl font-bold text-[var(--text-main)]">{card.value}</div>
+          <div className="text-xs text-[var(--text-dim)]">{card.label}</div>
         </div>
       ))}
     </div>
@@ -66,11 +66,11 @@ export function BrainMemoryExtras({ summary }: { summary: BrainSummary | null })
     <div className="grid gap-3 lg:grid-cols-3">
       {summary.recentApproved.length > 0 ? (
         <div className="ui-card p-4">
-          <h3 className="text-sm font-semibold text-slate-900">{t("recentApprovedTitle")}</h3>
+          <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("recentApprovedTitle")}</h3>
           <ul className="mt-3 space-y-2">
             {summary.recentApproved.slice(0, 5).map((item) => (
-              <li key={item.id} className="text-sm text-slate-600">
-                <span className="font-medium text-slate-800">{item.title}</span>
+              <li key={item.id} className="text-sm text-[var(--text-dim)]">
+                <span className="font-medium text-[var(--text-main)]">{item.title}</span>
               </li>
             ))}
           </ul>
@@ -79,12 +79,12 @@ export function BrainMemoryExtras({ summary }: { summary: BrainSummary | null })
 
       {summary.topTags.length > 0 ? (
         <div className="ui-card p-4">
-          <h3 className="text-sm font-semibold text-slate-900">{t("topTagsTitle")}</h3>
+          <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("topTagsTitle")}</h3>
           <div className="mt-3 flex flex-wrap gap-2">
             {summary.topTags.slice(0, 8).map(({ tag, count }) => (
               <span
                 key={tag}
-                className="rounded-full bg-violet-50 px-2 py-1 text-xs text-violet-700"
+                className="rounded-full bg-[rgba(124,58,237,0.06)] px-2 py-1 text-xs text-violet-700"
               >
                 {tag} ({count})
               </span>
@@ -95,12 +95,12 @@ export function BrainMemoryExtras({ summary }: { summary: BrainSummary | null })
 
       {categories.length > 0 ? (
         <div className="ui-card p-4">
-          <h3 className="text-sm font-semibold text-slate-900">{t("byCategoryTitle")}</h3>
-          <ul className="mt-3 space-y-1 text-sm text-slate-600">
+          <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("byCategoryTitle")}</h3>
+          <ul className="mt-3 space-y-1 text-sm text-[var(--text-dim)]">
             {categories.map(([category, count]) => (
               <li key={category} className="flex justify-between gap-2">
                 <span>{t(`category.${category as "CREATIVE"}`)}</span>
-                <span className="font-medium text-slate-800">{count}</span>
+                <span className="font-medium text-[var(--text-main)]">{count}</span>
               </li>
             ))}
           </ul>

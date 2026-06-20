@@ -8,6 +8,7 @@ import { TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
+import { DsPageHeader } from "@/design-system";
 
 type CampaignRef = { id: string; name: string };
 type CreativeRow = {
@@ -97,27 +98,27 @@ export function CreativesPerformanceClient() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <p className="text-xs font-medium text-slate-500">{t("breadcrumb")}</p>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900">{t("title")}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t("subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">{t("clientLabel")}:</span>
-          <select
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className="ui-select !w-auto !py-1.5 text-sm"
-          >
-            {clients.map((c) => (
-              <option key={c.id} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <DsPageHeader
+        breadcrumbs={t("breadcrumb")}
+        title={t("title")}
+        subtitle={t("subtitle")}
+        actions={
+          <>
+            <span className="text-xs text-[var(--text-dim)]">{t("clientLabel")}:</span>
+            <select
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              className="ui-select !w-auto !py-1.5 text-sm"
+            >
+              {clients.map((c) => (
+                <option key={c.id} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </>
+        }
+      />
 
       {loading ? (
         <TableSkeleton
@@ -125,20 +126,20 @@ export function CreativesPerformanceClient() {
           columns={["media", "metric", "metric", "metric", "metric", "chips"]}
         />
       ) : groups.length === 0 ? (
-        <div className="ui-card p-8 text-center text-sm text-slate-500">{t("empty")}</div>
+        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("empty")}</div>
       ) : (
         <div className="space-y-4">
           {groups.map(({ preset, list }) => {
             const metrics = presetMetricsFor(preset);
             return (
               <div key={preset} className="ui-card overflow-hidden">
-                <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800">
+                <div className="border-b border-[var(--border-color)] px-4 py-3 text-sm font-semibold text-[var(--text-main)]">
                   {tPresets(preset)}{" "}
-                  <span className="font-normal text-slate-400">({list.length})</span>
+                  <span className="font-normal text-[var(--text-dimmer)]">({list.length})</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead className="bg-slate-50 text-[11px] font-semibold uppercase text-slate-500">
+                    <thead className="bg-[var(--surface-thead)] text-[11px] font-semibold uppercase text-[var(--text-dim)]">
                       <tr>
                         <th className="px-4 py-2">{t("colCreative")}</th>
                         {metrics.map((m) => (
@@ -150,9 +151,9 @@ export function CreativesPerformanceClient() {
                         <th className="px-4 py-2">{t("colCampaigns")}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-[var(--border-color)]">
                       {list.map((r, i) => (
-                        <tr key={`${r.creativeName}-${i}`} className="align-top hover:bg-slate-50/60">
+                        <tr key={`${r.creativeName}-${i}`} className="align-top hover:bg-[var(--surface-bg)]/60">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               {r.thumbnailUrl ? (
@@ -173,12 +174,12 @@ export function CreativesPerformanceClient() {
                                   </span>
                                 </button>
                               ) : (
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-bg)] text-sm">
                                   {(r.creativeName[0] ?? "C").toUpperCase()}
                                 </div>
                               )}
                               <div className="min-w-0">
-                                <div className="max-w-[220px] truncate font-medium text-slate-800">
+                                <div className="max-w-[220px] truncate font-medium text-[var(--text-main)]">
                                   {r.creativeName}
                                 </div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -188,14 +189,14 @@ export function CreativesPerformanceClient() {
                                   <button
                                     type="button"
                                     onClick={() => setViewing(r)}
-                                    className="text-[11px] font-medium text-violet-600 hover:underline"
+                                    className="text-[11px] font-medium text-[var(--violet)] hover:underline"
                                   >
                                     {t("view")}
                                   </button>
                                   {downloadUrl(r) ? (
                                     <a
                                       href={downloadUrl(r)!}
-                                      className="text-[11px] font-medium text-violet-600 hover:underline"
+                                      className="text-[11px] font-medium text-[var(--violet)] hover:underline"
                                     >
                                       {t("download")}
                                     </a>
@@ -207,12 +208,12 @@ export function CreativesPerformanceClient() {
                           {metrics.map((m) => (
                             <td
                               key={m}
-                              className="px-3 py-3 text-right tabular-nums text-slate-700"
+                              className="px-3 py-3 text-right tabular-nums text-[var(--text-dim)]"
                             >
                               {formatMetricValue(m, Number(r.metrics[m] ?? 0), locale)}
                             </td>
                           ))}
-                          <td className="px-3 py-3 text-right tabular-nums text-slate-700">
+                          <td className="px-3 py-3 text-right tabular-nums text-[var(--text-dim)]">
                             {r.adsCount}
                           </td>
                           <td className="px-4 py-3">
@@ -221,13 +222,13 @@ export function CreativesPerformanceClient() {
                                 <Link
                                   key={c.id}
                                   href={`/campaigns/${c.id}?client=${encodeURIComponent(r.clientSlug)}`}
-                                  className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600 hover:bg-violet-100 hover:text-violet-700"
+                                  className="rounded-md bg-[var(--surface-bg)] px-2 py-0.5 text-xs text-[var(--text-dim)] hover:bg-[rgba(124,58,237,0.1)] hover:text-[var(--violet-bright)]"
                                 >
                                   {c.name}
                                 </Link>
                               ))}
                               {r.campaigns.length > 3 ? (
-                                <span className="text-xs text-slate-400">
+                                <span className="text-xs text-[var(--text-dimmer)]">
                                   +{r.campaigns.length - 3}
                                 </span>
                               ) : null}
@@ -246,27 +247,27 @@ export function CreativesPerformanceClient() {
 
       {viewing ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onMouseDown={() => setViewing(null)}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-[var(--surface-card)] shadow-xl"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-5 py-3">
-              <div className="min-w-0 truncate text-sm font-semibold text-slate-800">
+            <div className="flex items-center justify-between gap-2 border-b border-[var(--border-color)] px-5 py-3">
+              <div className="min-w-0 truncate text-sm font-semibold text-[var(--text-main)]">
                 {viewing.creativeName}
               </div>
               <button
                 type="button"
                 onClick={() => setViewing(null)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-lg p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
                 aria-label={t("close")}
               >
                 ✕
               </button>
             </div>
-            <div className="flex min-h-[200px] flex-1 items-center justify-center overflow-auto bg-slate-50 p-4">
+            <div className="flex min-h-[200px] flex-1 items-center justify-center overflow-auto bg-[var(--surface-bg)] p-4">
               {viewing.imageUrl || viewing.thumbnailUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -275,10 +276,10 @@ export function CreativesPerformanceClient() {
                   className="max-h-[65vh] max-w-full rounded-lg object-contain"
                 />
               ) : (
-                <div className="text-sm text-slate-400">—</div>
+                <div className="text-sm text-[var(--text-dimmer)]">—</div>
               )}
             </div>
-            <div className="flex justify-end border-t border-slate-100 px-5 py-3">
+            <div className="flex justify-end border-t border-[var(--border-color)] px-5 py-3">
               {downloadUrl(viewing) ? (
                 <a href={downloadUrl(viewing)!} className="ui-btn-primary text-sm">
                   ⬇ {t("download")}

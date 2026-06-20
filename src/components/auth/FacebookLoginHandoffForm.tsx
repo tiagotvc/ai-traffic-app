@@ -22,15 +22,15 @@ export function FacebookLoginHandoffForm({
     <div className="w-full max-w-md">
       <Link
         href="/login"
-        className="text-sm font-medium text-violet-600 transition hover:text-violet-500"
+        className="text-sm font-medium text-[var(--violet)] transition hover:text-violet-500"
       >
         ← {t("facebookHandoffBack")}
       </Link>
 
-      <h1 className="mt-6 text-2xl font-bold tracking-tight text-slate-900">
+      <h1 className="mt-6 font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">
         {t("facebookHandoffPageTitle")}
       </h1>
-      <p className="mt-2 text-sm text-slate-500">{t("facebookHandoffPageSubtitle")}</p>
+      <p className="mt-2 text-sm text-[var(--text-dim)]">{t("facebookHandoffPageSubtitle")}</p>
 
       <div className="mt-6">
         <MetaOAuthHandoffCard mode="login" />
@@ -49,7 +49,7 @@ export function FacebookLoginHandoffForm({
         </button>
       </form>
 
-      <p className="mt-4 text-center text-[11px] text-slate-400">{t("facebookHandoffSecure")}</p>
+      <p className="mt-4 text-center text-[11px] text-[var(--text-dimmer)]">{t("facebookHandoffSecure")}</p>
     </div>
   );
 }

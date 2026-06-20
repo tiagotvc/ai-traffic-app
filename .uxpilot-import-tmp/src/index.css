@@ -1,0 +1,233 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 214 28% 8%;
+    --foreground: 210 40% 98%;
+    --card: 214 24% 13%;
+    --card-foreground: 210 40% 98%;
+    --popover: 214 24% 13%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 37 91% 55%;
+    --primary-foreground: 214 28% 8%;
+    --secondary: 214 20% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 214 20% 18%;
+    --muted-foreground: 215 16% 57%;
+    --accent: 245 80% 60%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 20% 20%;
+    --input: 214 20% 18%;
+    --ring: 37 91% 55%;
+    --chart-1: 37 91% 55%;
+    --chart-2: 160 72% 38%;
+    --chart-3: 245 80% 60%;
+    --chart-4: 12 76% 61%;
+    --chart-5: 280 65% 60%;
+    --radius: 0.625rem;
+    --sidebar-background: 214 32% 9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 37 91% 55%;
+    --sidebar-primary-foreground: 214 28% 8%;
+    --sidebar-accent: 214 20% 16%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 214 20% 16%;
+    --sidebar-ring: 37 91% 55%;
+
+    /* Custom brand tokens - dark */
+    --deep-charcoal: #0f1419;
+    --steel-navy: #1d2630;
+    --amber: #f5a623;
+    --violet: #4f46e5;
+    --success: #10b981;
+    --danger: #ef4444;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+
+    /* Theme surface tokens */
+    --surface-bg: #0f1419;
+    --surface-sidebar: #0a0f14;
+    --surface-card: #1d2630;
+    --surface-card-alt: rgba(29,38,48,0.8);
+    --surface-header: rgba(15,20,25,0.95);
+    --surface-thead: rgba(0,0,0,0.3);
+    --border-color: rgba(255,255,255,0.05);
+    --border-hover: rgba(255,255,255,0.1);
+    --text-main: #f8fafc;
+    --text-dim: #94a3b8;
+    --text-dimmer: #64748b;
+    --row-hover: rgba(255,255,255,0.03);
+    --input-bg: #1d2630;
+    --dropdown-bg: #1d2630;
+    --filter-btn-bg: rgba(29,38,48,0.8);
+    --filter-btn-text: #94a3b8;
+    --tag-border: rgba(255,255,255,0.1);
+    --scrollbar-color: rgba(255,255,255,0.1);
+  }
+
+  [data-theme="light"] {
+    --background: 213 33% 98%;
+    --foreground: 214 28% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 214 28% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 214 28% 12%;
+    --primary: 37 91% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 93%;
+    --secondary-foreground: 214 28% 12%;
+    --muted: 210 20% 93%;
+    --muted-foreground: 215 16% 45%;
+    --accent: 245 80% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 88%;
+    --input: 0 0% 100%;
+    --ring: 37 91% 48%;
+    --sidebar-background: 210 25% 98%;
+    --sidebar-foreground: 214 28% 12%;
+    --sidebar-primary: 37 91% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 93%;
+    --sidebar-accent-foreground: 214 28% 12%;
+    --sidebar-border: 214 20% 88%;
+    --sidebar-ring: 37 91% 48%;
+
+    /* Custom brand tokens - light */
+    --deep-charcoal: #f8fafc;
+    --steel-navy: #ffffff;
+    --amber: #d4880a;
+    --violet: #4f46e5;
+    --success: #059669;
+    --danger: #dc2626;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+
+    /* Theme surface tokens — refined light palette */
+    --surface-bg: #F8FAFC;
+    --surface-sidebar: #0a0f14;
+    --surface-card: #ffffff;
+    --surface-card-alt: rgba(255,255,255,0.95);
+    --surface-header: rgba(248,250,252,0.98);
+    --surface-thead: rgba(241,245,249,0.85);
+    --border-color: rgba(15,23,42,0.08);
+    --border-hover: rgba(15,23,42,0.14);
+    --text-main: #0f172a;
+    --text-dim: #475569;
+    --text-dimmer: #64748b;
+    --row-hover: rgba(15,23,42,0.025);
+    --input-bg: #ffffff;
+    --dropdown-bg: #ffffff;
+    --filter-btn-bg: rgba(255,255,255,0.95);
+    --filter-btn-text: #475569;
+    --tag-border: rgba(15,23,42,0.1);
+    --scrollbar-color: rgba(15,23,42,0.1);
+    /* Brain shelf light tokens */
+    --brain-shelf-bg: linear-gradient(135deg, rgba(124,58,237,0.07) 0%, rgba(99,102,241,0.04) 60%, rgba(168,85,247,0.03) 100%);
+    --brain-shelf-border: rgba(124,58,237,0.18);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    color-scheme: dark;
+  }
+  [data-theme="light"] {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'DM Sans', sans-serif;
+    background-color: var(--surface-bg);
+    color: var(--text-main);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-heading {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .font-body {
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* Pulse animations */
+  @keyframes pulse-violet {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); }
+  }
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+    50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  }
+  @keyframes pulse-amber {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  @keyframes chart-grow {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0% 0 0); }
+  }
+  @keyframes slide-in-right {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes fade-up {
+    from { transform: translateY(12px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .animate-pulse-violet {
+    animation: pulse-violet 2.5s ease-in-out infinite;
+  }
+  .animate-pulse-red {
+    animation: pulse-red 2s ease-in-out infinite;
+  }
+  .animate-pulse-amber {
+    animation: pulse-amber 2s ease-in-out infinite;
+  }
+  .animate-chart-grow {
+    animation: chart-grow 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+  .animate-slide-in {
+    animation: slide-in-right 0.4s ease-out forwards;
+  }
+  .animate-fade-up {
+    animation: fade-up 0.5s ease-out forwards;
+  }
+  .skeleton-shimmer {
+    background: linear-gradient(90deg, var(--surface-card) 25%, var(--border-hover) 50%, var(--surface-card) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s infinite;
+  }
+
+  .kpi-card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .kpi-card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+    border-color: rgba(245, 166, 35, 0.4) !important;
+  }
+
+  .tab-transition {
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}

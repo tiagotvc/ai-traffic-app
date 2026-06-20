@@ -181,31 +181,31 @@ export function ImportAdConfigModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[min(640px,90vh)] w-full max-w-lg flex-col rounded-2xl bg-white shadow-xl">
-        <div className="border-b border-slate-100 px-4 py-3">
+      <div className="flex max-h-[min(640px,90vh)] w-full max-w-lg flex-col rounded-2xl bg-[var(--surface-card)] shadow-xl">
+        <div className="border-b border-[var(--border-color)] px-4 py-3">
           <div className="flex items-center gap-2">
             {step !== "campaigns" ? (
               <button
                 type="button"
                 onClick={goBack}
-                className="text-xs font-medium text-violet-600 hover:underline"
+                className="text-xs font-medium text-[var(--violet)] hover:underline"
               >
                 ← {t("importAdBack")}
               </button>
             ) : null}
           </div>
-          <h2 className="mt-1 text-sm font-semibold text-slate-900">{t("importAdTitle")}</h2>
-          <p className="mt-0.5 text-xs text-slate-500">{t("importAdHint")}</p>
-          <p className="mt-2 text-[11px] font-medium text-violet-700">{stepLabel}</p>
+          <h2 className="font-heading mt-1 text-sm font-semibold text-[var(--text-main)]">{t("importAdTitle")}</h2>
+          <p className="mt-0.5 text-xs text-[var(--text-dim)]">{t("importAdHint")}</p>
+          <p className="mt-2 text-[11px] font-medium text-[var(--violet)]">{stepLabel}</p>
           {campaignName ? (
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[10px] text-[var(--text-dimmer)]">
               {campaignName}
               {adsetName ? ` › ${adsetName}` : ""}
             </p>
           ) : null}
         </div>
 
-        <div className="border-b border-slate-100 p-3">
+        <div className="border-b border-[var(--border-color)] p-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -216,9 +216,9 @@ export function ImportAdConfigModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {loading ? (
-            <p className="p-4 text-center text-xs text-slate-500">{t("importAdLoading")}</p>
+            <p className="p-4 text-center text-xs text-[var(--text-dim)]">{t("importAdLoading")}</p>
           ) : items.length === 0 ? (
-            <p className="p-4 text-center text-xs text-slate-500">{t("importAdEmpty")}</p>
+            <p className="p-4 text-center text-xs text-[var(--text-dim)]">{t("importAdEmpty")}</p>
           ) : (
             <ul className="space-y-1">
               {items.map((item) => (
@@ -232,8 +232,8 @@ export function ImportAdConfigModal({
                     }}
                     className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left text-sm transition ${
                       step === "ads" && selectedId === item.id
-                        ? "border-violet-400 bg-violet-50"
-                        : "border-slate-100 hover:bg-slate-50"
+                        ? "border-violet-400 bg-[rgba(124,58,237,0.06)]"
+                        : "border-[var(--border-color)] hover:bg-[var(--surface-bg)]"
                     }`}
                   >
                     {item.thumbnailUrl ? (
@@ -244,19 +244,19 @@ export function ImportAdConfigModal({
                         className="h-12 w-12 shrink-0 rounded-lg object-cover"
                       />
                     ) : (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[10px] text-slate-400">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-bg)] text-[10px] text-[var(--text-dimmer)]">
                         {step === "campaigns" ? "C" : step === "adsets" ? "J" : "Ad"}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium text-slate-900">{item.name}</div>
-                      <div className="truncate text-[11px] text-slate-500">
+                      <div className="truncate font-medium text-[var(--text-main)]">{item.name}</div>
+                      <div className="truncate text-[11px] text-[var(--text-dim)]">
                         {item.status ?? item.id}
                         {item.objective ? ` · ${item.objective}` : ""}
                       </div>
                     </div>
                     {step !== "ads" ? (
-                      <span className="shrink-0 text-slate-300">›</span>
+                      <span className="shrink-0 text-[var(--text-dimmer)]">›</span>
                     ) : null}
                   </button>
                 </li>
@@ -268,11 +268,11 @@ export function ImportAdConfigModal({
         {error ? <p className="px-4 text-xs text-red-600">{error}</p> : null}
 
         {step === "ads" ? (
-          <div className="space-y-2 border-t border-slate-100 p-4">
+          <div className="space-y-2 border-t border-[var(--border-color)] p-4">
             {selected ? (
-              <p className="text-[11px] text-slate-500">{t("importAdSelected", { name: selected.name })}</p>
+              <p className="text-[11px] text-[var(--text-dim)]">{t("importAdSelected", { name: selected.name })}</p>
             ) : (
-              <p className="text-[11px] text-slate-400">{t("importAdSelect")}</p>
+              <p className="text-[11px] text-[var(--text-dimmer)]">{t("importAdSelect")}</p>
             )}
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
@@ -302,14 +302,14 @@ export function ImportAdConfigModal({
             </div>
           </div>
         ) : (
-          <div className="border-t border-slate-100 p-4">
-            <p className="text-[11px] text-slate-400">
+          <div className="border-t border-[var(--border-color)] p-4">
+            <p className="text-[11px] text-[var(--text-dimmer)]">
               {step === "campaigns" ? t("importAdPickCampaign") : t("importAdPickAdset")}
             </p>
           </div>
         )}
 
-        <div className="border-t border-slate-100 p-4 pt-0">
+        <div className="border-t border-[var(--border-color)] p-4 pt-0">
           <button type="button" onClick={onClose} className="ui-btn-secondary w-full text-xs">
             {t("importAdCancel")}
           </button>
