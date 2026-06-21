@@ -103,7 +103,8 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     titleKey: "heroKpis",
     category: "metrics",
     size: "lg",
-    defaultH: 3,
+    minH: 2,
+    defaultH: 2,
     dataSource: "metricPrism",
     component: "HeroKpisWidget"
   }),
@@ -112,7 +113,8 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     titleKey: "quickMetrics",
     category: "metrics",
     size: "md",
-    defaultH: 1,
+    minH: 2,
+    defaultH: 2,
     dataSource: "metricPrism",
     component: "QuickPillsWidget"
   }),

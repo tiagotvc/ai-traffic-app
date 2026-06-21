@@ -65,7 +65,7 @@ export function DashboardGrid({
           }}
         >
           {widgets.filter((w) => w.visible).map((w) => (
-            <div key={w.id} className="overflow-hidden rounded-xl border" style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}>
+            <div key={w.id} className="flex h-full flex-col overflow-hidden rounded-xl border" style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}>
               <WidgetChrome
                 title={w.title}
                 editMode={editMode}

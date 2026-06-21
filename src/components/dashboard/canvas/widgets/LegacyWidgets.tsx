@@ -2,11 +2,11 @@
 
 import { useTranslations } from "next-intl";
 
+import { CanvasMetricStrip } from "@/components/dashboard/canvas/widgets/CanvasMetricStrip";
 import { AgencyHealthLayout } from "@/components/dashboard/AgencyHealthLayout";
 import { BrainShelf } from "@/components/dashboard/BrainShelf";
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
 import { LiveIntelligenceFeed } from "@/components/dashboard/LiveIntelligenceFeed";
-import { MetricPrism } from "@/components/dashboard/MetricPrism";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import {
   toAgencyHealth,
@@ -41,7 +41,13 @@ export function HeroKpisWidget({
     metricLabel: data.metricLabel,
     vsLabel: data.vsLabel
   });
-  return <MetricPrism primaryKPIs={primaryKPIs} secondaryMetrics={[]} isLoading={data.loading} />;
+  const items = primaryKPIs.map((kpi) => ({
+    label: kpi.label,
+    value: kpi.value,
+    change: kpi.change,
+    trend: kpi.trend
+  }));
+  return <CanvasMetricStrip items={items} isLoading={data.loading} />;
 }
 
 export function QuickPillsWidget({ data }: { data: DashboardData }) {
@@ -54,7 +60,7 @@ export function QuickPillsWidget({ data }: { data: DashboardData }) {
     metricLabel: data.metricLabel,
     vsLabel: data.vsLabel
   });
-  return <MetricPrism primaryKPIs={[]} secondaryMetrics={secondaryMetrics} isLoading={data.loading} />;
+  return <CanvasMetricStrip items={secondaryMetrics} isLoading={data.loading} />;
 }
 
 export function PerformanceChartWidget({
