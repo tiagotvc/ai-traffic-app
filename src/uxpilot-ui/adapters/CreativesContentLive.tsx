@@ -85,6 +85,10 @@ export function CreativesContentLive() {
           adIds={previewing.adIds}
           imageUrl={previewing.imageUrl ?? previewing.thumbnailUrl}
           name={previewing.name}
+          type={previewing.type}
+          status={previewing.status}
+          metrics={previewing.metrics}
+          campaignsUsed={previewing.campaigns?.length ?? previewing.adsCount ?? 0}
           onClose={() => setPreviewing(null)}
         />
       ) : null}

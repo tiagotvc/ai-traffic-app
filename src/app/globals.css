@@ -573,4 +573,38 @@ h6,
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-color) transparent;
   }
+
+  .report-preview-root .recharts-wrapper {
+    overflow: hidden !important;
+    max-width: 100% !important;
+  }
+
+  .report-pdf-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-pdf-chart-card,
+  .report-pdf-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+  }
+
+  .report-pie-legend {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-creative-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-creative-card img {
+    object-fit: contain !important;
+    object-position: center !important;
+    max-height: 100% !important;
+    max-width: 100% !important;
+  }
 }

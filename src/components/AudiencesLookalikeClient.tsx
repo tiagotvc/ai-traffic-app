@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, Filter, Plus, RefreshCw, Search, Target, Users } from "lucide-react";
+import { Eye, Filter, Info, Plus, RefreshCw, Search, Target, Users } from "lucide-react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
@@ -37,6 +37,26 @@ function kindBadge(kind: string) {
   if (kind === "engagement") return "warning" as const;
   if (kind === "app") return "neutral" as const;
   return "success" as const;
+}
+
+function AudienceListInfoBanner() {
+  return (
+    <div
+      className="mb-5 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm font-body"
+      style={{
+        background: "rgba(245,166,35,0.07)",
+        borderColor: "rgba(245,166,35,0.2)",
+        color: "var(--text-dim)"
+      }}
+    >
+      <Info size={16} className="mt-0.5 shrink-0" style={{ color: "#f5a623" }} />
+      <span>
+        Públicos sincronizados diretamente da Meta. Criativos com menos de{" "}
+        <strong style={{ color: "#f5a623" }}>100 impressões</strong> no período não entram na classificação.
+        Mantenha seus públicos organizados para facilitar o uso em novas campanhas.
+      </span>
+    </div>
+  );
 }
 
 export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?: boolean } = {}) {
@@ -374,6 +394,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         breadcrumbs={view === "create" ? t("breadcrumbCreate") : t("breadcrumbList")}
         title={t("title")}
         subtitle={t("subtitle")}
+        titleIcon={<Target size={16} />}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {view === "list" ? (
@@ -433,7 +454,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
           {!useUxChrome ? <div className="ui-card p-4">{selectors}</div> : null}
 
           {useUxChrome ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <FilterSelectDropdown
                 icon={<Filter size={14} style={{ color: "#f5a623" }} />}
                 label=""
@@ -463,6 +484,8 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
               ) : null}
             </div>
           ) : null}
+
+          {listTab !== "templates" ? <AudienceListInfoBanner /> : null}
 
           <div
             className="overflow-hidden rounded-xl border"
@@ -501,19 +524,6 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                   placeholder={t("searchAudiences")}
                   className="ui-input w-full text-sm"
                 />
-              </div>
-            ) : null}
-
-            {useUxChrome && listTab !== "templates" ? (
-              <div
-                className="border-b px-5 py-3 text-sm font-body"
-                style={{
-                  background: "rgba(245,166,35,0.07)",
-                  borderColor: "rgba(245,166,35,0.2)",
-                  color: "var(--text-dim)"
-                }}
-              >
-                Públicos sincronizados diretamente da Meta. Criativos com menos de 100 impressões no período não entram na classificação. Mantenha seus públicos organizados para facilitar o uso em novas campanhas.
               </div>
             ) : null}
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { ReportsContentLive } from "@/uxpilot-ui/adapters/ReportsContentLive";
+import { ReportsClient } from "@/components/ReportsClient";
 
 export function ReportsView() {
-  return <ReportsContentLive />;
+  return <ReportsClient />;
 }

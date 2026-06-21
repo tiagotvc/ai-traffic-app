@@ -3,6 +3,8 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
+import { Bell } from "lucide-react";
+
 import { DsPageHeader } from "@/design-system";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { Badge } from "@/components/ui/Badge";
@@ -93,6 +95,7 @@ export function AlertsClient() {
         breadcrumbs={t("breadcrumb")}
         title={t("title")}
         subtitle={t("variationsSubtitle")}
+        titleIcon={<Bell size={16} />}
         actions={
           <>
             <SyncNowButton />

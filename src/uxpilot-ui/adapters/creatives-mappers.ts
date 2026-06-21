@@ -1,5 +1,6 @@
 import { formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { bestCreativePreviewUrl } from "@/lib/creative-preview-url";
+import { presetMetricsFor } from "@/lib/campaign-presets";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import type { CreativeItem } from "@/components/creatives/CreativeCardGrid";
 
@@ -21,6 +22,8 @@ export type UxCreativeCard = {
     impressoes: string;
     investido: string;
   };
+  primaryMetric: MetricKey;
+  metricKeys: MetricKey[];
   raw: CreativeItem;
 };
 
@@ -73,6 +76,7 @@ export function flattenRankingGroups(
   for (const group of groups) {
     const pool = [...group.best, ...group.promising];
     const total = pool.length;
+    const metricKeys = presetMetricsFor(group.preset);
     for (const creative of pool) {
       const m = creative.metrics;
       cards.push({
@@ -93,6 +97,8 @@ export function flattenRankingGroups(
           impressoes: formatMetric("impressions", m.impressions, locale),
           investido: formatMetric("spend", m.spend, locale)
         },
+        primaryMetric: group.primaryMetric,
+        metricKeys,
         raw: creative
       });
       rank++;

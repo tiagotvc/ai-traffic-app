@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -27,7 +27,50 @@ import { formatBRL, formatPercent } from "@/lib/format";
 import type { ReportPreviewPayload } from "@/lib/report-preview-types";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
-const PIE_COLORS = ["#7c3aed", "#6366f1", "#14b8a6", "#f59e0b", "#ec4899", "#0ea5e9", "#94a3b8"];
+const PIE_COLORS = ["#f5a623", "#7c3aed", "#10b981", "#6366f1", "#ec4899", "#0ea5e9", "#94a3b8"];
+
+const GRID_STROKE = "var(--border-color)";
+const TICK = { fill: "var(--text-dimmer)", fontSize: 10 };
+const AXIS = { axisLine: false as const, tickLine: false as const };
+const TOOLTIP_STYLE = {
+  background: "var(--surface-card)",
+  border: "1px solid var(--border-color)",
+  borderRadius: 10,
+  fontSize: 11,
+  color: "var(--text-main)"
+};
+
+function ReportChartCard({
+  title,
+  solo = false,
+  children
+}: {
+  title: string;
+  solo?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`report-pdf-chart-card report-pdf-block ui-card overflow-hidden p-4 ${solo ? "report-pdf-solo" : ""}`}
+    >
+      <div className="text-sm font-semibold text-[var(--text-main)]">{title}</div>
+      <div className={`mt-3 ${solo ? "mx-auto max-w-[520px]" : ""}`}>{children}</div>
+    </div>
+  );
+}
+
+function PieLegend({ items }: { items: Array<{ name: string; color: string }> }) {
+  return (
+    <div className="report-pie-legend mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1.5 px-1">
+      {items.map((item, i) => (
+        <div key={`${item.name}-${i}`} className="flex max-w-[200px] items-center gap-1.5">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
+          <span className="truncate text-[10px] text-[var(--text-dim)]">{item.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function ReportPreview({
   data,
@@ -96,18 +139,18 @@ export function ReportPreview({
   const goalDelta = prevGoal > 0 ? pctDelta(goalValue, prevGoal) : null;
 
   return (
-    <div id="report-preview-root" className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
+    <div id="report-preview-root" className="report-preview-root space-y-6 overflow-hidden">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4">
         <div>
-          <div className="text-xs font-medium text-slate-500">{t("previewTitle")}</div>
-          <h2 className="mt-1 text-xl font-bold text-slate-900">{data.client.name}</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <div className="text-xs font-medium text-[var(--text-dim)]">{t("previewTitle")}</div>
+          <h2 className="font-heading mt-1 text-xl font-bold text-[var(--text-main)]">{data.client.name}</h2>
+          <p className="mt-1 text-sm text-[var(--text-dim)]">
             {data.period.currentLabel}
-            <span className="mx-2 text-slate-300">·</span>
+            <span className="mx-2 text-[var(--text-dimmer)]">·</span>
             {reportType === "complete" ? t("typeComplete") : t("typeSimple")}
             {data.adAccount?.label ? (
               <>
-                <span className="mx-2 text-slate-300">·</span>
+                <span className="mx-2 text-[var(--text-dimmer)]">·</span>
                 {data.adAccount.label}
               </>
             ) : null}
@@ -115,11 +158,13 @@ export function ReportPreview({
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge variant="brand">{tPresets(data.client.dominantPreset)}</Badge>
-          <Badge variant="neutral">{t("compareWith")} {data.period.previousLabel}</Badge>
+          <Badge variant="neutral">
+            {t("compareWith")} {data.period.previousLabel}
+          </Badge>
         </div>
       </div>
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <section className="report-pdf-section report-pdf-grid-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
         {selectedMetrics.slice(0, 6).map((key) => (
           <ReportHighlightCard
             key={key}
@@ -138,21 +183,21 @@ export function ReportPreview({
         ))}
       </section>
 
-      <section className="ui-card p-4">
+      <section className="report-pdf-section ui-card overflow-hidden p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="text-sm font-semibold text-slate-900">{t("narrativeTitle")}</div>
+          <div className="text-sm font-semibold text-[var(--text-main)]">{t("narrativeTitle")}</div>
           {data.aiAnalysis ? (
             <Badge variant="brand">{t("claudeAnalysisBadge")}</Badge>
           ) : reportType === "complete" ? (
             <Badge variant="neutral">{t("claudeAnalysisFallback")}</Badge>
           ) : null}
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-slate-700">{data.narrative}</p>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-dim)]">{data.narrative}</p>
         {data.aiAnalysis?.keyFindings.length ? (
-          <ul className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+          <ul className="mt-4 space-y-2 border-t border-[var(--border-color)] pt-4">
             {data.aiAnalysis.keyFindings.map((item, i) => (
-              <li key={i} className="text-sm text-slate-600">
-                <span className="mr-1.5 text-violet-600">•</span>
+              <li key={i} className="text-sm text-[var(--text-dim)]">
+                <span className="mr-1.5 text-[var(--amber)]">•</span>
                 {item}
               </li>
             ))}
@@ -160,28 +205,22 @@ export function ReportPreview({
         ) : null}
       </section>
 
-      <section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="ui-card p-4">
-          <div className="text-sm font-semibold text-slate-900">{t("performanceChartTitle")}</div>
+      <section className="report-pdf-section report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <ReportChartCard title={t("performanceChartTitle")}>
           <div className="mt-3 h-56">
             <ChartContainer height={224}>
               <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" width={48} />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                <XAxis dataKey="label" tick={TICK} {...AXIS} />
+                <YAxis tick={TICK} {...AXIS} width={48} />
                 <Tooltip
-                  contentStyle={{
-                    background: "#fff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: 10,
-                    fontSize: 11
-                  }}
+                  contentStyle={TOOLTIP_STYLE}
                   formatter={(value, name) => [
                     formatMetricValue(String(name) as MetricKey, Number(value), locale),
                     tMetrics(METRIC_BY_KEY[String(name) as MetricKey]?.label ?? "spend")
                   ]}
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
                 {chartMetrics.map((key) => (
                   <Line
                     key={key}
@@ -196,105 +235,124 @@ export function ReportPreview({
               </LineChart>
             </ChartContainer>
           </div>
-        </div>
+        </ReportChartCard>
 
-        <div className="ui-card p-4">
-          <div className="text-sm font-semibold text-slate-900">{t("spendByCampaignTitle")}</div>
+        <ReportChartCard title={t("spendByCampaignTitle")}>
           {pieData.length ? (
-            <div className="mt-3 h-56">
-              <ChartContainer height={224}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={48}
-                    outerRadius={80}
-                    paddingAngle={2}
-                  >
-                    {pieData.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value) => [formatBRL(Number(value ?? 0), locale), t("spend")]}
-                    contentStyle={{ fontSize: 11, borderRadius: 10 }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 10 }} />
-                </PieChart>
-              </ChartContainer>
-            </div>
+            <>
+              <div className="mt-3 h-52">
+                <ChartContainer height={208}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={44}
+                      outerRadius={72}
+                      paddingAngle={2}
+                    >
+                      {pieData.map((_, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => [formatBRL(Number(value ?? 0), locale), t("spend")]}
+                      contentStyle={TOOLTIP_STYLE}
+                    />
+                  </PieChart>
+                </ChartContainer>
+              </div>
+              <PieLegend
+                items={pieData.map((item, i) => ({
+                  name: item.name,
+                  color: PIE_COLORS[i % PIE_COLORS.length]
+                }))}
+              />
+            </>
           ) : (
-            <p className="mt-6 text-center text-sm text-slate-500">{t("noCampaignData")}</p>
+            <p className="mt-6 text-center text-sm text-[var(--text-dim)]">{t("noCampaignData")}</p>
           )}
-        </div>
+        </ReportChartCard>
       </section>
 
-      <section className="ui-card p-4">
-        <div className="text-sm font-semibold text-slate-900">{t("goalResultsTitle")}</div>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl bg-violet-50 p-4">
-            <div className="text-xs font-medium text-violet-700">{t("goalPrimary")}</div>
-            <div className="mt-1 text-2xl font-bold text-violet-900">
+      <section className="report-pdf-section report-pdf-block ui-card overflow-hidden p-4">
+        <div className="text-sm font-semibold text-[var(--text-main)]">{t("goalResultsTitle")}</div>
+        <div className="report-pdf-grid-3 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="rounded-xl border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.08)] p-4">
+            <div className="text-xs font-medium text-[var(--amber)]">{t("goalPrimary")}</div>
+            <div className="font-heading mt-1 text-2xl font-bold text-[var(--text-main)]">
               {formatMetricValue(data.client.goalMetric, goalValue, locale)}
             </div>
-            <div className="mt-1 text-xs text-violet-600">
+            <div className="mt-1 text-xs text-[var(--text-dim)]">
               {tMetrics(METRIC_BY_KEY[data.client.goalMetric].label)}
             </div>
           </div>
-          <div className="rounded-xl bg-slate-50 p-4">
-            <div className="text-xs font-medium text-slate-600">{t("goalPrevious")}</div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
+            <div className="text-xs font-medium text-[var(--text-dim)]">{t("goalPrevious")}</div>
+            <div className="font-heading mt-1 text-2xl font-bold text-[var(--text-main)]">
               {prevGoal > 0 ? formatMetricValue(data.client.goalMetric, prevGoal, locale) : "—"}
             </div>
           </div>
-          <div className="rounded-xl bg-slate-50 p-4">
-            <div className="text-xs font-medium text-slate-600">{t("goalChange")}</div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
+            <div className="text-xs font-medium text-[var(--text-dim)]">{t("goalChange")}</div>
+            <div
+              className="font-heading mt-1 text-2xl font-bold"
+              style={{
+                color:
+                  goalDelta === null
+                    ? "var(--text-main)"
+                    : goalDelta >= 0
+                      ? "var(--success)"
+                      : "var(--danger)"
+              }}
+            >
               {goalDelta !== null ? formatPercent(goalDelta, 1, locale) : "—"}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div className="ui-card p-4">
-          <div className="text-sm font-semibold text-slate-900">{t("comparisonBarsTitle")}</div>
+      <section className="report-pdf-section report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <ReportChartCard title={t("comparisonBarsTitle")}>
           <div className="mt-3 h-56">
             <ChartContainer height={224}>
               <BarChart data={comparisonChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" width={48} />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 10 }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="current" name={t("periodCurrent")} fill="#7c3aed" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="previous" name={t("periodPrevious")} fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                <XAxis dataKey="name" tick={TICK} {...AXIS} />
+                <YAxis tick={TICK} {...AXIS} width={48} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
+                <Bar dataKey="current" name={t("periodCurrent")} fill="var(--amber)" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="previous"
+                  name={t("periodPrevious")}
+                  fill="var(--text-dimmer)"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ChartContainer>
           </div>
-        </div>
+        </ReportChartCard>
 
-        <div className="ui-card p-4">
-          <div className="text-sm font-semibold text-slate-900">{t("spendTrendCompareTitle")}</div>
+        <ReportChartCard title={t("spendTrendCompareTitle")}>
           <div className="mt-3 h-56">
             <ChartContainer height={224}>
               <LineChart data={spendTrendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" width={48} />
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                <XAxis dataKey="label" tick={TICK} {...AXIS} />
+                <YAxis tick={TICK} {...AXIS} width={48} />
                 <Tooltip
                   formatter={(value) => [formatBRL(Number(value), locale), ""]}
-                  contentStyle={{ fontSize: 11, borderRadius: 10 }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
                 <Line
                   type="monotone"
                   dataKey="current"
                   name={t("periodCurrent")}
-                  stroke="#7c3aed"
+                  stroke="var(--amber)"
                   strokeWidth={2}
                   dot={false}
                 />
@@ -302,7 +360,7 @@ export function ReportPreview({
                   type="monotone"
                   dataKey="previous"
                   name={t("periodPrevious")}
-                  stroke="#94a3b8"
+                  stroke="var(--text-dimmer)"
                   strokeWidth={2}
                   dot={false}
                   strokeDasharray="4 4"
@@ -310,37 +368,37 @@ export function ReportPreview({
               </LineChart>
             </ChartContainer>
           </div>
-        </div>
+        </ReportChartCard>
       </section>
 
       {reportType === "complete" && data.recommendations.length ? (
         <section className="ui-card p-4">
-          <div className="text-sm font-semibold text-slate-900">{t("recommendationsTitle")}</div>
-          <p className="mt-1 text-xs text-slate-500">{t("recommendationsSubtitle")}</p>
+          <div className="text-sm font-semibold text-[var(--text-main)]">{t("recommendationsTitle")}</div>
+          <p className="mt-1 text-xs text-[var(--text-dim)]">{t("recommendationsSubtitle")}</p>
           <div className="mt-4 space-y-3">
             {data.recommendations.map((rec) => (
               <div
                 key={rec.id}
                 className={`rounded-xl border p-4 ${
                   rec.priority === "high"
-                    ? "border-rose-200 bg-rose-50/50"
+                    ? "border-[rgba(239,68,68,0.25)] bg-[rgba(239,68,68,0.06)]"
                     : rec.priority === "medium"
-                      ? "border-amber-200 bg-amber-50/50"
-                      : "border-slate-200 bg-slate-50/50"
+                      ? "border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.06)]"
+                      : "border-[var(--border-color)] bg-[var(--surface-bg)]"
                 }`}
               >
-                <div className="text-sm font-semibold text-slate-900">{rec.title}</div>
-                <p className="mt-1 text-sm text-slate-600">{rec.body}</p>
+                <div className="text-sm font-semibold text-[var(--text-main)]">{rec.title}</div>
+                <p className="mt-1 text-sm text-[var(--text-dim)]">{rec.body}</p>
               </div>
             ))}
           </div>
         </section>
       ) : null}
 
-      <section>
+      <section className="report-pdf-section">
         <div className="mb-3">
-          <div className="text-sm font-semibold text-slate-900">{t("creativesRankingTitle")}</div>
-          <p className="mt-1 text-xs text-slate-500">{t("creativesRankingSubtitle")}</p>
+          <div className="text-sm font-semibold text-[var(--text-main)]">{t("creativesRankingTitle")}</div>
+          <p className="mt-1 text-xs text-[var(--text-dim)]">{t("creativesRankingSubtitle")}</p>
         </div>
         <CreativesRankingView
           clientId={data.client.id}
@@ -348,6 +406,7 @@ export function ReportPreview({
           periodQuery={periodQuery}
           adAccountId={adAccountId ?? data.adAccount?.metaAdAccountId}
           maxBest={3}
+          embedInReport
         />
       </section>
     </div>

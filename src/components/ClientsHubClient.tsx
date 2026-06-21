@@ -3,6 +3,8 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
+import { Building2 } from "lucide-react";
+
 import { CreateClientWizard } from "@/components/CreateClientWizard";
 import { DsPageHeader } from "@/design-system";
 import { Link } from "@/i18n/navigation";
@@ -107,7 +109,7 @@ export function ClientsHubClient() {
 
   return (
     <div className="space-y-4">
-      <DsPageHeader title={t("title")} subtitle={t("subtitle")} />
+      <DsPageHeader title={t("title")} subtitle={t("subtitle")} titleIcon={<Building2 size={16} />} />
 
       <div className="ui-card p-4">
         <div className="mt-0">

@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Plus } from "lucide-react";
+import { Megaphone, Plus } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -13,7 +13,6 @@ import {
   type DragEndEvent
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
-
 import { DsPageHeader } from "@/design-system";
 import { CampaignHeaderCell } from "@/components/CampaignHeaderCell";
 import { CampaignManagerClient } from "@/components/CampaignManagerClient";
@@ -713,6 +712,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         breadcrumbs={t("breadcrumb")}
         title={t("title")}
         subtitle={t("subtitleList")}
+        titleIcon={<Megaphone size={16} />}
         actions={
           <>
             {!useUxChrome ? <SyncRefreshButton /> : null}

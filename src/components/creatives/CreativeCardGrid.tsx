@@ -3,9 +3,12 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/Badge";
-import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import {
+  CreativeRankingCard,
+  CreativeRankingCardsSkeleton
+} from "@/components/creatives/CreativeRankingCard";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 
 export type CreativeBreakdown = {
   campaignId: string;
@@ -38,22 +41,32 @@ export type CreativeItem = {
   breakdownAdsets?: CreativeAdsetBreakdown[];
 };
 
+function scoreForRank(rank: number, total: number) {
+  if (total <= 1) return 95;
+  return Math.max(35, Math.round(100 - ((rank - 1) / (total - 1)) * 55));
+}
+
 export function CreativeCardGrid({
   creatives,
   metrics,
   primaryMetric,
+  campaignType,
   clientSlug = "",
-  showRank = true
+  showRank = true,
+  loading = false,
+  embedInReport = false
 }: {
   creatives: CreativeItem[];
   metrics: MetricKey[];
   primaryMetric: MetricKey;
+  campaignType?: string;
   clientSlug?: string;
   showRank?: boolean;
+  loading?: boolean;
+  embedInReport?: boolean;
 }) {
   const t = useTranslations("creativesPerf");
   const tMetrics = useTranslations("metrics");
-  const tCampaigns = useTranslations("campaignsPage");
   const locale = useLocale();
   const [previewing, setPreviewing] = useState<CreativeItem | null>(null);
   const [comparing, setComparing] = useState<CreativeItem | null>(null);
@@ -80,119 +93,55 @@ export function CreativeCardGrid({
           metrics: b.metrics
         }));
 
-  function statusLabel(s: string) {
-    if (s === "ACTIVE") return tCampaigns("statusActive");
-    if (s === "PAUSED") return tCampaigns("statusPaused");
-    return tCampaigns("statusInactive");
+  if (loading) {
+    return (
+      <CreativeRankingCardsSkeleton
+        count={Math.min(creatives.length || 3, 6)}
+        compact={embedInReport}
+      />
+    );
   }
+
+  const metricKeys = metrics.length ? metrics : (["roas", "ctr", "cpa", "cpm", "impressions", "spend"] as MetricKey[]);
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-        {creatives.map((c, idx) => (
-          <div key={`${c.name}-${idx}`} className="rounded-xl border border-[var(--border-color)] p-3">
-            <div className="flex gap-3">
-              {c.thumbnailUrl ? (
-                <button
-                  type="button"
-                  onClick={() => setPreviewing(c)}
-                  className="h-16 w-16 shrink-0 overflow-hidden rounded-lg"
-                  title={t("view")}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={c.thumbnailUrl}
-                    alt=""
-                    className="h-16 w-16 object-cover transition hover:opacity-80"
-                  />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setPreviewing(c)}
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-bg)] text-lg"
-                >
-                  🖼️
-                </button>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  {showRank ? (
-                    idx === 0 ? (
-                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-                        ★ 1º
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-[var(--text-dimmer)]">#{idx + 1}</span>
-                    )
-                  ) : null}
-                  <Badge variant={c.status === "ACTIVE" ? "success" : "neutral"}>
-                    {statusLabel(c.status)}
-                  </Badge>
-                </div>
-                <div className="mt-1 truncate text-xs font-medium text-[var(--text-main)]" title={c.name}>
-                  {c.name}
-                </div>
-                <div className="mt-0.5 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPreviewing(c)}
-                    className="text-[11px] font-medium text-[var(--violet)] hover:underline"
-                  >
-                    {t("view")}
-                  </button>
-                  {(c.breakdown && c.breakdown.length > 1) ||
-                  (c.breakdownAdsets && c.breakdownAdsets.length > 1) ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCmpMode("campaign");
-                        setComparing(c);
-                      }}
-                      className="text-[11px] font-medium text-[var(--violet)] hover:underline"
-                    >
-                      {t("compare")}
-                    </button>
-                  ) : null}
-                </div>
-                {c.campaigns && c.campaigns.length ? (
-                  <div className="mt-0.5 text-[10px] text-[var(--text-dimmer)]">
-                    {t("usedInCampaigns", { n: c.campaigns.length })}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              {metrics.map((m) => {
-                const isRank = m === primaryMetric;
-                return (
-                  <div
-                    key={m}
-                    className={`rounded-md px-2 py-1 ${
-                      isRank ? "bg-[rgba(124,58,237,0.06)] ring-1 ring-violet-200" : "bg-[var(--surface-bg)]"
-                    }`}
-                  >
-                    <div
-                      className={`text-[9px] uppercase tracking-wide ${
-                        isRank ? "text-violet-500" : "text-[var(--text-dimmer)]"
-                      }`}
-                    >
-                      {isRank ? "★ " : ""}
-                      {tMetrics(METRIC_BY_KEY[m].label)}
-                    </div>
-                    <div
-                      className={`text-xs font-semibold tabular-nums ${
-                        isRank ? "text-[var(--violet)]" : "text-[var(--text-main)]"
-                      }`}
-                    >
-                      {formatMetricValue(m, Number(c.metrics[m] ?? 0), locale)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+      <div
+        className={
+          embedInReport
+            ? "report-creatives-grid grid min-w-0 grid-cols-3 gap-2 p-2"
+            : "grid gap-4 p-4"
+        }
+        style={embedInReport ? undefined : { gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}
+        data-report-creatives-grid={embedInReport ? "true" : undefined}
+      >
+        {creatives.map((c, idx) => {
+          const rank = showRank ? idx + 1 : idx + 1;
+          const canCompare =
+            (c.breakdown && c.breakdown.length > 1) ||
+            (c.breakdownAdsets && c.breakdownAdsets.length > 1);
+
+          return (
+            <CreativeRankingCard
+              key={`${c.name}-${idx}`}
+              rank={rank}
+              title={c.name}
+              type={c.type}
+              campaignType={campaignType}
+              campaignsUsed={c.campaigns?.length ?? c.adsCount ?? 0}
+              status={c.status}
+              imageUrl={c.imageUrl}
+              thumbnailUrl={c.thumbnailUrl}
+              score={scoreForRank(rank, creatives.length)}
+              metrics={c.metrics}
+              primaryMetric={primaryMetric}
+              metricKeys={metricKeys}
+              variant={embedInReport ? "report" : "default"}
+              onPreview={() => setPreviewing(c)}
+              onCompare={canCompare ? () => { setCmpMode("campaign"); setComparing(c); } : undefined}
+            />
+          );
+        })}
       </div>
 
       {previewing ? (
@@ -201,6 +150,12 @@ export function CreativeCardGrid({
           adIds={previewing.adIds}
           imageUrl={previewing.imageUrl ?? previewing.thumbnailUrl}
           name={previewing.name}
+          rank={creatives.indexOf(previewing) + 1}
+          type={previewing.type}
+          campaignType={campaignType}
+          status={previewing.status}
+          metrics={previewing.metrics}
+          campaignsUsed={previewing.campaigns?.length ?? previewing.adsCount ?? 0}
           onClose={() => setPreviewing(null)}
         />
       ) : null}
@@ -236,7 +191,7 @@ export function CreativeCardGrid({
                   onClick={() => setCmpMode(mode)}
                   className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                     cmpMode === mode
-                      ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]"
+                      ? "bg-[rgba(245,166,35,0.12)] text-[var(--amber)]"
                       : "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                   }`}
                 >
@@ -272,10 +227,10 @@ export function CreativeCardGrid({
                       ))}
                     </tr>
                   ))}
-                  <tr className="bg-[rgba(124,58,237,0.06)]/40 font-semibold hover:bg-[var(--row-hover)]">
-                    <td className="px-4 py-2.5 text-[var(--violet)]">{t("total")}</td>
+                  <tr className="bg-[rgba(245,166,35,0.06)]/40 font-semibold hover:bg-[var(--row-hover)]">
+                    <td className="px-4 py-2.5 text-[var(--amber)]">{t("total")}</td>
                     {metrics.map((m) => (
-                      <td key={m} className="px-3 py-2.5 text-right tabular-nums text-[var(--violet)]">
+                      <td key={m} className="px-3 py-2.5 text-right tabular-nums text-[var(--amber)]">
                         {formatMetricValue(m, Number(comparing.metrics[m] ?? 0), locale)}
                       </td>
                     ))}
@@ -289,3 +244,5 @@ export function CreativeCardGrid({
     </>
   );
 }
+
+export { CreativeRankingCardsSkeleton };

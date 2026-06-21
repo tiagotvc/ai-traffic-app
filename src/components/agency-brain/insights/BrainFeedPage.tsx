@@ -1,19 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
 import { BrainFeedHero } from "@/components/agency-brain/insights/BrainFeedHero";
 import { HypothesisFeedCard } from "@/components/agency-brain/insights/HypothesisFeedCard";
 import { LearningFeedCard } from "@/components/agency-brain/insights/LearningFeedCard";
+import { LearningTimelinePanel } from "@/components/agency-brain/insights/LearningTimelinePanel";
 import { ResearchLogsList } from "@/components/agency-brain/insights/ResearchLogsList";
 import { useBrainInsights } from "@/components/agency-brain/insights/useBrainInsights";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { getResearchLogs } from "@/lib/agency-brain/insights/research-log-repository";
-import type { FeedTab } from "@/lib/agency-brain/insights/types";
+import type { FeedTab, InsightLearning } from "@/lib/agency-brain/insights/types";
 
 export type FeedVariant = "learnings" | "hypotheses";
+
+const PAGE_SIZE = 10;
 
 const MAIN_TABS: Array<{ id: FeedTab | "logs"; href?: string }> = [
   { id: "learnings", href: "/agency-brain" },
@@ -26,13 +30,24 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
   const { clientSlug } = useAgencyBrainClient();
   const insights = useBrainInsights();
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [logsRevision, setLogsRevision] = useState(0);
   const [activeLogs, setActiveLogs] = useState(false);
+  const [timelineLearning, setTimelineLearning] = useState<InsightLearning | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, variant, clientSlug]);
 
   const items = useMemo(
     () => insights.getFeedItems({ tab: variant, search }),
     [insights, variant, search]
   );
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return items.slice(start, start + PAGE_SIZE);
+  }, [items, page]);
   const researchLogs = useMemo(
     () => getResearchLogs(clientSlug),
     [clientSlug, logsRevision]
@@ -156,14 +171,20 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
       <div className="space-y-3 pb-6">
         {showLogs ? (
           <ResearchLogsList logs={researchLogs} />
+        ) : insights.loading ? (
+          <ListSkeleton rows={PAGE_SIZE} />
         ) : variant === "learnings" ? (
-          items.map((item) =>
+          pagedItems.map((item) =>
             item.kind === "learning" ? (
-              <LearningFeedCard key={item.learning.id} learning={item.learning} />
+              <LearningFeedCard
+                key={item.learning.id}
+                learning={item.learning}
+                onTimeline={() => setTimelineLearning(item.learning)}
+              />
             ) : null
           )
         ) : (
-          items.map((item) =>
+          pagedItems.map((item) =>
             item.kind === "hypothesis" ? (
               <HypothesisFeedCard
                 key={item.hypothesis.id}
@@ -174,14 +195,57 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
           )
         )}
 
-        {!showLogs && items.length === 0 ? (
+        {!showLogs && !insights.loading && items.length === 0 ? (
           <div className="py-20 text-center">
             <p className="font-semibold" style={{ color: "var(--text-dim)" }}>
               {variant === "learnings" ? t("learningsEmpty") : t("hypothesesEmpty")}
             </p>
           </div>
         ) : null}
+
+        {!showLogs && !insights.loading && totalPages > 1 ? (
+          <div
+            className="flex items-center justify-between rounded-xl border px-4 py-3"
+            style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
+          >
+            <p className="text-xs" style={{ color: "var(--text-dimmer)" }}>
+              {items.length}{" "}
+              {variant === "learnings" ? t("learningsCountLabel") : t("hypothesesCountLabel")}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="rounded-lg border px-3 py-1 text-xs disabled:opacity-40"
+                style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+              >
+                {t("paginationPrev")}
+              </button>
+              <span className="text-xs" style={{ color: "var(--text-dim)" }}>
+                {page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="rounded-lg border px-3 py-1 text-xs disabled:opacity-40"
+                style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+              >
+                {t("paginationNext")}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
+
+      {timelineLearning ? (
+        <LearningTimelinePanel
+          learning={timelineLearning}
+          events={insights.getTimelineForLearning(timelineLearning.id)}
+          onClose={() => setTimelineLearning(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -6,12 +6,14 @@ export function DsPageHeader({
   title,
   subtitle,
   breadcrumbs,
+  titleIcon,
   actions,
   className
 }: {
   title: string;
   subtitle?: string;
   breadcrumbs?: ReactNode;
+  titleIcon?: ReactNode;
   actions?: ReactNode;
   className?: string;
 }) {
@@ -26,9 +28,19 @@ export function DsPageHeader({
         {breadcrumbs ? (
           <div className="mb-1 text-xs font-medium text-[var(--text-dim)]">{breadcrumbs}</div>
         ) : null}
-        <h1 className="font-heading font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">
-          {title}
-        </h1>
+        <div className="flex items-center gap-2">
+          {titleIcon ? (
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+              style={{ background: "rgba(245,166,35,0.15)", color: "var(--amber)" }}
+            >
+              {titleIcon}
+            </div>
+          ) : null}
+          <h1 className="font-heading font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">
+            {title}
+          </h1>
+        </div>
         {subtitle ? (
           <p className="mt-1 text-sm text-[var(--text-dim)]">{subtitle}</p>
         ) : null}

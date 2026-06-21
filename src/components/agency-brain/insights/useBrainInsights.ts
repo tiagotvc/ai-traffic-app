@@ -107,19 +107,25 @@ function timelineFromLearning(learning: InsightLearning): LearningTimelineEvent[
 export function useBrainInsights() {
   const { clientSlug } = useAgencyBrainClient();
   const [revision, setRevision] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [learnings, setLearnings] = useState<InsightLearning[]>([]);
   const [hypotheses, setHypotheses] = useState<InsightHypothesis[]>([]);
   const bump = useCallback(() => setRevision((r) => r + 1), []);
 
   useEffect(() => {
-    if (USE_MOCK) return;
+    if (USE_MOCK) {
+      setLoading(false);
+      return;
+    }
     if (!clientSlug) {
       setLearnings([]);
       setHypotheses([]);
+      setLoading(false);
       return;
     }
 
     let cancelled = false;
+    setLoading(true);
 
     void (async () => {
       try {
@@ -161,6 +167,8 @@ export function useBrainInsights() {
           setLearnings([]);
           setHypotheses([]);
         }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
 
@@ -173,6 +181,7 @@ export function useBrainInsights() {
     if (USE_MOCK) {
       return {
         revision,
+        loading: false,
         getFeedStats: getMockFeedStats,
         getFeedItems: (args: { tab: FeedTab; search: string }) => getMockFeedItems(args),
         getLearningById: getMockLearningById,
@@ -189,6 +198,7 @@ export function useBrainInsights() {
 
     return {
       revision,
+      loading,
       getFeedStats: () => buildFeedStats(learnings, hypotheses),
       getFeedItems: (args: { tab: FeedTab; search: string }) =>
         buildFeedItems(learnings, hypotheses, args.tab, args.search),
@@ -230,5 +240,5 @@ export function useBrainInsights() {
         return updated;
       }
     };
-  }, [revision, bump, learnings, hypotheses, clientSlug]);
+  }, [revision, bump, learnings, hypotheses, clientSlug, loading]);
 }

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { CreativeRankingCard, CreativeRankingCardsSkeleton } from "@/components/creatives/CreativeRankingCard";
 import type { UxCreativeCard } from "@/uxpilot-ui/adapters/creatives-mappers";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -583,21 +584,22 @@ function CreativeCardItem({
       }}
     >
       {/* ── Thumbnail Section ── */}
-      <div className="relative" style={{ height: 160, overflow: "hidden" }}>
+      <div className="relative flex h-40 items-center justify-center overflow-hidden bg-[#0f1419]">
         <img
           src={creative.img_url ?? undefined}
           alt={creative.title}
-          className="w-full h-full object-cover"
+          decoding="async"
+          className="max-h-full max-w-full object-contain object-center"
         />
         {/* Gradient overlay */}
         <div
-          className="absolute inset-0"
+          className="pointer-events-none absolute inset-0 z-[1]"
           style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%)" }}
         />
 
         {/* Rank badge */}
         <div
-          className="absolute top-3 left-3 w-8 h-8 rounded-full flex items-center justify-center font-heading font-bold text-xs shadow-lg"
+          className="absolute left-3 top-3 z-[2] flex h-8 w-8 items-center justify-center rounded-full font-heading text-xs font-bold shadow-lg"
           style={{
             background: isTop3 ? rankColors[creative.rank - 1] : "rgba(15,20,25,0.7)",
             color: "#fff",
@@ -609,7 +611,7 @@ function CreativeCardItem({
 
         {/* Type badge */}
         <div
-          className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-body font-semibold"
+          className="absolute right-3 top-3 z-[2] flex items-center gap-1 rounded-full px-2 py-1 text-xs font-body font-semibold"
           style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(4px)" }}
         >
           {creative.type === "Video" && <Video size={11} />}
@@ -620,7 +622,7 @@ function CreativeCardItem({
 
         {/* Status badge */}
         <div
-          className="absolute bottom-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-body font-semibold"
+          className="absolute bottom-3 right-3 z-[2] flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-body font-semibold"
           style={{
             background: creative.status === "Ativo" ? "rgba(16,185,129,0.85)" : "rgba(239,68,68,0.85)",
             color: "#fff",
@@ -632,7 +634,7 @@ function CreativeCardItem({
 
         {/* Campaign type badge */}
         <div
-          className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full text-xs font-body font-medium"
+          className="absolute bottom-3 left-3 z-[2] rounded-full px-2.5 py-1 text-xs font-body font-medium"
           style={{ background: "rgba(124,58,237,0.8)", color: "#fff" }}
         >
           {creative.campaignType}
@@ -923,31 +925,46 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
 
           {/* ── Cards Grid ── */}
           {isLive && live?.loading ? (
-            <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-80 animate-pulse rounded-xl border" style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }} />
-              ))}
-            </div>
+            <CreativeRankingCardsSkeleton count={6} />
           ) : (
           <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
-            {filteredCreatives.map((creative) => (
+            {filteredCreatives.map((creative) => {
+              if (isLive) {
+                const card = creative as UxCreativeCard;
+                const canCompare =
+                  (card.raw.breakdown && card.raw.breakdown.length > 1) ||
+                  (card.raw.breakdownAdsets && card.raw.breakdownAdsets.length > 1);
+                return (
+                  <CreativeRankingCard
+                    key={card.id}
+                    rank={card.rank}
+                    title={card.title}
+                    type={card.type}
+                    campaignType={card.campaignType}
+                    campaignsUsed={card.campaignsUsed}
+                    status={card.raw.status}
+                    imageUrl={card.raw.imageUrl}
+                    thumbnailUrl={card.raw.thumbnailUrl}
+                    score={card.score}
+                    metrics={card.raw.metrics}
+                    primaryMetric={card.primaryMetric}
+                    metricKeys={card.metricKeys}
+                    onPreview={() => live?.onPreview?.(card)}
+                    onCompare={
+                      canCompare && live?.onCompare ? () => live.onCompare!(card) : undefined
+                    }
+                  />
+                );
+              }
+
+              return (
               <CreativeCardItem
                 key={creative.id}
                 creative={creative}
-                onPreview={() => {
-                  if (isLive && live?.onPreview) {
-                    live.onPreview(creative as unknown as UxCreativeCard);
-                  } else {
-                    setPreviewCreative(creative);
-                  }
-                }}
-                onCompare={
-                  isLive && live?.onCompare
-                    ? () => live.onCompare!(creative as unknown as UxCreativeCard)
-                    : undefined
-                }
+                onPreview={() => setPreviewCreative(creative)}
               />
-            ))}
+              );
+            })}
           </div>
           )}
 

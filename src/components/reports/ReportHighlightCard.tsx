@@ -1,8 +1,6 @@
 "use client";
 
-import { Area, AreaChart, Tooltip, XAxis } from "recharts";
-
-import { ChartContainer } from "@/components/ui/ChartContainer";
+import { MiniSparkline } from "@/components/ui/MiniSparkline";
 import { formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { formatPercent } from "@/lib/format";
 
@@ -18,15 +16,17 @@ function DeltaBadge({
   noPrevLabel: string;
 }) {
   if (delta === null) {
-    return <span className="text-[11px] text-slate-400">{noPrevLabel}</span>;
+    return <span className="text-[11px] text-[var(--text-dimmer)]">{noPrevLabel}</span>;
   }
   const up = delta >= 0;
+  const positive =
+    goodWhen === "neutral" ? null : up === (goodWhen === "up");
   const color =
     goodWhen === "neutral"
-      ? "bg-violet-50 text-violet-700"
-      : up === (goodWhen === "up")
-        ? "bg-emerald-50 text-emerald-700"
-        : "bg-rose-50 text-rose-700";
+      ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]"
+      : positive
+        ? "bg-[rgba(16,185,129,0.12)] text-[var(--success)]"
+        : "bg-[rgba(239,68,68,0.12)] text-[var(--danger)]";
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${color}`}
@@ -38,7 +38,6 @@ function DeltaBadge({
 }
 
 export function ReportHighlightCard({
-  id,
   label,
   value,
   delta,
@@ -50,7 +49,7 @@ export function ReportHighlightCard({
   noPrevLabel,
   locale
 }: {
-  id: string;
+  id?: string;
   label: string;
   value: string;
   delta: number | null;
@@ -62,45 +61,23 @@ export function ReportHighlightCard({
   noPrevLabel: string;
   locale: string;
 }) {
+  const sparkPoints = data.map((row) => Number(row[dataKey] ?? 0));
+
   return (
-    <div className="ui-card p-5">
+    <div className="ui-card kpi-card-hover overflow-hidden p-5">
       <div className="flex items-start justify-between gap-2">
-        <div className="text-sm font-medium text-slate-500">{label}</div>
+        <div className="text-xs font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
+          {label}
+        </div>
         <DeltaBadge delta={delta} goodWhen={goodWhen} locale={locale} noPrevLabel={noPrevLabel} />
       </div>
-      <div className="mt-2 text-3xl font-bold tracking-tight text-slate-900">{value}</div>
-      <div className="mt-0.5 text-[11px] text-slate-400">{vsLabel}</div>
-      <div className="mt-3 h-16 min-w-0">
-        {data.length > 1 ? (
-          <ChartContainer height={64}>
-            <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-              <XAxis dataKey="label" hide />
-              <defs>
-                <linearGradient id={`report-grad-${id}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={color} stopOpacity={0.25} />
-                  <stop offset="100%" stopColor={color} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <Tooltip
-                contentStyle={{
-                  background: "#ffffff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 10,
-                  fontSize: 11
-                }}
-                labelStyle={{ color: "#64748b" }}
-                formatter={(v) => [formatMetricValue(dataKey, Number(v), locale), label]}
-              />
-              <Area
-                type="monotone"
-                dataKey={dataKey}
-                stroke={color}
-                strokeWidth={2}
-                fill={`url(#report-grad-${id})`}
-                dot={false}
-              />
-            </AreaChart>
-          </ChartContainer>
+      <div className="font-heading mt-2 text-3xl font-bold tracking-tight text-[var(--text-main)]">
+        {value}
+      </div>
+      <div className="mt-0.5 text-[11px] text-[var(--text-dimmer)]">{vsLabel}</div>
+      <div className="relative mt-3 h-16 min-w-0 overflow-hidden">
+        {sparkPoints.length > 1 ? (
+          <MiniSparkline points={sparkPoints} color={color} height={64} fullWidth />
         ) : null}
       </div>
     </div>

@@ -1664,9 +1664,11 @@ function mapAdUsageRow(r: RawAdUsage): AdUsageRow {
   const spec = r.creative?.object_story_spec;
   const linkData = spec?.link_data as Record<string, unknown> | undefined;
   const photoData = spec?.photo_data as Record<string, unknown> | undefined;
+  const videoData = spec?.video_data as Record<string, unknown> | undefined;
   const fromSpec =
     (typeof linkData?.picture === "string" ? (linkData.picture as string) : undefined) ??
-    (typeof photoData?.url === "string" ? (photoData.url as string) : undefined);
+    (typeof photoData?.url === "string" ? (photoData.url as string) : undefined) ??
+    (typeof videoData?.image_url === "string" ? (videoData.image_url as string) : undefined);
   return {
     id: r.id,
     name: r.name,

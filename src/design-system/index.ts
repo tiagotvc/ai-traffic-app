@@ -6,3 +6,4 @@ export { DsPageHeader } from "./components/DsPageHeader";
 export { DsSectionHeader } from "./components/DsSectionHeader";
 export { DsTableHeadCell, DsTableRow, DsTableShell } from "./components/DsTableShell";
 export { DsTrendBadge } from "./components/DsTrendBadge";
+export { DsSelectablePills, type DsPillOption } from "./components/DsSelectablePills";

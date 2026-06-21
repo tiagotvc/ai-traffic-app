@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 
 import { ConfidencePill } from "@/components/agency-brain/insights/ConfidencePill";
 import { EvidenceSourcesRow } from "@/components/agency-brain/insights/EvidenceSources";
-import { Link } from "@/i18n/navigation";
 import type { ImpactLevel, InsightLearning } from "@/lib/agency-brain/insights/types";
 import { cn } from "@/lib/cn";
 
@@ -21,11 +20,13 @@ const impactConfig: Record<
 export function LearningFeedCard({
   learning,
   expanded: controlledExpanded,
-  onToggle
+  onToggle,
+  onTimeline
 }: {
   learning: InsightLearning;
   expanded?: boolean;
   onToggle?: () => void;
+  onTimeline?: () => void;
 }) {
   const t = useTranslations("brainInsights");
   const [internalExpanded, setInternalExpanded] = useState(false);
@@ -170,8 +171,9 @@ export function LearningFeedCard({
           style={{ borderColor: "rgba(250,204,21,0.2)", background: "rgba(250,204,21,0.04)" }}
           onClick={(e) => e.stopPropagation()}
         >
-          <Link
-            href={`/agency-brain/learnings/${learning.id}`}
+          <button
+            type="button"
+            onClick={() => onTimeline?.()}
             className="flex items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-semibold transition-all hover:brightness-110"
             style={{
               background: "var(--surface-bg)",
@@ -181,7 +183,7 @@ export function LearningFeedCard({
             }}
           >
             {t("viewTimeline")}
-          </Link>
+          </button>
           <button
             type="button"
             className="ui-btn-brand !px-4 !py-2 text-xs opacity-60"

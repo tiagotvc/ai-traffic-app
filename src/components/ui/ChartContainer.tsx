@@ -38,7 +38,7 @@ export function ChartContainer({ height, className = "", children }: ChartContai
   return (
     <div
       ref={ref}
-      className={`w-full min-w-0 ${isNumericHeight ? "" : height} ${className}`}
+      className={`report-chart-wrap relative isolate w-full min-w-0 overflow-hidden ${isNumericHeight ? "" : height} ${className}`}
       style={isNumericHeight ? { height } : undefined}
     >
       {size ? (

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { type MetricKey, METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import type { CreativeAccessWarning } from "@/lib/creatives-access-types";
-import { TableSkeleton } from "@/components/ui/Skeleton";
+import { CreativeRankingCardsSkeleton } from "@/components/creatives/CreativeRankingCard";
 import { CreativeCardGrid, type CreativeItem } from "@/components/creatives/CreativeCardGrid";
 
 type Group = {
@@ -27,14 +27,17 @@ export function CreativesRankingView({
   periodQuery = "",
   adAccountId,
   maxBest,
+  embedInReport = false,
   accountsLoading = false
 }: {
   clientId: string;
   clientSlug?: string;
   periodQuery?: string;
   adAccountId?: string;
-  /** When set, only show top N best creatives per group (hides promising/zero spend). */
+  /** When set, only show top N best creatives per group. */
   maxBest?: number;
+  /** Embedded in report preview — same DS as main tab, compact best list. */
+  embedInReport?: boolean;
   accounts?: Array<{ metaAdAccountId: string; label: string }>;
   accountsLoading?: boolean;
 }) {
@@ -111,9 +114,8 @@ export function CreativesRankingView({
 
   if (loading && !groups.length) {
     return (
-      <div className="space-y-3">
-        <p className="text-center text-sm text-[var(--text-dim)]">{t("loading")}</p>
-        <TableSkeleton rows={5} columns={["media", "metric", "metric", "metric"]} />
+      <div className="space-y-3" data-report-creatives-loading="true">
+        <CreativeRankingCardsSkeleton count={3} compact={embedInReport} />
       </div>
     );
   }
@@ -152,7 +154,7 @@ export function CreativesRankingView({
 
   if (loadError) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" data-report-creatives-ready="true">
         {banner}
         <div className="ui-card space-y-3 p-8 text-center">
           <p className="text-sm text-rose-600">{loadError}</p>
@@ -166,7 +168,7 @@ export function CreativesRankingView({
 
   if (!groups.length) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" data-report-creatives-ready="true">
         {banner}
         <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("empty")}</div>
       </div>
@@ -174,25 +176,35 @@ export function CreativesRankingView({
   }
 
   return (
-    <div className="space-y-5">
-      {banner}
+    <div className={embedInReport ? "space-y-3" : "space-y-5"} data-report-creatives-ready="true">
+      {!embedInReport ? banner : null}
       {groups.map((g) => {
         const cols = presetMetricsFor(g.preset);
         const best = maxBest != null ? g.best.slice(0, maxBest) : g.best;
         const zeroOpen = expandedZero[g.preset];
-        const totalCount = maxBest != null ? best.length : g.best.length + g.promising.length + g.noSpend.length;
-        const reportMode = maxBest != null;
+        const compactBest = maxBest != null;
+        const totalCount = compactBest ? best.length : g.best.length + g.promising.length + g.noSpend.length;
         return (
           <div key={g.preset} className="ui-card overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] px-4 py-3">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] ${
+                embedInReport ? "px-3 py-2" : "px-4 py-3"
+              }`}
+            >
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-[var(--text-main)]">
+                <div
+                  className={`font-semibold text-[var(--text-main)] ${
+                    embedInReport ? "text-xs" : "text-sm"
+                  }`}
+                >
                   {tPresets(g.preset)}{" "}
                   <span className="font-normal text-[var(--text-dimmer)]">({totalCount})</span>
                 </div>
-                <div className="text-[11px] text-[var(--text-dimmer)]">{rankHint(g.primaryMetric)}</div>
+                {!embedInReport ? (
+                  <div className="text-[11px] text-[var(--text-dimmer)]">{rankHint(g.primaryMetric)}</div>
+                ) : null}
               </div>
-              <Badge variant="brand">{tPresets(g.preset)}</Badge>
+              {!embedInReport ? <Badge variant="brand">{tPresets(g.preset)}</Badge> : null}
             </div>
 
             {best.length ? (
@@ -200,32 +212,35 @@ export function CreativesRankingView({
                 creatives={best}
                 metrics={cols}
                 primaryMetric={g.primaryMetric}
+                campaignType={tPresets(g.preset)}
                 clientSlug={clientSlug ?? ""}
+                embedInReport={embedInReport}
               />
-            ) : reportMode ? (
-              <p className="px-4 py-6 text-center text-sm text-slate-500">{t("empty")}</p>
-            ) : null}
+            ) : (
+              <p className="px-4 py-6 text-center text-sm text-[var(--text-dim)]">{t("empty")}</p>
+            )}
 
-            {!reportMode && g.promising.length ? (
+            {g.promising.length && !embedInReport ? (
               <div className="border-t border-[var(--border-color)]">
-                <div className="flex items-start gap-2 bg-amber-50/60 px-4 py-2.5">
-                  <span className="text-amber-600">✦</span>
+                <div className="flex items-start gap-2 bg-[rgba(245,166,35,0.08)] px-4 py-2.5">
+                  <span className="text-[var(--amber)]">✦</span>
                   <div>
-                    <div className="text-xs font-semibold text-amber-800">{t("promisingTitle")}</div>
-                    <div className="text-[11px] text-amber-700">{t("promisingDesc")}</div>
+                    <div className="text-xs font-semibold text-[var(--amber)]">{t("promisingTitle")}</div>
+                    <div className="text-[11px] text-[var(--text-dim)]">{t("promisingDesc")}</div>
                   </div>
                 </div>
                 <CreativeCardGrid
                   creatives={g.promising}
                   metrics={cols}
                   primaryMetric={g.primaryMetric}
+                  campaignType={tPresets(g.preset)}
                   clientSlug={clientSlug ?? ""}
                   showRank={false}
                 />
               </div>
             ) : null}
 
-            {!reportMode && g.noSpend.length ? (
+            {!compactBest && g.noSpend.length ? (
               <div className="border-t border-[var(--border-color)]">
                 <div className="px-4 py-2.5">
                   <button
@@ -243,6 +258,7 @@ export function CreativesRankingView({
                     creatives={g.noSpend}
                     metrics={cols}
                     primaryMetric={g.primaryMetric}
+                    campaignType={tPresets(g.preset)}
                     clientSlug={clientSlug ?? ""}
                     showRank={false}
                   />

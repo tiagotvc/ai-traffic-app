@@ -1,15 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+import {
+  BarChart2,
+  BookImage,
+  Image,
+  Instagram,
+  LayoutGrid,
+  Monitor,
+  Play,
+  Smartphone,
+  Star,
+  Video,
+  X
+} from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
+import { bestCreativePreviewUrl } from "@/lib/creative-preview-url";
+import { formatMetricValue, METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 
 const FORMATS = [
-  { key: "MOBILE_FEED_STANDARD", label: "fmtMobile" },
-  { key: "DESKTOP_FEED_STANDARD", label: "fmtDesktop" },
-  { key: "INSTAGRAM_STANDARD", label: "fmtInstagram" },
-  { key: "INSTAGRAM_STORY", label: "fmtStory" }
+  { key: "MOBILE_FEED_STANDARD", labelKey: "fmtMobile", icon: Smartphone },
+  { key: "DESKTOP_FEED_STANDARD", labelKey: "fmtDesktop", icon: Monitor },
+  { key: "INSTAGRAM_STANDARD", labelKey: "fmtInstagram", icon: Instagram },
+  { key: "INSTAGRAM_STORY", labelKey: "fmtStory", icon: BookImage }
 ] as const;
 
 type Copy = { bodies: string[]; titles: string[]; descriptions: string[]; ctas: string[] };
@@ -41,27 +56,62 @@ type DetailPayload = {
   clientSlug: string;
 };
 
+type MainTab = "preview" | "copy" | "usage";
+
+function getScoreColor(score: number) {
+  if (score >= 80) return "#10b981";
+  if (score >= 60) return "#f5a623";
+  return "#ef4444";
+}
+
+function mapCreativeType(type?: string): "Video" | "Imagem" | "Carrossel" {
+  const t = (type ?? "").toLowerCase();
+  if (t.includes("video")) return "Video";
+  if (t.includes("carousel") || t.includes("carrossel")) return "Carrossel";
+  return "Imagem";
+}
+
+function mapStatusLabel(status?: string): "Ativo" | "Pausado" | "Encerrado" {
+  const s = (status ?? "").toUpperCase();
+  if (s === "ACTIVE") return "Ativo";
+  if (s === "PAUSED") return "Pausado";
+  return "Encerrado";
+}
+
 export function CreativePreviewModal({
   adId,
   adIds,
   imageUrl,
   name,
+  rank = 1,
+  type,
+  campaignType,
+  status,
+  metrics,
+  campaignsUsed = 0,
   onClose
 }: {
   adId: string | null;
   adIds?: string[];
   imageUrl: string | null;
   name: string;
+  rank?: number;
+  type?: string;
+  campaignType?: string;
+  status?: string;
+  metrics?: Partial<Record<MetricKey, number>>;
+  campaignsUsed?: number;
   onClose: () => void;
 }) {
   const t = useTranslations("creativesPerf");
+  const tMetrics = useTranslations("metrics");
+  const locale = useLocale();
   const resolvedAdIds = (adIds?.length ? adIds : adId ? [adId] : []).filter(Boolean);
   const hasAds = resolvedAdIds.length > 0;
   const adIdsKey = resolvedAdIds.join(",");
+  const previewImage = bestCreativePreviewUrl(imageUrl, imageUrl);
 
-  const [mode, setMode] = useState<"image" | "preview" | "copy" | "usage">(
-    hasAds ? "preview" : "image"
-  );
+  const [mainTab, setMainTab] = useState<MainTab>(hasAds ? "preview" : "preview");
   const [format, setFormat] = useState<string>("MOBILE_FEED_STANDARD");
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -69,6 +119,25 @@ export function CreativePreviewModal({
   const [preview, setPreview] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(false);
+
+  const score = Math.max(35, 100 - (rank - 1) * 8);
+  const scoreColor = getScoreColor(score);
+  const creativeType = mapCreativeType(type);
+  const statusLabel = mapStatusLabel(status);
+  const isFirst = rank === 1;
+
+  const metricStrip = useMemo(
+    () =>
+      [
+        { key: "roas" as MetricKey, color: "#10b981" },
+        { key: "ctr" as MetricKey, color: "var(--text-main)" },
+        { key: "cpa" as MetricKey, color: "var(--text-main)" },
+        { key: "cpm" as MetricKey, color: "var(--text-main)" },
+        { key: "impressions" as MetricKey, color: "var(--text-main)" },
+        { key: "spend" as MetricKey, color: "#f5a623" }
+      ].filter((m) => metrics?.[m.key] != null || m.key === "ctr" || m.key === "spend"),
+    [metrics]
+  );
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -115,17 +184,14 @@ export function CreativePreviewModal({
   }, [hasAds, adIdsKey]);
 
   useEffect(() => {
-    if (!hasAds || mode !== "preview") return;
+    if (!hasAds || mainTab !== "preview") return;
     let cancelled = false;
     setLoading(true);
     setErr(false);
     setPreview(null);
 
     const loadPreview = async () => {
-      const qs = new URLSearchParams({
-        adIds: adIdsKey,
-        format
-      });
+      const qs = new URLSearchParams({ adIds: adIdsKey, format });
       const res = await fetch(`/api/creatives/detail?${qs}`);
       const j = await res.json();
       if (cancelled) return;
@@ -141,12 +207,7 @@ export function CreativePreviewModal({
     return () => {
       cancelled = true;
     };
-  }, [hasAds, format, mode, adIdsKey]);
-
-  const tabClass = (active: boolean) =>
-    `rounded-lg px-2.5 py-1 text-xs font-medium ${
-      active ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]" : "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
-    }`;
+  }, [hasAds, format, mainTab, adIdsKey]);
 
   const copiesToShow =
     detail?.copiesByCampaign?.length &&
@@ -173,21 +234,23 @@ export function CreativePreviewModal({
     ? { campaigns: detail.campaigns, clientSlug: detail.clientSlug, placements: detail.placements }
     : null;
 
-  const panelWidth = mode === "image" ? "max-w-5xl" : mode === "preview" ? "max-w-3xl" : "max-w-lg";
+  const previewW = preview?.width ?? 360;
+  const previewH = preview?.height ?? 640;
+  const primaryBody = mergedCopy?.bodies[0] ?? copiesToShow?.[0]?.copy.bodies[0] ?? "";
 
   function CopyBlock({ label, items }: { label: string; items: string[] }) {
     if (!items.length) return null;
     return (
-      <div>
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">{label}</div>
-        <div className="mt-1 space-y-1.5">
+      <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">{label}</p>
+        <div className="space-y-1.5">
           {items.map((txt, i) => (
             <button
               key={i}
               type="button"
               onClick={() => navigator.clipboard?.writeText(txt)}
               title={t("copied")}
-              className="block w-full whitespace-pre-wrap rounded-lg bg-[var(--surface-bg)] px-3 py-2 text-left text-sm text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
+              className="block w-full whitespace-pre-wrap rounded-lg bg-[var(--surface-card)] px-3 py-2 text-left text-sm text-[var(--text-main)] hover:bg-[var(--row-hover)]"
             >
               {txt}
             </button>
@@ -200,86 +263,153 @@ export function CreativePreviewModal({
   function CopySection({ copy }: { copy: Copy }) {
     return (
       <>
-        <CopyBlock label={t("copyTitles")} items={copy.titles} />
         <CopyBlock label={t("copyBodies")} items={copy.bodies} />
+        <CopyBlock label={t("copyTitles")} items={copy.titles} />
         <CopyBlock label={t("copyDescriptions")} items={copy.descriptions} />
         <CopyBlock label={t("copyCtas")} items={copy.ctas} />
       </>
     );
   }
 
-  const previewW = preview?.width ?? 360;
-  const previewH = preview?.height ?? 640;
+  const mainTabs: { key: MainTab; label: string }[] = [
+    { key: "preview", label: t("fmtAd") },
+    { key: "copy", label: t("copyTab") },
+    { key: "usage", label: t("usageTab") }
+  ];
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 p-4 sm:items-center"
-      onMouseDown={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
-        className={`my-auto flex max-h-[92vh] w-full flex-col rounded-2xl bg-[var(--surface-card)] shadow-2xl ${panelWidth}`}
+        className="flex max-h-[92vh] w-full max-w-[720px] flex-col rounded-2xl shadow-2xl"
+        style={{ background: "var(--surface-card)", border: "1px solid var(--border-color)" }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--border-color)] px-4 py-3">
-          <div className="min-w-0 truncate text-sm font-semibold text-[var(--text-main)]">{name}</div>
+        <div
+          className="flex shrink-0 items-start justify-between px-6 py-4"
+          style={{ borderBottom: "1px solid var(--border-color)" }}
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+              style={{
+                background: isFirst ? "#f5a623" : "var(--surface-bg)",
+                color: isFirst ? "#fff" : "var(--text-dim)",
+                border: !isFirst ? "1px solid var(--border-color)" : "none"
+              }}
+            >
+              {isFirst ? <Star size={13} fill="#fff" color="#fff" /> : `#${rank}`}
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate pr-2 text-base font-semibold text-[var(--text-main)]">{name}</h2>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+                  style={{ background: "rgba(245,166,35,0.12)", color: "var(--amber)" }}
+                >
+                  {creativeType === "Video" && <Video size={10} />}
+                  {creativeType === "Imagem" && <Image size={10} />}
+                  {creativeType === "Carrossel" && <LayoutGrid size={10} />}
+                  {creativeType}
+                </span>
+                {campaignType ? (
+                  <span
+                    className="rounded-full px-2 py-0.5 text-xs"
+                    style={{ background: "rgba(245,166,35,0.08)", color: "var(--text-dim)" }}
+                  >
+                    {campaignType}
+                  </span>
+                ) : null}
+                <span
+                  className="rounded-full px-2 py-0.5 text-xs font-semibold"
+                  style={{
+                    background: statusLabel === "Ativo" ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.1)",
+                    color: statusLabel === "Ativo" ? "#10b981" : "#ef4444"
+                  }}
+                >
+                  ● {statusLabel}
+                </span>
+                <span
+                  className="rounded-full px-2.5 py-0.5 text-xs font-bold"
+                  style={{ background: `${scoreColor}20`, color: scoreColor }}
+                >
+                  Score {score}
+                </span>
+              </div>
+            </div>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
+            className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors"
+            style={{ background: "var(--row-hover)" }}
             aria-label="close"
           >
-            ✕
+            <X size={16} style={{ color: "var(--text-dim)" }} />
           </button>
         </div>
 
-        {hasAds ? (
-          <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-[var(--border-color)] px-4 py-2">
-            <button type="button" onClick={() => setMode("preview")} className={tabClass(mode === "preview")}>
-              {t("fmtAd")}
-            </button>
-            <button type="button" onClick={() => setMode("copy")} className={tabClass(mode === "copy")}>
-              {t("copyTab")}
-            </button>
-            <button type="button" onClick={() => setMode("usage")} className={tabClass(mode === "usage")}>
-              {t("usageTab")}
-            </button>
-            {mode === "preview" ? (
-              <span className="ml-auto flex flex-wrap gap-1">
-                {FORMATS.map((f) => (
-                  <button
-                    key={f.key}
-                    type="button"
-                    onClick={() => setFormat(f.key)}
-                    className={tabClass(format === f.key)}
-                  >
-                    {t(f.label)}
-                  </button>
-                ))}
-              </span>
-            ) : null}
+        {metrics ? (
+          <div
+            className="flex shrink-0 flex-wrap items-center gap-4 px-6 py-3"
+            style={{ borderBottom: "1px solid var(--border-color)", background: "var(--surface-bg)" }}
+          >
+            {metricStrip.map((m) => (
+              <div key={m.key} className="flex flex-col">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                  {tMetrics(METRIC_BY_KEY[m.key].label)}
+                </span>
+                <span className="text-sm font-bold" style={{ color: m.color }}>
+                  {formatMetricValue(m.key, Number(metrics[m.key] ?? 0), locale)}
+                </span>
+              </div>
+            ))}
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface-bg)] p-3">
-          {mode === "copy" ? (
-            <div className="mx-auto w-full max-w-lg space-y-4">
+        {hasAds ? (
+          <div
+            className="flex shrink-0 gap-1 px-6 pt-3"
+            style={{ borderBottom: "1px solid var(--border-color)" }}
+          >
+            {mainTabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setMainTab(tab.key)}
+                className="rounded-t-lg px-4 py-2 text-sm font-medium transition-all"
+                style={{
+                  color: mainTab === tab.key ? "var(--amber)" : "var(--text-dim)",
+                  background: mainTab === tab.key ? "rgba(245,166,35,0.08)" : "transparent",
+                  borderBottom: mainTab === tab.key ? "2px solid var(--amber)" : "2px solid transparent"
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+          {mainTab === "copy" ? (
+            <div className="space-y-4 px-6 py-6">
               {detailLoading ? (
                 <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyLoading")}</p>
               ) : detailError ? (
                 <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyEmpty")}</p>
               ) : copiesToShow ? (
                 copiesToShow.map((row) => (
-                  <div
-                    key={`${row.campaignId}-${row.adId}`}
-                    className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3"
-                  >
+                  <div key={`${row.campaignId}-${row.adId}`} className="space-y-3">
                     <div className="text-sm font-semibold text-[var(--text-main)]">{row.campaignName}</div>
                     <div className="text-[11px] text-[var(--text-dim)]">
                       {t("colAdset")}: {row.adsetName}
                     </div>
-                    <div className="mt-3 space-y-3">
-                      <CopySection copy={row.copy} />
-                    </div>
+                    <CopySection copy={row.copy} />
                   </div>
                 ))
               ) : isCopyEmpty || !mergedCopy ? (
@@ -288,112 +418,142 @@ export function CreativePreviewModal({
                 <CopySection copy={mergedCopy} />
               )}
             </div>
-          ) : mode === "usage" ? (
-            <div className="mx-auto w-full max-w-lg space-y-3">
+          ) : mainTab === "usage" ? (
+            <div className="space-y-3 px-6 py-6">
               {detailLoading ? (
                 <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyLoading")}</p>
               ) : !usage || !usage.campaigns.length ? (
                 <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("usageEmpty")}</p>
               ) : (
                 <>
+                  <p className="mb-4 text-sm text-[var(--text-dim)]">
+                    {t("usedInCampaigns", { n: campaignsUsed || usage.campaigns.length })}
+                  </p>
                   {usage.placements.length ? (
-                    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3">
+                    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
                       <div className="text-sm font-semibold text-[var(--text-main)]">{t("placementsTitle")}</div>
                       <div className="mt-2 space-y-2">
                         {usage.placements.map((p) => (
-                          <div key={p.adsetId} className="rounded-lg bg-[var(--surface-bg)] p-2">
+                          <div key={p.adsetId} className="rounded-lg bg-[var(--surface-card)] p-2">
                             <div className="text-xs font-medium text-[var(--text-dim)]">
                               {p.campaignName} · {p.adsetName}
                             </div>
-                            {p.platforms.length ? (
-                              <div className="mt-1 text-[11px] text-[var(--text-dim)]">
-                                {t("placementPlatforms")}: {p.platforms.join(", ")}
-                              </div>
-                            ) : null}
-                            {p.positions.length ? (
-                              <div className="mt-1 flex flex-wrap gap-1">
-                                {p.positions.map((pos) => (
-                                  <span
-                                    key={pos}
-                                    className="rounded-md bg-[var(--surface-card)] px-2 py-0.5 text-[10px] text-[var(--text-dim)] ring-1 ring-[var(--border-color)]"
-                                  >
-                                    {pos}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="mt-1 text-[11px] text-[var(--text-dim)]">{t("placementAutomatic")}</div>
-                            )}
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : null}
                   {usage.campaigns.map((c) => (
-                    <div key={c.id} className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3">
-                      <Link
-                        href={`/campaigns/${c.id}?client=${encodeURIComponent(usage.clientSlug)}`}
-                        className="text-sm font-semibold text-[var(--violet)] hover:underline"
-                      >
-                        {c.name}
-                      </Link>
-                      <div className="mt-2 space-y-2">
-                        {c.adsets.map((s, i) => (
-                          <div key={s.id ?? i} className="rounded-lg bg-[var(--surface-bg)] p-2">
-                            <Link
-                              href={`/campaigns/${c.id}/adsets?client=${encodeURIComponent(usage.clientSlug)}`}
-                              className="ui-link text-xs"
-                            >
-                              {s.name}
-                            </Link>
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {s.ads.map((ad) => (
-                                <Link
-                                  key={ad.id}
-                                  href={`/campaigns/${c.id}/ads?client=${encodeURIComponent(usage.clientSlug)}`}
-                                  className="rounded-md bg-[var(--surface-card)] px-2 py-0.5 text-[11px] text-[var(--text-dim)] ring-1 ring-[var(--border-color)] hover:text-[var(--violet-bright)]"
-                                >
-                                  {ad.name}
-                                </Link>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                    <div
+                      key={c.id}
+                      className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="flex h-8 w-8 items-center justify-center rounded-lg"
+                          style={{ background: "rgba(245,166,35,0.12)" }}
+                        >
+                          <BarChart2 size={15} style={{ color: "var(--amber)" }} />
+                        </div>
+                        <div>
+                          <Link
+                            href={`/campaigns/${c.id}?client=${encodeURIComponent(usage.clientSlug)}`}
+                            className="text-sm font-semibold text-[var(--text-main)] hover:text-[var(--amber)]"
+                          >
+                            {c.name}
+                          </Link>
+                        </div>
                       </div>
+                      <span
+                        className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                        style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}
+                      >
+                        Ativa
+                      </span>
                     </div>
                   ))}
                 </>
               )}
             </div>
-          ) : mode === "preview" && hasAds ? (
-            loading || detailLoading ? (
-              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("previewLoading")}</p>
-            ) : preview && !err ? (
-              <div className="mx-auto w-full" style={{ maxWidth: previewW }}>
+          ) : loading || detailLoading ? (
+            <p className="py-12 text-center text-sm text-[var(--text-dim)]">{t("previewLoading")}</p>
+          ) : preview && !err && hasAds ? (
+            <div className="px-6 py-5">
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                {FORMATS.map((f) => {
+                  const Icon = f.icon;
+                  const active = format === f.key;
+                  return (
+                    <button
+                      key={f.key}
+                      type="button"
+                      onClick={() => setFormat(f.key)}
+                      className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-all"
+                      style={{
+                        background: active ? "var(--amber)" : "var(--surface-bg)",
+                        color: active ? "#0f1419" : "var(--text-dim)",
+                        borderColor: active ? "var(--amber)" : "var(--border-color)",
+                        fontWeight: active ? 600 : 400
+                      }}
+                    >
+                      <Icon size={13} />
+                      {t(f.labelKey)}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mx-auto w-full overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-lg">
                 <iframe
                   title="ad-preview"
                   src={preview.src}
                   scrolling="yes"
-                  style={{
-                    width: "100%",
-                    height: previewH,
-                    minHeight: 480
-                  }}
-                  className="block border-0 bg-[var(--surface-card)]"
+                  style={{ width: "100%", height: previewH, minHeight: 480 }}
+                  className="block border-0"
                 />
               </div>
-            ) : imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="" className="mx-auto max-w-full rounded-lg object-contain" />
-            ) : (
-              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("previewUnavailable")}</p>
-            )
-          ) : imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" className="mx-auto max-w-full rounded-lg object-contain" />
+            </div>
+          ) : previewImage ? (
+            <div className="flex items-center justify-center px-6 py-8">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewImage}
+                alt={name}
+                className="max-h-[480px] max-w-full rounded-xl object-contain"
+              />
+              {creativeType === "Video" ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div
+                    className="flex h-14 w-14 items-center justify-center rounded-full"
+                    style={{ background: "rgba(0,0,0,0.55)" }}
+                  >
+                    <Play size={22} fill="#fff" style={{ color: "#fff", marginLeft: 3 }} />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : primaryBody ? (
+            <div className="px-6 py-6">
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
+                <p className="text-sm leading-relaxed text-[var(--text-main)]">{primaryBody}</p>
+              </div>
+            </div>
           ) : (
-            <p className="py-8 text-center text-sm text-[var(--text-dim)]">—</p>
+            <p className="py-12 text-center text-sm text-[var(--text-dim)]">{t("previewUnavailable")}</p>
           )}
+        </div>
+
+        <div
+          className="flex shrink-0 items-center justify-end px-6 py-4"
+          style={{ borderTop: "1px solid var(--border-color)" }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-5 py-2 text-sm font-semibold"
+            style={{ background: "var(--amber)", color: "#0f1419" }}
+          >
+            {t("close")}
+          </button>
         </div>
       </div>
     </div>
