@@ -15,6 +15,18 @@ import {
 
 const STORAGE_KEY = "agency-brain-nav-expanded";
 
+function readExpandedPreference(inAgencyBrain: boolean): boolean {
+  if (inAgencyBrain) return true;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === "true") return true;
+    if (stored === "false") return false;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
 type Props = {
   collapsed: boolean;
   agencyBrainFeatures: AgencyBrainFeatureFlags;
@@ -75,20 +87,10 @@ export function AgencyBrainNavGroup({
   const features = resolveAgencyBrainFeatures(agencyBrainFeatures);
   const allowed = !permissionsReady || features.allowCreativeMemoryAi;
 
-  const [expanded, setExpanded] = useState(!collapsed || inAgencyBrain);
+  const [expanded, setExpanded] = useState(() => readExpandedPreference(inAgencyBrain));
 
   useEffect(() => {
-    if (inAgencyBrain || !collapsed) setExpanded(true);
-  }, [inAgencyBrain, collapsed]);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === "true") setExpanded(true);
-      if (stored === "false" && !inAgencyBrain) setExpanded(false);
-    } catch {
-      /* ignore */
-    }
+    if (inAgencyBrain) setExpanded(true);
   }, [inAgencyBrain]);
 
   function toggleExpanded() {
@@ -120,15 +122,17 @@ export function AgencyBrainNavGroup({
 
   return (
     <div className="space-y-0.5">
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-start gap-0.5">
         <Link
           href={AGENCY_BRAIN_MVP_NAV.route}
           onClick={() => onNavigate?.()}
-          className={`${sidebarItemClasses(parentActive)} !pr-1`}
+          className={`${sidebarItemClasses(parentActive)} min-w-0 flex-1 !pr-1`}
         >
           <NavIcon d={brainIcon} />
-          <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left">
-            <span className="truncate">{t(AGENCY_BRAIN_MVP_NAV.navKey)}</span>
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-left">
+            <span className="min-w-0 whitespace-normal leading-snug">
+              {t(AGENCY_BRAIN_MVP_NAV.navKey)}
+            </span>
             <span
               className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wider"
               style={{
@@ -144,7 +148,7 @@ export function AgencyBrainNavGroup({
         <button
           type="button"
           onClick={toggleExpanded}
-          className="rounded-lg p-1.5 text-[#94a3b8] transition hover:bg-white/5 hover:text-[#f8fafc]"
+          className="mt-1 shrink-0 rounded-lg p-1.5 text-[#94a3b8] transition hover:bg-white/5 hover:text-[#f8fafc]"
           aria-expanded={expanded}
           aria-label={expanded ? t("collapseSidebar") : t("expandSidebar")}
         >

@@ -7,10 +7,11 @@ import { Link } from "@/i18n/navigation";
 import { BillingPlansSkeleton } from "@/components/billing/BillingSkeletons";
 import { BillingBackLink, PlanCard, type PlanCardData } from "@/components/billing/PlanLimitsCard";
 
-export function BillingPlansClient() {
+export function BillingPlansClient({ variant = "portal" }: { variant?: "portal" | "marketing" }) {
   const t = useTranslations("billingPage");
   const locale = useLocale();
   const isBr = isBrBillingMode(locale);
+  const isMarketing = variant === "marketing";
   const [plans, setPlans] = useState<PlanCardData[]>([]);
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
@@ -27,23 +28,35 @@ export function BillingPlansClient() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 pb-4">
-      <BillingBackLink href="/billing" />
+    <div className={`mx-auto max-w-6xl space-y-8 pb-4 ${isMarketing ? "px-0" : ""}`}>
+      {!isMarketing ? <BillingBackLink href="/billing" /> : null}
 
-      <div className="text-center">
-        <h1 className="font-heading text-3xl font-extrabold tracking-tight text-[var(--text-main)]">{t("plansTitle")}</h1>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-[var(--text-dim)]">{t("plansSubtitle")}</p>
-      </div>
+      {!isMarketing ? (
+        <div className="text-center">
+          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-[var(--text-main)]">{t("plansTitle")}</h1>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-[var(--text-dim)]">{t("plansSubtitle")}</p>
+        </div>
+      ) : null}
 
       <div className="flex justify-center">
-        <div className="inline-flex rounded-2xl border border-[var(--border-color)] bg-slate-100/80 p-1.5 shadow-inner">
+        <div
+          className={`inline-flex rounded-2xl border p-1.5 shadow-inner ${
+            isMarketing
+              ? "border-white/10 bg-white/5"
+              : "border-[var(--border-color)] bg-slate-100/80"
+          }`}
+        >
           <button
             type="button"
             onClick={() => setCycle("monthly")}
             className={`rounded-xl px-6 py-2.5 text-sm font-bold transition ${
               cycle === "monthly"
-                ? "bg-white text-[var(--text-main)] shadow-sm"
-                : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
+                ? isMarketing
+                  ? "bg-white/10 text-white shadow-sm"
+                  : "bg-white text-[var(--text-main)] shadow-sm"
+                : isMarketing
+                  ? "text-violet-200/60 hover:text-white"
+                  : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
             }`}
           >
             {t("monthly")}
@@ -53,8 +66,12 @@ export function BillingPlansClient() {
             onClick={() => setCycle("yearly")}
             className={`rounded-xl px-6 py-2.5 text-sm font-bold transition ${
               cycle === "yearly"
-                ? "bg-white text-[var(--text-main)] shadow-sm"
-                : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
+                ? isMarketing
+                  ? "bg-white/10 text-white shadow-sm"
+                  : "bg-white text-[var(--text-main)] shadow-sm"
+                : isMarketing
+                  ? "text-violet-200/60 hover:text-white"
+                  : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
             }`}
           >
             {t("yearly")}
@@ -67,15 +84,19 @@ export function BillingPlansClient() {
 
       <div className="grid items-end gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {plans.map((p) => (
-          <PlanCard key={p.id} plan={p} cycle={cycle} featured={p.slug === "advanced"} />
+          <PlanCard key={p.id} plan={p} cycle={cycle} featured={p.slug === "advanced"} variant={variant} />
         ))}
       </div>
 
-      <p className="text-center text-xs text-[var(--text-dimmer)]">
+      <p
+        className={`text-center text-xs ${isMarketing ? "text-violet-200/50" : "text-[var(--text-dimmer)]"}`}
+      >
         {isBr ? t("plansFootnoteBr") : t("plansFootnote")}{" "}
-        <Link href="/billing" className="ui-link">
-          {t("backToPortal")}
-        </Link>
+        {!isMarketing ? (
+          <Link href="/billing" className="ui-link">
+            {t("backToPortal")}
+          </Link>
+        ) : null}
       </p>
     </div>
   );

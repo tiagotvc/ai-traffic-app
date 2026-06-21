@@ -22,5 +22,17 @@ export const planLimitsSchema = z.object({
   allowNavCreatives: z.boolean(),
   allowNavReports: z.boolean(),
   allowNavAlerts: z.boolean(),
-  allowNavAutomations: z.boolean()
+  allowNavAutomations: z.boolean(),
+  allowDashboardCanvas: z.boolean(),
+  maxDashboards: z.number().int(),
+  maxDashboardWidgets: z.number().int(),
+  allowDashboardResize: z.boolean(),
+  allowDashboardAiWidgets: z.union([
+    z.literal(false),
+    z.literal("basic"),
+    z.literal("premium"),
+    z.literal("advanced")
+  ]),
+  allowDashboardAiBuilder: z.boolean(),
+  allowDashboardSharing: z.boolean()
 });

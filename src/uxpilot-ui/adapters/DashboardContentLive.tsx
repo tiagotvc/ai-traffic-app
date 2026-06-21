@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Settings2, Sparkles } from "lucide-react";
+import { ArrowRight, Settings2, Sparkles } from "lucide-react";
 
 import { AgencyHealthLayout } from "@/components/dashboard/AgencyHealthLayout";
+import { Link } from "@/i18n/navigation";
 import { BrainShelf } from "@/components/dashboard/BrainShelf";
 import { DashboardCustomizeModal } from "@/components/dashboard/DashboardCustomizeModal";
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
@@ -102,6 +103,31 @@ export function DashboardContentLive() {
       </div>
 
       {data.note ? <div className="ui-alert-info">{data.note}</div> : null}
+
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3"
+        style={{
+          background: "rgba(79,70,229,0.06)",
+          borderColor: "rgba(79,70,229,0.18)"
+        }}
+      >
+        <div>
+          <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+            {t("canvasUpsellTitle")}
+          </p>
+          <p className="text-xs" style={{ color: "var(--text-dim)" }}>
+            {t("canvasUpsellHint")}
+          </p>
+        </div>
+        <Link
+          href="/pricing"
+          className="flex items-center gap-1 text-xs font-semibold"
+          style={{ color: "#818cf8" }}
+        >
+          {t("canvasUpsellCta")}
+          <ArrowRight size={12} />
+        </Link>
+      </div>
 
       {!data.isEmptyState && sections.brainShelf ? (
         <div

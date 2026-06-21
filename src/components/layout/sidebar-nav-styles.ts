@@ -15,8 +15,10 @@ export const SIDEBAR_MODULE_ACCENTS = {
 export type SidebarModuleAccent = keyof typeof SIDEBAR_MODULE_ACCENTS;
 
 export function sidebarItemClasses(active: boolean, collapsed?: boolean): string {
-  const base = `relative flex w-full items-center rounded-lg transition-all duration-200 ${
-    collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5 text-[13px]"
+  const base = `relative flex w-full rounded-lg transition-all duration-200 ${
+    collapsed
+      ? "items-center justify-center px-2 py-2.5"
+      : "items-start gap-3 px-3 py-2.5 text-[13px]"
   }`;
   return `${base} ${active ? SIDEBAR_NAV.itemActive : SIDEBAR_NAV.itemIdle}`;
 }

@@ -11,12 +11,14 @@ export function SidebarFooter({
   planName,
   subscriptionStatus,
   collapsed,
+  isPlatformAdmin = false,
   onNavigate
 }: {
   userName: string;
   planName?: string;
   subscriptionStatus?: string;
   collapsed: boolean;
+  isPlatformAdmin?: boolean;
   onNavigate?: () => void;
 }) {
   const tNav = useTranslations("nav");
@@ -47,6 +49,7 @@ export function SidebarFooter({
         userName={userName}
         subtitle={userSubtitle}
         collapsed={collapsed}
+        isPlatformAdmin={isPlatformAdmin}
         onNavigate={onNavigate}
         onSignOut={signOut}
         signingOut={signingOut}

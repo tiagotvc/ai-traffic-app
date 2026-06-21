@@ -57,6 +57,12 @@ import type { ClientActionPlan } from "@/db/entities/ClientActionPlan";
 import type { ClientActionPlanItem } from "@/db/entities/ClientActionPlanItem";
 import type { TenantAddon } from "@/db/entities/TenantAddon";
 import type { MarketMemory } from "@/db/entities/MarketMemory";
+import type { DashboardAddon } from "@/db/entities/DashboardAddon";
+import type { DashboardAiWidget } from "@/db/entities/DashboardAiWidget";
+import type { DashboardLayout } from "@/db/entities/DashboardLayout";
+import type { DashboardTemplate } from "@/db/entities/DashboardTemplate";
+import type { DashboardWidgetInstance } from "@/db/entities/DashboardWidgetInstance";
+import type { DashboardWidgetPermission } from "@/db/entities/DashboardWidgetPermission";
 import type { VideoUploadSession } from "@/db/entities/VideoUploadSession";
 import type { VideoUploadPart } from "@/db/entities/VideoUploadPart";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
@@ -123,7 +129,13 @@ const ENTITY = {
   ClientActionPlan: "ClientActionPlan",
   ClientActionPlanItem: "ClientActionPlanItem",
   TenantAddon: "TenantAddon",
-  MarketMemory: "MarketMemory"
+  MarketMemory: "MarketMemory",
+  DashboardLayout: "DashboardLayout",
+  DashboardWidgetInstance: "DashboardWidgetInstance",
+  DashboardTemplate: "DashboardTemplate",
+  DashboardWidgetPermission: "DashboardWidgetPermission",
+  DashboardAiWidget: "DashboardAiWidget",
+  DashboardAddon: "DashboardAddon"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -217,6 +229,18 @@ export async function repositories() {
     clientActionPlan: repositoryFor<ClientActionPlan>(ds, ENTITY.ClientActionPlan),
     clientActionPlanItem: repositoryFor<ClientActionPlanItem>(ds, ENTITY.ClientActionPlanItem),
     tenantAddon: repositoryFor<TenantAddon>(ds, ENTITY.TenantAddon),
-    marketMemory: repositoryFor<MarketMemory>(ds, ENTITY.MarketMemory)
+    marketMemory: repositoryFor<MarketMemory>(ds, ENTITY.MarketMemory),
+    dashboardLayout: repositoryFor<DashboardLayout>(ds, ENTITY.DashboardLayout),
+    dashboardWidgetInstance: repositoryFor<DashboardWidgetInstance>(
+      ds,
+      ENTITY.DashboardWidgetInstance
+    ),
+    dashboardTemplate: repositoryFor<DashboardTemplate>(ds, ENTITY.DashboardTemplate),
+    dashboardWidgetPermission: repositoryFor<DashboardWidgetPermission>(
+      ds,
+      ENTITY.DashboardWidgetPermission
+    ),
+    dashboardAiWidget: repositoryFor<DashboardAiWidget>(ds, ENTITY.DashboardAiWidget),
+    dashboardAddon: repositoryFor<DashboardAddon>(ds, ENTITY.DashboardAddon)
   };
 }

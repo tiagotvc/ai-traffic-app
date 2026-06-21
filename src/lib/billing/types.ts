@@ -46,6 +46,14 @@ export type PlanLimits = {
   allowNavReports: boolean;
   allowNavAlerts: boolean;
   allowNavAutomations: boolean;
+  /** Dashboard V3 canvas — false keeps legacy fixed dashboard */
+  allowDashboardCanvas: boolean;
+  maxDashboards: number;
+  maxDashboardWidgets: number;
+  allowDashboardResize: boolean;
+  allowDashboardAiWidgets: false | "basic" | "premium" | "advanced";
+  allowDashboardAiBuilder: boolean;
+  allowDashboardSharing: boolean;
 };
 
 export type ExternalPrices = {
@@ -77,7 +85,14 @@ export const FREE_LIMITS: PlanLimits = {
   allowNavCreatives: true,
   allowNavReports: false,
   allowNavAlerts: true,
-  allowNavAutomations: false
+  allowNavAutomations: false,
+  allowDashboardCanvas: false,
+  maxDashboards: 0,
+  maxDashboardWidgets: 0,
+  allowDashboardResize: false,
+  allowDashboardAiWidgets: false,
+  allowDashboardAiBuilder: false,
+  allowDashboardSharing: false
 };
 
 export const BASIC_LIMITS: PlanLimits = {
@@ -101,7 +116,14 @@ export const BASIC_LIMITS: PlanLimits = {
   allowNavCreatives: true,
   allowNavReports: true,
   allowNavAlerts: true,
-  allowNavAutomations: false
+  allowNavAutomations: false,
+  allowDashboardCanvas: false,
+  maxDashboards: 0,
+  maxDashboardWidgets: 0,
+  allowDashboardResize: false,
+  allowDashboardAiWidgets: false,
+  allowDashboardAiBuilder: false,
+  allowDashboardSharing: false
 };
 
 export const ADVANCED_LIMITS: PlanLimits = {
@@ -125,7 +147,14 @@ export const ADVANCED_LIMITS: PlanLimits = {
   allowNavCreatives: true,
   allowNavReports: true,
   allowNavAlerts: true,
-  allowNavAutomations: true
+  allowNavAutomations: true,
+  allowDashboardCanvas: true,
+  maxDashboards: 3,
+  maxDashboardWidgets: 20,
+  allowDashboardResize: true,
+  allowDashboardAiWidgets: "basic",
+  allowDashboardAiBuilder: false,
+  allowDashboardSharing: false
 };
 
 export const AGENCY_LIMITS: PlanLimits = {
@@ -149,7 +178,33 @@ export const AGENCY_LIMITS: PlanLimits = {
   allowNavCreatives: true,
   allowNavReports: true,
   allowNavAlerts: true,
-  allowNavAutomations: true
+  allowNavAutomations: true,
+  allowDashboardCanvas: true,
+  maxDashboards: 10,
+  maxDashboardWidgets: 50,
+  allowDashboardResize: true,
+  allowDashboardAiWidgets: "premium",
+  allowDashboardAiBuilder: false,
+  allowDashboardSharing: true
+};
+
+export const MASTER_LIMITS: PlanLimits = {
+  ...AGENCY_LIMITS,
+  maxDashboards: -1,
+  maxDashboardWidgets: -1,
+  allowDashboardAiWidgets: "advanced",
+  allowDashboardAiBuilder: true
+};
+
+/** Full privileges for platform admins (bypasses tenant plan). */
+export const PLATFORM_ADMIN_LIMITS: PlanLimits = {
+  ...MASTER_LIMITS,
+  maxClients: -1,
+  maxAdAccounts: -1,
+  maxMembers: -1,
+  maxAutomationRules: -1,
+  maxAiRequestsPerMonth: -1,
+  maxScheduledReports: -1
 };
 
 /** @deprecated use ADVANCED_LIMITS */

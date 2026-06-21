@@ -36,8 +36,8 @@ export function NavUpgradeLink({
     >
       <span className="opacity-50">{icon}</span>
       {!collapsed ? (
-        <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left">
-          <span className="truncate opacity-70">{label}</span>
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-left">
+          <span className="min-w-0 whitespace-normal leading-snug opacity-70">{label}</span>
           <svg
             className="h-3.5 w-3.5 shrink-0 text-amber-400/90"
             fill="none"

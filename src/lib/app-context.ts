@@ -73,7 +73,7 @@ export async function getAppContext() {
 
   await ensureFreeSubscription(tenant.id);
 
-  const entitlements: Entitlements = await getEntitlements(tenant.id);
+  const entitlements: Entitlements = await getEntitlements(tenant.id, { platformAdmin });
 
   return { session, ds, tenant, user, defaultClient, metaAccessToken, entitlements, platformAdmin };
 }

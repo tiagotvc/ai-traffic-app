@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronDown, ChevronLeft, ChevronRight, Globe, Info, LifeBuoy, LogOut, Moon, ScrollText, Settings, Sun, Zap } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Globe, Info, LifeBuoy, LogOut, Moon, Receipt, RotateCcw, ScrollText, Settings, Shield, Sun, Ticket, Users, Wallet, Zap } from "lucide-react";
 
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import {
+  isPlatformAdminLinkActive,
+  PLATFORM_ADMIN_LINKS
+} from "@/components/layout/admin-nav-links";
 import { routing, type AppLocale } from "@/i18n/routing";
 import { useTheme } from "@/uxpilot-ui/adapters/ThemeProvider";
 
@@ -189,6 +193,7 @@ export function SidebarUserBlock({
   userName,
   subtitle,
   collapsed,
+  isPlatformAdmin = false,
   onNavigate,
   onSignOut,
   signingOut
@@ -196,11 +201,13 @@ export function SidebarUserBlock({
   userName: string;
   subtitle: string;
   collapsed: boolean;
+  isPlatformAdmin?: boolean;
   onNavigate?: () => void;
   onSignOut: () => void;
   signingOut?: boolean;
 }) {
   const tNav = useTranslations("nav");
+  const tAdmin = useTranslations("billingAdmin");
   const tCommon = useTranslations("common");
   const locale = useLocale() as AppLocale;
   const pathname = usePathname();
@@ -222,6 +229,21 @@ export function SidebarUserBlock({
 
   const menuLinkClass =
     "flex w-full items-center gap-2 px-3 py-2.5 font-body text-xs transition-colors hover:bg-white/[0.04]";
+
+  const adminIcons = {
+    users: Users,
+    plans: Receipt,
+    finance: Wallet,
+    coupons: Ticket,
+    refunds: RotateCcw
+  } as const;
+
+  function adminLinkStyle(active: boolean): React.CSSProperties {
+    return {
+      color: active ? "#f5a623" : "#94a3b8",
+      background: active ? "rgba(245,166,35,0.08)" : "transparent"
+    };
+  }
 
   return (
     <div
@@ -259,14 +281,19 @@ export function SidebarUserBlock({
       {menuOpen ? (
         <div
           className={`absolute z-50 overflow-hidden rounded-lg border shadow-xl ${
-            collapsed ? "bottom-full left-full mb-0 ml-2 w-52" : "bottom-full left-3 right-3 mb-1"
+            collapsed ? "bottom-full left-full mb-0 ml-2 w-56" : "bottom-full left-3 right-3 mb-1"
           }`}
           style={{ background: "#0d1520", borderColor: "rgba(255,255,255,0.1)" }}
         >
           <Link href="/settings" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
             <Settings size={13} style={{ color: "#f5a623" }} />
-            {tNav("settings")}
+            {tNav("myProfile")}
           </Link>
+          <Link href="/billing" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+            <Receipt size={13} style={{ color: "#f5a623" }} />
+            {tNav("billing")}
+          </Link>
+          <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
           <Link href="/support" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
             <LifeBuoy size={13} style={{ color: "#f5a623" }} />
             {tNav("support")}
@@ -313,6 +340,35 @@ export function SidebarUserBlock({
             {isLight ? <Moon size={13} style={{ color: "#f5a623" }} /> : <Sun size={13} style={{ color: "#f5a623" }} />}
             {isLight ? "Modo Escuro" : "Modo Claro"}
           </button>
+          {isPlatformAdmin ? (
+            <>
+              <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
+              <div className="px-3 py-1.5">
+                <p className="mb-1 flex items-center gap-1.5 font-body text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#64748b" }}>
+                  <Shield size={11} style={{ color: "#f5a623" }} />
+                  {tNav("profileAdminSection")}
+                </p>
+                <div className="space-y-0.5">
+                  {PLATFORM_ADMIN_LINKS.map((link) => {
+                    const Icon = adminIcons[link.id as keyof typeof adminIcons];
+                    const active = isPlatformAdminLinkActive(pathname, link.href);
+                    return (
+                      <Link
+                        key={link.id}
+                        href={link.href}
+                        onClick={closeAndNavigate}
+                        className={`${menuLinkClass} rounded-md`}
+                        style={adminLinkStyle(active)}
+                      >
+                        <Icon size={13} style={{ color: active ? "#f5a623" : "#94a3b8" }} />
+                        {tAdmin(link.labelKey)}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : null}
           <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
           <button
             type="button"

@@ -9,7 +9,7 @@ const CACHE_TTL_SEC = 60;
 export async function GET(req: Request) {
   try {
     const { tenant, platformAdmin } = await requireAppShellContext();
-    const cacheKey = `entitlements:${tenant.id}`;
+    const cacheKey = `entitlements:${tenant.id}${platformAdmin ? ":platform_admin" : ""}`;
     const skipCache = new URL(req.url).searchParams.has("fresh");
 
     if (!skipCache) {
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       }
     }
 
-    const entitlements = await getEntitlements(tenant.id);
+    const entitlements = await getEntitlements(tenant.id, { platformAdmin });
     const payload = { entitlements, isPlatformAdmin: platformAdmin };
     void redisSetJson(cacheKey, payload, CACHE_TTL_SEC);
 

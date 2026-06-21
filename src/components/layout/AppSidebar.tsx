@@ -123,7 +123,7 @@ export function AppSidebar({
     <aside
       className={`relative flex h-full shrink-0 flex-col text-[#94a3b8] print:hidden ${
         isDrawer ? "w-full" : "border-r border-[var(--sidebar-border)] transition-[width] duration-300 ease-in-out"
-      } ${!isDrawer ? (effectiveCollapsed ? "w-16" : "w-56") : ""}`}
+      } ${!isDrawer ? (effectiveCollapsed ? "w-16" : "w-60") : ""}`}
       style={{ background: "#0a0f14" }}
     >
       {/* Logo + collapse (desktop sidebar only) */}
@@ -185,8 +185,8 @@ export function AppSidebar({
             <>
               {item.icon}
               {!effectiveCollapsed ? (
-                <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-left">
-                  <span className="truncate">{item.label}</span>
+                <span className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
+                  <span className="min-w-0 whitespace-normal leading-snug">{item.label}</span>
                   {item.beta ? (
                     <span
                       className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wider"
@@ -262,6 +262,7 @@ export function AppSidebar({
         planName={planName}
         subscriptionStatus={subscriptionStatus}
         collapsed={effectiveCollapsed}
+        isPlatformAdmin={isPlatformAdmin}
         onNavigate={onNavigate}
       />
     </aside>

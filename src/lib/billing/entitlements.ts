@@ -4,11 +4,13 @@ import { repositories } from "@/db/repositories";
 import type { Plan } from "@/db/entities/Plan";
 import type { Subscription } from "@/db/entities/Subscription";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
+import { getAppShellContext } from "@/lib/app-shell-context";
 import { redisDeleteKey } from "@/lib/redis-cache";
 import { ensureFreeSubscription } from "./event-handlers";
 import { getTenantAddonBonuses, mergePlanLimitsWithAddons } from "./tenant-addons";
 import { resolveLimits } from "./resolve-limits";
 import type { Entitlements, PlanLimitKey, PlanLimits, TenantUsage } from "./types";
+import { PLATFORM_ADMIN_LIMITS } from "./types";
 
 export class PlanLimitError extends Error {
   code = "PLAN_LIMIT" as const;
@@ -120,7 +122,18 @@ export async function getTenantUsage(tenantId: string): Promise<TenantUsage> {
 
 export { resolveLimits };
 
-export async function getEntitlements(tenantId: string): Promise<Entitlements> {
+export function applyPlatformAdminEntitlements(entitlements: Entitlements): Entitlements {
+  return {
+    ...entitlements,
+    canWrite: true,
+    limits: { ...PLATFORM_ADMIN_LIMITS }
+  };
+}
+
+export async function getEntitlements(
+  tenantId: string,
+  options?: { platformAdmin?: boolean }
+): Promise<Entitlements> {
   const { subscription: sub, plan: p } = await getTenantSubscription(tenantId);
   const baseLimits = resolveLimits(p);
   const bonuses = await getTenantAddonBonuses(tenantId);
@@ -129,7 +142,7 @@ export async function getEntitlements(tenantId: string): Promise<Entitlements> {
   const isPaid = p?.slug !== "free" && sub.status === "active";
   const canWrite = sub.status === "active" || sub.status === "trialing" || p?.slug === "free";
 
-  return {
+  const entitlements: Entitlements = {
     planSlug: p?.slug ?? "free",
     planName: p?.name ?? "Free",
     status: sub.status,
@@ -138,6 +151,12 @@ export async function getEntitlements(tenantId: string): Promise<Entitlements> {
     isPaid,
     canWrite: canWrite && sub.status !== "suspended"
   };
+
+  if (options?.platformAdmin) {
+    return applyPlatformAdminEntitlements(entitlements);
+  }
+
+  return entitlements;
 }
 
 const BOOLEAN_LIMIT_KEYS = [
@@ -155,10 +174,19 @@ const BOOLEAN_LIMIT_KEYS = [
   "allowNavCreatives",
   "allowNavReports",
   "allowNavAlerts",
-  "allowNavAutomations"
+  "allowNavAutomations",
+  "allowDashboardCanvas",
+  "allowDashboardResize",
+  "allowDashboardAiBuilder",
+  "allowDashboardSharing"
 ] as const;
 
-type NumericPlanLimitKey = Exclude<PlanLimitKey, (typeof BOOLEAN_LIMIT_KEYS)[number]>;
+const TIER_LIMIT_KEYS = ["allowDashboardAiWidgets"] as const;
+
+type NumericPlanLimitKey = Exclude<
+  PlanLimitKey,
+  (typeof BOOLEAN_LIMIT_KEYS)[number] | (typeof TIER_LIMIT_KEYS)[number]
+>;
 
 const LIMIT_CHECKS: Record<NumericPlanLimitKey, (u: TenantUsage) => number> = {
   maxClients: (u) => u.clients,
@@ -166,7 +194,9 @@ const LIMIT_CHECKS: Record<NumericPlanLimitKey, (u: TenantUsage) => number> = {
   maxMembers: (u) => u.members,
   maxAutomationRules: (u) => u.automationRules,
   maxAiRequestsPerMonth: (u) => u.aiRequestsThisMonth,
-  maxScheduledReports: (u) => u.scheduledReports
+  maxScheduledReports: (u) => u.scheduledReports,
+  maxDashboards: () => 0,
+  maxDashboardWidgets: () => 0
 };
 
 export async function assertSubscriptionWritable(tenantId: string) {
@@ -180,15 +210,23 @@ export async function assertSubscriptionWritable(tenantId: string) {
 }
 
 export async function assertLimit(tenantId: string, key: PlanLimitKey) {
-  const ent = await getEntitlements(tenantId);
+  const { platformAdmin } = await getAppShellContext();
+  const ent = await getEntitlements(tenantId, { platformAdmin });
   if ((BOOLEAN_LIMIT_KEYS as readonly string[]).includes(key)) {
     if (!ent.limits[key as (typeof BOOLEAN_LIMIT_KEYS)[number]]) {
       throw new PlanLimitError(key, `Recurso não incluído no plano ${ent.planName}`);
     }
     return ent;
   }
+  if ((TIER_LIMIT_KEYS as readonly string[]).includes(key)) {
+    if (!ent.limits.allowDashboardAiWidgets) {
+      throw new PlanLimitError(key, `Recurso não incluído no plano ${ent.planName}`);
+    }
+    return ent;
+  }
   const numericKey = key as NumericPlanLimitKey;
   const max = ent.limits[numericKey];
+  if (typeof max !== "number" || max < 0) return ent;
   const current = LIMIT_CHECKS[numericKey](ent.usage);
   if (current >= max) {
     throw new PlanLimitError(key, `Limit reached: ${key} (${current}/${max})`);

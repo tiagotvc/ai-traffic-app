@@ -284,14 +284,37 @@ export function BillingCtaLink({
   planId,
   slug,
   className,
-  featured = false
+  featured = false,
+  variant = "portal"
 }: {
   planId: string;
   slug: string;
   className?: string;
   featured?: boolean;
+  variant?: "portal" | "marketing";
 }) {
   const t = useTranslations("billingPage");
+
+  if (variant === "marketing") {
+    const callbackUrl = slug === "free" ? "/dashboard" : `/billing/checkout?plan=${planId}`;
+    const href = `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+    return (
+      <Link
+        href={href}
+        className={
+          className ??
+          `mt-6 block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
+            featured
+              ? "bg-[var(--amber)] text-[#0f1419] shadow-lg shadow-amber-600/25 hover:brightness-105"
+              : "border border-amber-200 bg-amber-50 text-[var(--amber)] hover:bg-amber-100"
+          }`
+        }
+      >
+        {slug === "free" ? t("startFreeTrial") : t("subscribe")}
+      </Link>
+    );
+  }
+
   if (slug === "free") {
     return (
       <Link
@@ -353,11 +376,13 @@ const TIER_STYLES: Record<PlanTier, string> = {
 export function PlanCard({
   plan,
   cycle,
-  featured = false
+  featured = false,
+  variant = "portal"
 }: {
   plan: PlanCardData;
   cycle: "monthly" | "yearly";
   featured?: boolean;
+  variant?: "portal" | "marketing";
 }) {
   const t = useTranslations("billingPage");
   const tier = planTier(plan.slug);
@@ -403,6 +428,7 @@ export function PlanCard({
           planId={plan.id}
           slug={plan.slug}
           featured={isPopular || isPremium}
+          variant={variant}
           className={
             isPremium
               ? "mt-6 block w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 text-center text-sm font-extrabold text-[var(--text-main)] shadow-lg transition hover:from-amber-300 hover:to-amber-400"

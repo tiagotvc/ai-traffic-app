@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { authConfig } from "@/auth.config";
 import { routing } from "@/i18n/routing";
 import { getLocaleFromPath, stripLocale } from "@/lib/locale";
+import { isPublicApiPath, isPublicPath } from "@/lib/public-routes";
 
 const intlMiddleware = createIntlMiddleware(routing);
 const { auth } = NextAuth(authConfig);
@@ -19,11 +20,7 @@ export default auth((req) => {
   const path = req.nextUrl.pathname;
 
   if (path.startsWith("/api")) {
-    const publicApi =
-      path.startsWith("/api/auth") ||
-      path.startsWith("/api/health") ||
-      path.startsWith("/api/webhooks/");
-    if (!isLoggedIn && !publicApi) {
+    if (!isLoggedIn && !isPublicApiPath(path)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.next();
@@ -32,10 +29,7 @@ export default auth((req) => {
   const locale = getLocaleFromPath(path);
   const pathWithoutLocale = stripLocale(path);
 
-  const isPublic =
-    pathWithoutLocale === "/" ||
-    pathWithoutLocale === "/login" ||
-    pathWithoutLocale.startsWith("/login/");
+  const isPublic = isPublicPath(pathWithoutLocale);
 
   if (!isLoggedIn && !isPublic) {
     const login = new URL(`/${locale}/login`, req.nextUrl.origin);
@@ -43,7 +37,7 @@ export default auth((req) => {
     return NextResponse.redirect(login);
   }
 
-  if (isLoggedIn && pathWithoutLocale === "/login") {
+  if (isLoggedIn && (pathWithoutLocale === "/" || pathWithoutLocale === "/login")) {
     const switchAccount = req.nextUrl.searchParams.get("switch") === "1";
     if (!switchAccount) {
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, req.nextUrl.origin));

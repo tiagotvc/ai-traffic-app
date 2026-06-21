@@ -22,6 +22,13 @@ export function resolveLimits(plan: PlanLimitsSource): PlanLimits {
     allowNavCreatives: raw.allowNavCreatives ?? true,
     allowNavReports: raw.allowNavReports ?? false,
     allowNavAlerts: raw.allowNavAlerts ?? true,
-    allowNavAutomations: raw.allowNavAutomations ?? false
+    allowNavAutomations: raw.allowNavAutomations ?? false,
+    allowDashboardCanvas: raw.allowDashboardCanvas ?? false,
+    maxDashboards: raw.maxDashboards ?? 0,
+    maxDashboardWidgets: raw.maxDashboardWidgets ?? 0,
+    allowDashboardResize: raw.allowDashboardResize ?? false,
+    allowDashboardAiWidgets: raw.allowDashboardAiWidgets ?? false,
+    allowDashboardAiBuilder: raw.allowDashboardAiBuilder ?? false,
+    allowDashboardSharing: raw.allowDashboardSharing ?? false
   };
 }

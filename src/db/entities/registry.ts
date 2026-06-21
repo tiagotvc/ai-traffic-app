@@ -62,6 +62,12 @@ import { ClientExperiment } from "./ClientExperiment";
 import { ClientActionPlan } from "./ClientActionPlan";
 import { ClientActionPlanItem } from "./ClientActionPlanItem";
 import { MarketMemory } from "./MarketMemory";
+import { DashboardLayout } from "./DashboardLayout";
+import { DashboardWidgetInstance } from "./DashboardWidgetInstance";
+import { DashboardTemplate } from "./DashboardTemplate";
+import { DashboardWidgetPermission } from "./DashboardWidgetPermission";
+import { DashboardAiWidget } from "./DashboardAiWidget";
+import { DashboardAddon } from "./DashboardAddon";
 import { TenantAddon } from "./TenantAddon";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
@@ -126,7 +132,13 @@ export {
   ClientActionPlan,
   ClientActionPlanItem,
   TenantAddon,
-  MarketMemory
+  MarketMemory,
+  DashboardLayout,
+  DashboardWidgetInstance,
+  DashboardTemplate,
+  DashboardWidgetPermission,
+  DashboardAiWidget,
+  DashboardAddon
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -212,7 +224,13 @@ stabilizeTypeOrmEntityNames([
   { ctor: ClientActionPlan, name: "ClientActionPlan" },
   { ctor: ClientActionPlanItem, name: "ClientActionPlanItem" },
   { ctor: TenantAddon, name: "TenantAddon" },
-  { ctor: MarketMemory, name: "MarketMemory" }
+  { ctor: MarketMemory, name: "MarketMemory" },
+  { ctor: DashboardLayout, name: "DashboardLayout" },
+  { ctor: DashboardWidgetInstance, name: "DashboardWidgetInstance" },
+  { ctor: DashboardTemplate, name: "DashboardTemplate" },
+  { ctor: DashboardWidgetPermission, name: "DashboardWidgetPermission" },
+  { ctor: DashboardAiWidget, name: "DashboardAiWidget" },
+  { ctor: DashboardAddon, name: "DashboardAddon" }
 ]);
 
 export const typeOrmEntities = [
@@ -276,5 +294,11 @@ export const typeOrmEntities = [
   ClientActionPlan,
   ClientActionPlanItem,
   TenantAddon,
-  MarketMemory
+  MarketMemory,
+  DashboardLayout,
+  DashboardWidgetInstance,
+  DashboardTemplate,
+  DashboardWidgetPermission,
+  DashboardAiWidget,
+  DashboardAddon
 ] as const;
