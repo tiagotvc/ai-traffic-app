@@ -20,7 +20,7 @@ export type FeedVariant = "learnings" | "hypotheses";
 const PAGE_SIZE = 10;
 
 const MAIN_TABS: Array<{ id: FeedTab | "logs"; href?: string }> = [
-  { id: "learnings", href: "/agency-brain" },
+  { id: "learnings", href: "/agency-brain/learnings" },
   { id: "hypotheses", href: "/agency-brain/hypotheses" },
   { id: "logs" }
 ];

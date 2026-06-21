@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import {
   Area,
@@ -68,7 +69,8 @@ export function DashboardPerformanceChart({
   formatValue,
   metricLabels,
   isLoading,
-  subtitle
+  subtitle,
+  title
 }: {
   data: ChartPoint[];
   activeMetrics: MetricKey[];
@@ -77,7 +79,9 @@ export function DashboardPerformanceChart({
   metricLabels: Record<MetricKey, string>;
   isLoading?: boolean;
   subtitle?: string;
+  title?: string;
 }) {
+  const t = useTranslations("dashboard");
   const [animKey, setAnimKey] = useState(0);
 
   const toggle = (key: MetricKey) => {
@@ -106,10 +110,10 @@ export function DashboardPerformanceChart({
       <div className="mb-4 flex shrink-0 items-center justify-between">
         <div>
           <h3 className="font-heading font-semibold" style={{ color: "var(--text-main)" }}>
-            Performance Overview
+            {title ?? t("metricsChartTitle")}
           </h3>
           <p className="text-xs" style={{ color: "var(--text-dimmer)" }}>
-            {subtitle ?? "Últimos 30 dias"}
+            {subtitle ?? t("last30Days")}
           </p>
         </div>
       </div>

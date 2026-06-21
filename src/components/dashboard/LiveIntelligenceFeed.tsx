@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { Link } from "@/i18n/navigation";
@@ -24,8 +25,13 @@ export function LiveIntelligenceFeed({
   events: IntelligenceEvent[];
   isLoading?: boolean;
 }) {
+  const t = useTranslations("dashboard");
   const [filter, setFilter] = useState<"all" | "critical" | "win">("all");
-  const filtered = events.filter((a) => filter === "all" || a.type === filter);
+  const filtered = events.filter((a) => {
+    if (filter === "all") return true;
+    if (filter === "win") return a.type === "win";
+    return a.type === "critical" || a.type === "info";
+  });
 
   if (isLoading) {
     return (
@@ -47,23 +53,28 @@ export function LiveIntelligenceFeed({
   return (
     <div className="flex h-full flex-col">
       <div className="mb-3 flex shrink-0 items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400" />
-          <h3 className="font-heading text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-            Live Intelligence
-          </h3>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400" />
+            <h3 className="font-heading text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+              {t("alertsTitle")}
+            </h3>
+          </div>
+          <p className="mt-0.5 text-[10px]" style={{ color: "var(--text-dimmer)" }}>
+            {t("alertsSubtitle")}
+          </p>
         </div>
-        <span className="text-[10px]" style={{ color: "var(--text-dimmer)" }}>
-          {events.length} eventos
+        <span className="shrink-0 text-[10px]" style={{ color: "var(--text-dimmer)" }}>
+          {t("intelligenceEventsCount", { count: events.length })}
         </span>
       </div>
 
       <div className="mb-3 flex shrink-0 gap-1">
         {(
           [
-            ["all", "Todos"],
-            ["critical", "Alertas"],
-            ["win", "Wins"]
+            ["all", t("intelligenceTabAll")],
+            ["critical", t("intelligenceTabAlerts")],
+            ["win", t("intelligenceTabWins")]
           ] as const
         ).map(([key, label]) => (
           <button
@@ -92,7 +103,7 @@ export function LiveIntelligenceFeed({
       >
         {filtered.length === 0 ? (
           <p className="py-8 text-center text-xs" style={{ color: "var(--text-dim)" }}>
-            Nenhum evento no período
+            {t("intelligenceEmpty")}
           </p>
         ) : null}
         {filtered.map((alert, i) => {
@@ -187,7 +198,7 @@ export function LiveIntelligenceFeed({
           background: "var(--surface-bg)"
         }}
       >
-        Ver todos os alertas →
+        {t("viewAllAlertsLink")}
       </Link>
     </div>
   );

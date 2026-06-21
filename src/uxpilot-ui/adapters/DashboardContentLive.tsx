@@ -11,7 +11,7 @@ import { MetricPrism } from "@/components/dashboard/MetricPrism";
 import ConnectAccountCard from "@/uxpilot-ui/components/ConnectAccountCard";
 import {
   toAgencyHealth,
-  toBrainShelfSuggestions,
+  toBrainShelfLearnings,
   toChartData,
   toIntelligenceEvents,
   toMetricPrismProps
@@ -38,10 +38,12 @@ export function DashboardContentLive() {
     variations: data.variations,
     criticalAlerts: data.criticalAlerts,
     metricLabel: data.metricLabel,
-    vsLabel: data.vsLabel
+    vsLabel: data.vsLabel,
+    nowLabel: t("now"),
+    recentLabel: t("recently")
   });
   const agencyHealth = toAgencyHealth({ clients: data.clients, locale: data.locale });
-  const brainSuggestions = toBrainShelfSuggestions(data.suggestions);
+  const brainItems = toBrainShelfLearnings(data.brainLearnings);
 
   return (
     <main
@@ -67,11 +69,24 @@ export function DashboardContentLive() {
 
       {data.note ? <div className="ui-alert-info">{data.note}</div> : null}
 
-      <div className="tab-transition animate-fade-up space-y-5">
-        {!data.loading && !data.isEmptyState && brainSuggestions.length > 0 ? (
-          <BrainShelf suggestions={brainSuggestions} />
-        ) : null}
+      {!data.isEmptyState ? (
+        <div
+          className="rounded-xl border px-3 py-2.5"
+          style={{
+            background: "var(--surface-card)",
+            borderColor: "rgba(124,58,237,0.18)",
+            boxShadow: "0 1px 6px rgba(124,58,237,0.06)"
+          }}
+        >
+          <BrainShelf
+            suggestions={brainItems}
+            isLoading={data.brainLearningsLoading}
+            compact
+          />
+        </div>
+      ) : null}
 
+      <div className="tab-transition animate-fade-up space-y-5">
         <MetricPrism
           primaryKPIs={primaryKPIs}
           secondaryMetrics={secondaryMetrics}

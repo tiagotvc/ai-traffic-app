@@ -4,7 +4,7 @@ import { Link } from "@/i18n/navigation";
 
 export function BrainBreadcrumb({
   title,
-  parentHref = "/agency-brain"
+  parentHref = "/agency-brain/learnings"
 }: {
   title: string;
   parentHref?: string;

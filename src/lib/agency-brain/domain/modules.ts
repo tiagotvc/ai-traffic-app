@@ -34,7 +34,7 @@ export const AGENCY_BRAIN_MVP_NAV_ITEMS = [
   {
     id: "learnings" as const,
     navKey: "agencyBrainLearnings",
-    href: "/agency-brain"
+    href: "/agency-brain/learnings"
   },
   {
     id: "hypotheses" as const,
@@ -45,7 +45,7 @@ export const AGENCY_BRAIN_MVP_NAV_ITEMS = [
 
 /** MVP sidebar parent entry. */
 export const AGENCY_BRAIN_MVP_NAV = {
-  route: "/agency-brain",
+  route: "/agency-brain/learnings",
   navKey: "agencyBrainInsights"
 } as const;
 
@@ -68,7 +68,7 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     navKey: "agencyBrainLearnings",
     navPillar: "memory",
     phase: 1,
-    mvpVisible: false
+    mvpVisible: true
   },
   {
     id: "hypotheses",
@@ -77,7 +77,7 @@ export const AGENCY_BRAIN_MODULE_REGISTRY: AgencyBrainModuleMeta[] = [
     navPillar: "memory",
     phase: 1,
     featureFlag: "allowAgencyBrainHypotheses",
-    mvpVisible: false
+    mvpVisible: true
   },
   {
     id: "dna",

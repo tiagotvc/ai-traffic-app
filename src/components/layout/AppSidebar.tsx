@@ -6,8 +6,6 @@ import {
   Megaphone,
   BarChart3,
   Bell,
-  Brain,
-  ChevronRight as ChevronRightIcon,
   LayoutDashboard,
   Target,
   Trophy,
@@ -15,6 +13,7 @@ import {
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
+import { AgencyBrainNavGroup } from "@/components/layout/AgencyBrainNavGroup";
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import {
   SidebarCollapseButton,
@@ -94,7 +93,6 @@ export function AppSidebar({
     { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <Megaphone size={18} className="shrink-0" />, gate: "campaigns" },
     { id: "audiences", href: "/audiences", label: t("audiences"), icon: <Target size={18} className="shrink-0" />, gate: "audiences" },
     { id: "creatives", href: "/creatives", label: t("creatives"), icon: <Trophy size={18} className="shrink-0" />, gate: "creatives" },
-    { id: "agencyBrain", href: "/agency-brain", label: "Agency Brain", icon: <Brain size={18} className="shrink-0" />, beta: true },
     { id: "reports", href: "/reports", label: t("reports"), icon: <BarChart3 size={18} className="shrink-0" />, gate: "reports" },
     {
       id: "alerts",
@@ -117,7 +115,6 @@ export function AppSidebar({
     if (item.id === "reports") return base === "/reports" || base.startsWith("/reports/");
     if (item.id === "creatives") return base === "/creatives" || base.startsWith("/creatives/");
     if (item.id === "audiences") return base === "/audiences" || base.startsWith("/audiences/");
-    if (item.id === "agencyBrain") return base === "/agency-brain" || base.startsWith("/agency-brain/");
     if (item.id === "settings") return base === "/settings" || base.startsWith("/settings/");
     return item.href ? base === item.href || base.startsWith(`${item.href}/`) : false;
   }
@@ -202,9 +199,6 @@ export function AppSidebar({
                       BETA
                     </span>
                   ) : null}
-                  {item.beta && item.id === "agencyBrain" ? (
-                    <ChevronRightIcon size={12} style={{ color: "#64748b" }} />
-                  ) : null}
                 </span>
               ) : null}
               {item.badge && !effectiveCollapsed ? (
@@ -249,7 +243,15 @@ export function AppSidebar({
           return (
             <Fragment key={item.id}>
               {navItem}
-              {item.id === "creatives" ? null : null}
+              {item.id === "creatives" ? (
+                <AgencyBrainNavGroup
+                  collapsed={effectiveCollapsed}
+                  agencyBrainFeatures={brainFeatures}
+                  pathname={pathname}
+                  permissionsReady={planLimitsReady}
+                  onNavigate={onNavigate}
+                />
+              ) : null}
             </Fragment>
           );
         })}

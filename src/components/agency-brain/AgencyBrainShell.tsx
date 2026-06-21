@@ -33,12 +33,17 @@ function resolveMvpModule(pathname: string): AgencyBrainMvpModuleId | null {
 
 function isInsightsFeedRoute(pathname: string): boolean {
   const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
-  return base === "/agency-brain" || base === "/agency-brain/hypotheses";
+  return (
+    base === "/agency-brain" ||
+    base === "/agency-brain/learnings" ||
+    base === "/agency-brain/hypotheses"
+  );
 }
 
 function isInsightsMvpRoute(pathname: string): boolean {
   const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
   if (base === "/agency-brain") return true;
+  if (base === "/agency-brain/learnings") return true;
   if (base === "/agency-brain/hypotheses") return true;
   if (/^\/agency-brain\/learnings\/[^/]+$/.test(base)) return true;
   if (/^\/agency-brain\/hypotheses\/[^/]+$/.test(base)) return true;

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
-import type { ActionSuggestionDto } from "@/lib/action-suggestions/types";
+import type { LearningDto } from "@/lib/agency-brain/types";
 import {
   DEFAULT_DASHBOARD_CHART_METRICS,
   DEFAULT_DASHBOARD_CLIENT_METRIC,
@@ -96,7 +96,10 @@ export function useDashboardData() {
   const adAccountsRef = useRef(adAccounts);
   adAccountsRef.current = adAccounts;
   const contextAccountsKeyRef = useRef("");
-  const [suggestions, setSuggestions] = useState<ActionSuggestionDto[]>([]);
+  const [brainLearnings, setBrainLearnings] = useState<
+    Array<LearningDto & { clientName?: string; clientSlug?: string }>
+  >([]);
+  const [brainLearningsLoading, setBrainLearningsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
 
@@ -202,17 +205,35 @@ export function useDashboardData() {
     return () => window.clearTimeout(timer);
   }, [periodKey]);
 
-  const loadSuggestions = useCallback(() => {
-    if (!clientFilter) {
-      setSuggestions([]);
+  const loadBrainLearnings = useCallback(() => {
+    setBrainLearningsLoading(true);
+
+    const parseItems = (j: { ok?: boolean; items?: LearningDto[] }) =>
+      j.ok && Array.isArray(j.items) ? j.items : [];
+
+    const finish = (items: Array<LearningDto & { clientName?: string; clientSlug?: string }>) => {
+      setBrainLearnings(items.slice(0, 4));
+      setBrainLearningsLoading(false);
+    };
+
+    if (clientFilter) {
+      void fetch(
+        `/api/clients/${encodeURIComponent(clientFilter)}/learnings?pageSize=8&sortBy=updatedAt&sortDir=desc`
+      )
+        .then((r) => r.json())
+        .then((j) =>
+          finish(
+            parseItems(j).filter((l) => l.status !== "REJECTED" && l.status !== "ARCHIVED")
+          )
+        )
+        .catch(() => finish([]));
       return;
     }
-    fetch(
-      `/api/clients/${encodeURIComponent(clientFilter)}/action-suggestions?status=PENDING&pageSize=3&sortBy=priority&sortDir=desc`
-    )
+
+    void fetch("/api/agency-brain/agency-learnings?pageSize=8&sortBy=impact&sortDir=desc")
       .then((r) => r.json())
-      .then((j) => setSuggestions(j.items ?? []))
-      .catch(() => setSuggestions([]));
+      .then((j) => finish(parseItems(j) as Array<LearningDto & { clientName?: string }>))
+      .catch(() => finish([]));
   }, [clientFilter]);
 
   useEffect(() => {
@@ -224,8 +245,8 @@ export function useDashboardData() {
   }, [loadClients]);
 
   useEffect(() => {
-    loadSuggestions();
-  }, [loadSuggestions]);
+    loadBrainLearnings();
+  }, [loadBrainLearnings]);
 
   useEffect(() => {
     let mounted = true;
@@ -281,11 +302,11 @@ export function useDashboardData() {
     const onSync = () => {
       void load();
       loadClients();
-      loadSuggestions();
+      loadBrainLearnings();
     };
     window.addEventListener("traffic-sync-done", onSync);
     return () => window.removeEventListener("traffic-sync-done", onSync);
-  }, [load, loadClients, loadSuggestions]);
+  }, [load, loadClients, loadBrainLearnings]);
 
   const persistChartMetrics = useCallback(
     (next: MetricKey[]) => {
@@ -359,7 +380,8 @@ export function useDashboardData() {
     variations,
     criticalAlerts,
     clients,
-    suggestions,
+    brainLearnings,
+    brainLearningsLoading,
     chartMetrics,
     toggleChartMetric,
     dominantPreset,

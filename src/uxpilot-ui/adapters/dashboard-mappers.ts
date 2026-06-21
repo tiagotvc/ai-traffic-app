@@ -109,36 +109,59 @@ export function toChartData(series: SeriesPoint[], locale: string) {
   return series.map((p) => ({ ...p, label: formatDayLabel(p.day, locale) }));
 }
 
+const severityOrder: Record<VariationLite["severity"], number> = {
+  critical: 0,
+  warning: 1,
+  positive: 2
+};
+
 export function toIntelligenceEvents(args: {
   variations: VariationLite[];
   criticalAlerts: AlertItem[];
   metricLabel: (key: MetricKey) => string;
   vsLabel: string;
+  nowLabel?: string;
+  recentLabel?: string;
 }): IntelligenceEvent[] {
-  const { variations, criticalAlerts, metricLabel, vsLabel } = args;
-  const fromAlerts: IntelligenceEvent[] = criticalAlerts.slice(0, 3).map((a) => ({
+  const {
+    variations,
+    criticalAlerts,
+    metricLabel,
+    vsLabel,
+    nowLabel = "agora",
+    recentLabel = "recente"
+  } = args;
+
+  const fromAlerts: IntelligenceEvent[] = criticalAlerts.slice(0, 4).map((a) => ({
     id: `alert-${a.id}`,
     type: "critical" as const,
     title: a.title,
     detail: a.description,
-    time: "agora",
+    time: nowLabel,
     color: "#ef4444",
     bg: "rgba(239,68,68,0.08)",
     pulse: true,
     href: "/alerts"
   }));
 
-  const fromVariations: IntelligenceEvent[] = variations.slice(0, 6).map((v) => {
+  const sortedVariations = [...variations].sort((a, b) => {
+    const bySeverity = severityOrder[a.severity] - severityOrder[b.severity];
+    if (bySeverity !== 0) return bySeverity;
+    return Math.abs(b.deltaPct) - Math.abs(a.deltaPct);
+  });
+
+  const fromVariations: IntelligenceEvent[] = sortedVariations.slice(0, 6).map((v) => {
     const type =
       v.severity === "positive" ? ("win" as const) : v.severity === "critical" ? ("critical" as const) : ("info" as const);
     const color =
       type === "win" ? "#10b981" : type === "critical" ? "#ef4444" : "#f5a623";
+    const sign = v.deltaPct >= 0 ? "+" : "";
     return {
       id: v.id,
       type,
       title: v.entityName ?? metricLabel(v.metric),
-      detail: `${metricLabel(v.metric)} · ${vsLabel}`,
-      time: `${v.direction === "up" ? "▲" : "▼"} ${Math.abs(v.deltaPct).toFixed(0)}%`,
+      detail: `${metricLabel(v.metric)} ${sign}${v.deltaPct.toFixed(1)}% · ${vsLabel}`,
+      time: recentLabel,
       color,
       bg: `${color}14`,
       pulse: type === "critical",
@@ -204,10 +227,38 @@ type BrainShelfSuggestion = {
   border: string;
 };
 
+export function toBrainShelfLearnings(
+  items: Array<LearningDto & { clientName?: string; clientSlug?: string }>
+) {
+  return items.slice(0, 4).map((dto) => {
+    const isHighImpact = dto.impact === "HIGH";
+    const isSuggested = dto.status === "SUGGESTED";
+    const type = isSuggested ? "alert" : isHighImpact ? "opportunity" : "suggestion";
+    const color = type === "alert" ? "#f5a623" : type === "opportunity" ? "#10b981" : "#7c3aed";
+    const confidence =
+      dto.confidenceScore ??
+      (dto.confidence === "HIGH" ? 85 : dto.confidence === "MEDIUM" ? 65 : 45);
+    const detailPrefix = dto.clientName ? `${dto.clientName} · ` : "";
+    const body = `${detailPrefix}${dto.description}`;
+    return {
+      id: dto.id,
+      type,
+      title: dto.title,
+      body: body.length > 140 ? `${body.slice(0, 137)}…` : body,
+      action: "",
+      actionHref: `/agency-brain/learnings/${dto.id}`,
+      confidence: Math.min(99, Math.max(40, confidence)),
+      color,
+      border: `${color}33`
+    };
+  });
+}
+
+/** @deprecated use toBrainShelfLearnings */
 export function toBrainShelfSuggestions(
   items: ActionSuggestionDto[]
 ): BrainShelfSuggestion[] {
-  return items.slice(0, 3).map((dto) => {
+  return items.slice(0, 4).map((dto) => {
     const isAlert = dto.priority === "HIGH";
     const isOpportunity =
       dto.actionType === "scale_budget" || dto.actionType === "duplicate_audience";
@@ -218,7 +269,7 @@ export function toBrainShelfSuggestions(
       type,
       title: dto.title,
       body: dto.description,
-      action: "Ver sugestão",
+      action: "",
       actionHref: "/agency-brain/suggestions",
       confidence: Math.min(99, Math.max(40, dto.evidence?.priorityScore ?? 72)),
       color,
