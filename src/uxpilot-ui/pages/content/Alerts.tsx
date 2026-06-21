@@ -1,32 +1,71 @@
 "use client";
 
 import { AlertTriangle, TrendingUp, Info, Zap, CheckCircle2, Bell, Filter } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/uxpilot-ui/lib/utils";
 
-const alertsData = [
-  { id: 1, type: "critical", icon: AlertTriangle, title: "Budget Esgotando", detail: "NovaMarca SA · Retargeting 30d — Budget restante: 8% (R$480)", time: "2min atrás", client: "NovaMarca SA", read: false, color: "#ef4444", bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.2)" },
-  { id: 2, type: "critical", icon: AlertTriangle, title: "Ad Set Pausado Automaticamente", detail: "BrandForce Corp · Brand Awareness — Frequência ultrapassou 5.0", time: "18min atrás", client: "BrandForce Corp", read: false, color: "#ef4444", bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.2)" },
-  { id: 3, type: "win", icon: TrendingUp, title: "ROAS Recorde Detectado", detail: "TechVision · Prospecting LAL — ROAS atingiu 6.8×, acima do benchmark", time: "8min atrás", client: "TechVision Ltda", read: false, color: "#10b981", bg: "rgba(16,185,129,0.06)", border: "rgba(16,185,129,0.18)" },
-  { id: 4, type: "win", icon: TrendingUp, title: "CPL Caiu -22%", detail: "DigitalPrime · Retargeting 7d — Melhor resultado histórico da conta", time: "45min atrás", client: "DigitalPrime", read: true, color: "#10b981", bg: "rgba(16,185,129,0.06)", border: "rgba(16,185,129,0.18)" },
-  { id: 5, type: "warning", icon: Zap, title: "Frequência Alta Detectada", detail: "BrandForce Corp · Awareness — Frequência: 4.2 (threshold: 3.5)", time: "15min atrás", client: "BrandForce Corp", read: false, color: "#f5a623", bg: "rgba(245,166,35,0.06)", border: "rgba(245,166,35,0.2)" },
-  { id: 6, type: "warning", icon: Zap, title: "CTR Abaixo do Benchmark", detail: "BrandForce Corp · Conversão Lead — CTR: 0.8% (benchmark: 2.5%)", time: "1h atrás", client: "BrandForce Corp", read: true, color: "#f5a623", bg: "rgba(245,166,35,0.06)", border: "rgba(245,166,35,0.2)" },
-  { id: 7, type: "info", icon: Info, title: "Novo Criativo Aprovado pela Meta", detail: "DigitalPrime · Conversão — 2 criativos aprovados e em veiculação", time: "32min atrás", client: "DigitalPrime", read: true, color: "#4f46e5", bg: "rgba(79,70,229,0.06)", border: "rgba(79,70,229,0.18)" },
-  { id: 8, type: "info", icon: CheckCircle2, title: "Sincronização Concluída", detail: "Todas as 8 contas sincronizadas com sucesso · Meta Ads API", time: "1h atrás", client: "Geral", read: true, color: "#94a3b8", bg: "rgba(148,163,184,0.04)", border: "rgba(148,163,184,0.14)" },
+export type UxAlertItem = {
+  id: string;
+  type: string;
+  icon: LucideIcon;
+  title: string;
+  detail: string;
+  time: string;
+  client: string;
+  read: boolean;
+  color: string;
+  bg: string;
+  border: string;
+};
+
+export type AlertsLiveProps = {
+  alerts: UxAlertItem[];
+  loading?: boolean;
+};
+
+const alertsData: UxAlertItem[] = [
+  { id: "1", type: "critical", icon: AlertTriangle, title: "Budget Esgotando", detail: "NovaMarca SA · Retargeting 30d — Budget restante: 8% (R$480)", time: "2min atrás", client: "NovaMarca SA", read: false, color: "#ef4444", bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.2)" },
+  { id: "2", type: "critical", icon: AlertTriangle, title: "Ad Set Pausado Automaticamente", detail: "BrandForce Corp · Brand Awareness — Frequência ultrapassou 5.0", time: "18min atrás", client: "BrandForce Corp", read: false, color: "#ef4444", bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.2)" },
+  { id: "3", type: "win", icon: TrendingUp, title: "ROAS Recorde Detectado", detail: "TechVision · Prospecting LAL — ROAS atingiu 6.8×, acima do benchmark", time: "8min atrás", client: "TechVision Ltda", read: false, color: "#10b981", bg: "rgba(16,185,129,0.06)", border: "rgba(16,185,129,0.18)" },
+  { id: "4", type: "win", icon: TrendingUp, title: "CPL Caiu -22%", detail: "DigitalPrime · Retargeting 7d — Melhor resultado histórico da conta", time: "45min atrás", client: "DigitalPrime", read: true, color: "#10b981", bg: "rgba(16,185,129,0.06)", border: "rgba(16,185,129,0.18)" },
+  { id: "5", type: "warning", icon: Zap, title: "Frequência Alta Detectada", detail: "BrandForce Corp · Awareness — Frequência: 4.2 (threshold: 3.5)", time: "15min atrás", client: "BrandForce Corp", read: false, color: "#f5a623", bg: "rgba(245,166,35,0.06)", border: "rgba(245,166,35,0.2)" },
+  { id: "6", type: "warning", icon: Zap, title: "CTR Abaixo do Benchmark", detail: "BrandForce Corp · Conversão Lead — CTR: 0.8% (benchmark: 2.5%)", time: "1h atrás", client: "BrandForce Corp", read: true, color: "#f5a623", bg: "rgba(245,166,35,0.06)", border: "rgba(245,166,35,0.2)" },
+  { id: "7", type: "info", icon: Info, title: "Novo Criativo Aprovado pela Meta", detail: "DigitalPrime · Conversão — 2 criativos aprovados e em veiculação", time: "32min atrás", client: "DigitalPrime", read: true, color: "#4f46e5", bg: "rgba(79,70,229,0.06)", border: "rgba(79,70,229,0.18)" },
+  { id: "8", type: "info", icon: CheckCircle2, title: "Sincronização Concluída", detail: "Todas as 8 contas sincronizadas com sucesso · Meta Ads API", time: "1h atrás", client: "Geral", read: true, color: "#94a3b8", bg: "rgba(148,163,184,0.04)", border: "rgba(148,163,184,0.14)" },
 ];
 
 const typeConfig = { critical: "Crítico", warning: "Atenção", win: "Win", info: "Info" };
 
-export default function AlertsContent() {
+export default function AlertsContent({ live }: { live?: AlertsLiveProps } = {}) {
+  const isLive = Boolean(live);
   const [filter, setFilter] = useState<string>("all");
-  const [readState, setReadState] = useState<number[]>([]);
+  const [readState, setReadState] = useState<string[]>([]);
 
-  const markAsRead = (id: number) => {
+  const alertsSource = isLive ? live!.alerts : alertsData;
+
+  const markAsRead = (id: string) => {
     if (!readState.includes(id)) setReadState([...readState, id]);
   };
 
-  const filtered = alertsData.filter((a) => filter === "all" || a.type === filter);
-  const unreadCount = alertsData.filter((a) => !a.read && !readState.includes(a.id)).length;
+  const filtered = alertsSource.filter((a) => filter === "all" || a.type === filter);
+  const unreadCount = alertsSource.filter((a) => !a.read && !readState.includes(a.id)).length;
+
+  if (isLive && live?.loading) {
+    return (
+      <main className="flex-1 overflow-y-auto px-4 py-5 md:px-6">
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-24 animate-pulse rounded-xl border"
+              style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
+            />
+          ))}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main
@@ -52,7 +91,7 @@ export default function AlertsContent() {
                   Central de Alertas
                 </h1>
                 <p className="text-xs font-body mt-0.5" style={{ color: "var(--text-dim)" }}>
-                  {unreadCount} não lidos · {alertsData.length} total
+                  {unreadCount} não lidos · {alertsSource.length} total
                 </p>
               </div>
             </div>
@@ -78,7 +117,7 @@ export default function AlertsContent() {
                 Filtrar
               </button>
               <button
-                onClick={() => setReadState(alertsData.map((a) => a.id))}
+                onClick={() => setReadState(alertsSource.map((a) => a.id))}
                 className="px-3 py-2 rounded-lg text-xs font-body border transition-all"
                 style={{
                   color: "var(--text-dim)",
@@ -103,11 +142,11 @@ export default function AlertsContent() {
           {/* Filter Tabs */}
           <div className="flex flex-wrap gap-2">
             {[
-              { key: "all", label: "Todos", count: alertsData.length },
-              { key: "critical", label: "Críticos", count: alertsData.filter((a) => a.type === "critical").length },
-              { key: "warning", label: "Atenção", count: alertsData.filter((a) => a.type === "warning").length },
-              { key: "win", label: "Wins", count: alertsData.filter((a) => a.type === "win").length },
-              { key: "info", label: "Info", count: alertsData.filter((a) => a.type === "info").length },
+              { key: "all", label: "Todos", count: alertsSource.length },
+              { key: "critical", label: "Críticos", count: alertsSource.filter((a) => a.type === "critical").length },
+              { key: "warning", label: "Atenção", count: alertsSource.filter((a) => a.type === "warning").length },
+              { key: "win", label: "Wins", count: alertsSource.filter((a) => a.type === "win").length },
+              { key: "info", label: "Info", count: alertsSource.filter((a) => a.type === "info").length },
             ].map((tab) => (
               <button
                 key={tab.key}

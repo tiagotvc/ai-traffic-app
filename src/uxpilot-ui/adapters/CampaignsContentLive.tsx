@@ -193,7 +193,6 @@ export function CampaignsContentLive() {
     onShowTotalsChange: setShowTotals,
     objectiveFilter,
     onObjectiveFilterChange: setObjectiveFilter,
-    metricsSource: data.metricsSource,
     filtersPanel: (
       <UxCampaignFiltersPanel
         filterSearch={filterSearch}

@@ -1,8 +1,19 @@
 "use client";
 
 import { Settings as SettingsIcon, Bell, Key, Users, Palette, Shield, Globe, Zap, ChevronRight, Check } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { cn } from "@/uxpilot-ui/lib/utils";
+
+export type SettingsLiveProps = {
+  activeSection: string;
+  onSectionChange: (section: string) => void;
+  renderPanel?: (sectionId: string) => ReactNode | undefined;
+  extraSections?: Array<{ id: string; label: string; icon: LucideIcon }>;
+};
+
+const LIVE_SECTION_IDS = new Set(["general", "integrations", "team", "security"]);
 
 const settingsSections = [
   { id: "general", label: "Geral", icon: SettingsIcon },
@@ -35,8 +46,18 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: () => void 
   );
 }
 
-export default function SettingsContent() {
-  const [activeSection, setActiveSection] = useState("general");
+export default function SettingsContent({ live }: { live?: SettingsLiveProps } = {}) {
+  const isLive = Boolean(live);
+  const [localSection, setLocalSection] = useState("general");
+  const activeSection = isLive ? live!.activeSection : localSection;
+  const setActiveSection = isLive ? live!.onSectionChange : setLocalSection;
+  const navSections = isLive
+    ? [
+        ...settingsSections.filter((s) => LIVE_SECTION_IDS.has(s.id)),
+        ...(live!.extraSections ?? [])
+      ]
+    : settingsSections;
+  const livePanel = isLive ? live!.renderPanel?.(activeSection) : undefined;
   const [notifications, setNotifications] = useState({
     budget: true,
     cpl: true,
@@ -77,7 +98,7 @@ export default function SettingsContent() {
                 }}
               >
                 <nav className="space-y-0.5">
-                  {settingsSections.map((s) => (
+                  {navSections.map((s) => (
                     <button
                       key={s.id}
                       onClick={() => setActiveSection(s.id)}
@@ -123,6 +144,23 @@ export default function SettingsContent() {
             {/* Content Area */}
             <div className="flex-1 min-w-0 space-y-4">
 
+              {isLive ? (
+                livePanel ?? (
+                  <div
+                    className="rounded-xl border p-8 text-center"
+                    style={{
+                      background: "var(--surface-card)",
+                      borderColor: "var(--border-color)",
+                      boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
+                    }}
+                  >
+                    <p className="font-heading font-semibold" style={{ color: "var(--text-main)" }}>
+                      Em breve
+                    </p>
+                  </div>
+                )
+              ) : (
+              <>
               {/* General */}
               {activeSection === "general" && (
                 <div
@@ -384,6 +422,8 @@ export default function SettingsContent() {
                     Esta seção está em desenvolvimento
                   </p>
                 </div>
+              )}
+              </>
               )}
             </div>
           </div>

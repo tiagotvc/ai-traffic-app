@@ -776,15 +776,16 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
 
   const closeAll = () => { setClientOpen(false); setPeriodOpen(false); setAccountOpen(false); };
 
-  const sourceCreatives: CreativeCard[] = isLive
-    ? (live!.creatives as unknown as CreativeCard[])
-    : creativesData;
+  const sourceCreatives = isLive ? live!.creatives : creativesData;
 
   const filteredCreatives = sourceCreatives.filter((c) => {
     const matchesTab = activeFilterTab === "Todos" || c.campaignType === activeFilterTab;
     const matchesSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
+
+  const filteredLiveCreatives = isLive ? (filteredCreatives as UxCreativeCard[]) : [];
+  const filteredMockCreatives = !isLive ? (filteredCreatives as CreativeCard[]) : [];
 
   return (
     <main
@@ -928,50 +929,47 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
             <CreativeRankingCardsSkeleton count={6} />
           ) : (
           <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
-            {filteredCreatives.map((creative) => {
-              if (isLive) {
-                const card = creative as UxCreativeCard;
-                const canCompare =
-                  (card.raw.breakdown && card.raw.breakdown.length > 1) ||
-                  (card.raw.breakdownAdsets && card.raw.breakdownAdsets.length > 1);
-                return (
-                  <CreativeRankingCard
-                    key={card.id}
-                    rank={card.rank}
-                    title={card.title}
-                    type={card.type}
-                    campaignType={card.campaignType}
-                    campaignsUsed={card.campaignsUsed}
-                    status={card.raw.status}
-                    imageUrl={card.raw.imageUrl}
-                    thumbnailUrl={card.raw.thumbnailUrl}
-                    score={card.score}
-                    metrics={card.raw.metrics}
-                    primaryMetric={card.primaryMetric}
-                    metricKeys={card.metricKeys}
-                    onPreview={() => live?.onPreview?.(card)}
-                    onCompare={
-                      canCompare && live?.onCompare ? () => live.onCompare!(card) : undefined
-                    }
+            {isLive
+              ? filteredLiveCreatives.map((card) => {
+                  const canCompare =
+                    (card.raw.breakdown && card.raw.breakdown.length > 1) ||
+                    (card.raw.breakdownAdsets && card.raw.breakdownAdsets.length > 1);
+                  return (
+                    <CreativeRankingCard
+                      key={card.id}
+                      rank={card.rank}
+                      title={card.title}
+                      type={card.type}
+                      campaignType={card.campaignType}
+                      campaignsUsed={card.campaignsUsed}
+                      status={card.raw.status}
+                      imageUrl={card.raw.imageUrl}
+                      thumbnailUrl={card.raw.thumbnailUrl}
+                      score={card.score}
+                      metrics={card.raw.metrics}
+                      primaryMetric={card.primaryMetric}
+                      metricKeys={card.metricKeys}
+                      onPreview={() => live?.onPreview?.(card)}
+                      onCompare={
+                        canCompare && live?.onCompare ? () => live.onCompare!(card) : undefined
+                      }
+                    />
+                  );
+                })
+              : filteredMockCreatives.map((creative) => (
+                  <CreativeCardItem
+                    key={creative.id}
+                    creative={creative}
+                    onPreview={() => setPreviewCreative(creative)}
                   />
-                );
-              }
-
-              return (
-              <CreativeCardItem
-                key={creative.id}
-                creative={creative}
-                onPreview={() => setPreviewCreative(creative)}
-              />
-              );
-            })}
+                ))}
           </div>
           )}
 
           {/* ── Footer ── */}
           <div className="flex items-center justify-between mt-5">
             <p className="text-xs font-body" style={{ color: "var(--text-dimmer)" }}>
-              Exibindo {filteredCreatives.length} de {sourceCreatives.length} criativos
+              Exibindo {(isLive ? filteredLiveCreatives : filteredMockCreatives).length} de {sourceCreatives.length} criativos
             </p>
             <p className="text-xs font-body" style={{ color: "var(--text-dimmer)" }}>
               ≡ Ordenado por: Score (maior — menor)

@@ -1,7 +1,26 @@
+"use client";
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Download, Calendar, TrendingUp, Target } from "lucide-react";
 
-const monthlyData = [
+import type {
+  UxClientSpend,
+  UxReportKpi,
+  UxReportListItem,
+  UxReportMonth
+} from "@/uxpilot-ui/adapters/reports-mappers";
+
+export type ReportsLiveProps = {
+  monthlyData: UxReportMonth[];
+  clientSpendBreakdown: UxClientSpend[];
+  reportList: UxReportListItem[];
+  kpis: UxReportKpi[];
+  loading?: boolean;
+  onGenerate?: () => void;
+  generating?: boolean;
+};
+
+const monthlyData: UxReportMonth[] = [
   { month: "Fev", spend: 98000, conversions: 5240, roas: 4.1 },
   { month: "Mar", spend: 112000, conversions: 6100, roas: 4.3 },
   { month: "Abr", spend: 125000, conversions: 6850, roas: 4.4 },
@@ -9,19 +28,19 @@ const monthlyData = [
   { month: "Jun", spend: 142800, conversions: 7762, roas: 4.7 },
 ];
 
-const clientSpendBreakdown = [
+const clientSpendBreakdown: UxClientSpend[] = [
   { name: "TechVision", value: 36.6, color: "#4f46e5" },
   { name: "BrandForce", value: 26.7, color: "#f5a623" },
   { name: "NovaMarca", value: 20.8, color: "#10b981" },
   { name: "DigitalPrime", value: 15.9, color: "#7c3aed" },
 ];
 
-const reportList = [
-  { name: "Relatório Semanal — Jul 14–20", date: "20 Jul, 2025", type: "Semanal", size: "2.4 MB", status: "ready" },
-  { name: "Relatório TechVision — Junho", date: "01 Jul, 2025", type: "Mensal", size: "5.1 MB", status: "ready" },
-  { name: "Análise de Audiências Q2", date: "30 Jun, 2025", type: "Trimestral", size: "8.7 MB", status: "ready" },
-  { name: "Benchmark Criativos — Jun", date: "28 Jun, 2025", type: "Custom", size: "3.2 MB", status: "ready" },
-  { name: "Relatório BrandForce — Junho", date: "01 Jul, 2025", type: "Mensal", size: "4.8 MB", status: "generating" },
+const reportList: UxReportListItem[] = [
+  { id: "1", name: "Relatório Semanal — Jul 14–20", date: "20 Jul, 2025", type: "Semanal", size: "2.4 MB", status: "ready" },
+  { id: "2", name: "Relatório TechVision — Junho", date: "01 Jul, 2025", type: "Mensal", size: "5.1 MB", status: "ready" },
+  { id: "3", name: "Análise de Audiências Q2", date: "30 Jun, 2025", type: "Trimestral", size: "8.7 MB", status: "ready" },
+  { id: "4", name: "Benchmark Criativos — Jun", date: "28 Jun, 2025", type: "Custom", size: "3.2 MB", status: "ready" },
+  { id: "5", name: "Relatório BrandForce — Junho", date: "01 Jul, 2025", type: "Mensal", size: "4.8 MB", status: "generating" },
 ];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -43,7 +62,20 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function ReportsContent() {
+export default function ReportsContent({ live }: { live?: ReportsLiveProps } = {}) {
+  const isLive = Boolean(live);
+  const monthlyDataSource = isLive ? live!.monthlyData : monthlyData;
+  const clientSpendSource = isLive ? live!.clientSpendBreakdown : clientSpendBreakdown;
+  const reportListSource = isLive ? live!.reportList : reportList;
+  const kpiSource = isLive
+    ? live!.kpis
+    : [
+        { label: "Spend Total (Jun)", value: "R$142.8K", icon: Target, color: "#f5a623", sub: "+12.4% vs Mai" },
+        { label: "Conversões (Jun)", value: "7,762", icon: TrendingUp, color: "#10b981", sub: "+14% vs Mai" },
+        { label: "ROAS Médio (Jun)", value: "4.7×", icon: TrendingUp, color: "#4f46e5", sub: "+0.2× vs Mai" },
+        { label: "CPL Médio (Jun)", value: "R$18.40", icon: Target, color: "#7c3aed", sub: "-8.2% vs Mai" },
+      ];
+
   return (
     <main
           className="flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-5"
@@ -56,11 +88,14 @@ export default function ReportsContent() {
               <p className="text-xs font-body mt-0.5" style={{ color: "var(--text-dim)" }}>Análises e exportações da agência</p>
             </div>
             <button
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-heading font-semibold transition-all hover:brightness-110"
+              type="button"
+              disabled={isLive && (live?.generating || live?.loading)}
+              onClick={() => live?.onGenerate?.()}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-heading font-semibold transition-all hover:brightness-110 disabled:opacity-60"
               style={{ background: "#f5a623", color: "#0f1419" }}
             >
               <Calendar size={14} />
-              Gerar Relatório
+              {isLive && live?.generating ? "Gerando..." : "Gerar Relatório"}
             </button>
           </div>
 
@@ -80,7 +115,7 @@ export default function ReportsContent() {
               </div>
               <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                  <BarChart data={monthlyDataSource} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
                     <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 11, fontFamily: "DM Sans" }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: "#94a3b8", fontSize: 10, fontFamily: "DM Sans" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}K`} />
@@ -102,7 +137,7 @@ export default function ReportsContent() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={clientSpendBreakdown}
+                      data={clientSpendSource}
                       cx="50%"
                       cy="50%"
                       innerRadius={45}
@@ -110,7 +145,7 @@ export default function ReportsContent() {
                       paddingAngle={3}
                       dataKey="value"
                     >
-                      {clientSpendBreakdown.map((entry, index) => (
+                      {clientSpendSource.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} opacity={0.9} />
                       ))}
                     </Pie>
@@ -122,7 +157,7 @@ export default function ReportsContent() {
                 </ResponsiveContainer>
               </div>
               <div className="space-y-1.5">
-                {clientSpendBreakdown.map((item) => (
+                {clientSpendSource.map((item) => (
                   <div key={item.name} className="flex items-center justify-between text-xs font-body">
                     <div className="flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full" style={{ background: item.color }} />
@@ -137,12 +172,7 @@ export default function ReportsContent() {
 
           {/* KPI Highlights */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: "Spend Total (Jun)", value: "R$142.8K", icon: Target, color: "#f5a623", sub: "+12.4% vs Mai" },
-              { label: "Conversões (Jun)", value: "7,762", icon: TrendingUp, color: "#10b981", sub: "+14% vs Mai" },
-              { label: "ROAS Médio (Jun)", value: "4.7×", icon: TrendingUp, color: "#4f46e5", sub: "+0.2× vs Mai" },
-              { label: "CPL Médio (Jun)", value: "R$18.40", icon: Target, color: "#7c3aed", sub: "-8.2% vs Mai" },
-            ].map((k, i) => (
+            {kpiSource.map((k, i) => (
               <div key={i} className="rounded-xl p-4 border kpi-card-hover cursor-default animate-fade-up"
                 style={{ background: "var(--surface-card)", borderColor: "var(--border-color)", animationDelay: `${i * 80}ms`, animationFillMode: "both" }}>
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-2" style={{ background: `${k.color}15` }}>
@@ -163,8 +193,8 @@ export default function ReportsContent() {
                 Ver todos →
               </button>
             </div>
-            {reportList.map((r, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-3 transition-colors group"
+            {reportListSource.map((r, i) => (
+              <div key={r.id ?? i} className="flex items-center gap-4 px-5 py-3 transition-colors group"
                 style={{ borderBottom: "1px solid var(--border-color)" }}
                 onMouseEnter={e => (e.currentTarget.style.background = "var(--row-hover)")}
                 onMouseLeave={e => (e.currentTarget.style.background = "")}>
