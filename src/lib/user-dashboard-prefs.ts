@@ -8,8 +8,13 @@ import {
   METRIC_BY_KEY,
   type MetricKey
 } from "@/lib/dashboard-metrics";
+import {
+  DEFAULT_DASHBOARD_LAYOUT,
+  normalizeDashboardLayout,
+  type DashboardLayoutPrefs
+} from "@/lib/dashboard-layout-prefs";
 
-export { DEFAULT_DASHBOARD_CHART_METRICS, DEFAULT_DASHBOARD_CLIENT_METRIC };
+export { DEFAULT_DASHBOARD_CHART_METRICS, DEFAULT_DASHBOARD_CLIENT_METRIC, DEFAULT_DASHBOARD_LAYOUT };
 
 export function normalizeDashboardChartMetrics(raw: unknown): MetricKey[] {
   if (!Array.isArray(raw)) return [...DEFAULT_DASHBOARD_CHART_METRICS];
@@ -82,6 +87,37 @@ export async function saveUserDashboardClientMetric(
     });
   } else {
     row.dashboardClientMetric = normalized;
+  }
+  await repo.save(row);
+  return normalized;
+}
+
+export async function getUserDashboardLayout(
+  tenantId: string,
+  userId: string
+): Promise<DashboardLayoutPrefs> {
+  const { tenantMember: repo } = await repositories();
+  const row = await repo.findOne({ where: { tenantId, userId } });
+  return normalizeDashboardLayout(row?.dashboardLayout);
+}
+
+export async function saveUserDashboardLayout(
+  tenantId: string,
+  userId: string,
+  layout: DashboardLayoutPrefs
+): Promise<DashboardLayoutPrefs> {
+  const normalized = normalizeDashboardLayout(layout);
+  const { tenantMember: repo } = await repositories();
+  let row = await repo.findOne({ where: { tenantId, userId } });
+  if (!row) {
+    row = repo.create({
+      tenantId,
+      userId,
+      role: "member",
+      dashboardLayout: normalized as unknown as Record<string, unknown>
+    });
+  } else {
+    row.dashboardLayout = normalized as unknown as Record<string, unknown>;
   }
   await repo.save(row);
   return normalized;

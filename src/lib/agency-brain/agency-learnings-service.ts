@@ -4,10 +4,12 @@ import { repositories } from "@/db/repositories";
 import {
   applyConfidenceScoreSort,
   applyCreatedAtSort,
-  applyImpactSort
+  applyImpactSort,
+  applyUpdatedAtSort
 } from "@/lib/agency-brain/list-sort";
 import { toLearningDto } from "@/lib/agency-brain/client-learning-service";
 import type { LearningDto, LearningFilters } from "@/lib/agency-brain/types";
+import { slugify } from "@/lib/app-context";
 
 export type AgencyLearningDto = LearningDto & {
   clientName: string;
@@ -23,12 +25,18 @@ export async function listAgencyLearnings(
   const pageSize = filters.pageSize ?? 10;
   const sortBy = filters.sortBy ?? "createdAt";
   const sortDir = filters.sortDir ?? "desc";
+  const view = filters.view ?? "library";
 
   const qb = repo
     .createQueryBuilder("l")
     .innerJoin("clients", "c", 'c.id = l."clientId" AND c."tenantId" = l."tenantId"')
-    .where('l."tenantId" = :tenantId', { tenantId })
-    .andWhere("l.status = :approved", { approved: "APPROVED" });
+    .where('l."tenantId" = :tenantId', { tenantId });
+
+  if (view === "shelf") {
+    qb.andWhere("l.status IN (:...shelfStatuses)", { shelfStatuses: ["SUGGESTED", "APPROVED"] });
+  } else {
+    qb.andWhere("l.status = :approved", { approved: "APPROVED" });
+  }
 
   if (filters.category) qb.andWhere("l.category = :category", { category: filters.category });
   if (filters.impact) qb.andWhere("l.impact = :impact", { impact: filters.impact });
@@ -49,24 +57,34 @@ export async function listAgencyLearnings(
   if (sortBy === "confidenceScore") {
     applyConfidenceScoreSort(qb, "l", sortDir);
   } else if (sortBy === "impact") {
-    applyImpactSort(qb, "l", sortDir);
+    if (view === "shelf") {
+      qb.orderBy("CASE WHEN l.status = 'SUGGESTED' THEN 0 ELSE 1 END", "ASC");
+      qb.addOrderBy(
+        "CASE l.impact WHEN 'HIGH' THEN 3 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 1 ELSE 0 END",
+        sortDir.toUpperCase() as "ASC" | "DESC"
+      );
+    } else {
+      applyImpactSort(qb, "l", sortDir);
+    }
+  } else if (sortBy === "updatedAt") {
+    applyUpdatedAtSort(qb, "l", sortDir);
   } else {
     applyCreatedAtSort(qb, "l", sortDir);
   }
 
   const rows = await qb
+    .addSelect("c.name", "clientName")
     .skip((page - 1) * pageSize)
     .take(pageSize)
-    .addSelect("c.name", "clientName")
-    .addSelect("c.slug", "clientSlug")
     .getRawAndEntities();
 
   const items: AgencyLearningDto[] = rows.entities.map((row, i) => {
-    const raw = rows.raw[i] as { clientName?: string; clientSlug?: string };
+    const raw = rows.raw[i] as { clientName?: string };
+    const clientName = raw.clientName ?? "Cliente";
     return {
       ...toLearningDto(row),
-      clientName: raw.clientName ?? "Cliente",
-      clientSlug: raw.clientSlug ?? ""
+      clientName,
+      clientSlug: clientName !== "Cliente" ? slugify(clientName) : ""
     };
   });
 

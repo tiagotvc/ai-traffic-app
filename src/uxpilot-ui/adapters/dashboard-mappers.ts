@@ -2,6 +2,7 @@ import type { ClientHealthRow, HealthMetric } from "@/components/dashboard/Agenc
 import type { IntelligenceEvent } from "@/components/dashboard/LiveIntelligenceFeed";
 import type { KpiCard, SecondaryMetric } from "@/components/dashboard/MetricPrism";
 import type { ActionSuggestionDto } from "@/lib/action-suggestions/types";
+import type { LearningDto } from "@/lib/agency-brain/types";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import {
   METRIC_BY_KEY,
@@ -9,6 +10,7 @@ import {
   formatMetricValue,
   type MetricKey
 } from "@/lib/dashboard-metrics";
+import { resolveHeroMetricKeys } from "@/lib/dashboard-layout-prefs";
 import { formatDayLabel, pctDelta } from "@/lib/dashboard-ranges";
 import { formatBRL, formatPercent, formatRoas } from "@/lib/format";
 
@@ -69,12 +71,14 @@ export function toMetricPrismProps(args: {
   prevSummary: Summary | null;
   series: SeriesPoint[];
   dominantPreset?: string;
+  heroMetrics?: MetricKey[];
   locale: string;
   metricLabel: (key: MetricKey) => string;
   vsLabel: string;
 }): { primaryKPIs: KpiCard[]; secondaryMetrics: SecondaryMetric[] } {
-  const { summary, prevSummary, series, dominantPreset, locale, metricLabel, vsLabel } = args;
-  const heroKeys = presetMetricsFor(dominantPreset).slice(0, 3);
+  const { summary, prevSummary, series, dominantPreset, heroMetrics, locale, metricLabel, vsLabel } = args;
+  const presetHero = presetMetricsFor(dominantPreset).slice(0, 3);
+  const heroKeys = resolveHeroMetricKeys(heroMetrics ?? [], presetHero);
 
   const primaryKPIs: KpiCard[] = heroKeys.map((key) => {
     const delta = heroDelta(key, summary, prevSummary);
@@ -175,19 +179,25 @@ export function toIntelligenceEvents(args: {
 export function toAgencyHealth(args: {
   clients: ClientCard[];
   locale: string;
+  labels: {
+    activeClients: string;
+    healthy: string;
+    alerts: string;
+    totalSpend: string;
+  };
 }): { healthMetrics: HealthMetric[]; clients: ClientHealthRow[] } {
-  const { clients, locale } = args;
+  const { clients, locale, labels } = args;
   const active = clients.length;
   const healthy = clients.filter((c) => (c.roas ?? 0) >= 1.5 && (c.alertCount ?? 0) === 0).length;
   const alerts = clients.reduce((sum, c) => sum + (c.alertCount ?? 0), 0);
   const totalSpend = clients.reduce((sum, c) => sum + (c.metrics?.spend ?? 0), 0);
 
   const healthMetrics: HealthMetric[] = [
-    { label: "Clientes ativos", value: String(active), change: "—", color: "#10b981" },
-    { label: "Saudáveis", value: String(healthy), change: "—", color: "#f5a623" },
-    { label: "Alertas", value: String(alerts), change: "—", color: alerts > 0 ? "#ef4444" : "#10b981" },
+    { label: labels.activeClients, value: String(active), change: "—", color: "#10b981" },
+    { label: labels.healthy, value: String(healthy), change: "—", color: "#f5a623" },
+    { label: labels.alerts, value: String(alerts), change: "—", color: alerts > 0 ? "#ef4444" : "#10b981" },
     {
-      label: "Spend total",
+      label: labels.totalSpend,
       value: formatBRL(totalSpend, locale),
       change: "—",
       color: "#7c3aed"
@@ -229,11 +239,15 @@ type BrainShelfSuggestion = {
 
 export function toBrainShelfLearnings(
   items: Array<LearningDto & { clientName?: string; clientSlug?: string }>
-) {
+): BrainShelfSuggestion[] {
   return items.slice(0, 4).map((dto) => {
     const isHighImpact = dto.impact === "HIGH";
     const isSuggested = dto.status === "SUGGESTED";
-    const type = isSuggested ? "alert" : isHighImpact ? "opportunity" : "suggestion";
+    const type: BrainShelfSuggestion["type"] = isSuggested
+      ? "alert"
+      : isHighImpact
+        ? "opportunity"
+        : "suggestion";
     const color = type === "alert" ? "#f5a623" : type === "opportunity" ? "#10b981" : "#7c3aed";
     const confidence =
       dto.confidenceScore ??

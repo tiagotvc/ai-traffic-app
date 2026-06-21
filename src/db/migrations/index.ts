@@ -42,6 +42,7 @@ import { VideoUploadSessions1735830900000 } from "./0039-VideoUploadSessions";
 import { AudienceInsightBreakdowns1735831000000 } from "./0040-AudienceInsightBreakdowns";
 import { MarketMemoryAndClientCompetitors1735831100000 } from "./0041-MarketMemoryAndClientCompetitors";
 import { ClientSavedTargeting1735831200000 } from "./0042-ClientSavedTargeting";
+import { TenantMemberDashboardLayout_1735831300000 } from "./0043-TenantMemberDashboardLayout";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -88,5 +89,6 @@ export const appMigrations = [
   VideoUploadSessions1735830900000,
   AudienceInsightBreakdowns1735831000000,
   MarketMemoryAndClientCompetitors1735831100000,
-  ClientSavedTargeting1735831200000
+  ClientSavedTargeting1735831200000,
+  TenantMemberDashboardLayout_1735831300000
 ];

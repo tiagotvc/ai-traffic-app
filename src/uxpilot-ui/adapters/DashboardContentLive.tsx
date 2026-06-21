@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Sparkles } from "lucide-react";
+import { Settings2, Sparkles } from "lucide-react";
 
 import { AgencyHealthLayout } from "@/components/dashboard/AgencyHealthLayout";
 import { BrainShelf } from "@/components/dashboard/BrainShelf";
+import { DashboardCustomizeModal } from "@/components/dashboard/DashboardCustomizeModal";
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
 import { LiveIntelligenceFeed } from "@/components/dashboard/LiveIntelligenceFeed";
 import { MetricPrism } from "@/components/dashboard/MetricPrism";
@@ -21,13 +23,16 @@ import { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 export function DashboardContentLive() {
   const t = useTranslations("dashboard");
   const data = useDashboardData();
+  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const summary = data.summary ?? {};
+  const sections = data.dashboardLayout.sections;
   const { primaryKPIs, secondaryMetrics } = toMetricPrismProps({
     summary,
     prevSummary: data.prevSummary,
     series: data.series,
     dominantPreset: data.dominantPreset,
+    heroMetrics: data.dashboardLayout.heroMetrics,
     locale: data.locale,
     metricLabel: data.metricLabel,
     vsLabel: data.vsLabel
@@ -42,34 +47,63 @@ export function DashboardContentLive() {
     nowLabel: t("now"),
     recentLabel: t("recently")
   });
-  const agencyHealth = toAgencyHealth({ clients: data.clients, locale: data.locale });
+  const agencyHealth = toAgencyHealth({
+    clients: data.clients,
+    locale: data.locale,
+    labels: {
+      activeClients: t("agencyHealthActiveClients"),
+      healthy: t("agencyHealthHealthy"),
+      alerts: t("agencyHealthAlerts"),
+      totalSpend: t("agencyHealthTotalSpend")
+    }
+  });
   const brainItems = toBrainShelfLearnings(data.brainLearnings);
+  const emptyStateItems = [
+    t("emptyStateItem1"),
+    t("emptyStateItem2"),
+    t("emptyStateItem3"),
+    t("emptyStateItem4"),
+    t("emptyStateItem5")
+  ];
 
   return (
     <main
       className="flex-1 space-y-4 overflow-y-auto px-4 py-5 md:px-6"
       style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
     >
-      <div>
-        <div className="flex items-center gap-2">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg"
-            style={{ background: "rgba(245,166,35,0.15)" }}
-          >
-            <Sparkles size={16} style={{ color: "#f5a623" }} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-lg"
+              style={{ background: "rgba(245,166,35,0.15)" }}
+            >
+              <Sparkles size={16} style={{ color: "#f5a623" }} />
+            </div>
+            <h1 className="font-heading text-xl font-bold md:text-xl" style={{ color: "var(--text-main)" }}>
+              {t("highlights")}
+            </h1>
           </div>
-          <h1 className="font-heading text-xl font-bold md:text-xl" style={{ color: "var(--text-main)" }}>
-            {t("highlights")}
-          </h1>
+          <p className="mt-1 text-xs font-body" style={{ color: "var(--text-dim)" }}>
+            {t("highlightsSubtitle")}
+          </p>
         </div>
-        <p className="mt-1 text-xs font-body" style={{ color: "var(--text-dim)" }}>
-          {t("highlightsSubtitle")}
-        </p>
+        {!data.isEmptyState ? (
+          <button
+            type="button"
+            onClick={() => setCustomizeOpen(true)}
+            className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
+            style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+          >
+            <Settings2 size={14} />
+            {t("layoutCustomize")}
+          </button>
+        ) : null}
       </div>
 
       {data.note ? <div className="ui-alert-info">{data.note}</div> : null}
 
-      {!data.isEmptyState ? (
+      {!data.isEmptyState && sections.brainShelf ? (
         <div
           className="rounded-xl border px-3 py-2.5"
           style={{
@@ -78,20 +112,18 @@ export function DashboardContentLive() {
             boxShadow: "0 1px 6px rgba(124,58,237,0.06)"
           }}
         >
-          <BrainShelf
-            suggestions={brainItems}
-            isLoading={data.brainLearningsLoading}
-            compact
-          />
+          <BrainShelf suggestions={brainItems} isLoading={data.brainLearningsLoading} compact />
         </div>
       ) : null}
 
       <div className="tab-transition animate-fade-up space-y-5">
-        <MetricPrism
-          primaryKPIs={primaryKPIs}
-          secondaryMetrics={secondaryMetrics}
-          isLoading={data.loading}
-        />
+        {(sections.heroKpis || sections.secondaryMetrics) && !data.isEmptyState ? (
+          <MetricPrism
+            primaryKPIs={sections.heroKpis ? primaryKPIs : []}
+            secondaryMetrics={sections.secondaryMetrics ? secondaryMetrics : []}
+            isLoading={data.loading}
+          />
+        ) : null}
 
         {!data.loading && data.isEmptyState ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -101,15 +133,9 @@ export function DashboardContentLive() {
               style={{ background: "var(--surface-card)", border: "1px solid var(--border-color)" }}
             >
               <h3 className="font-heading font-semibold" style={{ color: "var(--text-main)" }}>
-                O que você verá aqui
+                {t("emptyStateTitle")}
               </h3>
-              {[
-                "Métricas em tempo real de todas as contas",
-                "Sugestões de IA para otimização de campanhas",
-                "Alertas automáticos de anomalias",
-                "Relatórios consolidados por cliente",
-                "Projeções de ROAS e CPL com ML"
-              ].map((item, i) => (
+              {emptyStateItems.map((item, i) => (
                 <div key={i} className="flex items-center gap-2.5">
                   <div
                     className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full"
@@ -126,46 +152,71 @@ export function DashboardContentLive() {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_280px]">
+        {(sections.chart || sections.alerts) && !data.isEmptyState ? (
           <div
-            className="rounded-2xl p-5"
-            style={{
-              background: "var(--surface-card)",
-              border: "1px solid var(--border-color)",
-              boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
-              minHeight: "360px"
-            }}
+            className={
+              sections.chart && sections.alerts
+                ? "grid grid-cols-1 gap-4 xl:grid-cols-[1fr_280px]"
+                : "grid grid-cols-1 gap-4"
+            }
           >
-            <DashboardPerformanceChart
-              data={chartData}
-              activeMetrics={data.chartMetrics}
-              onToggleMetric={data.toggleChartMetric}
-              formatValue={data.formatMetricValue}
-              metricLabels={data.chartMetricLabels}
-              isLoading={data.loading}
-              subtitle={data.vsLabel}
-            />
-          </div>
+            {sections.chart ? (
+              <div
+                className="rounded-2xl p-5"
+                style={{
+                  background: "var(--surface-card)",
+                  border: "1px solid var(--border-color)",
+                  boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
+                  minHeight: sections.alerts ? "360px" : undefined
+                }}
+              >
+                <DashboardPerformanceChart
+                  data={chartData}
+                  activeMetrics={data.chartMetrics}
+                  onToggleMetric={data.toggleChartMetric}
+                  formatValue={data.formatMetricValue}
+                  metricLabels={data.chartMetricLabels}
+                  isLoading={data.loading}
+                  subtitle={data.vsLabel}
+                />
+              </div>
+            ) : null}
 
-          <div
-            className="rounded-2xl p-4"
-            style={{
-              background: "var(--surface-card)",
-              border: "1px solid var(--border-color)",
-              boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
-              minHeight: "360px"
-            }}
-          >
-            <LiveIntelligenceFeed events={intelligenceEvents} isLoading={data.loading} />
+            {sections.alerts ? (
+              <div
+                className="rounded-2xl p-4"
+                style={{
+                  background: "var(--surface-card)",
+                  border: "1px solid var(--border-color)",
+                  boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
+                  minHeight: sections.chart ? "360px" : undefined
+                }}
+              >
+                <LiveIntelligenceFeed events={intelligenceEvents} isLoading={data.loading} />
+              </div>
+            ) : null}
           </div>
-        </div>
+        ) : null}
 
-        <AgencyHealthLayout
-          healthMetrics={agencyHealth.healthMetrics}
-          clients={agencyHealth.clients}
-          isLoading={data.loading}
-        />
+        {sections.agencyHealth && !data.isEmptyState ? (
+          <AgencyHealthLayout
+            healthMetrics={agencyHealth.healthMetrics}
+            clients={agencyHealth.clients}
+            isLoading={data.loading}
+          />
+        ) : null}
       </div>
+
+      <DashboardCustomizeModal
+        open={customizeOpen}
+        layout={data.dashboardLayout}
+        chartMetrics={data.chartMetrics}
+        onClose={() => setCustomizeOpen(false)}
+        onApply={(next) => {
+          data.persistDashboardCustomization(next);
+          setCustomizeOpen(false);
+        }}
+      />
     </main>
   );
 }

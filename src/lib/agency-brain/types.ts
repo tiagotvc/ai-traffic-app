@@ -48,6 +48,8 @@ export type LearningFilters = {
   confidence?: LearningConfidence;
   source?: LearningSource;
   status?: LearningStatus;
+  /** library = só APPROVED (página Agency Brain); shelf = SUGGESTED + APPROVED (dashboard). */
+  view?: "library" | "shelf";
   search?: string;
   tags?: string[];
   dateFrom?: string;

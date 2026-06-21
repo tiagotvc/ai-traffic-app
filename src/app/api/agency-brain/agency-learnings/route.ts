@@ -21,9 +21,13 @@ export async function GET(req: Request) {
       sortDir: url.searchParams.get("sortDir") ?? undefined
     });
 
+    const viewParam = url.searchParams.get("view");
+    const view =
+      viewParam === "shelf" || viewParam === "library" ? viewParam : undefined;
+
     const tags = query.tags ? query.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined;
 
-    const result = await listAgencyLearnings(tenant.id, { ...query, tags });
+    const result = await listAgencyLearnings(tenant.id, { ...query, tags, view });
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     console.error("[agency-learnings GET]", err);

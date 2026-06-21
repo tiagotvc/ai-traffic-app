@@ -206,7 +206,7 @@ export function DashboardPerformanceChart({
             className="flex h-full items-center justify-center rounded-xl border border-dashed text-xs"
             style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
           >
-            Sem dados
+            {t("noChartData")}
           </div>
         )}
       </div>

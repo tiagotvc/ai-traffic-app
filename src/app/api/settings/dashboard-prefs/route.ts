@@ -4,11 +4,36 @@ import { z } from "zod";
 import { getAppContext } from "@/lib/app-context";
 import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import {
+  DASHBOARD_SECTION_KEYS,
+  MAX_HERO_METRICS,
+  normalizeDashboardLayout
+} from "@/lib/dashboard-layout-prefs";
+import {
   getUserDashboardChartMetrics,
   getUserDashboardClientMetric,
+  getUserDashboardLayout,
   saveUserDashboardChartMetrics,
-  saveUserDashboardClientMetric
+  saveUserDashboardClientMetric,
+  saveUserDashboardLayout
 } from "@/lib/user-dashboard-prefs";
+
+const SectionsSchema = z
+  .object(
+    Object.fromEntries(DASHBOARD_SECTION_KEYS.map((key) => [key, z.boolean()])) as Record<
+      (typeof DASHBOARD_SECTION_KEYS)[number],
+      z.ZodBoolean
+    >
+  )
+  .partial();
+
+const LayoutSchema = z.object({
+  sections: SectionsSchema.optional(),
+  heroMetrics: z
+    .array(z.string())
+    .max(MAX_HERO_METRICS)
+    .refine((arr) => arr.every((k) => k in METRIC_BY_KEY), "métrica inválida")
+    .optional()
+});
 
 const PatchSchema = z
   .object({
@@ -21,27 +46,37 @@ const PatchSchema = z
     dashboardClientMetric: z
       .string()
       .refine((k) => k in METRIC_BY_KEY, "métrica inválida")
-      .optional()
+      .optional(),
+    dashboardLayout: LayoutSchema.optional()
   })
   .refine(
-    (body) => body.dashboardChartMetrics !== undefined || body.dashboardClientMetric !== undefined,
+    (body) =>
+      body.dashboardChartMetrics !== undefined ||
+      body.dashboardClientMetric !== undefined ||
+      body.dashboardLayout !== undefined,
     "nenhuma preferência informada"
   );
 
 export async function GET() {
   const { tenant, user } = await getAppContext();
-  const [dashboardChartMetrics, dashboardClientMetric] = await Promise.all([
+  const [dashboardChartMetrics, dashboardClientMetric, dashboardLayout] = await Promise.all([
     getUserDashboardChartMetrics(tenant.id, user.id),
-    getUserDashboardClientMetric(tenant.id, user.id)
+    getUserDashboardClientMetric(tenant.id, user.id),
+    getUserDashboardLayout(tenant.id, user.id)
   ]);
-  return NextResponse.json({ ok: true, dashboardChartMetrics, dashboardClientMetric });
+  return NextResponse.json({
+    ok: true,
+    dashboardChartMetrics,
+    dashboardClientMetric,
+    dashboardLayout
+  });
 }
 
 export async function PATCH(req: Request) {
   const { tenant, user } = await getAppContext();
   const body = PatchSchema.parse(await req.json().catch(() => ({})));
 
-  const [dashboardChartMetrics, dashboardClientMetric] = await Promise.all([
+  const [dashboardChartMetrics, dashboardClientMetric, dashboardLayout] = await Promise.all([
     body.dashboardChartMetrics !== undefined
       ? saveUserDashboardChartMetrics(
           tenant.id,
@@ -55,8 +90,23 @@ export async function PATCH(req: Request) {
           user.id,
           body.dashboardClientMetric as Parameters<typeof saveUserDashboardClientMetric>[2]
         )
-      : getUserDashboardClientMetric(tenant.id, user.id)
+      : getUserDashboardClientMetric(tenant.id, user.id),
+    body.dashboardLayout !== undefined
+      ? saveUserDashboardLayout(
+          tenant.id,
+          user.id,
+          normalizeDashboardLayout({
+            ...(await getUserDashboardLayout(tenant.id, user.id)),
+            ...body.dashboardLayout
+          })
+        )
+      : getUserDashboardLayout(tenant.id, user.id)
   ]);
 
-  return NextResponse.json({ ok: true, dashboardChartMetrics, dashboardClientMetric });
+  return NextResponse.json({
+    ok: true,
+    dashboardChartMetrics,
+    dashboardClientMetric,
+    dashboardLayout
+  });
 }

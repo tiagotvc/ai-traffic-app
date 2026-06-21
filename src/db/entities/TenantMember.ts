@@ -26,6 +26,10 @@ export class TenantMember extends AppBaseEntity {
   @Column({ type: "text", nullable: true })
   dashboardClientMetric?: string | null;
 
+  /** Seções visíveis e KPIs principais do Destaques — preferência por usuário. */
+  @Column({ type: "jsonb", nullable: true })
+  dashboardLayout?: Record<string, unknown> | null;
+
   /** Visões de colunas salvas para tabelas de campanhas. */
   @Column({ type: "jsonb", nullable: true })
   campaignTableLayouts?: Record<string, unknown>[] | null;

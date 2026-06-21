@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
 
@@ -30,6 +32,8 @@ export function AgencyHealthLayout({
   clients: ClientHealthRow[];
   isLoading?: boolean;
 }) {
+  const t = useTranslations("dashboard");
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -103,10 +107,10 @@ export function AgencyHealthLayout({
           style={{ borderColor: "var(--border-color)", background: "var(--surface-thead)" }}
         >
           <h4 className="font-heading text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-            Saúde dos Clientes
+            {t("agencyHealthTitle")}
           </h4>
           <span className="text-[11px]" style={{ color: "var(--text-dim)" }}>
-            Atualizado agora
+            {t("agencyHealthUpdated")}
           </span>
         </div>
 
@@ -114,7 +118,14 @@ export function AgencyHealthLayout({
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: "var(--surface-thead)" }}>
-                {["Cliente", "Spend", "ROAS", "CPL", "Tendência", "Status"].map((h) => (
+                {[
+                  t("agencyHealthColClient"),
+                  t("agencyHealthColSpend"),
+                  t("agencyHealthColRoas"),
+                  t("agencyHealthColCpl"),
+                  t("agencyHealthColTrend"),
+                  t("agencyHealthColStatus")
+                ].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-2.5 text-left text-[10px] uppercase tracking-widest"
@@ -193,6 +204,7 @@ export function AgencyHealthLayout({
 }
 
 function StatusBadge({ status }: { status: "healthy" | "warning" }) {
+  const t = useTranslations("dashboard");
   const isHealthy = status === "healthy";
   return (
     <span
@@ -206,7 +218,7 @@ function StatusBadge({ status }: { status: "healthy" | "warning" }) {
         className={cn("h-1.5 w-1.5 rounded-full", !isHealthy && "animate-pulse-amber")}
         style={{ background: isHealthy ? "#10b981" : "#f5a623" }}
       />
-      {isHealthy ? "Saudável" : "Atenção"}
+      {isHealthy ? t("agencyHealthStatusHealthy") : t("agencyHealthStatusWarning")}
     </span>
   );
 }

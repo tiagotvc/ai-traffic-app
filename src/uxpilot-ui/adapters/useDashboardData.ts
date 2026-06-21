@@ -14,6 +14,10 @@ import {
   formatMetricValue,
   type MetricKey
 } from "@/lib/dashboard-metrics";
+import {
+  DEFAULT_DASHBOARD_LAYOUT,
+  type DashboardLayoutPrefs
+} from "@/lib/dashboard-layout-prefs";
 import { buildQuery, resolveRanges } from "@/lib/dashboard-ranges";
 import { DEFAULT_REPORT_TZ } from "@/lib/report-period";
 
@@ -85,6 +89,7 @@ export function useDashboardData() {
   const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
   const [clientMetric, setClientMetric] = useState<MetricKey>(DEFAULT_DASHBOARD_CLIENT_METRIC);
   const [userClientMetric, setUserClientMetric] = useState<MetricKey>(DEFAULT_DASHBOARD_CLIENT_METRIC);
+  const [dashboardLayout, setDashboardLayout] = useState<DashboardLayoutPrefs>(DEFAULT_DASHBOARD_LAYOUT);
 
   const [summary, setSummary] = useState<Summary | null>(null);
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
@@ -230,9 +235,9 @@ export function useDashboardData() {
       return;
     }
 
-    void fetch("/api/agency-brain/agency-learnings?pageSize=8&sortBy=impact&sortDir=desc")
+    void fetch("/api/dashboard/brain-shelf?pageSize=8")
       .then((r) => r.json())
-      .then((j) => finish(parseItems(j) as Array<LearningDto & { clientName?: string }>))
+      .then((j) => finish(parseItems(j) as Array<LearningDto & { clientName?: string; clientSlug?: string }>))
       .catch(() => finish([]));
   }, [clientFilter]);
 
@@ -263,6 +268,9 @@ export function useDashboardData() {
           const metric = j.dashboardClientMetric as MetricKey;
           setUserClientMetric(metric);
           if (!clientFilter) setClientMetric(metric);
+        }
+        if (j.dashboardLayout && typeof j.dashboardLayout === "object") {
+          setDashboardLayout(j.dashboardLayout as DashboardLayoutPrefs);
         }
       })
       .catch(() => {});
@@ -328,6 +336,32 @@ export function useDashboardData() {
     [clientFilter]
   );
 
+  const persistDashboardCustomization = useCallback(
+    (next: { layout: DashboardLayoutPrefs; chartMetrics: MetricKey[] }) => {
+      setDashboardLayout(next.layout);
+      setChartMetrics(next.chartMetrics);
+      if (!clientFilter) setUserChartMetrics(next.chartMetrics);
+
+      void fetch("/api/settings/dashboard-prefs", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          dashboardLayout: next.layout,
+          ...(clientFilter ? {} : { dashboardChartMetrics: next.chartMetrics })
+        })
+      });
+
+      if (clientFilter) {
+        void fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ defaultDashboardMetrics: next.chartMetrics })
+        });
+      }
+    },
+    [clientFilter]
+  );
+
   const toggleChartMetric = useCallback(
     (key: MetricKey) => {
       setChartMetrics((cur) => {
@@ -384,6 +418,9 @@ export function useDashboardData() {
     brainLearningsLoading,
     chartMetrics,
     toggleChartMetric,
+    dashboardLayout,
+    persistDashboardCustomization,
+    clientMetric,
     dominantPreset,
     isEmptyState,
     locale,
