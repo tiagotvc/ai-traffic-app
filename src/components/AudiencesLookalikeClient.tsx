@@ -351,7 +351,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         clientSlug={clientSlug}
         adAccountId={adAccountId}
       />
-      {useUxChrome && view === "list" ? (
+      {useUxChrome ? (
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="mb-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
@@ -391,34 +391,24 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         </div>
       ) : (
       <DsPageHeader
-        breadcrumbs={view === "create" ? t("breadcrumbCreate") : t("breadcrumbList")}
+        breadcrumbs={t("breadcrumbList")}
         title={t("title")}
         subtitle={t("subtitle")}
         titleIcon={<Target size={16} />}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {view === "list" ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setView("create");
-                  setError(null);
-                  setMessage(null);
-                }}
-                disabled={!metaConnected || !adAccountId}
-                className="ui-btn-primary text-sm"
-              >
-                {t("createNewAudience")}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setView("list")}
-                className="ui-btn-secondary text-sm"
-              >
-                {t("backToList")}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setView("create");
+                setError(null);
+                setMessage(null);
+              }}
+              disabled={!metaConnected || !adAccountId}
+              className="ui-btn-primary text-sm"
+            >
+              {t("createNewAudience")}
+            </button>
             <button
               type="button"
               onClick={() => void loadAudiences(true)}
