@@ -127,10 +127,15 @@ function fixCloneForPdf(clonedDoc: Document) {
 
   clonedDoc.querySelectorAll("[data-report-creatives-grid], .report-creatives-grid").forEach((node) => {
     const el = node as HTMLElement;
+    const cardCount = el.querySelectorAll(".report-creative-card").length;
+    const cols = cardCount <= 1 ? 1 : cardCount === 2 ? 2 : 3;
     el.style.display = "grid";
-    el.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+    el.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
     el.style.gap = "12px";
     el.style.width = "100%";
+    if (cardCount === 1) {
+      el.style.justifyItems = "center";
+    }
   });
 
   clonedDoc.querySelectorAll(".report-creative-card img").forEach((img) => {

@@ -294,13 +294,9 @@ export function periodStateToParsed(state: {
             ? 15
             : state.preset === "last30"
               ? 30
-              : state.preset === "thisMonth"
-                ? thisMonthRange().days
-                : state.preset === "thisQuarter"
-                  ? thisQuarterRange().days
-                  : state.preset === "today" || state.preset === "yesterday"
-                    ? 1
-                    : null,
+              : state.preset === "today" || state.preset === "yesterday"
+                ? 1
+                : null,
     allTime: state.preset === "all"
   };
 }

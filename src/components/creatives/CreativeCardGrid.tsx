@@ -104,12 +104,19 @@ export function CreativeCardGrid({
 
   const metricKeys = metrics.length ? metrics : (["roas", "ctr", "cpa", "cpm", "impressions", "spend"] as MetricKey[]);
 
+  const reportGridClass =
+    creatives.length === 1
+      ? "report-creatives-grid grid min-w-0 grid-cols-1 gap-2 p-2 [&>.report-creative-card]:mx-auto [&>.report-creative-card]:w-full [&>.report-creative-card]:max-w-[240px]"
+      : creatives.length === 2
+        ? "report-creatives-grid grid min-w-0 grid-cols-2 gap-2 p-2"
+        : "report-creatives-grid grid min-w-0 grid-cols-3 gap-2 p-2";
+
   return (
     <>
       <div
         className={
           embedInReport
-            ? "report-creatives-grid grid min-w-0 grid-cols-3 gap-2 p-2"
+            ? reportGridClass
             : "grid gap-4 p-4"
         }
         style={embedInReport ? undefined : { gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}

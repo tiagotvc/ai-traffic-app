@@ -10,8 +10,9 @@ import {
   Video
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
 
-import { bestCreativePreviewUrl, shouldUseCoverPreview } from "@/lib/creative-preview-url";
+import { creativePreviewUrlCandidates, shouldUseCoverPreview } from "@/lib/creative-preview-url";
 import { formatMetricValue, METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 
 function getScoreColor(score: number) {
@@ -92,10 +93,31 @@ export function CreativeRankingCard({
   const scoreLabel = getScoreLabel(score);
   const creativeType = mapCreativeType(type);
   const statusLabel = mapStatusLabel(status);
-  const imgSrc = bestCreativePreviewUrl(imageUrl, thumbnailUrl);
-  const coverPreview = shouldUseCoverPreview(imageUrl, thumbnailUrl);
-  const rankColors = ["#f5a623", "#94a3b8", "#cd7c2f"];
   const isReport = variant === "report";
+  const imgCandidates = useMemo(
+    () => creativePreviewUrlCandidates(imageUrl, thumbnailUrl),
+    [imageUrl, thumbnailUrl]
+  );
+  const [imgCandidateIdx, setImgCandidateIdx] = useState(0);
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    setImgCandidateIdx(0);
+    setImgFailed(false);
+  }, [imgCandidates]);
+
+  const imgSrc = imgFailed ? null : (imgCandidates[imgCandidateIdx] ?? null);
+  const coverPreview = !isReport && shouldUseCoverPreview(imageUrl, thumbnailUrl);
+
+  function handleImgError() {
+    if (imgCandidateIdx + 1 < imgCandidates.length) {
+      setImgCandidateIdx((idx) => idx + 1);
+      return;
+    }
+    setImgFailed(true);
+  }
+
+  const rankColors = ["#f5a623", "#94a3b8", "#cd7c2f"];
   const displayMetrics = isReport ? metricKeys.slice(0, 3) : metricKeys.slice(0, 6);
   const displayTitle = isReport ? cleanCreativeTitleForReport(title) : title;
   const mediaHeight = isReport ? "h-28" : "h-40";
@@ -119,10 +141,10 @@ export function CreativeRankingCard({
     >
       <div
         className={`relative overflow-hidden ${mediaHeight} ${
-          coverPreview ? "bg-[var(--surface-bg)]" : "bg-[#0f1419]"
+          coverPreview || isReport ? "bg-[var(--surface-bg)]" : "bg-[#0f1419]"
         } ${isReport ? "border-b border-[var(--border-color)]" : ""} ${
-          !coverPreview ? "flex items-center justify-center" : ""
-        }`}
+          !coverPreview && !isReport ? "flex items-center justify-center" : ""
+        } ${isReport ? "flex items-center justify-center" : ""}`}
       >
         {imgSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -130,6 +152,7 @@ export function CreativeRankingCard({
             src={imgSrc}
             alt={displayTitle}
             decoding="async"
+            onError={handleImgError}
             className={
               coverPreview
                 ? "absolute inset-0 z-0 block h-full w-full object-cover object-center"
