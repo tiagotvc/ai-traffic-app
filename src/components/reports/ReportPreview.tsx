@@ -134,6 +134,11 @@ export function ReportPreview({
     .slice(0, 7)
     .map((c) => ({ name: c.name, value: c.spend, share: c.sharePct }));
 
+  const campaignsWithSpend = useMemo(
+    () => data.campaigns.filter((c) => c.spend > 0),
+    [data.campaigns]
+  );
+
   const goalValue = data.summary[data.client.goalMetric] ?? 0;
   const prevGoal = data.previousSummary?.[data.client.goalMetric] ?? 0;
   const goalDelta = prevGoal > 0 ? pctDelta(goalValue, prevGoal) : null;
@@ -237,44 +242,139 @@ export function ReportPreview({
           </div>
         </ReportChartCard>
 
-        <ReportChartCard title={t("spendByCampaignTitle")}>
-          {pieData.length ? (
-            <>
-              <div className="mt-3 h-52">
-                <ChartContainer height={208}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={44}
-                      outerRadius={72}
-                      paddingAngle={2}
-                    >
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value) => [formatBRL(Number(value ?? 0), locale), t("spend")]}
-                      contentStyle={TOOLTIP_STYLE}
-                    />
-                  </PieChart>
-                </ChartContainer>
-              </div>
-              <PieLegend
-                items={pieData.map((item, i) => ({
-                  name: item.name,
-                  color: PIE_COLORS[i % PIE_COLORS.length]
-                }))}
-              />
-            </>
-          ) : (
-            <p className="mt-6 text-center text-sm text-[var(--text-dim)]">{t("noCampaignData")}</p>
-          )}
+        <ReportChartCard title={t("comparisonBarsTitle")}>
+          <div className="mt-3 h-56">
+            <ChartContainer height={224}>
+              <BarChart data={comparisonChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                <XAxis dataKey="name" tick={TICK} {...AXIS} />
+                <YAxis tick={TICK} {...AXIS} width={48} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
+                <Bar dataKey="current" name={t("periodCurrent")} fill="var(--amber)" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="previous"
+                  name={t("periodPrevious")}
+                  fill="var(--text-dimmer)"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ChartContainer>
+          </div>
         </ReportChartCard>
+      </section>
+
+      <section className="report-pdf-section report-pdf-block ui-card overflow-hidden p-4">
+        <div className="text-sm font-semibold text-[var(--text-main)]">{t("spendByCampaignTitle")}</div>
+        {campaignsWithSpend.length ? (
+          <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)]">
+            <div className="flex min-w-0 flex-col">
+              <div className="mx-auto w-full max-w-[360px]">
+                <div className="h-80">
+                  <ChartContainer height={320}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={58}
+                        outerRadius={108}
+                        paddingAngle={2}
+                      >
+                        {pieData.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value, _name, item) => {
+                          const share = (item?.payload as { share?: number } | undefined)?.share;
+                          const shareLabel =
+                            share != null ? ` (${formatPercent(share, 1, locale)})` : "";
+                          return [`${formatBRL(Number(value ?? 0), locale)}${shareLabel}`, t("spend")];
+                        }}
+                        contentStyle={TOOLTIP_STYLE}
+                      />
+                    </PieChart>
+                  </ChartContainer>
+                </div>
+                <PieLegend
+                  items={pieData.map((item, i) => ({
+                    name: item.name,
+                    color: PIE_COLORS[i % PIE_COLORS.length]
+                  }))}
+                />
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <div className="mb-2 text-xs font-medium text-[var(--text-dim)]">
+                {t("campaignSpendTableTitle", { count: campaignsWithSpend.length })}
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-[var(--border-color)]">
+                <table className="w-full min-w-[420px] text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[var(--border-color)] bg-[var(--surface-bg)]">
+                      <th className="px-3 py-2.5 font-semibold text-[var(--text-dim)]">{t("colCampaign")}</th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">{t("spend")}</th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">
+                        {t("colShare")}
+                      </th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">
+                        {tMetrics(METRIC_BY_KEY.conversions.label)}
+                      </th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">
+                        {tMetrics(METRIC_BY_KEY.clicks.label)}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {campaignsWithSpend.map((row) => (
+                      <tr
+                        key={row.metaCampaignId}
+                        className="border-b border-[var(--border-color)] last:border-b-0"
+                      >
+                        <td className="max-w-[220px] truncate px-3 py-2.5 font-medium text-[var(--text-main)]">
+                          {row.name}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-main)]">
+                          {formatBRL(row.spend, locale)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                          {formatPercent(row.sharePct, 1, locale)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                          {formatMetricValue("conversions", row.conversions, locale)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                          {formatMetricValue("clicks", row.clicks, locale)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-[var(--surface-bg)] font-semibold">
+                      <td className="px-3 py-2.5 text-[var(--text-main)]">{t("campaignSpendTotal")}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-main)]">
+                        {formatBRL(data.summary.spend ?? 0, locale)}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-[var(--text-dim)]">100%</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                        {formatMetricValue("conversions", data.summary.conversions ?? 0, locale)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                        {formatMetricValue("clicks", data.summary.clicks ?? 0, locale)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-6 text-center text-sm text-[var(--text-dim)]">{t("noCampaignData")}</p>
+        )}
       </section>
 
       <section className="report-pdf-section report-pdf-block ui-card overflow-hidden p-4">
@@ -314,29 +414,8 @@ export function ReportPreview({
         </div>
       </section>
 
-      <section className="report-pdf-section report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ReportChartCard title={t("comparisonBarsTitle")}>
-          <div className="mt-3 h-56">
-            <ChartContainer height={224}>
-              <BarChart data={comparisonChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-                <XAxis dataKey="name" tick={TICK} {...AXIS} />
-                <YAxis tick={TICK} {...AXIS} width={48} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
-                <Bar dataKey="current" name={t("periodCurrent")} fill="var(--amber)" radius={[4, 4, 0, 0]} />
-                <Bar
-                  dataKey="previous"
-                  name={t("periodPrevious")}
-                  fill="var(--text-dimmer)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
-          </div>
-        </ReportChartCard>
-
-        <ReportChartCard title={t("spendTrendCompareTitle")}>
+      <section className="report-pdf-section">
+        <ReportChartCard title={t("spendTrendCompareTitle")} solo>
           <div className="mt-3 h-56">
             <ChartContainer height={224}>
               <LineChart data={spendTrendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>

@@ -23,7 +23,7 @@ function defaultCustomRange() {
   return rollingDaysEndingYesterday(7);
 }
 
-const STRIP_PRESETS = ["last7", "last14", "last30", "thisMonth", "thisQuarter"] as const;
+const STRIP_PRESETS = ["last7", "thisWeek", "last14", "last30", "thisMonth", "thisQuarter"] as const;
 
 export function PeriodFilter({
   value,
@@ -91,6 +91,7 @@ export function PeriodFilter({
 
   const stripPresetLabels: Record<(typeof STRIP_PRESETS)[number], string> = {
     last7: periodLabels.last7,
+    thisWeek: periodLabels.thisWeek,
     last14: periodLabels.last14,
     last30: periodLabels.last30,
     thisMonth: periodLabels.thisMonth,

@@ -120,7 +120,7 @@ export function CreativeRankingCard({
   const rankColors = ["#f5a623", "#94a3b8", "#cd7c2f"];
   const displayMetrics = isReport ? metricKeys.slice(0, 3) : metricKeys.slice(0, 6);
   const displayTitle = isReport ? cleanCreativeTitleForReport(title) : title;
-  const mediaHeight = isReport ? "h-28" : "h-40";
+  const mediaHeight = isReport ? "h-36 sm:h-40" : "h-40";
 
   return (
     <div

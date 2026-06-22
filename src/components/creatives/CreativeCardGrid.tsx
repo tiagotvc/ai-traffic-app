@@ -106,10 +106,10 @@ export function CreativeCardGrid({
 
   const reportGridClass =
     creatives.length === 1
-      ? "report-creatives-grid grid min-w-0 grid-cols-1 gap-2 p-2 [&>.report-creative-card]:mx-auto [&>.report-creative-card]:w-full [&>.report-creative-card]:max-w-[240px]"
+      ? "report-creatives-grid grid min-w-0 grid-cols-1 gap-3 p-3 [&>.report-creative-card]:mx-auto [&>.report-creative-card]:w-full [&>.report-creative-card]:max-w-[320px]"
       : creatives.length === 2
-        ? "report-creatives-grid grid min-w-0 grid-cols-2 gap-2 p-2"
-        : "report-creatives-grid grid min-w-0 grid-cols-3 gap-2 p-2";
+        ? "report-creatives-grid grid min-w-0 grid-cols-1 gap-3 p-3 sm:grid-cols-2"
+        : "report-creatives-grid grid min-w-0 grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3";
 
   return (
     <>
