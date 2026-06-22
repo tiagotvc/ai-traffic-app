@@ -186,67 +186,6 @@ export function ReportsClient() {
     window.open(printViewUrl, "_blank", "noopener,noreferrer");
   }
 
-  function exportPdf() {
-    if (!selectedClient || !preview) return;
-    setMessage(null);
-    startTransition(async () => {
-      try {
-        const res = await fetch("/api/reports/pdf", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            clientId: selectedClient.slug,
-            adAccountId: adAccountId || undefined,
-            reportType,
-            locale,
-            goalLabel: tMetrics(
-              METRIC_BY_KEY[
-                selectedMetrics.includes("messages") ? "messages" : preview.client.goalMetric
-              ].label
-            ),
-            preset: period.preset,
-            since: period.since || undefined,
-            until: period.until || undefined,
-            selectedMetrics
-          })
-        });
-
-        if (!res.ok) {
-          const j = (await res.json().catch(() => null)) as { error?: string } | null;
-          const err = j?.error;
-          setMessage(
-            err === "pdf_generation_failed"
-              ? t("pdfFailed")
-              : err && err !== "Unauthorized"
-                ? err
-                : t("pdfFailed")
-          );
-          return;
-        }
-
-        const contentType = res.headers.get("content-type") ?? "";
-        if (contentType.includes("application/json")) {
-          const j = (await res.json()) as { emailed?: boolean; to?: string };
-          if (j.emailed && j.to) {
-            setMessage(t("pdfEmailed", { email: j.to }));
-            return;
-          }
-        }
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `relatorio-${selectedClient.slug}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setMessage(t("pdfDownloaded"));
-      } catch {
-        setMessage(t("pdfFailed"));
-      }
-    });
-  }
-
   function createSchedule() {
     if (!scheduleName.trim() || !scheduleEmail.trim()) {
       setMessage(t("scheduleFieldsRequired"));
@@ -316,26 +255,16 @@ export function ReportsClient() {
               {previewLoading ? tCommon("loading") : preview ? t("refreshPreview") : t("previewReport")}
             </button>
             {preview ? (
-              <>
-                <button
-                  type="button"
-                  className="ui-btn-secondary inline-flex items-center gap-1.5"
-                  onClick={openPrintView}
-                  disabled={!printViewUrl}
-                  title={t("openPrintViewHint")}
-                >
-                  <ExternalLink size={14} aria-hidden />
-                  {t("openPrintView")}
-                </button>
-                <button
-                  type="button"
-                  className="ui-btn-primary"
-                  onClick={exportPdf}
-                  disabled={isPending || !selectedClient}
-                >
-                  {isPending ? tCommon("generating") : t("exportPdf")}
-                </button>
-              </>
+              <button
+                type="button"
+                className="ui-btn-primary inline-flex items-center gap-1.5"
+                onClick={openPrintView}
+                disabled={!printViewUrl}
+                title={t("openPrintViewHint")}
+              >
+                <ExternalLink size={14} aria-hidden />
+                {t("openPrintView")}
+              </button>
             ) : null}
           </>
         }
