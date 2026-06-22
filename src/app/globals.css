@@ -580,12 +580,13 @@ h6,
   }
 
   .report-pdf-section {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto;
+    page-break-inside: auto;
   }
 
   .report-pdf-chart-card,
-  .report-pdf-block {
+  .report-pdf-block,
+  .report-pdf-kpi {
     break-inside: avoid;
     page-break-inside: avoid;
     -webkit-column-break-inside: avoid;
@@ -613,4 +614,104 @@ h6,
     max-height: 100% !important;
     max-width: 100% !important;
   }
+}
+
+/* ─── Captura PDF (html2pdf / html2canvas) ─── */
+.report-preview-root.report-pdf-capture {
+  width: 720px !important;
+  max-width: 720px !important;
+  min-width: 720px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  overflow: visible !important;
+}
+
+.report-pdf-capture-parent.ui-card {
+  border: none !important;
+  box-shadow: none !important;
+  background: #ffffff !important;
+  overflow: visible !important;
+  padding: 12px !important;
+}
+
+.report-pdf-capture .report-pdf-grid-3 {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.report-pdf-capture .report-pdf-grid-2 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.report-pdf-capture .report-pdf-spend-layout {
+  display: grid !important;
+  grid-template-columns: 248px minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+}
+
+.report-pdf-capture .report-pdf-solo {
+  grid-column: 1 / -1 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.report-pdf-capture .ui-card {
+  box-shadow: none !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  background: #ffffff !important;
+  overflow: visible !important;
+}
+
+.report-pdf-capture .report-pdf-header {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+.report-pdf-capture .report-chart-wrap {
+  overflow: hidden !important;
+}
+
+.report-pdf-capture .report-pdf-spend-layout table {
+  width: 100% !important;
+  table-layout: fixed !important;
+  font-size: 10px !important;
+}
+
+.report-pdf-capture .report-pdf-spend-layout .overflow-x-auto {
+  overflow: visible !important;
+}
+
+.report-pdf-capture [data-report-creatives-grid],
+.report-pdf-capture .report-creatives-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.report-pdf-capture [data-report-creatives-grid]:has(.report-creative-card:only-child),
+.report-pdf-capture .report-creatives-grid:has(.report-creative-card:only-child) {
+  grid-template-columns: 1fr !important;
+  justify-items: center !important;
+}
+
+.report-pdf-capture [data-report-creatives-grid]:has(.report-creative-card:nth-child(2):last-child),
+.report-pdf-capture .report-creatives-grid:has(.report-creative-card:nth-child(2):last-child) {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.report-pdf-capture .report-creative-media {
+  min-height: 180px !important;
+  max-height: 220px !important;
+}
+
+.report-pdf-capture .report-pdf-kpi .font-heading {
+  font-size: 1.35rem !important;
+  line-height: 1.2 !important;
 }

@@ -54,7 +54,7 @@ function ReportChartCard({
       className={`report-pdf-chart-card report-pdf-block ui-card overflow-hidden p-4 ${solo ? "report-pdf-solo" : ""}`}
     >
       <div className="text-sm font-semibold text-[var(--text-main)]">{title}</div>
-      <div className={`mt-3 ${solo ? "mx-auto max-w-[520px]" : ""}`}>{children}</div>
+      <div className={`mt-3 ${solo ? "w-full" : ""}`}>{children}</div>
     </div>
   );
 }
@@ -144,8 +144,8 @@ export function ReportPreview({
   const goalDelta = prevGoal > 0 ? pctDelta(goalValue, prevGoal) : null;
 
   return (
-    <div id="report-preview-root" className="report-preview-root space-y-6 overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4">
+    <div id="report-preview-root" className="report-preview-root space-y-5 overflow-hidden">
+      <div className="report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4">
         <div>
           <div className="text-xs font-medium text-[var(--text-dim)]">{t("previewTitle")}</div>
           <h2 className="font-heading mt-1 text-xl font-bold text-[var(--text-main)]">{data.client.name}</h2>
@@ -267,9 +267,9 @@ export function ReportPreview({
       <section className="report-pdf-section report-pdf-block ui-card overflow-hidden p-4">
         <div className="text-sm font-semibold text-[var(--text-main)]">{t("spendByCampaignTitle")}</div>
         {campaignsWithSpend.length ? (
-          <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)]">
+          <div className="report-pdf-spend-layout mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)]">
             <div className="flex min-w-0 flex-col">
-              <div className="mx-auto w-full max-w-[360px]">
+              <div className="report-pdf-spend-pie mx-auto w-full max-w-[360px]">
                 <div className="h-80">
                   <ChartContainer height={320}>
                     <PieChart>
@@ -451,7 +451,7 @@ export function ReportPreview({
       </section>
 
       {reportType === "complete" && data.recommendations.length ? (
-        <section className="ui-card p-4">
+        <section className="report-pdf-section report-pdf-block ui-card p-4">
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("recommendationsTitle")}</div>
           <p className="mt-1 text-xs text-[var(--text-dim)]">{t("recommendationsSubtitle")}</p>
           <div className="mt-4 space-y-3">
