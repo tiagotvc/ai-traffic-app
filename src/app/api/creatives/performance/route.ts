@@ -4,7 +4,7 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
 import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { fetchAllAccountCreatives } from "@/lib/creatives-access";
-import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { parsePeriodFromSearchParams, resolvedPeriodDays } from "@/lib/report-period";
 import { loadRankConfig } from "@/lib/ranking-config";
 import {
   aggregateCreativesFromAccountData,
@@ -85,7 +85,8 @@ export async function GET(req: Request) {
   }
 
   const creatives = mapAggregatesToCreatives(byCreative, clientSlug, presetByCampaign);
-  const groups = getTopCreativesByPreset(creatives, rankConfig);
+  const periodDays = resolvedPeriodDays(period);
+  const groups = getTopCreativesByPreset(creatives, rankConfig, { periodDays });
 
   const cacheTtlSec = getCreativesCacheTtlSec();
   const dataProvenance = {

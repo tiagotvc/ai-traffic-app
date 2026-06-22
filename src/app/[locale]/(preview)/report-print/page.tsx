@@ -40,7 +40,6 @@ export default async function ReportPrintPage({
 
   return (
     <ReportPrintReady>
-      {bundle.brandName ? <div className="report-print-brand px-2 pt-6 text-center">{bundle.brandName}</div> : null}
       <ReportPreview
         data={bundle.payload}
         selectedMetrics={bundle.selectedMetrics}

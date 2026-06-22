@@ -197,8 +197,8 @@ function fixCloneForPdf(clonedDoc: Document) {
   clonedDoc.querySelectorAll(".report-pdf-spend-layout").forEach((el) => {
     const grid = el as HTMLElement;
     grid.style.display = "grid";
-    grid.style.gridTemplateColumns = "248px minmax(0, 1fr)";
-    grid.style.gap = "14px";
+    grid.style.gridTemplateColumns = "1fr";
+    grid.style.gap = "20px";
     grid.style.alignItems = "start";
     grid.style.width = "100%";
   });

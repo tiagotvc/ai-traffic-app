@@ -1,4 +1,4 @@
-/* Layout A4 para impressão / Puppeteer PDF — 794px ≈ 210mm @ 96dpi */
+/* Layout A4 retrato para impressão / Puppeteer PDF — 794px ≈ 210mm @ 96dpi */
 
 .report-print-shell {
   min-height: 100vh;
@@ -23,15 +23,6 @@
 
 .report-print-root * {
   box-sizing: border-box;
-}
-
-.report-print-brand {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #7c3aed;
-  margin-bottom: 8px;
 }
 
 .report-print-root h2 {
@@ -78,10 +69,11 @@
   gap: 14px !important;
 }
 
+/* Investimento por campanha: empilhado (vertical) na impressão */
 .report-print-root .report-pdf-spend-layout {
   display: grid !important;
-  grid-template-columns: 280px minmax(0, 1fr) !important;
-  gap: 18px !important;
+  grid-template-columns: 1fr !important;
+  gap: 20px !important;
   align-items: start !important;
 }
 
@@ -107,14 +99,43 @@
   margin-right: auto !important;
 }
 
-.report-print-root .report-pdf-spend-layout table {
-  width: 100% !important;
-  font-size: 11px !important;
-  table-layout: fixed !important;
+/* Tabelas: podem continuar na página seguinte; cabeçalho repete */
+.report-print-root .report-print-table-section {
+  break-inside: auto;
+  page-break-inside: auto;
 }
 
-.report-print-root .report-pdf-spend-layout .overflow-x-auto {
+.report-print-root .report-print-table-wrap {
   overflow: visible !important;
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+.report-print-root .report-print-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+  font-size: 11px !important;
+  border-collapse: collapse;
+}
+
+.report-print-root .report-print-table thead {
+  display: table-header-group;
+}
+
+.report-print-root .report-print-table tfoot {
+  display: table-footer-group;
+}
+
+.report-print-root .report-print-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.report-print-root .report-print-table th,
+.report-print-root .report-print-table td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .report-print-root [data-report-creatives-grid],
@@ -147,15 +168,40 @@
 
 @page {
   size: A4 portrait;
-  margin: 10mm;
+  margin: 12mm;
 }
 
 @media print {
+  html,
   body {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: #ffffff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .report-print-shell {
-    padding: 0;
+    display: block !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+  }
+
+  .report-print-root {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .report-print-root .ui-card {
+    overflow: visible !important;
+  }
+
+  .report-print-root .report-print-table-wrap {
+    overflow: visible !important;
   }
 }

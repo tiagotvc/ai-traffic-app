@@ -21,6 +21,14 @@ type Group = {
 
 const COST_METRICS = new Set<MetricKey>(["cpmsg", "cpa", "cpm", "cpc"]);
 
+/** Top N do ranking: melhores primeiro; completa com promissores se faltar volume mínimo de "melhor". */
+function pickTopCreatives(group: Group, limit: number): CreativeItem[] {
+  const picked = group.best.slice(0, limit);
+  if (picked.length >= limit) return picked;
+  const need = limit - picked.length;
+  return [...picked, ...group.promising.slice(0, need)];
+}
+
 export function CreativesRankingView({
   clientId,
   clientSlug,
@@ -180,7 +188,7 @@ export function CreativesRankingView({
       {!embedInReport ? banner : null}
       {groups.map((g) => {
         const cols = presetMetricsFor(g.preset);
-        const best = maxBest != null ? g.best.slice(0, maxBest) : g.best;
+        const best = maxBest != null ? pickTopCreatives(g, maxBest) : g.best;
         const zeroOpen = expandedZero[g.preset];
         const compactBest = maxBest != null;
         const totalCount = compactBest ? best.length : g.best.length + g.promising.length + g.noSpend.length;

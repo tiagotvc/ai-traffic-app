@@ -154,10 +154,12 @@ export function ReportPreview({
   const sectionClass = isPrint ? "report-print-section report-pdf-section" : "report-pdf-section";
 
   return (
-    <div id={rootId} className={`${rootClass} overflow-hidden`}>
+    <div id={rootId} className={`${rootClass} ${isPrint ? "overflow-visible" : "overflow-hidden"}`}>
       <div className={`report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4 ${isPrint ? "report-print-avoid-break" : ""}`}>
         <div>
-          <div className="text-xs font-medium text-[var(--text-dim)]">{t("previewTitle")}</div>
+          <div className="text-xs font-medium text-[var(--text-dim)]">
+            {isPrint ? t("printTitle") : t("previewTitle")}
+          </div>
           <h2 className="font-heading mt-1 text-xl font-bold text-[var(--text-main)]">{data.client.name}</h2>
           <p className="mt-1 text-sm text-[var(--text-dim)]">
             {data.period.currentLabel}
@@ -277,11 +279,17 @@ export function ReportPreview({
         </ReportChartCard>
       </section>
 
-      <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4 report-print-avoid-break`}>
-        <div className="text-sm font-semibold text-[var(--text-main)]">{t("spendByCampaignTitle")}</div>
+      <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4`}>
+        <div className="text-sm font-semibold text-[var(--text-main)] report-print-avoid-break">
+          {t("spendByCampaignTitle")}
+        </div>
         {campaignsWithSpend.length ? (
-          <div className="report-pdf-spend-layout mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)]">
-            <div className="flex min-w-0 flex-col">
+          <div
+            className={`report-pdf-spend-layout mt-4 grid grid-cols-1 gap-6 ${
+              isPrint ? "" : "xl:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)]"
+            }`}
+          >
+            <div className={`flex min-w-0 flex-col ${isPrint ? "report-print-avoid-break" : ""}`}>
               <div className="report-pdf-spend-pie mx-auto w-full max-w-[360px]">
                 <div className="h-80">
                   <ChartContainer height={320}>
@@ -321,12 +329,18 @@ export function ReportPreview({
               </div>
             </div>
 
-            <div className="min-w-0">
+            <div className={`min-w-0 ${isPrint ? "report-print-table-section" : ""}`}>
               <div className="mb-2 text-xs font-medium text-[var(--text-dim)]">
                 {t("campaignSpendTableTitle", { count: campaignsWithSpend.length })}
               </div>
-              <div className="overflow-x-auto rounded-xl border border-[var(--border-color)]">
-                <table className="w-full min-w-[420px] text-left text-xs">
+              <div
+                className={`rounded-xl border border-[var(--border-color)] ${
+                  isPrint ? "report-print-table-wrap" : "overflow-x-auto"
+                }`}
+              >
+                <table
+                  className={`w-full text-left text-xs ${isPrint ? "report-print-table" : "min-w-[420px]"}`}
+                >
                   <thead>
                     <tr className="border-b border-[var(--border-color)] bg-[var(--surface-bg)]">
                       <th className="px-3 py-2.5 font-semibold text-[var(--text-dim)]">{t("colCampaign")}</th>

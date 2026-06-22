@@ -648,8 +648,8 @@ h6,
 
 .report-pdf-capture .report-pdf-spend-layout {
   display: grid !important;
-  grid-template-columns: 248px minmax(0, 1fr) !important;
-  gap: 14px !important;
+  grid-template-columns: 1fr !important;
+  gap: 20px !important;
   align-items: start !important;
 }
 

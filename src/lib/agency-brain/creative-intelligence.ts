@@ -255,7 +255,8 @@ export function mapAggregatesToCreatives(
 
 export function getTopCreativesByPreset(
   creatives: AggregatedCreative[],
-  rankConfig: RankConfig
+  rankConfig: RankConfig,
+  opts?: { periodDays?: number | null }
 ) {
   const byPreset = new Map<string, AggregatedCreative[]>();
   for (const c of creatives) {
@@ -273,8 +274,13 @@ export function getTopCreativesByPreset(
       const noSpend = list
         .filter((c) => Number(c.metrics.spend ?? 0) <= 0)
         .sort((a, b) => Number(b.metrics.impressions ?? 0) - Number(a.metrics.impressions ?? 0));
+      const volumeOpts =
+        opts?.periodDays != null && opts.periodDays > 0
+          ? { periodDays: opts.periodDays }
+          : undefined;
       const isBest = (c: AggregatedCreative) =>
-        meetsMinActivity(c.metrics, rankConfig) && bestEligible(c.metrics, preset);
+        meetsMinActivity(c.metrics, rankConfig) &&
+        bestEligible(c.metrics, preset, volumeOpts);
       const best = spentList.filter(isBest).sort(byEff);
       const promising = spentList.filter((c) => !isBest(c)).sort(byEff);
       const totalSpend = list.reduce((s, c) => s + Number(c.metrics.spend ?? 0), 0);

@@ -1748,6 +1748,7 @@
     "emptyPreviewTitle": "Nenhuma prévia ainda",
     "emptyPreviewHint": "Escolha cliente, período e métricas e clique em Visualizar relatório.",
     "previewTitle": "Prévia do relatório",
+    "printTitle": "Relatório",
     "vsPrevPeriod": "vs período anterior",
     "noPrevData": "sem dados anteriores",
     "compareWith": "Comparado com",

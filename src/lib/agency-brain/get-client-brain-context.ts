@@ -95,7 +95,7 @@ async function loadTopCreatives(
     }
 
     const creatives = mapAggregatesToCreatives(byCreative, clientSlug, presetByCampaign);
-    const groups = getTopCreativesByPreset(creatives, rankConfig);
+    const groups = getTopCreativesByPreset(creatives, rankConfig, { periodDays: 7 });
     return rankedCreativesFromGroups(groups).filter((c) => c.tier !== "no_spend").slice(0, 10);
   } catch {
     return [];

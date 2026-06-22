@@ -1745,6 +1745,7 @@
     "emptyPreviewTitle": "No preview yet",
     "emptyPreviewHint": "Choose a client, period and metrics, then click Preview report.",
     "previewTitle": "Report preview",
+    "printTitle": "Report",
     "vsPrevPeriod": "vs previous period",
     "noPrevData": "no prior data",
     "compareWith": "Compared with",
