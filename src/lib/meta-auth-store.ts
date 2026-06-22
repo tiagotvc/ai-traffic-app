@@ -25,6 +25,11 @@ export async function persistMetaAuth(userId: string, account: MetaTokenPayload)
   await repo.save(row);
 }
 
+export async function clearMetaAuth(userId: string): Promise<void> {
+  const { metaAuth: repo } = await repositories();
+  await repo.delete({ userId });
+}
+
 export async function getStoredMetaAccessToken(userId: string): Promise<string | undefined> {
   const { metaAuth: repo } = await repositories();
   const row = await repo.findOne({ where: { userId }, order: { updatedAt: "DESC" } });
@@ -88,10 +93,14 @@ export async function getAllTenantMetaTokens(
   const { user: userRepo } = await repositories();
   const users = await userRepo.find({ where: { tenantId }, select: { id: true } });
   const tokens: string[] = [];
-  if (sessionToken) tokens.push(sessionToken);
   for (const u of users) {
     const token = await getStoredMetaAccessToken(u.id);
     if (token) tokens.push(token);
+  }
+  // Token da sessão JWT só como último recurso — costuma ser legado/expirado e
+  // não deve preceder tokens frescos salvos após "Reconectar Meta".
+  if (sessionToken && !tokens.includes(sessionToken)) {
+    tokens.push(sessionToken);
   }
   return [...new Set(tokens)];
 }
@@ -138,7 +147,8 @@ export async function getMetaConnectionInfo(
   const member = await memberRepo.findOne({ where: { tenantId, userId } });
   const role: MetaConnectionInfo["role"] = member?.role === "member" ? "member" : "admin";
   const tenantToken = await getTenantMetaAccessToken(tenantId, userId);
-  const ownToken = sessionToken ?? (await getStoredMetaAccessToken(userId));
+  const ownStored = await getStoredMetaAccessToken(userId);
+  const ownToken = ownStored ?? sessionToken;
   const hasWorkspaceToken = await hasWorkspaceMetaConnected(tenantId);
 
   const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
@@ -203,17 +213,20 @@ export async function resolveWorkspaceMetaAccessToken(
 ): Promise<string | undefined> {
   const { tenant: tenantRepo, tenantMember: memberRepo } = await repositories();
 
-  // Conexão oficial: token do dono para todos. Se o próprio dono está logado,
-  // aceita o token de sessão (mais fresco) antes de cair no armazenado.
+  // Conexão oficial: token persistido após "Reconectar Meta" tem prioridade sobre
+  // access_token legado que ainda possa existir no JWT da sessão.
   const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
   if (tenant?.metaConnectionUserId) {
+    const stored = await getStoredMetaAccessToken(tenant.metaConnectionUserId);
+    if (stored) return stored;
     if (tenant.metaConnectionUserId === userId && sessionToken) return sessionToken;
-    return getStoredMetaAccessToken(tenant.metaConnectionUserId);
+    return undefined;
   }
 
   const member = await memberRepo.findOne({ where: { tenantId, userId } });
   const tenantToken = await getTenantMetaAccessToken(tenantId, userId);
-  const ownToken = sessionToken ?? (await getStoredMetaAccessToken(userId));
+  const ownStored = await getStoredMetaAccessToken(userId);
+  const ownToken = ownStored ?? sessionToken;
 
   if (member?.role === "member") {
     return tenantToken;
@@ -228,5 +241,16 @@ export function isMetaPermissionError(message: string): boolean {
     message.includes("ads_read") ||
     message.includes("(#200)") ||
     message.includes("OAuthException")
+  );
+}
+
+/** Token revogado/expirado (Graph API code 190, subcode 460, etc.). */
+export function isMetaTokenInvalidError(message: string): boolean {
+  return (
+    /error validating access token/i.test(message) ||
+    /\b190\b/.test(message) ||
+    /session has been invalidated/i.test(message) ||
+    /session has expired/i.test(message) ||
+    /error_subcode.:460/.test(message)
   );
 }
