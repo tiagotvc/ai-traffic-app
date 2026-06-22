@@ -317,7 +317,13 @@ export function ReportsClient() {
           </div>
         ) : (
           <div className="ui-card flex min-h-[320px] flex-col items-center justify-center p-8 text-center">
-            <div className="text-4xl">📊</div>
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-xl"
+              style={{ background: "rgba(245,166,35,0.12)" }}
+              aria-hidden
+            >
+              <BarChart3 size={22} className="text-[var(--amber)]" />
+            </div>
             <h2 className="mt-3 text-lg font-semibold text-[var(--text-main)]">{t("emptyPreviewTitle")}</h2>
             <p className="mt-2 max-w-md text-sm text-[var(--text-dim)]">{t("emptyPreviewHint")}</p>
           </div>
