@@ -56,17 +56,15 @@ export default async function LoginPage({
           </div>
 
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-5 sm:px-10 lg:py-8">
-            <div className="auth-premium-card w-full max-w-[420px]">
-              <LoginForm
-                locale={locale}
-                callbackUrl={redirectTo}
-                googleOAuthConfigured={isGoogleOAuthConfigured()}
-                metaOAuthConfigured={isMetaOAuthConfigured()}
-                switchAccount={switchAccount}
-                currentUserEmail={currentUserEmail}
-                accountSuspended={queryError === "account_suspended"}
-              />
-            </div>
+            <LoginForm
+              locale={locale}
+              callbackUrl={redirectTo}
+              googleOAuthConfigured={isGoogleOAuthConfigured()}
+              metaOAuthConfigured={isMetaOAuthConfigured()}
+              switchAccount={switchAccount}
+              currentUserEmail={currentUserEmail}
+              accountSuspended={queryError === "account_suspended"}
+            />
           </div>
         </div>
 

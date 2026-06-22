@@ -61,7 +61,7 @@ export function LoginForm({
   );
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-[420px]">
       <div className="auth-premium-banner mb-5 lg:hidden">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-900/30">

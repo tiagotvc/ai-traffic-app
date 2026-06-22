@@ -133,7 +133,7 @@ export function PerformanceChartWidget({
       barLayout={barLayout}
       visual={visual}
       disableToggle={compact}
-      metricSummary={data.summary}
+      metricSummary={data.summary ?? undefined}
     />
   );
 }
