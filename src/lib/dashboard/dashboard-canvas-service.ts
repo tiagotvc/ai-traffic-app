@@ -78,7 +78,7 @@ function defaultWidgetsFromLegacyPrefs(
     y += h;
   };
 
-  if (sections.brainShelf) push("brain.learnings", 12, 2);
+  if (sections.brainShelf) push("brain.learnings", 12, 1);
   if (sections.heroKpis) {
     push("metrics.heroKpis", 12, 3, {
       heroMetrics: prefs.heroMetrics ?? []

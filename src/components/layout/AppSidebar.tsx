@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import {
   Megaphone,
   BarChart3,
-  Bell,
   LayoutDashboard,
   Target,
   Trophy,
@@ -42,7 +41,6 @@ type NavItem = {
 export function AppSidebar({
   userName,
   userEmail,
-  alertCount,
   planName,
   planSlug,
   subscriptionStatus,
@@ -58,7 +56,6 @@ export function AppSidebar({
 }: {
   userName: string;
   userEmail: string;
-  alertCount: number;
   planName?: string;
   planSlug?: string;
   subscriptionStatus?: string;
@@ -93,15 +90,7 @@ export function AppSidebar({
     { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <Megaphone size={18} className="shrink-0" />, gate: "campaigns" },
     { id: "audiences", href: "/audiences", label: t("audiences"), icon: <Target size={18} className="shrink-0" />, gate: "audiences" },
     { id: "creatives", href: "/creatives", label: t("creatives"), icon: <Trophy size={18} className="shrink-0" />, gate: "creatives" },
-    { id: "reports", href: "/reports", label: t("reports"), icon: <BarChart3 size={18} className="shrink-0" />, gate: "reports" },
-    {
-      id: "alerts",
-      href: "/alerts",
-      label: t("alerts"),
-      badge: alertCount > 0 ? alertCount : undefined,
-      icon: <Bell size={18} className="shrink-0" />,
-      gate: "alerts"
-    }
+    { id: "reports", href: "/reports", label: t("reports"), icon: <BarChart3 size={18} className="shrink-0" />, gate: "reports" }
   ];
 
   function isActive(item: NavItem) {
@@ -110,7 +99,6 @@ export function AppSidebar({
       return base === "/dashboard" || base.startsWith("/dashboard/") || base === "/";
     if (item.id === "campaigns")
       return base === "/campaigns" || base.startsWith("/campaigns/");
-    if (item.id === "alerts") return base === "/alerts" || base.startsWith("/alerts/");
     if (item.id === "clients") return base === "/clients" || base.startsWith("/clients/");
     if (item.id === "reports") return base === "/reports" || base.startsWith("/reports/");
     if (item.id === "creatives") return base === "/creatives" || base.startsWith("/creatives/");

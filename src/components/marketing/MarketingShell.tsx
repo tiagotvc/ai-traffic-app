@@ -14,7 +14,8 @@ const LOCALE_LABELS: Record<AppLocale, string> = {
 };
 
 const NAV = [
-  { href: "/#product", key: "navProduct" as const },
+  { href: "/#capabilities", key: "navProduct" as const },
+  { href: "/#compare", key: "navCompare" as const },
   { href: "/pricing", key: "navPricing" as const },
   { href: "/about", key: "navAbout" as const },
   { href: "/support", key: "navSupport" as const }

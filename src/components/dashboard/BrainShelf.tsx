@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/cn";
 
 type Suggestion = {
   id: string;
@@ -20,25 +21,45 @@ type Suggestion = {
 export function BrainShelf({
   suggestions,
   isLoading,
-  compact = true
+  variant = "feed",
+  embedded = false
 }: {
   suggestions?: Suggestion[];
   isLoading?: boolean;
-  compact?: boolean;
+  /** feed = compact alert rows (canvas). shelf = legacy card strip. */
+  variant?: "feed" | "shelf";
+  embedded?: boolean;
 }) {
   const t = useTranslations("dashboard");
   const [dismissed, setDismissed] = useState<string[]>([]);
   const visible = (suggestions ?? []).filter((s) => !dismissed.includes(s.id));
+  const isFeed = variant === "feed";
+
+  const shellClass = cn(
+    "w-full",
+    !embedded && !isFeed && "ui-brain-shelf",
+    isFeed &&
+      "rounded-xl border p-3",
+    isFeed && !embedded && "shadow-sm"
+  );
+
+  const shellStyle = isFeed
+    ? {
+        borderColor: "var(--border-color)",
+        background: "var(--surface-card)",
+        boxShadow: embedded ? undefined : "0 1px 8px rgba(0,0,0,0.05)"
+      }
+    : undefined;
 
   return (
-    <section className="ui-brain-shelf w-full">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+    <section className={shellClass} style={shellStyle}>
+      <div className={cn("flex flex-wrap items-center justify-between gap-2", isFeed ? "mb-2" : "mb-2")}>
         <div className="flex min-w-0 items-center gap-2">
           <div
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
             style={{ background: "rgba(124,58,237,0.12)" }}
           >
-            <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="#7c3aed" strokeWidth={1.75}>
+            <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="#7c3aed" strokeWidth={1.75}>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -50,7 +71,7 @@ export function BrainShelf({
             <h3 className="font-heading text-xs font-semibold" style={{ color: "var(--text-main)" }}>
               {t("brainLearningsTitle")}
             </h3>
-            {!compact ? (
+            {!isFeed ? (
               <p className="text-[11px]" style={{ color: "var(--text-dimmer)" }}>
                 {t("brainLearningsSubtitle")}
               </p>
@@ -76,18 +97,26 @@ export function BrainShelf({
       </div>
 
       {isLoading ? (
-        <div className="flex gap-2 overflow-hidden">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="skeleton-shimmer h-[72px] min-w-[200px] flex-1 rounded-lg border"
-              style={{ borderColor: "var(--border-color)" }}
-            />
-          ))}
-        </div>
+        isFeed ? (
+          <div className="space-y-1.5">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="skeleton-shimmer h-8 rounded-lg" />
+            ))}
+          </div>
+        ) : (
+          <div className="flex gap-2 overflow-hidden">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="skeleton-shimmer h-[72px] min-w-[200px] flex-1 rounded-lg border"
+                style={{ borderColor: "var(--border-color)" }}
+              />
+            ))}
+          </div>
+        )
       ) : visible.length === 0 ? (
         <div
-          className="rounded-lg border px-3 py-2.5 text-[11px]"
+          className="rounded-lg border px-3 py-2 text-[11px]"
           style={{
             borderColor: "var(--border-color)",
             background: "var(--surface-bg)",
@@ -95,6 +124,48 @@ export function BrainShelf({
           }}
         >
           {t("brainEmpty")}
+        </div>
+      ) : isFeed ? (
+        <div
+          className="max-h-full space-y-1 overflow-y-auto"
+          style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
+        >
+          {visible.map((s) => (
+            <Link
+              key={s.id}
+              href={s.actionHref ?? "/agency-brain/learnings"}
+              className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:opacity-90"
+              style={{
+                background: `${s.color}0c`,
+                border: `1px solid ${s.border}`
+              }}
+            >
+              <div
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded"
+                style={{ background: `${s.color}18` }}
+              >
+                <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke={s.color} strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11px] leading-tight">
+                  <span className="font-semibold" style={{ color: "var(--text-main)" }}>
+                    {s.title}
+                  </span>
+                  <span className="mx-1 font-normal" style={{ color: "var(--text-dimmer)" }}>
+                    ·
+                  </span>
+                  <span className="font-normal" style={{ color: "var(--text-dim)" }}>
+                    {s.body}
+                  </span>
+                </p>
+              </div>
+              <span className="shrink-0 text-[9px]" style={{ color: "var(--text-dimmer)" }}>
+                {t("brainConfidence", { value: s.confidence })}
+              </span>
+            </Link>
+          ))}
         </div>
       ) : (
         <div

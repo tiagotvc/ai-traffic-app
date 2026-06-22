@@ -39,6 +39,8 @@ export type DashboardWidgetDefinition = {
   component: string;
   comingSoon?: boolean;
   defaultConfig?: Record<string, unknown>;
+  /** Widget renders its own shell (header, border). Skip outer grid card chrome. */
+  embeddedChrome?: boolean;
 };
 
 export type WidgetInstanceDto = {
@@ -97,9 +99,13 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     type: "brain.learnings",
     titleKey: "brainLearnings",
     category: "ai",
-    size: "lg",
+    size: "sm",
+    minH: 1,
+    defaultH: 1,
+    defaultW: 12,
     dataSource: "brainShelf",
-    component: "BrainShelfWidget"
+    component: "BrainShelfWidget",
+    embeddedChrome: true
   }),
   def({
     type: "metrics.heroKpis",
@@ -176,7 +182,8 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     defaultH: 5,
     dataSource: "alertsFeed",
     component: "AlertsFeedWidget",
-    defaultConfig: { density: "stacked" }
+    defaultConfig: { density: "stacked" },
+    embeddedChrome: true
   }),
   def({
     type: "clients.health",
@@ -387,7 +394,63 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     dataSource: "heatmap",
     component: "HeatmapWidget",
     requiredAddon: MASTER_BLASTER_ADDON,
-    defaultConfig: { heatmapMetric: "spend", cellScale: "auto" }
+    defaultConfig: { heatmapMetric: "spend", cellScale: "auto", heatmapColorScale: "auto" }
+  }),
+  def({
+    type: "advanced.radar",
+    titleKey: "radarChart",
+    category: "premium",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    defaultW: 6,
+    dataSource: "performanceChart",
+    component: "RadarStandaloneWidget",
+    requiredAddon: MASTER_BLASTER_ADDON,
+    defaultConfig: {
+      chartStyle: "radar",
+      chartMetrics: ["spend", "roas", "conversions", "ctr"],
+      visual: { radarFillOpacity: 0.3 }
+    }
+  }),
+  def({
+    type: "advanced.pareto",
+    titleKey: "paretoChart",
+    category: "premium",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    defaultW: 6,
+    dataSource: "pareto",
+    component: "ParetoWidget",
+    requiredAddon: MASTER_BLASTER_ADDON,
+    defaultConfig: { metric: "spend", sortDescending: true }
+  }),
+  def({
+    type: "premium.bullet",
+    titleKey: "bulletChart",
+    category: "premium",
+    size: "md",
+    minH: 2,
+    defaultH: 2,
+    defaultW: 6,
+    dataSource: "bullet",
+    component: "BulletWidget",
+    requiredAddon: MASTER_BLASTER_ADDON,
+    defaultConfig: { metric: "roas", targetValue: 3 }
+  }),
+  def({
+    type: "advanced.boxplot",
+    titleKey: "boxPlotChart",
+    category: "premium",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    defaultW: 6,
+    dataSource: "boxplot",
+    component: "BoxPlotWidget",
+    requiredAddon: MASTER_BLASTER_ADDON,
+    defaultConfig: { metric: "cpa", boxPlotGroupBy: "dayOfWeek" }
   }),
   def({
     type: "ai.correlation",

@@ -7,7 +7,7 @@ import { DEFAULT_DASHBOARD_CHART_METRICS, type MetricKey } from "@/lib/dashboard
 import { getWidgetDefinition } from "@/lib/dashboard/widget-catalog";
 
 /** Bump when system template layouts change (forces DB resync on next API load). */
-export const SYSTEM_TEMPLATE_CATALOG_VERSION = 3;
+export const SYSTEM_TEMPLATE_CATALOG_VERSION = 4;
 
 export type SystemTemplateWidgetSpec = {
   widgetType: string;
@@ -86,7 +86,16 @@ const donutChart = {
 const radarChart = {
   chartStyle: "radar",
   chartMetrics: FUNNEL_METRICS,
-  visual: visualPremium
+  visual: { ...visualPremium, radarFillOpacity: 0.3 }
+};
+
+const composedChart = {
+  chartStyle: "composed",
+  chartMetrics: ["spend", "conversions", "roas"] as MetricKey[],
+  visual: {
+    ...visualPremium,
+    seriesStyles: { spend: "bar", conversions: "line", roas: "area" }
+  }
 };
 
 export function widgetsFromLegacyLayoutPrefs(
@@ -111,7 +120,7 @@ export function widgetsFromLegacyLayoutPrefs(
     y += h;
   };
 
-  if (sections.brainShelf) push("brain.learnings", 12, 2);
+  if (sections.brainShelf) push("brain.learnings", 12, 1);
   if (sections.heroKpis) {
     push("metrics.heroKpis", 12, 3, {
       heroMetrics: ["spend", "roas", "conversions"] as MetricKey[]
@@ -164,7 +173,7 @@ export const SYSTEM_DASHBOARD_TEMPLATE_CATALOG: SystemDashboardTemplateSpec[] = 
     category: "performance",
     minPlanSlug: "advanced",
     widgets: [
-      { widgetType: "brain.learnings", x: 0, y: 0, w: 12, h: 2, size: "sm", config: {} },
+      { widgetType: "brain.learnings", x: 0, y: 0, w: 12, h: 1, size: "sm", config: {} },
       {
         widgetType: "metrics.heroKpis",
         x: 0,
@@ -596,21 +605,48 @@ export const SYSTEM_DASHBOARD_TEMPLATE_CATALOG: SystemDashboardTemplateSpec[] = 
         w: 6,
         h: 4,
         size: "lg",
-        config: radarChart
+        config: composedChart
       },
       {
-        widgetType: "premium.multiChart",
+        widgetType: "advanced.radar",
         x: 6,
         y: 3,
         w: 6,
         h: 4,
         size: "lg",
-        config: barChart
+        config: radarChart
+      },
+      {
+        widgetType: "advanced.pareto",
+        x: 0,
+        y: 7,
+        w: 4,
+        h: 3,
+        size: "md",
+        config: { metric: "spend", sortDescending: true }
+      },
+      {
+        widgetType: "premium.bullet",
+        x: 4,
+        y: 7,
+        w: 4,
+        h: 2,
+        size: "sm",
+        config: { metric: "roas", targetValue: 3 }
+      },
+      {
+        widgetType: "advanced.boxplot",
+        x: 8,
+        y: 7,
+        w: 4,
+        h: 3,
+        size: "md",
+        config: { metric: "cpa", boxPlotGroupBy: "dayOfWeek" }
       },
       {
         widgetType: "advanced.scatter",
         x: 0,
-        y: 7,
+        y: 10,
         w: 6,
         h: 3,
         size: "lg",
@@ -619,11 +655,11 @@ export const SYSTEM_DASHBOARD_TEMPLATE_CATALOG: SystemDashboardTemplateSpec[] = 
       {
         widgetType: "advanced.heatmap",
         x: 6,
-        y: 7,
+        y: 10,
         w: 6,
         h: 3,
         size: "lg",
-        config: { heatmapMetric: "roas" }
+        config: { heatmapMetric: "roas", cellScale: "auto", heatmapColorScale: "linear" }
       }
     ]
   }

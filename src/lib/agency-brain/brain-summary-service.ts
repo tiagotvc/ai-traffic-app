@@ -4,22 +4,38 @@ import { repositories } from "@/db/repositories";
 import { toLearningDto } from "@/lib/agency-brain/client-learning-service";
 import type { BrainSummary } from "@/lib/agency-brain/types";
 
-export async function getBrainSummary(
-  tenantId: string,
-  clientId: string
-): Promise<BrainSummary> {
-  const { clientLearning: repo } = await repositories();
+export async function countAgencyHypotheses(tenantId: string): Promise<number> {
+  const { clientHypothesis: repo } = await repositories();
+  return repo
+    .createQueryBuilder("h")
+    .where('h."tenantId" = :tenantId', { tenantId })
+    .andWhere("h.status NOT IN (:...excluded)", { excluded: ["REJECTED", "ARCHIVED"] })
+    .getCount();
+}
 
-  const all = await repo.find({
+export async function countAgencyLearningsShelf(tenantId: string): Promise<number> {
+  const { clientLearning: repo } = await repositories();
+  return repo
+    .createQueryBuilder("l")
+    .where('l."tenantId" = :tenantId', { tenantId })
+    .andWhere("l.status IN (:...statuses)", { statuses: ["SUGGESTED", "APPROVED"] })
+    .getCount();
+}
+
+export async function getBrainSummary(tenantId: string, clientId: string): Promise<BrainSummary> {
+  const { clientLearning: repo } = await repositories();
+  const rows = await repo.find({
     where: { tenantId, clientId },
-    order: { createdAt: "DESC" }
+    order: { updatedAt: "DESC" },
+    take: 200
   });
 
-  const active = all.filter((l) => l.status !== "ARCHIVED");
+  const items = rows.map(toLearningDto);
+  const approved = items.filter((l) => l.status === "APPROVED");
   const byCategory: Record<string, number> = {};
   const tagCounts = new Map<string, number>();
 
-  for (const l of active) {
+  for (const l of approved) {
     byCategory[l.category] = (byCategory[l.category] ?? 0) + 1;
     for (const tag of l.tags ?? []) {
       tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
@@ -28,22 +44,17 @@ export async function getBrainSummary(
 
   const topTags = [...tagCounts.entries()]
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
+    .slice(0, 8)
     .map(([tag, count]) => ({ tag, count }));
 
-  const recentApproved = all
-    .filter((l) => l.status === "APPROVED")
-    .slice(0, 5)
-    .map(toLearningDto);
-
   return {
-    total: active.length,
-    highImpact: active.filter((l) => l.impact === "HIGH").length,
-    creativeCount: active.filter((l) => l.category === "CREATIVE").length,
-    audienceCount: active.filter((l) => l.category === "AUDIENCE").length,
-    pendingSuggestions: active.filter((l) => l.status === "SUGGESTED").length,
+    total: approved.length,
+    highImpact: approved.filter((l) => l.impact === "HIGH").length,
+    creativeCount: approved.filter((l) => l.category === "CREATIVE").length,
+    audienceCount: approved.filter((l) => l.category === "AUDIENCE").length,
+    pendingSuggestions: items.filter((l) => l.status === "SUGGESTED").length,
     byCategory,
     topTags,
-    recentApproved
+    recentApproved: approved.slice(0, 5)
   };
 }

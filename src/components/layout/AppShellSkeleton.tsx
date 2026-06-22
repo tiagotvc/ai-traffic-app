@@ -71,7 +71,6 @@ const DEFAULT_BRAIN_FEATURES: AgencyBrainFeatureFlags = {
 function sidebarProps(
   userName: string,
   userEmail: string,
-  alertCount: number,
   planName: string,
   planSlug: string,
   subscriptionStatus: string,
@@ -87,7 +86,6 @@ function sidebarProps(
   return {
     userName,
     userEmail,
-    alertCount,
     planName,
     planSlug,
     subscriptionStatus,
@@ -121,7 +119,6 @@ export function AppShellSkeleton({
   const mainRef = useRef<HTMLElement>(null);
   const [showTop, setShowTop] = useState(false);
 
-  const [alertCount, setAlertCount] = useState(0);
   const [planSlug, setPlanSlug] = useState("free");
   const [planName, setPlanName] = useState("Free");
   const [subscriptionStatus, setSubscriptionStatus] = useState("active");
@@ -177,13 +174,6 @@ export function AppShellSkeleton({
   }, [mobileMenuOpen]);
 
   const loadShellData = useCallback(() => {
-    void fetch("/api/alerts/count", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (j?.count != null) setAlertCount(Number(j.count) || 0);
-      })
-      .catch(() => {});
-
     void fetch(`/api/me/entitlements?fresh=${Date.now()}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
@@ -253,7 +243,6 @@ export function AppShellSkeleton({
   const sharedSidebar = sidebarProps(
     userName,
     userEmail,
-    alertCount,
     planName,
     planSlug,
     subscriptionStatus,
@@ -275,15 +264,12 @@ export function AppShellSkeleton({
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
             aria-label={t("openMenu", { defaultMessage: "Abrir menu" })}
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            {alertCount > 0 ? (
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
-            ) : null}
           </button>
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <div
@@ -292,7 +278,7 @@ export function AppShellSkeleton({
             >
               ∞
             </div>
-            <span className="truncate font-heading text-sm font-semibold text-[var(--text-main)]">Traffic AI</span>
+            <span className="truncate font-heading text-sm font-semibold text-[var(--text-main)]">Orion Agency</span>
           </div>
         </header>
 

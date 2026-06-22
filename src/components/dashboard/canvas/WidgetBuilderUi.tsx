@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
+import { chartTypesForBuilder } from "@/lib/dashboard/chart-type-registry";
+import { isPremiumChartStyle } from "@/lib/dashboard/slot-visual-config";
 import { METRIC_BY_KEY, METRIC_CATALOG, METRIC_CATEGORIES, type MetricKey } from "@/lib/dashboard-metrics";
 
 export function BuilderField({
@@ -298,17 +300,14 @@ export function BuilderChartStyleGrid({
   t: (key: string) => string;
   advancedUnlocked: boolean;
 }) {
-  const items = [
-    { id: "area", label: t("configChartStyleArea"), premium: false },
-    { id: "line", label: t("configChartStyleLine"), premium: false },
-    { id: "bar", label: t("configChartStyleBar"), premium: false },
-    { id: "pie", label: t("configChartStylePie"), premium: true },
-    { id: "donut", label: t("configChartStyleDonut"), premium: true },
-    { id: "radar", label: t("configChartStyleRadar"), premium: true }
-  ];
+  const items = chartTypesForBuilder(advancedUnlocked).map((meta) => ({
+    id: meta.id,
+    label: t(meta.i18nKey),
+    premium: isPremiumChartStyle(meta.id)
+  }));
 
   return (
-    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
       {items.map((item) => {
         const active = value === item.id;
         const disabled = item.premium && !advancedUnlocked;

@@ -10,21 +10,23 @@ export function WidgetChrome({
   onRemove,
   children,
   compact = false,
+  embedded = false,
   periodBadge
 }: {
   title?: string | null;
   editMode: boolean;
   onRemove: () => void;
   children: React.ReactNode;
-  /** Tighter padding for small metric widgets. */
   compact?: boolean;
+  embedded?: boolean;
   periodBadge?: string;
 }) {
-  const showTitleBar = (!!title || !!periodBadge) && !editMode;
+  const showTitleBar = !embedded && (!!title || !!periodBadge) && !editMode;
+  const useEditBar = editMode && embedded;
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      {editMode ? (
+      {editMode && !useEditBar ? (
         <>
           <div
             className="widget-drag-handle absolute inset-x-0 top-0 z-[2] h-8 cursor-grab active:cursor-grabbing"
@@ -45,6 +47,25 @@ export function WidgetChrome({
             <GripVertical size={14} style={{ color: "var(--text-dimmer)" }} />
           </span>
         </>
+      ) : null}
+
+      {useEditBar ? (
+        <div
+          className="widget-edit-bar widget-drag-handle relative z-[2] flex h-7 shrink-0 cursor-grab items-center justify-between border-b px-1 active:cursor-grabbing"
+          style={{ borderColor: "var(--border-color)", background: "var(--surface-thead)" }}
+        >
+          <span className="widget-drag-handle flex cursor-grab items-center rounded p-0.5 active:cursor-grabbing">
+            <GripVertical size={14} style={{ color: "var(--text-dimmer)" }} />
+          </span>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded p-0.5 transition-colors hover:bg-[var(--surface-bg)]"
+            aria-label="Remove widget"
+          >
+            <X size={14} style={{ color: "var(--text-dimmer)" }} />
+          </button>
+        </div>
       ) : null}
 
       {showTitleBar ? (
@@ -72,15 +93,18 @@ export function WidgetChrome({
 
       <div
         className={cn(
-          "flex min-h-0 w-full flex-1 overflow-hidden",
-          compact
+          "flex min-h-0 w-full flex-1 flex-col overflow-hidden",
+          embedded
             ? editMode
-              ? "p-1.5 pt-6"
+              ? "p-2"
               : "p-2"
-            : editMode
-              ? "p-3 pt-7"
-              : "p-3",
-          !compact && editMode && "flex flex-col"
+            : compact
+              ? editMode
+                ? "p-1.5 pt-6"
+                : "p-2"
+              : editMode
+                ? "p-3 pt-7"
+                : "p-3"
         )}
       >
         {children}

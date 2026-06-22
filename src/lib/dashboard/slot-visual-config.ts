@@ -3,7 +3,23 @@ import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import type { ChartStyle } from "@/lib/dashboard/widget-config";
 
 /** Estilos básicos (grátis) + premium (Master Blaster). */
-export type ExtendedChartStyle = ChartStyle | "pie" | "donut" | "radar";
+export type ExtendedChartStyle =
+  | ChartStyle
+  | "pie"
+  | "donut"
+  | "radar"
+  | "composed"
+  | "pareto"
+  | "bullet"
+  | "boxplot";
+
+export type SeriesStyle = "bar" | "line" | "area";
+export type YAxisSide = "left" | "right";
+export type BoxPlotGroupBy = "campaign" | "client" | "dayOfWeek";
+export type HeatmapColorScale = "auto" | "linear" | "log";
+export type CellScale = "auto" | "compact" | "large";
+
+export type RangeZone = { max: number; color: string; label?: string };
 
 export type SlotFontFamily = "system" | "heading" | "mono";
 export type SlotFontSize = "sm" | "md" | "lg";
@@ -17,10 +33,31 @@ export type SlotVisualConfig = {
   fontSize?: SlotFontSize;
   lineStrokeWidth?: StrokeWeight;
   barThickness?: StrokeWeight;
+  /** Per-metric render style for composed charts. */
+  seriesStyles?: Partial<Record<MetricKey, SeriesStyle>>;
+  yAxisSide?: Partial<Record<MetricKey, YAxisSide>>;
+  targetValue?: number;
+  rangeZones?: RangeZone[];
+  boxPlotGroupBy?: BoxPlotGroupBy;
+  boxPlotMetric?: MetricKey;
+  paretoCumulativeLineColor?: string;
+  sortDescending?: boolean;
+  radarFillOpacity?: number;
+  radarMaxValue?: number;
+  heatmapColorScale?: HeatmapColorScale;
+  cellScale?: CellScale;
 };
 
 export const BASIC_CHART_STYLES: ExtendedChartStyle[] = ["area", "line", "bar"];
-export const PREMIUM_CHART_STYLES: ExtendedChartStyle[] = ["pie", "donut", "radar"];
+export const PREMIUM_CHART_STYLES: ExtendedChartStyle[] = [
+  "composed",
+  "pie",
+  "donut",
+  "radar",
+  "pareto",
+  "bullet",
+  "boxplot"
+];
 
 export const FONT_FAMILY_CSS: Record<SlotFontFamily, string> = {
   system: "var(--font-sans, system-ui, sans-serif)",
@@ -34,18 +71,22 @@ export const FONT_SIZE_CSS: Record<SlotFontSize, { label: string; value: string 
   lg: { label: "lg", value: "1rem" }
 };
 
+const ALL_STYLES = new Set<string>([
+  "area",
+  "line",
+  "bar",
+  "pie",
+  "donut",
+  "radar",
+  "composed",
+  "pareto",
+  "bullet",
+  "boxplot"
+]);
+
 export function parseExtendedChartStyle(value: unknown): ExtendedChartStyle {
   const v = String(value ?? "area");
-  if (
-    v === "area" ||
-    v === "line" ||
-    v === "bar" ||
-    v === "pie" ||
-    v === "donut" ||
-    v === "radar"
-  ) {
-    return v;
-  }
+  if (ALL_STYLES.has(v)) return v as ExtendedChartStyle;
   return "area";
 }
 
@@ -55,7 +96,14 @@ export function isPremiumChartStyle(style: ExtendedChartStyle): boolean {
 
 export function parseSlotVisualConfig(config: Record<string, unknown>): SlotVisualConfig {
   const raw = config.visual;
-  if (!raw || typeof raw !== "object") return {};
+  if (!raw || typeof raw !== "object") {
+    return {
+      targetValue: typeof config.targetValue === "number" ? config.targetValue : undefined,
+      boxPlotGroupBy: (config.boxPlotGroupBy as BoxPlotGroupBy | undefined) ?? undefined,
+      boxPlotMetric: config.boxPlotMetric as MetricKey | undefined,
+      sortDescending: config.sortDescending !== false
+    };
+  }
   const v = raw as SlotVisualConfig;
   return {
     customColors: v.customColors,
@@ -64,7 +112,24 @@ export function parseSlotVisualConfig(config: Record<string, unknown>): SlotVisu
     fontFamily: v.fontFamily,
     fontSize: v.fontSize,
     lineStrokeWidth: v.lineStrokeWidth,
-    barThickness: v.barThickness
+    barThickness: v.barThickness,
+    seriesStyles: v.seriesStyles,
+    yAxisSide: v.yAxisSide,
+    targetValue:
+      typeof v.targetValue === "number"
+        ? v.targetValue
+        : typeof config.targetValue === "number"
+          ? config.targetValue
+          : undefined,
+    rangeZones: Array.isArray(v.rangeZones) ? v.rangeZones : undefined,
+    boxPlotGroupBy: v.boxPlotGroupBy ?? (config.boxPlotGroupBy as BoxPlotGroupBy | undefined),
+    boxPlotMetric: v.boxPlotMetric ?? (config.boxPlotMetric as MetricKey | undefined),
+    paretoCumulativeLineColor: v.paretoCumulativeLineColor,
+    sortDescending: v.sortDescending ?? config.sortDescending !== false,
+    radarFillOpacity: v.radarFillOpacity,
+    radarMaxValue: v.radarMaxValue,
+    heatmapColorScale: v.heatmapColorScale,
+    cellScale: v.cellScale ?? (config.cellScale as CellScale | undefined)
   };
 }
 
@@ -94,4 +159,9 @@ export function strokeWeightToPx(weight: StrokeWeight | undefined, fallback: num
 export function barThicknessToSize(weight: StrokeWeight | undefined): number | undefined {
   if (!weight) return undefined;
   return weight * 8;
+}
+
+export function defaultSeriesStyle(index: number): SeriesStyle {
+  const styles: SeriesStyle[] = ["bar", "line", "area"];
+  return styles[index % styles.length];
 }

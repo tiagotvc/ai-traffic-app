@@ -4,8 +4,12 @@ export const MASTER_BLASTER_ADDON = "master_blaster";
 export const MASTER_BLASTER_WIDGET_TYPES = [
   "advanced.scatter",
   "advanced.heatmap",
+  "advanced.radar",
+  "advanced.pareto",
+  "advanced.boxplot",
   "ai.correlation",
   "premium.multiChart",
+  "premium.bullet",
   "premium.metricMatrix"
 ] as const;
 

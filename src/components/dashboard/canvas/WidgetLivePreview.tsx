@@ -5,16 +5,24 @@ import { useTranslations } from "next-intl";
 import {
   AgencyHealthWidget,
   AlertsFeedWidget,
-  PerformanceChartWidget
+  HeroKpisWidget,
+  PerformanceChartWidget,
+  QuickPillsWidget
 } from "@/components/dashboard/canvas/widgets/LegacyWidgets";
 import {
   AiCorrelationWidget,
+  BoxPlotWidget,
+  BulletWidget,
   HeatmapWidget,
+  ParetoWidget,
+  RadarStandaloneWidget,
   ScatterWidget
 } from "@/components/dashboard/canvas/widgets/PremiumWidgets";
+import { parseExtendedChartStyle } from "@/lib/dashboard/slot-visual-config";
 import { TaskbarWidget } from "@/components/dashboard/canvas/widgets/TaskbarWidget";
 import { DualMetricChartWidget, SingleMetricWidget } from "@/components/dashboard/canvas/widgets/MetricWidgets";
 import { WidgetConfigPreview } from "@/components/dashboard/canvas/WidgetConfigPreview";
+import { BrainSummaryBanner } from "@/components/dashboard/BrainSummaryBanner";
 import { normalizeChartMetrics } from "@/lib/dashboard/chart-metrics";
 import type { ChartBarLayout } from "@/lib/dashboard/chart-metrics";
 import {
@@ -36,13 +44,16 @@ export function WidgetLivePreview({
   titleKey,
   config,
   dashboardData,
-  previewHeight
+  previewHeight,
+  compact = false
 }: {
   widgetType: string;
   titleKey?: string;
   config: Record<string, unknown>;
   dashboardData?: DashboardData;
   previewHeight?: number;
+  /** Mini preview for widget library cards */
+  compact?: boolean;
 }) {
   const t = useTranslations("dashboardWidgets");
 
@@ -65,7 +76,7 @@ export function WidgetLivePreview({
 
   if (widgetType === "chart.performance") {
     const chartMetrics = normalizeChartMetrics(config.chartMetrics);
-    const chartStyle = (config.chartStyle as ChartStyle | undefined) ?? "area";
+    const chartStyle = parseExtendedChartStyle(config.chartStyle);
     const barLayout = (config.barLayout as ChartBarLayout | undefined) ?? "vertical";
     return (
       <div style={{ height: previewHeight ?? 200 }}>
@@ -74,6 +85,7 @@ export function WidgetLivePreview({
           chartMetrics={chartMetrics}
           chartStyle={chartStyle}
           barLayout={barLayout}
+          compact={compact}
         />
       </div>
     );
@@ -117,6 +129,35 @@ export function WidgetLivePreview({
     );
   }
 
+  if (widgetType === "metrics.heroKpis") {
+    const heroMetrics = config.heroMetrics as MetricKey[] | undefined;
+    return (
+      <div className="min-h-0 w-full overflow-hidden" style={{ minHeight: previewHeight ?? 120 }}>
+        <HeroKpisWidget data={dashboardData} heroMetrics={heroMetrics} />
+      </div>
+    );
+  }
+
+  if (widgetType === "metrics.quickPills") {
+    return (
+      <div className="min-h-0 w-full overflow-hidden" style={{ minHeight: previewHeight ?? 56 }}>
+        <QuickPillsWidget data={dashboardData} />
+      </div>
+    );
+  }
+
+  if (widgetType === "brain.learnings") {
+    return (
+      <div style={{ minHeight: previewHeight ?? 40 }}>
+        <BrainSummaryBanner
+          learningsCount={dashboardData.brainLearningsCount ?? dashboardData.brainLearnings.length}
+          hypothesesCount={dashboardData.brainHypothesesCount ?? 0}
+          isLoading={dashboardData.brainSummaryLoading}
+        />
+      </div>
+    );
+  }
+
   if (widgetType === "metrics.card" || widgetType.startsWith("metric.single.")) {
     const metricKey = resolveMetricKeyFromWidget(widgetType, config);
     const cardStyle = (config.cardStyle as MetricCardStyle | undefined) ?? "centered";
@@ -136,7 +177,7 @@ export function WidgetLivePreview({
   if (widgetType === "alerts.feed") {
     const density = (config.density as AlertsDensity | undefined) ?? "stacked";
     return (
-      <div style={{ height: previewHeight ?? 180, overflow: "auto" }}>
+      <div className="h-full min-h-0" style={{ height: previewHeight ?? 180 }}>
         <AlertsFeedWidget data={dashboardData} density={density} />
       </div>
     );
@@ -153,7 +194,7 @@ export function WidgetLivePreview({
 
   if (widgetType === "advanced.scatter") {
     return (
-      <div style={{ height: previewHeight ?? 180 }}>
+      <div className={compact ? "h-full" : ""} style={{ height: previewHeight ?? 180 }}>
         <ScatterWidget
           data={dashboardData}
           metricX={(config.metricX as MetricKey) ?? "spend"}
@@ -166,10 +207,56 @@ export function WidgetLivePreview({
 
   if (widgetType === "advanced.heatmap") {
     return (
-      <div style={{ height: previewHeight ?? 140 }}>
+      <div className={compact ? "h-full" : ""} style={{ height: previewHeight ?? 140 }}>
         <HeatmapWidget
           data={dashboardData}
           heatmapMetric={(config.heatmapMetric as MetricKey) ?? "spend"}
+          cellScale={(config.cellScale as "auto" | "compact" | "large") ?? "auto"}
+        />
+      </div>
+    );
+  }
+
+  if (widgetType === "advanced.radar") {
+    const chartMetrics = normalizeChartMetrics(config.chartMetrics);
+    return (
+      <div className={compact ? "h-full" : ""} style={{ height: previewHeight ?? 180 }}>
+        <RadarStandaloneWidget data={dashboardData} chartMetrics={chartMetrics} compact={compact} />
+      </div>
+    );
+  }
+
+  if (widgetType === "advanced.pareto") {
+    return (
+      <div className={compact ? "h-full" : ""} style={{ height: previewHeight ?? 180 }}>
+        <ParetoWidget
+          data={dashboardData}
+          metric={(config.metric as MetricKey) ?? "spend"}
+          sortDescending={config.sortDescending !== false}
+        />
+      </div>
+    );
+  }
+
+  if (widgetType === "premium.bullet") {
+    return (
+      <div className={compact ? "h-full" : ""} style={{ height: previewHeight ?? 80 }}>
+        <BulletWidget
+          data={dashboardData}
+          metric={(config.metric as MetricKey) ?? "roas"}
+          targetValue={typeof config.targetValue === "number" ? config.targetValue : undefined}
+        />
+      </div>
+    );
+  }
+
+  if (widgetType === "advanced.boxplot") {
+    return (
+      <div className={compact ? "h-full" : ""} style={{ height: previewHeight ?? 180 }}>
+        <BoxPlotWidget
+          data={dashboardData}
+          metric={(config.metric as MetricKey) ?? "spend"}
+          groupBy={(config.boxPlotGroupBy as "dayOfWeek" | "client" | "campaign") ?? "dayOfWeek"}
         />
       </div>
     );
@@ -189,7 +276,7 @@ export function WidgetLivePreview({
 
   if (widgetType === "premium.multiChart") {
     const chartMetrics = normalizeChartMetrics(config.chartMetrics);
-    const chartStyle = (config.chartStyle as ChartStyle | undefined) ?? "area";
+    const chartStyle = parseExtendedChartStyle(config.chartStyle);
     const barLayout = (config.barLayout as ChartBarLayout | undefined) ?? "vertical";
     return (
       <div style={{ height: previewHeight ?? 220 }}>
@@ -198,6 +285,7 @@ export function WidgetLivePreview({
           chartMetrics={chartMetrics}
           chartStyle={chartStyle}
           barLayout={barLayout}
+          compact={compact}
         />
       </div>
     );

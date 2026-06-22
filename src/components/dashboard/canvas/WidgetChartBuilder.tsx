@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
+import { PremiumChartRenderer } from "@/components/dashboard/PremiumChartRenderer";
+import {
+  toBoxPlotGroups,
+  toParetoFromSeries
+} from "@/lib/dashboard/chart-distribution";
 import {
   BuilderChartStyleGrid,
   BuilderColorInput,
@@ -23,16 +28,17 @@ import {
   type MetricKey
 } from "@/lib/dashboard-metrics";
 import {
+  mergeSlotVisual,
+  parseExtendedChartStyle,
+  parseSlotVisualConfig,
+  type BoxPlotGroupBy,
+  type StrokeWeight
+} from "@/lib/dashboard/slot-visual-config";
+import {
   normalizeChartMetrics,
   toggleChartMetricSelection,
   type ChartBarLayout
 } from "@/lib/dashboard/chart-metrics";
-import {
-  mergeSlotVisual,
-  parseExtendedChartStyle,
-  parseSlotVisualConfig,
-  type StrokeWeight
-} from "@/lib/dashboard/slot-visual-config";
 import { toChartData } from "@/uxpilot-ui/adapters/dashboard-mappers";
 import { useWidgetScopedDashboardData } from "@/uxpilot-ui/adapters/useWidgetScopedDashboardData";
 import { parseWidgetPeriod } from "@/lib/dashboard/widget-period";
@@ -42,7 +48,26 @@ type DashboardData = ReturnType<typeof useDashboardData>;
 type EditorTab = "data" | "visual" | "advanced";
 
 export function usesChartBuilder(type: string): boolean {
-  return type === "chart.performance" || type === "chart.compare" || type === "premium.multiChart";
+  return (
+    type === "chart.performance" ||
+    type === "chart.compare" ||
+    type === "premium.multiChart" ||
+    type === "advanced.radar" ||
+    type === "advanced.pareto" ||
+    type === "premium.bullet" ||
+    type === "advanced.boxplot"
+  );
+}
+
+function isDistributionChart(type: string, chartStyle: string): boolean {
+  return (
+    type === "advanced.pareto" ||
+    type === "premium.bullet" ||
+    type === "advanced.boxplot" ||
+    chartStyle === "pareto" ||
+    chartStyle === "bullet" ||
+    chartStyle === "boxplot"
+  );
 }
 
 export function WidgetChartBuilder({
@@ -68,9 +93,27 @@ export function WidgetChartBuilder({
   const [editorTab, setEditorTab] = useState<EditorTab>("data");
 
   const chartStyle = parseExtendedChartStyle(config.chartStyle);
+  const effectiveStyle =
+    widgetType === "advanced.pareto"
+      ? "pareto"
+      : widgetType === "premium.bullet"
+        ? "bullet"
+        : widgetType === "advanced.boxplot"
+          ? "boxplot"
+          : widgetType === "advanced.radar"
+            ? "radar"
+            : chartStyle;
   const barLayout = (config.barLayout as ChartBarLayout | undefined) ?? "vertical";
   const chartMetrics = normalizeChartMetrics(config.chartMetrics);
   const visual = parseSlotVisualConfig(config);
+  const distributionMetric =
+    (config.metric as MetricKey | undefined) ??
+    (config.paretoMetric as MetricKey | undefined) ??
+    chartMetrics[0] ??
+    "spend";
+  const boxPlotGroupBy = (visual.boxPlotGroupBy ?? config.boxPlotGroupBy ?? "dayOfWeek") as BoxPlotGroupBy;
+  const targetValue =
+    typeof config.targetValue === "number" ? config.targetValue : (visual.targetValue ?? 0);
   const isCompare = widgetType === "chart.compare";
   const metricA = (config.metricA as MetricKey | undefined) ?? "spend";
   const metricB = (config.metricB as MetricKey | undefined) ?? "roas";
@@ -113,18 +156,43 @@ export function WidgetChartBuilder({
       <BuilderPreviewFrame title={t("configPreview")} minHeight={240}>
         {dashboardData ? (
           <div className="h-[220px]">
-            <DashboardPerformanceChart
-              data={toChartData(previewSeries, previewData.locale)}
-              activeMetrics={previewMetrics}
-              formatValue={previewData.formatMetricValue}
-              metricLabels={previewData.chartMetricLabels}
-              isLoading={previewData.loading}
-              variant="embedded"
-              chartStyle={chartStyle}
-              barLayout={barLayout}
-              disableToggle
-              visual={visual}
-            />
+            {isDistributionChart(widgetType, effectiveStyle) ? (
+              <PremiumChartRenderer
+                chartStyle={
+                  effectiveStyle === "pareto" || effectiveStyle === "bullet" || effectiveStyle === "boxplot"
+                    ? effectiveStyle
+                    : "pareto"
+                }
+                paretoRows={toParetoFromSeries(
+                  previewSeries as Array<{ day: string } & Partial<Record<MetricKey, number>>>,
+                  distributionMetric,
+                  visual.sortDescending !== false
+                )}
+                boxPlotGroups={toBoxPlotGroups(
+                  previewSeries as Array<{ day: string } & Partial<Record<MetricKey, number>>>,
+                  boxPlotGroupBy,
+                  distributionMetric
+                )}
+                bulletCurrent={previewData.summary?.[distributionMetric] ?? 0}
+                bulletTarget={targetValue}
+                metricKey={distributionMetric}
+                formatValue={previewData.formatMetricValue}
+                visual={visual}
+              />
+            ) : (
+              <DashboardPerformanceChart
+                data={toChartData(previewSeries, previewData.locale)}
+                activeMetrics={previewMetrics}
+                formatValue={previewData.formatMetricValue}
+                metricLabels={previewData.chartMetricLabels}
+                isLoading={previewData.loading}
+                variant="embedded"
+                chartStyle={effectiveStyle}
+                barLayout={barLayout}
+                disableToggle
+                visual={visual}
+              />
+            )}
           </div>
         ) : (
           <div className="skeleton-shimmer h-[200px] rounded-lg" />
@@ -139,14 +207,52 @@ export function WidgetChartBuilder({
       >
         {editorTab === "data" ? (
           <div className="space-y-3">
-            <BuilderField label={t("configChartStyle")}>
-              <BuilderChartStyleGrid
-                value={chartStyle}
-                t={t}
-                advancedUnlocked={advancedStylingUnlocked}
-                onChange={(v) => onChange({ ...config, chartStyle: v })}
+            {widgetType === "advanced.pareto" ||
+            widgetType === "premium.bullet" ||
+            widgetType === "advanced.boxplot" ? (
+              <MetricSelect
+                label={t("configChartMetric")}
+                value={distributionMetric}
+                onChange={(v) => onChange({ ...config, metric: v })}
+                tMetrics={tMetrics}
               />
-            </BuilderField>
+            ) : (
+              <BuilderField label={t("configChartStyle")}>
+                <BuilderChartStyleGrid
+                  value={chartStyle}
+                  t={t}
+                  advancedUnlocked={advancedStylingUnlocked}
+                  onChange={(v) => onChange({ ...config, chartStyle: v })}
+                />
+              </BuilderField>
+            )}
+
+            {widgetType === "premium.bullet" ? (
+              <BuilderField label={t("configBulletTarget")}>
+                <input
+                  type="number"
+                  className="ui-input w-full"
+                  value={targetValue}
+                  onChange={(e) =>
+                    onChange({ ...config, targetValue: Number(e.target.value) || 0 })
+                  }
+                />
+              </BuilderField>
+            ) : null}
+
+            {widgetType === "advanced.boxplot" ? (
+              <BuilderField label={t("configBoxPlotGroupBy")}>
+                <BuilderSelect
+                  value={boxPlotGroupBy}
+                  onChange={(v) => onChange({ ...config, boxPlotGroupBy: v })}
+                  options={[
+                    { value: "dayOfWeek", label: t("configBoxPlotDayOfWeek") },
+                    { value: "client", label: t("configBoxPlotWeek") },
+                    { value: "campaign", label: t("configBoxPlotCampaign") }
+                  ]}
+                />
+              </BuilderField>
+            ) : null}
 
             <div className="grid grid-cols-2 gap-3">
               {chartStyle === "bar" ? (
@@ -191,7 +297,9 @@ export function WidgetChartBuilder({
                   tMetrics={tMetrics}
                 />
               </div>
-            ) : (
+            ) : widgetType === "advanced.pareto" ||
+              widgetType === "premium.bullet" ||
+              widgetType === "advanced.boxplot" ? null : (
               <BuilderField label={t("configChartMetrics")}>
                 <div className="mb-1.5 flex justify-end">
                   <span className="text-[10px] text-[var(--text-dimmer)]">
@@ -243,7 +351,10 @@ export function WidgetChartBuilder({
         {editorTab === "advanced" ? (
           <BuilderPremiumLock locked={!advancedStylingUnlocked} message={t("slotStylePremiumLock")}>
             <div className="space-y-3">
-              {(chartStyle === "line" || chartStyle === "area" || chartStyle === "radar") && (
+              {(chartStyle === "line" ||
+                chartStyle === "area" ||
+                chartStyle === "radar" ||
+                effectiveStyle === "radar") && (
                 <BuilderField label={t("slotLineThickness")}>
                   <BuilderSegment
                     value={String(visual.lineStrokeWidth ?? 2)}
@@ -254,7 +365,7 @@ export function WidgetChartBuilder({
                   />
                 </BuilderField>
               )}
-              {chartStyle === "bar" && (
+              {chartStyle === "bar" || chartStyle === "composed" ? (
                 <BuilderField label={t("slotBarThickness")}>
                   <BuilderSegment
                     value={String(visual.barThickness ?? 2)}
@@ -262,7 +373,22 @@ export function WidgetChartBuilder({
                     options={[1, 2, 3, 4].map((n) => ({ value: String(n), label: String(n) }))}
                   />
                 </BuilderField>
-              )}
+              ) : null}
+              {effectiveStyle === "radar" ? (
+                <BuilderField label={t("configRadarFillOpacity")}>
+                  <BuilderSegment
+                    value={String(Math.round((visual.radarFillOpacity ?? 0.25) * 100))}
+                    onChange={(v) => patchVisual({ radarFillOpacity: Number(v) / 100 })}
+                    options={[10, 25, 40, 60].map((n) => ({
+                      value: String(n),
+                      label: `${n}%`
+                    }))}
+                  />
+                </BuilderField>
+              ) : null}
+              {chartStyle === "composed" ? (
+                <p className="text-xs text-[var(--text-dim)]">{t("chartComposedHint")}</p>
+              ) : null}
               {chartStyle === "pie" || chartStyle === "donut" ? (
                 <p className="text-xs text-[var(--text-dim)]">{t("chartPieHint")}</p>
               ) : null}

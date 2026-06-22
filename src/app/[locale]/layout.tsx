@@ -17,7 +17,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
-    return { title: "Traffic AI" };
+    return { title: "Orion Agency" };
   }
   const messages = (await import(`../../../messages/${locale}.json`)).default;
   return {

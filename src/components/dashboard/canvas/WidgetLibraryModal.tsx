@@ -15,6 +15,7 @@ import { Link } from "@/i18n/navigation";
 import { usesChartBuilder, WidgetChartBuilder } from "@/components/dashboard/canvas/WidgetChartBuilder";
 import { usesTaskbarBuilder, WidgetTaskbarBuilder } from "@/components/dashboard/canvas/WidgetTaskbarBuilder";
 import { WidgetBuilderPreviewPanel } from "@/components/dashboard/canvas/WidgetBuilderPreviewPanel";
+import { WidgetLibraryCard } from "@/components/dashboard/canvas/WidgetLibraryCard";
 import { WidgetLivePreview } from "@/components/dashboard/canvas/WidgetLivePreview";
 import {
   defaultWidgetConfig,
@@ -343,113 +344,20 @@ export function WidgetLibraryModal({
               </div>
             ) : null}
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {filtered.map((w) => {
-                const premiumBadge = category === "premium" ? getPremiumBadge(w) : null;
-                const locked = !w.allowed;
-                const canAdd = w.allowed;
-
-                return (
-                  <div
-                    key={w.type}
-                    className={cn(
-                      "flex items-start gap-2 rounded-xl border p-3 transition-shadow",
-                      category === "premium" && "hover:shadow-md"
-                    )}
-                    style={{
-                      borderColor:
-                        category === "premium"
-                          ? locked
-                            ? "rgba(245,158,11,0.22)"
-                            : "rgba(34,197,94,0.28)"
-                          : "var(--border-color)",
-                      opacity: canAdd ? 1 : 0.88,
-                      background:
-                        category === "premium"
-                          ? locked
-                            ? "linear-gradient(180deg, rgba(245,158,11,0.04), transparent)"
-                            : "linear-gradient(180deg, rgba(34,197,94,0.04), transparent)"
-                          : undefined
-                    }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                          {t(w.titleKey)}
-                        </p>
-                        {premiumBadge ? (
-                          <span
-                            className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                            style={{
-                              background: "rgba(245,158,11,0.15)",
-                              color: "#d97706"
-                            }}
-                          >
-                            {t(premiumBadgeLabelKey(premiumBadge))}
-                          </span>
-                        ) : null}
-                        {w.isAiWidget && category !== "premium" ? (
-                          <span
-                            className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
-                            style={{ background: "rgba(79,70,229,0.12)", color: "#818cf8" }}
-                          >
-                            IA
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 text-[11px]" style={{ color: "var(--text-dim)" }}>
-                        {w.comingSoon && !w.isMasterBlaster
-                          ? t("comingSoon")
-                          : w.allowed
-                            ? category === "premium"
-                              ? t("premiumIncluded")
-                              : t("available")
-                            : w.isMasterBlaster
-                              ? t("masterBlasterAddonRequired")
-                              : t("upgradeRequired")}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-col gap-1">
-                      <button type="button" onClick={() => toggleFavorite(w.type)} aria-label="Favorite">
-                        <Star
-                          size={14}
-                          fill={favorites.includes(w.type) ? "#f59e0b" : "none"}
-                          style={{ color: favorites.includes(w.type) ? "#f59e0b" : "var(--text-dimmer)" }}
-                        />
-                      </button>
-                      {canAdd ? (
-                        <button
-                          type="button"
-                          onClick={() => startAdd(w)}
-                          className="rounded-md p-1"
-                          style={{ background: "rgba(79,70,229,0.12)", color: "#818cf8" }}
-                        >
-                          <Plus size={14} />
-                        </button>
-                      ) : category === "premium" && !w.allowed && w.isMasterBlaster ? (
-                        <Link
-                          href="/billing/addons"
-                          className="rounded-md p-1"
-                          style={{ background: "rgba(245,158,11,0.15)", color: "#d97706" }}
-                          title={t("masterBlasterCta")}
-                          onClick={onClose}
-                        >
-                          <Crown size={14} />
-                        </Link>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled
-                          className="cursor-not-allowed rounded-md p-1 opacity-40"
-                          style={{ background: "var(--surface-bg)", color: "var(--text-dimmer)" }}
-                        >
-                          <Plus size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {filtered.map((w) => (
+                <WidgetLibraryCard
+                  key={w.type}
+                  widget={w}
+                  category={category}
+                  premiumBadge={category === "premium" ? getPremiumBadge(w) : null}
+                  isFavorite={favorites.includes(w.type)}
+                  dashboardData={dashboardData}
+                  onToggleFavorite={() => toggleFavorite(w.type)}
+                  onAdd={() => startAdd(w)}
+                  onClose={onClose}
+                />
+              ))}
             </div>
             {filtered.length === 0 ? (
               <p className="py-8 text-center text-sm" style={{ color: "var(--text-dim)" }}>

@@ -21,11 +21,14 @@ export type IntelligenceEvent = {
 export function LiveIntelligenceFeed({
   events,
   isLoading,
-  variant = "stacked"
+  variant = "stacked",
+  embedded = false
 }: {
   events: IntelligenceEvent[];
   isLoading?: boolean;
   variant?: "stacked" | "inline";
+  /** Single self-contained card (canvas widget — no outer grid chrome). */
+  embedded?: boolean;
 }) {
   const t = useTranslations("dashboard");
   const [filter, setFilter] = useState<"all" | "critical" | "win">("all");
@@ -36,11 +39,11 @@ export function LiveIntelligenceFeed({
   });
 
   if (isLoading) {
-    return (
-      <div className="flex h-full flex-col">
-        <div className="skeleton-shimmer mb-4 h-4 w-36 rounded" />
+    const loadingBody = (
+      <>
+        <div className="skeleton-shimmer mb-3 h-4 w-36 rounded" />
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="mb-3 flex gap-2">
+          <div key={i} className="mb-2 flex gap-2">
             <div className="skeleton-shimmer h-7 w-7 shrink-0 rounded-lg" />
             <div className="flex-1">
               <div className="skeleton-shimmer mb-1.5 h-3 w-3/4 rounded" />
@@ -48,12 +51,15 @@ export function LiveIntelligenceFeed({
             </div>
           </div>
         ))}
-      </div>
+      </>
+    );
+    return (
+      <div className="flex h-full min-h-0 flex-col">{loadingBody}</div>
     );
   }
 
-  return (
-    <div className="flex h-full flex-col">
+  const content = (
+    <>
       <div className="mb-3 flex shrink-0 items-center justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -101,8 +107,9 @@ export function LiveIntelligenceFeed({
 
       <div
         className={cn(
-          "flex flex-1 flex-col overflow-y-auto pr-0.5",
-          variant === "inline" ? "gap-1" : "gap-3"
+          "flex min-h-0 flex-col overflow-y-auto pr-0.5",
+          embedded ? "flex-1 justify-start gap-1.5" : "flex-1 gap-3",
+          variant === "inline" && "gap-1"
         )}
         style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
       >
@@ -158,7 +165,8 @@ export function LiveIntelligenceFeed({
             ) : (
             <div
               className={cn(
-                "group flex animate-slide-in cursor-pointer items-start gap-2.5 rounded-xl p-2.5 transition-all",
+                "group flex animate-slide-in cursor-pointer items-start gap-2 transition-all",
+                embedded ? "rounded-lg p-2" : "gap-2.5 rounded-xl p-2.5",
                 alert.pulse && "animate-pulse-red"
               )}
               style={{
@@ -237,17 +245,25 @@ export function LiveIntelligenceFeed({
         })}
       </div>
 
-      <Link
-        href="/alerts"
-        className="mt-3 w-full shrink-0 rounded-xl py-2 text-center text-xs transition-all hover:opacity-80"
-        style={{
-          color: "var(--text-dim)",
-          border: "1px solid var(--border-color)",
-          background: "var(--surface-bg)"
-        }}
-      >
-        {t("viewAllAlertsLink")}
-      </Link>
+      {!embedded ? (
+        <Link
+          href="/alerts"
+          className="mt-3 w-full shrink-0 rounded-xl py-2 text-center text-xs transition-all hover:opacity-80"
+          style={{
+            color: "var(--text-dim)",
+            border: "1px solid var(--border-color)",
+            background: "var(--surface-bg)"
+          }}
+        >
+          {t("viewAllAlertsLink")}
+        </Link>
+      ) : null}
+    </>
+  );
+
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {content}
     </div>
   );
 }

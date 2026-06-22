@@ -7,7 +7,7 @@ import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerfo
 import { CanvasMetricStrip } from "@/components/dashboard/canvas/widgets/CanvasMetricStrip";
 import type { ChartStyle, MetricCardStyle } from "@/lib/dashboard/widget-config";
 import type { ChartBarLayout } from "@/lib/dashboard/chart-metrics";
-import type { SlotVisualConfig } from "@/lib/dashboard/slot-visual-config";
+import type { ExtendedChartStyle, SlotVisualConfig } from "@/lib/dashboard/slot-visual-config";
 import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { pctDelta } from "@/lib/dashboard-ranges";
 import { toChartData, toMetricPrismProps } from "@/uxpilot-ui/adapters/dashboard-mappers";
@@ -83,13 +83,15 @@ export function DualMetricChartWidget({
   metricA,
   metricB,
   chartStyle = "area",
-  barLayout = "vertical"
+  barLayout = "vertical",
+  visual
 }: {
   data: DashboardData;
   metricA: MetricKey;
   metricB: MetricKey;
-  chartStyle?: ChartStyle;
+  chartStyle?: ChartStyle | ExtendedChartStyle;
   barLayout?: ChartBarLayout;
+  visual?: SlotVisualConfig;
 }) {
   const metrics = [metricA, metricB];
   return (
@@ -104,6 +106,7 @@ export function DualMetricChartWidget({
       chartStyle={chartStyle}
       barLayout={barLayout}
       disableToggle
+      visual={visual}
     />
   );
 }

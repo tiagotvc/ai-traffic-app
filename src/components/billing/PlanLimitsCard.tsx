@@ -3,7 +3,6 @@
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
-  isBrBillingMode,
   planListCents,
   resolveBillingCurrency,
   resolvePlanMonthlyCents
@@ -177,13 +176,16 @@ function CrossIcon() {
 export function PlanLimitsCard({
   limits,
   usage,
-  compact = false
+  compact = false,
+  variant = "portal"
 }: {
   limits: PlanLimits;
   usage?: TenantUsage;
   compact?: boolean;
+  variant?: "portal" | "marketing";
 }) {
   const t = useTranslations("billingPage");
+  const isMarketing = variant === "marketing";
 
   const rows: Array<{ key: keyof PlanLimits; label: string; usageVal?: number }> = [
     { key: "maxClients", label: t("limitClients"), usageVal: usage?.clients },
@@ -200,29 +202,41 @@ export function PlanLimitsCard({
         const max = limits[key] as number;
         return (
           <li key={key} className="flex items-start justify-between gap-3">
-            <span className="flex items-center gap-2 text-[var(--text-dim)]">
+            <span
+              className={`flex items-center gap-2 ${isMarketing ? "text-violet-200/80" : "text-[var(--text-dim)]"}`}
+            >
               <CheckIcon />
               {label}
             </span>
-            <span className="shrink-0 font-semibold text-[var(--text-main)]">
+            <span
+              className={`shrink-0 font-semibold ${isMarketing ? "text-white" : "text-[var(--text-main)]"}`}
+            >
               {usageVal != null ? `${usageVal}/${max}` : max}
             </span>
           </li>
         );
       })}
       <li className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-2 text-[var(--text-dim)]">
+        <span
+          className={`flex items-center gap-2 ${isMarketing ? "text-violet-200/80" : "text-[var(--text-dim)]"}`}
+        >
           {limits.allowAutoSync ? <CheckIcon /> : <CrossIcon />}
           {t("limitAutoSync")}
         </span>
-        <span className="text-xs font-medium text-[var(--text-dim)]">{limits.allowAutoSync ? t("included") : "—"}</span>
+        <span className={`text-xs font-medium ${isMarketing ? "text-violet-300/70" : "text-[var(--text-dim)]"}`}>
+          {limits.allowAutoSync ? t("included") : "—"}
+        </span>
       </li>
       <li className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-2 text-[var(--text-dim)]">
+        <span
+          className={`flex items-center gap-2 ${isMarketing ? "text-violet-200/80" : "text-[var(--text-dim)]"}`}
+        >
           {limits.allowLiveMeta ? <CheckIcon /> : <CrossIcon />}
           {t("limitLiveMeta")}
         </span>
-        <span className="text-xs font-medium text-[var(--text-dim)]">{limits.allowLiveMeta ? t("included") : "—"}</span>
+        <span className={`text-xs font-medium ${isMarketing ? "text-violet-300/70" : "text-[var(--text-dim)]"}`}>
+          {limits.allowLiveMeta ? t("included") : "—"}
+        </span>
       </li>
     </ul>
   );
@@ -231,7 +245,8 @@ export function PlanLimitsCard({
 export function PlanPrice({
   plan,
   cycle,
-  trialDays = 0
+  trialDays = 0,
+  variant = "portal"
 }: {
   plan: {
     priceMonthlyCents: number;
@@ -240,17 +255,23 @@ export function PlanPrice({
   };
   cycle: "monthly" | "yearly";
   trialDays?: number;
+  variant?: "portal" | "marketing";
 }) {
   const t = useTranslations("billingPage");
   const locale = useLocale();
   const currency = resolveBillingCurrency(locale);
-  const isBr = isBrBillingMode(locale);
+  const isMarketing = variant === "marketing";
+  const textMain = isMarketing ? "text-white" : "text-[var(--text-main)]";
+  const textDim = isMarketing ? "text-violet-200/70" : "text-[var(--text-dim)]";
+  const textDimmer = isMarketing ? "text-violet-300/50" : "text-[var(--text-dimmer)]";
 
   if (trialDays > 0) {
     return (
       <div>
-        <span className="text-3xl font-bold tracking-tight text-[var(--text-main)]">{t("freeTrialDays", { days: trialDays })}</span>
-        <p className="mt-1 text-sm text-[var(--text-dim)]">{t("freeTrialHint")}</p>
+        <span className={`text-3xl font-bold tracking-tight ${textMain}`}>
+          {t("freeTrialDays", { days: trialDays })}
+        </span>
+        <p className={`mt-1 text-sm ${textDim}`}>{t("freeTrialHint")}</p>
       </div>
     );
   }
@@ -268,13 +289,13 @@ export function PlanPrice({
   return (
     <div>
       {pricing.discountPercent > 0 ? (
-        <p className="text-sm text-[var(--text-dimmer)] line-through">{formatMoney(pricing.listCents, currency)}</p>
+        <p className={`text-sm line-through ${textDimmer}`}>{formatMoney(pricing.listCents, currency)}</p>
       ) : null}
       <div className="flex flex-wrap items-baseline gap-2">
-        <span className="text-4xl font-bold tracking-tight text-[var(--text-main)]">
+        <span className={`text-4xl font-bold tracking-tight ${textMain}`}>
           {formatMoney(pricing.finalCents, currency)}
         </span>
-        <span className="text-sm font-medium text-[var(--text-dim)]">{period}</span>
+        <span className={`text-sm font-medium ${textDim}`}>{period}</span>
       </div>
     </div>
   );
@@ -305,8 +326,8 @@ export function BillingCtaLink({
           className ??
           `mt-6 block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
             featured
-              ? "bg-[var(--amber)] text-[#0f1419] shadow-lg shadow-amber-600/25 hover:brightness-105"
-              : "border border-amber-200 bg-amber-50 text-[var(--amber)] hover:bg-amber-100"
+              ? "bg-gradient-to-r from-amber-400 to-amber-500 text-[#0f1419] shadow-lg shadow-amber-500/25 hover:brightness-105"
+              : "border border-white/20 bg-white/10 text-white hover:bg-white/15"
           }`
         }
       >
@@ -373,6 +394,16 @@ const TIER_STYLES: Record<PlanTier, string> = {
     "border-slate-800/20 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl shadow-slate-900/30 ring-1 ring-amber-400/40 lg:scale-[1.05] lg:-mt-2 lg:mb-2"
 };
 
+const MARKETING_TIER_STYLES: Record<PlanTier, string> = {
+  free: "border-white/10 bg-gradient-to-b from-slate-900/90 to-slate-950/95 text-white shadow-lg backdrop-blur-sm hover:border-white/20",
+  standard:
+    "border-white/15 bg-gradient-to-b from-slate-900/90 to-indigo-950/90 text-white shadow-lg backdrop-blur-sm hover:border-amber-400/30",
+  popular:
+    "border-violet-400/45 bg-gradient-to-b from-violet-950/95 via-indigo-950/90 to-slate-950/95 text-white shadow-xl shadow-violet-900/30 ring-1 ring-violet-400/35 lg:scale-[1.03] lg:-mt-1",
+  premium:
+    "border-amber-400/50 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl shadow-amber-900/20 ring-1 ring-amber-400/40 lg:scale-[1.05] lg:-mt-2 lg:mb-2"
+};
+
 export function PlanCard({
   plan,
   cycle,
@@ -389,9 +420,15 @@ export function PlanCard({
   const isPremium = tier === "premium";
   const isPopular = tier === "popular" || featured;
   const isFree = tier === "free";
+  const isMarketing = variant === "marketing";
+  const cardStyle = isMarketing ? MARKETING_TIER_STYLES[tier] : TIER_STYLES[tier];
+  const titleClass = isMarketing || isPremium ? "text-white" : "text-[var(--text-main)]";
+  const descClass =
+    isMarketing || isPremium ? "text-violet-200/75" : "text-[var(--text-dim)]";
+  const dividerClass = isMarketing || isPremium ? "border-white/10" : "border-[var(--border-color)]";
 
   return (
-    <div className={`relative flex flex-col rounded-2xl border p-6 transition ${TIER_STYLES[tier]}`}>
+    <div className={`relative flex flex-col rounded-2xl border p-6 transition ${cardStyle}`}>
       {isPopular && !isPremium ? (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--amber)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#0f1419] shadow-md">
           {t("mostPopular")}
@@ -404,23 +441,19 @@ export function PlanCard({
       ) : null}
 
       <div className="mb-4">
-        <h2 className={`text-lg font-bold ${isPremium ? "text-white" : "text-[var(--text-main)]"}`}>{plan.name}</h2>
+        <h2 className={`text-lg font-bold ${titleClass}`}>{plan.name}</h2>
         {plan.description ? (
-          <p className={`mt-1 text-sm leading-relaxed ${isPremium ? "text-slate-300" : "text-[var(--text-dim)]"}`}>
-            {plan.description}
-          </p>
+          <p className={`mt-1 text-sm leading-relaxed ${descClass}`}>{plan.description}</p>
         ) : null}
       </div>
 
-      <div className={isPremium ? "[&_.text-[var(--text-main)]]:text-white [&_.text-[var(--text-dimmer)]]:text-[var(--text-dimmer)] [&_.text-[var(--text-dim)]]:text-slate-300" : ""}>
-        <PlanPrice plan={plan} cycle={cycle} trialDays={plan.trialDays} />
-        <PlanDiscountBadges cycle={cycle} isFree={isFree} dark={isPremium} />
+      <div>
+        <PlanPrice plan={plan} cycle={cycle} trialDays={plan.trialDays} variant={variant} />
+        <PlanDiscountBadges cycle={cycle} isFree={isFree} dark={isMarketing || isPremium} />
       </div>
 
-      <div className={`my-6 border-t pt-5 ${isPremium ? "border-slate-700" : "border-[var(--border-color)]"}`}>
-        <div className={isPremium ? "[&_li]:text-slate-200 [&_.text-[var(--text-dim)]]:text-slate-300 [&_.text-[var(--text-main)]]:text-white" : ""}>
-          <PlanLimitsCard limits={plan.limits} compact />
-        </div>
+      <div className={`my-6 border-t pt-5 ${dividerClass}`}>
+        <PlanLimitsCard limits={plan.limits} compact variant={variant} />
       </div>
 
       <div className="mt-auto">

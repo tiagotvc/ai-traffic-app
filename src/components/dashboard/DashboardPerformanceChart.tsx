@@ -9,6 +9,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Line,
   LineChart,
   Pie,
@@ -25,9 +26,15 @@ import {
 } from "recharts";
 
 import { cn } from "@/lib/cn";
+import {
+  toBoxPlotGroups,
+  toParetoFromSeries
+} from "@/lib/dashboard/chart-distribution";
 import type { ChartBarLayout } from "@/lib/dashboard/chart-metrics";
+import { PremiumChartRenderer } from "@/components/dashboard/PremiumChartRenderer";
 import {
   barThicknessToSize,
+  defaultSeriesStyle,
   parseExtendedChartStyle,
   resolveMetricColor,
   strokeWeightToPx,
@@ -95,7 +102,8 @@ export function DashboardPerformanceChart({
   availableMetrics,
   disableToggle = false,
   previewHeight,
-  visual
+  visual,
+  metricSummary
 }: {
   data: ChartPoint[];
   activeMetrics: MetricKey[];
@@ -113,6 +121,7 @@ export function DashboardPerformanceChart({
   disableToggle?: boolean;
   previewHeight?: number;
   visual?: SlotVisualConfig;
+  metricSummary?: Partial<Record<MetricKey, number>>;
 }) {
   const t = useTranslations("dashboard");
   const [animKey, setAnimKey] = useState(0);
@@ -222,6 +231,7 @@ export function DashboardPerformanceChart({
               formatValue={formatValue}
               metricLabels={metricLabels}
               visual={visual}
+              metricSummary={metricSummary}
             />
           </ResponsiveContainer>
         ) : (
@@ -245,7 +255,8 @@ function PerformanceChartBody({
   gradPrefix,
   formatValue,
   metricLabels,
-  visual
+  visual,
+  metricSummary
 }: {
   data: ChartPoint[];
   activeMetrics: MetricKey[];
@@ -255,10 +266,71 @@ function PerformanceChartBody({
   formatValue: (key: MetricKey, value: number) => string;
   metricLabels: Record<MetricKey, string>;
   visual?: SlotVisualConfig;
+  metricSummary?: Partial<Record<MetricKey, number>>;
 }) {
   const colorFor = (key: MetricKey) => resolveMetricColor(key, visual?.customColors);
   const lineWidth = strokeWeightToPx(visual?.lineStrokeWidth, 2.5);
   const barSize = barThicknessToSize(visual?.barThickness);
+
+  if (chartStyle === "pareto" || chartStyle === "bullet" || chartStyle === "boxplot") {
+    const metric = activeMetrics[0] ?? "spend";
+    const series = data.map((p) => ({ day: p.label, ...p }));
+
+    if (chartStyle === "pareto") {
+      const rows = toParetoFromSeries(
+        series as Array<{ day: string } & Partial<Record<MetricKey, number>>>,
+        metric,
+        visual?.sortDescending !== false
+      );
+      return (
+        <div className="h-full min-h-0 w-full flex-1">
+          <PremiumChartRenderer
+            chartStyle="pareto"
+            paretoRows={rows}
+            metricKey={metric}
+            formatValue={formatValue}
+            visual={visual}
+          />
+        </div>
+      );
+    }
+
+    if (chartStyle === "bullet") {
+      const current = metricSummary?.[metric] ?? 0;
+      const target = visual?.targetValue ?? 0;
+      return (
+        <div className="h-full min-h-0 w-full flex-1">
+          <PremiumChartRenderer
+            chartStyle="bullet"
+            bulletCurrent={current}
+            bulletTarget={target}
+            metricKey={metric}
+            formatValue={formatValue}
+            visual={visual}
+            bulletLabel={metricLabels[metric]}
+          />
+        </div>
+      );
+    }
+
+    const groupBy = visual?.boxPlotGroupBy ?? "dayOfWeek";
+    const groups = toBoxPlotGroups(
+      series as Array<{ day: string } & Partial<Record<MetricKey, number>>>,
+      groupBy,
+      metric
+    );
+    return (
+      <div className="h-full min-h-0 w-full flex-1">
+        <PremiumChartRenderer
+          chartStyle="boxplot"
+          boxPlotGroups={groups}
+          metricKey={metric}
+          formatValue={formatValue}
+          visual={visual}
+        />
+      </div>
+    );
+  }
 
   const axisProps = {
     margin: { top: 4, right: 8, left: 0, bottom: 0 } as const,
@@ -328,31 +400,108 @@ function PerformanceChartBody({
 
   if (chartStyle === "radar") {
     const last = data[data.length - 1];
-    const radarPoint: ChartPoint = { label: "atual" };
-    for (const key of activeMetrics) {
-      radarPoint[key] = Number(last?.[key] ?? 0);
-    }
+    const radarData = activeMetrics.map((key) => ({
+      metric: metricLabels[key] ?? key,
+      value: Number(last?.[key] ?? 0)
+    }));
+    const maxVal =
+      visual?.radarMaxValue ??
+      Math.max(...radarData.map((d) => d.value), 1);
+    const fillOpacity = visual?.radarFillOpacity ?? 0.25;
+    const radarRows = radarData.map((d) => ({ ...d, fullMark: maxVal }));
+
     return (
-      <RadarChart cx="50%" cy="50%" outerRadius="72%" data={[radarPoint]}>
+      <RadarChart cx="50%" cy="50%" outerRadius="72%" data={radarRows}>
         <PolarGrid stroke="var(--border-color)" />
         <PolarAngleAxis
-          dataKey="label"
+          dataKey="metric"
           tick={{ fill: visual?.textColor ?? "var(--text-dimmer)", fontSize: 9 }}
         />
-        <PolarRadiusAxis tick={{ fill: visual?.textColor ?? "var(--text-dimmer)", fontSize: 8 }} />
-        <Tooltip />
-        {activeMetrics.map((key) => (
-          <Radar
-            key={key}
-            name={metricLabels[key] ?? key}
-            dataKey={key}
-            stroke={colorFor(key)}
-            fill={colorFor(key)}
-            fillOpacity={0.25}
-            strokeWidth={lineWidth}
-          />
-        ))}
+        <PolarRadiusAxis
+          domain={[0, maxVal]}
+          tick={{ fill: visual?.textColor ?? "var(--text-dimmer)", fontSize: 8 }}
+        />
+        <Tooltip
+          formatter={(value) => {
+            const num = Number(value ?? 0);
+            return [num.toLocaleString(), ""];
+          }}
+        />
+        <Radar
+          name="atual"
+          dataKey="value"
+          stroke={colorFor(activeMetrics[0])}
+          fill={colorFor(activeMetrics[0])}
+          fillOpacity={fillOpacity}
+          strokeWidth={lineWidth}
+        />
       </RadarChart>
+    );
+  }
+
+  if (chartStyle === "composed") {
+    const hasRightAxis = activeMetrics.some(
+      (key) => visual?.yAxisSide?.[key] === "right"
+    );
+    return (
+      <ComposedChart {...axisProps}>
+        {grid}
+        {xAxis}
+        {yAxis}
+        {hasRightAxis ? (
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            width={44}
+            tick={{ fill: visual?.textColor ?? "var(--text-dimmer)", fontSize: 10 }}
+            axisLine={false}
+            tickLine={false}
+          />
+        ) : null}
+        {tooltip}
+        {activeMetrics.map((key, index) => {
+          const style = visual?.seriesStyles?.[key] ?? defaultSeriesStyle(index);
+          const yAxisId = visual?.yAxisSide?.[key] === "right" ? "right" : "left";
+          const color = colorFor(key);
+          if (style === "bar") {
+            return (
+              <Bar
+                key={key}
+                yAxisId={yAxisId}
+                dataKey={key}
+                fill={color}
+                barSize={barSize}
+                radius={[4, 4, 0, 0]}
+              />
+            );
+          }
+          if (style === "line") {
+            return (
+              <Line
+                key={key}
+                yAxisId={yAxisId}
+                type="monotone"
+                dataKey={key}
+                stroke={color}
+                strokeWidth={lineWidth}
+                dot={false}
+              />
+            );
+          }
+          return (
+            <Area
+              key={key}
+              yAxisId={yAxisId}
+              type="monotone"
+              dataKey={key}
+              stroke={color}
+              strokeWidth={lineWidth}
+              fill={`${color}33`}
+              dot={false}
+            />
+          );
+        })}
+      </ComposedChart>
     );
   }
 

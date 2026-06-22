@@ -12,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
-  Bell,
   Sun,
   Moon,
   Target,
@@ -38,7 +37,6 @@ const navItems = [
   { icon: Trophy, label: "Ranking de Criativos", path: "/creatives", badge: null, betaBadge: false },
   { icon: Brain, label: "Agency Brain", path: "/agency-brain/learnings", badge: null, betaBadge: true },
   { icon: BarChart3, label: "Relatórios", path: "/reports", badge: null, betaBadge: false },
-  { icon: Bell, label: "Alertas", path: "/alerts", badge: null, betaBadge: false },
   { icon: Settings, label: "Automações", path: "/settings", badge: null, betaBadge: false },
 ];
 

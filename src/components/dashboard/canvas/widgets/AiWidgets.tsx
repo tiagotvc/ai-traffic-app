@@ -163,5 +163,5 @@ export function RecentLearningsWidget({
   learnings: ReturnType<typeof toBrainShelfLearnings>;
   loading: boolean;
 }) {
-  return <BrainShelf suggestions={learnings} isLoading={loading} compact={false} />;
+  return <BrainShelf suggestions={learnings} isLoading={loading} variant="shelf" />;
 }

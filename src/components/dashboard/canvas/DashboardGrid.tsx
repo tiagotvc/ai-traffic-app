@@ -13,8 +13,7 @@ import "react-grid-layout/css/styles.css";
 
 import { WidgetRenderer } from "@/components/dashboard/canvas/WidgetRenderer";
 import { WidgetChrome } from "@/components/dashboard/canvas/WidgetChrome";
-import { getWidgetDefinition } from "@/lib/dashboard/widget-catalog";
-import type { WidgetInstanceDto } from "@/lib/dashboard/widget-catalog";
+import { getWidgetDefinition, type WidgetInstanceDto } from "@/lib/dashboard/widget-catalog";
 import { parseWidgetPeriod } from "@/lib/dashboard/widget-period";
 import type { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 
@@ -119,7 +118,7 @@ export function DashboardGrid({
               enabled: editMode,
               handle: ".widget-drag-handle",
               bounded: false,
-              cancel: "button, a, input, textarea, .recharts-wrapper"
+              cancel: "button, a, input, textarea, .recharts-wrapper, .widget-edit-bar button"
             }}
             resizeConfig={{ enabled: editMode && allowResize }}
             onDragStop={(next) => {
@@ -130,6 +129,8 @@ export function DashboardGrid({
             }}
           >
             {widgets.filter((w) => w.visible).map((w) => {
+              const def = getWidgetDefinition(w.widgetType);
+              const embedded = def?.embeddedChrome ?? false;
               const isMetricCard =
                 w.widgetType === "metrics.card" || w.widgetType.startsWith("metric.single.");
               const cardStyle = w.config.cardStyle as string | undefined;
@@ -150,6 +151,7 @@ export function DashboardGrid({
                   title={w.title}
                   editMode={editMode}
                   compact={compact}
+                  embedded={embedded}
                   periodBadge={periodBadge}
                   onRemove={() => onRemove(w.id)}
                 >

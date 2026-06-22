@@ -16,7 +16,6 @@ export function AppShell({
   children,
   userName,
   userEmail,
-  alertCount,
   planSlug = "free",
   planName = "Free",
   subscriptionStatus = "active",
@@ -27,7 +26,6 @@ export function AppShell({
   children: React.ReactNode;
   userName: string;
   userEmail: string;
-  alertCount: number;
   planSlug?: string;
   planName?: string;
   subscriptionStatus?: string;
@@ -68,7 +66,6 @@ export function AppShell({
         <AppSidebar
           userName={userName}
           userEmail={userEmail}
-          alertCount={alertCount}
           planName={planName}
           planSlug={planSlug}
           subscriptionStatus={subscriptionStatus}

@@ -13,6 +13,13 @@ import {
   ZAxis
 } from "recharts";
 
+import { PremiumChartRenderer } from "@/components/dashboard/PremiumChartRenderer";
+import { PerformanceChartWidget } from "@/components/dashboard/canvas/widgets/LegacyWidgets";
+import {
+  toBoxPlotGroups,
+  toParetoFromSeries
+} from "@/lib/dashboard/chart-distribution";
+import type { CellScale, HeatmapColorScale, SlotVisualConfig } from "@/lib/dashboard/slot-visual-config";
 import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { formatDayLabel } from "@/lib/dashboard-ranges";
 import type { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
@@ -21,6 +28,21 @@ type DashboardData = ReturnType<typeof useDashboardData>;
 type SeriesPoint = { day: string } & Partial<Record<MetricKey, number>>;
 
 const POINT_RADIUS = { small: 4, medium: 6, large: 9 } as const;
+
+const CELL_MIN_HEIGHT: Record<CellScale, number> = {
+  auto: 52,
+  compact: 40,
+  large: 68
+};
+
+function intensityForValue(value: number, max: number, scale: HeatmapColorScale | undefined): number {
+  if (max <= 0) return 0;
+  const ratio = value / max;
+  if (scale === "log") {
+    return Math.log1p(value) / Math.log1p(max);
+  }
+  return ratio;
+}
 
 function pearsonCorrelation(xs: number[], ys: number[]): number {
   const n = xs.length;
@@ -43,13 +65,23 @@ function pearsonCorrelation(xs: number[], ys: number[]): number {
 
 export function HeatmapWidget({
   data,
-  heatmapMetric = "spend"
+  heatmapMetric = "spend",
+  cellScale = "auto",
+  heatmapColorScale = "auto",
+  visual
 }: {
   data: DashboardData;
   heatmapMetric?: MetricKey;
+  cellScale?: CellScale;
+  heatmapColorScale?: HeatmapColorScale;
+  visual?: SlotVisualConfig;
 }) {
   const t = useTranslations("dashboardWidgets");
   const locale = useLocale();
+  const resolvedVisual = visual ?? {};
+  const scale = heatmapColorScale ?? resolvedVisual.heatmapColorScale ?? "auto";
+  const cellSize = cellScale ?? resolvedVisual.cellScale ?? "auto";
+  const minCellH = CELL_MIN_HEIGHT[cellSize];
 
   const { cells, max, total, avg } = useMemo(() => {
     const series = data.series as SeriesPoint[];
@@ -63,14 +95,14 @@ export function HeatmapWidget({
           day: p.day,
           label: formatDayLabel(p.day, locale),
           value,
-          intensity: value / maxVal
+          intensity: intensityForValue(value, maxVal, scale === "auto" ? "linear" : scale)
         };
       }),
       max: maxVal,
       total: sum,
       avg: values.length ? sum / values.length : 0
     };
-  }, [data.series, heatmapMetric, locale]);
+  }, [data.series, heatmapMetric, locale, scale]);
 
   if (data.loading) {
     return <div className="skeleton-shimmer h-full min-h-[120px] rounded-xl" />;
@@ -113,8 +145,9 @@ export function HeatmapWidget({
             return (
               <div key={c.day} className="flex min-w-0 flex-col items-stretch gap-1">
                 <div
-                  className="flex min-h-[52px] flex-col items-center justify-center rounded-lg border px-1 py-1.5 text-center transition-transform hover:scale-[1.02]"
+                  className="flex flex-col items-center justify-center rounded-lg border px-1 py-1.5 text-center transition-transform hover:scale-[1.02]"
                   style={{
+                    minHeight: minCellH,
                     borderColor: `${color}33`,
                     background: `color-mix(in srgb, ${color} ${Math.round(12 + c.intensity * 68)}%, var(--surface-bg))`,
                     color: intense ? "#fff" : "var(--text-main)"
@@ -303,5 +336,125 @@ export function AiCorrelationWidget({
         </div>
       ) : null}
     </div>
+  );
+}
+
+export function ParetoWidget({
+  data,
+  metric = "spend",
+  sortDescending = true,
+  visual
+}: {
+  data: DashboardData;
+  metric?: MetricKey;
+  sortDescending?: boolean;
+  visual?: SlotVisualConfig;
+}) {
+  const rows = useMemo(
+    () => toParetoFromSeries(data.series as SeriesPoint[], metric, sortDescending),
+    [data.series, metric, sortDescending]
+  );
+
+  if (data.loading) {
+    return <div className="skeleton-shimmer h-full min-h-[120px] rounded-xl" />;
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <PremiumChartRenderer
+        chartStyle="pareto"
+        paretoRows={rows}
+        metricKey={metric}
+        formatValue={data.formatMetricValue}
+        visual={visual}
+      />
+    </div>
+  );
+}
+
+export function BulletWidget({
+  data,
+  metric = "roas",
+  targetValue,
+  visual
+}: {
+  data: DashboardData;
+  metric?: MetricKey;
+  targetValue?: number;
+  visual?: SlotVisualConfig;
+}) {
+  const current = data.summary?.[metric] ?? 0;
+  const target = targetValue ?? visual?.targetValue ?? 0;
+
+  if (data.loading) {
+    return <div className="skeleton-shimmer h-full min-h-[80px] rounded-xl" />;
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col justify-center px-1">
+      <PremiumChartRenderer
+        chartStyle="bullet"
+        bulletCurrent={current}
+        bulletTarget={target}
+        metricKey={metric}
+        formatValue={data.formatMetricValue}
+        visual={visual}
+      />
+    </div>
+  );
+}
+
+export function BoxPlotWidget({
+  data,
+  metric = "spend",
+  groupBy = "dayOfWeek",
+  visual
+}: {
+  data: DashboardData;
+  metric?: MetricKey;
+  groupBy?: "campaign" | "client" | "dayOfWeek";
+  visual?: SlotVisualConfig;
+}) {
+  const groups = useMemo(
+    () => toBoxPlotGroups(data.series as SeriesPoint[], groupBy, metric),
+    [data.series, groupBy, metric]
+  );
+
+  if (data.loading) {
+    return <div className="skeleton-shimmer h-full min-h-[120px] rounded-xl" />;
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <PremiumChartRenderer
+        chartStyle="boxplot"
+        boxPlotGroups={groups}
+        metricKey={metric}
+        formatValue={data.formatMetricValue}
+        visual={visual}
+      />
+    </div>
+  );
+}
+
+export function RadarStandaloneWidget({
+  data,
+  chartMetrics,
+  visual,
+  compact = false
+}: {
+  data: DashboardData;
+  chartMetrics?: MetricKey[];
+  visual?: SlotVisualConfig;
+  compact?: boolean;
+}) {
+  return (
+    <PerformanceChartWidget
+      data={data}
+      chartMetrics={chartMetrics}
+      chartStyle="radar"
+      visual={visual}
+      compact={compact}
+    />
   );
 }

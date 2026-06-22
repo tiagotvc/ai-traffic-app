@@ -105,6 +105,9 @@ export function useDashboardData() {
     Array<LearningDto & { clientName?: string; clientSlug?: string }>
   >([]);
   const [brainLearningsLoading, setBrainLearningsLoading] = useState(true);
+  const [brainLearningsCount, setBrainLearningsCount] = useState(0);
+  const [brainHypothesesCount, setBrainHypothesesCount] = useState(0);
+  const [brainSummaryLoading, setBrainSummaryLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
 
@@ -212,6 +215,7 @@ export function useDashboardData() {
 
   const loadBrainLearnings = useCallback(() => {
     setBrainLearningsLoading(true);
+    setBrainSummaryLoading(true);
 
     const parseItems = (j: { ok?: boolean; items?: LearningDto[] }) =>
       j.ok && Array.isArray(j.items) ? j.items : [];
@@ -220,6 +224,17 @@ export function useDashboardData() {
       setBrainLearnings(items.slice(0, 4));
       setBrainLearningsLoading(false);
     };
+
+    void fetch("/api/dashboard/brain-summary")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) {
+          setBrainLearningsCount(Number(j.learningsCount) || 0);
+          setBrainHypothesesCount(Number(j.hypothesesCount) || 0);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setBrainSummaryLoading(false));
 
     if (clientFilter) {
       void fetch(
@@ -416,6 +431,9 @@ export function useDashboardData() {
     clients,
     brainLearnings,
     brainLearningsLoading,
+    brainLearningsCount,
+    brainHypothesesCount,
+    brainSummaryLoading,
     chartMetrics,
     toggleChartMetric,
     dashboardLayout,

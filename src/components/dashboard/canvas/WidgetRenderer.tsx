@@ -17,7 +17,11 @@ import {
 } from "@/components/dashboard/canvas/widgets/LegacyWidgets";
 import {
   AiCorrelationWidget,
+  BoxPlotWidget,
+  BulletWidget,
   HeatmapWidget,
+  ParetoWidget,
+  RadarStandaloneWidget,
   ScatterWidget
 } from "@/components/dashboard/canvas/widgets/PremiumWidgets";
 import { TaskbarWidget } from "@/components/dashboard/canvas/widgets/TaskbarWidget";
@@ -25,7 +29,6 @@ import { DualMetricChartWidget, SingleMetricWidget } from "@/components/dashboar
 import {
   resolveMetricKeyFromWidget,
   type AlertsDensity,
-  type ChartStyle,
   type ClientsHealthView,
   type MetricCardStyle
 } from "@/lib/dashboard/widget-config";
@@ -163,7 +166,64 @@ function WidgetRendererBody({
   }
   if (type === "advanced.heatmap") {
     const heatmapMetric = (instance.config.heatmapMetric as MetricKey | undefined) ?? "spend";
-    return <HeatmapWidget data={dashboardData} heatmapMetric={heatmapMetric} />;
+    const visual = parseSlotVisualConfig(instance.config);
+    return (
+      <HeatmapWidget
+        data={dashboardData}
+        heatmapMetric={heatmapMetric}
+        cellScale={visual.cellScale}
+        heatmapColorScale={visual.heatmapColorScale}
+        visual={visual}
+      />
+    );
+  }
+  if (type === "advanced.radar") {
+    const chartMetrics = instance.config.chartMetrics as MetricKey[] | undefined;
+    const visual = parseSlotVisualConfig(instance.config);
+    return (
+      <RadarStandaloneWidget
+        data={dashboardData}
+        chartMetrics={normalizeChartMetrics(chartMetrics)}
+        visual={visual}
+      />
+    );
+  }
+  if (type === "advanced.pareto") {
+    const metric = (instance.config.metric as MetricKey | undefined) ?? "spend";
+    const sortDescending = instance.config.sortDescending !== false;
+    const visual = parseSlotVisualConfig(instance.config);
+    return (
+      <ParetoWidget
+        data={dashboardData}
+        metric={metric}
+        sortDescending={sortDescending}
+        visual={visual}
+      />
+    );
+  }
+  if (type === "premium.bullet") {
+    const metric = (instance.config.metric as MetricKey | undefined) ?? "roas";
+    const targetValue =
+      typeof instance.config.targetValue === "number" ? instance.config.targetValue : undefined;
+    const visual = parseSlotVisualConfig(instance.config);
+    return (
+      <BulletWidget
+        data={dashboardData}
+        metric={metric}
+        targetValue={targetValue}
+        visual={visual}
+      />
+    );
+  }
+  if (type === "advanced.boxplot") {
+    const metric = (instance.config.metric as MetricKey | undefined) ?? "spend";
+    const groupBy =
+      (instance.config.boxPlotGroupBy as "campaign" | "client" | "dayOfWeek" | undefined) ??
+      "dayOfWeek";
+    const visual = parseSlotVisualConfig(instance.config);
+    return (
+      <BoxPlotWidget data={dashboardData} metric={metric} groupBy={groupBy} visual={visual} />
+    );
   }
   if (type === "ai.correlation") {
     const metricA = (instance.config.metricA as MetricKey | undefined) ?? "spend";
@@ -187,8 +247,9 @@ function WidgetRendererBody({
   if (def?.component === "DualMetricChartWidget") {
     const metricA = (instance.config.metricA as MetricKey) ?? "roas";
     const metricB = (instance.config.metricB as MetricKey) ?? "cpa";
-    const chartStyle = (instance.config.chartStyle as ChartStyle | undefined) ?? "area";
+    const chartStyle = parseExtendedChartStyle(instance.config.chartStyle);
     const barLayout = (instance.config.barLayout as ChartBarLayout | undefined) ?? "vertical";
+    const visual = parseSlotVisualConfig(instance.config);
     return (
       <DualMetricChartWidget
         data={dashboardData}
@@ -196,6 +257,7 @@ function WidgetRendererBody({
         metricB={metricB}
         chartStyle={chartStyle}
         barLayout={barLayout}
+        visual={visual}
       />
     );
   }

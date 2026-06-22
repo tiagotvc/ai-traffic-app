@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { CanvasAgencyHealth } from "@/components/dashboard/canvas/widgets/CanvasAgencyHealth";
 import { CanvasMetricStrip } from "@/components/dashboard/canvas/widgets/CanvasMetricStrip";
 import { MetricPrismPrimary } from "@/components/dashboard/MetricPrism";
-import { BrainShelf } from "@/components/dashboard/BrainShelf";
+import { BrainSummaryBanner } from "@/components/dashboard/BrainSummaryBanner";
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
 import { LiveIntelligenceFeed } from "@/components/dashboard/LiveIntelligenceFeed";
 import type { AlertsDensity, ClientsHealthView } from "@/lib/dashboard/widget-config";
@@ -34,8 +34,13 @@ import type { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 type DashboardData = ReturnType<typeof useDashboardData>;
 
 export function BrainLearningsWidget({ data }: { data: DashboardData }) {
-  const brainItems = toBrainShelfLearnings(data.brainLearnings);
-  return <BrainShelf suggestions={brainItems} isLoading={data.brainLearningsLoading} compact />;
+  return (
+    <BrainSummaryBanner
+      learningsCount={data.brainLearningsCount ?? data.brainLearnings.length}
+      hypothesesCount={data.brainHypothesesCount ?? 0}
+      isLoading={data.brainSummaryLoading ?? data.brainLearningsLoading}
+    />
+  );
 }
 
 export function HeroKpisWidget({
@@ -77,7 +82,8 @@ export function PerformanceChartWidget({
   chartStyle = "area",
   barLayout = "vertical",
   visual,
-  onChartMetricsChange
+  onChartMetricsChange,
+  compact = false
 }: {
   data: DashboardData;
   chartMetrics?: MetricKey[];
@@ -85,6 +91,7 @@ export function PerformanceChartWidget({
   barLayout?: ChartBarLayout;
   visual?: SlotVisualConfig;
   onChartMetricsChange?: (metrics: MetricKey[]) => void;
+  compact?: boolean;
 }) {
   const widgetScoped = chartMetrics !== undefined;
   const [activeMetrics, setActiveMetrics] = useState<MetricKey[]>(() =>
@@ -116,15 +123,17 @@ export function PerformanceChartWidget({
     <DashboardPerformanceChart
       data={toChartData(data.series, data.locale)}
       activeMetrics={metrics}
-      onToggleMetric={handleToggle}
+      onToggleMetric={compact ? undefined : handleToggle}
       formatValue={data.formatMetricValue}
       metricLabels={data.chartMetricLabels}
       isLoading={data.loading}
-      subtitle={data.vsLabel}
-      variant="canvas"
+      subtitle={compact ? undefined : data.vsLabel}
+      variant={compact ? "embedded" : "canvas"}
       chartStyle={chartStyle}
       barLayout={barLayout}
       visual={visual}
+      disableToggle={compact}
+      metricSummary={data.summary}
     />
   );
 }
@@ -145,7 +154,7 @@ export function AlertsFeedWidget({
     nowLabel: t("now"),
     recentLabel: t("recently")
   });
-  return <LiveIntelligenceFeed events={events} isLoading={data.loading} variant={density} />;
+  return <LiveIntelligenceFeed events={events} isLoading={data.loading} variant={density} embedded />;
 }
 
 export function AgencyHealthWidget({

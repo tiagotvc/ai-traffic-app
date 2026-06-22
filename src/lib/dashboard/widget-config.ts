@@ -163,7 +163,11 @@ export function widgetHasConfigStep(widgetType: string): boolean {
     widgetType === "chart.compare" ||
     widgetType === "layout.taskbar" ||
     widgetType === "premium.metricMatrix" ||
-    widgetType === "premium.multiChart"
+    widgetType === "premium.multiChart" ||
+    widgetType === "advanced.radar" ||
+    widgetType === "advanced.pareto" ||
+    widgetType === "premium.bullet" ||
+    widgetType === "advanced.boxplot"
   ) {
     return true;
   }

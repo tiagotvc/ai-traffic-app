@@ -6,7 +6,7 @@ import { ArrowRight, Settings2, Sparkles } from "lucide-react";
 
 import { AgencyHealthLayout } from "@/components/dashboard/AgencyHealthLayout";
 import { Link } from "@/i18n/navigation";
-import { BrainShelf } from "@/components/dashboard/BrainShelf";
+import { BrainSummaryBanner } from "@/components/dashboard/BrainSummaryBanner";
 import { DashboardCustomizeModal } from "@/components/dashboard/DashboardCustomizeModal";
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
 import { LiveIntelligenceFeed } from "@/components/dashboard/LiveIntelligenceFeed";
@@ -130,16 +130,11 @@ export function DashboardContentLive() {
       </div>
 
       {!data.isEmptyState && sections.brainShelf ? (
-        <div
-          className="rounded-xl border px-3 py-2.5"
-          style={{
-            background: "var(--surface-card)",
-            borderColor: "rgba(124,58,237,0.18)",
-            boxShadow: "0 1px 6px rgba(124,58,237,0.06)"
-          }}
-        >
-          <BrainShelf suggestions={brainItems} isLoading={data.brainLearningsLoading} compact />
-        </div>
+        <BrainSummaryBanner
+          learningsCount={data.brainLearningsCount ?? brainItems.length}
+          hypothesesCount={data.brainHypothesesCount ?? 0}
+          isLoading={data.brainSummaryLoading ?? data.brainLearningsLoading}
+        />
       ) : null}
 
       <div className="tab-transition animate-fade-up space-y-5">
