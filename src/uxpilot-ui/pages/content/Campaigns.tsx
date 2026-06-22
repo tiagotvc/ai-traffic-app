@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { useUxNavigate as useNavigate } from "@/uxpilot-ui/adapters/navigation";
+import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import type { CampaignTypeDto } from "@/hooks/useCampaignTypes";
 import type { AppliedCampaignFilter } from "@/lib/campaign-meta-filters";
 import type { UxCampaignKpi, UxCampaignRow } from "@/uxpilot-ui/adapters/campaigns-mappers";
@@ -288,6 +290,7 @@ type CampaignRowView = UxCampaignRow & { id: string | number };
 
 export default function CampaignsContent({ live }: { live?: CampaignsLiveProps } = {}) {
   const navigate = useNavigate();
+  const tPage = useTranslations("campaignsPage");
   const isLive = Boolean(live);
   const isGroupedLive = isLive && Array.isArray(live?.campaignGroups);
   const [search, setSearch] = useState("");
@@ -646,13 +649,22 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                     >
                       {isLive ? (
                         <td className="px-2 py-3 w-10" onClick={(e) => e.stopPropagation()}>
-                          <UxCampaignRowSelector
-                            selected={selectedRowId === c.id}
-                            disabled={live?.statusPendingId === String(c.id)}
-                            onClick={() =>
-                              selectCampaign(selectedRowId === c.id ? null : c.id)
-                            }
-                          />
+                          {c.status === "draft" ? (
+                            <span className="text-[10px] font-body" style={{ color: "var(--text-dimmer)" }}>
+                              —
+                            </span>
+                          ) : (
+                            <CampaignStatusToggle
+                              active={c.rawStatus === "ACTIVE" || c.status === "active"}
+                              disabled={live?.statusPendingId === String(c.id)}
+                              ariaLabel={
+                                c.status === "active"
+                                  ? tPage("statusActive")
+                                  : tPage("statusPaused")
+                              }
+                              onChange={() => live?.onToggleStatus?.(c.id, c.rawStatus)}
+                            />
+                          )}
                         </td>
                       ) : null}
 
