@@ -1741,6 +1741,8 @@
     "selectClientRequired": "Selecione um cliente para visualizar o relatório.",
     "refreshPreview": "Atualizar prévia",
     "exportPdf": "Exportar PDF",
+    "openPrintView": "Versão para impressão",
+    "openPrintViewHint": "Abre o layout A4 otimizado para impressão e exportação em PDF",
     "exportSectionTitle": "Exportar",
     "exportSectionHint": "Visualize o relatório na tela antes de exportar ou enviar por e-mail.",
     "emptyPreviewTitle": "Nenhuma prévia ainda",

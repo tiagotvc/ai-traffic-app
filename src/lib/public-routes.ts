@@ -5,6 +5,7 @@ export function isPublicPath(pathWithoutLocale: string): boolean {
   const path = pathWithoutLocale || "/";
   if (path === "/") return true;
   if (path === "/login" || path.startsWith("/login/")) return true;
+  if (path === "/report-print" || path.startsWith("/report-print")) return true;
   return PUBLIC_MARKETING_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
 }
 

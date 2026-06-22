@@ -1,0 +1,161 @@
+/* Layout A4 para impressão / Puppeteer PDF — 794px ≈ 210mm @ 96dpi */
+
+.report-print-shell {
+  min-height: 100vh;
+  background: #ffffff;
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 48px;
+}
+
+.report-print-root {
+  width: 794px;
+  max-width: 794px;
+  min-width: 794px;
+  margin: 0 auto;
+  padding: 0 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.report-print-root * {
+  box-sizing: border-box;
+}
+
+.report-print-brand {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7c3aed;
+  margin-bottom: 8px;
+}
+
+.report-print-root h2 {
+  font-size: 26px !important;
+  line-height: 1.2 !important;
+}
+
+.report-print-root .text-sm {
+  font-size: 14px !important;
+}
+
+.report-print-root .text-xs {
+  font-size: 12px !important;
+}
+
+.report-print-root .font-heading.text-3xl,
+.report-print-root .text-3xl {
+  font-size: 1.75rem !important;
+}
+
+.report-print-root .font-heading.text-2xl,
+.report-print-root .text-2xl {
+  font-size: 1.5rem !important;
+}
+
+.report-print-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 14px;
+  padding: 18px 20px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.report-print-root .report-pdf-grid-3 {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.report-print-root .report-pdf-grid-2 {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.report-print-root .report-pdf-spend-layout {
+  display: grid !important;
+  grid-template-columns: 280px minmax(0, 1fr) !important;
+  gap: 18px !important;
+  align-items: start !important;
+}
+
+.report-print-root .report-pdf-solo {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.report-print-root .ui-card {
+  background: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+.report-print-root .report-chart-wrap {
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+.report-print-root .recharts-wrapper {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.report-print-root .report-pdf-spend-layout table {
+  width: 100% !important;
+  font-size: 11px !important;
+  table-layout: fixed !important;
+}
+
+.report-print-root .report-pdf-spend-layout .overflow-x-auto {
+  overflow: visible !important;
+}
+
+.report-print-root [data-report-creatives-grid],
+.report-print-root .report-creatives-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  padding: 10px !important;
+}
+
+.report-print-root .report-creative-media {
+  min-height: 200px !important;
+  max-height: 260px !important;
+}
+
+.report-print-root .report-creative-card img {
+  object-fit: contain !important;
+}
+
+.report-print-section {
+  break-inside: auto;
+  page-break-inside: auto;
+  margin-bottom: 20px;
+}
+
+.report-print-avoid-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 10mm;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  .report-print-shell {
+    padding: 0;
+  }
+}

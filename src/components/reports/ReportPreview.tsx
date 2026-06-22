@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ChartContainer } from "@/components/ui/ChartContainer";
 import { formatDayLabel, pctDelta } from "@/lib/dashboard-ranges";
 import { formatMetricValue, METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
-import { formatBRL, formatPercent } from "@/lib/format";
+import { formatBRL, formatPercent, titleCaseWords } from "@/lib/format";
 import type { ReportPreviewPayload } from "@/lib/report-preview-types";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
@@ -77,13 +77,15 @@ export function ReportPreview({
   selectedMetrics,
   reportType,
   periodQuery,
-  adAccountId
+  adAccountId,
+  variant = "preview"
 }: {
   data: ReportPreviewPayload;
   selectedMetrics: MetricKey[];
   reportType: "simple" | "complete";
   periodQuery: string;
   adAccountId?: string;
+  variant?: "preview" | "print";
 }) {
   const t = useTranslations("reports");
   const tMetrics = useTranslations("metrics");
@@ -99,6 +101,10 @@ export function ReportPreview({
   const chartMetrics = selectedMetrics.slice(0, 3);
   const vsLabel = t("vsPrevPeriod");
   const noPrev = t("noPrevData");
+
+  function metricLegendLabel(key: MetricKey): string {
+    return titleCaseWords(tMetrics(METRIC_BY_KEY[key].label));
+  }
 
   function heroDelta(key: MetricKey): number | null {
     const prev = data.previousSummary?.[key];
@@ -142,10 +148,14 @@ export function ReportPreview({
   const goalValue = data.summary[data.client.goalMetric] ?? 0;
   const prevGoal = data.previousSummary?.[data.client.goalMetric] ?? 0;
   const goalDelta = prevGoal > 0 ? pctDelta(goalValue, prevGoal) : null;
+  const isPrint = variant === "print";
+  const rootId = isPrint ? "report-print-root" : "report-preview-root";
+  const rootClass = isPrint ? "report-print-root space-y-5" : "report-preview-root space-y-5";
+  const sectionClass = isPrint ? "report-print-section report-pdf-section" : "report-pdf-section";
 
   return (
-    <div id="report-preview-root" className="report-preview-root space-y-5 overflow-hidden">
-      <div className="report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4">
+    <div id={rootId} className={`${rootClass} overflow-hidden`}>
+      <div className={`report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4 ${isPrint ? "report-print-avoid-break" : ""}`}>
         <div>
           <div className="text-xs font-medium text-[var(--text-dim)]">{t("previewTitle")}</div>
           <h2 className="font-heading mt-1 text-xl font-bold text-[var(--text-main)]">{data.client.name}</h2>
@@ -169,7 +179,7 @@ export function ReportPreview({
         </div>
       </div>
 
-      <section className="report-pdf-section report-pdf-grid-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <section className={`${sectionClass} report-pdf-grid-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3`}>
         {selectedMetrics.slice(0, 6).map((key) => (
           <ReportHighlightCard
             key={key}
@@ -188,7 +198,7 @@ export function ReportPreview({
         ))}
       </section>
 
-      <section className="report-pdf-section ui-card overflow-hidden p-4">
+      <section className={`${sectionClass} ui-card overflow-hidden p-4 report-print-avoid-break`}>
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("narrativeTitle")}</div>
           {data.aiAnalysis ? (
@@ -210,7 +220,7 @@ export function ReportPreview({
         ) : null}
       </section>
 
-      <section className="report-pdf-section report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <section className={`${sectionClass} report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2`}>
         <ReportChartCard title={t("performanceChartTitle")}>
           <div className="mt-3 h-56">
             <ChartContainer height={224}>
@@ -220,10 +230,13 @@ export function ReportPreview({
                 <YAxis tick={TICK} {...AXIS} width={48} />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
-                  formatter={(value, name) => [
-                    formatMetricValue(String(name) as MetricKey, Number(value), locale),
-                    tMetrics(METRIC_BY_KEY[String(name) as MetricKey]?.label ?? "spend")
-                  ]}
+                  formatter={(value, _name, item) => {
+                    const key = String((item as { dataKey?: string })?.dataKey ?? "") as MetricKey;
+                    return [
+                      formatMetricValue(key, Number(value), locale),
+                      metricLegendLabel(key)
+                    ];
+                  }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
                 {chartMetrics.map((key) => (
@@ -231,7 +244,7 @@ export function ReportPreview({
                     key={key}
                     type="monotone"
                     dataKey={key}
-                    name={key}
+                    name={metricLegendLabel(key)}
                     stroke={METRIC_BY_KEY[key].color}
                     strokeWidth={2}
                     dot={false}
@@ -264,7 +277,7 @@ export function ReportPreview({
         </ReportChartCard>
       </section>
 
-      <section className="report-pdf-section report-pdf-block ui-card overflow-hidden p-4">
+      <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4 report-print-avoid-break`}>
         <div className="text-sm font-semibold text-[var(--text-main)]">{t("spendByCampaignTitle")}</div>
         {campaignsWithSpend.length ? (
           <div className="report-pdf-spend-layout mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)]">
@@ -377,7 +390,7 @@ export function ReportPreview({
         )}
       </section>
 
-      <section className="report-pdf-section report-pdf-block ui-card overflow-hidden p-4">
+      <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4 report-print-avoid-break`}>
         <div className="text-sm font-semibold text-[var(--text-main)]">{t("goalResultsTitle")}</div>
         <div className="report-pdf-grid-3 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.08)] p-4">
@@ -414,7 +427,7 @@ export function ReportPreview({
         </div>
       </section>
 
-      <section className="report-pdf-section">
+      <section className={`${sectionClass}`}>
         <ReportChartCard title={t("spendTrendCompareTitle")} solo>
           <div className="mt-3 h-56">
             <ChartContainer height={224}>
@@ -451,7 +464,7 @@ export function ReportPreview({
       </section>
 
       {reportType === "complete" && data.recommendations.length ? (
-        <section className="report-pdf-section report-pdf-block ui-card p-4">
+        <section className={`${sectionClass} report-pdf-block ui-card p-4 report-print-avoid-break`}>
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("recommendationsTitle")}</div>
           <p className="mt-1 text-xs text-[var(--text-dim)]">{t("recommendationsSubtitle")}</p>
           <div className="mt-4 space-y-3">
@@ -474,7 +487,7 @@ export function ReportPreview({
         </section>
       ) : null}
 
-      <section className="report-pdf-section">
+      <section className={`${sectionClass}`}>
         <div className="mb-3">
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("creativesRankingTitle")}</div>
           <p className="mt-1 text-xs text-[var(--text-dim)]">{t("creativesRankingSubtitle")}</p>

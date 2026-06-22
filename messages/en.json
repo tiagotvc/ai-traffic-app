@@ -1738,6 +1738,8 @@
     "selectClientRequired": "Select a client to preview the report.",
     "refreshPreview": "Refresh preview",
     "exportPdf": "Export PDF",
+    "openPrintView": "Print layout",
+    "openPrintViewHint": "Opens the A4 layout optimized for printing and PDF export",
     "exportSectionTitle": "Export",
     "exportSectionHint": "Preview the report on screen first, then export or email the PDF.",
     "emptyPreviewTitle": "No preview yet",
