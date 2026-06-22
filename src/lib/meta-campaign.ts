@@ -467,7 +467,9 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
     objective: OBJECTIVE_MAP[objective],
     status: "PAUSED",
     special_ad_categories: specialCategories,
-    is_adset_budget_sharing_enabled: isCbo ? "true" : "false",
+    // CBO (campaign daily_budget) is incompatible with ad set budget sharing (Meta 4834002).
+    // For ABO, Meta v24+ requires this field when budgets live on ad sets.
+    is_adset_budget_sharing_enabled: "false",
     buying_type: buyingType
   };
   if (isCbo) campaignBody.daily_budget = String(dailyBudgetMinor);
