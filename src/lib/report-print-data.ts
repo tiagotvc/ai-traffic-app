@@ -130,7 +130,13 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
           adAccountId,
           since: current.since,
           until: current.until,
-          period: { preset, since, until, days: null, allTime: false },
+          period: {
+            preset,
+            since: current.since,
+            until: current.until,
+            days: null,
+            allTime: false
+          },
           skipCache: true
         });
         creativeGroups = perf.groups;
