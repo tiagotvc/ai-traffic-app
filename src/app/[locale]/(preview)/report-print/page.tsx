@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ReportPrintReady } from "@/components/reports/ReportPrintReady";
+import { ReportPrintToolbar } from "@/components/reports/ReportPrintToolbar";
 import { ReportPreview } from "@/components/reports/ReportPreview";
 import { loadReportPrintBundle, type ReportPrintQuery } from "@/lib/report-print-data";
 
@@ -39,16 +40,20 @@ export default async function ReportPrintPage({
   }
 
   return (
-    <ReportPrintReady>
-      <ReportPreview
-        data={bundle.payload}
-        selectedMetrics={bundle.selectedMetrics}
-        reportType={bundle.reportType}
-        periodQuery={bundle.periodQuery}
-        adAccountId={bundle.adAccountId ?? undefined}
-        variant="print"
-      />
-    </ReportPrintReady>
+    <>
+      {!query.pdfToken ? <ReportPrintToolbar locale={bundle.locale} /> : null}
+      <ReportPrintReady>
+        <ReportPreview
+          data={bundle.payload}
+          selectedMetrics={bundle.selectedMetrics}
+          reportType={bundle.reportType}
+          periodQuery={bundle.periodQuery}
+          adAccountId={bundle.adAccountId ?? undefined}
+          initialCreativeGroups={bundle.creativeGroups}
+          variant="print"
+        />
+      </ReportPrintReady>
+    </>
   );
 }
 

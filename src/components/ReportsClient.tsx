@@ -213,7 +213,14 @@ export function ReportsClient() {
 
         if (!res.ok) {
           const j = (await res.json().catch(() => null)) as { error?: string } | null;
-          setMessage(j?.error ?? t("pdfFailed"));
+          const err = j?.error;
+          setMessage(
+            err === "pdf_generation_failed"
+              ? t("pdfFailed")
+              : err && err !== "Unauthorized"
+                ? err
+                : t("pdfFailed")
+          );
           return;
         }
 

@@ -7,6 +7,10 @@ import type { MetricKey } from "@/lib/dashboard-metrics";
 import { DEFAULT_REPORT_METRICS } from "@/lib/report-preview-types";
 import { buildReportPreview } from "@/lib/report-preview-data";
 import {
+  loadClientCreativesPerformance,
+  type ReportCreativeGroup
+} from "@/lib/report-creatives-performance";
+import {
   addDaysIso,
   parsePeriodFromSearchParams,
   type PeriodPreset
@@ -112,6 +116,28 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       goalLabel: token.goalLabel
     });
     if (!payload.ok) return payload;
+    const { current } = await resolveReportPeriodRanges({
+      preset,
+      since,
+      until
+    });
+    let creativeGroups: ReportCreativeGroup[] | undefined;
+    if (current?.since && current.until) {
+      try {
+        const perf = await loadClientCreativesPerformance({
+          tenantId,
+          clientParam,
+          adAccountId,
+          since: current.since,
+          until: current.until,
+          period: { preset, since, until, days: null, allTime: false },
+          skipCache: true
+        });
+        creativeGroups = perf.groups;
+      } catch {
+        creativeGroups = [];
+      }
+    }
     const { tenant: tenantRepo } = await repositories();
     const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
     return {
@@ -122,7 +148,8 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       selectedMetrics: token.selectedMetrics ?? selectedMetrics,
       periodQuery: periodQueryFromParts({ preset, since, until }),
       adAccountId,
-      brandName: tenant?.brandName ?? tenant?.name ?? null
+      brandName: tenant?.brandName ?? tenant?.name ?? null,
+      creativeGroups
     };
   }
 

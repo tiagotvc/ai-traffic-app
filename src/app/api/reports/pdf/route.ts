@@ -98,13 +98,20 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("[reports/pdf] Puppeteer failed, using pdf-lib fallback:", error);
-    bytes = await buildReportPdfFromPreview({
-      tenant,
-      payload: preview,
-      reportType: body.reportType,
-      locale: body.locale,
-      selectedMetrics: body.selectedMetrics as MetricKey[] | undefined
-    });
+    try {
+      bytes = await buildReportPdfFromPreview({
+        tenant,
+        payload: preview,
+        reportType: body.reportType,
+        locale: body.locale,
+        selectedMetrics: body.selectedMetrics as MetricKey[] | undefined
+      });
+    } catch (fallbackError) {
+      console.error("[reports/pdf] pdf-lib fallback failed:", fallbackError);
+      const message =
+        fallbackError instanceof Error ? fallbackError.message : "pdf_generation_failed";
+      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    }
   }
 
   const safeName = client.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();

@@ -1,18 +1,17 @@
 import "server-only";
 
 import type { MetricKey } from "@/lib/dashboard-metrics";
+import { getAppBaseUrl } from "@/lib/app-url";
 import type { PeriodPreset } from "@/lib/report-period";
 import { createReportPrintToken } from "@/lib/report-print-token";
 
 export const REPORT_PRINT_WIDTH_PX = 794;
+const PUPPETEER_TIMEOUT_MS = 55_000;
 
-function appBaseUrl(): string {
+function reportPrintBaseUrl(): string {
   const explicit = process.env.REPORT_PRINT_BASE_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  const authUrl = process.env.NEXTAUTH_URL?.trim();
-  if (authUrl) return authUrl.replace(/\/$/, "");
-  return "http://127.0.0.1:3008";
+  return getAppBaseUrl();
 }
 
 async function launchBrowser() {
@@ -73,19 +72,22 @@ export async function renderReportPdfWithPuppeteer(input: {
   });
 
   const locale = input.locale.startsWith("en") ? "en" : "pt-BR";
-  const url = `${appBaseUrl()}/${locale}/report-print?pdfToken=${encodeURIComponent(token)}`;
+  const url = `${reportPrintBaseUrl()}/${locale}/report-print?pdfToken=${encodeURIComponent(token)}`;
 
   const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: REPORT_PRINT_WIDTH_PX, height: 1123, deviceScaleFactor: 1 });
-    await page.goto(url, { waitUntil: "networkidle0", timeout: 90_000 });
-    await page.waitForSelector('[data-report-print-ready="true"]', { timeout: 90_000 });
+    await page.goto(url, { waitUntil: "load", timeout: PUPPETEER_TIMEOUT_MS });
+    await page.waitForSelector('[data-report-print-ready="true"]', {
+      timeout: PUPPETEER_TIMEOUT_MS
+    });
 
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
       preferCSSPageSize: true,
+      displayHeaderFooter: false,
       margin: { top: "10mm", right: "10mm", bottom: "12mm", left: "10mm" }
     });
 

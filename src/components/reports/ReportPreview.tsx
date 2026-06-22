@@ -18,6 +18,7 @@ import {
 } from "recharts";
 
 import { CreativesRankingView } from "@/components/creatives/CreativesRankingView";
+import type { ReportCreativeGroup } from "@/lib/report-creatives-performance";
 import { ReportHighlightCard } from "@/components/reports/ReportHighlightCard";
 import { Badge } from "@/components/ui/Badge";
 import { ChartContainer } from "@/components/ui/ChartContainer";
@@ -78,6 +79,7 @@ export function ReportPreview({
   reportType,
   periodQuery,
   adAccountId,
+  initialCreativeGroups,
   variant = "preview"
 }: {
   data: ReportPreviewPayload;
@@ -85,6 +87,7 @@ export function ReportPreview({
   reportType: "simple" | "complete";
   periodQuery: string;
   adAccountId?: string;
+  initialCreativeGroups?: ReportCreativeGroup[];
   variant?: "preview" | "print";
 }) {
   const t = useTranslations("reports");
@@ -513,6 +516,7 @@ export function ReportPreview({
           adAccountId={adAccountId ?? data.adAccount?.metaAdAccountId}
           maxBest={3}
           embedInReport
+          initialGroups={initialCreativeGroups}
         />
       </section>
     </div>
