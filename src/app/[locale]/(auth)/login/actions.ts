@@ -106,8 +106,5 @@ export async function redirectToMetaBusinessOAuth(formData: FormData) {
     formData.get("redirectTo") ?? `/${locale}/onboarding/meta/setup`
   );
   const { redirect } = await import("next/navigation");
-  const { getAppBaseUrl } = await import("@/lib/app-url");
-  redirect(
-    `${getAppBaseUrl()}/api/meta/oauth/start?redirectTo=${encodeURIComponent(redirectTo)}`
-  );
+  redirect(`/api/meta/oauth/start?redirectTo=${encodeURIComponent(redirectTo)}`);
 }

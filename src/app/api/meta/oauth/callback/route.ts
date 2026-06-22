@@ -6,7 +6,7 @@ import {
   exchangeMetaBusinessCode,
   readMetaOAuthCookies
 } from "@/lib/meta-business-oauth";
-import { getAppBaseUrl } from "@/lib/app-url";
+import { resolveRequestOrigin } from "@/lib/app-url";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -14,10 +14,11 @@ export async function GET(req: Request) {
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
-  const { state: savedState, redirectTo } = await readMetaOAuthCookies();
+  const { state: savedState, redirectTo, oauthOrigin } = await readMetaOAuthCookies();
   await clearMetaOAuthCookies();
 
-  const fallback = `${getAppBaseUrl()}/onboarding/meta/setup`;
+  const appOrigin = oauthOrigin ?? resolveRequestOrigin(req);
+  const fallback = `${appOrigin}/onboarding/meta/setup`;
 
   if (error) {
     return NextResponse.redirect(
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`/login?callbackUrl=${encodeURIComponent(redirectTo ?? fallback)}`);
   }
 
-  const result = await exchangeMetaBusinessCode(code, userId);
+  const result = await exchangeMetaBusinessCode(code, userId, oauthOrigin);
   if (!result.ok) {
     return NextResponse.redirect(
       `${fallback}?metaError=${encodeURIComponent(result.error)}`
@@ -45,5 +46,5 @@ export async function GET(req: Request) {
   }
 
   const target = redirectTo?.startsWith("/") ? redirectTo : fallback;
-  return NextResponse.redirect(`${getAppBaseUrl()}${target}?metaConnected=1`);
+  return NextResponse.redirect(`${appOrigin}${target}?metaConnected=1`);
 }

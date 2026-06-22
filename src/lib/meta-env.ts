@@ -42,4 +42,4 @@ export function buildMetaFacebookLoginAuthParams(): Record<string, string> {
   return params;
 }
 
-export { getAppBaseUrl, getMetaFacebookLoginRedirectUri, getMetaOAuthRedirectUri } from "@/lib/app-url";
+export { getAppBaseUrl, getMetaFacebookLoginRedirectUri, getMetaOAuthRedirectUri, listMetaOAuthRedirectUris } from "@/lib/app-url";

@@ -6,6 +6,7 @@ import {
   createOAuthState,
   setMetaOAuthCookies
 } from "@/lib/meta-business-oauth";
+import { resolveRequestOrigin } from "@/lib/app-url";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
 
 export async function GET(req: Request) {
@@ -24,8 +25,9 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const redirectTo = url.searchParams.get("redirectTo") ?? "/onboarding/meta/setup";
+  const oauthOrigin = resolveRequestOrigin(req);
   const state = createOAuthState();
-  await setMetaOAuthCookies(state, redirectTo);
+  await setMetaOAuthCookies(state, redirectTo, oauthOrigin);
 
-  return NextResponse.redirect(buildMetaBusinessOAuthUrl(state));
+  return NextResponse.redirect(buildMetaBusinessOAuthUrl(state, oauthOrigin));
 }

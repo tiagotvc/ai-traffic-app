@@ -15,12 +15,13 @@ import { persistMetaAuth } from "@/lib/meta-auth-store";
 
 const STATE_COOKIE = "meta_oauth_state";
 const REDIRECT_COOKIE = "meta_oauth_redirect";
+const ORIGIN_COOKIE = "meta_oauth_origin";
 
-export function buildMetaBusinessOAuthUrl(state: string): string {
+export function buildMetaBusinessOAuthUrl(state: string, origin?: string): string {
   const configId = getMetaBusinessOAuthConfigId() || getMetaFacebookLoginConfigId();
   const params = new URLSearchParams({
     client_id: getMetaAppId(),
-    redirect_uri: getMetaBusinessOAuthRedirectUri(),
+    redirect_uri: getMetaBusinessOAuthRedirectUri(origin),
     response_type: "code",
     state,
     auth_type: "reauthorize"
@@ -37,7 +38,11 @@ export function buildMetaBusinessOAuthUrl(state: string): string {
   return `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
 }
 
-export async function setMetaOAuthCookies(state: string, redirectTo: string) {
+export async function setMetaOAuthCookies(
+  state: string,
+  redirectTo: string,
+  oauthOrigin?: string
+) {
   const jar = await cookies();
   const opts = {
     httpOnly: true,
@@ -48,16 +53,21 @@ export async function setMetaOAuthCookies(state: string, redirectTo: string) {
   };
   jar.set(STATE_COOKIE, state, opts);
   jar.set(REDIRECT_COOKIE, redirectTo, opts);
+  if (oauthOrigin?.trim()) {
+    jar.set(ORIGIN_COOKIE, oauthOrigin.replace(/\/$/, ""), opts);
+  }
 }
 
 export async function readMetaOAuthCookies(): Promise<{
   state: string | null;
   redirectTo: string | null;
+  oauthOrigin: string | null;
 }> {
   const jar = await cookies();
   return {
     state: jar.get(STATE_COOKIE)?.value ?? null,
-    redirectTo: jar.get(REDIRECT_COOKIE)?.value ?? null
+    redirectTo: jar.get(REDIRECT_COOKIE)?.value ?? null,
+    oauthOrigin: jar.get(ORIGIN_COOKIE)?.value ?? null
   };
 }
 
@@ -65,6 +75,7 @@ export async function clearMetaOAuthCookies() {
   const jar = await cookies();
   jar.delete(STATE_COOKIE);
   jar.delete(REDIRECT_COOKIE);
+  jar.delete(ORIGIN_COOKIE);
 }
 
 export function createOAuthState(): string {
@@ -95,12 +106,13 @@ async function exchangeForLongLivedToken(shortLived: string): Promise<{
 
 export async function exchangeMetaBusinessCode(
   code: string,
-  userId: string
+  userId: string,
+  oauthOrigin?: string | null
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const params = new URLSearchParams({
     client_id: getMetaAppId(),
     client_secret: getMetaAppSecret(),
-    redirect_uri: getMetaBusinessOAuthRedirectUri(),
+    redirect_uri: getMetaBusinessOAuthRedirectUri(oauthOrigin ?? undefined),
     code
   });
 
