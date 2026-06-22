@@ -54,7 +54,7 @@ export function LoginForm({
       href="/terms"
       target="_blank"
       rel="noopener noreferrer"
-      className="font-semibold text-[var(--violet)] underline-offset-2 hover:underline"
+      className="font-semibold text-amber-300 underline-offset-2 hover:text-amber-200 hover:underline"
     >
       {chunks}
     </Link>
@@ -62,108 +62,59 @@ export function LoginForm({
 
   return (
     <div className="w-full">
-      <div
-        className="mb-5 overflow-hidden rounded-2xl border p-3.5 lg:hidden"
-        style={{
-          borderColor: "rgba(124, 58, 237, 0.18)",
-          background:
-            "linear-gradient(135deg, rgba(124,58,237,0.07) 0%, rgba(245,166,35,0.06) 100%)"
-        }}
-      >
+      <div className="auth-premium-banner mb-5 lg:hidden">
         <div className="flex items-start gap-3">
-          <span
-            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm"
-            style={{
-              background: "linear-gradient(135deg, var(--violet), var(--violet-bright))",
-              color: "#fff"
-            }}
-          >
+          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-lg shadow-violet-900/30">
             <Sparkles className="h-4 w-4" />
           </span>
           <div>
-            <p className="font-heading text-sm font-bold text-[var(--text-main)]">
-              {t("formValueProp")}
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-[var(--text-dim)]">
-              {t("formValuePropSub")}
-            </p>
+            <p className="font-heading text-sm font-bold text-white">{t("formValueProp")}</p>
+            <p className="mt-1 text-xs leading-relaxed text-violet-200/75">{t("formValuePropSub")}</p>
           </div>
         </div>
       </div>
 
       {showSwitchBanner ? (
-        <div className="mb-4 ui-alert-warning px-3 py-2 text-xs">
+        <div className="auth-premium-alert-warning mb-4">
           <div className="font-semibold">{t("switchAccountTitle")}</div>
-          <p className="mt-1">{t("switchAccountBody", { email: currentUserEmail })}</p>
-          <p className="mt-2 text-amber-800">{t("switchAccountHint")}</p>
+          <p className="mt-1 text-amber-100/90">{t("switchAccountBody", { email: currentUserEmail })}</p>
+          <p className="mt-2 text-amber-200/80">{t("switchAccountHint")}</p>
         </div>
       ) : null}
 
-      <div
-        className="flex gap-1 rounded-xl border p-1 text-xs"
-        style={{
-          borderColor: "var(--border-color)",
-          background: "var(--surface-thead)"
-        }}
-      >
+      <div className="auth-premium-tabs">
         <button
           type="button"
           onClick={() => {
             setMode("login");
             setTermsAccepted(false);
           }}
-          className={cn(
-            "flex-1 rounded-lg px-3 py-2 font-semibold transition-all duration-200",
-            mode === "login" ? "shadow-sm" : "hover:text-[var(--text-main)]"
-          )}
-          style={
-            mode === "login"
-              ? {
-                  background: "var(--filter-btn-bg)",
-                  color: "var(--text-main)",
-                  border: "1px solid var(--border-color)"
-                }
-              : { color: "var(--text-dim)" }
-          }
+          className={cn("auth-premium-tab", mode === "login" && "auth-premium-tab-active")}
         >
           {t("tabLogin")}
         </button>
         <button
           type="button"
           onClick={() => setMode("register")}
-          className={cn(
-            "flex-1 rounded-lg px-3 py-2 font-semibold transition-all duration-200",
-            mode === "register" ? "shadow-sm" : "hover:text-[var(--text-main)]"
-          )}
-          style={
-            mode === "register"
-              ? {
-                  background: "var(--filter-btn-bg)",
-                  color: "var(--text-main)",
-                  border: "1px solid var(--border-color)"
-                }
-              : { color: "var(--text-dim)" }
-          }
+          className={cn("auth-premium-tab", mode === "register" && "auth-premium-tab-active")}
         >
           {t("tabRegister")}
         </button>
       </div>
 
-      <div className="mt-6 font-heading text-2xl font-bold tracking-tight text-[var(--text-main)] sm:text-[1.75rem]">
+      <div className="mt-6 font-heading text-2xl font-bold tracking-tight text-white sm:text-[1.75rem]">
         {mode === "login" ? t("loginTitle") : t("registerTitle")}
       </div>
-      <div className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">
+      <div className="mt-2 text-sm leading-relaxed text-violet-200/75">
         {mode === "login" ? t("loginSubtitle") : t("registerSubtitle")}
       </div>
 
       {accountSuspended ? (
-        <div className="mt-3 ui-alert-danger px-3 py-2 text-xs">
-          {t("errors.ACCOUNT_SUSPENDED")}
-        </div>
+        <div className="auth-premium-alert-danger mt-3">{t("errors.ACCOUNT_SUSPENDED")}</div>
       ) : null}
 
       {error ? (
-        <div className="mt-3 ui-alert-danger px-3 py-2 text-xs">
+        <div className="auth-premium-alert-danger mt-3">
           {t(
             error === "EMAIL_TAKEN"
               ? "errors.EMAIL_TAKEN"
@@ -183,11 +134,12 @@ export function LoginForm({
             callbackUrl={callbackUrl}
             googleConfigured={googleOAuthConfigured}
             metaConfigured={metaOAuthConfigured}
+            variant="premium"
           />
-          <div className="my-5 flex items-center gap-3 text-xs text-[var(--text-dimmer)]">
-            <div className="h-px flex-1 bg-[var(--border-color)]" />
+          <div className="my-5 flex items-center gap-3 text-xs text-violet-300/50">
+            <div className="h-px flex-1 bg-white/10" />
             {t("orEmail")}
-            <div className="h-px flex-1 bg-[var(--border-color)]" />
+            <div className="h-px flex-1 bg-white/10" />
           </div>
         </div>
       ) : null}
@@ -204,14 +156,10 @@ export function LoginForm({
             type="password"
             autoComplete="current-password"
           />
-          <button
-            type="submit"
-            disabled={pending}
-            className="ui-btn-primary mt-1 w-full py-2.5 text-sm font-semibold disabled:opacity-60"
-          >
+          <button type="submit" disabled={pending} className="auth-premium-btn mt-1">
             {pending ? t("signingIn") : t("signIn")}
           </button>
-          <p className="text-center text-[11px] leading-relaxed text-[var(--text-dimmer)]">
+          <p className="text-center text-[11px] leading-relaxed text-violet-300/55">
             {t.rich("termsLoginHint", { terms: termsLink })}
           </p>
         </form>
@@ -227,7 +175,7 @@ export function LoginForm({
             type="password"
             autoComplete="new-password"
           />
-          <p className="text-[11px] text-[var(--text-dim)]">{t("passwordHint")}</p>
+          <p className="text-[11px] text-violet-300/55">{t("passwordHint")}</p>
           <div className="flex items-start gap-3 pt-0.5">
             <input
               type="checkbox"
@@ -235,11 +183,11 @@ export function LoginForm({
               checked={termsAccepted}
               onChange={(e) => setTermsAccepted(e.target.checked)}
               required
-              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-[var(--border-color)] accent-[var(--violet)]"
+              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-white/20 bg-white/5 accent-amber-400"
             />
             <label
               htmlFor="terms-accept"
-              className="cursor-pointer text-xs leading-relaxed text-[var(--text-dim)]"
+              className="cursor-pointer text-xs leading-relaxed text-violet-200/75"
             >
               {t.rich("termsAccept", { terms: termsLink })}
             </label>
@@ -247,14 +195,14 @@ export function LoginForm({
           <button
             type="submit"
             disabled={pending || !termsAccepted}
-            className="ui-btn-primary mt-1 w-full py-2.5 text-sm font-semibold disabled:opacity-60"
+            className="auth-premium-btn mt-1"
           >
             {pending ? t("creatingAccount") : t("createAccount")}
           </button>
         </form>
       )}
 
-      <p className="mt-2 text-[11px] text-[var(--text-dimmer)]">{t("metaConnectLaterHint")}</p>
+      <p className="mt-3 text-center text-[11px] text-violet-300/45">{t("metaConnectLaterHint")}</p>
     </div>
   );
 }
@@ -272,7 +220,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="ui-label mb-1.5 block font-semibold" htmlFor={name}>
+      <label className="auth-premium-label mb-1.5 block" htmlFor={name}>
         {label}
       </label>
       <input
@@ -281,7 +229,7 @@ function Field({
         type={type}
         required
         autoComplete={autoComplete}
-        className="ui-strip-input w-full"
+        className="auth-premium-input w-full"
       />
     </div>
   );

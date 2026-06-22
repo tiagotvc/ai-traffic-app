@@ -34,17 +34,24 @@ export function SocialLoginButtons({
   locale,
   callbackUrl,
   googleConfigured,
-  metaConfigured
+  metaConfigured,
+  variant = "portal"
 }: {
   locale: string;
   callbackUrl: string;
   googleConfigured: boolean;
   metaConfigured: boolean;
+  variant?: "portal" | "premium";
 }) {
   const t = useTranslations("auth");
   const [googlePending, setGooglePending] = useState(false);
+  const isPremium = variant === "premium";
 
   const facebookHandoffHref = `/login/facebook?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+
+  const googleBtnClass = isPremium
+    ? "flex w-full items-center justify-center gap-3 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-white/[0.08] disabled:opacity-70"
+    : "flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--border-color)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--text-main)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:opacity-70";
 
   return (
     <div className="space-y-2.5">
@@ -65,7 +72,7 @@ export function SocialLoginButtons({
           <button
             type="submit"
             disabled={googlePending}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-[var(--border-color)] bg-white px-4 py-2.5 text-sm font-semibold text-[var(--text-main)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:opacity-70"
+            className={googleBtnClass}
           >
             <GoogleIcon />
             {googlePending ? t("signingIn") : t("continueWithGoogle")}
