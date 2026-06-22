@@ -72,7 +72,9 @@ async function enrichClientSignals(
       }
       const creatives = mapAggregatesToCreatives(byCreative, "", presetByCampaign);
       const rankConfig = await loadRankConfig(tenantId);
-      const groups = getTopCreativesByPreset(creatives, rankConfig);
+      const groups = getTopCreativesByPreset(creatives, rankConfig, {
+        periodDays: ctx.windowDays
+      });
       const ranked = rankedCreativesFromGroups(groups);
       extraSignals.push(...creativesToSignals(ranked, ctx.current, ctx.windowDays));
 

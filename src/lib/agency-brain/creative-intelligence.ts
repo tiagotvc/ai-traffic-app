@@ -56,6 +56,7 @@ type AdsetBreak = { id: string; name: string; campaignName: string; sums: Creati
 
 export type CreativeAgg = {
   name: string;
+  creativeName?: string;
   type: CreativeAssetType;
   thumbnailUrl?: string;
   imageUrl?: string;
@@ -74,6 +75,7 @@ export type CreativeAgg = {
 export type AggregatedCreative = {
   key: string;
   name: string;
+  creativeName: string | null;
   type: CreativeAssetType;
   adId: string | null;
   adIds: string[];
@@ -120,8 +122,10 @@ export function aggregateCreativesFromAccountData(input: {
 
     let agg = byCreative.get(key);
     if (!agg) {
+      const creativeName = ad.creativeName?.trim() || undefined;
       agg = {
-        name: ad.creativeName?.trim() || ad.name?.trim() || key,
+        name: creativeName || ad.name?.trim() || key,
+        creativeName,
         type: ad.creativeType ?? "image",
         thumbnailUrl: ad.thumbnailUrl,
         imageUrl: ad.imageUrl,
@@ -135,6 +139,10 @@ export function aggregateCreativesFromAccountData(input: {
         perAdset: new Map()
       };
       byCreative.set(key, agg);
+    }
+    if (ad.creativeName?.trim()) {
+      agg.creativeName = ad.creativeName.trim();
+      agg.name = ad.creativeName.trim();
     }
     if (!agg.thumbnailUrl && ad.thumbnailUrl) agg.thumbnailUrl = ad.thumbnailUrl;
     if (ad.imageUrl && (!agg.imageUrl || ad.imageUrl.length > (agg.imageUrl?.length ?? 0))) {
@@ -225,6 +233,7 @@ export function mapAggregatesToCreatives(
     return {
       key: a.name,
       name: a.name,
+      creativeName: a.creativeName ?? null,
       type: a.type,
       adId: a.firstAdId ?? null,
       adIds: [...a.ads],
@@ -246,7 +255,8 @@ export function mapAggregatesToCreatives(
 
 export function getTopCreativesByPreset(
   creatives: AggregatedCreative[],
-  rankConfig: RankConfig
+  rankConfig: RankConfig,
+  opts?: { periodDays?: number | null }
 ) {
   const byPreset = new Map<string, AggregatedCreative[]>();
   for (const c of creatives) {
@@ -264,8 +274,13 @@ export function getTopCreativesByPreset(
       const noSpend = list
         .filter((c) => Number(c.metrics.spend ?? 0) <= 0)
         .sort((a, b) => Number(b.metrics.impressions ?? 0) - Number(a.metrics.impressions ?? 0));
+      const volumeOpts =
+        opts?.periodDays != null && opts.periodDays > 0
+          ? { periodDays: opts.periodDays }
+          : undefined;
       const isBest = (c: AggregatedCreative) =>
-        meetsMinActivity(c.metrics, rankConfig) && bestEligible(c.metrics, preset);
+        meetsMinActivity(c.metrics, rankConfig) &&
+        bestEligible(c.metrics, preset, volumeOpts);
       const best = spentList.filter(isBest).sort(byEff);
       const promising = spentList.filter((c) => !isBest(c)).sort(byEff);
       const totalSpend = list.reduce((s, c) => s + Number(c.metrics.spend ?? 0), 0);

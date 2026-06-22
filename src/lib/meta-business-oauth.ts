@@ -71,6 +71,28 @@ export function createOAuthState(): string {
   return randomBytes(24).toString("hex");
 }
 
+async function exchangeForLongLivedToken(shortLived: string): Promise<{
+  access_token: string;
+  expires_in?: number;
+}> {
+  const params = new URLSearchParams({
+    grant_type: "fb_exchange_token",
+    client_id: getMetaAppId(),
+    client_secret: getMetaAppSecret(),
+    fb_exchange_token: shortLived
+  });
+  const res = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?${params.toString()}`);
+  const json = (await res.json()) as {
+    access_token?: string;
+    expires_in?: number;
+    error?: { message?: string };
+  };
+  if (!res.ok || !json.access_token) {
+    throw new Error(json.error?.message ?? "Long-lived token exchange failed");
+  }
+  return { access_token: json.access_token, expires_in: json.expires_in };
+}
+
 export async function exchangeMetaBusinessCode(
   code: string,
   userId: string
@@ -96,12 +118,20 @@ export async function exchangeMetaBusinessCode(
     return { ok: false, error: tokenJson.error?.message ?? "Token exchange failed" };
   }
 
-  const expiresAt = tokenJson.expires_in
-    ? Math.floor(Date.now() / 1000) + tokenJson.expires_in
-    : null;
+  let accessToken = tokenJson.access_token;
+  let expiresIn = tokenJson.expires_in;
+  try {
+    const longLived = await exchangeForLongLivedToken(accessToken);
+    accessToken = longLived.access_token;
+    expiresIn = longLived.expires_in ?? expiresIn;
+  } catch {
+    // Mantém short-lived se a troca falhar (ex.: app em dev).
+  }
+
+  const expiresAt = expiresIn ? Math.floor(Date.now() / 1000) + expiresIn : null;
 
   await persistMetaAuth(userId, {
-    access_token: tokenJson.access_token,
+    access_token: accessToken,
     token_type: tokenJson.token_type ?? null,
     scope: META_FACEBOOK_SCOPES,
     expires_at: expiresAt

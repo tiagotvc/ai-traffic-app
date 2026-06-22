@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
@@ -14,6 +15,7 @@ import { FormField } from "@/components/ui/FormField";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { getActiveAdset } from "@/lib/campaign-draft";
 import type { DraftTargeting } from "@/lib/campaign-draft";
+import { defaultScheduleStartLocal } from "@/lib/campaign-placements";
 
 export function AdSetStep() {
   const t = useTranslations("campaignCreator");
@@ -26,6 +28,12 @@ export function AdSetStep() {
   const adset = getActiveAdset(payload);
   const targeting = adset.targeting;
   const clientRequired = !payload.clientSlug;
+
+  useEffect(() => {
+    if (adset.schedule.start) return;
+    patchAdset({ schedule: { ...adset.schedule, start: defaultScheduleStartLocal() } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adset.id]);
 
   function patchAdset(patch: Partial<typeof adset>) {
     updatePayload((p) => ({

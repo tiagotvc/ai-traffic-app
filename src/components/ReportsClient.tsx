@@ -12,8 +12,8 @@ import { CardsRowSkeleton, ChartCardSkeleton, Skeleton } from "@/components/ui/S
 import { DEFAULT_REPORT_METRICS, type ReportPreviewPayload } from "@/lib/report-preview-types";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
-import { exportElementToPdf, clearReportPdfCaptureState } from "@/lib/export-report-pdf";
-import { BarChart3, FileText, RotateCcw } from "lucide-react";
+import { clearReportPdfCaptureState } from "@/lib/export-report-pdf";
+import { BarChart3, ExternalLink, FileText, RotateCcw } from "lucide-react";
 
 import { DsPageHeader } from "@/design-system";
 
@@ -151,17 +151,95 @@ export function ReportsClient() {
     }
   }, [selectedClient, periodQuery, reportType, locale, t, tMetrics, selectedMetrics, adAccountId]);
 
+  const printViewUrl = useMemo(() => {
+    if (!selectedClient || !preview) return null;
+    const qs = new URLSearchParams();
+    qs.set("clientId", selectedClient.slug);
+    qs.set("period", period.preset);
+    if (period.preset === "custom" && period.since && period.until) {
+      qs.set("since", period.since);
+      qs.set("until", period.until);
+    }
+    qs.set("type", reportType);
+    qs.set("locale", locale);
+    qs.set("metrics", selectedMetrics.join(","));
+    if (adAccountId) qs.set("adAccountId", adAccountId);
+    const goalMetric =
+      selectedMetrics.includes("messages") ? "messages" : preview.client.goalMetric;
+    qs.set("goalLabel", tMetrics(METRIC_BY_KEY[goalMetric].label));
+    return `/${locale}/report-print?${qs.toString()}`;
+  }, [
+    selectedClient,
+    preview,
+    period.preset,
+    period.since,
+    period.until,
+    reportType,
+    locale,
+    selectedMetrics,
+    adAccountId,
+    tMetrics
+  ]);
+
+  function openPrintView() {
+    if (!printViewUrl) return;
+    window.open(printViewUrl, "_blank", "noopener,noreferrer");
+  }
+
   function exportPdf() {
     if (!selectedClient || !preview) return;
     setMessage(null);
     startTransition(async () => {
-      const root = document.getElementById("report-preview-root");
-      if (!root) {
-        setMessage(t("pdfFailed"));
-        return;
-      }
       try {
-        await exportElementToPdf(root, `relatorio-${selectedClient.slug}.pdf`);
+        const res = await fetch("/api/reports/pdf", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            clientId: selectedClient.slug,
+            adAccountId: adAccountId || undefined,
+            reportType,
+            locale,
+            goalLabel: tMetrics(
+              METRIC_BY_KEY[
+                selectedMetrics.includes("messages") ? "messages" : preview.client.goalMetric
+              ].label
+            ),
+            preset: period.preset,
+            since: period.since || undefined,
+            until: period.until || undefined,
+            selectedMetrics
+          })
+        });
+
+        if (!res.ok) {
+          const j = (await res.json().catch(() => null)) as { error?: string } | null;
+          const err = j?.error;
+          setMessage(
+            err === "pdf_generation_failed"
+              ? t("pdfFailed")
+              : err && err !== "Unauthorized"
+                ? err
+                : t("pdfFailed")
+          );
+          return;
+        }
+
+        const contentType = res.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          const j = (await res.json()) as { emailed?: boolean; to?: string };
+          if (j.emailed && j.to) {
+            setMessage(t("pdfEmailed", { email: j.to }));
+            return;
+          }
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `relatorio-${selectedClient.slug}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
         setMessage(t("pdfDownloaded"));
       } catch {
         setMessage(t("pdfFailed"));
@@ -238,14 +316,26 @@ export function ReportsClient() {
               {previewLoading ? tCommon("loading") : preview ? t("refreshPreview") : t("previewReport")}
             </button>
             {preview ? (
-              <button
-                type="button"
-                className="ui-btn-primary"
-                onClick={exportPdf}
-                disabled={isPending || !selectedClient}
-              >
-                {isPending ? tCommon("generating") : t("exportPdf")}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="ui-btn-secondary inline-flex items-center gap-1.5"
+                  onClick={openPrintView}
+                  disabled={!printViewUrl}
+                  title={t("openPrintViewHint")}
+                >
+                  <ExternalLink size={14} aria-hidden />
+                  {t("openPrintView")}
+                </button>
+                <button
+                  type="button"
+                  className="ui-btn-primary"
+                  onClick={exportPdf}
+                  disabled={isPending || !selectedClient}
+                >
+                  {isPending ? tCommon("generating") : t("exportPdf")}
+                </button>
+              </>
             ) : null}
           </>
         }

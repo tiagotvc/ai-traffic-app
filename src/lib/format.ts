@@ -19,3 +19,15 @@ export function formatRoas(value: number, locale?: string) {
   const n = value.toFixed(1);
   return locale === "en" ? `${n}x` : `${n.replace(".", ",")}x`;
 }
+
+/** Rótulo de legenda: primeira letra de cada palavra em maiúscula; siglas (CPM, CTR…) preservadas. */
+export function titleCaseWords(text: string): string {
+  return text
+    .split(/\s+/)
+    .map((word) => {
+      if (/^[A-Z]{2,6}$/.test(word)) return word;
+      if (!word) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}

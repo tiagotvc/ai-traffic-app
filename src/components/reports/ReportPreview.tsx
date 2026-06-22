@@ -18,12 +18,13 @@ import {
 } from "recharts";
 
 import { CreativesRankingView } from "@/components/creatives/CreativesRankingView";
+import type { ReportCreativeGroup } from "@/lib/report-creatives-performance";
 import { ReportHighlightCard } from "@/components/reports/ReportHighlightCard";
 import { Badge } from "@/components/ui/Badge";
 import { ChartContainer } from "@/components/ui/ChartContainer";
 import { formatDayLabel, pctDelta } from "@/lib/dashboard-ranges";
 import { formatMetricValue, METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
-import { formatBRL, formatPercent } from "@/lib/format";
+import { formatBRL, formatPercent, titleCaseWords } from "@/lib/format";
 import type { ReportPreviewPayload } from "@/lib/report-preview-types";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
@@ -54,7 +55,7 @@ function ReportChartCard({
       className={`report-pdf-chart-card report-pdf-block ui-card overflow-hidden p-4 ${solo ? "report-pdf-solo" : ""}`}
     >
       <div className="text-sm font-semibold text-[var(--text-main)]">{title}</div>
-      <div className={`mt-3 ${solo ? "mx-auto max-w-[520px]" : ""}`}>{children}</div>
+      <div className={`mt-3 ${solo ? "w-full" : ""}`}>{children}</div>
     </div>
   );
 }
@@ -77,13 +78,17 @@ export function ReportPreview({
   selectedMetrics,
   reportType,
   periodQuery,
-  adAccountId
+  adAccountId,
+  initialCreativeGroups,
+  variant = "preview"
 }: {
   data: ReportPreviewPayload;
   selectedMetrics: MetricKey[];
   reportType: "simple" | "complete";
   periodQuery: string;
   adAccountId?: string;
+  initialCreativeGroups?: ReportCreativeGroup[];
+  variant?: "preview" | "print";
 }) {
   const t = useTranslations("reports");
   const tMetrics = useTranslations("metrics");
@@ -99,6 +104,10 @@ export function ReportPreview({
   const chartMetrics = selectedMetrics.slice(0, 3);
   const vsLabel = t("vsPrevPeriod");
   const noPrev = t("noPrevData");
+
+  function metricLegendLabel(key: MetricKey): string {
+    return titleCaseWords(tMetrics(METRIC_BY_KEY[key].label));
+  }
 
   function heroDelta(key: MetricKey): number | null {
     const prev = data.previousSummary?.[key];
@@ -134,15 +143,26 @@ export function ReportPreview({
     .slice(0, 7)
     .map((c) => ({ name: c.name, value: c.spend, share: c.sharePct }));
 
+  const campaignsWithSpend = useMemo(
+    () => data.campaigns.filter((c) => c.spend > 0),
+    [data.campaigns]
+  );
+
   const goalValue = data.summary[data.client.goalMetric] ?? 0;
   const prevGoal = data.previousSummary?.[data.client.goalMetric] ?? 0;
   const goalDelta = prevGoal > 0 ? pctDelta(goalValue, prevGoal) : null;
+  const isPrint = variant === "print";
+  const rootId = isPrint ? "report-print-root" : "report-preview-root";
+  const rootClass = isPrint ? "report-print-root space-y-5" : "report-preview-root space-y-5";
+  const sectionClass = isPrint ? "report-print-section report-pdf-section" : "report-pdf-section";
 
   return (
-    <div id="report-preview-root" className="report-preview-root space-y-6 overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4">
+    <div id={rootId} className={`${rootClass} ${isPrint ? "overflow-visible" : "overflow-hidden"}`}>
+      <div className={`report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4 ${isPrint ? "report-print-avoid-break" : ""}`}>
         <div>
-          <div className="text-xs font-medium text-[var(--text-dim)]">{t("previewTitle")}</div>
+          <div className="text-xs font-medium text-[var(--text-dim)]">
+            {isPrint ? t("printTitle") : t("previewTitle")}
+          </div>
           <h2 className="font-heading mt-1 text-xl font-bold text-[var(--text-main)]">{data.client.name}</h2>
           <p className="mt-1 text-sm text-[var(--text-dim)]">
             {data.period.currentLabel}
@@ -164,7 +184,7 @@ export function ReportPreview({
         </div>
       </div>
 
-      <section className="report-pdf-section report-pdf-grid-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <section className={`${sectionClass} report-pdf-grid-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3`}>
         {selectedMetrics.slice(0, 6).map((key) => (
           <ReportHighlightCard
             key={key}
@@ -183,7 +203,7 @@ export function ReportPreview({
         ))}
       </section>
 
-      <section className="report-pdf-section ui-card overflow-hidden p-4">
+      <section className={`${sectionClass} ui-card overflow-hidden p-4 report-print-avoid-break`}>
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("narrativeTitle")}</div>
           {data.aiAnalysis ? (
@@ -205,7 +225,7 @@ export function ReportPreview({
         ) : null}
       </section>
 
-      <section className="report-pdf-section report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <section className={`${sectionClass} report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2`}>
         <ReportChartCard title={t("performanceChartTitle")}>
           <div className="mt-3 h-56">
             <ChartContainer height={224}>
@@ -215,10 +235,13 @@ export function ReportPreview({
                 <YAxis tick={TICK} {...AXIS} width={48} />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
-                  formatter={(value, name) => [
-                    formatMetricValue(String(name) as MetricKey, Number(value), locale),
-                    tMetrics(METRIC_BY_KEY[String(name) as MetricKey]?.label ?? "spend")
-                  ]}
+                  formatter={(value, _name, item) => {
+                    const key = String((item as { dataKey?: string })?.dataKey ?? "") as MetricKey;
+                    return [
+                      formatMetricValue(key, Number(value), locale),
+                      metricLegendLabel(key)
+                    ];
+                  }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
                 {chartMetrics.map((key) => (
@@ -226,7 +249,7 @@ export function ReportPreview({
                     key={key}
                     type="monotone"
                     dataKey={key}
-                    name={key}
+                    name={metricLegendLabel(key)}
                     stroke={METRIC_BY_KEY[key].color}
                     strokeWidth={2}
                     dot={false}
@@ -237,47 +260,154 @@ export function ReportPreview({
           </div>
         </ReportChartCard>
 
-        <ReportChartCard title={t("spendByCampaignTitle")}>
-          {pieData.length ? (
-            <>
-              <div className="mt-3 h-52">
-                <ChartContainer height={208}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={44}
-                      outerRadius={72}
-                      paddingAngle={2}
-                    >
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value) => [formatBRL(Number(value ?? 0), locale), t("spend")]}
-                      contentStyle={TOOLTIP_STYLE}
-                    />
-                  </PieChart>
-                </ChartContainer>
-              </div>
-              <PieLegend
-                items={pieData.map((item, i) => ({
-                  name: item.name,
-                  color: PIE_COLORS[i % PIE_COLORS.length]
-                }))}
-              />
-            </>
-          ) : (
-            <p className="mt-6 text-center text-sm text-[var(--text-dim)]">{t("noCampaignData")}</p>
-          )}
+        <ReportChartCard title={t("comparisonBarsTitle")}>
+          <div className="mt-3 h-56">
+            <ChartContainer height={224}>
+              <BarChart data={comparisonChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+                <XAxis dataKey="name" tick={TICK} {...AXIS} />
+                <YAxis tick={TICK} {...AXIS} width={48} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
+                <Bar dataKey="current" name={t("periodCurrent")} fill="var(--amber)" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="previous"
+                  name={t("periodPrevious")}
+                  fill="var(--text-dimmer)"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ChartContainer>
+          </div>
         </ReportChartCard>
       </section>
 
-      <section className="report-pdf-section report-pdf-block ui-card overflow-hidden p-4">
+      <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4`}>
+        <div className="text-sm font-semibold text-[var(--text-main)] report-print-avoid-break">
+          {t("spendByCampaignTitle")}
+        </div>
+        {campaignsWithSpend.length ? (
+          <div
+            className={`report-pdf-spend-layout mt-4 grid grid-cols-1 gap-6 ${
+              isPrint ? "" : "xl:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)]"
+            }`}
+          >
+            <div className={`flex min-w-0 flex-col ${isPrint ? "report-print-avoid-break" : ""}`}>
+              <div className="report-pdf-spend-pie mx-auto w-full max-w-[360px]">
+                <div className="h-80">
+                  <ChartContainer height={320}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={58}
+                        outerRadius={108}
+                        paddingAngle={2}
+                      >
+                        {pieData.map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value, _name, item) => {
+                          const share = (item?.payload as { share?: number } | undefined)?.share;
+                          const shareLabel =
+                            share != null ? ` (${formatPercent(share, 1, locale)})` : "";
+                          return [`${formatBRL(Number(value ?? 0), locale)}${shareLabel}`, t("spend")];
+                        }}
+                        contentStyle={TOOLTIP_STYLE}
+                      />
+                    </PieChart>
+                  </ChartContainer>
+                </div>
+                <PieLegend
+                  items={pieData.map((item, i) => ({
+                    name: item.name,
+                    color: PIE_COLORS[i % PIE_COLORS.length]
+                  }))}
+                />
+              </div>
+            </div>
+
+            <div className={`min-w-0 ${isPrint ? "report-print-table-section" : ""}`}>
+              <div className="mb-2 text-xs font-medium text-[var(--text-dim)]">
+                {t("campaignSpendTableTitle", { count: campaignsWithSpend.length })}
+              </div>
+              <div
+                className={`rounded-xl border border-[var(--border-color)] ${
+                  isPrint ? "report-print-table-wrap" : "overflow-x-auto"
+                }`}
+              >
+                <table
+                  className={`w-full text-left text-xs ${isPrint ? "report-print-table" : "min-w-[420px]"}`}
+                >
+                  <thead>
+                    <tr className="border-b border-[var(--border-color)] bg-[var(--surface-bg)]">
+                      <th className="px-3 py-2.5 font-semibold text-[var(--text-dim)]">{t("colCampaign")}</th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">{t("spend")}</th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">
+                        {t("colShare")}
+                      </th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">
+                        {tMetrics(METRIC_BY_KEY.conversions.label)}
+                      </th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">
+                        {tMetrics(METRIC_BY_KEY.clicks.label)}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {campaignsWithSpend.map((row) => (
+                      <tr
+                        key={row.metaCampaignId}
+                        className="border-b border-[var(--border-color)] last:border-b-0"
+                      >
+                        <td className="max-w-[220px] truncate px-3 py-2.5 font-medium text-[var(--text-main)]">
+                          {row.name}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-main)]">
+                          {formatBRL(row.spend, locale)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                          {formatPercent(row.sharePct, 1, locale)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                          {formatMetricValue("conversions", row.conversions, locale)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                          {formatMetricValue("clicks", row.clicks, locale)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-[var(--surface-bg)] font-semibold">
+                      <td className="px-3 py-2.5 text-[var(--text-main)]">{t("campaignSpendTotal")}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-main)]">
+                        {formatBRL(data.summary.spend ?? 0, locale)}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-[var(--text-dim)]">100%</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                        {formatMetricValue("conversions", data.summary.conversions ?? 0, locale)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-dim)]">
+                        {formatMetricValue("clicks", data.summary.clicks ?? 0, locale)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-6 text-center text-sm text-[var(--text-dim)]">{t("noCampaignData")}</p>
+        )}
+      </section>
+
+      <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4 report-print-avoid-break`}>
         <div className="text-sm font-semibold text-[var(--text-main)]">{t("goalResultsTitle")}</div>
         <div className="report-pdf-grid-3 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.08)] p-4">
@@ -314,29 +444,8 @@ export function ReportPreview({
         </div>
       </section>
 
-      <section className="report-pdf-section report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ReportChartCard title={t("comparisonBarsTitle")}>
-          <div className="mt-3 h-56">
-            <ChartContainer height={224}>
-              <BarChart data={comparisonChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-                <XAxis dataKey="name" tick={TICK} {...AXIS} />
-                <YAxis tick={TICK} {...AXIS} width={48} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
-                <Bar dataKey="current" name={t("periodCurrent")} fill="var(--amber)" radius={[4, 4, 0, 0]} />
-                <Bar
-                  dataKey="previous"
-                  name={t("periodPrevious")}
-                  fill="var(--text-dimmer)"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
-          </div>
-        </ReportChartCard>
-
-        <ReportChartCard title={t("spendTrendCompareTitle")}>
+      <section className={`${sectionClass}`}>
+        <ReportChartCard title={t("spendTrendCompareTitle")} solo>
           <div className="mt-3 h-56">
             <ChartContainer height={224}>
               <LineChart data={spendTrendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -372,7 +481,7 @@ export function ReportPreview({
       </section>
 
       {reportType === "complete" && data.recommendations.length ? (
-        <section className="ui-card p-4">
+        <section className={`${sectionClass} report-pdf-block ui-card p-4 report-print-avoid-break`}>
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("recommendationsTitle")}</div>
           <p className="mt-1 text-xs text-[var(--text-dim)]">{t("recommendationsSubtitle")}</p>
           <div className="mt-4 space-y-3">
@@ -395,7 +504,7 @@ export function ReportPreview({
         </section>
       ) : null}
 
-      <section className="report-pdf-section">
+      <section className={`${sectionClass}`}>
         <div className="mb-3">
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("creativesRankingTitle")}</div>
           <p className="mt-1 text-xs text-[var(--text-dim)]">{t("creativesRankingSubtitle")}</p>
@@ -407,6 +516,7 @@ export function ReportPreview({
           adAccountId={adAccountId ?? data.adAccount?.metaAdAccountId}
           maxBest={3}
           embedInReport
+          initialGroups={initialCreativeGroups}
         />
       </section>
     </div>

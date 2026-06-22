@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Megaphone, Plus } from "lucide-react";
+import { Megaphone, Plus, Trash2 } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -111,6 +111,18 @@ function statusVariant(status?: string): "success" | "warning" | "neutral" {
   return "neutral";
 }
 
+function campaignDetailHref(row: CampaignRow): string {
+  return `/campaigns/${row.metaCampaignId}?client=${encodeURIComponent(row.clientSlug)}`;
+}
+
+function isDraftRow(row: CampaignRow): boolean {
+  return Boolean(row.isDraft) || row.metaCampaignId.startsWith("draft:");
+}
+
+function draftTemplateIdFromRow(row: CampaignRow): string {
+  return row.draftTemplateId ?? row.metaCampaignId.replace(/^draft:/, "");
+}
+
 export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: boolean } = {}) {
   const t = useTranslations("campaignsPage");
   const tMetrics = useTranslations("metrics");
@@ -176,6 +188,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(true);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
+  const [draftDiscardPendingId, setDraftDiscardPendingId] = useState<string | null>(null);
   const [, startStatusTransition] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [metricsSource, setMetricsSource] = useState<"db" | "live" | "live-cached">("db");
@@ -240,7 +253,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const displayRows = useMemo(() => {
     let list = rows;
     if (metaFilters.length) {
-      list = list.filter((r) => r.isDraft || matchesCampaignFilters(r, metaFilters));
+      list = list.filter((r) => isDraftRow(r) || matchesCampaignFilters(r, metaFilters));
     }
     if (q.trim()) {
       const qq = q.toLowerCase();
@@ -255,16 +268,16 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   }, [rows, metaFilters, q]);
 
   const draftDisplayRows = useMemo(
-    () => displayRows.filter((r) => r.isDraft),
+    () => displayRows.filter((r) => isDraftRow(r)),
     [displayRows]
   );
   const publishedDisplayRows = useMemo(
-    () => displayRows.filter((r) => !r.isDraft),
+    () => displayRows.filter((r) => !isDraftRow(r)),
     [displayRows]
   );
 
   function campaignPreset(row: CampaignRow): string {
-    if (row.isDraft) return "default";
+    if (isDraftRow(row)) return "default";
     return presets[row.metaCampaignId] ?? row.preset ?? "default";
   }
 
@@ -316,6 +329,28 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         setStatusPendingId(null);
       }
     });
+  }
+
+  function discardDraft(row: CampaignRow) {
+    const templateId = draftTemplateIdFromRow(row);
+    if (!templateId) return;
+    if (!window.confirm(t("discardDraftConfirm"))) return;
+
+    setDraftDiscardPendingId(templateId);
+    void fetch(`/api/campaign-templates/${encodeURIComponent(templateId)}`, { method: "DELETE" })
+      .then(async (res) => {
+        const j = (await res.json().catch(() => ({}))) as { ok?: boolean };
+        if (!res.ok || j.ok === false) {
+          window.alert(t("discardDraftError"));
+          return;
+        }
+        setRows((prev) =>
+          prev.filter((r) => draftTemplateIdFromRow(r) !== templateId)
+        );
+        setTotal((prev) => Math.max(0, prev - 1));
+        window.dispatchEvent(new CustomEvent("traffic:campaigns-reload"));
+      })
+      .finally(() => setDraftDiscardPendingId(null));
   }
 
   function statusLabel(status?: string) {
@@ -493,7 +528,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   }, [page, pageCount]);
 
   const pickCampaign = (r: CampaignRow) => {
-    if (r.isDraft) return;
+    if (isDraftRow(r)) return;
     setSelectedId(r.metaCampaignId);
     setSelectedSlug(r.clientSlug);
     setSelectedRow(r);
@@ -550,9 +585,17 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       case "campaign":
         return (
           <td key={col} className="max-w-md px-4 py-3 text-left align-top">
-            {r.isDraft ? (
+            {isDraftRow(r) ? (
               <Link
                 href={draftResumeHref(r)}
+                className="ui-link block whitespace-normal break-words font-medium"
+              >
+                {r.campaignName}
+              </Link>
+            ) : useUxChrome ? (
+              <Link
+                href={campaignDetailHref(r)}
+                onClick={() => rememberCampaign(r.metaCampaignId, r.clientSlug)}
                 className="ui-link block whitespace-normal break-words font-medium"
               >
                 {r.campaignName}
@@ -631,7 +674,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       case "status":
         return (
           <td key={col} className={`${center} text-center`}>
-            {r.isDraft ? (
+            {isDraftRow(r) ? (
               <Badge variant="warning">{t("statusDraft")}</Badge>
             ) : (
               <Badge variant={r.status === "ACTIVE" ? "success" : "neutral"}>
@@ -708,22 +751,56 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
   return (
     <div className="space-y-4">
-      <DsPageHeader
-        breadcrumbs={t("breadcrumb")}
-        title={t("title")}
-        subtitle={t("subtitleList")}
-        titleIcon={<Megaphone size={16} />}
-        actions={
-          <>
-            {!useUxChrome ? <SyncRefreshButton /> : null}
-            <button
-              type="button"
-              onClick={() => load({ live: true, refresh: true })}
-              className="ui-btn-secondary text-sm"
-            >
-              {t("refreshLive")}
-            </button>
-            {!useUxChrome ? (
+      {useUxChrome ? (
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="mb-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
+              {t("breadcrumb")}
+            </p>
+            <div className="flex items-center gap-2">
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-lg"
+                style={{ background: "rgba(245,166,35,0.15)" }}
+              >
+                <Megaphone size={16} style={{ color: "#f5a623" }} />
+              </div>
+              <h1 className="font-heading text-2xl font-bold" style={{ color: "var(--text-main)" }}>
+                {t("title")}
+              </h1>
+            </div>
+            <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
+              {t("subtitleList")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => load({ live: true, refresh: true })}
+            className="rounded-lg border px-3 py-2 text-xs font-heading font-semibold transition-all"
+            style={{
+              borderColor: "var(--border-color)",
+              color: "var(--text-dim)",
+              background: "var(--filter-btn-bg)"
+            }}
+          >
+            {t("refreshLive")}
+          </button>
+        </div>
+      ) : (
+        <DsPageHeader
+          breadcrumbs={t("breadcrumb")}
+          title={t("title")}
+          subtitle={t("subtitleList")}
+          titleIcon={<Megaphone size={16} />}
+          actions={
+            <>
+              <SyncRefreshButton />
+              <button
+                type="button"
+                onClick={() => load({ live: true, refresh: true })}
+                className="ui-btn-secondary text-sm"
+              >
+                {t("refreshLive")}
+              </button>
               <button
                 type="button"
                 onClick={() => openPanel({ clientSlug: clientFilter || selectedSlug || undefined })}
@@ -731,10 +808,10 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
               >
                 {t("newCampaign")}
               </button>
-            ) : null}
-          </>
-        }
-      />
+            </>
+          }
+        />
+      )}
 
       {loading && period.preset === "today" ? (
         <div className="ui-alert-info">{t("loadingMetaToday")}</div>
@@ -904,55 +981,97 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
               rows={6}
               columns={["wide", "text", "badge", "select", "metric", "metric", "metric"]}
             />
-          ) : rows.length === 0 ? (
+          ) : rows.length === 0 && draftDisplayRows.length === 0 ? (
             <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("empty")}</div>
           ) : publishedDisplayRows.length === 0 && draftDisplayRows.length === 0 ? (
             <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("emptyFiltered")}</div>
           ) : (
             <>
               {draftDisplayRows.length > 0 ? (
-                <div className="ui-card overflow-hidden border-violet-200">
-                  <div className="flex items-center justify-between border-b border-violet-100 bg-violet-50/60 px-4 py-3">
-                    <div className="text-sm font-semibold text-violet-900">
+                <div
+                  className="ui-card overflow-hidden"
+                  style={{ borderColor: "rgba(124,58,237,0.35)" }}
+                >
+                  <div
+                    className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3"
+                    style={{
+                      borderColor: "var(--border-color)",
+                      background: "rgba(124,58,237,0.08)"
+                    }}
+                  >
+                    <div className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
                       {t("draftsSectionTitle")}{" "}
-                      <span className="font-normal text-violet-600">({draftDisplayRows.length})</span>
+                      <span className="font-normal" style={{ color: "var(--text-dim)" }}>
+                        ({draftDisplayRows.length})
+                      </span>
                     </div>
+                    <span className="text-xs font-body" style={{ color: "var(--text-dim)" }}>
+                      {t("draftsSectionHint")}
+                    </span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[680px] text-sm">
-                      <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                      <thead
+                        className="text-xs font-semibold uppercase"
+                        style={{ background: "var(--surface-thead)", color: "var(--text-dim)" }}
+                      >
                         <tr>
                           <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>{t("filterStatus")}</th>
                           <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>{t("colCampaign")}</th>
                           <th className="whitespace-nowrap px-3 py-2 text-center">{t("colClient")}</th>
                           <th className="whitespace-nowrap px-3 py-2 text-center">{t("resumeDraft")}</th>
+                          <th className="whitespace-nowrap px-3 py-2 text-center">{t("discardDraft")}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {draftDisplayRows.map((r) => (
-                          <tr key={r.metaCampaignId} className="group border-t border-slate-100 hover:bg-violet-50/40">
-                            <td className={STICKY_STATUS_TD}>
-                              <Badge variant="warning">{t("statusDraft")}</Badge>
-                            </td>
-                            <td className={STICKY_NAME_TD}>
-                              <Link
-                                href={draftResumeHref(r)}
-                                className="block whitespace-normal break-words text-left font-medium text-violet-800 hover:underline"
-                              >
-                                {r.campaignName}
-                              </Link>
-                            </td>
-                            <td className="truncate px-3 py-2.5 text-center text-slate-600">{r.clientName}</td>
-                            <td className="px-3 py-2.5 text-center">
-                              <Link
-                                href={draftResumeHref(r)}
-                                className="text-xs font-medium text-violet-700 hover:underline"
-                              >
-                                {t("resumeDraft")}
-                              </Link>
-                            </td>
-                          </tr>
-                        ))}
+                        {draftDisplayRows.map((r) => {
+                          const templateId = draftTemplateIdFromRow(r);
+                          const discarding = draftDiscardPendingId === templateId;
+                          return (
+                            <tr
+                              key={r.metaCampaignId}
+                              className="group border-t hover:bg-[var(--row-hover)]"
+                              style={{ borderColor: "var(--border-color)" }}
+                            >
+                              <td className={STICKY_STATUS_TD}>
+                                <Badge variant="warning">{t("statusDraft")}</Badge>
+                              </td>
+                              <td className={STICKY_NAME_TD}>
+                                <Link
+                                  href={draftResumeHref(r)}
+                                  className="ui-link block whitespace-normal break-words text-left font-medium"
+                                >
+                                  {r.campaignName}
+                                </Link>
+                              </td>
+                              <td className="truncate px-3 py-2.5 text-center text-[var(--text-dim)]">
+                                {r.clientName}
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <Link href={draftResumeHref(r)} className="ui-link text-xs font-medium">
+                                  {t("resumeDraft")}
+                                </Link>
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <button
+                                  type="button"
+                                  disabled={discarding}
+                                  onClick={() => discardDraft(r)}
+                                  className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-wait disabled:opacity-60"
+                                  style={{
+                                    borderColor: "rgba(239,68,68,0.35)",
+                                    color: "#ef4444",
+                                    background: "rgba(239,68,68,0.06)"
+                                  }}
+                                  title={t("discardDraft")}
+                                >
+                                  <Trash2 size={13} />
+                                  {t("discardDraft")}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1048,13 +1167,23 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                               />
                             </td>
                             <td className={STICKY_NAME_TD}>
-                              <button
-                                type="button"
-                                onClick={() => pickCampaign(r)}
-                                className="ui-link block w-full whitespace-normal break-words text-left font-medium"
-                              >
-                                {r.campaignName}
-                              </button>
+                              {useUxChrome ? (
+                                <Link
+                                  href={campaignDetailHref(r)}
+                                  onClick={() => rememberCampaign(r.metaCampaignId, r.clientSlug)}
+                                  className="ui-link block w-full whitespace-normal break-words text-left font-medium"
+                                >
+                                  {r.campaignName}
+                                </Link>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => pickCampaign(r)}
+                                  className="ui-link block w-full whitespace-normal break-words text-left font-medium"
+                                >
+                                  {r.campaignName}
+                                </button>
+                              )}
                             </td>
                             <td className="truncate px-3 py-2.5 text-center text-[var(--text-dim)]">{r.clientName}</td>
                             <td className="relative px-3 py-2.5 text-center">
@@ -1165,9 +1294,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                   <tr
                     key={r.metaCampaignId}
                     className={`border-t border-[var(--border-color)] hover:bg-[var(--row-hover)] ${
-                      r.isDraft ? "" : "cursor-pointer"
-                    } ${!r.isDraft && selectedId === r.metaCampaignId ? "bg-[rgba(245,166,35,0.08)]" : ""}`}
-                    onClick={() => !r.isDraft && pickCampaign(r)}
+                      !useUxChrome && !isDraftRow(r) ? "cursor-pointer" : ""
+                    } ${!useUxChrome && !isDraftRow(r) && selectedId === r.metaCampaignId ? "bg-[rgba(245,166,35,0.08)]" : ""}`}
+                    onClick={() => !useUxChrome && !isDraftRow(r) && pickCampaign(r)}
                   >
                     {visibleColumns.map((col) => renderCell(col, r))}
                   </tr>
@@ -1228,7 +1357,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       </div>
       )}
 
-      {selectedId ? (
+      {selectedId && !useUxChrome ? (
         <div ref={detailRef} className="space-y-2 scroll-mt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("detailTitle")}</h2>
@@ -1252,9 +1381,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             })()}
           />
         </div>
-      ) : total > 0 ? (
+      ) : total > 0 && !useUxChrome ? (
         <p className="text-center text-sm text-[var(--text-dim)]">{t("pickRowHint")}</p>
-      ) : (
+      ) : total > 0 && useUxChrome ? null : (
         <div className="ui-card space-y-4 p-8 text-center">
           <p className="text-lg font-semibold text-[var(--text-main)]">{t("emptyTitle")}</p>
           <p className="mx-auto max-w-lg text-sm text-[var(--text-dim)]">{t("emptyExplain")}</p>

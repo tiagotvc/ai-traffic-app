@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { rememberCampaign } from "@/components/CampaignsListClient";
+import {
+  CampaignManagerClient,
+  type CampaignSeedRow
+} from "@/components/CampaignManagerClient";
+import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import {
   type AppliedCampaignFilter,
   matchesCampaignFilters
@@ -11,10 +17,15 @@ import {
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
+import { type PeriodState, periodStateToQuery } from "@/components/PeriodFilter";
 import { Link } from "@/i18n/navigation";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import CampaignsContent, { type CampaignsLiveProps } from "@/uxpilot-ui/pages/content/Campaigns";
-import { toUxCampaignRows } from "@/uxpilot-ui/adapters/campaigns-mappers";
+import {
+  computeUxTableTotals,
+  toUxCampaignRows,
+  type UxCampaignGroup
+} from "@/uxpilot-ui/adapters/campaigns-mappers";
 import {
   buildCategoryKeys,
   categoryLabelFor,
@@ -26,7 +37,38 @@ import {
   type ObjectiveFilter,
   UxCampaignFiltersPanel
 } from "@/uxpilot-ui/adapters/UxCampaignFiltersPanel";
-import { useCampaignsData } from "@/uxpilot-ui/adapters/useCampaignsData";
+import {
+  type CampaignRow,
+  useCampaignsData
+} from "@/uxpilot-ui/adapters/useCampaignsData";
+
+const EMPTY_PERIOD: PeriodState = { preset: "last7", since: "", until: "" };
+
+function toSeedRow(row: CampaignRow): CampaignSeedRow {
+  return {
+    metaCampaignId: row.metaCampaignId,
+    campaignName: row.campaignName,
+    clientName: row.clientName,
+    clientSlug: row.clientSlug,
+    accountLabel: row.accountLabel,
+    metaAdAccountId: row.metaAdAccountId,
+    status: row.status,
+    objective: row.objective,
+    spend: row.spend,
+    conversions: row.conversions,
+    leads: row.leads,
+    roas: row.roas,
+    cpa: row.cpa
+  };
+}
+
+function matchesDisplayStatus(row: CampaignRow, filter: DisplayStatusFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "draft") return row.metaCampaignId.startsWith("draft:");
+  if (filter === "active") return row.status === "ACTIVE";
+  if (filter === "paused") return row.status === "PAUSED";
+  return true;
+}
 
 export function CampaignsContentLive() {
   const t = useTranslations("campaignsPage");
@@ -39,16 +81,15 @@ export function CampaignsContentLive() {
   const [showFilters, setShowFilters] = useState(true);
   const [showTotals, setShowTotals] = useState(true);
   const [presets, setPresets] = useState<Record<string, string>>({});
-  const [categoryFilter, setCategoryFilter] = useState("");
   const [displayStatusFilter, setDisplayStatusFilter] = useState<DisplayStatusFilter>("all");
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveFilter>("ALL");
-  const [page, setPage] = useState(1);
   const [q, setQ] = useState("");
-  const pageSize = 20;
-
-  useEffect(() => {
-    setPage(1);
-  }, [q, objectiveFilter, categoryFilter, displayStatusFilter, metaFilters]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedSlug, setSelectedSlug] = useState("");
+  const [selectedRow, setSelectedRow] = useState<CampaignRow | null>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const strip = useCommandStripOptional();
+  const period = strip?.period ?? EMPTY_PERIOD;
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -63,8 +104,9 @@ export function CampaignsContentLive() {
     objectiveFilter,
     onlyAlerts: false,
     showZeroActivity: false,
-    pageSize,
-    page
+    pageSize: 500,
+    page: 1,
+    groupByType: true
   });
 
   useCommandStripPage({
@@ -93,67 +135,54 @@ export function CampaignsContentLive() {
       .catch(() => {});
   }, []);
 
-  const filteredRows = useMemo(
-    () => data.rows.filter((row) => matchesCampaignFilters(row, metaFilters)),
-    [data.rows, metaFilters]
-  );
+  const filteredRows = useMemo(() => {
+    return data.rows
+      .filter((row) => matchesCampaignFilters(row, metaFilters))
+      .filter((row) => matchesDisplayStatus(row, displayStatusFilter));
+  }, [data.rows, metaFilters, displayStatusFilter]);
 
   const categoryKeys = useMemo(() => buildCategoryKeys(customTypes), [customTypes]);
 
-  const categoryOptions = useMemo(
-    () =>
-      categoryKeys
-        .map((key) => ({
-          value: key,
-          label: categoryLabelFor(key, customTypes, (k) => tPresets(k as "default")),
-          count: filteredRows.filter((r) => resolveCampaignPreset(r, presets) === key).length
-        }))
-        .filter((o) => o.count > 0),
-    [categoryKeys, customTypes, filteredRows, presets, tPresets]
+  const campaignGroups = useMemo((): UxCampaignGroup[] => {
+    const groups: UxCampaignGroup[] = [];
+    for (const key of categoryKeys) {
+      const rows = filteredRows.filter((r) => resolveCampaignPreset(r, presets) === key);
+      if (!rows.length) continue;
+      const campaigns = toUxCampaignRows(rows, data.locale, presets);
+      const { kpis } = toCategoryKpis(
+        rows,
+        presets,
+        key,
+        customTypes,
+        tableLayout.customMetricsMap,
+        data.locale,
+        (metricKey) => tMetrics(metricKey as MetricKey)
+      );
+      groups.push({
+        key,
+        label: categoryLabelFor(key, customTypes, (k) => tPresets(k as "default")),
+        count: campaigns.length,
+        campaigns,
+        kpis,
+        totals: computeUxTableTotals(rows, data.locale)
+      });
+    }
+    return groups;
+  }, [
+    categoryKeys,
+    filteredRows,
+    presets,
+    data.locale,
+    customTypes,
+    tableLayout.customMetricsMap,
+    tMetrics,
+    tPresets
+  ]);
+
+  const totalCampaigns = useMemo(
+    () => campaignGroups.reduce((sum, g) => sum + g.campaigns.length, 0),
+    [campaignGroups]
   );
-
-  useEffect(() => {
-    if (categoryFilter && categoryOptions.some((o) => o.value === categoryFilter)) return;
-    if (categoryOptions[0]) setCategoryFilter(categoryOptions[0].value);
-  }, [categoryFilter, categoryOptions]);
-
-  const categoryRows = useMemo(() => {
-    if (!categoryFilter) return filteredRows;
-    return filteredRows.filter((r) => resolveCampaignPreset(r, presets) === categoryFilter);
-  }, [filteredRows, presets, categoryFilter]);
-
-  const campaigns = useMemo(
-    () => toUxCampaignRows(categoryRows, data.locale, presets),
-    [categoryRows, data.locale, presets]
-  );
-
-  const { kpis, count: categoryCount } = useMemo(
-    () =>
-      categoryFilter
-        ? toCategoryKpis(
-            filteredRows,
-            presets,
-            categoryFilter,
-            customTypes,
-            tableLayout.customMetricsMap,
-            data.locale,
-            (key) => tMetrics(key as MetricKey)
-          )
-        : { kpis: [], count: 0 },
-    [
-      filteredRows,
-      presets,
-      categoryFilter,
-      customTypes,
-      tableLayout.customMetricsMap,
-      data.locale,
-      tMetrics
-    ]
-  );
-
-  const categoryLabel = categoryFilter
-    ? categoryLabelFor(categoryFilter, customTypes, (k) => tPresets(k as "default"))
-    : "";
 
   const changePreset = useCallback((metaCampaignId: string, preset: string) => {
     setPresets((prev) => ({ ...prev, [metaCampaignId]: preset }));
@@ -164,20 +193,82 @@ export function CampaignsContentLive() {
     });
   }, []);
 
+  const pickCampaign = useCallback(
+    (id: string | null) => {
+      if (!id) {
+        setSelectedId(null);
+        setSelectedSlug("");
+        setSelectedRow(null);
+        return;
+      }
+      const row = filteredRows.find((r) => r.metaCampaignId === id);
+      if (!row || row.metaCampaignId.startsWith("draft:")) return;
+      setSelectedId(id);
+      setSelectedSlug(row.clientSlug);
+      setSelectedRow(row);
+      rememberCampaign(id, row.clientSlug);
+    },
+    [filteredRows]
+  );
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const raf = requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (selectedId && !filteredRows.some((r) => r.metaCampaignId === selectedId)) {
+      setSelectedId(null);
+      setSelectedSlug("");
+      setSelectedRow(null);
+    }
+  }, [filteredRows, selectedId]);
+
+  const periodQuery = useMemo(() => {
+    const qs = periodStateToQuery(period).toString();
+    return qs ? `?${qs}` : "";
+  }, [period]);
+
+  const detailPanel =
+    selectedId && selectedRow ? (
+      <div ref={detailRef} className="scroll-mt-4 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2
+            className="font-heading text-sm font-semibold"
+            style={{ color: "var(--text-main)" }}
+          >
+            {t("detailTitle")}
+          </h2>
+          <Link
+            href={`/campaigns/${selectedId}?client=${encodeURIComponent(selectedSlug)}`}
+            className="text-xs font-medium"
+            style={{ color: "var(--amber)" }}
+          >
+            {t("openFullPage")}
+          </Link>
+        </div>
+        <CampaignManagerClient
+          key={selectedId}
+          metaCampaignId={selectedId}
+          clientSlug={selectedSlug}
+          tab="overview"
+          embedded
+          seedRow={toSeedRow(selectedRow)}
+          periodQuery={periodQuery}
+        />
+      </div>
+    ) : totalCampaigns > 0 && !data.loading ? (
+      <p className="text-center text-sm" style={{ color: "var(--text-dim)" }}>
+        {t("pickRowHint")}
+      </p>
+    ) : null;
+
   const live: CampaignsLiveProps = {
-    campaigns,
-    kpis,
-    categoryFilter,
-    onCategoryFilterChange: setCategoryFilter,
-    categoryOptions: categoryOptions.map(({ value, label }) => ({ value, label })),
-    categoryLabel,
-    categoryCount,
-    page,
-    pageSize,
-    totalCount: data.total,
-    onPageChange: setPage,
-    displayStatusFilter,
-    onDisplayStatusFilterChange: setDisplayStatusFilter,
+    campaignGroups,
+    totalCampaigns,
     loading: data.loading,
     statusPendingId: data.statusPendingId,
     onToggleStatus: (id, rawStatus) => data.toggleStatus(String(id), rawStatus),
@@ -193,6 +284,11 @@ export function CampaignsContentLive() {
     onShowTotalsChange: setShowTotals,
     objectiveFilter,
     onObjectiveFilterChange: setObjectiveFilter,
+    displayStatusFilter,
+    onDisplayStatusFilterChange: setDisplayStatusFilter,
+    selectedCampaignId: selectedId,
+    onSelectCampaign: pickCampaign,
+    detailPanel,
     filtersPanel: (
       <UxCampaignFiltersPanel
         filterSearch={filterSearch}
@@ -203,9 +299,6 @@ export function CampaignsContentLive() {
         onDisplayStatusFilterChange={setDisplayStatusFilter}
         objectiveFilter={objectiveFilter}
         onObjectiveFilterChange={setObjectiveFilter}
-        categoryFilter={categoryFilter}
-        onCategoryFilterChange={setCategoryFilter}
-        categoryOptions={categoryOptions.map(({ value, label }) => ({ value, label }))}
       />
     )
   };

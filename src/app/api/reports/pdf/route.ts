@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
-import { resolveRanges } from "@/lib/dashboard-ranges";
-import { buildReportPreview } from "@/lib/report-preview-data";
-import { buildReportPdfFromPreview } from "@/lib/report-generate";
 import type { MetricKey } from "@/lib/dashboard-metrics";
-import { parsePeriodFromSearchParams } from "@/lib/report-period";
+import { buildReportPdfFromPreview } from "@/lib/report-generate";
+import { renderReportPdfWithPuppeteer } from "@/lib/report-pdf-puppeteer";
+import { buildReportPreview } from "@/lib/report-preview-data";
+import { resolveReportPeriodRanges } from "@/lib/report-print-data";
+import type { PeriodPreset } from "@/lib/report-period";
 import { sendReportEmail } from "@/lib/report-notify";
+
+export const maxDuration = 90;
 
 const BodySchema = z.object({
   clientId: z.string().min(1),
@@ -19,25 +22,25 @@ const BodySchema = z.object({
   since: z.string().optional(),
   until: z.string().optional(),
   preset: z.string().optional(),
+  period: z.string().optional(),
   selectedMetrics: z.array(z.string()).optional()
 });
 
-async function resolvePeriodRanges(body: z.infer<typeof BodySchema>) {
-  if (body.since && body.until) {
-    const len = Math.round((Date.parse(body.until) - Date.parse(body.since)) / 86_400_000) + 1;
-    const { addDaysIso } = await import("@/lib/report-period");
-    const prevUntil = addDaysIso(body.since, -1);
-    const prevSince = addDaysIso(prevUntil, -(len - 1));
-    return {
-      current: { since: body.since, until: body.until },
-      previous: { since: prevSince, until: prevUntil }
-    };
-  }
-
-  const preset =
-    body.preset === "last30" ? "last30" : body.preset === "thisWeek" ? "thisWeek" : "last7";
-  const resolved = resolveRanges({ preset, since: "", until: "" });
-  return { current: resolved.current, previous: resolved.previous };
+function resolvePreset(body: z.infer<typeof BodySchema>): PeriodPreset {
+  const raw = (body.period ?? body.preset ?? "thisWeek").trim() as PeriodPreset;
+  const allowed: PeriodPreset[] = [
+    "today",
+    "yesterday",
+    "thisWeek",
+    "thisMonth",
+    "thisQuarter",
+    "last7",
+    "last14",
+    "last15",
+    "last30",
+    "custom"
+  ];
+  return allowed.includes(raw) ? raw : "thisWeek";
 }
 
 export async function POST(req: Request) {
@@ -54,10 +57,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
   }
 
-  const { current, previous } = await resolvePeriodRanges(body);
+  const preset = resolvePreset(body);
+  const { current, previous } = await resolveReportPeriodRanges({
+    preset,
+    since: body.since,
+    until: body.until
+  });
   if (!current || !previous) {
     return NextResponse.json({ ok: false, error: "invalid_period" }, { status: 400 });
   }
+
   const preview = await buildReportPreview({
     tenantId: tenant.id,
     clientParam: body.clientId,
@@ -73,13 +82,37 @@ export async function POST(req: Request) {
     return NextResponse.json(preview, { status: preview.error === "client_not_found" ? 404 : 400 });
   }
 
-  const bytes = await buildReportPdfFromPreview({
-    tenant,
-    payload: preview,
-    reportType: body.reportType,
-    locale: body.locale,
-    selectedMetrics: body.selectedMetrics as MetricKey[] | undefined
-  });
+  let bytes: Uint8Array;
+  try {
+    bytes = await renderReportPdfWithPuppeteer({
+      tenantId: tenant.id,
+      clientParam: body.clientId,
+      adAccountId: body.adAccountId ?? null,
+      reportType: body.reportType,
+      locale: body.locale,
+      goalLabel: body.goalLabel ?? "Conversões",
+      preset,
+      since: body.since,
+      until: body.until,
+      selectedMetrics: body.selectedMetrics as MetricKey[] | undefined
+    });
+  } catch (error) {
+    console.error("[reports/pdf] Puppeteer failed, using pdf-lib fallback:", error);
+    try {
+      bytes = await buildReportPdfFromPreview({
+        tenant,
+        payload: preview,
+        reportType: body.reportType,
+        locale: body.locale,
+        selectedMetrics: body.selectedMetrics as MetricKey[] | undefined
+      });
+    } catch (fallbackError) {
+      console.error("[reports/pdf] pdf-lib fallback failed:", fallbackError);
+      const message =
+        fallbackError instanceof Error ? fallbackError.message : "pdf_generation_failed";
+      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    }
+  }
 
   const safeName = client.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 

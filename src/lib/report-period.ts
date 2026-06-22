@@ -220,6 +220,21 @@ export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
   };
 }
 
+/** Dias inclusivos entre since e until (YYYY-MM-DD). */
+export function inclusivePeriodDays(since: string | null, until: string | null): number | null {
+  if (!since || !until) return null;
+  const days =
+    Math.round((Date.parse(until.slice(0, 10)) - Date.parse(since.slice(0, 10))) / 86_400_000) + 1;
+  return days > 0 ? days : null;
+}
+
+/** Resolve o tamanho do período para regras de ranking (ex.: volume mínimo de conversões). */
+export function resolvedPeriodDays(period: ParsedPeriod): number | null {
+  if (period.allTime) return null;
+  if (period.days != null && period.days > 0) return period.days;
+  return inclusivePeriodDays(period.since, period.until);
+}
+
 /** Normaliza dia vindo do banco/API para YYYY-MM-DD (aceita ISO datetime e Date). */
 export function normalizeDayKey(day: unknown): string {
   if (day instanceof Date && !Number.isNaN(day.getTime())) {

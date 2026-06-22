@@ -21,12 +21,21 @@ type Group = {
 
 const COST_METRICS = new Set<MetricKey>(["cpmsg", "cpa", "cpm", "cpc"]);
 
+/** Top N do ranking: melhores primeiro; completa com promissores se faltar volume mínimo de "melhor". */
+function pickTopCreatives(group: Group, limit: number): CreativeItem[] {
+  const picked = group.best.slice(0, limit);
+  if (picked.length >= limit) return picked;
+  const need = limit - picked.length;
+  return [...picked, ...group.promising.slice(0, need)];
+}
+
 export function CreativesRankingView({
   clientId,
   clientSlug,
   periodQuery = "",
   adAccountId,
   maxBest,
+  initialGroups,
   embedInReport = false,
   accountsLoading = false
 }: {
@@ -38,13 +47,15 @@ export function CreativesRankingView({
   maxBest?: number;
   /** Embedded in report preview — same DS as main tab, compact best list. */
   embedInReport?: boolean;
+  /** Server-rendered groups (PDF/Puppeteer) — skips client fetch. */
+  initialGroups?: Group[];
   accounts?: Array<{ metaAdAccountId: string; label: string }>;
   accountsLoading?: boolean;
 }) {
   const t = useTranslations("creativesPerf");
   const tMetrics = useTranslations("metrics");
   const tPresets = useTranslations("campaignPresets");
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [groups, setGroups] = useState<Group[]>(initialGroups ?? []);
   const [warnings, setWarnings] = useState<CreativeAccessWarning[]>([]);
   const [partialData, setPartialData] = useState(false);
   const [dataSource, setDataSource] = useState<string | null>(null);
@@ -55,11 +66,16 @@ export function CreativesRankingView({
     cacheHits?: number;
     partialData?: boolean;
   } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialGroups === undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [expandedZero, setExpandedZero] = useState<Record<string, boolean>>({});
 
   const load = useCallback(() => {
+    if (initialGroups !== undefined) {
+      setGroups(initialGroups);
+      setLoading(false);
+      return;
+    }
     if (!clientId) {
       setGroups([]);
       setLoading(false);
@@ -101,7 +117,7 @@ export function CreativesRankingView({
         setLoadError(e.message || t("errorLoad"));
       })
       .finally(() => setLoading(false));
-  }, [clientId, periodQuery, adAccountId, accountsLoading, t]);
+  }, [clientId, periodQuery, adAccountId, accountsLoading, initialGroups, t]);
 
   useEffect(() => {
     load();
@@ -180,7 +196,7 @@ export function CreativesRankingView({
       {!embedInReport ? banner : null}
       {groups.map((g) => {
         const cols = presetMetricsFor(g.preset);
-        const best = maxBest != null ? g.best.slice(0, maxBest) : g.best;
+        const best = maxBest != null ? pickTopCreatives(g, maxBest) : g.best;
         const zeroOpen = expandedZero[g.preset];
         const compactBest = maxBest != null;
         const totalCount = compactBest ? best.length : g.best.length + g.promising.length + g.noSpend.length;

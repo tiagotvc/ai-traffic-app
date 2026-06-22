@@ -64,7 +64,7 @@ export function ReportHighlightCard({
   const sparkPoints = data.map((row) => Number(row[dataKey] ?? 0));
 
   return (
-    <div className="ui-card kpi-card-hover overflow-hidden p-5">
+    <div className="ui-card report-pdf-kpi report-pdf-block kpi-card-hover overflow-hidden p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="text-xs font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
           {label}

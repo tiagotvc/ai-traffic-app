@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
-import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
 import { fetchAllAccountCreatives } from "@/lib/creatives-access";
-import { parsePeriodFromSearchParams } from "@/lib/report-period";
-import { loadRankConfig } from "@/lib/ranking-config";
-import {
-  aggregateCreativesFromAccountData,
-  getTopCreativesByPreset,
-  mapAggregatesToCreatives,
-  type CreativeAgg
-} from "@/lib/agency-brain/creative-intelligence";
 import { getCreativesCacheTtlSec } from "@/lib/creatives-cache";
+import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
+import { repositories } from "@/db/repositories";
+import { loadClientCreativesPerformance } from "@/lib/report-creatives-performance";
+import { parsePeriodFromSearchParams } from "@/lib/report-period";
 import { applyServerTiming } from "@/lib/server-timing";
 
 export const maxDuration = 60;
@@ -39,14 +33,11 @@ export async function GET(req: Request) {
   const debug = url.searchParams.get("debug") === "1";
   const skipCache = url.searchParams.get("refresh") === "1";
   const cacheOnly = url.searchParams.get("cacheOnly") === "1";
-  const { adAccount: adAccountRepo, campaignPreset: presetRepo } = await repositories();
+  const { adAccount: adAccountRepo } = await repositories();
   let accounts = await adAccountRepo.find({ where: { clientId: client.id } });
   if (adAccountId) {
     accounts = accounts.filter((a) => a.metaAdAccountId === adAccountId || a.id === adAccountId);
   }
-  const presetRows = await presetRepo.find({ where: { tenantId: tenant.id } });
-  const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));
-  const rankConfig = await loadRankConfig(tenant.id);
 
   const tFetch = Date.now();
   const { results: perAccount, warnings, partialData, dataSource, cacheHits, cacheMisses } =
@@ -71,21 +62,19 @@ export async function GET(req: Request) {
       }
     : undefined;
 
-  const clientSlug = slugify(client.name);
-  const byCreative = new Map<string, CreativeAgg>();
-
-  for (const { ads, insights } of perAccount) {
-    aggregateCreativesFromAccountData({
-      ads,
-      insights,
-      clientSlug,
-      presetByCampaign,
-      into: byCreative
-    });
-  }
-
-  const creatives = mapAggregatesToCreatives(byCreative, clientSlug, presetByCampaign);
-  const groups = getTopCreativesByPreset(creatives, rankConfig);
+  const { groups, creatives } =
+    period.since && period.until
+      ? await loadClientCreativesPerformance({
+          tenantId: tenant.id,
+          clientParam: clientIdParam,
+          adAccountId,
+          since: period.since,
+          until: period.until,
+          period,
+          skipCache,
+          perAccount
+        })
+      : { groups: [], creatives: [] };
 
   const cacheTtlSec = getCreativesCacheTtlSec();
   const dataProvenance = {
@@ -100,7 +89,7 @@ export async function GET(req: Request) {
     ok: true,
     groups,
     creatives,
-    clientSlug,
+    clientSlug: slugify(client.name),
     warnings,
     partialData,
     dataSource,

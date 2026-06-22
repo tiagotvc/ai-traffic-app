@@ -43,9 +43,9 @@ export function UxCampaignFiltersPanel({
   onDisplayStatusFilterChange: (v: DisplayStatusFilter) => void;
   objectiveFilter: ObjectiveFilter;
   onObjectiveFilterChange: (v: ObjectiveFilter) => void;
-  categoryFilter: string;
-  onCategoryFilterChange: (v: string) => void;
-  categoryOptions: Array<{ value: string; label: string }>;
+  categoryFilter?: string;
+  onCategoryFilterChange?: (v: string) => void;
+  categoryOptions?: Array<{ value: string; label: string }>;
 }) {
   const t = useTranslations("campaignsPage");
   const tableLayout = useCampaignTableLayout();
@@ -90,12 +90,12 @@ export function UxCampaignFiltersPanel({
           ]}
         />
 
-        {categoryOptions.length ? (
+        {categoryOptions?.length && onCategoryFilterChange ? (
           <FilterSelectDropdown
             icon={<Tag size={14} />}
             label="Categoria"
             placeholder="Categoria"
-            value={categoryFilter}
+            value={categoryFilter ?? ""}
             onChange={onCategoryFilterChange}
             options={categoryOptions}
           />

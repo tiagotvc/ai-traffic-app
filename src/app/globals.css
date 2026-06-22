@@ -594,12 +594,13 @@ h6,
   }
 
   .report-pdf-section {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    break-inside: auto;
+    page-break-inside: auto;
   }
 
   .report-pdf-chart-card,
-  .report-pdf-block {
+  .report-pdf-block,
+  .report-pdf-kpi {
     break-inside: avoid;
     page-break-inside: avoid;
     -webkit-column-break-inside: avoid;
@@ -613,6 +614,12 @@ h6,
   .report-creative-card {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .report-creative-media {
+    aspect-ratio: 4 / 5;
+    min-height: 220px;
+    max-height: 300px;
   }
 
   .report-creative-card img {

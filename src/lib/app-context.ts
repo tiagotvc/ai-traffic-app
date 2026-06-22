@@ -4,7 +4,6 @@ import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
 import {
-  persistMetaAuth,
   resolveWorkspaceMetaAccessToken
 } from "@/lib/meta-auth-store";
 import { isUuid } from "@/lib/uuid";
@@ -48,28 +47,9 @@ export async function getAppContext() {
     await clientRepo.save(defaultClient);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const meta = (session as any).meta as
-    | {
-        accessToken?: string;
-        expiresAt?: number;
-        tokenType?: string;
-        scopes?: string;
-        profileId?: string;
-      }
-    | undefined;
-
-  const sessionToken = meta?.accessToken;
-  if (sessionToken) {
-    await persistMetaAuth(user.id, {
-      access_token: sessionToken,
-      token_type: meta?.tokenType ?? null,
-      scope: meta?.scopes ?? null,
-      expires_at: meta?.expiresAt ?? null
-    });
-  }
-
-  const metaAccessToken = await resolveWorkspaceMetaAccessToken(tenant.id, user.id, sessionToken);
+  // Token Meta de ads fica em meta_auth (fluxo "Reconectar Meta"). Não sobrescrever
+  // com access_token legado do JWT — isso invalidava reconexões bem-sucedidas.
+  const metaAccessToken = await resolveWorkspaceMetaAccessToken(tenant.id, user.id);
 
   await ensureFreeSubscription(tenant.id);
 

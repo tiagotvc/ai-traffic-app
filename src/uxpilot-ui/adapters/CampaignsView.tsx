@@ -1,7 +1,12 @@
 "use client";
 
-import { CampaignsContentLive } from "@/uxpilot-ui/adapters/CampaignsContentLive";
+import { CampaignsHubClient } from "@/components/CampaignsHubClient";
+import { UxPageMain } from "@/uxpilot-ui/adapters/UxPageMain";
 
 export function CampaignsView() {
-  return <CampaignsContentLive />;
+  return (
+    <UxPageMain className="space-y-5">
+      <CampaignsHubClient useUxChrome />
+    </UxPageMain>
+  );
 }

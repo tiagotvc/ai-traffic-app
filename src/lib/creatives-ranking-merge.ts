@@ -10,10 +10,11 @@ export type CreativeRankGroup = ReturnType<typeof getTopCreativesByPreset>[numbe
 /** Junta criativos de várias contas e recalcula o ranking global. */
 export function mergeCreativesIntoGroups(
   chunks: AggregatedCreative[][],
-  rankConfig: RankConfig
+  rankConfig: RankConfig,
+  opts?: { periodDays?: number | null }
 ): CreativeRankGroup[] {
   const merged = mergeAggregatedCreatives(chunks.flat());
-  return getTopCreativesByPreset(merged, rankConfig);
+  return getTopCreativesByPreset(merged, rankConfig, opts);
 }
 
 function mergeAggregatedCreatives(items: AggregatedCreative[]): AggregatedCreative[] {
@@ -32,6 +33,7 @@ function mergeAggregatedCreatives(items: AggregatedCreative[]): AggregatedCreati
     }
     byKey.set(c.key, {
       ...prev,
+      creativeName: prev.creativeName ?? c.creativeName,
       adsCount: prev.adsCount + c.adsCount,
       status: prev.status === "ACTIVE" || c.status === "ACTIVE" ? "ACTIVE" : "PAUSED",
       thumbnailUrl: prev.thumbnailUrl ?? c.thumbnailUrl,

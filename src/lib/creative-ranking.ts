@@ -68,11 +68,40 @@ const MIN_VOLUME: Record<string, { metric: MetricKey; min: number }> = {
   default: { metric: "clicks", min: 20 }
 };
 
+/** Métricas de resultado cuja volumetria mínima escala com o tamanho do período. */
+const PERIOD_SCALED_RESULT_METRICS = new Set<MetricKey>(["conversions", "messages"]);
+
+export type BestVolumeOptions = {
+  /** Dias inclusivos do período analisado (ajusta mínimo de conversões/mensagens). */
+  periodDays?: number | null;
+};
+
+/** Até 7 dias: 5 resultados; períodos maiores: 10. */
+export function minResultVolumeForPeriod(periodDays: number): number {
+  return periodDays <= 7 ? 5 : 10;
+}
+
+function resolveMinVolume(
+  preset: string | undefined,
+  periodDays?: number | null
+): { metric: MetricKey; min: number } {
+  const base = MIN_VOLUME[preset ?? "default"] ?? MIN_VOLUME.default;
+  if (
+    periodDays != null &&
+    periodDays > 0 &&
+    PERIOD_SCALED_RESULT_METRICS.has(base.metric)
+  ) {
+    return { metric: base.metric, min: minResultVolumeForPeriod(periodDays) };
+  }
+  return base;
+}
+
 export function bestEligible(
   m: Partial<Record<MetricKey, number>>,
-  preset?: string
+  preset?: string,
+  opts?: BestVolumeOptions
 ): boolean {
-  const v = MIN_VOLUME[preset ?? "default"] ?? MIN_VOLUME.default;
+  const v = resolveMinVolume(preset, opts?.periodDays);
   return Number(m[v.metric] ?? 0) >= v.min;
 }
 
