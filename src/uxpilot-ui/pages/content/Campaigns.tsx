@@ -7,8 +7,9 @@ import type { AppliedCampaignFilter } from "@/lib/campaign-meta-filters";
 import type { UxCampaignKpi, UxCampaignRow } from "@/uxpilot-ui/adapters/campaigns-mappers";
 import type { ObjectiveFilter, DisplayStatusFilter } from "@/uxpilot-ui/adapters/UxCampaignFiltersPanel";
 import { UxCampaignRowActionBar } from "@/uxpilot-ui/adapters/UxCampaignRowActionBar";
-import { UxCampaignRowSelector } from "@/uxpilot-ui/adapters/UxCampaignRowSelector";
+import { UxCampaignsGroupedTables } from "@/uxpilot-ui/adapters/UxCampaignsGroupedTables";
 import type { UxFloatingActionAnchor } from "@/uxpilot-ui/adapters/UxFloatingActionBar";
+import type { UxCampaignGroup } from "@/uxpilot-ui/adapters/campaigns-mappers";
 import {
   Search,
   Filter,
@@ -247,8 +248,10 @@ const kpis = [
 type SortKey = "spend" | "roas" | "cpl" | "ctr" | "impressions" | null;
 
 export type CampaignsLiveProps = {
-  campaigns: UxCampaignRow[];
-  kpis: UxCampaignKpi[];
+  campaignGroups?: UxCampaignGroup[];
+  totalCampaigns?: number;
+  campaigns?: UxCampaignRow[];
+  kpis?: UxCampaignKpi[];
   loading?: boolean;
   statusPendingId?: string | null;
   onToggleStatus?: (id: string | number, rawStatus?: string) => void;
@@ -276,6 +279,9 @@ export type CampaignsLiveProps = {
   pageSize?: number;
   totalCount?: number;
   onPageChange?: (page: number) => void;
+  selectedCampaignId?: string | null;
+  onSelectCampaign?: (id: string | null) => void;
+  detailPanel?: ReactNode;
 };
 
 type CampaignRowView = UxCampaignRow & { id: string | number };
@@ -283,19 +289,31 @@ type CampaignRowView = UxCampaignRow & { id: string | number };
 export default function CampaignsContent({ live }: { live?: CampaignsLiveProps } = {}) {
   const navigate = useNavigate();
   const isLive = Boolean(live);
+  const isGroupedLive = isLive && Array.isArray(live?.campaignGroups);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused" | "draft">("all");
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [openMenu, setOpenMenu] = useState<string | number | null>(null);
-  const [selectedRowId, setSelectedRowId] = useState<string | number | null>(null);
+  const [mockSelectedRowId, setMockSelectedRowId] = useState<string | number | null>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
   const [tableAnchor, setTableAnchor] = useState<UxFloatingActionAnchor | null>(null);
 
+  const selectedRowId = isLive ? (live?.selectedCampaignId ?? null) : mockSelectedRowId;
+  const selectCampaign = (id: string | number | null) => {
+    if (isLive) {
+      live?.onSelectCampaign?.(id == null ? null : String(id));
+      return;
+    }
+    setMockSelectedRowId(id);
+  };
+
   const sourceCampaigns: CampaignRowView[] = isLive
-    ? (live!.campaigns as CampaignRowView[])
+    ? (live!.campaignGroups?.flatMap((g) => g.campaigns) ??
+        (live!.campaigns as CampaignRowView[] | undefined) ??
+        [])
     : (campaigns as unknown as CampaignRowView[]);
-  const sourceKpis = isLive ? live!.kpis : kpis;
+  const sourceKpis = isLive ? (live!.kpis ?? []) : kpis;
   const customTypes = live?.customTypes ?? [];
 
   const handleSort = (key: SortKey) => {
@@ -384,8 +402,10 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                   Campanhas
                 </h1>
                 <p className="mt-0.5 text-xs font-body" style={{ color: "var(--text-dim)" }}>
-                  {filtered.length} de {sourceCampaigns.length} campanhas • {activeCount} ativas
-                  {live?.loading ? " • carregando…" : ""}
+                  {isGroupedLive
+                    ? `${live?.totalCampaigns ?? 0} campanhas em ${live!.campaignGroups!.length} tipo${(live?.campaignGroups?.length ?? 0) === 1 ? "" : "s"} · ${activeCount} ativas`
+                    : `${filtered.length} de ${sourceCampaigns.length} campanhas · ${activeCount} ativas`}
+                  {live?.loading ? " · carregando…" : ""}
                 </p>
               </div>
             </div>
@@ -491,69 +511,8 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
           {isLive && filtersOpen && live?.filtersPanel ? live.filtersPanel : null}
           </div>
 
-          {/* KPI Summary Row */}
-          {isLive ? (
-            totalsOpen ? (
-            <div className="space-y-3">
-              <div>
-                <p
-                  className="text-[10px] font-heading uppercase tracking-widest"
-                  style={{ color: "var(--text-dimmer)" }}
-                >
-                  Totais da categoria
-                </p>
-                <p className="text-xs font-body mt-0.5" style={{ color: "var(--text-dim)" }}>
-                  {live?.categoryLabel ? (
-                    <>
-                      <span style={{ color: "var(--text-main)" }}>{live.categoryLabel}</span>
-                      {" · "}
-                      {live.categoryCount ?? 0} campanha{(live.categoryCount ?? 0) === 1 ? "" : "s"}
-                    </>
-                  ) : (
-                    "Selecione uma categoria"
-                  )}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
-                {sourceKpis.map((kpi) => {
-                  const Icon = kpi.icon;
-                  return (
-                    <div
-                      key={kpi.label}
-                      className="min-w-0 rounded-lg border p-2 kpi-card-hover"
-                      style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
-                    >
-                      <div className="mb-1 flex items-center justify-between gap-1">
-                        <div
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-                          style={{ background: `${kpi.color}15` }}
-                        >
-                          <Icon size={12} style={{ color: kpi.color }} />
-                        </div>
-                        <span
-                          className="shrink-0 rounded-full px-1 py-0.5 text-[9px] font-heading font-bold"
-                          style={{
-                            background: "rgba(245,166,35,0.1)",
-                            color: "var(--amber)"
-                          }}
-                        >
-                          {kpi.delta}
-                        </span>
-                      </div>
-                      <p className="truncate font-heading text-sm font-bold" style={{ color: "var(--text-main)" }}>
-                        {kpi.value}
-                      </p>
-                      <p className="mt-0.5 truncate text-[10px] font-body" style={{ color: "var(--text-dim)" }}>
-                        {kpi.label}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            ) : null
-          ) : (
+          {/* KPI Summary Row — mock only; live groups show KPIs per section */}
+          {!isLive ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {sourceKpis.map((kpi) => {
               const Icon = kpi.icon;
@@ -588,9 +547,21 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
               );
             })}
           </div>
-          )}
+          ) : null}
 
-          {/* Table */}
+          {/* Tables */}
+          {isGroupedLive ? (
+            <div ref={tableWrapRef}>
+              <UxCampaignsGroupedTables
+                groups={live!.campaignGroups!}
+                selectedCampaignId={selectedRowId}
+                statusPendingId={live?.statusPendingId}
+                totalsOpen={totalsOpen}
+                onSelectCampaign={(id) => selectCampaign(id)}
+                onToggleStatus={live?.onToggleStatus}
+              />
+            </div>
+          ) : (
           <div
             ref={tableWrapRef}
             className="rounded-xl border overflow-hidden"
@@ -644,7 +615,10 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                   {filtered.map((c, i) => (
                     <tr
                       key={c.id}
-                      className="border-b animate-fade-up group transition-colors"
+                      className={cn(
+                        "border-b animate-fade-up group transition-colors",
+                        isLive && c.status !== "draft" && "cursor-pointer"
+                      )}
                       style={{
                         animationDelay: `${i * 35}ms`,
                         animationFillMode: "both",
@@ -653,6 +627,10 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                           isLive && selectedRowId === c.id
                             ? "rgba(245,166,35,0.06)"
                             : undefined,
+                      }}
+                      onClick={() => {
+                        if (!isLive || c.status === "draft") return;
+                        selectCampaign(String(c.id));
                       }}
                       onMouseEnter={(e) => {
                         if (selectedRowId !== c.id) {
@@ -667,12 +645,12 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                       }}
                     >
                       {isLive ? (
-                        <td className="px-2 py-3 w-10">
+                        <td className="px-2 py-3 w-10" onClick={(e) => e.stopPropagation()}>
                           <UxCampaignRowSelector
                             selected={selectedRowId === c.id}
                             disabled={live?.statusPendingId === String(c.id)}
                             onClick={() =>
-                              setSelectedRowId((cur) => (cur === c.id ? null : c.id))
+                              selectCampaign(selectedRowId === c.id ? null : c.id)
                             }
                           />
                         </td>
@@ -681,9 +659,23 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                       {/* Campaign Name */}
                       <td className="px-4 py-3 min-w-[200px]">
                         <div>
-                          <p className="font-body font-medium text-sm" style={{ color: "var(--text-main)" }}>
-                            {c.name}
-                          </p>
+                          {isLive && c.status !== "draft" ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                selectCampaign(String(c.id));
+                              }}
+                              className="text-left font-body font-medium text-sm hover:underline"
+                              style={{ color: "var(--text-main)" }}
+                            >
+                              {c.name}
+                            </button>
+                          ) : (
+                            <p className="font-body font-medium text-sm" style={{ color: "var(--text-main)" }}>
+                              {c.name}
+                            </p>
+                          )}
                           <p className="text-[11px] font-body mt-0.5" style={{ color: "var(--text-dimmer)" }}>
                             {c.client}
                           </p>
@@ -910,6 +902,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
               ) : null}
             </div>
           </div>
+          )}
 
           {isLive && selectedRow ? (
             <UxCampaignRowActionBar
@@ -918,7 +911,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
               anchor={tableAnchor}
               customTypes={customTypes}
               pending={live?.statusPendingId === String(selectedRow.id)}
-              onClose={() => setSelectedRowId(null)}
+              onClose={() => selectCampaign(null)}
               onToggleStatus={() =>
                 live?.onToggleStatus?.(selectedRow.id, selectedRow.rawStatus)
               }
@@ -927,6 +920,8 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
               }
             />
           ) : null}
+
+          {isLive && live?.detailPanel ? live.detailPanel : null}
         </main>
   );
 }

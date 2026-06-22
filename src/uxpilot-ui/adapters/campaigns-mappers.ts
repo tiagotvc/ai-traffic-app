@@ -37,6 +37,28 @@ export type UxCampaignKpi = {
   color: string;
 };
 
+export type UxTableTotals = {
+  spend: string;
+  roas: string;
+  cpl: string;
+  ctr: string;
+  impressions: string;
+  clicks: string;
+  conversions: string;
+  frequency: string;
+  cpm: string;
+  budget: string;
+};
+
+export type UxCampaignGroup = {
+  key: string;
+  label: string;
+  count: number;
+  campaigns: UxCampaignRow[];
+  kpis: UxCampaignKpi[];
+  totals: UxTableTotals;
+};
+
 const objectiveLabels: Record<string, string> = {
   leads: "Leads",
   sales: "Conversões",
@@ -52,7 +74,8 @@ function compact(n: number, locale: string) {
   return formatNumber(n, locale);
 }
 
-function mapStatus(status?: string): UxCampaignRow["status"] {
+function mapStatus(status?: string, metaCampaignId?: string): UxCampaignRow["status"] {
+  if (metaCampaignId?.startsWith("draft:")) return "draft";
   if (status === "ACTIVE") return "active";
   if (status === "PAUSED") return "paused";
   return "paused";
@@ -79,7 +102,7 @@ export function toUxCampaignRow(
     client: row.clientName,
     clientSlug: row.clientSlug,
     objective: mapObjective(row.objective, row.preset),
-    status: mapStatus(row.status),
+    status: mapStatus(row.status, row.metaCampaignId),
     preset: presets?.[row.metaCampaignId] ?? row.preset ?? "default",
     metaAdAccountId: row.metaAdAccountId,
     spend: formatBRL(row.spend, locale),
@@ -104,6 +127,69 @@ export function toUxCampaignRows(
   presets?: Record<string, string>
 ): UxCampaignRow[] {
   return rows.map((r) => toUxCampaignRow(r, locale, presets));
+}
+
+export function computeUxTableTotals(rows: CampaignRow[], locale: string): UxTableTotals {
+  const empty: UxTableTotals = {
+    spend: "—",
+    roas: "—",
+    cpl: "—",
+    ctr: "—",
+    impressions: "—",
+    clicks: "—",
+    conversions: "—",
+    frequency: "—",
+    cpm: "—",
+    budget: "—"
+  };
+  if (!rows.length) return empty;
+
+  const spend = rows.reduce((s, r) => s + r.spend, 0);
+  const impressions = rows.reduce((s, r) => s + (r.impressions ?? 0), 0);
+  const clicks = rows.reduce((s, r) => s + (r.clicks ?? 0), 0);
+  const conversions = rows.reduce((s, r) => s + r.conversions + r.leads, 0);
+
+  const roasRows = rows.filter((r) => r.roas > 0);
+  const avgRoas =
+    roasRows.length > 0 ? roasRows.reduce((s, r) => s + r.roas, 0) / roasRows.length : 0;
+
+  const cplRows = rows.filter((r) => {
+    const v = r.cpl ?? r.cpa;
+    return v != null && v > 0;
+  });
+  const avgCpl =
+    cplRows.length > 0
+      ? cplRows.reduce((s, r) => s + (r.cpl ?? r.cpa ?? 0), 0) / cplRows.length
+      : 0;
+
+  const ctrRows = rows.filter((r) => r.ctr != null);
+  const avgCtr =
+    ctrRows.length > 0 ? ctrRows.reduce((s, r) => s + (r.ctr ?? 0), 0) / ctrRows.length : 0;
+
+  const freqRows = rows.filter((r) => r.frequency != null);
+  const avgFreq =
+    freqRows.length > 0
+      ? freqRows.reduce((s, r) => s + (r.frequency ?? 0), 0) / freqRows.length
+      : 0;
+
+  const cpmRows = rows.filter((r) => r.cpm != null);
+  const avgCpm =
+    cpmRows.length > 0 ? cpmRows.reduce((s, r) => s + (r.cpm ?? 0), 0) / cpmRows.length : 0;
+
+  const budgetSum = rows.reduce((s, r) => s + (r.dailyBudget ?? 0), 0);
+
+  return {
+    spend: formatBRL(spend, locale),
+    roas: avgRoas > 0 ? formatRoas(avgRoas, locale) : "—",
+    cpl: avgCpl > 0 ? formatBRL(avgCpl, locale) : "—",
+    ctr: avgCtr > 0 ? formatPercent(avgCtr, 1, locale) : "—",
+    impressions: impressions > 0 ? compact(impressions, locale) : "—",
+    clicks: clicks > 0 ? formatNumber(clicks, locale) : "—",
+    conversions: formatNumber(conversions, locale),
+    frequency: avgFreq > 0 ? avgFreq.toFixed(1).replace(".", ",") : "—",
+    cpm: avgCpm > 0 ? formatBRL(avgCpm, locale) : "—",
+    budget: budgetSum > 0 ? `${formatBRL(budgetSum, locale)}/dia` : "—"
+  };
 }
 
 export function toCampaignKpis(totals: CampaignTotals, rows: CampaignRow[], locale: string): UxCampaignKpi[] {

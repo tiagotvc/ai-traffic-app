@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { coercePlacements, defaultPlacements, type PlacementConfig } from "@/lib/campaign-placements";
+import { coercePlacements, defaultPlacements, defaultScheduleStartLocal, type PlacementConfig } from "@/lib/campaign-placements";
 import { defaultUtm, type UtmFields } from "@/lib/campaign-utm";
 import { validateAdCreativeForMeta } from "@/lib/meta-ad-creative";
 import { normalizeMessageTemplateDraft } from "@/lib/meta-welcome-message";
@@ -228,7 +228,7 @@ export function defaultAdSetItem(locale: string, name?: string): AdSetDraftItem 
     pixelId: null,
     conversionEvent: "LEAD",
     dynamicCreative: true,
-    schedule: { start: null, end: null },
+    schedule: { start: defaultScheduleStartLocal(), end: null },
     targeting: defaultTargeting(),
     placements: defaultPlacements()
   };

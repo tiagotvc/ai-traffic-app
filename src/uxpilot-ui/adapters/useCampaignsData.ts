@@ -51,6 +51,7 @@ export type CampaignsDataFilters = {
   showZeroActivity: boolean;
   pageSize: number;
   page: number;
+  groupByType?: boolean;
 };
 
 const EMPTY_PERIOD: PeriodState = { preset: "last7", since: "", until: "" };
@@ -108,8 +109,13 @@ export function useCampaignsData(filters: CampaignsDataFilters = DEFAULT_FILTERS
       f.objectiveFilter !== "ALL";
     if (live) params.set("live", "1");
 
-    params.set("limit", String(f.pageSize));
-    params.set("offset", String((f.page - 1) * f.pageSize));
+    if (f.groupByType) {
+      params.set("limit", "500");
+      params.set("offset", "0");
+    } else {
+      params.set("limit", String(f.pageSize));
+      params.set("offset", String((f.page - 1) * f.pageSize));
+    }
 
     fetch(`/api/campaigns/list?${params.toString()}`, { signal: ac.signal })
       .then((r) => r.json())
