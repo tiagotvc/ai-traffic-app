@@ -601,6 +601,12 @@ h6,
     page-break-inside: avoid;
   }
 
+  .report-creative-media {
+    aspect-ratio: 4 / 5;
+    min-height: 220px;
+    max-height: 300px;
+  }
+
   .report-creative-card img {
     object-fit: contain !important;
     object-position: center !important;

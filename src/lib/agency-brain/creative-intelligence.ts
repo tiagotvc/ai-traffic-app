@@ -56,6 +56,7 @@ type AdsetBreak = { id: string; name: string; campaignName: string; sums: Creati
 
 export type CreativeAgg = {
   name: string;
+  creativeName?: string;
   type: CreativeAssetType;
   thumbnailUrl?: string;
   imageUrl?: string;
@@ -74,6 +75,7 @@ export type CreativeAgg = {
 export type AggregatedCreative = {
   key: string;
   name: string;
+  creativeName: string | null;
   type: CreativeAssetType;
   adId: string | null;
   adIds: string[];
@@ -120,8 +122,10 @@ export function aggregateCreativesFromAccountData(input: {
 
     let agg = byCreative.get(key);
     if (!agg) {
+      const creativeName = ad.creativeName?.trim() || undefined;
       agg = {
-        name: ad.creativeName?.trim() || ad.name?.trim() || key,
+        name: creativeName || ad.name?.trim() || key,
+        creativeName,
         type: ad.creativeType ?? "image",
         thumbnailUrl: ad.thumbnailUrl,
         imageUrl: ad.imageUrl,
@@ -135,6 +139,10 @@ export function aggregateCreativesFromAccountData(input: {
         perAdset: new Map()
       };
       byCreative.set(key, agg);
+    }
+    if (ad.creativeName?.trim()) {
+      agg.creativeName = ad.creativeName.trim();
+      agg.name = ad.creativeName.trim();
     }
     if (!agg.thumbnailUrl && ad.thumbnailUrl) agg.thumbnailUrl = ad.thumbnailUrl;
     if (ad.imageUrl && (!agg.imageUrl || ad.imageUrl.length > (agg.imageUrl?.length ?? 0))) {
@@ -225,6 +233,7 @@ export function mapAggregatesToCreatives(
     return {
       key: a.name,
       name: a.name,
+      creativeName: a.creativeName ?? null,
       type: a.type,
       adId: a.firstAdId ?? null,
       adIds: [...a.ads],

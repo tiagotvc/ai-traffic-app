@@ -27,6 +27,7 @@ export type CreativeAdsetBreakdown = {
 
 export type CreativeItem = {
   name: string;
+  creativeName?: string | null;
   type?: string;
   status: string;
   adId: string | null;
@@ -106,10 +107,10 @@ export function CreativeCardGrid({
 
   const reportGridClass =
     creatives.length === 1
-      ? "report-creatives-grid grid min-w-0 grid-cols-1 gap-3 p-3 [&>.report-creative-card]:mx-auto [&>.report-creative-card]:w-full [&>.report-creative-card]:max-w-[320px]"
+      ? "report-creatives-grid grid min-w-0 grid-cols-1 gap-4 p-3 [&>.report-creative-card]:mx-auto [&>.report-creative-card]:w-full [&>.report-creative-card]:max-w-[360px]"
       : creatives.length === 2
-        ? "report-creatives-grid grid min-w-0 grid-cols-1 gap-3 p-3 sm:grid-cols-2"
-        : "report-creatives-grid grid min-w-0 grid-cols-1 gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3";
+        ? "report-creatives-grid grid min-w-0 grid-cols-1 gap-4 p-3 sm:grid-cols-2"
+        : "report-creatives-grid grid min-w-0 grid-cols-1 gap-4 p-3 sm:grid-cols-2 lg:grid-cols-3 [&>.report-creative-card]:h-full";
 
   return (
     <>
@@ -133,6 +134,7 @@ export function CreativeCardGrid({
               key={`${c.name}-${idx}`}
               rank={rank}
               title={c.name}
+              creativeName={c.creativeName}
               type={c.type}
               campaignType={campaignType}
               campaignsUsed={c.campaigns?.length ?? c.adsCount ?? 0}

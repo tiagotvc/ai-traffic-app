@@ -32,6 +32,7 @@ function mergeAggregatedCreatives(items: AggregatedCreative[]): AggregatedCreati
     }
     byKey.set(c.key, {
       ...prev,
+      creativeName: prev.creativeName ?? c.creativeName,
       adsCount: prev.adsCount + c.adsCount,
       status: prev.status === "ACTIVE" || c.status === "ACTIVE" ? "ACTIVE" : "PAUSED",
       thumbnailUrl: prev.thumbnailUrl ?? c.thumbnailUrl,

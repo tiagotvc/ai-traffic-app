@@ -41,17 +41,10 @@ function mapStatusLabel(status: string): "Ativo" | "Pausado" | "Encerrado" {
   return "Encerrado";
 }
 
-/** Remove sufixos de data/hash que a Meta coloca no nome do criativo. */
-function cleanCreativeTitleForReport(title: string): string {
-  return title
-    .replace(/\s+\d{4}-\d{2}-\d{2}(?:-[a-f0-9]{8,})?\s*$/i, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
-
 export type CreativeRankingCardProps = {
   rank: number;
   title: string;
+  creativeName?: string | null;
   type?: string;
   campaignType?: string;
   campaignsUsed: number;
@@ -70,6 +63,7 @@ export type CreativeRankingCardProps = {
 export function CreativeRankingCard({
   rank,
   title,
+  creativeName,
   type,
   campaignType,
   campaignsUsed,
@@ -119,13 +113,15 @@ export function CreativeRankingCard({
 
   const rankColors = ["#f5a623", "#94a3b8", "#cd7c2f"];
   const displayMetrics = isReport ? metricKeys.slice(0, 3) : metricKeys.slice(0, 6);
-  const displayTitle = isReport ? cleanCreativeTitleForReport(title) : title;
-  const mediaHeight = isReport ? "h-36 sm:h-40" : "h-40";
+  const displayLabel = isReport ? creativeName?.trim() || title : title;
+  const mediaHeight = isReport ? "report-creative-media" : "h-40";
 
   return (
     <div
       className={`min-w-0 transition-all ${
-        isReport ? "report-creative-card overflow-hidden rounded-lg" : "overflow-hidden rounded-xl hover:-translate-y-0.5"
+        isReport
+          ? "report-creative-card flex h-full flex-col overflow-hidden rounded-lg"
+          : "overflow-hidden rounded-xl hover:-translate-y-0.5"
       }`}
       style={{
         background: "var(--surface-card)",
@@ -142,7 +138,7 @@ export function CreativeRankingCard({
       <div
         className={`relative overflow-hidden ${mediaHeight} ${
           coverPreview || isReport ? "bg-[var(--surface-bg)]" : "bg-[#0f1419]"
-        } ${isReport ? "border-b border-[var(--border-color)]" : ""} ${
+        } ${isReport ? "min-h-[220px] flex-1 border-b border-[var(--border-color)]" : ""} ${
           !coverPreview && !isReport ? "flex items-center justify-center" : ""
         } ${isReport ? "flex items-center justify-center" : ""}`}
       >
@@ -150,26 +146,30 @@ export function CreativeRankingCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imgSrc}
-            alt={displayTitle}
+            alt={displayLabel}
             decoding="async"
             onError={handleImgError}
             className={
               coverPreview
                 ? "absolute inset-0 z-0 block h-full w-full object-cover object-center"
-                : "relative z-0 block max-h-full max-w-full object-contain object-center"
+                : isReport
+                  ? "absolute inset-0 z-0 block h-full w-full object-contain object-center p-1"
+                  : "relative z-0 block max-h-full max-w-full object-contain object-center"
             }
           />
         ) : (
           <span
-            className={`flex h-full w-full items-center justify-center opacity-40 ${isReport ? "text-xl" : "text-3xl"}`}
+            className={`flex h-full w-full items-center justify-center opacity-40 ${isReport ? "text-2xl" : "text-3xl"}`}
           >
             🖼️
           </span>
         )}
-        <div
-          className="pointer-events-none absolute inset-0 z-[1]"
-          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.35) 100%)" }}
-        />
+        {!isReport ? (
+          <div
+            className="pointer-events-none absolute inset-0 z-[1]"
+            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.35) 100%)" }}
+          />
+        ) : null}
         <div
           className={`absolute z-[2] flex items-center justify-center rounded-full font-bold shadow-md ${
             isReport ? "left-1.5 top-1.5 h-5 w-5 text-[9px]" : "left-3 top-3 h-8 w-8 text-xs shadow-lg"
@@ -215,15 +215,15 @@ export function CreativeRankingCard({
         ) : null}
       </div>
 
-      <div className={`border-b border-[var(--border-color)] ${isReport ? "px-2 py-1.5" : "px-4 py-3"}`}>
-        <div className={isReport ? "flex items-start justify-between gap-1.5" : undefined}>
+      <div className={`border-b border-[var(--border-color)] ${isReport ? "px-2.5 py-2" : "px-4 py-3"}`}>
+        <div className={isReport ? "flex items-start justify-between gap-2" : undefined}>
           <p
             className={`min-w-0 font-semibold leading-snug text-[var(--text-main)] ${
-              isReport ? "line-clamp-3 break-words text-[10px]" : "mb-1 line-clamp-1 text-sm"
+              isReport ? "line-clamp-2 break-words text-[11px]" : "mb-1 line-clamp-1 text-sm"
             }`}
-            title={displayTitle}
+            title={displayLabel}
           >
-            {displayTitle}
+            {displayLabel}
           </p>
           {isReport ? (
             <span
@@ -262,12 +262,12 @@ export function CreativeRankingCard({
       ) : null}
 
       <div
-        className={`grid gap-2 ${isReport ? "grid-cols-2 px-2.5 py-2" : "grid-cols-2 px-4 py-3"}`}
+        className={`grid gap-1.5 ${isReport ? "grid-cols-3 px-2.5 py-2" : "grid-cols-2 gap-2 px-4 py-3"}`}
       >
         {displayMetrics[0] ? (
           <div
             className={`flex items-center justify-between rounded-lg ${
-              isReport ? "col-span-2 px-2 py-1.5" : "col-span-2 px-3 py-2"
+              isReport ? "col-span-3 px-2 py-1" : "col-span-2 px-3 py-2"
             }`}
             style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.18)" }}
           >
@@ -289,18 +289,18 @@ export function CreativeRankingCard({
         {displayMetrics.slice(1).map((key) => (
           <div
             key={key}
-            className={`rounded-lg bg-[var(--surface-bg)] ${isReport ? "px-2 py-1.5" : "px-3 py-2"}`}
+            className={`rounded-lg bg-[var(--surface-bg)] ${isReport ? "px-1.5 py-1 text-center" : "px-3 py-2"}`}
           >
             <p
               className={`mb-0.5 truncate font-semibold uppercase tracking-wide text-[var(--text-dimmer)] ${
-                isReport ? "text-[8px]" : "text-[10px]"
+                isReport ? "text-[7px]" : "text-[10px]"
               }`}
             >
               {tMetrics(METRIC_BY_KEY[key].label)}
             </p>
             <p
               className={`truncate font-bold ${
-                isReport ? "text-[11px]" : "text-sm"
+                isReport ? "text-[10px]" : "text-sm"
               } ${key === primaryMetric ? "text-[var(--amber)]" : "text-[var(--text-main)]"}`}
             >
               {formatMetricValue(key, Number(metrics[key] ?? 0), locale)}
@@ -360,7 +360,7 @@ export function CreativeRankingCardSkeleton({ compact = false }: { compact?: boo
       className="overflow-hidden rounded-lg border"
       style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
     >
-      <div className={`skeleton-shimmer w-full ${compact ? "h-28" : "h-40"}`} />
+      <div className={`skeleton-shimmer w-full ${compact ? "report-creative-media min-h-[220px]" : "h-40"}`} />
       <div
         className={`space-y-2 border-b border-[var(--border-color)] ${compact ? "px-2.5 py-2" : "px-4 py-3"}`}
       >
@@ -390,7 +390,7 @@ export function CreativeRankingCardsSkeleton({
 }) {
   return (
     <div
-      className={compact ? "grid grid-cols-3 gap-2 p-2" : "grid gap-4 p-4"}
+      className={compact ? "grid grid-cols-1 gap-4 p-3 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-4 p-4"}
       style={compact ? undefined : { gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}
     >
       {Array.from({ length: count }).map((_, i) => (
