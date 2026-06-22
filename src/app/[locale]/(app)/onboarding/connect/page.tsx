@@ -80,11 +80,7 @@ export default async function ConnectPlatformPage({
 
     }
 
-    redirect(
-
-      `${getAppBaseUrl()}/api/meta/oauth/start?redirectTo=${encodeURIComponent(metaTarget)}`
-
-    );
+    redirect(`/api/meta/oauth/start?redirectTo=${encodeURIComponent(metaTarget)}`);
 
   }
 

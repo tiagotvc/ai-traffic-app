@@ -61,7 +61,7 @@ export async function buildClientReportPdf(input: {
   const margin = 48;
   const { width } = page.getSize();
 
-  page.drawText(input.tenant.brandName ?? input.tenant.name, {
+  page.drawText(sanitizePdfText(input.tenant.brandName ?? input.tenant.name), {
     x: margin,
     y: 800,
     size: 18,
@@ -79,7 +79,7 @@ export async function buildClientReportPdf(input: {
 
   const lines = [
     `Cliente: ${input.client.name}`,
-    `Período: ${start} → ${end}`,
+    `Período: ${start} a ${end}`,
     "",
     `Gastos: R$ ${spend.toFixed(2)}`,
     `Impressões: ${impressions}`,
@@ -92,7 +92,7 @@ export async function buildClientReportPdf(input: {
 
   let y = 690;
   for (const line of lines) {
-    page.drawText(line, { x: margin, y, size: 11, font, color: rgb(0.15, 0.15, 0.2) });
+    page.drawText(sanitizePdfText(line), { x: margin, y, size: 11, font, color: rgb(0.15, 0.15, 0.2) });
     y -= 18;
   }
 
@@ -104,7 +104,7 @@ export async function buildClientReportPdf(input: {
   } else {
     for (const a of alerts) {
       if (y < 80) break;
-      page.drawText(`• ${a.title}: ${a.description}`.slice(0, 90), {
+      page.drawText(sanitizePdfText(`• ${a.title}: ${a.description}`).slice(0, 90), {
         x: margin,
         y,
         size: 9,
@@ -155,7 +155,20 @@ export async function buildClientWhatsappSummary(input: {
 const PDF_PAGE = { w: 595.28, h: 841.89 };
 const PDF_MARGIN = 48;
 
+/** pdf-lib StandardFonts usam WinAnsi — normaliza Unicode para caracteres seguros. */
+function sanitizePdfText(text: string): string {
+  return text
+    .replace(/\u2192/g, " a ") // →
+    .replace(/\u2014/g, " - ") // —
+    .replace(/\u2013/g, "-") // –
+    .replace(/\u2026/g, "...") // …
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[^\t\n\r\u0020-\u00FF]/g, "");
+}
+
 function pdfWrap(text: string, maxChars: number): string[] {
+  const safe = sanitizePdfText(text);
   const out: string[] = [];
   for (const paragraph of text.split(/\n+/)) {
     const words = paragraph.trim().split(/\s+/).filter(Boolean);
@@ -193,7 +206,7 @@ function pdfLine(ctx: PdfCtx, text: string, opts?: { bold?: boolean; size?: numb
   const size = opts?.size ?? 11;
   const gap = opts?.gap ?? 16;
   const next = pdfEnsureSpace(ctx, gap);
-  next.page.drawText(text.slice(0, 120), {
+  next.page.drawText(sanitizePdfText(text).slice(0, 120), {
     x: PDF_MARGIN,
     y: next.y,
     size,
@@ -235,7 +248,7 @@ export async function buildReportPdfFromPreview(input: {
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
   let page = doc.addPage([PDF_PAGE.w, PDF_PAGE.h]);
 
-  page.drawText(tenant.brandName ?? tenant.name, {
+  page.drawText(sanitizePdfText(tenant.brandName ?? tenant.name), {
     x: PDF_MARGIN,
     y: PDF_PAGE.h - PDF_MARGIN,
     size: 16,

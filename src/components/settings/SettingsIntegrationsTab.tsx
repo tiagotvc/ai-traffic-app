@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Link } from "@/i18n/navigation";
 import { MetaSetupCallout } from "@/components/MetaSetupCallout";
+import { MetaOAuthRedirectHint } from "@/components/settings/MetaOAuthRedirectHint";
 
 type WorkspaceMetaInfo = {
   ok: true;
@@ -156,7 +157,7 @@ export function SettingsIntegrationsTab({
         <p className="text-[11px] text-[var(--text-dimmer)]">{t("integrationsPageSubtitle")}</p>
       </div>
 
-      {!metaOAuthConfigured ? <MetaSetupCallout /> : null}
+      {!metaOAuthConfigured ? <MetaSetupCallout /> : <MetaOAuthRedirectHint />}
       {message ? (
         <div className="ui-alert-danger">
           {message}

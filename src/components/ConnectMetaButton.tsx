@@ -2,7 +2,6 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { getAppBaseUrl } from "@/lib/app-url";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
 
 export async function ConnectMetaButton({
@@ -44,9 +43,7 @@ export async function ConnectMetaButton({
         if (!session?.user?.email) {
           redirect(`/${locale}/login?callbackUrl=${encodeURIComponent(target)}`);
         }
-        redirect(
-          `${getAppBaseUrl()}/api/meta/oauth/start?redirectTo=${encodeURIComponent(target)}`
-        );
+        redirect(`/api/meta/oauth/start?redirectTo=${encodeURIComponent(target)}`);
       }}
     >
       <button type="submit" className={btnClass}>

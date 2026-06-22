@@ -9,20 +9,42 @@ import {
 
 const EMPTY: CommandStripPageConfig = {};
 
-/** Compare fields that are safe to use as effect dependencies (not ReactNode slots). */
-function stableFieldsEqual(a: CommandStripPageConfig, b: CommandStripPageConfig) {
+function mergePageConfig(
+  prev: CommandStripPageConfig,
+  next: CommandStripPageConfig
+): CommandStripPageConfig {
+  return {
+    hideFilters: next.hideFilters ?? prev.hideFilters,
+    hideSync: next.hideSync ?? prev.hideSync,
+    periodFilterDisabled: next.periodFilterDisabled ?? prev.periodFilterDisabled,
+    periodFilterDisabledHint: next.periodFilterDisabledHint ?? prev.periodFilterDisabledHint,
+    searchPlaceholder: next.searchPlaceholder ?? prev.searchPlaceholder,
+    searchValue: next.searchValue ?? prev.searchValue,
+    onSearchChange: next.onSearchChange ?? prev.onSearchChange,
+    leadingSlot: next.leadingSlot !== undefined ? next.leadingSlot : prev.leadingSlot,
+    middleTrailingSlot:
+      next.middleTrailingSlot !== undefined ? next.middleTrailingSlot : prev.middleTrailingSlot,
+    trailingSlot: next.trailingSlot !== undefined ? next.trailingSlot : prev.trailingSlot
+  };
+}
+
+function pageConfigEqual(a: CommandStripPageConfig, b: CommandStripPageConfig): boolean {
   return (
     a.hideFilters === b.hideFilters &&
     a.hideSync === b.hideSync &&
+    a.periodFilterDisabled === b.periodFilterDisabled &&
+    a.periodFilterDisabledHint === b.periodFilterDisabledHint &&
     a.searchPlaceholder === b.searchPlaceholder &&
     a.searchValue === b.searchValue &&
-    a.onSearchChange === b.onSearchChange
+    a.onSearchChange === b.onSearchChange &&
+    a.leadingSlot === b.leadingSlot &&
+    a.middleTrailingSlot === b.middleTrailingSlot &&
+    a.trailingSlot === b.trailingSlot
   );
 }
 
 /**
- * Per-route CommandStrip overrides (search slot, hide sync, etc.).
- * ReactNode slots (trailingSlot, etc.) are read from a ref so inline JSX does not retrigger updates every render.
+ * Per-route CommandStrip overrides (search slot, hide sync, trailing actions, etc.).
  */
 export function useCommandStripPage(config: CommandStripPageConfig) {
   const ctx = useCommandStripOptional();
@@ -33,17 +55,22 @@ export function useCommandStripPage(config: CommandStripPageConfig) {
   useEffect(() => {
     if (!setPageConfig) return;
     setPageConfig((prev) => {
-      const next = configRef.current;
-      if (stableFieldsEqual(prev, next)) return prev;
-      return next;
+      const merged = mergePageConfig(prev, configRef.current);
+      if (pageConfigEqual(prev, merged)) return prev;
+      return merged;
     });
   }, [
     setPageConfig,
     config.hideFilters,
     config.hideSync,
+    config.periodFilterDisabled,
+    config.periodFilterDisabledHint,
     config.searchPlaceholder,
     config.searchValue,
-    config.onSearchChange
+    config.onSearchChange,
+    config.leadingSlot,
+    config.middleTrailingSlot,
+    config.trailingSlot
   ]);
 
   useEffect(() => {

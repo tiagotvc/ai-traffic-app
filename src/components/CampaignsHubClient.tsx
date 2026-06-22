@@ -772,18 +772,21 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
               {t("subtitleList")}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => load({ live: true, refresh: true })}
-            className="rounded-lg border px-3 py-2 text-xs font-heading font-semibold transition-all"
-            style={{
-              borderColor: "var(--border-color)",
-              color: "var(--text-dim)",
-              background: "var(--filter-btn-bg)"
-            }}
-          >
-            {t("refreshLive")}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {newCampaignSlot}
+            <button
+              type="button"
+              onClick={() => load({ live: true, refresh: true })}
+              className="rounded-lg border px-3 py-2 text-xs font-heading font-semibold transition-all"
+              style={{
+                borderColor: "var(--border-color)",
+                color: "var(--text-dim)",
+                background: "var(--filter-btn-bg)"
+              }}
+            >
+              {t("refreshLive")}
+            </button>
+          </div>
         </div>
       ) : (
         <DsPageHeader
@@ -801,13 +804,10 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
               >
                 {t("refreshLive")}
               </button>
-              <button
-                type="button"
-                onClick={() => openPanel({ clientSlug: clientFilter || selectedSlug || undefined })}
-                className="ui-btn-primary text-sm"
-              >
+              <Link href="/campaigns/new" className="ui-btn-primary text-sm inline-flex items-center gap-1.5">
+                <Plus size={15} />
                 {t("newCampaign")}
-              </button>
+              </Link>
             </>
           }
         />
