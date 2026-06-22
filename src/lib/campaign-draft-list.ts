@@ -59,7 +59,7 @@ export async function loadCampaignDraftListRows(args: {
   let templates = await repo.find({
     where: { tenantId: args.tenantId },
     order: { updatedAt: "DESC" },
-    take: 50
+    take: 200
   });
 
   if (allowed) {
