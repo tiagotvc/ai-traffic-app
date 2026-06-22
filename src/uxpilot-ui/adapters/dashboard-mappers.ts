@@ -90,6 +90,8 @@ export function toMetricPrismProps(args: {
       trend,
       color: METRIC_BY_KEY[key].color,
       sparkData: series.map((p) => p[key] ?? 0),
+      sparkLabels: series.map((p) => formatDayLabel(p.day, locale)),
+      formatSparkValue: (v: number) => formatMetricValue(key, v, locale),
       subLabel: vsLabel
     };
   });

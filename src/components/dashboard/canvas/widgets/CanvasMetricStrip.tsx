@@ -1,6 +1,11 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import {
+  FONT_FAMILY_CSS,
+  FONT_SIZE_CSS,
+  type SlotVisualConfig
+} from "@/lib/dashboard/slot-visual-config";
 
 export type CanvasMetricItem = {
   label: string;
@@ -11,12 +16,10 @@ export type CanvasMetricItem = {
 
 function TrendBadge({
   change,
-  trend,
-  small
+  trend
 }: {
   change: string;
   trend: "up" | "down" | "neutral";
-  small?: boolean;
 }) {
   const isUp = trend === "up";
   const isNeutral = trend === "neutral";
@@ -24,14 +27,11 @@ function TrendBadge({
 
   return (
     <span
-      className={cn(
-        "flex shrink-0 items-center gap-0.5 rounded font-medium",
-        small ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-xs"
-      )}
+      className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium"
       style={{ background: `${color}15`, color }}
     >
       {!isNeutral ? (
-        <svg className={small ? "h-2 w-2" : "h-2.5 w-2.5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <svg className="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           {isUp ? (
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
           ) : (
@@ -44,45 +44,70 @@ function TrendBadge({
   );
 }
 
-/** Compact metric row for grid widgets — no internal scroll. */
+/** Metric row that stretches to fill the grid cell width. */
 export function CanvasMetricStrip({
   items,
-  isLoading
+  isLoading,
+  visual
 }: {
   items: CanvasMetricItem[];
   isLoading?: boolean;
+  visual?: SlotVisualConfig;
 }) {
   if (isLoading) {
     return (
-      <div className="flex h-full flex-wrap items-center gap-2">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="skeleton-shimmer h-9 w-28 rounded-lg" />
+      <div
+        className="grid h-full w-full gap-2"
+        style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
+      >
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="skeleton-shimmer h-full min-h-[2.5rem] rounded-lg" />
         ))}
       </div>
     );
   }
 
+  if (!items.length) return null;
+
+  const cols = Math.min(Math.max(items.length, 1), 6);
+  const fontFamily = visual?.fontFamily ? FONT_FAMILY_CSS[visual.fontFamily] : undefined;
+  const fontSize = visual?.fontSize ? FONT_SIZE_CSS[visual.fontSize].value : undefined;
+  const textColor = visual?.textColor;
+  const accentColor = visual?.accentColor;
+
   return (
-    <div className="flex h-full flex-wrap items-center gap-2">
+    <div
+      className="grid h-full w-full gap-2"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
       {items.map((m) => (
         <div
           key={m.label}
-          className="flex min-w-0 items-center gap-2 rounded-xl px-3 py-2"
+          className="flex min-h-[2.5rem] min-w-0 flex-col justify-center rounded-lg px-2.5 py-1.5"
           style={{
             background: "var(--surface-bg)",
             border: "1px solid var(--border-color)"
           }}
         >
-          <span className="truncate text-xs" style={{ color: "var(--text-dimmer)" }}>
+          <span
+            className="truncate text-[10px] leading-tight"
+            style={{ color: textColor ?? "var(--text-dimmer)", fontFamily, fontSize }}
+          >
             {m.label}
           </span>
-          <span
-            className="shrink-0 text-sm font-semibold"
-            style={{ color: "var(--text-main)", fontFamily: "var(--font-heading)" }}
-          >
-            {m.value}
-          </span>
-          <TrendBadge change={m.change} trend={m.trend} small />
+          <div className="mt-0.5 flex min-w-0 items-center justify-between gap-1">
+            <span
+              className="truncate text-sm font-semibold leading-tight"
+              style={{
+                color: accentColor ?? textColor ?? "var(--text-main)",
+                fontFamily: fontFamily ?? "var(--font-heading)",
+                fontSize: fontSize ?? undefined
+              }}
+            >
+              {m.value}
+            </span>
+            <TrendBadge change={m.change} trend={m.trend} />
+          </div>
         </div>
       ))}
     </div>

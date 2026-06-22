@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Entitlements, PlanLimits } from "@/lib/billing/types";
+import { isMasterBlasterWidgetType, MASTER_BLASTER_ADDON } from "@/lib/dashboard/master-blaster";
 import { getWidgetDefinition } from "@/lib/dashboard/widget-catalog";
 
 const PLAN_RANK: Record<string, number> = {
@@ -12,6 +13,10 @@ const PLAN_RANK: Record<string, number> = {
   master: 4
 };
 
+export type WidgetPermissionOptions = {
+  platformAdmin?: boolean;
+};
+
 export class DashboardCanvasForbiddenError extends Error {
   code = "DASHBOARD_CANVAS_FORBIDDEN" as const;
   constructor() {
@@ -20,7 +25,8 @@ export class DashboardCanvasForbiddenError extends Error {
   }
 }
 
-export function assertDashboardCanvas(entitlements: Entitlements): void {
+export function assertDashboardCanvas(entitlements: Entitlements, options?: WidgetPermissionOptions): void {
+  if (options?.platformAdmin) return;
   if (!entitlements.limits.allowDashboardCanvas) {
     throw new DashboardCanvasForbiddenError();
   }
@@ -45,19 +51,40 @@ export function canUseAiWidgets(
   return rank[level] >= rank[tier];
 }
 
+function hasAddon(activeAddons: string[], requiredAddon?: string): boolean {
+  if (!requiredAddon) return true;
+  return activeAddons.includes(requiredAddon);
+}
+
 export function assertDashboardWidget(
   entitlements: Entitlements,
   widgetType: string,
-  activeAddons: string[] = []
+  activeAddons: string[] = [],
+  options?: WidgetPermissionOptions
 ): void {
-  assertDashboardCanvas(entitlements);
+  assertDashboardCanvas(entitlements, options);
+  if (options?.platformAdmin) return;
+
   const def = getWidgetDefinition(widgetType);
   if (!def) throw new Error(`Unknown widget type: ${widgetType}`);
-  if (def.comingSoon) throw new Error("Widget not available yet");
+
+  const isMasterBlaster = isMasterBlasterWidgetType(widgetType) || def.requiredAddon === MASTER_BLASTER_ADDON;
+
+  if (def.comingSoon && !isMasterBlaster) {
+    throw new Error("Widget not available yet");
+  }
+
+  if (isMasterBlaster) {
+    if (!hasAddon(activeAddons, MASTER_BLASTER_ADDON)) {
+      throw new Error("Widget requires Master Blaster add-on");
+    }
+    return;
+  }
+
   if (def.minPlan && !meetsMinPlan(entitlements.planSlug, def.minPlan)) {
     throw new Error("Widget requires a higher plan");
   }
-  if (def.requiredAddon && !activeAddons.includes(def.requiredAddon)) {
+  if (def.requiredAddon && !hasAddon(activeAddons, def.requiredAddon)) {
     throw new Error("Widget requires an add-on");
   }
   if (def.isAiWidget && !canUseAiWidgets(entitlements.limits, "basic")) {
@@ -71,10 +98,11 @@ export function assertDashboardWidget(
 export function isWidgetAllowedForPlan(
   entitlements: Entitlements,
   widgetType: string,
-  activeAddons: string[] = []
+  activeAddons: string[] = [],
+  options?: WidgetPermissionOptions
 ): boolean {
   try {
-    assertDashboardWidget(entitlements, widgetType, activeAddons);
+    assertDashboardWidget(entitlements, widgetType, activeAddons, options);
     return true;
   } catch {
     return false;

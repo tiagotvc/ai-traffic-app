@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
 import {
-  getActiveDashboardAddons,
+  getEffectiveDashboardAddons,
   getLayoutWithWidgets,
   saveLayoutWidgets
 } from "@/lib/dashboard/dashboard-canvas-service";
@@ -58,13 +58,13 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { tenant, user, entitlements } = await getAppContext();
-    assertDashboardCanvas(entitlements);
+    const { tenant, user, entitlements, platformAdmin } = await getAppContext();
+    assertDashboardCanvas(entitlements, { platformAdmin });
     const body = PutSchema.parse(await req.json().catch(() => ({})));
-    const addons = await getActiveDashboardAddons(tenant.id);
+    const addons = await getEffectiveDashboardAddons(tenant.id, platformAdmin);
 
     for (const w of body.widgets) {
-      assertDashboardWidget(entitlements, w.widgetType, addons);
+      assertDashboardWidget(entitlements, w.widgetType, addons, { platformAdmin });
     }
 
     const layout = await saveLayoutWidgets(

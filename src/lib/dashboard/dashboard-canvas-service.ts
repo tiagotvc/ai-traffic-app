@@ -1,10 +1,11 @@
 import "server-only";
 
-import { In } from "typeorm";
+import { In, IsNull } from "typeorm";
 
 import type { DashboardWidgetInstance } from "@/db/entities/DashboardWidgetInstance";
 import { repositories } from "@/db/repositories";
 import { slugify } from "@/lib/app-context";
+import { isUuid } from "@/lib/uuid";
 import type { Entitlements } from "@/lib/billing/types";
 import {
   DEFAULT_DASHBOARD_LAYOUT,
@@ -13,7 +14,8 @@ import {
 } from "@/lib/dashboard-layout-prefs";
 import {
   maxDashboardsForPlan,
-  maxWidgetsForPlan
+  maxWidgetsForPlan,
+  assertDashboardCanvas
 } from "@/lib/dashboard/dashboard-widget-permissions";
 import type { LayoutDto, WidgetInstanceDto, WidgetSize } from "@/lib/dashboard/widget-catalog";
 import { getWidgetDefinition, WIDGET_BY_TYPE } from "@/lib/dashboard/widget-catalog";
@@ -25,6 +27,9 @@ import {
   getUserDashboardChartMetrics,
   getUserDashboardLayout
 } from "@/lib/user-dashboard-prefs";
+import {
+  SYSTEM_DASHBOARD_TEMPLATE_CATALOG
+} from "@/lib/dashboard/dashboard-system-templates";
 
 function toWidgetDto(row: DashboardWidgetInstance): WidgetInstanceDto {
   return {
@@ -92,7 +97,7 @@ function defaultWidgetsFromLegacyPrefs(
         h: 4,
         size: "lg",
         visible: true,
-        config: { chartMetrics },
+        config: { chartMetrics, chartStyle: "area" },
         sortOrder: items.length
       });
     }
@@ -103,23 +108,90 @@ function defaultWidgetsFromLegacyPrefs(
         x: sections.chart ? 8 : 0,
         y: chartY,
         w: sections.chart ? 4 : 12,
-        h: 4,
+        h: 5,
         size: "md",
         visible: true,
-        config: {},
+        config: { density: "stacked" },
         sortOrder: items.length
       });
     }
-    y = chartY + 4;
+    y = chartY + (sections.alerts ? 5 : 4);
   }
-  if (sections.agencyHealth) push("clients.health", 12, 4);
+  if (sections.agencyHealth) {
+    push("clients.health", 12, 6, { view: "full" });
+  }
 
   if (!items.length) {
     push("metrics.heroKpis", 12, 3);
-    push("chart.performance", 12, 4, { chartMetrics });
+    push("chart.performance", 12, 4, { chartMetrics, chartStyle: "area" });
   }
 
   return items;
+}
+
+/** Widgets for the classic V2-style default dashboard (Principal). */
+export async function buildDefaultLayoutWidgets(
+  tenantId: string,
+  userId: string
+): Promise<Omit<WidgetInstanceDto, "id" | "layoutId">[]> {
+  const [prefs, chartMetrics] = await Promise.all([
+    getUserDashboardLayout(tenantId, userId),
+    getUserDashboardChartMetrics(tenantId, userId)
+  ]);
+  return defaultWidgetsFromLegacyPrefs(
+    prefs ?? DEFAULT_DASHBOARD_LAYOUT,
+    chartMetrics ?? DEFAULT_DASHBOARD_CHART_METRICS
+  );
+}
+
+export async function resetDashboardLayoutToDefault(
+  layoutId: string,
+  tenantId: string,
+  userId: string,
+  entitlements: Entitlements
+): Promise<LayoutDto> {
+  assertDashboardCanvas(entitlements);
+  const draft = await buildDefaultLayoutWidgets(tenantId, userId);
+  const widgets: WidgetInstanceDto[] = draft.map((d, i) => ({
+    ...d,
+    id: `reset-${Date.now()}-${i}`,
+    layoutId
+  }));
+  return saveLayoutWidgets(layoutId, tenantId, userId, entitlements, widgets);
+}
+
+export async function applyTemplateToLayout(
+  layoutId: string,
+  templateId: string,
+  tenantId: string,
+  userId: string,
+  entitlements: Entitlements
+): Promise<LayoutDto> {
+  assertDashboardCanvas(entitlements);
+  const { dashboardTemplate: templateRepo } = await repositories();
+  const template = await templateRepo.findOne({ where: { id: templateId } });
+  if (!template || !Array.isArray(template.widgets)) {
+    throw new Error("Template not found");
+  }
+
+  const widgets: WidgetInstanceDto[] = (
+    template.widgets as Array<Record<string, unknown>>
+  ).map((w, i) => ({
+    id: `tpl-${Date.now()}-${i}`,
+    layoutId,
+    widgetType: String(w.widgetType ?? "metrics.heroKpis"),
+    title: null,
+    x: Number(w.x ?? 0),
+    y: Number(w.y ?? i * 2),
+    w: Number(w.w ?? 6),
+    h: Number(w.h ?? 2),
+    size: String(w.size ?? "md") as WidgetSize,
+    visible: w.visible !== false,
+    config: (w.config as Record<string, unknown>) ?? {},
+    sortOrder: i
+  }));
+
+  return saveLayoutWidgets(layoutId, tenantId, userId, entitlements, widgets);
 }
 
 export async function migrateLegacyLayoutIfNeeded(
@@ -309,7 +381,7 @@ export async function saveLayoutWidgets(
 
   const rows = widgets.map((w, i) =>
     widgetRepo.create({
-      id: w.id.startsWith("new-") ? undefined : w.id,
+      id: isUuid(w.id) ? w.id : undefined,
       layoutId,
       widgetType: w.widgetType,
       title: w.title,
@@ -328,12 +400,31 @@ export async function saveLayoutWidgets(
   return (await getLayoutWithWidgets(layoutId, tenantId, userId))!;
 }
 
-export async function listDashboardTemplates(tenantId: string | null = null) {
+export async function listDashboardTemplates(tenantId: string) {
   const { dashboardTemplate: templateRepo } = await repositories();
-  return templateRepo.find({
-    where: [{ tenantId: null as unknown as string, isSystem: true }, { tenantId: tenantId ?? undefined }],
-    order: { name: "ASC" }
-  });
+  const [system, tenant] = await Promise.all([
+    templateRepo.find({ where: { tenantId: IsNull(), isSystem: true }, order: { name: "ASC" } }),
+    templateRepo.find({ where: { tenantId, isSystem: false }, order: { name: "ASC" } })
+  ]);
+  const dedupedSystem = dedupeTemplatesByName(system);
+  return [...dedupedSystem, ...tenant];
+}
+
+function dedupeTemplatesByName<T extends { id: string; name: string; updatedAt?: Date }>(rows: T[]): T[] {
+  const byName = new Map<string, T>();
+  for (const row of rows) {
+    const prev = byName.get(row.name);
+    if (!prev) {
+      byName.set(row.name, row);
+      continue;
+    }
+    const prevTime = prev.updatedAt?.getTime() ?? 0;
+    const rowTime = row.updatedAt?.getTime() ?? 0;
+    if (rowTime >= prevTime) {
+      byName.set(row.name, row);
+    }
+  }
+  return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getActiveDashboardAddons(tenantId: string): Promise<string[]> {
@@ -343,6 +434,17 @@ export async function getActiveDashboardAddons(tenantId: string): Promise<string
   return rows
     .filter((r) => !r.expiresAt || r.expiresAt.getTime() > now)
     .map((r) => r.addonKey);
+}
+
+export async function getEffectiveDashboardAddons(
+  tenantId: string,
+  platformAdmin = false
+): Promise<string[]> {
+  if (platformAdmin) {
+    const { MASTER_BLASTER_ADDON } = await import("@/lib/dashboard/master-blaster");
+    return [MASTER_BLASTER_ADDON];
+  }
+  return getActiveDashboardAddons(tenantId);
 }
 
 export async function seedWidgetPermissionsIfEmpty() {
@@ -362,50 +464,67 @@ export async function seedWidgetPermissionsIfEmpty() {
   await repo.save(seeds);
 }
 
-export async function seedSystemTemplatesIfEmpty() {
+export async function ensureSystemDashboardTemplates() {
   const { dashboardTemplate: repo } = await repositories();
-  const count = await repo.count({ where: { isSystem: true } });
-  if (count > 0) return;
+  let existing = await repo.find({ where: { isSystem: true } });
 
-  const templates = [
-    {
-      name: "Meta Ads Performance",
-      category: "performance",
-      minPlanSlug: "advanced",
-      widgets: defaultWidgetsFromLegacyPrefs(DEFAULT_DASHBOARD_LAYOUT, DEFAULT_DASHBOARD_CHART_METRICS)
-    },
-    {
-      name: "Agency Brain",
-      category: "agency-brain",
-      minPlanSlug: "advanced",
-      widgets: [
-        { widgetType: "ai.agencyBrain", x: 0, y: 0, w: 12, h: 5, size: "xl", config: {} },
-        { widgetType: "ai.recentLearnings", x: 0, y: 5, w: 12, h: 3, size: "lg", config: {} },
-        { widgetType: "alerts.feed", x: 0, y: 8, w: 12, h: 3, size: "md", config: {} }
-      ]
-    },
-    {
-      name: "Executivo",
-      category: "executive",
-      minPlanSlug: "agency",
-      widgets: [
-        { widgetType: "metrics.heroKpis", x: 0, y: 0, w: 12, h: 3, size: "lg", config: {} },
-        { widgetType: "ai.accountHealth", x: 0, y: 3, w: 4, h: 3, size: "md", config: {} },
-        { widgetType: "chart.performance", x: 4, y: 3, w: 8, h: 4, size: "lg", config: {} }
-      ]
+  const dupes: typeof existing = [];
+  const groups = new Map<string, typeof existing>();
+  for (const row of existing) {
+    const g = groups.get(row.name) ?? [];
+    g.push(row);
+    groups.set(row.name, g);
+  }
+  for (const [, rows] of groups) {
+    if (rows.length <= 1) continue;
+    rows.sort((a, b) => (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0));
+    dupes.push(...rows.slice(1));
+  }
+  if (dupes.length) {
+    await repo.remove(dupes);
+    const dupeIds = new Set(dupes.map((d) => d.id));
+    existing = existing.filter((r) => !dupeIds.has(r.id));
+  }
+
+  const byName = new Map(existing.map((t) => [t.name, t]));
+  const catalogNames = new Set(SYSTEM_DASHBOARD_TEMPLATE_CATALOG.map((t) => t.name));
+
+  const toSave = [];
+
+  for (const spec of SYSTEM_DASHBOARD_TEMPLATE_CATALOG) {
+    const row = byName.get(spec.name);
+    const specJson = JSON.stringify(spec.widgets);
+
+    if (!row) {
+      toSave.push(
+        repo.create({
+          tenantId: null,
+          name: spec.name,
+          category: spec.category,
+          minPlanSlug: spec.minPlanSlug,
+          widgets: spec.widgets,
+          isSystem: true
+        })
+      );
+      continue;
     }
-  ];
 
-  await repo.save(
-    templates.map((t) =>
-      repo.create({
-        tenantId: null,
-        name: t.name,
-        category: t.category,
-        minPlanSlug: t.minPlanSlug,
-        widgets: t.widgets,
-        isSystem: true
-      })
-    )
-  );
+    const curJson = JSON.stringify(row.widgets ?? []);
+    if (curJson !== specJson) {
+      row.widgets = spec.widgets;
+      row.category = spec.category;
+      row.minPlanSlug = spec.minPlanSlug;
+      toSave.push(row);
+    }
+  }
+
+  if (toSave.length) await repo.save(toSave);
+
+  const stale = existing.filter((t) => t.isSystem && !catalogNames.has(t.name));
+  if (stale.length) await repo.remove(stale);
+}
+
+/** @deprecated use ensureSystemDashboardTemplates */
+export async function seedSystemTemplatesIfEmpty() {
+  await ensureSystemDashboardTemplates();
 }

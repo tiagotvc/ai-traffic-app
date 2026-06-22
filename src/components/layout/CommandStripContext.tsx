@@ -19,6 +19,8 @@ type AdAccountOpt = { id: string; label: string };
 export type CommandStripPageConfig = {
   hideFilters?: boolean;
   hideSync?: boolean;
+  periodFilterDisabled?: boolean;
+  periodFilterDisabledHint?: string;
   searchPlaceholder?: string;
   searchValue?: string;
   onSearchChange?: (value: string) => void;

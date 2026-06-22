@@ -28,11 +28,15 @@ const STRIP_PRESETS = ["last7", "last14", "last30", "thisMonth", "thisQuarter"] 
 export function PeriodFilter({
   value,
   onChange,
-  variant = "default"
+  variant = "default",
+  disabled = false,
+  disabledHint
 }: {
   value: PeriodState;
   onChange: (next: PeriodState) => void;
   variant?: "default" | "commandStrip";
+  disabled?: boolean;
+  disabledHint?: string;
 }) {
   const t = useTranslations("period");
   const locale = useLocale();
@@ -132,11 +136,19 @@ export function PeriodFilter({
     <div ref={ref} className={isStrip ? "relative inline-block" : "relative"}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        title={disabled ? disabledHint : undefined}
         className={
           isStrip
-            ? "flex w-full items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-all duration-200"
-            : "flex items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2 text-sm text-[var(--text-dim)] shadow-sm hover:bg-[var(--surface-bg)]"
+            ? cn(
+                "flex w-full items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-all duration-200",
+                disabled && "cursor-not-allowed opacity-45"
+              )
+            : cn(
+                "flex items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2 text-sm text-[var(--text-dim)] shadow-sm hover:bg-[var(--surface-bg)]",
+                disabled && "cursor-not-allowed opacity-45"
+              )
         }
         style={
           isStrip

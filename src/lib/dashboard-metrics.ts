@@ -64,6 +64,9 @@ export const QUICK_METRICS: MetricKey[] = [
 
 export const MAX_CHART_METRICS = 3;
 
+/** Limite de métricas por widget de gráfico no canvas (independente das prefs V2). */
+export const MAX_CANVAS_CHART_METRICS = 6;
+
 export const DEFAULT_DASHBOARD_CHART_METRICS: MetricKey[] = ["spend", "conversions"];
 
 export const DEFAULT_DASHBOARD_CLIENT_METRIC: MetricKey = "roas";

@@ -20,10 +20,12 @@ export type IntelligenceEvent = {
 
 export function LiveIntelligenceFeed({
   events,
-  isLoading
+  isLoading,
+  variant = "stacked"
 }: {
   events: IntelligenceEvent[];
   isLoading?: boolean;
+  variant?: "stacked" | "inline";
 }) {
   const t = useTranslations("dashboard");
   const [filter, setFilter] = useState<"all" | "critical" | "win">("all");
@@ -98,7 +100,10 @@ export function LiveIntelligenceFeed({
       </div>
 
       <div
-        className="flex flex-1 flex-col gap-3 overflow-y-auto pr-0.5"
+        className={cn(
+          "flex flex-1 flex-col overflow-y-auto pr-0.5",
+          variant === "inline" ? "gap-1" : "gap-3"
+        )}
         style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
       >
         {filtered.length === 0 ? (
@@ -107,7 +112,50 @@ export function LiveIntelligenceFeed({
           </p>
         ) : null}
         {filtered.map((alert, i) => {
-          const inner = (
+          const inner =
+            variant === "inline" ? (
+              <div
+                className={cn(
+                  "group flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-all",
+                  alert.pulse && "animate-pulse-red"
+                )}
+                style={{
+                  background: alert.bg,
+                  border: `1px solid ${alert.color}18`
+                }}
+              >
+                <div
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded"
+                  style={{ background: `${alert.color}18` }}
+                >
+                  <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke={alert.color} strokeWidth={2}>
+                    {alert.type === "win" ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                    ) : (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    )}
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-semibold" style={{ color: "var(--text-main)" }}>
+                    <span>{alert.title}</span>
+                    <span className="mx-1 font-normal" style={{ color: "var(--text-dimmer)" }}>
+                      ·
+                    </span>
+                    <span className="font-normal" style={{ color: "var(--text-dim)" }}>
+                      {alert.detail}
+                    </span>
+                  </p>
+                </div>
+                <span className="shrink-0 text-[10px]" style={{ color: "var(--text-dimmer)" }}>
+                  {alert.time}
+                </span>
+              </div>
+            ) : (
             <div
               className={cn(
                 "group flex animate-slide-in cursor-pointer items-start gap-2.5 rounded-xl p-2.5 transition-all",
@@ -175,7 +223,7 @@ export function LiveIntelligenceFeed({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </div>
-          );
+            );
 
           return alert.href ? (
             <Link key={alert.id} href={alert.href} className="block">

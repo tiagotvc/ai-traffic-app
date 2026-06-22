@@ -32,6 +32,8 @@ export function CommandStrip() {
   const {
     hideFilters = false,
     hideSync = false,
+    periodFilterDisabled = false,
+    periodFilterDisabledHint,
     searchPlaceholder,
     searchValue = "",
     onSearchChange,
@@ -122,7 +124,13 @@ export function CommandStrip() {
                 options={adAccounts.map((a) => ({ value: a.id, label: a.label }))}
               />
 
-              <PeriodFilter value={period} onChange={setPeriod} variant="commandStrip" />
+              <PeriodFilter
+                value={period}
+                onChange={setPeriod}
+                variant="commandStrip"
+                disabled={periodFilterDisabled}
+                disabledHint={periodFilterDisabledHint}
+              />
             </>
           ) : null}
         </div>

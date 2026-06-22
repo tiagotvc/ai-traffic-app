@@ -10,9 +10,15 @@ import { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 
 export function DashboardCanvasLive() {
   const t = useTranslations("dashboard");
+  const tWidgets = useTranslations("dashboardWidgets");
   const data = useDashboardData();
   const canvas = useDashboardCanvas();
-  const [templates, setTemplates] = useState<Array<{ id: string; name: string }>>([]);
+  const [resetting, setResetting] = useState(false);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<
+    Array<{ id: string; name: string; category?: string; widgets?: unknown }>
+  >([]);
   const [limits, setLimits] = useState({
     maxDashboards: 3,
     maxDashboardWidgets: 20,
@@ -25,7 +31,16 @@ export function DashboardCanvasLive() {
       .then((r) => r.json())
       .then((j) => {
         if (j.ok && Array.isArray(j.templates)) {
-          setTemplates(j.templates.map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })));
+          setTemplates(
+            j.templates.map(
+              (x: { id: string; name: string; category?: string; widgets?: unknown }) => ({
+                id: x.id,
+                name: x.name,
+                category: x.category,
+                widgets: x.widgets
+              })
+            )
+          );
         }
       })
       .catch(() => {});
@@ -37,17 +52,7 @@ export function DashboardCanvasLive() {
       .catch(() => {});
   }, []);
 
-  if (canvas.loading || data.loading) {
-    return (
-      <main className="flex-1 px-4 py-5 md:px-6">
-        <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-          {t("loadingMetrics")}
-        </p>
-      </main>
-    );
-  }
-
-  if (data.isEmptyState) {
+  if (!data.loading && data.isEmptyState) {
     return (
       <main className="flex-1 space-y-4 overflow-y-auto px-4 py-5 md:px-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -71,15 +76,42 @@ export function DashboardCanvasLive() {
       style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
     >
       <DashboardCanvas
+        layoutLoading={canvas.loading}
         activeLayout={canvas.activeLayout}
         editMode={canvas.editMode}
         setEditMode={canvas.setEditMode}
         catalog={canvas.catalog}
+        isPlatformAdmin={canvas.isPlatformAdmin}
         limits={limits}
         dashboardData={data}
         onLayoutChange={canvas.updateLayoutFromGrid}
         onRemoveWidget={canvas.removeWidget}
         onAddWidget={canvas.addWidget}
+        onWidgetConfigChange={canvas.updateWidgetConfig}
+        saving={canvas.saving}
+        layoutRevision={canvas.layoutRevision}
+        resetting={resetting}
+        applyingTemplate={applyingTemplate}
+        actionError={actionError}
+        onClearActionError={() => setActionError(null)}
+        onResetLayout={async () => {
+          setResetting(true);
+          setActionError(null);
+          const result = await canvas.resetLayoutToDefault();
+          setResetting(false);
+          if (!result.ok) {
+            setActionError(tWidgets("resetLayoutError"));
+          }
+        }}
+        onApplyTemplate={async (templateId) => {
+          setApplyingTemplate(true);
+          setActionError(null);
+          const result = await canvas.applyTemplate(templateId);
+          setApplyingTemplate(false);
+          if (!result.ok) {
+            setActionError(tWidgets("templateApplyError"));
+          }
+        }}
         layouts={canvas.layouts}
         activeLayoutId={canvas.activeLayoutId}
         setActiveLayoutId={canvas.setActiveLayoutId}

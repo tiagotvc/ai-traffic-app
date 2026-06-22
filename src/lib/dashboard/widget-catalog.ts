@@ -1,10 +1,13 @@
+import { MASTER_BLASTER_ADDON } from "@/lib/dashboard/master-blaster";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 
 export type WidgetSize = "xs" | "sm" | "md" | "lg" | "xl";
 
 export type WidgetCategory =
   | "favorites"
+  | "premium"
   | "metrics"
+  | "layouts"
   | "charts"
   | "ai"
   | "campaigns"
@@ -102,9 +105,12 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     type: "metrics.heroKpis",
     titleKey: "heroKpis",
     category: "metrics",
-    size: "lg",
+    size: "sm",
+    minW: 3,
+    maxW: 12,
     minH: 2,
-    defaultH: 2,
+    defaultH: 3,
+    defaultW: 12,
     dataSource: "metricPrism",
     component: "HeroKpisWidget"
   }),
@@ -112,38 +118,76 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     type: "metrics.quickPills",
     titleKey: "quickMetrics",
     category: "metrics",
-    size: "md",
-    minH: 2,
-    defaultH: 2,
+    size: "xs",
+    minW: 3,
+    maxW: 12,
+    minH: 1,
+    defaultH: 1,
+    defaultW: 8,
     dataSource: "metricPrism",
     component: "QuickPillsWidget"
+  }),
+  def({
+    type: "metrics.card",
+    titleKey: "metricCard",
+    category: "metrics",
+    size: "xs",
+    minW: 2,
+    maxW: 6,
+    minH: 2,
+    defaultH: 3,
+    defaultW: 3,
+    dataSource: "singleMetric",
+    component: "SingleMetricWidget",
+    defaultConfig: { metricKey: "spend", cardStyle: "centered" }
+  }),
+  def({
+    type: "layout.taskbar",
+    titleKey: "compositeBar",
+    category: "layouts",
+    size: "md",
+    minW: 4,
+    maxW: 12,
+    minH: 2,
+    defaultH: 2,
+    defaultW: 12,
+    dataSource: "taskbar",
+    component: "TaskbarWidget",
+    defaultConfig: { orientation: "horizontal", slots: [] }
   }),
   def({
     type: "chart.performance",
     titleKey: "performanceChart",
     category: "charts",
     size: "lg",
+    minH: 3,
     defaultH: 4,
+    defaultW: 8,
     dataSource: "performanceChart",
-    component: "PerformanceChartWidget"
+    component: "PerformanceChartWidget",
+    defaultConfig: { chartStyle: "area", chartMetrics: ["spend", "conversions"], barLayout: "vertical" }
   }),
   def({
     type: "alerts.feed",
     titleKey: "alertsFeed",
     category: "alerts",
     size: "md",
-    defaultH: 4,
+    minH: 3,
+    defaultH: 5,
     dataSource: "alertsFeed",
-    component: "AlertsFeedWidget"
+    component: "AlertsFeedWidget",
+    defaultConfig: { density: "stacked" }
   }),
   def({
     type: "clients.health",
     titleKey: "clientsHealth",
     category: "clients",
     size: "lg",
-    defaultH: 4,
+    minH: 3,
+    defaultH: 6,
     dataSource: "agencyHealth",
-    component: "AgencyHealthWidget"
+    component: "AgencyHealthWidget",
+    defaultConfig: { view: "full" }
   }),
   def({
     type: "ai.agencyBrain",
@@ -183,11 +227,15 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
       type: `metric.single.${metricKey}`,
       titleKey: `metric_${metricKey}`,
       category: "metrics",
-      size: "sm",
-      defaultH: 2,
+      size: "xs",
+      minW: 2,
+      maxW: 6,
+      minH: 2,
+      defaultH: 3,
+      defaultW: 3,
       dataSource: "singleMetric",
       component: "SingleMetricWidget",
-      defaultConfig: { metricKey }
+      defaultConfig: { metricKey, cardStyle: "centered" }
     })
   ),
   def({
@@ -195,19 +243,89 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     titleKey: "chartRoasCpa",
     category: "charts",
     size: "lg",
+    minH: 3,
+    defaultH: 4,
     dataSource: "dualMetricChart",
     component: "DualMetricChartWidget",
-    defaultConfig: { metricA: "roas", metricB: "cpa" },
-    comingSoon: false
+    defaultConfig: { metricA: "roas", metricB: "cpa", chartStyle: "area" }
   }),
   def({
     type: "chart.spendConversions",
     titleKey: "chartSpendConversions",
     category: "charts",
     size: "lg",
+    minH: 3,
+    defaultH: 4,
     dataSource: "dualMetricChart",
     component: "DualMetricChartWidget",
-    defaultConfig: { metricA: "spend", metricB: "conversions" }
+    defaultConfig: { metricA: "spend", metricB: "conversions", chartStyle: "area" }
+  }),
+  def({
+    type: "chart.impressionsClicks",
+    titleKey: "chartImpressionsClicks",
+    category: "charts",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    dataSource: "dualMetricChart",
+    component: "DualMetricChartWidget",
+    defaultConfig: { metricA: "impressions", metricB: "clicks", chartStyle: "area" }
+  }),
+  def({
+    type: "chart.ctrCpc",
+    titleKey: "chartCtrCpc",
+    category: "charts",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    dataSource: "dualMetricChart",
+    component: "DualMetricChartWidget",
+    defaultConfig: { metricA: "ctr", metricB: "cpc", chartStyle: "line" }
+  }),
+  def({
+    type: "chart.spendRoas",
+    titleKey: "chartSpendRoas",
+    category: "charts",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    dataSource: "dualMetricChart",
+    component: "DualMetricChartWidget",
+    defaultConfig: { metricA: "spend", metricB: "roas", chartStyle: "area" }
+  }),
+  def({
+    type: "chart.reachFrequency",
+    titleKey: "chartReachFrequency",
+    category: "charts",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    dataSource: "dualMetricChart",
+    component: "DualMetricChartWidget",
+    defaultConfig: { metricA: "reach", metricB: "frequency", chartStyle: "line" }
+  }),
+  def({
+    type: "chart.cpmCpa",
+    titleKey: "chartCpmCpa",
+    category: "charts",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    dataSource: "dualMetricChart",
+    component: "DualMetricChartWidget",
+    defaultConfig: { metricA: "cpm", metricB: "cpa", chartStyle: "bar" }
+  }),
+  def({
+    type: "chart.compare",
+    titleKey: "chartCompare",
+    category: "charts",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    defaultW: 8,
+    dataSource: "dualMetricChart",
+    component: "DualMetricChartWidget",
+    defaultConfig: { metricA: "spend", metricB: "roas", chartStyle: "area", barLayout: "vertical" }
   }),
   def({
     type: "campaigns.top",
@@ -248,33 +366,75 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
   def({
     type: "advanced.scatter",
     titleKey: "scatterPlot",
-    category: "advanced",
+    category: "premium",
     size: "lg",
+    minH: 3,
+    defaultH: 4,
+    defaultW: 6,
     dataSource: "scatterPlot",
     component: "ScatterWidget",
-    comingSoon: true,
-    minPlan: "agency"
+    requiredAddon: MASTER_BLASTER_ADDON,
+    defaultConfig: { metricX: "spend", metricY: "roas", pointSize: "medium" }
   }),
   def({
     type: "advanced.heatmap",
     titleKey: "heatmap",
-    category: "advanced",
+    category: "premium",
     size: "lg",
+    minH: 3,
+    defaultH: 4,
+    defaultW: 8,
     dataSource: "heatmap",
     component: "HeatmapWidget",
-    comingSoon: true,
-    requiredAddon: "heatmaps"
+    requiredAddon: MASTER_BLASTER_ADDON,
+    defaultConfig: { heatmapMetric: "spend", cellScale: "auto" }
   }),
   def({
     type: "ai.correlation",
     titleKey: "aiCorrelation",
-    category: "ai",
+    category: "premium",
     size: "lg",
+    minH: 3,
+    defaultH: 4,
+    defaultW: 6,
     isAiWidget: true,
-    minPlan: "master",
     dataSource: "aiCorrelation",
     component: "AiCorrelationWidget",
-    comingSoon: true
+    requiredAddon: MASTER_BLASTER_ADDON,
+    defaultConfig: { metricA: "spend", metricB: "conversions", showTrend: true }
+  }),
+  def({
+    type: "premium.multiChart",
+    titleKey: "premiumMultiChart",
+    category: "premium",
+    size: "xl",
+    minH: 4,
+    defaultH: 5,
+    defaultW: 12,
+    dataSource: "performanceChart",
+    component: "PerformanceChartWidget",
+    requiredAddon: MASTER_BLASTER_ADDON,
+    defaultConfig: {
+      chartStyle: "area",
+      chartMetrics: ["spend", "roas", "conversions", "ctr"],
+      barLayout: "vertical"
+    }
+  }),
+  def({
+    type: "premium.metricMatrix",
+    titleKey: "premiumMetricMatrix",
+    category: "premium",
+    size: "lg",
+    minH: 3,
+    defaultH: 4,
+    defaultW: 12,
+    dataSource: "taskbar",
+    component: "TaskbarWidget",
+    requiredAddon: MASTER_BLASTER_ADDON,
+    defaultConfig: {
+      orientation: "horizontal",
+      slots: []
+    }
   })
 ];
 
@@ -293,7 +453,9 @@ export function getWidgetDefinition(type: string): DashboardWidgetDefinition | u
 
 export const WIDGET_CATEGORY_ORDER: WidgetCategory[] = [
   "favorites",
+  "premium",
   "metrics",
+  "layouts",
   "charts",
   "ai",
   "campaigns",

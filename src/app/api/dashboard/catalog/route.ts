@@ -1,27 +1,36 @@
 import { NextResponse } from "next/server";
 
 import { getAppContext } from "@/lib/app-context";
-import { getActiveDashboardAddons } from "@/lib/dashboard/dashboard-canvas-service";
+import { getEffectiveDashboardAddons } from "@/lib/dashboard/dashboard-canvas-service";
 import {
   assertDashboardCanvas,
   DashboardCanvasForbiddenError,
   isWidgetAllowedForPlan
 } from "@/lib/dashboard/dashboard-widget-permissions";
+import { MASTER_BLASTER_ADDON } from "@/lib/dashboard/master-blaster";
 import { WIDGET_CATALOG, WIDGET_CATEGORY_ORDER } from "@/lib/dashboard/widget-catalog";
 
 export async function GET() {
   try {
-    const { tenant, entitlements } = await getAppContext();
-    assertDashboardCanvas(entitlements);
-    const addons = await getActiveDashboardAddons(tenant.id);
+    const { tenant, entitlements, platformAdmin } = await getAppContext();
+    assertDashboardCanvas(entitlements, { platformAdmin });
+    const addons = await getEffectiveDashboardAddons(tenant.id, platformAdmin);
 
     const widgets = WIDGET_CATALOG.map((w) => ({
-      ...w,
-      allowed: isWidgetAllowedForPlan(entitlements, w.type, addons)
+      type: w.type,
+      titleKey: w.titleKey,
+      category: w.category,
+      allowed: isWidgetAllowedForPlan(entitlements, w.type, addons, { platformAdmin }),
+      comingSoon: w.comingSoon ?? false,
+      isAiWidget: w.isAiWidget ?? false,
+      minPlan: w.minPlan,
+      requiredAddon: w.requiredAddon,
+      isMasterBlaster: w.requiredAddon === MASTER_BLASTER_ADDON
     }));
 
     return NextResponse.json({
       ok: true,
+      isPlatformAdmin: platformAdmin,
       categories: WIDGET_CATEGORY_ORDER,
       widgets,
       limits: {
