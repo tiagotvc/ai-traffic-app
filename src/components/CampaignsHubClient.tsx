@@ -23,7 +23,7 @@ import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { CampaignDraftMobileCards, CampaignMobileCards } from "@/components/campaigns/CampaignMobileCards";
 import { Badge } from "@/components/ui/Badge";
-import { IconLabelButton, IconLabelLink } from "@/components/ui/IconLabelButton";
+import { IconLabelButton } from "@/components/ui/IconLabelButton";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
@@ -114,7 +114,7 @@ function statusVariant(status?: string): "success" | "warning" | "neutral" {
   return "neutral";
 }
 
-function campaignDetailHref(row: CampaignRow): string {
+function campaignDetailHref(row: { metaCampaignId: string; clientSlug: string }): string {
   return `/campaigns/${row.metaCampaignId}?client=${encodeURIComponent(row.clientSlug)}`;
 }
 
@@ -122,7 +122,7 @@ function isDraftRow(row: CampaignRow): boolean {
   return Boolean(row.isDraft) || row.metaCampaignId.startsWith("draft:");
 }
 
-function draftTemplateIdFromRow(row: CampaignRow): string {
+function draftTemplateIdFromRow(row: { metaCampaignId: string; draftTemplateId?: string }): string {
   return row.draftTemplateId ?? row.metaCampaignId.replace(/^draft:/, "");
 }
 
@@ -267,31 +267,18 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
   const newCampaignSlot = useMemo(
     () => (
-<<<<<<< Updated upstream
-      <IconLabelLink
-        href="/campaigns/new"
+      <IconLabelButton
+        type="button"
+        onClick={() => setCreationPickerOpen(true)}
         label={t("newCampaign")}
         icon={<Plus size={16} />}
         className="flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95 sm:h-auto sm:w-auto sm:gap-1.5 sm:px-4 sm:py-2"
-=======
-      <button
-        type="button"
-        onClick={() => setCreationPickerOpen(true)}
-        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95"
->>>>>>> Stashed changes
         style={{
           background: "linear-gradient(135deg, #f5a623, #e8920d)",
           color: "#0f1419",
           fontFamily: "var(--font-heading)"
         }}
-<<<<<<< Updated upstream
       />
-=======
-      >
-        <Plus size={15} />
-        {t("newCampaign")}
-      </button>
->>>>>>> Stashed changes
     ),
     [t]
   );
@@ -327,9 +314,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     return presets[row.metaCampaignId] ?? row.preset ?? "default";
   }
 
-  function draftResumeHref(r: CampaignRow): string {
+  function draftResumeHref(r: { metaCampaignId: string; clientSlug: string; draftTemplateId?: string }): string {
     const qs = r.clientSlug ? `?client=${encodeURIComponent(r.clientSlug)}` : "";
-    return `/campaigns/new/${r.draftTemplateId ?? r.metaCampaignId.replace(/^draft:/, "")}${qs}`;
+    return `/campaigns/new/${draftTemplateIdFromRow(r)}${qs}`;
   }
 
   function mergePresetsFromResponse(j: { presets?: Record<string, string>; rows?: CampaignRow[] }) {
@@ -377,7 +364,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     });
   }
 
-  function discardDraft(row: CampaignRow) {
+  function discardDraft(row: { metaCampaignId: string; draftTemplateId?: string }) {
     const templateId = draftTemplateIdFromRow(row);
     if (!templateId) return;
     if (!window.confirm(t("discardDraftConfirm"))) return;
@@ -833,27 +820,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           titleIcon={<Megaphone size={16} />}
           actions={
             <>
-<<<<<<< Updated upstream
               {syncMetaSlot}
               {newCampaignSlot}
-=======
-              <SyncRefreshButton />
-              <button
-                type="button"
-                onClick={() => load({ live: true, refresh: true })}
-                className="ui-btn-secondary text-sm"
-              >
-                {t("refreshLive")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCreationPickerOpen(true)}
-                className="ui-btn-primary text-sm inline-flex items-center gap-1.5"
-              >
-                <Plus size={15} />
-                {t("newCampaign")}
-              </button>
->>>>>>> Stashed changes
             </>
           }
         />
