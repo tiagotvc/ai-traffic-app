@@ -112,9 +112,15 @@ export const DraftTargetingSchema = z.object({
   advantageAudience: z.boolean().default(false)
 });
 
+export const TargetingModeSchema = z.enum(["compiler", "meta_saved", "advanced"]);
+
 export const AdSetDraftItemSchema = z.object({
   id: z.string(),
   name: z.string().default(""),
+  targetingMode: TargetingModeSchema.default("compiler"),
+  personaId: z.string().uuid().nullable().optional(),
+  zoneId: z.string().uuid().nullable().optional(),
+  metaSavedAudienceId: z.string().nullable().optional(),
   conversionLocation: ConversionLocationSchema.default("website_and_form"),
   messagingChannels: z.array(MessagingChannelSchema).default([]),
   pixelId: z.string().nullable().default(null),
@@ -271,6 +277,10 @@ export function defaultAdSetItem(
   return {
     id: newDraftId(),
     name: name ?? (isEn ? "New Ad Set" : "Novo conjunto de anúncios"),
+    targetingMode: "compiler",
+    personaId: null,
+    zoneId: null,
+    metaSavedAudienceId: null,
     conversionLocation: defaultConversionLocationForObjective(objective),
     messagingChannels: [],
     pixelId: null,
@@ -777,7 +787,20 @@ export function validateAdSetStep(d: CampaignDraftPayload): string | null {
   for (const adset of d.adsets) {
     if (!adset.name.trim()) return "adsetNameRequired";
     const t = adset.targeting;
-    if (!t.locations.length && !t.customAudienceIds.length) return "audienceRequired";
+    const mode = adset.targetingMode ?? "compiler";
+    const hasCompilerPair = !!(adset.personaId && adset.zoneId);
+    const hasMetaSaved = !!(adset.metaSavedAudienceId || t.customAudienceIds.length);
+    const hasManualGeo = t.locations.length > 0;
+
+    if (mode === "compiler") {
+      if (!hasCompilerPair && !t.customAudienceIds.length && !hasManualGeo) {
+        return "audienceRequired";
+      }
+    } else if (mode === "meta_saved") {
+      if (!hasMetaSaved) return "audienceRequired";
+    } else if (!hasManualGeo && !t.customAudienceIds.length) {
+      return "audienceRequired";
+    }
     if (
       (adset.conversionLocation === "website" || adset.conversionLocation === "website_and_form") &&
       (d.objective === "leads" || d.objective === "sales") &&

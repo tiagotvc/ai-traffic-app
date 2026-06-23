@@ -23,4 +23,7 @@ export class ClientSavedTargeting extends AppBaseEntity {
 
   @Column({ type: "text", nullable: true })
   metaSavedAudienceId!: string | null;
+
+  @Column({ type: "timestamptz", nullable: true })
+  migratedToPersonaZoneAt!: Date | null;
 }

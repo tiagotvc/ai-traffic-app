@@ -47,6 +47,8 @@ import { DashboardCanvasCore_1735831400000 } from "./0044-DashboardCanvasCore";
 import { OrionPlanPricing_1735831500000 } from "./0045-OrionPlanPricing";
 import { ClientCommercialAddress1735831600000 } from "./0046-ClientCommercialAddress";
 import { ClientCommercialAddressNormalized1735831700000 } from "./0047-ClientCommercialAddressNormalized";
+import { UserPersonasAndZones1735831800000 } from "./0048-UserPersonasAndZones";
+import { MigrateClientSavedTargeting1735831900000 } from "./0049-MigrateClientSavedTargeting";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -98,5 +100,7 @@ export const appMigrations = [
   DashboardCanvasCore_1735831400000,
   OrionPlanPricing_1735831500000,
   ClientCommercialAddress1735831600000,
-  ClientCommercialAddressNormalized1735831700000
+  ClientCommercialAddressNormalized1735831700000,
+  UserPersonasAndZones1735831800000,
+  MigrateClientSavedTargeting1735831900000
 ];

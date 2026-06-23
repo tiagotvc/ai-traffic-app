@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
-import { AiAudienceTargetingPanel } from "@/components/campaign-creator/AiAudienceTargetingPanel";
+import { PersonaPicker } from "@/components/campaign-creator/PersonaPicker";
+import { ZonePicker } from "@/components/campaign-creator/ZonePicker";
 import { AudiencePicker } from "@/components/campaign-creator/AudiencePicker";
 import { SavedTargetingPicker } from "@/components/campaign-creator/SavedTargetingPicker";
 import { AdSetBatchPanel } from "@/components/campaign-creator/AdSetBatchPanel";
@@ -351,31 +352,104 @@ export function AdSetStep() {
         </span>
       </label>
 
-      <div className="ui-card space-y-3 p-4">
+      <div className="ui-card space-y-4 p-4">
         <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{tAds("audienceTitle")}</h3>
 
-        <AiAudienceTargetingPanel
-          clientSlug={payload.clientSlug}
-          adAccountId={payload.adAccountId}
-          audiences={audiences}
-          audiencesLoading={audiencesLoading}
-          currentTargeting={targeting}
-          onApplyTargeting={(next) => patchTargeting(next)}
-          disabled={clientRequired}
-        />
+        <div className="flex flex-wrap gap-2">
+          {(["compiler", "meta_saved", "advanced"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              disabled={clientRequired}
+              onClick={() => patchAdset({ targetingMode: mode })}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
+                (adset.targetingMode ?? "compiler") === mode
+                  ? "bg-[rgba(245,166,35,0.15)] text-[var(--text-main)]"
+                  : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
+              }`}
+            >
+              {t(`targetingMode_${mode}`)}
+            </button>
+          ))}
+        </div>
 
-        <SavedTargetingPicker
-          clientSlug={payload.clientSlug}
-          adAccountId={payload.adAccountId}
-          disabled={clientRequired}
-          onApply={(next, audienceName) => {
-            patchTargeting(next);
-            if (!adset.name.trim() || adset.name.startsWith("Novo conjunto") || adset.name.startsWith("New Ad Set")) {
-              patchAdset({ name: audienceName.slice(0, 120) });
-            }
-          }}
-        />
+        {(adset.targetingMode ?? "compiler") === "compiler" ? (
+          <div className="space-y-4">
+            <PersonaPicker
+              value={adset.personaId}
+              clientSlug={payload.clientSlug}
+              adAccountId={payload.adAccountId}
+              disabled={clientRequired}
+              onChange={(personaId) => patchAdset({ personaId })}
+            />
+            <ZonePicker
+              value={adset.zoneId}
+              disabled={clientRequired}
+              onChange={(zoneId) => patchAdset({ zoneId })}
+            />
+            <details className="rounded-xl border border-[var(--border-color)] p-3">
+              <summary className="cursor-pointer text-xs font-medium text-[var(--text-main)]">
+                {t("metaRefineOptional")}
+              </summary>
+              <div className="mt-3">
+                <AudiencePicker
+                  audiences={audiences}
+                  loading={audiencesLoading}
+                  adAccountId={payload.adAccountId}
+                  includeIds={targeting.customAudienceIds}
+                  excludeIds={targeting.excludedAudienceIds}
+                  onChangeInclude={(customAudienceIds) => patchTargeting({ customAudienceIds })}
+                  onChangeExclude={(excludedAudienceIds) => patchTargeting({ excludedAudienceIds })}
+                  disabled={clientRequired}
+                />
+              </div>
+            </details>
+          </div>
+        ) : null}
 
+        {(adset.targetingMode ?? "compiler") === "meta_saved" ? (
+          <div
+            className="space-y-3 rounded-xl border p-3"
+            style={{ borderColor: "rgba(139,92,246,0.3)", background: "rgba(139,92,246,0.04)" }}
+          >
+            <p className="text-xs font-medium" style={{ color: "#a78bfa" }}>
+              {t("metaSavedFeatureLabel")}
+            </p>
+            <SavedTargetingPicker
+              clientSlug={payload.clientSlug}
+              adAccountId={payload.adAccountId}
+              disabled={clientRequired}
+              onApply={(next, audienceName, audienceId) => {
+                patchAdset({
+                  targetingMode: "meta_saved",
+                  metaSavedAudienceId: audienceId ?? null,
+                  targeting: next
+                });
+                if (!adset.name.trim() || adset.name.startsWith("Novo conjunto") || adset.name.startsWith("New Ad Set")) {
+                  patchAdset({ name: audienceName.slice(0, 120) });
+                }
+              }}
+            />
+            <AudiencePicker
+              audiences={audiences}
+              loading={audiencesLoading}
+              adAccountId={payload.adAccountId}
+              includeIds={targeting.customAudienceIds}
+              excludeIds={targeting.excludedAudienceIds}
+              onChangeInclude={(customAudienceIds) => patchTargeting({ customAudienceIds })}
+              onChangeExclude={(excludedAudienceIds) => patchTargeting({ excludedAudienceIds })}
+              disabled={clientRequired}
+            />
+            <ZonePicker
+              value={adset.zoneId}
+              disabled={clientRequired}
+              onChange={(zoneId) => patchAdset({ zoneId })}
+            />
+          </div>
+        ) : null}
+
+        {(adset.targetingMode ?? "compiler") === "advanced" ? (
+        <div className="space-y-4">
         <AudiencePicker
           audiences={audiences}
           loading={audiencesLoading}
@@ -644,6 +718,8 @@ export function AdSetStep() {
             }
           />
         </FormField>
+        </div>
+        ) : null}
       </div>
 
       <div className="ui-card space-y-3 p-4">

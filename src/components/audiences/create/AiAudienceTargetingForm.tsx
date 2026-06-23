@@ -18,7 +18,7 @@ export type AiAudienceTargetingFormProps = {
   audiences: AudienceOption[];
   audiencesLoading?: boolean;
   disabled?: boolean;
-  mode?: "save" | "campaign";
+  mode?: "save" | "campaign" | "persona_library";
   ageMin?: number;
   ageMax?: number;
   gender?: "all" | "male" | "female";
@@ -34,6 +34,7 @@ export type AiAudienceTargetingFormProps = {
     metaAudienceId?: string;
     storage?: "meta" | "local";
     warning?: string;
+    personaId?: string;
   }) => void;
   onApproveApply?: (suggestion: AudienceTargetingSuggestion) => Promise<void> | void;
   onError?: (message: string) => void;
@@ -57,6 +58,9 @@ export function AiAudienceTargetingForm({
   onError
 }: AiAudienceTargetingFormProps) {
   const t = useTranslations("campaignCreator");
+  const tAud = useTranslations("audiences");
+  const isPersonaLibrary = mode === "persona_library";
+  const apiBase = isPersonaLibrary ? "/api/personas/ai-generate" : "/api/ai/audience-targeting";
   const [provider, setProvider] = useState<LlmProviderId>("gemini");
   const [providers, setProviders] = useState({ gemini: false, claude: false });
   const [businessDescription, setBusinessDescription] = useState("");
@@ -72,9 +76,16 @@ export function AiAudienceTargetingForm({
   const [pending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [demoAgeMin, setDemoAgeMin] = useState(ageMin);
+  const [demoAgeMax, setDemoAgeMax] = useState(ageMax);
+  const [demoGender, setDemoGender] = useState(gender);
+
+  const effectiveAgeMin = isPersonaLibrary ? demoAgeMin : ageMin;
+  const effectiveAgeMax = isPersonaLibrary ? demoAgeMax : ageMax;
+  const effectiveGender = isPersonaLibrary ? demoGender : gender;
 
   useEffect(() => {
-    fetch("/api/ai/audience-targeting")
+    fetch(apiBase)
       .then((r) => r.json())
       .then((j: { providers?: { gemini: boolean; claude: boolean } }) => {
         if (j.providers) {
@@ -84,7 +95,7 @@ export function AiAudienceTargetingForm({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [apiBase]);
 
   const activeCustomIds = audienceMode === "include" ? includeIds : excludeIds;
   const audienceSearchNorm = audienceSearch.trim().toLowerCase();
@@ -141,10 +152,18 @@ export function AiAudienceTargetingForm({
       targetProfile: targetProfile.trim(),
       behaviors: behaviors.trim() || undefined,
       lifestyleHints: lifestyleHints.trim() || undefined,
-      ageMin,
-      ageMax,
-      gender,
+      ageMin: effectiveAgeMin,
+      ageMax: effectiveAgeMax,
+      gender: effectiveGender,
       countries,
+      includeCustomAudienceIds: isPersonaLibrary ? [] : includeIds,
+      excludeCustomAudienceIds: isPersonaLibrary ? [] : excludeIds
+    };
+  }
+
+  function buildPersonaBriefPayload() {
+    return {
+      ...buildBriefPayload(),
       includeCustomAudienceIds: includeIds,
       excludeCustomAudienceIds: excludeIds
     };
@@ -155,12 +174,12 @@ export function AiAudienceTargetingForm({
     setSuggestion(null);
     setPersonaPreview(null);
     startTransition(async () => {
-      const res = await fetch("/api/ai/audience-targeting", {
+      const res = await fetch(apiBase, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          ...buildBriefPayload(),
-          phase: "persona"
+          ...(isPersonaLibrary ? buildPersonaBriefPayload() : buildBriefPayload()),
+          phase: isPersonaLibrary ? "preview" : "persona"
         })
       });
       const j = await res.json();
@@ -177,12 +196,12 @@ export function AiAudienceTargetingForm({
     setError(null);
     setSuggestion(null);
     startTransition(async () => {
-      const res = await fetch("/api/ai/audience-targeting", {
+      const res = await fetch(apiBase, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          ...buildBriefPayload(),
-          phase: "targeting",
+          ...(isPersonaLibrary ? buildPersonaBriefPayload() : buildBriefPayload()),
+          phase: isPersonaLibrary ? "targeting" : "targeting",
           persona: personaPreview
         })
       });
@@ -197,19 +216,37 @@ export function AiAudienceTargetingForm({
 
   async function approveAndSave() {
     if (!suggestion) return;
+    if (isPersonaLibrary && (!clientSlug || !adAccountId)) {
+      reportError(tAud("personaNeedsAdAccount"));
+      return;
+    }
     setCreating(true);
     setError(null);
     try {
-      const res = await fetch("/api/ai/audience-targeting", {
-        method: "PUT",
+      const res = await fetch(apiBase, {
+        method: isPersonaLibrary ? "POST" : "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          clientId: clientSlug,
-          adAccountId,
-          name: suggestion.name,
-          targeting: suggestion.targeting,
-          provider: suggestion.provider
-        })
+        body: JSON.stringify(
+          isPersonaLibrary
+            ? {
+                ...buildPersonaBriefPayload(),
+                phase: "build",
+                persona: personaPreview,
+                suggestion: {
+                  title: suggestion.title,
+                  summary: suggestion.summary,
+                  name: suggestion.name,
+                  targeting: suggestion.targeting
+                }
+              }
+            : {
+                clientId: clientSlug,
+                adAccountId,
+                name: suggestion.name,
+                targeting: suggestion.targeting,
+                provider: suggestion.provider
+              }
+        )
       });
       const j = (await res.json()) as {
         ok?: boolean;
@@ -217,20 +254,22 @@ export function AiAudienceTargetingForm({
         savedAudienceId?: string;
         storage?: "meta" | "local";
         warning?: string;
+        persona?: { id: string; name: string };
       };
       if (!j.ok) {
-        reportError(j.error ?? t("aiAudienceSaveFailed"));
+        reportError(j.error ?? (isPersonaLibrary ? tAud("savePersonaFailed") : t("aiAudienceSaveFailed")));
         return;
       }
       onSaved?.({
-        name: suggestion.name,
+        name: isPersonaLibrary ? (j.persona?.name ?? suggestion.name) : suggestion.name,
         metaAudienceId: j.savedAudienceId,
         storage: j.storage,
-        warning: j.warning
+        warning: j.warning,
+        personaId: j.persona?.id
       });
       resetForm();
     } catch {
-      reportError(t("aiAudienceSaveFailed"));
+      reportError(isPersonaLibrary ? tAud("savePersonaFailed") : t("aiAudienceSaveFailed"));
     } finally {
       setCreating(false);
     }
@@ -298,7 +337,7 @@ export function AiAudienceTargetingForm({
         <p className="text-[10px] leading-snug text-amber-700">{t("aiProviderClaudeHint")}</p>
       ) : null}
 
-      {showDemographics ? (
+      {showDemographics || isPersonaLibrary ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
             <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicAgeMin")}</label>
@@ -306,10 +345,12 @@ export function AiAudienceTargetingForm({
               type="number"
               min={13}
               max={65}
-              value={ageMin}
-              onChange={(e) =>
-                onDemographicsChange?.({ ageMin: Number(e.target.value) || 18 })
-              }
+              value={effectiveAgeMin}
+              onChange={(e) => {
+                const v = Number(e.target.value) || 18;
+                if (isPersonaLibrary) setDemoAgeMin(v);
+                else onDemographicsChange?.({ ageMin: v });
+              }}
               className="ui-input mt-1 w-full text-sm"
               disabled={disabled}
             />
@@ -320,10 +361,12 @@ export function AiAudienceTargetingForm({
               type="number"
               min={13}
               max={65}
-              value={ageMax}
-              onChange={(e) =>
-                onDemographicsChange?.({ ageMax: Number(e.target.value) || 65 })
-              }
+              value={effectiveAgeMax}
+              onChange={(e) => {
+                const v = Number(e.target.value) || 65;
+                if (isPersonaLibrary) setDemoAgeMax(v);
+                else onDemographicsChange?.({ ageMax: v });
+              }}
               className="ui-input mt-1 w-full text-sm"
               disabled={disabled}
             />
@@ -331,12 +374,12 @@ export function AiAudienceTargetingForm({
           <div>
             <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicGender")}</label>
             <select
-              value={gender}
-              onChange={(e) =>
-                onDemographicsChange?.({
-                  gender: e.target.value as "all" | "male" | "female"
-                })
-              }
+              value={effectiveGender}
+              onChange={(e) => {
+                const v = e.target.value as "all" | "male" | "female";
+                if (isPersonaLibrary) setDemoGender(v);
+                else onDemographicsChange?.({ gender: v });
+              }}
               className="ui-select mt-1 w-full text-sm"
               disabled={disabled}
             >
@@ -580,7 +623,10 @@ export function AiAudienceTargetingForm({
             <p className="text-sm font-semibold text-[var(--text-main)]">{suggestion.title}</p>
             <p className="mt-1 text-xs text-[var(--text-dim)]">{suggestion.summary}</p>
             <p className="mt-2 text-[10px] text-[var(--text-dimmer)]">
-              {t("aiAudienceSavedName")}: <span className="font-medium">{suggestion.name}</span>
+              {isPersonaLibrary ? tAud("personaSaveName") : t("aiAudienceSavedName")}:{" "}
+              <span className="font-medium">
+                {isPersonaLibrary ? personaPreview?.personaName ?? suggestion.title : suggestion.name}
+              </span>
             </p>
             <p className="text-[10px] text-[var(--text-dimmer)]">
               {t("aiAudienceModel")}: {suggestion.provider} / {suggestion.modelUsed}
@@ -620,7 +666,11 @@ export function AiAudienceTargetingForm({
               onClick={() => void approveAndSave()}
               className={mode === "campaign" ? "ui-btn-secondary text-xs" : "ui-btn-primary text-xs"}
             >
-              {creating ? t("creating") : t("aiAudienceApproveOnly")}
+              {creating
+                ? t("creating")
+                : isPersonaLibrary
+                  ? tAud("savePersona")
+                  : t("aiAudienceApproveOnly")}
             </button>
             <button
               type="button"

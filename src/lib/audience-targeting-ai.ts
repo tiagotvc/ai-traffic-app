@@ -278,13 +278,28 @@ export function suggestionItemsFromPick(
 }
 
 function buildPersonaPrompt(brief: AudienceTargetingBrief): string {
+  return buildPersonaOnlyPrompt({
+    businessDescription: brief.businessDescription,
+    targetProfile: brief.targetProfile,
+    behaviors: brief.behaviors,
+    lifestyleHints: brief.lifestyleHints
+  });
+}
+
+/** Prompt isolado para Módulo A (Personas) — sem geo, países ou coordenadas. */
+export function buildPersonaOnlyPrompt(input: {
+  businessDescription?: string;
+  targetProfile: string;
+  behaviors?: string;
+  lifestyleHints?: string;
+  freeformPrompt?: string;
+}): string {
   return [
     "Você é especialista em segmentação Meta Ads no Brasil.",
+    "MÓDULO PERSONA — retorne APENAS características demográficas e de interesse.",
+    "PROIBIDO: países, cidades, bairros, CEPs, coordenadas, geo_locations ou qualquer dado geográfico.",
     "Sua tarefa NÃO é escolher um público pronto nem inventar IDs da Meta.",
-    "Com base no briefing, construa uma PERSONA (perfil ideal) e traduza renda/profissão em correlatos de estilo de vida.",
-    "Ex.: renda alta → viaja com frequência, marcas premium, golf — nunca use campos literais de renda ou cargo.",
-    "Depois derive termos de busca em português para a API de targeting da Meta (interesses, comportamentos, demografia).",
-    "NÃO defina faixa etária — idade é definida manualmente pelo usuário no formulário.",
+    "Construa uma PERSONA (perfil ideal) e derive termos de busca para interesses/comportamentos/demografia Meta.",
     "",
     "Responda APENAS JSON:",
     "{",
@@ -300,15 +315,32 @@ function buildPersonaPrompt(brief: AudienceTargetingBrief): string {
     '  "suggestedGender"?: "all" | "male" | "female"',
     "}",
     "",
-    "Briefing:",
-    JSON.stringify({
-      businessDescription: brief.businessDescription,
-      targetProfile: brief.targetProfile,
-      behaviors: brief.behaviors,
-      lifestyleHints: brief.lifestyleHints,
-      countries: brief.countries
-    })
+    "Entrada:",
+    JSON.stringify(input)
   ].join("\n");
+}
+
+/** Targeting Meta sem geo — para persistência em user_personas. */
+export function buildPersonaTargetingFromSuggestion(args: {
+  pick: z.infer<typeof PickSchema>;
+  catalog: CatalogItem[];
+  brief: Pick<AudienceTargetingBrief, "ageMin" | "ageMax" | "gender">;
+}): Record<string, unknown> {
+  const catalogMap = new Map(args.catalog.map((c) => [c.id, c]));
+  const flexible = buildFlexibleSpec(args.pick, catalogMap);
+
+  const targeting: Record<string, unknown> = {
+    age_min: args.brief.ageMin ?? 18,
+    age_max: args.brief.ageMax ?? 65
+  };
+
+  if (args.pick.genders?.length) targeting.genders = args.pick.genders;
+  else if (args.brief.gender === "male") targeting.genders = [1];
+  else if (args.brief.gender === "female") targeting.genders = [2];
+
+  if (flexible.length) targeting.flexible_spec = flexible;
+
+  return sanitizeTargetingForMeta(targeting);
 }
 
 export async function generateAudiencePersonaPreview(args: {

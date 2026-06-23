@@ -74,7 +74,7 @@ async function auditCreate(
 }
 
 export async function POST(req: Request) {
-  const { tenant, metaAccessToken } = await getAppContext();
+  const { tenant, user, metaAccessToken } = await getAppContext();
   const raw = await req.json().catch(() => ({}));
 
   if (raw.draft) {
@@ -134,7 +134,9 @@ export async function POST(req: Request) {
         pageId: publish.metaPageId,
         linkUrl: publish.metaLinkUrl,
         settings,
-        callToAction: settings.defaultCta
+        callToAction: settings.defaultCta,
+        tenantId: tenant.id,
+        userId: user?.id
       });
 
       if (body.draftTemplateId) {

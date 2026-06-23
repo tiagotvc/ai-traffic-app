@@ -17,7 +17,7 @@ type Props = {
   clientSlug: string;
   adAccountId: string;
   disabled?: boolean;
-  onApply: (targeting: DraftTargeting, audienceName: string) => void;
+  onApply: (targeting: DraftTargeting, audienceName: string, audienceId?: string) => void;
 };
 
 export function SavedTargetingPicker({
@@ -86,7 +86,7 @@ export function SavedTargetingPicker({
 
   function apply() {
     if (!selected) return;
-    onApply(mapMetaTargetingToDraft(selected.targeting), selected.name);
+    onApply(mapMetaTargetingToDraft(selected.targeting), selected.name, selected.id);
   }
 
   return (

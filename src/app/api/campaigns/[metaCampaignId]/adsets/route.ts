@@ -193,7 +193,7 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ metaCampaignId: string }> }
 ) {
-  const { tenant, metaAccessToken } = await getAppContext();
+  const { tenant, user, metaAccessToken } = await getAppContext();
   if (!metaAccessToken) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
@@ -253,7 +253,9 @@ export async function POST(
       settings,
       callToAction: settings.defaultCta,
       campaignName: body.campaignName,
-      isCampaignBudget
+      isCampaignBudget,
+      tenantId: tenant.id,
+      userId: user?.id
     });
 
     return NextResponse.json({ ok: true, ...result });

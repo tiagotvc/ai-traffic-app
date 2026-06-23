@@ -6,6 +6,7 @@ import { composeAdLinkUrl, defaultUtm, type UtmTokenContext } from "@/lib/campai
 import { buildMetaAssetFeedSpec } from "@/lib/meta-ad-creative";
 import { mapLimit } from "@/lib/concurrency";
 import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
+import { compileAdsetTargetingInput } from "@/lib/targeting-compiler-server";
 import { pickInstagramActorId } from "@/lib/meta-instagram";
 import { applyConversionEventToPromoted } from "@/lib/meta-promoted-object";
 import { fetchInstagramAccountsForAdAccount, metaPost } from "@/lib/meta-graph";
@@ -92,6 +93,8 @@ export type CreateCampaignFromDraftInput = {
   linkUrl: string;
   settings?: ClientMetaSettings;
   callToAction?: string;
+  tenantId?: string;
+  userId?: string;
   onProgress?: (step: PublishProgressStep) => void;
 };
 
@@ -216,6 +219,36 @@ function resolveTargeting(
   } else {
     base = { geo_locations: { countries: ["BR"] }, age_min: 18, age_max: 65 };
   }
+  const placementFields = placementsToMetaTargeting(adset.placements);
+  return { ...base, ...placementFields };
+}
+
+async function resolveAdsetTargeting(
+  adset: AdSetDraftItem,
+  settings: ClientMetaSettings | undefined,
+  ctx?: { tenantId?: string; userId?: string; metaAccessToken?: string; adAccountId?: string }
+): Promise<Record<string, unknown>> {
+  let base: Record<string, unknown>;
+
+  if (ctx?.tenantId && ctx?.userId) {
+    const compiled = await compileAdsetTargetingInput({
+      adset,
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      metaAccessToken: ctx.metaAccessToken,
+      adAccountId: ctx.adAccountId
+    });
+    if (compiled && Object.keys(compiled).length) {
+      base = buildTargetingFromInput(compiled);
+    } else {
+      base = resolveTargeting(adset, settings);
+      const placementFields = placementsToMetaTargeting(adset.placements);
+      return { ...base, ...placementFields };
+    }
+  } else {
+    base = resolveTargeting(adset, settings);
+  }
+
   const placementFields = placementsToMetaTargeting(adset.placements);
   return { ...base, ...placementFields };
 }
@@ -433,6 +466,8 @@ export async function publishAdsetToCampaign(input: {
   callToAction?: string;
   campaignName?: string;
   isCampaignBudget?: boolean;
+  tenantId?: string;
+  userId?: string;
 }): Promise<{ adsetId: string; adId: string; creativeId: string }> {
   const actId = normalizeAdAccountId(input.adAccountId);
   const token = input.accessToken;
@@ -445,7 +480,12 @@ export async function publishAdsetToCampaign(input: {
 
   const adsetName = input.adset.name.trim() || `${campaignName} — Ad Set`;
   const startTime = parseScheduleTime(input.adset.schedule.start, 3600);
-  const targeting = resolveTargeting(input.adset, settings);
+  const targeting = await resolveAdsetTargeting(input.adset, settings, {
+    tenantId: input.tenantId,
+    userId: input.userId,
+    metaAccessToken: token,
+    adAccountId: input.adAccountId
+  });
 
   const adsetBody: Record<string, string> = {
     name: adsetName,
@@ -555,7 +595,12 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
   await mapLimit(draft.adsets, 2, async (adset, idx) => {
     const adsetName = adset.name.trim() || `${campaignName} — Ad Set ${idx + 1}`;
     const startTime = parseScheduleTime(adset.schedule.start, 3600);
-    const targeting = resolveTargeting(adset, settings);
+    const targeting = await resolveAdsetTargeting(adset, settings, {
+      tenantId: input.tenantId,
+      userId: input.userId,
+      metaAccessToken: token,
+      adAccountId: input.adAccountId
+    });
     const primaryAd = draft.ads[0]!;
     const pageId = primaryAd.pageId || input.pageId;
 
@@ -712,6 +757,10 @@ export async function createFullMetaCampaign(
       {
         id: adsetId,
         name: input.adsetName ?? `${input.campaignName} — Ad Set`,
+        targetingMode: "compiler" as const,
+        personaId: null,
+        zoneId: null,
+        metaSavedAudienceId: null,
         conversionLocation: "website_and_form",
         messagingChannels: [],
         pixelId: null,
