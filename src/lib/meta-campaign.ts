@@ -1,6 +1,6 @@
 import type { ClientMetaSettings } from "@/db/entities/ClientMetaSettings";
 import type { AdDraftItem, AdSetDraftItem, CampaignDraftPayload } from "@/lib/campaign-draft";
-import { defaultConversionEventForObjective, draftTargetingToApi, resolveAdTargetAdsets } from "@/lib/campaign-draft";
+import { defaultConversionEventForObjective, draftTargetingToApi, adsForAdset, resolveAdTargetAdsets, usesReusedMetaCreative } from "@/lib/campaign-draft";
 import { defaultPlacements, placementsToMetaTargeting } from "@/lib/campaign-placements";
 import { composeAdLinkUrl, defaultUtm, type UtmTokenContext } from "@/lib/campaign-utm";
 import { buildMetaAssetFeedSpec } from "@/lib/meta-ad-creative";
@@ -117,8 +117,13 @@ function normalizeAdAccountId(id: string) {
 /** Meta error 1815857: CBO campaigns need bid_strategy on the campaign; ABO on the ad set. */
 const META_BID_STRATEGY_AUTOMATIC = "LOWEST_COST_WITHOUT_CAP";
 
-function applyAdsetPublishFields(adsetBody: Record<string, string>, adset: AdSetDraftItem) {
-  adsetBody.is_dynamic_creative = adset.dynamicCreative ? "true" : "false";
+function applyAdsetPublishFields(
+  adsetBody: Record<string, string>,
+  adset: AdSetDraftItem,
+  adsInAdset: AdDraftItem[]
+) {
+  const hasReusedCreative = adsInAdset.some(usesReusedMetaCreative);
+  adsetBody.is_dynamic_creative = adset.dynamicCreative && !hasReusedCreative ? "true" : "false";
 }
 
 function applyAuctionBidStrategy(
@@ -457,7 +462,7 @@ export async function publishAdsetToCampaign(input: {
 
   const promoted = buildPromotedObject(objective, input.ad, input.adset, input.pageId, settings);
   if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
-  applyAdsetPublishFields(adsetBody, input.adset);
+  applyAdsetPublishFields(adsetBody, input.adset, [input.ad]);
 
   const metaAdset = await metaPost<{ id: string }>(`/${actId}/adsets`, token, adsetBody);
 
@@ -566,7 +571,7 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
 
     const promoted = buildPromotedObject(objective, primaryAd, adset, pageId, settings);
     if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
-    applyAdsetPublishFields(adsetBody, adset);
+    applyAdsetPublishFields(adsetBody, adset, adsForAdset(draft, adset.id));
 
     input.onProgress?.({
       phase: "adset",

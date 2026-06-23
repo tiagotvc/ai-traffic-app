@@ -517,6 +517,35 @@ export function resolveAdTargetAdsets(d: CampaignDraftPayload, ad: AdDraftItem):
   return d.adsets.filter((a) => ad.targetAdsetIds.includes(a.id));
 }
 
+export function usesReusedMetaCreative(ad: AdDraftItem): boolean {
+  return Boolean(ad.reuseMetaCreative && ad.metaCreativeId?.trim());
+}
+
+/** Reused Meta creatives are static; dynamic-creative ad sets require dynamic creatives (Meta 1885702). */
+export function effectiveAdsetDynamicCreative(
+  d: CampaignDraftPayload,
+  adset: AdSetDraftItem
+): boolean {
+  if (!adset.dynamicCreative) return false;
+  const hasReusedCreative = d.ads.some(
+    (ad) => usesReusedMetaCreative(ad) && resolveAdTargetAdsets(d, ad).some((s) => s.id === adset.id)
+  );
+  return !hasReusedCreative;
+}
+
+export function adsForAdset(d: CampaignDraftPayload, adsetId: string): AdDraftItem[] {
+  return d.ads.filter((ad) => resolveAdTargetAdsets(d, ad).some((s) => s.id === adsetId));
+}
+
+export function adsetsWithReuseCreativeCompatibility(
+  d: CampaignDraftPayload,
+  ad: AdDraftItem
+): AdSetDraftItem[] {
+  if (!usesReusedMetaCreative(ad)) return d.adsets;
+  const targetIds = new Set(resolveAdTargetAdsets(d, ad).map((s) => s.id));
+  return d.adsets.map((s) => (targetIds.has(s.id) ? { ...s, dynamicCreative: false } : s));
+}
+
 export function countPublishEntities(d: CampaignDraftPayload): {
   adsets: number;
   ads: number;
@@ -757,8 +786,12 @@ export function validateAdStep(d: CampaignDraftPayload): string | null {
   for (const ad of d.ads) {
     if (!ad.name.trim()) return "adNameRequired";
     if (!ad.pageId.trim()) return "pageRequired";
-    const creativeErr = validateAdCreativeForMeta(ad);
-    if (creativeErr) return creativeErr;
+    if (usesReusedMetaCreative(ad)) {
+      if (!ad.metaCreativeId?.trim()) return "metaCreativeRequired";
+    } else {
+      const creativeErr = validateAdCreativeForMeta(ad);
+      if (creativeErr) return creativeErr;
+    }
     if (d.objective === "leads" && ad.destinationType === "instant_form") {
       if (!ad.leadFormId) return "leadFormRequired";
     } else if (ad.destinationType === "whatsapp" || ad.destinationType === "instant_form") {

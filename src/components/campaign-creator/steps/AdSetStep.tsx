@@ -13,7 +13,7 @@ import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
-import { getActiveAdset, defaultConversionEventForObjective } from "@/lib/campaign-draft";
+import { getActiveAdset, defaultConversionEventForObjective, resolveAdTargetAdsets, usesReusedMetaCreative } from "@/lib/campaign-draft";
 import type { DraftTargeting } from "@/lib/campaign-draft";
 import { defaultScheduleStartLocal } from "@/lib/campaign-placements";
 
@@ -28,6 +28,11 @@ export function AdSetStep() {
   const adset = getActiveAdset(payload);
   const targeting = adset.targeting;
   const clientRequired = !payload.clientSlug;
+  const dynamicCreativeLockedByReuse = payload.ads.some(
+    (ad) =>
+      usesReusedMetaCreative(ad) &&
+      resolveAdTargetAdsets(payload, ad).some((s) => s.id === adset.id)
+  );
 
   useEffect(() => {
     if (adset.schedule.start) return;
@@ -233,12 +238,14 @@ export function AdSetStep() {
           type="checkbox"
           checked={adset.dynamicCreative}
           onChange={(e) => patchAdset({ dynamicCreative: e.target.checked })}
-          disabled={clientRequired}
+          disabled={clientRequired || dynamicCreativeLockedByReuse}
           className="mt-0.5 accent-violet-600"
         />
         <span>
           <span className="font-medium text-[var(--text-main)]">{t("dynamicCreativeLabel")}</span>
-          <span className="mt-0.5 block text-xs text-[var(--text-dim)]">{t("dynamicCreativeHint")}</span>
+          <span className="mt-0.5 block text-xs text-[var(--text-dim)]">
+            {dynamicCreativeLockedByReuse ? t("dynamicCreativeDisabledReuse") : t("dynamicCreativeHint")}
+          </span>
         </span>
       </label>
 

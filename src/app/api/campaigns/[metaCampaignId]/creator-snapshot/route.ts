@@ -417,7 +417,6 @@ export async function GET(
           id: `imported_adset_${Date.now()}`,
           ...inheritedFromAdset,
           name: selectedAdset.name ?? "Conjunto importado",
-          dynamicCreative: true,
           schedule: { start: null, end: null },
           targeting: mapMetaTargetingToDraft(targeting),
           placements: mapPlacementsFromTargeting(targeting)

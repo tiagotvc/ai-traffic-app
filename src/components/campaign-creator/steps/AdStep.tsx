@@ -12,7 +12,7 @@ import { FormField } from "@/components/ui/FormField";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
-import { getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
+import { adsetsWithReuseCreativeCompatibility, getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
 
@@ -101,8 +101,26 @@ export function AdStep() {
   }
 
   function handleImport(imported: ImportedAdConfig, mode: "copy" | "media" | "all") {
-    patchAd(applyImportedToAd(ad, imported, mode));
+    updatePayload((p) => {
+      const nextAd = applyImportedToAd(ad, imported, mode);
+      const ads = p.ads.map((a) => (a.id === ad.id ? nextAd : a));
+      const draft = { ...p, ads };
+      return { ...p, ads, adsets: adsetsWithReuseCreativeCompatibility(draft, nextAd) };
+    });
     setCopyMode("manual");
+  }
+
+  function setReuseMetaCreative(reuse: boolean) {
+    updatePayload((p) => {
+      const nextAd = { ...ad, reuseMetaCreative: reuse };
+      const ads = p.ads.map((a) => (a.id === ad.id ? nextAd : a));
+      const draft = { ...p, ads };
+      return {
+        ...p,
+        ads,
+        adsets: reuse ? adsetsWithReuseCreativeCompatibility(draft, nextAd) : p.adsets
+      };
+    });
   }
 
   useEffect(() => {
@@ -317,7 +335,7 @@ export function AdStep() {
             <input
               type="checkbox"
               checked={ad.reuseMetaCreative}
-              onChange={(e) => patchAd({ reuseMetaCreative: e.target.checked })}
+              onChange={(e) => setReuseMetaCreative(e.target.checked)}
               className="mt-0.5"
               disabled={clientRequired}
             />
