@@ -8,6 +8,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("privacyMetaTitle"), description: t("privacyMetaDescription") };
 }
 
-export default function MarketingPrivacyPage() {
+export default function PrivacyPage() {
   return <MarketingPrivacy />;
 }

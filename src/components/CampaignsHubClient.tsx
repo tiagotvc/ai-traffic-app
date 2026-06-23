@@ -21,7 +21,7 @@ import { rememberCampaign } from "@/components/CampaignsListClient";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
-import { CampaignDraftMobileCards, CampaignMobileCards } from "@/components/campaigns/CampaignMobileCards";
+import { CampaignDraftMobileCards, CampaignMobileCards, type CampaignRowLike } from "@/components/campaigns/CampaignMobileCards";
 import { Badge } from "@/components/ui/Badge";
 import { IconLabelButton, IconLabelLink } from "@/components/ui/IconLabelButton";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
@@ -113,7 +113,7 @@ function statusVariant(status?: string): "success" | "warning" | "neutral" {
   return "neutral";
 }
 
-function campaignDetailHref(row: CampaignRow): string {
+function campaignDetailHref(row: Pick<CampaignRowLike, "metaCampaignId" | "clientSlug">): string {
   return `/campaigns/${row.metaCampaignId}?client=${encodeURIComponent(row.clientSlug)}`;
 }
 
@@ -121,7 +121,7 @@ function isDraftRow(row: CampaignRow): boolean {
   return Boolean(row.isDraft) || row.metaCampaignId.startsWith("draft:");
 }
 
-function draftTemplateIdFromRow(row: CampaignRow): string {
+function draftTemplateIdFromRow(row: Pick<CampaignRowLike, "metaCampaignId" | "draftTemplateId">): string {
   return row.draftTemplateId ?? row.metaCampaignId.replace(/^draft:/, "");
 }
 
@@ -311,7 +311,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     return presets[row.metaCampaignId] ?? row.preset ?? "default";
   }
 
-  function draftResumeHref(r: CampaignRow): string {
+  function draftResumeHref(r: CampaignRowLike): string {
     const qs = r.clientSlug ? `?client=${encodeURIComponent(r.clientSlug)}` : "";
     return `/campaigns/new/${r.draftTemplateId ?? r.metaCampaignId.replace(/^draft:/, "")}${qs}`;
   }
@@ -361,7 +361,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     });
   }
 
-  function discardDraft(row: CampaignRow) {
+  function discardDraft(row: CampaignRowLike) {
     const templateId = draftTemplateIdFromRow(row);
     if (!templateId) return;
     if (!window.confirm(t("discardDraftConfirm"))) return;

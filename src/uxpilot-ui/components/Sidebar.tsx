@@ -8,7 +8,6 @@ import {
   Megaphone,
   BarChart3,
   Settings,
-  Zap,
   ChevronLeft,
   ChevronRight,
   Users,
@@ -26,6 +25,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/uxpilot-ui/lib/utils";
+import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 import { useTheme } from "@/uxpilot-ui/hooks/useTheme";
 
 type Language = "PT-BR" | "EN" | "ES";
@@ -70,17 +70,8 @@ export default function Sidebar() {
         )}
         style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 animate-pulse-violet"
-            style={{ background: "linear-gradient(135deg, #4f46e5, #7c3aed)" }}>
-            <Zap size={16} className="text-white" />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="font-heading font-700 text-sm leading-tight whitespace-nowrap" style={{ color: "#f8fafc" }}>AI Traffic</p>
-              <p className="text-[10px] leading-tight" style={{ color: "#f5a623" }}>Agency OS</p>
-            </div>
-          )}
+        <div className={cn("flex items-center min-w-0", collapsed ? "justify-center" : "")}>
+          <OrionAgencyLogo size="sm" variant="dark" showText={!collapsed} />
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}

@@ -8,7 +8,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("dataDeletionMetaTitle"), description: t("dataDeletionMetaDescription") };
 }
 
-export default async function MarketingDataDeletionPage({
+export default async function DataDeletionPage({
   searchParams
 }: {
   searchParams: Promise<{ confirmation?: string }>;

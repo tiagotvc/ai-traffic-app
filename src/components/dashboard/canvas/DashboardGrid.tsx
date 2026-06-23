@@ -157,7 +157,7 @@ export function DashboardGrid({
               return (
               <div
                 key={w.id}
-                className="flex h-full w-full min-h-0 flex-col overflow-hidden rounded-xl border max-md:overflow-visible"
+                className="flex h-full w-full min-h-0 flex-col overflow-hidden rounded-xl border max-lg:min-h-0 max-lg:overflow-visible"
                 style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
               >
                 <WidgetChrome

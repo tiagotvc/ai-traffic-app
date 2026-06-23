@@ -121,18 +121,8 @@ export function AppSidebar({
           effectiveCollapsed ? "justify-center px-2" : "justify-between gap-2 px-3"
         }`}
       >
-        <div className={`flex min-w-0 items-center gap-2 ${effectiveCollapsed ? "justify-center" : ""}`}>
-          <SidebarLogoIcon />
-          {!effectiveCollapsed ? (
-            <div className="min-w-0">
-              <p className="truncate font-heading text-sm font-bold leading-tight text-[#f8fafc]">
-                AI Traffic
-              </p>
-              <p className="text-[10px] leading-tight" style={{ color: "#f5a623" }}>
-                Agency OS
-              </p>
-            </div>
-          ) : null}
+        <div className={`flex min-w-0 items-center ${effectiveCollapsed ? "justify-center" : ""}`}>
+          <SidebarLogoIcon collapsed={effectiveCollapsed} />
         </div>
         {!effectiveCollapsed ? (
           <SidebarCollapseButton onClick={onToggleCollapse} title={t("collapseSidebar")} />

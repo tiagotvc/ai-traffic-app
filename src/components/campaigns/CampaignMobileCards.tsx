@@ -4,7 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { Badge } from "@/components/ui/Badge";
 
-type CampaignRowLike = {
+export type CampaignRowLike = {
   metaCampaignId: string;
   campaignName: string;
   clientName: string;
@@ -13,6 +13,7 @@ type CampaignRowLike = {
   roas: number;
   cpl: number | null;
   status?: string;
+  draftTemplateId?: string;
 };
 
 export function CampaignMobileCards({

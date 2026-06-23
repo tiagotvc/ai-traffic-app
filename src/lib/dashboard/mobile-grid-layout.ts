@@ -18,10 +18,18 @@ function mobileWidgetHeight(widget: WidgetInstanceDto): number {
   }
   if (widget.widgetType === "metrics.quickPills") {
     const pillCount = 6;
-    return Math.max(base, Math.ceil(pillCount / 2));
+    return Math.max(base, pillCount * 2 + 1, 5);
   }
   if (widget.widgetType === "metrics.heroKpis") {
-    return Math.max(base, 4);
+    const heroMetrics = widget.config.heroMetrics as unknown[] | undefined;
+    const kpiCount = Math.min(Math.max(heroMetrics?.length ?? 3, 1), 3);
+    return Math.max(base, kpiCount * 4 + 2, 6);
+  }
+  if (widget.widgetType === "metrics.card" || widget.widgetType.startsWith("metric.single.")) {
+    const cardStyle = widget.config.cardStyle as string | undefined;
+    if (cardStyle !== "compact") {
+      return Math.max(base, 5);
+    }
   }
   return base;
 }

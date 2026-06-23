@@ -34,7 +34,7 @@ export function PeriodFilter({
 }: {
   value: PeriodState;
   onChange: (next: PeriodState) => void;
-  variant?: "default" | "commandStrip";
+  variant?: "default" | "commandStrip" | "modal";
   disabled?: boolean;
   disabledHint?: string;
 }) {
@@ -91,7 +91,10 @@ export function PeriodFilter({
   }
 
   const isStrip = variant === "commandStrip";
-  const showCustomPanel = !isStrip || value.preset === "custom";
+  const isModal = variant === "modal";
+  const showCustomPanel = isModal
+    ? value.preset === "custom"
+    : !isStrip || value.preset === "custom";
 
   const stripPresetLabels: Record<(typeof STRIP_PRESETS)[number], string> = {
     last7: periodLabels.last7,
@@ -130,6 +133,80 @@ export function PeriodFilter({
       >
         {text}
       </button>
+    );
+  }
+
+  if (isModal) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          {STRIP_PRESETS.map((preset) => {
+            const selected = value.preset === preset;
+            return (
+              <button
+                key={preset}
+                type="button"
+                disabled={disabled}
+                onClick={() => pick(preset)}
+                className={cn(
+                  "rounded-lg border px-2 py-2 text-left text-xs font-medium transition-colors",
+                  disabled && "cursor-not-allowed opacity-45"
+                )}
+                style={{
+                  borderColor: selected ? "var(--amber-bright)" : "var(--border-color)",
+                  background: selected ? "rgba(245,166,35,0.12)" : "var(--filter-btn-bg)",
+                  color: selected ? "var(--amber-bright)" : "var(--text-dim)"
+                }}
+              >
+                {stripPresetLabels[preset]}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => pick("custom")}
+            className={cn(
+              "rounded-lg border px-2 py-2 text-left text-xs font-medium transition-colors",
+              disabled && "cursor-not-allowed opacity-45"
+            )}
+            style={{
+              borderColor: value.preset === "custom" ? "var(--amber-bright)" : "var(--border-color)",
+              background: value.preset === "custom" ? "rgba(245,166,35,0.12)" : "var(--filter-btn-bg)",
+              color: value.preset === "custom" ? "var(--amber-bright)" : "var(--text-dim)"
+            }}
+          >
+            {periodLabels.custom}
+          </button>
+        </div>
+        {disabled && disabledHint ? (
+          <p className="text-xs text-[var(--text-dim)]">{disabledHint}</p>
+        ) : null}
+        {showCustomPanel ? (
+          <div className="rounded-lg border border-[var(--border-color)] px-3 py-2">
+            <div className="text-xs font-medium text-[var(--text-dim)]">{periodLabels.custom}</div>
+            <div className="mt-2 flex flex-col gap-2">
+              <input
+                type="date"
+                value={customSince}
+                onChange={(e) => setCustomSince(e.target.value)}
+                className="ui-input text-xs"
+                disabled={disabled}
+              />
+              <input
+                type="date"
+                value={customUntil}
+                onChange={(e) => setCustomUntil(e.target.value)}
+                className="ui-input text-xs"
+                disabled={disabled}
+              />
+              <button type="button" onClick={applyCustom} disabled={disabled} className="ui-btn-primary text-xs">
+                {t("apply")}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
     );
   }
 

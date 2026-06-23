@@ -20,12 +20,14 @@ import {
   toMetricPrismProps
 } from "@/uxpilot-ui/adapters/dashboard-mappers";
 import { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
+import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
 
 const CANVAS_UPSELL_KEY = "orion-dash-canvas-upsell-dismissed";
 
 export function DashboardContentLive() {
   const t = useTranslations("dashboard");
   const data = useDashboardData();
+  const isMobile = useIsMobile();
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [upsellDismissed, setUpsellDismissed] = useState(false);
 
@@ -115,7 +117,7 @@ export function DashboardContentLive() {
             ) : null}
           </p>
         </div>
-        {!data.isEmptyState ? (
+        {!data.isEmptyState && !isMobile ? (
           <button
             type="button"
             onClick={() => setCustomizeOpen(true)}

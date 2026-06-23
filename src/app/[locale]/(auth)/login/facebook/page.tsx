@@ -69,6 +69,15 @@ export default async function FacebookLoginHandoffPage({
           >
             {tNav("privacy")}
           </Link>
+          <span className="mx-2 text-white/15">·</span>
+          <Link
+            href="/data-deletion"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-violet-200/70 underline-offset-2 transition hover:text-amber-300 hover:underline"
+          >
+            {tNav("dataDeletion")}
+          </Link>
         </div>
       </div>
     </div>

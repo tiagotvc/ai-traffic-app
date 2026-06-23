@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
 import {
   defaultWidgetConfig,
   resolveWidgetHeight,
@@ -30,7 +31,22 @@ export function useDashboardCanvas() {
   const [activeLayoutId, setActiveLayoutId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditModeState] = useState(false);
+  const isMobile = useIsMobile();
+
+  const setEditMode = useCallback(
+    (value: boolean) => {
+      if (value && isMobile) return;
+      setEditModeState(value);
+    },
+    [isMobile]
+  );
+
+  useEffect(() => {
+    if (isMobile && editMode) {
+      setEditModeState(false);
+    }
+  }, [isMobile, editMode]);
   const [catalog, setCatalog] = useState<
     Array<{
       type: string;

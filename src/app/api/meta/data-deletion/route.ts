@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getAppBaseUrl } from "@/lib/app-url";
+import { getDataDeletionStatusUrl } from "@/lib/app-url";
 import {
   createMetaDeletionConfirmationCode,
   parseMetaSignedRequest,
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   await processMetaUserDataDeletion(parsed.user_id);
 
   const confirmation_code = createMetaDeletionConfirmationCode();
-  const url = `${getAppBaseUrl()}/data-deletion?confirmation=${confirmation_code}`;
+  const url = getDataDeletionStatusUrl(confirmation_code);
 
   return NextResponse.json({ url, confirmation_code });
 }

@@ -30,7 +30,7 @@ export function SparklineChart({ data, labels, color, formatValue }: Props) {
 
   return (
     <div className="h-full min-h-[48px] w-full">
-      <ResponsiveContainer width="100%" height={48}>
+      <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
           <Line
             type="monotone"

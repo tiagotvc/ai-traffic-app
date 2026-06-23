@@ -42,7 +42,7 @@ export function SingleMetricWidget({
     const kpi = primaryKPIs[0];
     if (!kpi && !data.loading) return null;
     return (
-      <div className="h-full min-h-0 w-full">
+      <div className="h-full min-h-0 w-full max-lg:h-auto">
         {kpi ? <MetricKpiCard kpi={kpi} isLoading={data.loading} /> : null}
       </div>
     );

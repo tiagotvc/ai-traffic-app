@@ -93,7 +93,7 @@ export function WidgetChrome({
 
       <div
         className={cn(
-          "flex min-h-0 w-full flex-1 flex-col overflow-hidden",
+          "flex min-h-0 w-full flex-1 flex-col overflow-hidden max-lg:h-auto max-lg:flex-none max-lg:overflow-visible",
           embedded
             ? editMode
               ? "p-2"

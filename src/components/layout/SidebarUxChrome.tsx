@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronDown, ChevronLeft, ChevronRight, Globe, Info, LifeBuoy, LogOut, Moon, Receipt, RotateCcw, ScrollText, Settings, Shield, Sun, Ticket, Trash2, Users, Wallet, Zap } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Globe, Info, LifeBuoy, LogOut, Moon, Receipt, RotateCcw, ScrollText, Settings, Shield, Sun, Ticket, Trash2, Users, Wallet } from "lucide-react";
+
+import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
@@ -164,15 +166,12 @@ export function SidebarCollapseFab({
   );
 }
 
-export function SidebarLogoIcon() {
-  return (
-    <div
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg animate-pulse-violet"
-      style={{ background: "linear-gradient(135deg, #4f46e5, #7c3aed)" }}
-    >
-      <Zap size={16} className="text-white" />
-    </div>
-  );
+export function SidebarLogoIcon({ collapsed = false }: { collapsed?: boolean }) {
+  if (collapsed) {
+    return <OrionAgencyLogo showText={false} variant="dark" />;
+  }
+
+  return <OrionAgencyLogo size="sm" variant="dark" />;
 }
 
 export function SidebarCollapseButton({ onClick, title }: { onClick: () => void; title: string }) {
@@ -266,15 +265,36 @@ export function SidebarUserBlock({
         <Info size={13} style={{ color: "#f5a623" }} />
         {tNav("about")}
       </Link>
-      <Link href="/terms" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+      <Link
+        href="/terms"
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={closeAndNavigate}
+        className={menuLinkClass}
+        style={{ color: "#94a3b8" }}
+      >
         <ScrollText size={13} style={{ color: "#f5a623" }} />
         {tNav("terms")}
       </Link>
-      <Link href="/privacy" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+      <Link
+        href="/privacy"
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={closeAndNavigate}
+        className={menuLinkClass}
+        style={{ color: "#94a3b8" }}
+      >
         <Shield size={13} style={{ color: "#f5a623" }} />
         {tNav("privacy")}
       </Link>
-      <Link href="/data-deletion" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+      <Link
+        href="/data-deletion"
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={closeAndNavigate}
+        className={menuLinkClass}
+        style={{ color: "#94a3b8" }}
+      >
         <Trash2 size={13} style={{ color: "#f5a623" }} />
         {tNav("dataDeletion")}
       </Link>

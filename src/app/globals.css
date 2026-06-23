@@ -865,6 +865,7 @@ h6,
   transform: none !important;
   width: 100% !important;
   left: 0 !important;
+  overflow: visible !important;
 }
 
 .dashboard-canvas-shell--mobile-stack .react-grid-item > div {

@@ -1,3 +1,5 @@
+import { routing } from "@/i18n/routing";
+
 /**
  * URL pública do app (OAuth, links absolutos).
  * Em produção na Vercel, ignora localhost do .env e usa VERCEL_URL.
@@ -72,4 +74,11 @@ export function listMetaOAuthRedirectUris(requestOrigin?: string): string[] {
 
 export function getStripeWebhookUrl(): string {
   return `${getAppBaseUrl()}/api/webhooks/stripe`;
+}
+
+/** Public data-deletion status page (Meta Developer Dashboard + LGPD). */
+export function getDataDeletionStatusUrl(confirmationCode?: string): string {
+  const base = `${getAppBaseUrl()}/${routing.defaultLocale}/data-deletion`;
+  if (!confirmationCode) return base;
+  return `${base}?confirmation=${encodeURIComponent(confirmationCode)}`;
 }

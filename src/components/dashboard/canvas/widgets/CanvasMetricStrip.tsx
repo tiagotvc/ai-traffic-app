@@ -56,9 +56,9 @@ export function CanvasMetricStrip({
 }) {
   if (isLoading) {
     return (
-      <div className="grid h-full w-full grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="skeleton-shimmer h-full min-h-[2.5rem] rounded-lg" />
+          <div key={i} className="skeleton-shimmer min-h-[4.5rem] rounded-lg" />
         ))}
       </div>
     );
@@ -75,7 +75,7 @@ export function CanvasMetricStrip({
   return (
     <div
       className={cn(
-        "grid h-full w-full gap-2",
+        "grid w-full gap-2.5 max-lg:h-auto max-lg:min-h-0 lg:h-full",
         cols === 1 && "grid-cols-1",
         cols === 2 && "grid-cols-1 sm:grid-cols-2",
         cols >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
@@ -84,21 +84,21 @@ export function CanvasMetricStrip({
       {items.map((m) => (
         <div
           key={m.label}
-          className="flex min-h-[2.5rem] min-w-0 flex-col justify-center rounded-lg px-2.5 py-1.5"
+          className="flex min-h-[4.5rem] min-w-0 flex-col justify-center rounded-lg px-3 py-2.5 sm:min-h-[3rem] sm:px-2.5 sm:py-1.5"
           style={{
             background: "var(--surface-bg)",
             border: "1px solid var(--border-color)"
           }}
         >
           <span
-            className="truncate text-[10px] leading-tight"
+            className="truncate text-[11px] leading-snug sm:text-[10px] sm:leading-tight"
             style={{ color: textColor ?? "var(--text-dimmer)", fontFamily, fontSize }}
           >
             {m.label}
           </span>
-          <div className="mt-0.5 flex min-w-0 items-center justify-between gap-1">
+          <div className="mt-1 flex min-w-0 items-center justify-between gap-2 sm:mt-0.5 sm:gap-1">
             <span
-              className="truncate text-sm font-semibold leading-tight"
+              className="truncate text-base font-semibold leading-snug sm:text-sm sm:leading-tight"
               style={{
                 color: accentColor ?? textColor ?? "var(--text-main)",
                 fontFamily: fontFamily ?? "var(--font-heading)",

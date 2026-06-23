@@ -391,7 +391,8 @@ export function DashboardSwitcher({
   onSelect,
   onCreate,
   templates,
-  maxDashboards
+  maxDashboards,
+  allowCustomization = true
 }: {
   layouts: Array<{ id: string; name: string; isDefault: boolean }>;
   activeLayoutId: string;
@@ -399,6 +400,7 @@ export function DashboardSwitcher({
   onCreate: (name: string, templateId?: string) => void;
   templates: Array<{ id: string; name: string }>;
   maxDashboards: number;
+  allowCustomization?: boolean;
 }) {
   const t = useTranslations("dashboardWidgets");
   const [open, setOpen] = useState(false);
@@ -445,7 +447,7 @@ export function DashboardSwitcher({
             </button>
           ))}
 
-          {!atLimit ? (
+          {allowCustomization && !atLimit ? (
             creating ? (
               <div className="space-y-2 border-t px-3 py-2" style={{ borderColor: "var(--border-color)" }}>
                 <input

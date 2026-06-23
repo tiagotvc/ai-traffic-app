@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { PublishPanelHost } from "@/components/publish/PublishPanelHost";
 import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 import { CommandStripProvider } from "@/components/layout/CommandStripContext";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
 import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
@@ -271,14 +272,8 @@ export function AppShellSkeleton({
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-              style={{ background: "linear-gradient(135deg, #4f46e5, #7c3aed)" }}
-            >
-              ∞
-            </div>
-            <span className="truncate font-heading text-sm font-semibold text-[var(--text-main)]">Orion Agency</span>
+          <div className="flex min-w-0 flex-1 items-center">
+            <OrionAgencyLogo size="sm" variant="dark" />
           </div>
         </header>
 
@@ -286,15 +281,7 @@ export function AppShellSkeleton({
         {mobileMenuOpen ? (
           <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0f14] lg:hidden print:hidden" role="dialog" aria-modal="true">
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--sidebar-border)] px-4 py-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <div
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-                  style={{ background: "linear-gradient(135deg, #4f46e5, #7c3aed)" }}
-                >
-                  ∞
-                </div>
-                <span className="truncate font-heading text-sm font-semibold text-[#f8fafc]">Orion Agency</span>
-              </div>
+              <OrionAgencyLogo size="sm" variant="dark" />
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}

@@ -62,7 +62,7 @@ function TrendBadge({
 function KpiCardTile({ kpi, index }: { kpi: KpiCard; index: number }) {
   return (
     <div
-      className="kpi-card-hover animate-fade-up flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl p-4 sm:p-5"
+      className="kpi-card-hover animate-fade-up flex h-full min-h-[220px] min-w-0 flex-col overflow-hidden rounded-2xl p-4 max-lg:h-auto max-lg:shrink-0 sm:min-h-[240px] sm:p-5 lg:min-h-0"
       style={{
         background: "var(--surface-card)",
         border: "1px solid var(--border-color)",
@@ -94,7 +94,10 @@ function KpiCardTile({ kpi, index }: { kpi: KpiCard; index: number }) {
       <p className="mb-2 truncate text-[11px]" style={{ color: "var(--text-dim)" }}>
         {kpi.subLabel}
       </p>
-      <div className="mt-auto h-12 min-h-[48px] w-full rounded-lg" style={{ background: "var(--chart-frame-bg)" }}>
+      <div
+        className="mt-auto h-24 min-h-[96px] w-full rounded-lg sm:h-16 sm:min-h-[64px] lg:h-12 lg:min-h-[48px]"
+        style={{ background: "var(--chart-frame-bg)" }}
+      >
         <SparklineChart
           data={kpi.sparkData}
           labels={kpi.sparkLabels}
@@ -131,7 +134,7 @@ function PrimaryKpiGrid({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; is
   return (
     <div
       className={cn(
-        "grid h-full w-full gap-3",
+        "grid w-full gap-3 max-lg:auto-rows-min max-lg:gap-4 max-lg:h-auto lg:h-full",
         cols === 1 && "grid-cols-1",
         cols === 2 && "grid-cols-1 sm:grid-cols-2",
         cols >= 3 && "grid-cols-1 sm:grid-cols-3"
@@ -146,7 +149,7 @@ function PrimaryKpiGrid({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; is
 
 export function MetricPrismPrimary({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; isLoading?: boolean }) {
   return (
-    <div className="h-full min-h-0 w-full">
+    <div className="h-full min-h-0 w-full max-lg:h-auto">
       <PrimaryKpiGrid primaryKPIs={primaryKPIs} isLoading={isLoading} />
     </div>
   );

@@ -97,7 +97,7 @@ export function CommandStripFiltersModal({
             <PeriodFilter
               value={period}
               onChange={setPeriod}
-              variant="commandStrip"
+              variant="modal"
               disabled={periodFilterDisabled}
               disabledHint={periodFilterDisabledHint}
             />

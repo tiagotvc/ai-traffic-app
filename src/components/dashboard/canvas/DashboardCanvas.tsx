@@ -19,6 +19,7 @@ import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { layoutHasWidgetPeriodOverrides } from "@/lib/dashboard/widget-period";
 import type { LayoutDto } from "@/lib/dashboard/widget-catalog";
 import type { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
+import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
 
 type DashboardData = ReturnType<typeof useDashboardData>;
 
@@ -94,6 +95,8 @@ export function DashboardCanvas({
 }) {
   const t = useTranslations("dashboardWidgets");
   const tDash = useTranslations("dashboard");
+  const isMobile = useIsMobile();
+  const effectiveEditMode = editMode && !isMobile;
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [aiBuilderOpen, setAiBuilderOpen] = useState(false);
   const [tvMode, setTvMode] = useState(false);
@@ -148,67 +151,72 @@ export function DashboardCanvas({
               onCreate={onCreateLayout}
               templates={templates}
               maxDashboards={limits.maxDashboards}
+              allowCustomization={!isMobile}
             />
             <DashboardTvModeButton onToggle={() => setTvMode((v) => !v)} />
-            <DashboardToolbarButton
-              icon={<LayoutTemplate size={14} />}
-              label={t("templatesButton")}
-              onClick={() => setTemplatesOpen(true)}
-              disabled={applyingTemplate || saving}
-              className="disabled:opacity-50"
-              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-            />
-            <DashboardToolbarButton
-              icon={<RotateCcw size={14} />}
-              label={t("resetLayout")}
-              onClick={() => setResetConfirm(true)}
-              disabled={resetting || saving}
-              className="disabled:opacity-50"
-              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-            />
-            {limits.allowAiBuilder ? (
-              <DashboardToolbarButton
-                icon={<Wand2 size={14} />}
-                label={t("aiBuilder")}
-                onClick={() => setAiBuilderOpen(true)}
-                className="transition hover:brightness-110"
-                style={{
-                  borderColor: "rgba(245,166,35,0.32)",
-                  background: "linear-gradient(135deg, rgba(245,166,35,0.12), rgba(124,58,237,0.1))",
-                  color: "#fde68a",
-                  boxShadow: "inset 0 0 0 1px rgba(245,166,35,0.14)"
-                }}
-              />
-            ) : null}
-            {editMode ? (
+            {!isMobile ? (
               <>
                 <DashboardToolbarButton
-                  icon={<Plus size={14} />}
-                  label={t("addWidget")}
-                  onClick={() => setLibraryOpen(true)}
-                  className="text-white"
-                  style={{ background: "#4f46e5", borderColor: "transparent" }}
+                  icon={<LayoutTemplate size={14} />}
+                  label={t("templatesButton")}
+                  onClick={() => setTemplatesOpen(true)}
+                  disabled={applyingTemplate || saving}
+                  className="disabled:opacity-50"
+                  style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
                 />
                 <DashboardToolbarButton
-                  icon={<Check size={14} />}
-                  label={saving ? t("savingLayout") : t("doneEditing")}
-                  disabled={saving}
-                  onClick={() => {
-                    if (saving) return;
-                    setEditMode(false);
-                  }}
+                  icon={<RotateCcw size={14} />}
+                  label={t("resetLayout")}
+                  onClick={() => setResetConfirm(true)}
+                  disabled={resetting || saving}
                   className="disabled:opacity-50"
-                  style={{ borderColor: "var(--border-color)", color: "var(--text-main)" }}
+                  style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
                 />
+                {limits.allowAiBuilder ? (
+                  <DashboardToolbarButton
+                    icon={<Wand2 size={14} />}
+                    label={t("aiBuilder")}
+                    onClick={() => setAiBuilderOpen(true)}
+                    className="transition hover:brightness-110"
+                    style={{
+                      borderColor: "rgba(245,166,35,0.32)",
+                      background: "linear-gradient(135deg, rgba(245,166,35,0.12), rgba(124,58,237,0.1))",
+                      color: "#fde68a",
+                      boxShadow: "inset 0 0 0 1px rgba(245,166,35,0.14)"
+                    }}
+                  />
+                ) : null}
+                {effectiveEditMode ? (
+                  <>
+                    <DashboardToolbarButton
+                      icon={<Plus size={14} />}
+                      label={t("addWidget")}
+                      onClick={() => setLibraryOpen(true)}
+                      className="text-white"
+                      style={{ background: "#4f46e5", borderColor: "transparent" }}
+                    />
+                    <DashboardToolbarButton
+                      icon={<Check size={14} />}
+                      label={saving ? t("savingLayout") : t("doneEditing")}
+                      disabled={saving}
+                      onClick={() => {
+                        if (saving) return;
+                        setEditMode(false);
+                      }}
+                      className="disabled:opacity-50"
+                      style={{ borderColor: "var(--border-color)", color: "var(--text-main)" }}
+                    />
+                  </>
+                ) : (
+                  <DashboardToolbarButton
+                    icon={<Settings2 size={14} />}
+                    label={tDash("layoutCustomize")}
+                    onClick={() => setEditMode(true)}
+                    style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                  />
+                )}
               </>
-            ) : (
-              <DashboardToolbarButton
-                icon={<Settings2 size={14} />}
-                label={tDash("layoutCustomize")}
-                onClick={() => setEditMode(true)}
-                style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-              />
-            )}
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -226,14 +234,17 @@ export function DashboardCanvas({
 
       {layoutLoading ? (
         <DashboardGridSkeleton />
-      ) : isEmpty && editMode ? (
+      ) : isEmpty && effectiveEditMode ? (
         <DashboardEmptyState onAddWidget={() => setLibraryOpen(true)} />
       ) : isEmpty ? (
-        <DashboardEmptyState onAddWidget={() => setEditMode(true)} />
+        <DashboardEmptyState
+          onAddWidget={isMobile ? undefined : () => setEditMode(true)}
+          mobileHintOnly={isMobile}
+        />
       ) : (
         <DashboardGrid
           widgets={widgets}
-          editMode={editMode && !tvMode}
+          editMode={effectiveEditMode && !tvMode}
           allowResize={limits.allowResize}
           dashboardData={dashboardData}
           onLayoutChange={onLayoutChange}

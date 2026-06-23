@@ -1,19 +1,15 @@
 /** Paths accessible without authentication (without locale prefix). */
-export const PUBLIC_MARKETING_PREFIXES = [
-  "/pricing",
-  "/about",
-  "/terms",
-  "/support",
-  "/privacy",
-  "/data-deletion"
-] as const;
+export const PUBLIC_MARKETING_PREFIXES = ["/pricing", "/about", "/support"] as const;
+
+export const PUBLIC_LEGAL_PREFIXES = ["/terms", "/privacy", "/data-deletion"] as const;
 
 export function isPublicPath(pathWithoutLocale: string): boolean {
   const path = pathWithoutLocale || "/";
   if (path === "/") return true;
   if (path === "/login" || path.startsWith("/login/")) return true;
   if (path === "/report-print" || path.startsWith("/report-print")) return true;
-  return PUBLIC_MARKETING_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
+  const publicPrefixes = [...PUBLIC_MARKETING_PREFIXES, ...PUBLIC_LEGAL_PREFIXES];
+  return publicPrefixes.some((p) => path === p || path.startsWith(`${p}/`));
 }
 
 export function isPublicApiPath(pathname: string): boolean {

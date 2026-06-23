@@ -3,7 +3,13 @@
 import { useTranslations } from "next-intl";
 import { LayoutGrid, Plus } from "lucide-react";
 
-export function DashboardEmptyState({ onAddWidget }: { onAddWidget: () => void }) {
+export function DashboardEmptyState({
+  onAddWidget,
+  mobileHintOnly = false
+}: {
+  onAddWidget?: () => void;
+  mobileHintOnly?: boolean;
+}) {
   const t = useTranslations("dashboardWidgets");
 
   return (
@@ -21,17 +27,19 @@ export function DashboardEmptyState({ onAddWidget }: { onAddWidget: () => void }
         {t("emptyTitle")}
       </h3>
       <p className="mt-2 max-w-sm text-sm" style={{ color: "var(--text-dim)" }}>
-        {t("emptyHint")}
+        {t(mobileHintOnly ? "emptyHintMobile" : "emptyHint")}
       </p>
-      <button
-        type="button"
-        onClick={onAddWidget}
-        className="mt-5 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white"
-        style={{ background: "var(--accent-primary, #4f46e5)" }}
-      >
-        <Plus size={16} />
-        {t("addWidget")}
-      </button>
+      {onAddWidget && !mobileHintOnly ? (
+        <button
+          type="button"
+          onClick={onAddWidget}
+          className="mt-5 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white"
+          style={{ background: "var(--accent-primary, #4f46e5)" }}
+        >
+          <Plus size={16} />
+          {t("addWidget")}
+        </button>
+      ) : null}
     </div>
   );
 }
