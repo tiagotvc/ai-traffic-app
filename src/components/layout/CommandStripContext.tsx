@@ -10,7 +10,6 @@ import {
   type ReactNode
 } from "react";
 
-import { CommandStrip } from "@/components/layout/CommandStrip";
 import type { PeriodState } from "@/components/PeriodFilter";
 
 type ClientOption = { slug: string; name: string };
@@ -143,14 +142,7 @@ export function CommandStripProvider({ children }: { children: ReactNode }) {
     ]
   );
 
-  return (
-    <CommandStripContext.Provider value={value}>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <CommandStrip />
-        {children}
-      </div>
-    </CommandStripContext.Provider>
-  );
+  return <CommandStripContext.Provider value={value}>{children}</CommandStripContext.Provider>;
 }
 
 export function useCommandStrip() {

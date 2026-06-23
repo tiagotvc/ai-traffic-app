@@ -877,12 +877,18 @@ h6,
 }
 
 @media (max-width: 767px) {
+  .dashboard-canvas-shell--mobile-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
   .dashboard-canvas-grid .react-grid-item > div {
     overflow: visible;
   }
 
   .dashboard-canvas-grid .widget-drag-handle + div,
   .dashboard-canvas-grid .recharts-responsive-container {
-    min-height: 180px;
+    min-height: 160px;
   }
 }

@@ -416,14 +416,12 @@ export function DashboardSwitcher({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-9 w-9 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold sm:h-auto sm:w-auto"
+        className="flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold"
         style={{ borderColor: "var(--border-color)", color: "var(--text-main)" }}
         title={active?.name ?? t("defaultDashboard")}
         aria-label={active?.name ?? t("defaultDashboard")}
       >
         <LayoutGrid size={14} />
-        <span className="hidden sm:inline">{active?.name ?? t("defaultDashboard")}</span>
-        <ChevronDown size={14} className="hidden sm:block" />
       </button>
 
       {open ? (
@@ -513,13 +511,12 @@ export function DashboardTvModeButton({ onToggle }: { onToggle: () => void }) {
     <button
       type="button"
       onClick={onToggle}
-      className="flex h-9 w-9 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold sm:h-auto sm:w-auto"
+      className="flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-semibold"
       style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
       title={t("tvMode")}
       aria-label={t("tvMode")}
     >
       <Tv size={14} />
-      <span className="hidden sm:inline">{t("tvMode")}</span>
     </button>
   );
 }

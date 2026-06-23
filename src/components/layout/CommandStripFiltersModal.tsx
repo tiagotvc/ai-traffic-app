@@ -42,7 +42,7 @@ export function CommandStripFiltersModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
       <button
         type="button"
         className="absolute inset-0 cursor-default"
@@ -50,7 +50,7 @@ export function CommandStripFiltersModal({
         onClick={onClose}
       />
       <div
-        className="relative z-10 w-full max-w-md rounded-t-2xl border p-5 shadow-xl sm:rounded-2xl"
+        className="relative z-10 w-full max-w-md rounded-2xl border p-5 shadow-xl"
         style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
       >
         <div className="mb-4 flex items-center justify-between gap-3">

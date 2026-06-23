@@ -1,12 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { BarChart2, Building2, Filter, RefreshCw, Search } from "lucide-react";
-import { useState, useTransition } from "react";
+import { BarChart2, Building2, RefreshCw, Search } from "lucide-react";
+import { useTransition } from "react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
-import { CommandStripFiltersModal } from "@/components/layout/CommandStripFiltersModal";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { IconLabelButton } from "@/components/ui/IconLabelButton";
 import { cn } from "@/lib/cn";
@@ -42,7 +41,6 @@ export function CommandStrip() {
   const ctx = useCommandStripOptional();
   const t = useTranslations("dashboard");
   const [syncing, startSync] = useTransition();
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   if (!ctx) return null;
 
@@ -98,22 +96,17 @@ export function CommandStrip() {
     });
   }
 
-  const pillClass =
-    "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all duration-200 whitespace-nowrap";
   const pillStyle = {
     color: "var(--text-main)",
     background: "var(--filter-btn-bg)",
     borderColor: "var(--border-color)"
   };
 
-  const filtersActive =
-    !hideFilters && Boolean(clientFilter || accountFilter || period.preset !== "last30");
-
   const actions = (
     <>
       {leadingSlot}
       {showSearch ? (
-        <div className={cn(pillClass, "min-w-0 flex-1 lg:min-w-[180px] lg:max-w-[240px]")} style={pillStyle}>
+        <div className="flex min-w-0 max-w-[240px] flex-1 items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all duration-200 whitespace-nowrap" style={pillStyle}>
           <Search size={14} style={{ color: "var(--text-dim)" }} className="shrink-0" />
           <input
             type="search"
@@ -133,57 +126,13 @@ export function CommandStrip() {
 
   return (
     <div
-      className="sticky top-0 z-30 w-full shrink-0 border-b backdrop-blur-md"
+      className="sticky top-0 z-30 hidden w-full shrink-0 border-b backdrop-blur-md lg:block"
       style={{
         background: "var(--surface-header)",
         borderColor: "var(--border-color)"
       }}
     >
-      {/* Mobile: só ícone de filtro + ações */}
-      <div className="flex items-center gap-2 px-3 py-2 lg:hidden">
-        {!hideFilters ? (
-          <>
-            <button
-              type="button"
-              onClick={() => setFiltersOpen(true)}
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-all duration-200"
-              style={{
-                ...pillStyle,
-                borderColor: filtersActive ? "var(--amber-bright)" : "var(--border-color)",
-                boxShadow: filtersActive ? "0 0 0 1px rgba(245,166,35,0.25)" : undefined
-              }}
-              title={t("filtersTitle")}
-              aria-label={t("filtersTitle")}
-            >
-              <Filter size={18} />
-              {filtersActive ? (
-                <span
-                  className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full"
-                  style={{ background: "var(--amber-bright)" }}
-                />
-              ) : null}
-            </button>
-            <CommandStripFiltersModal
-              open={filtersOpen}
-              onClose={() => setFiltersOpen(false)}
-              clientFilter={clientFilter}
-              setClientFilter={setClientFilter}
-              accountFilter={accountFilter}
-              setAccountFilter={setAccountFilter}
-              period={period}
-              setPeriod={setPeriod}
-              clientOptions={clientOptions}
-              adAccounts={adAccounts}
-              periodFilterDisabled={periodFilterDisabled}
-              periodFilterDisabledHint={periodFilterDisabledHint}
-            />
-          </>
-        ) : null}
-        <div className="ml-auto flex min-w-0 items-center justify-end gap-2">{actions}</div>
-      </div>
-
-      {/* Desktop: filtros inline */}
-      <div className="hidden flex-wrap items-center gap-2 px-6 py-3 lg:flex">
+      <div className="flex flex-wrap items-center gap-2 px-6 py-3">
         {!hideFilters ? (
           <>
             <FilterSelectDropdown

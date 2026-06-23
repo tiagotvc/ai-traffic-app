@@ -4,9 +4,9 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Building2, ExternalLink, Pencil, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 
+import { PageToolbar } from "@/components/layout/PageToolbar";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
-import { IconLabelLink } from "@/components/ui/IconLabelButton";
 import { toUxClientCards } from "@/uxpilot-ui/adapters/clients-mappers";
 import { useClientsData } from "@/uxpilot-ui/adapters/useClientsData";
 import { UxFloatingActionBar } from "@/uxpilot-ui/adapters/UxFloatingActionBar";
@@ -35,50 +35,33 @@ export function ClientsContentLive() {
   const cards = useMemo(() => toUxClientCards(data.clients, data.locale), [data.clients, data.locale]);
   const selectedClient = cards.find((c) => c.id === selectedId) ?? null;
 
-  const trailingSlot = useMemo(
-    () => (
-      <IconLabelLink
-        href="/clients/new"
-        label="Novo Cliente"
-        icon={<Plus size={16} />}
-        className="flex h-10 w-10 items-center justify-center rounded-lg text-xs font-semibold shadow-md transition-all hover:brightness-110 active:scale-95 sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5"
-        style={{
-          background: "linear-gradient(135deg, #f5a623, #e8920d)",
-          color: "#0f1419",
-          fontFamily: "var(--font-heading)"
-        }}
-      />
-    ),
-    []
-  );
-
-  useCommandStripPage({
-    hideFilters: true,
-    hideSync: true,
-    searchPlaceholder: "Buscar clientes...",
-    searchValue: data.search,
-    onSearchChange: data.setSearch,
-    trailingSlot
-  });
+  useCommandStripPage({ hideFilters: true, hideSync: true });
 
   return (
     <>
-      <div>
-        <div className="flex items-center gap-2">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg"
-            style={{ background: "rgba(245,166,35,0.15)" }}
+      <PageToolbar
+        icon={<Building2 size={16} style={{ color: "#f5a623" }} />}
+        title={t("title")}
+        subtitle={`${cards.length} ${cards.length === 1 ? "cliente" : "clientes"}`}
+        showGlobalFilters={false}
+        showSync={false}
+        search={{
+          value: data.search,
+          onChange: data.setSearch,
+          placeholder: "Buscar clientes..."
+        }}
+        actions={
+          <Link
+            href="/clients/new"
+            title="Novo Cliente"
+            aria-label="Novo Cliente"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg shadow-md transition-all hover:brightness-110 active:scale-95"
+            style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
           >
-            <Building2 size={16} style={{ color: "#f5a623" }} />
-          </div>
-          <h1 className="font-heading text-xl font-bold" style={{ color: "var(--text-main)" }}>
-            {t("title")}
-          </h1>
-        </div>
-        <p className="mt-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
-          {cards.length} {cards.length === 1 ? "cliente" : "clientes"}
-        </p>
-      </div>
+            <Plus size={16} />
+          </Link>
+        }
+      />
 
       {data.message ? <div className="ui-alert-info text-sm">{data.message}</div> : null}
 

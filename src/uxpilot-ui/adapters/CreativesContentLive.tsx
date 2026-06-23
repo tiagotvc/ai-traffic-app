@@ -2,12 +2,14 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
+import { Filter, SlidersHorizontal, Trophy } from "lucide-react";
 
 import { CreativeCompareModal } from "@/components/creatives/CreativeCompareModal";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
 import { RankingConfigModal } from "@/components/creatives/RankingConfigModal";
-import { IconLabelButton } from "@/components/ui/IconLabelButton";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { PageToolbar } from "@/components/layout/PageToolbar";
+import { IconActionButton } from "@/components/ui/IconActionButton";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import type { CreativeItem } from "@/components/creatives/CreativeCardGrid";
 import {
@@ -24,8 +26,11 @@ export function CreativesContentLive() {
   const locale = useLocale();
   const data = useCreativesData();
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilterTab, setActiveFilterTab] = useState("Todos");
   const [previewing, setPreviewing] = useState<CreativeItem | null>(null);
   const [comparing, setComparing] = useState<CreativeItem | null>(null);
+
+  useCommandStripPage({ hideFilters: true, hideSync: true });
 
   const presetLabel = (preset: string) => {
     if (preset.startsWith("custom:")) return preset.slice("custom:".length);
@@ -43,22 +48,6 @@ export function CreativesContentLive() {
 
   const filterTabs = useMemo(() => presetTabsFromGroups(data.groups, presetLabel), [data.groups, tPresets]);
 
-  useCommandStripPage({});
-
-  const configureRankingSlot = useMemo(
-    () => (
-      <IconLabelButton
-        type="button"
-        label={t("cfgButton")}
-        icon={<SlidersHorizontal size={16} />}
-        onClick={() => data.setConfigOpen(true)}
-        className="flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2"
-        style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
-      />
-    ),
-    [t, data.setConfigOpen]
-  );
-
   function handlePreview(card: UxCreativeCard) {
     setPreviewing(card.raw);
   }
@@ -69,17 +58,47 @@ export function CreativesContentLive() {
 
   return (
     <>
+      <PageToolbar
+        eyebrow={t("rankingTitle")}
+        icon={<Trophy size={16} style={{ color: "#f5a623" }} />}
+        title={t("rankingTitle")}
+        subtitle={t("rankingSubtitle")}
+        search={{
+          value: searchQuery,
+          onChange: setSearchQuery,
+          placeholder: t("searchPlaceholder")
+        }}
+        pageFilters={
+          <FilterSelectDropdown
+            icon={<Filter size={13} style={{ color: "#f5a623" }} />}
+            label=""
+            placeholder={t("campaignTypeFilter")}
+            options={filterTabs.map((tab) => ({ value: tab, label: tab }))}
+            value={activeFilterTab}
+            onChange={setActiveFilterTab}
+            className="w-full max-w-none sm:w-auto"
+          />
+        }
+        actions={
+          <IconActionButton
+            icon={<SlidersHorizontal size={16} />}
+            label={t("cfgButton")}
+            onClick={() => data.setConfigOpen(true)}
+          />
+        }
+      />
+
       <CreativesContent
         live={{
           creatives,
           filterTabs,
           loading: data.loading || data.clientsLoading,
           searchQuery,
-          onSearchChange: setSearchQuery,
+          activeFilterTab,
           onOpenCriteria: () => data.setConfigOpen(true),
-          headerActions: configureRankingSlot,
           onPreview: (creative) => handlePreview(creative as UxCreativeCard),
-          onCompare: (creative) => handleCompare(creative as UxCreativeCard)
+          onCompare: (creative) => handleCompare(creative as UxCreativeCard),
+          hideChrome: true
         }}
       />
 

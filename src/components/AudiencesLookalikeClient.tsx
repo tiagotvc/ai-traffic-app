@@ -5,15 +5,17 @@ import { useTranslations } from "next-intl";
 import { Eye, Filter, Info, Plus, RefreshCw, Search, Target, Users } from "lucide-react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { PageToolbar } from "@/components/layout/PageToolbar";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
+import { IconActionButton } from "@/components/ui/IconActionButton";
 import { DsPageHeader } from "@/design-system";
 import type { AudienceCreateContext, SavedAudienceSummary } from "@/components/audiences/create/types";
 import { AudienceDetailModal } from "@/components/audiences/AudienceDetailModal";
 import { Badge } from "@/components/ui/Badge";
 import { OutlineIcon } from "@/components/ui/OutlineIcon";
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import { IconLabelButton } from "@/components/ui/IconLabelButton";
+import { IconActionButton } from "@/components/ui/IconActionButton";
 import { Link } from "@/i18n/navigation";
 import { formatMetaGraphErrorMessage } from "@/lib/meta-graph-errors";
 import { AudienceCreatorUxPage } from "@/uxpilot-ui/adapters/AudienceCreatorUxPage";
@@ -102,20 +104,17 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
 
   const createAudienceSlot = useMemo(
     () => (
-      <IconLabelButton
-        type="button"
-        label={t("createNewAudience")}
+      <IconActionButton
         icon={<Plus size={16} />}
+        label={t("createNewAudience")}
         disabled={!metaConnected || !adAccountId}
         onClick={openCreateView}
-        className="flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2"
-        style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
       />
     ),
     [t, metaConnected, adAccountId, openCreateView]
   );
 
-  useCommandStripPage({});
+  useCommandStripPage({ hideFilters: true, hideSync: true });
 
   useEffect(() => {
     if (!useUxChrome || !strip) return;
@@ -375,28 +374,37 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         adAccountId={adAccountId}
       />
       {useUxChrome ? (
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="mb-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
-              Públicos
-            </p>
-            <div className="flex items-center gap-2">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-lg"
-                style={{ background: "rgba(245,166,35,0.15)" }}
-              >
-                <Users size={16} style={{ color: "#f5a623" }} />
-              </div>
-              <h1 className="font-heading text-2xl font-bold" style={{ color: "var(--text-main)" }}>
-                {t("title")}
-              </h1>
-            </div>
-            <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-              {t("subtitle")}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">{createAudienceSlot}</div>
-        </div>
+        <PageToolbar
+          eyebrow="Públicos"
+          icon={<Users size={16} style={{ color: "#f5a623" }} />}
+          title={t("title")}
+          subtitle={t("subtitle")}
+          search={
+            listTab !== "templates"
+              ? {
+                  value: search,
+                  onChange: setSearch,
+                  placeholder: t("searchAudiences")
+                }
+              : undefined
+          }
+          pageFilters={
+            <FilterSelectDropdown
+              icon={<Filter size={13} style={{ color: "#f5a623" }} />}
+              label=""
+              placeholder={t("tabSaved")}
+              options={[
+                { value: "saved", label: t("tabSaved") },
+                { value: "excluded", label: t("tabExcluded") },
+                { value: "templates", label: t("tabTemplates") }
+              ]}
+              value={listTab}
+              onChange={(v) => setListTab(v as typeof listTab)}
+              className="w-full max-w-none sm:w-auto"
+            />
+          }
+          actions={createAudienceSlot}
+        />
       ) : (
       <DsPageHeader
         breadcrumbs={t("breadcrumbList")}
@@ -450,38 +458,6 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
 
       <div className="space-y-4">
           {!useUxChrome ? <div className="ui-card p-4">{selectors}</div> : null}
-
-          {useUxChrome ? (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <FilterSelectDropdown
-                icon={<Filter size={14} style={{ color: "#f5a623" }} />}
-                label=""
-                placeholder={t("tabSaved")}
-                options={[
-                  { value: "saved", label: t("tabSaved") },
-                  { value: "excluded", label: t("tabExcluded") },
-                  { value: "templates", label: t("tabTemplates") }
-                ]}
-                value={listTab}
-                onChange={(v) => setListTab(v as typeof listTab)}
-              />
-              {listTab !== "templates" ? (
-                <div
-                  className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg border px-3 py-1.5 sm:max-w-xs"
-                  style={{ background: "var(--surface-card)", borderColor: "#f5a623" }}
-                >
-                  <Search size={14} style={{ color: "var(--text-dimmer)" }} />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={t("searchAudiences")}
-                    className="w-full bg-transparent font-body text-sm outline-none"
-                    style={{ color: "var(--text-main)" }}
-                  />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
 
           {listTab !== "templates" ? <AudienceListInfoBanner /> : null}
 

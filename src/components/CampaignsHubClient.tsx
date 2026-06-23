@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Megaphone, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Megaphone, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   DndContext,
@@ -22,8 +22,10 @@ import { useCommandStripOptional } from "@/components/layout/CommandStripContext
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { CampaignDraftMobileCards, CampaignMobileCards, type CampaignRowLike } from "@/components/campaigns/CampaignMobileCards";
+import { PageToolbar } from "@/components/layout/PageToolbar";
+import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
+import { IconActionButton } from "@/components/ui/IconActionButton";
 import { Badge } from "@/components/ui/Badge";
-import { IconLabelButton } from "@/components/ui/IconLabelButton";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
@@ -195,7 +197,6 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [draftDiscardPendingId, setDraftDiscardPendingId] = useState<string | null>(null);
   const [creationPickerOpen, setCreationPickerOpen] = useState(false);
   const [, startStatusTransition] = useTransition();
-  const [syncing, startSync] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [metricsSource, setMetricsSource] = useState<"db" | "live" | "live-cached">("db");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -230,57 +231,85 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     }
   }, [searchParams, useUxChrome, strip]);
 
-  const handleMetaSync = useCallback(() => {
-    if (syncing) return;
-    startSync(async () => {
-      const res = await fetch("/api/sync/run", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ clientId: clientFilter || undefined })
-      });
-      if (res.ok) {
-        window.dispatchEvent(new Event("traffic-sync-done"));
-      }
-    });
-  }, [syncing, clientFilter]);
-
-  const syncMetaSlot = useMemo(
-    () => (
-      <IconLabelButton
-        type="button"
-        onClick={handleMetaSync}
-        disabled={syncing}
-        label={syncing ? tSync("syncing") : tSync("syncMeta")}
-        icon={<RefreshCw size={16} className={cn(syncing && "animate-spin")} />}
-        className={cn(
-          "flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all duration-200 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2",
-          syncing ? "cursor-wait opacity-70" : "hover:brightness-110 active:scale-95"
-        )}
-        style={{
-          background: "linear-gradient(135deg, #f5a623, #e8920d)",
-          color: "#0f1419"
-        }}
-      />
-    ),
-    [syncing, tSync, handleMetaSync]
-  );
-
   const newCampaignSlot = useMemo(
     () => (
-      <IconLabelButton
-        type="button"
-        onClick={() => setCreationPickerOpen(true)}
-        label={t("newCampaign")}
+      <IconActionButton
         icon={<Plus size={16} />}
-        className="flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95 sm:h-auto sm:w-auto sm:gap-1.5 sm:px-4 sm:py-2"
-        style={{
-          background: "linear-gradient(135deg, #f5a623, #e8920d)",
-          color: "#0f1419",
-          fontFamily: "var(--font-heading)"
-        }}
+        label={t("newCampaign")}
+        onClick={() => setCreationPickerOpen(true)}
       />
     ),
     [t]
+  );
+
+  const campaignsPageFilters = useMemo(
+    () => (
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[200px] flex-1">
+          <div className="text-xs text-[var(--text-dim)]">{t("search")}</div>
+          <MetaFilterSearchBar
+            className="mt-1"
+            value={qInput}
+            onChange={setQInput}
+            filters={metaFilters}
+            onFiltersChange={(next) => {
+              setMetaFilters(next);
+              setPage(1);
+            }}
+          />
+        </div>
+        <div>
+          <div className="text-xs text-[var(--text-dim)]">{t("filterStatus")}</div>
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as StatusFilter);
+              setPage(1);
+            }}
+            className="mt-1 min-w-[120px] rounded-xl ui-select text-sm"
+          >
+            <option value="ALL">{t("statusAll")}</option>
+            <option value="ACTIVE">{t("statusActive")}</option>
+            <option value="INACTIVE">{t("statusInactive")}</option>
+          </select>
+        </div>
+        <div>
+          <div className="text-xs text-[var(--text-dim)]">{t("filterObjective")}</div>
+          <select
+            value={objectiveFilter}
+            onChange={(e) => {
+              setObjectiveFilter(e.target.value as ObjectiveFilter);
+              setPage(1);
+            }}
+            className="mt-1 min-w-[120px] rounded-xl ui-select text-sm"
+          >
+            <option value="ALL">{t("objectiveAll")}</option>
+            <option value="leads">{t("objectiveLeads")}</option>
+            <option value="sales">{t("objectiveSales")}</option>
+            <option value="traffic">{t("objectiveTraffic")}</option>
+          </select>
+        </div>
+        <div>
+          <div className="text-xs text-[var(--text-dim)]">{t("pageSizeLabel")}</div>
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+            className="mt-1 min-w-[80px] rounded-xl ui-select text-sm"
+            title={t("pageSizeHint")}
+          >
+            {PAGE_SIZES.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    ),
+    [t, qInput, metaFilters, statusFilter, objectiveFilter, pageSize]
   );
 
   const displayRows = useMemo(() => {
@@ -545,7 +574,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     };
   }, [load, reloadPresets]);
 
-  useCommandStripPage(useUxChrome ? { hideSync: true } : {});
+  useCommandStripPage(useUxChrome ? { hideFilters: true, hideSync: true } : {});
 
   useEffect(() => {
     if (!selectedId) return;
@@ -787,31 +816,14 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   return (
     <div className="space-y-4">
       {useUxChrome ? (
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="mb-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
-              {t("breadcrumb")}
-            </p>
-            <div className="flex items-center gap-2">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-lg"
-                style={{ background: "rgba(245,166,35,0.15)" }}
-              >
-                <Megaphone size={16} style={{ color: "#f5a623" }} />
-              </div>
-              <h1 className="font-heading text-2xl font-bold" style={{ color: "var(--text-main)" }}>
-                {t("title")}
-              </h1>
-            </div>
-            <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-              {t("subtitleList")}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {syncMetaSlot}
-            {newCampaignSlot}
-          </div>
-        </div>
+        <PageToolbar
+          eyebrow={t("breadcrumb")}
+          icon={<Megaphone size={16} style={{ color: "#f5a623" }} />}
+          title={t("title")}
+          subtitle={t("subtitleList")}
+          pageFilters={campaignsPageFilters}
+          actions={newCampaignSlot}
+        />
       ) : (
         <DsPageHeader
           breadcrumbs={t("breadcrumb")}
@@ -820,7 +832,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           titleIcon={<Megaphone size={16} />}
           actions={
             <>
-              {syncMetaSlot}
+              <MetaSyncButton clientFilter={clientFilter} />
               {newCampaignSlot}
             </>
           }
@@ -861,6 +873,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         </span>
       </div>
 
+      {!useUxChrome ? (
       <div className="flex flex-wrap items-end gap-3 ui-card p-4">
         {!useUxChrome ? (
           <div>
@@ -981,6 +994,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         </label>
         <CampaignTableColumnsButton />
       </div>
+      ) : null}
 
       {clientFilter ? (
         <p className="ui-alert-info text-xs">

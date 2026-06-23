@@ -259,13 +259,14 @@ export function AppShellSkeleton({
   return (
     <UxThemeProvider>
     <PublishPanelProvider>
+      <CommandStripProvider>
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--surface-bg)] lg:flex-row">
-        {/* Mobile top bar */}
-        <header className="flex shrink-0 items-center gap-3 border-b border-[var(--border-color)] bg-[var(--surface-card)] px-4 py-3 lg:hidden print:hidden">
+        {/* Mobile top bar — menu, logo, filtros e sync */}
+        <header className="flex shrink-0 items-center gap-2 border-b border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2.5 lg:hidden print:hidden">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
             aria-label={t("openMenu", { defaultMessage: "Abrir menu" })}
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -273,7 +274,7 @@ export function AppShellSkeleton({
             </svg>
           </button>
           <div className="flex min-w-0 flex-1 items-center">
-            <OrionAgencyLogo size="sm" variant="dark" />
+            <OrionAgencyLogo size="sm" variant="light" />
           </div>
         </header>
 
@@ -309,7 +310,7 @@ export function AppShellSkeleton({
           <AppSidebar {...sharedSidebar} />
         </div>
 
-        <CommandStripProvider>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <main
             ref={mainRef}
             onScroll={(e) => setShowTop(e.currentTarget.scrollTop > 400)}
@@ -320,7 +321,8 @@ export function AppShellSkeleton({
               {children}
             </div>
           </main>
-        </CommandStripProvider>
+        </div>
+      </div>
 
         {showTop ? (
           <button
@@ -335,7 +337,7 @@ export function AppShellSkeleton({
             </svg>
           </button>
         ) : null}
-      </div>
+      </CommandStripProvider>
       <Suspense fallback={null}>
         <PublishPanelHost onPublished={() => window.dispatchEvent(new Event("traffic:campaigns-reload"))} />
       </Suspense>

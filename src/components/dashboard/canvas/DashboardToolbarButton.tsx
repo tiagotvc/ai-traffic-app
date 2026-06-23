@@ -18,14 +18,13 @@ export function DashboardToolbarButton({
       title={label}
       aria-label={label}
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-xs font-semibold transition sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2",
+        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-xs font-semibold transition",
         className
       )}
       style={style}
       {...props}
     >
       {icon}
-      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }

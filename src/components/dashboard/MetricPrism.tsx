@@ -62,7 +62,7 @@ function TrendBadge({
 function KpiCardTile({ kpi, index }: { kpi: KpiCard; index: number }) {
   return (
     <div
-      className="kpi-card-hover animate-fade-up flex h-full min-h-[220px] min-w-0 flex-col overflow-hidden rounded-2xl p-4 max-lg:h-auto max-lg:shrink-0 sm:min-h-[240px] sm:p-5 lg:min-h-0"
+      className="kpi-card-hover animate-fade-up flex h-full min-w-0 flex-col overflow-hidden rounded-2xl p-4 max-lg:h-auto max-lg:min-h-0 max-lg:py-3 sm:p-5 lg:min-h-0"
       style={{
         background: "var(--surface-card)",
         border: "1px solid var(--border-color)",
@@ -95,7 +95,7 @@ function KpiCardTile({ kpi, index }: { kpi: KpiCard; index: number }) {
         {kpi.subLabel}
       </p>
       <div
-        className="mt-auto h-24 min-h-[96px] w-full rounded-lg sm:h-16 sm:min-h-[64px] lg:h-12 lg:min-h-[48px]"
+        className="mt-2 h-14 min-h-[56px] w-full shrink-0 rounded-lg lg:mt-auto lg:h-12 lg:min-h-[48px]"
         style={{ background: "var(--chart-frame-bg)" }}
       >
         <SparklineChart

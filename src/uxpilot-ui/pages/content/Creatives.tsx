@@ -742,10 +742,12 @@ export type CreativesLiveProps = {
   loading?: boolean;
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
+  activeFilterTab?: string;
   onOpenCriteria?: () => void;
   headerActions?: ReactNode;
   onPreview?: (creative: UxCreativeCard) => void;
   onCompare?: (creative: UxCreativeCard) => void;
+  hideChrome?: boolean;
 };
 
 export default function CreativesContent({ live }: { live?: CreativesLiveProps } = {}) {
@@ -754,6 +756,7 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
   const [selectedPeriod, setSelectedPeriod] = useState("Últimos 30 dias");
   const [selectedAccount, setSelectedAccount] = useState("[ativo] CA 03 – Gabi Dawson – Paciente Final");
   const [activeFilterTab, setActiveFilterTab] = useState("Todos");
+  const resolvedFilterTab = isLive && live!.activeFilterTab !== undefined ? live!.activeFilterTab : activeFilterTab;
   const [localSearchQuery, setLocalSearchQuery] = useState("");
   const searchQuery = isLive ? (live!.searchQuery ?? "") : localSearchQuery;
   const setSearchQuery = isLive ? (live!.onSearchChange ?? (() => {})) : setLocalSearchQuery;
@@ -780,7 +783,7 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
   const sourceCreatives = isLive ? live!.creatives : creativesData;
 
   const filteredCreatives = sourceCreatives.filter((c) => {
-    const matchesTab = activeFilterTab === "Todos" || c.campaignType === activeFilterTab;
+    const matchesTab = resolvedFilterTab === "Todos" || c.campaignType === resolvedFilterTab;
     const matchesSearch = c.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
@@ -794,7 +797,9 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
           style={{ scrollbarWidth: "thin" }}
           onClick={() => closeAll()}
         >
-          {/* ── Page Header ── */}
+          {/* ── Page Header (mock only) ── */}
+          {!isLive || !live?.hideChrome ? (
+          <>
           <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
             <div>
               <p className="text-xs font-body mb-1" style={{ color: "var(--text-dim)" }}>Ranking de Criativos</p>
@@ -890,14 +895,15 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
           </div>
           ) : null}
 
-          {/* ── Filter Row: type dropdown + search ── */}
+          {/* ── Filter Row: type dropdown + search (mock only) ── */}
+          {!isLive ? (
           <div className="flex items-center justify-between gap-4 mb-5 flex-wrap" onClick={e => e.stopPropagation()}>
             <FilterSelectDropdown
               icon={<Filter size={14} style={{ color: "#f5a623" }} />}
               label=""
               placeholder="Tipo de campanha"
               options={sourceFilterTabs.map((tab) => ({ value: tab, label: tab }))}
-              value={activeFilterTab}
+              value={resolvedFilterTab}
               onChange={setActiveFilterTab}
             />
 
@@ -914,6 +920,9 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
               />
             </div>
           </div>
+          ) : null}
+          </>
+          ) : null}
 
           {/* ── Info Banner ── */}
           <div

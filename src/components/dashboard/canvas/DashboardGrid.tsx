@@ -92,6 +92,56 @@ export function DashboardGrid({
     [widgets, onLayoutChange]
   );
 
+  const renderWidget = (w: WidgetInstanceDto) => {
+    const def = getWidgetDefinition(w.widgetType);
+    const embedded = def?.embeddedChrome ?? false;
+    const isMetricCard =
+      w.widgetType === "metrics.card" || w.widgetType.startsWith("metric.single.");
+    const cardStyle = w.config.cardStyle as string | undefined;
+    const compact =
+      w.widgetType === "metrics.quickPills" ||
+      (isMetricCard && cardStyle === "compact");
+    const widgetPeriod = parseWidgetPeriod(w.config);
+    const periodBadge = widgetPeriod ? tPeriod(widgetPeriod as "last7") : undefined;
+
+    return (
+      <div
+        key={w.id}
+        className={cn(
+          "flex w-full min-h-0 flex-col overflow-hidden rounded-xl border",
+          useMobileStack ? "overflow-visible" : "h-full"
+        )}
+        style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
+      >
+        <WidgetChrome
+          title={w.title}
+          editMode={editMode}
+          compact={compact}
+          embedded={embedded}
+          periodBadge={periodBadge}
+          onRemove={() => onRemove(w.id)}
+        >
+          <WidgetRenderer
+            instance={w}
+            dashboardData={dashboardData}
+            onWidgetConfigChange={onWidgetConfigChange}
+          />
+        </WidgetChrome>
+      </div>
+    );
+  };
+
+  if (useMobileStack) {
+    return (
+      <div
+        ref={containerRef}
+        className="dashboard-canvas-shell--mobile-stack flex w-full flex-col gap-3"
+      >
+        {widgets.filter((w) => w.visible).map((w) => renderWidget(w))}
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -141,42 +191,7 @@ export function DashboardGrid({
               if (editMode) persistLayout(next);
             }}
           >
-            {widgets.filter((w) => w.visible).map((w) => {
-              const def = getWidgetDefinition(w.widgetType);
-              const embedded = def?.embeddedChrome ?? false;
-              const isMetricCard =
-                w.widgetType === "metrics.card" || w.widgetType.startsWith("metric.single.");
-              const cardStyle = w.config.cardStyle as string | undefined;
-              const compact =
-                w.widgetType === "metrics.quickPills" ||
-                (isMetricCard && cardStyle === "compact");
-              const widgetPeriod = parseWidgetPeriod(w.config);
-              const periodBadge = widgetPeriod
-                ? tPeriod(widgetPeriod as "last7")
-                : undefined;
-              return (
-              <div
-                key={w.id}
-                className="flex h-full w-full min-h-0 flex-col overflow-hidden rounded-xl border max-lg:min-h-0 max-lg:overflow-visible"
-                style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
-              >
-                <WidgetChrome
-                  title={w.title}
-                  editMode={editMode}
-                  compact={compact}
-                  embedded={embedded}
-                  periodBadge={periodBadge}
-                  onRemove={() => onRemove(w.id)}
-                >
-                  <WidgetRenderer
-                    instance={w}
-                    dashboardData={dashboardData}
-                    onWidgetConfigChange={onWidgetConfigChange}
-                  />
-                </WidgetChrome>
-              </div>
-            );
-            })}
+            {widgets.filter((w) => w.visible).map((w) => renderWidget(w))}
           </ReactGridLayout>
         </>
       ) : null}
