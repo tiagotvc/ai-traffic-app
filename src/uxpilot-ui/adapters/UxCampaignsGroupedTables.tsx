@@ -98,7 +98,7 @@ function CampaignRowCells({
 
   return (
     <>
-      <td className="px-2 py-3 w-10" onClick={(e) => e.stopPropagation()}>
+      <td className="px-2 py-3 w-12 text-center" onClick={(e) => e.stopPropagation()}>
         {c.status === "draft" ? (
           <span className="text-[10px] font-body" style={{ color: "var(--text-dimmer)" }}>
             —
@@ -324,12 +324,7 @@ export function UxCampaignsGroupedTables({
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr
-                  style={{
-                    background: "var(--surface-thead)",
-                    borderBottom: "1px solid var(--border-color)"
-                  }}
-                >
+                <tr className="border-b" style={{ background: "var(--surface-thead)", borderColor: "var(--border-color)" }}>
                   {TABLE_HEADERS.map((label) => (
                     <th
                       key={label}
@@ -346,7 +341,7 @@ export function UxCampaignsGroupedTables({
                   <tr
                     key={c.id}
                     className={cn(
-                      "border-b transition-colors",
+                      "border-b transition-colors even:bg-[var(--surface-row-alt)]",
                       c.status !== "draft" && "cursor-pointer"
                     )}
                     style={{

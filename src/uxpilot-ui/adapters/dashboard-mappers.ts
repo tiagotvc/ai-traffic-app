@@ -12,7 +12,7 @@ import {
 } from "@/lib/dashboard-metrics";
 import { resolveHeroMetricKeys } from "@/lib/dashboard-layout-prefs";
 import { formatDayLabel, pctDelta } from "@/lib/dashboard-ranges";
-import { formatBRL, formatPercent, formatRoas } from "@/lib/format";
+import { formatBRL, formatRoas } from "@/lib/format";
 
 type Summary = Partial<Record<MetricKey, number>>;
 
@@ -96,11 +96,15 @@ export function toMetricPrismProps(args: {
     };
   });
 
-  const secondaryKeys = QUICK_METRICS.filter((k) => !heroKeys.includes(k)).slice(0, 5);
+  const secondaryKeys = presetMetricsFor(dominantPreset)
+    .concat(QUICK_METRICS)
+    .filter((k, i, arr) => !heroKeys.includes(k) && arr.indexOf(k) === i)
+    .slice(0, 6);
   const secondaryMetrics: SecondaryMetric[] = secondaryKeys.map((key) => {
     const delta = heroDelta(key, summary, prevSummary);
     const { change, trend } = deltaMeta(key, delta);
     return {
+      key,
       label: metricLabel(key),
       value: formatMetricValue(key, summary[key] ?? 0, locale),
       change,
@@ -112,7 +116,9 @@ export function toMetricPrismProps(args: {
 }
 
 export function toChartData(series: SeriesPoint[], locale: string) {
-  return series.map((p) => ({ ...p, label: formatDayLabel(p.day, locale) }));
+  return [...series]
+    .sort((a, b) => a.day.localeCompare(b.day))
+    .map((p) => ({ ...p, label: formatDayLabel(p.day, locale) }));
 }
 
 const severityOrder: Record<VariationLite["severity"], number> = {
@@ -181,6 +187,10 @@ export function toIntelligenceEvents(args: {
 export function toAgencyHealth(args: {
   clients: ClientCard[];
   locale: string;
+  summary?: Summary | null;
+  prevSummary?: Summary | null;
+  clientMetric?: MetricKey;
+  formatMetric?: (key: MetricKey, value: number) => string;
   labels: {
     activeClients: string;
     healthy: string;
@@ -188,11 +198,13 @@ export function toAgencyHealth(args: {
     totalSpend: string;
   };
 }): { healthMetrics: HealthMetric[]; clients: ClientHealthRow[] } {
-  const { clients, locale, labels } = args;
+  const { clients, locale, summary, prevSummary, clientMetric = "roas", formatMetric, labels } = args;
   const active = clients.length;
   const healthy = clients.filter((c) => (c.roas ?? 0) >= 1.5 && (c.alertCount ?? 0) === 0).length;
   const alerts = clients.reduce((sum, c) => sum + (c.alertCount ?? 0), 0);
-  const totalSpend = clients.reduce((sum, c) => sum + (c.metrics?.spend ?? 0), 0);
+  const totalSpend = summary?.spend ?? clients.reduce((sum, c) => sum + (c.metrics?.spend ?? 0), 0);
+  const spendDelta = heroDelta("spend", { spend: totalSpend }, prevSummary ? { spend: prevSummary.spend ?? 0 } : null);
+  const spendChange = deltaMeta("spend", spendDelta);
 
   const healthMetrics: HealthMetric[] = [
     { label: labels.activeClients, value: String(active), change: "—", color: "#10b981" },
@@ -201,7 +213,7 @@ export function toAgencyHealth(args: {
     {
       label: labels.totalSpend,
       value: formatBRL(totalSpend, locale),
-      change: "—",
+      change: spendChange.change,
       color: "#7c3aed"
     }
   ];
@@ -210,6 +222,7 @@ export function toAgencyHealth(args: {
     const spend = c.metrics?.spend ?? 0;
     const roas = c.roas ?? c.metrics?.roas ?? 0;
     const cpa = c.metrics?.cpa ?? 0;
+    const focusRaw = c.metrics?.[clientMetric] ?? (clientMetric === "roas" ? roas : 0);
     const status: "healthy" | "warning" =
       (c.alertCount ?? 0) > 0 || roas < 1 ? "warning" : "healthy";
     return {
@@ -219,7 +232,7 @@ export function toAgencyHealth(args: {
       spend: formatBRL(spend, locale),
       roas: formatRoas(roas, locale),
       cpl: cpa > 0 ? formatBRL(cpa, locale) : "—",
-      trend: roas >= 1.5 ? `▲ ${formatPercent(Math.min(roas * 10, 99), 0, locale)}` : "—",
+      trend: formatMetric ? formatMetric(clientMetric, focusRaw) : formatRoas(roas, locale),
       status
     };
   });

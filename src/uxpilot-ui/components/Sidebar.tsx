@@ -22,6 +22,8 @@ import {
   LifeBuoy,
   ScrollText,
   Info,
+  Shield,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/uxpilot-ui/lib/utils";
 import { useTheme } from "@/uxpilot-ui/hooks/useTheme";
@@ -172,6 +174,8 @@ export default function Sidebar() {
           { icon: LifeBuoy, label: "Suporte", path: "/support" },
           { icon: Info, label: "Sobre Nós", path: "/about" },
           { icon: ScrollText, label: "Termos de Uso", path: "/terms" },
+          { icon: Shield, label: "Privacidade", path: "/privacy" },
+          { icon: Trash2, label: "Exclusão de dados", path: "/data-deletion" },
         ].map((item) => {
           const isActive = location.pathname === item.path;
           return (

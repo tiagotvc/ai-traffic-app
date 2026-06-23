@@ -60,6 +60,17 @@ export function LoginForm({
     </Link>
   );
 
+  const privacyLink = (chunks: ReactNode) => (
+    <Link
+      href="/privacy"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="font-semibold text-amber-300 underline-offset-2 hover:text-amber-200 hover:underline"
+    >
+      {chunks}
+    </Link>
+  );
+
   return (
     <div className="w-full max-w-[420px]">
       <div className="auth-premium-banner mb-5 lg:hidden">
@@ -160,7 +171,7 @@ export function LoginForm({
             {pending ? t("signingIn") : t("signIn")}
           </button>
           <p className="text-center text-[11px] leading-relaxed text-violet-300/55">
-            {t.rich("termsLoginHint", { terms: termsLink })}
+            {t.rich("termsLoginHint", { terms: termsLink, privacy: privacyLink })}
           </p>
         </form>
       ) : (
@@ -189,7 +200,7 @@ export function LoginForm({
               htmlFor="terms-accept"
               className="cursor-pointer text-xs leading-relaxed text-violet-200/75"
             >
-              {t.rich("termsAccept", { terms: termsLink })}
+              {t.rich("termsAccept", { terms: termsLink, privacy: privacyLink })}
             </label>
           </div>
           <button

@@ -15,6 +15,7 @@ const LOCALE_LABELS: Record<AppLocale, string> = {
 
 const NAV = [
   { href: "/#capabilities", key: "navProduct" as const },
+  { href: "/#samples", key: "navSamples" as const },
   { href: "/#compare", key: "navCompare" as const },
   { href: "/pricing", key: "navPricing" as const },
   { href: "/about", key: "navAbout" as const },
@@ -149,6 +150,12 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
             </Link>
             <Link href="/terms" className="hover:text-white">
               {t("navTerms")}
+            </Link>
+            <Link href="/privacy" className="hover:text-white">
+              {t("navPrivacy")}
+            </Link>
+            <Link href="/data-deletion" className="hover:text-white">
+              {t("navDataDeletion")}
             </Link>
           </div>
         </div>

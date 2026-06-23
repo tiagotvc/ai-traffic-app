@@ -1,19 +1,21 @@
 "use client";
 
-import { Brain, Sparkles, TrendingUp } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { Brain, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/cn";
+import type { ShowcaseCopy } from "@/lib/marketing/showcase-copy";
+
+const BAR_HEIGHTS = [38, 52, 44, 68, 58, 82, 74] as const;
 
 export function LoginProductShowcase({
+  copy,
   compact = false,
   animate = true
 }: {
+  copy: ShowcaseCopy;
   compact?: boolean;
   animate?: boolean;
 }) {
-  const t = useTranslations("auth");
-
   return (
     <div
       className={cn(
@@ -34,27 +36,22 @@ export function LoginProductShowcase({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
             </span>
-            {t("showcaseLive")}
+            {copy.live}
           </span>
           <span className="text-[9px] font-medium text-violet-200/70">Orion Agency</span>
         </div>
 
         <div className="grid grid-cols-3 gap-1.5">
-          {[
-            { label: t("showcaseKpiRoas"), value: "4.2x", up: true },
-            { label: t("showcaseKpiCtr"), value: "2.1%", up: true },
-            { label: t("showcaseKpiCpa"), value: "R$18", up: false }
-          ].map((kpi) => (
+          {copy.kpis.map((kpi) => (
             <div
-              key={kpi.label}
-              className="rounded-lg border border-white/10 bg-white/[0.06] px-2 py-1.5"
+              key={kpi.id}
+              className="min-w-0 rounded-lg border border-white/10 bg-white/[0.06] px-1.5 py-1.5 text-center sm:px-2"
             >
-              <div className="text-[8px] font-medium uppercase tracking-wide text-violet-200/60">
+              <div className="truncate text-[8px] font-medium uppercase tracking-wide text-violet-200/60">
                 {kpi.label}
               </div>
-              <div className="mt-0.5 flex items-center gap-0.5 font-heading text-xs font-bold text-white">
+              <div className="mt-0.5 truncate font-heading text-xs font-bold tabular-nums text-white/90">
                 {kpi.value}
-                {kpi.up ? <TrendingUp className="h-2.5 w-2.5 text-emerald-400" /> : null}
               </div>
             </div>
           ))}
@@ -62,17 +59,17 @@ export function LoginProductShowcase({
 
         <div
           className={cn(
-            "mt-2.5 flex items-end gap-1 rounded-lg border border-white/10 bg-black/20 px-2 pb-1.5 pt-2",
-            compact ? "h-12" : "h-14"
+            "mt-2.5 flex h-14 items-end gap-1 rounded-lg border border-white/10 bg-black/20 px-2 pb-1.5 pt-2",
+            compact && "h-12"
           )}
         >
-          {[38, 52, 44, 68, 58, 82, 74].map((h, i) => (
+          {BAR_HEIGHTS.map((h, i) => (
             <div
               key={i}
-              className={cn("flex-1 rounded-sm", animate && "login-showcase-bar")}
+              className={cn("min-h-[6px] flex-1 rounded-sm", animate && "login-showcase-bar")}
               style={{
                 height: `${h}%`,
-                animationDelay: `${i * 80}ms`,
+                animationDelay: animate ? `${i * 80}ms` : undefined,
                 background:
                   i === 5
                     ? "linear-gradient(180deg, #f5a623, #d4880a)"
@@ -84,24 +81,24 @@ export function LoginProductShowcase({
 
         <div className="mt-2.5 space-y-1.5">
           <div className="flex items-center gap-2 rounded-lg border border-violet-400/25 bg-violet-500/15 px-2.5 py-1.5">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-500/30 text-violet-100">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/30 text-violet-100">
               <Brain className="h-3 w-3" />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-semibold text-white">{t("showcaseBrain")}</div>
-              <div className="text-[9px] text-violet-200/75">{t("showcaseBrainHint")}</div>
+              <div className="truncate text-[10px] font-semibold text-white">{copy.brain}</div>
+              <div className="truncate text-[9px] text-violet-200/75">{copy.brainHint}</div>
             </div>
             <Sparkles className="h-3 w-3 shrink-0 text-amber-300" />
           </div>
 
           {!compact ? (
-            <div className="flex items-center justify-between rounded-lg border border-amber-400/20 bg-amber-500/10 px-2.5 py-1.5">
-              <div>
-                <div className="text-[9px] font-medium text-amber-200/80">{t("showcaseCreative")}</div>
-                <div className="text-[10px] font-semibold text-white">Hook #1 · Vídeo 15s</div>
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-2.5 py-1.5">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[9px] font-medium text-amber-200/80">{copy.creative}</div>
+                <div className="truncate text-[10px] font-semibold text-white">{copy.creativeExample}</div>
               </div>
-              <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-200">
-                {t("showcaseCreativeDelta")}
+              <span className="shrink-0 rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-violet-100">
+                {copy.creativeTag}
               </span>
             </div>
           ) : null}

@@ -1,6 +1,6 @@
 "use client";
 
-/** Toggle estilo Meta: ativo = verde à direita; pausado = cinza à esquerda. */
+/** Toggle estilo Meta: ativo = verde à direita; pausado = trilho visível à esquerda. */
 export function CampaignStatusToggle({
   active,
   disabled,
@@ -23,14 +23,19 @@ export function CampaignStatusToggle({
         e.stopPropagation();
         onChange();
       }}
-      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1 disabled:cursor-wait disabled:opacity-60 ${
-        active ? "bg-emerald-500" : "bg-[var(--text-dimmer)]/80"
-      }`}
+      className="relative inline-flex h-[22px] w-[40px] shrink-0 items-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--violet)] focus-visible:ring-offset-1 disabled:cursor-wait disabled:opacity-60"
+      style={{
+        background: active ? "var(--toggle-track-on)" : "var(--toggle-track-off)",
+        borderColor: "var(--toggle-border)"
+      }}
     >
       <span
-        className={`pointer-events-none absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-          active ? "translate-x-4" : "translate-x-0"
-        }`}
+        className="pointer-events-none absolute top-[2px] h-4 w-4 rounded-full transition-transform duration-200"
+        style={{
+          background: "var(--toggle-knob)",
+          boxShadow: "var(--toggle-knob-shadow)",
+          transform: active ? "translateX(18px)" : "translateX(2px)"
+        }}
       />
     </button>
   );

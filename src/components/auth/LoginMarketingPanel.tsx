@@ -1,7 +1,12 @@
+import { getTranslations } from "next-intl/server";
+
 import { LoginMarketingSlider } from "@/components/auth/LoginMarketingSlider";
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
+import { buildShowcaseCopy } from "@/lib/marketing/showcase-copy";
 
-export function LoginMarketingPanel() {
+export async function LoginMarketingPanel() {
+  const showcaseCopy = buildShowcaseCopy(await getTranslations("auth"));
+
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-gradient-to-br from-violet-950 via-indigo-950 to-slate-950 p-8 text-white xl:p-10">
       <div className="auth-premium-grid" />
@@ -16,7 +21,7 @@ export function LoginMarketingPanel() {
       </header>
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        <LoginMarketingSlider />
+        <LoginMarketingSlider showcaseCopy={showcaseCopy} />
       </div>
     </div>
   );

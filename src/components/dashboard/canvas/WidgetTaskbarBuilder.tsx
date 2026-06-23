@@ -141,7 +141,6 @@ export function WidgetTaskbarBuilder({
       <TaskbarTemplatePicker
         activeTemplateId={(config.templateId as string | undefined) ?? null}
         advancedUnlocked={advancedStylingUnlocked}
-        dashboardData={dashboardData}
         onApply={(templateId) => {
           const next = buildTaskbarConfigFromTemplate(templateId);
           if (!next) return;

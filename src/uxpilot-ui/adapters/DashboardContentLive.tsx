@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowRight, Settings2, Sparkles } from "lucide-react";
+import { ArrowRight, Calendar, Settings2, Sparkles, X } from "lucide-react";
 
 import { AgencyHealthLayout } from "@/components/dashboard/AgencyHealthLayout";
 import { Link } from "@/i18n/navigation";
-import { BrainSummaryBanner } from "@/components/dashboard/BrainSummaryBanner";
+import { BrainShelf } from "@/components/dashboard/BrainShelf";
 import { DashboardCustomizeModal } from "@/components/dashboard/DashboardCustomizeModal";
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
 import { LiveIntelligenceFeed } from "@/components/dashboard/LiveIntelligenceFeed";
@@ -21,10 +21,19 @@ import {
 } from "@/uxpilot-ui/adapters/dashboard-mappers";
 import { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 
+const CANVAS_UPSELL_KEY = "orion-dash-canvas-upsell-dismissed";
+
 export function DashboardContentLive() {
   const t = useTranslations("dashboard");
   const data = useDashboardData();
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [upsellDismissed, setUpsellDismissed] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem(CANVAS_UPSELL_KEY) === "1") {
+      setUpsellDismissed(true);
+    }
+  }, []);
 
   const summary = data.summary ?? {};
   const sections = data.dashboardLayout.sections;
@@ -51,6 +60,10 @@ export function DashboardContentLive() {
   const agencyHealth = toAgencyHealth({
     clients: data.clients,
     locale: data.locale,
+    summary: data.summary,
+    prevSummary: data.prevSummary,
+    clientMetric: data.clientMetric,
+    formatMetric: data.formatMetricValue,
     labels: {
       activeClients: t("agencyHealthActiveClients"),
       healthy: t("agencyHealthHealthy"),
@@ -85,8 +98,21 @@ export function DashboardContentLive() {
               {t("highlights")}
             </h1>
           </div>
-          <p className="mt-1 text-xs font-body" style={{ color: "var(--text-dim)" }}>
-            {t("highlightsSubtitle")}
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs font-body" style={{ color: "var(--text-dim)" }}>
+            <span>{t("highlightsSubtitle")}</span>
+            {!data.isEmptyState ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                style={{
+                  borderColor: "var(--chart-frame-border)",
+                  background: "var(--chart-frame-bg)",
+                  color: "var(--text-dim)"
+                }}
+              >
+                <Calendar size={10} />
+                {data.periodLabel}
+              </span>
+            ) : null}
           </p>
         </div>
         {!data.isEmptyState ? (
@@ -104,36 +130,57 @@ export function DashboardContentLive() {
 
       {data.note ? <div className="ui-alert-info">{data.note}</div> : null}
 
-      <div
-        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3"
-        style={{
-          background: "rgba(79,70,229,0.06)",
-          borderColor: "rgba(79,70,229,0.18)"
-        }}
-      >
-        <div>
-          <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-            {t("canvasUpsellTitle")}
-          </p>
-          <p className="text-xs" style={{ color: "var(--text-dim)" }}>
-            {t("canvasUpsellHint")}
-          </p>
-        </div>
-        <Link
-          href="/pricing"
-          className="flex items-center gap-1 text-xs font-semibold"
-          style={{ color: "#818cf8" }}
+      {!upsellDismissed ? (
+        <div
+          className="relative flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3"
+          style={{
+            background: "rgba(79,70,229,0.06)",
+            borderColor: "rgba(79,70,229,0.18)"
+          }}
         >
-          {t("canvasUpsellCta")}
-          <ArrowRight size={12} />
-        </Link>
-      </div>
+          <div className="min-w-0 pr-6">
+            <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+              {t("canvasUpsellTitle")}
+            </p>
+            <p className="text-xs" style={{ color: "var(--text-dim)" }}>
+              {t("canvasUpsellHint")}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/pricing"
+              className="flex items-center gap-1 text-xs font-semibold"
+              style={{ color: "#818cf8" }}
+            >
+              {t("canvasUpsellCta")}
+              <ArrowRight size={12} />
+            </Link>
+          </div>
+          <button
+            type="button"
+            aria-label={t("canvasUpsellDismiss")}
+            onClick={() => {
+              localStorage.setItem(CANVAS_UPSELL_KEY, "1");
+              setUpsellDismissed(true);
+            }}
+            className="absolute right-2 top-2 rounded-md p-1 opacity-60 transition hover:opacity-100"
+            style={{ color: "var(--text-dim)" }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ) : null}
 
       {!data.isEmptyState && sections.brainShelf ? (
-        <BrainSummaryBanner
-          learningsCount={data.brainLearningsCount ?? brainItems.length}
-          hypothesesCount={data.brainHypothesesCount ?? 0}
-          isLoading={data.brainSummaryLoading ?? data.brainLearningsLoading}
+        <BrainShelf
+          suggestions={brainItems}
+          isLoading={data.brainLearningsLoading}
+          variant="feed"
+          metaLine={
+            data.brainHypothesesCount > 0
+              ? t("brainSummaryHypotheses", { count: data.brainHypothesesCount })
+              : undefined
+          }
         />
       ) : null}
 
@@ -142,6 +189,7 @@ export function DashboardContentLive() {
           <MetricPrism
             primaryKPIs={sections.heroKpis ? primaryKPIs : []}
             secondaryMetrics={sections.secondaryMetrics ? secondaryMetrics : []}
+            secondaryTitle={sections.secondaryMetrics ? t("supportingTitle") : undefined}
             isLoading={data.loading}
           />
         ) : null}
@@ -182,37 +230,22 @@ export function DashboardContentLive() {
             }
           >
             {sections.chart ? (
-              <div
-                className="rounded-2xl p-5"
-                style={{
-                  background: "var(--surface-card)",
-                  border: "1px solid var(--border-color)",
-                  boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
-                  minHeight: sections.alerts ? "360px" : undefined
-                }}
-              >
+              <div className="dashboard-panel rounded-2xl p-4 sm:p-5" style={{ minHeight: sections.alerts ? "380px" : undefined }}>
                 <DashboardPerformanceChart
                   data={chartData}
                   activeMetrics={data.chartMetrics}
                   onToggleMetric={data.toggleChartMetric}
                   formatValue={data.formatMetricValue}
                   metricLabels={data.chartMetricLabels}
+                  metricSummary={data.summary ?? undefined}
                   isLoading={data.loading}
-                  subtitle={data.vsLabel}
+                  subtitle={data.chartSubtitle}
                 />
               </div>
             ) : null}
 
             {sections.alerts ? (
-              <div
-                className="rounded-2xl p-4"
-                style={{
-                  background: "var(--surface-card)",
-                  border: "1px solid var(--border-color)",
-                  boxShadow: "0 1px 8px rgba(0,0,0,0.05)",
-                  minHeight: sections.chart ? "360px" : undefined
-                }}
-              >
+              <div className="dashboard-panel rounded-2xl p-4" style={{ minHeight: sections.chart ? "380px" : undefined }}>
                 <LiveIntelligenceFeed events={intelligenceEvents} isLoading={data.loading} />
               </div>
             ) : null}
@@ -223,6 +256,7 @@ export function DashboardContentLive() {
           <AgencyHealthLayout
             healthMetrics={agencyHealth.healthMetrics}
             clients={agencyHealth.clients}
+            focusMetricColumnLabel={data.metricLabel(data.clientMetric)}
             isLoading={data.loading}
           />
         ) : null}

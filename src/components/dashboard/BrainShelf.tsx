@@ -22,13 +22,15 @@ export function BrainShelf({
   suggestions,
   isLoading,
   variant = "feed",
-  embedded = false
+  embedded = false,
+  metaLine
 }: {
   suggestions?: Suggestion[];
   isLoading?: boolean;
   /** feed = compact alert rows (canvas). shelf = legacy card strip. */
   variant?: "feed" | "shelf";
   embedded?: boolean;
+  metaLine?: string;
 }) {
   const t = useTranslations("dashboard");
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -73,7 +75,11 @@ export function BrainShelf({
             </h3>
             {!isFeed ? (
               <p className="text-[11px]" style={{ color: "var(--text-dimmer)" }}>
-                {t("brainLearningsSubtitle")}
+                {metaLine ?? t("brainLearningsSubtitle")}
+              </p>
+            ) : metaLine ? (
+              <p className="text-[11px]" style={{ color: "var(--text-dimmer)" }}>
+                {metaLine}
               </p>
             ) : null}
           </div>

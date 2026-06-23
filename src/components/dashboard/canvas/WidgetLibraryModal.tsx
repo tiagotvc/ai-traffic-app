@@ -352,7 +352,6 @@ export function WidgetLibraryModal({
                   category={category}
                   premiumBadge={category === "premium" ? getPremiumBadge(w) : null}
                   isFavorite={favorites.includes(w.type)}
-                  dashboardData={dashboardData}
                   onToggleFavorite={() => toggleFavorite(w.type)}
                   onAdd={() => startAdd(w)}
                   onClose={onClose}
@@ -415,12 +414,14 @@ export function DashboardSwitcher({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+        className="flex h-9 w-9 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold sm:h-auto sm:w-auto"
         style={{ borderColor: "var(--border-color)", color: "var(--text-main)" }}
+        title={active?.name ?? t("defaultDashboard")}
+        aria-label={active?.name ?? t("defaultDashboard")}
       >
         <LayoutGrid size={14} />
-        {active?.name ?? t("defaultDashboard")}
-        <ChevronDown size={14} />
+        <span className="hidden sm:inline">{active?.name ?? t("defaultDashboard")}</span>
+        <ChevronDown size={14} className="hidden sm:block" />
       </button>
 
       {open ? (
@@ -510,12 +511,13 @@ export function DashboardTvModeButton({ onToggle }: { onToggle: () => void }) {
     <button
       type="button"
       onClick={onToggle}
-      className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"
+      className="flex h-9 w-9 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold sm:h-auto sm:w-auto"
       style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
       title={t("tvMode")}
+      aria-label={t("tvMode")}
     >
       <Tv size={14} />
-      {t("tvMode")}
+      <span className="hidden sm:inline">{t("tvMode")}</span>
     </button>
   );
 }

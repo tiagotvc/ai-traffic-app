@@ -3,6 +3,7 @@ import { In } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
 
 export async function GET(req: Request) {
   try {
@@ -25,10 +26,17 @@ export async function GET(req: Request) {
         label: a.label ?? a.metaAdAccountId,
         metaBusinessId: a.metaBusinessId ?? null
       }));
+      const settings = await getOrCreateClientMetaSettings(client.id);
+      const preferred = settings.defaultAdAccountId?.trim();
+      const defaultAdAccountId =
+        preferred && accounts.some((a) => a.metaAdAccountId === preferred)
+          ? preferred
+          : accounts[0]?.metaAdAccountId ?? null;
       return NextResponse.json({
         ok: true,
         accounts,
-        defaultAdAccountId: accounts[0]?.metaAdAccountId ?? null
+        defaultAdAccountId,
+        clientId: client.id
       });
     }
 

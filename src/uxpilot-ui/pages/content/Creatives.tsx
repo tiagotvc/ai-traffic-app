@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Trophy,
   SlidersHorizontal,
@@ -743,6 +743,7 @@ export type CreativesLiveProps = {
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   onOpenCriteria?: () => void;
+  headerActions?: ReactNode;
   onPreview?: (creative: UxCreativeCard) => void;
   onCompare?: (creative: UxCreativeCard) => void;
 };
@@ -789,12 +790,12 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
 
   return (
     <main
-          className="flex-1 overflow-y-auto px-6 py-6"
+          className="flex-1 overflow-y-auto px-4 py-6 sm:px-6"
           style={{ scrollbarWidth: "thin" }}
           onClick={() => closeAll()}
         >
           {/* ── Page Header ── */}
-          <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
             <div>
               <p className="text-xs font-body mb-1" style={{ color: "var(--text-dim)" }}>Ranking de Criativos</p>
               <div className="flex items-center gap-2">
@@ -807,14 +808,20 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
                 Identifique os melhores e piores criativos de cada conta por tipo de campanha.
               </p>
             </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); openCriteria(); }}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-body font-semibold transition-all hover:brightness-110"
-              style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
-            >
-              <SlidersHorizontal size={14} />
-              Critérios de ranqueamento
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              {isLive ? (
+                live?.headerActions
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); openCriteria(); }}
+                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-body font-semibold transition-all hover:brightness-110"
+                  style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
+                >
+                  <SlidersHorizontal size={14} />
+                  Critérios de ranqueamento
+                </button>
+              )}
+            </div>
           </div>
 
           {/* ── Filter Row 1: Period / Client / Account (mock only) ── */}

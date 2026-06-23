@@ -19,6 +19,7 @@ type Props = {
   onChange: (value: string) => void;
   disabled?: boolean;
   menuPlacement?: "bottom" | "top";
+  className?: string;
 };
 
 export function FilterSelectDropdown({
@@ -29,7 +30,8 @@ export function FilterSelectDropdown({
   value,
   onChange,
   disabled = false,
-  menuPlacement = "bottom"
+  menuPlacement = "bottom",
+  className
 }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -47,7 +49,7 @@ export function FilterSelectDropdown({
     : placeholder;
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <div ref={ref} className={cn("relative inline-block", className)}>
       <button
         type="button"
         disabled={disabled}
@@ -72,7 +74,7 @@ export function FilterSelectDropdown({
         >
           {label}:
         </span>
-        <span className="max-w-[140px] truncate font-body text-sm">{selectedLabel}</span>
+        <span className="max-w-[88px] truncate font-body text-sm sm:max-w-[140px]">{selectedLabel}</span>
         <ChevronDown
           size={14}
           className={cn("ml-auto shrink-0 transition-transform", open && "rotate-180")}

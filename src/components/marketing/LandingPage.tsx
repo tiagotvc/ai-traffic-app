@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { BillingPlansClient } from "@/components/billing/BillingPlansClient";
 import { LandingCapabilities } from "@/components/marketing/LandingCapabilities";
 import { LandingCta, LandingMission } from "@/components/marketing/LandingMission";
+import { LandingProductPreview } from "@/components/marketing/LandingProductPreview";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { StackCostComparison } from "@/components/marketing/StackCostComparison";
 import { Link } from "@/i18n/navigation";
@@ -17,6 +18,8 @@ export async function LandingPage() {
       <LandingMission />
 
       <LandingCapabilities />
+
+      <LandingProductPreview />
 
       <section id="compare" className="border-b border-white/5 bg-[#0d1520] px-4 py-16 sm:px-6 sm:py-20">
         <StackCostComparison />
@@ -49,7 +52,7 @@ export async function LandingPage() {
             <h2 className="font-heading text-2xl font-bold text-white sm:text-3xl">{t("pricingTitle")}</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm text-violet-200/65">{t("pricingSubtitle")}</p>
           </div>
-          <BillingPlansClient variant="marketing" />
+          <BillingPlansClient variant="marketing" layout="slider" />
           <p className="text-center">
             <Link href="/pricing" className="text-sm font-semibold text-amber-400 hover:text-amber-300">
               {t("viewAllPlans")} →

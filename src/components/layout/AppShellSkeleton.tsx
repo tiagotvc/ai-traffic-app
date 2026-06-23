@@ -284,34 +284,35 @@ export function AppShellSkeleton({
 
         {/* Mobile drawer */}
         {mobileMenuOpen ? (
-          <div className="fixed inset-0 z-50 lg:hidden print:hidden" role="dialog" aria-modal="true">
-            <button
-              type="button"
-              className="absolute inset-0 bg-black/50"
-              aria-label={t("closeMenu", { defaultMessage: "Fechar menu" })}
-              onClick={() => setMobileMenuOpen(false)}
-            />
-            <div className="absolute inset-y-0 left-0 flex w-[min(300px,88vw)] max-w-full flex-col shadow-2xl">
-              <div className="flex shrink-0 items-center justify-end border-b border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] px-3 py-2">
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-[#94a3b8] hover:bg-white/10 hover:text-white"
-                  aria-label={t("closeMenu", { defaultMessage: "Fechar menu" })}
+          <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0f14] lg:hidden print:hidden" role="dialog" aria-modal="true">
+            <div className="flex shrink-0 items-center justify-between border-b border-[var(--sidebar-border)] px-4 py-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                  style={{ background: "linear-gradient(135deg, #4f46e5, #7c3aed)" }}
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                  ∞
+                </div>
+                <span className="truncate font-heading text-sm font-semibold text-[#f8fafc]">Orion Agency</span>
               </div>
-              <div className="min-h-0 flex-1 overflow-hidden">
-                <AppSidebar
-                  {...sharedSidebar}
-                  variant="drawer"
-                  collapsed={false}
-                  onNavigate={() => setMobileMenuOpen(false)}
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-[#94a3b8] hover:bg-white/10 hover:text-white"
+                aria-label={t("closeMenu", { defaultMessage: "Fechar menu" })}
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <AppSidebar
+                {...sharedSidebar}
+                variant="drawer"
+                collapsed={false}
+                onNavigate={() => setMobileMenuOpen(false)}
+              />
             </div>
           </div>
         ) : null}

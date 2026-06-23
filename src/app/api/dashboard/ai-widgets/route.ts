@@ -3,39 +3,25 @@ import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
 import { repositories } from "@/db/repositories";
-import { saveLayoutWidgets } from "@/lib/dashboard/dashboard-canvas-service";
+import {
+  getEffectiveDashboardAddons,
+  saveLayoutWidgets
+} from "@/lib/dashboard/dashboard-canvas-service";
+import {
+  AI_BUILDER_MIN_PROMPT_LENGTH,
+  inferWidgetFromPrompt
+} from "@/lib/dashboard/ai-widget-inference";
 import {
   assertDashboardCanvas,
+  assertDashboardWidget,
   DashboardCanvasForbiddenError
 } from "@/lib/dashboard/dashboard-widget-permissions";
 import { getWidgetDefinition } from "@/lib/dashboard/widget-catalog";
 
 const PostSchema = z.object({
   layoutId: z.string().uuid(),
-  prompt: z.string().min(10).max(2000)
+  prompt: z.string().min(AI_BUILDER_MIN_PROMPT_LENGTH).max(2000)
 });
-
-function inferWidgetFromPrompt(prompt: string): { widgetType: string; config: Record<string, unknown> } {
-  const lower = prompt.toLowerCase();
-  if (lower.includes("roas") && lower.includes("cpa")) {
-    return { widgetType: "chart.roasCpa", config: { metricA: "roas", metricB: "cpa" } };
-  }
-  if (lower.includes("spend") && lower.includes("conversion")) {
-    return { widgetType: "chart.spendConversions", config: { metricA: "spend", metricB: "conversions" } };
-  }
-  if (lower.includes("health") || lower.includes("saúde")) {
-    return { widgetType: "ai.accountHealth", config: {} };
-  }
-  if (lower.includes("brain") || lower.includes("cérebro")) {
-    return { widgetType: "ai.agencyBrain", config: {} };
-  }
-  for (const key of ["roas", "cpa", "ctr", "spend", "conversions"] as const) {
-    if (lower.includes(key)) {
-      return { widgetType: `metric.single.${key}`, config: { metricKey: key } };
-    }
-  }
-  return { widgetType: "metrics.heroKpis", config: {} };
-}
 
 export async function GET() {
   try {
@@ -61,7 +47,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { tenant, user, entitlements } = await getAppContext();
+    const { tenant, user, entitlements, platformAdmin } = await getAppContext();
     assertDashboardCanvas(entitlements);
     if (!entitlements.limits.allowDashboardAiBuilder) {
       return NextResponse.json({ ok: false, error: "AI builder not available" }, { status: 403 });
@@ -69,10 +55,17 @@ export async function POST(req: Request) {
 
     const body = PostSchema.parse(await req.json().catch(() => ({})));
     const inferred = inferWidgetFromPrompt(body.prompt);
+    if (!inferred) {
+      return NextResponse.json({ ok: false, error: "Could not infer widget" }, { status: 400 });
+    }
+
     const def = getWidgetDefinition(inferred.widgetType);
     if (!def) {
       return NextResponse.json({ ok: false, error: "Could not infer widget" }, { status: 400 });
     }
+
+    const addons = await getEffectiveDashboardAddons(tenant.id, platformAdmin);
+    assertDashboardWidget(entitlements, inferred.widgetType, addons, { platformAdmin });
 
     const { dashboardAiWidget: aiRepo, dashboardLayout: layoutRepo, dashboardWidgetInstance: widgetRepo } =
       await repositories();
@@ -127,10 +120,16 @@ export async function POST(req: Request) {
     ];
 
     const saved = await saveLayoutWidgets(body.layoutId, tenant.id, user.id, entitlements, nextWidgets);
-    return NextResponse.json({ ok: true, aiWidget: aiRow, layout: saved });
+    return NextResponse.json({ ok: true, aiWidget: aiRow, layout: saved, inferred });
   } catch (err) {
     if (err instanceof DashboardCanvasForbiddenError) {
       return NextResponse.json({ ok: false, error: err.message }, { status: 403 });
+    }
+    if (err instanceof z.ZodError) {
+      return NextResponse.json(
+        { ok: false, error: "Invalid prompt or layout", details: err.flatten() },
+        { status: 400 }
+      );
     }
     console.error("[dashboard/ai-widgets POST]", err);
     return NextResponse.json(

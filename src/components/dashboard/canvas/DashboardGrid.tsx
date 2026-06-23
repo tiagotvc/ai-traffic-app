@@ -14,7 +14,10 @@ import "react-grid-layout/css/styles.css";
 import { WidgetRenderer } from "@/components/dashboard/canvas/WidgetRenderer";
 import { WidgetChrome } from "@/components/dashboard/canvas/WidgetChrome";
 import { getWidgetDefinition, type WidgetInstanceDto } from "@/lib/dashboard/widget-catalog";
+import { stackWidgetsForMobile } from "@/lib/dashboard/mobile-grid-layout";
+import { cn } from "@/lib/cn";
 import { parseWidgetPeriod } from "@/lib/dashboard/widget-period";
+import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
 import type { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 
 type DashboardData = ReturnType<typeof useDashboardData>;
@@ -44,8 +47,10 @@ export function DashboardGrid({
 }) {
   const tPeriod = useTranslations("period");
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1280 });
+  const isMobile = useIsMobile();
+  const useMobileStack = isMobile && !editMode;
 
-  const layout: Layout = useMemo(
+  const desktopLayout: Layout = useMemo(
     () =>
       widgets.map((w) => {
         const def = getWidgetDefinition(w.widgetType);
@@ -64,11 +69,16 @@ export function DashboardGrid({
     [widgets, editMode, allowResize]
   );
 
+  const layout: Layout = useMemo(
+    () => (useMobileStack ? stackWidgetsForMobile(widgets) : desktopLayout),
+    [useMobileStack, widgets, desktopLayout]
+  );
+
   const gridRows = useMemo(() => {
     if (!widgets.length) return 8;
-    const bottom = widgets.reduce((max, w) => Math.max(max, w.y + w.h), 0);
+    const bottom = layout.reduce((max, cell) => Math.max(max, cell.y + cell.h), 0);
     return Math.max(bottom + 2, 8);
-  }, [widgets]);
+  }, [widgets.length, layout]);
 
   const persistLayout = useCallback(
     (next: Layout) => {
@@ -85,7 +95,10 @@ export function DashboardGrid({
   return (
     <div
       ref={containerRef}
-      className={editMode ? "dashboard-canvas-shell--edit relative w-full" : "relative w-full"}
+      className={cn(
+        editMode ? "dashboard-canvas-shell--edit relative w-full" : "relative w-full",
+        useMobileStack && "dashboard-canvas-shell--mobile-stack"
+      )}
     >
       {mounted ? (
         <>
@@ -144,7 +157,7 @@ export function DashboardGrid({
               return (
               <div
                 key={w.id}
-                className="flex h-full w-full min-h-0 flex-col overflow-hidden rounded-xl border"
+                className="flex h-full w-full min-h-0 flex-col overflow-hidden rounded-xl border max-md:overflow-visible"
                 style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
               >
                 <WidgetChrome

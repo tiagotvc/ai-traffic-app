@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { LoginProductShowcase } from "@/components/auth/LoginProductShowcase";
 import { cn } from "@/lib/cn";
+import type { ShowcaseCopy } from "@/lib/marketing/showcase-copy";
 
 const SLIDE_COUNT = 5;
 const AUTO_MS = 7000;
@@ -16,7 +17,13 @@ const PHILOSOPHY_KEYS = ["philosophy1", "philosophy2", "philosophy3"] as const;
 const SCALE_FROM = ["scaleFrom1", "scaleFrom2"] as const;
 const SCALE_TO = ["scaleTo1", "scaleTo2", "scaleTo3"] as const;
 
-export function LoginMarketingSlider({ compact = false }: { compact?: boolean }) {
+export function LoginMarketingSlider({
+  compact = false,
+  showcaseCopy
+}: {
+  compact?: boolean;
+  showcaseCopy: ShowcaseCopy;
+}) {
   const t = useTranslations("auth");
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -153,7 +160,7 @@ export function LoginMarketingSlider({ compact = false }: { compact?: boolean })
           <h2 className={cn(titleClass, "mt-3 text-center")}>{t("slide5Title")}</h2>
           <p className={cn(subtitleClass, "text-center")}>{t("slide5Subtitle")}</p>
           <div className="mt-3 w-full max-w-[320px]">
-            <LoginProductShowcase compact animate={active === 4} />
+            <LoginProductShowcase copy={showcaseCopy} compact animate={active === 4} />
           </div>
           <div className="mt-3 grid w-full max-w-[320px] grid-cols-2 gap-2">
             <StatPill value={t("statValue")} label={t("statLabel")} accent="text-amber-300" />

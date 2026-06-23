@@ -1,12 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { BarChart2, Building2, RefreshCw, Search } from "lucide-react";
-import { useTransition } from "react";
+import { BarChart2, Building2, Filter, RefreshCw, Search } from "lucide-react";
+import { useState, useTransition } from "react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { CommandStripFiltersModal } from "@/components/layout/CommandStripFiltersModal";
 import { PeriodFilter } from "@/components/PeriodFilter";
+import { IconLabelButton } from "@/components/ui/IconLabelButton";
 import { cn } from "@/lib/cn";
 
 export function CommandStrip() {
@@ -14,6 +16,7 @@ export function CommandStrip() {
   const t = useTranslations("dashboard");
   const tSync = useTranslations("sync");
   const [syncing, startSync] = useTransition();
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   if (!ctx) return null;
 
@@ -85,26 +88,21 @@ export function CommandStrip() {
         borderColor: "var(--border-color)"
       }}
     >
-      <div className="flex flex-wrap items-center gap-2 px-4 py-3 md:px-6">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          {leadingSlot}
+      <div className="flex flex-wrap items-center gap-2 px-3 py-2 md:px-6 md:py-3">
+        {!hideFilters ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              className={cn(pillClass, "shrink-0 md:hidden")}
+              style={pillStyle}
+              title={t("filtersTitle")}
+              aria-label={t("filtersTitle")}
+            >
+              <Filter size={16} />
+            </button>
 
-          {showSearch ? (
-            <div className={pillClass} style={{ ...pillStyle, minWidth: 180, maxWidth: 240 }}>
-              <Search size={14} style={{ color: "var(--text-dim)" }} className="shrink-0" />
-              <input
-                type="search"
-                value={searchValue}
-                onChange={(e) => onSearchChange?.(e.target.value)}
-                placeholder={searchPlaceholder}
-                className="min-w-0 flex-1 border-none bg-transparent text-sm outline-none"
-                style={{ color: "var(--text-main)" }}
-              />
-            </div>
-          ) : null}
-
-          {!hideFilters ? (
-            <>
+            <div className="hidden min-w-0 gap-2 md:flex md:flex-wrap">
               <FilterSelectDropdown
                 icon={<Building2 size={14} />}
                 label={t("filterClient")}
@@ -124,40 +122,73 @@ export function CommandStrip() {
                 options={adAccounts.map((a) => ({ value: a.id, label: a.label }))}
               />
 
-              <PeriodFilter
-                value={period}
-                onChange={setPeriod}
-                variant="commandStrip"
-                disabled={periodFilterDisabled}
-                disabledHint={periodFilterDisabledHint}
+              <div className="shrink-0">
+                <PeriodFilter
+                  value={period}
+                  onChange={setPeriod}
+                  variant="commandStrip"
+                  disabled={periodFilterDisabled}
+                  disabledHint={periodFilterDisabledHint}
+                />
+              </div>
+            </div>
+
+            <CommandStripFiltersModal
+              open={filtersOpen}
+              onClose={() => setFiltersOpen(false)}
+              clientFilter={clientFilter}
+              setClientFilter={setClientFilter}
+              accountFilter={accountFilter}
+              setAccountFilter={setAccountFilter}
+              period={period}
+              setPeriod={setPeriod}
+              clientOptions={clientOptions}
+              adAccounts={adAccounts}
+              periodFilterDisabled={periodFilterDisabled}
+              periodFilterDisabledHint={periodFilterDisabledHint}
+            />
+          </>
+        ) : null}
+
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {leadingSlot}
+
+          {showSearch ? (
+            <div className={cn(pillClass, "min-w-0 flex-1 sm:min-w-[180px] sm:max-w-[240px]")} style={pillStyle}>
+              <Search size={14} style={{ color: "var(--text-dim)" }} className="shrink-0" />
+              <input
+                type="search"
+                value={searchValue}
+                onChange={(e) => onSearchChange?.(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="min-w-0 flex-1 border-none bg-transparent text-sm outline-none"
+                style={{ color: "var(--text-main)" }}
               />
-            </>
+            </div>
           ) : null}
-        </div>
 
-        <div className="flex items-center gap-2">
-          {middleTrailingSlot}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {middleTrailingSlot}
 
-          {trailingSlot ? (
-            trailingSlot
-          ) : hideSync ? null : (
-            <button
-              type="button"
-              onClick={handleSync}
-              disabled={syncing}
-              className={cn(
-                "flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 font-heading text-sm font-semibold shadow-lg transition-all duration-200",
-                syncing ? "cursor-wait opacity-70" : "hover:brightness-110 active:scale-95"
-              )}
-              style={{
-                background: "linear-gradient(135deg, #f5a623, #e8920d)",
-                color: "#0f1419"
-              }}
-            >
-              <RefreshCw size={14} className={cn(syncing && "animate-spin")} />
-              <span>{syncing ? tSync("syncing") : tSync("syncMeta")}</span>
-            </button>
-          )}
+            {trailingSlot}
+
+            {hideSync ? null : (
+              <IconLabelButton
+                onClick={handleSync}
+                disabled={syncing}
+                label={syncing ? tSync("syncing") : tSync("syncMeta")}
+                icon={<RefreshCw size={16} className={cn(syncing && "animate-spin")} />}
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all duration-200 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2",
+                  syncing ? "cursor-wait opacity-70" : "hover:brightness-110 active:scale-95"
+                )}
+                style={{
+                  background: "linear-gradient(135deg, #f5a623, #e8920d)",
+                  color: "#0f1419"
+                }}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

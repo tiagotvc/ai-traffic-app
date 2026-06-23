@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronDown, ChevronLeft, ChevronRight, Globe, Info, LifeBuoy, LogOut, Moon, Receipt, RotateCcw, ScrollText, Settings, Shield, Sun, Ticket, Users, Wallet, Zap } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Globe, Info, LifeBuoy, LogOut, Moon, Receipt, RotateCcw, ScrollText, Settings, Shield, Sun, Ticket, Trash2, Users, Wallet, Zap } from "lucide-react";
 
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
@@ -196,7 +196,8 @@ export function SidebarUserBlock({
   isPlatformAdmin = false,
   onNavigate,
   onSignOut,
-  signingOut
+  signingOut,
+  mobileFullScreen = false
 }: {
   userName: string;
   subtitle: string;
@@ -205,6 +206,7 @@ export function SidebarUserBlock({
   onNavigate?: () => void;
   onSignOut: () => void;
   signingOut?: boolean;
+  mobileFullScreen?: boolean;
 }) {
   const tNav = useTranslations("nav");
   const tAdmin = useTranslations("billingAdmin");
@@ -245,6 +247,117 @@ export function SidebarUserBlock({
     };
   }
 
+  const menuPanel = (
+    <>
+      <Link href="/settings" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+        <Settings size={13} style={{ color: "#f5a623" }} />
+        {tNav("myProfile")}
+      </Link>
+      <Link href="/billing" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+        <Receipt size={13} style={{ color: "#f5a623" }} />
+        {tNav("billing")}
+      </Link>
+      <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
+      <Link href="/support" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+        <LifeBuoy size={13} style={{ color: "#f5a623" }} />
+        {tNav("support")}
+      </Link>
+      <Link href="/about" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+        <Info size={13} style={{ color: "#f5a623" }} />
+        {tNav("about")}
+      </Link>
+      <Link href="/terms" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+        <ScrollText size={13} style={{ color: "#f5a623" }} />
+        {tNav("terms")}
+      </Link>
+      <Link href="/privacy" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+        <Shield size={13} style={{ color: "#f5a623" }} />
+        {tNav("privacy")}
+      </Link>
+      <Link href="/data-deletion" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+        <Trash2 size={13} style={{ color: "#f5a623" }} />
+        {tNav("dataDeletion")}
+      </Link>
+      <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
+      <div className="px-3 py-1.5">
+        <p className="mb-1 font-body text-[10px] uppercase tracking-wide" style={{ color: "#64748b" }}>
+          {tCommon("language")}
+        </p>
+        <div className="flex gap-1">
+          {routing.locales.map((loc) => (
+            <button
+              key={loc}
+              type="button"
+              onClick={() => pickLocale(loc)}
+              className="flex-1 rounded-md px-2 py-1 font-body text-[10px] font-semibold transition-colors"
+              style={{
+                background: locale === loc ? "rgba(245,166,35,0.15)" : "rgba(255,255,255,0.04)",
+                color: locale === loc ? "#f5a623" : "#94a3b8"
+              }}
+            >
+              {LOCALE_LABELS[loc]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          toggleTheme();
+          setMenuOpen(false);
+        }}
+        className={menuLinkClass}
+        style={{ color: "#94a3b8" }}
+      >
+        {isLight ? <Moon size={13} style={{ color: "#f5a623" }} /> : <Sun size={13} style={{ color: "#f5a623" }} />}
+        {isLight ? "Modo Escuro" : "Modo Claro"}
+      </button>
+      {isPlatformAdmin ? (
+        <>
+          <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
+          <div className="px-3 py-1.5">
+            <p className="mb-1 flex items-center gap-1.5 font-body text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#64748b" }}>
+              <Shield size={11} style={{ color: "#f5a623" }} />
+              {tNav("profileAdminSection")}
+            </p>
+            <div className="space-y-0.5">
+              {PLATFORM_ADMIN_LINKS.map((link) => {
+                const Icon = adminIcons[link.id as keyof typeof adminIcons];
+                const active = isPlatformAdminLinkActive(pathname, link.href);
+                return (
+                  <Link
+                    key={link.id}
+                    href={link.href}
+                    onClick={closeAndNavigate}
+                    className={`${menuLinkClass} rounded-md`}
+                    style={adminLinkStyle(active)}
+                  >
+                    <Icon size={13} style={{ color: active ? "#f5a623" : "#94a3b8" }} />
+                    {tAdmin(link.labelKey)}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      ) : null}
+      <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
+      <button
+        type="button"
+        disabled={signingOut}
+        onClick={() => {
+          setMenuOpen(false);
+          onSignOut();
+        }}
+        className={`${menuLinkClass} disabled:opacity-60`}
+        style={{ color: "#94a3b8" }}
+      >
+        <LogOut size={13} style={{ color: "#f5a623" }} />
+        {signingOut ? tCommon("signingOut") : tCommon("signOut")}
+      </button>
+    </>
+  );
+
   return (
     <div
       className={`relative shrink-0 ${collapsed ? "flex justify-center p-3" : "p-3"}`}
@@ -279,111 +392,46 @@ export function SidebarUserBlock({
       </button>
 
       {menuOpen ? (
+        mobileFullScreen ? (
+          <div className="fixed inset-0 z-[70] flex flex-col bg-[#0a0f14]">
+            <div className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-[#94a3b8] hover:bg-white/10 hover:text-white"
+                aria-label={tNav("closeMenu", { defaultMessage: "Voltar" })}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div className="flex min-w-0 items-center gap-2">
+                <div
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-body text-xs font-semibold"
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(255,255,255,0.06)",
+                    color: "#f8fafc"
+                  }}
+                >
+                  {initial}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-body text-sm font-medium text-[#f8fafc]">{userName}</p>
+                  <p className="truncate font-body text-[11px] text-[#94a3b8]">{subtitle}</p>
+                </div>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto py-2">{menuPanel}</div>
+          </div>
+        ) : (
         <div
           className={`absolute z-50 overflow-hidden rounded-lg border shadow-xl ${
             collapsed ? "bottom-full left-full mb-0 ml-2 w-56" : "bottom-full left-3 right-3 mb-1"
           }`}
           style={{ background: "#0d1520", borderColor: "rgba(255,255,255,0.1)" }}
         >
-          <Link href="/settings" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
-            <Settings size={13} style={{ color: "#f5a623" }} />
-            {tNav("myProfile")}
-          </Link>
-          <Link href="/billing" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
-            <Receipt size={13} style={{ color: "#f5a623" }} />
-            {tNav("billing")}
-          </Link>
-          <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
-          <Link href="/support" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
-            <LifeBuoy size={13} style={{ color: "#f5a623" }} />
-            {tNav("support")}
-          </Link>
-          <Link href="/about" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
-            <Info size={13} style={{ color: "#f5a623" }} />
-            {tNav("about")}
-          </Link>
-          <Link href="/terms" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
-            <ScrollText size={13} style={{ color: "#f5a623" }} />
-            {tNav("terms")}
-          </Link>
-          <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
-          <div className="px-3 py-1.5">
-            <p className="mb-1 font-body text-[10px] uppercase tracking-wide" style={{ color: "#64748b" }}>
-              {tCommon("language")}
-            </p>
-            <div className="flex gap-1">
-              {routing.locales.map((loc) => (
-                <button
-                  key={loc}
-                  type="button"
-                  onClick={() => pickLocale(loc)}
-                  className="flex-1 rounded-md px-2 py-1 font-body text-[10px] font-semibold transition-colors"
-                  style={{
-                    background: locale === loc ? "rgba(245,166,35,0.15)" : "rgba(255,255,255,0.04)",
-                    color: locale === loc ? "#f5a623" : "#94a3b8"
-                  }}
-                >
-                  {LOCALE_LABELS[loc]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              toggleTheme();
-              setMenuOpen(false);
-            }}
-            className={menuLinkClass}
-            style={{ color: "#94a3b8" }}
-          >
-            {isLight ? <Moon size={13} style={{ color: "#f5a623" }} /> : <Sun size={13} style={{ color: "#f5a623" }} />}
-            {isLight ? "Modo Escuro" : "Modo Claro"}
-          </button>
-          {isPlatformAdmin ? (
-            <>
-              <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
-              <div className="px-3 py-1.5">
-                <p className="mb-1 flex items-center gap-1.5 font-body text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#64748b" }}>
-                  <Shield size={11} style={{ color: "#f5a623" }} />
-                  {tNav("profileAdminSection")}
-                </p>
-                <div className="space-y-0.5">
-                  {PLATFORM_ADMIN_LINKS.map((link) => {
-                    const Icon = adminIcons[link.id as keyof typeof adminIcons];
-                    const active = isPlatformAdminLinkActive(pathname, link.href);
-                    return (
-                      <Link
-                        key={link.id}
-                        href={link.href}
-                        onClick={closeAndNavigate}
-                        className={`${menuLinkClass} rounded-md`}
-                        style={adminLinkStyle(active)}
-                      >
-                        <Icon size={13} style={{ color: active ? "#f5a623" : "#94a3b8" }} />
-                        {tAdmin(link.labelKey)}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
-          ) : null}
-          <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
-          <button
-            type="button"
-            disabled={signingOut}
-            onClick={() => {
-              setMenuOpen(false);
-              onSignOut();
-            }}
-            className={`${menuLinkClass} disabled:opacity-60`}
-            style={{ color: "#94a3b8" }}
-          >
-            <LogOut size={13} style={{ color: "#f5a623" }} />
-            {signingOut ? tCommon("signingOut") : tCommon("signOut")}
-          </button>
+          {menuPanel}
         </div>
+        )
       ) : null}
     </div>
   );

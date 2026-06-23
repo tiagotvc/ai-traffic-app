@@ -14,8 +14,16 @@ import {
 } from "recharts";
 
 import type { BoxPlotGroup, ParetoRow } from "@/lib/dashboard/chart-distribution";
+import {
+  PREMIUM_BAR_RADIUS,
+  PREMIUM_CHART_MARGIN,
+  premiumAxisTick,
+  premiumGridProps,
+  premiumRechartsTooltipProps
+} from "@/lib/dashboard/premium-chart-theme";
 import { resolveMetricColor, type SlotVisualConfig } from "@/lib/dashboard/slot-visual-config";
 import type { MetricKey } from "@/lib/dashboard-metrics";
+import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
 
 type FormatFn = (key: MetricKey, value: number) => string;
 
@@ -56,44 +64,59 @@ export function ParetoChart({
 }) {
   const color = resolveMetricColor(metricKey, visual?.customColors);
   const lineColor = visual?.paretoCumulativeLineColor ?? "#d97706";
+  const isMobile = useIsMobile();
+  const margin = isMobile ? { top: 8, right: 4, left: 0, bottom: 4 } : PREMIUM_CHART_MARGIN;
+  const yLeftWidth = isMobile ? 40 : 48;
+  const yRightWidth = isMobile ? 28 : 36;
+  const tickSize = isMobile ? 8 : 9;
 
   return (
     <ChartShell empty={!rows.length}>
-      <ComposedChart data={rows} margin={{ top: 6, right: 12, left: 4, bottom: 2 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.25)" vertical={false} />
+      <ComposedChart data={rows} margin={margin}>
+        <CartesianGrid {...premiumGridProps(false)} />
         <XAxis
           dataKey="label"
-          tick={{ fill: visual?.textColor ?? "#64748b", fontSize: 9 }}
+          tick={{ ...premiumAxisTick(visual?.textColor), fontSize: tickSize }}
           axisLine={false}
           tickLine={false}
           interval="preserveStartEnd"
+          angle={isMobile ? -40 : 0}
+          textAnchor={isMobile ? "end" : "middle"}
+          height={isMobile ? 46 : 30}
         />
         <YAxis
           yAxisId="left"
-          tick={{ fill: visual?.textColor ?? "#64748b", fontSize: 9 }}
+          tick={{ ...premiumAxisTick(visual?.textColor), fontSize: tickSize }}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v) => formatValue(metricKey, Number(v))}
-          width={48}
+          width={yLeftWidth}
         />
         <YAxis
           yAxisId="right"
           orientation="right"
           domain={[0, 100]}
-          tick={{ fill: visual?.textColor ?? "#64748b", fontSize: 9 }}
+          tick={{ ...premiumAxisTick(visual?.textColor), fontSize: tickSize }}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v) => `${v}%`}
-          width={36}
+          width={yRightWidth}
         />
         <Tooltip
+          {...premiumRechartsTooltipProps}
           formatter={(value, name) => {
             const num = Number(value ?? 0);
             if (name === "Cum. %" || name === "cumulativePct") return [`${num.toFixed(1)}%`, "Cum. %"];
             return [formatValue(metricKey, num), metricKey];
           }}
         />
-        <Bar yAxisId="left" dataKey="value" fill={color} radius={[3, 3, 0, 0]} maxBarSize={28} />
+        <Bar
+          yAxisId="left"
+          dataKey="value"
+          fill={color}
+          radius={PREMIUM_BAR_RADIUS.vertical}
+          maxBarSize={28}
+        />
         <Line
           yAxisId="right"
           type="monotone"
@@ -147,9 +170,15 @@ export function BulletChart({
             label={zone.label ? { value: zone.label, position: "top", fontSize: 8 } : undefined}
           />
         ))}
-        <ReferenceLine x={target} stroke="#94a3b8" strokeWidth={2} label={{ value: "Target", fontSize: 8 }} />
-        <Tooltip formatter={(v) => formatValue(metricKey, Number(v ?? 0))} />
-        <Bar dataKey="current" fill={color} barSize={24} radius={[0, 4, 4, 0]} background={{ fill: "var(--surface-bg)" }} />
+        <ReferenceLine x={target} stroke="var(--chart-tick)" strokeWidth={2} label={{ value: "Target", fontSize: 8 }} />
+        <Tooltip {...premiumRechartsTooltipProps} formatter={(v) => formatValue(metricKey, Number(v ?? 0))} />
+        <Bar
+          dataKey="current"
+          fill={color}
+          barSize={24}
+          radius={PREMIUM_BAR_RADIUS.horizontal}
+          background={{ fill: "var(--chart-cursor)" }}
+        />
       </ComposedChart>
     </ChartShell>
   );
@@ -187,8 +216,8 @@ function BoxPlotSvg({
         const val = yMin + (yMax - yMin) * t;
         return (
           <g key={t}>
-            <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="var(--border-color)" strokeDasharray="2 2" />
-            <text x={padding.left - 4} y={y + 3} textAnchor="end" fontSize="3" fill="var(--text-dimmer)">
+            <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="var(--chart-grid)" strokeDasharray="2 2" />
+            <text x={padding.left - 4} y={y + 3} textAnchor="end" fontSize="3" fill="var(--chart-tick)">
               {formatValue(metricKey, val).replace(/\s/g, "")}
             </text>
           </g>
@@ -220,7 +249,7 @@ function BoxPlotSvg({
             {g.outliers.map((o, oi) => (
               <circle key={oi} cx={cx} cy={yScale(o)} r="0.8" fill={color} opacity={0.7} />
             ))}
-            <text x={cx} y={height - 6} textAnchor="middle" fontSize="3" fill="var(--text-dimmer)">
+            <text x={cx} y={height - 6} textAnchor="middle" fontSize="3" fill="var(--chart-tick)">
               {g.label.slice(0, 6)}
             </text>
           </g>

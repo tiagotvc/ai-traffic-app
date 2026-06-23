@@ -8,16 +8,12 @@ import { cn } from "@/lib/cn";
 import { defaultWidgetConfig } from "@/lib/dashboard/widget-config";
 import { premiumBadgeLabelKey, type PremiumBadgeKind } from "@/lib/dashboard/widget-premium";
 import { Link } from "@/i18n/navigation";
-import type { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
-
-type DashboardData = ReturnType<typeof useDashboardData>;
 
 export function WidgetLibraryCard({
   widget,
   category,
   premiumBadge,
   isFavorite,
-  dashboardData,
   onToggleFavorite,
   onAdd,
   onClose
@@ -34,7 +30,6 @@ export function WidgetLibraryCard({
   category: string;
   premiumBadge: PremiumBadgeKind | null;
   isFavorite: boolean;
-  dashboardData?: DashboardData;
   onToggleFavorite: () => void;
   onAdd: () => void;
   onClose?: () => void;
@@ -54,25 +49,24 @@ export function WidgetLibraryCard({
       style={{
         borderColor: isPremiumTab
           ? locked
-            ? "rgba(245,158,11,0.18)"
-            : "rgba(245,158,11,0.28)"
-          : "var(--border-color)",
+            ? "rgba(245,166,35,0.22)"
+            : "rgba(245,166,35,0.34)"
+          : "rgba(124,58,237,0.16)",
         background: isPremiumTab
           ? locked
-            ? "linear-gradient(165deg, rgba(255,251,235,0.6) 0%, var(--surface-card) 55%)"
-            : "linear-gradient(165deg, rgba(255,251,235,0.85) 0%, #ffffff 50%)"
-          : "var(--surface-card)",
+            ? "linear-gradient(165deg, rgba(245,166,35,0.06) 0%, var(--surface-card) 55%)"
+            : "linear-gradient(165deg, rgba(245,166,35,0.1) 0%, var(--surface-card) 48%)"
+          : "linear-gradient(165deg, rgba(124,58,237,0.07) 0%, var(--surface-card) 50%)",
         boxShadow: isPremiumTab
-          ? "0 1px 0 rgba(255,255,255,0.8) inset, 0 8px 24px rgba(15,23,42,0.04)"
-          : "0 1px 0 rgba(255,255,255,0.6) inset"
+          ? "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 24px rgba(15,23,42,0.08)"
+          : "inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 16px rgba(15,23,42,0.06)"
       }}
     >
-      <div className="relative h-[100px] shrink-0 p-2.5 pb-0">
+      <div className="relative h-[108px] shrink-0 p-2.5 pb-0">
         <WidgetLibraryLivePreview
           widgetType={widget.type}
           titleKey={widget.titleKey}
           config={config}
-          dashboardData={dashboardData}
           isPremium={isPremiumTab || !!premiumBadge}
         />
         {widget.comingSoon ? (
@@ -98,9 +92,9 @@ export function WidgetLibraryCard({
               <span
                 className="mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wide"
                 style={{
-                  background: "linear-gradient(135deg, rgba(245,158,11,0.2), rgba(234,88,12,0.12))",
-                  color: "#fbbf24",
-                  boxShadow: "inset 0 0 0 1px rgba(245,158,11,0.25)"
+                  background: "linear-gradient(135deg, rgba(245,166,35,0.22), rgba(124,58,237,0.14))",
+                  color: "#fde68a",
+                  boxShadow: "inset 0 0 0 1px rgba(245,166,35,0.28)"
                 }}
               >
                 {t(premiumBadgeLabelKey(premiumBadge))}
@@ -109,7 +103,11 @@ export function WidgetLibraryCard({
             {widget.isAiWidget && !isPremiumTab ? (
               <span
                 className="mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[7px] font-semibold"
-                style={{ background: "rgba(79,70,229,0.14)", color: "#a5b4fc" }}
+                style={{
+                  background: "linear-gradient(135deg, rgba(124,58,237,0.2), rgba(79,70,229,0.12))",
+                  color: "#c4b5fd",
+                  boxShadow: "inset 0 0 0 1px rgba(124,58,237,0.22)"
+                }}
               >
                 IA
               </span>
@@ -148,10 +146,12 @@ export function WidgetLibraryCard({
               className="rounded-lg p-1.5 transition-all hover:brightness-110"
               style={{
                 background: isPremiumTab
-                  ? "linear-gradient(135deg, rgba(245,158,11,0.25), rgba(234,88,12,0.15))"
-                  : "rgba(79,70,229,0.16)",
-                color: isPremiumTab ? "#fbbf24" : "#a5b4fc",
-                boxShadow: isPremiumTab ? "inset 0 0 0 1px rgba(245,158,11,0.2)" : undefined
+                  ? "linear-gradient(135deg, rgba(245,166,35,0.28), rgba(124,58,237,0.16))"
+                  : "linear-gradient(135deg, rgba(124,58,237,0.22), rgba(79,70,229,0.12))",
+                color: isPremiumTab ? "#fde68a" : "#c4b5fd",
+                boxShadow: isPremiumTab
+                  ? "inset 0 0 0 1px rgba(245,166,35,0.24)"
+                  : "inset 0 0 0 1px rgba(124,58,237,0.18)"
               }}
             >
               <Plus size={14} />

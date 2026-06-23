@@ -252,6 +252,7 @@ export function AppSidebar({
         collapsed={effectiveCollapsed}
         isPlatformAdmin={isPlatformAdmin}
         onNavigate={onNavigate}
+        mobileFullScreen={isDrawer}
       />
     </aside>
   );

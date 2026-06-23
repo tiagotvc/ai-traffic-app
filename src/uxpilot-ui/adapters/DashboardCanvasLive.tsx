@@ -112,6 +112,13 @@ export function DashboardCanvasLive() {
             setActionError(tWidgets("templateApplyError"));
           }
         }}
+        onAiWidgetCreated={(layout) => {
+          if (layout) {
+            canvas.applyLayoutUpdate(layout);
+          } else {
+            void canvas.reloadLayouts();
+          }
+        }}
         layouts={canvas.layouts}
         activeLayoutId={canvas.activeLayoutId}
         setActiveLayoutId={canvas.setActiveLayoutId}

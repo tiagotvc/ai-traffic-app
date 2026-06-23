@@ -26,10 +26,12 @@ export type HealthMetric = {
 export function AgencyHealthLayout({
   healthMetrics,
   clients,
+  focusMetricColumnLabel,
   isLoading
 }: {
   healthMetrics: HealthMetric[];
   clients: ClientHealthRow[];
+  focusMetricColumnLabel?: string;
   isLoading?: boolean;
 }) {
   const t = useTranslations("dashboard");
@@ -123,7 +125,7 @@ export function AgencyHealthLayout({
                   t("agencyHealthColSpend"),
                   t("agencyHealthColRoas"),
                   t("agencyHealthColCpl"),
-                  t("agencyHealthColTrend"),
+                  focusMetricColumnLabel ?? t("agencyHealthColTrend"),
                   t("agencyHealthColStatus")
                 ].map((h) => (
                   <th

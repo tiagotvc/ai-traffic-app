@@ -3,7 +3,8 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Megaphone, Plus, Trash2 } from "lucide-react";
+import { Megaphone, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { cn } from "@/lib/cn";
 import {
   DndContext,
   PointerSensor,
@@ -20,8 +21,9 @@ import { rememberCampaign } from "@/components/CampaignsListClient";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
-import { SyncRefreshButton } from "@/components/SyncRefreshButton";
+import { CampaignDraftMobileCards, CampaignMobileCards } from "@/components/campaigns/CampaignMobileCards";
 import { Badge } from "@/components/ui/Badge";
+import { IconLabelButton, IconLabelLink } from "@/components/ui/IconLabelButton";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
@@ -93,17 +95,17 @@ const PAGE_SIZES = [25, 50, 100, 200] as const;
 
 /** Colunas fixas à esquerda ao rolar métricas (status + campanha). */
 const STICKY_STATUS_TH =
-  "sticky left-0 z-30 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
+  "sticky left-0 z-30 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2 text-center shadow-[var(--table-sticky-shadow)]";
 const STICKY_STATUS_TD =
-  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-card)] px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)] group-hover:bg-[var(--row-hover)]";
+  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-card)] px-2 py-2.5 text-center shadow-[var(--table-sticky-shadow)] group-hover:bg-[var(--row-hover)] group-even:bg-[var(--surface-row-alt)]";
 const STICKY_NAME_TH =
-  "sticky left-14 z-20 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
+  "sticky left-14 z-20 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2 text-left align-top shadow-[var(--table-sticky-shadow)]";
 const STICKY_NAME_TD =
-  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-card)] px-4 py-2.5 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)] group-hover:bg-[var(--row-hover)]";
+  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-card)] px-4 py-2.5 text-left align-top shadow-[var(--table-sticky-shadow)] group-hover:bg-[var(--row-hover)] group-even:bg-[var(--surface-row-alt)]";
 const STICKY_STATUS_TF =
-  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
+  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2.5 text-center shadow-[var(--table-sticky-shadow)]";
 const STICKY_NAME_TF =
-  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2.5 text-left align-top font-semibold text-[var(--text-main)] shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
+  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2.5 text-left align-top font-semibold text-[var(--text-main)] shadow-[var(--table-sticky-shadow)]";
 
 function statusVariant(status?: string): "success" | "warning" | "neutral" {
   if (status === "ACTIVE") return "success";
@@ -125,6 +127,7 @@ function draftTemplateIdFromRow(row: CampaignRow): string {
 
 export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: boolean } = {}) {
   const t = useTranslations("campaignsPage");
+  const tSync = useTranslations("sync");
   const tMetrics = useTranslations("metrics");
   const tPresets = useTranslations("campaignTypes");
   const locale = useLocale();
@@ -190,6 +193,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [draftDiscardPendingId, setDraftDiscardPendingId] = useState<string | null>(null);
   const [, startStatusTransition] = useTransition();
+  const [syncing, startSync] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [metricsSource, setMetricsSource] = useState<"db" | "live" | "live-cached">("db");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -224,30 +228,56 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     }
   }, [searchParams, useUxChrome, strip]);
 
+  const handleMetaSync = useCallback(() => {
+    if (syncing) return;
+    startSync(async () => {
+      const res = await fetch("/api/sync/run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clientId: clientFilter || undefined })
+      });
+      if (res.ok) {
+        window.dispatchEvent(new Event("traffic-sync-done"));
+      }
+    });
+  }, [syncing, clientFilter]);
+
+  const syncMetaSlot = useMemo(
+    () => (
+      <IconLabelButton
+        type="button"
+        onClick={handleMetaSync}
+        disabled={syncing}
+        label={syncing ? tSync("syncing") : tSync("syncMeta")}
+        icon={<RefreshCw size={16} className={cn(syncing && "animate-spin")} />}
+        className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all duration-200 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2",
+          syncing ? "cursor-wait opacity-70" : "hover:brightness-110 active:scale-95"
+        )}
+        style={{
+          background: "linear-gradient(135deg, #f5a623, #e8920d)",
+          color: "#0f1419"
+        }}
+      />
+    ),
+    [syncing, tSync, handleMetaSync]
+  );
+
   const newCampaignSlot = useMemo(
     () => (
-      <Link
+      <IconLabelLink
         href="/campaigns/new"
-        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95"
+        label={t("newCampaign")}
+        icon={<Plus size={16} />}
+        className="flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95 sm:h-auto sm:w-auto sm:gap-1.5 sm:px-4 sm:py-2"
         style={{
           background: "linear-gradient(135deg, #f5a623, #e8920d)",
           color: "#0f1419",
           fontFamily: "var(--font-heading)"
         }}
-      >
-        <Plus size={15} />
-        {t("newCampaign")}
-      </Link>
+      />
     ),
     [t]
-  );
-
-  useCommandStripPage(
-    useUxChrome
-      ? {
-          trailingSlot: newCampaignSlot
-        }
-      : {}
   );
 
   const displayRows = useMemo(() => {
@@ -512,6 +542,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     };
   }, [load, reloadPresets]);
 
+  useCommandStripPage(useUxChrome ? { hideSync: true } : {});
+
   useEffect(() => {
     if (!selectedId) return;
     // Espera o detalhe (renderizado condicionalmente) entrar no DOM antes de rolar.
@@ -752,7 +784,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   return (
     <div className="space-y-4">
       {useUxChrome ? (
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="mb-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
               {t("breadcrumb")}
@@ -772,20 +804,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
               {t("subtitleList")}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
+            {syncMetaSlot}
             {newCampaignSlot}
-            <button
-              type="button"
-              onClick={() => load({ live: true, refresh: true })}
-              className="rounded-lg border px-3 py-2 text-xs font-heading font-semibold transition-all"
-              style={{
-                borderColor: "var(--border-color)",
-                color: "var(--text-dim)",
-                background: "var(--filter-btn-bg)"
-              }}
-            >
-              {t("refreshLive")}
-            </button>
           </div>
         </div>
       ) : (
@@ -796,18 +817,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           titleIcon={<Megaphone size={16} />}
           actions={
             <>
-              <SyncRefreshButton />
-              <button
-                type="button"
-                onClick={() => load({ live: true, refresh: true })}
-                className="ui-btn-secondary text-sm"
-              >
-                {t("refreshLive")}
-              </button>
-              <Link href="/campaigns/new" className="ui-btn-primary text-sm inline-flex items-center gap-1.5">
-                <Plus size={15} />
-                {t("newCampaign")}
-              </Link>
+              {syncMetaSlot}
+              {newCampaignSlot}
             </>
           }
         />
@@ -1009,7 +1020,16 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                       {t("draftsSectionHint")}
                     </span>
                   </div>
-                  <div className="overflow-x-auto">
+                  <CampaignDraftMobileCards
+                    rows={draftDisplayRows}
+                    resumeHref={draftResumeHref}
+                    onDiscard={discardDraft}
+                    discardPendingId={draftDiscardPendingId}
+                    statusDraftLabel={t("statusDraft")}
+                    resumeLabel={t("resumeDraft")}
+                    discardLabel={t("discardDraft")}
+                  />
+                  <div className="hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[680px] text-sm">
                       <thead
                         className="text-xs font-semibold uppercase"
@@ -1030,7 +1050,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                           return (
                             <tr
                               key={r.metaCampaignId}
-                              className="group border-t hover:bg-[var(--row-hover)]"
+                              className="group even:bg-[var(--surface-row-alt)] border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]"
                               style={{ borderColor: "var(--border-color)" }}
                             >
                               <td className={STICKY_STATUS_TD}>
@@ -1096,7 +1116,18 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                       <span className="font-normal text-[var(--text-dimmer)]">({list.length})</span>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
+                  <CampaignMobileCards
+                    rows={sorted}
+                    detailHref={campaignDetailHref}
+                    formatMoney={(n) => formatBRL(n, locale)}
+                    formatRoas={(n) => formatRoas(n, locale)}
+                    formatCpl={(n) => (n == null ? "—" : formatBRL(n, locale))}
+                    statusLabel={statusLabel}
+                    statusPendingId={statusPendingId}
+                    onToggleStatus={toggleCampaignStatus}
+                    onRemember={rememberCampaign}
+                  />
+                  <div className="hidden overflow-x-auto md:block">
                     <table className="w-full min-w-[680px] text-sm">
                       <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
                         <tr>
@@ -1156,7 +1187,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                         {sorted.map((r) => (
                           <tr
                             key={r.metaCampaignId}
-                            className="group border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]"
+                            className="group even:bg-[var(--surface-row-alt)] border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]"
                           >
                             <td className={STICKY_STATUS_TD}>
                               <CampaignStatusToggle
@@ -1248,7 +1279,27 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         </div>
       ) : (
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        <CampaignDraftMobileCards
+          rows={draftDisplayRows}
+          resumeHref={draftResumeHref}
+          onDiscard={discardDraft}
+          discardPendingId={draftDiscardPendingId}
+          statusDraftLabel={t("statusDraft")}
+          resumeLabel={t("resumeDraft")}
+          discardLabel={t("discardDraft")}
+        />
+        <CampaignMobileCards
+          rows={publishedDisplayRows}
+          detailHref={campaignDetailHref}
+          formatMoney={(n) => formatBRL(n, locale)}
+          formatRoas={(n) => formatRoas(n, locale)}
+          formatCpl={(n) => (n == null ? "—" : formatBRL(n, locale))}
+          statusLabel={statusLabel}
+          statusPendingId={statusPendingId}
+          onToggleStatus={toggleCampaignStatus}
+          onRemember={rememberCampaign}
+        />
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
               <tr>
@@ -1275,7 +1326,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             <tbody>
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
+                  <tr key={i} className="even:bg-[var(--surface-row-alt)] border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
                     {visibleColumns.map((col) => (
                       <td key={col} className="px-3 py-3 first:pl-4">
                         <Skeleton className="h-4 w-full max-w-[120px]" />
@@ -1293,7 +1344,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                 displayRows.map((r) => (
                   <tr
                     key={r.metaCampaignId}
-                    className={`border-t border-[var(--border-color)] hover:bg-[var(--row-hover)] ${
+                    className={`even:bg-[var(--surface-row-alt)] border-t border-[var(--border-color)] hover:bg-[var(--row-hover)] ${
                       !useUxChrome && !isDraftRow(r) ? "cursor-pointer" : ""
                     } ${!useUxChrome && !isDraftRow(r) && selectedId === r.metaCampaignId ? "bg-[rgba(245,166,35,0.08)]" : ""}`}
                     onClick={() => !useUxChrome && !isDraftRow(r) && pickCampaign(r)}

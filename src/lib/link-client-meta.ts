@@ -15,18 +15,40 @@ export async function linkClientMetaAccounts(input: {
   metaAccessToken?: string;
   metaBusinessId?: string | null;
 }) {
-  const { adAccount: adAccountRepo, client: clientRepo } = await repositories();
+  const { adAccount: adAccountRepo, client: clientRepo, metaAdAccountInventory: inventoryRepo } =
+    await repositories();
 
-  const available = await listMetaAdAccountOptions({
+  const allAvailable = await listMetaAdAccountOptions({
     tenantId: input.tenantId,
-    metaBusinessId: input.metaBusinessId ?? undefined,
     metaAccessToken: input.metaAccessToken,
     hideDemoWhenRealExists: true
   });
-  const availableMap = new Map(available.map((a) => [a.metaAdAccountId, a]));
-  const inventoryMeta = new Map(
-    available.map((a) => [a.metaAdAccountId, a.metaBusinessId ?? input.metaBusinessId ?? null])
-  );
+  const availableMap = new Map(allAvailable.map((a) => [a.metaAdAccountId, a]));
+
+  async function resolveAccountMeta(metaId: string) {
+    if (availableMap.has(metaId)) {
+      return {
+        metaId,
+        label: availableMap.get(metaId)!.label,
+        metaBusinessId: availableMap.get(metaId)!.metaBusinessId ?? input.metaBusinessId ?? null
+      };
+    }
+    const variants = [
+      metaId,
+      metaId.startsWith("act_") ? metaId.slice(4) : `act_${metaId}`
+    ];
+    for (const v of variants) {
+      const inv = await inventoryRepo.findOne({ where: { tenantId: input.tenantId, metaAdAccountId: v } });
+      if (inv) {
+        return {
+          metaId: inv.metaAdAccountId,
+          label: inv.label ?? inv.metaAdAccountId,
+          metaBusinessId: inv.metaBusinessId ?? input.metaBusinessId ?? null
+        };
+      }
+    }
+    return null;
+  }
 
   const allClients = await clientRepo.find({ where: { tenantId: input.tenantId } });
   const otherClientIds = allClients.filter((c) => c.id !== input.clientId).map((c) => c.id);
@@ -36,7 +58,10 @@ export async function linkClientMetaAccounts(input: {
       : [];
 
   const current = await adAccountRepo.find({ where: { clientId: input.clientId } });
-  const want = new Set(input.metaAdAccountIds.filter((id) => availableMap.has(id)));
+  const resolved = (
+    await Promise.all(input.metaAdAccountIds.map((id) => resolveAccountMeta(id)))
+  ).filter(Boolean) as Array<{ metaId: string; label: string; metaBusinessId: string | null }>;
+  const want = new Map(resolved.map((r) => [r.metaId, r]));
 
   for (const row of current) {
     if (!want.has(row.metaAdAccountId)) {
@@ -48,21 +73,21 @@ export async function linkClientMetaAccounts(input: {
     (await adAccountRepo.find({ where: { clientId: input.clientId } })).map((a) => a.metaAdAccountId)
   );
 
-  for (const metaId of want) {
+  for (const { metaId, label, metaBusinessId } of want.values()) {
     if (currentIds.has(metaId)) continue;
 
     const onOther = others.find((a) => a.metaAdAccountId === metaId);
     if (onOther) {
       onOther.clientId = input.clientId;
-      onOther.metaBusinessId = inventoryMeta.get(metaId) ?? onOther.metaBusinessId;
+      onOther.metaBusinessId = metaBusinessId ?? onOther.metaBusinessId;
       await adAccountRepo.save(onOther);
     } else {
       await adAccountRepo.save(
         adAccountRepo.create({
           clientId: input.clientId,
           metaAdAccountId: metaId,
-          metaBusinessId: inventoryMeta.get(metaId) ?? null,
-          label: availableMap.get(metaId)?.label ?? null
+          metaBusinessId,
+          label
         })
       );
     }

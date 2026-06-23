@@ -1,5 +1,7 @@
 import "server-only";
 
+import { In } from "typeorm";
+
 import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
@@ -69,7 +71,7 @@ export async function listClientsForTenant(tenantId: string, opts?: { includeDem
 }
 
 export async function getClientBySlugOrId(tenantId: string, clientIdOrSlug: string) {
-  const { client: repo } = await repositories();
+  const { client: repo, adAccount: adAccountRepo } = await repositories();
   const decoded = decodeURIComponent(clientIdOrSlug);
 
   if (isUuid(decoded)) {
@@ -78,11 +80,22 @@ export async function getClientBySlugOrId(tenantId: string, clientIdOrSlug: stri
   }
 
   const all = await repo.find({ where: { tenantId } });
-  return (
-    all.find((c) => slugify(c.name) === decoded) ??
-    all.find((c) => slugify(c.name) === clientIdOrSlug) ??
-    null
+  const slugMatches = all.filter(
+    (c) => slugify(c.name) === decoded || slugify(c.name) === clientIdOrSlug
   );
+  if (slugMatches.length === 1) return slugMatches[0];
+  if (slugMatches.length > 1) {
+    const linked = await adAccountRepo.find({
+      where: { clientId: In(slugMatches.map((c) => c.id)) }
+    });
+    const withAccounts = new Set(linked.map((a) => a.clientId));
+    return (
+      slugMatches.find((c) => withAccounts.has(c.id)) ??
+      slugMatches.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+    );
+  }
+
+  return null;
 }
 
 export function slugify(value: string) {

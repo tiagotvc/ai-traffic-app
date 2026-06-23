@@ -12,7 +12,8 @@ export function SidebarFooter({
   subscriptionStatus,
   collapsed,
   isPlatformAdmin = false,
-  onNavigate
+  onNavigate,
+  mobileFullScreen = false
 }: {
   userName: string;
   planName?: string;
@@ -20,6 +21,7 @@ export function SidebarFooter({
   collapsed: boolean;
   isPlatformAdmin?: boolean;
   onNavigate?: () => void;
+  mobileFullScreen?: boolean;
 }) {
   const tNav = useTranslations("nav");
   const router = useRouter();
@@ -53,6 +55,7 @@ export function SidebarFooter({
         onNavigate={onNavigate}
         onSignOut={signOut}
         signingOut={signingOut}
+        mobileFullScreen={mobileFullScreen}
       />
     </div>
   );

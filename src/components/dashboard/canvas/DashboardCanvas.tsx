@@ -13,6 +13,7 @@ import {
   DashboardTvModeButton,
   WidgetLibraryModal
 } from "@/components/dashboard/canvas/WidgetLibraryModal";
+import { DashboardToolbarButton } from "@/components/dashboard/canvas/DashboardToolbarButton";
 import { AiWidgetBuilderModal } from "@/components/dashboard/canvas/AiWidgetBuilderModal";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { layoutHasWidgetPeriodOverrides } from "@/lib/dashboard/widget-period";
@@ -39,6 +40,7 @@ export function DashboardCanvas({
   layoutRevision = 0,
   onApplyTemplate,
   applyingTemplate = false,
+  onAiWidgetCreated,
   actionError,
   onClearActionError,
   layouts,
@@ -80,6 +82,7 @@ export function DashboardCanvas({
   layoutRevision?: number;
   onApplyTemplate?: (templateId: string) => Promise<{ ok: boolean; error?: string } | void>;
   applyingTemplate?: boolean;
+  onAiWidgetCreated?: (layout?: LayoutDto) => void;
   actionError?: string | null;
   onClearActionError?: () => void;
   layouts: LayoutDto[];
@@ -147,72 +150,64 @@ export function DashboardCanvas({
               maxDashboards={limits.maxDashboards}
             />
             <DashboardTvModeButton onToggle={() => setTvMode((v) => !v)} />
-            <button
-              type="button"
+            <DashboardToolbarButton
+              icon={<LayoutTemplate size={14} />}
+              label={t("templatesButton")}
               onClick={() => setTemplatesOpen(true)}
               disabled={applyingTemplate || saving}
-              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+              className="disabled:opacity-50"
               style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-            >
-              <LayoutTemplate size={14} />
-              {t("templatesButton")}
-            </button>
-            <button
-              type="button"
+            />
+            <DashboardToolbarButton
+              icon={<RotateCcw size={14} />}
+              label={t("resetLayout")}
               onClick={() => setResetConfirm(true)}
               disabled={resetting || saving}
-              className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+              className="disabled:opacity-50"
               style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-            >
-              <RotateCcw size={14} />
-              {t("resetLayout")}
-            </button>
+            />
             {limits.allowAiBuilder ? (
-              <button
-                type="button"
+              <DashboardToolbarButton
+                icon={<Wand2 size={14} />}
+                label={t("aiBuilder")}
                 onClick={() => setAiBuilderOpen(true)}
-                className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"
-                style={{ borderColor: "var(--border-color)", color: "#7c3aed" }}
-              >
-                <Wand2 size={14} />
-                {t("aiBuilder")}
-              </button>
+                className="transition hover:brightness-110"
+                style={{
+                  borderColor: "rgba(245,166,35,0.32)",
+                  background: "linear-gradient(135deg, rgba(245,166,35,0.12), rgba(124,58,237,0.1))",
+                  color: "#fde68a",
+                  boxShadow: "inset 0 0 0 1px rgba(245,166,35,0.14)"
+                }}
+              />
             ) : null}
             {editMode ? (
               <>
-                <button
-                  type="button"
+                <DashboardToolbarButton
+                  icon={<Plus size={14} />}
+                  label={t("addWidget")}
                   onClick={() => setLibraryOpen(true)}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-white"
-                  style={{ background: "#4f46e5" }}
-                >
-                  <Plus size={14} />
-                  {t("addWidget")}
-                </button>
-                <button
-                  type="button"
+                  className="text-white"
+                  style={{ background: "#4f46e5", borderColor: "transparent" }}
+                />
+                <DashboardToolbarButton
+                  icon={<Check size={14} />}
+                  label={saving ? t("savingLayout") : t("doneEditing")}
                   disabled={saving}
                   onClick={() => {
                     if (saving) return;
                     setEditMode(false);
                   }}
-                  className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                  className="disabled:opacity-50"
                   style={{ borderColor: "var(--border-color)", color: "var(--text-main)" }}
-                >
-                  <Check size={14} />
-                  {saving ? t("savingLayout") : t("doneEditing")}
-                </button>
+                />
               </>
             ) : (
-              <button
-                type="button"
+              <DashboardToolbarButton
+                icon={<Settings2 size={14} />}
+                label={tDash("layoutCustomize")}
                 onClick={() => setEditMode(true)}
-                className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"
                 style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-              >
-                <Settings2 size={14} />
-                {tDash("layoutCustomize")}
-              </button>
+              />
             )}
           </div>
         </div>
@@ -261,13 +256,15 @@ export function DashboardCanvas({
         open={aiBuilderOpen}
         layoutId={activeLayout?.id}
         onClose={() => setAiBuilderOpen(false)}
-        onCreated={() => setEditMode(true)}
+        onCreated={(layout) => {
+          onAiWidgetCreated?.(layout);
+          setEditMode(true);
+        }}
       />
 
       <DashboardTemplatesModal
         open={templatesOpen}
         templates={templates}
-        dashboardData={dashboardData}
         applying={applyingTemplate}
         onClose={() => setTemplatesOpen(false)}
         onApply={(id) => {

@@ -25,7 +25,18 @@ import {
   YAxis
 } from "recharts";
 
+import { PremiumChartFrame } from "@/components/charts/PremiumChartFrame";
+import { PremiumChartTooltip } from "@/components/charts/PremiumChartTooltip";
 import { cn } from "@/lib/cn";
+import {
+  PREMIUM_BAR_RADIUS,
+  PREMIUM_CHART_MARGIN,
+  premiumActiveDot,
+  premiumAreaGradientStops,
+  premiumAxisTick,
+  premiumGridProps,
+  premiumRechartsTooltipProps
+} from "@/lib/dashboard/premium-chart-theme";
 import {
   toBoxPlotGroups,
   toParetoFromSeries
@@ -43,6 +54,7 @@ import {
 } from "@/lib/dashboard/slot-visual-config";
 import type { ChartStyle } from "@/lib/dashboard/widget-config";
 import { METRIC_BY_KEY, METRIC_CATALOG, type MetricKey } from "@/lib/dashboard-metrics";
+import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
 
 type ChartPoint = { label: string } & Partial<Record<MetricKey, number>>;
 
@@ -65,17 +77,7 @@ function CustomTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div
-      className="rounded-xl p-3 text-xs shadow-2xl"
-      style={{
-        background: "var(--surface-card)",
-        border: "1px solid var(--border-hover)",
-        color: "var(--text-main)"
-      }}
-    >
-      <p className="mb-2 font-semibold" style={{ fontFamily: "var(--font-heading)" }}>
-        {label}
-      </p>
+    <PremiumChartTooltip title={label}>
       {payload.map((entry) => (
         <p key={entry.dataKey} className="flex items-center gap-2" style={{ color: entry.color }}>
           <span className="inline-block h-2 w-2 rounded-full" style={{ background: entry.color }} />
@@ -83,7 +85,7 @@ function CustomTooltip({
           {formatValue(entry.dataKey as MetricKey, entry.value)}
         </p>
       ))}
-    </div>
+    </PremiumChartTooltip>
   );
 }
 
@@ -125,6 +127,7 @@ export function DashboardPerformanceChart({
 }) {
   const t = useTranslations("dashboard");
   const [animKey, setAnimKey] = useState(0);
+  const isMobile = useIsMobile();
   const isCanvas = variant === "canvas";
   const isPreview = variant === "preview";
   const isEmbedded = variant === "embedded";
@@ -156,7 +159,7 @@ export function DashboardPerformanceChart({
     );
   }
 
-  const chartHeight = isEmbedded ? undefined : previewHeight ?? (isCanvas ? undefined : 240);
+  const chartHeight = isEmbedded ? undefined : previewHeight ?? (isCanvas ? (isMobile ? 240 : undefined) : 280);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
@@ -177,7 +180,7 @@ export function DashboardPerformanceChart({
       ) : null}
 
       {!disableToggle ? (
-        <div className={cn("mb-2 flex shrink-0 flex-wrap gap-1.5", !isCanvas && !isPreview && !isEmbedded && "mb-3")}>
+        <div className={cn("mb-2 flex shrink-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible", !isCanvas && !isPreview && !isEmbedded && "mb-3")}>
           {toggleKeys.map((key) => {
             const color = metricColor(key);
             const active = activeMetrics.includes(key);
@@ -211,38 +214,42 @@ export function DashboardPerformanceChart({
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          "min-h-0 w-full flex-1",
-          isEmbedded && "h-full min-h-[64px]",
-          !isCanvas && !isPreview && !isEmbedded && "h-[240px] min-h-[240px] animate-chart-grow"
-        )}
-        style={chartHeight ? { height: chartHeight, minHeight: chartHeight } : undefined}
-        key={animKey}
-      >
-        {data.length >= 1 ? (
-          <ResponsiveContainer width="100%" height={isEmbedded || isCanvas ? "100%" : chartHeight ?? 240}>
-            <PerformanceChartBody
-              data={data}
-              activeMetrics={activeMetrics}
-              chartStyle={parseExtendedChartStyle(chartStyle)}
-              barLayout={barLayout}
-              gradPrefix={`dash-${animKey}`}
-              formatValue={formatValue}
-              metricLabels={metricLabels}
-              visual={visual}
-              metricSummary={metricSummary}
-            />
-          </ResponsiveContainer>
-        ) : (
-          <div
-            className="flex h-full items-center justify-center rounded-xl border border-dashed text-xs"
-            style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-          >
-            {t("noChartData")}
-          </div>
-        )}
-      </div>
+      <PremiumChartFrame compact={isCanvas || isPreview || isEmbedded}>
+        <div
+          className={cn(
+            "min-h-0 w-full min-w-0 flex-1 overflow-hidden",
+            isEmbedded && "h-full min-h-[64px]",
+            isCanvas && "min-h-[200px] h-full",
+            !isCanvas && !isPreview && !isEmbedded && "h-[280px] min-h-[280px] animate-chart-grow"
+          )}
+          style={chartHeight ? { height: chartHeight, minHeight: chartHeight } : undefined}
+          key={animKey}
+        >
+          {data.length >= 1 ? (
+            <ResponsiveContainer width="100%" height={isEmbedded || isCanvas ? "100%" : chartHeight ?? 280}>
+              <PerformanceChartBody
+                data={data}
+                activeMetrics={activeMetrics}
+                chartStyle={parseExtendedChartStyle(chartStyle)}
+                barLayout={barLayout}
+                gradPrefix={`dash-${animKey}`}
+                formatValue={formatValue}
+                metricLabels={metricLabels}
+                visual={visual}
+                metricSummary={metricSummary}
+                compactAxis={isMobile}
+              />
+            </ResponsiveContainer>
+          ) : (
+            <div
+              className="flex h-full items-center justify-center rounded-xl border border-dashed text-xs"
+              style={{ borderColor: "var(--chart-frame-border)", color: "var(--text-dim)" }}
+            >
+              {t("noChartData")}
+            </div>
+          )}
+        </div>
+      </PremiumChartFrame>
     </div>
   );
 }
@@ -256,7 +263,8 @@ function PerformanceChartBody({
   formatValue,
   metricLabels,
   visual,
-  metricSummary
+  metricSummary,
+  compactAxis = false
 }: {
   data: ChartPoint[];
   activeMetrics: MetricKey[];
@@ -267,6 +275,7 @@ function PerformanceChartBody({
   metricLabels: Record<MetricKey, string>;
   visual?: SlotVisualConfig;
   metricSummary?: Partial<Record<MetricKey, number>>;
+  compactAxis?: boolean;
 }) {
   const colorFor = (key: MetricKey) => resolveMetricColor(key, visual?.customColors);
   const lineWidth = strokeWeightToPx(visual?.lineStrokeWidth, 2.5);
@@ -333,26 +342,33 @@ function PerformanceChartBody({
   }
 
   const axisProps = {
-    margin: { top: 4, right: 8, left: 0, bottom: 0 } as const,
+    margin: compactAxis ? { top: 8, right: 8, left: -8, bottom: 0 } : PREMIUM_CHART_MARGIN,
     data
   };
   const tooltip = (
-    <Tooltip content={<CustomTooltip formatValue={formatValue} metricLabels={metricLabels} />} />
+    <Tooltip
+      {...premiumRechartsTooltipProps}
+      content={<CustomTooltip formatValue={formatValue} metricLabels={metricLabels} />}
+    />
   );
 
-  const grid = <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />;
+  const grid = <CartesianGrid {...premiumGridProps()} />;
   const xAxis = (
     <XAxis
       dataKey="label"
-      tick={{ fill: visual?.textColor ?? "var(--text-dimmer)", fontSize: 10 }}
+      tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 10 }}
       axisLine={false}
       tickLine={false}
+      interval={compactAxis ? "preserveStartEnd" : undefined}
+      angle={compactAxis ? -35 : 0}
+      textAnchor={compactAxis ? "end" : "middle"}
+      height={compactAxis ? 48 : 30}
     />
   );
   const yAxis = (
     <YAxis
-      width={44}
-      tick={{ fill: visual?.textColor ?? "var(--text-dimmer)", fontSize: 10 }}
+      width={compactAxis ? 36 : 44}
+      tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 10 }}
       axisLine={false}
       tickLine={false}
     />
@@ -371,6 +387,7 @@ function PerformanceChartBody({
     return (
       <PieChart>
         <Tooltip
+          {...premiumRechartsTooltipProps}
           formatter={(value, name) => {
             const num = Number(value ?? 0);
             const entry = pieData.find((d) => d.name === name);
@@ -412,16 +429,17 @@ function PerformanceChartBody({
 
     return (
       <RadarChart cx="50%" cy="50%" outerRadius="72%" data={radarRows}>
-        <PolarGrid stroke="var(--border-color)" />
+        <PolarGrid stroke="var(--chart-grid)" />
         <PolarAngleAxis
           dataKey="metric"
-          tick={{ fill: visual?.textColor ?? "var(--text-dimmer)", fontSize: 9 }}
+          tick={premiumAxisTick(visual?.textColor)}
         />
         <PolarRadiusAxis
           domain={[0, maxVal]}
-          tick={{ fill: visual?.textColor ?? "var(--text-dimmer)", fontSize: 8 }}
+          tick={{ ...premiumAxisTick(visual?.textColor), fontSize: 8 }}
         />
         <Tooltip
+          {...premiumRechartsTooltipProps}
           formatter={(value) => {
             const num = Number(value ?? 0);
             return [num.toLocaleString(), ""];
@@ -453,7 +471,7 @@ function PerformanceChartBody({
             yAxisId="right"
             orientation="right"
             width={44}
-            tick={{ fill: visual?.textColor ?? "var(--text-dimmer)", fontSize: 10 }}
+            tick={premiumAxisTick(visual?.textColor)}
             axisLine={false}
             tickLine={false}
           />
@@ -471,7 +489,7 @@ function PerformanceChartBody({
                 dataKey={key}
                 fill={color}
                 barSize={barSize}
-                radius={[4, 4, 0, 0]}
+                radius={PREMIUM_BAR_RADIUS.vertical}
               />
             );
           }
@@ -511,17 +529,17 @@ function PerformanceChartBody({
       <BarChart
         {...axisProps}
         layout={horizontalBars ? "vertical" : "horizontal"}
-        margin={horizontalBars ? { top: 4, right: 8, left: 4, bottom: 0 } : axisProps.margin}
+        margin={horizontalBars ? { top: 8, right: 12, left: 4, bottom: 4 } : PREMIUM_CHART_MARGIN}
       >
         {grid}
         {horizontalBars ? (
           <>
-            <XAxis type="number" tick={{ fill: "var(--text-dimmer)", fontSize: 10 }} axisLine={false} tickLine={false} />
+            <XAxis type="number" tick={premiumAxisTick(visual?.textColor)} axisLine={false} tickLine={false} />
             <YAxis
               type="category"
               dataKey="label"
               width={56}
-              tick={{ fill: "var(--text-dimmer)", fontSize: 9 }}
+              tick={{ ...premiumAxisTick(visual?.textColor), fontSize: 9 }}
               axisLine={false}
               tickLine={false}
             />
@@ -539,7 +557,7 @@ function PerformanceChartBody({
             dataKey={key}
             fill={colorFor(key)}
             barSize={barSize}
-            radius={horizontalBars ? [0, 4, 4, 0] : [4, 4, 0, 0]}
+            radius={horizontalBars ? PREMIUM_BAR_RADIUS.horizontal : PREMIUM_BAR_RADIUS.vertical}
           />
         ))}
       </BarChart>
@@ -561,7 +579,7 @@ function PerformanceChartBody({
             stroke={colorFor(key)}
             strokeWidth={lineWidth}
             dot={false}
-            activeDot={{ r: 4, fill: colorFor(key), strokeWidth: 0 }}
+            activeDot={premiumActiveDot(colorFor(key))}
           />
         ))}
       </LineChart>
@@ -573,8 +591,9 @@ function PerformanceChartBody({
       <defs>
         {activeMetrics.map((key) => (
           <linearGradient key={key} id={`${gradPrefix}-grad-${key}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={colorFor(key)} stopOpacity={0.3} />
-            <stop offset="95%" stopColor={colorFor(key)} stopOpacity={0.02} />
+            {premiumAreaGradientStops(colorFor(key)).map((stop) => (
+              <stop key={stop.offset} offset={stop.offset} stopColor={stop.stopColor} stopOpacity={stop.stopOpacity} />
+            ))}
           </linearGradient>
         ))}
       </defs>
@@ -591,7 +610,7 @@ function PerformanceChartBody({
           strokeWidth={lineWidth}
           fill={`url(#${gradPrefix}-grad-${key})`}
           dot={false}
-          activeDot={{ r: 4, fill: colorFor(key), strokeWidth: 0 }}
+          activeDot={premiumActiveDot(colorFor(key))}
         />
       ))}
     </AreaChart>

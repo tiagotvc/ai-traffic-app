@@ -7,6 +7,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { CreativeCompareModal } from "@/components/creatives/CreativeCompareModal";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
 import { RankingConfigModal } from "@/components/creatives/RankingConfigModal";
+import { IconLabelButton } from "@/components/ui/IconLabelButton";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import type { CreativeItem } from "@/components/creatives/CreativeCardGrid";
 import {
@@ -42,19 +43,21 @@ export function CreativesContentLive() {
 
   const filterTabs = useMemo(() => presetTabsFromGroups(data.groups, presetLabel), [data.groups, tPresets]);
 
-  useCommandStripPage({
-    middleTrailingSlot: (
-      <button
+  useCommandStripPage({});
+
+  const configureRankingSlot = useMemo(
+    () => (
+      <IconLabelButton
         type="button"
+        label={t("cfgButton")}
+        icon={<SlidersHorizontal size={16} />}
         onClick={() => data.setConfigOpen(true)}
-        className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-md transition-all hover:brightness-110"
+        className="flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2"
         style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
-      >
-        <SlidersHorizontal size={13} />
-        {t("cfgButton")}
-      </button>
-    )
-  });
+      />
+    ),
+    [t, data.setConfigOpen]
+  );
 
   function handlePreview(card: UxCreativeCard) {
     setPreviewing(card.raw);
@@ -74,6 +77,7 @@ export function CreativesContentLive() {
           searchQuery,
           onSearchChange: setSearchQuery,
           onOpenCriteria: () => data.setConfigOpen(true),
+          headerActions: configureRankingSlot,
           onPreview: (creative) => handlePreview(creative as UxCreativeCard),
           onCompare: (creative) => handleCompare(creative as UxCreativeCard)
         }}

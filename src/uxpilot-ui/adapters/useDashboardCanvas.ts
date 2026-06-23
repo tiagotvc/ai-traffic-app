@@ -274,6 +274,11 @@ export function useDashboardCanvas() {
     [reloadLayouts]
   );
 
+  const applyLayoutUpdate = useCallback((layout: LayoutDto) => {
+    setLayouts((cur) => cur.map((l) => (l.id === layout.id ? layout : l)));
+    setLayoutRevision((v) => v + 1);
+  }, []);
+
   return {
     layouts,
     activeLayout,
@@ -286,6 +291,8 @@ export function useDashboardCanvas() {
     catalog,
     isPlatformAdmin,
     load,
+    reloadLayouts,
+    applyLayoutUpdate,
     saveWidgets,
     addWidget,
     removeWidget,

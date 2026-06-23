@@ -20,7 +20,10 @@ async function validateClientAdAccount(
   tenantId: string,
   clientSlug: string,
   adAccountId: string
-): Promise<{ ok: true; clientId: string } | { ok: false; error: string; status: number }> {
+): Promise<
+  | { ok: true; clientId: string }
+  | { ok: false; error: string; errorCode?: string; status: number }
+> {
   const client = await getClientBySlugOrId(tenantId, clientSlug);
   if (!client) return { ok: false, error: "Cliente não encontrado", status: 404 };
 
@@ -29,7 +32,12 @@ async function validateClientAdAccount(
     where: { clientId: client.id, metaAdAccountId: adAccountId }
   });
   if (!linked) {
-    return { ok: false, error: "Conta não vinculada ao cliente", status: 403 };
+    return {
+      ok: false,
+      error: "Conta não vinculada ao cliente",
+      errorCode: "ACCOUNT_NOT_LINKED",
+      status: 403
+    };
   }
   return { ok: true, clientId: client.id };
 }
@@ -49,7 +57,14 @@ export async function GET(req: Request) {
 
   const validation = await validateClientAdAccount(tenant.id, clientId, adAccountId);
   if (!validation.ok) {
-    return NextResponse.json({ ok: false, error: validation.error }, { status: validation.status });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: validation.error,
+        errorCode: validation.errorCode
+      },
+      { status: validation.status }
+    );
   }
 
   const inv = await getInventoryMap(tenant.id);

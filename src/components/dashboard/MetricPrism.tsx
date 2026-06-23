@@ -2,6 +2,7 @@
 
 import { SparklineChart } from "@/components/dashboard/SparklineChart";
 import { cn } from "@/lib/cn";
+import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 
 export type KpiCard = {
   label: string;
@@ -16,6 +17,7 @@ export type KpiCard = {
 };
 
 export type SecondaryMetric = {
+  key?: MetricKey;
   label: string;
   value: string;
   change: string;
@@ -38,7 +40,7 @@ function TrendBadge({
   return (
     <span
       className={cn(
-        "flex items-center gap-0.5 rounded font-medium",
+        "flex items-center gap-0.5 rounded font-medium tabular-nums",
         small ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-xs"
       )}
       style={{ background: `${color}15`, color }}
@@ -57,17 +59,17 @@ function TrendBadge({
   );
 }
 
-function KpiCardTile({ kpi, className }: { kpi: KpiCard; className?: string }) {
+function KpiCardTile({ kpi, index }: { kpi: KpiCard; index: number }) {
   return (
     <div
-      className={cn(
-        "kpi-card-hover flex h-full min-h-0 min-w-0 flex-col rounded-2xl p-4 sm:p-5",
-        className
-      )}
+      className="kpi-card-hover animate-fade-up flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl p-4 sm:p-5"
       style={{
-        background: "var(--surface-bg)",
+        background: "var(--surface-card)",
         border: "1px solid var(--border-color)",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.06)"
+        boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
+        borderTop: `3px solid ${kpi.color}`,
+        animationDelay: `${index * 80}ms`,
+        animationFillMode: "both"
       }}
     >
       <div className="mb-1 flex items-start justify-between gap-2">
@@ -80,7 +82,7 @@ function KpiCardTile({ kpi, className }: { kpi: KpiCard; className?: string }) {
         <TrendBadge change={kpi.change} trend={kpi.trend} />
       </div>
       <div
-        className="mb-1 mt-2 truncate font-bold leading-none"
+        className="mb-1 mt-2 truncate font-bold leading-none tabular-nums"
         style={{
           fontSize: "clamp(1.25rem, 2.5vw, 2rem)",
           color: kpi.color,
@@ -89,10 +91,10 @@ function KpiCardTile({ kpi, className }: { kpi: KpiCard; className?: string }) {
       >
         {kpi.value}
       </div>
-      <p className="mb-2 text-[11px]" style={{ color: "var(--text-dim)" }}>
+      <p className="mb-2 truncate text-[11px]" style={{ color: "var(--text-dim)" }}>
         {kpi.subLabel}
       </p>
-      <div className="mt-auto h-12 min-h-[48px] w-full">
+      <div className="mt-auto h-12 min-h-[48px] w-full rounded-lg" style={{ background: "var(--chart-frame-bg)" }}>
         <SparklineChart
           data={kpi.sparkData}
           labels={kpi.sparkLabels}
@@ -128,11 +130,15 @@ function PrimaryKpiGrid({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; is
 
   return (
     <div
-      className="grid h-full w-full gap-3"
-      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+      className={cn(
+        "grid h-full w-full gap-3",
+        cols === 1 && "grid-cols-1",
+        cols === 2 && "grid-cols-1 sm:grid-cols-2",
+        cols >= 3 && "grid-cols-1 sm:grid-cols-3"
+      )}
     >
-      {primaryKPIs.map((kpi) => (
-        <KpiCardTile key={kpi.label} kpi={kpi} />
+      {primaryKPIs.map((kpi, index) => (
+        <KpiCardTile key={kpi.label} kpi={kpi} index={index} />
       ))}
     </div>
   );
@@ -160,16 +166,18 @@ export function MetricKpiCard({ kpi, isLoading }: { kpi: KpiCard; isLoading?: bo
       </div>
     );
   }
-  return <KpiCardTile kpi={kpi} />;
+  return <KpiCardTile kpi={kpi} index={0} />;
 }
 
 export function MetricPrism({
   primaryKPIs,
   secondaryMetrics,
+  secondaryTitle,
   isLoading
 }: {
   primaryKPIs: KpiCard[];
   secondaryMetrics: SecondaryMetric[];
+  secondaryTitle?: string;
   /** Show loading skeleton only while fetching — not for empty accounts. */
   isLoading?: boolean;
 }) {
@@ -190,30 +198,46 @@ export function MetricPrism({
     <div className="space-y-3">
       <PrimaryKpiGrid primaryKPIs={primaryKPIs} />
 
-      <div className="flex flex-wrap gap-2">
-        {secondaryMetrics.map((m) => (
-          <div
-            key={m.label}
-            className="flex cursor-default items-center gap-2 rounded-xl px-3 py-2 transition-colors"
-            style={{
-              background: "var(--surface-card)",
-              border: "1px solid var(--border-color)",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.05)"
-            }}
-          >
-            <span className="text-xs" style={{ color: "var(--text-dimmer)" }}>
-              {m.label}
-            </span>
-            <span
-              className="text-sm font-semibold"
-              style={{ color: "var(--text-main)", fontFamily: "var(--font-heading)" }}
-            >
-              {m.value}
-            </span>
-            <TrendBadge change={m.change} trend={m.trend} small />
+      {secondaryMetrics.length > 0 ? (
+        <div className="space-y-2">
+          {secondaryTitle ? (
+            <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-dimmer)" }}>
+              {secondaryTitle}
+            </p>
+          ) : null}
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+            {secondaryMetrics.map((m) => {
+              const color = m.key ? METRIC_BY_KEY[m.key]?.color ?? "#94a3b8" : "#94a3b8";
+              return (
+                <div
+                  key={m.label}
+                  className="flex w-full min-w-0 cursor-default items-center gap-2 rounded-xl px-3 py-2 transition-colors sm:w-auto sm:min-w-[140px]"
+                  style={{
+                    background: "var(--surface-card)",
+                    border: "1px solid var(--border-color)",
+                    boxShadow: "0 1px 6px rgba(0,0,0,0.04)"
+                  }}
+                >
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: color }}
+                  />
+                  <span className="truncate text-xs" style={{ color: "var(--text-dimmer)" }}>
+                    {m.label}
+                  </span>
+                  <span
+                    className="truncate text-sm font-semibold tabular-nums"
+                    style={{ color: "var(--text-main)", fontFamily: "var(--font-heading)" }}
+                  >
+                    {m.value}
+                  </span>
+                  <TrendBadge change={m.change} trend={m.trend} small />
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

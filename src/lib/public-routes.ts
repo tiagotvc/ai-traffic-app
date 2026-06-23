@@ -1,5 +1,12 @@
 /** Paths accessible without authentication (without locale prefix). */
-export const PUBLIC_MARKETING_PREFIXES = ["/pricing", "/about", "/terms", "/support"] as const;
+export const PUBLIC_MARKETING_PREFIXES = [
+  "/pricing",
+  "/about",
+  "/terms",
+  "/support",
+  "/privacy",
+  "/data-deletion"
+] as const;
 
 export function isPublicPath(pathWithoutLocale: string): boolean {
   const path = pathWithoutLocale || "/";
@@ -15,6 +22,7 @@ export function isPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/webhooks/") ||
     pathname.startsWith("/api/billing/plans") ||
-    pathname.startsWith("/api/billing/config")
+    pathname.startsWith("/api/billing/config") ||
+    pathname.startsWith("/api/meta/data-deletion")
   );
 }

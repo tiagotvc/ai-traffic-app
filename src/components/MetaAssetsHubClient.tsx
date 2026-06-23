@@ -57,7 +57,7 @@ export function MetaAssetsHubClient({
 
   const loadAssets = useCallback((businessId: string) => {
     const q = businessId ? `?businessId=${encodeURIComponent(businessId)}` : "";
-    fetch(`/api/meta/assets${q}`)
+    fetch(`/api/meta/inventory${q}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) {

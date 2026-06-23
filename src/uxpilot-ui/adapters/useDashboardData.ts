@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import type { LearningDto } from "@/lib/agency-brain/types";
+import { buildDashboardPeriodContext } from "@/lib/dashboard/period-context";
 import {
   DEFAULT_DASHBOARD_CHART_METRICS,
   DEFAULT_DASHBOARD_CLIENT_METRIC,
@@ -64,6 +65,7 @@ function accountsKey(accounts: AdAccountOpt[]) {
 
 export function useDashboardData() {
   const t = useTranslations("dashboard");
+  const tPeriod = useTranslations("period");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const strip = useCommandStripOptional();
@@ -420,6 +422,18 @@ export function useDashboardData() {
     return labels;
   }, [metricLabel]);
 
+  const periodContext = useMemo(
+    () =>
+      buildDashboardPeriodContext({
+        period,
+        timeZone: activeTz,
+        locale,
+        tPeriod,
+        tDash: t
+      }),
+    [period, activeTz, locale, tPeriod, t]
+  );
+
   return {
     loading,
     note,
@@ -443,9 +457,12 @@ export function useDashboardData() {
     isEmptyState,
     locale,
     activeTz,
+    period,
+    periodLabel: periodContext.periodLabel,
     metricLabel,
     chartMetricLabels,
-    vsLabel: t("vsPrevPeriod"),
+    vsLabel: periodContext.vsLabel,
+    chartSubtitle: periodContext.chartSubtitle,
     formatMetricValue: (key: MetricKey, value: number) => formatMetricValue(key, value, locale)
   };
 }

@@ -44,6 +44,7 @@ import { MarketMemoryAndClientCompetitors1735831100000 } from "./0041-MarketMemo
 import { ClientSavedTargeting1735831200000 } from "./0042-ClientSavedTargeting";
 import { TenantMemberDashboardLayout_1735831300000 } from "./0043-TenantMemberDashboardLayout";
 import { DashboardCanvasCore_1735831400000 } from "./0044-DashboardCanvasCore";
+import { OrionPlanPricing_1735831500000 } from "./0045-OrionPlanPricing";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -92,5 +93,6 @@ export const appMigrations = [
   MarketMemoryAndClientCompetitors1735831100000,
   ClientSavedTargeting1735831200000,
   TenantMemberDashboardLayout_1735831300000,
-  DashboardCanvasCore_1735831400000
+  DashboardCanvasCore_1735831400000,
+  OrionPlanPricing_1735831500000
 ];

@@ -31,6 +31,23 @@ export function isMetaSavedAudienceCreateBlocked(error: unknown): boolean {
   );
 }
 
+export function formatMetaGraphErrorMessage(error: unknown): string {
+  const parsed = parseMetaGraphError(error);
+  if (parsed.code === 200) {
+    return (
+      "Permissão negada na Meta. Reconecte em Configurações e confirme que a conta de anúncios autorizou ads_read e ads_management."
+    );
+  }
+  if (parsed.code === 190) {
+    return "Token Meta expirado ou inválido. Reconecte em Configurações.";
+  }
+  const raw = error instanceof Error ? error.message : String(error);
+  if (parsed.message && raw.includes("Meta Graph error")) {
+    return parsed.message;
+  }
+  return raw;
+}
+
 export function formatMetaSavedAudienceCreateError(error: unknown): string {
   if (isMetaSavedAudienceCreateBlocked(error)) {
     return (

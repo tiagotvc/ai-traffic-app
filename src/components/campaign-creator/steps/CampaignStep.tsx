@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
-import { usePublishAssets } from "@/hooks/usePublishAssets";
+import { usePublishAssets, type PublishAccountsError } from "@/hooks/usePublishAssets";
 import type { CampaignDraftPayload } from "@/lib/campaign-draft";
 import { parseCampaignDraftPayload } from "@/lib/campaign-draft";
 
@@ -19,12 +19,30 @@ const SPECIAL_CATEGORIES = [
 
 type SourceCampaign = { id: string; name: string; objective?: string; status?: string };
 
+function accountsErrorMessage(
+  tAds: ReturnType<typeof useTranslations<"ads">>,
+  code: PublishAccountsError
+): string {
+  switch (code) {
+    case "account_not_linked":
+      return tAds("adAccountsNotLinked");
+    case "permission_denied":
+      return tAds("adAccountsPermissionDenied");
+    case "client_not_found":
+      return tAds("adAccountsClientNotFound");
+    case "meta_not_connected":
+      return tAds("adAccountsMetaNotConnected");
+    default:
+      return tAds("adAccountsLoadFailed");
+  }
+}
+
 export function CampaignStep() {
   const t = useTranslations("campaignCreator");
   const tAds = useTranslations("ads");
   const locale = useLocale();
   const { payload, updatePayload, clients } = useCampaignDraft();
-  const { accounts, accountsLoading, defaultAdAccountId } = usePublishAssets(
+  const { accounts, accountsLoading, defaultAdAccountId, accountsError } = usePublishAssets(
     payload.clientSlug,
     payload.adAccountId
   );
@@ -34,10 +52,24 @@ export function CampaignStep() {
   const [copyError, setCopyError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!payload.clientSlug || !clients.length) return;
+    if (clients.some((c) => c.id === payload.clientSlug)) return;
+    const match = clients.find((c) => c.slug === payload.clientSlug);
+    if (match) updatePayload({ clientSlug: match.id });
+  }, [clients, payload.clientSlug, updatePayload]);
+
+  useEffect(() => {
     if (!payload.adAccountId && defaultAdAccountId) {
       updatePayload({ adAccountId: defaultAdAccountId });
     }
   }, [defaultAdAccountId, payload.adAccountId, updatePayload]);
+
+  useEffect(() => {
+    if (accountsLoading || !accounts.length) return;
+    if (payload.adAccountId && !accounts.some((a) => a.metaAdAccountId === payload.adAccountId)) {
+      updatePayload({ adAccountId: defaultAdAccountId ?? "" });
+    }
+  }, [accounts, accountsLoading, defaultAdAccountId, payload.adAccountId, updatePayload]);
 
   useEffect(() => {
     if (!defaultTargeting?.locations.length) return;
@@ -117,7 +149,7 @@ export function CampaignStep() {
         >
           <option value="">{tAds("selectClient")}</option>
           {clients.map((c) => (
-            <option key={c.id} value={c.slug}>
+            <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
@@ -191,16 +223,19 @@ export function CampaignStep() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <FormField label={tAds("adAccount")}>
-          {accountsLoading ? (
+          {!payload.clientSlug ? (
+            <select className="ui-select" disabled>
+              <option value="">{tAds("selectClient")}</option>
+            </select>
+          ) : accountsLoading ? (
             <div className="ui-input text-[var(--text-dimmer)]">{t("loading")}</div>
           ) : (
             <select
               value={payload.adAccountId}
               onChange={(e) => updatePayload({ adAccountId: e.target.value })}
               className="ui-select"
-              disabled={!payload.clientSlug}
             >
-              <option value="">{tAds("selectClient")}</option>
+              <option value="">{tAds("adAccountRequired")}</option>
               {accounts.map((a) => (
                 <option key={a.metaAdAccountId} value={a.metaAdAccountId}>
                   {a.label}
@@ -208,6 +243,38 @@ export function CampaignStep() {
               ))}
             </select>
           )}
+          {accountsError ? (
+            <p className="mt-1 text-xs text-red-600">
+              {accountsErrorMessage(tAds, accountsError)}{" "}
+              {accountsError === "permission_denied" || accountsError === "meta_not_connected" ? (
+                <a href="/settings/integrations" className="font-semibold underline">
+                  {tAds("adAccountsSettingsLink")}
+                </a>
+              ) : accountsError === "account_not_linked" ? (
+                <a
+                  href={`/clients/${encodeURIComponent(payload.clientSlug)}/settings`}
+                  className="font-semibold underline"
+                >
+                  {tAds("adAccountsClientLink")}
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+          {!accountsLoading && !accountsError && payload.clientSlug && accounts.length === 0 ? (
+            <p className="mt-1 text-xs text-amber-700">
+              {tAds("adAccountsEmpty")}{" "}
+              <a href="/settings/integrations" className="font-semibold underline">
+                {tAds("adAccountsSettingsLink")}
+              </a>
+              {" · "}
+              <a
+                href={`/clients/${encodeURIComponent(payload.clientSlug)}/settings`}
+                className="font-semibold underline"
+              >
+                {tAds("adAccountsClientLink")}
+              </a>
+            </p>
+          ) : null}
         </FormField>
 
         <FormField label={t("objective")}>

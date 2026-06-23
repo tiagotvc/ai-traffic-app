@@ -13,7 +13,9 @@ import { AudienceDetailModal } from "@/components/audiences/AudienceDetailModal"
 import { Badge } from "@/components/ui/Badge";
 import { OutlineIcon } from "@/components/ui/OutlineIcon";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { IconLabelButton } from "@/components/ui/IconLabelButton";
 import { Link } from "@/i18n/navigation";
+import { formatMetaGraphErrorMessage } from "@/lib/meta-graph-errors";
 import { AudienceCreatorUxPage } from "@/uxpilot-ui/adapters/AudienceCreatorUxPage";
 
 const AUDIENCES_ICON_PATH =
@@ -92,7 +94,28 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
   const clientsRef = useRef(clients);
   clientsRef.current = clients;
 
-  useCommandStripPage(useUxChrome ? {} : {});
+  const openCreateView = useCallback(() => {
+    setView("create");
+    setError(null);
+    setMessage(null);
+  }, []);
+
+  const createAudienceSlot = useMemo(
+    () => (
+      <IconLabelButton
+        type="button"
+        label={t("createNewAudience")}
+        icon={<Plus size={16} />}
+        disabled={!metaConnected || !adAccountId}
+        onClick={openCreateView}
+        className="flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2"
+        style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
+      />
+    ),
+    [t, metaConnected, adAccountId, openCreateView]
+  );
+
+  useCommandStripPage({});
 
   useEffect(() => {
     if (!useUxChrome || !strip) return;
@@ -124,7 +147,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
       const res = await fetch("/api/audiences/hub");
       const j = await res.json();
       if (!res.ok || !j.ok) {
-        setError(j.error ?? "Erro ao carregar");
+        setError(formatMetaGraphErrorMessage(j.error ?? "Erro ao carregar"));
         return;
       }
       setMetaConnected(!!j.metaConnected);
@@ -157,7 +180,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         const res = await fetch(`/api/audiences/hub?${qs}`);
         const j = await res.json();
         if (!res.ok || !j.ok) {
-          setError(j.error ?? "Erro ao carregar públicos da Meta");
+          setError(formatMetaGraphErrorMessage(j.error ?? "Erro ao carregar públicos da Meta"));
           setAudiences([]);
           return;
         }
@@ -352,7 +375,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         adAccountId={adAccountId}
       />
       {useUxChrome ? (
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="mb-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
               Públicos
@@ -372,22 +395,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
               {t("subtitle")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setView("create");
-                setError(null);
-                setMessage(null);
-              }}
-              disabled={!metaConnected || !adAccountId}
-              className="flex items-center gap-2 rounded-lg px-4 py-2 font-heading text-sm font-semibold transition-all hover:brightness-110 disabled:opacity-50"
-              style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
-            >
-              <Plus size={14} />
-              {t("createNewAudience")}
-            </button>
-          </div>
+          <div className="flex shrink-0 items-center gap-2">{createAudienceSlot}</div>
         </div>
       ) : (
       <DsPageHeader

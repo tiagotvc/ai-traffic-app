@@ -190,7 +190,9 @@ export function PlanLimitsCard({
   const rows: Array<{ key: keyof PlanLimits; label: string; usageVal?: number }> = [
     { key: "maxClients", label: t("limitClients"), usageVal: usage?.clients },
     { key: "maxAdAccounts", label: t("limitAdAccounts"), usageVal: usage?.adAccounts },
-    { key: "maxMembers", label: t("limitMembers"), usageVal: usage?.members },
+    ...(isMarketing
+      ? []
+      : [{ key: "maxMembers" as const, label: t("limitMembers"), usageVal: usage?.members }]),
     { key: "maxAutomationRules", label: t("limitAutomations"), usageVal: usage?.automationRules },
     { key: "maxAiRequestsPerMonth", label: t("limitAi"), usageVal: usage?.aiRequestsThisMonth },
     { key: "maxScheduledReports", label: t("limitReports"), usageVal: usage?.scheduledReports }
@@ -380,7 +382,7 @@ type PlanTier = "free" | "standard" | "popular" | "premium";
 
 function planTier(slug: string): PlanTier {
   if (slug === "free") return "free";
-  if (slug === "agency") return "premium";
+  if (slug === "agency-pro") return "premium";
   if (slug === "advanced") return "popular";
   return "standard";
 }

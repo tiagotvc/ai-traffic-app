@@ -30,11 +30,29 @@
   --text-dim: #475569;
   --text-dimmer: #64748b;
   --row-hover: rgba(15, 23, 42, 0.025);
+  --surface-row-alt: rgba(15, 23, 42, 0.018);
+  --table-sticky-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.14);
+  --toggle-track-on: #10b981;
+  --toggle-track-off: #94a3b8;
+  --toggle-knob: #ffffff;
+  --toggle-border: rgba(15, 23, 42, 0.16);
+  --toggle-knob-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
   --input-bg: #ffffff;
   --dropdown-bg: #ffffff;
   --filter-btn-bg: #ffffff;
   --filter-btn-text: #475569;
   --scrollbar-color: rgba(15, 23, 42, 0.1);
+
+  /* Premium charts (landing-aligned) */
+  --chart-grid: rgba(148, 163, 184, 0.2);
+  --chart-tick: #64748b;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: rgba(148, 163, 184, 0.35);
+  --chart-tooltip-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --chart-cursor: rgba(79, 70, 229, 0.08);
+  --chart-active-dot-ring: #ffffff;
+  --chart-frame-bg: rgba(248, 250, 252, 0.75);
+  --chart-frame-border: rgba(148, 163, 184, 0.22);
 
   /* Agency Brain */
   --brain-shelf-bg: linear-gradient(
@@ -61,18 +79,35 @@
   --surface-card: #1d2630;
   --surface-card-alt: rgba(29, 38, 48, 0.8);
   --surface-header: rgba(15, 20, 25, 0.95);
-  --surface-thead: rgba(0, 0, 0, 0.3);
-  --border-color: rgba(255, 255, 255, 0.05);
-  --border-hover: rgba(255, 255, 255, 0.1);
+  --surface-thead: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.14);
   --text-main: #f8fafc;
   --text-dim: #94a3b8;
   --text-dimmer: #64748b;
-  --row-hover: rgba(255, 255, 255, 0.03);
+  --row-hover: rgba(255, 255, 255, 0.04);
+  --surface-row-alt: rgba(255, 255, 255, 0.025);
+  --table-sticky-shadow: 4px 0 10px -4px rgba(0, 0, 0, 0.55);
+  --toggle-track-on: #10b981;
+  --toggle-track-off: #475569;
+  --toggle-knob: #f8fafc;
+  --toggle-border: rgba(255, 255, 255, 0.16);
+  --toggle-knob-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
   --input-bg: #1d2630;
   --dropdown-bg: #1d2630;
   --filter-btn-bg: rgba(29, 38, 48, 0.8);
   --filter-btn-text: #94a3b8;
   --scrollbar-color: rgba(255, 255, 255, 0.1);
+
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-tick: rgba(196, 181, 253, 0.55);
+  --chart-tooltip-bg: #0f1419;
+  --chart-tooltip-border: rgba(255, 255, 255, 0.1);
+  --chart-tooltip-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --chart-cursor: rgba(255, 255, 255, 0.04);
+  --chart-active-dot-ring: rgba(15, 20, 25, 0.9);
+  --chart-frame-bg: rgba(255, 255, 255, 0.03);
+  --chart-frame-border: rgba(255, 255, 255, 0.1);
 
   --brain-shelf-bg: linear-gradient(
     135deg,
@@ -103,11 +138,28 @@
   --text-dim: #475569;
   --text-dimmer: #64748b;
   --row-hover: rgba(15, 23, 42, 0.025);
+  --surface-row-alt: rgba(15, 23, 42, 0.018);
+  --table-sticky-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.14);
+  --toggle-track-on: #10b981;
+  --toggle-track-off: #94a3b8;
+  --toggle-knob: #ffffff;
+  --toggle-border: rgba(15, 23, 42, 0.16);
+  --toggle-knob-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
   --input-bg: #ffffff;
   --dropdown-bg: #ffffff;
   --filter-btn-bg: #ffffff;
   --filter-btn-text: #475569;
   --scrollbar-color: rgba(15, 23, 42, 0.1);
+
+  --chart-grid: rgba(148, 163, 184, 0.2);
+  --chart-tick: #64748b;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-border: rgba(148, 163, 184, 0.35);
+  --chart-tooltip-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --chart-cursor: rgba(79, 70, 229, 0.08);
+  --chart-active-dot-ring: #ffffff;
+  --chart-frame-bg: rgba(248, 250, 252, 0.75);
+  --chart-frame-border: rgba(148, 163, 184, 0.22);
 }
 
 html {
@@ -589,6 +641,23 @@ h6,
     animation: chart-grow 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
 
+  .premium-chart-frame {
+    border-radius: 1rem;
+    border: 1px solid var(--chart-frame-border);
+    background: var(--chart-frame-bg);
+    padding: 0.625rem 0.5rem 0.375rem;
+  }
+
+  .dashboard-panel {
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme="dark"] .dashboard-panel {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.22);
+  }
+
   .animate-slide-in {
     animation: slide-in-right 0.4s ease-out forwards;
   }
@@ -788,4 +857,31 @@ h6,
 
 .dashboard-canvas-shell--edit .react-grid-item:not(.react-draggable-dragging):hover {
   box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.18);
+}
+
+/* Mobile: stacked full-width widgets — avoid horizontal squeeze */
+.dashboard-canvas-shell--mobile-stack .react-grid-item {
+  position: relative !important;
+  transform: none !important;
+  width: 100% !important;
+  left: 0 !important;
+}
+
+.dashboard-canvas-shell--mobile-stack .react-grid-item > div {
+  overflow: visible;
+}
+
+.dashboard-canvas-shell--mobile-stack .recharts-wrapper {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .dashboard-canvas-grid .react-grid-item > div {
+    overflow: visible;
+  }
+
+  .dashboard-canvas-grid .widget-drag-handle + div,
+  .dashboard-canvas-grid .recharts-responsive-container {
+    min-height: 180px;
+  }
 }

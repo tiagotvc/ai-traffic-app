@@ -6,6 +6,7 @@ import { Building2, ExternalLink, Pencil, Plus, Trash2, TrendingDown, TrendingUp
 
 import { Link, useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
+import { IconLabelLink } from "@/components/ui/IconLabelButton";
 import { toUxClientCards } from "@/uxpilot-ui/adapters/clients-mappers";
 import { useClientsData } from "@/uxpilot-ui/adapters/useClientsData";
 import { UxFloatingActionBar } from "@/uxpilot-ui/adapters/UxFloatingActionBar";
@@ -36,18 +37,17 @@ export function ClientsContentLive() {
 
   const trailingSlot = useMemo(
     () => (
-      <Link
+      <IconLabelLink
         href="/clients/new"
-        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold shadow-md transition-all hover:brightness-110 active:scale-95"
+        label="Novo Cliente"
+        icon={<Plus size={16} />}
+        className="flex h-10 w-10 items-center justify-center rounded-lg text-xs font-semibold shadow-md transition-all hover:brightness-110 active:scale-95 sm:h-auto sm:w-auto sm:gap-1.5 sm:px-3 sm:py-1.5"
         style={{
           background: "linear-gradient(135deg, #f5a623, #e8920d)",
           color: "#0f1419",
           fontFamily: "var(--font-heading)"
         }}
-      >
-        <Plus size={13} />
-        Novo Cliente
-      </Link>
+      />
     ),
     []
   );

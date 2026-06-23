@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
-import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
-import AboutContent from "@/uxpilot-ui/pages/content/About";
+import { MarketingAbout } from "@/components/marketing/MarketingAbout";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("marketing");
@@ -10,11 +9,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function MarketingAboutPage() {
-  return (
-    <UxThemeProvider>
-      <div data-theme="light" className="bg-[var(--surface-bg)]">
-        <AboutContent />
-      </div>
-    </UxThemeProvider>
-  );
+  return <MarketingAbout />;
 }

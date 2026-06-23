@@ -19,21 +19,22 @@ export function FacebookLoginHandoffForm({
   const [pending, setPending] = useState(false);
 
   return (
-    <div className="w-full max-w-md">
+    <div className="w-full max-w-[420px]">
       <Link
         href="/login"
-        className="text-sm font-medium text-[var(--violet)] transition hover:text-violet-500"
+        className="inline-flex items-center gap-1 text-sm font-medium text-violet-200/70 transition hover:text-amber-300"
       >
-        ← {t("facebookHandoffBack")}
+        <span aria-hidden>←</span>
+        {t("facebookHandoffBack")}
       </Link>
 
-      <h1 className="mt-6 font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">
+      <h1 className="mt-6 font-heading text-2xl font-bold tracking-tight text-white sm:text-[1.75rem]">
         {t("facebookHandoffPageTitle")}
       </h1>
-      <p className="mt-2 text-sm text-[var(--text-dim)]">{t("facebookHandoffPageSubtitle")}</p>
+      <p className="mt-2 text-sm leading-relaxed text-violet-200/75">{t("facebookHandoffPageSubtitle")}</p>
 
       <div className="mt-6">
-        <MetaOAuthHandoffCard mode="login" />
+        <MetaOAuthHandoffCard mode="login" variant="premium" />
       </div>
 
       <form action={loginWithFacebook} onSubmit={() => setPending(true)} className="mt-6">
@@ -42,14 +43,14 @@ export function FacebookLoginHandoffForm({
         <button
           type="submit"
           disabled={pending}
-          className="group flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-[#1877F2] to-[#0d5bb5] px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:shadow-blue-500/35 disabled:opacity-80"
+          className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#1877F2] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/30 transition hover:bg-[#166FE5] disabled:opacity-70"
         >
           <FacebookBrandIcon className="h-5 w-5 text-white" />
           {pending ? t("metaOAuth.redirecting") : t("facebookHandoffContinue")}
         </button>
       </form>
 
-      <p className="mt-4 text-center text-[11px] text-[var(--text-dimmer)]">{t("facebookHandoffSecure")}</p>
+      <p className="mt-4 text-center text-[11px] text-violet-300/45">{t("facebookHandoffSecure")}</p>
     </div>
   );
 }

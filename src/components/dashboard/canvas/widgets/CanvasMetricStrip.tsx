@@ -56,10 +56,7 @@ export function CanvasMetricStrip({
 }) {
   if (isLoading) {
     return (
-      <div
-        className="grid h-full w-full gap-2"
-        style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
-      >
+      <div className="grid h-full w-full grid-cols-1 gap-2 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <div key={i} className="skeleton-shimmer h-full min-h-[2.5rem] rounded-lg" />
         ))}
@@ -77,8 +74,12 @@ export function CanvasMetricStrip({
 
   return (
     <div
-      className="grid h-full w-full gap-2"
-      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+      className={cn(
+        "grid h-full w-full gap-2",
+        cols === 1 && "grid-cols-1",
+        cols === 2 && "grid-cols-1 sm:grid-cols-2",
+        cols >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+      )}
     >
       {items.map((m) => (
         <div
