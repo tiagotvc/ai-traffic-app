@@ -294,58 +294,69 @@ async function createAdForAdset(args: {
   cta: string;
   settings?: ClientMetaSettings;
   allowedInstagramActorIds?: string[];
-}): Promise<{ adId: string; creativeId: string }> {
+}): Promise<{ adId: string; creativeId: string; reusedCreative: boolean }> {
   const { ad, objective, pageId, linkUrl, cta, settings, token, actId, campaignName, adsetId, adName, allowedInstagramActorIds = [] } =
     args;
 
-  const baseLink =
-    ad.destinationType === "instant_form" && ad.leadFormId
-      ? linkUrl || "https://www.facebook.com"
-      : ad.linkUrl.trim() || linkUrl;
-  const utmCtx: UtmTokenContext = {
-    campaignName,
-    adsetName: args.adset.name,
-    adName
-  };
-  const resolvedLink = composeAdLinkUrl(baseLink, ad.utm, ad.urlParams, utmCtx);
+  const reuseId = ad.reuseMetaCreative && ad.metaCreativeId?.trim() ? ad.metaCreativeId.trim() : null;
 
-  const resolvedCta =
-    ad.callToAction.trim() ||
-    (ad.destinationType === "whatsapp"
-      ? "WHATSAPP_MESSAGE"
-      : objective === "leads" && ad.destinationType === "instant_form"
-        ? "SIGN_UP"
-        : cta);
+  let creativeId: string;
+  let reusedCreative = false;
 
-  const assetFeedSpec = buildMetaAssetFeedSpec({
-    ad,
-    resolvedLink,
-    resolvedCta
-  });
+  if (reuseId) {
+    creativeId = reuseId;
+    reusedCreative = true;
+  } else {
+    const baseLink =
+      ad.destinationType === "instant_form" && ad.leadFormId
+        ? linkUrl || "https://www.facebook.com"
+        : ad.linkUrl.trim() || linkUrl;
+    const utmCtx: UtmTokenContext = {
+      campaignName,
+      adsetName: args.adset.name,
+      adName
+    };
+    const resolvedLink = composeAdLinkUrl(baseLink, ad.utm, ad.urlParams, utmCtx);
 
-  const instagramId = pickInstagramActorId(
-    [ad.instagramActorId, settings?.instagramActorId],
-    allowedInstagramActorIds
-  );
-  const objectStory: Record<string, unknown> = { page_id: pageId };
-  if (instagramId) objectStory.instagram_actor_id = instagramId;
-  const welcome = buildPageWelcomeMessage(ad);
-  if (welcome) objectStory.page_welcome_message = welcome;
+    const resolvedCta =
+      ad.callToAction.trim() ||
+      (ad.destinationType === "whatsapp"
+        ? "WHATSAPP_MESSAGE"
+        : objective === "leads" && ad.destinationType === "instant_form"
+          ? "SIGN_UP"
+          : cta);
 
-  const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
-    name: `${campaignName} — ${adName} Creative`,
-    object_story_spec: JSON.stringify(objectStory),
-    asset_feed_spec: JSON.stringify(assetFeedSpec)
-  });
+    const assetFeedSpec = buildMetaAssetFeedSpec({
+      ad,
+      resolvedLink,
+      resolvedCta
+    });
+
+    const instagramId = pickInstagramActorId(
+      [ad.instagramActorId, settings?.instagramActorId],
+      allowedInstagramActorIds
+    );
+    const objectStory: Record<string, unknown> = { page_id: pageId };
+    if (instagramId) objectStory.instagram_actor_id = instagramId;
+    const welcome = buildPageWelcomeMessage(ad);
+    if (welcome) objectStory.page_welcome_message = welcome;
+
+    const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
+      name: `${campaignName} — ${adName} Creative`,
+      object_story_spec: JSON.stringify(objectStory),
+      asset_feed_spec: JSON.stringify(assetFeedSpec)
+    });
+    creativeId = creative.id;
+  }
 
   const metaAd = await metaPost<{ id: string }>(`/${actId}/ads`, token, {
     name: adName,
     adset_id: adsetId,
-    creative: JSON.stringify({ creative_id: creative.id }),
+    creative: JSON.stringify({ creative_id: creativeId }),
     status: "PAUSED"
   });
 
-  return { adId: metaAd.id, creativeId: creative.id };
+  return { adId: metaAd.id, creativeId, reusedCreative };
 }
 
 export async function publishAdToAdset(
@@ -721,6 +732,9 @@ export async function createFullMetaCampaign(
         callToAction: input.callToAction ?? "",
         whatsappWelcomeMessage: null,
         messageTemplate: null,
+        metaCreativeId: null,
+        sourceMetaAdId: null,
+        reuseMetaCreative: false,
         utm: defaultUtm(),
         targetAdsetIds: ["__all__"],
         tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }

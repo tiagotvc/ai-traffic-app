@@ -311,6 +311,31 @@ export function AdStep() {
         />
       </div>
 
+      {ad.metaCreativeId ? (
+        <div className="rounded-xl border border-amber-400/40 bg-amber-500/5 p-4 space-y-2">
+          <label className="flex cursor-pointer items-start gap-2">
+            <input
+              type="checkbox"
+              checked={ad.reuseMetaCreative}
+              onChange={(e) => patchAd({ reuseMetaCreative: e.target.checked })}
+              className="mt-0.5"
+              disabled={clientRequired}
+            />
+            <span className="text-sm text-[var(--text-main)]">
+              <span className="font-medium">{t("reuseMetaCreativeLabel")}</span>
+              <span className="mt-1 block text-xs text-[var(--text-dim)]">{t("reuseMetaCreativeHint")}</span>
+              <span className="mt-1 block font-mono text-[10px] text-[var(--text-dimmer)]">
+                {t("reuseMetaCreativeId", { id: ad.metaCreativeId })}
+              </span>
+            </span>
+          </label>
+        </div>
+      ) : (
+        <p className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] px-4 py-3 text-xs text-[var(--text-dim)]">
+          {t("devModeCreativeNote")}
+        </p>
+      )}
+
       <FormField label={t("adName")}>
         <input
           value={ad.name}

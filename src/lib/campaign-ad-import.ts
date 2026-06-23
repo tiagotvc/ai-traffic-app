@@ -42,6 +42,8 @@ export type ImportedAdConfig = {
   messageTemplate: AdDraftItem["messageTemplate"];
   leadFormId: string | null;
   destinationType: AdDraftItem["destinationType"];
+  metaCreativeId?: string | null;
+  sourceMetaAdId?: string | null;
 };
 
 const STORY_DATA_KEYS = ["link_data", "video_data", "template_data", "photo_data"] as const;
@@ -357,6 +359,9 @@ export function applyImportedToAd(
   mode: "copy" | "media" | "all"
 ): AdDraftItem {
   const next = { ...ad };
+  const shouldReuseCreative =
+    (mode === "all" || mode === "media") && Boolean(imported.metaCreativeId?.trim());
+
   if (mode === "copy" || mode === "all") {
     if (imported.titles?.length) next.titles = [...imported.titles];
     if (imported.bodies?.length) next.bodies = [...imported.bodies];
@@ -390,6 +395,11 @@ export function applyImportedToAd(
     if (imported.destinationType) next.destinationType = imported.destinationType;
     if (imported.leadFormId !== undefined) next.leadFormId = imported.leadFormId;
   }
+  if (shouldReuseCreative) {
+    next.metaCreativeId = imported.metaCreativeId!.trim();
+    next.reuseMetaCreative = true;
+    if (imported.sourceMetaAdId) next.sourceMetaAdId = imported.sourceMetaAdId;
+  }
   return next;
 }
 
@@ -418,10 +428,17 @@ export function cloneAdWithPreset(
   const bodies = base.bodies.filter((t) => t.trim());
   const shell = freshAd();
 
+  const creativeReuse = {
+    metaCreativeId: null as string | null,
+    sourceMetaAdId: null as string | null,
+    reuseMetaCreative: false
+  };
+
   if (preset === "same_text") {
     return {
       ...shell,
       ...shared,
+      ...creativeReuse,
       name: `${base.name} (${suffix})`,
       format: base.format,
       imageHashes: [],
@@ -434,6 +451,7 @@ export function cloneAdWithPreset(
   return {
     ...shell,
     ...shared,
+    ...creativeReuse,
     name: `${base.name} (${suffix})`,
     format: base.format,
     imageHashes: base.format === "video" ? [] : [...base.imageHashes],

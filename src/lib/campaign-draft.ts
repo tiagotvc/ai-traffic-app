@@ -146,6 +146,10 @@ export const AdDraftItemSchema = z.object({
   callToAction: z.string().default(""),
   whatsappWelcomeMessage: z.string().nullable().default(null),
   messageTemplate: MessageTemplateDraftSchema.nullable().default(null),
+  /** Meta ad creative id — when reuseMetaCreative is true, publish links this creative instead of creating a new post. */
+  metaCreativeId: z.string().nullable().default(null),
+  sourceMetaAdId: z.string().nullable().default(null),
+  reuseMetaCreative: z.boolean().default(false),
   targetAdsetIds: z.array(z.string()).default(["__all__"]),
   tracking: z.object({
     websiteEvents: z.boolean().default(false),
@@ -301,6 +305,9 @@ export function defaultAdItem(locale: string, name?: string): AdDraftItem {
     callToAction: "",
     whatsappWelcomeMessage: null,
     messageTemplate: null,
+    metaCreativeId: null,
+    sourceMetaAdId: null,
+    reuseMetaCreative: false,
     targetAdsetIds: ["__all__"],
     tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
   };
