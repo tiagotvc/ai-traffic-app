@@ -1,12 +1,13 @@
 import type { ClientMetaSettings } from "@/db/entities/ClientMetaSettings";
 import type { AdDraftItem, AdSetDraftItem, CampaignDraftPayload } from "@/lib/campaign-draft";
-import { draftTargetingToApi, resolveAdTargetAdsets } from "@/lib/campaign-draft";
+import { defaultConversionEventForObjective, draftTargetingToApi, resolveAdTargetAdsets } from "@/lib/campaign-draft";
 import { defaultPlacements, placementsToMetaTargeting } from "@/lib/campaign-placements";
 import { composeAdLinkUrl, defaultUtm, type UtmTokenContext } from "@/lib/campaign-utm";
 import { buildMetaAssetFeedSpec } from "@/lib/meta-ad-creative";
 import { mapLimit } from "@/lib/concurrency";
 import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
 import { pickInstagramActorId } from "@/lib/meta-instagram";
+import { applyConversionEventToPromoted } from "@/lib/meta-promoted-object";
 import { fetchInstagramAccountsForAdAccount, metaPost } from "@/lib/meta-graph";
 
 export type CampaignObjectiveKey =
@@ -111,6 +112,28 @@ export type CreateFullCampaignResult = PublishDraftV2Result & {
 
 function normalizeAdAccountId(id: string) {
   return id.startsWith("act_") ? id : `act_${id}`;
+}
+
+/** Meta error 1815857: CBO campaigns need bid_strategy on the campaign; ABO on the ad set. */
+const META_BID_STRATEGY_AUTOMATIC = "LOWEST_COST_WITHOUT_CAP";
+
+function applyAdsetPublishFields(adsetBody: Record<string, string>, adset: AdSetDraftItem) {
+  adsetBody.is_dynamic_creative = adset.dynamicCreative ? "true" : "false";
+}
+
+function applyAuctionBidStrategy(
+  campaignBody: Record<string, string>,
+  adsetBody: Record<string, string>,
+  opts: { isCampaignBudget: boolean; buyingType: "AUCTION" | "RESERVED" }
+) {
+  if (opts.buyingType !== "AUCTION") return;
+
+  if (opts.isCampaignBudget) {
+    campaignBody.bid_strategy = META_BID_STRATEGY_AUTOMATIC;
+    delete adsetBody.bid_strategy;
+  } else {
+    adsetBody.bid_strategy = META_BID_STRATEGY_AUTOMATIC;
+  }
 }
 
 function normalizeObjective(obj: CampaignObjectiveKey | LegacyObjectiveKey): CampaignObjectiveKey {
@@ -228,7 +251,7 @@ function buildPromotedObject(
     const pixelId = adset.pixelId ?? ad.pixelId ?? settings?.metaPixelId ?? null;
     if (pixelId && adset.conversionLocation !== "instant_form") {
       promoted.pixel_id = pixelId;
-      promoted.custom_event_type = adset.conversionEvent || "LEAD";
+      applyConversionEventToPromoted(promoted, adset.conversionEvent, "LEAD");
     }
     return promoted;
   }
@@ -236,7 +259,7 @@ function buildPromotedObject(
   const pixelId = adset.pixelId ?? ad.pixelId ?? settings?.metaPixelId ?? null;
   if ((objective === "sales" || adset.conversionLocation === "website") && pixelId) {
     promoted.pixel_id = pixelId;
-    promoted.custom_event_type = adset.conversionEvent || "PURCHASE";
+    applyConversionEventToPromoted(promoted, adset.conversionEvent, "PURCHASE");
     return promoted;
   }
   return Object.keys(promoted).length > 1 ? promoted : null;
@@ -398,11 +421,19 @@ export async function publishAdsetToCampaign(input: {
     campaign_id: input.metaCampaignId,
     billing_event: "IMPRESSIONS",
     optimization_goal: resolveOptimizationGoal(objective, input.adset),
-    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
     targeting: JSON.stringify(targeting),
     status: "PAUSED",
     start_time: String(startTime)
   };
+
+  // CBO: bid strategy belongs on the campaign — sending it on the ad set triggers Meta 1815857.
+  if (!isCbo) {
+    adsetBody.bid_strategy = META_BID_STRATEGY_AUTOMATIC;
+  } else {
+    await metaPost(`/${encodeURIComponent(input.metaCampaignId)}`, token, {
+      bid_strategy: META_BID_STRATEGY_AUTOMATIC
+    });
+  }
 
   const destinationType = resolveDestinationType(input.adset);
   if (destinationType) adsetBody.destination_type = destinationType;
@@ -415,6 +446,7 @@ export async function publishAdsetToCampaign(input: {
 
   const promoted = buildPromotedObject(objective, input.ad, input.adset, input.pageId, settings);
   if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
+  applyAdsetPublishFields(adsetBody, input.adset);
 
   const metaAdset = await metaPost<{ id: string }>(`/${actId}/adsets`, token, adsetBody);
 
@@ -473,6 +505,10 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
     buying_type: buyingType
   };
   if (isCbo) campaignBody.daily_budget = String(dailyBudgetMinor);
+  applyAuctionBidStrategy(campaignBody, {}, {
+    isCampaignBudget: isCbo,
+    buyingType: buyingType === "RESERVED" ? "RESERVED" : "AUCTION"
+  });
 
   input.onProgress?.({ phase: "campaign", current: 0, total: 1, label: campaignName });
   const campaign = await metaPost<{ id: string }>(`/${actId}/campaigns`, token, campaignBody);
@@ -497,11 +533,15 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
       campaign_id: campaign.id,
       billing_event: "IMPRESSIONS",
       optimization_goal: resolveOptimizationGoal(objective, adset),
-      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
       targeting: JSON.stringify(targeting),
       status: "PAUSED",
       start_time: String(startTime)
     };
+
+    applyAuctionBidStrategy(campaignBody, adsetBody, {
+      isCampaignBudget: isCbo,
+      buyingType: buyingType === "RESERVED" ? "RESERVED" : "AUCTION"
+    });
 
     const destinationType = resolveDestinationType(adset);
     if (destinationType) adsetBody.destination_type = destinationType;
@@ -515,6 +555,7 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
 
     const promoted = buildPromotedObject(objective, primaryAd, adset, pageId, settings);
     if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
+    applyAdsetPublishFields(adsetBody, adset);
 
     input.onProgress?.({
       phase: "adset",
@@ -643,7 +684,7 @@ export async function createFullMetaCampaign(
         conversionLocation: "website_and_form",
         messagingChannels: [],
         pixelId: null,
-        conversionEvent: "LEAD",
+        conversionEvent: defaultConversionEventForObjective(objective),
         dynamicCreative: true,
         schedule: { start: input.scheduleStart ?? null, end: input.scheduleEnd ?? null },
         targeting: {

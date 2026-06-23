@@ -4,7 +4,12 @@ import { useTranslations } from "next-intl";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import type { BuyingType, CampaignObjectiveKey } from "@/lib/campaign-draft";
-import { CAMPAIGN_OBJECTIVES, objectivesForBuyingType } from "@/lib/campaign-draft";
+import {
+  CAMPAIGN_OBJECTIVES,
+  defaultConversionEventForObjective,
+  defaultConversionLocationForObjective,
+  objectivesForBuyingType
+} from "@/lib/campaign-draft";
 import { UxFormCard } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 
 const OBJECTIVE_ICONS: Record<CampaignObjectiveKey, string> = {
@@ -47,7 +52,9 @@ export function ObjectiveStep() {
         i === 0
           ? {
               ...a,
-              name: a.name.startsWith("Novo") || a.name.startsWith("New") ? t(adsetKey) : a.name
+              name: a.name.startsWith("Novo") || a.name.startsWith("New") ? t(adsetKey) : a.name,
+              conversionLocation: defaultConversionLocationForObjective(obj),
+              conversionEvent: defaultConversionEventForObjective(obj)
             }
           : a
       ),

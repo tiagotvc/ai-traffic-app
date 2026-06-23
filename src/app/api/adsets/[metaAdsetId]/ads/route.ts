@@ -9,6 +9,7 @@ import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
 import { requireMetaPublishConfig } from "@/lib/client-publish-config";
 import { publishAdToAdset } from "@/lib/meta-campaign";
 import { MetaCreativeValidationError } from "@/lib/meta-ad-creative";
+import { extractInheritedAdsetFromMeta } from "@/lib/meta-adset-import";
 import { fetchAdSetDetail } from "@/lib/meta-graph";
 
 const BodySchema = z.object({
@@ -64,6 +65,7 @@ export async function POST(
   const settings = await getOrCreateClientMetaSettings(client.id);
 
   try {
+    const inheritedAdset = extractInheritedAdsetFromMeta(adsetDetail, adsetDetail.name ?? "Conjunto");
     const result = await publishAdToAdset({
       accessToken: metaAccessToken,
       adAccountId: body.adAccountId,
@@ -71,27 +73,9 @@ export async function POST(
       ad: body.ad,
       adset: {
         id: metaAdsetId,
-        name: adsetDetail.name ?? "Conjunto",
-        conversionLocation: "website_and_form",
-        messagingChannels: [],
-        pixelId: null,
-        conversionEvent: "LEAD",
-        dynamicCreative: true,
-        schedule: { start: null, end: null },
-        targeting: {
-          locations: [],
-          ageMin: 18,
-          ageMax: 65,
-          gender: "all",
-          interests: [],
-          locales: [],
-          customAudienceIds: [],
-          excludedAudienceIds: [],
-          detailedGroups: [],
-          advantageAudience: false
-        },
-        placements: defaultPlacements()
-      },
+        ...inheritedAdset,
+        placements: inheritedAdset.placements ?? defaultPlacements()
+      } as import("@/lib/campaign-draft").AdSetDraftItem,
       objective: body.objective,
       pageId: publish.metaPageId,
       linkUrl: publish.metaLinkUrl,

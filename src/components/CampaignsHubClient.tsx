@@ -41,6 +41,7 @@ import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/Camp
 import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTypeSelectCompact } from "@/components/CreateCampaignTypeModal";
+import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
@@ -192,6 +193,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [loading, setLoading] = useState(true);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [draftDiscardPendingId, setDraftDiscardPendingId] = useState<string | null>(null);
+  const [creationPickerOpen, setCreationPickerOpen] = useState(false);
   const [, startStatusTransition] = useTransition();
   const [syncing, startSync] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
@@ -265,17 +267,31 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
   const newCampaignSlot = useMemo(
     () => (
+<<<<<<< Updated upstream
       <IconLabelLink
         href="/campaigns/new"
         label={t("newCampaign")}
         icon={<Plus size={16} />}
         className="flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95 sm:h-auto sm:w-auto sm:gap-1.5 sm:px-4 sm:py-2"
+=======
+      <button
+        type="button"
+        onClick={() => setCreationPickerOpen(true)}
+        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95"
+>>>>>>> Stashed changes
         style={{
           background: "linear-gradient(135deg, #f5a623, #e8920d)",
           color: "#0f1419",
           fontFamily: "var(--font-heading)"
         }}
+<<<<<<< Updated upstream
       />
+=======
+      >
+        <Plus size={15} />
+        {t("newCampaign")}
+      </button>
+>>>>>>> Stashed changes
     ),
     [t]
   );
@@ -817,8 +833,27 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           titleIcon={<Megaphone size={16} />}
           actions={
             <>
+<<<<<<< Updated upstream
               {syncMetaSlot}
               {newCampaignSlot}
+=======
+              <SyncRefreshButton />
+              <button
+                type="button"
+                onClick={() => load({ live: true, refresh: true })}
+                className="ui-btn-secondary text-sm"
+              >
+                {t("refreshLive")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreationPickerOpen(true)}
+                className="ui-btn-primary text-sm inline-flex items-center gap-1.5"
+              >
+                <Plus size={15} />
+                {t("newCampaign")}
+              </button>
+>>>>>>> Stashed changes
             </>
           }
         />
@@ -1454,6 +1489,11 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           </div>
         </div>
       )}
+      <CampaignCreationModePicker
+        open={creationPickerOpen}
+        onClose={() => setCreationPickerOpen(false)}
+        clientSlug={clientFilter || undefined}
+      />
     </div>
   );
 }

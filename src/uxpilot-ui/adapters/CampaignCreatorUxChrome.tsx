@@ -208,6 +208,11 @@ export function CampaignCreatorUxScorePanel({
       </div>
       {!onObjectivePhase ? (
         <div className="shrink-0 space-y-2 border-t px-4 py-5" style={{ borderColor: "var(--border-color)" }}>
+          {err ? (
+            <p className="text-center text-[11px] leading-snug text-red-600">
+              {t(err as Parameters<typeof t>[0])}
+            </p>
+          ) : null}
           {activeNode !== "campaign" && !(addAdMode && activeNode === "ad") ? (
             <button
               type="button"
