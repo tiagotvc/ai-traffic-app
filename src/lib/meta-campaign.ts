@@ -41,6 +41,12 @@ export type LegacyObjectiveKey = "leads" | "sales" | "traffic";
 export type CampaignTargetingInput = {
   countries?: string[];
   cities?: { key: string; radius?: number; distanceUnit?: "mile" | "kilometer" }[];
+  customLocations?: Array<{
+    latitude: number;
+    longitude: number;
+    radius?: number;
+    distanceUnit?: "mile" | "kilometer";
+  }>;
   ageMin?: number;
   ageMax?: number;
   genders?: number[];
@@ -156,8 +162,17 @@ function buildTargetingFromInput(t: CampaignTargetingInput): Record<string, unkn
       distance_unit: c.distanceUnit ?? "kilometer"
     }));
   }
+  if (t.customLocations?.length) {
+    geo.custom_locations = t.customLocations.map((c) => ({
+      latitude: c.latitude,
+      longitude: c.longitude,
+      radius: c.radius ?? 5,
+      distance_unit: c.distanceUnit ?? "kilometer"
+    }));
+  }
+  const hasGeo = Object.keys(geo).length > 0;
   const targeting: Record<string, unknown> = {
-    geo_locations: Object.keys(geo).length ? geo : { countries: ["BR"] },
+    geo_locations: hasGeo ? geo : { countries: ["BR"] },
     age_min: t.ageMin ?? 18,
     age_max: t.ageMax ?? 65
   };

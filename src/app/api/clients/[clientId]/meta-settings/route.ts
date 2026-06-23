@@ -7,6 +7,7 @@ import {
   getResolvedClientMeta,
   patchClientMetaSettings
 } from "@/lib/client-meta-settings";
+import { geocodeAddressWithNominatim } from "@/lib/geocode-nominatim";
 import { repositories } from "@/db/repositories";
 import { resolveClientMetaBusinessId } from "@/lib/client-meta-business";
 import { resolvePagesForAdAccount } from "@/lib/meta-publish-assets";
@@ -52,7 +53,8 @@ const PatchSchema = z.object({
       term: z.string().optional()
     })
     .nullable()
-    .optional()
+    .optional(),
+  commercialAddress: z.string().nullable().optional()
 });
 
 export async function GET(
@@ -142,6 +144,32 @@ export async function PATCH(
 
   const body = PatchSchema.parse(await req.json().catch(() => ({})));
 
+  let commercialLatitude: number | null | undefined;
+  let commercialLongitude: number | null | undefined;
+
+  if (body.commercialAddress !== undefined) {
+    const address = body.commercialAddress?.trim() || null;
+    if (!address) {
+      commercialLatitude = null;
+      commercialLongitude = null;
+    } else {
+      const existing = await getOrCreateClientMetaSettings(client.id);
+      const sameAddress = existing.commercialAddress?.trim() === address;
+      if (
+        sameAddress &&
+        existing.commercialLatitude != null &&
+        existing.commercialLongitude != null
+      ) {
+        commercialLatitude = existing.commercialLatitude;
+        commercialLongitude = existing.commercialLongitude;
+      } else {
+        const geocoded = await geocodeAddressWithNominatim(address);
+        commercialLatitude = geocoded?.latitude ?? null;
+        commercialLongitude = geocoded?.longitude ?? null;
+      }
+    }
+  }
+
   if (body.metaLinkUrl?.trim()) {
     try {
       new URL(body.metaLinkUrl.trim());
@@ -150,7 +178,14 @@ export async function PATCH(
     }
   }
 
-  const settings = await patchClientMetaSettings(client, body);
+  const settings = await patchClientMetaSettings(client, {
+    ...body,
+    ...(body.commercialAddress !== undefined && {
+      commercialAddress: body.commercialAddress?.trim() || null,
+      commercialLatitude: commercialLatitude ?? null,
+      commercialLongitude: commercialLongitude ?? null
+    })
+  });
 
   if (body.tags) {
     const { clientTag: tagRepo } = await import("@/db/repositories").then((m) => m.repositories());

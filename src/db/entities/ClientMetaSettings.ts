@@ -84,6 +84,16 @@ export class ClientMetaSettings {
     term?: string;
   } | null;
 
+  /** Free-text commercial address for map centering in campaign creator */
+  @Column({ type: "text", nullable: true })
+  commercialAddress?: string | null;
+
+  @Column({ type: "double precision", nullable: true })
+  commercialLatitude?: number | null;
+
+  @Column({ type: "double precision", nullable: true })
+  commercialLongitude?: number | null;
+
   @Column({ type: "timestamptz", default: () => "now()" })
   createdAt!: Date;
 

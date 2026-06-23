@@ -86,7 +86,9 @@ export const TargetingItemSchema = z.object({
       kind: z.string().optional(),
       bucket: z.string().optional(),
       radius: z.number().optional(),
-      distanceUnit: z.enum(["mile", "kilometer"]).optional()
+      distanceUnit: z.enum(["mile", "kilometer"]).optional(),
+      latitude: z.number().optional(),
+      longitude: z.number().optional()
     })
     .optional()
 });
@@ -521,6 +523,42 @@ export function usesReusedMetaCreative(ad: AdDraftItem): boolean {
   return Boolean(ad.reuseMetaCreative && ad.metaCreativeId?.trim());
 }
 
+export function isMapPinLocation(loc: TargetingItem): boolean {
+  return loc.meta?.type === "custom_location";
+}
+
+export function isMetaGeoLocation(loc: TargetingItem): boolean {
+  return !isMapPinLocation(loc);
+}
+
+export function createMapPinLocation(
+  lat: number,
+  lng: number,
+  label: string,
+  radiusKm = 5
+): TargetingItem {
+  const value = `custom_${lat.toFixed(5)}_${lng.toFixed(5)}_${Date.now()}`;
+  return {
+    value,
+    label,
+    meta: {
+      type: "custom_location",
+      latitude: lat,
+      longitude: lng,
+      radius: radiusKm,
+      distanceUnit: "kilometer"
+    }
+  };
+}
+
+export function mapPinCoords(loc: TargetingItem): { lat: number; lng: number } | null {
+  if (!isMapPinLocation(loc)) return null;
+  const lat = loc.meta?.latitude;
+  const lng = loc.meta?.longitude;
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return null;
+  return { lat, lng };
+}
+
 /** Reused Meta creatives are static; dynamic-creative ad sets require dynamic creatives (Meta 1885702). */
 export function effectiveAdsetDynamicCreative(
   d: CampaignDraftPayload,
@@ -674,6 +712,17 @@ export function draftTargetingToApi(t: DraftTargeting) {
       radius: l.meta?.radius,
       distanceUnit: l.meta?.distanceUnit
     }));
+  const customLocations = t.locations
+    .filter((l) => isMapPinLocation(l) && mapPinCoords(l))
+    .map((l) => {
+      const coords = mapPinCoords(l)!;
+      return {
+        latitude: coords.lat,
+        longitude: coords.lng,
+        radius: l.meta?.radius ?? 5,
+        distanceUnit: l.meta?.distanceUnit ?? ("kilometer" as const)
+      };
+    });
   const genders = t.gender === "male" ? [1] : t.gender === "female" ? [2] : undefined;
   const locales = t.locales.map((l) => Number(l.value)).filter((n) => !Number.isNaN(n));
 
@@ -702,6 +751,7 @@ export function draftTargetingToApi(t: DraftTargeting) {
   return {
     countries: countries.length ? countries : undefined,
     cities: cities.length ? cities : undefined,
+    customLocations: customLocations.length ? customLocations : undefined,
     ageMin: t.ageMin,
     ageMax: t.ageMax,
     genders,

@@ -41,6 +41,28 @@ export function mapGeoToDraftLocations(targeting?: Record<string, unknown>): Dra
       });
     }
   }
+  const custom = geo.custom_locations as Array<{
+    latitude?: number;
+    longitude?: number;
+    radius?: number;
+    distance_unit?: string;
+  }> | undefined;
+  if (custom?.length) {
+    for (const pin of custom) {
+      if (pin.latitude == null || pin.longitude == null) continue;
+      out.push({
+        value: `custom_${pin.latitude}_${pin.longitude}`,
+        label: `${pin.latitude.toFixed(4)}, ${pin.longitude.toFixed(4)}`,
+        meta: {
+          type: "custom_location",
+          latitude: pin.latitude,
+          longitude: pin.longitude,
+          radius: pin.radius ?? 5,
+          distanceUnit: pin.distance_unit === "mile" ? "mile" : "kilometer"
+        }
+      });
+    }
+  }
   return out;
 }
 
