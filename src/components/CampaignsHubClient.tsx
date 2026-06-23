@@ -23,7 +23,7 @@ import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { CampaignDraftMobileCards, CampaignMobileCards, type CampaignRowLike } from "@/components/campaigns/CampaignMobileCards";
 import { Badge } from "@/components/ui/Badge";
-import { IconLabelButton, IconLabelLink } from "@/components/ui/IconLabelButton";
+import { IconLabelButton } from "@/components/ui/IconLabelButton";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
@@ -41,6 +41,7 @@ import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/Camp
 import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTypeSelectCompact } from "@/components/CreateCampaignTypeModal";
+import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
@@ -192,6 +193,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [loading, setLoading] = useState(true);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [draftDiscardPendingId, setDraftDiscardPendingId] = useState<string | null>(null);
+  const [creationPickerOpen, setCreationPickerOpen] = useState(false);
   const [, startStatusTransition] = useTransition();
   const [syncing, startSync] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
@@ -265,8 +267,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
   const newCampaignSlot = useMemo(
     () => (
-      <IconLabelLink
-        href="/campaigns/new"
+      <IconLabelButton
+        type="button"
+        onClick={() => setCreationPickerOpen(true)}
         label={t("newCampaign")}
         icon={<Plus size={16} />}
         className="flex h-10 w-10 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95 sm:h-auto sm:w-auto sm:gap-1.5 sm:px-4 sm:py-2"
@@ -313,7 +316,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
   function draftResumeHref(r: CampaignRowLike): string {
     const qs = r.clientSlug ? `?client=${encodeURIComponent(r.clientSlug)}` : "";
-    return `/campaigns/new/${r.draftTemplateId ?? r.metaCampaignId.replace(/^draft:/, "")}${qs}`;
+    return `/campaigns/new/${draftTemplateIdFromRow(r)}${qs}`;
   }
 
   function mergePresetsFromResponse(j: { presets?: Record<string, string>; rows?: CampaignRow[] }) {
@@ -1454,6 +1457,11 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           </div>
         </div>
       )}
+      <CampaignCreationModePicker
+        open={creationPickerOpen}
+        onClose={() => setCreationPickerOpen(false)}
+        clientSlug={clientFilter || undefined}
+      />
     </div>
   );
 }

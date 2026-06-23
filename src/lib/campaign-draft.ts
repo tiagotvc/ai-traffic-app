@@ -16,6 +16,21 @@ export const CAMPAIGN_OBJECTIVES = [
 
 export type CampaignObjectiveKey = (typeof CAMPAIGN_OBJECTIVES)[number];
 
+/** Suggested pixel event when the user has not picked one yet (empty = neutral). */
+export function defaultConversionEventForObjective(objective: CampaignObjectiveKey): string {
+  if (objective === "leads") return "std:LEAD";
+  if (objective === "sales") return "std:PURCHASE";
+  return "";
+}
+
+export function defaultConversionLocationForObjective(
+  objective: CampaignObjectiveKey
+): ConversionLocation {
+  if (objective === "leads") return "website_and_form";
+  if (objective === "sales") return "website";
+  return "website";
+}
+
 export const RESERVATION_OBJECTIVES = ["awareness", "engagement"] as const;
 
 export type BuyingType = "auction" | "reservation";
@@ -101,7 +116,7 @@ export const AdSetDraftItemSchema = z.object({
   conversionLocation: ConversionLocationSchema.default("website_and_form"),
   messagingChannels: z.array(MessagingChannelSchema).default([]),
   pixelId: z.string().nullable().default(null),
-  conversionEvent: z.string().default("LEAD"),
+  conversionEvent: z.string().default(""),
   dynamicCreative: z.boolean().default(true),
   schedule: z.object({
     start: z.string().nullable().default(null),
@@ -186,7 +201,30 @@ export const CampaignDraftPayloadV2Schema = z.object({
       targetMetaAdsetId: z.string().optional(),
       targetMetaCampaignId: z.string().optional(),
       targetAdsetName: z.string().optional(),
-      inheritedContextLocked: z.boolean().optional()
+      inheritedContextLocked: z.boolean().optional(),
+      creationMode: z.enum(["manual", "ai"]).optional(),
+      aiGeneratedAt: z.string().optional(),
+      aiStrategy: z
+        .enum(["scale_winner", "new_audience_test", "creative_refresh"])
+        .optional(),
+      aiRationale: z
+        .object({
+          summary: z.string(),
+          signals: z.array(z.string()),
+          audienceReason: z.string(),
+          copyReason: z.string()
+        })
+        .optional(),
+      referenceCampaignId: z.string().optional(),
+      suggestedAudiences: z
+        .array(
+          z.object({
+            type: z.string(),
+            name: z.string(),
+            reason: z.string()
+          })
+        )
+        .optional()
     })
     .optional()
 });
@@ -218,15 +256,19 @@ function defaultTargeting(): DraftTargeting {
   };
 }
 
-export function defaultAdSetItem(locale: string, name?: string): AdSetDraftItem {
+export function defaultAdSetItem(
+  locale: string,
+  name?: string,
+  objective: CampaignObjectiveKey = "traffic"
+): AdSetDraftItem {
   const isEn = locale === "en";
   return {
     id: newDraftId(),
     name: name ?? (isEn ? "New Ad Set" : "Novo conjunto de anúncios"),
-    conversionLocation: "website_and_form",
+    conversionLocation: defaultConversionLocationForObjective(objective),
     messagingChannels: [],
     pixelId: null,
-    conversionEvent: "LEAD",
+    conversionEvent: defaultConversionEventForObjective(objective),
     dynamicCreative: true,
     schedule: { start: defaultScheduleStartLocal(), end: null },
     targeting: defaultTargeting(),
@@ -266,17 +308,15 @@ export function defaultAdItem(locale: string, name?: string): AdDraftItem {
 
 export function defaultCampaignDraft(locale: string): CampaignDraftPayload {
   const isEn = locale === "en";
-  const adset = defaultAdSetItem(
-    locale,
-    isEn ? "New Leads Ad Set" : "Novo conjunto de anúncios de Leads"
-  );
-  const ad = defaultAdItem(locale, isEn ? "New Leads Ad" : "Novo anúncio de Leads");
+  const defaultObjective: CampaignObjectiveKey = "traffic";
+  const adset = defaultAdSetItem(locale, undefined, defaultObjective);
+  const ad = defaultAdItem(locale);
   return CampaignDraftPayloadV2Schema.parse({
     version: 2,
     clientSlug: "",
     adAccountId: "",
     buyingType: "auction",
-    objective: "leads",
+    objective: defaultObjective,
     copyFromCampaignEnabled: false,
     copyFromCampaignId: null,
     visitedNodes: ["campaign"],
@@ -285,7 +325,7 @@ export function defaultCampaignDraft(locale: string): CampaignDraftPayload {
     adAssignment: "all_adsets",
     selectedAdsetIdForAds: null,
     campaign: {
-      name: isEn ? "New Leads Campaign" : "Nova campanha de Leads",
+      name: isEn ? "New Campaign" : "Nova campanha",
       budgetLevel: "adset",
       dailyBudgetBRL: 150,
       bidStrategy: "lowest_cost",
@@ -345,7 +385,10 @@ export function migrateV1ToV2(raw: z.infer<typeof V1Schema>, locale: string): Ca
         conversionLocation: v1Adset.conversionLocation ?? "website_and_form",
         messagingChannels: [],
         pixelId: null,
-        conversionEvent: "LEAD",
+        conversionEvent:
+          typeof v1Adset.conversionEvent === "string"
+            ? v1Adset.conversionEvent
+            : defaultConversionEventForObjective(raw.objective ?? "traffic"),
         dynamicCreative: v1Adset.dynamicCreative ?? true,
         schedule: v1Adset.schedule ?? { start: null, end: null },
         targeting: v1Adset.targeting ?? defaultTargeting(),
@@ -403,7 +446,6 @@ function coerceDraftPayload(raw: unknown): unknown {
       }
       if (!Array.isArray(adset.messagingChannels)) adset.messagingChannels = [];
       if (adset.pixelId === undefined) adset.pixelId = null;
-      if (!adset.conversionEvent) adset.conversionEvent = "LEAD";
       return adset;
     });
   }
@@ -656,6 +698,14 @@ export function validateAdSetStep(d: CampaignDraftPayload): string | null {
       !adset.pixelId
     ) {
       return "pixelRequired";
+    }
+    if (
+      adset.pixelId &&
+      (d.objective === "leads" || d.objective === "sales") &&
+      (adset.conversionLocation === "website" || adset.conversionLocation === "website_and_form") &&
+      !adset.conversionEvent.trim()
+    ) {
+      return "conversionEventRequired";
     }
     if (adset.conversionLocation === "messaging" && !adset.messagingChannels.length) {
       return "messagingChannelRequired";

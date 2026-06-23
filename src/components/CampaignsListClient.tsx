@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
 import { Badge } from "@/components/ui/Badge";
 import { DsPageHeader } from "@/design-system";
 import { Link } from "@/i18n/navigation";
@@ -37,6 +38,7 @@ export function CampaignsListClient() {
   const [q, setQ] = useState("");
   const [onlyAlerts, setOnlyAlerts] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [creationPickerOpen, setCreationPickerOpen] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -76,9 +78,13 @@ export function CampaignsListClient() {
         title={t("title")}
         subtitle={t("subtitle")}
         actions={
-          <Link href="/campaigns/new" className="ui-btn-primary">
+          <button
+            type="button"
+            className="ui-btn-primary"
+            onClick={() => setCreationPickerOpen(true)}
+          >
             {t("newCampaign")}
-          </Link>
+          </button>
         }
       />
 
@@ -188,6 +194,10 @@ export function CampaignsListClient() {
           </table>
         </div>
       </div>
+      <CampaignCreationModePicker
+        open={creationPickerOpen}
+        onClose={() => setCreationPickerOpen(false)}
+      />
     </div>
   );
 }

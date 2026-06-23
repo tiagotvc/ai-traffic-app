@@ -730,12 +730,13 @@ export type MetaAdSetDetail = {
   start_time?: string;
   end_time?: string;
   daily_budget?: string;
+  is_dynamic_creative?: boolean;
 };
 
 export async function fetchAdSetDetail(
   accessToken: string,
   adSetId: string,
-  fields = "id,name,targeting,promoted_object,destination_type,optimization_goal,billing_event,start_time,end_time,daily_budget"
+  fields = "id,name,targeting,promoted_object,destination_type,optimization_goal,billing_event,start_time,end_time,daily_budget,is_dynamic_creative"
 ): Promise<MetaAdSetDetail> {
   return metaFetch<MetaAdSetDetail>(
     `/${encodeURIComponent(adSetId)}?fields=${encodeURIComponent(fields)}`,

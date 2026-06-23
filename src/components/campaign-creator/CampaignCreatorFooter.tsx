@@ -78,6 +78,9 @@ export function CampaignCreatorFooter({
         {t("close")}
       </Link>
       <div className="flex items-center gap-3">
+        {err ? (
+          <span className="max-w-[220px] text-right text-[11px] text-red-600">{t(err as Parameters<typeof t>[0])}</span>
+        ) : null}
         {lastSavedAt && !saving ? (
           <span className="hidden text-[11px] text-emerald-600 sm:inline">{t("allSaved")}</span>
         ) : null}

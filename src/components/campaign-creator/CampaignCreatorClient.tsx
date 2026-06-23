@@ -283,6 +283,7 @@ export function CampaignCreatorClient({
   initialClientSlug,
   initialAddAd,
   initialAddAdset,
+  initialActiveNode,
   variant = "uxpilot"
 }: {
   initialDraftId?: string;
@@ -296,6 +297,7 @@ export function CampaignCreatorClient({
     fromCampaignId: string;
     clientSlug?: string;
   };
+  initialActiveNode?: CreatorNode;
   variant?: "legacy" | "uxpilot";
 }) {
   return (
@@ -304,6 +306,7 @@ export function CampaignCreatorClient({
       initialClientSlug={initialClientSlug}
       initialAddAd={initialAddAd}
       initialAddAdset={initialAddAdset}
+      initialActiveNode={initialActiveNode}
     >
       <CampaignCreatorInner variant={variant} />
     </CampaignDraftProvider>

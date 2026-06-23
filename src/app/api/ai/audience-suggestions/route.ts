@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { loadClientSignals } from "@/lib/agency-brain/client-signals";
+import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-context";
 import {
   getAudienceBreakdownContext,
   syncAudienceInsightBreakdowns
@@ -80,10 +82,12 @@ export async function POST(req: Request) {
     /* continue with cached or empty breakdowns */
   }
 
-  const [breakdowns, campaigns, audiences] = await Promise.all([
+  const [breakdowns, campaigns, audiences, brain, signalsCtx] = await Promise.all([
     getAudienceBreakdownContext(client.id, body.adAccountId),
     queryCommandCenterCampaigns({ tenantId: tenant.id, clientIds: [client.id], limit: 15 }),
-    fetchCustomAudiences(metaAccessToken, body.adAccountId)
+    fetchCustomAudiences(metaAccessToken, body.adAccountId),
+    getClientBrainContext(tenant.id, client.id),
+    loadClientSignals(tenant.id, client.id, 7)
   ]);
 
   const baseAudiences = audiences.filter((a) => body.baseAudienceIds.includes(a.id));
@@ -98,12 +102,18 @@ export async function POST(req: Request) {
 
   const systemPrompt = `Você é um especialista em públicos Meta Ads. Gere exatamente ${body.count} sugestões de novos públicos.
 Tipos permitidos: website, engagement, lookalike, combined, saved_targeting.
+Priorize sugestões "combined" (cruzar 2+ públicos com melhor CPA/ROAS) e "lookalike" de origens fortes.
 Para website use payload: { pixelId?, eventName, retentionDays (1-180), urlContains? }.
 Para engagement: { sourceType: page|ig_business|video|lead, sourceId?, eventName, retentionDays }.
 Para lookalike: { originAudienceId, ratio (0.01-0.1), country }.
-Para combined: { includeAudienceIds: string[], excludeAudienceIds?: string[] }.
+Para combined: { includeAudienceIds: string[], excludeAudienceIds?: string[] } — use IDs reais de públicos existentes.
 Para saved_targeting: { targeting: { age_min?, age_max?, genders?, geo_locations?, flexible_spec? } }.
 Responda JSON: { "suggestions": [...] }`;
+
+  const audienceShiftSignals =
+    signalsCtx?.signals
+      .filter((s) => s.type === "audience_shift")
+      .map((s) => `${s.type} (${s.tier}): ${s.campaign.campaignName}`) ?? [];
 
   const userPrompt = JSON.stringify({
     userPrompt: body.prompt,
@@ -114,6 +124,12 @@ Responda JSON: { "suggestions": [...] }`;
     })),
     demographicBreakdowns: breakdowns,
     topCampaigns,
+    brainAudienceLearnings: brain.audienceLearnings.slice(0, 8).map((l) => ({
+      title: l.title,
+      description: l.description?.slice(0, 200)
+    })),
+    brainDnaAudiences: brain.dna?.audiences?.works ?? [],
+    audienceShiftSignals,
     websiteEvents: WEBSITE_PIXEL_EVENTS.map((e) => e.metaEvent),
     engagementSources: ENGAGEMENT_SOURCES,
     engagementActions: ENGAGEMENT_ACTIONS,

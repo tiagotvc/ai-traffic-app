@@ -13,7 +13,7 @@ import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
-import { getActiveAdset } from "@/lib/campaign-draft";
+import { getActiveAdset, defaultConversionEventForObjective } from "@/lib/campaign-draft";
 import type { DraftTargeting } from "@/lib/campaign-draft";
 import { defaultScheduleStartLocal } from "@/lib/campaign-placements";
 
@@ -34,6 +34,13 @@ export function AdSetStep() {
     patchAdset({ schedule: { ...adset.schedule, start: defaultScheduleStartLocal() } });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adset.id]);
+
+  useEffect(() => {
+    if (!adset.pixelId || adset.conversionEvent) return;
+    const suggested = defaultConversionEventForObjective(payload.objective);
+    if (suggested) patchAdset({ conversionEvent: suggested });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adset.pixelId, adset.id, payload.objective]);
 
   function patchAdset(patch: Partial<typeof adset>) {
     updatePayload((p) => ({
@@ -197,15 +204,43 @@ export function AdSetStep() {
               className="ui-select"
               disabled={clientRequired}
             >
-              {customConversions.map((c) => (
-                <option key={c.id} value={c.eventType ?? c.label}>
-                  {c.label}
-                </option>
-              ))}
+              <option value="">{t("conversionEventSelect")}</option>
+              {customConversions
+                .filter((c) => c.id.startsWith("std:"))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              {customConversions.some((c) => !c.id.startsWith("std:")) ? (
+                <optgroup label={t("accountCustomConversions")}>
+                  {customConversions
+                    .filter((c) => !c.id.startsWith("std:"))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                </optgroup>
+              ) : null}
             </select>
           </FormField>
         </div>
       ) : null}
+
+      <label className="flex items-start gap-2 rounded-xl border border-[var(--border-color)] px-3 py-2.5 text-sm">
+        <input
+          type="checkbox"
+          checked={adset.dynamicCreative}
+          onChange={(e) => patchAdset({ dynamicCreative: e.target.checked })}
+          disabled={clientRequired}
+          className="mt-0.5 accent-violet-600"
+        />
+        <span>
+          <span className="font-medium text-[var(--text-main)]">{t("dynamicCreativeLabel")}</span>
+          <span className="mt-0.5 block text-xs text-[var(--text-dim)]">{t("dynamicCreativeHint")}</span>
+        </span>
+      </label>
 
       <div className="ui-card space-y-3 p-4">
         <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{tAds("audienceTitle")}</h3>

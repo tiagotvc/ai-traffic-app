@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-context";
 import { generateAdCopy } from "@/lib/campaign-creator-ai";
 
 const BodySchema = z.object({
@@ -27,14 +28,8 @@ export async function POST(req: Request) {
     const client = await getClientBySlugOrId(tenant.id, body.clientId);
     if (client) {
       try {
-        const ctxRes = await fetch(
-          `${process.env.NEXTAUTH_URL ?? "http://localhost:3008"}/api/clients/${encodeURIComponent(body.clientId)}/context`,
-          { headers: { cookie: req.headers.get("cookie") ?? "" } }
-        );
-        if (ctxRes.ok) {
-          const ctx = (await ctxRes.json()) as { summary?: string };
-          clientContext = ctx.summary;
-        }
+        const brain = await getClientBrainContext(tenant.id, client.id);
+        clientContext = brain.summaryText;
       } catch {
         /* optional */
       }

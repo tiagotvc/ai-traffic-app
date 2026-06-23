@@ -54,7 +54,8 @@ export function CampaignDraftProvider({
   initialDraftId,
   initialClientSlug,
   initialAddAd,
-  initialAddAdset
+  initialAddAdset,
+  initialActiveNode
 }: {
   children: ReactNode;
   initialDraftId?: string;
@@ -68,6 +69,7 @@ export function CampaignDraftProvider({
     fromCampaignId: string;
     clientSlug?: string;
   };
+  initialActiveNode?: CreatorNode;
 }) {
   const locale = useLocale();
   const [draftId, setDraftId] = useState<string | null>(initialDraftId ?? null);
@@ -78,7 +80,7 @@ export function CampaignDraftProvider({
     return d;
   });
   const [activeNode, setActiveNode] = useState<CreatorNode>(
-    initialAddAd ? "ad" : initialAddAdset ? "adset" : "campaign"
+    initialActiveNode ?? (initialAddAd ? "ad" : initialAddAdset ? "adset" : "campaign")
   );
   const [objectiveChosen, setObjectiveChosen] = useState(
     !!initialDraftId || !!initialAddAd || !!initialAddAdset
@@ -112,11 +114,15 @@ export function CampaignDraftProvider({
         if (!j.ok || !j.template) return;
         setDraftId(j.template.id);
         setDraftName(j.template.name);
-        setPayload(parseCampaignDraftPayload(j.template.payload));
+        const parsed = parseCampaignDraftPayload(j.template.payload);
+        setPayload(parsed);
         setObjectiveChosen(true);
+        if (parsed.meta?.creationMode === "ai" || initialActiveNode === "review") {
+          setActiveNode("review");
+        }
       })
       .catch(() => {});
-  }, [initialDraftId]);
+  }, [initialDraftId, initialActiveNode]);
 
   const addAdFetchedRef = useRef<string | null>(null);
 

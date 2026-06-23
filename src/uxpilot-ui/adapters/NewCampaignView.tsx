@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
 
+import { AiCampaignGeneratorClient } from "@/components/campaign-creator/AiCampaignGeneratorClient";
 import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCreatorClient";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 
@@ -30,6 +31,10 @@ function NewCampaignContent() {
         : undefined,
     [mode, fromCampaign, client]
   );
+
+  if (mode === "ai") {
+    return <AiCampaignGeneratorClient initialClientSlug={client} />;
+  }
 
   return (
     <CampaignCreatorClient

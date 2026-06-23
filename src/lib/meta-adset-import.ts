@@ -1,5 +1,6 @@
 import type { AdSetDraftItem, DraftTargeting } from "@/lib/campaign-draft";
 import { pickInstagramActorId } from "@/lib/meta-instagram";
+import { conversionEventFromPromotedObject } from "@/lib/meta-promoted-object";
 import type { MetaAdSetDetail } from "@/lib/meta-graph";
 
 export type ConversionLocation =
@@ -183,8 +184,8 @@ export function extractInheritedAdsetFromMeta(
   const { conversionLocation, messagingChannels } = inferConversionLocationFromAdset(adset);
   const promoted = adset.promoted_object ?? {};
   const pixelId = typeof promoted.pixel_id === "string" ? promoted.pixel_id : null;
-  const conversionEvent =
-    typeof promoted.custom_event_type === "string" ? promoted.custom_event_type : "LEAD";
+  const conversionEvent = conversionEventFromPromotedObject(promoted);
+  const dynamicCreative = adset.is_dynamic_creative ?? true;
 
   return {
     name: adsetName,
@@ -192,7 +193,7 @@ export function extractInheritedAdsetFromMeta(
     messagingChannels,
     pixelId,
     conversionEvent,
-    dynamicCreative: true,
+    dynamicCreative,
     schedule: {
       start: adset.start_time ?? null,
       end: adset.end_time ?? null

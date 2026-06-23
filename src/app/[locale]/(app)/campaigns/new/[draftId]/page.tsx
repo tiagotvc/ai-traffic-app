@@ -1,11 +1,21 @@
 "use client";
 
 import { Suspense, use } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCreatorClient";
 
 function DraftContent({ draftId }: { draftId: string }) {
-  return <CampaignCreatorClient initialDraftId={draftId} variant="uxpilot" />;
+  const searchParams = useSearchParams();
+  const startAtReview = searchParams.get("review") === "1";
+
+  return (
+    <CampaignCreatorClient
+      initialDraftId={draftId}
+      initialActiveNode={startAtReview ? "review" : undefined}
+      variant="uxpilot"
+    />
+  );
 }
 
 export default function CampaignDraftPage({ params }: { params: Promise<{ draftId: string }> }) {
