@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-import { Circle, MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import { Fragment, useCallback, useEffect } from "react";
+import { Circle, MapContainer, Marker, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { useTranslations } from "next-intl";
 
@@ -14,13 +14,20 @@ const BRAZIL_CENTER: [number, number] = [-14.235, -51.9253];
 const DEFAULT_ZOOM = 4;
 const COMMERCIAL_ZOOM = 14;
 
-const defaultIcon = L.icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41]
-});
+/** Meta Ads Manager–style targeting colors */
+const META_TARGET_BLUE = "#1877F2";
+const META_TARGET_BLUE_ACTIVE = "#0C63D4";
+
+function createTargetingPinIcon(active: boolean) {
+  const size = active ? 12 : 10;
+  const color = active ? META_TARGET_BLUE_ACTIVE : META_TARGET_BLUE;
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2]
+  });
+}
 
 export type MapViewport = {
   center: [number, number];
@@ -32,6 +39,7 @@ type Props = {
   onAdd: (item: TargetingItem) => void;
   viewport?: MapViewport | null;
   commercialMarker?: { lat: number; lng: number; label?: string } | null;
+  selectedPin?: string | null;
 };
 
 function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
@@ -52,7 +60,84 @@ function MapFlyTo({ viewport }: { viewport?: MapViewport | null }) {
   return null;
 }
 
-export function GeoRadiusMapInner({ pins, onAdd, viewport, commercialMarker }: Props) {
+/** Zoom map to include all pin circles when pins are added or removed (not on radius drag). */
+function FitBoundsToPins({
+  pins,
+  disabled
+}: {
+  pins: TargetingItem[];
+  disabled?: boolean;
+}) {
+  const map = useMap();
+  const pinSignature = pins.map((p) => p.value).join("|");
+
+  useEffect(() => {
+    if (disabled || pins.length === 0) return;
+
+    const bounds = L.latLngBounds([]);
+    for (const loc of pins) {
+      const coords = mapPinCoords(loc);
+      if (!coords) continue;
+      const radiusM = (loc.meta?.radius ?? 5) * 1000;
+      bounds.extend(L.circle([coords.lat, coords.lng], { radius: radiusM }).getBounds());
+    }
+
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
+    }
+  }, [map, pinSignature, pins.length, disabled]);
+
+  return null;
+}
+
+function RadiusPinLayer({
+  loc,
+  selected
+}: {
+  loc: TargetingItem;
+  selected: boolean;
+}) {
+  const coords = mapPinCoords(loc);
+  if (!coords) return null;
+
+  const radiusKm = loc.meta?.radius ?? 5;
+  const stroke = selected ? META_TARGET_BLUE_ACTIVE : META_TARGET_BLUE;
+
+  return (
+    <Fragment>
+      <Circle
+        center={[coords.lat, coords.lng]}
+        radius={radiusKm * 1000}
+        pathOptions={{
+          color: stroke,
+          weight: selected ? 2.5 : 2,
+          fillColor: stroke,
+          fillOpacity: selected ? 0.24 : 0.18
+        }}
+      />
+      <Marker position={[coords.lat, coords.lng]} icon={createTargetingPinIcon(selected)}>
+        {selected ? (
+          <Tooltip
+            permanent
+            direction="top"
+            offset={[0, -6]}
+            className="geo-radius-tooltip"
+          >
+            {radiusKm} km
+          </Tooltip>
+        ) : null}
+      </Marker>
+    </Fragment>
+  );
+}
+
+export function GeoRadiusMapInner({
+  pins,
+  onAdd,
+  viewport,
+  commercialMarker,
+  selectedPin
+}: Props) {
   const t = useTranslations("campaignCreator");
 
   const handleMapClick = useCallback(
@@ -76,7 +161,7 @@ export function GeoRadiusMapInner({ pins, onAdd, viewport, commercialMarker }: P
 
   return (
     <div className="space-y-2">
-      <div className="h-72 overflow-hidden rounded-xl border border-[var(--border-color)]">
+      <div className="h-80 overflow-hidden rounded-xl border border-[var(--border-color)]">
         <MapContainer
           center={initialCenter}
           zoom={initialZoom}
@@ -89,6 +174,7 @@ export function GeoRadiusMapInner({ pins, onAdd, viewport, commercialMarker }: P
           />
           <MapClickHandler onPick={handleMapClick} />
           <MapFlyTo viewport={viewport} />
+          <FitBoundsToPins pins={pins} disabled={!!viewport} />
           {commercialMarker ? (
             <Marker
               position={[commercialMarker.lat, commercialMarker.lng]}
@@ -100,21 +186,9 @@ export function GeoRadiusMapInner({ pins, onAdd, viewport, commercialMarker }: P
               })}
             />
           ) : null}
-          {pins.map((loc) => {
-            const coords = mapPinCoords(loc);
-            if (!coords) return null;
-            const radiusKm = loc.meta?.radius ?? 5;
-            return (
-              <span key={loc.value}>
-                <Marker position={[coords.lat, coords.lng]} icon={defaultIcon} />
-                <Circle
-                  center={[coords.lat, coords.lng]}
-                  radius={radiusKm * 1000}
-                  pathOptions={{ color: "#7c3aed", fillColor: "#7c3aed", fillOpacity: 0.15 }}
-                />
-              </span>
-            );
-          })}
+          {pins.map((loc) => (
+            <RadiusPinLayer key={loc.value} loc={loc} selected={loc.value === selectedPin} />
+          ))}
         </MapContainer>
       </div>
       <p className="text-[10px] text-[var(--text-dimmer)]">{t("mapClickHint")}</p>

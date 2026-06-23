@@ -88,6 +88,9 @@ export class ClientMetaSettings {
   @Column({ type: "text", nullable: true })
   commercialAddress?: string | null;
 
+  @Column({ type: "text", nullable: true })
+  commercialAddressNormalized?: string | null;
+
   @Column({ type: "double precision", nullable: true })
   commercialLatitude?: number | null;
 

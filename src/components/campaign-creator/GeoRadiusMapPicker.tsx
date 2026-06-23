@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 import type { MapViewport } from "@/components/campaign-creator/GeoRadiusMapInner";
 import type { TargetingItem } from "@/lib/campaign-draft";
@@ -37,6 +38,12 @@ export function GeoRadiusMapPicker({
 }: Props) {
   const t = useTranslations("campaignCreator");
   const mapPins = pins.filter(isMapPinLocation);
+  const [selectedPin, setSelectedPin] = useState<string | null>(null);
+
+  const handleAdd = (item: TargetingItem) => {
+    onAdd(item);
+    setSelectedPin(item.value);
+  };
 
   return (
     <div className="space-y-3 rounded-xl border border-violet-200/60 bg-violet-500/5 p-4">
@@ -70,18 +77,29 @@ export function GeoRadiusMapPicker({
               {mapPins.map((loc) => (
                 <li
                   key={loc.value}
-                  className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-2 text-xs"
+                  onMouseEnter={() => setSelectedPin(loc.value)}
+                  className={`flex flex-wrap items-center gap-2 rounded-xl border p-2 text-xs transition-colors ${
+                    selectedPin === loc.value
+                      ? "border-[#1877F2]/50 bg-[#1877F2]/5"
+                      : "border-[var(--border-color)] bg-[var(--surface-card)]"
+                  }`}
                 >
                   <span className="flex-1 font-medium text-[var(--text-main)]">{loc.label}</span>
                   <label className="flex items-center gap-1 text-[var(--text-dim)]">
-                    {loc.meta?.radius ?? 5} km
+                    <span className="min-w-[3rem] font-semibold text-[#1877F2]">
+                      {loc.meta?.radius ?? 5} km
+                    </span>
                     <input
                       type="range"
                       min={1}
-                      max={80}
+                      max={70}
                       value={loc.meta?.radius ?? 5}
-                      onChange={(e) => onUpdateRadius(loc.value, Number(e.target.value))}
-                      className="w-20 accent-violet-600"
+                      onFocus={() => setSelectedPin(loc.value)}
+                      onChange={(e) => {
+                        setSelectedPin(loc.value);
+                        onUpdateRadius(loc.value, Number(e.target.value));
+                      }}
+                      className="w-24 accent-[#1877F2]"
                     />
                   </label>
                   <button
@@ -99,9 +117,10 @@ export function GeoRadiusMapPicker({
         </div>
         <GeoRadiusMapInner
           pins={mapPins}
-          onAdd={onAdd}
+          onAdd={handleAdd}
           viewport={viewport}
           commercialMarker={commercialMarker}
+          selectedPin={selectedPin}
         />
       </div>
     </div>

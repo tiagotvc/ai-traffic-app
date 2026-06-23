@@ -44,9 +44,10 @@ export function AdSetStep() {
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
   const [commercialLocation, setCommercialLocation] = useState<{
     address: string | null;
+    normalized: string | null;
     lat: number | null;
     lng: number | null;
-  }>({ address: null, lat: null, lng: null });
+  }>({ address: null, normalized: null, lat: null, lng: null });
 
   const metaGeoLocations = useMemo(
     () => targeting.locations.filter(isMetaGeoLocation),
@@ -55,28 +56,66 @@ export function AdSetStep() {
 
   useEffect(() => {
     if (!payload.clientSlug) {
-      setCommercialLocation({ address: null, lat: null, lng: null });
+      setCommercialLocation({ address: null, normalized: null, lat: null, lng: null });
       return;
     }
+
+    function applySettings(s?: {
+      commercialAddress?: string | null;
+      commercialAddressNormalized?: string | null;
+      commercialLatitude?: number | null;
+      commercialLongitude?: number | null;
+    }) {
+      setCommercialLocation({
+        address: s?.commercialAddress ?? null,
+        normalized: s?.commercialAddressNormalized ?? null,
+        lat: s?.commercialLatitude ?? null,
+        lng: s?.commercialLongitude ?? null
+      });
+    }
+
     fetch(`/api/clients/${encodeURIComponent(payload.clientSlug)}/meta-settings`)
       .then((r) => r.json())
       .then(
-        (j: {
+        async (j: {
           settings?: {
             commercialAddress?: string | null;
+            commercialAddressNormalized?: string | null;
             commercialLatitude?: number | null;
             commercialLongitude?: number | null;
           };
         }) => {
           const s = j.settings;
-          setCommercialLocation({
-            address: s?.commercialAddress ?? null,
-            lat: s?.commercialLatitude ?? null,
-            lng: s?.commercialLongitude ?? null
-          });
+          const address = s?.commercialAddress?.trim();
+          const needsGeocode =
+            address &&
+            (s?.commercialLatitude == null ||
+              s?.commercialLongitude == null ||
+              !s?.commercialAddressNormalized);
+
+          if (needsGeocode) {
+            const retry = await fetch(
+              `/api/clients/${encodeURIComponent(payload.clientSlug)}/meta-settings`,
+              {
+                method: "PATCH",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ commercialAddress: address })
+              }
+            )
+              .then((r) => r.json())
+              .catch(() => null);
+            if (retry?.settings) {
+              applySettings(retry.settings);
+              return;
+            }
+          }
+
+          applySettings(s);
         }
       )
-      .catch(() => setCommercialLocation({ address: null, lat: null, lng: null }));
+      .catch(() =>
+        setCommercialLocation({ address: null, normalized: null, lat: null, lng: null })
+      );
   }, [payload.clientSlug]);
 
   function centerOnCommercialAddress() {
@@ -419,7 +458,7 @@ export function AdSetStep() {
               ? {
                   lat: commercialLocation.lat,
                   lng: commercialLocation.lng,
-                  label: commercialLocation.address ?? undefined
+                  label: commercialLocation.normalized ?? commercialLocation.address ?? undefined
                 }
               : null
           }

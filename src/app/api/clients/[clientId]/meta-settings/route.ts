@@ -7,7 +7,7 @@ import {
   getResolvedClientMeta,
   patchClientMetaSettings
 } from "@/lib/client-meta-settings";
-import { geocodeAddressWithNominatim } from "@/lib/geocode-nominatim";
+import { resolveCommercialAddress } from "@/lib/geocode-nominatim";
 import { repositories } from "@/db/repositories";
 import { resolveClientMetaBusinessId } from "@/lib/client-meta-business";
 import { resolvePagesForAdAccount } from "@/lib/meta-publish-assets";
@@ -146,26 +146,31 @@ export async function PATCH(
 
   let commercialLatitude: number | null | undefined;
   let commercialLongitude: number | null | undefined;
+  let commercialAddressNormalized: string | null | undefined;
 
   if (body.commercialAddress !== undefined) {
     const address = body.commercialAddress?.trim() || null;
     if (!address) {
       commercialLatitude = null;
       commercialLongitude = null;
+      commercialAddressNormalized = null;
     } else {
       const existing = await getOrCreateClientMetaSettings(client.id);
       const sameAddress = existing.commercialAddress?.trim() === address;
       if (
         sameAddress &&
         existing.commercialLatitude != null &&
-        existing.commercialLongitude != null
+        existing.commercialLongitude != null &&
+        existing.commercialAddressNormalized
       ) {
         commercialLatitude = existing.commercialLatitude;
         commercialLongitude = existing.commercialLongitude;
+        commercialAddressNormalized = existing.commercialAddressNormalized;
       } else {
-        const geocoded = await geocodeAddressWithNominatim(address);
-        commercialLatitude = geocoded?.latitude ?? null;
-        commercialLongitude = geocoded?.longitude ?? null;
+        const resolved = await resolveCommercialAddress(address);
+        commercialLatitude = resolved.latitude;
+        commercialLongitude = resolved.longitude;
+        commercialAddressNormalized = resolved.normalized;
       }
     }
   }
@@ -182,6 +187,7 @@ export async function PATCH(
     ...body,
     ...(body.commercialAddress !== undefined && {
       commercialAddress: body.commercialAddress?.trim() || null,
+      commercialAddressNormalized: commercialAddressNormalized ?? null,
       commercialLatitude: commercialLatitude ?? null,
       commercialLongitude: commercialLongitude ?? null
     })
@@ -200,6 +206,8 @@ export async function PATCH(
   return NextResponse.json({
     ok: true,
     settings,
-    publish: resolved?.publish
+    publish: resolved?.publish,
+    commercialGeocoded: body.commercialAddress !== undefined ? commercialLatitude != null : undefined,
+    commercialAddressResolved: commercialAddressNormalized ?? undefined
   });
 }

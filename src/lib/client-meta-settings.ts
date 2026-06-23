@@ -115,6 +115,7 @@ export type ClientMetaSettingsPatch = Partial<{
     term?: string;
   } | null;
   commercialAddress: string | null;
+  commercialAddressNormalized: string | null;
   commercialLatitude: number | null;
   commercialLongitude: number | null;
 }>;
@@ -171,6 +172,9 @@ export async function patchClientMetaSettings(
     ...(patch.defaultUtm !== undefined && { defaultUtm: patch.defaultUtm }),
     ...(patch.commercialAddress !== undefined && {
       commercialAddress: patch.commercialAddress?.trim() || null
+    }),
+    ...(patch.commercialAddressNormalized !== undefined && {
+      commercialAddressNormalized: patch.commercialAddressNormalized?.trim() || null
     }),
     ...(patch.commercialLatitude !== undefined && { commercialLatitude: patch.commercialLatitude }),
     ...(patch.commercialLongitude !== undefined && { commercialLongitude: patch.commercialLongitude }),

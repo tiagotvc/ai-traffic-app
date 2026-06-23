@@ -46,6 +46,7 @@ import { TenantMemberDashboardLayout_1735831300000 } from "./0043-TenantMemberDa
 import { DashboardCanvasCore_1735831400000 } from "./0044-DashboardCanvasCore";
 import { OrionPlanPricing_1735831500000 } from "./0045-OrionPlanPricing";
 import { ClientCommercialAddress1735831600000 } from "./0046-ClientCommercialAddress";
+import { ClientCommercialAddressNormalized1735831700000 } from "./0047-ClientCommercialAddressNormalized";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -96,5 +97,6 @@ export const appMigrations = [
   TenantMemberDashboardLayout_1735831300000,
   DashboardCanvasCore_1735831400000,
   OrionPlanPricing_1735831500000,
-  ClientCommercialAddress1735831600000
+  ClientCommercialAddress1735831600000,
+  ClientCommercialAddressNormalized1735831700000
 ];
