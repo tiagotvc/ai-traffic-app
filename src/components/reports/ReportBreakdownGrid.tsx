@@ -8,6 +8,7 @@ import ReactGridLayout, {
   type Layout
 } from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 
 import type { ReportBreakdownLayoutItem } from "@/lib/report-breakdown-layout";
 import type { ReportBreakdownType } from "@/lib/report-breakdown-data";
