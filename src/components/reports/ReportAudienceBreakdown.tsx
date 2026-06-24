@@ -22,6 +22,11 @@ const TOOLTIP_STYLE = {
   color: "var(--text-main)"
 };
 
+function chartHeightForRows(count: number, isPrint: boolean): number {
+  const perRow = isPrint ? 30 : 34;
+  return Math.max(120, count * perRow + 16);
+}
+
 function BreakdownCard({
   section,
   locale,
@@ -50,26 +55,37 @@ function BreakdownCard({
     [section.rows]
   );
 
+  const chartHeight = chartHeightForRows(section.rows.length, isPrint);
+  const yAxisWidth = useMemo(() => {
+    const longest = section.rows.reduce((max, row) => Math.max(max, row.label.length), 0);
+    return Math.min(140, Math.max(72, longest * 7));
+  }, [section.rows]);
+
   return (
-    <div className="ui-card overflow-hidden p-4">
+    <div className="report-breakdown-card ui-card overflow-visible p-4">
       <div className="text-sm font-semibold text-[var(--text-main)]">{t(titleKey)}</div>
       <p className="mt-1 text-xs text-[var(--text-dim)]">{t("breakdownSpendShareHint")}</p>
 
-      <div className="mt-3 h-44">
-        <ChartContainer height={176}>
+      <div className="mt-3 w-full" style={{ height: chartHeight }}>
+        <ChartContainer height={chartHeight}>
           <BarChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 4, right: 8, left: 4, bottom: 0 }}
+            margin={{ top: 4, right: 12, left: 4, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} horizontal={false} />
-            <XAxis type="number" tick={TICK} {...AXIS} tickFormatter={(v) => formatBRL(Number(v), locale)} />
+            <XAxis
+              type="number"
+              tick={TICK}
+              {...AXIS}
+              tickFormatter={(v) => formatBRL(Number(v), locale)}
+            />
             <YAxis
               type="category"
               dataKey="name"
               tick={TICK}
               {...AXIS}
-              width={isPrint ? 72 : 84}
+              width={yAxisWidth}
             />
             <Tooltip
               formatter={(value, _name, item) => {
@@ -79,7 +95,7 @@ function BreakdownCard({
               }}
               contentStyle={TOOLTIP_STYLE}
             />
-            <Bar dataKey="spend" radius={[0, 4, 4, 0]} maxBarSize={18}>
+            <Bar dataKey="spend" radius={[0, 4, 4, 0]} maxBarSize={22}>
               {chartData.map((_, i) => (
                 <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
               ))}
@@ -88,12 +104,8 @@ function BreakdownCard({
         </ChartContainer>
       </div>
 
-      <div
-        className={`mt-3 rounded-xl border border-[var(--border-color)] ${
-          isPrint ? "report-print-table-wrap" : "overflow-x-auto"
-        }`}
-      >
-        <table className={`w-full text-left text-xs ${isPrint ? "report-print-table" : ""}`}>
+      <div className="report-breakdown-table-wrap mt-3 rounded-xl border border-[var(--border-color)]">
+        <table className={`report-breakdown-table w-full text-left text-xs ${isPrint ? "report-print-table" : ""}`}>
           <thead>
             <tr className="border-b border-[var(--border-color)] bg-[var(--surface-bg)]">
               <th className="px-3 py-2 font-semibold text-[var(--text-dim)]">{t("breakdownColSegment")}</th>
@@ -144,12 +156,14 @@ export function ReportAudienceBreakdown({
   if (!sections.length) return null;
 
   return (
-    <section className={`report-pdf-section ${isPrint ? "report-print-section" : ""} report-print-avoid-break`}>
+    <section
+      className={`report-breakdown-section report-pdf-section ${isPrint ? "report-print-section" : ""} report-print-avoid-break`}
+    >
       <div className="mb-3">
         <div className="text-sm font-semibold text-[var(--text-main)]">{t("breakdownSectionTitle")}</div>
         <p className="mt-1 text-xs text-[var(--text-dim)]">{t("breakdownSectionSubtitle")}</p>
       </div>
-      <div className="report-pdf-grid-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
+      <div className="flex flex-col gap-4">
         {sections.map((section) => (
           <BreakdownCard key={section.type} section={section} locale={locale} isPrint={isPrint} />
         ))}

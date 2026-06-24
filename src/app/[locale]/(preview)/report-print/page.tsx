@@ -46,6 +46,7 @@ export default async function ReportPrintPage({
         <ReportPreview
           data={bundle.payload}
           selectedMetrics={bundle.selectedMetrics}
+          kpiMetrics={bundle.selectedMetrics.slice(0, 6)}
           reportType={bundle.reportType}
           periodQuery={bundle.periodQuery}
           adAccountId={bundle.adAccountId ?? undefined}

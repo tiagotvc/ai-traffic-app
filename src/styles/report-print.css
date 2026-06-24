@@ -138,6 +138,27 @@
   word-break: break-word;
 }
 
+.report-print-root .report-breakdown-section {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+.report-print-root .report-breakdown-card {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  overflow: visible !important;
+}
+
+.report-print-root .report-breakdown-table-wrap {
+  overflow: visible !important;
+}
+
+.report-print-root .report-breakdown-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+
 .report-print-root [data-report-creatives-grid],
 .report-print-root .report-creatives-grid {
   display: grid !important;

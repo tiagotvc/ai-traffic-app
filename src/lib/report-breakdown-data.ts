@@ -37,7 +37,7 @@ const BREAKDOWN_FIELDS: Array<{ field: InsightBreakdownType; type: ReportBreakdo
 const GENDER_LABELS: Record<string, { pt: string; en: string }> = {
   male: { pt: "Masculino", en: "Male" },
   female: { pt: "Feminino", en: "Female" },
-  unknown: { pt: "Desconhecido", en: "Unknown" }
+  unknown: { pt: "Não informado", en: "Not specified" }
 };
 
 const DEVICE_LABELS: Record<string, { pt: string; en: string }> = {
@@ -86,7 +86,8 @@ function aggregateBreakdown(
 
   for (const row of rows) {
     const value = breakdownValue(row, field);
-    if (!value || value === "unknown") continue;
+    if (!value) continue;
+    if (value === "unknown" && type !== "gender") continue;
     const spend = Number(row.spend ?? 0);
     const conversions = pickConversions(row.actions) || pickResults(row) || 0;
     const clicks = Number(row.clicks ?? 0);

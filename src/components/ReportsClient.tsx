@@ -14,6 +14,11 @@ import { DEFAULT_REPORT_METRICS, type ReportPreviewPayload } from "@/lib/report-
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import { clearReportPdfCaptureState } from "@/lib/export-report-pdf";
+import {
+  loadReportKpiOrder,
+  mergeReportKpiOrder,
+  saveReportKpiOrder
+} from "@/lib/report-kpi-order";
 import { BarChart2, BarChart3, Building2, ExternalLink, FileText } from "lucide-react";
 
 import { DsPageHeader } from "@/design-system";
@@ -62,6 +67,8 @@ export function ReportsClient() {
 
   const [reportType, setReportType] = useState<"simple" | "complete">("simple");
   const [selectedMetrics, setSelectedMetrics] = useState<MetricKey[]>(DEFAULT_REPORT_METRICS);
+  const [kpiOrder, setKpiOrder] = useState<MetricKey[]>([]);
+  const [kpiEditMode, setKpiEditMode] = useState(false);
   const [preview, setPreview] = useState<ReportPreviewPayload | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -81,7 +88,20 @@ export function ReportsClient() {
 
   useEffect(() => {
     clearReportPdfCaptureState();
+    setKpiOrder(loadReportKpiOrder());
   }, []);
+
+  const kpiMetrics = useMemo(
+    () => mergeReportKpiOrder(selectedMetrics, kpiOrder),
+    [selectedMetrics, kpiOrder]
+  );
+
+  function handleKpiReorder(order: MetricKey[]) {
+    const rest = selectedMetrics.filter((k) => !order.includes(k));
+    const next = [...order, ...rest];
+    setKpiOrder(next);
+    saveReportKpiOrder(next);
+  }
 
   useEffect(() => {
     if (!strip || strip.clientFilter || !strip.clientOptions[0]) return;
@@ -166,7 +186,7 @@ export function ReportsClient() {
     }
     qs.set("type", reportType);
     qs.set("locale", locale);
-    qs.set("metrics", selectedMetrics.join(","));
+    qs.set("metrics", kpiMetrics.join(","));
     if (adAccountId) qs.set("adAccountId", adAccountId);
     const goalMetric =
       selectedMetrics.includes("messages") ? "messages" : preview.client.goalMetric;
@@ -180,8 +200,10 @@ export function ReportsClient() {
     period.until,
     reportType,
     locale,
-    selectedMetrics,
+    kpiMetrics,
     adAccountId,
+    selectedMetrics,
+    preview?.client.goalMetric,
     tMetrics
   ]);
 
@@ -332,6 +354,10 @@ export function ReportsClient() {
             <ReportPreview
               data={preview}
               selectedMetrics={selectedMetrics}
+              kpiMetrics={kpiMetrics}
+              kpiEditMode={kpiEditMode}
+              onKpiEditModeChange={setKpiEditMode}
+              onKpiReorder={handleKpiReorder}
               reportType={reportType}
               periodQuery={periodQuery}
               adAccountId={adAccountId || undefined}
