@@ -1,9 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Tooltip, XAxis, YAxis } from "recharts";
-import { Settings2 } from "lucide-react";
+import { Maximize2, Settings2 } from "lucide-react";
 
 import { ReportBreakdownGrid } from "@/components/reports/ReportBreakdownGrid";
 import { ChartContainer } from "@/components/ui/ChartContainer";
@@ -11,6 +11,7 @@ import { formatMetricValue } from "@/lib/dashboard-metrics";
 import { formatBRL, formatPercent } from "@/lib/format";
 import type { ReportBreakdownSection, ReportBreakdownType } from "@/lib/report-breakdown-data";
 import {
+  fitBreakdownLayoutToContent,
   loadReportBreakdownLayout,
   mergeBreakdownLayout,
   saveReportBreakdownLayout,
@@ -33,13 +34,11 @@ const TOOLTIP_STYLE = {
 function BreakdownCard({
   section,
   locale,
-  isPrint,
-  fill
+  isPrint
 }: {
   section: ReportBreakdownSection;
   locale: string;
   isPrint: boolean;
-  fill?: boolean;
 }) {
   const t = useTranslations("reports");
 
@@ -62,26 +61,25 @@ function BreakdownCard({
 
   const yAxisWidth = useMemo(() => {
     const longest = section.rows.reduce((max, row) => Math.max(max, row.label.length), 0);
-    return Math.min(110, Math.max(56, longest * 6));
+    return Math.min(96, Math.max(48, longest * 5.5));
   }, [section.rows]);
 
-  const rootClass = fill
-    ? "report-breakdown-card ui-card flex h-full min-h-0 flex-col overflow-hidden p-3"
-    : "report-breakdown-card ui-card overflow-visible p-4";
+  const chartHeight = Math.max(72, section.rows.length * 26 + 12);
+  const maxBarSize = Math.max(10, Math.min(18, Math.floor(chartHeight / Math.max(section.rows.length, 1)) - 4));
 
   return (
-    <div className={rootClass}>
-      <div className="shrink-0">
+    <div className="report-breakdown-card ui-card overflow-visible p-3">
+      <div>
         <div className="text-sm font-semibold text-[var(--text-main)]">{t(titleKey)}</div>
         <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{t("breakdownSpendShareHint")}</p>
       </div>
 
-      <div className={fill ? "mt-2 min-h-0 flex-1" : "mt-3 h-36"}>
-        <ChartContainer height={fill ? "100%" : 144} className={fill ? "h-full" : undefined}>
+      <div className="mt-2" style={{ height: chartHeight }}>
+        <ChartContainer height={chartHeight}>
           <BarChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 2, right: 8, left: 0, bottom: 0 }}
+            margin={{ top: 2, right: 6, left: 0, bottom: 0 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} horizontal={false} />
             <XAxis
@@ -90,7 +88,14 @@ function BreakdownCard({
               {...AXIS}
               tickFormatter={(v) => formatBRL(Number(v), locale)}
             />
-            <YAxis type="category" dataKey="name" tick={TICK} {...AXIS} width={yAxisWidth} />
+            <YAxis
+              type="category"
+              dataKey="name"
+              tick={TICK}
+              {...AXIS}
+              width={yAxisWidth}
+              tickFormatter={(v) => (String(v).length > 14 ? `${String(v).slice(0, 13)}…` : String(v))}
+            />
             <Tooltip
               formatter={(value, _name, item) => {
                 const share = (item?.payload as { share?: number } | undefined)?.share;
@@ -99,7 +104,7 @@ function BreakdownCard({
               }}
               contentStyle={TOOLTIP_STYLE}
             />
-            <Bar dataKey="spend" radius={[0, 4, 4, 0]} maxBarSize={16}>
+            <Bar dataKey="spend" radius={[0, 4, 4, 0]} maxBarSize={maxBarSize}>
               {chartData.map((_, i) => (
                 <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
               ))}
@@ -108,41 +113,37 @@ function BreakdownCard({
         </ChartContainer>
       </div>
 
-      <div
-        className={`report-breakdown-table-wrap mt-2 shrink-0 rounded-xl border border-[var(--border-color)] ${
-          fill && !isPrint ? "max-h-[42%] overflow-auto" : ""
-        }`}
-      >
+      <div className="report-breakdown-table-wrap mt-2 overflow-visible rounded-xl border border-[var(--border-color)]">
         <table
-          className={`report-breakdown-table w-full text-left text-[10px] sm:text-xs ${
+          className={`report-breakdown-table w-full text-left text-[10px] ${
             isPrint ? "report-print-table" : ""
           }`}
         >
           <thead>
             <tr className="border-b border-[var(--border-color)] bg-[var(--surface-bg)]">
-              <th className="px-2 py-1.5 font-semibold text-[var(--text-dim)]">{t("breakdownColSegment")}</th>
-              <th className="px-2 py-1.5 text-right font-semibold text-[var(--text-dim)]">{t("spend")}</th>
-              <th className="px-2 py-1.5 text-right font-semibold text-[var(--text-dim)]">{t("colShare")}</th>
-              <th className="px-2 py-1.5 text-right font-semibold text-[var(--text-dim)]">
+              <th className="px-2 py-1 font-semibold text-[var(--text-dim)]">{t("breakdownColSegment")}</th>
+              <th className="px-2 py-1 text-right font-semibold text-[var(--text-dim)]">{t("spend")}</th>
+              <th className="px-2 py-1 text-right font-semibold text-[var(--text-dim)]">{t("colShare")}</th>
+              <th className="px-2 py-1 text-right font-semibold text-[var(--text-dim)]">
                 {t("breakdownColConversions")}
               </th>
-              <th className="px-2 py-1.5 text-right font-semibold text-[var(--text-dim)]">CPA</th>
+              <th className="px-2 py-1 text-right font-semibold text-[var(--text-dim)]">CPA</th>
             </tr>
           </thead>
           <tbody>
             {section.rows.map((row) => (
               <tr key={row.value} className="border-b border-[var(--border-color)] last:border-b-0">
-                <td className="px-2 py-1.5 font-medium text-[var(--text-main)]">{row.label}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right text-[var(--text-main)]">
+                <td className="break-words px-2 py-1 font-medium text-[var(--text-main)]">{row.label}</td>
+                <td className="whitespace-nowrap px-2 py-1 text-right text-[var(--text-main)]">
                   {formatBRL(row.spend, locale)}
                 </td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right text-[var(--text-dim)]">
+                <td className="whitespace-nowrap px-2 py-1 text-right text-[var(--text-dim)]">
                   {formatPercent(row.sharePct, 1, locale)}
                 </td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right text-[var(--text-dim)]">
+                <td className="whitespace-nowrap px-2 py-1 text-right text-[var(--text-dim)]">
                   {formatMetricValue("conversions", row.conversions, locale)}
                 </td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right text-[var(--text-dim)]">
+                <td className="whitespace-nowrap px-2 py-1 text-right text-[var(--text-dim)]">
                   {row.cpa != null ? formatBRL(row.cpa, locale) : "—"}
                 </td>
               </tr>
@@ -154,14 +155,26 @@ function BreakdownCard({
   );
 }
 
+function applyFittedLayout(
+  sections: ReportBreakdownSection[],
+  layout: ReportBreakdownLayoutItem[]
+): ReportBreakdownLayoutItem[] {
+  return fitBreakdownLayoutToContent(
+    sections.map((s) => ({ type: s.type, rows: s.rows })),
+    layout
+  );
+}
+
 export function ReportAudienceBreakdown({
   sections,
   locale,
-  isPrint = false
+  isPrint = false,
+  initialLayout
 }: {
   sections: ReportBreakdownSection[];
   locale: string;
   isPrint?: boolean;
+  initialLayout?: ReportBreakdownLayoutItem[];
 }) {
   const t = useTranslations("reports");
   const sectionTypes = useMemo(() => sections.map((s) => s.type), [sections]);
@@ -171,17 +184,53 @@ export function ReportAudienceBreakdown({
   );
 
   const [layoutEditMode, setLayoutEditMode] = useState(false);
-  const [gridLayout, setGridLayout] = useState<ReportBreakdownLayoutItem[]>(() =>
-    mergeBreakdownLayout(sectionTypes, loadReportBreakdownLayout())
+  const [gridLayout, setGridLayout] = useState<ReportBreakdownLayoutItem[]>(() => {
+    const base = mergeBreakdownLayout(
+      sectionTypes,
+      initialLayout?.length ? initialLayout : loadReportBreakdownLayout()
+    );
+    return applyFittedLayout(sections, base);
+  });
+
+  const sectionTypesKey = sectionTypes.join(",");
+  const rowCountsKey = useMemo(
+    () => sections.map((s) => `${s.type}:${s.rows.length}`).join("|"),
+    [sections]
+  );
+
+  const persistLayout = useCallback(
+    (next: ReportBreakdownLayoutItem[], fitHeights: boolean) => {
+      const resolved = fitHeights ? applyFittedLayout(sections, next) : next;
+      setGridLayout(resolved);
+      if (!isPrint) saveReportBreakdownLayout(resolved);
+    },
+    [sections, isPrint]
   );
 
   useEffect(() => {
-    setGridLayout(mergeBreakdownLayout(sectionTypes, loadReportBreakdownLayout()));
-  }, [sectionTypes]);
+    if (layoutEditMode || isPrint) return;
+    setGridLayout((prev) => {
+      const base = mergeBreakdownLayout(sectionTypes, prev.length ? prev : loadReportBreakdownLayout());
+      const fitted = applyFittedLayout(sections, base);
+      saveReportBreakdownLayout(fitted);
+      return fitted;
+    });
+  }, [rowCountsKey, sectionTypesKey, layoutEditMode, isPrint, sections, sectionTypes]);
+
+  function handleFitToContent() {
+    persistLayout(gridLayout, true);
+  }
 
   function handleLayoutChange(next: ReportBreakdownLayoutItem[]) {
-    setGridLayout(next);
-    saveReportBreakdownLayout(next);
+    persistLayout(next, false);
+  }
+
+  function toggleEditMode() {
+    setLayoutEditMode((prev) => {
+      const next = !prev;
+      if (prev) persistLayout(gridLayout, true);
+      return next;
+    });
   }
 
   if (!sections.length) return null;
@@ -196,13 +245,24 @@ export function ReportAudienceBreakdown({
           <p className="mt-1 text-xs text-[var(--text-dim)]">{t("breakdownSectionSubtitle")}</p>
         </div>
         {!isPrint ? (
-          <div className="no-print flex flex-col items-end gap-1">
+          <div className="no-print flex flex-wrap items-center justify-end gap-2">
             {layoutEditMode ? (
-              <p className="text-[10px] text-[var(--text-dim)]">{t("breakdownLayoutCustomizeHint")}</p>
+              <p className="w-full text-right text-[10px] text-[var(--text-dim)] sm:w-auto">
+                {t("breakdownLayoutCustomizeHint")}
+              </p>
             ) : null}
             <button
               type="button"
-              onClick={() => setLayoutEditMode((v) => !v)}
+              onClick={handleFitToContent}
+              className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
+              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+            >
+              <Maximize2 size={14} />
+              {t("breakdownFitToContent")}
+            </button>
+            <button
+              type="button"
+              onClick={toggleEditMode}
               className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
               style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
             >
@@ -215,13 +275,14 @@ export function ReportAudienceBreakdown({
 
       <ReportBreakdownGrid
         layout={gridLayout}
+        sections={sections}
         editMode={layoutEditMode}
         isPrint={isPrint}
         onLayoutChange={handleLayoutChange}
         renderCard={(type: ReportBreakdownType) => {
           const section = sectionByType.get(type);
           if (!section) return null;
-          return <BreakdownCard section={section} locale={locale} isPrint={isPrint} fill />;
+          return <BreakdownCard section={section} locale={locale} isPrint={isPrint} />;
         }}
       />
     </section>

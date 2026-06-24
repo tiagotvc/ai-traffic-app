@@ -27,6 +27,7 @@ import { ChartContainer } from "@/components/ui/ChartContainer";
 import { formatDayLabel, pctDelta } from "@/lib/dashboard-ranges";
 import { formatMetricValue, METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { formatBRL, formatPercent, titleCaseWords } from "@/lib/format";
+import type { ReportBreakdownLayoutItem } from "@/lib/report-breakdown-layout";
 import type { ReportPreviewPayload } from "@/lib/report-preview-types";
 import { Settings2 } from "lucide-react";
 
@@ -87,6 +88,7 @@ export function ReportPreview({
   periodQuery,
   adAccountId,
   initialCreativeGroups,
+  initialBreakdownLayout,
   variant = "preview"
 }: {
   data: ReportPreviewPayload;
@@ -99,6 +101,7 @@ export function ReportPreview({
   periodQuery: string;
   adAccountId?: string;
   initialCreativeGroups?: ReportCreativeGroup[];
+  initialBreakdownLayout?: ReportBreakdownLayoutItem[];
   variant?: "preview" | "print";
 }) {
   const t = useTranslations("reports");
@@ -440,7 +443,12 @@ export function ReportPreview({
       </section>
 
       {data.breakdowns?.length ? (
-        <ReportAudienceBreakdown sections={data.breakdowns} locale={locale} isPrint={isPrint} />
+        <ReportAudienceBreakdown
+          sections={data.breakdowns}
+          locale={locale}
+          isPrint={isPrint}
+          initialLayout={initialBreakdownLayout}
+        />
       ) : null}
 
       <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4 report-print-avoid-break`}>

@@ -11,21 +11,81 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
 import type { ReportBreakdownLayoutItem } from "@/lib/report-breakdown-layout";
-import type { ReportBreakdownType } from "@/lib/report-breakdown-data";
+import {
+  BREAKDOWN_GRID_COLS,
+  BREAKDOWN_GRID_ROW_HEIGHT,
+  estimateBreakdownCardGridH
+} from "@/lib/report-breakdown-layout";
+import type { ReportBreakdownSection, ReportBreakdownType } from "@/lib/report-breakdown-data";
 import { cn } from "@/lib/cn";
 
-const GRID_COLS = 12;
-const ROW_HEIGHT = 52;
 const GRID_MARGIN: [number, number] = [12, 12];
+
+function ReportBreakdownPrintGrid({
+  layout,
+  sections,
+  renderCard
+}: {
+  layout: ReportBreakdownLayoutItem[];
+  sections: ReportBreakdownSection[];
+  renderCard: (type: ReportBreakdownType) => ReactNode;
+}) {
+  const rowCountByType = useMemo(
+    () => new Map(sections.map((s) => [s.type, s.rows.length])),
+    [sections]
+  );
+
+  const fittedLayout = useMemo(
+    () =>
+      layout.map((item) => ({
+        ...item,
+        h: estimateBreakdownCardGridH(rowCountByType.get(item.id) ?? 1)
+      })),
+    [layout, rowCountByType]
+  );
+
+  const gridRows = useMemo(
+    () => fittedLayout.reduce((max, item) => Math.max(max, item.y + item.h), 0),
+    [fittedLayout]
+  );
+
+  return (
+    <div
+      className="report-breakdown-print-grid overflow-visible"
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${BREAKDOWN_GRID_COLS}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${gridRows}, ${BREAKDOWN_GRID_ROW_HEIGHT}px)`,
+        gap: `${GRID_MARGIN[1]}px`,
+        width: "100%"
+      }}
+    >
+      {fittedLayout.map((item) => (
+        <div
+          key={item.id}
+          className="report-breakdown-print-cell overflow-visible"
+          style={{
+            gridColumn: `${item.x + 1} / span ${item.w}`,
+            gridRow: `${item.y + 1} / span ${item.h}`
+          }}
+        >
+          {renderCard(item.id)}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function ReportBreakdownGrid({
   layout,
+  sections,
   editMode,
   isPrint,
   onLayoutChange,
   renderCard
 }: {
   layout: ReportBreakdownLayoutItem[];
+  sections: ReportBreakdownSection[];
   editMode: boolean;
   isPrint: boolean;
   onLayoutChange: (next: ReportBreakdownLayoutItem[]) => void;
@@ -43,10 +103,10 @@ export function ReportBreakdownGrid({
         h: item.h,
         minW: 3,
         minH: 3,
-        maxW: GRID_COLS,
-        static: isPrint || !editMode
+        maxW: BREAKDOWN_GRID_COLS,
+        static: !editMode
       })),
-    [layout, editMode, isPrint]
+    [layout, editMode]
   );
 
   const gridRows = useMemo(() => {
@@ -66,59 +126,61 @@ export function ReportBreakdownGrid({
     [layout, onLayoutChange]
   );
 
+  if (isPrint) {
+    return (
+      <ReportBreakdownPrintGrid layout={layout} sections={sections} renderCard={renderCard} />
+    );
+  }
+
   return (
     <div
       ref={containerRef}
       className={cn(
-        "report-breakdown-grid relative w-full",
+        "report-breakdown-grid relative w-full overflow-visible",
         editMode && "report-breakdown-grid--edit rounded-xl border border-dashed border-[rgba(245,166,35,0.45)] p-2"
       )}
     >
       {mounted ? (
         <ReactGridLayout
-          className="report-breakdown-grid-inner"
+          className="report-breakdown-grid-inner overflow-visible"
           layout={gridLayout}
           width={width}
           gridConfig={{
-            cols: GRID_COLS,
-            rowHeight: ROW_HEIGHT,
+            cols: BREAKDOWN_GRID_COLS,
+            rowHeight: BREAKDOWN_GRID_ROW_HEIGHT,
             margin: GRID_MARGIN,
             containerPadding: [0, 0] as const
           }}
           compactor={editMode ? verticalCompactor : noCompactor}
           dragConfig={{
-            enabled: editMode && !isPrint,
+            enabled: editMode,
             handle: ".report-breakdown-drag-handle",
             cancel: ".recharts-wrapper, table, button, a, input"
           }}
-          resizeConfig={{ enabled: editMode && !isPrint }}
+          resizeConfig={{ enabled: editMode }}
           onDragStop={persistLayout}
           onResizeStop={persistLayout}
-          style={{ minHeight: gridRows * ROW_HEIGHT + GRID_MARGIN[1] * (gridRows - 1) }}
+          style={{ minHeight: gridRows * BREAKDOWN_GRID_ROW_HEIGHT + GRID_MARGIN[1] * (gridRows - 1) }}
         >
           {layout.map((item) => (
             <div
               key={item.id}
               className={cn(
-                "report-breakdown-grid-item flex h-full min-h-0 flex-col",
+                "report-breakdown-grid-item overflow-visible",
                 editMode && "ring-1 ring-[rgba(245,166,35,0.35)]"
               )}
             >
               {editMode ? (
-                <div className="report-breakdown-drag-handle flex h-6 shrink-0 cursor-grab items-center justify-center rounded-t-lg border-b border-[var(--border-color)] bg-[var(--surface-bg)] text-[10px] font-medium text-[var(--text-dim)] active:cursor-grabbing">
+                <div className="report-breakdown-drag-handle flex h-6 cursor-grab items-center justify-center rounded-t-lg border-b border-[var(--border-color)] bg-[var(--surface-bg)] text-[10px] font-medium text-[var(--text-dim)] active:cursor-grabbing">
                   ⠿
                 </div>
               ) : null}
-              <div className="min-h-0 flex-1">{renderCard(item.id)}</div>
+              {renderCard(item.id)}
             </div>
           ))}
         </ReactGridLayout>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {layout.map((item) => (
-            <div key={item.id}>{renderCard(item.id)}</div>
-          ))}
-        </div>
+        <ReportBreakdownPrintGrid layout={layout} sections={sections} renderCard={renderCard} />
       )}
     </div>
   );

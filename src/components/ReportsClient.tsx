@@ -19,6 +19,11 @@ import {
   mergeReportKpiOrder,
   saveReportKpiOrder
 } from "@/lib/report-kpi-order";
+import {
+  loadReportBreakdownLayout,
+  mergeBreakdownLayout,
+  serializeBreakdownLayout
+} from "@/lib/report-breakdown-layout";
 import { BarChart2, BarChart3, Building2, ExternalLink, FileText } from "lucide-react";
 
 import { DsPageHeader } from "@/design-system";
@@ -187,6 +192,11 @@ export function ReportsClient() {
     qs.set("type", reportType);
     qs.set("locale", locale);
     qs.set("metrics", kpiMetrics.join(","));
+    if (preview.breakdowns?.length) {
+      const types = preview.breakdowns.map((b) => b.type);
+      const layout = mergeBreakdownLayout(types, loadReportBreakdownLayout());
+      qs.set("breakdownLayout", serializeBreakdownLayout(layout));
+    }
     if (adAccountId) qs.set("adAccountId", adAccountId);
     const goalMetric =
       selectedMetrics.includes("messages") ? "messages" : preview.client.goalMetric;
