@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ChevronLeft, ChevronRight, Globe, Info, LifeBuoy, LogOut, Moon, Receipt, RotateCcw, ScrollText, Settings, Shield, Sun, Ticket, Trash2, Users, Wallet } from "lucide-react";
 
@@ -12,6 +12,7 @@ import {
   PLATFORM_ADMIN_LINKS
 } from "@/components/layout/admin-nav-links";
 import { routing, type AppLocale } from "@/i18n/routing";
+import { useDismissOnOutsideClick } from "@/hooks/useDismissOnOutsideClick";
 import { useTheme } from "@/uxpilot-ui/adapters/ThemeProvider";
 
 const LOCALE_LABELS: Record<AppLocale, string> = {
@@ -51,6 +52,9 @@ export function SidebarLanguageSelector({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useDismissOnOutsideClick(rootRef, open, () => setOpen(false));
 
   function pick(next: AppLocale) {
     if (next === locale) {
@@ -62,7 +66,7 @@ export function SidebarLanguageSelector({ collapsed }: { collapsed: boolean }) {
   }
 
   return (
-    <div className={`relative ${collapsed ? "flex justify-center px-3 pb-1" : "px-3 pb-1"}`}>
+    <div ref={rootRef} className={`relative ${collapsed ? "flex justify-center px-3 pb-1" : "px-3 pb-1"}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -257,44 +261,23 @@ export function SidebarUserBlock({
         {tNav("billing")}
       </Link>
       <div className="my-1 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }} />
-      <Link href="/support" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+      <Link href="/legal/support" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
         <LifeBuoy size={13} style={{ color: "#f5a623" }} />
         {tNav("support")}
       </Link>
-      <Link href="/about" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
+      <Link href="/legal/about" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
         <Info size={13} style={{ color: "#f5a623" }} />
         {tNav("about")}
       </Link>
-      <Link
-        href="/terms"
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={closeAndNavigate}
-        className={menuLinkClass}
-        style={{ color: "#94a3b8" }}
-      >
+      <Link href="/legal/terms" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
         <ScrollText size={13} style={{ color: "#f5a623" }} />
         {tNav("terms")}
       </Link>
-      <Link
-        href="/privacy"
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={closeAndNavigate}
-        className={menuLinkClass}
-        style={{ color: "#94a3b8" }}
-      >
+      <Link href="/legal/privacy" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
         <Shield size={13} style={{ color: "#f5a623" }} />
         {tNav("privacy")}
       </Link>
-      <Link
-        href="/data-deletion"
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={closeAndNavigate}
-        className={menuLinkClass}
-        style={{ color: "#94a3b8" }}
-      >
+      <Link href="/legal/data-deletion" onClick={closeAndNavigate} className={menuLinkClass} style={{ color: "#94a3b8" }}>
         <Trash2 size={13} style={{ color: "#f5a623" }} />
         {tNav("dataDeletion")}
       </Link>

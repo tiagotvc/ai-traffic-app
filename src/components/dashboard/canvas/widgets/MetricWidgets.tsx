@@ -63,18 +63,30 @@ export function SingleMetricWidget({
     );
   }
 
+  const deltaMeta =
+    delta == null
+      ? { change: "—" as const, trend: "neutral" as const }
+      : {
+          change: `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`,
+          trend: (delta >= 0 ? "up" : "down") as "up" | "down"
+        };
+
   return (
-    <CanvasMetricStrip
-      items={[
-        {
-          label: tMetrics(meta.label),
-          value: data.formatMetricValue(metricKey, value),
-          change: delta != null ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%` : "—",
-          trend: delta == null ? "neutral" : delta >= 0 ? "up" : "down"
-        }
-      ]}
-      visual={visual}
-    />
+    <div className="flex h-full min-h-0 w-full">
+      <CanvasMetricStrip
+        cellFill
+        items={[
+          {
+            label: tMetrics(meta.label),
+            value: data.formatMetricValue(metricKey, value),
+            change: deltaMeta.change,
+            trend: deltaMeta.trend,
+            color: meta.color
+          }
+        ]}
+        visual={visual}
+      />
+    </div>
   );
 }
 

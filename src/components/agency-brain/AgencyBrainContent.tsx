@@ -321,7 +321,7 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
                   learnings={brain.learnings}
                   clientId={clientId}
                   actionLoadingId={brain.actionLoadingId}
-                  onApprove={(id) => void brain.patchAction(id, "approve")}
+                  onApprove={(id, options) => void brain.patchAction(id, "approve", options)}
                   onReject={(id) => void brain.patchAction(id, "reject")}
                   onArchive={(id) => void brain.patchAction(id, "archive")}
                   onEdit={(item) => {

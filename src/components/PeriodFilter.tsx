@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { useDismissOnOutsideClick } from "@/hooks/useDismissOnOutsideClick";
 import {
   formatPeriodLabel,
   periodStateToParsed,
@@ -45,13 +46,7 @@ export function PeriodFilter({
   const [customSince, setCustomSince] = useState(value.since || defaultCustomRange().since);
   const [customUntil, setCustomUntil] = useState(value.until || defaultCustomRange().until);
 
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  useDismissOnOutsideClick(ref, open, () => setOpen(false));
 
   useEffect(() => {
     if (value.preset === "custom") {

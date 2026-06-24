@@ -1,9 +1,10 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { useDismissOnOutsideClick } from "@/hooks/useDismissOnOutsideClick";
 
 export type FilterSelectOption = {
   value: string;
@@ -36,13 +37,7 @@ export function FilterSelectDropdown({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  useDismissOnOutsideClick(ref, open, () => setOpen(false));
 
   const selectedLabel = value
     ? (options.find((o) => o.value === value)?.label ?? value)

@@ -1,23 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Check, LayoutTemplate, Plus, RotateCcw, Settings2, Sparkles, Wand2 } from "lucide-react";
+import { LayoutGrid, Move, Settings2, Sparkles, Check } from "lucide-react";
 
-import { DashboardEmptyState } from "@/components/dashboard/canvas/DashboardEmptyState";
+import { AppCanvasShell } from "@/components/dashboard/canvas/AppCanvasShell";
+import { BuilderCanvasToolbar } from "@/components/dashboard/canvas/BuilderCanvasToolbar";
+import { AppCanvasScopeProvider } from "@/components/dashboard/canvas/AppCanvasScopeContext";
+import { DashboardTvModeButton } from "@/components/dashboard/canvas/DashboardSwitcher";
+import { DashboardToolbarActions } from "@/components/dashboard/canvas/DashboardToolbarActions";
 import { DashboardGrid } from "@/components/dashboard/canvas/DashboardGrid";
 import { DashboardGridSkeleton } from "@/components/dashboard/canvas/DashboardGridSkeleton";
 import { DashboardTemplatesModal } from "@/components/dashboard/canvas/DashboardTemplatesModal";
-import {
-  DashboardSwitcher,
-  DashboardTvModeButton,
-  WidgetLibraryModal
-} from "@/components/dashboard/canvas/WidgetLibraryModal";
-import { DashboardToolbarButton } from "@/components/dashboard/canvas/DashboardToolbarButton";
-import { AiWidgetBuilderModal } from "@/components/dashboard/canvas/AiWidgetBuilderModal";
+import { layoutHasWidgetPeriodOverrides } from "@/lib/dashboard/widget-period";
+import { HIGHLIGHTS_LAYOUT_EDITOR_V2 } from "@/lib/dashboard/highlights-layout-flags";
+import { cn } from "@/lib/cn";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PageToolbar } from "@/components/layout/PageToolbar";
-import { layoutHasWidgetPeriodOverrides } from "@/lib/dashboard/widget-period";
 import type { LayoutDto } from "@/lib/dashboard/widget-catalog";
 import type { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
@@ -45,12 +44,17 @@ export function DashboardCanvas({
   onAiWidgetCreated,
   actionError,
   onClearActionError,
-  layouts,
-  activeLayoutId,
-  setActiveLayoutId,
-  onCreateLayout,
+  onUpdateLayoutMeta,
+  onPublishLayout,
+  publishingLayout = false,
   templates,
-  layoutLoading = false
+  layoutLoading = false,
+  className,
+  onEnterEditMode,
+  highlightsMode = false,
+  highlightsSubtitle,
+  onOpenSectionCustomize,
+  onFinalizeHighlightsLayout
 }: {
   activeLayout: LayoutDto | undefined;
   editMode: boolean;
@@ -76,7 +80,7 @@ export function DashboardCanvas({
   dashboardData: DashboardData;
   onLayoutChange: (widgets: LayoutDto["widgets"]) => void;
   onRemoveWidget: (id: string) => void;
-  onAddWidget: (type: string, config?: Record<string, unknown>) => void;
+  onAddWidget: (type: string, config?: Record<string, unknown>) => string | void;
   onWidgetConfigChange?: (widgetId: string, config: Record<string, unknown>) => void;
   saving?: boolean;
   onResetLayout?: () => Promise<{ ok: boolean; error?: string } | void>;
@@ -87,140 +91,205 @@ export function DashboardCanvas({
   onAiWidgetCreated?: (layout?: LayoutDto) => void;
   actionError?: string | null;
   onClearActionError?: () => void;
-  layouts: LayoutDto[];
-  activeLayoutId: string;
-  setActiveLayoutId: (id: string) => void;
-  onCreateLayout: (name: string, templateId?: string) => void;
+  onUpdateLayoutMeta?: (patch: { name?: string; subtitle?: string | null }) => void;
+  onPublishLayout?: (published: boolean) => Promise<void>;
+  publishingLayout?: boolean;
   templates: Array<{ id: string; name: string; category?: string; widgets?: unknown }>;
   layoutLoading?: boolean;
+  className?: string;
+  onEnterEditMode?: () => void;
+  /** Destaques home — drag/resize canvas with filters, no templates/publish. */
+  highlightsMode?: boolean;
+  highlightsSubtitle?: ReactNode;
+  /** Opens section/metrics modal (Destaques personalize). */
+  onOpenSectionCustomize?: () => void;
+  /** Compact + persist Destaques layout before leaving organize mode. */
+  onFinalizeHighlightsLayout?: () => void;
 }) {
   const t = useTranslations("dashboardWidgets");
   const tDash = useTranslations("dashboard");
   const isMobile = useIsMobile();
-  const effectiveEditMode = editMode && !isMobile;
-  const [libraryOpen, setLibraryOpen] = useState(false);
-  const [aiBuilderOpen, setAiBuilderOpen] = useState(false);
+  const highlightsEditEnabled = highlightsMode && HIGHLIGHTS_LAYOUT_EDITOR_V2;
+  const effectiveEditMode = editMode && !isMobile && (!highlightsMode || highlightsEditEnabled);
+  const highlightsInlineEdit = highlightsEditEnabled && effectiveEditMode;
+  const builderFullBleed = effectiveEditMode && !highlightsMode;
   const [tvMode, setTvMode] = useState(false);
-  const [resetConfirm, setResetConfirm] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [templateConfirm, setTemplateConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const widgets = activeLayout?.widgets ?? [];
-  const isEmpty = !widgets.length;
 
   const hasWidgetPeriodOverrides = useMemo(
     () => layoutHasWidgetPeriodOverrides(widgets),
     [widgets]
   );
 
-  useCommandStripPage({ hideFilters: true, hideSync: true });
+  useCommandStripPage(highlightsMode ? {} : { hideFilters: true, hideSync: true });
 
-  const dashboardSubtitle = (
-    <>
-      {isMobile ? t("canvasSubtitleMobile") : t("canvasSubtitle")}
-      {saving ? (
-        <span className="ml-2" style={{ color: "#818cf8" }}>
-          · {t("savingLayout")}
-        </span>
-      ) : null}
-    </>
-  );
+  const finishHighlightsOrganize = () => {
+    if (saving) return;
+    onFinalizeHighlightsLayout?.();
+    setEditMode(false);
+  };
 
-  const dashboardActions = (
-    <>
-      <DashboardSwitcher
-        layouts={layouts}
-        activeLayoutId={activeLayoutId}
-        onSelect={setActiveLayoutId}
-        onCreate={onCreateLayout}
-        templates={templates}
-        maxDashboards={limits.maxDashboards}
-        allowCustomization={!isMobile}
-      />
-      {!isMobile ? <DashboardTvModeButton onToggle={() => setTvMode((v) => !v)} /> : null}
-      {!isMobile ? (
-        <>
-          <DashboardToolbarButton
-            icon={<LayoutTemplate size={14} />}
-            label={t("templatesButton")}
-            onClick={() => setTemplatesOpen(true)}
-            disabled={applyingTemplate || saving}
-            className="disabled:opacity-50"
-            style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-          />
-          <DashboardToolbarButton
-            icon={<RotateCcw size={14} />}
-            label={t("resetLayout")}
-            onClick={() => setResetConfirm(true)}
-            disabled={resetting || saving}
-            className="disabled:opacity-50"
-            style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-          />
-          {limits.allowAiBuilder ? (
-            <DashboardToolbarButton
-              icon={<Wand2 size={14} />}
-              label={t("aiBuilder")}
-              onClick={() => setAiBuilderOpen(true)}
-              className="transition hover:brightness-110"
-              style={{
-                borderColor: "rgba(245,166,35,0.32)",
-                background: "linear-gradient(135deg, rgba(245,166,35,0.12), rgba(124,58,237,0.1))",
-                color: "#fde68a",
-                boxShadow: "inset 0 0 0 1px rgba(245,166,35,0.14)"
-              }}
-            />
-          ) : null}
-          {effectiveEditMode ? (
-            <>
-              <DashboardToolbarButton
-                icon={<Plus size={14} />}
-                label={t("addWidget")}
-                onClick={() => setLibraryOpen(true)}
-                className="text-white"
-                style={{ background: "#4f46e5", borderColor: "transparent" }}
-              />
-              <DashboardToolbarButton
-                icon={<Check size={14} />}
-                label={saving ? t("savingLayout") : t("doneEditing")}
-                disabled={saving}
-                onClick={() => {
-                  if (saving) return;
-                  setEditMode(false);
-                }}
-                className="disabled:opacity-50"
-                style={{ borderColor: "var(--border-color)", color: "var(--text-main)" }}
-              />
-            </>
-          ) : (
-            <DashboardToolbarButton
-              icon={<Settings2 size={14} />}
-              label={tDash("layoutCustomize")}
-              onClick={() => setEditMode(true)}
-              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-            />
-          )}
-        </>
-      ) : null}
-    </>
-  );
+  const toolbarSubtitle =
+    saving ? (
+      <span style={{ color: "#818cf8" }}>{t("savingLayout")}</span>
+    ) : undefined;
 
   const content = (
-    <>
+    <div
+      className={cn(
+        "flex flex-1 flex-col",
+        !highlightsMode && "h-full min-h-0 overflow-hidden"
+      )}
+    >
       {!tvMode ? (
-        <PageToolbar
-          icon={<Sparkles size={16} style={{ color: "#f5a623" }} />}
-          title={tDash("highlights")}
-          subtitle={dashboardSubtitle}
-          periodFilterDisabled={hasWidgetPeriodOverrides}
-          periodFilterDisabledHint={
-            hasWidgetPeriodOverrides ? tDash("periodFilterWidgetOverride") : undefined
-          }
-          actions={dashboardActions}
-        />
+        builderFullBleed ? (
+          <BuilderCanvasToolbar
+            appName={highlightsMode ? tDash("highlights") : (activeLayout?.name ?? t("defaultDashboard"))}
+            appSubtitle={highlightsMode ? null : (activeLayout?.subtitle ?? null)}
+            editMode={effectiveEditMode}
+            saving={saving}
+            published={highlightsMode ? false : activeLayout?.published}
+            viewToken={highlightsMode ? null : activeLayout?.viewToken}
+            publishing={publishingLayout}
+            highlightsMode={highlightsMode}
+            onUpdateAppMeta={
+              highlightsMode
+                ? undefined
+                : (patch) => {
+                    if (activeLayout?.id) onUpdateLayoutMeta?.(patch);
+                  }
+            }
+            onTvToggle={() => setTvMode((v) => !v)}
+            onDoneEditing={() => {
+              if (saving) return;
+              setEditMode(false);
+            }}
+            onCustomize={() => (onEnterEditMode ? onEnterEditMode() : setEditMode(true))}
+            onPublishToggle={
+              highlightsMode || !onPublishLayout
+                ? undefined
+                : (published) => void onPublishLayout(published)
+            }
+          />
+        ) : (
+          <PageToolbar
+            icon={
+              highlightsMode ? (
+                <Sparkles size={16} style={{ color: "#f5a623" }} />
+              ) : (
+                <LayoutGrid size={16} style={{ color: "#818cf8" }} />
+              )
+            }
+            title={
+              highlightsMode ? (
+                tDash("highlights")
+              ) : (
+                <div>
+                  <h1 className="font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
+                    {activeLayout?.name ?? t("defaultDashboard")}
+                  </h1>
+                  {activeLayout?.subtitle ? (
+                    <p className="text-sm" style={{ color: "var(--text-dim)" }}>
+                      {activeLayout.subtitle}
+                    </p>
+                  ) : null}
+                </div>
+              )
+            }
+            subtitle={
+              highlightsMode
+                ? effectiveEditMode
+                  ? tDash("layoutOrganizeHint")
+                  : highlightsSubtitle ?? tDash("highlightsSubtitle")
+                : toolbarSubtitle
+            }
+            showGlobalFilters={highlightsMode && !effectiveEditMode}
+            showSync={highlightsMode && !effectiveEditMode}
+            actions={
+              !isMobile ? (
+                highlightsMode ? (
+                  effectiveEditMode ? (
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={finishHighlightsOrganize}
+                      className="flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
+                      style={{ borderColor: "var(--border-color)", color: "var(--text-main)" }}
+                    >
+                      <Check size={14} />
+                      {saving ? t("savingLayout") : tDash("layoutDoneOrganize")}
+                    </button>
+                  ) : (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onOpenSectionCustomize?.()}
+                      className="flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
+                      style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                    >
+                      <Settings2 size={14} />
+                      {tDash("layoutCustomize")}
+                    </button>
+                    {HIGHLIGHTS_LAYOUT_EDITOR_V2 ? (
+                      <button
+                        type="button"
+                        onClick={() => (onEnterEditMode ? onEnterEditMode() : setEditMode(true))}
+                        className="flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
+                        style={{
+                          borderColor: "rgba(124,58,237,0.3)",
+                          background: "rgba(124,58,237,0.08)",
+                          color: "#a78bfa"
+                        }}
+                      >
+                        <Move size={14} />
+                        {tDash("layoutOrganize")}
+                      </button>
+                    ) : null}
+                  </div>
+                  )
+                ) : (
+                  <DashboardToolbarActions
+                    appBuilderMode
+                    saving={saving}
+                    appName={activeLayout?.name}
+                    appSubtitle={activeLayout?.subtitle ?? null}
+                    onUpdateAppMeta={(patch) => {
+                      if (activeLayout?.id) onUpdateLayoutMeta?.(patch);
+                    }}
+                    onTvToggle={() => setTvMode((v) => !v)}
+                    onTemplatesOpen={() => setTemplatesOpen(true)}
+                    onAddWidget={() => {}}
+                    onDoneEditing={() => {
+                      if (saving) return;
+                      setEditMode(false);
+                    }}
+                    onCustomize={() => (onEnterEditMode ? onEnterEditMode() : setEditMode(true))}
+                    editMode={false}
+                    hasWidgetPeriodOverrides={hasWidgetPeriodOverrides}
+                    published={activeLayout?.published}
+                    viewToken={activeLayout?.viewToken}
+                    publishing={publishingLayout}
+                    onPublishToggle={
+                      onPublishLayout ? (published) => void onPublishLayout(published) : undefined
+                    }
+                  />
+                )
+              ) : undefined
+            }
+          />
+        )
       ) : null}
 
       {actionError ? (
-        <div className="ui-alert-error flex items-center justify-between gap-3 text-sm">
+        <div
+          className={cn(
+            "ui-alert-error flex shrink-0 items-center justify-between gap-3 text-sm",
+            builderFullBleed ? "mx-4 mt-2" : "mx-4 mt-2"
+          )}
+        >
           <span>{actionError}</span>
           <button type="button" className="ui-link text-xs" onClick={() => onClearActionError?.()}>
             {t("close")}
@@ -228,50 +297,29 @@ export function DashboardCanvas({
         </div>
       ) : null}
 
-      {dashboardData.note ? <div className="ui-alert-info">{dashboardData.note}</div> : null}
+      {dashboardData.note && !effectiveEditMode ? (
+        <div className="ui-alert-info mx-4 mt-2 shrink-0">{dashboardData.note}</div>
+      ) : null}
 
-      {layoutLoading ? (
-        <DashboardGridSkeleton />
-      ) : isEmpty && effectiveEditMode ? (
-        <DashboardEmptyState onAddWidget={() => setLibraryOpen(true)} />
-      ) : isEmpty ? (
-        <DashboardEmptyState
-          onAddWidget={isMobile ? undefined : () => setEditMode(true)}
-          mobileHintOnly={isMobile}
-        />
-      ) : (
-        <DashboardGrid
+      <div className={cn(!highlightsMode && "min-h-0 flex-1 overflow-hidden")}>
+        <AppCanvasShell
           widgets={widgets}
           editMode={effectiveEditMode && !tvMode}
           allowResize={limits.allowResize}
           dashboardData={dashboardData}
+          layoutLoading={layoutLoading}
+          layoutRevision={layoutRevision}
+          highlightsMode={highlightsMode}
+          highlightsShell={highlightsMode && !effectiveEditMode}
           onLayoutChange={onLayoutChange}
-          onRemove={onRemoveWidget}
+          onRemoveWidget={onRemoveWidget}
+          onAddWidget={onAddWidget}
           onWidgetConfigChange={onWidgetConfigChange}
-          layoutKey={layoutRevision}
         />
-      )}
+      </div>
 
-      <WidgetLibraryModal
-        open={libraryOpen}
-        catalog={catalog}
-        isPlatformAdmin={isPlatformAdmin}
-        dashboardData={dashboardData}
-        onClose={() => setLibraryOpen(false)}
-        onAdd={onAddWidget}
-      />
-
-      <AiWidgetBuilderModal
-        open={aiBuilderOpen}
-        layoutId={activeLayout?.id}
-        onClose={() => setAiBuilderOpen(false)}
-        onCreated={(layout) => {
-          onAiWidgetCreated?.(layout);
-          setEditMode(true);
-        }}
-      />
-
-      <DashboardTemplatesModal
+      {!highlightsMode ? (
+        <DashboardTemplatesModal
         open={templatesOpen}
         templates={templates}
         applying={applyingTemplate}
@@ -283,8 +331,9 @@ export function DashboardCanvas({
           }
         }}
       />
+      ) : null}
 
-      {templateConfirm ? (
+      {!highlightsMode && templateConfirm ? (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
           <div
             className="w-full max-w-md rounded-2xl border p-5 shadow-xl"
@@ -325,59 +374,55 @@ export function DashboardCanvas({
           </div>
         </div>
       ) : null}
-
-      {resetConfirm ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div
-            className="w-full max-w-md rounded-2xl border p-5 shadow-xl"
-            style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
-          >
-            <h3 className="font-heading text-base font-semibold" style={{ color: "var(--text-main)" }}>
-              {t("resetLayoutTitle")}
-            </h3>
-            <p className="mt-2 text-sm" style={{ color: "var(--text-dim)" }}>
-              {t("resetLayoutHint")}
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setResetConfirm(false)}
-                className="rounded-lg border px-4 py-2 text-sm"
-                style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-              >
-                {t("configCancel")}
-              </button>
-              <button
-                type="button"
-                disabled={resetting}
-                onClick={() => {
-                  void (async () => {
-                    setResetConfirm(false);
-                    await onResetLayout?.();
-                  })();
-                }}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: "#dc2626" }}
-              >
-                {resetting ? t("resetLayoutRunning") : t("resetLayoutConfirm")}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
+    </div>
   );
 
   if (tvMode) {
+    const tvName = activeLayout?.name ?? t("defaultDashboard");
+    const tvSubtitle = activeLayout?.subtitle;
     return (
       <div className="fixed inset-0 z-40 overflow-y-auto bg-[var(--surface-bg)] p-6">
-        <div className="mb-4 flex justify-end">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="truncate font-heading text-2xl font-bold" style={{ color: "var(--text-main)" }}>
+              {tvName}
+            </h1>
+            {tvSubtitle ? (
+              <p className="mt-1 truncate text-sm" style={{ color: "var(--text-dim)" }}>
+                {tvSubtitle}
+              </p>
+            ) : null}
+          </div>
           <DashboardTvModeButton onToggle={() => setTvMode(false)} />
         </div>
-        {content}
+        {actionError ? (
+          <div className="ui-alert-error mb-4 flex items-center justify-between gap-3 text-sm">
+            <span>{actionError}</span>
+            <button type="button" className="ui-link text-xs" onClick={() => onClearActionError?.()}>
+              {t("close")}
+            </button>
+          </div>
+        ) : null}
+        {dashboardData.note ? <div className="ui-alert-info mb-4">{dashboardData.note}</div> : null}
+        <AppCanvasScopeProvider widgets={widgets}>
+          {layoutLoading ? (
+            <DashboardGridSkeleton />
+          ) : (
+            <DashboardGrid
+              widgets={widgets}
+              editMode={false}
+              allowResize={limits.allowResize}
+              dashboardData={dashboardData}
+              onLayoutChange={onLayoutChange}
+              onRemove={onRemoveWidget}
+              onWidgetConfigChange={onWidgetConfigChange}
+              layoutKey={layoutRevision}
+            />
+          )}
+        </AppCanvasScopeProvider>
       </div>
     );
   }
 
-  return content;
+  return <div className={cn("flex min-h-0 flex-1 flex-col", className)}>{content}</div>;
 }

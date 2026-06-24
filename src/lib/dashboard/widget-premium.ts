@@ -15,8 +15,12 @@ export type PremiumBadgeKind = "masterBlaster" | "addon" | "ai";
 export function isPremiumTierWidget(w: CatalogWidgetPremiumMeta): boolean {
   if (w.requiredAddon === MASTER_BLASTER_ADDON) return true;
   if (isMasterBlasterWidgetType(w.type)) return true;
-  if (w.category === "premium") return true;
+  if (w.category === "advanced") return true;
   return false;
+}
+
+export function isAdvancedTierWidget(w: CatalogWidgetPremiumMeta): boolean {
+  return isPremiumTierWidget(w);
 }
 
 export function filterPremiumCatalog<T extends CatalogWidgetPremiumMeta>(widgets: T[]): T[] {

@@ -18,6 +18,7 @@ import {
 } from "recharts";
 
 import { CreativesRankingView } from "@/components/creatives/CreativesRankingView";
+import { PieLegend } from "@/components/charts/PieLegend";
 import type { ReportCreativeGroup } from "@/lib/report-creatives-performance";
 import { ReportHighlightCard } from "@/components/reports/ReportHighlightCard";
 import { Badge } from "@/components/ui/Badge";
@@ -56,19 +57,6 @@ function ReportChartCard({
     >
       <div className="text-sm font-semibold text-[var(--text-main)]">{title}</div>
       <div className={`mt-3 ${solo ? "w-full" : ""}`}>{children}</div>
-    </div>
-  );
-}
-
-function PieLegend({ items }: { items: Array<{ name: string; color: string }> }) {
-  return (
-    <div className="report-pie-legend mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1.5 px-1">
-      {items.map((item, i) => (
-        <div key={`${item.name}-${i}`} className="flex max-w-[200px] items-center gap-1.5">
-          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
-          <span className="truncate text-[10px] text-[var(--text-dim)]">{item.name}</span>
-        </div>
-      ))}
     </div>
   );
 }

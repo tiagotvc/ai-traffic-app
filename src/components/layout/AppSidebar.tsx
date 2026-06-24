@@ -6,6 +6,7 @@ import {
   Megaphone,
   BarChart3,
   LayoutDashboard,
+  LayoutGrid,
   Target,
   Trophy,
   Users
@@ -86,6 +87,7 @@ export function AppSidebar({
 
   const items: NavItem[] = [
     { id: "highlights", href: "/dashboard", label: t("highlights"), icon: <LayoutDashboard size={18} className="shrink-0" /> },
+    { id: "views", href: "/dashboard/views", label: t("views"), icon: <LayoutGrid size={18} className="shrink-0" /> },
     { id: "clients", href: "/clients", label: t("clients"), icon: <Users size={18} className="shrink-0" /> },
     { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <Megaphone size={18} className="shrink-0" />, gate: "campaigns" },
     { id: "audiences", href: "/audiences", label: t("audiences"), icon: <Target size={18} className="shrink-0" />, gate: "audiences" },
@@ -96,7 +98,9 @@ export function AppSidebar({
   function isActive(item: NavItem) {
     const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
     if (item.id === "highlights")
-      return base === "/dashboard" || base.startsWith("/dashboard/") || base === "/";
+      return base === "/dashboard" || base === "/";
+    if (item.id === "views")
+      return base === "/dashboard/views" || base.startsWith("/dashboard/apps/");
     if (item.id === "campaigns")
       return base === "/campaigns" || base.startsWith("/campaigns/");
     if (item.id === "clients") return base === "/clients" || base.startsWith("/clients/");

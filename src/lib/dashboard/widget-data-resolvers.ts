@@ -87,6 +87,7 @@ export async function resolveWidgetData(
     case "metricPrism":
     case "performanceChart":
     case "alertsFeed":
+    case "alertCard":
     case "agencyHealth":
     case "dualMetricChart":
       return { delegated: true, dataSource };

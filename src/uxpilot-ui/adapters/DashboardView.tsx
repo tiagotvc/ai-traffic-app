@@ -1,17 +1,14 @@
 "use client";
 
 import { CommandStripBridgeProvider } from "@/uxpilot-ui/adapters/CommandStripBridge";
-import { DashboardCanvasLive } from "@/uxpilot-ui/adapters/DashboardCanvasLive";
 import { DashboardContentLive } from "@/uxpilot-ui/adapters/DashboardContentLive";
-import { useEntitlementsCanvas } from "@/uxpilot-ui/adapters/useDashboardCanvas";
 
-/** Production dashboard — V2 fixed layout or V3 canvas by plan. */
+/** Production dashboard — highlights (read-only) at /dashboard; views at /dashboard/views. */
 export function DashboardView({ initialAllowCanvas }: { initialAllowCanvas: boolean }) {
-  const allowCanvas = useEntitlementsCanvas(initialAllowCanvas);
-
+  void initialAllowCanvas;
   return (
     <CommandStripBridgeProvider>
-      {allowCanvas ? <DashboardCanvasLive /> : <DashboardContentLive />}
+      <DashboardContentLive readOnly />
     </CommandStripBridgeProvider>
   );
 }

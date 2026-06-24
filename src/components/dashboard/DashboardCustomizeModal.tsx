@@ -2,13 +2,14 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-import { LayoutGrid, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, ChevronUp, LayoutGrid, SlidersHorizontal } from "lucide-react";
 
 import { MetricPickerModal } from "@/components/MetricPickerModal";
 import {
-  DASHBOARD_SECTION_KEYS,
+  DASHBOARD_AVAILABLE_SECTION_KEYS,
   DEFAULT_DASHBOARD_LAYOUT,
   MAX_HERO_METRICS,
+  type ChartPanelSize,
   type DashboardLayoutPrefs,
   type DashboardSectionKey
 } from "@/lib/dashboard-layout-prefs";
@@ -87,10 +88,32 @@ export function DashboardCustomizeModal({
     });
   }
 
+  function moveSection(key: DashboardSectionKey, direction: -1 | 1) {
+    setDraftLayout((cur) => {
+      const order = [...cur.sectionOrder];
+      // Move relativo aos vizinhos visíveis (ignora seções não disponíveis no dash).
+      const visible = order.filter((k) => DASHBOARD_AVAILABLE_SECTION_KEYS.includes(k));
+      const vIdx = visible.indexOf(key);
+      if (vIdx < 0) return cur;
+      const targetKey = visible[vIdx + direction];
+      if (!targetKey) return cur;
+      const a = order.indexOf(key);
+      const b = order.indexOf(targetKey);
+      [order[a], order[b]] = [order[b], order[a]];
+      return { ...cur, sectionOrder: order };
+    });
+  }
+
+  function setChartSize(size: ChartPanelSize) {
+    setDraftLayout((cur) => ({ ...cur, chartSize: size }));
+  }
+
   function resetLayout() {
     setDraftLayout({
       sections: { ...DEFAULT_DASHBOARD_LAYOUT.sections },
-      heroMetrics: []
+      heroMetrics: [],
+      sectionOrder: [...DEFAULT_DASHBOARD_LAYOUT.sectionOrder],
+      chartSize: DEFAULT_DASHBOARD_LAYOUT.chartSize
     });
     setDraftChartMetrics(chartMetrics);
   }
@@ -133,7 +156,7 @@ export function DashboardCustomizeModal({
                 </h3>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                {DASHBOARD_SECTION_KEYS.map((key) => (
+                {DASHBOARD_AVAILABLE_SECTION_KEYS.map((key) => (
                   <label
                     key={key}
                     className="flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors hover:bg-[var(--surface-bg)]"
@@ -147,6 +170,48 @@ export function DashboardCustomizeModal({
                     />
                     <span className="text-sm text-[var(--text-main)]">{sectionLabel(key)}</span>
                   </label>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                {t("layoutOrderTitle")}
+              </h3>
+              <p className="mb-2 text-[11px] text-[var(--text-dim)]">{t("layoutOrderHint")}</p>
+              <div className="space-y-1.5">
+                {draftLayout.sectionOrder
+                  .filter((key) => DASHBOARD_AVAILABLE_SECTION_KEYS.includes(key))
+                  .map((key, idx, availableOrder) => (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2"
+                    style={{ borderColor: "var(--border-color)" }}
+                  >
+                    <span className="text-sm text-[var(--text-main)]">{sectionLabel(key)}</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => moveSection(key, -1)}
+                        className="rounded-md border p-1 disabled:opacity-30"
+                        style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                        aria-label={t("layoutMoveUp")}
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === availableOrder.length - 1}
+                        onClick={() => moveSection(key, 1)}
+                        className="rounded-md border p-1 disabled:opacity-30"
+                        style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                        aria-label={t("layoutMoveDown")}
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             </section>
@@ -239,6 +304,37 @@ export function DashboardCustomizeModal({
                   >
                     {tMetrics(key)}
                   </span>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                {t("layoutChartSizeTitle")}
+              </h3>
+              <p className="mb-2 text-[11px] text-[var(--text-dim)]">{t("layoutChartSizeHint")}</p>
+              <div className="flex flex-wrap gap-2">
+                {(["compact", "default", "tall"] as ChartPanelSize[]).map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setChartSize(size)}
+                    className="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors"
+                    style={
+                      draftLayout.chartSize === size
+                        ? {
+                            borderColor: "#7c3aed",
+                            background: "rgba(124,58,237,0.1)",
+                            color: "#7c3aed"
+                          }
+                        : {
+                            borderColor: "var(--border-color)",
+                            color: "var(--text-dim)"
+                          }
+                    }
+                  >
+                    {t(`layoutChartSize_${size}` as "layoutChartSize_compact")}
+                  </button>
                 ))}
               </div>
             </section>

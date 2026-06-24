@@ -12,6 +12,7 @@ export type CanvasMetricItem = {
   value: string;
   change: string;
   trend: "up" | "down" | "neutral";
+  color?: string;
 };
 
 function TrendBadge({
@@ -27,7 +28,7 @@ function TrendBadge({
 
   return (
     <span
-      className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium"
+      className="flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
       style={{ background: `${color}15`, color }}
     >
       {!isNeutral ? (
@@ -44,29 +45,15 @@ function TrendBadge({
   );
 }
 
-/** Metric row that stretches to fill the grid cell width. */
-export function CanvasMetricStrip({
-  items,
-  isLoading,
-  visual
+function CompactMetricCard({
+  item,
+  visual,
+  fillCell = false
 }: {
-  items: CanvasMetricItem[];
-  isLoading?: boolean;
+  item: CanvasMetricItem;
   visual?: SlotVisualConfig;
+  fillCell?: boolean;
 }) {
-  if (isLoading) {
-    return (
-      <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="skeleton-shimmer min-h-[4.5rem] rounded-lg" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!items.length) return null;
-
-  const cols = Math.min(Math.max(items.length, 1), 6);
   const fontFamily = visual?.fontFamily ? FONT_FAMILY_CSS[visual.fontFamily] : undefined;
   const fontSize = visual?.fontSize ? FONT_SIZE_CSS[visual.fontSize].value : undefined;
   const textColor = visual?.textColor;
@@ -75,41 +62,88 @@ export function CanvasMetricStrip({
   return (
     <div
       className={cn(
-        "grid w-full gap-2.5 max-lg:h-auto max-lg:min-h-0 lg:h-full",
-        cols === 1 && "grid-cols-1",
-        cols === 2 && "grid-cols-1 sm:grid-cols-2",
-        cols >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+        "kpi-card-hover flex min-w-0 items-center gap-2 rounded-xl border bg-[var(--surface-card)] px-3 py-2",
+        fillCell && "h-full w-full"
+      )}
+      style={{
+        borderColor: "var(--border-color)",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
+      }}
+    >
+      {item.color ? (
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: item.color }} />
+      ) : null}
+      <span
+        className="shrink-0 text-xs font-medium"
+        style={{ color: textColor ?? "var(--text-dimmer)", fontFamily, fontSize }}
+      >
+        {item.label}
+      </span>
+      <span
+        className="min-w-0 flex-1 truncate text-sm font-semibold tabular-nums"
+        title={item.value}
+        style={{
+          color: accentColor ?? textColor ?? "var(--text-main)",
+          fontFamily: fontFamily ?? "var(--font-heading)"
+        }}
+      >
+        {item.value}
+      </span>
+      <TrendBadge change={item.change} trend={item.trend} />
+    </div>
+  );
+}
+
+/** Compact metric cards in a responsive grid (quick metrics / secondary KPIs). */
+export function CanvasMetricStrip({
+  items,
+  isLoading,
+  visual,
+  cellFill = false
+}: {
+  items: CanvasMetricItem[];
+  isLoading?: boolean;
+  visual?: SlotVisualConfig;
+  /** Single KPI in a grid cell — stretch to fill the cell. */
+  cellFill?: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="skeleton-shimmer h-9 rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!items.length) return null;
+
+  const cols = Math.min(Math.max(items.length, 1), 6);
+  // Até 6 por linha no desktop; quebra progressivamente em telas menores.
+  const colClass =
+    cols === 1
+      ? "grid-cols-1"
+      : cols === 2
+        ? "grid-cols-2"
+        : cols === 3
+          ? "grid-cols-2 sm:grid-cols-3"
+          : cols === 4
+            ? "grid-cols-2 sm:grid-cols-4"
+            : cols === 5
+              ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
+              : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6";
+
+  return (
+    <div
+      className={cn(
+        "grid w-full",
+        cellFill ? "dashboard-metric-strip--cell h-full grid-cols-1 grid-rows-1 gap-0" : "auto-rows-min gap-2.5",
+        !cellFill && colClass
       )}
     >
       {items.map((m) => (
-        <div
-          key={m.label}
-          className="flex min-h-[4.5rem] min-w-0 flex-col justify-center rounded-lg px-3 py-2.5 sm:min-h-[3rem] sm:px-2.5 sm:py-1.5"
-          style={{
-            background: "var(--surface-bg)",
-            border: "1px solid var(--border-color)"
-          }}
-        >
-          <span
-            className="truncate text-[11px] leading-snug sm:text-[10px] sm:leading-tight"
-            style={{ color: textColor ?? "var(--text-dimmer)", fontFamily, fontSize }}
-          >
-            {m.label}
-          </span>
-          <div className="mt-1 flex min-w-0 items-center justify-between gap-2 sm:mt-0.5 sm:gap-1">
-            <span
-              className="truncate text-base font-semibold leading-snug sm:text-sm sm:leading-tight"
-              style={{
-                color: accentColor ?? textColor ?? "var(--text-main)",
-                fontFamily: fontFamily ?? "var(--font-heading)",
-                fontSize: fontSize ?? undefined
-              }}
-            >
-              {m.value}
-            </span>
-            <TrendBadge change={m.change} trend={m.trend} />
-          </div>
-        </div>
+        <CompactMetricCard key={m.label} item={m} visual={visual} fillCell={cellFill} />
       ))}
     </div>
   );

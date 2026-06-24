@@ -41,7 +41,7 @@ export function LearningCard({
   learning: LearningDto;
   clientId: string;
   actionLoadingId: string | null;
-  onApprove: (id: string) => void;
+  onApprove: (id: string, options?: { force?: boolean }) => void;
   onReject: (id: string) => void;
   onArchive: (id: string) => void;
   onEdit: (learning: LearningDto) => void;
@@ -173,8 +173,11 @@ export function LearningCard({
               <button
                 type="button"
                 className="ui-btn-primary !px-3 !py-1.5 text-xs"
-                disabled={busy || lowConfidence}
-                onClick={() => onApprove(learning.id)}
+                disabled={busy}
+                onClick={() => {
+                  if (lowConfidence && !window.confirm(t("approveLowConfidenceConfirm"))) return;
+                  onApprove(learning.id, lowConfidence ? { force: true } : undefined);
+                }}
               >
                 {t("approveMemory")}
               </button>

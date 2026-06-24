@@ -37,7 +37,7 @@ export function DashboardEmptyState({
           style={{ background: "var(--accent-primary, #4f46e5)" }}
         >
           <Plus size={16} />
-          {t("addWidget")}
+          {t("addBlock")}
         </button>
       ) : null}
     </div>

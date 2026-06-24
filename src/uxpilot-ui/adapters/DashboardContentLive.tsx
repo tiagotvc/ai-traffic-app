@@ -1,44 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowRight, Calendar, Settings2, Sparkles, X } from "lucide-react";
+import { Calendar, Settings2, Sparkles } from "lucide-react";
 
-import { AgencyHealthLayout } from "@/components/dashboard/AgencyHealthLayout";
-import { Link } from "@/i18n/navigation";
+import { AgeBreakdownCard } from "@/components/dashboard/AgeBreakdownCard";
 import { BrainShelf } from "@/components/dashboard/BrainShelf";
 import { DashboardCustomizeModal } from "@/components/dashboard/DashboardCustomizeModal";
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
-import { LiveIntelligenceFeed } from "@/components/dashboard/LiveIntelligenceFeed";
 import { MetricPrism } from "@/components/dashboard/MetricPrism";
+import { PageToolbar } from "@/components/layout/PageToolbar";
+import {
+  CHART_PANEL_MIN_HEIGHT,
+  resolveVisibleSectionOrder,
+  type DashboardSectionKey
+} from "@/lib/dashboard-layout-prefs";
 import ConnectAccountCard from "@/uxpilot-ui/components/ConnectAccountCard";
 import {
-  toAgencyHealth,
-  toBrainShelfLearnings,
   toChartData,
-  toIntelligenceEvents,
   toMetricPrismProps
 } from "@/uxpilot-ui/adapters/dashboard-mappers";
 import { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
 
-const CANVAS_UPSELL_KEY = "orion-dash-canvas-upsell-dismissed";
-
-export function DashboardContentLive() {
+export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean }) {
   const t = useTranslations("dashboard");
   const data = useDashboardData();
   const isMobile = useIsMobile();
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [upsellDismissed, setUpsellDismissed] = useState(false);
-
-  useEffect(() => {
-    if (localStorage.getItem(CANVAS_UPSELL_KEY) === "1") {
-      setUpsellDismissed(true);
-    }
-  }, []);
 
   const summary = data.summary ?? {};
   const sections = data.dashboardLayout.sections;
+  // Seções "alerts" e "agencyHealth" foram removidas do dashboard (continuam disponíveis
+  // como componentes para o módulo Visão). Filtramos aqui para garantir que não apareçam
+  // mesmo em preferências antigas já salvas.
+  const sectionOrder = resolveVisibleSectionOrder(data.dashboardLayout).filter(
+    (key) => key !== "alerts" && key !== "agencyHealth"
+  );
+  const chartMinHeight = CHART_PANEL_MIN_HEIGHT[data.dashboardLayout.chartSize];
+
   const { primaryKPIs, secondaryMetrics } = toMetricPrismProps({
     summary,
     prevSummary: data.prevSummary,
@@ -51,29 +51,6 @@ export function DashboardContentLive() {
   });
 
   const chartData = toChartData(data.series, data.locale);
-  const intelligenceEvents = toIntelligenceEvents({
-    variations: data.variations,
-    criticalAlerts: data.criticalAlerts,
-    metricLabel: data.metricLabel,
-    vsLabel: data.vsLabel,
-    nowLabel: t("now"),
-    recentLabel: t("recently")
-  });
-  const agencyHealth = toAgencyHealth({
-    clients: data.clients,
-    locale: data.locale,
-    summary: data.summary,
-    prevSummary: data.prevSummary,
-    clientMetric: data.clientMetric,
-    formatMetric: data.formatMetricValue,
-    labels: {
-      activeClients: t("agencyHealthActiveClients"),
-      healthy: t("agencyHealthHealthy"),
-      alerts: t("agencyHealthAlerts"),
-      totalSpend: t("agencyHealthTotalSpend")
-    }
-  });
-  const brainItems = toBrainShelfLearnings(data.brainLearnings);
   const emptyStateItems = [
     t("emptyStateItem1"),
     t("emptyStateItem2"),
@@ -82,29 +59,118 @@ export function DashboardContentLive() {
     t("emptyStateItem5")
   ];
 
+  // Performance e Faixa etária dividem a mesma linha (lado a lado) quando ambos visíveis.
+  const performancePair = useMemo(() => {
+    const chartIdx = sectionOrder.indexOf("chart");
+    const ageIdx = sectionOrder.indexOf("ageBreakdown");
+    if (!sections.chart || !sections.ageBreakdown) return null;
+    if (chartIdx < 0 || ageIdx < 0) return null;
+    return chartIdx < ageIdx ? ("chart-first" as const) : ("age-first" as const);
+  }, [sectionOrder, sections.chart, sections.ageBreakdown]);
+
+  function renderSection(key: DashboardSectionKey, skipPerformance = false) {
+    if (!sections[key] || data.isEmptyState) return null;
+
+    if (key === "brainShelf") {
+      return (
+        <BrainShelf
+          key={key}
+          isLoading={data.brainSummaryLoading}
+          variant="notice"
+          hypothesesCount={data.brainHypothesesCount}
+          learningsCount={data.brainLearningsCount}
+          suggestionsCount={data.brainLearnings.length}
+        />
+      );
+    }
+
+    if (key === "heroKpis" || key === "secondaryMetrics") {
+      const showHero = sections.heroKpis;
+      const showSecondary = sections.secondaryMetrics;
+      if (!showHero && !showSecondary) return null;
+      const heroIdx = sectionOrder.indexOf("heroKpis");
+      const secIdx = sectionOrder.indexOf("secondaryMetrics");
+      if (key === "secondaryMetrics" && heroIdx >= 0 && secIdx > heroIdx && showHero) return null;
+      if (key === "heroKpis" && secIdx >= 0 && secIdx < heroIdx && showSecondary) return null;
+
+      return (
+        <MetricPrism
+          key="metrics"
+          primaryKPIs={showHero ? primaryKPIs : []}
+          secondaryMetrics={showSecondary ? secondaryMetrics : []}
+          secondaryTitle={showSecondary ? t("supportingTitle") : undefined}
+          isLoading={data.loading}
+        />
+      );
+    }
+
+    if (key === "chart" || key === "ageBreakdown") {
+      if (skipPerformance) return null;
+
+      const chartPanel = (
+        <div className="dashboard-panel rounded-2xl p-4 sm:p-5" style={{ minHeight: chartMinHeight }}>
+          <DashboardPerformanceChart
+            data={chartData}
+            activeMetrics={data.chartMetrics}
+            onToggleMetric={data.toggleChartMetric}
+            formatValue={data.formatMetricValue}
+            metricLabels={data.chartMetricLabels}
+            metricSummary={data.summary ?? undefined}
+            isLoading={data.loading}
+            subtitle={data.chartSubtitle}
+          />
+        </div>
+      );
+      const agePanel = (
+        <AgeBreakdownCard rows={data.ageBreakdown} isLoading={data.ageBreakdownLoading} />
+      );
+
+      if (performancePair) {
+        return (
+          <div key="performance" className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {performancePair === "chart-first" ? (
+              <>
+                {chartPanel}
+                {agePanel}
+              </>
+            ) : (
+              <>
+                {agePanel}
+                {chartPanel}
+              </>
+            )}
+          </div>
+        );
+      }
+
+      if (key === "chart" && sections.chart) return <div key={key}>{chartPanel}</div>;
+      if (key === "ageBreakdown" && sections.ageBreakdown) return <div key={key}>{agePanel}</div>;
+      return null;
+    }
+
+    return null;
+  }
+
+  const renderedPerformanceKeys = new Set<DashboardSectionKey>();
+  if (performancePair) {
+    renderedPerformanceKeys.add("chart");
+    renderedPerformanceKeys.add("ageBreakdown");
+  }
+
   return (
     <main
-      className="flex-1 space-y-4 overflow-y-auto px-4 py-5 md:px-6"
+      className="flex-1 space-y-4 overflow-y-auto px-0 py-0 md:px-0"
       style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg"
-              style={{ background: "rgba(245,166,35,0.15)" }}
-            >
-              <Sparkles size={16} style={{ color: "#f5a623" }} />
-            </div>
-            <h1 className="font-heading text-xl font-bold md:text-xl" style={{ color: "var(--text-main)" }}>
-              {t("highlights")}
-            </h1>
-          </div>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs font-body" style={{ color: "var(--text-dim)" }}>
+      <PageToolbar
+        icon={<Sparkles size={16} style={{ color: "#f5a623" }} />}
+        title={t("highlights")}
+        subtitle={
+          <>
             <span>{t("highlightsSubtitle")}</span>
             {!data.isEmptyState ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                className="ml-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
                 style={{
                   borderColor: "var(--chart-frame-border)",
                   background: "var(--chart-frame-bg)",
@@ -115,87 +181,28 @@ export function DashboardContentLive() {
                 {data.periodLabel}
               </span>
             ) : null}
-          </p>
-        </div>
-        {!data.isEmptyState && !isMobile ? (
-          <button
-            type="button"
-            onClick={() => setCustomizeOpen(true)}
-            className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
-            style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-          >
-            <Settings2 size={14} />
-            {t("layoutCustomize")}
-          </button>
-        ) : null}
-      </div>
+          </>
+        }
+        showGlobalFilters
+        showSync
+        actions={
+          !readOnly && !data.isEmptyState && !isMobile ? (
+            <button
+              type="button"
+              onClick={() => setCustomizeOpen(true)}
+              className="flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
+              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+            >
+              <Settings2 size={14} />
+              {t("layoutCustomize")}
+            </button>
+          ) : null
+        }
+      />
 
       {data.note ? <div className="ui-alert-info">{data.note}</div> : null}
 
-      {!upsellDismissed ? (
-        <div
-          className="relative flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3"
-          style={{
-            background: "rgba(79,70,229,0.06)",
-            borderColor: "rgba(79,70,229,0.18)"
-          }}
-        >
-          <div className="min-w-0 pr-6">
-            <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-              {t("canvasUpsellTitle")}
-            </p>
-            <p className="text-xs" style={{ color: "var(--text-dim)" }}>
-              {t("canvasUpsellHint")}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/pricing"
-              className="flex items-center gap-1 text-xs font-semibold"
-              style={{ color: "#818cf8" }}
-            >
-              {t("canvasUpsellCta")}
-              <ArrowRight size={12} />
-            </Link>
-          </div>
-          <button
-            type="button"
-            aria-label={t("canvasUpsellDismiss")}
-            onClick={() => {
-              localStorage.setItem(CANVAS_UPSELL_KEY, "1");
-              setUpsellDismissed(true);
-            }}
-            className="absolute right-2 top-2 rounded-md p-1 opacity-60 transition hover:opacity-100"
-            style={{ color: "var(--text-dim)" }}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      ) : null}
-
-      {!data.isEmptyState && sections.brainShelf ? (
-        <BrainShelf
-          suggestions={brainItems}
-          isLoading={data.brainLearningsLoading}
-          variant="feed"
-          metaLine={
-            data.brainHypothesesCount > 0
-              ? t("brainSummaryHypotheses", { count: data.brainHypothesesCount })
-              : undefined
-          }
-        />
-      ) : null}
-
       <div className="tab-transition animate-fade-up space-y-5">
-        {(sections.heroKpis || sections.secondaryMetrics) && !data.isEmptyState ? (
-          <MetricPrism
-            primaryKPIs={sections.heroKpis ? primaryKPIs : []}
-            secondaryMetrics={sections.secondaryMetrics ? secondaryMetrics : []}
-            secondaryTitle={sections.secondaryMetrics ? t("supportingTitle") : undefined}
-            isLoading={data.loading}
-          />
-        ) : null}
-
         {!data.loading && data.isEmptyState ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <ConnectAccountCard />
@@ -221,59 +228,34 @@ export function DashboardContentLive() {
               ))}
             </div>
           </div>
-        ) : null}
-
-        {(sections.chart || sections.alerts) && !data.isEmptyState ? (
-          <div
-            className={
-              sections.chart && sections.alerts
-                ? "grid grid-cols-1 gap-4 xl:grid-cols-[1fr_280px]"
-                : "grid grid-cols-1 gap-4"
+        ) : (
+          sectionOrder.map((key) => {
+            if (renderedPerformanceKeys.has(key)) {
+              if (performancePair === "chart-first" && key === "chart") {
+                return renderSection(key, false);
+              }
+              if (performancePair === "age-first" && key === "ageBreakdown") {
+                return renderSection(key, false);
+              }
+              return null;
             }
-          >
-            {sections.chart ? (
-              <div className="dashboard-panel rounded-2xl p-4 sm:p-5" style={{ minHeight: sections.alerts ? "380px" : undefined }}>
-                <DashboardPerformanceChart
-                  data={chartData}
-                  activeMetrics={data.chartMetrics}
-                  onToggleMetric={data.toggleChartMetric}
-                  formatValue={data.formatMetricValue}
-                  metricLabels={data.chartMetricLabels}
-                  metricSummary={data.summary ?? undefined}
-                  isLoading={data.loading}
-                  subtitle={data.chartSubtitle}
-                />
-              </div>
-            ) : null}
-
-            {sections.alerts ? (
-              <div className="dashboard-panel rounded-2xl p-4" style={{ minHeight: sections.chart ? "380px" : undefined }}>
-                <LiveIntelligenceFeed events={intelligenceEvents} isLoading={data.loading} />
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {sections.agencyHealth && !data.isEmptyState ? (
-          <AgencyHealthLayout
-            healthMetrics={agencyHealth.healthMetrics}
-            clients={agencyHealth.clients}
-            focusMetricColumnLabel={data.metricLabel(data.clientMetric)}
-            isLoading={data.loading}
-          />
-        ) : null}
+            return renderSection(key, false);
+          })
+        )}
       </div>
 
-      <DashboardCustomizeModal
-        open={customizeOpen}
-        layout={data.dashboardLayout}
-        chartMetrics={data.chartMetrics}
-        onClose={() => setCustomizeOpen(false)}
-        onApply={(next) => {
-          data.persistDashboardCustomization(next);
-          setCustomizeOpen(false);
-        }}
-      />
+      {!readOnly ? (
+        <DashboardCustomizeModal
+          open={customizeOpen}
+          layout={data.dashboardLayout}
+          chartMetrics={data.chartMetrics}
+          onClose={() => setCustomizeOpen(false)}
+          onApply={(next) => {
+            data.persistDashboardCustomization(next);
+            setCustomizeOpen(false);
+          }}
+        />
+      ) : null}
     </main>
   );
 }

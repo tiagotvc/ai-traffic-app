@@ -34,25 +34,25 @@ function OrionWordmarkSvg({
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
-      <g transform="translate(8 8)">
+      <g transform="translate(4 5)">
         <circle
           cx="16"
-          cy="33"
+          cy="26"
           r="13"
           stroke={ink}
           strokeWidth="3.2"
           fill="none"
           strokeLinecap="round"
           strokeDasharray="68 12"
-          transform="rotate(-32 16 33)"
+          transform="rotate(-32 16 26)"
         />
         <path
-          d="M16 22 L17.6 27 L23 27 L18.8 30.2 L20.4 35.5 L16 32.5 L11.6 35.5 L13.2 30.2 L9 27 L14.4 27 Z"
+          d="M16 15 L17.6 20 L23 20 L18.8 23.2 L20.4 28.5 L16 25.5 L11.6 28.5 L13.2 23.2 L9 20 L14.4 20 Z"
           fill={accent}
         />
       </g>
       <text
-        x="52"
+        x="40"
         y="48"
         fill={ink}
         fontFamily="var(--font-heading), ui-sans-serif, system-ui, sans-serif"
@@ -62,7 +62,7 @@ function OrionWordmarkSvg({
       >
         RION
       </text>
-      <line x1="58" y1="62" x2="102" y2="62" stroke={accent} strokeWidth="0.8" opacity="0.85" />
+      <line x1="46" y1="62" x2="90" y2="62" stroke={accent} strokeWidth="0.8" opacity="0.85" />
       <text
         x="120"
         y="72"

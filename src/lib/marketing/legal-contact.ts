@@ -1,6 +1,6 @@
 /** Canais oficiais — alinhados aos documentos institucionais e exigências Meta/LGPD. */
 export const LEGAL_CONTACT = {
-  platformName: "Traffic AI",
+  platformName: "Orion Agency",
   companyLocation: "Novo Hamburgo, Rio Grande do Sul, Brasil",
   supportEmail: "suporte@trafficai.com.br",
   commercialEmail: "comercial@trafficai.com.br",

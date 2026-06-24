@@ -4,8 +4,9 @@ import { z } from "zod";
 import { getAppContext } from "@/lib/app-context";
 import { repositories } from "@/db/repositories";
 import {
+  deleteDashboardLayout,
   getLayoutWithWidgets,
-  listDashboardLayouts
+  setDashboardLayoutPublished
 } from "@/lib/dashboard/dashboard-canvas-service";
 import {
   assertDashboardCanvas,
@@ -14,7 +15,9 @@ import {
 
 const PatchSchema = z.object({
   name: z.string().min(1).max(80).optional(),
-  isDefault: z.boolean().optional()
+  subtitle: z.string().max(240).nullable().optional(),
+  isDefault: z.boolean().optional(),
+  published: z.boolean().optional()
 });
 
 export async function GET(
@@ -50,9 +53,16 @@ export async function PATCH(
     if (!layout) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
     if (body.name) layout.name = body.name;
+    if (body.subtitle !== undefined) {
+      layout.subtitle = body.subtitle?.trim() ? body.subtitle.trim() : null;
+    }
     if (body.isDefault) {
       await repo.update({ tenantId: tenant.id, userId: user.id }, { isDefault: false });
       layout.isDefault = true;
+    }
+    if (body.published !== undefined) {
+      const out = await setDashboardLayoutPublished(id, tenant.id, user.id, body.published);
+      return NextResponse.json({ ok: true, layout: out });
     }
     await repo.save(layout);
     const out = await getLayoutWithWidgets(id, tenant.id, user.id);
@@ -73,18 +83,14 @@ export async function DELETE(
     const { id } = await params;
     const { tenant, user, entitlements } = await getAppContext();
     assertDashboardCanvas(entitlements);
-    const { dashboardLayout: repo } = await repositories();
-    const layout = await repo.findOne({ where: { id, tenantId: tenant.id, userId: user.id } });
-    if (!layout) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
-    if (layout.isDefault) {
-      return NextResponse.json({ ok: false, error: "Cannot delete default dashboard" }, { status: 400 });
-    }
-    await repo.delete({ id });
-    const layouts = await listDashboardLayouts(tenant.id, user.id, entitlements);
+    const layouts = await deleteDashboardLayout(tenant.id, user.id, entitlements, id);
     return NextResponse.json({ ok: true, layouts });
   } catch (err) {
     if (err instanceof DashboardCanvasForbiddenError) {
       return NextResponse.json({ ok: false, error: err.message }, { status: 403 });
+    }
+    if (err instanceof Error && err.message === "Layout not found") {
+      return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     }
     return NextResponse.json({ ok: false, error: "Erro" }, { status: 500 });
   }

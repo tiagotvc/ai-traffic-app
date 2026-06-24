@@ -10,6 +10,7 @@ export function BrainListCard({
   createdAt,
   updatedAt,
   children,
+  footer,
   defaultExpanded = false
 }: {
   title: string;
@@ -17,6 +18,8 @@ export function BrainListCard({
   createdAt: string;
   updatedAt?: string | null;
   children?: ReactNode;
+  /** Always visible row (e.g. action buttons) below the header. */
+  footer?: ReactNode;
   defaultExpanded?: boolean;
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -71,6 +74,9 @@ export function BrainListCard({
           <CreatedAtMeta createdAt={createdAt} updatedAt={updatedAt} className="mb-2" />
           {children}
         </div>
+      ) : null}
+      {footer ? (
+        <div className="border-t border-[var(--border-color)] px-4 py-3">{footer}</div>
       ) : null}
     </div>
   );

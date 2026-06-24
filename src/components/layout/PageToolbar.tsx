@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Filter, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { useDismissOnOutsideClick } from "@/hooks/useDismissOnOutsideClick";
 import { cn } from "@/lib/cn";
 
 export function PageToolbar({
@@ -25,7 +26,7 @@ export function PageToolbar({
 }: {
   eyebrow?: string;
   icon?: ReactNode;
-  title: string;
+  title: ReactNode;
   subtitle?: ReactNode;
   search?: {
     value: string;
@@ -43,6 +44,7 @@ export function PageToolbar({
   const t = useTranslations("dashboard");
   const strip = useCommandStripOptional();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const hasGlobalFilters = showGlobalFilters && strip;
   const hasPageFilters = Boolean(pageFilters);
@@ -58,8 +60,10 @@ export function PageToolbar({
 
   const filterBtnActive = filtersOpen || filtersActive;
 
+  useDismissOnOutsideClick(rootRef, filtersOpen && canFilter, () => setFiltersOpen(false));
+
   return (
-    <div className={cn("mb-5", className)}>
+    <div ref={rootRef} className={cn("mb-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {eyebrow ? (
@@ -76,9 +80,13 @@ export function PageToolbar({
                 {icon}
               </div>
             ) : null}
-            <h1 className="font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
-              {title}
-            </h1>
+            {typeof title === "string" ? (
+              <h1 className="font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
+                {title}
+              </h1>
+            ) : (
+              title
+            )}
           </div>
           {subtitle ? (
             <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>

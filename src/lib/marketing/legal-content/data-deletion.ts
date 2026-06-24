@@ -21,6 +21,7 @@ const pt: LegalPageContent = {
     {
       title: "2. Como solicitar pela plataforma",
       paragraphs: [
+        "Usuários logados podem acessar estas instruções a qualquer momento em Institucional → Exclusão de Dados no menu lateral (rota /legal/data-deletion).",
         "Envie e-mail para " + LEGAL_CONTACT.privacyEmail + " com assunto \"Exclusão de dados\" informando o e-mail cadastrado.",
         "Confirmaremos sua identidade antes de processar a solicitação.",
         "O prazo de conclusão é de até 30 dias, salvo complexidade adicional ou exigências legais de retenção."
@@ -80,8 +81,9 @@ const en: LegalPageContent = {
       ]
     },
     {
-      title: "2. How to request via email",
+      title: "2. How to request via the platform",
       paragraphs: [
+        "Logged-in users can open these instructions anytime via Legal → Data Deletion in the sidebar (/legal/data-deletion).",
         `Email ${LEGAL_CONTACT.privacyEmail} with subject \"Data deletion\" and your registered email.`,
         "We will verify your identity before processing.",
         "Completion within 30 days unless legal retention or complexity requires more time."

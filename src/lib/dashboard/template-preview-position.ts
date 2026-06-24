@@ -66,7 +66,7 @@ export function maxTemplatePreviewBodyHeight(headerHeight = 52, chromePadding = 
   );
 }
 
-const PREVIEW_ROW_HEIGHT = 80;
+const PREVIEW_ROW_HEIGHT = 48;
 const PREVIEW_GAP = 12;
 const PREVIEW_INNER_WIDTH = 960;
 

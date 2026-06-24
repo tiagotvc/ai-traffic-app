@@ -12,7 +12,7 @@ const pt: LegalPageContent = {
       title: "1. Introdução",
       paragraphs: [
         "Esta Política de Privacidade explica quais informações coletamos, como as utilizamos, com quem podemos compartilhá-las e quais direitos você possui em relação aos seus dados.",
-        "Para solicitar exclusão de dados ou revogar integrações, consulte também nossas Instruções de Exclusão de Dados em /data-deletion."
+        "Para solicitar exclusão de dados ou revogar integrações, consulte também nossas Instruções de Exclusão de Dados em /legal/data-deletion (ou /data-deletion na versão pública)."
       ]
     },
     {
@@ -290,7 +290,7 @@ const en: LegalPageContent = {
       title: "1. Introduction",
       paragraphs: [
         "This Privacy Policy explains what information we collect, how we use it, who we may share it with, and your rights regarding your data.",
-        "To request data deletion or revoke integrations, see our Data Deletion Instructions at /data-deletion."
+        "To request data deletion or revoke integrations, see our Data Deletion Instructions at /legal/data-deletion (or /data-deletion on the public site)."
       ]
     },
     {

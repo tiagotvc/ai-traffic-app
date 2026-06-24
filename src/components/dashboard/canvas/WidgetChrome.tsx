@@ -1,6 +1,6 @@
 "use client";
 
-import { GripVertical, X } from "lucide-react";
+import { GripVertical, Settings2, X } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 
@@ -8,38 +8,90 @@ export function WidgetChrome({
   title,
   editMode,
   onRemove,
+  onConfigure,
   children,
   compact = false,
   embedded = false,
-  periodBadge
+  periodBadge,
+  fitContent = false,
+  bare = false,
+  fillHeight = false,
+  selected = false,
+  onSelect,
+  allowRemove = true,
+  overlayEditChrome = false
 }: {
   title?: string | null;
   editMode: boolean;
   onRemove: () => void;
+  onConfigure?: () => void;
   children: React.ReactNode;
   compact?: boolean;
   embedded?: boolean;
   periodBadge?: string;
+  fitContent?: boolean;
+  /** View mode — sem padding extra do chrome (conteúdo usa o próprio card). */
+  bare?: boolean;
+  /** Card preenche 100% da célula (widgets embedded como alertas). */
+  fillHeight?: boolean;
+  selected?: boolean;
+  onSelect?: () => void;
+  allowRemove?: boolean;
+  /** Destaques organize — drag overlay sem reservar altura (pt-6/pt-7). */
+  overlayEditChrome?: boolean;
 }) {
   const showTitleBar = !embedded && (!!title || !!periodBadge) && !editMode;
-  const useEditBar = editMode && embedded;
+  const useEditBar = editMode && embedded && !overlayEditChrome;
+  const useOverlayEdit = editMode && overlayEditChrome;
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col">
+    <div
+      className={cn(
+        "relative flex w-full flex-col",
+        fillHeight || (!fitContent && !compact) ? "h-full min-h-0" : "h-auto",
+        selected && editMode && "ring-2 ring-[rgba(124,58,237,0.55)] ring-offset-1 ring-offset-[var(--surface-bg)]"
+      )}
+      onClick={
+        editMode && onSelect
+          ? (e) => {
+              e.stopPropagation();
+              onSelect();
+            }
+          : undefined
+      }
+    >
       {editMode && !useEditBar ? (
         <>
           <div
-            className="widget-drag-handle absolute inset-x-0 top-0 z-[2] h-8 cursor-grab active:cursor-grabbing"
+            className={cn(
+              "widget-drag-handle absolute inset-x-0 top-0 z-[2] cursor-grab active:cursor-grabbing",
+              useOverlayEdit ? "h-6" : "h-8"
+            )}
             aria-hidden
           />
-          <button
-            type="button"
-            onClick={onRemove}
-            className="absolute right-1.5 top-1.5 z-[3] rounded-md p-1 transition-colors hover:bg-[var(--surface-bg)]"
-            aria-label="Remove widget"
-          >
-            <X size={14} style={{ color: "var(--text-dimmer)" }} />
-          </button>
+          {allowRemove ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="absolute right-1.5 top-1.5 z-[3] rounded-md p-1 transition-colors hover:bg-[var(--surface-bg)]"
+              aria-label="Remove widget"
+            >
+              <X size={14} style={{ color: "var(--text-dimmer)" }} />
+            </button>
+          ) : null}
+          {onConfigure ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onConfigure();
+              }}
+              className="absolute right-8 top-1.5 z-[3] rounded-md p-1 transition-colors hover:bg-[var(--surface-bg)]"
+              aria-label="Configure widget"
+            >
+              <Settings2 size={14} style={{ color: "var(--text-dimmer)" }} />
+            </button>
+          ) : null}
           <span
             className="widget-drag-handle absolute left-1.5 top-1.5 z-[3] cursor-grab rounded-md p-1 active:cursor-grabbing"
             aria-hidden
@@ -51,8 +103,13 @@ export function WidgetChrome({
 
       {useEditBar ? (
         <div
-          className="widget-edit-bar widget-drag-handle relative z-[2] flex h-7 shrink-0 cursor-grab items-center justify-between border-b px-1 active:cursor-grabbing"
-          style={{ borderColor: "var(--border-color)", background: "var(--surface-thead)" }}
+          className="widget-edit-bar widget-drag-handle relative z-[2] flex h-7 shrink-0 cursor-grab items-center justify-between px-1 active:cursor-grabbing"
+          style={{
+            borderBottomWidth: 1,
+            borderBottomStyle: "solid",
+            borderBottomColor: "var(--border-color)",
+            background: "var(--surface-thead)"
+          }}
         >
           <span className="widget-drag-handle flex cursor-grab items-center rounded p-0.5 active:cursor-grabbing">
             <GripVertical size={14} style={{ color: "var(--text-dimmer)" }} />
@@ -70,8 +127,12 @@ export function WidgetChrome({
 
       {showTitleBar ? (
         <div
-          className="flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2"
-          style={{ borderColor: "var(--border-color)" }}
+          className="flex shrink-0 items-center justify-between gap-2 px-3 py-2"
+          style={{
+            borderBottomWidth: 1,
+            borderBottomStyle: "solid",
+            borderBottomColor: "var(--border-color)"
+          }}
         >
           {title ? (
             <span className="truncate text-xs font-semibold" style={{ color: "var(--text-dim)" }}>
@@ -93,18 +154,19 @@ export function WidgetChrome({
 
       <div
         className={cn(
-          "flex min-h-0 w-full flex-1 flex-col overflow-hidden max-lg:h-auto max-lg:flex-none max-lg:overflow-visible",
-          embedded
-            ? editMode
-              ? "p-2"
-              : "p-2"
-            : compact
-              ? editMode
-                ? "p-1.5 pt-6"
+          "flex min-h-0 w-full flex-col max-lg:h-auto max-lg:flex-none",
+          fitContent || compact ? "overflow-visible" : "flex-1 overflow-hidden max-lg:overflow-visible",
+          bare || fillHeight
+            ? "p-0"
+            : embedded
+              ? overlayEditChrome
+                ? "p-0"
                 : "p-2"
-              : editMode
-                ? "p-3 pt-7"
-                : "p-3"
+              : compact
+                ? "p-1.5"
+                : editMode && !overlayEditChrome
+                  ? "p-3 pt-7"
+                  : "p-3"
         )}
       >
         {children}

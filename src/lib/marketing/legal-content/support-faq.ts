@@ -4,19 +4,19 @@ export type SupportFaq = { question: string; answer: string };
 
 const pt: SupportFaq[] = [
   {
-    question: "O que é o Traffic AI?",
+    question: "O que é a Orion Agency?",
     answer:
-      "O Traffic AI é uma plataforma de análise e inteligência para gestores de tráfego e agências que utilizam Meta Ads."
+      "A Orion Agency (RION) é uma plataforma de análise e inteligência para gestores de tráfego e agências que utilizam Meta Ads."
   },
   {
-    question: "O Traffic AI substitui um gestor de tráfego?",
+    question: "A Orion Agency substitui um gestor de tráfego?",
     answer:
       "Não. A plataforma foi criada para auxiliar profissionais através de análises, aprendizados e recomendações, ajudando na tomada de decisões."
   },
   {
     question: "Quais plataformas são suportadas atualmente?",
     answer:
-      "Atualmente o Traffic AI oferece integração com Meta Ads. Novas integrações poderão ser adicionadas futuramente."
+      "Atualmente a Orion Agency oferece integração com Meta Ads. Novas integrações poderão ser adicionadas futuramente."
   },
   {
     question: "Meus dados estão seguros?",
@@ -36,18 +36,18 @@ const pt: SupportFaq[] = [
 
 const en: SupportFaq[] = [
   {
-    question: "What is Traffic AI?",
+    question: "What is Orion Agency?",
     answer:
-      "Traffic AI is an analytics and intelligence platform for traffic managers and agencies using Meta Ads."
+      "Orion Agency (RION) is an analytics and intelligence platform for traffic managers and agencies using Meta Ads."
   },
   {
-    question: "Does Traffic AI replace a traffic manager?",
+    question: "Does Orion Agency replace a traffic manager?",
     answer:
       "No. It assists professionals with analysis, learnings, and recommendations to support decision-making."
   },
   {
     question: "Which platforms are supported?",
-    answer: "Traffic AI currently integrates with Meta Ads. More integrations may be added in the future."
+    answer: "Orion Agency currently integrates with Meta Ads. More integrations may be added in the future."
   },
   {
     question: "Is my data secure?",

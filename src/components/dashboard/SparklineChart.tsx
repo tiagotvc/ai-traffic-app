@@ -1,6 +1,19 @@
-import { LineChart, Line, ResponsiveContainer, Tooltip } from "recharts";
+"use client";
+
+import { useId } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  YAxis
+} from "recharts";
 
 import { PremiumChartTooltip } from "@/components/charts/PremiumChartTooltip";
+import { formatSparkAxisValue } from "@/lib/dashboard/metric-kpi-theme";
 import { premiumActiveDot, premiumRechartsTooltipProps } from "@/lib/dashboard/premium-chart-theme";
 
 interface Props {
@@ -8,9 +21,51 @@ interface Props {
   labels?: string[];
   color: string;
   formatValue?: (value: number) => string;
+  variant?: "default" | "premium";
+  dark?: boolean;
 }
 
-export function SparklineChart({ data, labels, color, formatValue }: Props) {
+function LastPointDot({
+  cx,
+  cy,
+  index,
+  lastIndex,
+  color,
+  glowId,
+  dark
+}: {
+  cx?: number;
+  cy?: number;
+  index?: number;
+  lastIndex: number;
+  color: string;
+  glowId: string;
+  dark: boolean;
+}) {
+  if (index !== lastIndex || cx == null || cy == null) return null;
+  const dot = (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={dark ? 5 : 4}
+      fill={color}
+      stroke={dark ? "rgba(255,255,255,0.85)" : "#ffffff"}
+      strokeWidth={dark ? 1.5 : 2}
+    />
+  );
+  return dark ? <g filter={`url(#${glowId})`}>{dot}</g> : dot;
+}
+
+export function SparklineChart({
+  data,
+  labels,
+  color,
+  formatValue,
+  variant = "default",
+  dark = false
+}: Props) {
+  const fillId = useId().replace(/:/g, "");
+  const glowId = useId().replace(/:/g, "");
   const chartData = data.map((v, i) => ({
     i,
     v,
@@ -24,6 +79,88 @@ export function SparklineChart({ data, labels, color, formatValue }: Props) {
         style={{ color: "var(--text-dimmer)" }}
       >
         —
+      </div>
+    );
+  }
+
+  if (variant === "premium") {
+    const grid = dark ? "rgba(148,163,184,0.14)" : "rgba(148,163,184,0.35)";
+    const tick = dark ? "#94a3b8" : "#94a3b8";
+    const lastIndex = chartData.length - 1;
+
+    return (
+      <div className="h-full min-h-[56px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={dark ? 0.42 : 0.22} />
+                <stop offset="55%" stopColor={color} stopOpacity={dark ? 0.14 : 0.08} />
+                <stop offset="100%" stopColor={color} stopOpacity={0.01} />
+              </linearGradient>
+              {dark ? (
+                <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              ) : null}
+            </defs>
+            <CartesianGrid stroke={grid} strokeDasharray="3 3" vertical={false} />
+            <YAxis
+              width={36}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: tick, fontSize: 9, fontWeight: 600 }}
+              tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
+              domain={["dataMin", "dataMax"]}
+              tickCount={3}
+            />
+            <Tooltip
+              {...premiumRechartsTooltipProps}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const point = payload[0].payload as { v: number; label: string };
+                const display = formatValue?.(Number(point.v)) ?? String(point.v);
+                return (
+                  <PremiumChartTooltip title={point.label || undefined}>
+                    <p className="font-semibold">{display}</p>
+                  </PremiumChartTooltip>
+                );
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="v"
+              stroke={color}
+              fill={`url(#${fillId})`}
+              strokeWidth={dark ? 2.25 : 2}
+              dot={false}
+              activeDot={premiumActiveDot(color)}
+              animationDuration={900}
+              animationEasing="ease-out"
+              style={{ filter: dark ? `drop-shadow(0 0 6px ${color}88)` : undefined }}
+            />
+            <Line
+              type="monotone"
+              dataKey="v"
+              stroke="transparent"
+              dot={(props) => (
+                <LastPointDot
+                  {...props}
+                  lastIndex={lastIndex}
+                  color={color}
+                  glowId={glowId}
+                  dark={dark}
+                />
+              )}
+              activeDot={false}
+              legendType="none"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     );
   }

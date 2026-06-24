@@ -1,17 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactElement } from "react";
 import {
   Bar,
   CartesianGrid,
   ComposedChart,
   Line,
   ReferenceLine,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
 } from "recharts";
+
+import { ChartContainer } from "@/components/ui/ChartContainer";
 
 import type { BoxPlotGroup, ParetoRow } from "@/lib/dashboard/chart-distribution";
 import {
@@ -29,25 +30,27 @@ type FormatFn = (key: MetricKey, value: number) => string;
 
 function ChartShell({
   children,
-  empty
+  empty,
+  height = 180
 }: {
   children?: React.ReactNode;
   empty?: boolean;
+  height?: number;
 }) {
   if (empty) {
     return (
       <div
-        className="flex h-full items-center justify-center rounded-xl border border-dashed text-xs"
-        style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+        className="flex items-center justify-center rounded-xl border border-dashed text-xs"
+        style={{ height, borderColor: "var(--border-color)", color: "var(--text-dim)" }}
       >
         —
       </div>
     );
   }
   return (
-    <div className="h-full min-h-0 w-full flex-1">
-      <ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer>
-    </div>
+    <ChartContainer height={height} className="w-full">
+      {children as ReactElement}
+    </ChartContainer>
   );
 }
 
@@ -277,7 +280,7 @@ export function BoxPlotChart({
   }
 
   return (
-    <div className="h-full min-h-0 w-full flex-1">
+    <div style={{ height: 180 }} className="w-full">
       <BoxPlotSvg groups={groups} formatValue={formatValue} metricKey={metricKey} color={color} />
     </div>
   );

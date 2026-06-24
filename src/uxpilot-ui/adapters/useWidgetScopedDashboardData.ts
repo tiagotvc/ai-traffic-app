@@ -4,11 +4,13 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { useClientViewOptional } from "@/components/dashboard/canvas/ClientViewContext";
+import { useAppCanvasScope } from "@/components/dashboard/canvas/AppCanvasScopeContext";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import { periodStateFromWidgetPreset } from "@/lib/dashboard/widget-period";
+import type { ExtendedPeriodPreset } from "@/lib/dashboard/extended-period";
 import { buildQuery, resolveRanges } from "@/lib/dashboard-ranges";
 import { formatPeriodLabel, periodStateToParsed } from "@/lib/report-period";
-import type { PeriodPreset } from "@/lib/report-period";
 import type { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 
 type DashboardData = ReturnType<typeof useDashboardData>;
@@ -17,13 +19,21 @@ type SeriesPoint = { day: string } & Partial<Record<MetricKey, number>>;
 
 export function useWidgetScopedDashboardData(
   base: DashboardData,
-  periodPreset: PeriodPreset | null
-): DashboardData & { widgetPeriodPreset?: PeriodPreset | null } {
+  periodPreset: ExtendedPeriodPreset | null
+): DashboardData & { widgetPeriodPreset?: ExtendedPeriodPreset | null } {
   const tPeriod = useTranslations("period");
   const locale = useLocale();
   const strip = useCommandStripOptional();
-  const clientFilter = strip?.clientFilter ?? "";
-  const accountFilter = strip?.accountFilter ?? "";
+  const clientView = useClientViewOptional();
+  const canvasScope = useAppCanvasScope();
+  const effectivePeriod =
+    periodPreset ?? (canvasScope.hasFilterBlock ? canvasScope.periodPreset : null);
+  const clientFilter = canvasScope.hasFilterBlock
+    ? canvasScope.clientFilter
+    : (strip?.clientFilter ?? "");
+  const accountFilter = canvasScope.hasFilterBlock
+    ? canvasScope.accountFilter
+    : (strip?.accountFilter ?? "");
 
   const [override, setOverride] = useState<{
     summary: Summary | null;
@@ -32,10 +42,10 @@ export function useWidgetScopedDashboardData(
     loading: boolean;
   } | null>(null);
 
-  const periodKey = periodPreset ?? "global";
+  const periodKey = effectivePeriod ?? "global";
 
   useEffect(() => {
-    if (!periodPreset) {
+    if (!effectivePeriod) {
       setOverride(null);
       return;
     }
@@ -48,18 +58,23 @@ export function useWidgetScopedDashboardData(
       loading: true
     }));
 
-    const period = periodStateFromWidgetPreset(periodPreset);
+    const period = periodStateFromWidgetPreset(effectivePeriod);
     const tz = base.activeTz;
 
     void (async () => {
       try {
         const { current, previous } = resolveRanges(period, tz);
         const curQ = buildQuery(clientFilter, accountFilter, current);
+        const viewSuffix = clientView?.viewToken
+          ? `${curQ ? "&" : ""}viewToken=${encodeURIComponent(clientView.viewToken)}`
+          : "";
         const [sRes, tRes, pRes] = await Promise.all([
-          fetch(`/api/dashboard/summary?${curQ}`),
-          fetch(`/api/dashboard/timeseries?${curQ}`),
+          fetch(`/api/dashboard/summary?${curQ}${viewSuffix}`),
+          fetch(`/api/dashboard/timeseries?${curQ}${viewSuffix}`),
           previous
-            ? fetch(`/api/dashboard/summary?${buildQuery(clientFilter, accountFilter, previous)}`)
+            ? fetch(
+                `/api/dashboard/summary?${buildQuery(clientFilter, accountFilter, previous)}${viewSuffix}`
+              )
             : Promise.resolve<Response | null>(null)
         ]);
 
@@ -94,10 +109,10 @@ export function useWidgetScopedDashboardData(
     return () => {
       cancelled = true;
     };
-  }, [periodPreset, periodKey, clientFilter, accountFilter, base.activeTz]);
+  }, [effectivePeriod, periodKey, clientFilter, accountFilter, base.activeTz, clientView?.viewToken]);
 
   const periodLabel = useMemo(() => {
-    if (!periodPreset) return base.vsLabel;
+    if (!effectivePeriod) return base.vsLabel;
     const labels = {
       today: tPeriod("today"),
       yesterday: tPeriod("yesterday"),
@@ -108,23 +123,29 @@ export function useWidgetScopedDashboardData(
       last14: tPeriod("last14"),
       last15: tPeriod("last15"),
       last30: tPeriod("last30"),
+      last21: tPeriod("last21"),
+      last60: tPeriod("last60"),
+      last90: tPeriod("last90"),
+      last180: tPeriod("last180"),
+      last365: tPeriod("last365"),
+      last730: tPeriod("last730"),
       custom: tPeriod("custom"),
       all: tPeriod("all")
     };
     return formatPeriodLabel(
-      periodStateToParsed(periodStateFromWidgetPreset(periodPreset)),
+      periodStateToParsed(periodStateFromWidgetPreset(effectivePeriod)),
       locale,
       labels
     );
-  }, [periodPreset, base.vsLabel, locale, tPeriod]);
+  }, [effectivePeriod, base.vsLabel, locale, tPeriod]);
 
-  if (!periodPreset) {
+  if (!effectivePeriod) {
     return { ...base, widgetPeriodPreset: null };
   }
 
   return {
     ...base,
-    widgetPeriodPreset: periodPreset,
+    widgetPeriodPreset: effectivePeriod,
     summary: override?.summary ?? base.summary,
     prevSummary: override?.prevSummary ?? base.prevSummary,
     series: override?.series ?? [],

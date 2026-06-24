@@ -326,7 +326,7 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
             );
 
             const actions = (
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 {canAct && item.status !== "CONFIRMED" && item.status !== "PROMOTED" ? (
                   <>
                     <button
@@ -367,6 +367,7 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
                 badges={badges}
                 createdAt={item.createdAt}
                 updatedAt={item.updatedAt}
+                footer={actions}
               >
                 <p className="text-sm text-[var(--text-dim)]">{item.description}</p>
                 {item.promotedLearningId ? (
@@ -374,7 +375,6 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
                     {t("hypothesesPromotedLearning", { id: item.promotedLearningId.slice(0, 8) })}
                   </p>
                 ) : null}
-                {actions}
               </BrainListCard>
             );
           })}
