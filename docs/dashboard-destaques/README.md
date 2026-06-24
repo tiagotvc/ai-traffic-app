@@ -186,6 +186,11 @@ Empty state: quando não há gasto nem contas conectadas, mostra `ConnectAccount
 
 ## Histórico de mudanças relevantes
 
+- **2026-06-24 (build):** Correção de erros de tipo que quebravam o `next build` de produção
+  (o `next dev` não falha neles): `PageToolbar.tsx` (`canFilter` coagido a `boolean`) e
+  `alert-widget-config.ts` (preset `auto` adicionado ao `ALERT_THEME_PRESETS`). Os erros
+  "Cannot find module" de `report-pdf-puppeteer.ts` são apenas ausência local dos pacotes
+  (declarados no `package.json`); não afetam o build com `install` completo.
 - **2026-06-24 (correção):** Destaques agora renderiza **sempre** `DashboardContentLive`.
   A seleção via `useEntitlementsCanvas` (que trocava para o canvas editável e recarregava o
   layout antigo memorizado no servidor) foi removida de `DashboardHighlightsPage`. Ver

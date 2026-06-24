@@ -46,7 +46,7 @@ export function PageToolbar({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const hasGlobalFilters = showGlobalFilters && strip;
+  const hasGlobalFilters = Boolean(showGlobalFilters && strip);
   const hasPageFilters = Boolean(pageFilters);
   const canFilter = hasGlobalFilters || hasPageFilters;
 

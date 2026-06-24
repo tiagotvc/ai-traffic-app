@@ -98,6 +98,15 @@ export const ALERT_THEME_PRESETS: Record<
     text: "#0f172a",
     textDim: "#64748b",
     border: "rgba(34,197,94,0.18)"
+  },
+  // "auto" segue o tema "clean" como base (resolveAlertThemeTokens já mapeia auto → clean).
+  auto: {
+    accent: "#3b82f6",
+    iconBg: "rgba(59,130,246,0.12)",
+    cardBg: "#ffffff",
+    text: "#0f172a",
+    textDim: "#64748b",
+    border: "rgba(59,130,246,0.2)"
   }
 };
 
