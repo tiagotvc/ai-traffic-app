@@ -5,10 +5,10 @@ import { resolveRanges } from "@/lib/dashboard-ranges";
 import { buildReportPreview } from "@/lib/report-preview-data";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function GET(req: Request) {
-  const { tenant } = await getAppContext();
+  const { tenant, metaAccessToken } = await getAppContext();
   const url = new URL(req.url);
   const clientId = url.searchParams.get("clientId")?.trim();
   const adAccountId = url.searchParams.get("adAccountId")?.trim() || null;
@@ -51,7 +51,8 @@ export async function GET(req: Request) {
     previous,
     locale,
     reportType,
-    goalLabel
+    goalLabel,
+    metaAccessToken
   });
 
   if (!payload.ok) {

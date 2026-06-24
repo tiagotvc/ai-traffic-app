@@ -19,6 +19,8 @@ type Props = {
   onChange: (value: string) => void;
   disabled?: boolean;
   menuPlacement?: "bottom" | "top";
+  /** When false, hides the placeholder row in the menu (no clear-to-empty). Default true. */
+  clearable?: boolean;
   className?: string;
 };
 
@@ -31,6 +33,7 @@ export function FilterSelectDropdown({
   onChange,
   disabled = false,
   menuPlacement = "bottom",
+  clearable = true,
   className
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -92,6 +95,7 @@ export function FilterSelectDropdown({
             borderColor: "var(--border-color)"
           }}
         >
+          {clearable ? (
           <button
             type="button"
             onClick={() => {
@@ -111,6 +115,7 @@ export function FilterSelectDropdown({
           >
             {placeholder}
           </button>
+          ) : null}
           {options.map((opt) => (
             <button
               key={opt.value}

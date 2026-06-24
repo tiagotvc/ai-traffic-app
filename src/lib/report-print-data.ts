@@ -160,7 +160,7 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
   }
 
   try {
-    const { tenant } = await getAppContext();
+    const { tenant, metaAccessToken } = await getAppContext();
     tenantId = tenant.id;
     clientParam = query.clientId?.trim() ?? "";
     if (!clientParam) return { ok: false as const, error: "client_required" };
@@ -177,7 +177,8 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       until,
       locale,
       reportType,
-      goalLabel
+      goalLabel,
+      metaAccessToken
     });
     if (!payload.ok) return payload;
 
@@ -206,6 +207,7 @@ async function buildReportForTenant(input: {
   locale: string;
   reportType: "simple" | "complete";
   goalLabel: string;
+  metaAccessToken?: string;
 }) {
   const { current, previous } = await resolveReportPeriodRanges({
     preset: input.preset,
@@ -222,7 +224,8 @@ async function buildReportForTenant(input: {
     previous,
     locale: input.locale,
     reportType: input.reportType,
-    goalLabel: input.goalLabel
+    goalLabel: input.goalLabel,
+    metaAccessToken: input.metaAccessToken
   });
 
   if (!payload.ok) return { ok: false as const, error: payload.error ?? "preview_failed" };

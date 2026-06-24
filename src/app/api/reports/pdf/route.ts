@@ -44,7 +44,7 @@ function resolvePreset(body: z.infer<typeof BodySchema>): PeriodPreset {
 }
 
 export async function POST(req: Request) {
-  const { tenant } = await getAppContext();
+  const { tenant, metaAccessToken } = await getAppContext();
   let body: z.infer<typeof BodySchema>;
   try {
     body = BodySchema.parse(await req.json().catch(() => ({})));
@@ -75,7 +75,8 @@ export async function POST(req: Request) {
     previous,
     locale: body.locale,
     reportType: body.reportType,
-    goalLabel: body.goalLabel ?? "Conversões"
+    goalLabel: body.goalLabel ?? "Conversões",
+    metaAccessToken
   });
 
   if (!preview.ok) {

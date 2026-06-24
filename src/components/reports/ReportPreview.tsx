@@ -18,6 +18,7 @@ import {
 } from "recharts";
 
 import { CreativesRankingView } from "@/components/creatives/CreativesRankingView";
+import { ReportAudienceBreakdown } from "@/components/reports/ReportAudienceBreakdown";
 import type { ReportCreativeGroup } from "@/lib/report-creatives-performance";
 import { ReportHighlightCard } from "@/components/reports/ReportHighlightCard";
 import { Badge } from "@/components/ui/Badge";
@@ -406,6 +407,10 @@ export function ReportPreview({
           <p className="mt-6 text-center text-sm text-[var(--text-dim)]">{t("noCampaignData")}</p>
         )}
       </section>
+
+      {data.breakdowns?.length ? (
+        <ReportAudienceBreakdown sections={data.breakdowns} locale={locale} isPrint={isPrint} />
+      ) : null}
 
       <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4 report-print-avoid-break`}>
         <div className="text-sm font-semibold text-[var(--text-main)]">{t("goalResultsTitle")}</div>

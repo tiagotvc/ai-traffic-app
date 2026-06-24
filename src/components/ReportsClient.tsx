@@ -275,6 +275,7 @@ export function ReportsClient() {
           icon={<FileText size={14} />}
           label={t("reportTypeLabel")}
           placeholder={t("typeSimple")}
+          clearable={false}
           options={[
             { value: "simple", label: t("typeSimple") },
             { value: "complete", label: t("typeComplete") }
