@@ -159,6 +159,26 @@
   table-layout: fixed !important;
 }
 
+.report-breakdown-grid--edit .react-resizable-handle {
+  opacity: 1;
+}
+
+.report-breakdown-grid .react-grid-item {
+  transition: none;
+}
+
+.report-breakdown-grid--edit .react-grid-item {
+  transition: box-shadow 0.15s ease;
+}
+
+.report-print-root .report-breakdown-grid {
+  min-height: 0 !important;
+}
+
+.report-print-root .report-breakdown-grid-inner {
+  min-height: 0 !important;
+}
+
 .report-print-root [data-report-creatives-grid],
 .report-print-root .report-creatives-grid {
   display: grid !important;
