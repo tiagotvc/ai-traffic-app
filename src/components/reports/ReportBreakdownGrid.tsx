@@ -14,7 +14,7 @@ import type { ReportBreakdownLayoutItem } from "@/lib/report-breakdown-layout";
 import {
   BREAKDOWN_GRID_COLS,
   BREAKDOWN_GRID_ROW_HEIGHT,
-  estimateBreakdownCardGridH
+  fitBreakdownLayoutToContent
 } from "@/lib/report-breakdown-layout";
 import type { ReportBreakdownSection, ReportBreakdownType } from "@/lib/report-breakdown-data";
 import { cn } from "@/lib/cn";
@@ -30,18 +30,13 @@ function ReportBreakdownPrintGrid({
   sections: ReportBreakdownSection[];
   renderCard: (type: ReportBreakdownType) => ReactNode;
 }) {
-  const rowCountByType = useMemo(
-    () => new Map(sections.map((s) => [s.type, s.rows.length])),
-    [sections]
-  );
-
   const fittedLayout = useMemo(
     () =>
-      layout.map((item) => ({
-        ...item,
-        h: estimateBreakdownCardGridH(rowCountByType.get(item.id) ?? 1)
-      })),
-    [layout, rowCountByType]
+      fitBreakdownLayoutToContent(
+        sections.map((s) => ({ type: s.type, rows: s.rows })),
+        layout
+      ),
+    [layout, sections]
   );
 
   const gridRows = useMemo(

@@ -11,9 +11,9 @@ export type ReportBreakdownLayoutItem = {
 const STORAGE_KEY = "orion-report-breakdown-layout";
 
 const DEFAULT_BY_TYPE: Record<ReportBreakdownType, Omit<ReportBreakdownLayoutItem, "id">> = {
-  gender: { x: 0, y: 0, w: 4, h: 4 },
-  age: { x: 4, y: 0, w: 4, h: 5 },
-  device: { x: 8, y: 0, w: 4, h: 4 }
+  gender: { x: 0, y: 0, w: 6, h: 4 },
+  age: { x: 0, y: 4, w: 12, h: 5 },
+  device: { x: 6, y: 0, w: 6, h: 4 }
 };
 
 export function defaultBreakdownLayout(types: ReportBreakdownType[]): ReportBreakdownLayoutItem[] {
@@ -90,22 +90,93 @@ export function parseBreakdownLayoutParam(raw: string | null | undefined): Repor
 export const BREAKDOWN_GRID_ROW_HEIGHT = 52;
 export const BREAKDOWN_GRID_COLS = 12;
 
-const CARD_CHROME_PX = 56;
-const CHART_PER_ROW_PX = 26;
-const TABLE_HEADER_PX = 28;
-const TABLE_PER_ROW_PX = 24;
-const CARD_PADDING_PX = 20;
+const CARD_CHROME_PX = 60;
+const CHART_PER_ROW_PX = 28;
+const TABLE_HEADER_PX = 30;
+const TABLE_PER_ROW_PX = 26;
+const CARD_PADDING_PX = 24;
+const HEIGHT_BUFFER_PX = 16;
 
 /** Altura em px estimada para caber gráfico + tabela sem scroll interno. */
 export function estimateBreakdownCardHeightPx(rowCount: number): number {
   const rows = Math.max(1, rowCount);
-  const chartPx = rows * CHART_PER_ROW_PX + 12;
+  const chartPx = rows * CHART_PER_ROW_PX + 16;
   const tablePx = TABLE_HEADER_PX + rows * TABLE_PER_ROW_PX;
-  return CARD_CHROME_PX + chartPx + tablePx + CARD_PADDING_PX;
+  return CARD_CHROME_PX + chartPx + tablePx + CARD_PADDING_PX + HEIGHT_BUFFER_PX;
 }
 
 export function estimateBreakdownCardGridH(rowCount: number): number {
   return Math.max(3, Math.ceil(estimateBreakdownCardHeightPx(rowCount) / BREAKDOWN_GRID_ROW_HEIGHT));
+}
+
+/** Gênero + dispositivo na linha de cima; faixa etária largura total abaixo. */
+export function normalizeBreakdownLayout(
+  types: ReportBreakdownType[],
+  layout: ReportBreakdownLayoutItem[]
+): ReportBreakdownLayoutItem[] {
+  const typeSet = new Set(types);
+  const items = layout.filter((item) => typeSet.has(item.id)).map((item) => ({ ...item }));
+
+  const hasGender = typeSet.has("gender");
+  const hasDevice = typeSet.has("device");
+  const hasAge = typeSet.has("age");
+  const hasTopRow = hasGender || hasDevice;
+
+  const gender = items.find((item) => item.id === "gender");
+  const device = items.find((item) => item.id === "device");
+  const age = items.find((item) => item.id === "age");
+
+  if (gender) {
+    gender.x = 0;
+    gender.y = 0;
+    gender.w = hasDevice ? 6 : BREAKDOWN_GRID_COLS;
+  }
+
+  if (device) {
+    device.x = hasGender ? 6 : 0;
+    device.y = 0;
+    device.w = hasGender ? 6 : BREAKDOWN_GRID_COLS;
+  }
+
+  if (age) {
+    age.x = 0;
+    age.w = BREAKDOWN_GRID_COLS;
+    if (hasTopRow) {
+      const topBottom = Math.max(
+        gender ? gender.y + gender.h : 0,
+        device ? device.y + device.h : 0
+      );
+      age.y = topBottom;
+    } else {
+      age.y = 0;
+    }
+  }
+
+  return items;
+}
+
+function placeAgeBelowTopRow(
+  types: ReportBreakdownType[],
+  layout: ReportBreakdownLayoutItem[]
+): ReportBreakdownLayoutItem[] {
+  const hasAge = types.includes("age");
+  const hasTopRow = types.includes("gender") || types.includes("device");
+  if (!hasAge || !hasTopRow) return layout;
+
+  const next = layout.map((item) => ({ ...item }));
+  const age = next.find((item) => item.id === "age");
+  if (!age) return next;
+
+  age.x = 0;
+  age.w = BREAKDOWN_GRID_COLS;
+  const topBottom = Math.max(
+    ...next
+      .filter((item) => item.id === "gender" || item.id === "device")
+      .map((item) => item.y + item.h),
+    0
+  );
+  age.y = topBottom;
+  return next;
 }
 
 function rectsOverlap(a: ReportBreakdownLayoutItem, b: ReportBreakdownLayoutItem): boolean {
@@ -146,5 +217,9 @@ export function fitBreakdownLayoutToContent(
   sections: Array<{ type: ReportBreakdownType; rows: unknown[] }>,
   layout: ReportBreakdownLayoutItem[]
 ): ReportBreakdownLayoutItem[] {
-  return reflowBreakdownLayoutY(layoutWithFittedHeights(sections, layout));
+  const types = sections.map((s) => s.type);
+  const normalized = normalizeBreakdownLayout(types, layout);
+  const withHeights = layoutWithFittedHeights(sections, normalized);
+  const positioned = placeAgeBelowTopRow(types, withHeights);
+  return reflowBreakdownLayoutY(positioned);
 }

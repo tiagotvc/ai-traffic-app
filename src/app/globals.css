@@ -908,3 +908,17 @@ h6,
 .leaflet-tooltip.geo-radius-tooltip::before {
   border-top-color: rgba(24, 119, 242, 0.35);
 }
+
+/* Relatórios — breakdown grid (preview no app) */
+.report-breakdown-grid .react-grid-item {
+  overflow: visible !important;
+}
+
+.report-breakdown-grid .react-grid-item > .react-resizable {
+  overflow: visible !important;
+}
+
+.report-breakdown-card--full .report-breakdown-table-wrap,
+.report-breakdown-card--full .report-breakdown-table {
+  width: 100%;
+}

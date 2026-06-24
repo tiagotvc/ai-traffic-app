@@ -64,11 +64,16 @@ function BreakdownCard({
     return Math.min(96, Math.max(48, longest * 5.5));
   }, [section.rows]);
 
-  const chartHeight = Math.max(72, section.rows.length * 26 + 12);
-  const maxBarSize = Math.max(10, Math.min(18, Math.floor(chartHeight / Math.max(section.rows.length, 1)) - 4));
+  const chartHeight = Math.max(72, section.rows.length * 28 + 16);
+  const maxBarSize = Math.max(10, Math.min(20, Math.floor(chartHeight / Math.max(section.rows.length, 1)) - 4));
+  const isFullWidth = section.type === "age";
 
   return (
-    <div className="report-breakdown-card ui-card overflow-visible p-3">
+    <div
+      className={`report-breakdown-card ui-card overflow-visible p-3 ${
+        isFullWidth ? "report-breakdown-card--full" : ""
+      }`}
+    >
       <div>
         <div className="text-sm font-semibold text-[var(--text-main)]">{t(titleKey)}</div>
         <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{t("breakdownSpendShareHint")}</p>

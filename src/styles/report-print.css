@@ -172,6 +172,15 @@
   overflow: visible !important;
 }
 
+.report-breakdown-card--full .report-breakdown-table-wrap {
+  width: 100%;
+}
+
+.report-breakdown-card--full .report-breakdown-table {
+  table-layout: auto;
+  width: 100%;
+}
+
 .report-breakdown-grid--edit .react-grid-item {
   transition: box-shadow 0.15s ease;
 }

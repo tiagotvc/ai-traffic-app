@@ -172,7 +172,7 @@ export function ReportPreview({
   const sectionClass = isPrint ? "report-print-section report-pdf-section" : "report-pdf-section";
 
   return (
-    <div id={rootId} className={`${rootClass} ${isPrint ? "overflow-visible" : "overflow-hidden"}`}>
+    <div id={rootId} className={`${rootClass} overflow-visible`}>
       <div className={`report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4 ${isPrint ? "report-print-avoid-break" : ""}`}>
         <div>
           <div className="text-xs font-medium text-[var(--text-dim)]">
