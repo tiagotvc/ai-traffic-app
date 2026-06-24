@@ -4,7 +4,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
-import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
+import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
+import { periodStateToQuery, PeriodFilter, type PeriodState } from "@/components/PeriodFilter";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { ReportMetricPicker } from "@/components/reports/ReportMetricPicker";
 import { ReportPreview } from "@/components/reports/ReportPreview";
@@ -13,7 +14,17 @@ import { DEFAULT_REPORT_METRICS, type ReportPreviewPayload } from "@/lib/report-
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import { clearReportPdfCaptureState } from "@/lib/export-report-pdf";
-import { BarChart3, ExternalLink, FileText, RotateCcw } from "lucide-react";
+import {
+  loadReportKpiOrder,
+  mergeReportKpiOrder,
+  saveReportKpiOrder
+} from "@/lib/report-kpi-order";
+import {
+  loadReportBreakdownLayout,
+  mergeBreakdownLayout,
+  serializeBreakdownLayout
+} from "@/lib/report-breakdown-layout";
+import { BarChart2, BarChart3, Building2, ExternalLink, FileText } from "lucide-react";
 
 import { DsPageHeader } from "@/design-system";
 
@@ -48,9 +59,12 @@ export function ReportsClient() {
   const t = useTranslations("reports");
   const tCommon = useTranslations("common");
   const tMetrics = useTranslations("metrics");
+  const tDashboard = useTranslations("dashboard");
   const locale = useLocale();
   const strip = useCommandStripOptional();
   const [isPending, startTransition] = useTransition();
+
+  useCommandStripPage({ hideFilters: true, hideSync: true });
 
   const clientSlug = strip?.clientFilter ?? "";
   const adAccountId = strip?.accountFilter ?? "";
@@ -58,6 +72,8 @@ export function ReportsClient() {
 
   const [reportType, setReportType] = useState<"simple" | "complete">("simple");
   const [selectedMetrics, setSelectedMetrics] = useState<MetricKey[]>(DEFAULT_REPORT_METRICS);
+  const [kpiOrder, setKpiOrder] = useState<MetricKey[]>([]);
+  const [kpiEditMode, setKpiEditMode] = useState(false);
   const [preview, setPreview] = useState<ReportPreviewPayload | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -77,7 +93,20 @@ export function ReportsClient() {
 
   useEffect(() => {
     clearReportPdfCaptureState();
+    setKpiOrder(loadReportKpiOrder());
   }, []);
+
+  const kpiMetrics = useMemo(
+    () => mergeReportKpiOrder(selectedMetrics, kpiOrder),
+    [selectedMetrics, kpiOrder]
+  );
+
+  function handleKpiReorder(order: MetricKey[]) {
+    const rest = selectedMetrics.filter((k) => !order.includes(k));
+    const next = [...order, ...rest];
+    setKpiOrder(next);
+    saveReportKpiOrder(next);
+  }
 
   useEffect(() => {
     if (!strip || strip.clientFilter || !strip.clientOptions[0]) return;
@@ -162,7 +191,12 @@ export function ReportsClient() {
     }
     qs.set("type", reportType);
     qs.set("locale", locale);
-    qs.set("metrics", selectedMetrics.join(","));
+    qs.set("metrics", kpiMetrics.join(","));
+    if (preview.breakdowns?.length) {
+      const types = preview.breakdowns.map((b) => b.type);
+      const layout = mergeBreakdownLayout(types, loadReportBreakdownLayout());
+      qs.set("breakdownLayout", serializeBreakdownLayout(layout));
+    }
     if (adAccountId) qs.set("adAccountId", adAccountId);
     const goalMetric =
       selectedMetrics.includes("messages") ? "messages" : preview.client.goalMetric;
@@ -176,8 +210,10 @@ export function ReportsClient() {
     period.until,
     reportType,
     locale,
-    selectedMetrics,
+    kpiMetrics,
     adAccountId,
+    selectedMetrics,
+    preview?.client.goalMetric,
     tMetrics
   ]);
 
@@ -270,29 +306,47 @@ export function ReportsClient() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterSelectDropdown
-          icon={<FileText size={14} />}
-          label={t("reportTypeLabel")}
-          placeholder={t("typeSimple")}
-          options={[
-            { value: "simple", label: t("typeSimple") },
-            { value: "complete", label: t("typeComplete") }
-          ]}
-          value={reportType}
-          onChange={(v) => setReportType((v || "simple") as "simple" | "complete")}
-        />
-        <ReportMetricPicker selected={selectedMetrics} onChange={setSelectedMetrics} compact />
-        <button
-          type="button"
-          onClick={() => setSelectedMetrics(DEFAULT_REPORT_METRICS)}
-          className="flex items-center gap-1 rounded-lg border px-2.5 py-2 text-[11px] font-medium text-[var(--text-dim)] transition hover:text-[var(--amber)]"
-          style={{ borderColor: "var(--border-color)", background: "var(--filter-btn-bg)" }}
-          title={t("metricsReset")}
-        >
-          <RotateCcw size={12} />
-          {t("metricsReset")}
-        </button>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {strip ? (
+            <>
+              <FilterSelectDropdown
+                icon={<Building2 size={14} />}
+                label={tDashboard("filterClient")}
+                placeholder={tDashboard("filterAllClients")}
+                value={strip.clientFilter}
+                onChange={strip.setClientFilter}
+                options={strip.clientOptions.map((c) => ({ value: c.slug, label: c.name }))}
+              />
+              <FilterSelectDropdown
+                icon={<BarChart2 size={14} />}
+                label={tDashboard("filterAccount")}
+                placeholder={t("allAdAccounts")}
+                value={strip.accountFilter}
+                onChange={strip.setAccountFilter}
+                disabled={!strip.clientFilter && strip.adAccounts.length === 0}
+                options={strip.adAccounts.map((a) => ({ value: a.id, label: a.label }))}
+              />
+              <PeriodFilter value={period} onChange={strip.setPeriod} variant="commandStrip" />
+            </>
+          ) : null}
+          <FilterSelectDropdown
+            icon={<FileText size={14} />}
+            label={t("reportTypeLabel")}
+            placeholder={t("typeSimple")}
+            clearable={false}
+            options={[
+              { value: "simple", label: t("typeSimple") },
+              { value: "complete", label: t("typeComplete") }
+            ]}
+            value={reportType}
+            onChange={(v) => setReportType((v || "simple") as "simple" | "complete")}
+          />
+        </div>
+
+        <div className="ui-card p-3 sm:p-4">
+          <ReportMetricPicker selected={selectedMetrics} onChange={setSelectedMetrics} />
+        </div>
       </div>
 
       {previewError ? <p className="text-xs text-rose-600">{previewError}</p> : null}
@@ -310,6 +364,10 @@ export function ReportsClient() {
             <ReportPreview
               data={preview}
               selectedMetrics={selectedMetrics}
+              kpiMetrics={kpiMetrics}
+              kpiEditMode={kpiEditMode}
+              onKpiEditModeChange={setKpiEditMode}
+              onKpiReorder={handleKpiReorder}
               reportType={reportType}
               periodQuery={periodQuery}
               adAccountId={adAccountId || undefined}

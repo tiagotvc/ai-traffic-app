@@ -86,7 +86,9 @@ export const TargetingItemSchema = z.object({
       kind: z.string().optional(),
       bucket: z.string().optional(),
       radius: z.number().optional(),
-      distanceUnit: z.enum(["mile", "kilometer"]).optional()
+      distanceUnit: z.enum(["mile", "kilometer"]).optional(),
+      latitude: z.number().optional(),
+      longitude: z.number().optional()
     })
     .optional()
 });
@@ -146,6 +148,10 @@ export const AdDraftItemSchema = z.object({
   callToAction: z.string().default(""),
   whatsappWelcomeMessage: z.string().nullable().default(null),
   messageTemplate: MessageTemplateDraftSchema.nullable().default(null),
+  /** Meta ad creative id — when reuseMetaCreative is true, publish links this creative instead of creating a new post. */
+  metaCreativeId: z.string().nullable().default(null),
+  sourceMetaAdId: z.string().nullable().default(null),
+  reuseMetaCreative: z.boolean().default(false),
   targetAdsetIds: z.array(z.string()).default(["__all__"]),
   tracking: z.object({
     websiteEvents: z.boolean().default(false),
@@ -301,6 +307,9 @@ export function defaultAdItem(locale: string, name?: string): AdDraftItem {
     callToAction: "",
     whatsappWelcomeMessage: null,
     messageTemplate: null,
+    metaCreativeId: null,
+    sourceMetaAdId: null,
+    reuseMetaCreative: false,
     targetAdsetIds: ["__all__"],
     tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
   };
@@ -510,6 +519,71 @@ export function resolveAdTargetAdsets(d: CampaignDraftPayload, ad: AdDraftItem):
   return d.adsets.filter((a) => ad.targetAdsetIds.includes(a.id));
 }
 
+export function usesReusedMetaCreative(ad: AdDraftItem): boolean {
+  return Boolean(ad.reuseMetaCreative && ad.metaCreativeId?.trim());
+}
+
+export function isMapPinLocation(loc: TargetingItem): boolean {
+  return loc.meta?.type === "custom_location";
+}
+
+export function isMetaGeoLocation(loc: TargetingItem): boolean {
+  return !isMapPinLocation(loc);
+}
+
+export function createMapPinLocation(
+  lat: number,
+  lng: number,
+  label: string,
+  radiusKm = 5
+): TargetingItem {
+  const value = `custom_${lat.toFixed(5)}_${lng.toFixed(5)}_${Date.now()}`;
+  return {
+    value,
+    label,
+    meta: {
+      type: "custom_location",
+      latitude: lat,
+      longitude: lng,
+      radius: radiusKm,
+      distanceUnit: "kilometer"
+    }
+  };
+}
+
+export function mapPinCoords(loc: TargetingItem): { lat: number; lng: number } | null {
+  if (!isMapPinLocation(loc)) return null;
+  const lat = loc.meta?.latitude;
+  const lng = loc.meta?.longitude;
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return null;
+  return { lat, lng };
+}
+
+/** Reused Meta creatives are static; dynamic-creative ad sets require dynamic creatives (Meta 1885702). */
+export function effectiveAdsetDynamicCreative(
+  d: CampaignDraftPayload,
+  adset: AdSetDraftItem
+): boolean {
+  if (!adset.dynamicCreative) return false;
+  const hasReusedCreative = d.ads.some(
+    (ad) => usesReusedMetaCreative(ad) && resolveAdTargetAdsets(d, ad).some((s) => s.id === adset.id)
+  );
+  return !hasReusedCreative;
+}
+
+export function adsForAdset(d: CampaignDraftPayload, adsetId: string): AdDraftItem[] {
+  return d.ads.filter((ad) => resolveAdTargetAdsets(d, ad).some((s) => s.id === adsetId));
+}
+
+export function adsetsWithReuseCreativeCompatibility(
+  d: CampaignDraftPayload,
+  ad: AdDraftItem
+): AdSetDraftItem[] {
+  if (!usesReusedMetaCreative(ad)) return d.adsets;
+  const targetIds = new Set(resolveAdTargetAdsets(d, ad).map((s) => s.id));
+  return d.adsets.map((s) => (targetIds.has(s.id) ? { ...s, dynamicCreative: false } : s));
+}
+
 export function countPublishEntities(d: CampaignDraftPayload): {
   adsets: number;
   ads: number;
@@ -638,6 +712,17 @@ export function draftTargetingToApi(t: DraftTargeting) {
       radius: l.meta?.radius,
       distanceUnit: l.meta?.distanceUnit
     }));
+  const customLocations = t.locations
+    .filter((l) => isMapPinLocation(l) && mapPinCoords(l))
+    .map((l) => {
+      const coords = mapPinCoords(l)!;
+      return {
+        latitude: coords.lat,
+        longitude: coords.lng,
+        radius: l.meta?.radius ?? 5,
+        distanceUnit: l.meta?.distanceUnit ?? ("kilometer" as const)
+      };
+    });
   const genders = t.gender === "male" ? [1] : t.gender === "female" ? [2] : undefined;
   const locales = t.locales.map((l) => Number(l.value)).filter((n) => !Number.isNaN(n));
 
@@ -666,6 +751,7 @@ export function draftTargetingToApi(t: DraftTargeting) {
   return {
     countries: countries.length ? countries : undefined,
     cities: cities.length ? cities : undefined,
+    customLocations: customLocations.length ? customLocations : undefined,
     ageMin: t.ageMin,
     ageMax: t.ageMax,
     genders,
@@ -750,8 +836,12 @@ export function validateAdStep(d: CampaignDraftPayload): string | null {
   for (const ad of d.ads) {
     if (!ad.name.trim()) return "adNameRequired";
     if (!ad.pageId.trim()) return "pageRequired";
-    const creativeErr = validateAdCreativeForMeta(ad);
-    if (creativeErr) return creativeErr;
+    if (usesReusedMetaCreative(ad)) {
+      if (!ad.metaCreativeId?.trim()) return "metaCreativeRequired";
+    } else {
+      const creativeErr = validateAdCreativeForMeta(ad);
+      if (creativeErr) return creativeErr;
+    }
     if (d.objective === "leads" && ad.destinationType === "instant_form") {
       if (!ad.leadFormId) return "leadFormRequired";
     } else if (ad.destinationType === "whatsapp" || ad.destinationType === "instant_form") {

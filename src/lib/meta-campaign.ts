@@ -1,6 +1,6 @@
 import type { ClientMetaSettings } from "@/db/entities/ClientMetaSettings";
 import type { AdDraftItem, AdSetDraftItem, CampaignDraftPayload } from "@/lib/campaign-draft";
-import { defaultConversionEventForObjective, draftTargetingToApi, resolveAdTargetAdsets } from "@/lib/campaign-draft";
+import { defaultConversionEventForObjective, draftTargetingToApi, adsForAdset, resolveAdTargetAdsets, usesReusedMetaCreative } from "@/lib/campaign-draft";
 import { defaultPlacements, placementsToMetaTargeting } from "@/lib/campaign-placements";
 import { composeAdLinkUrl, defaultUtm, type UtmTokenContext } from "@/lib/campaign-utm";
 import { buildMetaAssetFeedSpec } from "@/lib/meta-ad-creative";
@@ -41,6 +41,12 @@ export type LegacyObjectiveKey = "leads" | "sales" | "traffic";
 export type CampaignTargetingInput = {
   countries?: string[];
   cities?: { key: string; radius?: number; distanceUnit?: "mile" | "kilometer" }[];
+  customLocations?: Array<{
+    latitude: number;
+    longitude: number;
+    radius?: number;
+    distanceUnit?: "mile" | "kilometer";
+  }>;
   ageMin?: number;
   ageMax?: number;
   genders?: number[];
@@ -117,8 +123,13 @@ function normalizeAdAccountId(id: string) {
 /** Meta error 1815857: CBO campaigns need bid_strategy on the campaign; ABO on the ad set. */
 const META_BID_STRATEGY_AUTOMATIC = "LOWEST_COST_WITHOUT_CAP";
 
-function applyAdsetPublishFields(adsetBody: Record<string, string>, adset: AdSetDraftItem) {
-  adsetBody.is_dynamic_creative = adset.dynamicCreative ? "true" : "false";
+function applyAdsetPublishFields(
+  adsetBody: Record<string, string>,
+  adset: AdSetDraftItem,
+  adsInAdset: AdDraftItem[]
+) {
+  const hasReusedCreative = adsInAdset.some(usesReusedMetaCreative);
+  adsetBody.is_dynamic_creative = adset.dynamicCreative && !hasReusedCreative ? "true" : "false";
 }
 
 function applyAuctionBidStrategy(
@@ -151,8 +162,17 @@ function buildTargetingFromInput(t: CampaignTargetingInput): Record<string, unkn
       distance_unit: c.distanceUnit ?? "kilometer"
     }));
   }
+  if (t.customLocations?.length) {
+    geo.custom_locations = t.customLocations.map((c) => ({
+      latitude: c.latitude,
+      longitude: c.longitude,
+      radius: c.radius ?? 5,
+      distance_unit: c.distanceUnit ?? "kilometer"
+    }));
+  }
+  const hasGeo = Object.keys(geo).length > 0;
   const targeting: Record<string, unknown> = {
-    geo_locations: Object.keys(geo).length ? geo : { countries: ["BR"] },
+    geo_locations: hasGeo ? geo : { countries: ["BR"] },
     age_min: t.ageMin ?? 18,
     age_max: t.ageMax ?? 65
   };
@@ -294,58 +314,69 @@ async function createAdForAdset(args: {
   cta: string;
   settings?: ClientMetaSettings;
   allowedInstagramActorIds?: string[];
-}): Promise<{ adId: string; creativeId: string }> {
+}): Promise<{ adId: string; creativeId: string; reusedCreative: boolean }> {
   const { ad, objective, pageId, linkUrl, cta, settings, token, actId, campaignName, adsetId, adName, allowedInstagramActorIds = [] } =
     args;
 
-  const baseLink =
-    ad.destinationType === "instant_form" && ad.leadFormId
-      ? linkUrl || "https://www.facebook.com"
-      : ad.linkUrl.trim() || linkUrl;
-  const utmCtx: UtmTokenContext = {
-    campaignName,
-    adsetName: args.adset.name,
-    adName
-  };
-  const resolvedLink = composeAdLinkUrl(baseLink, ad.utm, ad.urlParams, utmCtx);
+  const reuseId = ad.reuseMetaCreative && ad.metaCreativeId?.trim() ? ad.metaCreativeId.trim() : null;
 
-  const resolvedCta =
-    ad.callToAction.trim() ||
-    (ad.destinationType === "whatsapp"
-      ? "WHATSAPP_MESSAGE"
-      : objective === "leads" && ad.destinationType === "instant_form"
-        ? "SIGN_UP"
-        : cta);
+  let creativeId: string;
+  let reusedCreative = false;
 
-  const assetFeedSpec = buildMetaAssetFeedSpec({
-    ad,
-    resolvedLink,
-    resolvedCta
-  });
+  if (reuseId) {
+    creativeId = reuseId;
+    reusedCreative = true;
+  } else {
+    const baseLink =
+      ad.destinationType === "instant_form" && ad.leadFormId
+        ? linkUrl || "https://www.facebook.com"
+        : ad.linkUrl.trim() || linkUrl;
+    const utmCtx: UtmTokenContext = {
+      campaignName,
+      adsetName: args.adset.name,
+      adName
+    };
+    const resolvedLink = composeAdLinkUrl(baseLink, ad.utm, ad.urlParams, utmCtx);
 
-  const instagramId = pickInstagramActorId(
-    [ad.instagramActorId, settings?.instagramActorId],
-    allowedInstagramActorIds
-  );
-  const objectStory: Record<string, unknown> = { page_id: pageId };
-  if (instagramId) objectStory.instagram_actor_id = instagramId;
-  const welcome = buildPageWelcomeMessage(ad);
-  if (welcome) objectStory.page_welcome_message = welcome;
+    const resolvedCta =
+      ad.callToAction.trim() ||
+      (ad.destinationType === "whatsapp"
+        ? "WHATSAPP_MESSAGE"
+        : objective === "leads" && ad.destinationType === "instant_form"
+          ? "SIGN_UP"
+          : cta);
 
-  const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
-    name: `${campaignName} — ${adName} Creative`,
-    object_story_spec: JSON.stringify(objectStory),
-    asset_feed_spec: JSON.stringify(assetFeedSpec)
-  });
+    const assetFeedSpec = buildMetaAssetFeedSpec({
+      ad,
+      resolvedLink,
+      resolvedCta
+    });
+
+    const instagramId = pickInstagramActorId(
+      [ad.instagramActorId, settings?.instagramActorId],
+      allowedInstagramActorIds
+    );
+    const objectStory: Record<string, unknown> = { page_id: pageId };
+    if (instagramId) objectStory.instagram_actor_id = instagramId;
+    const welcome = buildPageWelcomeMessage(ad);
+    if (welcome) objectStory.page_welcome_message = welcome;
+
+    const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
+      name: `${campaignName} — ${adName} Creative`,
+      object_story_spec: JSON.stringify(objectStory),
+      asset_feed_spec: JSON.stringify(assetFeedSpec)
+    });
+    creativeId = creative.id;
+  }
 
   const metaAd = await metaPost<{ id: string }>(`/${actId}/ads`, token, {
     name: adName,
     adset_id: adsetId,
-    creative: JSON.stringify({ creative_id: creative.id }),
+    creative: JSON.stringify({ creative_id: creativeId }),
     status: "PAUSED"
   });
 
-  return { adId: metaAd.id, creativeId: creative.id };
+  return { adId: metaAd.id, creativeId, reusedCreative };
 }
 
 export async function publishAdToAdset(
@@ -446,7 +477,7 @@ export async function publishAdsetToCampaign(input: {
 
   const promoted = buildPromotedObject(objective, input.ad, input.adset, input.pageId, settings);
   if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
-  applyAdsetPublishFields(adsetBody, input.adset);
+  applyAdsetPublishFields(adsetBody, input.adset, [input.ad]);
 
   const metaAdset = await metaPost<{ id: string }>(`/${actId}/adsets`, token, adsetBody);
 
@@ -555,7 +586,7 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
 
     const promoted = buildPromotedObject(objective, primaryAd, adset, pageId, settings);
     if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
-    applyAdsetPublishFields(adsetBody, adset);
+    applyAdsetPublishFields(adsetBody, adset, adsForAdset(draft, adset.id));
 
     input.onProgress?.({
       phase: "adset",
@@ -721,6 +752,9 @@ export async function createFullMetaCampaign(
         callToAction: input.callToAction ?? "",
         whatsappWelcomeMessage: null,
         messageTemplate: null,
+        metaCreativeId: null,
+        sourceMetaAdId: null,
+        reuseMetaCreative: false,
         utm: defaultUtm(),
         targetAdsetIds: ["__all__"],
         tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }

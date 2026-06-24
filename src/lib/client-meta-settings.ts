@@ -114,6 +114,10 @@ export type ClientMetaSettingsPatch = Partial<{
     content?: string;
     term?: string;
   } | null;
+  commercialAddress: string | null;
+  commercialAddressNormalized: string | null;
+  commercialLatitude: number | null;
+  commercialLongitude: number | null;
 }>;
 
 export async function patchClientMetaSettings(
@@ -166,6 +170,14 @@ export async function patchClientMetaSettings(
     ...(patch.defaultDashboardMetrics !== undefined && { defaultDashboardMetrics: patch.defaultDashboardMetrics }),
     ...(patch.defaultClientMetric !== undefined && { defaultClientMetric: patch.defaultClientMetric }),
     ...(patch.defaultUtm !== undefined && { defaultUtm: patch.defaultUtm }),
+    ...(patch.commercialAddress !== undefined && {
+      commercialAddress: patch.commercialAddress?.trim() || null
+    }),
+    ...(patch.commercialAddressNormalized !== undefined && {
+      commercialAddressNormalized: patch.commercialAddressNormalized?.trim() || null
+    }),
+    ...(patch.commercialLatitude !== undefined && { commercialLatitude: patch.commercialLatitude }),
+    ...(patch.commercialLongitude !== undefined && { commercialLongitude: patch.commercialLongitude }),
     updatedAt: new Date()
   });
 

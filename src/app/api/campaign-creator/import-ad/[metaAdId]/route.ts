@@ -24,7 +24,11 @@ export async function GET(
         fetchAdWithCreative(token, metaAdId),
         fetchAdCreativeCopy(token, metaAdId)
       ]);
-      const imported = buildImportedAdConfig(creativeData.creative, copy);
+      const imported = {
+        ...buildImportedAdConfig(creativeData.creative, copy),
+        metaCreativeId: creativeData.creative?.id ?? null,
+        sourceMetaAdId: metaAdId
+      };
       return NextResponse.json({
         ok: true,
         imported,

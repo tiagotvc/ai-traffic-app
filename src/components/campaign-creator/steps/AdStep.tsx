@@ -12,7 +12,7 @@ import { FormField } from "@/components/ui/FormField";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
-import { getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
+import { adsetsWithReuseCreativeCompatibility, getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
 
@@ -101,8 +101,26 @@ export function AdStep() {
   }
 
   function handleImport(imported: ImportedAdConfig, mode: "copy" | "media" | "all") {
-    patchAd(applyImportedToAd(ad, imported, mode));
+    updatePayload((p) => {
+      const nextAd = applyImportedToAd(ad, imported, mode);
+      const ads = p.ads.map((a) => (a.id === ad.id ? nextAd : a));
+      const draft = { ...p, ads };
+      return { ...p, ads, adsets: adsetsWithReuseCreativeCompatibility(draft, nextAd) };
+    });
     setCopyMode("manual");
+  }
+
+  function setReuseMetaCreative(reuse: boolean) {
+    updatePayload((p) => {
+      const nextAd = { ...ad, reuseMetaCreative: reuse };
+      const ads = p.ads.map((a) => (a.id === ad.id ? nextAd : a));
+      const draft = { ...p, ads };
+      return {
+        ...p,
+        ads,
+        adsets: reuse ? adsetsWithReuseCreativeCompatibility(draft, nextAd) : p.adsets
+      };
+    });
   }
 
   useEffect(() => {
@@ -310,6 +328,31 @@ export function AdStep() {
           onImport={handleImport}
         />
       </div>
+
+      {ad.metaCreativeId ? (
+        <div className="rounded-xl border border-amber-400/40 bg-amber-500/5 p-4 space-y-2">
+          <label className="flex cursor-pointer items-start gap-2">
+            <input
+              type="checkbox"
+              checked={ad.reuseMetaCreative}
+              onChange={(e) => setReuseMetaCreative(e.target.checked)}
+              className="mt-0.5"
+              disabled={clientRequired}
+            />
+            <span className="text-sm text-[var(--text-main)]">
+              <span className="font-medium">{t("reuseMetaCreativeLabel")}</span>
+              <span className="mt-1 block text-xs text-[var(--text-dim)]">{t("reuseMetaCreativeHint")}</span>
+              <span className="mt-1 block font-mono text-[10px] text-[var(--text-dimmer)]">
+                {t("reuseMetaCreativeId", { id: ad.metaCreativeId })}
+              </span>
+            </span>
+          </label>
+        </div>
+      ) : (
+        <p className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] px-4 py-3 text-xs text-[var(--text-dim)]">
+          {t("devModeCreativeNote")}
+        </p>
+      )}
 
       <FormField label={t("adName")}>
         <input

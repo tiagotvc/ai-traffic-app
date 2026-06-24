@@ -48,6 +48,8 @@ import { OrionPlanPricing_1735831500000 } from "./0045-OrionPlanPricing";
 import { DashboardLayoutSubtitle_1735831600000 } from "./0046-DashboardLayoutSubtitle";
 import { AlertSourceFields_1735831700000 } from "./0047-AlertSourceFields";
 import { DashboardLayoutClientView_1735831800000 } from "./0048-DashboardLayoutClientView";
+import { ClientCommercialAddress1735831600000 } from "./0046-ClientCommercialAddress";
+import { ClientCommercialAddressNormalized1735831700000 } from "./0047-ClientCommercialAddressNormalized";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -100,5 +102,7 @@ export const appMigrations = [
   OrionPlanPricing_1735831500000,
   DashboardLayoutSubtitle_1735831600000,
   AlertSourceFields_1735831700000,
-  DashboardLayoutClientView_1735831800000
+  DashboardLayoutClientView_1735831800000,
+  ClientCommercialAddress1735831600000,
+  ClientCommercialAddressNormalized1735831700000
 ];

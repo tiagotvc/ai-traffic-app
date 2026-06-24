@@ -854,7 +854,10 @@ export type MetaBreakdownInsightRow = MetaCampaignInsightRow & {
   gender?: string;
   region?: string;
   country?: string;
+  device_platform?: string;
 };
+
+export type InsightBreakdownType = "age" | "gender" | "region" | "device_platform";
 
 /** Insights with demographic breakdowns for AI audience suggestions. */
 export async function fetchInsightsWithBreakdowns(
@@ -864,13 +867,38 @@ export async function fetchInsightsWithBreakdowns(
   datePreset = "last_30d",
   level: "campaign" | "adset" = "campaign"
 ): Promise<MetaBreakdownInsightRow[]> {
+  return fetchInsightsWithBreakdownsForRange(
+    accessToken,
+    adAccountId,
+    breakdowns,
+    undefined,
+    undefined,
+    datePreset,
+    level
+  );
+}
+
+/** Insights with breakdowns for an arbitrary date range (reports, backfill). */
+export async function fetchInsightsWithBreakdownsForRange(
+  accessToken: string,
+  adAccountId: string,
+  breakdowns: InsightBreakdownType[],
+  since?: string,
+  until?: string,
+  datePreset = "last_30d",
+  level: "campaign" | "adset" = "campaign"
+): Promise<MetaBreakdownInsightRow[]> {
   const fields = [
     level === "campaign" ? "campaign_id" : "adset_id",
     level === "campaign" ? "campaign_name" : "adset_name",
-    ...INSIGHT_METRIC_FIELDS
+    ...INSIGHT_METRIC_FIELDS.filter((f) => f !== "date_start")
   ].join(",");
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
-  const path = `/${encodeURIComponent(act)}/insights?level=${level}&fields=${encodeURIComponent(fields)}&breakdowns=${breakdowns.join(",")}&date_preset=${datePreset}&limit=500`;
+  const rangeParam =
+    since && until
+      ? `&time_range=${encodeURIComponent(JSON.stringify({ since: since.slice(0, 10), until: until.slice(0, 10) }))}`
+      : `&date_preset=${datePreset}`;
+  const path = `/${encodeURIComponent(act)}/insights?level=${level}&fields=${encodeURIComponent(fields)}&breakdowns=${breakdowns.join(",")}${rangeParam}&limit=500`;
   return fetchGraphPaged<MetaBreakdownInsightRow>(path, accessToken);
 }
 

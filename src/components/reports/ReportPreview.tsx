@@ -19,6 +19,8 @@ import {
 
 import { CreativesRankingView } from "@/components/creatives/CreativesRankingView";
 import { PieLegend } from "@/components/charts/PieLegend";
+import { ReportAudienceBreakdown } from "@/components/reports/ReportAudienceBreakdown";
+import { ReportKpiGrid } from "@/components/reports/ReportKpiGrid";
 import type { ReportCreativeGroup } from "@/lib/report-creatives-performance";
 import { ReportHighlightCard } from "@/components/reports/ReportHighlightCard";
 import { Badge } from "@/components/ui/Badge";
@@ -26,7 +28,9 @@ import { ChartContainer } from "@/components/ui/ChartContainer";
 import { formatDayLabel, pctDelta } from "@/lib/dashboard-ranges";
 import { formatMetricValue, METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { formatBRL, formatPercent, titleCaseWords } from "@/lib/format";
+import type { ReportBreakdownLayoutItem } from "@/lib/report-breakdown-layout";
 import type { ReportPreviewPayload } from "@/lib/report-preview-types";
+import { Settings2 } from "lucide-react";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 const PIE_COLORS = ["#f5a623", "#7c3aed", "#10b981", "#6366f1", "#ec4899", "#0ea5e9", "#94a3b8"];
@@ -64,18 +68,28 @@ function ReportChartCard({
 export function ReportPreview({
   data,
   selectedMetrics,
+  kpiMetrics,
+  kpiEditMode = false,
+  onKpiEditModeChange,
+  onKpiReorder,
   reportType,
   periodQuery,
   adAccountId,
   initialCreativeGroups,
+  initialBreakdownLayout,
   variant = "preview"
 }: {
   data: ReportPreviewPayload;
   selectedMetrics: MetricKey[];
+  kpiMetrics?: MetricKey[];
+  kpiEditMode?: boolean;
+  onKpiEditModeChange?: (value: boolean) => void;
+  onKpiReorder?: (order: MetricKey[]) => void;
   reportType: "simple" | "complete";
   periodQuery: string;
   adAccountId?: string;
   initialCreativeGroups?: ReportCreativeGroup[];
+  initialBreakdownLayout?: ReportBreakdownLayoutItem[];
   variant?: "preview" | "print";
 }) {
   const t = useTranslations("reports");
@@ -90,6 +104,7 @@ export function ReportPreview({
 
   const chartData = spark;
   const chartMetrics = selectedMetrics.slice(0, 3);
+  const displayKpis = kpiMetrics ?? selectedMetrics.slice(0, 6);
   const vsLabel = t("vsPrevPeriod");
   const noPrev = t("noPrevData");
 
@@ -145,7 +160,7 @@ export function ReportPreview({
   const sectionClass = isPrint ? "report-print-section report-pdf-section" : "report-pdf-section";
 
   return (
-    <div id={rootId} className={`${rootClass} ${isPrint ? "overflow-visible" : "overflow-hidden"}`}>
+    <div id={rootId} className={`${rootClass} overflow-visible`}>
       <div className={`report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4 ${isPrint ? "report-print-avoid-break" : ""}`}>
         <div>
           <div className="text-xs font-medium text-[var(--text-dim)]">
@@ -172,23 +187,43 @@ export function ReportPreview({
         </div>
       </div>
 
-      <section className={`${sectionClass} report-pdf-grid-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3`}>
-        {selectedMetrics.slice(0, 6).map((key) => (
-          <ReportHighlightCard
-            key={key}
-            id={key}
-            label={tMetrics(METRIC_BY_KEY[key].label)}
-            value={formatMetricValue(key, data.summary[key] ?? 0, locale)}
-            delta={heroDelta(key)}
-            goodWhen={COST_METRICS.has(key) ? "neutral" : "up"}
-            data={spark}
-            dataKey={key}
-            color={METRIC_BY_KEY[key].color}
-            vsLabel={vsLabel}
-            noPrevLabel={noPrev}
-            locale={locale}
-          />
-        ))}
+      <section className={`${sectionClass}`}>
+        {!isPrint && onKpiEditModeChange ? (
+          <div className="no-print mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-[var(--text-dim)]">
+              {kpiEditMode ? t("kpiCustomizeHint") : null}
+            </p>
+            <button
+              type="button"
+              onClick={() => onKpiEditModeChange(!kpiEditMode)}
+              className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
+              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+            >
+              <Settings2 size={14} />
+              {kpiEditMode ? t("kpiCustomizeDone") : t("kpiCustomize")}
+            </button>
+          </div>
+        ) : null}
+        <ReportKpiGrid
+          metrics={displayKpis}
+          editMode={!isPrint && kpiEditMode}
+          onReorder={(order) => onKpiReorder?.(order)}
+          renderCard={(key) => (
+            <ReportHighlightCard
+              id={key}
+              label={tMetrics(METRIC_BY_KEY[key].label)}
+              value={formatMetricValue(key, data.summary[key] ?? 0, locale)}
+              delta={heroDelta(key)}
+              goodWhen={COST_METRICS.has(key) ? "neutral" : "up"}
+              data={spark}
+              dataKey={key}
+              color={METRIC_BY_KEY[key].color}
+              vsLabel={vsLabel}
+              noPrevLabel={noPrev}
+              locale={locale}
+            />
+          )}
+        />
       </section>
 
       <section className={`${sectionClass} ui-card overflow-hidden p-4 report-print-avoid-break`}>
@@ -394,6 +429,15 @@ export function ReportPreview({
           <p className="mt-6 text-center text-sm text-[var(--text-dim)]">{t("noCampaignData")}</p>
         )}
       </section>
+
+      {data.breakdowns?.length ? (
+        <ReportAudienceBreakdown
+          sections={data.breakdowns}
+          locale={locale}
+          isPrint={isPrint}
+          initialLayout={initialBreakdownLayout}
+        />
+      ) : null}
 
       <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4 report-print-avoid-break`}>
         <div className="text-sm font-semibold text-[var(--text-main)]">{t("goalResultsTitle")}</div>

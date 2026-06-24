@@ -30,6 +30,8 @@ export function ClientMetaExtras({
   const [defaultUtmCampaign, setDefaultUtmCampaign] = useState("");
   const [defaultUtmContent, setDefaultUtmContent] = useState("");
   const [defaultUtmTerm, setDefaultUtmTerm] = useState("");
+  const [commercialAddress, setCommercialAddress] = useState("");
+  const [commercialAddressNormalized, setCommercialAddressNormalized] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -55,6 +57,8 @@ export function ClientMetaExtras({
             setDefaultUtmContent(du.content ?? "");
             setDefaultUtmTerm(du.term ?? "");
           }
+          setCommercialAddress(s.commercialAddress ?? "");
+          setCommercialAddressNormalized(s.commercialAddressNormalized ?? null);
         }
         setTags((j.tags ?? []).join(", "));
       });
@@ -88,6 +92,7 @@ export function ClientMetaExtras({
             content: defaultUtmContent,
             term: defaultUtmTerm
           },
+          commercialAddress: commercialAddress.trim() || null,
           tags: tags
             .split(",")
             .map((x) => x.trim())
@@ -95,6 +100,18 @@ export function ClientMetaExtras({
         })
       });
       const j = await res.json();
+      if (j.ok) {
+        const resolved =
+          j.commercialAddressResolved ??
+          j.settings?.commercialAddressNormalized ??
+          null;
+        if (resolved) setCommercialAddressNormalized(resolved);
+        else if (!commercialAddress.trim()) setCommercialAddressNormalized(null);
+      }
+      if (j.ok && j.commercialGeocoded === false && commercialAddress.trim()) {
+        setMessage(t("commercialAddressGeocodeFailed"));
+        return;
+      }
       setMessage(j.ok ? t("metaExtrasSaved") : j.error);
     });
   };
@@ -132,6 +149,25 @@ export function ClientMetaExtras({
             </select>
           </div>
           <Field label={t("tags")} value={tags} onChange={setTags} placeholder="ecommerce, local" />
+        </div>
+        <div className="mt-3 rounded-xl border border-[var(--border-color)] p-3">
+          <div className="text-xs font-medium text-[var(--text-dim)]">{t("commercialAddressTitle")}</div>
+          <p className="mt-1 text-[11px] text-[var(--text-dimmer)]">{t("commercialAddressHint")}</p>
+          <textarea
+            value={commercialAddress}
+            onChange={(e) => {
+              setCommercialAddress(e.target.value);
+              setCommercialAddressNormalized(null);
+            }}
+            rows={2}
+            placeholder={t("commercialAddressPlaceholder")}
+            className="ui-input mt-2 w-full text-sm"
+          />
+          {commercialAddressNormalized ? (
+            <p className="mt-2 text-[11px] text-emerald-700 dark:text-emerald-400">
+              {t("commercialAddressResolved", { address: commercialAddressNormalized })}
+            </p>
+          ) : null}
         </div>
         <div className="mt-3 rounded-xl border border-[var(--border-color)] p-3">
           <div className="text-xs font-medium text-[var(--text-dim)]">{t("defaultUtmTitle")}</div>

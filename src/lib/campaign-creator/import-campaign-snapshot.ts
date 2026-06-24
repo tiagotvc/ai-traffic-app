@@ -111,7 +111,6 @@ export async function buildDraftPatchFromMetaCampaign(
         id: `imported_adset_${Date.now()}`,
         ...inheritedFromAdset,
         name: selectedAdset.name ?? "Conjunto importado",
-        dynamicCreative: true,
         schedule: { start: null, end: null },
         targeting: mapMetaTargetingToDraft(targeting),
         placements: mapPlacementsFromTargeting(targeting)
@@ -137,6 +136,9 @@ export async function buildDraftPatchFromMetaCampaign(
         whatsappWelcomeMessage: routing.whatsappWelcomeMessage,
         messageTemplate: routing.messageTemplate,
         utm: defaultUtm(),
+        metaCreativeId: creativeData?.creative?.id ?? null,
+        sourceMetaAdId: firstAd?.id ?? null,
+        reuseMetaCreative: Boolean(creativeData?.creative?.id),
         targetAdsetIds: ["__all__"],
         tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
       }

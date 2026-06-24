@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
@@ -8,12 +8,19 @@ import { AiAudienceTargetingPanel } from "@/components/campaign-creator/AiAudien
 import { AudiencePicker } from "@/components/campaign-creator/AudiencePicker";
 import { SavedTargetingPicker } from "@/components/campaign-creator/SavedTargetingPicker";
 import { AdSetBatchPanel } from "@/components/campaign-creator/AdSetBatchPanel";
-import { GeoRadiusMapPicker } from "@/components/campaign-creator/GeoRadiusMapPicker";
+import { GeoRadiusMapPicker, type MapViewport } from "@/components/campaign-creator/GeoRadiusMapPicker";
 import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
-import { getActiveAdset, defaultConversionEventForObjective } from "@/lib/campaign-draft";
+import {
+  getActiveAdset,
+  defaultConversionEventForObjective,
+  isMapPinLocation,
+  isMetaGeoLocation,
+  resolveAdTargetAdsets,
+  usesReusedMetaCreative
+} from "@/lib/campaign-draft";
 import type { DraftTargeting } from "@/lib/campaign-draft";
 import { defaultScheduleStartLocal } from "@/lib/campaign-placements";
 
@@ -28,6 +35,106 @@ export function AdSetStep() {
   const adset = getActiveAdset(payload);
   const targeting = adset.targeting;
   const clientRequired = !payload.clientSlug;
+  const dynamicCreativeLockedByReuse = payload.ads.some(
+    (ad) =>
+      usesReusedMetaCreative(ad) &&
+      resolveAdTargetAdsets(payload, ad).some((s) => s.id === adset.id)
+  );
+
+  const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
+  const [commercialLocation, setCommercialLocation] = useState<{
+    address: string | null;
+    normalized: string | null;
+    lat: number | null;
+    lng: number | null;
+  }>({ address: null, normalized: null, lat: null, lng: null });
+
+  const metaGeoLocations = useMemo(
+    () => targeting.locations.filter(isMetaGeoLocation),
+    [targeting.locations]
+  );
+
+  useEffect(() => {
+    if (!payload.clientSlug) {
+      setCommercialLocation({ address: null, normalized: null, lat: null, lng: null });
+      return;
+    }
+
+    function applySettings(s?: {
+      commercialAddress?: string | null;
+      commercialAddressNormalized?: string | null;
+      commercialLatitude?: number | null;
+      commercialLongitude?: number | null;
+    }) {
+      setCommercialLocation({
+        address: s?.commercialAddress ?? null,
+        normalized: s?.commercialAddressNormalized ?? null,
+        lat: s?.commercialLatitude ?? null,
+        lng: s?.commercialLongitude ?? null
+      });
+    }
+
+    fetch(`/api/clients/${encodeURIComponent(payload.clientSlug)}/meta-settings`)
+      .then((r) => r.json())
+      .then(
+        async (j: {
+          settings?: {
+            commercialAddress?: string | null;
+            commercialAddressNormalized?: string | null;
+            commercialLatitude?: number | null;
+            commercialLongitude?: number | null;
+          };
+        }) => {
+          const s = j.settings;
+          const address = s?.commercialAddress?.trim();
+          const needsGeocode =
+            address &&
+            (s?.commercialLatitude == null ||
+              s?.commercialLongitude == null ||
+              !s?.commercialAddressNormalized);
+
+          if (needsGeocode) {
+            const retry = await fetch(
+              `/api/clients/${encodeURIComponent(payload.clientSlug)}/meta-settings`,
+              {
+                method: "PATCH",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ commercialAddress: address })
+              }
+            )
+              .then((r) => r.json())
+              .catch(() => null);
+            if (retry?.settings) {
+              applySettings(retry.settings);
+              return;
+            }
+          }
+
+          applySettings(s);
+        }
+      )
+      .catch(() =>
+        setCommercialLocation({ address: null, normalized: null, lat: null, lng: null })
+      );
+  }, [payload.clientSlug]);
+
+  function centerOnCommercialAddress() {
+    if (commercialLocation.lat != null && commercialLocation.lng != null) {
+      setMapViewport({
+        center: [commercialLocation.lat, commercialLocation.lng],
+        zoom: 14
+      });
+      return;
+    }
+    setMapViewport(null);
+  }
+
+  const commercialCenterHint =
+    !commercialLocation.address?.trim()
+      ? t("commercialAddressMissing")
+      : commercialLocation.lat == null
+        ? t("commercialAddressGeocodeFailed")
+        : null;
 
   useEffect(() => {
     if (adset.schedule.start) return;
@@ -233,12 +340,14 @@ export function AdSetStep() {
           type="checkbox"
           checked={adset.dynamicCreative}
           onChange={(e) => patchAdset({ dynamicCreative: e.target.checked })}
-          disabled={clientRequired}
+          disabled={clientRequired || dynamicCreativeLockedByReuse}
           className="mt-0.5 accent-violet-600"
         />
         <span>
           <span className="font-medium text-[var(--text-main)]">{t("dynamicCreativeLabel")}</span>
-          <span className="mt-0.5 block text-xs text-[var(--text-dim)]">{t("dynamicCreativeHint")}</span>
+          <span className="mt-0.5 block text-xs text-[var(--text-dim)]">
+            {dynamicCreativeLockedByReuse ? t("dynamicCreativeDisabledReuse") : t("dynamicCreativeHint")}
+          </span>
         </span>
       </label>
 
@@ -282,20 +391,46 @@ export function AdSetStep() {
           {t("audienceOrDivider")}
         </p>
 
-        <FormField label={tAds("locations")}>
-          <MetaTargetingSelect
-            type="geo"
-            placeholder={tAds("locationsPlaceholder")}
-            selected={targeting.locations}
-            onAdd={(item) => patchTargeting({ locations: [...targeting.locations, item] })}
-            onRemove={(value) =>
-              patchTargeting({ locations: targeting.locations.filter((p) => p.value !== value) })
-            }
-          />
-        </FormField>
+        <div className="space-y-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-3">
+          <p className="text-xs font-semibold text-[var(--text-main)]">{t("metaGeoSectionTitle")}</p>
+          <p className="text-[11px] text-[var(--text-dim)]">{t("metaGeoSectionHint")}</p>
+          <FormField label={tAds("locations")}>
+            <MetaTargetingSelect
+              type="geo"
+              placeholder={tAds("locationsPlaceholder")}
+              selected={metaGeoLocations}
+              onAdd={(item) =>
+                patchTargeting({
+                  locations: [
+                    ...targeting.locations,
+                    {
+                      ...item,
+                      meta: {
+                        type: item.meta?.type ?? "city",
+                        countryCode: item.meta?.countryCode,
+                        kind: item.meta?.kind,
+                        radius: item.meta?.type === "city" || item.meta?.type === "region" ? 10 : undefined,
+                        distanceUnit:
+                          item.meta?.type === "city" || item.meta?.type === "region"
+                            ? "kilometer"
+                            : undefined
+                      }
+                    }
+                  ]
+                })
+              }
+              onRemove={(value) =>
+                patchTargeting({
+                  locations: targeting.locations.filter((p) => p.value !== value)
+                })
+              }
+              disabled={clientRequired}
+            />
+          </FormField>
+        </div>
 
         <GeoRadiusMapPicker
-          locations={targeting.locations}
+          pins={targeting.locations}
           onAdd={(item) => patchTargeting({ locations: [...targeting.locations, item] })}
           onRemove={(value) =>
             patchTargeting({ locations: targeting.locations.filter((p) => p.value !== value) })
@@ -303,12 +438,12 @@ export function AdSetStep() {
           onUpdateRadius={(value, radius) =>
             patchTargeting({
               locations: targeting.locations.map((l) =>
-                l.value === value
+                l.value === value && isMapPinLocation(l)
                   ? {
                       ...l,
                       meta: {
                         ...l.meta,
-                        type: l.meta?.type ?? "city",
+                        type: "custom_location",
                         radius,
                         distanceUnit: "kilometer"
                       }
@@ -317,6 +452,23 @@ export function AdSetStep() {
               )
             })
           }
+          viewport={mapViewport}
+          commercialMarker={
+            commercialLocation.lat != null && commercialLocation.lng != null
+              ? {
+                  lat: commercialLocation.lat,
+                  lng: commercialLocation.lng,
+                  label: commercialLocation.normalized ?? commercialLocation.address ?? undefined
+                }
+              : null
+          }
+          onCenterCommercial={centerOnCommercialAddress}
+          centerCommercialDisabled={
+            clientRequired ||
+            commercialLocation.lat == null ||
+            commercialLocation.lng == null
+          }
+          centerCommercialHint={commercialCenterHint}
         />
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
