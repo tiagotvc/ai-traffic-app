@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { getAppContext, getClientBySlugOrId, resolveClientIdForTenant } from "@/lib/app-context";
 import { buildClientWhatsappSummary } from "@/lib/report-generate";
 
 const BodySchema = z.object({
@@ -9,7 +9,7 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { tenant, defaultClient } = await getAppContext();
+  const { tenant } = await getAppContext();
   let body: z.infer<typeof BodySchema> = {};
   try {
     body = BodySchema.parse(await req.json().catch(() => ({})));
@@ -17,12 +17,22 @@ export async function POST(req: Request) {
     /* empty */
   }
 
-  const client =
+  const clientId =
     body.clientId != null
-      ? await getClientBySlugOrId(tenant.id, body.clientId)
-      : defaultClient;
+      ? await resolveClientIdForTenant(tenant.id, body.clientId)
+      : await resolveClientIdForTenant(tenant.id);
+  if (!clientId) {
+    return NextResponse.json(
+      { ok: false, error: "Cliente não encontrado. Cadastre um cliente primeiro." },
+      { status: 404 }
+    );
+  }
+  const client = await getClientBySlugOrId(tenant.id, clientId);
   if (!client) {
-    return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, error: "Cliente não encontrado. Cadastre um cliente primeiro." },
+      { status: 404 }
+    );
   }
 
   const text = await buildClientWhatsappSummary({ tenant, client });

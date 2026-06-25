@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
-import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { getAppContext, getClientBySlugOrId, resolveClientIdForTenant } from "@/lib/app-context";
 import { formatMetaGraphError } from "@/lib/meta-error";
 import { getMetaConnectionInfo } from "@/lib/meta-auth-store";
 import { enqueueTenantSync, SyncCooldownError, SyncNoAccountsError } from "@/lib/sync-queue";
@@ -14,7 +14,7 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { tenant, defaultClient, metaAccessToken, user } = await getAppContext();
+  const { tenant, metaAccessToken, user } = await getAppContext();
   const { auditLog: auditRepo } = await repositories();
 
   const metaConnection = await getMetaConnectionInfo(tenant.id, user.id);
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     await auditRepo.save(
       auditRepo.create({
         tenantId: tenant.id,
-        clientId: defaultClient.id,
+        clientId: null,
         kind: "SYNC",
         success: false,
         errorMessage: noMetaMsg
@@ -51,12 +51,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
     }
     clientId = client.id;
+  } else {
+    const resolved = await resolveClientIdForTenant(tenant.id);
+    if (!resolved) {
+      return NextResponse.json(
+        { ok: false, error: "Cadastre um cliente antes de sincronizar." },
+        { status: 400 }
+      );
+    }
+    clientId = resolved;
   }
 
   try {
     const run = await enqueueTenantSync({
       tenantId: tenant.id,
-      defaultClientId: defaultClient.id,
+      defaultClientId: clientId,
       metaAccessToken,
       manual: !body.auto,
       clientId,
@@ -67,7 +76,7 @@ export async function POST(req: Request) {
     await auditRepo.save(
       auditRepo.create({
         tenantId: tenant.id,
-        clientId: clientId ?? defaultClient.id,
+        clientId,
         kind: "SYNC",
         success: true,
         request: { syncRunId: run.id, accounts: run.accountsTotal, userId: user.id }
@@ -97,7 +106,7 @@ export async function POST(req: Request) {
       await auditRepo.save(
         auditRepo.create({
           tenantId: tenant.id,
-          clientId: clientId ?? defaultClient.id,
+          clientId,
           kind: "SYNC",
           success: false,
           errorMessage: err.message
@@ -112,7 +121,7 @@ export async function POST(req: Request) {
     await auditRepo.save(
       auditRepo.create({
         tenantId: tenant.id,
-        clientId: clientId ?? defaultClient.id,
+        clientId,
         kind: "SYNC",
         success: false,
         errorMessage: msg

@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       deleted.push(client.id);
     }
 
-    if (deleted.length) {
+    if (deleted.length > 0) {
       await invalidateClientsListCache(tenant.id);
     }
 

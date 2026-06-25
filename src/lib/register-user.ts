@@ -19,7 +19,7 @@ export async function registerUser(args: {
     return { ok: false, error: "INVALID_INPUT" };
   }
 
-  const { user: userRepo, tenant: tenantRepo, client: clientRepo } = await repositories();
+  const { user: userRepo, tenant: tenantRepo } = await repositories();
 
   const existing = await userRepo.findOne({ where: { email } });
   if (existing?.passwordHash) {
@@ -58,21 +58,6 @@ export async function registerUser(args: {
         passwordHash,
         termsAcceptedAt,
         termsAcceptedVersion
-      })
-    );
-  }
-
-  const defaultClient = await clientRepo.findOne({
-    where: { tenantId: tenant.id, name: "Default" }
-  });
-  if (!defaultClient) {
-    await clientRepo.save(
-      clientRepo.create({
-        tenantId: tenant.id,
-        name: "Default",
-        aiContext: {
-          note: "Cliente padrão criado automaticamente no MVP."
-        }
       })
     );
   }

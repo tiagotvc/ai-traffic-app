@@ -27,6 +27,12 @@ export async function GET() {
 
 export async function POST() {
   const { tenant, defaultClient } = await getAppContext();
+  if (!defaultClient) {
+    return NextResponse.json(
+      { ok: false, error: "Cadastre um cliente antes de gerar recomendações." },
+      { status: 400 }
+    );
+  }
 
   try {
     const { assertLimit } = await import("@/lib/billing/entitlements");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { Building2, Check, Megaphone, Search, Sparkles, User } from "lucide-react";
 
 import { Link, useRouter } from "@/i18n/navigation";
@@ -24,9 +25,12 @@ export function ClientsCreateContentLive() {
   const tW = useTranslations("clientsHub.createWizard");
   const locale = useLocale();
   const router = useRouter();
-  const w = useCreateClientWizard(locale);
+  const searchParams = useSearchParams();
+  const metaConnected = searchParams.get("metaConnected") === "1";
+  const w = useCreateClientWizard(locale, { metaConnected });
 
   function onCreated() {
+    window.dispatchEvent(new Event("traffic:campaigns-reload"));
     router.push("/clients");
     router.refresh();
   }
