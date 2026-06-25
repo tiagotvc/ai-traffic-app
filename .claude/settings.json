@@ -5,7 +5,8 @@
       "Bash(node -e \"require\\('./messages/pt-BR.json'\\);require\\('./messages/en.json'\\);console.log\\('JSON ok'\\)\")",
       "Bash(command -v chromium-cli)",
       "Bash(command -v chromium-cli playwright)",
-      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1)"
+      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1 | Select-String -Pattern \"\\\\.tsx?\\\\\\(\" | Where-Object { $_ -notmatch \"report-pdf-puppeteer\" })"
     ]
   }
 }

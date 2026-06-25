@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { BillingCycleToggle } from "@/components/billing/BillingCycleToggle";
 import {
   BillingBackLink,
-  ContactPlanCard,
   PlanCard,
   type PlanCardData
 } from "@/components/billing/PlanLimitsCard";
@@ -14,14 +13,11 @@ import { BillingPlansSkeleton } from "@/components/billing/BillingSkeletons";
 import {
   ensureMarketingPaidPlans,
   mergePlanWithOfficialPricing,
-  ORION_OFFICIAL_BRL_CENTS
+  resolveMarketingVitrinePlans
 } from "@/lib/marketing/orion-plan-catalog";
 import { isBrBillingMode } from "@/lib/billing/currency";
 import { YEARLY_DISCOUNT_PERCENT } from "@/lib/billing/pricing";
 import { Link } from "@/i18n/navigation";
-
-/** Planos exibidos na vitrine de marketing (Free vira trial; "Personalizado" é um card de contato). */
-const VITRINE_SLUGS = ["individual", "advanced", "agency"] as const;
 
 export function BillingPlansClient({
   variant = "portal",
@@ -30,7 +26,7 @@ export function BillingPlansClient({
 }: {
   variant?: "portal" | "marketing";
   compact?: boolean;
-  /** @deprecated mantido por compatibilidade; a vitrine de marketing usa grid de 4 cards. */
+  /** @deprecated mantido por compatibilidade; a vitrine de marketing usa grid de 3 cards. */
   layout?: "grid" | "slider";
 }) {
   const t = useTranslations("billingPage");
@@ -54,18 +50,14 @@ export function BillingPlansClient({
       .finally(() => setLoading(false));
   }, []);
 
-  // Marketing: Individual + Advanced + Agency (sem Free, sem -pro) + card "Personalizado".
-  const marketingPlans = VITRINE_SLUGS.map((slug) => plans.find((p) => p.slug === slug)).filter(
-    (p): p is PlanCardData => Boolean(p) && Boolean(ORION_OFFICIAL_BRL_CENTS[p!.slug])
-  );
-  const displayPlans = isMarketing ? marketingPlans : plans;
+  const displayPlans = isMarketing ? resolveMarketingVitrinePlans(plans) : plans;
 
   if (loading) {
     return <BillingPlansSkeleton />;
   }
 
   return (
-    <div className={`mx-auto max-w-6xl space-y-8 pb-4 ${isMarketing ? "px-0" : ""}`}>
+    <div className={`mx-auto max-w-6xl space-y-8 pb-4 ${isMarketing ? "space-y-10 px-0" : ""}`}>
       {!isMarketing ? <BillingBackLink href="/billing" /> : null}
 
       {!isMarketing ? (
@@ -85,21 +77,22 @@ export function BillingPlansClient({
         </p>
       ) : null}
 
-      <div
-        className={`grid items-stretch gap-5 ${
-          isMarketing ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-2 xl:grid-cols-4"
-        }`}
-      >
-        {displayPlans.map((p) => (
-          <PlanCard
-            key={p.id}
-            plan={p}
-            cycle={cycle}
-            featured={p.slug === "advanced"}
-            variant={variant}
-          />
-        ))}
-        {isMarketing ? <ContactPlanCard variant="marketing" /> : null}
+      <div className={isMarketing ? "pt-4" : undefined}>
+        <div
+          className={`grid items-stretch gap-5 ${
+            isMarketing ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2 xl:grid-cols-4"
+          }`}
+        >
+          {displayPlans.map((p) => (
+            <PlanCard
+              key={p.id}
+              plan={p}
+              cycle={cycle}
+              featured={p.slug === "advanced"}
+              variant={variant}
+            />
+          ))}
+        </div>
       </div>
 
       <p

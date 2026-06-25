@@ -322,6 +322,41 @@ function PerformanceChartBody({
   const lineWidth = strokeWeightToPx(visual?.lineStrokeWidth, 2.5);
   const barSize = barThicknessToSize(visual?.barThickness);
 
+  // Eixo Y duplo automático: quando há 2+ métricas com escalas muito diferentes,
+  // a 1ª fica no eixo esquerdo e as que destoarem por um fator grande vão pro direito.
+  // Assim uma métrica de magnitude alta (ex.: Alcance) não esmaga uma de magnitude
+  // baixa (ex.: Cliques), que ficaria colada no zero numa escala única.
+  const DUAL_AXIS_RATIO = 8;
+  const metricMagnitude = (key: MetricKey) => {
+    let max = 0;
+    for (const point of data) {
+      const v = Number(point[key]);
+      if (Number.isFinite(v)) max = Math.max(max, Math.abs(v));
+    }
+    return max;
+  };
+  const explicitRightAxis = activeMetrics.some((key) => visual?.yAxisSide?.[key] === "right");
+  const autoRightAxis = (() => {
+    if (explicitRightAxis || activeMetrics.length < 2) return new Set<MetricKey>();
+    const baseKey = activeMetrics[0];
+    const baseMag = metricMagnitude(baseKey);
+    if (baseMag <= 0) return new Set<MetricKey>();
+    const right = new Set<MetricKey>();
+    for (let i = 1; i < activeMetrics.length; i += 1) {
+      const key = activeMetrics[i];
+      const mag = metricMagnitude(key);
+      if (mag <= 0) continue;
+      const ratio = mag > baseMag ? mag / baseMag : baseMag / mag;
+      if (ratio >= DUAL_AXIS_RATIO) right.add(key);
+    }
+    return right;
+  })();
+  const axisSideFor = (key: MetricKey): "left" | "right" => {
+    if (visual?.yAxisSide?.[key] === "right") return "right";
+    return autoRightAxis.has(key) ? "right" : "left";
+  };
+  const hasRightAxis = explicitRightAxis || autoRightAxis.size > 0;
+
   if (chartStyle === "pareto" || chartStyle === "bullet" || chartStyle === "boxplot") {
     const metric = activeMetrics[0] ?? "spend";
     const series = data.map((p) => ({ day: p.label, ...p }));
@@ -410,12 +445,23 @@ function PerformanceChartBody({
   );
   const yAxis = (
     <YAxis
+      yAxisId="left"
       width={compactAxis ? 36 : 44}
       tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 10 }}
       axisLine={false}
       tickLine={false}
     />
   );
+  const rightYAxis = hasRightAxis ? (
+    <YAxis
+      yAxisId="right"
+      orientation="right"
+      width={compactAxis ? 36 : 44}
+      tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 10 }}
+      axisLine={false}
+      tickLine={false}
+    />
+  ) : null;
 
   if (chartStyle === "pie" || chartStyle === "donut") {
     const last = data[data.length - 1];
@@ -516,28 +562,16 @@ function PerformanceChartBody({
   }
 
   if (chartStyle === "composed") {
-    const hasRightAxis = activeMetrics.some(
-      (key) => visual?.yAxisSide?.[key] === "right"
-    );
     return (
       <ComposedChart {...axisProps}>
         {grid}
         {xAxis}
         {yAxis}
-        {hasRightAxis ? (
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            width={44}
-            tick={premiumAxisTick(visual?.textColor)}
-            axisLine={false}
-            tickLine={false}
-          />
-        ) : null}
+        {rightYAxis}
         {tooltip}
         {activeMetrics.map((key, index) => {
           const style = visual?.seriesStyles?.[key] ?? defaultSeriesStyle(index);
-          const yAxisId = visual?.yAxisSide?.[key] === "right" ? "right" : "left";
+          const yAxisId = axisSideFor(key);
           const color = colorFor(key);
           if (style === "bar") {
             return (
@@ -606,12 +640,14 @@ function PerformanceChartBody({
           <>
             {xAxis}
             {yAxis}
+            {rightYAxis}
           </>
         )}
         {tooltip}
         {activeMetrics.map((key) => (
           <Bar
             key={key}
+            yAxisId={horizontalBars ? undefined : axisSideFor(key)}
             dataKey={key}
             fill={colorFor(key)}
             barSize={barSize}
@@ -628,10 +664,12 @@ function PerformanceChartBody({
         {grid}
         {xAxis}
         {yAxis}
+        {rightYAxis}
         {tooltip}
         {activeMetrics.map((key) => (
           <Line
             key={key}
+            yAxisId={axisSideFor(key)}
             type="monotone"
             dataKey={key}
             stroke={colorFor(key)}
@@ -658,10 +696,12 @@ function PerformanceChartBody({
       {grid}
       {xAxis}
       {yAxis}
+      {rightYAxis}
       {tooltip}
       {activeMetrics.map((key) => (
         <Area
           key={key}
+          yAxisId={axisSideFor(key)}
           type="monotone"
           dataKey={key}
           stroke={colorFor(key)}

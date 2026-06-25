@@ -1,10 +1,10 @@
 import {
   BarChart3,
+  BellRing,
   Brain,
   FileText,
   LayoutDashboard,
-  Sparkles,
-  Zap
+  Megaphone
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
@@ -13,8 +13,8 @@ const CAPS = [
   { key: "cap2", icon: BarChart3, accent: "from-amber-500/20 to-orange-500/10 text-amber-300" },
   { key: "cap3", icon: Brain, accent: "from-violet-500/20 to-purple-500/10 text-violet-300" },
   { key: "cap4", icon: FileText, accent: "from-emerald-500/20 to-teal-500/10 text-emerald-300" },
-  { key: "cap5", icon: Zap, accent: "from-amber-500/20 to-yellow-500/10 text-amber-300" },
-  { key: "cap6", icon: Sparkles, accent: "from-indigo-500/20 to-violet-500/10 text-indigo-300" }
+  { key: "cap5", icon: BellRing, accent: "from-amber-500/20 to-yellow-500/10 text-amber-300" },
+  { key: "cap6", icon: Megaphone, accent: "from-indigo-500/20 to-violet-500/10 text-indigo-300" }
 ] as const;
 
 export async function LandingCapabilities() {

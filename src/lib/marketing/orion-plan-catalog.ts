@@ -21,7 +21,11 @@ export const MARKETING_PAID_PLAN_SLUGS = [
   "agency-pro"
 ] as const;
 
+/** Planos exibidos na landing, comparativo de stack e vitrine de marketing (lançamento). */
+export const MARKETING_VITRINE_SLUGS = ["basic", "advanced", "agency"] as const;
+
 export type MarketingPlanSlug = (typeof MARKETING_PAID_PLAN_SLUGS)[number];
+export type MarketingVitrineSlug = (typeof MARKETING_VITRINE_SLUGS)[number];
 
 export type MarketingPlanRow = {
   id: string;
@@ -142,4 +146,14 @@ export function ensureMarketingPaidPlans<T extends MarketingPlanRow>(plans: T[])
   return [...bySlug.values()].sort(
     (a, b) => order.indexOf(a.slug) - order.indexOf(b.slug) || a.slug.localeCompare(b.slug)
   );
+}
+
+/** Resolve os 3 planos da vitrine (Individual, Advanced, Agency) com fallback oficial. */
+export function resolveMarketingVitrinePlans<T extends MarketingPlanRow>(plans: T[]): T[] {
+  const bySlug = new Map(plans.map((p) => [p.slug, mergePlanWithOfficialPricing(p) as T]));
+  return MARKETING_VITRINE_SLUGS.map((slug) => {
+    const fromApi = bySlug.get(slug);
+    if (fromApi) return fromApi;
+    return buildMarketingPlanFallback(slug) as T;
+  });
 }

@@ -24,7 +24,7 @@ import {
 import { calculateCheckoutPricing, formatMoney } from "@/lib/billing/pricing";
 import {
   buildMarketingPlanFallback,
-  MARKETING_PAID_PLAN_SLUGS,
+  MARKETING_VITRINE_SLUGS,
   mergePlanWithOfficialPricing,
   type MarketingPlanRow
 } from "@/lib/marketing/orion-plan-catalog";
@@ -50,10 +50,10 @@ export function StackCostComparison({ className }: { className?: string }) {
       .then((r) => r.json())
       .then((j) => {
         const apiPlans = ((j.plans ?? []) as MarketingPlanRow[]).filter((p) =>
-          MARKETING_PAID_PLAN_SLUGS.includes(p.slug as (typeof MARKETING_PAID_PLAN_SLUGS)[number])
+          MARKETING_VITRINE_SLUGS.includes(p.slug as (typeof MARKETING_VITRINE_SLUGS)[number])
         );
 
-        const merged = MARKETING_PAID_PLAN_SLUGS.map((slug) => {
+        const merged = MARKETING_VITRINE_SLUGS.map((slug) => {
           const fromApi = apiPlans.find((p) => p.slug === slug);
           if (fromApi) return mergePlanWithOfficialPricing(fromApi);
           return buildMarketingPlanFallback(slug);
@@ -62,7 +62,7 @@ export function StackCostComparison({ className }: { className?: string }) {
         setPlans(merged);
       })
       .catch(() => {
-        setPlans(MARKETING_PAID_PLAN_SLUGS.map((slug) => buildMarketingPlanFallback(slug)));
+        setPlans(MARKETING_VITRINE_SLUGS.map((slug) => buildMarketingPlanFallback(slug)));
       });
   }, []);
 
@@ -137,13 +137,13 @@ export function StackCostComparison({ className }: { className?: string }) {
           </p>
         </div>
 
-        <div className="mb-6 flex flex-col items-center gap-4">
+        <div className="mb-6 flex w-full flex-col items-center gap-10">
           <BillingCycleToggle cycle={cycle} onChange={setCycle} variant="marketing" />
           <MarketingPlanStackPicker
             plans={
               plans.length
                 ? plans
-                : MARKETING_PAID_PLAN_SLUGS.map((s) => buildMarketingPlanFallback(s))
+                : MARKETING_VITRINE_SLUGS.map((s) => buildMarketingPlanFallback(s))
             }
             cycle={cycle}
             selectedSlug={selectedSlug}

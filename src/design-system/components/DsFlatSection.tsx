@@ -47,7 +47,7 @@ export function DsFlatSection({
       {eyebrow || title ? (
         <div
           className={cn(
-            actions && "flex flex-wrap items-start justify-between gap-3"
+            actions ? "flex flex-wrap items-start justify-between gap-3" : undefined
           )}
         >
           <div className="min-w-0">
