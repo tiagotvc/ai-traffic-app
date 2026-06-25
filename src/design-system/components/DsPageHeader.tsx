@@ -30,10 +30,7 @@ export function DsPageHeader({
         ) : null}
         <div className="flex items-center gap-2">
           {titleIcon ? (
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-              style={{ background: "rgba(245,166,35,0.15)", color: "var(--amber)" }}
-            >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
               {titleIcon}
             </div>
           ) : null}

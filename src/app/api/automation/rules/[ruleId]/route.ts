@@ -9,7 +9,7 @@ const PatchSchema = z.object({
   enabled: z.boolean().optional(),
   condition: z
     .object({
-      metric: z.enum(["cpl", "spend", "conversions", "roas"]),
+      metric: z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas"]),
       op: z.enum(["gt", "lt", "gte"]),
       value: z.number(),
       minSpend: z.number().optional()

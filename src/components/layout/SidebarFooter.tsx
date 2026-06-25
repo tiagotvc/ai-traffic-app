@@ -8,6 +8,7 @@ import { SidebarUserBlock } from "@/components/layout/SidebarUxChrome";
 
 export function SidebarFooter({
   userName,
+  userEmail,
   planName,
   subscriptionStatus,
   collapsed,
@@ -16,6 +17,7 @@ export function SidebarFooter({
   mobileFullScreen = false
 }: {
   userName: string;
+  userEmail?: string;
   planName?: string;
   subscriptionStatus?: string;
   collapsed: boolean;
@@ -49,9 +51,11 @@ export function SidebarFooter({
     <div className="relative shrink-0" style={{ background: "#0a0f14" }}>
       <SidebarUserBlock
         userName={userName}
+        userEmail={userEmail}
         subtitle={userSubtitle}
         collapsed={collapsed}
         isPlatformAdmin={isPlatformAdmin}
+        planName={planName}
         onNavigate={onNavigate}
         onSignOut={signOut}
         signingOut={signingOut}

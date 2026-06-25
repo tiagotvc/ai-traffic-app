@@ -9,14 +9,20 @@ import { cn } from "@/lib/cn";
 export function MetaSyncButton({
   clientFilter,
   className,
-  size = 16
+  size = 16,
+  label,
+  variant = "prominent"
 }: {
   clientFilter?: string;
   className?: string;
   size?: number;
+  label?: string;
+  /** `toolbar` — ícone discreto; `prominent` — CTA com accent temático. */
+  variant?: "toolbar" | "prominent";
 }) {
   const tSync = useTranslations("sync");
   const [syncing, startSync] = useTransition();
+  const aria = syncing ? tSync("syncing") : label ?? tSync("syncMeta");
 
   function handleSync() {
     if (syncing) return;
@@ -32,24 +38,41 @@ export function MetaSyncButton({
     });
   }
 
+  if (variant === "toolbar") {
+    return (
+      <button
+        type="button"
+        onClick={handleSync}
+        disabled={syncing}
+        title={aria}
+        aria-label={aria}
+        className={cn(
+          "ui-toolbar-icon-btn text-[var(--ui-accent)]",
+          syncing && "cursor-wait opacity-70",
+          className
+        )}
+      >
+        <RefreshCw size={size} className={cn("shrink-0", syncing && "animate-spin")} />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={handleSync}
       disabled={syncing}
-      title={syncing ? tSync("syncing") : tSync("syncMeta")}
-      aria-label={syncing ? tSync("syncing") : tSync("syncMeta")}
+      title={aria}
+      aria-label={aria}
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-md transition-all duration-200",
-        syncing ? "cursor-wait opacity-70" : "hover:brightness-110 active:scale-95",
+        "ui-btn-accent h-9 shrink-0 font-heading text-sm font-semibold",
+        label ? "gap-1.5 px-2.5 text-[11px]" : "w-9 justify-center",
+        syncing ? "cursor-wait opacity-70" : "active:scale-95",
         className
       )}
-      style={{
-        background: "linear-gradient(135deg, #f5a623, #e8920d)",
-        color: "#0f1419"
-      }}
     >
-      <RefreshCw size={size} className={cn(syncing && "animate-spin")} />
+      <RefreshCw size={size} className={cn("shrink-0", syncing && "animate-spin")} />
+      {label ? <span className="max-w-[88px] truncate whitespace-nowrap">{label}</span> : null}
     </button>
   );
 }

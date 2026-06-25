@@ -6,11 +6,13 @@ import { rebuildClientDna } from "@/lib/agency-brain/dna-builder";
 import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
 
 export async function PATCH(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ clientId: string; learningId: string }> }
 ) {
   try {
     const { clientId, learningId } = await params;
+    const body = (await req.json().catch(() => ({}))) as { force?: boolean };
+    const forceApprove = body.force === true;
     const { tenant } = await getAppContext();
     const client = await getClientBySlugOrId(tenant.id, clientId);
     if (!client) {
@@ -23,7 +25,7 @@ export async function PATCH(
     }
 
     const score = existing.confidenceScore ?? 0;
-    if (score < 50) {
+    if (score < 50 && !forceApprove) {
       return NextResponse.json(
         {
           ok: false,

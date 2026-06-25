@@ -10,14 +10,20 @@ export type DashboardSectionKey =
   | "secondaryMetrics"
   | "chart"
   | "alerts"
+  | "ageBreakdown"
   | "agencyHealth";
 
 export type DashboardSections = Record<DashboardSectionKey, boolean>;
+
+export type ChartPanelSize = "compact" | "default" | "tall";
 
 export type DashboardLayoutPrefs = {
   sections: DashboardSections;
   /** Empty = use campaign preset defaults. */
   heroMetrics: MetricKey[];
+  /** Custom section order; missing keys append defaults at the end. */
+  sectionOrder: DashboardSectionKey[];
+  chartSize: ChartPanelSize;
 };
 
 export const DASHBOARD_SECTION_KEYS: DashboardSectionKey[] = [
@@ -26,6 +32,30 @@ export const DASHBOARD_SECTION_KEYS: DashboardSectionKey[] = [
   "secondaryMetrics",
   "chart",
   "alerts",
+  "ageBreakdown",
+  "agencyHealth"
+];
+
+/**
+ * Seções oferecidas na personalização do dashboard (v1).
+ * "alerts" e "agencyHealth" foram removidas do dashboard e ficam reservadas
+ * apenas para reuso no módulo Visão; por isso não aparecem aqui.
+ */
+export const DASHBOARD_AVAILABLE_SECTION_KEYS: DashboardSectionKey[] = [
+  "brainShelf",
+  "heroKpis",
+  "secondaryMetrics",
+  "chart",
+  "ageBreakdown"
+];
+
+export const DEFAULT_DASHBOARD_SECTION_ORDER: DashboardSectionKey[] = [
+  "brainShelf",
+  "heroKpis",
+  "secondaryMetrics",
+  "chart",
+  "alerts",
+  "ageBreakdown",
   "agencyHealth"
 ];
 
@@ -35,15 +65,48 @@ export const DEFAULT_DASHBOARD_SECTIONS: DashboardSections = {
   secondaryMetrics: true,
   chart: true,
   alerts: true,
+  ageBreakdown: true,
   agencyHealth: true
 };
 
 export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutPrefs = {
   sections: { ...DEFAULT_DASHBOARD_SECTIONS },
-  heroMetrics: []
+  heroMetrics: [],
+  sectionOrder: [...DEFAULT_DASHBOARD_SECTION_ORDER],
+  chartSize: "default"
 };
 
 export const MAX_HERO_METRICS = 3;
+
+export const CHART_PANEL_MIN_HEIGHT: Record<ChartPanelSize, number> = {
+  compact: 300,
+  default: 380,
+  tall: 480
+};
+
+export function normalizeSectionOrder(raw: unknown): DashboardSectionKey[] {
+  if (!Array.isArray(raw)) return [...DEFAULT_DASHBOARD_SECTION_ORDER];
+  const valid = raw.filter(
+    (key): key is DashboardSectionKey =>
+      typeof key === "string" && DASHBOARD_SECTION_KEYS.includes(key as DashboardSectionKey)
+  );
+  const seen = new Set<DashboardSectionKey>();
+  const ordered: DashboardSectionKey[] = [];
+  for (const key of valid) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    ordered.push(key);
+  }
+  for (const key of DEFAULT_DASHBOARD_SECTION_ORDER) {
+    if (!seen.has(key)) ordered.push(key);
+  }
+  return ordered;
+}
+
+export function normalizeChartPanelSize(raw: unknown): ChartPanelSize {
+  if (raw === "compact" || raw === "tall" || raw === "default") return raw;
+  return "default";
+}
 
 export function normalizeDashboardHeroMetrics(raw: unknown): MetricKey[] {
   if (!Array.isArray(raw)) return [];
@@ -54,7 +117,14 @@ export function normalizeDashboardHeroMetrics(raw: unknown): MetricKey[] {
 }
 
 export function normalizeDashboardLayout(raw: unknown): DashboardLayoutPrefs {
-  if (!raw || typeof raw !== "object") return { ...DEFAULT_DASHBOARD_LAYOUT, sections: { ...DEFAULT_DASHBOARD_SECTIONS } };
+  if (!raw || typeof raw !== "object") {
+    return {
+      sections: { ...DEFAULT_DASHBOARD_SECTIONS },
+      heroMetrics: [],
+      sectionOrder: [...DEFAULT_DASHBOARD_SECTION_ORDER],
+      chartSize: "default"
+    };
+  }
 
   const obj = raw as Record<string, unknown>;
   const sectionsRaw = obj.sections;
@@ -69,7 +139,9 @@ export function normalizeDashboardLayout(raw: unknown): DashboardLayoutPrefs {
 
   return {
     sections,
-    heroMetrics: normalizeDashboardHeroMetrics(obj.heroMetrics)
+    heroMetrics: normalizeDashboardHeroMetrics(obj.heroMetrics),
+    sectionOrder: normalizeSectionOrder(obj.sectionOrder),
+    chartSize: normalizeChartPanelSize(obj.chartSize)
   };
 }
 
@@ -79,6 +151,10 @@ export function resolveHeroMetricKeys(
 ): MetricKey[] {
   if (userHeroMetrics.length > 0) return userHeroMetrics.slice(0, MAX_HERO_METRICS);
   return presetHeroMetrics.slice(0, MAX_HERO_METRICS);
+}
+
+export function resolveVisibleSectionOrder(layout: DashboardLayoutPrefs): DashboardSectionKey[] {
+  return layout.sectionOrder.filter((key) => layout.sections[key]);
 }
 
 export { DEFAULT_DASHBOARD_CHART_METRICS };

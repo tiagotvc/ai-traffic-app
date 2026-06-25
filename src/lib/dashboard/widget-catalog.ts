@@ -61,10 +61,17 @@ export type WidgetInstanceDto = {
 export type LayoutDto = {
   id: string;
   name: string;
+  subtitle: string | null;
   slug: string;
   isDefault: boolean;
   icon: string | null;
   sortOrder: number;
+  clientId: string | null;
+  clientName: string | null;
+  clientSlug: string | null;
+  published: boolean;
+  publishedAt: string | null;
+  viewToken: string | null;
   widgets: WidgetInstanceDto[];
 };
 
@@ -100,6 +107,8 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     titleKey: "brainLearnings",
     category: "ai",
     size: "sm",
+    minW: 3,
+    maxW: 12,
     minH: 1,
     defaultH: 1,
     defaultW: 12,
@@ -128,7 +137,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     minW: 3,
     maxW: 12,
     minH: 1,
-    defaultH: 1,
+    defaultH: 2,
     defaultW: 8,
     dataSource: "metricPrism",
     component: "QuickPillsWidget"
@@ -139,7 +148,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     category: "metrics",
     size: "xs",
     minW: 2,
-    maxW: 6,
+    maxW: 12,
     minH: 2,
     defaultH: 3,
     defaultW: 3,
@@ -160,6 +169,18 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     dataSource: "taskbar",
     component: "TaskbarWidget",
     defaultConfig: { orientation: "horizontal", slots: [] }
+  }),
+  def({
+    type: "analytics.ageBreakdown",
+    titleKey: "ageBreakdownChart",
+    category: "charts",
+    size: "lg",
+    minH: 4,
+    defaultH: 5,
+    defaultW: 12,
+    dataSource: "ageBreakdown",
+    component: "AgeBreakdownWidget",
+    defaultConfig: {}
   }),
   def({
     type: "chart.performance",
@@ -183,6 +204,25 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     dataSource: "alertsFeed",
     component: "AlertsFeedWidget",
     defaultConfig: { density: "stacked" },
+    embeddedChrome: true
+  }),
+  def({
+    type: "alerts.card",
+    titleKey: "alertsCard",
+    category: "alerts",
+    size: "lg",
+    minW: 3,
+    maxW: 12,
+    minH: 2,
+    defaultH: 4,
+    defaultW: 12,
+    dataSource: "alertCard",
+    component: "AlertCardWidget",
+    defaultConfig: {
+      source: { kind: "goal", alertType: "ROAS_BELOW_MIN" },
+      template: "metric_threshold",
+      visual: { theme: "auto", icon: "alert", layout: "auto" }
+    },
     embeddedChrome: true
   }),
   def({
@@ -236,7 +276,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
       category: "metrics",
       size: "xs",
       minW: 2,
-      maxW: 6,
+      maxW: 12,
       minH: 2,
       defaultH: 3,
       defaultW: 3,
@@ -373,7 +413,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
   def({
     type: "advanced.scatter",
     titleKey: "scatterPlot",
-    category: "premium",
+    category: "advanced",
     size: "lg",
     minH: 3,
     defaultH: 4,
@@ -386,7 +426,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
   def({
     type: "advanced.heatmap",
     titleKey: "heatmap",
-    category: "premium",
+    category: "advanced",
     size: "lg",
     minH: 3,
     defaultH: 4,
@@ -399,7 +439,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
   def({
     type: "advanced.radar",
     titleKey: "radarChart",
-    category: "premium",
+    category: "advanced",
     size: "lg",
     minH: 3,
     defaultH: 4,
@@ -416,7 +456,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
   def({
     type: "advanced.pareto",
     titleKey: "paretoChart",
-    category: "premium",
+    category: "advanced",
     size: "lg",
     minH: 3,
     defaultH: 4,
@@ -429,7 +469,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
   def({
     type: "premium.bullet",
     titleKey: "bulletChart",
-    category: "premium",
+    category: "advanced",
     size: "md",
     minH: 2,
     defaultH: 2,
@@ -442,7 +482,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
   def({
     type: "advanced.boxplot",
     titleKey: "boxPlotChart",
-    category: "premium",
+    category: "advanced",
     size: "lg",
     minH: 3,
     defaultH: 4,
@@ -455,7 +495,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
   def({
     type: "ai.correlation",
     titleKey: "aiCorrelation",
-    category: "premium",
+    category: "advanced",
     size: "lg",
     minH: 3,
     defaultH: 4,
@@ -469,7 +509,7 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
   def({
     type: "premium.multiChart",
     titleKey: "premiumMultiChart",
-    category: "premium",
+    category: "advanced",
     size: "xl",
     minH: 4,
     defaultH: 5,
@@ -484,9 +524,104 @@ export const WIDGET_CATALOG: DashboardWidgetDefinition[] = [
     }
   }),
   def({
+    type: "app.analyze",
+    titleKey: "appAnalyze",
+    category: "metrics",
+    size: "lg",
+    minW: 4,
+    maxW: 12,
+    minH: 3,
+    defaultH: 4,
+    defaultW: 6,
+    dataSource: "performanceChart",
+    component: "AnalyzeBlockWidget",
+    defaultConfig: {
+      metricKeys: ["spend"],
+      periodPreset: "last7",
+      comparePreviousPeriod: true,
+      displayMode: "both",
+      chartStyle: "area",
+      chartMetrics: ["spend"],
+      showLegend: true,
+      legendPosition: "bottom"
+    }
+  }),
+  def({
+    type: "app.goal",
+    titleKey: "appGoal",
+    category: "metrics",
+    size: "md",
+    minW: 3,
+    maxW: 6,
+    minH: 2,
+    defaultH: 3,
+    defaultW: 4,
+    dataSource: "summary",
+    component: "GoalBlockWidget",
+    defaultConfig: {
+      metricKey: "spend",
+      operator: "lte",
+      targetValue: 10000,
+      periodPreset: "last7",
+      alertAtPercent: 80,
+      pulseAtLimit: true,
+      showSparkline: true
+    }
+  }),
+  def({
+    type: "app.table",
+    titleKey: "appTable",
+    category: "clients",
+    size: "xl",
+    minW: 6,
+    maxW: 12,
+    minH: 4,
+    defaultH: 6,
+    defaultW: 12,
+    dataSource: "clients",
+    component: "TableBlockWidget",
+    defaultConfig: {
+      entity: "clients",
+      columns: ["spend", "roas", "cpa", "conversions"],
+      sortColumn: "roas",
+      sortDirection: "desc",
+      topN: 25,
+      periodPreset: "last30",
+      tableStyle: "striped",
+      showHeader: true,
+      showTitle: true
+    }
+  }),
+  def({
+    type: "app.filters",
+    titleKey: "appFilters",
+    category: "layouts",
+    size: "lg",
+    minW: 6,
+    maxW: 12,
+    minH: 1,
+    defaultH: 2,
+    defaultW: 12,
+    dataSource: "none",
+    component: "FilterBlockWidget",
+    embeddedChrome: true,
+    defaultConfig: {
+      showClient: true,
+      showAccount: true,
+      showPeriod: true,
+      showSearch: false,
+      showPreset: false,
+      clientFilter: "",
+      accountFilter: "",
+      periodPreset: "last30",
+      searchQuery: "",
+      presetFilter: ""
+    }
+  }),
+  def({
     type: "premium.metricMatrix",
     titleKey: "premiumMetricMatrix",
-    category: "premium",
+    category: "advanced",
     size: "lg",
     minH: 3,
     defaultH: 4,

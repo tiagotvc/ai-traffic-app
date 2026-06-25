@@ -43,7 +43,7 @@ export default async function LoginPage({
         />
         <div className="auth-premium-glow -bottom-24 left-0 h-64 w-64 bg-violet-500/15" />
 
-        <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden">
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto">
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-8 sm:px-10 lg:py-8">
             <div className="mb-6 lg:hidden">
               <OrionAgencyLogo size="md" variant="dark" />

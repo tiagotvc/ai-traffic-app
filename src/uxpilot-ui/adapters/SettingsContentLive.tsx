@@ -2,31 +2,18 @@
 
 import type { ReactNode } from "react";
 import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import {
-  Settings as SettingsIcon,
-  Bell,
-  Users,
-  Palette,
-  Shield,
-  Zap,
-  CreditCard,
-  type LucideIcon
-} from "lucide-react";
+import { CreditCard, Plug, Settings as SettingsIcon, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 
 import { BillingPortalClient } from "@/components/billing/BillingPortalClient";
 import { BillingPortalSkeleton } from "@/components/billing/BillingSkeletons";
 import { SettingsClient } from "@/components/SettingsClient";
-import SettingsContent from "@/uxpilot-ui/pages/content/Settings";
+import { DsFlatPanel, DsPageHeader, DsTabBar, type DsTab } from "@/design-system";
 
-const SECTION_TO_TAB = {
-  general: "general",
-  integrations: "integrations",
-  team: "team",
-  security: "data"
-} as const;
-
-type LiveSection = keyof typeof SECTION_TO_TAB | "notifications" | "appearance" | "plan";
+type TabId = "general" | "plan" | "integrations" | "team" | "data";
+type SettingsClientTab = "general" | "integrations" | "team" | "data";
+const VALID_TABS: TabId[] = ["general", "plan", "integrations", "team", "data"];
 
 export function SettingsContentLive({
   locale,
@@ -39,23 +26,40 @@ export function SettingsContentLive({
   metaOAuthError?: string | null;
   connectMetaSlot: ReactNode;
 }) {
+  const t = useTranslations("settings");
   const tBilling = useTranslations("billingPage");
-  const [activeSection, setActiveSection] = useState<string>("general");
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") as TabId | null;
+  const [active, setActive] = useState<TabId>(
+    initialTab && VALID_TABS.includes(initialTab) ? initialTab : "general"
+  );
 
-  const extraSections: Array<{ id: string; label: string; icon: LucideIcon }> = [
-    { id: "plan", label: tBilling("tabPlan"), icon: CreditCard }
-  ];
+  const iconFor: Record<TabId, LucideIcon> = {
+    general: SettingsIcon,
+    plan: CreditCard,
+    integrations: Plug,
+    team: Users,
+    data: ShieldCheck
+  };
+  const tabs: DsTab<TabId>[] = [
+    { value: "general", label: t("tabGeneral") },
+    { value: "plan", label: tBilling("tabPlan") },
+    { value: "integrations", label: t("tabIntegrations") },
+    { value: "team", label: t("tabTeam") },
+    { value: "data", label: t("tabData") }
+  ].map((tab) => {
+    const Icon = iconFor[tab.value as TabId];
+    return { ...tab, value: tab.value as TabId, icon: <Icon size={14} /> };
+  });
 
-  function renderPanel(sectionId: string): ReactNode | undefined {
-    if (sectionId === "plan") {
+  function renderPanel(id: TabId): ReactNode {
+    if (id === "plan") {
       return (
-        <Suspense fallback={<BillingPortalSkeleton />}>
-          <BillingPortalClient embedded basePath="/settings" activeTab="plan" />
+        <Suspense fallback={<BillingPortalSkeleton embedded />}>
+          <BillingPortalClient embedded basePath="/settings" />
         </Suspense>
       );
     }
-    const tab = SECTION_TO_TAB[sectionId as keyof typeof SECTION_TO_TAB];
-    if (!tab) return undefined;
     return (
       <SettingsClient
         locale={locale}
@@ -64,20 +68,32 @@ export function SettingsContentLive({
         connectMetaSlot={connectMetaSlot}
         embedded
         bare
-        activeTab={tab}
+        activeTab={id as SettingsClientTab}
         onActiveTabChange={() => {}}
       />
     );
   }
 
   return (
-    <SettingsContent
-      live={{
-        activeSection,
-        onSectionChange: setActiveSection,
-        renderPanel,
-        extraSections
-      }}
-    />
+    <DsFlatPanel centered>
+      <DsPageHeader
+        title={t("title")}
+        subtitle={t("subtitle")}
+        titleIcon={<SettingsIcon size={16} />}
+      />
+
+      <DsTabBar
+        tabs={tabs}
+        active={active}
+        onChange={setActive}
+        ariaLabel={t("title")}
+        variant="underline"
+        className="mb-6"
+      />
+
+      <div key={active} className="tab-transition animate-fade-up">
+        {renderPanel(active)}
+      </div>
+    </DsFlatPanel>
   );
 }

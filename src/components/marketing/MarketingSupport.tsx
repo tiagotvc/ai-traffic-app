@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Mail, MapPin, MessageCircle, Send, Shield } from "lucide-react";
+import { ChevronDown, Mail, MapPin, Send } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -19,16 +19,23 @@ export function MarketingSupport() {
   const faqs = getSupportFaqs(locale);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [form, setForm] = useState({ name: "", email: "", company: "", subject: "", message: "" });
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  function submitForm(e: React.FormEvent) {
+  async function submitForm(e: React.FormEvent) {
     e.preventDefault();
-    const body = [
-      form.message,
-      form.company ? `\n\nEmpresa: ${form.company}` : "",
-      `\n\nEnviado via formulário do site Traffic AI`
-    ].join("");
-    const mailto = `mailto:${LEGAL_CONTACT.supportEmail}?subject=${encodeURIComponent(form.subject || "Contato Traffic AI")}&body=${encodeURIComponent(`Nome: ${form.name}\nE-mail: ${form.email}${body}`)}`;
-    window.location.href = mailto;
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) throw new Error("failed");
+      setStatus("sent");
+      setForm({ name: "", email: "", company: "", subject: "", message: "" });
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -40,23 +47,7 @@ export function MarketingSupport() {
           title={t("supportEmailTitle")}
           body={t("supportEmailBody")}
           email={LEGAL_CONTACT.supportEmail}
-          note={locale === "en" ? LEGAL_CONTACT.supportHoursEn : LEGAL_CONTACT.supportHours}
-        />
-        <ContactCard
-          icon={MessageCircle}
-          iconClass="bg-amber-500/15 text-amber-300"
-          title={t("supportCommercialTitle")}
-          body={t("supportCommercialBody")}
-          email={LEGAL_CONTACT.commercialEmail}
-        />
-        <ContactCard
-          icon={Shield}
-          iconClass="bg-emerald-500/15 text-emerald-300"
-          title={t("supportPrivacyTitle")}
-          body={t("supportPrivacyBody")}
-          email={LEGAL_CONTACT.privacyEmail}
-          linkHref="/privacy"
-          linkLabel={t("supportPrivacyLink")}
+          note={`${locale === "en" ? LEGAL_CONTACT.supportResponseEn : LEGAL_CONTACT.supportResponse} ${locale === "en" ? LEGAL_CONTACT.supportHoursEn : LEGAL_CONTACT.supportHours}`}
         />
         <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-300">
@@ -90,14 +81,21 @@ export function MarketingSupport() {
                 className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none ring-amber-400/30 focus:ring-2"
               />
             </label>
-            <div className="sm:col-span-2">
+            <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 text-sm font-bold text-[#0f1419] shadow-lg shadow-amber-500/20"
+                disabled={status === "sending"}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 text-sm font-bold text-[#0f1419] shadow-lg shadow-amber-500/20 disabled:opacity-60"
               >
                 <Send className="h-4 w-4" />
-                {t("supportFormSubmit")}
+                {status === "sending" ? t("supportFormSending") : t("supportFormSubmit")}
               </button>
+              {status === "sent" ? (
+                <span className="text-xs font-medium text-emerald-300">{t("supportFormSent")}</span>
+              ) : null}
+              {status === "error" ? (
+                <span className="text-xs font-medium text-red-300">{t("supportFormError")}</span>
+              ) : null}
             </div>
           </form>
         </MarketingContentSection>

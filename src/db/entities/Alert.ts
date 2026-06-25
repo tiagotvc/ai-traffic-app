@@ -15,6 +15,8 @@ export type AlertType =
 
 export type AlertSeverity = "critical" | "warning";
 
+export type AlertSource = "goal" | "automation" | "brain" | "variation";
+
 @Entity({ name: "alerts" })
 @Index(["tenantId", "createdAt"])
 @Index(["tenantId", "type", "clientId", "metaCampaignId", "dedupDay"], { unique: true })
@@ -66,4 +68,10 @@ export class Alert extends AppBaseEntity {
 
   @Column({ type: "text", nullable: true })
   acknowledgedBy?: string | null;
+
+  @Column({ type: "text", nullable: true })
+  source?: AlertSource | null;
+
+  @Column({ type: "uuid", nullable: true })
+  automationRuleId?: string | null;
 }

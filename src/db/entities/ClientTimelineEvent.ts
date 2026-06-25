@@ -9,7 +9,9 @@ export type TimelineEventType =
   | "suggestion_executed"
   | "suggestion_created"
   | "metric_spike"
-  | "sync_completed";
+  | "sync_completed"
+  | "market_scanned"
+  | "competitor_compared";
 
 @Entity({ name: "client_timeline_events" })
 @Index(["tenantId", "clientId", "createdAt"])

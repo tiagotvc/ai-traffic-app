@@ -44,7 +44,7 @@ export function AdsCreatorClient({
   const [assets, setAssets] = useState<Asset[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [campaignName, setCampaignName] = useState(
-    locale === "en" ? "Traffic AI — Campaign" : "Traffic AI — Campanha"
+    locale === "en" ? "Orion Agency — Campaign" : "Orion Agency — Campanha"
   );
   const [titles, setTitles] = useState(
     locale === "en"

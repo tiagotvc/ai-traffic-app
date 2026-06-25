@@ -1,5 +1,5 @@
 /**
- * Traffic AI design tokens — source of truth mirrors CSS variables in globals.css.
+ * Orion Agency design tokens — source of truth mirrors CSS variables in globals.css.
  * UX Pilot export: uxpilot-export/ (light mode + dark sidebar).
  */
 export const dsTokens = {
@@ -19,6 +19,9 @@ export const dsTokens = {
   /** Brand */
   amber: "var(--amber)",
   violet: "var(--violet)",
+  uiAccent: "var(--ui-accent)",
+  uiAccentMuted: "var(--ui-accent-muted)",
+  uiAccentBorder: "var(--ui-accent-border)",
   success: "var(--success)",
   danger: "var(--danger)",
 

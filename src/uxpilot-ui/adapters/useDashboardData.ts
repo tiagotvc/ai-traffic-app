@@ -21,6 +21,7 @@ import {
 } from "@/lib/dashboard-layout-prefs";
 import { buildQuery, resolveRanges } from "@/lib/dashboard-ranges";
 import { DEFAULT_REPORT_TZ } from "@/lib/report-period";
+import type { AgeBreakdownRow } from "@/lib/dashboard-age-breakdown";
 
 type Summary = Partial<Record<MetricKey, number>>;
 type SeriesPoint = { day: string } & Partial<Record<MetricKey, number>>;
@@ -51,6 +52,28 @@ type ClientCard = {
 };
 
 const EMPTY_PERIOD: PeriodState = { preset: "last30", since: "", until: "" };
+const CHART_METRICS_CACHE_KEY = "orion-highlights-chart-metrics";
+
+function readCachedChartMetrics(): MetricKey[] | null {
+  try {
+    const raw = localStorage.getItem(CHART_METRICS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    const valid = parsed.filter((k): k is MetricKey => typeof k === "string" && k in METRIC_BY_KEY);
+    return valid.length ? valid.slice(0, MAX_CHART_METRICS) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedChartMetrics(metrics: MetricKey[]) {
+  try {
+    localStorage.setItem(CHART_METRICS_CACHE_KEY, JSON.stringify(metrics));
+  } catch {
+    /* ignore */
+  }
+}
 
 type AdAccountOpt = {
   id: string;
@@ -87,11 +110,18 @@ export function useDashboardData() {
   periodRef.current = period;
   const periodKey = `${period.preset}|${period.since}|${period.until}`;
 
-  const [userChartMetrics, setUserChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
-  const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(DEFAULT_DASHBOARD_CHART_METRICS);
+  const [userChartMetrics, setUserChartMetrics] = useState<MetricKey[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_DASHBOARD_CHART_METRICS;
+    return readCachedChartMetrics() ?? DEFAULT_DASHBOARD_CHART_METRICS;
+  });
+  const [chartMetrics, setChartMetrics] = useState<MetricKey[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_DASHBOARD_CHART_METRICS;
+    return readCachedChartMetrics() ?? DEFAULT_DASHBOARD_CHART_METRICS;
+  });
   const [clientMetric, setClientMetric] = useState<MetricKey>(DEFAULT_DASHBOARD_CLIENT_METRIC);
   const [userClientMetric, setUserClientMetric] = useState<MetricKey>(DEFAULT_DASHBOARD_CLIENT_METRIC);
   const [dashboardLayout, setDashboardLayout] = useState<DashboardLayoutPrefs>(DEFAULT_DASHBOARD_LAYOUT);
+  const prefsHydratedRef = useRef(false);
 
   const [summary, setSummary] = useState<Summary | null>(null);
   const [prevSummary, setPrevSummary] = useState<Summary | null>(null);
@@ -110,6 +140,8 @@ export function useDashboardData() {
   const [brainLearningsCount, setBrainLearningsCount] = useState(0);
   const [brainHypothesesCount, setBrainHypothesesCount] = useState(0);
   const [brainSummaryLoading, setBrainSummaryLoading] = useState(true);
+  const [ageBreakdown, setAgeBreakdown] = useState<AgeBreakdownRow[]>([]);
+  const [ageBreakdownLoading, setAgeBreakdownLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
 
@@ -258,9 +290,30 @@ export function useDashboardData() {
       .catch(() => finish([]));
   }, [clientFilter]);
 
+  const loadAgeBreakdown = useCallback(() => {
+    setAgeBreakdownLoading(true);
+    const { current } = resolveRanges(periodRef.current, selectedTz);
+    const curQ = buildQuery(clientFilter, accountFilter, current);
+    void fetch(`/api/dashboard/age-breakdown?${curQ}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok && Array.isArray(j.rows)) {
+          setAgeBreakdown(j.rows as AgeBreakdownRow[]);
+        } else {
+          setAgeBreakdown([]);
+        }
+      })
+      .catch(() => setAgeBreakdown([]))
+      .finally(() => setAgeBreakdownLoading(false));
+  }, [clientFilter, accountFilter, periodKey, selectedTz]);
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    loadAgeBreakdown();
+  }, [loadAgeBreakdown]);
 
   useEffect(() => {
     return loadClients();
@@ -279,8 +332,10 @@ export function useDashboardData() {
         if (Array.isArray(j.dashboardChartMetrics)) {
           const metrics = j.dashboardChartMetrics as MetricKey[];
           setUserChartMetrics(metrics);
+          writeCachedChartMetrics(metrics);
           if (!clientFilter) setChartMetrics(metrics);
         }
+        prefsHydratedRef.current = true;
         if (typeof j.dashboardClientMetric === "string" && j.dashboardClientMetric in METRIC_BY_KEY) {
           const metric = j.dashboardClientMetric as MetricKey;
           setUserClientMetric(metric);
@@ -299,8 +354,10 @@ export function useDashboardData() {
   useEffect(() => {
     let mounted = true;
     if (!clientFilter) {
-      setChartMetrics(userChartMetrics);
-      setClientMetric(userClientMetric);
+      if (prefsHydratedRef.current) {
+        setChartMetrics(userChartMetrics);
+        setClientMetric(userClientMetric);
+      }
       return () => {
         mounted = false;
       };
@@ -312,7 +369,9 @@ export function useDashboardData() {
         const s = j.settings;
         if (s) {
           if (Array.isArray(s.defaultDashboardMetrics) && s.defaultDashboardMetrics.length) {
-            setChartMetrics(s.defaultDashboardMetrics as MetricKey[]);
+            const metrics = s.defaultDashboardMetrics as MetricKey[];
+            setChartMetrics(metrics);
+            writeCachedChartMetrics(metrics);
           }
           if (s.defaultClientMetric) setClientMetric(s.defaultClientMetric as MetricKey);
         }
@@ -328,13 +387,15 @@ export function useDashboardData() {
       void load();
       loadClients();
       loadBrainLearnings();
+      loadAgeBreakdown();
     };
     window.addEventListener("traffic-sync-done", onSync);
     return () => window.removeEventListener("traffic-sync-done", onSync);
-  }, [load, loadClients, loadBrainLearnings]);
+  }, [load, loadClients, loadBrainLearnings, loadAgeBreakdown]);
 
   const persistChartMetrics = useCallback(
     (next: MetricKey[]) => {
+      writeCachedChartMetrics(next);
       if (clientFilter) {
         void fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
           method: "PATCH",
@@ -357,6 +418,7 @@ export function useDashboardData() {
     (next: { layout: DashboardLayoutPrefs; chartMetrics: MetricKey[] }) => {
       setDashboardLayout(next.layout);
       setChartMetrics(next.chartMetrics);
+      writeCachedChartMetrics(next.chartMetrics);
       if (!clientFilter) setUserChartMetrics(next.chartMetrics);
 
       void fetch("/api/settings/dashboard-prefs", {
@@ -448,6 +510,8 @@ export function useDashboardData() {
     brainLearningsCount,
     brainHypothesesCount,
     brainSummaryLoading,
+    ageBreakdown,
+    ageBreakdownLoading,
     chartMetrics,
     toggleChartMetric,
     dashboardLayout,

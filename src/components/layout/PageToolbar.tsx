@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Filter, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { useDismissOnOutsideClick } from "@/hooks/useDismissOnOutsideClick";
 import { cn } from "@/lib/cn";
 
 export function PageToolbar({
@@ -25,7 +26,7 @@ export function PageToolbar({
 }: {
   eyebrow?: string;
   icon?: ReactNode;
-  title: string;
+  title: ReactNode;
   subtitle?: ReactNode;
   search?: {
     value: string;
@@ -43,8 +44,9 @@ export function PageToolbar({
   const t = useTranslations("dashboard");
   const strip = useCommandStripOptional();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
-  const hasGlobalFilters = showGlobalFilters && strip;
+  const hasGlobalFilters = Boolean(showGlobalFilters && strip);
   const hasPageFilters = Boolean(pageFilters);
   const canFilter = hasGlobalFilters || hasPageFilters;
 
@@ -58,8 +60,10 @@ export function PageToolbar({
 
   const filterBtnActive = filtersOpen || filtersActive;
 
+  useDismissOnOutsideClick(rootRef, filtersOpen && canFilter, () => setFiltersOpen(false));
+
   return (
-    <div className={cn("mb-5", className)}>
+    <div ref={rootRef} className={cn("mb-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {eyebrow ? (
@@ -68,17 +72,14 @@ export function PageToolbar({
             </p>
           ) : null}
           <div className="flex items-center gap-2">
-            {icon ? (
-              <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                style={{ background: "rgba(245,166,35,0.15)" }}
-              >
-                {icon}
-              </div>
-            ) : null}
-            <h1 className="font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
-              {title}
-            </h1>
+            {icon ? <div className="ui-toolbar-icon-shell">{icon}</div> : null}
+            {typeof title === "string" ? (
+              <h1 className="font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
+                {title}
+              </h1>
+            ) : (
+              title
+            )}
           </div>
           {subtitle ? (
             <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
@@ -116,14 +117,9 @@ export function PageToolbar({
               aria-label={t("filtersTitle")}
               aria-pressed={filtersOpen}
               className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all duration-200",
-                filterBtnActive && "shadow-sm"
+                "ui-toolbar-icon-btn",
+                filterBtnActive && "ui-toolbar-icon-btn--active"
               )}
-              style={{
-                background: filterBtnActive ? "rgba(245,166,35,0.12)" : "var(--surface-card)",
-                borderColor: filterBtnActive ? "var(--amber-bright)" : "var(--border-color)",
-                color: filterBtnActive ? "#f5a623" : "var(--text-dim)"
-              }}
             >
               <Filter size={16} />
             </button>

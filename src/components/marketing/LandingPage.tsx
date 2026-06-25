@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { BillingPlansClient } from "@/components/billing/BillingPlansClient";
 import { LandingCapabilities } from "@/components/marketing/LandingCapabilities";
 import { LandingCta, LandingMission } from "@/components/marketing/LandingMission";
+import { LandingFaq } from "@/components/marketing/LandingFaq";
 import { LandingProductPreview } from "@/components/marketing/LandingProductPreview";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { StackCostComparison } from "@/components/marketing/StackCostComparison";
@@ -60,6 +61,8 @@ export async function LandingPage() {
           </p>
         </div>
       </section>
+
+      <LandingFaq />
 
       <LandingCta />
     </>

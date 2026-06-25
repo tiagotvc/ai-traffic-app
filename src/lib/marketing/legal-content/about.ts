@@ -3,13 +3,13 @@ import type { LegalLocale, LegalPageContent } from "@/lib/marketing/legal-conten
 
 const pt: LegalPageContent = {
   badge: "Sobre",
-  title: "Sobre o Traffic AI",
+  title: "Sobre o Orion Agency",
   subtitle: "Transformando dados em decisões mais inteligentes",
   sections: [
     {
       title: "Por que existimos",
       paragraphs: [
-        "O Traffic AI nasceu de uma necessidade simples: gestores de tráfego e agências estão cercados por dados, mas muitas vezes faltam tempo, contexto e ferramentas para transformar essas informações em ações que realmente gerem resultados.",
+        "O Orion Agency nasceu de uma necessidade simples: gestores de tráfego e agências estão cercados por dados, mas muitas vezes faltam tempo, contexto e ferramentas para transformar essas informações em ações que realmente gerem resultados.",
         "Todos os dias, profissionais de marketing precisam analisar campanhas, identificar oportunidades, encontrar problemas, acompanhar métricas, justificar resultados para clientes e tomar decisões rápidas. Com tantas plataformas, relatórios e números diferentes, o processo acaba sendo demorado, repetitivo e sujeito a erros.",
         "Nossa missão é simplificar a análise de campanhas através da inteligência artificial, transformando dados complexos em insights claros, acionáveis e fáceis de entender."
       ]
@@ -17,7 +17,7 @@ const pt: LegalPageContent = {
     {
       title: "O que fazemos",
       paragraphs: [
-        "O Traffic AI é uma plataforma de análise e inteligência para marketing digital que centraliza informações de múltiplas plataformas e utiliza inteligência artificial para ajudar gestores de tráfego, agências e empresas a tomarem decisões melhores.",
+        "O Orion Agency é uma plataforma de análise e inteligência para marketing digital que centraliza informações de múltiplas plataformas e utiliza inteligência artificial para ajudar gestores de tráfego, agências e empresas a tomarem decisões melhores.",
         "Nosso objetivo não é substituir profissionais de marketing, mas potencializar sua capacidade de análise e tomada de decisão."
       ],
       bullets: [
@@ -36,7 +36,7 @@ const pt: LegalPageContent = {
       paragraphs: [
         "Acreditamos que o futuro da gestão de tráfego não está apenas em visualizar métricas, mas em compreender o que elas realmente significam.",
         "Queremos construir uma plataforma capaz de atuar como um verdadeiro parceiro estratégico para gestores de tráfego, ajudando a identificar tendências, oportunidades e problemas antes que eles impactem os resultados das campanhas.",
-        "Nossa visão é tornar o Traffic AI uma das principais plataformas de inteligência para marketing digital da América Latina."
+        "Nossa visão é tornar o Orion Agency uma das principais plataformas de inteligência para marketing digital da América Latina."
       ]
     },
     {
@@ -53,7 +53,7 @@ const pt: LegalPageContent = {
     {
       title: "Construído por quem vive o mercado",
       paragraphs: [
-        "O Traffic AI foi idealizado por profissionais que atuam diariamente com tecnologia, desenvolvimento de software, dados e marketing digital.",
+        "O Orion Agency foi idealizado por profissionais que atuam diariamente com tecnologia, desenvolvimento de software, dados e marketing digital.",
         "Nossa experiência prática nos mostrou que muitas ferramentas fornecem números, mas poucas ajudam a interpretá-los e transformá-los em ações.",
         "Por isso, construímos uma plataforma focada em contexto, aprendizado e inteligência aplicada."
       ]
@@ -69,7 +69,7 @@ const pt: LegalPageContent = {
     {
       title: "Integrações",
       paragraphs: [
-        "Atualmente o Traffic AI oferece integração com Meta Ads (Business Manager, contas de anúncio, páginas e ativos).",
+        "Atualmente o Orion Agency oferece integração com Meta Ads (Business Manager, contas de anúncio, páginas e ativos).",
         "Novas integrações — como Google Ads, TikTok Ads e e-commerce — poderão ser adicionadas conforme a evolução do produto."
       ]
     },
@@ -82,11 +82,11 @@ const pt: LegalPageContent = {
       ]
     },
     {
-      title: "O futuro do Traffic AI",
+      title: "O futuro do Orion Agency",
       paragraphs: [
         "Estamos construindo muito mais do que um painel de métricas.",
         "Nossa visão de longo prazo inclui recursos avançados de inteligência artificial capazes de identificar padrões, gerar aprendizados contínuos e auxiliar gestores em todas as etapas da otimização.",
-        "Bem-vindo ao Traffic AI."
+        "Bem-vindo ao Orion Agency."
       ]
     }
   ]
@@ -94,13 +94,13 @@ const pt: LegalPageContent = {
 
 const en: LegalPageContent = {
   badge: "About",
-  title: "About Traffic AI",
+  title: "About Orion Agency",
   subtitle: "Turning data into smarter decisions",
   sections: [
     {
       title: "Why we exist",
       paragraphs: [
-        "Traffic AI was born from a simple need: traffic managers and agencies are surrounded by data, but often lack time, context, and tools to turn that information into actions that drive results.",
+        "Orion Agency was born from a simple need: traffic managers and agencies are surrounded by data, but often lack time, context, and tools to turn that information into actions that drive results.",
         "Every day, marketing professionals analyze campaigns, spot opportunities, find issues, track metrics, justify results to clients, and make fast decisions. With so many platforms and reports, the process becomes slow, repetitive, and error-prone.",
         "Our mission is to simplify campaign analysis through artificial intelligence, turning complex data into clear, actionable insights."
       ]
@@ -108,7 +108,7 @@ const en: LegalPageContent = {
     {
       title: "What we do",
       paragraphs: [
-        "Traffic AI is a digital marketing intelligence platform that centralizes information from multiple platforms and uses AI to help traffic managers, agencies, and businesses make better decisions.",
+        "Orion Agency is a digital marketing intelligence platform that centralizes information from multiple platforms and uses AI to help traffic managers, agencies, and businesses make better decisions.",
         "We do not replace marketing professionals — we amplify their ability to analyze and decide."
       ],
       bullets: [
@@ -126,7 +126,7 @@ const en: LegalPageContent = {
       title: "Our vision",
       paragraphs: [
         "We believe the future of traffic management is not just viewing metrics, but understanding what they mean.",
-        "We want Traffic AI to act as a strategic partner, helping identify trends, opportunities, and problems before they impact campaign results.",
+        "We want Orion Agency to act as a strategic partner, helping identify trends, opportunities, and problems before they impact campaign results.",
         "Our vision is to become a leading marketing intelligence platform in Latin America."
       ]
     },
@@ -144,7 +144,7 @@ const en: LegalPageContent = {
     {
       title: "Built by practitioners",
       paragraphs: [
-        "Traffic AI was created by professionals who work daily with technology, software, data, and digital marketing.",
+        "Orion Agency was created by professionals who work daily with technology, software, data, and digital marketing.",
         "We saw that many tools show numbers but few help interpret them and turn them into action.",
         "That is why we focus on context, learning, and applied intelligence."
       ]
@@ -160,7 +160,7 @@ const en: LegalPageContent = {
     {
       title: "Integrations",
       paragraphs: [
-        "Traffic AI currently integrates with Meta Ads (Business Manager, ad accounts, pages, and assets).",
+        "Orion Agency currently integrates with Meta Ads (Business Manager, ad accounts, pages, and assets).",
         "Additional integrations may be added as the product evolves."
       ]
     },
@@ -177,7 +177,7 @@ const en: LegalPageContent = {
       paragraphs: [
         "We are building much more than a metrics dashboard.",
         "Our long-term vision includes advanced AI capabilities to identify patterns, generate continuous learnings, and support optimization at every stage.",
-        "Welcome to Traffic AI."
+        "Welcome to Orion Agency."
       ]
     }
   ]

@@ -2,9 +2,12 @@
 
 import { useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { PremiumChartRenderer } from "@/components/dashboard/PremiumChartRenderer";
+import { PremiumChartTooltip } from "@/components/charts/PremiumChartTooltip";
+import { ChartContainer } from "@/components/ui/ChartContainer";
+import { PerformanceChartWidget } from "@/components/dashboard/canvas/widgets/LegacyWidgets";
 import {
   CartesianGrid,
-  ResponsiveContainer,
   Scatter,
   ScatterChart,
   Tooltip,
@@ -12,10 +15,6 @@ import {
   YAxis,
   ZAxis
 } from "recharts";
-
-import { PremiumChartRenderer } from "@/components/dashboard/PremiumChartRenderer";
-import { PremiumChartTooltip } from "@/components/charts/PremiumChartTooltip";
-import { PerformanceChartWidget } from "@/components/dashboard/canvas/widgets/LegacyWidgets";
 import {
   premiumAxisTick,
   premiumGridProps,
@@ -225,14 +224,13 @@ export function ScatterWidget({
   }
 
   return (
-    <div className="flex h-full min-h-[180px] min-w-0 flex-col gap-1">
+    <div className="flex min-h-0 w-full flex-col gap-1">
       <div className="flex justify-between gap-2 text-[9px] text-[var(--text-dimmer)]">
         <span className="truncate">{tMetrics(METRIC_BY_KEY[metricX]?.label ?? metricX)}</span>
         <span className="truncate">{tMetrics(METRIC_BY_KEY[metricY]?.label ?? metricY)}</span>
       </div>
-      <div className="min-h-0 flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+      <ChartContainer height={180} className="w-full">
+        <ScatterChart margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
             <CartesianGrid {...premiumGridProps()} />
             <XAxis
               type="number"
@@ -273,8 +271,7 @@ export function ScatterWidget({
             />
             <Scatter data={points} fill={color} />
           </ScatterChart>
-        </ResponsiveContainer>
-      </div>
+      </ChartContainer>
     </div>
   );
 }

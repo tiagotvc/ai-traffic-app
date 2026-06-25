@@ -253,7 +253,7 @@ async function upsertAlert(
       await notifyCriticalAlert({
         alert: saved,
         client,
-        tenantName: tenant?.brandName ?? tenant?.name ?? "Traffic AI",
+        tenantName: tenant?.brandName ?? tenant?.name ?? "Orion Agency",
         webhookAlertUrl: tenant?.webhookAlertUrl
       });
     }

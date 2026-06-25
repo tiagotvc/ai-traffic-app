@@ -18,7 +18,7 @@ export function LearningsFeedTimeline({
   learnings: LearningDto[];
   clientId: string;
   actionLoadingId: string | null;
-  onApprove: (id: string) => void;
+  onApprove: (id: string, options?: { force?: boolean }) => void;
   onReject: (id: string) => void;
   onArchive: (id: string) => void;
   onEdit: (learning: LearningDto) => void;

@@ -182,6 +182,7 @@ export function useBrainInsights() {
       return {
         revision,
         loading: false,
+        refresh: bump,
         getFeedStats: getMockFeedStats,
         getFeedItems: (args: { tab: FeedTab; search: string }) => getMockFeedItems(args),
         getLearningById: getMockLearningById,
@@ -199,6 +200,7 @@ export function useBrainInsights() {
     return {
       revision,
       loading,
+      refresh: bump,
       getFeedStats: () => buildFeedStats(learnings, hypotheses),
       getFeedItems: (args: { tab: FeedTab; search: string }) =>
         buildFeedItems(learnings, hypotheses, args.tab, args.search),

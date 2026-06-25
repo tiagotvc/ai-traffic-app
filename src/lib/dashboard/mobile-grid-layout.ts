@@ -17,8 +17,7 @@ function mobileWidgetHeight(widget: WidgetInstanceDto): number {
     return Math.max(base, def?.defaultH ?? 4, 4);
   }
   if (widget.widgetType === "metrics.quickPills") {
-    const pillCount = 6;
-    return Math.max(base, pillCount * 2 + 1, 5);
+    return Math.max(base, 1);
   }
   if (widget.widgetType === "metrics.heroKpis") {
     const heroMetrics = widget.config.heroMetrics as unknown[] | undefined;

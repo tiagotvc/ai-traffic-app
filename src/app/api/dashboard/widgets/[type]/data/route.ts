@@ -7,6 +7,7 @@ import {
   DashboardCanvasForbiddenError
 } from "@/lib/dashboard/dashboard-widget-permissions";
 import { getWidgetDefinition } from "@/lib/dashboard/widget-catalog";
+import { resolveAlertCardData } from "@/lib/dashboard/alert-card-data-service";
 import { resolveWidgetData } from "@/lib/dashboard/widget-data-resolvers";
 
 export async function GET(
@@ -27,6 +28,27 @@ export async function GET(
       since: url.searchParams.get("since") ?? "",
       until: url.searchParams.get("until") ?? ""
     };
+
+    const configRaw = url.searchParams.get("config");
+    let config: Record<string, unknown> | undefined;
+    if (configRaw) {
+      try {
+        config = JSON.parse(decodeURIComponent(configRaw)) as Record<string, unknown>;
+      } catch {
+        config = undefined;
+      }
+    }
+
+    if (def.type === "alerts.card" && config) {
+      const data = await resolveAlertCardData(config, {
+        tenantId: tenant.id,
+        clientFilter: url.searchParams.get("clientId") ?? undefined,
+        accountFilter: url.searchParams.get("accountId") ?? undefined,
+        period,
+        tz: url.searchParams.get("tz") ?? undefined
+      });
+      return NextResponse.json({ ok: true, data });
+    }
 
     const data = await resolveWidgetData(def.dataSource, {
       tenantId: tenant.id,

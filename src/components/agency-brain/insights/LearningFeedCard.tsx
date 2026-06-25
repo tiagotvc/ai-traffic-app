@@ -21,17 +21,26 @@ export function LearningFeedCard({
   learning,
   expanded: controlledExpanded,
   onToggle,
-  onTimeline
+  onTimeline,
+  onApprove,
+  onReject,
+  onGenerateHypothesis,
+  busy = false
 }: {
   learning: InsightLearning;
   expanded?: boolean;
   onToggle?: () => void;
   onTimeline?: () => void;
+  onApprove?: (learning: InsightLearning) => void;
+  onReject?: (learning: InsightLearning) => void;
+  onGenerateHypothesis?: (learning: InsightLearning) => void;
+  busy?: boolean;
 }) {
   const t = useTranslations("brainInsights");
   const [internalExpanded, setInternalExpanded] = useState(false);
   const expanded = controlledExpanded ?? internalExpanded;
   const imp = impactConfig[learning.impactLevel];
+  const isSuggested = learning.reviewStatus === "SUGGESTED";
 
   function handleToggle() {
     if (onToggle) onToggle();
@@ -63,7 +72,9 @@ export function LearningFeedCard({
       <div
         className="h-0.5 w-full"
         style={{
-          background: expanded ? "linear-gradient(90deg,#FACC15,#f5a623)" : "transparent"
+          background: expanded
+            ? "linear-gradient(90deg,#FACC15,#f5a623)"
+            : `linear-gradient(90deg, ${imp.color}66, transparent 70%)`
         }}
       />
 
@@ -81,12 +92,21 @@ export function LearningFeedCard({
               >
                 {t("badgeLearning")}
               </span>
-              <span
-                className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase"
-                style={{ color: imp.color, background: imp.bg, borderColor: imp.border }}
-              >
-                {t(`learningStatus.${learning.status}`).toUpperCase()}
-              </span>
+              {isSuggested ? (
+                <span
+                  className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase"
+                  style={{ color: "#d97706", background: "rgba(217,119,6,0.10)", borderColor: "rgba(217,119,6,0.25)" }}
+                >
+                  {t("badgeSuggested")}
+                </span>
+              ) : (
+                <span
+                  className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase"
+                  style={{ color: imp.color, background: imp.bg, borderColor: imp.border }}
+                >
+                  {t(`learningStatus.${learning.status}`).toUpperCase()}
+                </span>
+              )}
               <span
                 className="rounded-full border px-2 py-0.5 text-[10px] font-semibold"
                 style={{ color: imp.color, background: imp.bg, borderColor: imp.border }}
@@ -184,14 +204,36 @@ export function LearningFeedCard({
           >
             {t("viewTimeline")}
           </button>
-          <button
-            type="button"
-            className="ui-btn-brand !px-4 !py-2 text-xs opacity-60"
-            disabled
-            title={t("generateHypothesisSoon")}
-          >
-            {t("generateHypothesis")}
-          </button>
+
+          {isSuggested ? (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onApprove?.(learning)}
+                className="ui-btn-primary !px-4 !py-2 text-xs disabled:opacity-60"
+              >
+                {t("approveLearning")}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onReject?.(learning)}
+                className="ui-btn-secondary !px-4 !py-2 text-xs disabled:opacity-60"
+              >
+                {t("dismissLearning")}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onGenerateHypothesis?.(learning)}
+              className="ui-btn-brand !px-4 !py-2 text-xs disabled:opacity-60"
+            >
+              {t("generateHypothesis")}
+            </button>
+          )}
         </div>
       ) : null}
     </div>

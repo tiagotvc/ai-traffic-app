@@ -2,19 +2,31 @@ import {
   BarChart3,
   Brain,
   FileText,
-  LayoutDashboard,
-  Sparkles,
-  Zap
+  Megaphone,
+  Target,
+  Users
 } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { cn } from "@/lib/cn";
+
 const CAPS = [
-  { key: "cap1", icon: LayoutDashboard, accent: "from-violet-500/20 to-indigo-500/10 text-violet-300" },
-  { key: "cap2", icon: BarChart3, accent: "from-amber-500/20 to-orange-500/10 text-amber-300" },
+  {
+    key: "cap1",
+    icon: Target,
+    accent: "from-fuchsia-500/20 to-violet-500/10 text-fuchsia-300",
+    featured: true
+  },
+  {
+    key: "cap2",
+    icon: BarChart3,
+    accent: "from-amber-500/20 to-orange-500/10 text-amber-300",
+    featured: true
+  },
   { key: "cap3", icon: Brain, accent: "from-violet-500/20 to-purple-500/10 text-violet-300" },
-  { key: "cap4", icon: FileText, accent: "from-emerald-500/20 to-teal-500/10 text-emerald-300" },
-  { key: "cap5", icon: Zap, accent: "from-amber-500/20 to-yellow-500/10 text-amber-300" },
-  { key: "cap6", icon: Sparkles, accent: "from-indigo-500/20 to-violet-500/10 text-indigo-300" }
+  { key: "cap4", icon: Megaphone, accent: "from-indigo-500/20 to-violet-500/10 text-indigo-300" },
+  { key: "cap5", icon: FileText, accent: "from-emerald-500/20 to-teal-500/10 text-emerald-300" },
+  { key: "cap6", icon: Users, accent: "from-sky-500/20 to-blue-500/10 text-sky-300" }
 ] as const;
 
 export async function LandingCapabilities() {
@@ -30,11 +42,21 @@ export async function LandingCapabilities() {
         </div>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CAPS.map(({ key, icon: Icon, accent }) => (
+          {CAPS.map(({ key, icon: Icon, accent, featured }) => (
             <article
               key={key}
-              className="group rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent p-5 transition hover:border-white/20 hover:bg-white/[0.06]"
+              className={cn(
+                "group relative rounded-2xl border bg-gradient-to-br from-white/[0.04] to-transparent p-5 transition hover:bg-white/[0.06]",
+                featured
+                  ? "border-amber-400/25 shadow-lg shadow-amber-950/20 ring-1 ring-amber-400/15 hover:border-amber-400/35"
+                  : "border-white/10 hover:border-white/20"
+              )}
             >
+              {featured ? (
+                <span className="absolute -top-2.5 right-4 rounded-full bg-amber-400 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0f1419] shadow-md">
+                  {t("capFeatured")}
+                </span>
+              ) : null}
               <span
                 className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${accent}`}
               >

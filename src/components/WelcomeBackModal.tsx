@@ -20,11 +20,25 @@ export function WelcomeBackModal({ events }: { events: WelcomeBackEvent[] }) {
     if (events.length > 0) setOpen(true);
   }, [events.length]);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    if (open) document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
   if (!open || events.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="ui-card w-full max-w-lg p-5 shadow-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onMouseDown={() => setOpen(false)}
+    >
+      <div
+        className="w-full max-w-lg rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-5 shadow-xl"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("title")}</div>

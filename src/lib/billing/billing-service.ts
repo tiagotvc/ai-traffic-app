@@ -152,7 +152,7 @@ export async function startStripeCheckout(input: {
       status: "pending",
       billingCycle: input.cycle,
       nfStatus: "not_applicable",
-      description: `Traffic AI ${plan.name}`
+      description: `Orion Agency ${plan.name}`
     })
   );
 
@@ -227,7 +227,7 @@ export async function startCheckout(input: {
   const customerId = billingCustomer.asaasCustomerId!;
   if (!customerId) throw new Error("Asaas customer not created");
 
-  const description = `Traffic AI ${plan.name} (${input.cycle}${pricing.discountPercent ? ` -${pricing.discountPercent}%` : ""})`;
+  const description = `Orion Agency ${plan.name} (${input.cycle}${pricing.discountPercent ? ` -${pricing.discountPercent}%` : ""})`;
 
   let result: {
     subscriptionId?: string;
@@ -296,7 +296,7 @@ export async function startCheckout(input: {
       pixExpiresAt: result.pixExpiresAt ? new Date(result.pixExpiresAt) : null,
       invoiceUrl: result.invoiceUrl ?? null,
       nfStatus: "pending",
-      description: `Traffic AI ${plan.name}`,
+      description: `Orion Agency ${plan.name}`,
       couponId,
       couponDiscountCents
     })

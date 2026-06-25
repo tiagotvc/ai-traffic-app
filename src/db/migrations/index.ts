@@ -45,10 +45,13 @@ import { ClientSavedTargeting1735831200000 } from "./0042-ClientSavedTargeting";
 import { TenantMemberDashboardLayout_1735831300000 } from "./0043-TenantMemberDashboardLayout";
 import { DashboardCanvasCore_1735831400000 } from "./0044-DashboardCanvasCore";
 import { OrionPlanPricing_1735831500000 } from "./0045-OrionPlanPricing";
+import { DashboardLayoutSubtitle_1735831600000 } from "./0046-DashboardLayoutSubtitle";
+import { AlertSourceFields_1735831700000 } from "./0047-AlertSourceFields";
+import { DashboardLayoutClientView_1735831800000 } from "./0048-DashboardLayoutClientView";
 import { ClientCommercialAddress1735831600000 } from "./0046-ClientCommercialAddress";
 import { ClientCommercialAddressNormalized1735831700000 } from "./0047-ClientCommercialAddressNormalized";
-import { UserPersonasAndZones1735831800000 } from "./0048-UserPersonasAndZones";
-import { MigrateClientSavedTargeting1735831900000 } from "./0049-MigrateClientSavedTargeting";
+import { UserTermsAcceptance_1735831900000 } from "./0049-UserTermsAcceptance";
+import { ContactMessages_1735832000000 } from "./0050-ContactMessages";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -99,8 +102,11 @@ export const appMigrations = [
   TenantMemberDashboardLayout_1735831300000,
   DashboardCanvasCore_1735831400000,
   OrionPlanPricing_1735831500000,
+  DashboardLayoutSubtitle_1735831600000,
+  AlertSourceFields_1735831700000,
+  DashboardLayoutClientView_1735831800000,
   ClientCommercialAddress1735831600000,
   ClientCommercialAddressNormalized1735831700000,
-  UserPersonasAndZones1735831800000,
-  MigrateClientSavedTargeting1735831900000
+  UserTermsAcceptance_1735831900000,
+  ContactMessages_1735832000000
 ];

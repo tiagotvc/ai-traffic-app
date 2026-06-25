@@ -1,6 +1,7 @@
 import type { GoalObjective } from "@/db/entities/ClientGoal";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import type { Range } from "@/lib/dashboard-ranges";
+import type { ReportBreakdownSection } from "@/lib/report-breakdown-data";
 import type { ReportRecommendation } from "@/lib/report-narrative";
 
 export type ReportAiAnalysis = {
@@ -51,6 +52,7 @@ export type ReportPreviewPayload = {
   narrative: string;
   recommendations: ReportRecommendation[];
   aiAnalysis?: ReportAiAnalysis | null;
+  breakdowns: ReportBreakdownSection[];
 };
 
 export const DEFAULT_REPORT_METRICS: MetricKey[] = ["spend", "clicks", "cpm", "ctr", "conversions"];

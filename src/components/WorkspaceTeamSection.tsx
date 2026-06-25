@@ -1,7 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+
+import {
+  DsAccentOutlineButton,
+  DsSectionHeader,
+  DsUnderlineTabs
+} from "@/design-system";
 
 type MemberRow = {
   userId: string;
@@ -19,7 +25,7 @@ type InviteRow = {
 };
 
 const AVATAR_PALETTE = [
-  "bg-[var(--violet-bright)]",
+  "bg-[var(--ui-accent)]",
   "bg-rose-500",
   "bg-emerald-500",
   "bg-sky-500",
@@ -71,7 +77,7 @@ function RoleBadge({ role, ownerLabel, adminLabel, memberLabel }: {
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
         isPrivileged
-          ? "bg-[rgba(245,166,35,0.12)] text-[var(--amber)] ring-1 ring-inset ring-[rgba(245,166,35,0.25)]"
+          ? "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)] ring-1 ring-inset ring-[var(--ui-accent-border)]"
           : "bg-[var(--surface-thead)] text-[var(--text-dim)] ring-1 ring-inset ring-[var(--border-color)]"
       }`}
     >
@@ -139,32 +145,28 @@ export function WorkspaceTeamSection({
   }
 
   return (
-    <section className="ui-card overflow-hidden">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] px-5 py-4">
-        <div>
-          <div className="font-heading text-base font-semibold text-[var(--text-main)]">{t("teamMembers")}</div>
-          <p className="mt-0.5 text-xs text-[var(--text-dimmer)]">{t("teamHint")}</p>
-        </div>
-        {isAdmin ? (
-          <button
-            type="button"
-            className="ui-btn-primary !px-3 !py-2 text-xs"
-            onClick={() => {
-              setInviteOpen((v) => !v);
-              setMessage(null);
-              setLastInviteUrl(null);
-            }}
-          >
-            <span className="text-base leading-none">+</span>
-            {t("teamInviteCta")}
-          </button>
-        ) : null}
-      </div>
+    <div className="space-y-6">
+      <DsSectionHeader
+        title={t("teamMembers")}
+        description={t("teamHint")}
+        actions={
+          isAdmin ? (
+            <DsAccentOutlineButton
+              onClick={() => {
+                setInviteOpen((v) => !v);
+                setMessage(null);
+                setLastInviteUrl(null);
+              }}
+            >
+              <span className="text-base leading-none">+</span>
+              {t("teamInviteCta")}
+            </DsAccentOutlineButton>
+          ) : undefined
+        }
+      />
 
-      {/* Invite panel (toggled) */}
       {isAdmin && inviteOpen ? (
-        <div className="border-b border-[var(--border-color)] bg-[var(--surface-thead)] px-5 py-4">
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] px-4 py-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[220px] flex-1">
               <div className="ui-label">{t("teamEmail")}</div>
@@ -193,7 +195,7 @@ export function WorkspaceTeamSection({
             <button
               type="button"
               disabled={isPending || !email.trim()}
-              className="ui-btn-primary"
+              className="ui-btn-accent"
               onClick={submitInvite}
             >
               {t("teamInvite")}
@@ -232,59 +234,41 @@ export function WorkspaceTeamSection({
       ) : null}
 
       {!isAdmin ? (
-        <p className="px-5 py-3 text-xs text-[var(--text-dimmer)]">{t("teamOnlyAdmin")}</p>
+        <p className="text-xs text-[var(--text-dimmer)]">{t("teamOnlyAdmin")}</p>
       ) : null}
 
-      {/* Tabs */}
-      <div className="flex items-center gap-5 border-b border-[var(--border-color)] px-5">
-        <button
-          type="button"
-          onClick={() => setTab("team")}
-          className={`-mb-px border-b-2 py-2.5 text-sm font-medium transition ${
-            tab === "team"
-              ? "border-[var(--amber-bright)] text-[var(--text-main)]"
-              : "border-transparent text-[var(--text-dimmer)] hover:text-[var(--text-dim)]"
-          }`}
-        >
-          {t("teamTabTeam")}{" "}
-          <span className="ml-0.5 text-[var(--text-dimmer)]">({members.length})</span>
-        </button>
-        {isAdmin ? (
-          <button
-            type="button"
-            onClick={() => setTab("pending")}
-            className={`-mb-px border-b-2 py-2.5 text-sm font-medium transition ${
-              tab === "pending"
-                ? "border-[var(--amber-bright)] text-[var(--text-main)]"
-                : "border-transparent text-[var(--text-dimmer)] hover:text-[var(--text-dim)]"
-            }`}
-          >
-            {t("teamTabPending")}{" "}
-            <span className="ml-0.5 text-[var(--text-dimmer)]">({invites.length})</span>
-          </button>
-        ) : null}
-      </div>
+      <DsUnderlineTabs
+        tabs={[
+          { key: "team" as const, label: t("teamTabTeam"), badge: members.length },
+          ...(isAdmin
+            ? [{ key: "pending" as const, label: t("teamTabPending"), badge: invites.length }]
+            : [])
+        ]}
+        active={tab}
+        onChange={setTab}
+        accent="brand"
+      />
 
       {/* Team table */}
       {tab === "team" ? (
         members.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-[var(--text-dimmer)]">{t("teamEmptyMembers")}</p>
+          <p className="py-8 text-center text-sm text-[var(--text-dimmer)]">{t("teamEmptyMembers")}</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[11px] font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
-                <th className="px-5 py-2 font-medium">{t("teamMembers")}</th>
-                <th className="hidden px-3 py-2 font-medium sm:table-cell">
+              <tr className="text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                <th className="py-2 pr-3 font-semibold">{t("teamMembers")}</th>
+                <th className="hidden px-3 py-2 font-semibold sm:table-cell">
                   {t("teamWorkspaceCol")}
                 </th>
-                <th className="px-3 py-2 font-medium">{t("teamRole")}</th>
-                <th className="px-5 py-2 text-right font-medium">{t("teamColActions")}</th>
+                <th className="px-3 py-2 font-semibold">{t("teamRole")}</th>
+                <th className="py-2 pl-3 text-right font-semibold">{t("teamColActions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-color)]">
               {members.map((m) => (
                 <tr key={m.userId} className="hover:bg-[var(--row-hover)]">
-                  <td className="px-5 py-3">
+                  <td className="py-3 pr-3">
                     <div className="flex items-center gap-3">
                       <Avatar name={m.name} email={m.email} />
                       <div className="min-w-0">
@@ -317,7 +301,7 @@ export function WorkspaceTeamSection({
                       memberLabel={t("teamRoleMember")}
                     />
                   </td>
-                  <td className="px-5 py-3 text-right">
+                  <td className="py-3 pl-3 text-right">
                     {isAdmin && !m.isSelf ? (
                       <button
                         type="button"
@@ -345,13 +329,13 @@ export function WorkspaceTeamSection({
       {/* Pending invites */}
       {tab === "pending" && isAdmin ? (
         invites.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-[var(--text-dimmer)]">{t("teamNoPending")}</p>
+          <p className="py-8 text-center text-sm text-[var(--text-dimmer)]">{t("teamNoPending")}</p>
         ) : (
           <ul className="divide-y divide-[var(--border-color)]">
             {invites.map((i) => (
               <li
                 key={i.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-5 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 py-3"
               >
                 <div className="flex items-center gap-3">
                   <Avatar name={null} email={i.email} />
@@ -384,8 +368,8 @@ export function WorkspaceTeamSection({
       ) : null}
 
       {message && !inviteOpen ? (
-        <p className="px-5 py-2 text-xs text-[var(--text-dim)]">{message}</p>
+        <p className="text-xs text-[var(--text-dim)]">{message}</p>
       ) : null}
-    </section>
+    </div>
   );
 }

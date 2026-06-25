@@ -10,7 +10,7 @@ import {
   type AuthFormState
 } from "@/app/[locale]/(auth)/login/actions";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
-import { Link } from "@/i18n/navigation";
+import { LegalModal, type LegalModalType } from "@/components/auth/LegalModal";
 import { cn } from "@/lib/cn";
 
 const initialState: AuthFormState = {};
@@ -35,6 +35,7 @@ export function LoginForm({
   const t = useTranslations("auth");
   const [mode, setMode] = useState<"login" | "register">("login");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [legalModal, setLegalModal] = useState<LegalModalType | null>(null);
   const [loginState, loginAction, loginPending] = useActionState(
     loginWithCredentials,
     initialState
@@ -49,26 +50,31 @@ export function LoginForm({
   const showSwitchBanner = switchAccount && currentUserEmail;
   const hasSocial = googleOAuthConfigured || metaOAuthConfigured;
 
+  const openLegal = (type: LegalModalType) => (e: React.MouseEvent) => {
+    // Evita o link navegar e o clique alternar o checkbox de termos (quando dentro do label).
+    e.preventDefault();
+    e.stopPropagation();
+    setLegalModal(type);
+  };
+
   const termsLink = (chunks: ReactNode) => (
-    <Link
-      href="/terms"
-      target="_blank"
-      rel="noopener noreferrer"
+    <button
+      type="button"
+      onClick={openLegal("terms")}
       className="font-semibold text-amber-300 underline-offset-2 hover:text-amber-200 hover:underline"
     >
       {chunks}
-    </Link>
+    </button>
   );
 
   const privacyLink = (chunks: ReactNode) => (
-    <Link
-      href="/privacy"
-      target="_blank"
-      rel="noopener noreferrer"
+    <button
+      type="button"
+      onClick={openLegal("privacy")}
       className="font-semibold text-amber-300 underline-offset-2 hover:text-amber-200 hover:underline"
     >
       {chunks}
-    </Link>
+    </button>
   );
 
   return (
@@ -214,6 +220,10 @@ export function LoginForm({
       )}
 
       <p className="mt-3 text-center text-[11px] text-violet-300/45">{t("metaConnectLaterHint")}</p>
+
+      {legalModal ? (
+        <LegalModal type={legalModal} locale={locale} onClose={() => setLegalModal(null)} />
+      ) : null}
     </div>
   );
 }

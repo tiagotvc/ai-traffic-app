@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 import {
   AgencyHealthWidget,
+  AgeBreakdownWidget,
   AlertsFeedWidget,
   HeroKpisWidget,
   PerformanceChartWidget,
@@ -21,8 +22,14 @@ import {
 import { parseExtendedChartStyle } from "@/lib/dashboard/slot-visual-config";
 import { TaskbarWidget } from "@/components/dashboard/canvas/widgets/TaskbarWidget";
 import { DualMetricChartWidget, SingleMetricWidget } from "@/components/dashboard/canvas/widgets/MetricWidgets";
+import { AlertCardPreview } from "@/components/dashboard/canvas/widgets/alerts/AlertCardWidget";
 import { WidgetConfigPreview } from "@/components/dashboard/canvas/WidgetConfigPreview";
 import { BrainSummaryBanner } from "@/components/dashboard/BrainSummaryBanner";
+import {
+  AnalyzeBlockWidget,
+  GoalBlockWidget,
+  TableBlockWidget
+} from "@/components/dashboard/canvas/widgets/AppBlockWidgets";
 import { normalizeChartMetrics } from "@/lib/dashboard/chart-metrics";
 import type { ChartBarLayout } from "@/lib/dashboard/chart-metrics";
 import {
@@ -58,6 +65,9 @@ export function WidgetLivePreview({
   const t = useTranslations("dashboardWidgets");
 
   if (!dashboardData) {
+    if (widgetType === "alerts.card") {
+      return <AlertCardPreview config={config} />;
+    }
     return <WidgetConfigPreview widgetType={widgetType} config={config} />;
   }
 
@@ -71,6 +81,14 @@ export function WidgetLivePreview({
         slots={slots}
         preview
       />
+    );
+  }
+
+  if (widgetType === "analytics.ageBreakdown") {
+    return (
+      <div style={{ height: previewHeight ?? 240 }}>
+        <AgeBreakdownWidget data={dashboardData} />
+      </div>
     );
   }
 
@@ -146,6 +164,30 @@ export function WidgetLivePreview({
     );
   }
 
+  if (widgetType === "app.analyze") {
+    return (
+      <div className="h-full min-h-0 w-full" style={{ minHeight: previewHeight ?? 200 }}>
+        <AnalyzeBlockWidget data={dashboardData} config={config} />
+      </div>
+    );
+  }
+
+  if (widgetType === "app.goal") {
+    return (
+      <div className="h-full min-h-0 w-full" style={{ minHeight: previewHeight ?? 160 }}>
+        <GoalBlockWidget data={dashboardData} config={config} />
+      </div>
+    );
+  }
+
+  if (widgetType === "app.table") {
+    return (
+      <div className="h-full min-h-0 w-full" style={{ minHeight: previewHeight ?? 220 }}>
+        <TableBlockWidget data={dashboardData} config={config} />
+      </div>
+    );
+  }
+
   if (widgetType === "brain.learnings") {
     return (
       <div style={{ minHeight: previewHeight ?? 40 }}>
@@ -179,6 +221,14 @@ export function WidgetLivePreview({
     return (
       <div className="h-full min-h-0" style={{ height: previewHeight ?? 180 }}>
         <AlertsFeedWidget data={dashboardData} density={density} />
+      </div>
+    );
+  }
+
+  if (widgetType === "alerts.card") {
+    return (
+      <div className="h-full min-h-0" style={{ height: previewHeight ?? 220 }}>
+        <AlertCardPreview config={config} />
       </div>
     );
   }

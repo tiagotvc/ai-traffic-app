@@ -19,14 +19,15 @@ import {
   PolarRadiusAxis,
   Radar,
   RadarChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis
 } from "recharts";
 
 import { PremiumChartFrame } from "@/components/charts/PremiumChartFrame";
+import { PieLegend } from "@/components/charts/PieLegend";
 import { PremiumChartTooltip } from "@/components/charts/PremiumChartTooltip";
+import { ChartContainer } from "@/components/ui/ChartContainer";
 import { cn } from "@/lib/cn";
 import {
   PREMIUM_BAR_RADIUS,
@@ -145,7 +146,7 @@ export function DashboardPerformanceChart({
 
   if (isLoading) {
     return (
-      <div className="flex h-full min-h-0 w-full flex-col">
+      <div className={cn("flex w-full flex-col", !isCanvas && !isPreview && !isEmbedded && "h-full min-h-0")}>
         {!isCanvas && !isPreview && !isEmbedded ? (
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -154,15 +155,29 @@ export function DashboardPerformanceChart({
             </div>
           </div>
         ) : null}
-        <div className="skeleton-shimmer min-h-0 flex-1 rounded-xl" />
+        <div
+          className="skeleton-shimmer rounded-xl"
+          style={{ height: isEmbedded ? 120 : isCanvas ? 200 : 280 }}
+        />
       </div>
     );
   }
 
-  const chartHeight = isEmbedded ? undefined : previewHeight ?? (isCanvas ? (isMobile ? 240 : undefined) : 280);
+  const resolvedChartHeight = isEmbedded
+    ? 120
+    : isCanvas
+      ? isMobile
+        ? 200
+        : 220
+      : previewHeight ?? 320;
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-col">
+    <div
+      className={cn(
+        "relative flex w-full flex-col",
+        !isCanvas && !isPreview && !isEmbedded && "h-full min-h-0"
+      )}
+    >
       {!isPreview && !isEmbedded ? (
         <div className={cn("flex shrink-0 flex-wrap items-end justify-between gap-2", isCanvas ? "mb-2" : "mb-4")}>
           <div className="min-w-0">
@@ -214,41 +229,67 @@ export function DashboardPerformanceChart({
         </div>
       ) : null}
 
-      <PremiumChartFrame compact={isCanvas || isPreview || isEmbedded}>
+      {disableToggle &&
+      visual?.showLegend !== false &&
+      activeMetrics.length > 0 &&
+      chartStyle !== "pie" &&
+      chartStyle !== "donut" ? (
         <div
           className={cn(
-            "min-h-0 w-full min-w-0 flex-1 overflow-hidden",
-            isEmbedded && "h-full min-h-[64px]",
-            isCanvas && "min-h-[200px] h-full",
-            !isCanvas && !isPreview && !isEmbedded && "h-[280px] min-h-[280px] animate-chart-grow"
+            "mb-2 flex shrink-0 flex-wrap gap-3",
+            visual?.legendPosition === "top" && "order-first"
           )}
-          style={chartHeight ? { height: chartHeight, minHeight: chartHeight } : undefined}
-          key={animKey}
         >
-          {data.length >= 1 ? (
-            <ResponsiveContainer width="100%" height={isEmbedded || isCanvas ? "100%" : chartHeight ?? 280}>
-              <PerformanceChartBody
-                data={data}
-                activeMetrics={activeMetrics}
-                chartStyle={parseExtendedChartStyle(chartStyle)}
-                barLayout={barLayout}
-                gradPrefix={`dash-${animKey}`}
-                formatValue={formatValue}
-                metricLabels={metricLabels}
-                visual={visual}
-                metricSummary={metricSummary}
-                compactAxis={isMobile}
-              />
-            </ResponsiveContainer>
-          ) : (
-            <div
-              className="flex h-full items-center justify-center rounded-xl border border-dashed text-xs"
-              style={{ borderColor: "var(--chart-frame-border)", color: "var(--text-dim)" }}
-            >
-              {t("noChartData")}
-            </div>
-          )}
+          {activeMetrics.map((key) => {
+            const color = resolveMetricColor(key, visual?.customColors);
+            const iconShape =
+              visual?.legendIconType === "square"
+                ? "rounded-sm"
+                : visual?.legendIconType === "line"
+                  ? "h-0.5 w-3 rounded-none"
+                  : "rounded-full";
+            return (
+              <span key={key} className="flex items-center gap-1.5 text-[11px] text-[var(--text-dim)]">
+                <span className={cn("h-2 w-2 shrink-0", iconShape)} style={{ background: color }} />
+                {metricLabels[key] ?? key}
+              </span>
+            );
+          })}
         </div>
+      ) : null}
+
+      <PremiumChartFrame compact={isCanvas || isPreview || isEmbedded}>
+        {data.length >= 1 ? (
+          <ChartContainer
+            height={resolvedChartHeight}
+            className="w-full animate-chart-grow"
+            key={animKey}
+          >
+            <PerformanceChartBody
+              data={data}
+              activeMetrics={activeMetrics}
+              chartStyle={parseExtendedChartStyle(chartStyle)}
+              barLayout={barLayout}
+              gradPrefix={`dash-${animKey}`}
+              formatValue={formatValue}
+              metricLabels={metricLabels}
+              visual={visual}
+              metricSummary={metricSummary}
+              compactAxis={isMobile}
+            />
+          </ChartContainer>
+        ) : (
+          <div
+            className="flex items-center justify-center rounded-xl border border-dashed text-xs"
+            style={{
+              height: resolvedChartHeight,
+              borderColor: "var(--chart-frame-border)",
+              color: "var(--text-dim)"
+            }}
+          >
+            {t("noChartData")}
+          </div>
+        )}
       </PremiumChartFrame>
     </div>
   );
@@ -280,6 +321,41 @@ function PerformanceChartBody({
   const colorFor = (key: MetricKey) => resolveMetricColor(key, visual?.customColors);
   const lineWidth = strokeWeightToPx(visual?.lineStrokeWidth, 2.5);
   const barSize = barThicknessToSize(visual?.barThickness);
+
+  // Eixo Y duplo automático: quando há 2+ métricas com escalas muito diferentes,
+  // a 1ª fica no eixo esquerdo e as que destoarem por um fator grande vão pro direito.
+  // Assim uma métrica de magnitude alta (ex.: Alcance) não esmaga uma de magnitude
+  // baixa (ex.: Cliques), que ficaria colada no zero numa escala única.
+  const DUAL_AXIS_RATIO = 8;
+  const metricMagnitude = (key: MetricKey) => {
+    let max = 0;
+    for (const point of data) {
+      const v = Number(point[key]);
+      if (Number.isFinite(v)) max = Math.max(max, Math.abs(v));
+    }
+    return max;
+  };
+  const explicitRightAxis = activeMetrics.some((key) => visual?.yAxisSide?.[key] === "right");
+  const autoRightAxis = (() => {
+    if (explicitRightAxis || activeMetrics.length < 2) return new Set<MetricKey>();
+    const baseKey = activeMetrics[0];
+    const baseMag = metricMagnitude(baseKey);
+    if (baseMag <= 0) return new Set<MetricKey>();
+    const right = new Set<MetricKey>();
+    for (let i = 1; i < activeMetrics.length; i += 1) {
+      const key = activeMetrics[i];
+      const mag = metricMagnitude(key);
+      if (mag <= 0) continue;
+      const ratio = mag > baseMag ? mag / baseMag : baseMag / mag;
+      if (ratio >= DUAL_AXIS_RATIO) right.add(key);
+    }
+    return right;
+  })();
+  const axisSideFor = (key: MetricKey): "left" | "right" => {
+    if (visual?.yAxisSide?.[key] === "right") return "right";
+    return autoRightAxis.has(key) ? "right" : "left";
+  };
+  const hasRightAxis = explicitRightAxis || autoRightAxis.size > 0;
 
   if (chartStyle === "pareto" || chartStyle === "bullet" || chartStyle === "boxplot") {
     const metric = activeMetrics[0] ?? "spend";
@@ -342,7 +418,8 @@ function PerformanceChartBody({
   }
 
   const axisProps = {
-    margin: compactAxis ? { top: 8, right: 8, left: -8, bottom: 0 } : PREMIUM_CHART_MARGIN,
+    // bottom maior no desktop para os rótulos do eixo X não cortarem embaixo.
+    margin: compactAxis ? { top: 8, right: 8, left: -8, bottom: 0 } : { top: 8, right: 12, left: 0, bottom: 12 },
     data
   };
   const tooltip = (
@@ -362,17 +439,29 @@ function PerformanceChartBody({
       interval={compactAxis ? "preserveStartEnd" : undefined}
       angle={compactAxis ? -35 : 0}
       textAnchor={compactAxis ? "end" : "middle"}
-      height={compactAxis ? 48 : 30}
+      height={compactAxis ? 48 : 36}
+      tickMargin={6}
     />
   );
   const yAxis = (
     <YAxis
+      yAxisId="left"
       width={compactAxis ? 36 : 44}
       tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 10 }}
       axisLine={false}
       tickLine={false}
     />
   );
+  const rightYAxis = hasRightAxis ? (
+    <YAxis
+      yAxisId="right"
+      orientation="right"
+      width={compactAxis ? 36 : 44}
+      tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 10 }}
+      axisLine={false}
+      tickLine={false}
+    />
+  ) : null;
 
   if (chartStyle === "pie" || chartStyle === "donut") {
     const last = data[data.length - 1];
@@ -384,34 +473,49 @@ function PerformanceChartBody({
       }))
       .filter((d) => d.value > 0);
     const innerRadius = chartStyle === "donut" ? "52%" : 0;
+    const legendItems = pieData.map((entry) => ({
+      name: entry.name,
+      color: colorFor(entry.key)
+    }));
+    const showPieLegend = visual?.showLegend !== false;
     return (
-      <PieChart>
-        <Tooltip
-          {...premiumRechartsTooltipProps}
-          formatter={(value, name) => {
-            const num = Number(value ?? 0);
-            const entry = pieData.find((d) => d.name === name);
-            return [
-              formatValue(entry?.key ?? activeMetrics[0], num),
-              String(name ?? "")
-            ];
-          }}
-        />
-        <Pie
-          data={pieData}
-          dataKey="value"
-          nameKey="name"
-          cx="50%"
-          cy="50%"
-          innerRadius={innerRadius}
-          outerRadius="78%"
-          paddingAngle={2}
-        >
-          {pieData.map((entry) => (
-            <Cell key={entry.key} fill={colorFor(entry.key)} />
-          ))}
-        </Pie>
-      </PieChart>
+      <div className="flex h-full min-h-0 w-full flex-col">
+        {showPieLegend && visual?.legendPosition === "top" ? (
+          <PieLegend items={legendItems} position="top" />
+        ) : null}
+        <div className="min-h-0 flex-1">
+          <PieChart>
+            <Tooltip
+              {...premiumRechartsTooltipProps}
+              formatter={(value, name) => {
+                const num = Number(value ?? 0);
+                const entry = pieData.find((d) => d.name === name);
+                return [
+                  formatValue(entry?.key ?? activeMetrics[0], num),
+                  String(name ?? "")
+                ];
+              }}
+            />
+            <Pie
+              data={pieData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={innerRadius}
+              outerRadius="78%"
+              paddingAngle={2}
+            >
+              {pieData.map((entry) => (
+                <Cell key={entry.key} fill={colorFor(entry.key)} />
+              ))}
+            </Pie>
+          </PieChart>
+        </div>
+        {showPieLegend && visual?.legendPosition !== "top" ? (
+          <PieLegend items={legendItems} position="bottom" />
+        ) : null}
+      </div>
     );
   }
 
@@ -458,28 +562,16 @@ function PerformanceChartBody({
   }
 
   if (chartStyle === "composed") {
-    const hasRightAxis = activeMetrics.some(
-      (key) => visual?.yAxisSide?.[key] === "right"
-    );
     return (
       <ComposedChart {...axisProps}>
         {grid}
         {xAxis}
         {yAxis}
-        {hasRightAxis ? (
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            width={44}
-            tick={premiumAxisTick(visual?.textColor)}
-            axisLine={false}
-            tickLine={false}
-          />
-        ) : null}
+        {rightYAxis}
         {tooltip}
         {activeMetrics.map((key, index) => {
           const style = visual?.seriesStyles?.[key] ?? defaultSeriesStyle(index);
-          const yAxisId = visual?.yAxisSide?.[key] === "right" ? "right" : "left";
+          const yAxisId = axisSideFor(key);
           const color = colorFor(key);
           if (style === "bar") {
             return (
@@ -548,12 +640,14 @@ function PerformanceChartBody({
           <>
             {xAxis}
             {yAxis}
+            {rightYAxis}
           </>
         )}
         {tooltip}
         {activeMetrics.map((key) => (
           <Bar
             key={key}
+            yAxisId={horizontalBars ? undefined : axisSideFor(key)}
             dataKey={key}
             fill={colorFor(key)}
             barSize={barSize}
@@ -570,10 +664,12 @@ function PerformanceChartBody({
         {grid}
         {xAxis}
         {yAxis}
+        {rightYAxis}
         {tooltip}
         {activeMetrics.map((key) => (
           <Line
             key={key}
+            yAxisId={axisSideFor(key)}
             type="monotone"
             dataKey={key}
             stroke={colorFor(key)}
@@ -600,10 +696,12 @@ function PerformanceChartBody({
       {grid}
       {xAxis}
       {yAxis}
+      {rightYAxis}
       {tooltip}
       {activeMetrics.map((key) => (
         <Area
           key={key}
+          yAxisId={axisSideFor(key)}
           type="monotone"
           dataKey={key}
           stroke={colorFor(key)}

@@ -1,4 +1,9 @@
 import type { PeriodState } from "@/components/PeriodFilter";
+import {
+  isExtendedPeriodPreset,
+  periodStateFromExtendedPreset,
+  type ExtendedPeriodPreset
+} from "@/lib/dashboard/extended-period";
 import type { PeriodPreset } from "@/lib/report-period";
 import { normalizeTaskbarSlots } from "@/lib/dashboard/taskbar-config";
 import type { WidgetInstanceDto } from "@/lib/dashboard/widget-catalog";
@@ -11,14 +16,18 @@ export function isWidgetPeriodPreset(value: string): value is PeriodPreset {
 }
 
 /** `null` = usa o filtro global do CommandStrip. */
-export function parseWidgetPeriod(config: Record<string, unknown>): PeriodPreset | null {
+export function parseWidgetPeriod(config: Record<string, unknown>): ExtendedPeriodPreset | null {
   const raw = config.periodPreset;
   if (!raw || raw === "global") return null;
+  if (typeof raw === "string" && isExtendedPeriodPreset(raw)) return raw;
   if (typeof raw === "string" && isWidgetPeriodPreset(raw)) return raw;
   return null;
 }
 
-export function periodStateFromWidgetPreset(preset: PeriodPreset): PeriodState {
+export function periodStateFromWidgetPreset(preset: PeriodPreset | ExtendedPeriodPreset): PeriodState {
+  if (isExtendedPeriodPreset(preset)) {
+    return periodStateFromExtendedPreset(preset);
+  }
   return { preset, since: "", until: "" };
 }
 
@@ -29,6 +38,7 @@ export function widgetSupportsPeriod(widgetType: string): boolean {
     widgetType === "metrics.heroKpis" ||
     widgetType === "metrics.quickPills" ||
     widgetType.startsWith("chart.") ||
+    widgetType.startsWith("app.") ||
     widgetType === "premium.multiChart" ||
     widgetType === "layout.taskbar" ||
     widgetType === "premium.metricMatrix"

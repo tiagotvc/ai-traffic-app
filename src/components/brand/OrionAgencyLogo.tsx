@@ -6,10 +6,10 @@ type LogoSize = "sm" | "md" | "lg" | "xl";
 type LogoVariant = "dark" | "light" | "gold";
 
 const WIDTH: Record<LogoSize, number> = {
-  sm: 128,
-  md: 156,
-  lg: 188,
-  xl: 228
+  sm: 78,
+  md: 95,
+  lg: 114,
+  xl: 138
 };
 
 const ACCENT = "#f5a623";
@@ -28,32 +28,31 @@ function OrionWordmarkSvg({
   return (
     <svg
       width={width}
-      height={width * 0.34}
-      viewBox="0 0 240 82"
+      height={width * 0.56}
+      viewBox="0 0 150 84"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
-      <g transform="translate(8 8)">
-        <circle
-          cx="16"
-          cy="33"
-          r="13"
-          stroke={ink}
-          strokeWidth="3.2"
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray="68 12"
-          transform="rotate(-32 16 33)"
-        />
-        <path
-          d="M16 22 L17.6 27 L23 27 L18.8 30.2 L20.4 35.5 L16 32.5 L11.6 35.5 L13.2 30.2 L9 27 L14.4 27 Z"
-          fill={accent}
-        />
-      </g>
+      {/* "O" como ícone-letra (maior), seguido de RION para formar a palavra ORION */}
+      <circle
+        cx="20"
+        cy="30"
+        r="16"
+        stroke={ink}
+        strokeWidth="3.4"
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray="84 14"
+        transform="rotate(-32 20 30)"
+      />
+      <path
+        d="M20 22.5 L21.76 27.57 L27.13 27.68 L22.85 30.93 L24.41 36.07 L20 33 L15.59 36.07 L17.15 30.93 L12.87 27.68 L18.24 27.57 Z"
+        fill={accent}
+      />
       <text
-        x="52"
-        y="48"
+        x="44"
+        y="44"
         fill={ink}
         fontFamily="var(--font-heading), ui-sans-serif, system-ui, sans-serif"
         fontSize="36"
@@ -62,9 +61,11 @@ function OrionWordmarkSvg({
       >
         RION
       </text>
-      <line x1="58" y1="62" x2="102" y2="62" stroke={accent} strokeWidth="0.8" opacity="0.85" />
+      {/* Linha sob toda a palavra Orion (alinhada à esquerda, sob o "O") */}
+      <line x1="8" y1="56" x2="143" y2="56" stroke={accent} strokeWidth="1" opacity="0.85" />
+      {/* AGENCY centralizado exatamente sob Orion */}
       <text
-        x="120"
+        x="75"
         y="72"
         fill={sub}
         textAnchor="middle"
@@ -75,7 +76,6 @@ function OrionWordmarkSvg({
       >
         AGENCY
       </text>
-      <line x1="138" y1="62" x2="182" y2="62" stroke={accent} strokeWidth="0.8" opacity="0.85" />
     </svg>
   );
 }
@@ -103,15 +103,16 @@ export function OrionAgencyLogo({
           <circle
             cx="18"
             cy="18"
-            r="11"
+            r="13"
             stroke={variant === "dark" ? "#fff" : "#0a0a0a"}
-            strokeWidth="2.2"
+            strokeWidth="2.4"
             fill="none"
-            strokeDasharray="58 10"
+            strokeLinecap="round"
+            strokeDasharray="68 12"
             transform="rotate(-30 18 18)"
           />
           <path
-            d="M18 10 L19.5 14.5 L24 14.5 L20.5 17.5 L22 22 L18 19 L14 22 L15.5 17.5 L12 14.5 L16.5 14.5 Z"
+            d="M18 9.5 L19.76 14.57 L25.13 14.68 L20.85 17.93 L22.41 23.07 L18 20 L13.59 23.07 L15.15 17.93 L10.87 14.68 L16.24 14.57 Z"
             fill={variant === "dark" ? ACCENT : "#d4880a"}
           />
         </svg>

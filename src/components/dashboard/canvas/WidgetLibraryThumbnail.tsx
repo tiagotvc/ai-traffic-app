@@ -508,6 +508,23 @@ function AlertsMock() {
   );
 }
 
+function AlertCardMock() {
+  return (
+    <ThumbFrame accent="violet">
+      <circle cx="18" cy="18" r="8" fill="rgba(168,85,247,0.25)" />
+      <rect x="30" y="12" width="38" height="4" rx="2" fill="rgba(168,85,247,0.5)" />
+      <rect x="30" y="20" width="28" height="6" rx="2" fill="rgba(255,255,255,0.12)" />
+      <rect x="8" y="34" width="64" height="22" rx="4" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.2)" />
+      <polyline
+        points="12,50 24,44 36,46 48,38 60,42"
+        fill="none"
+        stroke="#818cf8"
+        strokeWidth="1.5"
+      />
+    </ThumbFrame>
+  );
+}
+
 function HealthMock() {
   return (
     <ThumbFrame accent="emerald">
@@ -604,6 +621,7 @@ export function WidgetLibraryThumbnail({
   if (widgetType === "advanced.boxplot") return <ChartAreaMock style="boxplot" />;
   if (widgetType === "ai.correlation") return <CorrelationMock />;
   if (widgetType === "alerts.feed") return <AlertsMock />;
+  if (widgetType === "alerts.card") return <AlertCardMock />;
   if (widgetType === "clients.health") return <HealthMock />;
   if (widgetType === "brain.learnings") return <BrainBannerMock />;
   if (widgetType.startsWith("ai.")) return <BrainBannerMock />;

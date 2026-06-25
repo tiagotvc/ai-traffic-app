@@ -2,6 +2,7 @@ import type { ChartBarLayout } from "@/lib/dashboard/chart-metrics";
 import { DEFAULT_DASHBOARD_CHART_METRICS, METRIC_CATALOG, type MetricKey } from "@/lib/dashboard-metrics";
 import { createCompositeSlot, normalizeTaskbarSlots, type TaskbarOrientation } from "@/lib/dashboard/taskbar-config";
 import { WIDGET_PERIOD_PRESETS } from "@/lib/dashboard/widget-period";
+import { DEFAULT_ALERT_WIDGET_CONFIG } from "@/lib/dashboard/alert-widget-config";
 import { getWidgetDefinition } from "@/lib/dashboard/widget-catalog";
 
 export type { ChartBarLayout };
@@ -167,7 +168,8 @@ export function widgetHasConfigStep(widgetType: string): boolean {
     widgetType === "advanced.radar" ||
     widgetType === "advanced.pareto" ||
     widgetType === "premium.bullet" ||
-    widgetType === "advanced.boxplot"
+    widgetType === "advanced.boxplot" ||
+    widgetType === "alerts.card"
   ) {
     return true;
   }
@@ -197,6 +199,9 @@ export function defaultWidgetConfig(widgetType: string): Record<string, unknown>
   if (widgetType === "premium.multiChart" && !base.chartMetrics) {
     base.chartMetrics = ["spend", "roas", "conversions", "ctr"];
   }
+  if (widgetType === "alerts.card") {
+    return DEFAULT_ALERT_WIDGET_CONFIG as unknown as Record<string, unknown>;
+  }
   return base;
 }
 
@@ -211,8 +216,14 @@ export function resolveWidgetHeight(widgetType: string, config: Record<string, u
   if (widgetType === "alerts.feed") {
     return def?.defaultH ?? 5;
   }
+  if (widgetType === "alerts.card") {
+    return def?.defaultH ?? 4;
+  }
   if (widgetType === "metrics.heroKpis") {
     return def?.defaultH ?? 3;
+  }
+  if (widgetType === "metrics.quickPills") {
+    return 2;
   }
   if (widgetType === "metrics.card" || widgetType.startsWith("metric.single.")) {
     return config.cardStyle === "compact" ? 1 : 3;

@@ -6,6 +6,7 @@ import {
   Megaphone,
   BarChart3,
   LayoutDashboard,
+  LayoutGrid,
   Target,
   Trophy,
   Users
@@ -86,6 +87,7 @@ export function AppSidebar({
 
   const items: NavItem[] = [
     { id: "highlights", href: "/dashboard", label: t("highlights"), icon: <LayoutDashboard size={18} className="shrink-0" /> },
+    { id: "views", href: "/dashboard/views", label: t("views"), icon: <LayoutGrid size={18} className="shrink-0" /> },
     { id: "clients", href: "/clients", label: t("clients"), icon: <Users size={18} className="shrink-0" /> },
     { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <Megaphone size={18} className="shrink-0" />, gate: "campaigns" },
     { id: "audiences", href: "/audiences", label: t("audiences"), icon: <Target size={18} className="shrink-0" />, gate: "audiences" },
@@ -96,7 +98,9 @@ export function AppSidebar({
   function isActive(item: NavItem) {
     const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
     if (item.id === "highlights")
-      return base === "/dashboard" || base.startsWith("/dashboard/") || base === "/";
+      return base === "/dashboard" || base === "/";
+    if (item.id === "views")
+      return base === "/dashboard/views" || base.startsWith("/dashboard/apps/");
     if (item.id === "campaigns")
       return base === "/campaigns" || base.startsWith("/campaigns/");
     if (item.id === "clients") return base === "/clients" || base.startsWith("/clients/");
@@ -117,15 +121,15 @@ export function AppSidebar({
       {/* Logo + collapse (desktop sidebar only) */}
       {!isDrawer ? (
       <div
-        className={`flex h-16 shrink-0 items-center border-b border-[var(--sidebar-border)] ${
-          effectiveCollapsed ? "justify-center px-2" : "justify-between gap-2 px-3"
+        className={`relative flex h-16 shrink-0 items-center border-b border-[var(--sidebar-border)] ${
+          effectiveCollapsed ? "justify-center px-2" : "justify-start pl-[22px] pr-3"
         }`}
       >
-        <div className={`flex min-w-0 items-center ${effectiveCollapsed ? "justify-center" : ""}`}>
-          <SidebarLogoIcon collapsed={effectiveCollapsed} />
-        </div>
+        <SidebarLogoIcon collapsed={effectiveCollapsed} />
         {!effectiveCollapsed ? (
-          <SidebarCollapseButton onClick={onToggleCollapse} title={t("collapseSidebar")} />
+          <div className="absolute right-3">
+            <SidebarCollapseButton onClick={onToggleCollapse} title={t("collapseSidebar")} />
+          </div>
         ) : null}
       </div>
       ) : null}
@@ -237,6 +241,7 @@ export function AppSidebar({
 
       <SidebarFooter
         userName={userName}
+        userEmail={userEmail}
         planName={planName}
         subscriptionStatus={subscriptionStatus}
         collapsed={effectiveCollapsed}

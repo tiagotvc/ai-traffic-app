@@ -277,7 +277,11 @@ export function useAgencyBrain(clientId: string) {
     }
   }
 
-  async function patchAction(learningId: string, action: "approve" | "reject" | "archive") {
+  async function patchAction(
+    learningId: string,
+    action: "approve" | "reject" | "archive",
+    options?: { force?: boolean }
+  ) {
     if (action === "reject" || action === "archive") {
       const confirmKey =
         action === "reject" ? "confirmReject" : "confirmArchive";
@@ -289,7 +293,11 @@ export function useAgencyBrain(clientId: string) {
     try {
       const res = await fetch(
         `/api/clients/${encodeURIComponent(clientId)}/learnings/${learningId}/${action}`,
-        { method: "PATCH" }
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ force: options?.force === true })
+        }
       );
       const json = await res.json();
       if (!json.ok) {

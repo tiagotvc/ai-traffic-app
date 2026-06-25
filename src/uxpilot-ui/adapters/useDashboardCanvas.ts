@@ -10,6 +10,13 @@ import {
 } from "@/lib/dashboard/widget-config";
 import type { LayoutDto, WidgetInstanceDto } from "@/lib/dashboard/widget-catalog";
 import { getWidgetDefinition } from "@/lib/dashboard/widget-catalog";
+import { layoutNeedsNormalization, normalizeWidgetLayout } from "@/lib/dashboard/widget-layout-normalize";
+import {
+  finalizeHighlightsLayoutWidgets,
+  highlightsLayoutNeedsPrepare,
+  prepareHighlightsLayoutWidgets
+} from "@/lib/dashboard/highlights-layout-widgets";
+import type { MetricKey } from "@/lib/dashboard-metrics";
 
 export function useEntitlementsCanvas(initialAllowCanvas: boolean) {
   const [allowCanvas, setAllowCanvas] = useState(initialAllowCanvas);
@@ -26,12 +33,15 @@ export function useEntitlementsCanvas(initialAllowCanvas: boolean) {
   return allowCanvas;
 }
 
-export function useDashboardCanvas() {
+export function useDashboardCanvas(
+  layoutId: string,
+  options?: { startInEditMode?: boolean }
+) {
   const [layouts, setLayouts] = useState<LayoutDto[]>([]);
   const [activeLayoutId, setActiveLayoutId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editMode, setEditModeState] = useState(false);
+  const [editMode, setEditModeState] = useState(options?.startInEditMode ?? false);
   const isMobile = useIsMobile();
 
   const setEditMode = useCallback(
@@ -61,6 +71,12 @@ export function useDashboardCanvas() {
     }>
   >([]);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [limits, setLimits] = useState({
+    maxDashboards: 3,
+    maxDashboardWidgets: 20,
+    allowResize: true,
+    allowAiBuilder: false
+  });
 
   const [layoutRevision, setLayoutRevision] = useState(0);
 
@@ -77,6 +93,7 @@ export function useDashboardCanvas() {
   }, []);
   const saveVersionRef = useRef(0);
   const activeLayoutIdRef = useRef(activeLayoutId);
+  const layoutNormalizeRef = useRef(false);
   activeLayoutIdRef.current = activeLayoutId;
 
   const activeLayout = useMemo(
@@ -100,24 +117,70 @@ export function useDashboardCanvas() {
       const lJson = await lRes.json();
       const cJson = await cRes.json();
       if (lJson.ok && Array.isArray(lJson.layouts)) {
-        setLayouts(lJson.layouts);
-        const def = lJson.layouts.find((x: LayoutDto) => x.isDefault) ?? lJson.layouts[0];
-        if (def) setActiveLayoutId(def.id);
+        const normalizedLayouts = lJson.layouts.map((layout: LayoutDto) => {
+          const raw = layout.widgets ?? [];
+          const widgets = layout.isDefault
+            ? prepareHighlightsLayoutWidgets(raw)
+            : normalizeWidgetLayout(raw);
+          return { ...layout, widgets };
+        });
+        setLayouts(normalizedLayouts);
+        const match = normalizedLayouts.find((x: LayoutDto) => x.id === layoutId);
+        if (match) {
+          setActiveLayoutId(match.id);
+        } else if (layoutId === "pending" && normalizedLayouts.length) {
+          const def =
+            normalizedLayouts.find((l: LayoutDto) => l.isDefault) ??
+            (normalizedLayouts[0] as LayoutDto);
+          setActiveLayoutId(def.id);
+        }
+
+        const needsPersist = lJson.layouts.some((layout: LayoutDto, index: number) => {
+          const original = layout.widgets ?? [];
+          const next = normalizedLayouts[index]!.widgets;
+          if (layout.isDefault && highlightsLayoutNeedsPrepare(original)) return true;
+          return layoutNeedsNormalization(original) || original.length !== next.length;
+        });
+        if (needsPersist && !layoutNormalizeRef.current) {
+          layoutNormalizeRef.current = true;
+          for (const layout of normalizedLayouts) {
+            const original = lJson.layouts.find((l: LayoutDto) => l.id === layout.id);
+            const origWidgets = original?.widgets ?? [];
+            const needsSave =
+              layout.isDefault
+                ? highlightsLayoutNeedsPrepare(origWidgets)
+                : layoutNeedsNormalization(origWidgets);
+            if (original && needsSave) {
+              void fetch(`/api/dashboard/layouts/${layout.id}/widgets`, {
+                method: "PUT",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ widgets: layout.widgets })
+              });
+            }
+          }
+        }
       }
       if (cJson.ok && Array.isArray(cJson.widgets)) {
         setCatalog(cJson.widgets);
         setIsPlatformAdmin(!!cJson.isPlatformAdmin);
+        if (cJson.limits) setLimits(cJson.limits);
       }
     } catch {
       /* ignore */
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [layoutId]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (layoutId && layoutId !== "pending") {
+      setActiveLayoutId(layoutId);
+    }
+  }, [layoutId]);
 
   const saveWidgets = useCallback(
     async (widgets: WidgetInstanceDto[], layoutId?: string) => {
@@ -172,6 +235,7 @@ export function useDashboardCanvas() {
         sortOrder: layout.widgets.length
       };
       void saveWidgets([...layout.widgets, next], layout.id);
+      return next.id;
     },
     [layouts, saveWidgets]
   );
@@ -219,6 +283,18 @@ export function useDashboardCanvas() {
       void saveWidgets(widgets, activeLayoutIdRef.current);
     },
     [saveWidgets]
+  );
+
+  const finalizeHighlightsLayout = useCallback(
+    (heroMetrics?: MetricKey[]) => {
+      const layoutId = activeLayoutIdRef.current;
+      if (!layoutId) return;
+      const layout = layouts.find((l) => l.id === layoutId);
+      if (!layout) return;
+      const finalized = finalizeHighlightsLayoutWidgets(layout.widgets, heroMetrics);
+      void saveWidgets(finalized, layoutId);
+    },
+    [layouts, saveWidgets]
   );
 
   const createLayout = useCallback(
@@ -295,6 +371,22 @@ export function useDashboardCanvas() {
     setLayoutRevision((v) => v + 1);
   }, []);
 
+  const updateLayoutMeta = useCallback(
+    async (layoutId: string, patch: { name?: string; subtitle?: string | null; published?: boolean }) => {
+      const res = await fetch(`/api/dashboard/layouts/${layoutId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patch)
+      });
+      const j = await res.json();
+      if (j.ok && j.layout) {
+        applyLayoutUpdate(j.layout as LayoutDto);
+      }
+      return j.ok === true;
+    },
+    [applyLayoutUpdate]
+  );
+
   return {
     layouts,
     activeLayout,
@@ -306,6 +398,7 @@ export function useDashboardCanvas() {
     setEditMode,
     catalog,
     isPlatformAdmin,
+    limits,
     load,
     reloadLayouts,
     applyLayoutUpdate,
@@ -314,9 +407,21 @@ export function useDashboardCanvas() {
     removeWidget,
     updateWidgetConfig,
     updateLayoutFromGrid,
+    finalizeHighlightsLayout,
     createLayout,
     resetLayoutToDefault,
     applyTemplate,
+    updateLayoutMeta,
     layoutRevision
+  };
+}
+
+/** Loads the tenant default layout (Destaques / Principal). */
+export function useDefaultDashboardCanvas(options?: { startInEditMode?: boolean }) {
+  const canvas = useDashboardCanvas("pending", options);
+
+  return {
+    ...canvas,
+    resolving: canvas.loading && !canvas.activeLayout
   };
 }

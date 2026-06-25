@@ -4,17 +4,17 @@ const sections = [
   {
     icon: FileText,
     title: "1. Aceitação dos Termos",
-    content: `Ao acessar ou usar a plataforma Traffic AI, você concorda em ficar vinculado a estes Termos de Uso. Se você não concordar com qualquer parte dos termos, não poderá acessar o serviço. Estes termos se aplicam a todos os usuários da plataforma, incluindo gestores de tráfego, agências e anunciantes.`,
+    content: `Ao acessar ou usar a plataforma Orion Agency, você concorda em ficar vinculado a estes Termos de Uso. Se você não concordar com qualquer parte dos termos, não poderá acessar o serviço. Estes termos se aplicam a todos os usuários da plataforma, incluindo gestores de tráfego, agências e anunciantes.`,
   },
   {
     icon: Lock,
     title: "2. Descrição do Serviço",
-    content: `O Traffic AI é uma plataforma SaaS de gerenciamento de campanhas de marketing digital com insights baseados em inteligência artificial. O serviço oferece centralização de métricas de campanhas, recomendações de IA, dashboards, alertas e integrações com plataformas de anúncios como Meta Ads, Google Ads, TikTok Ads, LinkedIn Ads e outras.`,
+    content: `O Orion Agency é uma plataforma SaaS de gerenciamento de campanhas de marketing digital com insights baseados em inteligência artificial. O serviço oferece centralização de métricas de campanhas, recomendações de IA, dashboards, alertas e integrações com plataformas de anúncios como Meta Ads, Google Ads, TikTok Ads, LinkedIn Ads e outras.`,
   },
   {
     icon: ShieldCheck,
     title: "3. Conta e Segurança",
-    content: `Você é responsável por manter a confidencialidade de sua conta e senha. Você concorda em notificar imediatamente o Traffic AI sobre qualquer uso não autorizado de sua conta. O Traffic AI não será responsável por perdas decorrentes do uso não autorizado de sua conta. Você não pode usar a conta de outra pessoa sem permissão.`,
+    content: `Você é responsável por manter a confidencialidade de sua conta e senha. Você concorda em notificar imediatamente o Orion Agency sobre qualquer uso não autorizado de sua conta. O Orion Agency não será responsável por perdas decorrentes do uso não autorizado de sua conta. Você não pode usar a conta de outra pessoa sem permissão.`,
   },
   {
     icon: CreditCard,
@@ -24,27 +24,27 @@ const sections = [
   {
     icon: AlertTriangle,
     title: "5. Uso Aceitável",
-    content: `Você concorda em não usar o Traffic AI para: (a) violar leis ou regulamentos aplicáveis; (b) transmitir conteúdo ilegal, prejudicial ou enganoso; (c) tentar obter acesso não autorizado a sistemas ou redes; (d) realizar scraping ou coleta automatizada de dados sem autorização; (e) interferir no funcionamento da plataforma. O descumprimento pode resultar na suspensão ou encerramento da conta.`,
+    content: `Você concorda em não usar o Orion Agency para: (a) violar leis ou regulamentos aplicáveis; (b) transmitir conteúdo ilegal, prejudicial ou enganoso; (c) tentar obter acesso não autorizado a sistemas ou redes; (d) realizar scraping ou coleta automatizada de dados sem autorização; (e) interferir no funcionamento da plataforma. O descumprimento pode resultar na suspensão ou encerramento da conta.`,
   },
   {
     icon: ScrollText,
     title: "6. Privacidade e LGPD",
-    content: `O Traffic AI está em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018). Coletamos apenas os dados necessários para a operação do serviço. Você tem o direito de acessar, corrigir, exportar ou solicitar a exclusão de seus dados pessoais a qualquer momento. Para exercer esses direitos, entre em contato com nossa equipe de suporte.`,
+    content: `O Orion Agency está em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018). Coletamos apenas os dados necessários para a operação do serviço. Você tem o direito de acessar, corrigir, exportar ou solicitar a exclusão de seus dados pessoais a qualquer momento. Para exercer esses direitos, entre em contato com nossa equipe de suporte.`,
   },
   {
     icon: ShieldCheck,
     title: "7. Integrações com Terceiros",
-    content: `O Traffic AI se integra com plataformas de terceiros como Meta, Google, TikTok, LinkedIn, Pinterest, Shopify e WooCommerce. Ao conectar essas integrações, você autoriza o Traffic AI a acessar dados relevantes de suas contas nessas plataformas. O Traffic AI não é responsável por alterações nos termos ou APIs dessas plataformas de terceiros que possam afetar a disponibilidade das integrações.`,
+    content: `O Orion Agency se integra com plataformas de terceiros como Meta, Google, TikTok, LinkedIn, Pinterest, Shopify e WooCommerce. Ao conectar essas integrações, você autoriza o Orion Agency a acessar dados relevantes de suas contas nessas plataformas. O Orion Agency não é responsável por alterações nos termos ou APIs dessas plataformas de terceiros que possam afetar a disponibilidade das integrações.`,
   },
   {
     icon: AlertTriangle,
     title: "8. Limitação de Responsabilidade",
-    content: `O Traffic AI não garante que o serviço estará disponível ininterruptamente ou livre de erros. Em nenhuma circunstância o Traffic AI será responsável por danos indiretos, incidentais, especiais, consequenciais ou punitivos, incluindo perda de lucros, dados ou goodwill. A responsabilidade máxima do Traffic AI é limitada ao valor pago pelo usuário nos últimos 3 meses de serviço.`,
+    content: `O Orion Agency não garante que o serviço estará disponível ininterruptamente ou livre de erros. Em nenhuma circunstância o Orion Agency será responsável por danos indiretos, incidentais, especiais, consequenciais ou punitivos, incluindo perda de lucros, dados ou goodwill. A responsabilidade máxima do Orion Agency é limitada ao valor pago pelo usuário nos últimos 3 meses de serviço.`,
   },
   {
     icon: FileText,
     title: "9. Modificações dos Termos",
-    content: `O Traffic AI reserva-se o direito de modificar estes termos a qualquer momento. Notificaremos os usuários sobre alterações significativas por email ou através da plataforma com pelo menos 15 dias de antecedência. O uso continuado do serviço após as alterações constitui aceitação dos novos termos.`,
+    content: `O Orion Agency reserva-se o direito de modificar estes termos a qualquer momento. Notificaremos os usuários sobre alterações significativas por email ou através da plataforma com pelo menos 15 dias de antecedência. O uso continuado do serviço após as alterações constitui aceitação dos novos termos.`,
   },
   {
     icon: ScrollText,
@@ -80,13 +80,13 @@ export default function TermsContent() {
                     Termos de Uso
                   </h1>
                   <p className="text-sm" style={{ color: "var(--text-dim)" }}>
-                    Traffic AI — Última atualização: Janeiro de 2025
+                    Orion Agency — Última atualização: Janeiro de 2025
                   </p>
                 </div>
               </div>
               <p style={{ color: "var(--text-dim)" }} className="text-sm leading-relaxed">
-                Por favor, leia estes Termos de Uso com atenção antes de usar a plataforma Traffic AI. Estes termos
-                constituem um acordo legal entre você e o Traffic AI sobre o uso da plataforma.
+                Por favor, leia estes Termos de Uso com atenção antes de usar a plataforma Orion Agency. Estes termos
+                constituem um acordo legal entre você e o Orion Agency sobre o uso da plataforma.
               </p>
             </div>
 

@@ -25,6 +25,9 @@ export type SlotFontFamily = "system" | "heading" | "mono";
 export type SlotFontSize = "sm" | "md" | "lg";
 export type StrokeWeight = 1 | 2 | 3 | 4;
 
+export type LegendPosition = "top" | "bottom" | "left" | "right";
+export type LegendIconType = "line" | "square" | "circle";
+
 export type SlotVisualConfig = {
   customColors?: Partial<Record<MetricKey, string>>;
   textColor?: string;
@@ -33,6 +36,9 @@ export type SlotVisualConfig = {
   fontSize?: SlotFontSize;
   lineStrokeWidth?: StrokeWeight;
   barThickness?: StrokeWeight;
+  showLegend?: boolean;
+  legendPosition?: LegendPosition;
+  legendIconType?: LegendIconType;
   /** Per-metric render style for composed charts. */
   seriesStyles?: Partial<Record<MetricKey, SeriesStyle>>;
   yAxisSide?: Partial<Record<MetricKey, YAxisSide>>;
@@ -96,12 +102,18 @@ export function isPremiumChartStyle(style: ExtendedChartStyle): boolean {
 
 export function parseSlotVisualConfig(config: Record<string, unknown>): SlotVisualConfig {
   const raw = config.visual;
+  const topLegend = {
+    showLegend: config.showLegend as boolean | undefined,
+    legendPosition: config.legendPosition as LegendPosition | undefined,
+    legendIconType: config.legendIconType as LegendIconType | undefined
+  };
   if (!raw || typeof raw !== "object") {
     return {
       targetValue: typeof config.targetValue === "number" ? config.targetValue : undefined,
       boxPlotGroupBy: (config.boxPlotGroupBy as BoxPlotGroupBy | undefined) ?? undefined,
       boxPlotMetric: config.boxPlotMetric as MetricKey | undefined,
-      sortDescending: config.sortDescending !== false
+      sortDescending: config.sortDescending !== false,
+      ...topLegend
     };
   }
   const v = raw as SlotVisualConfig;
@@ -113,6 +125,9 @@ export function parseSlotVisualConfig(config: Record<string, unknown>): SlotVisu
     fontSize: v.fontSize,
     lineStrokeWidth: v.lineStrokeWidth,
     barThickness: v.barThickness,
+    showLegend: v.showLegend ?? topLegend.showLegend,
+    legendPosition: v.legendPosition ?? topLegend.legendPosition,
+    legendIconType: v.legendIconType ?? topLegend.legendIconType,
     seriesStyles: v.seriesStyles,
     yAxisSide: v.yAxisSide,
     targetValue:

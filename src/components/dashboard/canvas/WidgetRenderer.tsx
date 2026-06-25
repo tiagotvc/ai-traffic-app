@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 
+import { useHighlightsCanvasView } from "@/components/dashboard/canvas/HighlightsCanvasViewContext";
+
 import {
   AccountHealthWidget,
   AgencyBrainWidget,
@@ -12,6 +14,7 @@ import {
   AlertsFeedWidget,
   BrainLearningsWidget,
   HeroKpisWidget,
+  AgeBreakdownWidget,
   PerformanceChartWidget,
   QuickPillsWidget
 } from "@/components/dashboard/canvas/widgets/LegacyWidgets";
@@ -24,6 +27,13 @@ import {
   RadarStandaloneWidget,
   ScatterWidget
 } from "@/components/dashboard/canvas/widgets/PremiumWidgets";
+import { AlertCardWidget } from "@/components/dashboard/canvas/widgets/alerts/AlertCardWidget";
+import {
+  AnalyzeBlockWidget,
+  GoalBlockWidget,
+  TableBlockWidget
+} from "@/components/dashboard/canvas/widgets/AppBlockWidgets";
+import { FilterBlockWidget } from "@/components/dashboard/canvas/widgets/FilterBlockWidget";
 import { TaskbarWidget } from "@/components/dashboard/canvas/widgets/TaskbarWidget";
 import { DualMetricChartWidget, SingleMetricWidget } from "@/components/dashboard/canvas/widgets/MetricWidgets";
 import {
@@ -76,8 +86,30 @@ function WidgetRendererBody({
   onWidgetConfigChange?: (widgetId: string, config: Record<string, unknown>) => void;
 }) {
   const t = useTranslations("dashboardWidgets");
+  const highlightsView = useHighlightsCanvasView();
   const type = instance.widgetType;
 
+  if (type === "app.analyze") {
+    return <AnalyzeBlockWidget data={dashboardData} config={instance.config} />;
+  }
+  if (type === "app.goal") {
+    return <GoalBlockWidget data={dashboardData} config={instance.config} />;
+  }
+  if (type === "app.table") {
+    return <TableBlockWidget data={dashboardData} config={instance.config} />;
+  }
+  if (type === "app.filters") {
+    return (
+      <FilterBlockWidget
+        config={instance.config}
+        onConfigChange={
+          onWidgetConfigChange
+            ? (patch) => onWidgetConfigChange(instance.id, patch)
+            : undefined
+        }
+      />
+    );
+  }
   if (type === "brain.learnings") {
     return <BrainLearningsWidget data={dashboardData} />;
   }
@@ -87,6 +119,9 @@ function WidgetRendererBody({
   }
   if (type === "metrics.quickPills") {
     return <QuickPillsWidget data={dashboardData} />;
+  }
+  if (type === "analytics.ageBreakdown") {
+    return <AgeBreakdownWidget data={dashboardData} embedded={!highlightsView} />;
   }
   if (type === "chart.performance") {
     const chartMetrics = instance.config.chartMetrics as MetricKey[] | undefined;
@@ -100,6 +135,7 @@ function WidgetRendererBody({
         chartStyle={chartStyle}
         barLayout={barLayout}
         visual={visual}
+        chartVariant={highlightsView ? "page" : "canvas"}
         onChartMetricsChange={(metrics) =>
           onWidgetConfigChange?.(instance.id, { chartMetrics: metrics })
         }
@@ -109,6 +145,11 @@ function WidgetRendererBody({
   if (type === "alerts.feed") {
     const density = (instance.config.density as AlertsDensity | undefined) ?? "stacked";
     return <AlertsFeedWidget data={dashboardData} density={density} />;
+  }
+  if (type === "alerts.card") {
+    return (
+      <AlertCardWidget config={instance.config} widgetWidth={instance.w} widgetHeight={instance.h} />
+    );
   }
   if (type === "clients.health") {
     const view = (instance.config.view as ClientsHealthView | undefined) ?? "full";

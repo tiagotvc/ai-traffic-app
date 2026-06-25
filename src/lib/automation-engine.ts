@@ -72,9 +72,13 @@ export async function runAutomationEngine(
       let cplN = 0;
       let roasSum = 0;
       let roasN = 0;
+      let impressions = 0;
+      let clicks = 0;
       for (const s of snaps) {
         spend += num(s.spend);
         conversions += num(s.conversions);
+        impressions += num(s.impressions);
+        clicks += num(s.clicks);
         const leads = num(s.leads);
         if (leads > 0) {
           cplSum += num(s.spend) / leads;
@@ -88,9 +92,13 @@ export async function runAutomationEngine(
       }
       const cpl = cplN ? cplSum / cplN : 0;
       const roas = roasN ? roasSum / roasN : 0;
+      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+      const cpa = conversions > 0 ? spend / conversions : 0;
 
       let metricVal = 0;
       if (cond.metric === "cpl") metricVal = cpl;
+      else if (cond.metric === "cpa") metricVal = cpa;
+      else if (cond.metric === "ctr") metricVal = ctr;
       else if (cond.metric === "spend") metricVal = spend;
       else if (cond.metric === "conversions") metricVal = conversions;
       else if (cond.metric === "roas") metricVal = roas;
@@ -117,6 +125,8 @@ export async function runAutomationEngine(
             clientId,
             type: "OTHER",
             severity: "warning",
+            source: "automation",
+            automationRuleId: rule.id,
             title: `Automação: ${rule.name}`,
             description: `${meta?.name ?? metaCampaignId} — ${cond.metric}=${metricVal.toFixed(2)} (limite ${threshold})`,
             metaCampaignId,
@@ -136,6 +146,8 @@ export async function runAutomationEngine(
               clientId,
               type: "OTHER",
               severity: "critical",
+              source: "automation",
+              automationRuleId: rule.id,
               title: `Automação: campanha pausada (${rule.name})`,
               description: `${meta?.name ?? metaCampaignId} — ${cond.metric}=${metricVal.toFixed(2)}`,
               metaCampaignId,
@@ -163,6 +175,8 @@ export async function runAutomationEngine(
               clientId,
               type: "OTHER",
               severity: "warning",
+              source: "automation",
+              automationRuleId: rule.id,
               title: `Automação: orçamento ajustado (${rule.name})`,
               description: `${meta?.name ?? metaCampaignId} — +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`,
               metaCampaignId,

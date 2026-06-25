@@ -1,10 +1,20 @@
 "use client";
 
 import { SparklineChart } from "@/components/dashboard/SparklineChart";
+import { MetricKpiIcon } from "@/components/dashboard/MetricKpiIcon";
+import { CanvasMetricStrip, type CanvasMetricItem } from "@/components/dashboard/canvas/widgets/CanvasMetricStrip";
+import { useAppDarkMode } from "@/hooks/useAppDarkMode";
 import { cn } from "@/lib/cn";
+import {
+  metricKpiCardShell,
+  metricKpiChartFrame,
+  metricKpiIconShell,
+  metricKpiTrendColors
+} from "@/lib/dashboard/metric-kpi-theme";
 import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 
 export type KpiCard = {
+  metricKey?: MetricKey;
   label: string;
   value: string;
   change: string;
@@ -27,23 +37,25 @@ export type SecondaryMetric = {
 function TrendBadge({
   change,
   trend,
-  small
+  small,
+  dark = false
 }: {
   change: string;
   trend: "up" | "down" | "neutral";
   small?: boolean;
+  dark?: boolean;
 }) {
   const isUp = trend === "up";
   const isNeutral = trend === "neutral";
-  const color = isNeutral ? "#94a3b8" : isUp ? "#10b981" : "#ef4444";
+  const { color, background } = metricKpiTrendColors(trend, dark);
 
   return (
     <span
       className={cn(
-        "flex items-center gap-0.5 rounded font-medium tabular-nums",
-        small ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-0.5 text-xs"
+        "flex shrink-0 items-center gap-0.5 rounded-full font-semibold tabular-nums",
+        small ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-[11px]"
       )}
-      style={{ background: `${color}15`, color }}
+      style={{ background, color }}
     >
       {!isNeutral ? (
         <svg className={small ? "h-2 w-2" : "h-2.5 w-2.5"} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -59,70 +71,109 @@ function TrendBadge({
   );
 }
 
-function KpiCardTile({ kpi, index }: { kpi: KpiCard; index: number }) {
+function KpiCardTile({
+  kpi,
+  index,
+  forceDark
+}: {
+  kpi: KpiCard;
+  index: number;
+  forceDark?: boolean;
+}) {
+  const themeDark = useAppDarkMode();
+  const dark = forceDark ?? themeDark;
+  const shell = metricKpiCardShell(kpi.color, dark);
+  const iconShell = metricKpiIconShell(kpi.color, dark);
+  const chartFrame = metricKpiChartFrame(kpi.color, dark);
+
   return (
     <div
-      className="kpi-card-hover animate-fade-up flex h-full min-w-0 flex-col overflow-hidden rounded-2xl p-4 max-lg:h-auto max-lg:min-h-0 max-lg:py-3 sm:p-5 lg:min-h-0"
+      className={cn(
+        "kpi-card-hover kpi-card-premium animate-fade-up flex h-full min-w-0 flex-col overflow-hidden rounded-2xl p-4 max-lg:h-auto max-lg:min-h-0 max-lg:py-3 sm:p-5 lg:min-h-0",
+        !dark && "kpi-card-premium--light"
+      )}
       style={{
-        background: "var(--surface-card)",
-        border: "1px solid var(--border-color)",
-        boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
-        borderTop: `3px solid ${kpi.color}`,
+        ...shell,
         animationDelay: `${index * 80}ms`,
         animationFillMode: "both"
       }}
     >
-      <div className="mb-1 flex items-start justify-between gap-2">
-        <span
-          className="truncate text-xs uppercase tracking-widest"
-          style={{ color: "var(--text-dimmer)" }}
-        >
-          {kpi.label}
-        </span>
-        <TrendBadge change={kpi.change} trend={kpi.trend} />
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <div
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+            style={iconShell}
+          >
+            <MetricKpiIcon metricKey={kpi.metricKey} color={kpi.color} size={16} />
+          </div>
+          <span
+            className="truncate text-[11px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: dark ? "#94a3b8" : "#64748b" }}
+          >
+            {kpi.label}
+          </span>
+        </div>
+        <TrendBadge change={kpi.change} trend={kpi.trend} dark={dark} />
       </div>
+
       <div
-        className="mb-1 mt-2 truncate font-bold leading-none tabular-nums"
+        className="mb-1 truncate font-bold leading-none tabular-nums tracking-tight"
         style={{
-          fontSize: "clamp(1.25rem, 2.5vw, 2rem)",
+          fontSize: "clamp(1.35rem, 2.6vw, 2.05rem)",
           color: kpi.color,
-          fontFamily: "var(--font-heading)"
+          fontFamily: "var(--font-heading)",
+          textShadow: dark ? `0 0 24px ${kpi.color}55` : undefined
         }}
       >
         {kpi.value}
       </div>
-      <p className="mb-2 truncate text-[11px]" style={{ color: "var(--text-dim)" }}>
+
+      <p className="mb-2 truncate text-[11px]" style={{ color: dark ? "#64748b" : "#94a3b8" }}>
         {kpi.subLabel}
       </p>
+
       <div
-        className="mt-2 h-14 min-h-[56px] w-full shrink-0 rounded-lg lg:mt-auto lg:h-12 lg:min-h-[48px]"
-        style={{ background: "var(--chart-frame-bg)" }}
+        className="mt-auto h-[96px] min-h-[96px] w-full shrink-0 overflow-hidden rounded-xl"
+        style={chartFrame}
       >
         <SparklineChart
           data={kpi.sparkData}
           labels={kpi.sparkLabels}
           color={kpi.color}
           formatValue={kpi.formatSparkValue}
+          variant="premium"
+          dark={dark}
         />
       </div>
     </div>
   );
 }
 
-function PrimaryKpiGrid({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; isLoading?: boolean }) {
+function PrimaryKpiGrid({
+  primaryKPIs,
+  isLoading,
+  forceDark
+}: {
+  primaryKPIs: KpiCard[];
+  isLoading?: boolean;
+  forceDark?: boolean;
+}) {
   if (isLoading) {
     return (
       <div className="grid h-full grid-cols-1 gap-3 sm:grid-cols-3">
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-xl border p-5"
+            className="rounded-2xl border p-4"
             style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
           >
-            <div className="skeleton-shimmer mb-4 h-3 w-20 rounded" />
+            <div className="mb-4 flex items-center gap-2.5">
+              <div className="skeleton-shimmer h-9 w-9 rounded-full" />
+              <div className="skeleton-shimmer h-3 w-20 rounded" />
+            </div>
             <div className="skeleton-shimmer mb-2 h-10 w-32 rounded" />
-            <div className="skeleton-shimmer mb-3 h-2 w-full rounded" />
-            <div className="skeleton-shimmer h-12 w-full rounded" />
+            <div className="skeleton-shimmer mb-3 h-2.5 w-28 rounded" />
+            <div className="skeleton-shimmer h-[96px] w-full rounded-xl" />
           </div>
         ))}
       </div>
@@ -141,16 +192,24 @@ function PrimaryKpiGrid({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; is
       )}
     >
       {primaryKPIs.map((kpi, index) => (
-        <KpiCardTile key={kpi.label} kpi={kpi} index={index} />
+        <KpiCardTile key={kpi.label} kpi={kpi} index={index} forceDark={forceDark} />
       ))}
     </div>
   );
 }
 
-export function MetricPrismPrimary({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; isLoading?: boolean }) {
+export function MetricPrismPrimary({
+  primaryKPIs,
+  isLoading,
+  forceDark
+}: {
+  primaryKPIs: KpiCard[];
+  isLoading?: boolean;
+  forceDark?: boolean;
+}) {
   return (
     <div className="h-full min-h-0 w-full max-lg:h-auto">
-      <PrimaryKpiGrid primaryKPIs={primaryKPIs} isLoading={isLoading} />
+      <PrimaryKpiGrid primaryKPIs={primaryKPIs} isLoading={isLoading} forceDark={forceDark} />
     </div>
   );
 }
@@ -159,13 +218,16 @@ export function MetricKpiCard({ kpi, isLoading }: { kpi: KpiCard; isLoading?: bo
   if (isLoading) {
     return (
       <div
-        className="h-full rounded-xl border p-5"
+        className="h-full rounded-2xl border p-4"
         style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
       >
-        <div className="skeleton-shimmer mb-4 h-3 w-20 rounded" />
+        <div className="mb-4 flex items-center gap-2.5">
+          <div className="skeleton-shimmer h-9 w-9 rounded-full" />
+          <div className="skeleton-shimmer h-3 w-20 rounded" />
+        </div>
         <div className="skeleton-shimmer mb-2 h-10 w-32 rounded" />
-        <div className="skeleton-shimmer mb-3 h-2 w-full rounded" />
-        <div className="skeleton-shimmer h-12 w-full rounded" />
+        <div className="skeleton-shimmer mb-3 h-2.5 w-28 rounded" />
+        <div className="skeleton-shimmer h-[64px] w-full rounded-xl" />
       </div>
     );
   }
@@ -176,18 +238,21 @@ export function MetricPrism({
   primaryKPIs,
   secondaryMetrics,
   secondaryTitle,
-  isLoading
+  isLoading,
+  forceDark
 }: {
   primaryKPIs: KpiCard[];
   secondaryMetrics: SecondaryMetric[];
   secondaryTitle?: string;
   /** Show loading skeleton only while fetching — not for empty accounts. */
   isLoading?: boolean;
+  /** Force dark KPI styling (e.g. marketing showcase on a dark panel). */
+  forceDark?: boolean;
 }) {
   if (isLoading) {
     return (
       <div className="space-y-3">
-        <PrimaryKpiGrid primaryKPIs={[]} isLoading />
+        <PrimaryKpiGrid primaryKPIs={[]} isLoading forceDark={forceDark} />
         <div className="flex flex-wrap gap-2">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="skeleton-shimmer h-9 w-28 rounded-lg" />
@@ -199,7 +264,7 @@ export function MetricPrism({
 
   return (
     <div className="space-y-3">
-      <PrimaryKpiGrid primaryKPIs={primaryKPIs} />
+      <PrimaryKpiGrid primaryKPIs={primaryKPIs} forceDark={forceDark} />
 
       {secondaryMetrics.length > 0 ? (
         <div className="space-y-2">
@@ -208,37 +273,17 @@ export function MetricPrism({
               {secondaryTitle}
             </p>
           ) : null}
-          <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
-            {secondaryMetrics.map((m) => {
-              const color = m.key ? METRIC_BY_KEY[m.key]?.color ?? "#94a3b8" : "#94a3b8";
-              return (
-                <div
-                  key={m.label}
-                  className="flex w-full min-w-0 cursor-default items-center gap-2 rounded-xl px-3 py-2 transition-colors sm:w-auto sm:min-w-[140px]"
-                  style={{
-                    background: "var(--surface-card)",
-                    border: "1px solid var(--border-color)",
-                    boxShadow: "0 1px 6px rgba(0,0,0,0.04)"
-                  }}
-                >
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: color }}
-                  />
-                  <span className="truncate text-xs" style={{ color: "var(--text-dimmer)" }}>
-                    {m.label}
-                  </span>
-                  <span
-                    className="truncate text-sm font-semibold tabular-nums"
-                    style={{ color: "var(--text-main)", fontFamily: "var(--font-heading)" }}
-                  >
-                    {m.value}
-                  </span>
-                  <TrendBadge change={m.change} trend={m.trend} small />
-                </div>
-              );
-            })}
-          </div>
+          <CanvasMetricStrip
+            items={secondaryMetrics.map(
+              (m): CanvasMetricItem => ({
+                label: m.label,
+                value: m.value,
+                change: m.change,
+                trend: m.trend,
+                color: m.key ? METRIC_BY_KEY[m.key]?.color : undefined
+              })
+            )}
+          />
         </div>
       ) : null}
     </div>

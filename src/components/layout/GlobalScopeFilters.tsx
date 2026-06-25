@@ -20,7 +20,10 @@ export function GlobalScopeFilters({
   adAccounts,
   periodFilterDisabled = false,
   periodFilterDisabledHint,
-  compact = true
+  compact = true,
+  showClient = true,
+  showAccount = true,
+  showPeriod = true
 }: {
   clientFilter: string;
   setClientFilter: (v: string) => void;
@@ -33,6 +36,9 @@ export function GlobalScopeFilters({
   periodFilterDisabled?: boolean;
   periodFilterDisabledHint?: string;
   compact?: boolean;
+  showClient?: boolean;
+  showAccount?: boolean;
+  showPeriod?: boolean;
 }) {
   const t = useTranslations("dashboard");
 
@@ -42,30 +48,36 @@ export function GlobalScopeFilters({
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${pillClass ?? ""}`}>
-      <FilterSelectDropdown
-        icon={<Building2 size={13} />}
-        label={t("filterClient")}
-        placeholder={t("filterAllClients")}
-        value={clientFilter}
-        onChange={setClientFilter}
-        options={clientOptions.map((c) => ({ value: c.slug, label: c.name }))}
-      />
-      <FilterSelectDropdown
-        icon={<BarChart2 size={13} />}
-        label={t("filterAccount")}
-        placeholder={t("filterAllAccounts")}
-        value={accountFilter}
-        onChange={setAccountFilter}
-        disabled={!clientFilter && adAccounts.length === 0}
-        options={adAccounts.map((a) => ({ value: a.id, label: a.label }))}
-      />
-      <PeriodFilter
-        value={period}
-        onChange={setPeriod}
-        variant={compact ? "commandStrip" : "modal"}
-        disabled={periodFilterDisabled}
-        disabledHint={periodFilterDisabledHint}
-      />
+      {showClient ? (
+        <FilterSelectDropdown
+          icon={<Building2 size={13} />}
+          label={t("filterClient")}
+          placeholder={t("filterAllClients")}
+          value={clientFilter}
+          onChange={setClientFilter}
+          options={clientOptions.map((c) => ({ value: c.slug, label: c.name }))}
+        />
+      ) : null}
+      {showAccount ? (
+        <FilterSelectDropdown
+          icon={<BarChart2 size={13} />}
+          label={t("filterAccount")}
+          placeholder={t("filterAllAccounts")}
+          value={accountFilter}
+          onChange={setAccountFilter}
+          disabled={!clientFilter && adAccounts.length === 0}
+          options={adAccounts.map((a) => ({ value: a.id, label: a.label }))}
+        />
+      ) : null}
+      {showPeriod ? (
+        <PeriodFilter
+          value={period}
+          onChange={setPeriod}
+          variant={compact ? "commandStrip" : "modal"}
+          disabled={periodFilterDisabled}
+          disabledHint={periodFilterDisabledHint}
+        />
+      ) : null}
     </div>
   );
 }

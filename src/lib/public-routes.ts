@@ -1,5 +1,5 @@
 /** Paths accessible without authentication (without locale prefix). */
-export const PUBLIC_MARKETING_PREFIXES = ["/pricing", "/about", "/support"] as const;
+export const PUBLIC_MARKETING_PREFIXES = ["/welcome", "/pricing", "/about", "/support"] as const;
 
 export const PUBLIC_LEGAL_PREFIXES = ["/terms", "/privacy", "/data-deletion"] as const;
 

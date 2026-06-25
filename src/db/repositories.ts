@@ -67,6 +67,7 @@ import type { DashboardWidgetInstance } from "@/db/entities/DashboardWidgetInsta
 import type { DashboardWidgetPermission } from "@/db/entities/DashboardWidgetPermission";
 import type { VideoUploadSession } from "@/db/entities/VideoUploadSession";
 import type { VideoUploadPart } from "@/db/entities/VideoUploadPart";
+import type { ContactMessage } from "@/db/entities/ContactMessage";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -139,7 +140,8 @@ const ENTITY = {
   DashboardTemplate: "DashboardTemplate",
   DashboardWidgetPermission: "DashboardWidgetPermission",
   DashboardAiWidget: "DashboardAiWidget",
-  DashboardAddon: "DashboardAddon"
+  DashboardAddon: "DashboardAddon",
+  ContactMessage: "ContactMessage"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -247,6 +249,7 @@ export async function repositories() {
       ENTITY.DashboardWidgetPermission
     ),
     dashboardAiWidget: repositoryFor<DashboardAiWidget>(ds, ENTITY.DashboardAiWidget),
-    dashboardAddon: repositoryFor<DashboardAddon>(ds, ENTITY.DashboardAddon)
+    dashboardAddon: repositoryFor<DashboardAddon>(ds, ENTITY.DashboardAddon),
+    contactMessage: repositoryFor<ContactMessage>(ds, ENTITY.ContactMessage)
   };
 }

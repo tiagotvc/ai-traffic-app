@@ -138,6 +138,87 @@
   word-break: break-word;
 }
 
+.report-print-root .report-breakdown-section {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+.report-print-root .report-breakdown-card {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  overflow: visible !important;
+}
+
+.report-print-root .report-breakdown-table-wrap {
+  overflow: visible !important;
+}
+
+.report-print-root .report-breakdown-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+
+.report-breakdown-grid--edit .react-resizable-handle {
+  opacity: 1;
+}
+
+.report-breakdown-grid .react-grid-item {
+  transition: none;
+  overflow: visible !important;
+}
+
+.report-breakdown-grid .react-grid-item > .react-resizable {
+  overflow: visible !important;
+}
+
+.report-breakdown-card--full .report-breakdown-table-wrap {
+  width: 100%;
+}
+
+.report-breakdown-card--full .report-breakdown-table {
+  table-layout: auto;
+  width: 100%;
+}
+
+.report-breakdown-grid--edit .react-grid-item {
+  transition: box-shadow 0.15s ease;
+}
+
+.report-print-root .report-breakdown-grid {
+  min-height: 0 !important;
+}
+
+.report-print-root .report-breakdown-grid-inner {
+  min-height: 0 !important;
+}
+
+.report-print-root .report-breakdown-print-grid {
+  display: grid !important;
+  width: 100% !important;
+  position: relative !important;
+}
+
+.report-print-root .report-breakdown-print-cell {
+  position: relative !important;
+  width: auto !important;
+  height: auto !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+.report-print-root .report-breakdown-grid .react-grid-item {
+  position: relative !important;
+  width: auto !important;
+  height: auto !important;
+  transform: none !important;
+}
+
+.report-print-root .report-breakdown-card .report-chart-wrap {
+  min-height: 88px !important;
+  overflow: visible !important;
+}
+
 .report-print-root [data-report-creatives-grid],
 .report-print-root .report-creatives-grid {
   display: grid !important;

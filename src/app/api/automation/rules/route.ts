@@ -9,7 +9,7 @@ const BodySchema = z.object({
   clientId: z.string().uuid().nullable().optional(),
   enabled: z.boolean().optional(),
   condition: z.object({
-    metric: z.enum(["cpl", "spend", "conversions", "roas"]),
+    metric: z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas"]),
     op: z.enum(["gt", "lt", "gte"]),
     value: z.number(),
     minSpend: z.number().optional()
@@ -22,9 +22,41 @@ const BodySchema = z.object({
 
 export async function GET() {
   const { tenant } = await getAppContext();
-  const { automationRule: repo } = await repositories();
-  const rules = await repo.find({ where: { tenantId: tenant.id }, order: { createdAt: "DESC" } });
-  return NextResponse.json({ ok: true, rules });
+  const repos = await repositories();
+  const rules = await repos.automationRule.find({
+    where: { tenantId: tenant.id },
+    order: { createdAt: "DESC" }
+  });
+
+  // Logs de execução derivados dos Alertas gerados pelo motor (Alert.automationRuleId).
+  let statsByRule = new Map<string, { count: number; last: string | null }>();
+  try {
+    const raw = await repos.alert
+      .createQueryBuilder("a")
+      .select("a.automationRuleId", "ruleId")
+      .addSelect("COUNT(*)", "count")
+      .addSelect("MAX(a.createdAt)", "last")
+      .where("a.tenantId = :t", { t: tenant.id })
+      .andWhere("a.automationRuleId IS NOT NULL")
+      .groupBy("a.automationRuleId")
+      .getRawMany<{ ruleId: string; count: string; last: string | Date }>();
+    statsByRule = new Map(
+      raw.map((r) => [
+        r.ruleId,
+        { count: Number(r.count), last: r.last ? new Date(r.last).toISOString() : null }
+      ])
+    );
+  } catch {
+    /* best-effort — se a coluna/índice não existir, segue sem logs */
+  }
+
+  const enriched = rules.map((r) => ({
+    ...r,
+    executionCount: statsByRule.get(r.id)?.count ?? 0,
+    lastExecutionAt: statsByRule.get(r.id)?.last ?? null
+  }));
+
+  return NextResponse.json({ ok: true, rules: enriched });
 }
 
 export async function POST(req: Request) {

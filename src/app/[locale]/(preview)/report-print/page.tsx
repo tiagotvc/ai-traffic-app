@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ReportPrintReady } from "@/components/reports/ReportPrintReady";
 import { ReportPrintToolbar } from "@/components/reports/ReportPrintToolbar";
 import { ReportPreview } from "@/components/reports/ReportPreview";
+import { parseBreakdownLayoutParam } from "@/lib/report-breakdown-layout";
 import { loadReportPrintBundle, type ReportPrintQuery } from "@/lib/report-print-data";
 
 import "@/styles/report-print.css";
@@ -30,6 +31,8 @@ export default async function ReportPrintPage({
     metrics: pick(raw.metrics)
   };
 
+  const breakdownLayout = parseBreakdownLayoutParam(pick(raw.breakdownLayout));
+
   const bundle = await loadReportPrintBundle(query);
   if (!bundle.ok) {
     return (
@@ -46,10 +49,12 @@ export default async function ReportPrintPage({
         <ReportPreview
           data={bundle.payload}
           selectedMetrics={bundle.selectedMetrics}
+          kpiMetrics={bundle.selectedMetrics.slice(0, 6)}
           reportType={bundle.reportType}
           periodQuery={bundle.periodQuery}
           adAccountId={bundle.adAccountId ?? undefined}
           initialCreativeGroups={bundle.creativeGroups}
+          initialBreakdownLayout={breakdownLayout.length ? breakdownLayout : undefined}
           variant="print"
         />
       </ReportPrintReady>

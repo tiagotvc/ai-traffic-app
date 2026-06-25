@@ -7,6 +7,7 @@ import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { CommandStripProvider } from "@/components/layout/CommandStripContext";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
+import { FirstLoginTermsGate } from "@/components/auth/FirstLoginTermsGate";
 import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 
@@ -87,6 +88,7 @@ export function AppShell({
               }}
             >
               <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
+              <FirstLoginTermsGate />
               <div className="mx-auto w-full max-w-[1600px]">{children}</div>
             </main>
           </CommandStripProvider>
@@ -97,8 +99,7 @@ export function AppShell({
             type="button"
             onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
             aria-label="Voltar ao topo"
-            className="fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full text-[#0f1419] shadow-lg transition print:hidden"
-            style={{ background: "linear-gradient(135deg, var(--amber-bright), #e8920d)" }}
+            className="ui-btn-accent fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full transition print:hidden"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />

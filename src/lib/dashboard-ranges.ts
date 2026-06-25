@@ -1,5 +1,5 @@
 import type { PeriodState } from "@/components/PeriodFilter";
-import { addDaysIso, normalizeDayKey, startOfWeekIso, todayIso } from "@/lib/report-period";
+import { addDaysIso, normalizeDayKey, startOfMonthIso, startOfQuarterIso, startOfWeekIso, todayIso } from "@/lib/report-period";
 
 export type Range = { since: string; until: string };
 
@@ -37,6 +37,12 @@ export function resolveRanges(
   } else if (p.preset === "thisWeek") {
     since = startOfWeekIso(timeZone);
     until = today;
+  } else if (p.preset === "thisMonth") {
+    since = startOfMonthIso(timeZone);
+    until = addDaysIso(today, -1);
+  } else if (p.preset === "thisQuarter") {
+    since = startOfQuarterIso(timeZone);
+    until = addDaysIso(today, -1);
   } else if (p.preset === "custom" && p.since && p.until) {
     since = p.since;
     until = p.until;

@@ -84,6 +84,7 @@ export function toMetricPrismProps(args: {
     const delta = heroDelta(key, summary, prevSummary);
     const { change, trend } = deltaMeta(key, delta);
     return {
+      metricKey: key,
       label: metricLabel(key),
       value: formatMetricValue(key, summary[key] ?? 0, locale),
       change,

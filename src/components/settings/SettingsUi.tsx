@@ -2,17 +2,55 @@
 
 import type { ReactNode } from "react";
 
+import {
+  DsCard,
+  DsFlatDivider,
+  DsFlatSection,
+  DsFormActions,
+  DsFormField,
+  type DsFlatSectionTone
+} from "@/design-system";
+
+/** @deprecated Use `DsFlatDivider` from `@/design-system`. */
+export const SettingsFlatDivider = DsFlatDivider;
+
+/** @deprecated Use `DsFormField` from `@/design-system`. */
+export const SettingsField = DsFormField;
+
+/** @deprecated Use `DsFormActions` from `@/design-system`. */
+export const SettingsSaveRow = DsFormActions;
+
+/**
+ * Seção de configurações — prefira `DsFlatSection` (flat) ou `DsCard` + `DsSectionHeader` em telas novas.
+ */
 export function SettingsSection({
   title,
   subtitle,
   children,
-  accent = "default"
+  accent = "default",
+  titleAdornment,
+  variant = "card"
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
-  accent?: "default" | "danger" | "amber";
+  accent?: DsFlatSectionTone;
+  titleAdornment?: ReactNode;
+  variant?: "card" | "flat";
 }) {
+  if (variant === "flat") {
+    return (
+      <DsFlatSection
+        title={title}
+        subtitle={subtitle}
+        titleAdornment={titleAdornment}
+        tone={accent}
+      >
+        {children}
+      </DsFlatSection>
+    );
+  }
+
   const borders = {
     default: "border-[var(--border-color)]",
     danger: "border-[rgba(239,68,68,0.25)]",
@@ -20,42 +58,15 @@ export function SettingsSection({
   };
 
   return (
-    <section className={`ui-card p-4 ${borders[accent]}`}>
+    <DsCard className={borders[accent]}>
       <div className="mb-3">
-        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{title}</h2>
+        <h2 className="flex items-center gap-1.5 font-heading text-sm font-semibold text-[var(--text-main)]">
+          {title}
+          {titleAdornment}
+        </h2>
         {subtitle ? <p className="mt-0.5 text-[11px] text-[var(--text-dimmer)]">{subtitle}</p> : null}
       </div>
       {children}
-    </section>
-  );
-}
-
-export function SettingsSaveRow({
-  children,
-  message
-}: {
-  children: ReactNode;
-  message?: string | null;
-}) {
-  return (
-    <div>
-      <div className="flex justify-end">{children}</div>
-      {message ? <p className="mt-2 text-[11px] text-[var(--text-dimmer)]">{message}</p> : null}
-    </div>
-  );
-}
-
-export function SettingsField({
-  label,
-  children
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="ui-label">{label}</span>
-      <div className="mt-1">{children}</div>
-    </label>
+    </DsCard>
   );
 }

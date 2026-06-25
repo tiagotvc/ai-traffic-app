@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { CanvasAgencyHealth } from "@/components/dashboard/canvas/widgets/CanvasAgencyHealth";
-import { CanvasMetricStrip } from "@/components/dashboard/canvas/widgets/CanvasMetricStrip";
+import { CanvasMetricStrip, type CanvasMetricItem } from "@/components/dashboard/canvas/widgets/CanvasMetricStrip";
+import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import { MetricPrismPrimary } from "@/components/dashboard/MetricPrism";
-import { BrainSummaryBanner } from "@/components/dashboard/BrainSummaryBanner";
+import { BrainShelf } from "@/components/dashboard/BrainShelf";
+import { AgeBreakdownCard } from "@/components/dashboard/AgeBreakdownCard";
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
 import { LiveIntelligenceFeed } from "@/components/dashboard/LiveIntelligenceFeed";
 import type { AlertsDensity, ClientsHealthView } from "@/lib/dashboard/widget-config";
@@ -35,11 +37,15 @@ type DashboardData = ReturnType<typeof useDashboardData>;
 
 export function BrainLearningsWidget({ data }: { data: DashboardData }) {
   return (
-    <BrainSummaryBanner
-      learningsCount={data.brainLearningsCount ?? data.brainLearnings.length}
-      hypothesesCount={data.brainHypothesesCount ?? 0}
-      isLoading={data.brainSummaryLoading ?? data.brainLearningsLoading}
-    />
+    <div className="dashboard-brain-notice flex h-full min-h-0 w-full">
+      <BrainShelf
+        variant="notice"
+        isLoading={data.brainSummaryLoading ?? data.brainLearningsLoading}
+        hypothesesCount={data.brainHypothesesCount ?? 0}
+        learningsCount={data.brainLearningsCount ?? data.brainLearnings.length}
+        suggestionsCount={data.brainLearnings.length}
+      />
+    </div>
   );
 }
 
@@ -73,7 +79,27 @@ export function QuickPillsWidget({ data }: { data: DashboardData }) {
     metricLabel: data.metricLabel,
     vsLabel: data.vsLabel
   });
-  return <CanvasMetricStrip items={secondaryMetrics} isLoading={data.loading} />;
+  const items: CanvasMetricItem[] = secondaryMetrics.map((m) => ({
+    label: m.label,
+    value: m.value,
+    change: m.change,
+    trend: m.trend,
+    color: m.key ? METRIC_BY_KEY[m.key]?.color : undefined
+  }));
+
+  return <CanvasMetricStrip items={items} isLoading={data.loading} />;
+}
+
+export function AgeBreakdownWidget({
+  data,
+  embedded = true
+}: {
+  data: DashboardData;
+  embedded?: boolean;
+}) {
+  return (
+    <AgeBreakdownCard rows={data.ageBreakdown} isLoading={data.ageBreakdownLoading} embedded={embedded} />
+  );
 }
 
 export function PerformanceChartWidget({
@@ -83,7 +109,8 @@ export function PerformanceChartWidget({
   barLayout = "vertical",
   visual,
   onChartMetricsChange,
-  compact = false
+  compact = false,
+  chartVariant
 }: {
   data: DashboardData;
   chartMetrics?: MetricKey[];
@@ -92,6 +119,8 @@ export function PerformanceChartWidget({
   visual?: SlotVisualConfig;
   onChartMetricsChange?: (metrics: MetricKey[]) => void;
   compact?: boolean;
+  /** page = Destaques-style panel; canvas = compact builder cell */
+  chartVariant?: "page" | "canvas";
 }) {
   const widgetScoped = chartMetrics !== undefined;
   const [activeMetrics, setActiveMetrics] = useState<MetricKey[]>(() =>
@@ -118,6 +147,7 @@ export function PerformanceChartWidget({
   );
 
   const metrics = widgetScoped ? activeMetrics : data.chartMetrics;
+  const variant = chartVariant ?? (compact ? "embedded" : "canvas");
 
   return (
     <DashboardPerformanceChart
@@ -127,8 +157,8 @@ export function PerformanceChartWidget({
       formatValue={data.formatMetricValue}
       metricLabels={data.chartMetricLabels}
       isLoading={data.loading}
-      subtitle={compact ? undefined : data.vsLabel}
-      variant={compact ? "embedded" : "canvas"}
+      subtitle={variant === "page" ? data.chartSubtitle : compact ? undefined : data.vsLabel}
+      variant={variant}
       chartStyle={chartStyle}
       barLayout={barLayout}
       visual={visual}

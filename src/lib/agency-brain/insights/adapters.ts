@@ -49,6 +49,7 @@ export function learningDtoToInsight(dto: LearningDto): InsightLearning {
     confidenceScore: dto.confidenceScore ?? 0,
     impactLevel: mapImpact(dto.impact),
     status: mapLearningStatus(dto.status),
+    reviewStatus: dto.status,
     tags: dto.tags ?? [],
     evidenceSummary: evidenceReason,
     sources: [mapSource(dto.source)],

@@ -37,7 +37,7 @@ export function WidgetLibraryCard({
   const t = useTranslations("dashboardWidgets");
   const locked = !widget.allowed;
   const canAdd = widget.allowed;
-  const isPremiumTab = category === "premium";
+  const isPremiumTab = category === "premium" || category === "advanced";
   const config = defaultWidgetConfig(widget.type);
 
   return (

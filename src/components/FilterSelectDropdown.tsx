@@ -1,9 +1,10 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { useDismissOnOutsideClick } from "@/hooks/useDismissOnOutsideClick";
 
 export type FilterSelectOption = {
   value: string;
@@ -19,6 +20,8 @@ type Props = {
   onChange: (value: string) => void;
   disabled?: boolean;
   menuPlacement?: "bottom" | "top";
+  /** When false, hides the placeholder row in the menu (no clear-to-empty). Default true. */
+  clearable?: boolean;
   className?: string;
 };
 
@@ -31,18 +34,13 @@ export function FilterSelectDropdown({
   onChange,
   disabled = false,
   menuPlacement = "bottom",
+  clearable = true,
   className
 }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  useDismissOnOutsideClick(ref, open, () => setOpen(false));
 
   const selectedLabel = value
     ? (options.find((o) => o.value === value)?.label ?? value)
@@ -92,6 +90,7 @@ export function FilterSelectDropdown({
             borderColor: "var(--border-color)"
           }}
         >
+          {clearable ? (
           <button
             type="button"
             onClick={() => {
@@ -111,6 +110,7 @@ export function FilterSelectDropdown({
           >
             {placeholder}
           </button>
+          ) : null}
           {options.map((opt) => (
             <button
               key={opt.value}

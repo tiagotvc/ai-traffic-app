@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Bell, PauseCircle, Plus, Trash2, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
 
+import { PageToolbar } from "@/components/layout/PageToolbar";
 import { UxAutomationsPageSkeleton } from "@/uxpilot-ui/adapters/ux-skeleton";
 
 const TEMPLATE_ICONS = {
@@ -17,7 +18,7 @@ const TEMPLATE_ICONS = {
 const TONE_STYLES: Record<string, { bg: string; color: string }> = {
   rose: { bg: "rgba(239,68,68,0.1)", color: "#ef4444" },
   emerald: { bg: "rgba(16,185,129,0.1)", color: "#10b981" },
-  amber: { bg: "rgba(245,166,35,0.1)", color: "#f5a623" },
+  accent: { bg: "var(--ui-accent-muted)", color: "var(--ui-accent)" },
   violet: { bg: "rgba(124,58,237,0.1)", color: "#a78bfa" },
   sky: { bg: "rgba(14,165,233,0.1)", color: "#0ea5e9" }
 };
@@ -69,7 +70,7 @@ const TEMPLATES: Template[] = [
     desc: "Pausa quando a campanha gasta demais e não entrega.",
     ifText: "Gasto > R$ 100",
     thenText: "Pausar campanha",
-    tone: "amber",
+    tone: "accent",
     form: { name: "Cortar gasto sem retorno", metric: "spend", op: "gt", value: 100, minSpend: 50, action: "pause_campaign" }
   },
   {
@@ -124,14 +125,27 @@ type Rule = {
   enabled: boolean;
   condition: { metric?: string; op?: string; value?: number; minSpend?: number };
   action: { type?: string };
+  executionCount?: number;
+  lastExecutionAt?: string | null;
 };
 
 const METRIC_LABEL: Record<string, string> = {
   cpl: "CPL",
+  cpa: "CPA",
+  ctr: "CTR",
   spend: "Gasto",
   conversions: "Conversões",
   roas: "ROAS"
 };
+
+function formatLastRun(iso?: string | null) {
+  if (!iso) return null;
+  try {
+    return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  } catch {
+    return null;
+  }
+}
 const OP_LABEL: Record<string, string> = { gt: ">", gte: "≥", lt: "<" };
 
 function actionLabel(type?: string) {
@@ -254,25 +268,19 @@ export function AutomationsRulesView() {
       className="flex-1 space-y-5 overflow-y-auto px-4 py-5 md:px-6"
       style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-xl font-bold" style={{ color: "var(--text-main)" }}>
-            Automações
-          </h1>
-          <p className="mt-0.5 font-body text-xs" style={{ color: "var(--text-dim)" }}>
-            Regras que monitoram e otimizam campanhas automaticamente
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="flex items-center gap-1.5 rounded-lg px-4 py-2 font-heading text-sm font-bold shadow-lg transition-all hover:brightness-110"
-          style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
-        >
-          <Plus size={15} />
-          Criar regra
-        </button>
-      </div>
+      <PageToolbar
+        icon={<Zap size={16} />}
+        title="Automações"
+        subtitle="Crie regras se-então para pausar, alertar ou escalar campanhas conforme a performance."
+        showGlobalFilters={false}
+        showSync={false}
+        actions={
+          <button type="button" onClick={openCreate} className="ui-btn-accent gap-1.5 px-4 py-2 font-heading text-sm font-bold">
+            <Plus size={15} />
+            Criar regra
+          </button>
+        }
+      />
 
       <div
         className="overflow-hidden rounded-xl border p-6 sm:p-8"
@@ -280,11 +288,8 @@ export function AutomationsRulesView() {
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-xl">
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ background: "rgba(245,166,35,0.15)" }}
-            >
-              <Zap size={20} style={{ color: "#f5a623" }} />
+            <span className="ui-toolbar-icon-shell h-10 w-10 rounded-xl">
+              <Zap size={20} />
             </span>
             <h2 className="mt-3 font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
               Piloto automático para campanhas
@@ -299,10 +304,7 @@ export function AutomationsRulesView() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {STEPS.map((s) => (
           <div key={s.n} className="flex items-start gap-3 rounded-xl border p-4" style={cardStyle}>
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-              style={{ background: "rgba(245,166,35,0.12)", color: "#f5a623" }}
-            >
+            <div className="ui-toolbar-icon-shell h-8 w-8 shrink-0 rounded-full text-sm font-bold">
               {s.n}
             </div>
             <div>
@@ -457,6 +459,14 @@ export function AutomationsRulesView() {
                       {actionLabel(rule.action.type)}
                     </span>
                   </div>
+                  {/* Logs de execução (derivados dos Alertas gerados pelo motor) */}
+                  <p className="mt-1.5 font-body text-[11px]" style={{ color: "var(--text-dimmer)" }}>
+                    {rule.executionCount && rule.executionCount > 0
+                      ? `${rule.executionCount} execução(ões)${
+                          formatLastRun(rule.lastExecutionAt) ? ` · última ${formatLastRun(rule.lastExecutionAt)}` : ""
+                        }`
+                      : "Ainda não disparou"}
+                  </p>
                 </div>
                 <label className="flex cursor-pointer items-center gap-2 font-body text-xs" style={{ color: "var(--text-dim)" }}>
                   <input
@@ -464,7 +474,7 @@ export function AutomationsRulesView() {
                     checked={rule.enabled}
                     disabled={isPending}
                     onChange={() => toggle(rule)}
-                    className="accent-[#f5a623]"
+                    className="accent-[var(--ui-accent)]"
                   />
                   Ativa
                 </label>
@@ -615,8 +625,7 @@ export function AutomationsRulesView() {
                 type="button"
                 disabled={isPending}
                 onClick={save}
-                className="rounded-lg px-4 py-2 font-heading text-sm font-bold disabled:opacity-60"
-                style={{ background: "#f5a623", color: "#0f1419" }}
+                className="ui-btn-accent px-4 py-2 font-heading text-sm font-bold disabled:opacity-60"
               >
                 Salvar regra
               </button>

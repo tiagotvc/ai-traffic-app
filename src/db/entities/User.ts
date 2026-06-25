@@ -24,6 +24,14 @@ export class User extends AppBaseEntity {
   @Column({ type: "text", default: "user" })
   platformRole!: PlatformRole;
 
+  /** Aceite dos Termos de Uso / Política de Privacidade. */
+  @Column({ type: "timestamptz", nullable: true })
+  termsAcceptedAt?: Date | null;
+
+  /** Versão dos termos aceita (ver LEGAL_CONTACT.termsVersion). */
+  @Column({ type: "text", nullable: true })
+  termsAcceptedVersion?: string | null;
+
   @Column({ type: "uuid" })
   tenantId!: string;
 

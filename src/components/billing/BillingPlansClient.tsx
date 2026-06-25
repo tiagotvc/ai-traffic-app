@@ -4,19 +4,20 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { BillingCycleToggle } from "@/components/billing/BillingCycleToggle";
-import { BillingPlansCarousel } from "@/components/billing/BillingPlansCarousel";
-import { BillingBackLink, PlanCard, type PlanCardData } from "@/components/billing/PlanLimitsCard";
+import {
+  BillingBackLink,
+  PlanCard,
+  type PlanCardData
+} from "@/components/billing/PlanLimitsCard";
 import { BillingPlansSkeleton } from "@/components/billing/BillingSkeletons";
 import {
   ensureMarketingPaidPlans,
   mergePlanWithOfficialPricing,
-  ORION_OFFICIAL_BRL_CENTS
+  resolveMarketingVitrinePlans
 } from "@/lib/marketing/orion-plan-catalog";
-import { isBrBillingMode, resolveBillingCurrency } from "@/lib/billing/currency";
+import { isBrBillingMode } from "@/lib/billing/currency";
 import { YEARLY_DISCOUNT_PERCENT } from "@/lib/billing/pricing";
 import { Link } from "@/i18n/navigation";
-
-const LANDING_PLAN_SLUGS = ["free", "individual", "advanced", "agency"] as const;
 
 export function BillingPlansClient({
   variant = "portal",
@@ -25,19 +26,19 @@ export function BillingPlansClient({
 }: {
   variant?: "portal" | "marketing";
   compact?: boolean;
-  /** Marketing landing: horizontal carousel with all plans */
+  /** @deprecated mantido por compatibilidade; a vitrine de marketing usa grid de 3 cards. */
   layout?: "grid" | "slider";
 }) {
   const t = useTranslations("billingPage");
   const tMarketing = useTranslations("marketing");
   const locale = useLocale();
   const isBr = isBrBillingMode(locale);
-  const currency = resolveBillingCurrency(locale);
   const isMarketing = variant === "marketing";
-  const useSlider = isMarketing && (layout === "slider" || compact);
   const [plans, setPlans] = useState<PlanCardData[]>([]);
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
+  void compact;
+  void layout;
 
   useEffect(() => {
     fetch("/api/billing/plans")
@@ -49,23 +50,14 @@ export function BillingPlansClient({
       .finally(() => setLoading(false));
   }, []);
 
-  const paidPlans = plans.filter((p) => p.slug !== "free" && ORION_OFFICIAL_BRL_CENTS[p.slug]);
-  const allMarketingPlans = [...plans.filter((p) => p.slug === "free"), ...paidPlans];
-  const displayPlans =
-    isMarketing && compact && layout !== "slider"
-      ? LANDING_PLAN_SLUGS.map((slug) => allMarketingPlans.find((p) => p.slug === slug)).filter(
-          (p): p is PlanCardData => Boolean(p)
-        )
-      : isMarketing
-        ? allMarketingPlans
-        : plans;
+  const displayPlans = isMarketing ? resolveMarketingVitrinePlans(plans) : plans;
 
   if (loading) {
     return <BillingPlansSkeleton />;
   }
 
   return (
-    <div className={`mx-auto max-w-6xl space-y-8 pb-4 ${isMarketing ? "px-0" : ""}`}>
+    <div className={`mx-auto max-w-6xl space-y-8 pb-4 ${isMarketing ? "space-y-10 px-0" : ""}`}>
       {!isMarketing ? <BillingBackLink href="/billing" /> : null}
 
       {!isMarketing ? (
@@ -85,16 +77,10 @@ export function BillingPlansClient({
         </p>
       ) : null}
 
-      {useSlider ? (
-        <BillingPlansCarousel plans={displayPlans} cycle={cycle} variant={variant} />
-      ) : (
+      <div className={isMarketing ? "pt-4" : undefined}>
         <div
-          className={`grid items-end gap-5 ${
-            isMarketing
-              ? compact
-                ? "sm:grid-cols-2 lg:grid-cols-4"
-                : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-6"
-              : "sm:grid-cols-2 xl:grid-cols-4"
+          className={`grid items-stretch gap-5 ${
+            isMarketing ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2 xl:grid-cols-4"
           }`}
         >
           {displayPlans.map((p) => (
@@ -107,7 +93,7 @@ export function BillingPlansClient({
             />
           ))}
         </div>
-      )}
+      </div>
 
       <p
         className={`text-center text-xs ${isMarketing ? "text-violet-200/50" : "text-[var(--text-dimmer)]"}`}

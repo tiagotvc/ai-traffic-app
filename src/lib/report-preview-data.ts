@@ -14,6 +14,7 @@ import {
 } from "@/lib/dashboard-query";
 import { pctDelta, type Range } from "@/lib/dashboard-ranges";
 import { generateReportClaudeAnalysis } from "@/lib/report-ai-analysis";
+import { loadReportBreakdowns } from "@/lib/report-breakdown-data";
 import {
   generateReportNarrative,
   generateReportRecommendations
@@ -191,6 +192,7 @@ export async function buildReportPreview(input: {
   locale: string;
   reportType: "simple" | "complete";
   goalLabel: string;
+  metaAccessToken?: string;
 }): Promise<ReportPreviewPayload | { ok: false; error: string }> {
   const client = await getClientBySlugOrId(input.tenantId, input.clientParam);
   if (!client) return { ok: false, error: "client_not_found" };
@@ -329,6 +331,22 @@ export async function buildReportPreview(input: {
     aiAnalysis?.recommendations.length ? aiAnalysis.recommendations : recommendations;
   const finalNarrative = aiAnalysis?.executiveSummary ?? narrative;
 
+  let breakdowns: ReportPreviewPayload["breakdowns"] = [];
+  if (selectedAccount?.metaAdAccountId) {
+    try {
+      breakdowns = await loadReportBreakdowns({
+        tenantId: input.tenantId,
+        metaAdAccountId: selectedAccount.metaAdAccountId,
+        since: input.current.since,
+        until: input.current.until,
+        locale: input.locale,
+        accessToken: input.metaAccessToken
+      });
+    } catch {
+      breakdowns = [];
+    }
+  }
+
   return {
     ok: true,
     client: {
@@ -354,7 +372,8 @@ export async function buildReportPreview(input: {
     comparisonBars,
     narrative: finalNarrative,
     recommendations: finalRecommendations,
-    aiAnalysis
+    aiAnalysis,
+    breakdowns
   };
 }
 

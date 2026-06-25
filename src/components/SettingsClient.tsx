@@ -4,8 +4,15 @@ import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
+import { Info, Sparkles } from "lucide-react";
+import {
+  DsFlatDivider,
+  DsFlatPanel,
+  DsFlatSection,
+  DsFormActions,
+  DsFormField
+} from "@/design-system";
 import { SettingsIntegrationsTab } from "@/components/settings/SettingsIntegrationsTab";
-import { SettingsField, SettingsSaveRow, SettingsSection } from "@/components/settings/SettingsUi";
 import { PageTabs } from "@/components/layout/PageTabs";
 import { WorkspaceTeamSection } from "@/components/WorkspaceTeamSection";
 
@@ -141,10 +148,10 @@ export function SettingsClient({
   ];
 
   const panels = (
-    <div className={bare ? "space-y-4" : "ui-card p-4"}>
+    <DsFlatPanel className={bare ? undefined : "ui-card p-4"}>
         {activeTab === "general" ? (
-          <div className="space-y-4">
-            <SettingsSection title={t("accountTitle")} subtitle={t("accountSubtitle")}>
+          <div className="space-y-8">
+            <DsFlatSection title={t("accountTitle")} subtitle={t("accountSubtitle")}>
               {account ? (
                 <div className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -175,7 +182,7 @@ export function SettingsClient({
                       <p className="text-xs font-semibold text-[var(--text-main)]">{t("passwordTitle")}</p>
                       <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t("passwordHint")}</p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                        <SettingsField label={t("currentPassword")}>
+                        <DsFormField label={t("currentPassword")}>
                           <input
                             type="password"
                             value={currentPassword}
@@ -183,8 +190,8 @@ export function SettingsClient({
                             className="ui-input w-full text-sm"
                             autoComplete="current-password"
                           />
-                        </SettingsField>
-                        <SettingsField label={t("newPassword")}>
+                        </DsFormField>
+                        <DsFormField label={t("newPassword")}>
                           <input
                             type="password"
                             value={newPassword}
@@ -192,8 +199,8 @@ export function SettingsClient({
                             className="ui-input w-full text-sm"
                             autoComplete="new-password"
                           />
-                        </SettingsField>
-                        <SettingsField label={t("confirmPassword")}>
+                        </DsFormField>
+                        <DsFormField label={t("confirmPassword")}>
                           <input
                             type="password"
                             value={confirmPassword}
@@ -201,9 +208,9 @@ export function SettingsClient({
                             className="ui-input w-full text-sm"
                             autoComplete="new-password"
                           />
-                        </SettingsField>
+                        </DsFormField>
                       </div>
-                      <SettingsSaveRow message={passwordMessage}>
+                      <DsFormActions message={passwordMessage}>
                         <button
                           type="button"
                           disabled={
@@ -235,11 +242,11 @@ export function SettingsClient({
                               setPasswordMessage(t("passwordChanged"));
                             });
                           }}
-                          className="ui-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
+                          className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
                         >
                           {passwordPending ? tCommon("loading") : t("passwordChangeBtn")}
                         </button>
-                      </SettingsSaveRow>
+                      </DsFormActions>
                     </div>
                   ) : (
                     <p className="text-xs text-[var(--text-dim)]">{t("passwordOAuthOnly")}</p>
@@ -248,28 +255,31 @@ export function SettingsClient({
               ) : (
                 <p className="text-xs text-[var(--text-dim)]">{tCommon("loading")}</p>
               )}
-            </SettingsSection>
+            </DsFlatSection>
 
-            <SettingsSection title={t("whitelabel")} subtitle={t("whitelabelHint")}>
+            <DsFlatDivider />
+
+            <DsFlatSection title={t("whitelabel")} subtitle={t("whitelabelHint")}>
               <div className="grid gap-3 md:grid-cols-2">
-                <SettingsField label={t("brandName")}>
+                <DsFormField label={t("brandName")}>
                   <input
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
                     className="ui-input w-full"
+                    placeholder={t("brandNamePlaceholder")}
                   />
-                </SettingsField>
-                <SettingsField label={t("logoUrl")}>
+                </DsFormField>
+                <DsFormField label={t("logoUrl")}>
                   <input
                     value={logoUrl}
                     onChange={(e) => setLogoUrl(e.target.value)}
                     className="ui-input w-full"
-                    placeholder="https://..."
+                    placeholder="https://exemplo.com/logo.png"
                   />
-                </SettingsField>
+                </DsFormField>
               </div>
               <div className="mt-3">
-                <SettingsSaveRow message={message}>
+                <DsFormActions message={message}>
                   <button
                     disabled={isPending}
                     onClick={() => {
@@ -284,29 +294,33 @@ export function SettingsClient({
                         setMessage(json?.ok ? t("saved") : json?.error ?? t("saveFailed"));
                       });
                     }}
-                    className="ui-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
+                    className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
                   >
                     {isPending ? tCommon("loading") : tCommon("save")}
                   </button>
-                </SettingsSaveRow>
+                </DsFormActions>
               </div>
-            </SettingsSection>
+            </DsFlatSection>
 
-            <SettingsSection
+            <DsFlatDivider />
+
+            <DsFlatSection
               title={t("agencyBrainPrivacyTitle")}
               subtitle={t("agencyBrainPrivacyHint")}
+              titleAdornment={<Sparkles size={14} className="text-[var(--ui-accent)]" />}
             >
-              <label className="flex cursor-pointer items-start gap-2 text-sm text-[var(--text-main)]">
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-main)]">
                 <input
                   type="checkbox"
                   checked={nicheShareOptIn}
                   onChange={(e) => setNicheShareOptIn(e.target.checked)}
-                  className="mt-0.5 rounded border-[var(--border-color)]"
+                  className="rounded border-[var(--border-color)]"
                 />
                 <span className="text-xs">{t("agencyBrainNicheShareOptIn")}</span>
+                <Info size={13} className="text-[var(--text-dimmer)]" />
               </label>
               <div className="mt-3">
-                <SettingsSaveRow message={nicheShareMessage}>
+                <DsFormActions message={nicheShareMessage}>
                   <button
                     type="button"
                     disabled={nicheSharePending}
@@ -324,13 +338,13 @@ export function SettingsClient({
                         );
                       });
                     }}
-                    className="ui-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
+                    className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
                   >
                     {nicheSharePending ? tCommon("loading") : tCommon("save")}
                   </button>
-                </SettingsSaveRow>
+                </DsFormActions>
               </div>
-            </SettingsSection>
+            </DsFlatSection>
           </div>
         ) : null}
 
@@ -353,27 +367,27 @@ export function SettingsClient({
               <h2 className="text-sm font-semibold text-[var(--text-main)]">{t("webhooksTitle")}</h2>
               <p className="text-[11px] text-[var(--text-dim)]">{t("webhooksSubtitle")}</p>
             </div>
-            <SettingsSection title={t("webhookAlertLabel")} subtitle={t("webhookAlertHint")}>
-              <SettingsField label="URL">
+            <DsFlatSection title={t("webhookAlertLabel")} subtitle={t("webhookAlertHint")}>
+              <DsFormField label="URL">
                 <input
                   value={webhookAlertUrl}
                   onChange={(e) => setWebhookAlertUrl(e.target.value)}
                   className="ui-input w-full font-mono text-xs"
                   placeholder="https://hooks.slack.com/..."
                 />
-              </SettingsField>
-            </SettingsSection>
-            <SettingsSection title={t("webhookReportLabel")} subtitle={t("webhookReportHint")}>
-              <SettingsField label="URL">
+              </DsFormField>
+            </DsFlatSection>
+            <DsFlatSection title={t("webhookReportLabel")} subtitle={t("webhookReportHint")}>
+              <DsFormField label="URL">
                 <input
                   value={webhookReportUrl}
                   onChange={(e) => setWebhookReportUrl(e.target.value)}
                   className="ui-input w-full font-mono text-xs"
                   placeholder="https://..."
                 />
-              </SettingsField>
-            </SettingsSection>
-            <SettingsSaveRow message={webhookMessage}>
+              </DsFormField>
+            </DsFlatSection>
+            <DsFormActions message={webhookMessage}>
               <button
                 type="button"
                 disabled={webhookPending}
@@ -389,17 +403,17 @@ export function SettingsClient({
                     setWebhookMessage(json?.ok ? t("webhookSaved") : json?.error ?? t("saveFailed"));
                   });
                 }}
-                className="ui-btn-primary px-3 py-1.5 text-xs disabled:opacity-60"
+                className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
               >
                 {webhookPending ? tCommon("loading") : tCommon("save")}
               </button>
-            </SettingsSaveRow>
+            </DsFormActions>
           </div>
         ) : null}
 
         {activeTab === "data" ? (
-          <div className="space-y-4">
-            <SettingsSection title={t("demoDataTitle")} subtitle={t("demoDataHint")}>
+          <div className="space-y-8">
+            <DsFlatSection title={t("demoDataTitle")} subtitle={t("demoDataHint")}>
               <p className="text-[11px] text-[var(--text-dimmer)]">{t("demoDataNames")}</p>
               {purgeMessage ? <p className="mt-2 text-xs text-[var(--text-dim)]">{purgeMessage}</p> : null}
               <button
@@ -424,26 +438,28 @@ export function SettingsClient({
                     window.dispatchEvent(new Event("traffic:campaigns-reload"));
                   });
                 }}
-                className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+                className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/15 disabled:opacity-60"
               >
                 {purgePending ? tCommon("loading") : t("demoDataAction")}
               </button>
-            </SettingsSection>
+            </DsFlatSection>
 
-            <SettingsSection
+            <DsFlatDivider />
+
+            <DsFlatSection
               title={t("resetDataTitle")}
               subtitle={t("resetDataHint")}
-              accent="danger"
+              tone="danger"
             >
               <p className="text-[11px] text-[var(--text-dimmer)]">{t("resetDataKeeps")}</p>
-              <SettingsField label={t("resetDataConfirmLabel")}>
+              <DsFormField label={t("resetDataConfirmLabel")}>
                 <input
                   value={resetText}
                   onChange={(e) => setResetText(e.target.value)}
                   placeholder="RESET"
                   className="ui-input !py-1.5 font-mono text-sm"
                 />
-              </SettingsField>
+              </DsFormField>
               {resetMessage ? <p className="mt-2 text-xs text-[var(--text-dim)]">{resetMessage}</p> : null}
               <button
                 type="button"
@@ -472,10 +488,10 @@ export function SettingsClient({
               >
                 {resetPending ? tCommon("loading") : t("resetDataAction")}
               </button>
-            </SettingsSection>
+            </DsFlatSection>
           </div>
         ) : null}
-    </div>
+    </DsFlatPanel>
   );
 
   if (embedded) {

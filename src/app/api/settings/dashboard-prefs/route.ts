@@ -32,7 +32,16 @@ const LayoutSchema = z.object({
     .array(z.string())
     .max(MAX_HERO_METRICS)
     .refine((arr) => arr.every((k) => k in METRIC_BY_KEY), "métrica inválida")
-    .optional()
+    .optional(),
+  sectionOrder: z
+    .array(z.string())
+    .refine(
+      (arr) =>
+        arr.every((k) => DASHBOARD_SECTION_KEYS.includes(k as (typeof DASHBOARD_SECTION_KEYS)[number])),
+      "seção inválida"
+    )
+    .optional(),
+  chartSize: z.enum(["compact", "default", "tall"]).optional()
 });
 
 const PatchSchema = z
