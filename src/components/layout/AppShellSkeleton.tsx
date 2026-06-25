@@ -307,7 +307,7 @@ function AppShellSkeletonInner({
             </svg>
           </button>
           <div className="flex min-w-0 flex-1 items-center">
-            <OrionAgencyLogo size="sm" variant="light" />
+            <OrionAgencyLogo size="sm" variant="auto" />
           </div>
         </header>
         ) : null}

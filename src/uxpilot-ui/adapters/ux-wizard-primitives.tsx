@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Check } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/cn";
 
 export function UxCircularProgress({ value }: { value: number }) {
   const r = 30;
@@ -124,13 +125,74 @@ export function UxStepItem({
   );
 }
 
+export function UxHorizontalStepper({
+  steps,
+  current,
+  onStepClick
+}: {
+  steps: Array<{ number: number; label: string; disabled?: boolean }>;
+  current: number;
+  onStepClick: (step: number) => void;
+}) {
+  return (
+    <nav
+      aria-label="Etapas"
+      className="ui-wizard-stepper"
+      style={{ ["--wizard-steps" as string]: steps.length }}
+    >
+      {steps.map((s, i) => {
+        const done = current > s.number;
+        const active = current === s.number;
+        const disabled = s.disabled ?? false;
+        const isLast = i === steps.length - 1;
+        return (
+          <div key={s.number} className="ui-wizard-stepper__item">
+            {!isLast ? (
+              <div
+                className={cn("ui-wizard-stepper__line", done && "ui-wizard-stepper__line--done")}
+                aria-hidden
+              />
+            ) : null}
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onStepClick(s.number)}
+              className="flex flex-col items-center disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <span
+                className={cn(
+                  "ui-wizard-stepper__circle",
+                  active && "ui-wizard-stepper__circle--active",
+                  done && "ui-wizard-stepper__circle--done"
+                )}
+              >
+                {done ? <Check size={16} strokeWidth={2.5} /> : s.number}
+              </span>
+              <span
+                className={cn(
+                  "ui-wizard-stepper__label max-w-[7.5rem] sm:max-w-[9rem]",
+                  active && "ui-wizard-stepper__label--active",
+                  done && !active && "ui-wizard-stepper__label--done"
+                )}
+              >
+                {s.label}
+              </span>
+            </button>
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function UxWizardHeader({
   breadcrumbParent,
   breadcrumbParentHref,
   breadcrumbCurrent,
   title,
   onBack,
-  showBack = true
+  showBack = true,
+  badge
 }: {
   breadcrumbParent: string;
   breadcrumbParentHref: string;
@@ -138,10 +200,11 @@ export function UxWizardHeader({
   title: string;
   onBack: () => void;
   showBack?: boolean;
+  badge?: string | null;
 }) {
   return (
     <div
-      className="sticky top-0 z-20 flex w-full items-center gap-3 border-b px-6 py-3"
+      className="sticky top-0 z-20 flex w-full items-center gap-3 border-b px-4 py-3 sm:px-6"
       style={{
         background: "var(--surface-card)",
         borderColor: "var(--border-color)",
@@ -157,19 +220,21 @@ export function UxWizardHeader({
           <span style={{ color: "var(--text-dim)" }}>{breadcrumbCurrent}</span>
         </p>
         <div className="mt-0.5 flex items-center gap-2">
-          <h1 className="font-heading text-xl font-bold" style={{ color: "var(--text-main)" }}>
+          <h1 className="font-heading text-lg font-bold sm:text-xl" style={{ color: "var(--text-main)" }}>
             {title}
           </h1>
-          <span
-            className="rounded px-2 py-0.5 font-heading text-xs font-semibold"
-            style={{
-              background: "rgba(245,166,35,0.15)",
-              color: "var(--amber)",
-              border: "1px solid rgba(245,166,35,0.3)"
-            }}
-          >
-            Rascunho
-          </span>
+          {badge ? (
+            <span
+              className="rounded px-2 py-0.5 font-heading text-xs font-semibold"
+              style={{
+                background: "var(--ui-accent-muted)",
+                color: "var(--ui-accent)",
+                border: "1px solid var(--ui-accent-border)"
+              }}
+            >
+              {badge}
+            </span>
+          ) : null}
         </div>
       </div>
       {showBack ? (

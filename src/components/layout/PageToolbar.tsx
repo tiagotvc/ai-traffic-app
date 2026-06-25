@@ -1,14 +1,13 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
-import { Filter } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
+import { FilterToggleButton } from "@/components/ui/FilterToggleButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
-import { useDismissOnOutsideClick } from "@/hooks/useDismissOnOutsideClick";
 import { cn } from "@/lib/cn";
 
 export function PageToolbar({
@@ -45,26 +44,13 @@ export function PageToolbar({
   const t = useTranslations("dashboard");
   const strip = useCommandStripOptional();
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
 
   const hasGlobalFilters = Boolean(showGlobalFilters && strip);
   const hasPageFilters = Boolean(pageFilters);
   const canFilter = hasGlobalFilters || hasPageFilters;
 
-  const filtersActive =
-    hasGlobalFilters &&
-    Boolean(
-      strip!.clientFilter ||
-        strip!.accountFilter ||
-        strip!.period.preset !== "last30"
-    );
-
-  const filterBtnActive = filtersOpen || filtersActive;
-
-  useDismissOnOutsideClick(rootRef, filtersOpen && canFilter, () => setFiltersOpen(false));
-
   return (
-    <div ref={rootRef} className={cn("mb-5", className)}>
+    <div className={cn("mb-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {eyebrow ? (
@@ -101,19 +87,12 @@ export function PageToolbar({
           ) : null}
 
           {canFilter ? (
-            <button
-              type="button"
+            <FilterToggleButton
+              open={filtersOpen}
+              showLabel={t("showFilters")}
+              hideLabel={t("hideFilters")}
               onClick={() => setFiltersOpen((v) => !v)}
-              title={t("filtersTitle")}
-              aria-label={t("filtersTitle")}
-              aria-pressed={filtersOpen}
-              className={cn(
-                "ui-toolbar-icon-btn",
-                filterBtnActive && "ui-toolbar-icon-btn--active"
-              )}
-            >
-              <Filter size={16} />
-            </button>
+            />
           ) : null}
 
           {actions}
@@ -124,7 +103,7 @@ export function PageToolbar({
 
       {filtersOpen && canFilter ? (
         <div
-          className="mt-3 flex flex-col gap-2.5 rounded-xl border p-3"
+          className="ui-filter-panel-grid mt-3 rounded-xl border p-3"
           style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
         >
           {hasGlobalFilters ? (

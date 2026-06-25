@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import {
   Check,
   Copy,
-  Filter,
   Globe,
   GlobeLock,
   LayoutTemplate,
@@ -18,6 +17,7 @@ import { AppRenamePopover } from "@/components/dashboard/canvas/AppRenamePopover
 import { DashboardToolbarButton } from "@/components/dashboard/canvas/DashboardToolbarButton";
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
+import { FilterToggleButton } from "@/components/ui/FilterToggleButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { useDismissOnOutsideClick } from "@/hooks/useDismissOnOutsideClick";
 
@@ -70,16 +70,8 @@ export function DashboardToolbarActions({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const filtersRef = useRef<HTMLDivElement>(null);
   const renameRef = useRef<HTMLDivElement>(null);
 
-  const filtersActive = Boolean(
-    strip &&
-      (strip.clientFilter || strip.accountFilter || strip.period.preset !== "last30")
-  );
-  const filterBtnActive = filtersOpen || filtersActive;
-
-  useDismissOnOutsideClick(filtersRef, filtersOpen, () => setFiltersOpen(false));
   useDismissOnOutsideClick(renameRef, renameOpen, () => setRenameOpen(false));
 
   async function copyViewLink() {
@@ -95,19 +87,14 @@ export function DashboardToolbarActions({
   }
 
   return (
-    <div ref={filtersRef} className="flex flex-col items-end gap-2">
+    <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
         {!appBuilderMode && strip ? (
-          <DashboardToolbarButton
-            icon={<Filter size={14} />}
-            label={t("filtersTitle")}
-            aria-pressed={filtersOpen}
+          <FilterToggleButton
+            open={filtersOpen}
+            showLabel={t("showFilters")}
+            hideLabel={t("hideFilters")}
             onClick={() => setFiltersOpen((v) => !v)}
-            style={{
-              background: filterBtnActive ? "rgba(124,58,237,0.1)" : "var(--surface-card)",
-              borderColor: filterBtnActive ? "rgba(124,58,237,0.35)" : "var(--border-color)",
-              color: filterBtnActive ? "#a78bfa" : "var(--text-dim)"
-            }}
           />
         ) : null}
 

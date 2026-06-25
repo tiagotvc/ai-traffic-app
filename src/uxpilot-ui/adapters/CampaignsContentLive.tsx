@@ -18,6 +18,7 @@ import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { type PeriodState, periodStateToQuery } from "@/components/PeriodFilter";
+import { IconLabelLink } from "@/components/ui/IconLabelButton";
 import { Link } from "@/i18n/navigation";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import CampaignsContent, { type CampaignsLiveProps } from "@/uxpilot-ui/pages/content/Campaigns";
@@ -111,18 +112,12 @@ export function CampaignsContentLive() {
 
   useCommandStripPage({
     trailingSlot: (
-      <Link
+      <IconLabelLink
         href="/campaigns/new"
-        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-95"
-        style={{
-          background: "linear-gradient(135deg, #f5a623, #e8920d)",
-          color: "#0f1419",
-          fontFamily: "var(--font-heading)"
-        }}
-      >
-        <Plus size={15} />
-        {t("newCampaign")}
-      </Link>
+        label={t("newCampaign")}
+        icon={<Plus size={15} />}
+        className="ui-btn-accent font-heading hover:brightness-110 active:scale-95"
+      />
     )
   });
 

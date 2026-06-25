@@ -11,18 +11,19 @@ export function MetaSyncButton({
   className,
   size = 16,
   label,
-  variant = "prominent"
+  variant = "outline"
 }: {
   clientFilter?: string;
   className?: string;
   size?: number;
   label?: string;
-  /** `toolbar` — ícone discreto; `prominent` — CTA com accent temático. */
-  variant?: "toolbar" | "prominent";
+  /** @deprecated Use outline (default). Kept for call-site compatibility. */
+  variant?: "toolbar" | "outline" | "prominent";
 }) {
   const tSync = useTranslations("sync");
   const [syncing, startSync] = useTransition();
-  const aria = syncing ? tSync("syncing") : label ?? tSync("syncMeta");
+  const text = syncing ? tSync("syncing") : label ?? tSync("syncMeta");
+  const aria = text;
 
   function handleSync() {
     if (syncing) return;
@@ -38,25 +39,6 @@ export function MetaSyncButton({
     });
   }
 
-  if (variant === "toolbar") {
-    return (
-      <button
-        type="button"
-        onClick={handleSync}
-        disabled={syncing}
-        title={aria}
-        aria-label={aria}
-        className={cn(
-          "ui-toolbar-icon-btn text-[var(--ui-accent)]",
-          syncing && "cursor-wait opacity-70",
-          className
-        )}
-      >
-        <RefreshCw size={size} className={cn("shrink-0", syncing && "animate-spin")} />
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
@@ -65,14 +47,13 @@ export function MetaSyncButton({
       title={aria}
       aria-label={aria}
       className={cn(
-        "ui-btn-accent h-9 shrink-0 font-heading text-sm font-semibold",
-        label ? "gap-1.5 px-2.5 text-[11px]" : "w-9 justify-center",
+        "ui-btn-accent-outline ui-btn-responsive font-heading font-semibold",
         syncing ? "cursor-wait opacity-70" : "active:scale-95",
         className
       )}
     >
       <RefreshCw size={size} className={cn("shrink-0", syncing && "animate-spin")} />
-      {label ? <span className="max-w-[88px] truncate whitespace-nowrap">{label}</span> : null}
+      <span className="ui-btn-responsive-label">{text}</span>
     </button>
   );
 }

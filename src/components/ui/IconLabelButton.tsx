@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 type IconLabelButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   icon: React.ReactNode;
   label: string;
+  /** Quando true (padrão), oculta o texto abaixo de lg (mobile/tablet). */
   hideLabelOnMobile?: boolean;
 };
 
@@ -22,11 +23,11 @@ export function IconLabelButton({
       type={type}
       title={label}
       aria-label={label}
-      className={cn(className)}
+      className={cn("ui-btn-responsive", className)}
       {...props}
     >
       {icon}
-      <span className={hideLabelOnMobile ? "hidden sm:inline" : undefined}>{label}</span>
+      <span className={hideLabelOnMobile ? "ui-btn-responsive-label" : undefined}>{label}</span>
     </button>
   );
 }
@@ -45,9 +46,9 @@ export function IconLabelLink({
   ...props
 }: IconLabelLinkProps) {
   return (
-    <Link title={label} aria-label={label} className={cn(className)} {...props}>
+    <Link title={label} aria-label={label} className={cn("ui-btn-responsive", className)} {...props}>
       {icon}
-      <span className={hideLabelOnMobile ? "hidden sm:inline" : undefined}>{label}</span>
+      <span className={hideLabelOnMobile ? "ui-btn-responsive-label" : undefined}>{label}</span>
     </Link>
   );
 }

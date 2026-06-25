@@ -6,6 +6,7 @@ type DsButtonVariant =
   | "primary"
   | "brand"
   | "accent"
+  | "accentOutline"
   | "secondary"
   | "ghost"
   | "danger"
@@ -18,12 +19,15 @@ type DsButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: DsButtonSize;
   /** Botão de ícone quadrado — ignora o padding de `size` e usa dimensão fixa. */
   iconOnly?: boolean;
+  /** Ícone no mobile/tablet; ícone + texto no desktop (lg+). Requer `label`. */
+  responsiveLabel?: string;
 };
 
 const variantClass: Record<DsButtonVariant, string> = {
   primary: "ui-btn-primary",
   brand: "ui-btn-brand",
   accent: "ui-btn-accent",
+  accentOutline: "ui-btn-accent-outline",
   secondary: "ui-btn-secondary",
   ghost: "ui-btn-ghost",
   danger: "ui-btn-danger",
@@ -51,20 +55,30 @@ export function DsButton({
   variant = "primary",
   size = "md",
   iconOnly = false,
+  responsiveLabel,
   type = "button",
   ...props
 }: DsButtonProps) {
+  const responsive = Boolean(responsiveLabel);
+
   return (
     <button
       type={type}
+      title={responsiveLabel}
+      aria-label={responsiveLabel}
       className={cn(
         variantClass[variant],
-        iconOnly ? iconOnlyClass[size] : sizeClass[size],
+        responsive
+          ? "ui-btn-responsive"
+          : iconOnly
+            ? iconOnlyClass[size]
+            : sizeClass[size],
         className
       )}
       {...props}
     >
       {children}
+      {responsive ? <span className="ui-btn-responsive-label">{responsiveLabel}</span> : null}
     </button>
   );
 }

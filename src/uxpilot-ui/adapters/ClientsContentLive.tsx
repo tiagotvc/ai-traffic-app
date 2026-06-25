@@ -5,7 +5,8 @@ import { useMemo, useState } from "react";
 import { Building2, Cog, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 
 import { PageToolbar } from "@/components/layout/PageToolbar";
-import { Link, useRouter } from "@/i18n/navigation";
+import { IconLabelLink } from "@/components/ui/IconLabelButton";
+import { useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { DsButton, DsModal } from "@/design-system";
 import { toUxClientCards, type UxClientCard } from "@/uxpilot-ui/adapters/clients-mappers";
@@ -64,14 +65,12 @@ export function ClientsContentLive() {
           placeholder: "Buscar clientes..."
         }}
         actions={
-          <Link
+          <IconLabelLink
             href="/clients/new"
-            title="Novo Cliente"
-            aria-label="Novo Cliente"
-            className="ui-btn-accent h-9 w-9 p-0"
-          >
-            <Plus size={16} />
-          </Link>
+            label={t("addClient")}
+            icon={<Plus size={16} />}
+            className="ui-btn-accent"
+          />
         }
       />
 

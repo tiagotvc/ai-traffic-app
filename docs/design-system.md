@@ -37,13 +37,22 @@ Implementação: `src/app/globals.css`, `src/design-system/`, classes `ui-*`.
 - `.ui-panel-header` — barra sticky com blur
 - `.ui-brain-shelf` — container Agency Brain
 
-### Botões
-- `.ui-btn-primary` — CTA âmbar fixo (resto do app: sync, criar, salvar em dashboards)
-- `.ui-btn-accent` — **CTA temático** âmbar (light) / roxo (dark) — **use em painéis flat / Configurações**
-- `.ui-btn-brand` — CTA violeta fixo — **ações de IA** (fora de Configurações)
-- `.ui-btn-secondary` — secundário
-- `.ui-btn-ghost` — ghost
-- `.ui-btn-danger` — destrutivo
+### Botões (tokens `--ui-accent-btn-*` e `--ui-accent-border`)
+
+| Classe | Uso | Light | Dark |
+|--------|-----|-------|------|
+| `.ui-btn-accent` / `.ui-btn-primary` | CTA preenchido (criar, publicar, nova campanha) | Âmbar | Roxo |
+| `.ui-btn-accent-outline` | Sync, ações secundárias com cor de marca | Borda âmbar | Borda roxa |
+| `.ui-btn-filter-toggle` | Mostrar filtros (sem fundo) | Borda neutra | Borda neutra |
+| `.ui-btn-filter-toggle--open` | Ocultar filtros (painel aberto) | Borda accent | Borda accent |
+| `.ui-btn-secondary` | Neutro sem cor de marca | — | — |
+| `.ui-btn-brand` | IA / Agency Brain (violeta fixo) | — | — |
+
+**Responsivo:** `.ui-btn-responsive` + `.ui-btn-responsive-label` — ícone no mobile/tablet; ícone + texto no desktop (lg+).
+
+**Componentes:** `IconActionButton` (accent), `FilterToggleButton`, `MetaSyncButton` (outline), `DsButton` (`variant="accent" | "accentOutline"`).
+
+**Filtros mobile:** `.ui-filter-panel-grid` — grid 1 coluna no mobile, 2 no tablet, inline no desktop.
 
 ### Formulários
 - `.ui-input`, `.ui-select`, `.ui-textarea`, `.ui-label`

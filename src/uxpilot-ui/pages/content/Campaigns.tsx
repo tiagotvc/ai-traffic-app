@@ -456,16 +456,10 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                     ? live?.onShowFiltersChange?.(!filtersOpen)
                     : undefined
                 }
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-body border transition-all"
-                style={
-                  filtersOpen
-                    ? {
-                        background: "rgba(245,166,35,0.1)",
-                        borderColor: "rgba(245,166,35,0.3)",
-                        color: "var(--amber)"
-                      }
-                    : { borderColor: "var(--border-color)", color: "var(--text-dim)" }
-                }
+                className={cn(
+                  "ui-btn-filter-toggle flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-body",
+                  filtersOpen && "ui-btn-filter-toggle--open"
+                )}
               >
                 <Filter size={12} />
                 {filtersOpen ? "Ocultar filtros" : "Mostrar filtros"}

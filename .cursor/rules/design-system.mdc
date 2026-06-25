@@ -12,7 +12,8 @@ Always follow `docs/design-system.md` when building or editing UI.
 
 - Page background: `bg-[var(--surface-bg)]` or `.ui-surface`
 - Cards: `.ui-card` or `DsCard` — never ad-hoc `border-slate-200 bg-white`
-- Primary CTA (sync, create, save): `.ui-btn-primary` (amber gradient)
+- Primary CTA (sync, create, save): `.ui-btn-accent` or `.ui-btn-primary` (alias — âmbar light / roxo dark via `--ui-accent-btn-*`)
+- Sync / secondary brand actions: `.ui-btn-accent-outline` (border only, themed)
 - AI / Agency Brain actions: `.ui-btn-brand` (violet gradient)
 - Secondary actions: `.ui-btn-secondary`
 - Page titles: `font-heading text-[var(--text-main)]`

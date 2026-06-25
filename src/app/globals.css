@@ -366,14 +366,30 @@ h6,
   }
 
   /* ─── Buttons ─── */
+  /* CTA preenchido temático — âmbar (light) / roxo (dark). Preferir sobre ui-btn-primary. */
+  .ui-btn-accent,
   .ui-btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold shadow-lg transition disabled:opacity-50;
-    background: linear-gradient(135deg, var(--amber-bright), #e8920d);
-    color: #0f1419;
+    background: linear-gradient(135deg, var(--ui-accent-btn-from), var(--ui-accent-btn-to));
+    color: var(--ui-accent-btn-text);
+    box-shadow: 0 8px 20px -6px var(--ui-accent-btn-shadow);
   }
 
+  .ui-btn-accent:hover:not(:disabled),
   .ui-btn-primary:hover:not(:disabled) {
     filter: brightness(1.05);
+  }
+
+  /* CTA outline temático — sync, ações secundárias com cor de marca */
+  .ui-btn-accent-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border bg-transparent px-4 py-2 text-sm font-semibold shadow-none transition disabled:opacity-50;
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+  }
+
+  .ui-btn-accent-outline:hover:not(:disabled) {
+    background: var(--ui-accent-hover);
+    border-color: var(--ui-accent-border-strong);
   }
 
   .ui-btn-brand {
@@ -385,16 +401,96 @@ h6,
     filter: brightness(1.05);
   }
 
-  /* CTA com accent temático — painéis flat / Configurações (âmbar light, roxo dark) */
-  .ui-btn-accent {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold shadow-lg transition disabled:opacity-50;
-    background: linear-gradient(135deg, var(--ui-accent-btn-from), var(--ui-accent-btn-to));
-    color: var(--ui-accent-btn-text);
-    box-shadow: 0 8px 20px -6px var(--ui-accent-btn-shadow);
+  /* Ícone no mobile/tablet; ícone + texto no desktop (lg+) */
+  .ui-btn-responsive {
+    @apply inline-flex shrink-0 items-center justify-center gap-0 rounded-xl font-heading text-sm font-semibold transition-all duration-200;
+    @apply h-9 w-9 p-0 lg:h-auto lg:w-auto lg:gap-2 lg:px-4 lg:py-2;
   }
 
-  .ui-btn-accent:hover:not(:disabled) {
-    filter: brightness(1.05);
+  .ui-btn-responsive-label {
+    @apply hidden whitespace-nowrap lg:inline;
+  }
+
+  /* Toggle mostrar/ocultar filtros — sem fundo; borda accent só quando aberto */
+  .ui-btn-filter-toggle {
+    @apply inline-flex shrink-0 items-center justify-center border bg-transparent font-heading text-sm font-semibold shadow-none transition-all duration-200;
+    border-color: var(--border-color);
+    color: var(--text-dim);
+  }
+
+  .ui-btn-filter-toggle:hover:not(:disabled) {
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+  }
+
+  .ui-btn-filter-toggle--open {
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* Grid responsivo para painéis de filtro (mobile/tablet empilhado; desktop inline) */
+  .ui-filter-panel-grid {
+    @apply grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:flex xl:flex-wrap xl:items-end xl:gap-3;
+  }
+
+  .ui-filter-panel-grid > * {
+    @apply w-full min-w-0 xl:w-auto;
+  }
+
+  /* Stepper horizontal — círculos + linhas (accent temático) */
+  .ui-wizard-stepper {
+    @apply mx-auto grid w-full max-w-2xl gap-0;
+    grid-template-columns: repeat(var(--wizard-steps, 3), minmax(0, 1fr));
+  }
+
+  .ui-wizard-stepper__item {
+    @apply relative flex flex-col items-center px-1;
+  }
+
+  .ui-wizard-stepper__line {
+    @apply absolute top-5 h-0.5 -translate-y-1/2;
+    left: calc(50% + 1.25rem);
+    right: calc(-50% + 1.25rem);
+    background: var(--border-color);
+  }
+
+  .ui-wizard-stepper__line--done {
+    background: var(--ui-accent);
+  }
+
+  .ui-wizard-stepper__circle {
+    @apply relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-bold transition-all;
+    border-color: var(--border-hover);
+    color: var(--text-dimmer);
+    background: transparent;
+  }
+
+  .ui-wizard-stepper__circle--active {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--ui-accent-btn-from), var(--ui-accent-btn-to));
+    color: var(--ui-accent-btn-text);
+    box-shadow: 0 4px 14px -4px var(--ui-accent-btn-shadow);
+  }
+
+  .ui-wizard-stepper__circle--done {
+    border-color: var(--ui-accent);
+    background: var(--ui-accent-muted);
+    color: var(--ui-accent);
+  }
+
+  .ui-wizard-stepper__label {
+    @apply mt-2.5 text-center font-heading text-[11px] font-semibold leading-tight sm:text-xs;
+    color: var(--text-dimmer);
+  }
+
+  .ui-wizard-stepper__label--active {
+    color: var(--text-main);
+  }
+
+  .ui-wizard-stepper__label--done {
+    color: var(--text-main);
   }
 
   /* Toolbar / PageToolbar — accent temático (âmbar light, roxo dark) */

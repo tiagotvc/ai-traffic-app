@@ -7,6 +7,7 @@ import { useState, useTransition } from "react";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { CommandStripFiltersModal } from "@/components/layout/CommandStripFiltersModal";
+import { FilterToggleButton } from "@/components/ui/FilterToggleButton";
 import { IconLabelButton } from "@/components/ui/IconLabelButton";
 import { cn } from "@/lib/cn";
 
@@ -78,24 +79,23 @@ export function CommandStripMobileActions() {
     <div className="flex shrink-0 items-center gap-1.5">
       {!hideFilters ? (
         <>
-          <button
-            type="button"
-            onClick={() => setFiltersOpen(true)}
-            className={cn(
-              "ui-toolbar-icon-btn relative",
-              filtersActive && "ui-toolbar-icon-btn--active"
-            )}
-            title={t("filtersTitle")}
-            aria-label={t("filtersTitle")}
-          >
-            <Filter size={17} />
-            {filtersActive ? (
-              <span
-                className="absolute right-1 top-1 h-2 w-2 rounded-full"
-                style={{ background: "var(--ui-accent)" }}
-              />
-            ) : null}
-          </button>
+          <FilterToggleButton
+            open={filtersOpen}
+            showLabel={t("showFilters")}
+            hideLabel={t("hideFilters")}
+            onClick={() => setFiltersOpen((open) => !open)}
+            icon={
+              <span className="relative inline-flex">
+                <Filter size={17} />
+                {!filtersOpen && filtersActive ? (
+                  <span
+                    className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-[var(--surface-header)]"
+                    style={{ background: "var(--ui-accent)" }}
+                  />
+                ) : null}
+              </span>
+            }
+          />
           <CommandStripFiltersModal
             open={filtersOpen}
             onClose={() => setFiltersOpen(false)}
@@ -130,9 +130,8 @@ export function CommandStripMobileActions() {
           disabled={syncing}
           label={syncing ? tSync("syncing") : tSync("syncMeta")}
           icon={<RefreshCw size={15} className={cn(syncing && "animate-spin")} />}
-          hideLabelOnMobile
           className={cn(
-            "ui-btn-accent flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-semibold",
+            "ui-btn-accent-outline",
             syncing ? "cursor-wait opacity-70" : "active:scale-95"
           )}
         />

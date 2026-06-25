@@ -5,6 +5,7 @@ import { BarChart2, Building2 } from "lucide-react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { PeriodFilter, type PeriodState } from "@/components/PeriodFilter";
+import { cn } from "@/lib/cn";
 
 type ClientOption = { slug: string; name: string };
 type AdAccount = { id: string; label: string };
@@ -47,7 +48,7 @@ export function GlobalScopeFilters({
     : undefined;
 
   return (
-    <div className={`flex flex-wrap items-center gap-2 ${pillClass ?? ""}`}>
+    <div className={cn("ui-filter-panel-grid", pillClass)}>
       {showClient ? (
         <FilterSelectDropdown
           icon={<Building2 size={13} />}

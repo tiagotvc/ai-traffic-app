@@ -47,7 +47,7 @@ export function FilterSelectDropdown({
     : placeholder;
 
   return (
-    <div ref={ref} className={cn("relative inline-block", className)}>
+    <div ref={ref} className={cn("relative", className?.includes("w-full") ? "block w-full" : "inline-block", className)}>
       <button
         type="button"
         disabled={disabled}

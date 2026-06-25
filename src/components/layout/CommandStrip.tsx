@@ -25,9 +25,8 @@ function SyncButton({
       disabled={syncing}
       label={syncing ? tSync("syncing") : tSync("syncMeta")}
       icon={<RefreshCw size={16} className={cn(syncing && "animate-spin")} />}
-      hideLabelOnMobile
       className={cn(
-        "ui-btn-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-semibold lg:h-auto lg:w-auto lg:gap-2 lg:px-4 lg:py-2",
+        "ui-btn-accent-outline",
         syncing ? "cursor-wait opacity-70" : "active:scale-95"
       )}
     />

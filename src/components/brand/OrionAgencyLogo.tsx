@@ -1,9 +1,13 @@
+"use client";
+
 import type { ComponentProps } from "react";
 
+import { useAppDarkMode } from "@/hooks/useAppDarkMode";
 import { cn } from "@/lib/cn";
 
 type LogoSize = "sm" | "md" | "lg" | "xl";
-type LogoVariant = "dark" | "light" | "gold";
+/** `dark` = texto claro (fundo escuro). `light` = texto escuro (fundo claro). `auto` = segue data-theme. */
+type LogoVariant = "dark" | "light" | "gold" | "auto";
 
 const WIDTH: Record<LogoSize, number> = {
   sm: 78,
@@ -18,7 +22,7 @@ function OrionWordmarkSvg({
   variant,
   width
 }: {
-  variant: LogoVariant;
+  variant: Exclude<LogoVariant, "auto">;
   width: number;
 }) {
   const ink = variant === "dark" ? "#ffffff" : "#0f172a";
@@ -83,7 +87,7 @@ function OrionWordmarkSvg({
 export function OrionAgencyLogo({
   size = "md",
   showText = true,
-  variant = "dark",
+  variant = "auto",
   className,
   productLabel: _productLabel
 }: {
@@ -94,6 +98,9 @@ export function OrionAgencyLogo({
   /** @deprecated Orion wordmark includes Agency — ignored */
   productLabel?: string;
 }) {
+  const isDarkTheme = useAppDarkMode();
+  const resolvedVariant: Exclude<LogoVariant, "auto"> =
+    variant === "auto" ? (isDarkTheme ? "dark" : "light") : variant;
   const width = WIDTH[size];
 
   if (!showText) {
@@ -104,7 +111,7 @@ export function OrionAgencyLogo({
             cx="18"
             cy="18"
             r="13"
-            stroke={variant === "dark" ? "#fff" : "#0a0a0a"}
+            stroke={resolvedVariant === "dark" ? "#fff" : "#0a0a0a"}
             strokeWidth="2.4"
             fill="none"
             strokeLinecap="round"
@@ -113,7 +120,7 @@ export function OrionAgencyLogo({
           />
           <path
             d="M18 9.5 L19.76 14.57 L25.13 14.68 L20.85 17.93 L22.41 23.07 L18 20 L13.59 23.07 L15.15 17.93 L10.87 14.68 L16.24 14.57 Z"
-            fill={variant === "dark" ? ACCENT : "#d4880a"}
+            fill={resolvedVariant === "dark" ? ACCENT : "#d4880a"}
           />
         </svg>
       </div>
@@ -122,7 +129,7 @@ export function OrionAgencyLogo({
 
   return (
     <div className={cn("inline-flex shrink-0", className)} aria-label="Orion Agency">
-      <OrionWordmarkSvg variant={variant} width={width} />
+      <OrionWordmarkSvg variant={resolvedVariant} width={width} />
     </div>
   );
 }

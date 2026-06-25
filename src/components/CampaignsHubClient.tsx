@@ -268,8 +268,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
   const campaignsPageFilters = useMemo(
     () => (
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[200px] flex-1">
+      <div className="ui-filter-panel-grid">
+        <div className="col-span-1 sm:col-span-2 xl:col-span-1 xl:min-w-[200px] xl:flex-1">
           <div className="text-xs text-[var(--text-dim)]">{t("search")}</div>
           <MetaFilterSearchBar
             className="mt-1"
@@ -283,6 +283,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           />
         </div>
         <FilterSelectDropdown
+          className="w-full"
           icon={<ListFilter size={14} />}
           label={t("filterStatus")}
           placeholder={t("statusAll")}
@@ -297,6 +298,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           ]}
         />
         <FilterSelectDropdown
+          className="w-full"
           icon={<Target size={14} />}
           label={t("filterObjective")}
           placeholder={t("objectiveAll")}
@@ -312,6 +314,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           ]}
         />
         <FilterSelectDropdown
+          className="w-full"
           icon={<Rows3 size={14} />}
           label={t("pageSizeLabel")}
           placeholder={String(pageSize)}
@@ -1467,7 +1470,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           <p className="text-lg font-semibold text-[var(--text-main)]">{t("emptyTitle")}</p>
           <p className="mx-auto max-w-lg text-sm text-[var(--text-dim)]">{t("emptyExplain")}</p>
           <div className="flex flex-wrap justify-center gap-2">
-            <button type="button" onClick={() => openPanel()} className="ui-btn-primary">
+            <button type="button" onClick={() => openPanel()} className="ui-btn-accent">
               {t("createFirst")}
             </button>
             <button
@@ -1475,7 +1478,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
               onClick={() =>
                 fetch("/api/sync/run", { method: "POST" }).then(() => load({ live: true }))
               }
-              className="ui-btn-secondary"
+              className="ui-btn-accent-outline"
             >
               {t("syncNow")}
             </button>

@@ -275,9 +275,9 @@ export function AutomationsRulesView() {
         showGlobalFilters={false}
         showSync={false}
         actions={
-          <button type="button" onClick={openCreate} className="ui-btn-accent gap-1.5 px-4 py-2 font-heading text-sm font-bold">
+          <button type="button" onClick={openCreate} className="ui-btn-accent ui-btn-responsive font-heading font-bold">
             <Plus size={15} />
-            Criar regra
+            <span className="ui-btn-responsive-label">Criar regra</span>
           </button>
         }
       />

@@ -98,12 +98,12 @@ export function CampaignDrilldownHeader({
             type="button"
             onClick={onRefresh}
             disabled={syncing}
-            className="ui-btn-secondary inline-flex items-center gap-1.5 px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+            className="ui-btn-secondary ui-btn-responsive text-sm disabled:cursor-not-allowed disabled:opacity-60"
             title={syncing ? t("syncing") : t("refresh")}
             aria-label={t("refresh")}
           >
             {syncing ? <Spinner className="h-4 w-4" /> : <span aria-hidden>↻</span>}
-            <span className="hidden sm:inline">{syncing ? t("syncing") : t("refresh")}</span>
+            <span className="ui-btn-responsive-label">{syncing ? t("syncing") : t("refresh")}</span>
           </button>
         ) : null}
         {trailingActions}
