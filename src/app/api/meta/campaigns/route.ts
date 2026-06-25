@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
-import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { getAppContext, getClientBySlugOrId, getMetaAccessTokenForAdAccount } from "@/lib/app-context";
 import { CampaignDraftPayloadSchema } from "@/lib/campaign-draft";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
 import { requireMetaPublishConfig } from "@/lib/client-publish-config";
 import { createCampaignFromDraft, createFullMetaCampaign } from "@/lib/meta-campaign";
 import { MetaCreativeValidationError } from "@/lib/meta-ad-creative";
+import { formatMetaGraphError } from "@/lib/meta-error";
+import { PersonaTargetingInvalidError } from "@/lib/meta-targeting-prune";
+import { isPersonaTargetingPublishError } from "@/lib/persona-targeting-audit";
 
 const LegacyBodySchema = z.object({
   clientId: z.string().min(1),
@@ -83,11 +86,22 @@ export async function POST(req: Request) {
     if (!client) {
       return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
     }
-    if (!metaAccessToken) {
-      return NextResponse.json({ ok: false, error: "Missing Meta access token" }, { status: 400 });
-    }
 
     const draft = body.draft;
+    const token =
+      (await getMetaAccessTokenForAdAccount(tenant.id, user.id, draft.adAccountId)) ??
+      metaAccessToken;
+    if (!token) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "META_PERMISSION",
+          message:
+            "Sem acesso à conta de anúncios. Reconecte em Configurações → Reconectar Meta e selecione esta conta no diálogo da Meta."
+        },
+        { status: 403 }
+      );
+    }
     const primaryAd = draft.ads[0];
     if (!primaryAd) {
       return NextResponse.json({ ok: false, error: "Rascunho sem anúncios" }, { status: 400 });
@@ -128,7 +142,7 @@ export async function POST(req: Request) {
 
     try {
       const result = await createCampaignFromDraft({
-        accessToken: metaAccessToken,
+        accessToken: token,
         adAccountId: draft.adAccountId,
         draft,
         pageId: publish.metaPageId,
@@ -157,11 +171,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, ...result, publishSource: publish.source });
     } catch (err) {
       const code = err instanceof MetaCreativeValidationError ? err.code : undefined;
-      const msg = err instanceof Error ? err.message : "Unknown error";
+      const targetingInvalid =
+        err instanceof PersonaTargetingInvalidError || isPersonaTargetingPublishError(err);
+      const msg =
+        code != null
+          ? err instanceof Error
+            ? err.message
+            : "Unknown error"
+          : formatMetaGraphError(err);
       await auditCreate(tenant.id, client.id, body, null, false, msg);
       return NextResponse.json(
-        { ok: false, error: code ?? msg, message: code ?? msg },
-        { status: code ? 400 : 500 }
+        {
+          ok: false,
+          error: code ?? msg,
+          message: code ?? msg,
+          errorCode: targetingInvalid ? "TARGETING_INVALID" : code
+        },
+        { status: targetingInvalid ? 400 : code ? 400 : 500 }
       );
     }
   }

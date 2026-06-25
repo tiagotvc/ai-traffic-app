@@ -4,6 +4,7 @@ import { coercePlacements, defaultPlacements, defaultScheduleStartLocal, type Pl
 import { defaultUtm, type UtmFields } from "@/lib/campaign-utm";
 import { validateAdCreativeForMeta } from "@/lib/meta-ad-creative";
 import { normalizeMessageTemplateDraft } from "@/lib/meta-welcome-message";
+import { normalizeMetaRadiusKm } from "@/lib/zone-geo-shared";
 
 export const CAMPAIGN_OBJECTIVES = [
   "awareness",
@@ -236,7 +237,8 @@ export const CampaignDraftPayloadV2Schema = z.object({
             reason: z.string()
           })
         )
-        .optional()
+        .optional(),
+      wizardGenerated: z.boolean().optional()
     })
     .optional()
 });
@@ -555,7 +557,7 @@ export function createMapPinLocation(
       type: "custom_location",
       latitude: lat,
       longitude: lng,
-      radius: radiusKm,
+      radius: normalizeMetaRadiusKm(radiusKm),
       distanceUnit: "kilometer"
     }
   };
@@ -719,7 +721,7 @@ export function draftTargetingToApi(t: DraftTargeting) {
     .filter((l) => l.meta?.type === "city" || l.meta?.type === "region")
     .map((l) => ({
       key: l.value,
-      radius: l.meta?.radius,
+      radius: l.meta?.radius != null ? normalizeMetaRadiusKm(l.meta.radius) : undefined,
       distanceUnit: l.meta?.distanceUnit
     }));
   const customLocations = t.locations
@@ -729,7 +731,7 @@ export function draftTargetingToApi(t: DraftTargeting) {
       return {
         latitude: coords.lat,
         longitude: coords.lng,
-        radius: l.meta?.radius ?? 5,
+        radius: normalizeMetaRadiusKm(l.meta?.radius ?? 5),
         distanceUnit: l.meta?.distanceUnit ?? ("kilometer" as const)
       };
     });

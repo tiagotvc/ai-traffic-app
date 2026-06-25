@@ -12,6 +12,7 @@ export async function GET(
   const { metaCampaignId } = await params;
   const { tenant, user, metaAccessToken: ctxToken } = await getAppContext();
   const period = parsePeriodFromSearchParams(new URL(req.url));
+  const live = new URL(req.url).searchParams.get("live") === "1";
   const { metaAccessToken, fallbackMetaToken } = await resolveMetaTokensForApi(
     tenant.id,
     user.id,
@@ -22,7 +23,8 @@ export async function GET(
     metaCampaignId,
     period,
     metaAccessToken,
-    fallbackMetaToken
+    fallbackMetaToken,
+    live
   });
 
   return NextResponse.json({ ok: true, series, previous });

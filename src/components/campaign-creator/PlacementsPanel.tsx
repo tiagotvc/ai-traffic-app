@@ -20,6 +20,22 @@ type Props = {
   disabled?: boolean;
 };
 
+function toggleBtnClass(active: boolean) {
+  return `rounded-lg px-3 py-1.5 text-xs transition ${
+    active
+      ? "bg-[rgba(124,58,237,0.1)] font-medium text-[var(--violet)] ring-1 ring-violet-200"
+      : "bg-[var(--surface-bg)] text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
+  }`;
+}
+
+function chipBtnClass(active: boolean) {
+  return `rounded-md px-2 py-1 text-[11px] transition ${
+    active
+      ? "bg-[rgba(124,58,237,0.12)] font-medium text-[var(--violet)] ring-1 ring-violet-200"
+      : "bg-[var(--surface-bg)] text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
+  }`;
+}
+
 export function PlacementsPanel({ value, onChange, disabled }: Props) {
   const t = useTranslations("campaignCreator");
 
@@ -42,11 +58,7 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
           type="button"
           disabled={disabled}
           onClick={() => onChange({ ...value, mode: "advantage_plus" })}
-          className={`rounded-lg px-3 py-1.5 text-xs ${
-            value.mode === "advantage_plus"
-              ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]"
-              : "bg-[var(--surface-bg)]"
-          }`}
+          className={toggleBtnClass(value.mode === "advantage_plus")}
         >
           {t("placementsAdvantage")}
         </button>
@@ -54,11 +66,7 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
           type="button"
           disabled={disabled}
           onClick={() => onChange(defaultManualPlacements())}
-          className={`rounded-lg px-3 py-1.5 text-xs ${
-            value.mode === "manual"
-              ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]"
-              : "bg-[var(--surface-bg)]"
-          }`}
+          className={toggleBtnClass(value.mode === "manual")}
         >
           {t("placementsManual")}
         </button>
@@ -70,16 +78,15 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
             <p className="mb-1 text-xs font-medium text-[var(--text-dim)]">{t("placementPlatforms")}</p>
             <div className="flex flex-wrap gap-2">
               {PLACEMENT_PLATFORMS.map((p) => (
-                <label key={p} className="flex items-center gap-1.5 text-xs text-[var(--text-main)]">
-                  <input
-                    type="checkbox"
-                    checked={value.platforms.includes(p)}
-                    disabled={disabled}
-                    onChange={() => onChange(togglePlacementPlatform(value, p))}
-                    className="accent-violet-600"
-                  />
+                <button
+                  key={p}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onChange(togglePlacementPlatform(value, p))}
+                  className={toggleBtnClass(value.platforms.includes(p))}
+                >
                   {platformLabel(p)}
-                </label>
+                </button>
               ))}
             </div>
           </div>
@@ -88,23 +95,22 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
             <p className="mb-1 text-xs font-medium text-[var(--text-dim)]">{t("placementDevices")}</p>
             <div className="flex flex-wrap gap-2">
               {DEVICE_PLATFORMS.map((d) => (
-                <label key={d} className="flex items-center gap-1.5 text-xs text-[var(--text-main)]">
-                  <input
-                    type="checkbox"
-                    checked={value.devices.includes(d)}
-                    disabled={disabled}
-                    onChange={() =>
-                      onChange({
-                        ...value,
-                        devices: value.devices.includes(d)
-                          ? value.devices.filter((x) => x !== d)
-                          : [...value.devices, d]
-                      })
-                    }
-                    className="accent-violet-600"
-                  />
+                <button
+                  key={d}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() =>
+                    onChange({
+                      ...value,
+                      devices: value.devices.includes(d)
+                        ? value.devices.filter((x) => x !== d)
+                        : [...value.devices, d]
+                    })
+                  }
+                  className={toggleBtnClass(value.devices.includes(d))}
+                >
                   {deviceLabel(d)}
-                </label>
+                </button>
               ))}
             </div>
           </div>
@@ -118,46 +124,46 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
                 <div
                   key={platform}
                   className={`rounded-lg border p-3 transition ${
-                    platformOn ? "border-violet-200 bg-violet-50/30" : "border-slate-200 bg-slate-50/50 opacity-60"
+                    platformOn
+                      ? "border-violet-200 bg-violet-50/30"
+                      : "border-[var(--border-color)] bg-[var(--surface-bg)]/50 opacity-70"
                   }`}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-800">
-                      <input
-                        type="checkbox"
-                        checked={platformOn}
-                        disabled={disabled}
-                        onChange={() => onChange(togglePlacementPlatform(value, platform))}
-                        className="accent-violet-600"
-                      />
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => onChange(togglePlacementPlatform(value, platform))}
+                      className={`${toggleBtnClass(platformOn)} font-semibold`}
+                    >
                       {platformLabel(platform)}
-                    </label>
+                    </button>
                     {platformOn ? (
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[10px] text-[var(--text-dimmer)]">
                         {t("placementSelectedCount", { count: selected.length })}
                       </span>
                     ) : null}
                   </div>
                   {platformOn ? (
-                    <div className="flex flex-wrap gap-x-3 gap-y-1.5 pl-5">
-                      {positions.map((pos) => (
-                        <label
-                          key={positionKey(platform, pos)}
-                          className="flex items-center gap-1.5 text-[11px] text-slate-700"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={value.positions.includes(positionKey(platform, pos))}
+                    <div className="flex flex-wrap gap-1.5">
+                      {positions.map((pos) => {
+                        const key = positionKey(platform, pos);
+                        const active = value.positions.includes(key);
+                        return (
+                          <button
+                            key={key}
+                            type="button"
                             disabled={disabled}
-                            onChange={() => onChange(togglePlacementPosition(value, platform, pos))}
-                            className="accent-violet-600"
-                          />
-                          {positionLabel(platform, pos)}
-                        </label>
-                      ))}
+                            onClick={() => onChange(togglePlacementPosition(value, platform, pos))}
+                            className={chipBtnClass(active)}
+                          >
+                            {positionLabel(platform, pos)}
+                          </button>
+                        );
+                      })}
                     </div>
                   ) : (
-                    <p className="pl-5 text-[10px] text-slate-400">{t("placementPlatformOffHint")}</p>
+                    <p className="text-[10px] text-[var(--text-dimmer)]">{t("placementPlatformOffHint")}</p>
                   )}
                 </div>
               );

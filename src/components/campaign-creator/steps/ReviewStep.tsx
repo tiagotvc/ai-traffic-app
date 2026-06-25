@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Sparkles } from "lucide-react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { ZoneGeoReviewPanel } from "@/components/campaign-creator/ZoneGeoReviewPanel";
 import { countPublishEntities, getActiveAdset, resolveAdTargetAdsets } from "@/lib/campaign-draft";
 
 export function ReviewStep() {
@@ -191,6 +192,7 @@ export function ReviewStep() {
           <span className="font-medium text-[var(--text-main)]">{targetingSummary}</span>
         </div>
       ) : null}
+      {adset.zoneId ? <ZoneGeoReviewPanel zoneId={adset.zoneId} /> : null}
       <div className="ui-card divide-y divide-[var(--border-color)]">
         {rows.map((r) => (
           <div key={r.label} className="flex flex-wrap justify-between gap-2 px-4 py-3 text-sm">

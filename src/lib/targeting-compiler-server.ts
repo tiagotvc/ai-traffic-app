@@ -9,6 +9,8 @@ import {
   parseLocalSavedTargetingId
 } from "@/lib/client-saved-targeting";
 import { repositories } from "@/db/repositories";
+import type { UserPersona } from "@/db/entities/UserPersona";
+import type { UserZone } from "@/db/entities/UserZone";
 import type { CampaignTargetingInput } from "@/lib/meta-campaign";
 import {
   compilePersonaZoneTargeting,
@@ -49,7 +51,43 @@ export async function loadSavedTargetingSpec(args: {
   return (found?.targeting as Record<string, unknown>) ?? null;
 }
 
+const compileCache = new Map<string, CampaignTargetingInput | null>();
+
+function compileCacheKey(
+  adset: AdSetDraftItem,
+  tenantId: string,
+  userId: string
+): string {
+  const extras = JSON.stringify(draftExtrasFromTargeting(adset));
+  return [
+    tenantId,
+    userId,
+    adset.targetingMode ?? "compiler",
+    adset.personaId ?? "",
+    adset.zoneId ?? "",
+    adset.metaSavedAudienceId ?? "",
+    extras
+  ].join(":");
+}
+
 export async function compileAdsetTargetingInput(args: {
+  adset: AdSetDraftItem;
+  tenantId: string;
+  userId: string;
+  metaAccessToken?: string;
+  adAccountId?: string;
+}): Promise<CampaignTargetingInput | null> {
+  const cacheKey = compileCacheKey(args.adset, args.tenantId, args.userId);
+  if (compileCache.has(cacheKey)) {
+    return compileCache.get(cacheKey) ?? null;
+  }
+
+  const result = await compileAdsetTargetingInputUncached(args);
+  compileCache.set(cacheKey, result);
+  return result;
+}
+
+async function compileAdsetTargetingInputUncached(args: {
   adset: AdSetDraftItem;
   tenantId: string;
   userId: string;
@@ -95,28 +133,24 @@ export async function compileAdsetTargetingInput(args: {
 
   let personaPart: CampaignTargetingInput | undefined;
   let zonePart: CampaignTargetingInput | undefined;
+  let persona: UserPersona | null = null;
+  let zone: UserZone | null = null;
 
   if (adset.personaId) {
-    const persona = await userPersona.findOne({
+    persona = await userPersona.findOne({
       where: { id: adset.personaId, tenantId, userId }
     });
     if (persona) personaPart = personaToTargetingInput(persona);
   }
   if (adset.zoneId) {
-    const zone = await userZone.findOne({
+    zone = await userZone.findOne({
       where: { id: adset.zoneId, tenantId, userId }
     });
     if (zone) zonePart = zoneToTargetingInput(zone);
   }
 
-  if (personaPart && zonePart) {
-    const persona = await userPersona.findOne({
-      where: { id: adset.personaId!, tenantId, userId }
-    });
-    const zone = await userZone.findOne({
-      where: { id: adset.zoneId!, tenantId, userId }
-    });
-    if (persona && zone) return compilePersonaZoneTargeting(persona, zone, extras);
+  if (persona && zone) {
+    return compilePersonaZoneTargeting(persona, zone, extras);
   }
 
   if (personaPart || zonePart) {

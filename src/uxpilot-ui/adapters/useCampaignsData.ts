@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import type { PeriodState } from "@/components/PeriodFilter";
 import { periodStateToQuery } from "@/components/PeriodFilter";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { shouldCampaignListFetchLive } from "@/lib/campaign-list-live";
 
 import type {
   ObjectiveFilter,
@@ -103,11 +104,12 @@ export function useCampaignsData(filters: CampaignsDataFilters = DEFAULT_FILTERS
     if (f.statusFilter !== "ALL") params.set("status", f.statusFilter);
     if (f.objectiveFilter !== "ALL") params.set("objective", f.objectiveFilter);
 
-    const live =
-      periodRef.current.preset === "today" ||
-      f.statusFilter !== "ALL" ||
-      f.objectiveFilter !== "ALL";
+    const live = shouldCampaignListFetchLive({
+      clientFilter,
+      periodUserActivated: strip?.periodUserActivated ?? false
+    });
     if (live) params.set("live", "1");
+    if (f.objectiveFilter !== "ALL" && !live) params.set("metadata", "1");
 
     if (f.groupByType) {
       params.set("limit", "500");
@@ -137,7 +139,7 @@ export function useCampaignsData(filters: CampaignsDataFilters = DEFAULT_FILTERS
         setTotal(0);
       })
       .finally(() => setLoading(false));
-  }, [clientFilter, periodKey, filtersKey]);
+  }, [clientFilter, periodKey, filtersKey, strip?.periodUserActivated]);
 
   useEffect(() => {
     load();

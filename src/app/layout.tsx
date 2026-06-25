@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Script from "next/script";
 import { DM_Sans, Space_Grotesk } from "next/font/google";
 
 import "./globals.css";
@@ -25,10 +26,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       data-theme="light"
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-      </head>
       <body className="h-full font-body" suppressHydrationWarning>
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeInitScript}
+        </Script>
         {children}
       </body>
     </html>

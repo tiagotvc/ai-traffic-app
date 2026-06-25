@@ -12,6 +12,14 @@ export type ZoneGeoRules = {
     distanceUnit: "kilometer" | "mile";
     label?: string;
   }[];
+  /** Pins de exclusão geográfica (estilo Meta — vermelho no mapa). */
+  excludedCustomLocations?: {
+    latitude: number;
+    longitude: number;
+    radius: number;
+    distanceUnit: "kilometer" | "mile";
+    label?: string;
+  }[];
 };
 
 /** Biblioteca global de zonas (geolocalização) por gestor — sem vínculo com ad account. */

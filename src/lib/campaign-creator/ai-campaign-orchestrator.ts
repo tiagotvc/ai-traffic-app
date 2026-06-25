@@ -430,7 +430,9 @@ export async function generateAiCampaignDraft(args: {
         ageMax: resolvedMeta?.settings.targeting?.age_max ?? 65,
         gender: "all" as const,
         includeCustomAudienceIds: resolvedMeta?.settings.defaultCustomAudienceIds ?? [],
-        excludeCustomAudienceIds: resolvedMeta?.settings.defaultExcludedAudienceIds ?? []
+        excludeCustomAudienceIds: resolvedMeta?.settings.defaultExcludedAudienceIds ?? [],
+        rejectedSegmentIds: [],
+        rejectedSegments: []
       };
 
       const persona = await generateAudiencePersonaPreview({ provider, brief });

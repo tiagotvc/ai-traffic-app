@@ -375,21 +375,6 @@ export function CampaignStep() {
           })}
         </div>
       </div>
-
-      <label className="flex items-center justify-between rounded-xl border border-[var(--border-color)] p-3">
-        <span className="text-sm text-[var(--text-dim)]">{t("abTest")}</span>
-        <input
-          type="checkbox"
-          checked={payload.campaign.abTestEnabled}
-          onChange={(e) =>
-            updatePayload((p) => ({
-              ...p,
-              campaign: { ...p.campaign, abTestEnabled: e.target.checked }
-            }))
-          }
-          className="accent-violet-600"
-        />
-      </label>
     </div>
   );
 }

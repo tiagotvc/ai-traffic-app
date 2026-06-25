@@ -5,6 +5,7 @@ import { Plus, Sparkles, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { AiPersonaForm } from "@/components/audiences/create/AiPersonaForm";
+import { PersonaDetailPanel, formatPersonaGender } from "@/components/audiences/PersonaDetailPanel";
 import { DsPageHeader } from "@/design-system";
 
 export type PersonaSummary = {
@@ -30,6 +31,7 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedPersona, setSelectedPersona] = useState<PersonaSummary | null>(null);
   const [clientSlug, setClientSlug] = useState(clientSlugProp ?? "");
   const [adAccountId, setAdAccountId] = useState(adAccountIdProp ?? "");
   const [, startTransition] = useTransition();
@@ -121,14 +123,21 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {personas.map((p) => (
-            <article key={p.id} className="ui-card space-y-2 p-4">
+            <article key={p.id} className="ui-card flex flex-col gap-2 p-4">
               <h3 className="font-heading text-[var(--text-main)]">{p.name}</h3>
               {p.description ? (
                 <p className="line-clamp-3 text-sm text-[var(--text-dim)]">{p.description}</p>
               ) : null}
               <p className="text-xs text-[var(--text-dimmer)]">
-                {p.ageMin}–{p.ageMax} · {p.gender}
+                {p.ageMin}–{p.ageMax} · {formatPersonaGender(p.gender, t)}
               </p>
+              <button
+                type="button"
+                className="ui-btn-secondary mt-auto w-full text-xs"
+                onClick={() => setSelectedPersona(p)}
+              >
+                {t("viewPersona")}
+              </button>
             </article>
           ))}
         </div>
@@ -144,6 +153,27 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
               onSaved={() => {
                 setShowCreate(false);
                 startTransition(() => load());
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {selectedPersona ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="ui-card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5">
+            <PersonaDetailPanel
+              persona={selectedPersona}
+              clientSlug={clientSlug}
+              adAccountId={adAccountId}
+              onClose={() => setSelectedPersona(null)}
+              onUpdated={(updated) => {
+                setPersonas((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+                setSelectedPersona(updated);
+              }}
+              onDeleted={(id) => {
+                setPersonas((prev) => prev.filter((p) => p.id !== id));
+                setSelectedPersona(null);
               }}
             />
           </div>

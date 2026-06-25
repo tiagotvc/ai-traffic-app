@@ -5,6 +5,7 @@ import { MapPin, Plus, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { AiZoneForm } from "@/components/audiences/create/AiZoneForm";
+import { ZoneDetailPanel } from "@/components/audiences/ZoneDetailPanel";
 import { DsPageHeader } from "@/design-system";
 import type { ZoneGeoRules } from "@/db/entities/UserZone";
 
@@ -23,6 +24,7 @@ export function ZonesLibraryClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<ZoneSummary | null>(null);
   const [, startTransition] = useTransition();
 
   const load = useCallback(() => {
@@ -84,7 +86,7 @@ export function ZonesLibraryClient() {
             const cityCount = z.geoRules.cities?.length ?? 0;
             const countryCount = z.geoRules.countries?.length ?? 0;
             return (
-              <article key={z.id} className="ui-card space-y-2 p-4">
+              <article key={z.id} className="ui-card flex flex-col gap-2 p-4">
                 <h3 className="font-heading text-[var(--text-main)]">{z.name}</h3>
                 {z.description ? (
                   <p className="line-clamp-2 text-sm text-[var(--text-dim)]">{z.description}</p>
@@ -96,6 +98,13 @@ export function ZonesLibraryClient() {
                       ? t("zoneCityCount", { count: cityCount })
                       : t("zoneCountryCount", { count: countryCount })}
                 </p>
+                <button
+                  type="button"
+                  className="ui-btn-secondary mt-auto w-full text-xs"
+                  onClick={() => setSelectedZone(z)}
+                >
+                  {t("viewZone")}
+                </button>
               </article>
             );
           })}
@@ -109,6 +118,21 @@ export function ZonesLibraryClient() {
               onClose={() => setShowCreate(false)}
               onSaved={() => {
                 setShowCreate(false);
+                startTransition(() => load());
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {selectedZone ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="ui-card max-h-[90vh] w-full max-w-4xl overflow-y-auto p-5">
+            <ZoneDetailPanel
+              zone={selectedZone}
+              onClose={() => setSelectedZone(null)}
+              onSaved={(updated) => {
+                setSelectedZone(updated);
                 startTransition(() => load());
               }}
             />

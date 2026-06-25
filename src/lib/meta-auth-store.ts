@@ -1,6 +1,7 @@
 import "server-only";
 
 import { repositories } from "@/db/repositories";
+import { probeAdAccountAccess } from "@/lib/meta-graph";
 
 export type MetaTokenPayload = {
   access_token: string;
@@ -82,27 +83,41 @@ export async function getTenantMetaAccessToken(
 }
 
 /**
- * TODOS os tokens Meta disponíveis no workspace (sessão + de cada usuário que
- * conectou). Usado em leitura de criativos para alcançar contas que só um dos
- * usuários conectados tem acesso. Ordem: sessão primeiro (mais fresco).
+ * Tokens Meta para operações do workspace.
+ * Com conexão oficial (`metaConnectionUserId`), retorna SOMENTE o token do responsável.
  */
-export async function getAllTenantMetaTokens(
+export async function getWorkspaceMetaTokens(
   tenantId: string,
   sessionToken?: string | null
 ): Promise<string[]> {
-  const { user: userRepo } = await repositories();
+  const { tenant: tenantRepo, user: userRepo } = await repositories();
+  const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
+
+  if (tenant?.metaConnectionUserId) {
+    const official = await getStoredMetaAccessToken(tenant.metaConnectionUserId);
+    return official ? [official] : [];
+  }
+
   const users = await userRepo.find({ where: { tenantId }, select: { id: true } });
   const tokens: string[] = [];
   for (const u of users) {
     const token = await getStoredMetaAccessToken(u.id);
     if (token) tokens.push(token);
   }
-  // Token da sessão JWT só como último recurso — costuma ser legado/expirado e
-  // não deve preceder tokens frescos salvos após "Reconectar Meta".
   if (sessionToken && !tokens.includes(sessionToken)) {
     tokens.push(sessionToken);
   }
   return [...new Set(tokens)];
+}
+
+/**
+ * @deprecated Use getWorkspaceMetaTokens — mantido para compatibilidade de imports.
+ */
+export async function getAllTenantMetaTokens(
+  tenantId: string,
+  sessionToken?: string | null
+): Promise<string[]> {
+  return getWorkspaceMetaTokens(tenantId, sessionToken);
 }
 
 export type MetaConnectionInfo = {
@@ -173,6 +188,11 @@ export async function getMetaConnectionInfo(
       tokenSource = "workspace";
       hasEffectiveToken = true;
     }
+  } else if (connectionUserId) {
+    if (tenantToken) {
+      tokenSource = "workspace";
+      hasEffectiveToken = true;
+    }
   } else if (tenantToken) {
     tokenSource = "workspace";
     hasEffectiveToken = true;
@@ -233,6 +253,31 @@ export async function resolveWorkspaceMetaAccessToken(
   }
 
   return tenantToken ?? ownToken;
+}
+
+/**
+ * Token com acesso confirmado à conta de anúncios.
+ * Usa apenas a conexão oficial do workspace quando definida — nunca tokens de outros usuários.
+ */
+export async function resolveMetaAccessTokenForAdAccount(
+  tenantId: string,
+  userId: string,
+  adAccountId: string,
+  sessionToken?: string
+): Promise<string | undefined> {
+  const { tenant: tenantRepo } = await repositories();
+  const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
+
+  let token: string | undefined;
+  if (tenant?.metaConnectionUserId) {
+    token = await getStoredMetaAccessToken(tenant.metaConnectionUserId);
+  } else {
+    token = await resolveWorkspaceMetaAccessToken(tenantId, userId, sessionToken);
+  }
+
+  if (!token) return undefined;
+  const probe = await probeAdAccountAccess(token, adAccountId);
+  return probe.ok ? token : undefined;
 }
 
 export function isMetaPermissionError(message: string): boolean {

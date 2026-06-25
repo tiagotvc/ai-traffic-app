@@ -6,6 +6,7 @@ import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
 import {
+  resolveMetaAccessTokenForAdAccount,
   resolveWorkspaceMetaAccessToken
 } from "@/lib/meta-auth-store";
 import { isUuid } from "@/lib/uuid";
@@ -58,6 +59,15 @@ export async function getAppContext() {
   const entitlements: Entitlements = await getEntitlements(tenant.id, { platformAdmin });
 
   return { session, ds, tenant, user, defaultClient, metaAccessToken, entitlements, platformAdmin };
+}
+
+/** Token Meta com acesso confirmado à conta de anúncios (fallback entre tokens do workspace). */
+export async function getMetaAccessTokenForAdAccount(
+  tenantId: string,
+  userId: string,
+  adAccountId: string
+): Promise<string | undefined> {
+  return resolveMetaAccessTokenForAdAccount(tenantId, userId, adAccountId);
 }
 
 export async function listClientsForTenant(tenantId: string, opts?: { includeDemo?: boolean }) {

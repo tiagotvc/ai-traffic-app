@@ -1,19 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { ImportedAdConfig } from "@/lib/campaign-ad-import";
+import {
+  useImportTreeLoader,
+  type ImportTreeItem,
+  type ImportTreeLevel
+} from "@/components/campaign-creator/useImportTreeLoader";
 
-type TreeItem = {
-  id: string;
-  name: string;
-  status?: string;
-  thumbnailUrl?: string;
-  objective?: string;
-};
-
-type Step = "campaigns" | "adsets" | "ads";
+type Step = ImportTreeLevel;
 
 type Props = {
   open: boolean;
@@ -23,7 +20,7 @@ type Props = {
   defaultCampaignId?: string;
   defaultAdsetId?: string;
   onImport: (imported: ImportedAdConfig, mode: "copy" | "media" | "all") => void;
-  /** Abre abaixo do botão, sem overlay em tela cheia. */
+  onImportMany?: (imported: ImportedAdConfig[], mode: "copy" | "media" | "all") => void;
   inline?: boolean;
 };
 
@@ -35,54 +32,40 @@ export function ImportAdConfigModal({
   defaultCampaignId,
   defaultAdsetId,
   onImport,
+  onImportMany,
   inline = false
 }: Props) {
   const t = useTranslations("campaignCreator");
   const panelRef = useRef<HTMLDivElement>(null);
+  const { items, loading, error, setError, fetchLevel, clearCache } = useImportTreeLoader(
+    clientSlug,
+    adAccountId
+  );
   const [step, setStep] = useState<Step>("campaigns");
   const [search, setSearch] = useState("");
-  const [items, setItems] = useState<TreeItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [campaignName, setCampaignName] = useState("");
   const [adsetId, setAdsetId] = useState<string | null>(null);
   const [adsetName, setAdsetName] = useState("");
+  const navRef = useRef({ step, campaignId, adsetId });
 
-  const loadLevel = useCallback(
-    (level: Step, opts?: { campaignId?: string; adsetId?: string; q?: string }) => {
-      if (!clientSlug || !adAccountId) return;
-      setLoading(true);
-      setError(null);
-      const params = new URLSearchParams({
-        clientId: clientSlug,
-        adAccountId,
-        level
-      });
-      if (opts?.campaignId) params.set("campaignId", opts.campaignId);
-      if (opts?.adsetId) params.set("adsetId", opts.adsetId);
-      if (opts?.q?.trim()) params.set("q", opts.q.trim());
+  navRef.current = { step, campaignId, adsetId };
 
-      fetch(`/api/campaign-creator/import-tree?${params}`)
-        .then((r) => r.json())
-        .then((j: { ok?: boolean; items?: TreeItem[]; error?: string }) => {
-          if (!j.ok) throw new Error(j.error ?? "loadFailed");
-          setItems(j.items ?? []);
-        })
-        .catch((e) => {
-          setError(e instanceof Error ? e.message : "loadFailed");
-          setItems([]);
-        })
-        .finally(() => setLoading(false));
-    },
-    [adAccountId, clientSlug]
-  );
+  function loadCurrent(q?: string) {
+    const { step: s, campaignId: cId, adsetId: aId } = navRef.current;
+    if (s === "campaigns") return fetchLevel({ level: "campaigns", q });
+    if (s === "adsets" && cId) return fetchLevel({ level: "adsets", campaignId: cId, q });
+    if (s === "ads" && aId) {
+      return fetchLevel({ level: "ads", campaignId: cId ?? undefined, adsetId: aId, q });
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
-    setSelectedId(null);
+    clearCache();
+    setSelectedIds(new Set());
     setSearch("");
     setError(null);
     setCampaignId(defaultCampaignId ?? null);
@@ -92,26 +75,27 @@ export function ImportAdConfigModal({
 
     if (defaultCampaignId && defaultAdsetId) {
       setStep("ads");
-      loadLevel("ads", { campaignId: defaultCampaignId, adsetId: defaultAdsetId });
+      void fetchLevel({
+        level: "ads",
+        campaignId: defaultCampaignId,
+        adsetId: defaultAdsetId
+      });
     } else if (defaultCampaignId) {
       setStep("adsets");
-      loadLevel("adsets", { campaignId: defaultCampaignId });
+      void fetchLevel({ level: "adsets", campaignId: defaultCampaignId });
     } else {
       setStep("campaigns");
-      loadLevel("campaigns");
+      void fetchLevel({ level: "campaigns" });
     }
-  }, [open, defaultAdsetId, defaultCampaignId, loadLevel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultAdsetId, defaultCampaignId]);
 
   useEffect(() => {
-    if (!open) return;
-    const timer = setTimeout(() => {
-      if (step === "campaigns") loadLevel("campaigns", { q: search });
-      else if (step === "adsets" && campaignId) loadLevel("adsets", { campaignId, q: search });
-      else if (step === "ads" && adsetId)
-        loadLevel("ads", { campaignId: campaignId ?? undefined, adsetId, q: search });
-    }, search ? 300 : 0);
+    if (!open || !search.trim()) return;
+    const timer = setTimeout(() => void loadCurrent(search), 300);
     return () => clearTimeout(timer);
-  }, [open, step, search, campaignId, adsetId, loadLevel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, open]);
 
   useEffect(() => {
     if (!open || !inline) return;
@@ -134,60 +118,82 @@ export function ImportAdConfigModal({
 
   if (!open) return null;
 
-  const selected = items.find((a) => a.id === selectedId);
+  const selectedCount = selectedIds.size;
+  const allAdsSelected = step === "ads" && items.length > 0 && selectedCount === items.length;
 
-  function pickCampaign(item: TreeItem) {
+  function toggleAdSelection(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAllAds() {
+    if (allAdsSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(items.map((i) => i.id)));
+  }
+
+  function pickCampaign(item: ImportTreeItem) {
     setCampaignId(item.id);
     setCampaignName(item.name);
     setAdsetId(null);
     setAdsetName("");
-    setSelectedId(null);
+    setSelectedIds(new Set());
     setSearch("");
     setStep("adsets");
-    loadLevel("adsets", { campaignId: item.id });
+    void fetchLevel({ level: "adsets", campaignId: item.id });
   }
 
-  function pickAdset(item: TreeItem) {
+  function pickAdset(item: ImportTreeItem) {
     setAdsetId(item.id);
     setAdsetName(item.name);
-    setSelectedId(null);
+    setSelectedIds(new Set());
     setSearch("");
     setStep("ads");
-    loadLevel("ads", { campaignId: campaignId ?? undefined, adsetId: item.id });
+    void fetchLevel({ level: "ads", campaignId: campaignId ?? undefined, adsetId: item.id });
   }
 
   function goBack() {
     setSearch("");
-    setSelectedId(null);
+    setSelectedIds(new Set());
     setError(null);
     if (step === "ads") {
       setStep("adsets");
       setAdsetId(null);
       setAdsetName("");
-      if (campaignId) loadLevel("adsets", { campaignId });
+      if (campaignId) void fetchLevel({ level: "adsets", campaignId });
       return;
     }
     if (step === "adsets") {
       setStep("campaigns");
       setCampaignId(null);
       setCampaignName("");
-      loadLevel("campaigns");
+      void fetchLevel({ level: "campaigns" });
     }
   }
 
   async function runImport(mode: "copy" | "media" | "all") {
-    if (!selectedId) return;
+    if (selectedCount === 0) return;
     setImporting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/campaign-creator/import-ad/${encodeURIComponent(selectedId)}`);
-      const j = (await res.json()) as {
-        ok?: boolean;
-        imported?: ImportedAdConfig;
-        error?: string;
-      };
-      if (!j.ok || !j.imported) throw new Error(j.error ?? "importFailed");
-      onImport(j.imported, mode);
+      const results = await Promise.all(
+        [...selectedIds].map(async (id) => {
+          const res = await fetch(`/api/campaign-creator/import-ad/${encodeURIComponent(id)}`);
+          const j = (await res.json()) as {
+            ok?: boolean;
+            imported?: ImportedAdConfig;
+            error?: string;
+          };
+          if (!j.ok || !j.imported) throw new Error(j.error ?? "importFailed");
+          return j.imported;
+        })
+      );
+      if (results.length === 1) onImport(results[0]!, mode);
+      else if (onImportMany) onImportMany(results, mode);
+      else onImport(results[0]!, mode);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "importFailed");
@@ -202,6 +208,9 @@ export function ImportAdConfigModal({
       : step === "adsets"
         ? t("importAdStepAdset")
         : t("importAdStepAd");
+
+  const emptyMessage =
+    step === "campaigns" && !search.trim() ? t("importAdEmptyScoped") : t("importAdEmpty");
 
   const panel = (
     <div
@@ -222,7 +231,9 @@ export function ImportAdConfigModal({
                 ← {t("importAdBack")}
               </button>
             ) : null}
-            <h2 className="font-heading mt-1 text-sm font-semibold text-[var(--text-main)]">{t("importAdTitle")}</h2>
+            <h2 className="font-heading mt-1 text-sm font-semibold text-[var(--text-main)]">
+              {t("importAdTitle")}
+            </h2>
             <p className="mt-0.5 text-xs text-[var(--text-dim)]">{t("importAdHint")}</p>
             <p className="mt-2 text-[11px] font-medium text-[var(--violet)]">{stepLabel}</p>
             {campaignName ? (
@@ -253,53 +264,85 @@ export function ImportAdConfigModal({
       </div>
 
       <div className="min-h-[200px] flex-1 overflow-y-auto p-2">
-        {loading ? (
+        {loading && items.length === 0 ? (
           <p className="p-4 text-center text-xs text-[var(--text-dim)]">{t("importAdLoading")}</p>
         ) : items.length === 0 ? (
-          <p className="p-4 text-center text-xs text-[var(--text-dim)]">{t("importAdEmpty")}</p>
+          <p className="p-4 text-center text-xs text-[var(--text-dim)]">{emptyMessage}</p>
         ) : (
-          <ul className="space-y-1">
-            {items.map((item) => (
-              <li key={item.id}>
+          <>
+            {step === "ads" ? (
+              <div className="mb-2 flex items-center justify-between gap-2 px-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (step === "campaigns") pickCampaign(item);
-                    else if (step === "adsets") pickAdset(item);
-                    else setSelectedId(item.id);
-                  }}
-                  className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left text-sm transition ${
-                    step === "ads" && selectedId === item.id
-                      ? "border-violet-400 bg-[rgba(124,58,237,0.06)]"
-                      : "border-[var(--border-color)] hover:bg-[var(--surface-bg)]"
-                  }`}
+                  onClick={selectAllAds}
+                  className="text-[11px] font-medium text-[var(--violet)] hover:underline"
                 >
-                  {item.thumbnailUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.thumbnailUrl}
-                      alt=""
-                      className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-bg)] text-[10px] text-[var(--text-dimmer)]">
-                      {step === "campaigns" ? "C" : step === "adsets" ? "J" : "Ad"}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium text-[var(--text-main)]">{item.name}</div>
-                    <div className="truncate text-[11px] text-[var(--text-dim)]">
-                      {item.status ?? item.id}
-                      {item.objective ? ` · ${item.objective}` : ""}
-                    </div>
-                  </div>
-                  {step !== "ads" ? (
-                    <span className="shrink-0 text-[var(--text-dimmer)]">›</span>
-                  ) : null}
+                  {t("importAdSelectAll")}
                 </button>
-              </li>
-            ))}
-          </ul>
+                {selectedCount > 0 ? (
+                  <span className="text-[11px] text-[var(--text-dim)]">
+                    {t("importAdMultiCount", { count: selectedCount })}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+            <ul className="space-y-1">
+              {items.map((item) => {
+                const isAdStep = step === "ads";
+                const isSelected = selectedIds.has(item.id);
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (step === "campaigns") pickCampaign(item);
+                        else if (step === "adsets") pickAdset(item);
+                        else toggleAdSelection(item.id);
+                      }}
+                      className={`flex w-full items-center gap-3 rounded-xl border p-2 text-left text-sm transition ${
+                        isAdStep && isSelected
+                          ? "border-violet-400 bg-[rgba(124,58,237,0.06)]"
+                          : "border-[var(--border-color)] hover:bg-[var(--surface-bg)]"
+                      }`}
+                    >
+                      {isAdStep ? (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          readOnly
+                          tabIndex={-1}
+                          className="shrink-0 accent-violet-600"
+                          aria-hidden
+                        />
+                      ) : null}
+                      {item.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.thumbnailUrl}
+                          alt=""
+                          className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-bg)] text-[10px] text-[var(--text-dimmer)]">
+                          {step === "campaigns" ? "C" : step === "adsets" ? "J" : "Ad"}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-[var(--text-main)]">{item.name}</div>
+                        <div className="truncate text-[11px] text-[var(--text-dim)]">
+                          {item.status ?? item.id}
+                          {item.objective ? ` · ${item.objective}` : ""}
+                        </div>
+                      </div>
+                      {!isAdStep ? (
+                        <span className="shrink-0 text-[var(--text-dimmer)]">›</span>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </div>
 
@@ -307,15 +350,17 @@ export function ImportAdConfigModal({
 
       {step === "ads" ? (
         <div className="space-y-2 border-t border-[var(--border-color)] p-4">
-          {selected ? (
-            <p className="text-[11px] text-[var(--text-dim)]">{t("importAdSelected", { name: selected.name })}</p>
+          {selectedCount > 0 ? (
+            <p className="text-[11px] text-[var(--text-dim)]">
+              {t("importAdMultiCount", { count: selectedCount })}
+            </p>
           ) : (
             <p className="text-[11px] text-[var(--text-dimmer)]">{t("importAdSelect")}</p>
           )}
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              disabled={!selectedId || importing}
+              disabled={selectedCount === 0 || importing}
               onClick={() => void runImport("copy")}
               className="ui-btn-secondary flex-1 text-xs disabled:opacity-50"
             >
@@ -323,7 +368,7 @@ export function ImportAdConfigModal({
             </button>
             <button
               type="button"
-              disabled={!selectedId || importing}
+              disabled={selectedCount === 0 || importing}
               onClick={() => void runImport("media")}
               className="ui-btn-secondary flex-1 text-xs disabled:opacity-50"
             >
@@ -331,7 +376,7 @@ export function ImportAdConfigModal({
             </button>
             <button
               type="button"
-              disabled={!selectedId || importing}
+              disabled={selectedCount === 0 || importing}
               onClick={() => void runImport("all")}
               className="ui-btn-primary flex-1 text-xs disabled:opacity-50"
             >
@@ -350,11 +395,7 @@ export function ImportAdConfigModal({
   );
 
   if (inline) {
-    return (
-      <div className="absolute left-0 right-0 top-full z-20 mt-2">
-        {panel}
-      </div>
-    );
+    return <div className="absolute left-0 right-0 top-full z-20 mt-2">{panel}</div>;
   }
 
   return (

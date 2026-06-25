@@ -4,15 +4,17 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { AiAudienceTargetingForm } from "@/components/audiences/create/AiAudienceTargetingForm";
+import type { PersonaRepairSeed } from "@/lib/persona-targeting-types";
 
 type Props = {
   clientSlug: string;
   adAccountId: string;
+  repairSeed?: PersonaRepairSeed;
   onClose: () => void;
   onSaved: (personaId?: string) => void;
 };
 
-export function AiPersonaForm({ clientSlug, adAccountId, onClose, onSaved }: Props) {
+export function AiPersonaForm({ clientSlug, adAccountId, repairSeed, onClose, onSaved }: Props) {
   const t = useTranslations("audiences");
   const [audiences, setAudiences] = useState<{ id: string; name: string }[]>([]);
   const [audiencesLoading, setAudiencesLoading] = useState(false);
@@ -34,11 +36,14 @@ export function AiPersonaForm({ clientSlug, adAccountId, onClose, onSaved }: Pro
   }, [clientSlug, adAccountId]);
 
   const needsAccount = !clientSlug || !adAccountId;
+  const isRepair = !!repairSeed;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-heading text-lg text-[var(--text-main)]">{t("newPersona")}</h2>
+        <h2 className="font-heading text-lg text-[var(--text-main)]">
+          {isRepair ? t("repairPersonaTitle") : t("newPersona")}
+        </h2>
         <button type="button" className="ui-btn-secondary text-sm" onClick={onClose}>
           {t("close")}
         </button>
@@ -57,6 +62,7 @@ export function AiPersonaForm({ clientSlug, adAccountId, onClose, onSaved }: Pro
         audiences={audiences}
         audiencesLoading={audiencesLoading}
         disabled={needsAccount}
+        repairSeed={repairSeed}
         onSaved={(result) => onSaved(result.personaId)}
       />
     </div>

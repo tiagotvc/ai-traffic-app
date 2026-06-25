@@ -1,5 +1,11 @@
 import { repositories } from "@/db/repositories";
 import { getClientBySlugOrId } from "@/lib/app-context";
+import { classifyLlmError } from "@/lib/llm/generate-json";
+import type { LlmProviderId } from "@/lib/llm/types";
+import { isMetaPermissionError, isMetaTokenInvalidError } from "@/lib/meta-auth-store";
+import { fetchCustomAudiences, type MetaCustomAudience } from "@/lib/meta-graph";
+import { formatMetaGraphError } from "@/lib/meta-error";
+import { PersonaTargetingInvalidError } from "@/lib/meta-targeting-prune";
 
 export async function validateClientAdAccount(
   tenantId: string,
@@ -56,5 +62,40 @@ export async function checkCustomAudienceTos(
     return { accepted, url };
   } catch {
     return { accepted: false, url };
+  }
+}
+
+export function isMetaGraphApiError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("Meta Graph error") ||
+    isMetaPermissionError(msg) ||
+    isMetaTokenInvalidError(msg)
+  );
+}
+
+export function classifyAudienceAiError(
+  err: unknown,
+  provider: LlmProviderId
+): { message: string; status: number; code?: string } {
+  if (err instanceof PersonaTargetingInvalidError) {
+    return { message: err.message, status: 400, code: "TARGETING_INVALID" };
+  }
+  if (isMetaGraphApiError(err)) {
+    return { message: formatMetaGraphError(err), status: 403, code: "META_PERMISSION" };
+  }
+  const classified = classifyLlmError(err, provider);
+  return { message: classified.message, status: 502, code: classified.code };
+}
+
+export async function fetchCustomAudiencesOptional(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaCustomAudience[]> {
+  try {
+    return await fetchCustomAudiences(accessToken, adAccountId);
+  } catch (e) {
+    if (isMetaGraphApiError(e)) return [];
+    throw e;
   }
 }

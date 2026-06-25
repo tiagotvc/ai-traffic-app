@@ -14,6 +14,7 @@ export async function GET(
   const url = new URL(req.url);
   const period = parsePeriodFromSearchParams(url);
   const hints = parseCampaignDetailHints(url);
+  const live = url.searchParams.get("live") === "1";
   const { metaAccessToken, fallbackMetaToken } = await resolveMetaTokensForApi(
     tenant.id,
     user.id,
@@ -26,7 +27,8 @@ export async function GET(
     tenantId: tenant.id,
     metaAccessToken,
     fallbackMetaToken,
-    hints
+    hints,
+    live
   });
 
   return NextResponse.json({ ok: true, campaign });

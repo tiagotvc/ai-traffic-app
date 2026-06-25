@@ -16,13 +16,15 @@ import {
 const PreviewSchema = z.object({
   phase: z.literal("preview"),
   prompt: z.string().min(3).max(500),
-  provider: z.enum(["gemini", "claude"]).default("gemini")
+  provider: z.enum(["gemini", "claude"]).default("gemini"),
+  defaultRadiusKm: z.number().min(1).max(70).default(3)
 });
 
 const GeocodeSchema = z.object({
   phase: z.literal("geocode"),
   prompt: z.string().min(3).max(500),
   provider: z.enum(["gemini", "claude"]).default("gemini"),
+  defaultRadiusKm: z.number().min(1).max(70).optional(),
   preview: z.object({
     zoneName: z.string(),
     summary: z.string(),
@@ -50,7 +52,8 @@ const SaveSchema = z.object({
 const BuildSchema = z.object({
   phase: z.literal("build"),
   prompt: z.string().min(3).max(500),
-  provider: z.enum(["gemini", "claude"]).default("gemini")
+  provider: z.enum(["gemini", "claude"]).default("gemini"),
+  defaultRadiusKm: z.number().min(1).max(70).default(3)
 });
 
 const BodySchema = z.discriminatedUnion("phase", [
@@ -98,11 +101,16 @@ export async function POST(req: Request) {
 
   try {
     if (body.phase === "preview") {
-      const preview = await generateZoneAiPreview({ provider, prompt: body.prompt });
+      const preview = await generateZoneAiPreview({
+        provider,
+        prompt: body.prompt,
+        defaultRadiusKm: body.defaultRadiusKm
+      });
       return NextResponse.json({ ok: true, preview });
     }
 
     if (body.phase === "geocode") {
+      const fallbackRadius = body.defaultRadiusKm ?? 3;
       const result = await geocodeZonePreview({
         zoneName: body.preview.zoneName,
         summary: body.preview.summary,
@@ -110,7 +118,7 @@ export async function POST(req: Request) {
           label: p.label,
           city: p.city,
           state: p.state,
-          radiusKm: p.radiusKm ?? 3
+          radiusKm: p.radiusKm ?? fallbackRadius
         })),
         provider: body.preview.provider ?? provider,
         modelUsed: body.preview.modelUsed ?? ""
@@ -118,7 +126,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, result });
     }
 
-    const result = await generateZoneFromPrompt({ provider, prompt: body.prompt });
+    const result = await generateZoneFromPrompt({
+      provider,
+      prompt: body.prompt,
+      defaultRadiusKm: body.defaultRadiusKm
+    });
     const zone = await createUserZone({
       tenantId: tenant.id,
       userId: user.id,
@@ -130,7 +142,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, zone, result });
   } catch (e) {
-    const classified = classifyLlmError(e);
+    const classified = classifyLlmError(e, provider);
     return NextResponse.json({ ok: false, error: classified.message }, { status: 502 });
   }
 }

@@ -3,8 +3,8 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
-import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
+import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
@@ -18,6 +18,7 @@ import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricT
 import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
+import { useCampaignDrilldown } from "@/hooks/useCampaignDrilldown";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { columnRefKey, type MetricRowData } from "@/lib/campaign-table-layout";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
@@ -38,17 +39,6 @@ import {
   matchesCampaignFilters
 } from "@/lib/campaign-meta-filters";
 
-type Campaign = {
-  id: string;
-  name: string;
-  status: string;
-  dailyBudget: number | null;
-  clientSlug: string;
-  clientName: string;
-  accountLabel: string;
-  metaAdAccountId: string;
-  objective: string;
-};
 
 type AdSetRow = {
   id: string;
@@ -100,9 +90,25 @@ export function CampaignAdSetsClient({
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const { openPanel } = usePublishPanel();
+  const tCampaigns = useTranslations("campaignsPage");
+  const drilldown = useCampaignDrilldown();
+  const {
+    campaign,
+    adsets,
+    series,
+    counts,
+    countsLoading,
+    period,
+    setPeriod,
+    refresh,
+    loading
+  } = drilldown;
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
-  const [preset, setPreset] = useState<string>("default");
+  const [preset, setPreset] = useState<string>(drilldown.preset);
+  useEffect(() => {
+    setPreset(drilldown.preset);
+  }, [drilldown.preset]);
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
     () => metricsColumnsForPreset(preset, customTypesMap),
@@ -122,12 +128,6 @@ export function CampaignAdSetsClient({
     return "";
   }
 
-  const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [adsets, setAdsets] = useState<AdSetRow[]>([]);
-  const [adsCount, setAdsCount] = useState<number | null>(null);
-  const [creativesCount, setCreativesCount] = useState<number | null>(null);
-  const [countsLoading, setCountsLoading] = useState(true);
-  const [series, setSeries] = useState<SeriesPoint[]>([]);
   const [search, setSearch] = useState("");
   const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -137,6 +137,17 @@ export function CampaignAdSetsClient({
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const pageSize = 20;
 
+  const [syncing, setSyncing] = useState(false);
+  const handleRefresh = useCallback(async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await refresh({ live: true });
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncing, refresh]);
+
   const toggleSort = (key: string) => {
     setPage(1);
     setSort((s) => {
@@ -144,41 +155,6 @@ export function CampaignAdSetsClient({
       return { key, dir: "desc" };
     });
   };
-
-  const reload = useCallback(() => {
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.campaign) {
-          setCampaign(j.campaign);
-          rememberCampaign(metaCampaignId, j.campaign.clientSlug || clientSlug);
-        }
-      });
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets`)
-      .then((r) => r.json())
-      .then((j) => {
-        setAdsets(j.adsets ?? []);
-        if (j.preset) setPreset(j.preset);
-      })
-      .catch(() => setAdsets([]));
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries`)
-      .then((r) => r.json())
-      .then((j) => setSeries(j.series ?? []));
-    setCountsLoading(true);
-    const adsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads`)
-      .then((r) => r.json())
-      .then((j) => setAdsCount(j.total ?? (j.ads ?? []).length))
-      .catch(() => setAdsCount(0));
-    const creativesPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/creatives`)
-      .then((r) => r.json())
-      .then((j) => setCreativesCount(j.total ?? (j.rows ?? []).length))
-      .catch(() => setCreativesCount(0));
-    void Promise.all([adsPromise, creativesPromise]).finally(() => setCountsLoading(false));
-  }, [metaCampaignId, clientSlug]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
 
   const filtered = useMemo(() => {
     let list = adsets;
@@ -280,8 +256,6 @@ export function CampaignAdSetsClient({
     return list;
   }, [filtered, t, locale]);
 
-  const tCampaigns = useTranslations("campaignsPage");
-
   const adsetAction = (adsetId: string, action: "pause" | "activate") => {
     setStatusPendingId(adsetId);
     startTransition(async () => {
@@ -291,14 +265,14 @@ export function CampaignAdSetsClient({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ action })
         });
-        reload();
+        await refresh({ live: true });
       } finally {
         setStatusPendingId(null);
       }
     });
   };
 
-  if (!campaign) {
+  if (loading || !campaign) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-6 w-56" />
@@ -338,15 +312,6 @@ export function CampaignAdSetsClient({
               <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs font-bold text-[var(--violet)]">
                 {adsets.length}
               </span>
-              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2 text-xs text-[var(--text-dim)]">
-                {t("dateRange")}
-              </div>
-              <button type="button" className="ui-btn-secondary text-xs">
-                {t("comparePeriod")}
-              </button>
-              <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
-                ↻
-              </button>
               <button type="button" onClick={() => openPanel({ clientSlug: slug })} className="ui-btn-primary text-sm">
                 + {t("newAdset")}
               </button>
@@ -365,15 +330,6 @@ export function CampaignAdSetsClient({
             <p className="mt-1 text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2 text-xs text-[var(--text-dim)]">
-              {t("dateRange")}
-            </div>
-            <button type="button" className="ui-btn-secondary text-xs">
-              {t("comparePeriod")}
-            </button>
-            <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
-              ↻
-            </button>
             <button
               type="button"
               onClick={() => openPanel({ clientSlug: slug, metaCampaignId, mode: "add-adset" })}
@@ -385,41 +341,23 @@ export function CampaignAdSetsClient({
         </div>
       )}
 
-      <div className="ui-card flex flex-wrap items-center gap-3 p-4">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
-          f
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-[var(--text-main)]">{campaign.name}</span>
-            <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
-          </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-[var(--text-dim)]">
-            <span>ID: {campaign.id}</span>
-            <span>
-              {t("client")}: {campaign.clientName}
-            </span>
-            <span>
-              {t("account")}: {campaign.accountLabel}
-            </span>
-            <span>
-              {t("objective")}: {campaign.objective}
-            </span>
-            <span>
-              {t("campaignBudget")}:{" "}
-              {campaign.dailyBudget != null ? formatBRL(campaign.dailyBudget, locale) : "—"}/dia
-            </span>
-          </div>
-        </div>
-      </div>
+      <CampaignDrilldownHeader
+        campaign={campaign}
+        locale={locale}
+        period={period}
+        onPeriodChange={setPeriod}
+        onRefresh={() => void handleRefresh()}
+        syncing={syncing}
+        translationNs="campaignManager"
+      />
 
       <CampaignDetailTabs
         metaCampaignId={metaCampaignId}
         clientSlug={slug}
         activeTab="adsets"
         adsetsCount={adsets.length}
-        adsCount={countsLoading ? null : adsCount}
-        creativesCount={countsLoading ? null : creativesCount}
+        adsCount={countsLoading ? null : counts.ads}
+        creativesCount={countsLoading ? null : counts.creatives}
         embedded={embedded}
         translationNs="adsetsPage"
       />

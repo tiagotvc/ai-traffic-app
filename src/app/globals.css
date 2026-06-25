@@ -525,6 +525,20 @@ h6,
     }
   }
 
+  @keyframes circuit-dash {
+    from {
+      stroke-dashoffset: 120;
+      opacity: 0.2;
+    }
+    50% {
+      opacity: 0.7;
+    }
+    to {
+      stroke-dashoffset: 0;
+      opacity: 0.25;
+    }
+  }
+
   @keyframes taskbar-tpl-shimmer {
     0% {
       transform: translateX(-100%);
@@ -907,4 +921,19 @@ h6,
 
 .leaflet-tooltip.geo-radius-tooltip::before {
   border-top-color: rgba(24, 119, 242, 0.35);
+}
+
+.leaflet-tooltip.geo-radius-tooltip-exclude {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(228, 30, 63, 0.35);
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+  color: #e41e3f;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+}
+
+.leaflet-tooltip.geo-radius-tooltip-exclude::before {
+  border-top-color: rgba(228, 30, 63, 0.35);
 }

@@ -1,33 +1,39 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { MetaTargetingSelect } from "@/components/MetaTargetingSelect";
 import { PersonaPicker } from "@/components/campaign-creator/PersonaPicker";
 import { ZonePicker } from "@/components/campaign-creator/ZonePicker";
+import { ZoneGeoReviewPanel } from "@/components/campaign-creator/ZoneGeoReviewPanel";
 import { AudiencePicker } from "@/components/campaign-creator/AudiencePicker";
 import { SavedTargetingPicker } from "@/components/campaign-creator/SavedTargetingPicker";
-import { AdSetBatchPanel } from "@/components/campaign-creator/AdSetBatchPanel";
+import { ImportAdsetConfigModal } from "@/components/campaign-creator/ImportAdsetConfigModal";
 import { GeoRadiusMapPicker, type MapViewport } from "@/components/campaign-creator/GeoRadiusMapPicker";
 import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
+import { applyImportedToAd, type ImportedAdConfig } from "@/lib/campaign-ad-import";
+import { applyImportedToAdset } from "@/lib/campaign-adset-import";
 import {
   getActiveAdset,
   defaultConversionEventForObjective,
+  defaultAdItem,
+  adsetsWithReuseCreativeCompatibility,
   isMapPinLocation,
   isMetaGeoLocation,
   resolveAdTargetAdsets,
   usesReusedMetaCreative
 } from "@/lib/campaign-draft";
-import type { DraftTargeting } from "@/lib/campaign-draft";
+import type { AdSetDraftItem, DraftTargeting } from "@/lib/campaign-draft";
 import { defaultScheduleStartLocal } from "@/lib/campaign-placements";
 
 export function AdSetStep() {
   const t = useTranslations("campaignCreator");
   const tAds = useTranslations("ads");
+  const locale = useLocale();
   const { payload, updatePayload, addAdsetMode } = useCampaignDraft();
   const { audiences, audiencesLoading, pixels, customConversions } = usePublishAssets(
     payload.clientSlug,
@@ -43,6 +49,7 @@ export function AdSetStep() {
   );
 
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const [commercialLocation, setCommercialLocation] = useState<{
     address: string | null;
     normalized: string | null;
@@ -184,6 +191,37 @@ export function AdSetStep() {
     });
   }
 
+  function handleImportAdset(result: {
+    adset: Partial<AdSetDraftItem>;
+    ads?: ImportedAdConfig[];
+    adsetName: string;
+  }) {
+    updatePayload((p) => {
+      const active = getActiveAdset(p);
+      const nextAdset = applyImportedToAdset(active, result.adset);
+      let adsets = p.adsets.map((a) => (a.id === active.id ? nextAdset : a));
+      let ads = p.ads;
+      let activeAdId = p.activeAdId;
+
+      if (result.ads?.length) {
+        const newAds = result.ads.map((imported) => {
+          const shell = defaultAdItem(locale);
+          const applied = applyImportedToAd(shell, imported, "all");
+          return { ...applied, targetAdsetIds: [active.id] };
+        });
+        ads = [...p.ads, ...newAds];
+        activeAdId = newAds[newAds.length - 1]!.id;
+        let draft = { ...p, ads, adsets, activeAdId };
+        for (const newAd of newAds) {
+          adsets = adsetsWithReuseCreativeCompatibility(draft, newAd);
+          draft = { ...draft, adsets };
+        }
+      }
+
+      return { ...p, adsets, ads, activeAdId };
+    });
+  }
+
   return (
     <div className="space-y-4">
       {!payload.clientSlug ? (
@@ -229,7 +267,28 @@ export function AdSetStep() {
         </p>
       ) : null}
 
-      {!addAdsetMode ? <AdSetBatchPanel /> : null}
+      {!addAdsetMode ? (
+        <div className="relative">
+          <button
+            type="button"
+            data-import-adset-trigger
+            onClick={() => setImportOpen((v) => !v)}
+            disabled={clientRequired || !payload.adAccountId}
+            className={`ui-btn-secondary text-xs ${importOpen ? "ring-2 ring-violet-300" : ""}`}
+          >
+            {t("importAdsetConfig")}
+          </button>
+          <ImportAdsetConfigModal
+            open={importOpen}
+            inline
+            onClose={() => setImportOpen(false)}
+            clientSlug={payload.clientSlug}
+            adAccountId={payload.adAccountId}
+            defaultCampaignId={payload.meta?.targetMetaCampaignId}
+            onImport={handleImportAdset}
+          />
+        </div>
+      ) : null}
 
       <FormField label={t("adsetName")}>
         <input
@@ -336,21 +395,27 @@ export function AdSetStep() {
         </div>
       ) : null}
 
-      <label className="flex items-start gap-2 rounded-xl border border-[var(--border-color)] px-3 py-2.5 text-sm">
-        <input
-          type="checkbox"
-          checked={adset.dynamicCreative}
-          onChange={(e) => patchAdset({ dynamicCreative: e.target.checked })}
-          disabled={clientRequired || dynamicCreativeLockedByReuse}
-          className="mt-0.5 accent-violet-600"
-        />
-        <span>
-          <span className="font-medium text-[var(--text-main)]">{t("dynamicCreativeLabel")}</span>
-          <span className="mt-0.5 block text-xs text-[var(--text-dim)]">
-            {dynamicCreativeLockedByReuse ? t("dynamicCreativeDisabledReuse") : t("dynamicCreativeHint")}
+      {dynamicCreativeLockedByReuse ? (
+        <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 p-3 text-xs dark:border-amber-900/40 dark:bg-amber-950/20">
+          <p className="font-medium text-amber-900 dark:text-amber-100">{t("dynamicCreativeReuseTitle")}</p>
+          <p className="mt-1 text-[var(--text-dim)]">{t("dynamicCreativeReuseBody")}</p>
+          <p className="mt-2 text-[10px] text-[var(--text-dimmer)]">{t("dynamicCreativeReuseComingSoon")}</p>
+        </div>
+      ) : (
+        <label className="flex items-start gap-2 rounded-xl border border-[var(--border-color)] px-3 py-2.5 text-sm">
+          <input
+            type="checkbox"
+            checked={adset.dynamicCreative}
+            onChange={(e) => patchAdset({ dynamicCreative: e.target.checked })}
+            disabled={clientRequired}
+            className="mt-0.5 accent-violet-600"
+          />
+          <span>
+            <span className="font-medium text-[var(--text-main)]">{t("dynamicCreativeLabel")}</span>
+            <span className="mt-0.5 block text-xs text-[var(--text-dim)]">{t("dynamicCreativeHint")}</span>
           </span>
-        </span>
-      </label>
+        </label>
+      )}
 
       <div className="ui-card space-y-4 p-4">
         <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{tAds("audienceTitle")}</h3>
@@ -387,6 +452,7 @@ export function AdSetStep() {
               disabled={clientRequired}
               onChange={(zoneId) => patchAdset({ zoneId })}
             />
+            <ZoneGeoReviewPanel zoneId={adset.zoneId} />
             <details className="rounded-xl border border-[var(--border-color)] p-3">
               <summary className="cursor-pointer text-xs font-medium text-[var(--text-main)]">
                 {t("metaRefineOptional")}
@@ -445,6 +511,7 @@ export function AdSetStep() {
               disabled={clientRequired}
               onChange={(zoneId) => patchAdset({ zoneId })}
             />
+            <ZoneGeoReviewPanel zoneId={adset.zoneId} />
           </div>
         ) : null}
 

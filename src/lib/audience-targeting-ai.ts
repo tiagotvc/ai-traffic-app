@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import {
   TRAFFIC_AI_AUDIENCE_PREFIX,
+  META_SEGMENT_LIMITS,
+  countSegmentsByType,
   type AudiencePersonaPreview,
   type AudienceTargetingSuggestion,
   type AudienceTargetingSuggestionItem
@@ -21,7 +23,14 @@ import {
   searchAdTargetingCategories,
   validateTargetingIdList
 } from "@/lib/meta-graph";
+import { isMetaGraphApiError } from "@/lib/audience-api-helpers";
 import { resolveFlexBucket, type MetaFlexSpecBucket } from "@/lib/meta-targeting-flex";
+import { finalizeFlexibleSpecTargeting } from "@/lib/meta-targeting-prune";
+import {
+  buildReplacementCatalogFromRejected,
+  formatReplacementHintsForPrompt,
+  type ReplacementCatalogItem
+} from "@/lib/meta-segment-replacement";
 import { sanitizeTargetingForMeta } from "@/lib/meta-targeting-sanitize";
 
 export {
@@ -36,12 +45,24 @@ export const AudienceTargetingBriefSchema = z.object({
   targetProfile: z.string().min(3).max(500),
   behaviors: z.string().max(500).optional(),
   lifestyleHints: z.string().max(500).optional(),
+  exclusionHints: z.string().max(500).optional(),
   ageMin: z.number().int().min(13).max(65).optional(),
   ageMax: z.number().int().min(13).max(65).optional(),
   gender: z.enum(["all", "male", "female"]).optional(),
   countries: z.array(z.string()).default(["BR"]),
   includeCustomAudienceIds: z.array(z.string()).default([]),
-  excludeCustomAudienceIds: z.array(z.string()).default([])
+  excludeCustomAudienceIds: z.array(z.string()).default([]),
+  rejectedSegmentIds: z.array(z.string()).default([]),
+  rejectedSegments: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        name: z.string().min(1),
+        type: z.enum(["interest", "behavior", "demographic"])
+      })
+    )
+    .default([]),
+  avoidSegmentIds: z.array(z.string()).default([])
 });
 
 export type AudienceTargetingBrief = z.infer<typeof AudienceTargetingBriefSchema>;
@@ -54,9 +75,10 @@ const PersonaCoreSchema = z.object({
   searchPlan: z.preprocess(
     normalizeSearchPlanRaw,
     z.object({
-      interestQueries: z.array(z.string()).max(8).default([]),
-      behaviorQueries: z.array(z.string()).max(6).default([]),
-      demographicQueries: z.array(z.string()).max(4).default([])
+      interestQueries: z.array(z.string()).max(12).default([]),
+      behaviorQueries: z.array(z.string()).max(12).default([]),
+      demographicQueries: z.array(z.string()).max(8).default([]),
+      lifeEventQueries: z.array(z.string()).max(8).default([])
     })
   ),
   suggestedGender: z.enum(["all", "male", "female"]).optional()
@@ -76,9 +98,9 @@ const PickSchema = z.preprocess(
     summary: z.string().min(1),
     name: z.string().min(1),
     genders: z.array(z.union([z.literal(1), z.literal(2)])).optional(),
-    interestIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(12)).default([]),
-    behaviorIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(8)).default([]),
-    demographicIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(6)).default([]),
+    interestIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(20)).default([]),
+    behaviorIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(16)).default([]),
+    demographicIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(10)).default([]),
     reasoning: z.string().optional()
   })
 );
@@ -102,13 +124,81 @@ function dedupeCatalog(items: CatalogItem[]): CatalogItem[] {
   return [...map.values()];
 }
 
+function dedupeQueries(values: string[], max: number): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const q = raw.trim();
+    if (q.length < 2) continue;
+    const key = q.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(q);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+/** Extrai termos pesquisáveis do briefing (marcas, apps, hobbies) para ampliar o catálogo Meta. */
+function expandSearchPlan(plan: SearchPlan, persona: AudiencePersonaPreview): SearchPlan {
+  const extraInterests: string[] = [];
+  const extraBehaviors: string[] = [];
+  const extraLifeEvents: string[] = [];
+
+  const tokenize = (text: string) =>
+    text
+      .split(/[,;·•|/]+|\s+-\s+/)
+      .map((part) => part.replace(/^[\s\d.)]+/, "").trim())
+      .filter((part) => part.length >= 3 && part.length <= 48);
+
+  for (const line of [...persona.lifestyleCorrelates, ...persona.traits]) {
+    for (const token of tokenize(line)) {
+      if (/^(mulher|homem|idade|classe|premium|luxo)$/i.test(token)) continue;
+      extraInterests.push(token);
+    }
+  }
+
+  for (const q of plan.interestQueries) {
+    for (const token of tokenize(q)) extraInterests.push(token);
+  }
+  for (const q of plan.behaviorQueries) {
+    for (const token of tokenize(q)) extraBehaviors.push(token);
+  }
+  for (const q of plan.lifeEventQueries ?? []) {
+    for (const token of tokenize(q)) extraLifeEvents.push(token);
+  }
+
+  return {
+    interestQueries: dedupeQueries([...plan.interestQueries, ...extraInterests], 18),
+    behaviorQueries: dedupeQueries([...plan.behaviorQueries, ...extraBehaviors], 16),
+    lifeEventQueries: dedupeQueries([...(plan.lifeEventQueries ?? []), ...extraLifeEvents], 10),
+    demographicQueries: dedupeQueries(plan.demographicQueries, 10)
+  };
+}
+
+const GENERIC_BEHAVIOR_PATTERNS = [
+  /acesso ao facebook/i,
+  /mac os/i,
+  /windows/i,
+  /android/i,
+  /iphone/i,
+  /early adopters?/i,
+  /primeiros adeptos/i
+];
+
+function isGenericLowValueSegment(item: CatalogItem): boolean {
+  if (item.type !== "behavior") return false;
+  const haystack = `${item.name} ${(item.path ?? []).join(" ")}`;
+  return GENERIC_BEHAVIOR_PATTERNS.some((re) => re.test(haystack));
+}
+
 async function buildCatalog(accessToken: string, plan: SearchPlan): Promise<CatalogItem[]> {
   const rows: CatalogItem[] = [];
 
   await Promise.all([
     ...plan.interestQueries.map(async (q) => {
       const hits = await searchAdInterests(accessToken, q);
-      for (const h of hits.slice(0, 8)) {
+      for (const h of hits.slice(0, 15)) {
         rows.push({
           type: "interest",
           id: h.id,
@@ -121,7 +211,20 @@ async function buildCatalog(accessToken: string, plan: SearchPlan): Promise<Cata
     }),
     ...plan.behaviorQueries.map(async (q) => {
       const hits = await searchAdTargetingCategories(accessToken, q, "behaviors");
-      for (const h of hits.slice(0, 6)) {
+      for (const h of hits.slice(0, 12)) {
+        rows.push({
+          type: "behavior",
+          id: h.id,
+          name: h.name,
+          audienceSize: h.audience_size,
+          path: h.path,
+          flexBucket: resolveFlexBucket({ path: h.path, itemType: "behavior" })
+        });
+      }
+    }),
+    ...(plan.lifeEventQueries ?? []).map(async (q) => {
+      const hits = await searchAdTargetingCategories(accessToken, q, "life_events");
+      for (const h of hits.slice(0, 10)) {
         rows.push({
           type: "behavior",
           id: h.id,
@@ -134,7 +237,7 @@ async function buildCatalog(accessToken: string, plan: SearchPlan): Promise<Cata
     }),
     ...plan.demographicQueries.map(async (q) => {
       const hits = await searchAdTargetingCategories(accessToken, q, "demographics");
-      for (const h of hits.slice(0, 6)) {
+      for (const h of hits.slice(0, 10)) {
         rows.push({
           type: "demographic",
           id: h.id,
@@ -147,7 +250,139 @@ async function buildCatalog(accessToken: string, plan: SearchPlan): Promise<Cata
     })
   ]);
 
-  return dedupeCatalog(rows);
+  return dedupeCatalog(rows).filter((item) => !isGenericLowValueSegment(item));
+}
+
+const FallbackQueriesSchema = z.preprocess(
+  normalizeSearchPlanRaw,
+  z.object({
+    interestQueries: z.array(z.string()).max(10).default([]),
+    behaviorQueries: z.array(z.string()).max(8).default([]),
+    lifeEventQueries: z.array(z.string()).max(6).default([]),
+    demographicQueries: z.array(z.string()).max(6).default([])
+  })
+);
+
+const RankedIdsSchema = z.object({
+  rankedIds: z.array(z.string()).max(80).default([])
+});
+
+async function generateFallbackSearchQueries(args: {
+  provider: LlmProviderId;
+  persona: AudiencePersonaPreview;
+  brief: AudienceTargetingBrief;
+}): Promise<SearchPlan> {
+  const prompt = [
+    "A busca na Meta retornou poucos segmentos para esta persona.",
+    "Gere termos de busca ALTERNATIVOS e GRANULARES (marcas, produtos, apps, hobbies) que a API de targeting da Meta costuma indexar.",
+    "Use português e nomes internacionais. Evite termos genéricos como 'luxo' sozinho — prefira marcas e categorias concretas.",
+    "",
+    "Responda APENAS JSON: { interestQueries, behaviorQueries, lifeEventQueries, demographicQueries }",
+    "",
+    "Persona:",
+    JSON.stringify({
+      personaName: args.persona.personaName,
+      narrative: args.persona.narrative,
+      traits: args.persona.traits,
+      lifestyleCorrelates: args.persona.lifestyleCorrelates,
+      searchPlan: args.persona.searchPlan
+    }),
+    "",
+    "Briefing:",
+    JSON.stringify({
+      businessDescription: args.brief.businessDescription,
+      targetProfile: args.brief.targetProfile,
+      behaviors: args.brief.behaviors,
+      lifestyleHints: args.brief.lifestyleHints
+    })
+  ].join("\n");
+
+  const result = await llmGenerateJson({
+    provider: args.provider,
+    prompt,
+    schema: FallbackQueriesSchema,
+    temperature: 0.3
+  });
+  return result.data;
+}
+
+async function rankCatalogForPersona(args: {
+  provider: LlmProviderId;
+  persona: AudiencePersonaPreview;
+  brief: AudienceTargetingBrief;
+  catalog: CatalogItem[];
+  maxItems?: number;
+}): Promise<CatalogItem[]> {
+  const maxItems = args.maxItems ?? 70;
+  if (args.catalog.length <= maxItems) return args.catalog;
+
+  const prompt = [
+    "Você recebeu uma PERSONA validada e um CATÁLOGO de segmentos reais da Meta.",
+    "Ordene os IDs do catálogo do MAIS ao MENOS relevante para esta persona e briefing.",
+    "Priorize interesses de marcas/produtos, comportamentos de compra/viagem e demografia alinhada.",
+    "Evite segmentos genéricos de plataforma (SO, early adopters) quando houver opções melhores.",
+    `Retorne até ${maxItems} IDs em rankedIds.`,
+    "",
+    "Responda APENAS JSON: { rankedIds: string[] }",
+    "",
+    "Persona:",
+    JSON.stringify({
+      personaName: args.persona.personaName,
+      narrative: args.persona.narrative,
+      traits: args.persona.traits,
+      lifestyleCorrelates: args.persona.lifestyleCorrelates,
+      searchPlan: args.persona.searchPlan
+    }),
+    "",
+    "Briefing:",
+    JSON.stringify({
+      targetProfile: args.brief.targetProfile,
+      behaviors: args.brief.behaviors,
+      lifestyleHints: args.brief.lifestyleHints,
+      exclusionHints: args.brief.exclusionHints
+    }),
+    "",
+    "Catálogo:",
+    formatCatalogForPrompt(args.catalog)
+  ].join("\n");
+
+  const result = await llmGenerateJson({
+    provider: args.provider,
+    prompt,
+    schema: RankedIdsSchema,
+    temperature: 0.15
+  });
+
+  const byId = new Map(args.catalog.map((c) => [c.id, c]));
+  const ranked: CatalogItem[] = [];
+  for (const id of result.data.rankedIds) {
+    const row = byId.get(id);
+    if (row) ranked.push(row);
+    if (ranked.length >= maxItems) break;
+  }
+  for (const item of args.catalog) {
+    if (ranked.length >= maxItems) break;
+    if (!ranked.some((r) => r.id === item.id)) ranked.push(item);
+  }
+  return ranked;
+}
+
+function parseExclusionTokens(exclusionHints?: string): string[] {
+  if (!exclusionHints?.trim()) return [];
+  return exclusionHints
+    .toLowerCase()
+    .split(/[,;\n]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3);
+}
+
+function filterCatalogByExclusions(catalog: CatalogItem[], exclusionHints?: string): CatalogItem[] {
+  const tokens = parseExclusionTokens(exclusionHints);
+  if (!tokens.length) return catalog;
+  return catalog.filter((item) => {
+    const haystack = `${item.name} ${(item.path ?? []).join(" ")}`.toLowerCase();
+    return !tokens.some((token) => haystack.includes(token));
+  });
 }
 
 async function enrichCatalogWithValidation(
@@ -155,21 +390,33 @@ async function enrichCatalogWithValidation(
   adAccountId: string,
   catalog: CatalogItem[]
 ): Promise<CatalogItem[]> {
-  const validated = await validateTargetingIdList(
-    accessToken,
-    adAccountId,
-    catalog.map((c) => c.id)
-  );
-  const typeById = new Map(validated.map((v) => [v.id, v.type]));
+  if (!catalog.length) return catalog;
 
-  return catalog.map((item) => ({
-    ...item,
-    flexBucket: resolveFlexBucket({
-      path: item.path,
-      itemType: item.type,
-      validatedType: typeById.get(item.id)
-    })
-  }));
+  try {
+    const validated = await validateTargetingIdList(
+      accessToken,
+      adAccountId,
+      catalog.map((c) => c.id)
+    );
+    const invalidIds = new Set(
+      validated.filter((row) => row.valid === false).map((row) => row.id)
+    );
+    const typeById = new Map(validated.map((v) => [v.id, v.type]));
+
+    return catalog
+      .filter((item) => !invalidIds.has(item.id))
+      .map((item) => ({
+        ...item,
+        flexBucket: resolveFlexBucket({
+          path: item.path,
+          itemType: item.type,
+          validatedType: typeById.get(item.id)
+        })
+      }));
+  } catch (e) {
+    if (!isMetaGraphApiError(e)) throw e;
+    return catalog;
+  }
 }
 
 function formatCatalogForPrompt(catalog: CatalogItem[]): string {
@@ -282,7 +529,8 @@ function buildPersonaPrompt(brief: AudienceTargetingBrief): string {
     businessDescription: brief.businessDescription,
     targetProfile: brief.targetProfile,
     behaviors: brief.behaviors,
-    lifestyleHints: brief.lifestyleHints
+    lifestyleHints: brief.lifestyleHints,
+    exclusionHints: brief.exclusionHints
   });
 }
 
@@ -292,6 +540,7 @@ export function buildPersonaOnlyPrompt(input: {
   targetProfile: string;
   behaviors?: string;
   lifestyleHints?: string;
+  exclusionHints?: string;
   freeformPrompt?: string;
 }): string {
   return [
@@ -301,6 +550,18 @@ export function buildPersonaOnlyPrompt(input: {
     "Sua tarefa NÃO é escolher um público pronto nem inventar IDs da Meta.",
     "Construa uma PERSONA (perfil ideal) e derive termos de busca para interesses/comportamentos/demografia Meta.",
     "",
+    "REGRAS PARA searchPlan (muito importante):",
+    "- Use termos GRANULARES e específicos — nomes de marcas, produtos, hobbies e comportamentos concretos.",
+    "- Se o perfil menciona uma categoria ampla (ex: marcas de luxo, viagens, fitness), liste exemplos reais: Prada, Chanel, Gucci, Balenciaga; Booking.com; corrida, yoga, academia.",
+    "- Evite 1 termo genérico largo; prefira 8–12 queries específicas que a Meta possa indexar.",
+    "- Inclua variações em português e nomes internacionais quando fizer sentido.",
+    "- Separe bem: interestQueries (interesses), behaviorQueries (comportamentos de compra/uso na Meta), lifeEventQueries (eventos de vida relevantes), demographicQueries (demografia).",
+    "- behaviorQueries e lifeEventQueries são OBRIGATÓRIOS quando o perfil descreve hábitos, compras, viagens, uso de apps ou estilo de vida — busque congruência com o formulário.",
+    "- Gere pelo menos 4 behaviorQueries e 2 lifeEventQueries quando houver pistas de comportamento ou estilo de vida.",
+    input.exclusionHints?.trim()
+      ? `- NÃO inclua nos searchPlan termos relacionados a exclusões do usuário: ${input.exclusionHints.trim()}`
+      : "",
+    "",
     "Responda APENAS JSON:",
     "{",
     '  "personaName": string,',
@@ -308,16 +569,19 @@ export function buildPersonaOnlyPrompt(input: {
     '  "traits": string[],',
     '  "lifestyleCorrelates": string[],',
     '  "searchPlan": {',
-    '    "interestQueries": string[] (máx. 8),',
-    '    "behaviorQueries": string[] (máx. 6),',
-    '    "demographicQueries": string[] (máx. 4)',
+    '    "interestQueries": string[] (máx. 12),',
+    '    "behaviorQueries": string[] (máx. 12),',
+    '    "lifeEventQueries": string[] (máx. 8),',
+    '    "demographicQueries": string[] (máx. 8)',
     "  },",
     '  "suggestedGender"?: "all" | "male" | "female"',
     "}",
     "",
     "Entrada:",
     JSON.stringify(input)
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** Targeting Meta sem geo — para persistência em user_personas. */
@@ -359,7 +623,8 @@ export async function generateAudiencePersonaPreview(args: {
   const hasQueries =
     persona.searchPlan.interestQueries.length > 0 ||
     persona.searchPlan.behaviorQueries.length > 0 ||
-    persona.searchPlan.demographicQueries.length > 0;
+    persona.searchPlan.demographicQueries.length > 0 ||
+    (persona.searchPlan.lifeEventQueries?.length ?? 0) > 0;
 
   if (!hasQueries) {
     throw new Error(
@@ -386,7 +651,64 @@ export async function generateAudienceTargetingSuggestion(args: {
   const brief = AudienceTargetingBriefSchema.parse(args.brief);
   const persona = AudiencePersonaPreviewSchema.parse(args.persona);
 
-  const rawCatalog = await buildCatalog(args.accessToken, persona.searchPlan);
+  const rejectedIds = new Set([
+    ...brief.rejectedSegmentIds,
+    ...brief.rejectedSegments.map((s) => s.id)
+  ]);
+
+  const expandedPlan = expandSearchPlan(persona.searchPlan, persona);
+  let planCatalog = await buildCatalog(args.accessToken, expandedPlan);
+
+  if (planCatalog.length < 18) {
+    const fallbackPlan = await generateFallbackSearchQueries({
+      provider: args.provider,
+      persona,
+      brief
+    });
+    const fallbackCatalog = await buildCatalog(args.accessToken, {
+      interestQueries: dedupeQueries(
+        [...expandedPlan.interestQueries, ...fallbackPlan.interestQueries],
+        20
+      ),
+      behaviorQueries: dedupeQueries(
+        [...expandedPlan.behaviorQueries, ...fallbackPlan.behaviorQueries],
+        18
+      ),
+      lifeEventQueries: dedupeQueries(
+        [...(expandedPlan.lifeEventQueries ?? []), ...(fallbackPlan.lifeEventQueries ?? [])],
+        12
+      ),
+      demographicQueries: dedupeQueries(
+        [...expandedPlan.demographicQueries, ...fallbackPlan.demographicQueries],
+        12
+      )
+    });
+    planCatalog = dedupeCatalog([...planCatalog, ...fallbackCatalog]);
+  }
+
+  const { catalog: replacementCatalog, hints: replacementHints } =
+    brief.rejectedSegments.length > 0
+      ? await buildReplacementCatalogFromRejected(
+          args.accessToken,
+          args.adAccountId,
+          brief.rejectedSegments
+        )
+      : { catalog: [] as ReplacementCatalogItem[], hints: [] };
+
+  const rawCatalog = filterCatalogByExclusions(
+    dedupeCatalog([
+      ...planCatalog.filter((item) => !rejectedIds.has(item.id)),
+      ...replacementCatalog.map((item) => ({
+        type: item.type,
+        id: item.id,
+        name: item.name,
+        audienceSize: item.audienceSize,
+        path: item.path,
+        flexBucket: item.flexBucket
+      }))
+    ]),
+    brief.exclusionHints
+  );
   if (!rawCatalog.length) {
     throw new Error(
       "Nenhum interesse ou comportamento encontrado na Meta para esta persona. Ajuste a prévia ou tente outros termos."
@@ -399,8 +721,20 @@ export async function generateAudienceTargetingSuggestion(args: {
     rawCatalog
   );
 
+  const rankedCatalog = await rankCatalogForPersona({
+    provider: args.provider,
+    persona,
+    brief,
+    catalog
+  });
+
+  const interestCount = rankedCatalog.filter((c) => c.type === "interest").length;
+  const behaviorCount = rankedCatalog.filter((c) => c.type === "behavior").length;
+  const demographicCount = rankedCatalog.filter((c) => c.type === "demographic").length;
+
   const pickPrompt = [
     "Você recebeu uma PERSONA já validada pelo usuário e um CATÁLOGO real da Meta (IDs verificados).",
+    "Sua tarefa é escolher os segmentos do catálogo MAIS SEMELHANTES ao briefing e aos termos planejados — como um especialista em targeting Meta.",
     "NÃO invente público nem IDs. Selecione somente segmentos do catálogo que combinem com a persona.",
     `Nome do público salvo deve começar com "${TRAFFIC_AI_AUDIENCE_PREFIX}" e ser descritivo.`,
     brief.includeCustomAudienceIds.length
@@ -409,13 +743,43 @@ export async function generateAudienceTargetingSuggestion(args: {
     brief.excludeCustomAudienceIds.length
       ? `Exclua estes custom audiences: ${brief.excludeCustomAudienceIds.join(", ")}`
       : "",
+    brief.exclusionHints?.trim()
+      ? `EXCLUSÕES OBRIGATÓRIAS — não selecione segmentos que conflitem com: ${brief.exclusionHints.trim()}. Prefira segmentos congruentes com o perfil-alvo.`
+      : "",
+    rejectedIds.size
+      ? `NÃO use estes IDs descontinuados pela Meta: ${[...rejectedIds].join(", ")}.`
+      : "",
+    brief.avoidSegmentIds.length
+      ? `Busca alternativa: NÃO repita estes IDs da tentativa anterior — escolha outros segmentos igualmente relevantes do catálogo: ${brief.avoidSegmentIds.join(", ")}.`
+      : "",
+    replacementHints.length ? formatReplacementHintsForPrompt(replacementHints) : "",
     args.customAudiences?.length
       ? `Custom audiences disponíveis: ${JSON.stringify(args.customAudiences.slice(0, 20))}`
       : "",
     "",
     "Responda APENAS JSON:",
     "{ title, summary, name, genders?: [1|2], interestIds: string[], behaviorIds: string[], demographicIds: string[], reasoning? }",
+    "Selecione o máximo de segmentos RELEVANTES do catálogo (até 20 interesses, 16 comportamentos, 10 demográficos).",
+    interestCount >= 6
+      ? `Selecione pelo menos ${Math.min(8, interestCount)} interestIds entre os mais alinhados ao briefing.`
+      : interestCount > 0
+        ? `Selecione todos os interestIds relevantes disponíveis (${interestCount} no catálogo).`
+        : "",
+    behaviorCount >= 4
+      ? `Selecione pelo menos ${Math.min(6, behaviorCount)} behaviorIds — priorize compra, viagem, e-commerce e estilo de vida descritos no briefing.`
+      : behaviorCount > 0
+        ? `Selecione todos os behaviorIds relevantes disponíveis (${behaviorCount} no catálogo).`
+        : "",
+    demographicCount >= 2
+      ? `Inclua demographicIds quando fizer sentido (até ${Math.min(4, demographicCount)}).`
+      : "",
+    "EVITE segmentos genéricos de plataforma (SO do dispositivo, early adopters genérico) se houver opções mais específicas no catálogo.",
+    "Compare cada candidato com searchPlan e lifestyleCorrelates — prefira marcas, produtos e comportamentos concretos citados no briefing.",
+    "Priorize comportamentos (behaviorIds) quando o perfil descreve hábitos de compra, viagem, uso digital ou estilo de vida.",
     "Não inclua age_min nem age_max — a idade vem do formulário do usuário.",
+    "",
+    "Termos planejados para busca (referência de congruência):",
+    JSON.stringify(persona.searchPlan),
     "",
     "Persona:",
     JSON.stringify({
@@ -429,8 +793,8 @@ export async function generateAudienceTargetingSuggestion(args: {
     "Idade definida pelo usuário (não altere):",
     JSON.stringify({ ageMin: brief.ageMin ?? 18, ageMax: brief.ageMax ?? 65 }),
     "",
-    "Catálogo (use somente estes IDs):",
-    formatCatalogForPrompt(catalog)
+    "Catálogo (use somente estes IDs, já ordenados por relevância):",
+    formatCatalogForPrompt(rankedCatalog)
   ]
     .filter(Boolean)
     .join("\n");
@@ -439,10 +803,10 @@ export async function generateAudienceTargetingSuggestion(args: {
     provider: args.provider,
     prompt: pickPrompt,
     schema: PickSchema,
-    temperature: 0.2
+    temperature: brief.avoidSegmentIds.length ? 0.35 : 0.15
   });
 
-  const catalogIds = new Set(catalog.map((c) => c.id));
+  const catalogIds = new Set(rankedCatalog.map((c) => c.id));
   const pick = {
     ...pickResult.data,
     interestIds: pickResult.data.interestIds.filter((id) => catalogIds.has(id)),
@@ -458,22 +822,242 @@ export async function generateAudienceTargetingSuggestion(args: {
 
   const targeting = buildMetaTargetingFromSuggestion({
     pick,
-    catalog,
+    catalog: rankedCatalog,
     brief: {
       ...brief,
       gender: persona.suggestedGender ?? brief.gender
     }
   });
 
+  const { targeting: validatedTargeting, removed } = await finalizeFlexibleSpecTargeting(
+    targeting,
+    args.accessToken,
+    args.adAccountId
+  );
+  const removedIds = new Set(removed.map((row) => row.id));
+  const items = suggestionItemsFromPick(pick, rankedCatalog).filter((item) => !removedIds.has(item.id));
+
   return {
     title: pick.title,
     summary: `${persona.personaName}: ${pick.summary}`,
     name: ensureTrafficAiAudienceName(pick.name, args.clientName),
-    targeting,
-    items: suggestionItemsFromPick(pick, catalog),
+    targeting: validatedTargeting,
+    items,
+    removedSegments: removed.length ? removed : undefined,
+    replacementHints: replacementHints.length
+      ? replacementHints.map((h) => ({
+          rejected: h.rejected,
+          alternatives: h.alternatives
+        }))
+      : undefined,
     includeCustomAudienceIds: brief.includeCustomAudienceIds,
     excludeCustomAudienceIds: brief.excludeCustomAudienceIds,
     provider: args.provider,
     modelUsed: pickResult.modelUsed
+  };
+}
+
+const IncrementalPickSchema = z.object({
+  interestIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(20)).default([]),
+  behaviorIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(16)).default([]),
+  demographicIds: z.preprocess(normalizeStringArray, z.array(z.string()).max(10)).default([])
+});
+
+function keepItemsToCatalog(keepItems: AudienceTargetingSuggestionItem[]): CatalogItem[] {
+  return keepItems.map((item) => ({
+    type: item.type,
+    id: item.id,
+    name: item.name
+  }));
+}
+
+function mergeIncrementalPick(
+  keepItems: AudienceTargetingSuggestionItem[],
+  newPick: z.infer<typeof IncrementalPickSchema>
+): z.infer<typeof PickSchema> {
+  const keepIds = new Set(keepItems.map((i) => i.id));
+  const mergeType = (type: "interest" | "behavior" | "demographic", newIds: string[]) => {
+    const existing = keepItems.filter((i) => i.type === type).map((i) => i.id);
+    const added = newIds.filter((id) => !keepIds.has(id));
+    return [...existing, ...added].slice(0, META_SEGMENT_LIMITS[type]);
+  };
+
+  return {
+    title: "",
+    summary: "",
+    name: "",
+    interestIds: mergeType("interest", newPick.interestIds),
+    behaviorIds: mergeType("behavior", newPick.behaviorIds),
+    demographicIds: mergeType("demographic", newPick.demographicIds)
+  };
+}
+
+export async function generateAdditionalAudienceSegments(args: {
+  accessToken: string;
+  adAccountId: string;
+  provider: LlmProviderId;
+  brief: AudienceTargetingBrief;
+  persona: AudiencePersonaPreview;
+  keepItems: AudienceTargetingSuggestionItem[];
+  addPrompt: string;
+  existingMeta: {
+    title: string;
+    summary: string;
+    name: string;
+    includeCustomAudienceIds: string[];
+    excludeCustomAudienceIds: string[];
+    provider: LlmProviderId;
+    modelUsed: string;
+  };
+  clientName?: string;
+  personaOnly?: boolean;
+}): Promise<AudienceTargetingSuggestion> {
+  const brief = AudienceTargetingBriefSchema.parse(args.brief);
+  const persona = AudiencePersonaPreviewSchema.parse(args.persona);
+  const keepItems = args.keepItems;
+  const keepIds = new Set(keepItems.map((i) => i.id));
+  const counts = countSegmentsByType(keepItems);
+  const remaining = {
+    interest: META_SEGMENT_LIMITS.interest - counts.interest,
+    behavior: META_SEGMENT_LIMITS.behavior - counts.behavior,
+    demographic: META_SEGMENT_LIMITS.demographic - counts.demographic
+  };
+
+  if (remaining.interest <= 0 && remaining.behavior <= 0 && remaining.demographic <= 0) {
+    throw new Error("Todos os limites de segmentos já foram atingidos.");
+  }
+
+  const searchPlanPrompt = [
+    "O usuário já selecionou segmentos Meta e quer ADICIONAR mais com base no pedido abaixo.",
+    "Gere termos de busca focados SOMENTE no que falta — não repita segmentos já escolhidos.",
+    `Segmentos já selecionados (NÃO buscar equivalentes): ${keepItems.map((i) => i.name).join(", ")}`,
+    `Pedido do usuário: ${args.addPrompt.trim()}`,
+    "",
+    "Responda APENAS JSON: { interestQueries, behaviorQueries, lifeEventQueries, demographicQueries }",
+    "",
+    "Persona:",
+    JSON.stringify({
+      personaName: persona.personaName,
+      narrative: persona.narrative,
+      traits: persona.traits,
+      lifestyleCorrelates: persona.lifestyleCorrelates
+    })
+  ].join("\n");
+
+  const searchPlanResult = await llmGenerateJson({
+    provider: args.provider,
+    prompt: searchPlanPrompt,
+    schema: FallbackQueriesSchema,
+    temperature: 0.25
+  });
+
+  const rawCatalog = filterCatalogByExclusions(
+    (await buildCatalog(args.accessToken, searchPlanResult.data)).filter(
+      (item) => !keepIds.has(item.id)
+    ),
+    brief.exclusionHints
+  );
+
+  if (!rawCatalog.length) {
+    throw new Error(
+      "Nenhum segmento novo encontrado na Meta para este pedido. Tente outros termos."
+    );
+  }
+
+  const catalog = await enrichCatalogWithValidation(
+    args.accessToken,
+    args.adAccountId,
+    rawCatalog
+  );
+  const rankedCatalog = await rankCatalogForPersona({
+    provider: args.provider,
+    persona,
+    brief,
+    catalog,
+    maxItems: 50
+  });
+
+  const pickPrompt = [
+    "Selecione APENAS segmentos NOVOS do catálogo para ADICIONAR aos já escolhidos.",
+    "NÃO repita IDs já selecionados.",
+    `IDs já selecionados: ${[...keepIds].join(", ")}`,
+    `Máximo de novos por tipo — interesses: ${remaining.interest}, comportamentos: ${remaining.behavior}, demográficos: ${remaining.demographic}`,
+    `Pedido do usuário: ${args.addPrompt.trim()}`,
+    "",
+    "Responda APENAS JSON: { interestIds: string[], behaviorIds: string[], demographicIds: string[] }",
+    "",
+    "Catálogo (somente IDs novos):",
+    formatCatalogForPrompt(rankedCatalog)
+  ].join("\n");
+
+  const pickResult = await llmGenerateJson({
+    provider: args.provider,
+    prompt: pickPrompt,
+    schema: IncrementalPickSchema,
+    temperature: 0.2
+  });
+
+  const catalogIds = new Set(rankedCatalog.map((c) => c.id));
+  const newPick = {
+    interestIds: pickResult.data.interestIds
+      .filter((id) => catalogIds.has(id) && !keepIds.has(id))
+      .slice(0, remaining.interest),
+    behaviorIds: pickResult.data.behaviorIds
+      .filter((id) => catalogIds.has(id) && !keepIds.has(id))
+      .slice(0, remaining.behavior),
+    demographicIds: pickResult.data.demographicIds
+      .filter((id) => catalogIds.has(id) && !keepIds.has(id))
+      .slice(0, remaining.demographic)
+  };
+
+  if (!newPick.interestIds.length && !newPick.behaviorIds.length && !newPick.demographicIds.length) {
+    throw new Error(
+      "A IA não encontrou segmentos novos válidos para adicionar. Tente reformular o pedido."
+    );
+  }
+
+  const mergedPick = mergeIncrementalPick(keepItems, newPick);
+  const fullCatalog = dedupeCatalog([...keepItemsToCatalog(keepItems), ...rankedCatalog]);
+
+  const targeting = args.personaOnly
+    ? buildPersonaTargetingFromSuggestion({
+        pick: mergedPick,
+        catalog: fullCatalog,
+        brief: {
+          ageMin: brief.ageMin,
+          ageMax: brief.ageMax,
+          gender: persona.suggestedGender ?? brief.gender
+        }
+      })
+    : buildMetaTargetingFromSuggestion({
+        pick: mergedPick,
+        catalog: fullCatalog,
+        brief: {
+          ...brief,
+          gender: persona.suggestedGender ?? brief.gender
+        }
+      });
+
+  const { targeting: validatedTargeting, removed } = await finalizeFlexibleSpecTargeting(
+    targeting,
+    args.accessToken,
+    args.adAccountId
+  );
+  const removedIds = new Set(removed.map((row) => row.id));
+  const items = suggestionItemsFromPick(mergedPick, fullCatalog).filter(
+    (item) => !removedIds.has(item.id)
+  );
+
+  return {
+    title: args.existingMeta.title,
+    summary: args.existingMeta.summary,
+    name: args.existingMeta.name,
+    targeting: validatedTargeting,
+    items,
+    removedSegments: removed.length ? removed : undefined,
+    includeCustomAudienceIds: args.existingMeta.includeCustomAudienceIds,
+    excludeCustomAudienceIds: args.existingMeta.excludeCustomAudienceIds,
+    provider: args.existingMeta.provider,
+    modelUsed: pickResult.modelUsed || args.existingMeta.modelUsed
   };
 }

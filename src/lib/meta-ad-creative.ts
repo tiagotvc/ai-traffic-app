@@ -1,5 +1,7 @@
 import type { AdDraftItem } from "@/lib/campaign-draft";
 
+export const META_AD_COPY_LIMITS = { titles: 5, bodies: 5 } as const;
+
 export type MetaAssetAdFormat = "SINGLE_IMAGE" | "SINGLE_VIDEO";
 
 export class MetaCreativeValidationError extends Error {
@@ -51,8 +53,14 @@ export function buildMetaAssetFeedSpec(args: {
 
   const spec: Record<string, unknown> = {
     ad_formats: [adFormat],
-    titles: ad.titles.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
-    bodies: ad.bodies.filter((t) => t.trim()).map((text) => ({ text: text.trim() })),
+    titles: ad.titles
+      .filter((t) => t.trim())
+      .slice(0, META_AD_COPY_LIMITS.titles)
+      .map((text) => ({ text: text.trim() })),
+    bodies: ad.bodies
+      .filter((t) => t.trim())
+      .slice(0, META_AD_COPY_LIMITS.bodies)
+      .map((text) => ({ text: text.trim() })),
     link_urls: [{ website_url: resolvedLink }],
     call_to_action_types: [resolvedCta]
   };

@@ -21,11 +21,19 @@ export type AudienceTargetingSuggestion = {
   excludeCustomAudienceIds: string[];
   provider: LlmProviderId;
   modelUsed: string;
+  /** Segmentos removidos porque a Meta os marcou como inválidos/descontinuados. */
+  removedSegments?: Array<{ id: string; name?: string }>;
+  /** Alternativas válidas encontradas na Meta para segmentos rejeitados (antes do pick da IA). */
+  replacementHints?: Array<{
+    rejected: { id: string; name: string; type: "interest" | "behavior" | "demographic" };
+    alternatives: Array<{ id: string; name: string; type: "interest" | "behavior" | "demographic" }>;
+  }>;
 };
 
 export type AudiencePersonaSearchPlan = {
   interestQueries: string[];
   behaviorQueries: string[];
+  lifeEventQueries?: string[];
   demographicQueries: string[];
 };
 
@@ -117,4 +125,126 @@ export function applySuggestionToDraftTargeting(
     customAudienceIds: includeIds,
     excludedAudienceIds: excludeIds
   };
+}
+
+export type PersonaTargetingItem = {
+  type: "interest" | "behavior" | "demographic";
+  id: string;
+  name: string;
+  bucket?: string;
+};
+
+export function extractPersonaTargetingItems(
+  targeting: Record<string, unknown>
+): PersonaTargetingItem[] {
+  const items: PersonaTargetingItem[] = [];
+  const flex = targeting.flexible_spec as Array<Record<string, unknown>> | undefined;
+
+  for (const spec of flex ?? []) {
+    for (const row of (spec.interests as Array<{ id: string; name?: string }>) ?? []) {
+      items.push({ type: "interest", id: row.id, name: row.name ?? row.id });
+    }
+    for (const row of (spec.behaviors as Array<{ id: string; name?: string }>) ?? []) {
+      items.push({ type: "behavior", id: row.id, name: row.name ?? row.id });
+    }
+    for (const [key, value] of Object.entries(spec)) {
+      if (key === "interests" || key === "behaviors") continue;
+      for (const row of (value as Array<{ id: string; name?: string }>) ?? []) {
+        items.push({
+          type: "demographic",
+          id: row.id,
+          name: row.name ?? row.id,
+          bucket: key
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
+export const META_SEGMENT_LIMITS = {
+  interest: 20,
+  behavior: 16,
+  demographic: 10
+} as const;
+
+export type SegmentType = keyof typeof META_SEGMENT_LIMITS;
+
+export function countSegmentsByType(
+  items: Array<{ type: SegmentType }>
+): Record<SegmentType, number> {
+  return {
+    interest: items.filter((i) => i.type === "interest").length,
+    behavior: items.filter((i) => i.type === "behavior").length,
+    demographic: items.filter((i) => i.type === "demographic").length
+  };
+}
+
+export function canAddMoreSegments(
+  items: Array<{ type: SegmentType }>
+): boolean {
+  const counts = countSegmentsByType(items);
+  return (
+    counts.interest < META_SEGMENT_LIMITS.interest ||
+    counts.behavior < META_SEGMENT_LIMITS.behavior ||
+    counts.demographic < META_SEGMENT_LIMITS.demographic
+  );
+}
+
+function removeSegmentFromTargeting(
+  targeting: Record<string, unknown>,
+  itemId: string
+): Record<string, unknown> {
+  const flex = targeting.flexible_spec as Array<Record<string, unknown>> | undefined;
+  if (!flex?.length) return targeting;
+
+  const nextFlex = flex
+    .map((spec) => {
+      const next: Record<string, unknown> = { ...spec };
+      for (const key of Object.keys(next)) {
+        const rows = next[key] as Array<{ id: string }> | undefined;
+        if (!Array.isArray(rows)) continue;
+        const filtered = rows.filter((r) => r.id !== itemId);
+        if (filtered.length) next[key] = filtered;
+        else delete next[key];
+      }
+      return next;
+    })
+    .filter((spec) => Object.keys(spec).length > 0);
+
+  const t = { ...targeting };
+  if (nextFlex.length) t.flexible_spec = nextFlex;
+  else delete t.flexible_spec;
+  return t;
+}
+
+export function removeSegmentFromSuggestion(
+  suggestion: AudienceTargetingSuggestion,
+  itemId: string
+): AudienceTargetingSuggestion {
+  return {
+    ...suggestion,
+    items: suggestion.items.filter((i) => i.id !== itemId),
+    targeting: removeSegmentFromTargeting(suggestion.targeting, itemId)
+  };
+}
+
+export function mergeSuggestionSegments(
+  existing: AudienceTargetingSuggestionItem[],
+  added: AudienceTargetingSuggestionItem[]
+): AudienceTargetingSuggestionItem[] {
+  const seen = new Set(existing.map((i) => i.id));
+  const counts = countSegmentsByType(existing);
+  const merged = [...existing];
+
+  for (const item of added) {
+    if (seen.has(item.id)) continue;
+    if (counts[item.type] >= META_SEGMENT_LIMITS[item.type]) continue;
+    merged.push(item);
+    seen.add(item.id);
+    counts[item.type]++;
+  }
+
+  return merged;
 }

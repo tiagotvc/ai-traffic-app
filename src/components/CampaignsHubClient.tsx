@@ -18,6 +18,7 @@ import { DsPageHeader } from "@/design-system";
 import { CampaignHeaderCell } from "@/components/CampaignHeaderCell";
 import { CampaignManagerClient } from "@/components/CampaignManagerClient";
 import { rememberCampaign } from "@/components/CampaignsListClient";
+import { shouldCampaignListFetchLive } from "@/lib/campaign-list-live";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
@@ -25,6 +26,7 @@ import { CampaignDraftMobileCards, CampaignMobileCards, type CampaignRowLike } f
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
 import { IconActionButton } from "@/components/ui/IconActionButton";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
@@ -116,8 +118,14 @@ function statusVariant(status?: string): "success" | "warning" | "neutral" {
   return "neutral";
 }
 
-function campaignDetailHref(row: Pick<CampaignRowLike, "metaCampaignId" | "clientSlug">): string {
-  return `/campaigns/${row.metaCampaignId}?client=${encodeURIComponent(row.clientSlug)}`;
+function buildCampaignDetailHref(
+  row: Pick<CampaignRowLike, "metaCampaignId" | "clientSlug">,
+  period: PeriodState
+): string {
+  const params = new URLSearchParams(periodStateToQuery(period));
+  params.set("client", row.clientSlug);
+  const qs = params.toString();
+  return `/campaigns/${row.metaCampaignId}${qs ? `?${qs}` : ""}`;
 }
 
 function isDraftRow(row: CampaignRow): boolean {
@@ -130,6 +138,7 @@ function draftTemplateIdFromRow(row: Pick<CampaignRowLike, "metaCampaignId" | "d
 
 export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: boolean } = {}) {
   const t = useTranslations("campaignsPage");
+  const tCommon = useTranslations("common");
   const tSync = useTranslations("sync");
   const tMetrics = useTranslations("metrics");
   const tPresets = useTranslations("campaignTypes");
@@ -174,12 +183,25 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [localClientFilter, setLocalClientFilter] = useState("");
   const [localPeriod, setLocalPeriod] = useState<PeriodState>({ preset: "last7", since: "", until: "" });
+  const [localPeriodUserActivated, setLocalPeriodUserActivated] = useState(false);
   const clientFilter = useUxChrome ? (strip?.clientFilter ?? "") : localClientFilter;
   const period = useUxChrome ? (strip?.period ?? localPeriod) : localPeriod;
+  const periodUserActivated = useUxChrome
+    ? (strip?.periodUserActivated ?? false)
+    : localPeriodUserActivated;
+  const campaignDetailHref = useCallback(
+    (row: Pick<CampaignRowLike, "metaCampaignId" | "clientSlug">) => buildCampaignDetailHref(row, period),
+    [period]
+  );
   const setClientFilter = useUxChrome
     ? (value: string) => strip?.setClientFilter(value)
     : setLocalClientFilter;
-  const setPeriod = useUxChrome ? (value: PeriodState) => strip?.setPeriod(value) : setLocalPeriod;
+  const setPeriod = useUxChrome
+    ? (value: PeriodState) => strip?.setPeriod(value)
+    : (value: PeriodState) => {
+        setLocalPeriodUserActivated(true);
+        setLocalPeriod(value);
+      };
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
@@ -195,6 +217,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [loading, setLoading] = useState(true);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [draftDiscardPendingId, setDraftDiscardPendingId] = useState<string | null>(null);
+  const [draftDiscardTarget, setDraftDiscardTarget] = useState<CampaignRowLike | null>(null);
   const [creationPickerOpen, setCreationPickerOpen] = useState(false);
   const [, startStatusTransition] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
@@ -393,10 +416,17 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     });
   }
 
-  function discardDraft(row: CampaignRowLike) {
+  function requestDiscardDraft(row: CampaignRowLike) {
     const templateId = draftTemplateIdFromRow(row);
     if (!templateId) return;
-    if (!window.confirm(t("discardDraftConfirm"))) return;
+    setDraftDiscardTarget(row);
+  }
+
+  function confirmDiscardDraft() {
+    const row = draftDiscardTarget;
+    if (!row) return;
+    const templateId = draftTemplateIdFromRow(row);
+    if (!templateId) return;
 
     setDraftDiscardPendingId(templateId);
     void fetch(`/api/campaign-templates/${encodeURIComponent(templateId)}`, { method: "DELETE" })
@@ -410,6 +440,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           prev.filter((r) => draftTemplateIdFromRow(r) !== templateId)
         );
         setTotal((prev) => Math.max(0, prev - 1));
+        setDraftDiscardTarget(null);
         window.dispatchEvent(new CustomEvent("traffic:campaigns-reload"));
       })
       .finally(() => setDraftDiscardPendingId(null));
@@ -470,7 +501,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       });
   }, []);
 
-  // Paginação e filtros no servidor. Período «hoje» busca ao vivo na Meta; histórico usa banco.
+  // Banco por padrão; Meta ao vivo só com filtro de cliente ou após escolher período.
   const load = useCallback(
     (opts?: { live?: boolean; refresh?: boolean }) => {
       abortRef.current?.abort();
@@ -479,11 +510,13 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       const reqId = ++requestIdRef.current;
 
       setLoading(true);
-      if (!opts?.refresh) setRows([]);
 
-      const live =
-        opts?.live ??
-        (period.preset === "today" || statusFilter !== "ALL" || objectiveFilter !== "ALL");
+      const live = shouldCampaignListFetchLive({
+        clientFilter,
+        periodUserActivated,
+        forceLive: opts?.live,
+        refresh: opts?.refresh
+      });
       const params = new URLSearchParams(periodStateToQuery(period));
       if (clientFilter) params.set("clientId", clientFilter);
       if (q.trim()) params.set("q", q.trim());
@@ -491,6 +524,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       if (showZeroActivity) params.set("showZero", "1");
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (objectiveFilter !== "ALL") params.set("objective", objectiveFilter);
+      if (objectiveFilter !== "ALL" && !live) params.set("metadata", "1");
       if (live) params.set("live", "1");
       if (opts?.refresh) params.set("refresh", "1");
       if (sortKey) {
@@ -552,7 +586,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       pageSize,
       sortKey,
       sortDir,
-      groupByType
+      groupByType,
+      periodUserActivated
     ]
   );
 
@@ -839,7 +874,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         />
       )}
 
-      {loading && period.preset === "today" ? (
+      {loading && shouldCampaignListFetchLive({ clientFilter, periodUserActivated }) ? (
         <div className="ui-alert-info">{t("loadingMetaToday")}</div>
       ) : null}
 
@@ -1040,7 +1075,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                   <CampaignDraftMobileCards
                     rows={draftDisplayRows}
                     resumeHref={draftResumeHref}
-                    onDiscard={discardDraft}
+                    onDiscard={requestDiscardDraft}
                     discardPendingId={draftDiscardPendingId}
                     statusDraftLabel={t("statusDraft")}
                     resumeLabel={t("resumeDraft")}
@@ -1093,7 +1128,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 <button
                                   type="button"
                                   disabled={discarding}
-                                  onClick={() => discardDraft(r)}
+                                  onClick={() => requestDiscardDraft(r)}
                                   className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-wait disabled:opacity-60"
                                   style={{
                                     borderColor: "rgba(239,68,68,0.35)",
@@ -1299,7 +1334,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         <CampaignDraftMobileCards
           rows={draftDisplayRows}
           resumeHref={draftResumeHref}
-          onDiscard={discardDraft}
+          onDiscard={requestDiscardDraft}
           discardPendingId={draftDiscardPendingId}
           statusDraftLabel={t("statusDraft")}
           resumeLabel={t("resumeDraft")}
@@ -1430,7 +1465,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("detailTitle")}</h2>
             <Link
-              href={`/campaigns/${selectedId}?client=${encodeURIComponent(selectedSlug)}`}
+              href={campaignDetailHref({ metaCampaignId: selectedId, clientSlug: selectedSlug })}
               className="ui-link text-xs"
             >
               {t("openFullPage")}
@@ -1475,6 +1510,31 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         open={creationPickerOpen}
         onClose={() => setCreationPickerOpen(false)}
         clientSlug={clientFilter || undefined}
+      />
+      <ConfirmDialog
+        open={draftDiscardTarget != null}
+        title={t("discardDraftConfirmTitle")}
+        description={
+          draftDiscardTarget ? (
+            <>
+              <span className="block font-medium text-[var(--text-main)]">
+                {draftDiscardTarget.campaignName}
+              </span>
+              <span className="mt-2 block">{t("discardDraftConfirm")}</span>
+            </>
+          ) : (
+            t("discardDraftConfirm")
+          )
+        }
+        confirmLabel={t("discardDraft")}
+        cancelLabel={tCommon("cancel")}
+        variant="danger"
+        loading={
+          draftDiscardTarget != null &&
+          draftDiscardPendingId === draftTemplateIdFromRow(draftDiscardTarget)
+        }
+        onConfirm={confirmDiscardDraft}
+        onCancel={() => setDraftDiscardTarget(null)}
       />
     </div>
   );

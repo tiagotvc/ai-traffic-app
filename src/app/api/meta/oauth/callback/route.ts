@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAppContext } from "@/lib/app-context";
 import {
   clearMetaOAuthCookies,
+  ensureWorkspaceMetaConnectionAfterOAuth,
   exchangeMetaBusinessCode,
   readMetaOAuthCookies
 } from "@/lib/meta-business-oauth";
@@ -31,9 +32,11 @@ export async function GET(req: Request) {
   }
 
   let userId: string;
+  let tenantId: string;
   try {
     const ctx = await getAppContext();
     userId = ctx.user.id;
+    tenantId = ctx.tenant.id;
   } catch {
     return NextResponse.redirect(`/login?callbackUrl=${encodeURIComponent(redirectTo ?? fallback)}`);
   }
@@ -44,6 +47,8 @@ export async function GET(req: Request) {
       `${fallback}?metaError=${encodeURIComponent(result.error)}`
     );
   }
+
+  await ensureWorkspaceMetaConnectionAfterOAuth(userId, tenantId);
 
   const target = redirectTo?.startsWith("/") ? redirectTo : fallback;
   return NextResponse.redirect(`${appOrigin}${target}?metaConnected=1`);

@@ -7,6 +7,7 @@ import { useState } from "react";
 import type { MapViewport } from "@/components/campaign-creator/GeoRadiusMapInner";
 import type { TargetingItem } from "@/lib/campaign-draft";
 import { isMapPinLocation } from "@/lib/campaign-draft";
+import { normalizeMetaRadiusKm } from "@/lib/zone-geo-shared";
 
 const GeoRadiusMapInner = dynamic(
   () => import("@/components/campaign-creator/GeoRadiusMapInner").then((m) => m.GeoRadiusMapInner),
@@ -97,7 +98,7 @@ export function GeoRadiusMapPicker({
                       onFocus={() => setSelectedPin(loc.value)}
                       onChange={(e) => {
                         setSelectedPin(loc.value);
-                        onUpdateRadius(loc.value, Number(e.target.value));
+                        onUpdateRadius(loc.value, normalizeMetaRadiusKm(Number(e.target.value)));
                       }}
                       className="w-24 accent-[#1877F2]"
                     />

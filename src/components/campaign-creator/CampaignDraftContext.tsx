@@ -118,7 +118,15 @@ export function CampaignDraftProvider({
         setPayload(parsed);
         setObjectiveChosen(true);
         if (parsed.meta?.creationMode === "ai" || initialActiveNode === "review") {
-          setActiveNode("review");
+          if (initialActiveNode === "ad" || parsed.meta?.wizardGenerated) {
+            setActiveNode("ad");
+          } else if (initialActiveNode === "review") {
+            setActiveNode("review");
+          } else if (parsed.meta?.creationMode === "ai") {
+            setActiveNode("review");
+          }
+        } else if (initialActiveNode) {
+          setActiveNode(initialActiveNode);
         }
       })
       .catch(() => {});

@@ -1,4 +1,5 @@
 import type { AdDraftItem } from "@/lib/campaign-draft";
+import { META_AD_COPY_LIMITS } from "@/lib/meta-ad-creative";
 import { parseMetaWelcomeMessage, type ParsedWelcomeMessage } from "@/lib/meta-welcome-message";
 
 type AdCreativeCopy = {
@@ -363,8 +364,12 @@ export function applyImportedToAd(
     (mode === "all" || mode === "media") && Boolean(imported.metaCreativeId?.trim());
 
   if (mode === "copy" || mode === "all") {
-    if (imported.titles?.length) next.titles = [...imported.titles];
-    if (imported.bodies?.length) next.bodies = [...imported.bodies];
+    if (imported.titles?.length) {
+      next.titles = [...imported.titles].slice(0, META_AD_COPY_LIMITS.titles);
+    }
+    if (imported.bodies?.length) {
+      next.bodies = [...imported.bodies].slice(0, META_AD_COPY_LIMITS.bodies);
+    }
     if (imported.linkUrl) next.linkUrl = imported.linkUrl;
     if (imported.urlParams) next.urlParams = imported.urlParams;
     if (imported.callToAction) next.callToAction = imported.callToAction;

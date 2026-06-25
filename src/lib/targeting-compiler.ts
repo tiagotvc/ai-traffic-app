@@ -34,7 +34,10 @@ export function zoneToTargetingInput(zone: UserZone): CampaignTargetingInput {
   return {
     countries: rules.countries?.length ? rules.countries : undefined,
     cities: rules.cities?.length ? rules.cities : undefined,
-    customLocations: rules.customLocations?.length ? rules.customLocations : undefined
+    customLocations: rules.customLocations?.length ? rules.customLocations : undefined,
+    excludedCustomLocations: rules.excludedCustomLocations?.length
+      ? rules.excludedCustomLocations
+      : undefined
   };
 }
 
@@ -47,6 +50,9 @@ export function mergeTargetingInputs(
     if (part.countries?.length) merged.countries = part.countries;
     if (part.cities?.length) merged.cities = part.cities;
     if (part.customLocations?.length) merged.customLocations = part.customLocations;
+    if (part.excludedCustomLocations?.length) {
+      merged.excludedCustomLocations = part.excludedCustomLocations;
+    }
     if (part.ageMin != null) merged.ageMin = part.ageMin;
     if (part.ageMax != null) merged.ageMax = part.ageMax;
     if (part.genders?.length) merged.genders = part.genders;

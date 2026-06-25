@@ -19,6 +19,7 @@ type Props = {
 export function AiZoneForm({ onClose, onSaved }: Props) {
   const t = useTranslations("audiences");
   const [prompt, setPrompt] = useState("");
+  const [defaultRadiusKm, setDefaultRadiusKm] = useState(3);
   const [provider, setProvider] = useState<"gemini" | "claude">("gemini");
   const [preview, setPreview] = useState<ZonePreview | null>(null);
   const [geoRules, setGeoRules] = useState<ZoneGeoRules | null>(null);
@@ -47,7 +48,7 @@ export function AiZoneForm({ onClose, onSaved }: Props) {
       const res = await fetch("/api/zones/ai-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phase: "preview", prompt, provider })
+        body: JSON.stringify({ phase: "preview", prompt, provider, defaultRadiusKm })
       });
       const j = await res.json();
       if (!j.ok) {
@@ -66,7 +67,7 @@ export function AiZoneForm({ onClose, onSaved }: Props) {
       const res = await fetch("/api/zones/ai-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phase: "geocode", prompt, provider, preview })
+        body: JSON.stringify({ phase: "geocode", prompt, provider, defaultRadiusKm, preview })
       });
       const j = await res.json();
       if (!j.ok) {
@@ -137,16 +138,39 @@ export function AiZoneForm({ onClose, onSaved }: Props) {
         </label>
       </div>
 
-      <label className="block space-y-1">
-        <span className="text-sm text-[var(--text-dim)]">{t("zonePromptLabel")}</span>
-        <textarea
-          className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-3 text-sm"
-          rows={4}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder={t("zonePromptPlaceholder")}
-        />
-      </label>
+      <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+        <label className="block space-y-1">
+          <span className="text-sm text-[var(--text-dim)]">{t("zonePromptLabel")}</span>
+          <textarea
+            className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-3 text-sm"
+            rows={4}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder={t("zonePromptPlaceholder")}
+          />
+        </label>
+
+        <label className="block space-y-1 sm:min-w-[8rem]">
+          <span className="text-sm text-[var(--text-dim)]">{t("zoneRadiusLabel")}</span>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              max={70}
+              step={1}
+              className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
+              value={defaultRadiusKm}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (!Number.isFinite(next)) return;
+                setDefaultRadiusKm(Math.min(70, Math.max(1, Math.round(next))));
+              }}
+            />
+            <span className="text-xs text-[var(--text-dimmer)]">km</span>
+          </div>
+          <p className="text-[11px] text-[var(--text-dimmer)]">{t("zoneRadiusHint")}</p>
+        </label>
+      </div>
 
       {preview ? (
         <div className="ui-card space-y-2 p-3 text-sm">
@@ -154,9 +178,13 @@ export function AiZoneForm({ onClose, onSaved }: Props) {
           <p className="text-[var(--text-dim)]">{preview.summary}</p>
           <ul className="list-inside list-disc text-[var(--text-dimmer)]">
             {preview.places.map((p) => (
-              <li key={p.label}>{p.label}</li>
+              <li key={p.label}>
+                {p.label}
+                {p.radiusKm != null ? ` (${p.radiusKm} km)` : ` (${defaultRadiusKm} km)`}
+              </li>
             ))}
           </ul>
+          <p className="text-[11px] text-[var(--text-dimmer)]">{t("zonePlacesLimitHint")}</p>
         </div>
       ) : null}
 

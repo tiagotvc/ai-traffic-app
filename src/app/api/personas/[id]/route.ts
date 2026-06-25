@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
+import { finalizeFlexibleSpecTargeting } from "@/lib/meta-targeting-prune";
 import {
   deleteUserPersona,
   getUserPersona,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/user-persona-zone";
 
 const PatchSchema = z.object({
+  adAccountId: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
   ageMin: z.number().int().min(13).max(65).optional(),
@@ -40,7 +42,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { tenant, user } = await getAppContext();
+  const { tenant, user, metaAccessToken } = await getAppContext();
   if (!user) {
     return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
   }
@@ -52,8 +54,21 @@ export async function PATCH(
   }
 
   const body = PatchSchema.parse(await req.json().catch(() => ({})));
-  const updated = await updateUserPersona(persona, body);
-  return NextResponse.json({ ok: true, persona: updated });
+  const { adAccountId, ...patchBody } = body;
+
+  let removedSegments: Array<{ id: string; name?: string }> | undefined;
+  if (patchBody.targeting && metaAccessToken && adAccountId) {
+    const finalized = await finalizeFlexibleSpecTargeting(
+      patchBody.targeting,
+      metaAccessToken,
+      adAccountId
+    );
+    patchBody.targeting = finalized.targeting;
+    removedSegments = finalized.removed.length ? finalized.removed : undefined;
+  }
+
+  const updated = await updateUserPersona(persona, patchBody);
+  return NextResponse.json({ ok: true, persona: updated, removedSegments });
 }
 
 export async function DELETE(
