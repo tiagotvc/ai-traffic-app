@@ -24,7 +24,7 @@ export function AdStep() {
   const tAds = useTranslations("ads");
   const locale = useLocale();
   const { payload, updatePayload, addAdMode } = useCampaignDraft();
-  const { assets, pages, instagramAccounts, pixels, loadAssets } = usePublishAssets(
+  const { assets, pages, instagramAccounts, pixels, whatsappNumbers, loadAssets } = usePublishAssets(
     payload.clientSlug,
     payload.adAccountId
   );
@@ -40,6 +40,7 @@ export function AdStep() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [identityUnlocked, setIdentityUnlocked] = useState(false);
+  const [whatsappManualEntry, setWhatsappManualEntry] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
   const ad = getActiveAd(payload);
@@ -64,12 +65,29 @@ export function AdStep() {
     });
   }, [ad.format, ad.imageHashes, ad.videoIds, assets]);
 
+  const pageWhatsappOptions = useMemo(
+    () => whatsappNumbers.filter((w) => w.pageId === ad.pageId),
+    [whatsappNumbers, ad.pageId]
+  );
+
   function patchAd(patch: Partial<AdDraftItem>) {
     updatePayload((p) => ({
       ...p,
       ads: p.ads.map((a) => (a.id === ad.id ? { ...a, ...patch } : a))
     }));
   }
+
+  useEffect(() => {
+    if (ad.destinationType !== "whatsapp") {
+      setWhatsappManualEntry(false);
+      return;
+    }
+    if (whatsappManualEntry) return;
+    if (pageWhatsappOptions.length === 1 && !ad.linkUrl.trim()) {
+      patchAd({ linkUrl: pageWhatsappOptions[0]!.waMeUrl, callToAction: "WHATSAPP_MESSAGE" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-fill only when page/options change
+  }, [ad.destinationType, ad.pageId, pageWhatsappOptions, whatsappManualEntry]);
 
   function selectAd(id: string) {
     updatePayload({ activeAdId: id });
@@ -455,7 +473,10 @@ export function AdStep() {
             <FormField label={tAds("page")}>
               <select
                 value={ad.pageId}
-                onChange={(e) => patchAd({ pageId: e.target.value })}
+                onChange={(e) => {
+                  setWhatsappManualEntry(false);
+                  patchAd({ pageId: e.target.value });
+                }}
                 className="ui-select"
                 disabled={clientRequired}
               >
@@ -505,112 +526,6 @@ export function AdStep() {
             ) : null}
           </>
         )}
-      </div>
-
-      <div className="ui-card space-y-3 p-4">
-        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("destinationSection")}</h3>
-        <FormField label={t("destinationType")}>
-          <select
-            value={ad.destinationType}
-            onChange={(e) =>
-              patchAd({
-                destinationType: e.target.value as AdDraftItem["destinationType"]
-              })
-            }
-            className="ui-select"
-            disabled={clientRequired}
-          >
-            <option value="website">{t("destWebsite")}</option>
-            {payload.objective === "leads" ? (
-              <option value="instant_form">{t("destInstantForm")}</option>
-            ) : null}
-            <option value="whatsapp">{t("destWhatsapp")}</option>
-          </select>
-        </FormField>
-        {ad.destinationType === "instant_form" && payload.objective === "leads" ? (
-          <FormField label={t("leadForm")}>
-            <select
-              value={ad.leadFormId ?? ""}
-              onChange={(e) => patchAd({ leadFormId: e.target.value || null })}
-              className="ui-select"
-              disabled={clientRequired}
-            >
-              <option value="">{t("selectLeadForm")}</option>
-              {leadForms.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </FormField>
-        ) : (
-          <FormField
-            label={
-              ad.destinationType === "whatsapp" ? t("destWhatsappUrl") : tAds("destinationUrl")
-            }
-          >
-            <input
-              value={ad.linkUrl}
-              onChange={(e) => patchAd({ linkUrl: e.target.value })}
-              placeholder={ad.destinationType === "whatsapp" ? "https://wa.me/..." : "https://"}
-              className="ui-input"
-              disabled={clientRequired}
-            />
-          </FormField>
-        )}
-        <FormField label={t("callToAction")}>
-          <select
-            value={ad.callToAction || "LEARN_MORE"}
-            onChange={(e) => patchAd({ callToAction: e.target.value })}
-            className="ui-select"
-            disabled={clientRequired}
-          >
-            <option value="LEARN_MORE">LEARN_MORE</option>
-            <option value="SIGN_UP">SIGN_UP</option>
-            <option value="SHOP_NOW">SHOP_NOW</option>
-            <option value="CONTACT_US">CONTACT_US</option>
-            <option value="WHATSAPP_MESSAGE">WHATSAPP_MESSAGE</option>
-          </select>
-        </FormField>
-        {showMessagingTemplate ? (
-          <MessageTemplateEditor
-            clientSlug={payload.clientSlug}
-            value={ad.messageTemplate}
-            defaultChannel={
-              adset.messagingChannels.includes("whatsapp")
-                ? "whatsapp"
-                : adset.messagingChannels.includes("messenger")
-                  ? "messenger"
-                  : adset.messagingChannels.includes("instagram")
-                    ? "instagram"
-                    : "whatsapp"
-            }
-            onChange={(messageTemplate) => {
-              patchAd({
-                messageTemplate,
-                whatsappWelcomeMessage: messageTemplate?.greeting?.trim() || null
-              });
-            }}
-            disabled={clientRequired}
-          />
-        ) : null}
-        <UtmBuilder
-          value={ad.utm}
-          onChange={(utm) => patchAd({ utm })}
-          disabled={clientRequired}
-        />
-        <FormField label={t("urlParams")}>
-          <MetaDynamicParamInput
-            value={ad.urlParams}
-            onChange={(v) => patchAd({ urlParams: v })}
-            placeholder={t("urlParamsOverrideHint")}
-            disabled={clientRequired}
-          />
-        </FormField>
-        <p className="text-[10px] text-[var(--text-dimmer)]">{t("dynamicParamHint")}</p>
-        {!publishReady && payload.clientSlug ? (
-          <p className="text-[11px] text-amber-700">{tAds("publishNotReady")}</p>
-        ) : null}
       </div>
 
       <div className="ui-card space-y-3 p-4">
@@ -742,6 +657,163 @@ export function AdStep() {
               </div>
             ))}
           </div>
+        ) : null}
+      </div>
+
+      <div className="ui-card space-y-3 p-4">
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("destinationSection")}</h3>
+        <FormField label={t("destinationType")}>
+          <select
+            value={ad.destinationType}
+            onChange={(e) => {
+              const destinationType = e.target.value as AdDraftItem["destinationType"];
+              const patch: Partial<AdDraftItem> = { destinationType };
+              if (
+                destinationType === "whatsapp" &&
+                (!ad.callToAction || ad.callToAction === "LEARN_MORE")
+              ) {
+                patch.callToAction = "WHATSAPP_MESSAGE";
+              }
+              patchAd(patch);
+            }}
+            className="ui-select"
+            disabled={clientRequired}
+          >
+            <option value="website">{t("destWebsite")}</option>
+            {payload.objective === "leads" ? (
+              <option value="instant_form">{t("destInstantForm")}</option>
+            ) : null}
+            <option value="whatsapp">{t("destWhatsapp")}</option>
+          </select>
+        </FormField>
+        {ad.destinationType === "instant_form" && payload.objective === "leads" ? (
+          <FormField label={t("leadForm")}>
+            <select
+              value={ad.leadFormId ?? ""}
+              onChange={(e) => patchAd({ leadFormId: e.target.value || null })}
+              className="ui-select"
+              disabled={clientRequired}
+            >
+              <option value="">{t("selectLeadForm")}</option>
+              {leadForms.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </FormField>
+        ) : ad.destinationType === "whatsapp" ? (
+          <div className="space-y-2">
+            {pageWhatsappOptions.length > 0 && !whatsappManualEntry ? (
+              <FormField label={t("destWhatsappSelect")}>
+                <select
+                  value={
+                    pageWhatsappOptions.some((w) => w.waMeUrl === ad.linkUrl) ? ad.linkUrl : ""
+                  }
+                  onChange={(e) => {
+                    const waMeUrl = e.target.value;
+                    if (waMeUrl) {
+                      patchAd({ linkUrl: waMeUrl, callToAction: "WHATSAPP_MESSAGE" });
+                    }
+                  }}
+                  className="ui-select"
+                  disabled={clientRequired}
+                >
+                  <option value="">{t("destWhatsappSelectPlaceholder")}</option>
+                  {pageWhatsappOptions.map((w) => (
+                    <option key={w.waMeUrl} value={w.waMeUrl}>
+                      {w.phone}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            ) : (
+              <p className="text-xs text-amber-700">{t("destWhatsappEmpty")}</p>
+            )}
+            {pageWhatsappOptions.length > 0 ? (
+              <button
+                type="button"
+                className="text-[11px] text-[var(--violet)] hover:underline"
+                onClick={() => setWhatsappManualEntry((v) => !v)}
+              >
+                {t("destWhatsappManualFallback")}
+              </button>
+            ) : null}
+            {(whatsappManualEntry || pageWhatsappOptions.length === 0) ? (
+              <FormField label={t("destWhatsappUrl")}>
+                <input
+                  value={ad.linkUrl}
+                  onChange={(e) => patchAd({ linkUrl: e.target.value })}
+                  placeholder="https://wa.me/..."
+                  className="ui-input"
+                  disabled={clientRequired}
+                />
+              </FormField>
+            ) : null}
+          </div>
+        ) : (
+          <FormField label={tAds("destinationUrl")}>
+            <input
+              value={ad.linkUrl}
+              onChange={(e) => patchAd({ linkUrl: e.target.value })}
+              placeholder="https://"
+              className="ui-input"
+              disabled={clientRequired}
+            />
+          </FormField>
+        )}
+        <FormField label={t("callToAction")}>
+          <select
+            value={ad.callToAction || "LEARN_MORE"}
+            onChange={(e) => patchAd({ callToAction: e.target.value })}
+            className="ui-select"
+            disabled={clientRequired}
+          >
+            <option value="LEARN_MORE">{t("ctaLearnMore")}</option>
+            <option value="SIGN_UP">{t("ctaSignUp")}</option>
+            <option value="SHOP_NOW">{t("ctaShopNow")}</option>
+            <option value="CONTACT_US">{t("ctaContactUs")}</option>
+            <option value="WHATSAPP_MESSAGE">{t("ctaWhatsapp")}</option>
+          </select>
+        </FormField>
+        {showMessagingTemplate ? (
+          <MessageTemplateEditor
+            clientSlug={payload.clientSlug}
+            value={ad.messageTemplate}
+            defaultChannel={
+              adset.messagingChannels.includes("whatsapp")
+                ? "whatsapp"
+                : adset.messagingChannels.includes("messenger")
+                  ? "messenger"
+                  : adset.messagingChannels.includes("instagram")
+                    ? "instagram"
+                    : "whatsapp"
+            }
+            onChange={(messageTemplate) => {
+              patchAd({
+                messageTemplate,
+                whatsappWelcomeMessage: messageTemplate?.greeting?.trim() || null
+              });
+            }}
+            disabled={clientRequired}
+          />
+        ) : null}
+        <UtmBuilder
+          value={ad.utm}
+          onChange={(utm) => patchAd({ utm })}
+          disabled={clientRequired}
+        />
+        <FormField label={t("urlParams")}>
+          <MetaDynamicParamInput
+            value={ad.urlParams}
+            onChange={(v) => patchAd({ urlParams: v })}
+            placeholder={t("urlParamsOverrideHint")}
+            disabled={clientRequired}
+          />
+        </FormField>
+        <p className="text-[10px] text-[var(--text-dimmer)]">{t("dynamicParamHint")}</p>
+        {!publishReady && payload.clientSlug ? (
+          <p className="text-[11px] text-amber-700">{tAds("publishNotReady")}</p>
         ) : null}
       </div>
 

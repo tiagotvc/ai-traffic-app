@@ -74,5 +74,16 @@ export async function GET(
   }
 
   const ads = await loadAdsFromSnapshots(metaCampaignId, period);
+  if (!ads.length && (metaAccessToken || fallbackMetaToken)) {
+    const [liveAds, metricsMap] = await Promise.all([
+      loadAds(metaCampaignId, metaAccessToken ?? undefined, fallbackMetaToken),
+      loadAdMetrics(metaCampaignId, metaAccessToken ?? undefined, fallbackMetaToken, period)
+    ]);
+    const adsWithMetrics = liveAds.map((a) => ({
+      ...a,
+      metrics: metricsMap.get(a.id) ?? null
+    }));
+    return NextResponse.json({ ok: true, ads: adsWithMetrics, total: adsWithMetrics.length });
+  }
   return NextResponse.json({ ok: true, ads, total: ads.length });
 }

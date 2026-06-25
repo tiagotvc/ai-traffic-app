@@ -6,11 +6,18 @@ import {
   fetchInstagramAccountsForAdAccount,
   fetchInstagramFromPages,
   fetchPagesForAdAccount,
-  fetchUserPages
+  fetchUserPages,
+  fetchWhatsappNumbersFromPages
 } from "@/lib/meta-graph";
 
 export type PublishPage = { metaPageId: string; name: string };
 export type PublishInstagram = { id: string; username: string };
+export type PublishWhatsappNumber = {
+  pageId: string;
+  phone: string;
+  waMeUrl: string;
+  isBusiness?: boolean;
+};
 
 function mergePages(
   ...lists: Array<Array<{ id?: string; metaPageId?: string; name?: string }>>
@@ -89,4 +96,16 @@ export async function resolveInstagramForAdAccount(input: {
     id: i.id,
     username: i.username?.trim() || i.id
   }));
+}
+
+/** Números WhatsApp vinculados às páginas da conta. */
+export async function resolveWhatsappForPages(input: {
+  metaAccessToken?: string | null;
+  pages: PublishPage[];
+}): Promise<PublishWhatsappNumber[]> {
+  if (!input.metaAccessToken || !input.pages.length) return [];
+  return fetchWhatsappNumbersFromPages(
+    input.metaAccessToken,
+    input.pages.map((p) => p.metaPageId)
+  );
 }

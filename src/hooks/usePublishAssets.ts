@@ -11,6 +11,12 @@ export type PublishAsset = {
 export type PublishPage = { metaPageId: string; name: string };
 export type PublishIgAccount = { id: string; username: string };
 export type PublishPixel = { id: string; name: string };
+export type PublishWhatsappNumber = {
+  pageId: string;
+  phone: string;
+  waMeUrl: string;
+  isBusiness?: boolean;
+};
 export type PublishCustomConversion = { id: string; label: string; eventType?: string };
 export type PublishAdAccount = { metaAdAccountId: string; label: string };
 export type PublishAudience = { id: string; name: string; subtype?: string };
@@ -51,6 +57,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
   const [assets, setAssets] = useState<PublishAsset[]>([]);
   const [pages, setPages] = useState<PublishPage[]>([]);
   const [instagramAccounts, setInstagramAccounts] = useState<PublishIgAccount[]>([]);
+  const [whatsappNumbers, setWhatsappNumbers] = useState<PublishWhatsappNumber[]>([]);
   const [pixels, setPixels] = useState<PublishPixel[]>([]);
   const [customConversions, setCustomConversions] = useState<PublishCustomConversion[]>([]);
   const [audiences, setAudiences] = useState<PublishAudience[]>([]);
@@ -101,6 +108,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
         setAssets([]);
         setPages([]);
         setInstagramAccounts([]);
+        setWhatsappNumbers([]);
         setPixels([]);
         setCustomConversions([]);
         setAudiences([]);
@@ -130,6 +138,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
           assets?: PublishAsset[];
           pages?: PublishPage[];
           instagramAccounts?: PublishIgAccount[];
+          whatsappNumbers?: PublishWhatsappNumber[];
           pixels?: PublishPixel[];
           customConversions?: PublishCustomConversion[];
           error?: string;
@@ -142,16 +151,18 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
               ? "account_not_linked"
               : classifyAccountsError(j.error);
           setAssetsError(code);
-          setAssets([]);
-          setPages([]);
-          setInstagramAccounts([]);
-          setPixels([]);
-          setCustomConversions([]);
-          return;
+        setAssets([]);
+        setPages([]);
+        setInstagramAccounts([]);
+        setWhatsappNumbers([]);
+        setPixels([]);
+        setCustomConversions([]);
+        return;
         }
         setAssets(j.assets ?? []);
         setPages(j.pages ?? []);
         setInstagramAccounts(j.instagramAccounts ?? []);
+        setWhatsappNumbers(j.whatsappNumbers ?? []);
         setPixels(j.pixels ?? []);
         setCustomConversions(j.customConversions ?? []);
       } catch {
@@ -238,6 +249,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
     assets,
     pages,
     instagramAccounts,
+    whatsappNumbers,
     pixels,
     customConversions,
     audiences,
