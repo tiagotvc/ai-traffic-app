@@ -1,12 +1,14 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Building2, BarChart2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { DsPageHeader } from "@/design-system";
 import { CreativesLibraryView } from "@/components/creatives/CreativesLibraryView";
 import { CreativesRankingView } from "@/components/creatives/CreativesRankingView";
 import { RankingConfigModal } from "@/components/creatives/RankingConfigModal";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { DownloadIcon } from "@/components/ui/DownloadIcon";
 import { SettingsOutlineIcon } from "@/components/ui/OutlineIcon";
@@ -18,6 +20,7 @@ type AccountOpt = { metaAdAccountId: string; label: string };
 export function CreativesLibraryClient() {
   const t = useTranslations("creatives");
   const tPerf = useTranslations("creativesPerf");
+  const tDash = useTranslations("dashboard");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
   const [clientId, setClientId] = useState("");
@@ -69,32 +72,25 @@ export function CreativesLibraryClient() {
         actions={
           <div className="flex flex-wrap items-center gap-2 print:hidden">
             <PeriodFilter value={period} onChange={setPeriod} />
-            <span className="text-xs text-[var(--text-dim)]">{t("clientLabel")}:</span>
-          <select
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className="ui-select !w-auto !py-1.5 text-sm"
-          >
-            {clients.map((c) => (
-              <option key={c.id} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          {accounts.length > 1 ? (
-            <select
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              className="ui-select !w-auto !py-1.5 text-sm"
-            >
-              <option value="">{tPerf("allAccounts")}</option>
-              {accounts.map((a) => (
-                <option key={a.metaAdAccountId} value={a.metaAdAccountId}>
-                  {a.label}
-                </option>
-              ))}
-            </select>
-          ) : null}
+            <FilterSelectDropdown
+              icon={<Building2 size={14} />}
+              label={t("filterClient")}
+              placeholder={t("filterClient")}
+              value={clientId}
+              onChange={setClientId}
+              clearable={false}
+              options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+            />
+            {accounts.length > 1 ? (
+              <FilterSelectDropdown
+                icon={<BarChart2 size={14} />}
+                label={tDash("filterAccount")}
+                placeholder={tPerf("allAccounts")}
+                value={accountId}
+                onChange={setAccountId}
+                options={accounts.map((a) => ({ value: a.metaAdAccountId, label: a.label }))}
+              />
+            ) : null}
           <button
             type="button"
             onClick={() => setRankVersion((v) => v + 1)}

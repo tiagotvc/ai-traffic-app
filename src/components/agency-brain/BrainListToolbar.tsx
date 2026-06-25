@@ -1,7 +1,10 @@
 "use client";
 
+import { ArrowDownUp, ArrowUpDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 
 export type BrainSortOption = {
   value: string;
@@ -37,34 +40,39 @@ export function BrainListToolbar({
 }) {
   const t = useTranslations("agencyBrain");
 
+  const sortControls = (
+    <>
+      <FilterSelectDropdown
+        icon={<ArrowUpDown size={14} />}
+        label={t("sortLabel")}
+        placeholder={sortOptions[0]?.label ?? t("sortLabel")}
+        clearable={false}
+        value={sortBy}
+        onChange={onSortByChange}
+        options={sortOptions.map((opt) => ({ value: opt.value, label: opt.label }))}
+      />
+      <FilterSelectDropdown
+        icon={<ArrowDownUp size={14} />}
+        label={t("sortLabel")}
+        placeholder={t("sortDir.desc")}
+        clearable={false}
+        value={sortDir}
+        onChange={(v) => onSortDirChange(v as "asc" | "desc")}
+        options={[
+          { value: "desc", label: t("sortDir.desc") },
+          { value: "asc", label: t("sortDir.asc") }
+        ]}
+      />
+    </>
+  );
+
   if (compact) {
     return (
       <div className="ui-card shrink-0 space-y-2 p-2.5">
         {filters}
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <select
-              className="ui-select !py-1 text-xs"
-              value={sortBy}
-              onChange={(e) => onSortByChange(e.target.value)}
-              aria-label={t("sortLabel")}
-            >
-              {sortOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className="ui-select !py-1 text-xs"
-              value={sortDir}
-              onChange={(e) => onSortDirChange(e.target.value as "asc" | "desc")}
-            >
-              <option value="desc">{t("sortDir.desc")}</option>
-              <option value="asc">{t("sortDir.asc")}</option>
-            </select>
-          </div>
+          <div className="flex flex-wrap items-center gap-1.5">{sortControls}</div>
 
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-dim)]">
             <span>{t("resultsCount", { count: total })}</span>
@@ -101,28 +109,7 @@ export function BrainListToolbar({
       {filters}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="text-xs text-[var(--text-dim)]">{t("sortLabel")}</label>
-          <select
-            className="ui-select text-sm"
-            value={sortBy}
-            onChange={(e) => onSortByChange(e.target.value)}
-          >
-            {sortOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <select
-            className="ui-select text-sm"
-            value={sortDir}
-            onChange={(e) => onSortDirChange(e.target.value as "asc" | "desc")}
-          >
-            <option value="desc">{t("sortDir.desc")}</option>
-            <option value="asc">{t("sortDir.asc")}</option>
-          </select>
-        </div>
+        <div className="flex flex-wrap items-center gap-2">{sortControls}</div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-dim)]">
           <span>{t("resultsCount", { count: total })}</span>

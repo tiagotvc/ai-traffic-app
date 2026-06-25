@@ -1,10 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { BarChart2, Building2, RefreshCw, Search } from "lucide-react";
+import { BarChart2, Building2, RefreshCw } from "lucide-react";
 import { useTransition } from "react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { PeriodFilter } from "@/components/PeriodFilter";
 import { IconLabelButton } from "@/components/ui/IconLabelButton";
@@ -92,27 +93,17 @@ export function CommandStrip() {
     });
   }
 
-  const pillStyle = {
-    color: "var(--text-main)",
-    background: "var(--filter-btn-bg)",
-    borderColor: "var(--border-color)"
-  };
-
   const actions = (
     <>
       {leadingSlot}
       {showSearch ? (
-        <div className="flex min-w-0 max-w-[240px] flex-1 items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all duration-200 whitespace-nowrap" style={pillStyle}>
-          <Search size={14} style={{ color: "var(--text-dim)" }} className="shrink-0" />
-          <input
-            type="search"
-            value={searchValue}
-            onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="min-w-0 flex-1 border-none bg-transparent text-sm outline-none"
-            style={{ color: "var(--text-main)" }}
-          />
-        </div>
+        <FilterSearchInput
+          size="wide"
+          className="max-w-[360px]"
+          value={searchValue}
+          onChange={(v) => onSearchChange?.(v)}
+          placeholder={searchPlaceholder ?? ""}
+        />
       ) : null}
       {middleTrailingSlot}
       {trailingSlot}

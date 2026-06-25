@@ -188,7 +188,7 @@ export function MetaFilterSearchBar({
       : [];
 
   const isFilterPill = variant === "filterPill";
-  const pillBorder = open ? "var(--amber-bright)" : "var(--border-color)";
+  const pillBorder = open ? "var(--ui-accent)" : "var(--border-color)";
 
   return (
     <div
@@ -198,7 +198,7 @@ export function MetaFilterSearchBar({
       <div
         className={
           isFilterPill
-            ? "flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-all duration-200"
+            ? "flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus-within:border-[var(--ui-accent)]"
             : "flex flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] px-2 py-1.5 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-100"
         }
         style={
@@ -212,7 +212,7 @@ export function MetaFilterSearchBar({
         }
       >
         {isFilterPill ? (
-          <Search size={14} className="shrink-0" style={{ color: "var(--text-dim)" }} />
+          <Search size={14} className="shrink-0" style={{ color: "var(--ui-accent)" }} />
         ) : null}
         {filters.map((f) => (
           <span

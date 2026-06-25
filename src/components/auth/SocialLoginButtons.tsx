@@ -58,7 +58,7 @@ export function SocialLoginButtons({
       {metaConfigured ? (
         <Link
           href={facebookHandoffHref}
-          className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#1877F2] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#166FE5]"
+          className="ui-btn-meta w-full"
         >
           <FacebookBrandIcon className="h-5 w-5 text-white" />
           {t("continueWithFacebook")}

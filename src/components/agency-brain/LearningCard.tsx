@@ -172,7 +172,7 @@ export function LearningCard({
             <>
               <button
                 type="button"
-                className="ui-btn-primary !px-3 !py-1.5 text-xs"
+                className="ui-btn-primary px-3 py-1.5 text-xs"
                 disabled={busy}
                 onClick={() => {
                   if (lowConfidence && !window.confirm(t("approveLowConfidenceConfirm"))) return;
@@ -183,7 +183,7 @@ export function LearningCard({
               </button>
               <button
                 type="button"
-                className="ui-btn-secondary !px-3 !py-1.5 text-xs"
+                className="ui-btn-secondary px-3 py-1.5 text-xs"
                 disabled={busy}
                 onClick={() => onReject(learning.id)}
               >
@@ -195,14 +195,14 @@ export function LearningCard({
               {evidenceLines.length > 0 && learning.metaCampaignId ? (
                 <Link
                   href={`/clients/${clientId}/campaigns?campaign=${encodeURIComponent(learning.metaCampaignId)}`}
-                  className="ui-btn-secondary inline-flex !px-3 !py-1.5 text-xs"
+                  className="ui-btn-secondary inline-flex px-3 py-1.5 text-xs"
                 >
                   {t("insightViewEvidence")}
                 </Link>
               ) : null}
               <button
                 type="button"
-                className="ui-btn-secondary !px-3 !py-1.5 text-xs"
+                className="ui-btn-secondary px-3 py-1.5 text-xs"
                 disabled={busy}
                 onClick={() => onEdit(learning)}
               >
@@ -211,7 +211,7 @@ export function LearningCard({
               {learning.status !== "ARCHIVED" ? (
                 <button
                   type="button"
-                  className="ui-btn-secondary !px-3 !py-1.5 text-xs"
+                  className="ui-btn-secondary px-3 py-1.5 text-xs"
                   disabled={busy}
                   onClick={() => onArchive(learning.id)}
                 >

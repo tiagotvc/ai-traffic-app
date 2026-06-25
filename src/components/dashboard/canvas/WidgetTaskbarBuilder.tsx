@@ -185,7 +185,7 @@ export function WidgetTaskbarBuilder({
                 key={kind}
                 type="button"
                 onClick={() => addBlock(kind)}
-                className="ui-btn-secondary !px-2.5 !py-1.5 text-[11px]"
+                className="ui-btn-secondary px-2.5 py-1.5 text-[11px]"
               >
                 <Plus size={12} />
                 <Icon size={12} />

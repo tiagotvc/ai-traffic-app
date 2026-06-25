@@ -4,7 +4,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { ListFilter } from "lucide-react";
+
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
 import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
@@ -416,15 +419,17 @@ export function CampaignAdsClient({
           }}
           className="min-w-[240px] flex-1"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="ui-select w-auto text-sm"
-        >
-          <option value="all">{t("filterStatusAll")}</option>
-          <option value="active">{t("filterStatusActive")}</option>
-          <option value="paused">{t("filterStatusPaused")}</option>
-        </select>
+        <FilterSelectDropdown
+          icon={<ListFilter size={14} />}
+          label={tCampaigns("filterStatus")}
+          placeholder={t("filterStatusAll")}
+          value={statusFilter === "all" ? "" : statusFilter}
+          onChange={(v) => setStatusFilter(v || "all")}
+          options={[
+            { value: "active", label: t("filterStatusActive") },
+            { value: "paused", label: t("filterStatusPaused") }
+          ]}
+        />
         <div className="ml-auto">
           <CampaignTableColumnsButton />
         </div>

@@ -60,7 +60,7 @@ export function CreativesContentLive() {
     <>
       <PageToolbar
         eyebrow={t("rankingTitle")}
-        icon={<Trophy size={16} style={{ color: "#f5a623" }} />}
+        icon={<Trophy size={16} />}
         title={t("rankingTitle")}
         subtitle={t("rankingSubtitle")}
         search={{
@@ -70,7 +70,7 @@ export function CreativesContentLive() {
         }}
         pageFilters={
           <FilterSelectDropdown
-            icon={<Filter size={13} style={{ color: "#f5a623" }} />}
+            icon={<Filter size={13} style={{ color: "var(--ui-accent)" }} />}
             label=""
             placeholder={t("campaignTypeFilter")}
             options={filterTabs.map((tab) => ({ value: tab, label: tab }))}

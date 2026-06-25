@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { DsButton, DsModal } from "@/design-system";
 import { MetricCatalogPicker } from "@/components/CampaignTableColumnsModal";
 import { CAMPAIGN_PRESETS } from "@/lib/campaign-presets";
 import type { MetricKey } from "@/lib/dashboard-metrics";
@@ -36,16 +37,6 @@ export function CreateCampaignTypeModal({
     }
   }, [open]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    if (open) document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   async function save() {
     if (!name.trim() || !metrics.length) {
       setError(t("validation"));
@@ -77,52 +68,48 @@ export function CreateCampaignTypeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onMouseDown={onClose}>
-      <div
-        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-base font-semibold text-[var(--text-main)]">{t("createType")}</h2>
-        <p className="mt-1 text-xs text-[var(--text-dim)]">{t("createTypeHint")}</p>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t("typeName")}
-          className="ui-input mt-3 w-full text-sm"
-        />
-        <label className="mt-2 flex items-center gap-2 text-xs text-[var(--text-dim)]">
-          <input
-            type="checkbox"
-            checked={shared}
-            onChange={(e) => setShared(e.target.checked)}
-            className="accent-violet-600"
-          />
-          {t("sharedType")}
-        </label>
-        <div className="mt-4">
-          <MetricCatalogPicker
-            selected={metrics}
-            onChange={setMetrics}
-            customMetrics={customMetrics}
-            max={8}
-          />
-        </div>
-        {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" className="ui-btn-secondary text-xs" onClick={onClose}>
+    <DsModal
+      open={open}
+      onClose={onClose}
+      title={t("createType")}
+      subtitle={t("createTypeHint")}
+      width="lg"
+      footer={
+        <>
+          <DsButton variant="secondary" size="sm" onClick={onClose}>
             {t("cancel")}
-          </button>
-          <button
-            type="button"
-            className="ui-btn-primary text-xs"
-            disabled={saving}
-            onClick={() => void save()}
-          >
+          </DsButton>
+          <DsButton variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
             {t("save")}
-          </button>
-        </div>
+          </DsButton>
+        </>
+      }
+    >
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={t("typeName")}
+        className="ui-input w-full text-sm"
+      />
+      <label className="mt-2 flex items-center gap-2 text-xs text-[var(--text-dim)]">
+        <input
+          type="checkbox"
+          checked={shared}
+          onChange={(e) => setShared(e.target.checked)}
+          className="accent-violet-600"
+        />
+        {t("sharedType")}
+      </label>
+      <div className="mt-4">
+        <MetricCatalogPicker
+          selected={metrics}
+          onChange={setMetrics}
+          customMetrics={customMetrics}
+          max={8}
+        />
       </div>
-    </div>
+      {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+    </DsModal>
   );
 }
 

@@ -48,7 +48,7 @@ export function HypothesisFeedCard({
       <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--border-color)] pt-4">
         <Link
           href={`/agency-brain/hypotheses/${hypothesis.id}`}
-          className="ui-btn-secondary !px-3 !py-1.5 text-xs"
+          className="ui-btn-secondary px-3 py-1.5 text-xs"
         >
           {t("viewPlan")}
         </Link>

@@ -1,11 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { ListFilter, Tag, Target } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAgencyBrainAi } from "@/components/agency-brain/AgencyBrainAiContext";
 import { BrainListCard } from "@/components/agency-brain/BrainListCard";
 import { BrainListToolbar } from "@/components/agency-brain/BrainListToolbar";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { AgencyBrainEmptyGuide } from "@/components/agency-brain/AgencyBrainEmptyGuide";
 import { AgencyBrainModuleIntro } from "@/components/agency-brain/AgencyBrainModuleIntro";
 import { FeedbackBanner, type FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
@@ -50,6 +52,7 @@ function statusVariant(status: HypothesisDto["status"]): "neutral" | "success" |
 
 export function HypothesesContent({ clientId }: { clientId: string }) {
   const t = useTranslations("agencyBrain");
+  const tCampaigns = useTranslations("campaignsPage");
   const { aiDisabled, refresh: refreshAiStatus } = useAgencyBrainAi();
 
   const [items, setItems] = useState<HypothesisDto[]>([]);
@@ -248,45 +251,42 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
         onPageChange={setPage}
         listLoading={listLoading}
         filters={
-          <div className="grid gap-3 sm:grid-cols-3">
-            <select
-              className="ui-select"
+          <div className="flex flex-wrap gap-2">
+            <FilterSelectDropdown
+              icon={<ListFilter size={14} />}
+              label={tCampaigns("filterStatus")}
+              placeholder={t("filterAllStatus")}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as HypothesisDto["status"] | "")}
-            >
-              <option value="">{t("filterAllStatus")}</option>
-              {(["SUGGESTED", "TESTING", "CONFIRMED", "REJECTED", "PROMOTED"] as const).map(
-                (s) => (
-                  <option key={s} value={s}>
-                    {t(`hypothesisStatus.${s}`)}
-                  </option>
-                )
+              onChange={(v) => setStatusFilter(v as HypothesisDto["status"] | "")}
+              options={(["SUGGESTED", "TESTING", "CONFIRMED", "REJECTED", "PROMOTED"] as const).map(
+                (s) => ({
+                  value: s,
+                  label: t(`hypothesisStatus.${s}`)
+                })
               )}
-            </select>
-            <select
-              className="ui-select"
+            />
+            <FilterSelectDropdown
+              icon={<Target size={14} />}
+              label={t("marketPatternSource")}
+              placeholder={t("filterAllSource")}
               value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value as HypothesisDto["source"] | "")}
-            >
-              <option value="">{t("filterAllSource")}</option>
-              {(["RULE", "AI", "MANUAL"] as const).map((s) => (
-                <option key={s} value={s}>
-                  {t(`hypothesisSource.${s}`)}
-                </option>
-              ))}
-            </select>
-            <select
-              className="ui-select"
+              onChange={(v) => setSourceFilter(v as HypothesisDto["source"] | "")}
+              options={(["RULE", "AI", "MANUAL"] as const).map((s) => ({
+                value: s,
+                label: t(`hypothesisSource.${s}`)
+              }))}
+            />
+            <FilterSelectDropdown
+              icon={<Tag size={14} />}
+              label={t("fieldCategory")}
+              placeholder={t("filterAllCategories")}
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value as LearningCategory | "")}
-            >
-              <option value="">{t("filterAllCategories")}</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {t(`category.${c}`)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setCategoryFilter(v as LearningCategory | "")}
+              options={CATEGORIES.map((c) => ({
+                value: c,
+                label: t(`category.${c}`)
+              }))}
+            />
           </div>
         }
       />

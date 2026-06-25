@@ -11,6 +11,32 @@ export function classifyLlmError(err: unknown, provider?: "gemini" | "claude"): 
   return { code: gemini.code as LlmError["code"], message: gemini.message };
 }
 
+export function llmErrorHttpStatus(error: LlmError): number {
+  switch (error.code) {
+    case "NO_API_KEY":
+    case "SERVICE_UNAVAILABLE":
+      return 503;
+    case "RATE_LIMIT":
+      return 429;
+    case "SCHEMA_ERROR":
+    case "PARSE_ERROR":
+      return 502;
+    default:
+      return 500;
+  }
+}
+
+export function isTemporaryLlmError(err: unknown, provider?: "gemini" | "claude"): boolean {
+  const classified = classifyLlmError(err, provider);
+  const msg = classified.message.toLowerCase();
+  return (
+    classified.code === "RATE_LIMIT" ||
+    classified.code === "SERVICE_UNAVAILABLE" ||
+    msg.includes("indisponível") ||
+    msg.includes("unavailable")
+  );
+}
+
 export async function llmGenerateJson<T>(
   args: LlmGenerateJsonArgs<T>
 ): Promise<LlmGenerateJsonResult<T>> {

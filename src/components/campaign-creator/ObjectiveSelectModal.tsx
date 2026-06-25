@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 
+import { DsModal } from "@/design-system";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import type { BuyingType, CampaignObjectiveKey } from "@/lib/campaign-draft";
 import { CAMPAIGN_OBJECTIVES, objectivesForBuyingType } from "@/lib/campaign-draft";
@@ -20,8 +21,6 @@ const OBJECTIVE_ICONS: Record<CampaignObjectiveKey, string> = {
 export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTranslations("campaignCreator");
   const { payload, updatePayload, setObjectiveChosen, setActiveNode } = useCampaignDraft();
-
-  if (!open) return null;
 
   const availableObjectives = objectivesForBuyingType(payload.buyingType);
 
@@ -69,19 +68,19 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-[var(--surface-card)] p-6 shadow-xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("objectiveModalTitle")}</h2>
-            <p className="mt-1 text-sm text-[var(--text-dim)]">{t("objectiveModalHint")}</p>
-          </div>
-          <button type="button" onClick={onClose} className="text-[var(--text-dimmer)] hover:text-[var(--text-dim)]">
-            ✕
-          </button>
-        </div>
-
-        <div className="mt-4">
+    <DsModal
+      open={open}
+      onClose={onClose}
+      title={t("objectiveModalTitle")}
+      subtitle={t("objectiveModalHint")}
+      width="lg"
+      footer={
+        <Link href="/campaigns" className="ui-link text-xs">
+          {t("close")}
+        </Link>
+      }
+    >
+        <div>
           <label className="text-xs font-medium text-[var(--text-dim)]">{t("buyingType")}</label>
           <select
             className="ui-select mt-1 w-full text-sm"
@@ -103,12 +102,14 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
               key={obj}
               type="button"
               onClick={() => select(obj)}
-              className={`flex items-start gap-3 rounded-xl border p-4 text-left transition hover:border-violet-300 hover:bg-[rgba(124,58,237,0.06)]/50 ${
-                payload.objective === obj ? "border-violet-400 bg-[rgba(124,58,237,0.06)]" : "border-[var(--border-color)]"
+              className={`flex items-start gap-3 rounded-xl border p-4 text-left transition hover:border-[var(--ui-accent-border)] hover:bg-[var(--ui-accent-hover)] ${
+                payload.objective === obj
+                  ? "border-[var(--ui-accent-border-strong)] bg-[var(--ui-accent-hover)]"
+                  : "border-[var(--border-color)]"
               }`}
             >
               <svg
-                className="mt-0.5 h-5 w-5 shrink-0 text-[var(--violet)]"
+                className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ui-accent)]"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -123,12 +124,6 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
             </button>
           ))}
         </div>
-        <div className="mt-6">
-          <Link href="/campaigns" className="ui-link text-xs">
-            {t("close")}
-          </Link>
-        </div>
-      </div>
-    </div>
+    </DsModal>
   );
 }

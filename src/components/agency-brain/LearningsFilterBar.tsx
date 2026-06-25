@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import type { LearningCategory } from "@/lib/agency-brain/types";
 import type { LearningScopeId } from "@/lib/agency-brain/learning-scopes";
 
@@ -125,11 +126,12 @@ export function LearningsFilterBar({
             </div>
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 sm:max-w-md">
-              <input
-                className="ui-input !h-8 min-w-[8rem] flex-1 !border-[var(--border-color)] !bg-transparent !py-0 text-[11px] shadow-none sm:min-w-[10rem]"
-                placeholder={t("searchPlaceholder")}
+              <FilterSearchInput
+                size="wide"
+                className="!h-8 min-h-8 flex-1 !py-1.5 text-xs"
                 value={search}
-                onChange={(e) => onSearchChange(e.target.value)}
+                onChange={onSearchChange}
+                placeholder={t("searchPlaceholder")}
                 aria-label={t("filterSearchLabel")}
               />
               <button

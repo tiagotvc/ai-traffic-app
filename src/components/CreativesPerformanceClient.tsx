@@ -1,9 +1,11 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { Building2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
@@ -103,20 +105,15 @@ export function CreativesPerformanceClient() {
         title={t("title")}
         subtitle={t("subtitle")}
         actions={
-          <>
-            <span className="text-xs text-[var(--text-dim)]">{t("clientLabel")}:</span>
-            <select
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              className="ui-select !w-auto !py-1.5 text-sm"
-            >
-              {clients.map((c) => (
-                <option key={c.id} value={c.slug}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </>
+          <FilterSelectDropdown
+            icon={<Building2 size={14} />}
+            label={t("clientLabel")}
+            placeholder={t("clientLabel")}
+            value={clientId}
+            onChange={setClientId}
+            clearable={false}
+            options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+          />
         }
       />
 

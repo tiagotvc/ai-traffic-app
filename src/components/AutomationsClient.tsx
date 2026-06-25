@@ -189,7 +189,7 @@ export function AutomationsClient() {
                 key={tpl.id}
                 type="button"
                 onClick={() => applyTemplate(tpl)}
-                className="ui-btn-secondary !px-2 !py-1 text-xs"
+                className="ui-btn-secondary px-2 py-1 text-xs"
               >
                 {tpl.name}
               </button>

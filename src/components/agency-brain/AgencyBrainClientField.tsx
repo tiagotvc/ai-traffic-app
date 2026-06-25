@@ -1,8 +1,10 @@
 "use client";
 
+import { Building2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 
 type AgencyBrainClientFieldProps = {
   className?: string;
@@ -17,20 +19,15 @@ export function AgencyBrainClientField({ className, hint }: AgencyBrainClientFie
 
   return (
     <div className={className}>
-      <label className="ui-label">{t("clientPickerLabel")}</label>
-      <select
-        className="ui-select mt-1.5 max-w-md text-sm"
+      <FilterSelectDropdown
+        icon={<Building2 size={14} />}
+        label={t("clientPickerLabel")}
+        placeholder={t("clientPickerPlaceholder")}
         value={clientSlug}
-        onChange={(e) => onClientChange(e.target.value)}
-        aria-label={t("clientPickerLabel")}
-      >
-        <option value="">{t("clientPickerPlaceholder")}</option>
-        {clients.map((c) => (
-          <option key={c.id} value={c.slug}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+        onChange={onClientChange}
+        clearable={false}
+        options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+      />
       {hint ? <p className="mt-1 text-[11px] text-[var(--text-dim)]">{hint}</p> : null}
     </div>
   );

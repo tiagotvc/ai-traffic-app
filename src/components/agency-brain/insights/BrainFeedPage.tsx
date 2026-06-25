@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Search } from "lucide-react";
+import { Building2 } from "lucide-react";
 
 import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { BrainFeedHero } from "@/components/agency-brain/insights/BrainFeedHero";
 import { HypothesisFeedCard } from "@/components/agency-brain/insights/HypothesisFeedCard";
 import { LearningFeedCard } from "@/components/agency-brain/insights/LearningFeedCard";
@@ -182,52 +184,38 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
       {/* Filtro de cliente + busca. As pills (Aprendizados/Hipóteses/Logs) foram removidas:
           a navegação entre módulos já existe no sidebar. */}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <label className="flex items-center gap-2">
-          <span className="text-xs font-medium" style={{ color: "var(--text-dimmer)" }}>
-            {t("clientLabel")}
-          </span>
-          <select
-            value={clientSlug}
-            onChange={(e) => onClientChange(e.target.value)}
-            className="ui-select !py-1.5 text-sm"
-          >
-            {clients.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <FilterSelectDropdown
+          icon={<Building2 size={14} />}
+          label={t("clientLabel")}
+          placeholder={t("clientLabel")}
+          value={clientSlug}
+          onChange={onClientChange}
+          clearable={false}
+          options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+        />
 
-        <div className="relative min-w-[220px]">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
-            style={{ color: "var(--text-dimmer)" }}
-          />
-          <input
-            type="text"
-            placeholder={
-              variant === "learnings"
-                ? t("searchLearningsPlaceholder")
-                : t("searchHypothesesPlaceholder")
-            }
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="ui-input w-full !py-1.5 pl-9 text-sm"
-          />
-        </div>
+        <FilterSearchInput
+          size="wide"
+          value={search}
+          onChange={setSearch}
+          placeholder={
+            variant === "learnings"
+              ? t("searchLearningsPlaceholder")
+              : t("searchHypothesesPlaceholder")
+          }
+        />
       </div>
 
       {variant === "learnings" ? (
-        <div
-          className="mb-5 flex items-start gap-3 rounded-xl px-4 py-3 text-sm"
-          style={{
-            background: "rgba(245,166,35,0.07)",
-            border: "1px solid rgba(245,166,35,0.2)",
-            color: "var(--text-dim)"
-          }}
-        >
-          <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="#f5a623" strokeWidth={2}>
+        <div className="ui-alert-learnings mb-5">
+          <svg
+            className="ui-alert-learnings__icon"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

@@ -43,7 +43,7 @@ export function FacebookLoginHandoffForm({
         <button
           type="submit"
           disabled={pending}
-          className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#1877F2] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/30 transition hover:bg-[#166FE5] disabled:opacity-70"
+          className="ui-btn-meta w-full"
         >
           <FacebookBrandIcon className="h-5 w-5 text-white" />
           {pending ? t("metaOAuth.redirecting") : t("facebookHandoffContinue")}

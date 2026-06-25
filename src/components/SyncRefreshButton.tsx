@@ -188,7 +188,7 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
           disabled={disabled}
           aria-label={t("now")}
           title={cooldownSec > 0 ? t("cooldownHint", { minutes: cooldownMins }) : t("now")}
-          className="ui-btn-secondary !h-8 !w-8 !p-0 text-[var(--violet)] hover:border-[rgba(79,70,229,0.25)] hover:bg-[rgba(79,70,229,0.06)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="ui-btn-secondary h-8 w-8 p-0 text-[var(--violet)] hover:border-[rgba(79,70,229,0.25)] hover:bg-[rgba(79,70,229,0.06)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <svg
             className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`}
@@ -210,7 +210,7 @@ export function SyncRefreshButton({ clientId }: { clientId?: string }) {
           disabled={isBackfillPending || isPending || cooldownSec > 0 || !!backfill}
           aria-label="Backfill histórico"
           title="Backfill histórico (90d)"
-          className="ui-btn-secondary !h-8 !w-8 !p-0 text-[var(--violet)] hover:border-[rgba(79,70,229,0.25)] hover:bg-[rgba(79,70,229,0.06)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="ui-btn-secondary h-8 w-8 p-0 text-[var(--violet)] hover:border-[rgba(79,70,229,0.25)] hover:bg-[rgba(79,70,229,0.06)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <svg
             className={`h-4 w-4 ${isBackfillPending ? "animate-spin" : ""}`}

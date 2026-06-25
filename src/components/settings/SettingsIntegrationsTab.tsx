@@ -167,10 +167,10 @@ export function SettingsIntegrationsTab({
 
         <div className="mt-4 flex flex-wrap gap-2">
           {connectMetaSlot}
-          <Link href="/settings/meta-assets" className="ui-btn-secondary !px-3 !py-1.5 text-xs">
+          <Link href="/settings/meta-assets" className="ui-btn-secondary px-3 py-1.5 text-xs">
             {t("metaAssetsLink")}
           </Link>
-          <Link href="/clients" className="ui-btn-secondary !px-3 !py-1.5 text-xs">
+          <Link href="/clients" className="ui-btn-secondary px-3 py-1.5 text-xs">
             {t("publishClientsLink")}
           </Link>
         </div>
@@ -203,7 +203,7 @@ export function SettingsIntegrationsTab({
                         }
                         runWorkspaceMetaAction({ action: "claim" }, "workspaceMetaClaimed");
                       }}
-                      className="ui-btn-accent !px-3 !py-1.5 text-xs disabled:opacity-60"
+                      className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
                     >
                       {t("workspaceMetaClaim")}
                     </button>
@@ -215,7 +215,7 @@ export function SettingsIntegrationsTab({
                       if (!window.confirm(t("workspaceMetaDisconnectConfirm"))) return;
                       runWorkspaceMetaAction({ action: "disconnect" }, "workspaceMetaDisconnected");
                     }}
-                    className="ui-btn-danger !px-3 !py-1.5 text-xs disabled:opacity-60"
+                    className="ui-btn-danger px-3 py-1.5 text-xs disabled:opacity-60"
                   >
                     {t("workspaceMetaDisconnect")}
                   </button>

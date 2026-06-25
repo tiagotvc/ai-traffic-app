@@ -3,9 +3,10 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
-import { Bell } from "lucide-react";
+import { Bell, Building2 } from "lucide-react";
 
 import { DsPageHeader } from "@/design-system";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { SyncNowButton } from "@/components/SyncNowButton";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
@@ -142,18 +143,14 @@ export function AlertsClient() {
           ))}
         </div>
 
-        <select
+        <FilterSelectDropdown
+          icon={<Building2 size={14} />}
+          label={t("clientLabel")}
+          placeholder={t("filterClientAll")}
           value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-          className="ui-select !w-auto !py-1.5 text-xs"
-        >
-          <option value="">{t("filterClientAll")}</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+          onChange={setClientId}
+          options={clients.map((c) => ({ value: c.id, label: c.name }))}
+        />
       </div>
 
       {/* KPIs resumo */}

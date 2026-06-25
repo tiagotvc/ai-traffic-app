@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { Filter, Search } from "lucide-react";
+import { Filter } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
@@ -90,23 +91,13 @@ export function PageToolbar({
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
           {search ? (
-            <div
-              className="flex h-9 min-w-[140px] max-w-[200px] items-center gap-2 rounded-lg border px-2.5 sm:min-w-[180px] sm:max-w-[240px]"
-              style={{
-                background: "var(--surface-card)",
-                borderColor: "var(--border-color)"
-              }}
-            >
-              <Search size={14} className="shrink-0" style={{ color: "var(--text-dim)" }} />
-              <input
-                type="search"
-                value={search.value}
-                onChange={(e) => search.onChange(e.target.value)}
-                placeholder={search.placeholder}
-                className="min-w-0 flex-1 border-none bg-transparent text-sm outline-none"
-                style={{ color: "var(--text-main)" }}
-              />
-            </div>
+            <FilterSearchInput
+              size="wide"
+              className="h-9 max-w-[240px] sm:max-w-[300px]"
+              value={search.value}
+              onChange={search.onChange}
+              placeholder={search.placeholder}
+            />
           ) : null}
 
           {canFilter ? (

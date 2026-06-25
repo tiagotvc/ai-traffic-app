@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Megaphone, Plus, Trash2 } from "lucide-react";
+import { Megaphone, Plus, Trash2, Building2, ListFilter, Target, Rows3 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   DndContext,
@@ -22,6 +22,7 @@ import { shouldCampaignListFetchLive } from "@/lib/campaign-list-live";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CampaignDraftMobileCards, CampaignMobileCards, type CampaignRowLike } from "@/components/campaigns/CampaignMobileCards";
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
@@ -281,55 +282,47 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             }}
           />
         </div>
-        <div>
-          <div className="text-xs text-[var(--text-dim)]">{t("filterStatus")}</div>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value as StatusFilter);
-              setPage(1);
-            }}
-            className="mt-1 min-w-[120px] rounded-xl ui-select text-sm"
-          >
-            <option value="ALL">{t("statusAll")}</option>
-            <option value="ACTIVE">{t("statusActive")}</option>
-            <option value="INACTIVE">{t("statusInactive")}</option>
-          </select>
-        </div>
-        <div>
-          <div className="text-xs text-[var(--text-dim)]">{t("filterObjective")}</div>
-          <select
-            value={objectiveFilter}
-            onChange={(e) => {
-              setObjectiveFilter(e.target.value as ObjectiveFilter);
-              setPage(1);
-            }}
-            className="mt-1 min-w-[120px] rounded-xl ui-select text-sm"
-          >
-            <option value="ALL">{t("objectiveAll")}</option>
-            <option value="leads">{t("objectiveLeads")}</option>
-            <option value="sales">{t("objectiveSales")}</option>
-            <option value="traffic">{t("objectiveTraffic")}</option>
-          </select>
-        </div>
-        <div>
-          <div className="text-xs text-[var(--text-dim)]">{t("pageSizeLabel")}</div>
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setPage(1);
-            }}
-            className="mt-1 min-w-[80px] rounded-xl ui-select text-sm"
-            title={t("pageSizeHint")}
-          >
-            {PAGE_SIZES.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FilterSelectDropdown
+          icon={<ListFilter size={14} />}
+          label={t("filterStatus")}
+          placeholder={t("statusAll")}
+          value={statusFilter === "ALL" ? "" : statusFilter}
+          onChange={(v) => {
+            setStatusFilter((v || "ALL") as StatusFilter);
+            setPage(1);
+          }}
+          options={[
+            { value: "ACTIVE", label: t("statusActive") },
+            { value: "INACTIVE", label: t("statusInactive") }
+          ]}
+        />
+        <FilterSelectDropdown
+          icon={<Target size={14} />}
+          label={t("filterObjective")}
+          placeholder={t("objectiveAll")}
+          value={objectiveFilter === "ALL" ? "" : objectiveFilter}
+          onChange={(v) => {
+            setObjectiveFilter((v || "ALL") as ObjectiveFilter);
+            setPage(1);
+          }}
+          options={[
+            { value: "leads", label: t("objectiveLeads") },
+            { value: "sales", label: t("objectiveSales") },
+            { value: "traffic", label: t("objectiveTraffic") }
+          ]}
+        />
+        <FilterSelectDropdown
+          icon={<Rows3 size={14} />}
+          label={t("pageSizeLabel")}
+          placeholder={String(pageSize)}
+          clearable={false}
+          value={String(pageSize)}
+          onChange={(v) => {
+            setPageSize(Number(v));
+            setPage(1);
+          }}
+          options={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
+        />
       </div>
     ),
     [t, qInput, metaFilters, statusFilter, objectiveFilter, pageSize]
@@ -853,7 +846,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       {useUxChrome ? (
         <PageToolbar
           eyebrow={t("breadcrumb")}
-          icon={<Megaphone size={16} style={{ color: "#f5a623" }} />}
+          icon={<Megaphone size={16} />}
           title={t("title")}
           subtitle={t("subtitleList")}
           pageFilters={campaignsPageFilters}
@@ -909,33 +902,24 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       </div>
 
       {!useUxChrome ? (
-      <div className="flex flex-wrap items-end gap-3 ui-card p-4">
+      <div className="flex flex-wrap items-center gap-3 ui-card p-4">
         {!useUxChrome ? (
-          <div>
-            <div className="text-xs text-[var(--text-dim)]">{t("filterClient")}</div>
-            <select
-              value={clientFilter}
-              onChange={(e) => {
-                setClientFilter(e.target.value);
-                setSelectedId(null);
-                setSelectedRow(null);
-                setPage(1);
-              }}
-              className="mt-1 min-w-[200px] rounded-xl ui-select"
-            >
-              <option value="">{t("allClients")}</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.slug}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <FilterSelectDropdown
+            icon={<Building2 size={14} />}
+            label={t("filterClient")}
+            placeholder={t("allClients")}
+            value={clientFilter}
+            onChange={(v) => {
+              setClientFilter(v);
+              setSelectedId(null);
+              setSelectedRow(null);
+              setPage(1);
+            }}
+            options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+          />
         ) : null}
         <div className="min-w-[200px] flex-1">
-          <div className="text-xs text-[var(--text-dim)]">{t("search")}</div>
           <MetaFilterSearchBar
-            className="mt-1"
             value={qInput}
             onChange={setQInput}
             filters={metaFilters}
@@ -945,37 +929,35 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             }}
           />
         </div>
-        <div>
-          <div className="text-xs text-[var(--text-dim)]">{t("filterStatus")}</div>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value as StatusFilter);
-              setPage(1);
-            }}
-            className="mt-1 min-w-[140px] rounded-xl ui-select"
-          >
-            <option value="ALL">{t("statusAll")}</option>
-            <option value="ACTIVE">{t("statusActive")}</option>
-            <option value="INACTIVE">{t("statusInactive")}</option>
-          </select>
-        </div>
-        <div>
-          <div className="text-xs text-[var(--text-dim)]">{t("filterObjective")}</div>
-          <select
-            value={objectiveFilter}
-            onChange={(e) => {
-              setObjectiveFilter(e.target.value as ObjectiveFilter);
-              setPage(1);
-            }}
-            className="mt-1 min-w-[140px] rounded-xl ui-select"
-          >
-            <option value="ALL">{t("objectiveAll")}</option>
-            <option value="leads">{t("objectiveLeads")}</option>
-            <option value="sales">{t("objectiveSales")}</option>
-            <option value="traffic">{t("objectiveTraffic")}</option>
-          </select>
-        </div>
+        <FilterSelectDropdown
+          icon={<ListFilter size={14} />}
+          label={t("filterStatus")}
+          placeholder={t("statusAll")}
+          value={statusFilter === "ALL" ? "" : statusFilter}
+          onChange={(v) => {
+            setStatusFilter((v || "ALL") as StatusFilter);
+            setPage(1);
+          }}
+          options={[
+            { value: "ACTIVE", label: t("statusActive") },
+            { value: "INACTIVE", label: t("statusInactive") }
+          ]}
+        />
+        <FilterSelectDropdown
+          icon={<Target size={14} />}
+          label={t("filterObjective")}
+          placeholder={t("objectiveAll")}
+          value={objectiveFilter === "ALL" ? "" : objectiveFilter}
+          onChange={(v) => {
+            setObjectiveFilter((v || "ALL") as ObjectiveFilter);
+            setPage(1);
+          }}
+          options={[
+            { value: "leads", label: t("objectiveLeads") },
+            { value: "sales", label: t("objectiveSales") },
+            { value: "traffic", label: t("objectiveTraffic") }
+          ]}
+        />
         {!useUxChrome ? (
           <PeriodFilter
             value={period}
@@ -985,24 +967,18 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             }}
           />
         ) : null}
-        <div>
-          <div className="text-xs text-[var(--text-dim)]">{t("pageSizeLabel")}</div>
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setPage(1);
-            }}
-            className="mt-1 min-w-[100px] rounded-xl ui-select"
-            title={t("pageSizeHint")}
-          >
-            {PAGE_SIZES.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FilterSelectDropdown
+          icon={<Rows3 size={14} />}
+          label={t("pageSizeLabel")}
+          placeholder={String(pageSize)}
+          clearable={false}
+          value={String(pageSize)}
+          onChange={(v) => {
+            setPageSize(Number(v));
+            setPage(1);
+          }}
+          options={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
+        />
         <label className="flex items-center gap-2 rounded-xl border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-dim)]">
           <input
             type="checkbox"

@@ -9,7 +9,7 @@ import {
   runWizardPreparePhase
 } from "@/lib/campaign-creator/ai-wizard-prepare";
 import { assertCreativeMemoryAiAccess } from "@/lib/creative-memory/ai-usage";
-import { classifyLlmError } from "@/lib/llm/generate-json";
+import { classifyLlmError, llmErrorHttpStatus } from "@/lib/llm/generate-json";
 
 export async function POST(req: Request) {
   let usedProvider: "gemini" | "claude" = "claude";
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : classified.message;
     return NextResponse.json(
       { ok: false, error: message || "Erro ao preparar campanha com IA" },
-      { status: classified.status && classified.status >= 400 ? classified.status : 500 }
+      { status: llmErrorHttpStatus(classified) }
     );
   }
 }

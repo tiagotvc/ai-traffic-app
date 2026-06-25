@@ -44,7 +44,7 @@ export function WelcomeBackModal({ events }: { events: WelcomeBackEvent[] }) {
             <div className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("title")}</div>
             <div className="mt-1 text-xs text-[var(--text-dimmer)]">{t("subtitle")}</div>
           </div>
-          <button type="button" onClick={() => setOpen(false)} className="ui-btn-secondary !px-2 !py-1 text-xs">
+          <button type="button" onClick={() => setOpen(false)} className="ui-btn-secondary px-2 py-1 text-xs">
             {tCommon("close")}
           </button>
         </div>

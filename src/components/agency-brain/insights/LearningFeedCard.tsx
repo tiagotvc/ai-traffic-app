@@ -211,7 +211,7 @@ export function LearningFeedCard({
                 type="button"
                 disabled={busy}
                 onClick={() => onApprove?.(learning)}
-                className="ui-btn-primary !px-4 !py-2 text-xs disabled:opacity-60"
+                className="ui-btn-primary px-4 py-2 text-xs disabled:opacity-60"
               >
                 {t("approveLearning")}
               </button>
@@ -219,7 +219,7 @@ export function LearningFeedCard({
                 type="button"
                 disabled={busy}
                 onClick={() => onReject?.(learning)}
-                className="ui-btn-secondary !px-4 !py-2 text-xs disabled:opacity-60"
+                className="ui-btn-secondary px-4 py-2 text-xs disabled:opacity-60"
               >
                 {t("dismissLearning")}
               </button>
@@ -229,7 +229,7 @@ export function LearningFeedCard({
               type="button"
               disabled={busy}
               onClick={() => onGenerateHypothesis?.(learning)}
-              className="ui-btn-brand !px-4 !py-2 text-xs disabled:opacity-60"
+              className="ui-btn-brand px-4 py-2 text-xs disabled:opacity-60"
             >
               {t("generateHypothesis")}
             </button>

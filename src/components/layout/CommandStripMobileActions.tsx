@@ -1,9 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Filter, RefreshCw, Search } from "lucide-react";
+import { Filter, RefreshCw } from "lucide-react";
 import { useState, useTransition } from "react";
 
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { CommandStripFiltersModal } from "@/components/layout/CommandStripFiltersModal";
 import { IconLabelButton } from "@/components/ui/IconLabelButton";
@@ -73,12 +74,6 @@ export function CommandStripMobileActions() {
   const filtersActive =
     !hideFilters && Boolean(clientFilter || accountFilter || period.preset !== "last30");
 
-  const pillStyle = {
-    color: "var(--text-main)",
-    background: "var(--filter-btn-bg)",
-    borderColor: "var(--border-color)"
-  };
-
   return (
     <div className="flex shrink-0 items-center gap-1.5">
       {!hideFilters ? (
@@ -119,20 +114,13 @@ export function CommandStripMobileActions() {
       ) : null}
       {leadingSlot}
       {showSearch ? (
-        <div
-          className="flex h-9 min-w-0 max-w-[120px] items-center gap-1.5 rounded-lg border px-2"
-          style={pillStyle}
-        >
-          <Search size={14} style={{ color: "var(--text-dim)" }} className="shrink-0" />
-          <input
-            type="search"
-            value={searchValue}
-            onChange={(e) => onSearchChange?.(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="min-w-0 flex-1 border-none bg-transparent text-xs outline-none"
-            style={{ color: "var(--text-main)" }}
-          />
-        </div>
+        <FilterSearchInput
+          size="compact"
+          className="h-9 min-w-0 max-w-[180px] flex-1"
+          value={searchValue}
+          onChange={(v) => onSearchChange?.(v)}
+          placeholder={searchPlaceholder ?? ""}
+        />
       ) : null}
       {middleTrailingSlot}
       {trailingSlot}

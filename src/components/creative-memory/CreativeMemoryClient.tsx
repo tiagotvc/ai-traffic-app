@@ -2,9 +2,11 @@
 
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Building2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AgencyBrainContent } from "@/components/agency-brain/AgencyBrainContent";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CreativeMemoryAiBar } from "@/components/creative-memory/CreativeMemoryAiBar";
 import { CreativeMemoryAiProvider } from "@/components/creative-memory/CreativeMemoryAiContext";
 import {
@@ -12,7 +14,7 @@ import {
   type CreativeMemoryTab
 } from "@/components/creative-memory/CreativeMemoryTabs";
 import { SuggestionsContent } from "@/components/suggestions/SuggestionsContent";
-import { DsBadge, DsPageHeader } from "@/design-system";
+import { DsPageHeader } from "@/design-system";
 import { usePathname } from "@/i18n/navigation";
 
 type ClientRow = { id: string; slug: string; name: string };
@@ -75,22 +77,16 @@ export function CreativeMemoryClient() {
         title={t("title")}
         subtitle={t("subtitle")}
         actions={
-          <>
-            <span className="text-xs text-[var(--text-dim)]">{t("clientLabel")}:</span>
-            <select
-              value={clientSlug}
-              onChange={(e) => handleClientChange(e.target.value)}
-              disabled={clientsLoading || clients.length === 0}
-              className="ui-select !w-auto !py-1.5 text-sm"
-            >
-              {clients.map((c) => (
-                <option key={c.id} value={c.slug}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <DsBadge tone="beta">{t("beta")}</DsBadge>
-          </>
+          <FilterSelectDropdown
+            icon={<Building2 size={14} />}
+            label={t("clientLabel")}
+            placeholder={t("clientLabel")}
+            value={clientSlug}
+            onChange={handleClientChange}
+            disabled={clientsLoading || clients.length === 0}
+            clearable={false}
+            options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+          />
         }
       />
 

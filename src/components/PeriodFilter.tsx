@@ -96,6 +96,7 @@ export function PeriodFilter({
 
   const isStrip = variant === "commandStrip";
   const isModal = variant === "modal";
+  const useStripTrigger = isStrip || variant === "default";
   const showCustomPanel = isModal
     ? value.preset === "custom"
     : !isStrip || value.preset === "custom";
@@ -111,7 +112,7 @@ export function PeriodFilter({
     thisQuarter: periodLabels.thisQuarter
   };
 
-  function renderPresetButton(preset: PeriodPreset, text: string, selectedStyle: "amber" | "violet") {
+  function renderPresetButton(preset: PeriodPreset, text: string) {
     const selected = value.preset === preset;
     return (
       <button
@@ -120,15 +121,8 @@ export function PeriodFilter({
         onClick={() => pick(preset)}
         className="block w-full px-3 py-2 text-left font-body text-sm transition-colors"
         style={{
-          color:
-            selectedStyle === "amber"
-              ? selected
-                ? "var(--amber-bright)"
-                : "var(--text-dim)"
-              : selected
-                ? "var(--violet)"
-                : "var(--text-dim)",
-          fontWeight: selected && selectedStyle === "violet" ? 600 : undefined
+          color: selected ? "var(--ui-accent)" : "var(--text-dim)",
+          fontWeight: selected ? 600 : undefined
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";
@@ -159,9 +153,9 @@ export function PeriodFilter({
                   disabled && "cursor-not-allowed opacity-45"
                 )}
                 style={{
-                  borderColor: selected ? "var(--amber-bright)" : "var(--border-color)",
-                  background: selected ? "rgba(245,166,35,0.12)" : "var(--filter-btn-bg)",
-                  color: selected ? "var(--amber-bright)" : "var(--text-dim)"
+                  borderColor: selected ? "var(--ui-accent)" : "var(--border-color)",
+                  background: selected ? "var(--ui-accent-muted)" : "var(--filter-btn-bg)",
+                  color: selected ? "var(--ui-accent)" : "var(--text-dim)"
                 }}
               >
                 {stripPresetLabels[preset]}
@@ -177,9 +171,9 @@ export function PeriodFilter({
               disabled && "cursor-not-allowed opacity-45"
             )}
             style={{
-              borderColor: value.preset === "custom" ? "var(--amber-bright)" : "var(--border-color)",
-              background: value.preset === "custom" ? "rgba(245,166,35,0.12)" : "var(--filter-btn-bg)",
-              color: value.preset === "custom" ? "var(--amber-bright)" : "var(--text-dim)"
+              borderColor: value.preset === "custom" ? "var(--ui-accent)" : "var(--border-color)",
+              background: value.preset === "custom" ? "var(--ui-accent-muted)" : "var(--filter-btn-bg)",
+              color: value.preset === "custom" ? "var(--ui-accent)" : "var(--text-dim)"
             }}
           >
             {periodLabels.custom}
@@ -217,77 +211,48 @@ export function PeriodFilter({
   }
 
   return (
-    <div ref={ref} className={isStrip ? "relative inline-block" : "relative"}>
+    <div ref={ref} className={useStripTrigger ? "relative inline-block" : "relative"}>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((o) => !o)}
         title={disabled ? disabledHint : undefined}
-        className={
-          isStrip
-            ? cn(
-                "flex w-full items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-all duration-200",
-                disabled && "cursor-not-allowed opacity-45"
-              )
-            : cn(
-                "flex items-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2 text-sm text-[var(--text-dim)] shadow-sm hover:bg-[var(--surface-bg)]",
-                disabled && "cursor-not-allowed opacity-45"
-              )
-        }
-        style={
-          isStrip
-            ? {
-                color: "var(--text-main)",
-                background: "var(--filter-btn-bg)",
-                borderColor: open ? "var(--amber-bright)" : "var(--border-color)"
-              }
-            : undefined
-        }
+        className={cn(
+          "flex w-full items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-all duration-200",
+          disabled && "cursor-not-allowed opacity-45"
+        )}
+        style={{
+          color: "var(--text-main)",
+          background: "var(--filter-btn-bg)",
+          borderColor: open ? "var(--ui-accent)" : "var(--border-color)"
+        }}
         aria-expanded={open}
       >
-        {isStrip ? (
-          <>
-            <Calendar size={14} style={{ color: "var(--text-dim)" }} className="shrink-0" />
-            <span className="mr-1 hidden font-body text-xs font-medium sm:inline" style={{ color: "var(--text-dim)" }}>
-              {t("periodLabel")}:
-            </span>
-            <span className="max-w-[140px] truncate font-body text-sm">{label}</span>
-            <ChevronDown
-              size={14}
-              className={cn("ml-auto shrink-0 transition-transform", open && "rotate-180")}
-              style={{ color: "var(--text-dim)" }}
-            />
-          </>
-        ) : (
-          <>
-            <span className="text-[var(--text-dimmer)]">📅</span>
-            <span>{label}</span>
-            <span className="text-[var(--text-dimmer)]">{open ? "▴" : "▾"}</span>
-          </>
-        )}
+        <Calendar size={14} style={{ color: "var(--ui-accent)" }} className="shrink-0" />
+        <span className="mr-1 hidden font-body text-xs font-medium sm:inline" style={{ color: "var(--text-dim)" }}>
+          {t("periodLabel")}:
+        </span>
+        <span className="max-w-[140px] truncate font-body text-sm">{label}</span>
+        <ChevronDown
+          size={14}
+          className={cn("ml-auto shrink-0 transition-transform", open && "rotate-180")}
+          style={{ color: "var(--text-dim)" }}
+        />
       </button>
       {open ? (
         <div
-          className={
-            isStrip
-              ? "absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-lg border py-1 shadow-2xl"
-              : "absolute left-0 top-full z-30 mt-1 min-w-[240px] rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] py-1 shadow-lg"
-          }
-          style={
-            isStrip
-              ? {
-                  background: "var(--dropdown-bg, var(--surface-card))",
-                  borderColor: "var(--border-color)"
-                }
-              : undefined
-          }
+          className="absolute left-0 top-full z-50 mt-1 w-full min-w-[240px] overflow-hidden rounded-lg border py-1 shadow-2xl"
+          style={{
+            background: "var(--dropdown-bg, var(--surface-card))",
+            borderColor: "var(--border-color)"
+          }}
         >
           {isStrip ? (
             <>
               {STRIP_PRESETS.map((preset) =>
-                renderPresetButton(preset, stripPresetLabels[preset], "amber")
+                renderPresetButton(preset, stripPresetLabels[preset])
               )}
-              {renderPresetButton("custom", periodLabels.custom, "amber")}
+              {renderPresetButton("custom", periodLabels.custom)}
             </>
           ) : (
             <>
@@ -301,7 +266,7 @@ export function PeriodFilter({
                   ["last30", periodLabels.last30],
                   ["all", periodLabels.all]
                 ] as const
-              ).map(([preset, text]) => renderPresetButton(preset, text, "violet"))}
+              ).map(([preset, text]) => renderPresetButton(preset, text))}
             </>
           )}
           {showCustomPanel ? (

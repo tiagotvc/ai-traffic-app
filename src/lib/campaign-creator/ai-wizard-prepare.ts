@@ -8,7 +8,7 @@ import {
   generateAudienceTargetingSuggestion
 } from "@/lib/audience-targeting-ai";
 import { AiCampaignWizardGenerateSchema, wizardNeedsAudiencePrep, wizardNeedsRegionsPrep } from "@/lib/campaign-creator/ai-campaign-wizard-types";
-import { classifyLlmError } from "@/lib/llm/generate-json";
+import { isTemporaryLlmError } from "@/lib/llm/generate-json";
 import { getApiKeyForProvider, getLlmProvidersStatus } from "@/lib/llm/keys";
 import type { LlmProviderId } from "@/lib/llm/types";
 import { fetchCustomAudiences } from "@/lib/meta-graph";
@@ -47,12 +47,6 @@ export function assertWizardProviderConfigured(preferred: LlmProviderId = "claud
     );
   }
   return provider;
-}
-
-function isTemporaryLlmError(err: unknown): boolean {
-  const classified = classifyLlmError(err);
-  const msg = classified.message.toLowerCase();
-  return classified.status === 503 || msg.includes("indisponível") || msg.includes("unavailable");
 }
 
 async function withProviderFallback<T>(

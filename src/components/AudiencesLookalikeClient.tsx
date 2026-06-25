@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, Filter, Info, Plus, RefreshCw, Search, Target, Users } from "lucide-react";
+import { Eye, Filter, Info, Plus, RefreshCw, Search, Target, Users, Building2, BarChart2 } from "lucide-react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { PageToolbar } from "@/components/layout/PageToolbar";
@@ -47,15 +47,15 @@ function AudienceListInfoBanner() {
     <div
       className="mb-5 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm font-body"
       style={{
-        background: "rgba(245,166,35,0.07)",
-        borderColor: "rgba(245,166,35,0.2)",
+        background: "var(--ui-accent-hover)",
+        borderColor: "var(--ui-accent-ring)",
         color: "var(--text-dim)"
       }}
     >
-      <Info size={16} className="mt-0.5 shrink-0" style={{ color: "#f5a623" }} />
+      <Info size={16} className="mt-0.5 shrink-0" style={{ color: "var(--ui-accent)" }} />
       <span>
         Públicos sincronizados diretamente da Meta. Criativos com menos de{" "}
-        <strong style={{ color: "#f5a623" }}>100 impressões</strong> no período não entram na classificação.
+        <strong style={{ color: "var(--ui-accent)" }}>100 impressões</strong> no período não entram na classificação.
         Mantenha seus públicos organizados para facilitar o uso em novas campanhas.
       </span>
     </div>
@@ -294,38 +294,28 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
   };
 
   const selectors = (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-      <div className="flex items-center gap-2">
-        <span className="shrink-0 text-xs font-medium text-[var(--text-dim)]">{t("selectClient")}</span>
-        <select
-          value={clientSlug}
-          onChange={(e) => setClientSlug(e.target.value)}
-          disabled={hubLoading}
-          className="ui-select !w-auto min-w-[12rem] text-sm"
-        >
-          {clients.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <FilterSelectDropdown
+        icon={<Building2 size={14} />}
+        label={t("selectClient")}
+        placeholder={t("selectClient")}
+        value={clientSlug}
+        onChange={setClientSlug}
+        disabled={hubLoading}
+        clearable={false}
+        options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+      />
       {accounts.length > 1 ? (
-        <div className="flex items-center gap-2">
-          <span className="shrink-0 text-xs font-medium text-[var(--text-dim)]">{t("selectAdAccount")}</span>
-          <select
-            value={adAccountId}
-            onChange={(e) => setAdAccountId(e.target.value)}
-            disabled={accountsLoading}
-            className="ui-select !w-auto min-w-[12rem] text-sm"
-          >
-            {accounts.map((a) => (
-              <option key={a.metaAdAccountId} value={a.metaAdAccountId}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <FilterSelectDropdown
+          icon={<BarChart2 size={14} />}
+          label={t("selectAdAccount")}
+          placeholder={t("selectAdAccount")}
+          value={adAccountId}
+          onChange={setAdAccountId}
+          disabled={accountsLoading}
+          clearable={false}
+          options={accounts.map((a) => ({ value: a.metaAdAccountId, label: a.label }))}
+        />
       ) : null}
       {client && !adAccountId && !accountsLoading ? (
         <p className="text-xs text-amber-700">
@@ -375,7 +365,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
       {useUxChrome ? (
         <PageToolbar
           eyebrow="Públicos"
-          icon={<Users size={16} style={{ color: "#f5a623" }} />}
+          icon={<Users size={16} style={{ color: "var(--ui-accent)" }} />}
           title={t("title")}
           subtitle={t("subtitle")}
           search={
@@ -389,7 +379,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
           }
           pageFilters={
             <FilterSelectDropdown
-              icon={<Filter size={13} style={{ color: "#f5a623" }} />}
+              icon={<Filter size={13} />}
               label=""
               placeholder={t("tabSaved")}
               options={[
@@ -479,7 +469,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                   onClick={() => setListTab(key)}
                   className={`flex-1 px-3 py-3 text-xs font-medium sm:text-sm ${
                     listTab === key
-                      ? "border-b-2 border-[var(--amber)] text-[var(--amber)]"
+                      ? "border-b-2 border-[var(--amber)] text-[var(--ui-accent)]"
                       : "text-[var(--text-dim)]"
                   }`}
                 >
@@ -520,9 +510,9 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                     >
                       <div
                         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                        style={{ background: "rgba(245,166,35,0.12)" }}
+                        style={{ background: "var(--ui-accent-muted)" }}
                       >
-                        <Users size={16} style={{ color: "#f5a623" }} />
+                        <Users size={16} style={{ color: "var(--ui-accent)" }} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-[var(--text-main)]">{g.clientName}</div>
@@ -631,9 +621,9 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                                 disabled={isPending}
                                 className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-body text-xs font-medium transition-all"
                                 style={{
-                                  borderColor: attached ? "rgba(245,166,35,0.35)" : "var(--border-color)",
-                                  color: attached ? "#f5a623" : "var(--text-dim)",
-                                  background: attached ? "rgba(245,166,35,0.08)" : "transparent"
+                                  borderColor: attached ? "var(--ui-accent-border)" : "var(--border-color)",
+                                  color: attached ? "var(--ui-accent)" : "var(--text-dim)",
+                                  background: attached ? "var(--ui-accent-hover)" : "transparent"
                                 }}
                               >
                                 <Target size={12} />
@@ -681,7 +671,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                               disabled={isPending}
                               className={`rounded-lg border px-3 py-1 text-[11px] font-medium ${
                                 attached
-                                  ? "border-[rgba(245,166,35,0.3)] bg-[rgba(245,166,35,0.08)] text-[var(--amber)]"
+                                  ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-hover)] text-[var(--ui-accent)]"
                                   : "border-[var(--border-color)] text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
                               }`}
                             >

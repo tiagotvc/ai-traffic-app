@@ -94,7 +94,7 @@ export function HypothesisDetailPage({ hypothesisId }: { hypothesisId: string })
               <button
                 key={status}
                 type="button"
-                className="ui-btn-secondary !px-3 !py-1.5 text-xs"
+                className="ui-btn-secondary px-3 py-1.5 text-xs"
                 onClick={() => insights.updateHypothesisStatus(hypothesisId, status)}
               >
                 {t(`markAs.${status}`)}

@@ -1,7 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Building2, ArrowUpDown, ArrowDownUp } from "lucide-react";
 import { useMemo, useState } from "react";
+
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 
 import type { BrainSortOption } from "@/components/agency-brain/BrainListToolbar";
 import type {
@@ -134,46 +138,42 @@ export function LearningFilters({
       {!hidePrimaryRow ? (
       <div className="flex flex-wrap items-center gap-1.5">
         {clients && clients.length > 0 && onClientChange && !clientInExpanded ? (
-          <select
-            className="ui-select !w-auto !py-1 text-xs"
+          <FilterSelectDropdown
+            icon={<Building2 size={14} />}
+            label={t("clientPickerLabel")}
+            placeholder={t("clientPickerPlaceholder")}
             value={clientSlug ?? ""}
-            onChange={(e) => onClientChange(e.target.value)}
-            aria-label={t("clientPickerLabel")}
-          >
-            <option value="">{t("clientPickerPlaceholder")}</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={onClientChange}
+            options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+          />
         ) : null}
-        <input
-          className="ui-input !w-32 !py-1 text-xs sm:!w-40"
-          placeholder={t("searchPlaceholder")}
+        <FilterSearchInput
+          size="compact"
           value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
+          onChange={onSearchChange}
+          placeholder={t("searchPlaceholder")}
         />
-        <select
-          className="ui-select !w-auto !py-1 text-xs"
+        <FilterSelectDropdown
+          icon={<ArrowUpDown size={14} />}
+          label={t("sortLabel")}
+          placeholder={sortOptions[0]?.label ?? t("sortLabel")}
+          clearable={false}
           value={sortBy}
-          onChange={(e) => onSortByChange(e.target.value)}
-          aria-label={t("sortLabel")}
-        >
-          {sortOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className="ui-select !w-auto !py-1 text-xs"
+          onChange={onSortByChange}
+          options={sortOptions.map((opt) => ({ value: opt.value, label: opt.label }))}
+        />
+        <FilterSelectDropdown
+          icon={<ArrowDownUp size={14} />}
+          label={t("sortLabel")}
+          placeholder={t("sortDir.desc")}
+          clearable={false}
           value={sortDir}
-          onChange={(e) => onSortDirChange(e.target.value as "asc" | "desc")}
-        >
-          <option value="desc">{t("sortDir.desc")}</option>
-          <option value="asc">{t("sortDir.asc")}</option>
-        </select>
+          onChange={(v) => onSortDirChange(v as "asc" | "desc")}
+          options={[
+            { value: "desc", label: t("sortDir.desc") },
+            { value: "asc", label: t("sortDir.asc") }
+          ]}
+        />
         <button
           type="button"
           className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition ${
@@ -206,19 +206,14 @@ export function LearningFilters({
       {expanded ? (
         <div className="animate-fade-in space-y-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)] p-2">
           {clients && clients.length > 0 && onClientChange && clientInExpanded ? (
-            <select
-              className="ui-select !py-1 text-xs"
+            <FilterSelectDropdown
+              icon={<Building2 size={14} />}
+              label={t("clientPickerLabel")}
+              placeholder={t("clientPickerPlaceholder")}
               value={clientSlug ?? ""}
-              onChange={(e) => onClientChange(e.target.value)}
-              aria-label={t("clientPickerLabel")}
-            >
-              <option value="">{t("clientPickerPlaceholder")}</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.slug}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={onClientChange}
+              options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+            />
           ) : null}
           <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
             <select

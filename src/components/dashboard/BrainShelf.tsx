@@ -92,19 +92,19 @@ export function BrainShelf({
             <div className="flex min-w-0 items-center gap-2.5">
               <div
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                style={{ background: "rgba(124,58,237,0.12)" }}
+                style={{ background: "var(--ui-accent-muted)" }}
               >
-                <Sparkles size={14} style={{ color: "#7c3aed" }} />
+                <Sparkles size={14} style={{ color: "var(--ui-accent)" }} />
               </div>
               {alertCount > 0 ? (
                 <span
                   className="relative flex h-6 min-w-[24px] shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-bold tabular-nums"
-                  style={{ background: "rgba(124,58,237,0.14)", color: "#7c3aed" }}
+                  style={{ background: "var(--ui-accent-muted-strong)", color: "var(--ui-accent)" }}
                   aria-label={t("brainAlertCount", { count: alertCount })}
                 >
                   <span
                     className="absolute inset-0 animate-ping rounded-full"
-                    style={{ background: "rgba(124,58,237,0.35)" }}
+                    style={{ background: "var(--ui-accent-border)" }}
                   />
                   <span className="relative">{alertCount}</span>
                 </span>
@@ -122,7 +122,7 @@ export function BrainShelf({
               <Link
                 href="/agency-brain/learnings"
                 className="text-[11px] font-medium transition-opacity hover:opacity-80"
-                style={{ color: "#7c3aed" }}
+                style={{ color: "var(--ui-accent)" }}
               >
                 {t("brainViewAll")}
               </Link>
@@ -148,9 +148,9 @@ export function BrainShelf({
         <div className="flex min-w-0 items-center gap-2.5">
           <div
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-            style={{ background: "rgba(124,58,237,0.12)" }}
+            style={{ background: "var(--ui-accent-muted)" }}
           >
-            <Sparkles size={14} style={{ color: "#7c3aed" }} />
+            <Sparkles size={14} style={{ color: "var(--ui-accent)" }} />
           </div>
           <div className="min-w-0">
             <h3
@@ -175,7 +175,7 @@ export function BrainShelf({
           <Link
             href="/agency-brain/learnings"
             className="text-[11px] font-medium transition-opacity hover:opacity-80"
-            style={{ color: "#7c3aed" }}
+            style={{ color: "var(--ui-accent)" }}
           >
             {t("brainViewAll")}
           </Link>
@@ -222,15 +222,15 @@ export function BrainShelf({
               href={s.actionHref ?? "/agency-brain/learnings"}
               className="group flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-colors hover:opacity-95"
               style={{
-                background: "rgba(245,166,35,0.08)",
-                border: "1px solid rgba(245,166,35,0.22)"
+                background: "var(--ui-accent-muted)",
+                border: "1px solid var(--ui-accent-border)"
               }}
             >
               <div
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-                style={{ background: "rgba(245,166,35,0.16)" }}
+                style={{ background: "var(--ui-accent-muted-strong)" }}
               >
-                <Sparkles size={12} style={{ color: "#f5a623" }} />
+                <Sparkles size={12} style={{ color: "var(--ui-accent)" }} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] leading-snug">

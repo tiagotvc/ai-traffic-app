@@ -3,7 +3,10 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
+import { ListFilter } from "lucide-react";
+
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
@@ -376,15 +379,17 @@ export function CampaignAdSetsClient({
           }}
           className="min-w-[240px] flex-1"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="ui-select w-auto text-sm"
-        >
-          <option value="all">{t("filterStatusAll")}</option>
-          <option value="active">{t("filterStatusActive")}</option>
-          <option value="paused">{t("filterStatusPaused")}</option>
-        </select>
+        <FilterSelectDropdown
+          icon={<ListFilter size={14} />}
+          label={tCampaigns("filterStatus")}
+          placeholder={t("filterStatusAll")}
+          value={statusFilter === "all" ? "" : statusFilter}
+          onChange={(v) => setStatusFilter(v || "all")}
+          options={[
+            { value: "active", label: t("filterStatusActive") },
+            { value: "paused", label: t("filterStatusPaused") }
+          ]}
+        />
         <select className="ui-select w-auto text-sm">
           <option>{t("filterMetrics")}</option>
         </select>

@@ -59,11 +59,11 @@ export function FilterSelectDropdown({
         style={{
           color: "var(--text-main)",
           background: "var(--filter-btn-bg)",
-          borderColor: open ? "var(--amber-bright)" : "var(--border-color)"
+          borderColor: open ? "var(--ui-accent)" : "var(--border-color)"
         }}
         aria-expanded={open}
       >
-        <span className="shrink-0" style={{ color: "var(--text-dim)" }}>
+        <span className="shrink-0" style={{ color: "var(--ui-accent)" }}>
           {icon}
         </span>
         <span
@@ -99,7 +99,7 @@ export function FilterSelectDropdown({
             }}
             className="block w-full px-3 py-2 text-left font-body text-sm transition-colors"
             style={{
-              color: !value ? "var(--amber-bright)" : "var(--text-dim)"
+              color: !value ? "var(--ui-accent)" : "var(--text-dim)"
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";
@@ -121,7 +121,7 @@ export function FilterSelectDropdown({
               }}
               className="block w-full px-3 py-2 text-left font-body text-sm transition-colors"
               style={{
-                color: value === opt.value ? "var(--amber-bright)" : "var(--text-dim)"
+                color: value === opt.value ? "var(--ui-accent)" : "var(--text-dim)"
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "var(--row-hover, var(--surface-bg))";

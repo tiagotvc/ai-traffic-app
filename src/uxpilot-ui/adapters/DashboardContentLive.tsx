@@ -163,7 +163,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
       style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
     >
       <PageToolbar
-        icon={<Sparkles size={16} style={{ color: "#f5a623" }} />}
+        icon={<Sparkles size={16} />}
         title={t("highlights")}
         subtitle={
           <>
