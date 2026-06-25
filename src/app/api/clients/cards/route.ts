@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAppShellContext } from "@/lib/app-shell-context";
 import { listClientsForTenant } from "@/lib/app-context";
-import { buildClientListCards } from "@/lib/clients-list";
+import { buildClientListCards, clientsCardsCacheKeyPrefix } from "@/lib/clients-list";
 import { parsePeriodFromSearchParams } from "@/lib/report-period";
 import { redisGetJson, redisSetJson } from "@/lib/redis-cache";
 
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   const period = parsePeriodFromSearchParams(url);
   const periodKey = url.searchParams.get("period") ?? "custom";
 
-  const cacheKey = `clients:cards:${tenant.id}:${periodKey}:${period.since ?? "all"}:${period.until ?? "all"}`;
+  const cacheKey = `${clientsCardsCacheKeyPrefix(tenant.id)}${periodKey}:${period.since ?? "all"}:${period.until ?? "all"}`;
   const cached = await redisGetJson<{ clients: Awaited<ReturnType<typeof buildClientListCards>> }>(
     cacheKey
   );

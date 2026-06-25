@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, slugify } from "@/lib/app-context";
+import { invalidateClientsListCache } from "@/lib/clients-list";
 
 const BodySchema = z.object({
   clientIds: z.array(z.string().uuid()).min(1).max(50)
@@ -40,6 +41,10 @@ export async function POST(req: Request) {
       }
       await clientRepo.remove(client);
       deleted.push(client.id);
+    }
+
+    if (deleted.length) {
+      await invalidateClientsListCache(tenant.id);
     }
 
     return NextResponse.json({

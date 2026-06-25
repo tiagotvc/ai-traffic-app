@@ -3,6 +3,7 @@ import { Between, In } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, slugify } from "@/lib/app-context";
+import { invalidateClientsListCache } from "@/lib/clients-list";
 import { num } from "@/lib/goal-types";
 
 function dateNDaysAgo(n: number) {
@@ -161,5 +162,6 @@ export async function DELETE(
   }
 
   await clientRepo.remove(client);
+  await invalidateClientsListCache(tenant.id);
   return NextResponse.json({ ok: true });
 }

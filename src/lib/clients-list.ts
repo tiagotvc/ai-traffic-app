@@ -5,7 +5,29 @@ import { In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import type { Client } from "@/db/entities/Client";
 import { slugify } from "@/lib/app-context";
+import { redisDeleteByPrefix } from "@/lib/redis-cache";
 import type { ParsedPeriod } from "@/lib/report-period";
+
+/** Prefixo das chaves de cache (Redis) da listagem de clientes (`/api/clients`), por tenant. */
+export function clientsListCacheKeyPrefix(tenantId: string): string {
+  return `clients:list:${tenantId}:`;
+}
+
+/** Prefixo das chaves de cache (Redis) dos cards de clientes (`/api/clients/cards`), por tenant. */
+export function clientsCardsCacheKeyPrefix(tenantId: string): string {
+  return `clients:cards:${tenantId}:`;
+}
+
+/**
+ * Invalida o cache da listagem de clientes do tenant (lista + cards). Chamar após
+ * criar/excluir clientes para a lista não voltar "do cache" com itens já removidos.
+ */
+export async function invalidateClientsListCache(tenantId: string): Promise<void> {
+  await Promise.all([
+    redisDeleteByPrefix(clientsListCacheKeyPrefix(tenantId)),
+    redisDeleteByPrefix(clientsCardsCacheKeyPrefix(tenantId))
+  ]);
+}
 
 export type ClientListCard = {
   id: string;

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { getAppContext, listClientsForTenant, slugify } from "@/lib/app-context";
 import { getAppShellContext } from "@/lib/app-shell-context";
-import { buildClientListCards } from "@/lib/clients-list";
+import { buildClientListCards, clientsListCacheKeyPrefix, invalidateClientsListCache } from "@/lib/clients-list";
 import {
   applyClientMetaSettings,
   linkAllBmAccountsToClient,
@@ -109,6 +109,8 @@ export async function POST(req: Request) {
     defaultAdAccountId
   });
 
+  await invalidateClientsListCache(tenant.id);
+
   return NextResponse.json({
     ok: true,
     client: { id: saved.id, slug: slugify(saved.name), name: saved.name }
@@ -133,7 +135,7 @@ export async function GET(req: Request) {
 
   const period = parsePeriodFromSearchParams(url);
   const periodKey = url.searchParams.get("period") ?? "custom";
-  const cacheKey = `clients:list:${tenant.id}:${periodKey}:${period.since ?? "all"}:${period.until ?? "all"}`;
+  const cacheKey = `${clientsListCacheKeyPrefix(tenant.id)}${periodKey}:${period.since ?? "all"}:${period.until ?? "all"}`;
 
   const cached = await redisGetJson<{ clients: Awaited<ReturnType<typeof buildClientListCards>> }>(
     cacheKey
