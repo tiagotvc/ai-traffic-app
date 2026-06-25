@@ -71,8 +71,17 @@ function TrendBadge({
   );
 }
 
-function KpiCardTile({ kpi, index }: { kpi: KpiCard; index: number }) {
-  const dark = useAppDarkMode();
+function KpiCardTile({
+  kpi,
+  index,
+  forceDark
+}: {
+  kpi: KpiCard;
+  index: number;
+  forceDark?: boolean;
+}) {
+  const themeDark = useAppDarkMode();
+  const dark = forceDark ?? themeDark;
   const shell = metricKpiCardShell(kpi.color, dark);
   const iconShell = metricKpiIconShell(kpi.color, dark);
   const chartFrame = metricKpiChartFrame(kpi.color, dark);
@@ -140,7 +149,15 @@ function KpiCardTile({ kpi, index }: { kpi: KpiCard; index: number }) {
   );
 }
 
-function PrimaryKpiGrid({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; isLoading?: boolean }) {
+function PrimaryKpiGrid({
+  primaryKPIs,
+  isLoading,
+  forceDark
+}: {
+  primaryKPIs: KpiCard[];
+  isLoading?: boolean;
+  forceDark?: boolean;
+}) {
   if (isLoading) {
     return (
       <div className="grid h-full grid-cols-1 gap-3 sm:grid-cols-3">
@@ -175,16 +192,24 @@ function PrimaryKpiGrid({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; is
       )}
     >
       {primaryKPIs.map((kpi, index) => (
-        <KpiCardTile key={kpi.label} kpi={kpi} index={index} />
+        <KpiCardTile key={kpi.label} kpi={kpi} index={index} forceDark={forceDark} />
       ))}
     </div>
   );
 }
 
-export function MetricPrismPrimary({ primaryKPIs, isLoading }: { primaryKPIs: KpiCard[]; isLoading?: boolean }) {
+export function MetricPrismPrimary({
+  primaryKPIs,
+  isLoading,
+  forceDark
+}: {
+  primaryKPIs: KpiCard[];
+  isLoading?: boolean;
+  forceDark?: boolean;
+}) {
   return (
     <div className="h-full min-h-0 w-full max-lg:h-auto">
-      <PrimaryKpiGrid primaryKPIs={primaryKPIs} isLoading={isLoading} />
+      <PrimaryKpiGrid primaryKPIs={primaryKPIs} isLoading={isLoading} forceDark={forceDark} />
     </div>
   );
 }
@@ -213,18 +238,21 @@ export function MetricPrism({
   primaryKPIs,
   secondaryMetrics,
   secondaryTitle,
-  isLoading
+  isLoading,
+  forceDark
 }: {
   primaryKPIs: KpiCard[];
   secondaryMetrics: SecondaryMetric[];
   secondaryTitle?: string;
   /** Show loading skeleton only while fetching — not for empty accounts. */
   isLoading?: boolean;
+  /** Force dark KPI styling (e.g. marketing showcase on a dark panel). */
+  forceDark?: boolean;
 }) {
   if (isLoading) {
     return (
       <div className="space-y-3">
-        <PrimaryKpiGrid primaryKPIs={[]} isLoading />
+        <PrimaryKpiGrid primaryKPIs={[]} isLoading forceDark={forceDark} />
         <div className="flex flex-wrap gap-2">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="skeleton-shimmer h-9 w-28 rounded-lg" />
@@ -236,7 +264,7 @@ export function MetricPrism({
 
   return (
     <div className="space-y-3">
-      <PrimaryKpiGrid primaryKPIs={primaryKPIs} />
+      <PrimaryKpiGrid primaryKPIs={primaryKPIs} forceDark={forceDark} />
 
       {secondaryMetrics.length > 0 ? (
         <div className="space-y-2">

@@ -25,7 +25,7 @@ export function DsUnderlineTabs<T extends string>({
   accent?: DsUnderlineTabAccent;
   className?: string;
 }) {
-  const useBrand = accent === "brand" || accent === "violet";
+  const useBrand = accent === "brand" || accent === "violet" || accent === "amber";
   const activeClass = useBrand
     ? "border-[var(--ui-accent)] text-[var(--ui-accent)]"
     : "border-[var(--amber-bright)] text-[var(--amber)]";

@@ -231,7 +231,7 @@ export function BillingPortalClient({
     : null;
   const addonChips: { label: string; Icon: LucideIcon; bg: string; color: string }[] = [
     { label: t("addonClients"), Icon: User, bg: "var(--ui-accent-muted-strong)", color: "var(--ui-accent)" },
-    { label: t("addonAds"), Icon: Timer, bg: "rgba(245,166,35,0.15)", color: "var(--amber-bright)" },
+    { label: t("addonAds"), Icon: Timer, bg: "var(--ui-accent-muted)", color: "var(--ui-accent)" },
     { label: t("addonAi"), Icon: Sparkles, bg: "rgba(236,72,153,0.15)", color: "#f472b6" }
   ];
 

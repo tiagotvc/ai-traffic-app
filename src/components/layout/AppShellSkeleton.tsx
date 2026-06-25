@@ -376,8 +376,7 @@ function AppShellSkeletonInner({
             type="button"
             onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
             aria-label="Voltar ao topo"
-            className="fixed bottom-5 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full text-[#0f1419] shadow-lg transition print:hidden lg:bottom-6 lg:right-6"
-            style={{ background: "linear-gradient(135deg, var(--amber-bright), #e8920d)" }}
+            className="ui-btn-accent fixed bottom-5 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full transition print:hidden lg:bottom-6 lg:right-6"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />

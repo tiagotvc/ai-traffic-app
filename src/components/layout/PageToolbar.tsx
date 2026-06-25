@@ -72,14 +72,7 @@ export function PageToolbar({
             </p>
           ) : null}
           <div className="flex items-center gap-2">
-            {icon ? (
-              <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                style={{ background: "rgba(245,166,35,0.15)" }}
-              >
-                {icon}
-              </div>
-            ) : null}
+            {icon ? <div className="ui-toolbar-icon-shell">{icon}</div> : null}
             {typeof title === "string" ? (
               <h1 className="font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
                 {title}
@@ -124,14 +117,9 @@ export function PageToolbar({
               aria-label={t("filtersTitle")}
               aria-pressed={filtersOpen}
               className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all duration-200",
-                filterBtnActive && "shadow-sm"
+                "ui-toolbar-icon-btn",
+                filterBtnActive && "ui-toolbar-icon-btn--active"
               )}
-              style={{
-                background: filterBtnActive ? "rgba(245,166,35,0.12)" : "var(--surface-card)",
-                borderColor: filterBtnActive ? "var(--amber-bright)" : "var(--border-color)",
-                color: filterBtnActive ? "#f5a623" : "var(--text-dim)"
-              }}
             >
               <Filter size={16} />
             </button>

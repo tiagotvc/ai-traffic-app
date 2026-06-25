@@ -1,13 +1,11 @@
 import { getTranslations } from "next-intl/server";
 
-import { LoginProductShowcase } from "@/components/auth/LoginProductShowcase";
-import { buildShowcaseCopy } from "@/lib/marketing/showcase-copy";
+import { MarketingDashboardShowcase } from "@/components/marketing/MarketingDashboardShowcase";
 
 const FEATURES = ["sampleFeature1", "sampleFeature2", "sampleFeature3", "sampleFeature4"] as const;
 
 export async function LandingProductPreview() {
   const t = await getTranslations("marketing");
-  const showcaseCopy = buildShowcaseCopy(await getTranslations("auth"));
 
   return (
     <section id="samples" className="border-b border-white/5 px-4 py-16 sm:px-6 sm:py-20">
@@ -24,7 +22,7 @@ export async function LandingProductPreview() {
 
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
           <div className="flex justify-center lg:justify-end">
-            <LoginProductShowcase copy={showcaseCopy} animate={false} />
+            <MarketingDashboardShowcase />
           </div>
 
           <div className="space-y-4">

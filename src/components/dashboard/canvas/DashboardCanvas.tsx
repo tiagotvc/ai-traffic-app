@@ -178,9 +178,9 @@ export function DashboardCanvas({
           <PageToolbar
             icon={
               highlightsMode ? (
-                <Sparkles size={16} style={{ color: "#f5a623" }} />
+                <Sparkles size={16} />
               ) : (
-                <LayoutGrid size={16} style={{ color: "#818cf8" }} />
+                <LayoutGrid size={16} />
               )
             }
             title={
@@ -239,9 +239,10 @@ export function DashboardCanvas({
                         onClick={() => (onEnterEditMode ? onEnterEditMode() : setEditMode(true))}
                         className="flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
                         style={{
-                          borderColor: "rgba(124,58,237,0.3)",
-                          background: "rgba(124,58,237,0.08)",
-                          color: "#a78bfa"
+                          borderColor: "var(--ui-accent-border)",
+                          background: "var(--ui-accent-muted)",
+                          color: "var(--ui-accent)"
+                        }}
                         }}
                       >
                         <Move size={14} />

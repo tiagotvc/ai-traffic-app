@@ -4,6 +4,9 @@
 > existe hoje, por que ainda não compara concorrentes de verdade ao gerar o aprendizado, e o
 > roadmap** para pesquisa multi-fonte (Meta Ad Library, Google, etc.) + timeline com evidências.
 > Complementa o [README do Cérebro](./README.md).
+>
+> 📌 Para o **plano de produto vs. RedTrack.io** (Meta CAPI, agente/MCP sobre o Brain, atribuição),
+> ver [plano-acao-vs-redtrack](./plano-acao-vs-redtrack.md).
 
 ## TL;DR
 

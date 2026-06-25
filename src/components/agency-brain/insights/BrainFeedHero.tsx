@@ -14,15 +14,12 @@ export function BrainFeedHero({ variant }: { variant: FeedVariant }) {
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg"
-              style={{ background: "rgba(245,166,35,0.15)" }}
-            >
+            <div className="ui-toolbar-icon-shell">
               <svg
                 className="h-4 w-4"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke="#f5a623"
+                stroke="currentColor"
                 strokeWidth={1.75}
               >
                 <path

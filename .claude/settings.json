@@ -6,7 +6,9 @@
       "Bash(command -v chromium-cli)",
       "Bash(command -v chromium-cli playwright)",
       "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1)",
-      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1 | Select-String -Pattern \"\\\\.tsx?\\\\\\(\" | Where-Object { $_ -notmatch \"report-pdf-puppeteer\" })"
+      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1 | Select-String -Pattern \"\\\\.tsx?\\\\\\(\" | Where-Object { $_ -notmatch \"report-pdf-puppeteer\" })",
+      "Skill(deep-research)",
+      "Skill(deep-research:*)"
     ]
   }
 }

@@ -266,7 +266,7 @@ h6,
     background: var(--input-bg);
     border-color: var(--border-color);
     color: var(--text-main);
-    @apply placeholder:text-[var(--text-dimmer)] focus:border-[var(--amber)] focus:ring-[rgba(245,166,35,0.15)];
+    @apply placeholder:text-[var(--text-dimmer)] focus:border-[var(--ui-accent)] focus:ring-[var(--ui-accent-ring)];
   }
 
   .ui-textarea {
@@ -298,7 +298,7 @@ h6,
     color: var(--text-main);
     background: var(--filter-btn-bg);
     border-color: var(--border-color);
-    @apply placeholder:text-[var(--text-dimmer)] focus:border-[var(--amber-bright)] focus:ring-[rgba(245,166,35,0.15)];
+    @apply placeholder:text-[var(--text-dimmer)] focus:border-[var(--ui-accent)] focus:ring-[var(--ui-accent-ring)];
   }
 
   /* ─── Auth / login (marketing premium dark) ─── */
@@ -395,6 +395,32 @@ h6,
 
   .ui-btn-accent:hover:not(:disabled) {
     filter: brightness(1.05);
+  }
+
+  /* Toolbar / PageToolbar — accent temático (âmbar light, roxo dark) */
+  .ui-toolbar-icon-shell {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg;
+    background: var(--ui-accent-muted);
+    color: var(--ui-accent);
+  }
+
+  .ui-toolbar-icon-btn {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all duration-200;
+    background: var(--surface-card);
+    border-color: var(--border-color);
+    color: var(--text-dim);
+  }
+
+  .ui-toolbar-icon-btn:hover:not(:disabled) {
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+  }
+
+  .ui-toolbar-icon-btn--active {
+    background: var(--ui-accent-muted);
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+    @apply shadow-sm;
   }
 
   .ui-btn-secondary {
@@ -501,9 +527,9 @@ h6,
   }
 
   .sidebar-item-active {
-    background: linear-gradient(135deg, rgba(245, 166, 35, 0.15), rgba(245, 166, 35, 0.05));
-    border-left: 2px solid var(--amber-bright);
-    color: var(--amber-bright) !important;
+    background: linear-gradient(135deg, var(--ui-accent-muted), transparent);
+    border-left: 2px solid var(--ui-accent);
+    color: var(--ui-accent) !important;
   }
 
   .sidebar-item-idle {
@@ -516,7 +542,7 @@ h6,
   }
 
   .sidebar-sub-active {
-    color: var(--amber-bright) !important;
+    color: var(--ui-accent) !important;
     font-weight: 600;
   }
 
@@ -1150,3 +1176,30 @@ h6,
 .report-breakdown-card--full .report-breakdown-table {
   width: 100%;
 }
+
+/* Marketing landing: real dashboard components on a dark panel regardless of html theme */
+.marketing-dashboard-showcase[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-bg: #0f1419;
+  --surface-card: #1d2630;
+  --surface-card-alt: rgba(29, 38, 48, 0.8);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --text-main: #f8fafc;
+  --text-dim: #94a3b8;
+  --text-dimmer: #64748b;
+  --chart-grid: rgba(255, 255, 255, 0.06);
+  --chart-frame-bg: rgba(255, 255, 255, 0.03);
+  --chart-frame-border: rgba(255, 255, 255, 0.1);
+  --brain-shelf-bg: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.12) 0%,
+    rgba(99, 102, 241, 0.08) 60%,
+    rgba(168, 85, 247, 0.06) 100%
+  );
+  --brain-shelf-border: rgba(124, 58, 237, 0.28);
+}
+
+.marketing-dashboard-showcase .kpi-card-hover {
+  pointer-events: none;
+}
+

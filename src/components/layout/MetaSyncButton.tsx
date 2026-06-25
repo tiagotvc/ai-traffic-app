@@ -17,7 +17,7 @@ export function MetaSyncButton({
   className?: string;
   size?: number;
   label?: string;
-  /** `toolbar` — ícone discreto no card branco; `prominent` — gradiente laranja. */
+  /** `toolbar` — ícone discreto; `prominent` — CTA com accent temático. */
   variant?: "toolbar" | "prominent";
 }) {
   const tSync = useTranslations("sync");
@@ -47,16 +47,10 @@ export function MetaSyncButton({
         title={aria}
         aria-label={aria}
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-xs font-semibold shadow-sm transition hover:shadow-md",
-          syncing ? "cursor-wait opacity-70" : "hover:border-[rgba(245,166,35,0.45)]",
+          "ui-toolbar-icon-btn text-[var(--ui-accent)]",
+          syncing && "cursor-wait opacity-70",
           className
         )}
-        style={{
-          background: "var(--surface-card)",
-          borderColor: "var(--border-color)",
-          color: "#f5a623",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
-        }}
       >
         <RefreshCw size={size} className={cn("shrink-0", syncing && "animate-spin")} />
       </button>
@@ -71,15 +65,11 @@ export function MetaSyncButton({
       title={aria}
       aria-label={aria}
       className={cn(
-        "flex h-9 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-md transition-all duration-200",
-        label ? "gap-1.5 px-2.5 text-[11px]" : "w-9",
-        syncing ? "cursor-wait opacity-70" : "hover:brightness-110 active:scale-95",
+        "ui-btn-accent h-9 shrink-0 font-heading text-sm font-semibold",
+        label ? "gap-1.5 px-2.5 text-[11px]" : "w-9 justify-center",
+        syncing ? "cursor-wait opacity-70" : "active:scale-95",
         className
       )}
-      style={{
-        background: "linear-gradient(135deg, #f5a623, #e8920d)",
-        color: "#0f1419"
-      }}
     >
       <RefreshCw size={size} className={cn("shrink-0", syncing && "animate-spin")} />
       {label ? <span className="max-w-[88px] truncate whitespace-nowrap">{label}</span> : null}

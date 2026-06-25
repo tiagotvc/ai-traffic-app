@@ -53,7 +53,7 @@ export function SidebarThemeToggle({ collapsed }: { collapsed: boolean }) {
           color: "#94a3b8"
         }}
       >
-        {isLight ? <Moon size={14} style={{ color: "#f5a623" }} /> : <Sun size={14} style={{ color: "#f5a623" }} />}
+        {isLight ? <Moon size={14} style={{ color: "var(--ui-accent)" }} /> : <Sun size={14} style={{ color: "var(--ui-accent)" }} />}
         {!collapsed ? <span>{isLight ? "Modo Escuro" : "Modo Claro"}</span> : null}
       </button>
     </div>
@@ -90,12 +90,12 @@ export function SidebarLanguageSelector({ collapsed }: { collapsed: boolean }) {
         }`}
         style={{
           background: "rgba(255,255,255,0.04)",
-          borderColor: open ? "rgba(245,166,35,0.5)" : "rgba(255,255,255,0.08)",
+          borderColor: open ? "var(--ui-accent-border-strong)" : "rgba(255,255,255,0.08)",
           color: "#94a3b8"
         }}
       >
         <div className="flex items-center gap-2">
-          <Globe size={14} style={{ color: "#f5a623" }} />
+          <Globe size={14} style={{ color: "var(--ui-accent)" }} />
           {!collapsed ? <span>{LOCALE_LABELS[locale]}</span> : null}
         </div>
         {!collapsed ? (
@@ -122,8 +122,8 @@ export function SidebarLanguageSelector({ collapsed }: { collapsed: boolean }) {
               onClick={() => pick(loc)}
               className="flex w-full items-center justify-between px-3 py-2 font-body text-xs transition-colors"
               style={{
-                color: locale === loc ? "#f5a623" : "#94a3b8",
-                background: locale === loc ? "rgba(245,166,35,0.08)" : "transparent"
+                color: locale === loc ? "var(--ui-accent)" : "#94a3b8",
+                background: locale === loc ? "var(--ui-accent-muted)" : "transparent"
               }}
               onMouseEnter={(e) => {
                 if (locale !== loc) e.currentTarget.style.background = "rgba(255,255,255,0.04)";
@@ -133,7 +133,7 @@ export function SidebarLanguageSelector({ collapsed }: { collapsed: boolean }) {
               }}
             >
               <span>{LOCALE_LABELS[loc]}</span>
-              {locale === loc ? <span style={{ color: "#f5a623", fontSize: 10 }}>✓</span> : null}
+              {locale === loc ? <span style={{ color: "var(--ui-accent)", fontSize: 10 }}>✓</span> : null}
             </button>
           ))}
         </div>
@@ -151,8 +151,8 @@ export function SidebarLanguageSelector({ collapsed }: { collapsed: boolean }) {
               onClick={() => pick(loc)}
               className="w-full px-3 py-2 text-left font-body text-xs transition-colors"
               style={{
-                color: locale === loc ? "#f5a623" : "#94a3b8",
-                background: locale === loc ? "rgba(245,166,35,0.08)" : "transparent"
+                color: locale === loc ? "var(--ui-accent)" : "#94a3b8",
+                background: locale === loc ? "var(--ui-accent-muted)" : "transparent"
               }}
             >
               {LOCALE_LABELS[loc]}
@@ -383,7 +383,7 @@ export function SidebarUserBlock({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 font-body text-[13px] font-semibold text-[#f8fafc]">
-              <Sparkles size={13} style={{ color: "#f5a623" }} />
+              <Sparkles size={13} style={{ color: "var(--ui-accent)" }} />
               {planLoading ? (
                 <span className="inline-block h-4 w-20 animate-pulse rounded bg-white/10" />
               ) : (
@@ -399,7 +399,7 @@ export function SidebarUserBlock({
                 <span className="inline-flex items-center gap-1">
                   <span
                     className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: planInfo.status === "active" ? "#10b981" : "#f5a623" }}
+                    style={{ background: planInfo.status === "active" ? "#10b981" : "var(--ui-accent)" }}
                   />
                   {planInfo.status === "active" ? tBilling("statusActiveShort") : planInfo.status}
                 </span>
@@ -463,7 +463,7 @@ export function SidebarUserBlock({
           <span className="flex h-5 w-6 items-center justify-center rounded-full" style={{ background: !isLight ? "rgba(124,58,237,0.5)" : "transparent" }}>
             <Moon size={11} style={{ color: !isLight ? "#fff" : "#64748b" }} />
           </span>
-          <span className="flex h-5 w-6 items-center justify-center rounded-full" style={{ background: isLight ? "rgba(245,166,35,0.5)" : "transparent" }}>
+          <span className="flex h-5 w-6 items-center justify-center rounded-full" style={{ background: isLight ? "var(--ui-accent-muted-strong)" : "transparent" }}>
             <Sun size={11} style={{ color: isLight ? "#fff" : "#64748b" }} />
           </span>
         </button>
@@ -479,8 +479,8 @@ export function SidebarUserBlock({
               onClick={() => pickLocale(loc)}
               className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold transition-colors"
               style={{
-                background: locale === loc ? "rgba(245,166,35,0.15)" : "transparent",
-                color: locale === loc ? "#f5a623" : "#64748b"
+                background: locale === loc ? "var(--ui-accent-muted)" : "transparent",
+                color: locale === loc ? "var(--ui-accent)" : "#64748b"
               }}
             >
               {LOCALE_LABELS[loc]}

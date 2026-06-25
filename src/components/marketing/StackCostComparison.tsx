@@ -31,6 +31,7 @@ import {
 import {
   formatBenchmarkPrice,
   getStackToolsForPlan,
+  getOrionIncludesKey,
   sumStackMonthlyCents
 } from "@/lib/marketing/stack-benchmarks";
 import { cn } from "@/lib/cn";
@@ -69,8 +70,13 @@ export function StackCostComparison({ className }: { className?: string }) {
   const selectedPlan = plans.find((p) => p.slug === selectedSlug) ?? plans[0];
 
   const stackTools = useMemo(
-    () => (selectedSlug ? getStackToolsForPlan(selectedSlug, isBr) : []),
-    [selectedSlug, isBr]
+    () => (selectedSlug ? getStackToolsForPlan(selectedSlug) : []),
+    [selectedSlug]
+  );
+
+  const orionIncludesKey = useMemo(
+    () => getOrionIncludesKey(selectedSlug),
+    [selectedSlug]
   );
 
   const stackMonthlyCents = useMemo(
@@ -167,11 +173,15 @@ export function StackCostComparison({ className }: { className?: string }) {
                   >
                     <div>
                       <span className="text-sm text-violet-100/90">{t(tool.labelKey)}</span>
+                      <p className="mt-1 text-[11px] leading-snug text-amber-200/70">
+                        <span className="font-medium text-amber-300/80">{t("stackMapsToLabel")}</span>{" "}
+                        {t(tool.mapsToKey)}
+                      </p>
                       <a
                         href={tool.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-0.5 block text-[10px] text-violet-400/50 hover:text-amber-300/80"
+                        className="mt-1 block text-[10px] text-violet-400/50 hover:text-amber-300/80"
                       >
                         {t(tool.sourceKey)}
                       </a>
@@ -192,6 +202,7 @@ export function StackCostComparison({ className }: { className?: string }) {
             </div>
 
             <p className="text-center text-[10px] leading-relaxed text-violet-400/45">{t("stackSourcesNote")}</p>
+            <p className="text-center text-[10px] leading-relaxed text-violet-400/55">{t("stackDisclaimer")}</p>
           </div>
 
           <div className="space-y-4">
@@ -203,7 +214,12 @@ export function StackCostComparison({ className }: { className?: string }) {
               <h3 className="mt-2 font-heading text-xl font-bold text-white">
                 {selectedPlan?.name ?? t("orionPlanName")}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-violet-200/75">{t("orionIncludes")}</p>
+              <p className="mt-2 text-sm leading-relaxed text-violet-200/75">{t(orionIncludesKey)}</p>
+
+              <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-3">
+                <p className="text-xs font-semibold text-violet-100/90">{t("stackOrionExtraTitle")}</p>
+                <p className="mt-1 text-xs leading-relaxed text-violet-200/70">{t("stackOrionExtraBody")}</p>
+              </div>
 
               <div className="mt-6 flex flex-wrap items-baseline gap-2">
                 {orionPricing && orionPricing.discountPercent > 0 && cycle === "yearly" ? (

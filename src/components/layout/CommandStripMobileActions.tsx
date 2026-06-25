@@ -86,12 +86,10 @@ export function CommandStripMobileActions() {
           <button
             type="button"
             onClick={() => setFiltersOpen(true)}
-            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all duration-200"
-            style={{
-              ...pillStyle,
-              borderColor: filtersActive ? "var(--amber-bright)" : "var(--border-color)",
-              boxShadow: filtersActive ? "0 0 0 1px rgba(245,166,35,0.25)" : undefined
-            }}
+            className={cn(
+              "ui-toolbar-icon-btn relative",
+              filtersActive && "ui-toolbar-icon-btn--active"
+            )}
             title={t("filtersTitle")}
             aria-label={t("filtersTitle")}
           >
@@ -99,7 +97,7 @@ export function CommandStripMobileActions() {
             {filtersActive ? (
               <span
                 className="absolute right-1 top-1 h-2 w-2 rounded-full"
-                style={{ background: "var(--amber-bright)" }}
+                style={{ background: "var(--ui-accent)" }}
               />
             ) : null}
           </button>
@@ -146,13 +144,9 @@ export function CommandStripMobileActions() {
           icon={<RefreshCw size={15} className={cn(syncing && "animate-spin")} />}
           hideLabelOnMobile
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-md transition-all duration-200",
-            syncing ? "cursor-wait opacity-70" : "hover:brightness-110 active:scale-95"
+            "ui-btn-accent flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-semibold",
+            syncing ? "cursor-wait opacity-70" : "active:scale-95"
           )}
-          style={{
-            background: "linear-gradient(135deg, #f5a623, #e8920d)",
-            color: "#0f1419"
-          }}
         />
       )}
     </div>

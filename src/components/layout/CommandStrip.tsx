@@ -26,13 +26,9 @@ function SyncButton({
       icon={<RefreshCw size={16} className={cn(syncing && "animate-spin")} />}
       hideLabelOnMobile
       className={cn(
-        "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-semibold shadow-lg transition-all duration-200 lg:h-auto lg:w-auto lg:gap-2 lg:px-4 lg:py-2",
-        syncing ? "cursor-wait opacity-70" : "hover:brightness-110 active:scale-95"
+        "ui-btn-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-heading text-sm font-semibold lg:h-auto lg:w-auto lg:gap-2 lg:px-4 lg:py-2",
+        syncing ? "cursor-wait opacity-70" : "active:scale-95"
       )}
-      style={{
-        background: "linear-gradient(135deg, #f5a623, #e8920d)",
-        color: "#0f1419"
-      }}
     />
   );
 }

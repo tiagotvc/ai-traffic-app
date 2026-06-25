@@ -136,8 +136,8 @@ const LIMIT_TONES = {
     barColor: "var(--ui-accent)"
   },
   amber: {
-    iconClass: "bg-amber-500/15 text-[var(--amber-bright)]",
-    barColor: "var(--amber-bright)"
+    iconClass: "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]",
+    barColor: "var(--ui-accent)"
   },
   pink: {
     iconClass: "bg-pink-500/15 text-pink-400",
