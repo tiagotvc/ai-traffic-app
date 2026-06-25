@@ -4,10 +4,6 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useEffect, useState } from "react";
 import { sidebarItemClasses, sidebarSubLinkClasses } from "@/components/layout/sidebar-nav-styles";
-import {
-  isPlatformAdminLinkActive,
-  PLATFORM_ADMIN_LINKS
-} from "@/components/layout/admin-nav-links";
 
 const STORAGE_KEY = "settings-nav-expanded";
 
@@ -49,7 +45,6 @@ function isProfileRoute(base: string): boolean {
 
 export function ProfileNavGroup({ collapsed, pathname, isPlatformAdmin = false, onNavigate }: Props) {
   const t = useTranslations("nav");
-  const tAdmin = useTranslations("billingAdmin");
   const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
 
   const inProfile = isProfileRoute(base);
@@ -80,10 +75,6 @@ export function ProfileNavGroup({ collapsed, pathname, isPlatformAdmin = false, 
     } catch {
       /* ignore */
     }
-  }
-
-  function isLinkActive(href: string): boolean {
-    return isPlatformAdminLinkActive(pathname, href);
   }
 
   if (!isPlatformAdmin) {
@@ -131,19 +122,13 @@ export function ProfileNavGroup({ collapsed, pathname, isPlatformAdmin = false, 
             {t("myProfile")}
           </Link>
 
-          <p className="px-3 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[#64748b]">
+          <Link
+            href="/admin/users"
+            onClick={() => onNavigate?.()}
+            className={sidebarSubLinkClasses(inAdmin)}
+          >
             {t("profileAdminSection")}
-          </p>
-          {PLATFORM_ADMIN_LINKS.map((link) => (
-            <Link
-              key={link.id}
-              href={link.href}
-              onClick={() => onNavigate?.()}
-              className={sidebarSubLinkClasses(isLinkActive(link.href))}
-            >
-              {tAdmin(link.labelKey)}
-            </Link>
-          ))}
+          </Link>
         </div>
       ) : null}
     </div>

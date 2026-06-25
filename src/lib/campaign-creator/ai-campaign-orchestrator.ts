@@ -432,7 +432,8 @@ export async function generateAiCampaignDraft(args: {
         includeCustomAudienceIds: resolvedMeta?.settings.defaultCustomAudienceIds ?? [],
         excludeCustomAudienceIds: resolvedMeta?.settings.defaultExcludedAudienceIds ?? [],
         rejectedSegmentIds: [],
-        rejectedSegments: []
+        rejectedSegments: [],
+        avoidSegmentIds: []
       };
 
       const persona = await generateAudiencePersonaPreview({ provider, brief });

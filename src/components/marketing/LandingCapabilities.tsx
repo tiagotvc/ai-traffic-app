@@ -42,7 +42,10 @@ export async function LandingCapabilities() {
         </div>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CAPS.map(({ key, icon: Icon, accent, featured }) => (
+          {CAPS.map((cap) => {
+            const { key, icon: Icon, accent } = cap;
+            const featured = "featured" in cap && cap.featured;
+            return (
             <article
               key={key}
               className={cn(
@@ -68,7 +71,8 @@ export async function LandingCapabilities() {
                 {t(`${key}Example`)}
               </p>
             </article>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

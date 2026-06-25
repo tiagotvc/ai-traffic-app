@@ -452,7 +452,7 @@ export function AdSetStep() {
               disabled={clientRequired}
               onChange={(zoneId) => patchAdset({ zoneId })}
             />
-            <ZoneGeoReviewPanel zoneId={adset.zoneId} />
+            <ZoneGeoReviewPanel zoneId={adset.zoneId ?? null} />
             <details className="rounded-xl border border-[var(--border-color)] p-3">
               <summary className="cursor-pointer text-xs font-medium text-[var(--text-main)]">
                 {t("metaRefineOptional")}
@@ -511,7 +511,7 @@ export function AdSetStep() {
               disabled={clientRequired}
               onChange={(zoneId) => patchAdset({ zoneId })}
             />
-            <ZoneGeoReviewPanel zoneId={adset.zoneId} />
+            <ZoneGeoReviewPanel zoneId={adset.zoneId ?? null} />
           </div>
         ) : null}
 

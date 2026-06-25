@@ -3,19 +3,48 @@ import "server-only";
 import { z } from "zod";
 
 import {
+  AudiencePersonaPreviewSchema,
   AudienceTargetingBriefSchema,
   generateAudiencePersonaPreview,
   generateAudienceTargetingSuggestion
 } from "@/lib/audience-targeting-ai";
+import type { AudiencePersonaPreview } from "@/lib/audience-targeting-shared";
 import { AiCampaignWizardGenerateSchema, wizardNeedsAudiencePrep, wizardNeedsRegionsPrep } from "@/lib/campaign-creator/ai-campaign-wizard-types";
 import { isTemporaryLlmError } from "@/lib/llm/generate-json";
 import { getApiKeyForProvider, getLlmProvidersStatus } from "@/lib/llm/keys";
 import type { LlmProviderId } from "@/lib/llm/types";
 import { fetchCustomAudiences } from "@/lib/meta-graph";
-import type { ZoneAiPreview } from "@/lib/zone-targeting-ai";
-import { generateZoneAiPreview, geocodeZonePreview } from "@/lib/zone-targeting-ai";
+import { normalizeMetaRadiusKm } from "@/lib/zone-geo-shared";
+import { generateZoneAiPreview, geocodeZonePreview, type ZoneAiPreview } from "@/lib/zone-targeting-ai";
 
 type WizardBody = z.infer<typeof AiCampaignWizardGenerateSchema>;
+
+function personaPreviewFromBody(
+  preview: NonNullable<WizardBody["audiencePreview"]>,
+  provider: LlmProviderId
+): AudiencePersonaPreview {
+  const core = AudiencePersonaPreviewSchema.parse(preview);
+  const raw = preview as Record<string, unknown>;
+  return {
+    ...core,
+    provider:
+      raw.provider === "gemini" || raw.provider === "claude"
+        ? raw.provider
+        : provider,
+    modelUsed: typeof raw.modelUsed === "string" ? raw.modelUsed : ""
+  };
+}
+
+function zonePlacesFromBody(
+  places: NonNullable<NonNullable<WizardBody["zonePreview"]>["places"]>
+): ZoneAiPreview["places"] {
+  return places.map((place) => ({
+    label: place.label,
+    city: place.city,
+    state: place.state,
+    radiusKm: normalizeMetaRadiusKm(place.radiusKm ?? 3)
+  }));
+}
 
 export const AiWizardPreparePhaseSchema = z.enum([
   "audience_preview",
@@ -121,13 +150,14 @@ export async function prepareWizardAudienceTargeting(args: {
   const preferred = resolveWizardLlmProvider((args.body.provider as LlmProviderId) ?? "claude");
   const brief = audienceBriefFromBody(args.body);
   const audiences = await fetchCustomAudiences(args.accessToken, args.body.adAccountId).catch(() => []);
+  const persona = personaPreviewFromBody(preview, preferred);
   const { result: suggestion, provider } = await withProviderFallback(preferred, (p) =>
     generateAudienceTargetingSuggestion({
       accessToken: args.accessToken,
       adAccountId: args.body.adAccountId,
       provider: p,
       brief,
-      persona: preview,
+      persona,
       clientName: args.clientName,
       customAudiences: audiences.map((a) => ({
         id: a.id,
@@ -181,7 +211,7 @@ export async function prepareWizardRegionsGeocode(args: {
       ? ({
           zoneName: args.body.zonePreview.zoneName,
           summary: args.body.zonePreview.summary,
-          places: args.body.zonePreview.places,
+          places: zonePlacesFromBody(args.body.zonePreview.places),
           provider: (args.body.provider as LlmProviderId) ?? "claude",
           modelUsed: ""
         } satisfies ZoneAiPreview)

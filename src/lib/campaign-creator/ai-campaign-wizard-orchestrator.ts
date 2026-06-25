@@ -359,9 +359,10 @@ export async function generateAiCampaignFromWizard(args: {
           messageTemplate:
             args.body.conversionLocation === "messaging"
               ? {
+                  channel: "whatsapp" as const,
+                  templateId: null,
                   greeting: isEn ? "Hello! How can we help?" : "Olá! Como podemos ajudar?",
-                  preFilledResponses: [],
-                  quickReplies: []
+                  icebreakers: []
                 }
               : a.messageTemplate
         }

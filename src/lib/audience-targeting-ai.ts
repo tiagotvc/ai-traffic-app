@@ -86,6 +86,8 @@ const PersonaCoreSchema = z.object({
 
 export const AudiencePersonaPreviewSchema = z.preprocess(normalizePersonaRaw, PersonaCoreSchema);
 
+export type AudiencePersonaCore = z.infer<typeof PersonaCoreSchema>;
+
 export const AudiencePersonaPreviewPayloadSchema = PersonaCoreSchema.extend({
   provider: z.enum(["gemini", "claude"]).optional(),
   modelUsed: z.string().optional()
@@ -140,7 +142,7 @@ function dedupeQueries(values: string[], max: number): string[] {
 }
 
 /** Extrai termos pesquisáveis do briefing (marcas, apps, hobbies) para ampliar o catálogo Meta. */
-function expandSearchPlan(plan: SearchPlan, persona: AudiencePersonaPreview): SearchPlan {
+function expandSearchPlan(plan: SearchPlan, persona: AudiencePersonaCore): SearchPlan {
   const extraInterests: string[] = [];
   const extraBehaviors: string[] = [];
   const extraLifeEvents: string[] = [];
@@ -269,7 +271,7 @@ const RankedIdsSchema = z.object({
 
 async function generateFallbackSearchQueries(args: {
   provider: LlmProviderId;
-  persona: AudiencePersonaPreview;
+  persona: AudiencePersonaCore;
   brief: AudienceTargetingBrief;
 }): Promise<SearchPlan> {
   const prompt = [
@@ -308,7 +310,7 @@ async function generateFallbackSearchQueries(args: {
 
 async function rankCatalogForPersona(args: {
   provider: LlmProviderId;
-  persona: AudiencePersonaPreview;
+  persona: AudiencePersonaCore;
   brief: AudienceTargetingBrief;
   catalog: CatalogItem[];
   maxItems?: number;

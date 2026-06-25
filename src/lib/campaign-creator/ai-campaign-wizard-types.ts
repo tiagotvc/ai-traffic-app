@@ -118,7 +118,13 @@ export function isRegionsStepValid(state: AiCampaignWizardState): boolean {
   return state.regionsDescription.trim().length >= 3;
 }
 
-export function wizardNeedsAudiencePrep(state: AiCampaignWizardState): boolean {
+export function wizardNeedsAudiencePrep(state: {
+  audienceMode: AiCampaignWizardState["audienceMode"];
+  selectedPersonaId?: string | null;
+  selectedMetaAudienceId?: string | null;
+  audiencePreview?: unknown;
+  targetingSuggestion?: unknown;
+}): boolean {
   return (
     state.audienceMode === "create" &&
     !state.selectedPersonaId &&
@@ -127,7 +133,10 @@ export function wizardNeedsAudiencePrep(state: AiCampaignWizardState): boolean {
   );
 }
 
-export function wizardNeedsRegionsPrep(state: AiCampaignWizardState): boolean {
+export function wizardNeedsRegionsPrep(state: {
+  selectedZoneId?: string | null;
+  zoneGeoRules?: unknown;
+}): boolean {
   return !state.selectedZoneId && !state.zoneGeoRules;
 }
 

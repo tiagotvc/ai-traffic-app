@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { AdminBillingShell } from "@/components/billing/AdminBillingShell";
+import { AdminShell } from "@/components/admin/AdminShell";
 import { getAppContext } from "@/lib/app-context";
 
 export default async function AdminLayout({
@@ -17,5 +17,5 @@ export default async function AdminLayout({
     redirect(`/${locale}/dashboard`);
   }
 
-  return <AdminBillingShell>{children}</AdminBillingShell>;
+  return <AdminShell>{children}</AdminShell>;
 }

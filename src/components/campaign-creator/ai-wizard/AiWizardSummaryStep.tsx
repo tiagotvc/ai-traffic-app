@@ -22,6 +22,11 @@ import { normalizeZoneGeoRules } from "@/lib/zone-geo-shared";
 
 type PreparePhase = "regions_preview" | "regions_geocode";
 
+type PreparePayload = AiCampaignWizardState & {
+  locale: string;
+  provider: "claude";
+};
+
 type Props = {
   state: AiCampaignWizardState;
   locale: string;
@@ -33,16 +38,13 @@ type Props = {
 
 const MESSAGING_CHANNELS: MessagingChannel[] = ["whatsapp", "messenger", "instagram"];
 
-async function callPreparePhase(
-  phase: PreparePhase,
-  payload: AiCampaignWizardState & { locale: string; provider: "claude" }
-) {
+async function callPreparePhase(phase: PreparePhase, payload: PreparePayload): Promise<PreparePayload> {
   const res = await fetch("/api/campaign-creator/ai-wizard/prepare", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ ...payload, phase })
   });
-  const j = (await res.json()) as AiCampaignWizardState & { ok?: boolean; error?: string };
+  const j = (await res.json()) as PreparePayload & { ok?: boolean; error?: string };
   if (!res.ok || !j.ok) {
     throw new Error(j.error ?? "Erro ao preparar regiões");
   }

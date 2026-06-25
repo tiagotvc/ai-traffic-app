@@ -8,7 +8,7 @@ const OBJECTIVE_TAGS: Record<CampaignObjectiveKey, string> = {
   traffic: "TRAF",
   awareness: "REC",
   engagement: "ENG",
-  app_promotion: "APP"
+  app: "APP"
 };
 
 /** Reduz texto para caber em nomes Meta, sem cortar no meio de palavra quando possível. */
