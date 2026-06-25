@@ -500,6 +500,49 @@ export async function fetchInstagramFromPages(
   return [...seen.values()];
 }
 
+export type MetaPageWhatsappNumber = {
+  pageId: string;
+  phone: string;
+  waMeUrl: string;
+  isBusiness?: boolean;
+};
+
+export function buildWaMeUrl(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  return digits ? `https://wa.me/${digits}` : "";
+}
+
+/** WhatsApp vinculado às páginas (campo whatsapp_number da Graph API). */
+export async function fetchWhatsappNumbersFromPages(
+  accessToken: string,
+  pageIds: string[]
+): Promise<MetaPageWhatsappNumber[]> {
+  const results: MetaPageWhatsappNumber[] = [];
+  for (const pageId of pageIds.slice(0, 25)) {
+    if (!pageId.trim()) continue;
+    try {
+      const data = await metaFetch<{
+        whatsapp_number?: string;
+        has_whatsapp_business_number?: boolean;
+      }>(
+        `/${encodeURIComponent(pageId)}?fields=${encodeURIComponent("whatsapp_number,has_whatsapp_business_number")}`,
+        accessToken
+      );
+      const phone = data.whatsapp_number?.trim();
+      if (!phone) continue;
+      results.push({
+        pageId,
+        phone,
+        waMeUrl: buildWaMeUrl(phone),
+        isBusiness: data.has_whatsapp_business_number
+      });
+    } catch {
+      /* skip page */
+    }
+  }
+  return results;
+}
+
 // ---- Targeting search (/search) ----
 
 export type MetaInterest = { id: string; name: string; audienceSize?: number; path?: string[] };

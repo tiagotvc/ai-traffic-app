@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { PersonaSummary } from "@/components/audiences/PersonasLibraryClient";
+import { PersonaDetailPanel } from "@/components/audiences/PersonaDetailPanel";
 import { AiPersonaForm } from "@/components/audiences/create/AiPersonaForm";
 import type { PersonaTargetingIssue, PersonaTargetingSummary } from "@/lib/persona-targeting-types";
 import { PersonaMetaValidationPanel } from "@/components/campaign-creator/PersonaMetaValidationPanel";
@@ -17,17 +18,35 @@ type Props = {
   onChange: (personaId: string | null) => void;
 };
 
+function revalidatePersona(
+  adAccountId: string,
+  personaId: string
+): Promise<{ issue: PersonaTargetingIssue | null; summary: PersonaTargetingSummary | null }> {
+  return fetch("/api/personas/validate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ adAccountId, personaIds: [personaId], findReplacements: true })
+  })
+    .then((r) => r.json())
+    .then((j: { issues?: PersonaTargetingIssue[]; summaries?: PersonaTargetingSummary[] }) => ({
+      issue: j.issues?.[0] ?? null,
+      summary: j.summaries?.find((s) => s.personaId === personaId) ?? null
+    }))
+    .catch(() => ({ issue: null, summary: null }));
+}
+
 export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChange }: Props) {
   const t = useTranslations("campaignCreator");
   const [personas, setPersonas] = useState<PersonaSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [validating, setValidating] = useState(false);
   const [personaIssue, setPersonaIssue] = useState<PersonaTargetingIssue | null>(null);
   const [personaSummary, setPersonaSummary] = useState<PersonaTargetingSummary | null>(null);
   const [repairOpen, setRepairOpen] = useState(false);
 
-  useEffect(() => {
+  function loadPersonas() {
     setLoading(true);
     fetch("/api/personas")
       .then((r) => r.json())
@@ -36,7 +55,11 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
       })
       .catch(() => setPersonas([]))
       .finally(() => setLoading(false));
-  }, [showCreate]);
+  }
+
+  useEffect(() => {
+    loadPersonas();
+  }, [showCreate, showEdit]);
 
   useEffect(() => {
     if (!value || !adAccountId) {
@@ -48,22 +71,11 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
     let cancelled = false;
     const timer = window.setTimeout(() => {
       setValidating(true);
-      fetch("/api/personas/validate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ adAccountId, personaIds: [value], findReplacements: true })
-      })
-        .then((r) => r.json())
-        .then((j: { issues?: PersonaTargetingIssue[]; summaries?: PersonaTargetingSummary[] }) => {
+      revalidatePersona(adAccountId, value)
+        .then(({ issue, summary }) => {
           if (cancelled) return;
-          setPersonaIssue(j.issues?.[0] ?? null);
-          setPersonaSummary(j.summaries?.find((s) => s.personaId === value) ?? null);
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setPersonaIssue(null);
-            setPersonaSummary(null);
-          }
+          setPersonaIssue(issue);
+          setPersonaSummary(summary);
         })
         .finally(() => {
           if (!cancelled) setValidating(false);
@@ -78,18 +90,40 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
 
   const selected = personas.find((p) => p.id === value);
 
+  function handlePersonaUpdated(updated: PersonaSummary) {
+    setPersonas((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    if (adAccountId) {
+      void revalidatePersona(adAccountId, updated.id).then(({ issue, summary }) => {
+        setPersonaIssue(issue);
+        setPersonaSummary(summary);
+      });
+    }
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-medium text-[var(--text-main)]">{t("selectPersona")}</span>
-        <button
-          type="button"
-          className="ui-link-amber text-xs"
-          disabled={disabled}
-          onClick={() => setShowCreate(true)}
-        >
-          {t("createPersonaWithAi")}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {selected ? (
+            <button
+              type="button"
+              className="ui-link text-xs"
+              disabled={disabled}
+              onClick={() => setShowEdit(true)}
+            >
+              {t("editPersona")}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="ui-link-amber text-xs"
+            disabled={disabled}
+            onClick={() => setShowCreate(true)}
+          >
+            {t("createPersonaWithAi")}
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -145,20 +179,10 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
         onResolved={() => {
           setRepairOpen(false);
           if (value) {
-            fetch("/api/personas/validate", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ adAccountId, personaIds: [value], findReplacements: true })
-            })
-              .then((r) => r.json())
-              .then((j: { issues?: PersonaTargetingIssue[]; summaries?: PersonaTargetingSummary[] }) => {
-                setPersonaIssue(j.issues?.[0] ?? null);
-                setPersonaSummary(j.summaries?.find((s) => s.personaId === value) ?? null);
-              })
-              .catch(() => {
-                setPersonaIssue(null);
-                setPersonaSummary(null);
-              });
+            void revalidatePersona(adAccountId, value).then(({ issue, summary }) => {
+              setPersonaIssue(issue);
+              setPersonaSummary(summary);
+            });
           }
         }}
         onPersonaReplaced={(_oldId, newId) => onChange(newId)}
@@ -181,6 +205,24 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
                     if (personaId) onChange(personaId);
                     else if (list[0]) onChange(list[0].id);
                   });
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {showEdit && selected ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="ui-card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5">
+            <PersonaDetailPanel
+              persona={selected}
+              clientSlug={clientSlug}
+              adAccountId={adAccountId}
+              allowDelete={false}
+              onClose={() => setShowEdit(false)}
+              onUpdated={(updated) => {
+                handlePersonaUpdated(updated);
+                setShowEdit(false);
               }}
             />
           </div>

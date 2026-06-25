@@ -19,6 +19,7 @@ type Props = {
   persona: PersonaSummary;
   clientSlug?: string;
   adAccountId?: string;
+  allowDelete?: boolean;
   onClose: () => void;
   onUpdated?: (persona: PersonaSummary) => void;
   onDeleted?: (personaId: string) => void;
@@ -93,6 +94,7 @@ export function PersonaDetailPanel({
   persona,
   clientSlug,
   adAccountId,
+  allowDelete = true,
   onClose,
   onUpdated,
   onDeleted
@@ -413,7 +415,7 @@ export function PersonaDetailPanel({
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
 
-      {!editing ? (
+      {!editing && allowDelete ? (
         <div className="border-t border-[var(--border-color)] pt-3">
           <button
             type="button"

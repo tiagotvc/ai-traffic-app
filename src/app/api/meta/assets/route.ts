@@ -6,7 +6,8 @@ import { getInventoryMap } from "@/lib/meta-ad-accounts";
 import { listTenantInventory } from "@/lib/meta-discover";
 import {
   resolveInstagramForAdAccount,
-  resolvePagesForAdAccount
+  resolvePagesForAdAccount,
+  resolveWhatsappForPages
 } from "@/lib/meta-publish-assets";
 import {
   fetchAdImages,
@@ -79,20 +80,28 @@ export async function GET(req: Request) {
 
   let pixels: Array<{ id: string; name: string }> = [];
   let instagramAccounts: Array<{ id: string; username: string }> = [];
+  let whatsappNumbers: Array<{
+    pageId: string;
+    phone: string;
+    waMeUrl: string;
+    isBusiness?: boolean;
+  }> = [];
   let assets: Array<{ id: string; label: string; url?: string | null; kind: "image" | "video" }> = [];
 
   let customConversions: Array<{ id: string; label: string; eventType?: string }> = [];
 
   if (metaAccessToken) {
-    const [pixelRows, igRows, imageRows, videoRows, conversionRows] = await Promise.all([
+    const [pixelRows, igRows, imageRows, videoRows, conversionRows, waRows] = await Promise.all([
       fetchAdAccountPixels(metaAccessToken, adAccountId),
       resolveInstagramForAdAccount({ metaAccessToken, adAccountId, pages }),
       fetchAdImages(metaAccessToken, adAccountId),
       fetchAdVideos(metaAccessToken, adAccountId),
-      fetchCustomConversions(metaAccessToken, adAccountId)
+      fetchCustomConversions(metaAccessToken, adAccountId),
+      resolveWhatsappForPages({ metaAccessToken, pages })
     ]);
     pixels = pixelRows.map((p) => ({ id: p.id, name: p.name?.trim() || p.id }));
     instagramAccounts = igRows;
+    whatsappNumbers = waRows;
     const imageAssets = imageRows
       .filter((img) => !!img.hash)
       .map((img) => ({
@@ -128,6 +137,7 @@ export async function GET(req: Request) {
     pages,
     pixels,
     instagramAccounts,
+    whatsappNumbers,
     assets,
     customConversions
   });
