@@ -23,6 +23,10 @@ import {
 } from "lucide-react";
 
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
+import {
+  isPlatformAdminLinkActive,
+  PLATFORM_ADMIN_LINKS
+} from "@/components/layout/admin-nav-links";
 
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type AppLocale } from "@/i18n/routing";
@@ -232,6 +236,7 @@ export function SidebarUserBlock({
   const tNav = useTranslations("nav");
   const tCommon = useTranslations("common");
   const tBilling = useTranslations("billingPage");
+  const tAdmin = useTranslations("billingAdmin");
   const locale = useLocale() as AppLocale;
   const pathname = usePathname();
   const router = useRouter();
@@ -240,6 +245,9 @@ export function SidebarUserBlock({
   const rootRef = useRef<HTMLDivElement>(null);
   const initial = userName.trim().charAt(0).toUpperCase() || "?";
   const isLight = theme === "light";
+  const basePath = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
+  const inAdmin = basePath.startsWith("/admin/");
+  const [adminExpanded, setAdminExpanded] = useState(inAdmin);
 
   const [planLoading, setPlanLoading] = useState(false);
   const [planLoaded, setPlanLoaded] = useState(false);
@@ -253,6 +261,14 @@ export function SidebarUserBlock({
 
   // Fecha o menu ao clicar fora (não aplica no modo full-screen mobile, que tem botão próprio).
   useDismissOnOutsideClick(rootRef, menuOpen && !mobileFullScreen, () => setMenuOpen(false));
+
+  useEffect(() => {
+    if (inAdmin) setAdminExpanded(true);
+  }, [inAdmin]);
+
+  useEffect(() => {
+    if (menuOpen && inAdmin) setAdminExpanded(true);
+  }, [menuOpen, inAdmin]);
 
   // Carrega o resumo da assinatura para o card do menu quando ele abre.
   useEffect(() => {
@@ -318,6 +334,10 @@ export function SidebarUserBlock({
     "px-3 pb-1 pt-3.5 font-body text-[10px] font-semibold uppercase tracking-wider text-[#64748b]";
   const itemClass =
     "flex w-full items-center gap-2.5 px-3 py-2 font-body text-[13px] text-[#cbd5e1] transition-colors hover:bg-white/[0.04]";
+  const subItemClass = (active: boolean) =>
+    `flex w-full items-center gap-2 rounded-md py-1.5 pl-9 pr-3 font-body text-[12px] transition-colors hover:bg-white/[0.04] ${
+      active ? "font-semibold text-[var(--ui-accent)]" : "text-[#94a3b8]"
+    }`;
 
   function MenuLink({
     href,
@@ -492,7 +512,35 @@ export function SidebarUserBlock({
       {isPlatformAdmin ? (
         <>
           <p className={sectionLabelClass}>{tNav("secWorkspace")}</p>
-          <MenuLink href="/admin/users" icon={<ShieldCheck size={15} />} label={tNav("menuAdministrative")} />
+          <button
+            type="button"
+            onClick={() => setAdminExpanded((v) => !v)}
+            className={itemClass}
+            aria-expanded={adminExpanded}
+          >
+            <span className="shrink-0 text-[#94a3b8]">
+              <ShieldCheck size={15} />
+            </span>
+            <span className="flex-1 truncate text-left">{tNav("menuAdministrative")}</span>
+            <ChevronDown
+              size={14}
+              className={`shrink-0 text-[#64748b] transition-transform ${adminExpanded ? "rotate-180" : ""}`}
+            />
+          </button>
+          {adminExpanded ? (
+            <div className="space-y-0.5 pb-1">
+              {PLATFORM_ADMIN_LINKS.map((link) => (
+                <Link
+                  key={link.id}
+                  href={link.href}
+                  onClick={closeAndNavigate}
+                  className={subItemClass(isPlatformAdminLinkActive(pathname, link.href))}
+                >
+                  {tAdmin(link.labelKey)}
+                </Link>
+              ))}
+            </div>
+          ) : null}
         </>
       ) : null}
 

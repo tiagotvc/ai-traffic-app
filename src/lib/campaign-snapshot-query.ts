@@ -51,8 +51,8 @@ function metricsFromAgg(raw: {
 
 export type SnapshotAdsetRow = {
   id: string;
-  name?: string;
-  status?: string;
+  name: string | undefined;
+  status: string | undefined;
   dailyBudget: number | null;
   spend: number;
   conversions: number;
@@ -61,7 +61,7 @@ export type SnapshotAdsetRow = {
   reach: number;
   clicks: number;
   ctr: number;
-  metrics?: Partial<Record<MetricKey, number>>;
+  metrics: Partial<Record<MetricKey, number>>;
 };
 
 export type SnapshotAdRow = {
