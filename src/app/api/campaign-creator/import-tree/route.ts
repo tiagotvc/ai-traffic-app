@@ -95,7 +95,7 @@ export async function GET(req: Request) {
     if (level === "campaigns") {
       const all = await fetchCampaigns(token, adAccountId);
       const settings = await getOrCreateClientMetaSettings(client.id);
-      const prefix = clientCampaignPrefix(client.name, settings.campaignNamePrefix);
+      const prefix = clientCampaignPrefix(client.name, settings.campaignNamePrefix ?? null);
       const scopedRows = filterCampaignsForClient(all, prefix, scoped);
       const rows = filterByQuery(scopedRows, q);
       return NextResponse.json({
