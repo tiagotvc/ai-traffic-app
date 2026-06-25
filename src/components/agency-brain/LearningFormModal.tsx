@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { DsButton, DsModal } from "@/design-system";
 import type { LearningCategory, LearningDto, LearningImpact } from "@/lib/agency-brain/types";
 
 const CATEGORIES: LearningCategory[] = [
@@ -73,16 +74,29 @@ export function LearningFormModal({
     }
   }, [open, initial]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-        <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">
-          {initial ? t("editLearning") : t("newLearning")}
-        </h2>
-
-        <div className="mt-4 space-y-3">
+    <DsModal
+      open={open}
+      onClose={onClose}
+      title={initial ? t("editLearning") : t("newLearning")}
+      width="lg"
+      footer={
+        <>
+          <DsButton variant="secondary" size="sm" onClick={onClose} disabled={saving}>
+            {t("cancel")}
+          </DsButton>
+          <DsButton
+            variant="primary"
+            size="sm"
+            disabled={saving || !form.title.trim() || !form.description.trim()}
+            onClick={() => onSave(form)}
+          >
+            {saving ? t("saving") : t("save")}
+          </DsButton>
+        </>
+      }
+    >
+        <div className="space-y-3">
           <div>
             <label className="ui-label">{t("fieldTitle")}</label>
             <input
@@ -176,21 +190,6 @@ export function LearningFormModal({
             </div>
           ) : null}
         </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button type="button" className="ui-btn-secondary" onClick={onClose} disabled={saving}>
-            {t("cancel")}
-          </button>
-          <button
-            type="button"
-            className="ui-btn-primary"
-            disabled={saving || !form.title.trim() || !form.description.trim()}
-            onClick={() => onSave(form)}
-          >
-            {saving ? t("saving") : t("save")}
-          </button>
-        </div>
-      </div>
-    </div>
+    </DsModal>
   );
 }

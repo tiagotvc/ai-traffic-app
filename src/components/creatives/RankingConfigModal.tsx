@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import { DsButton, DsModal } from "@/design-system";
 import {
   RANKABLE_METRICS,
   RANKABLE_PRESETS,
@@ -69,34 +70,38 @@ export function RankingConfigModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onMouseDown={onClose}
-    >
-      <div
-        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-[var(--surface-card)] shadow-2xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="border-b border-[var(--border-color)] px-5 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("cfgTitle")}</h2>
+    <DsModal
+      open
+      onClose={onClose}
+      title={t("cfgTitle")}
+      subtitle={t("cfgSubtitle")}
+      width="lg"
+      footer={
+        config ? (
+          <div className="flex w-full items-center justify-between gap-2">
             <button
               type="button"
-              onClick={onClose}
-              className="rounded-lg p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
-              aria-label="close"
+              onClick={() => defaults && setConfig(defaults)}
+              className="text-xs font-medium text-[var(--text-dim)] hover:text-[var(--text-main)]"
             >
-              ✕
+              {t("cfgReset")}
             </button>
+            <div className="flex gap-2">
+              <DsButton variant="secondary" size="sm" onClick={onClose}>
+                {t("cfgCancel")}
+              </DsButton>
+              <DsButton variant="primary" size="sm" onClick={save} disabled={saving}>
+                {t("cfgSave")}
+              </DsButton>
+            </div>
           </div>
-          <p className="mt-1 text-xs text-[var(--text-dim)]">{t("cfgSubtitle")}</p>
-        </div>
-
+        ) : undefined
+      }
+    >
         {!config ? (
           <div className="p-8 text-center text-sm text-[var(--text-dim)]">…</div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto px-5 py-4">
               <label className="block">
                 <span className="text-xs font-medium text-[var(--text-dim)]">{t("cfgMinImpr")}</span>
                 <input
@@ -146,33 +151,8 @@ export function RankingConfigModal({
                   );
                 })}
               </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-2 border-t border-[var(--border-color)] px-5 py-3">
-              <button
-                type="button"
-                onClick={() => defaults && setConfig(defaults)}
-                className="text-xs font-medium text-[var(--text-dim)] hover:text-[var(--text-dim)]"
-              >
-                {t("cfgReset")}
-              </button>
-              <div className="flex gap-2">
-                <button type="button" onClick={onClose} className="ui-btn-secondary text-sm">
-                  {t("cfgCancel")}
-                </button>
-                <button
-                  type="button"
-                  onClick={save}
-                  disabled={saving}
-                  className="ui-btn-primary text-sm disabled:opacity-60"
-                >
-                  {t("cfgSave")}
-                </button>
-              </div>
-            </div>
           </>
         )}
-      </div>
-    </div>
+    </DsModal>
   );
 }

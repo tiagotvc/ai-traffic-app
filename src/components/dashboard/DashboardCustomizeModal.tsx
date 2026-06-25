@@ -134,9 +134,9 @@ export function DashboardCustomizeModal({
             <div className="flex items-center gap-2">
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-lg"
-                style={{ background: "rgba(245,166,35,0.15)" }}
+                style={{ background: "var(--ui-accent-muted)" }}
               >
-                <SlidersHorizontal size={16} style={{ color: "#f5a623" }} />
+                <SlidersHorizontal size={16} style={{ color: "var(--ui-accent)" }} />
               </div>
               <div>
                 <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
@@ -323,9 +323,9 @@ export function DashboardCustomizeModal({
                     style={
                       draftLayout.chartSize === size
                         ? {
-                            borderColor: "#7c3aed",
-                            background: "rgba(124,58,237,0.1)",
-                            color: "#7c3aed"
+                            borderColor: "var(--ui-accent)",
+                            background: "var(--ui-accent-muted)",
+                            color: "var(--ui-accent)"
                           }
                         : {
                             borderColor: "var(--border-color)",
