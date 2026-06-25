@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getAppContext } from "@/lib/app-context";
+import { getAppContext, resolveClientIdForTenant } from "@/lib/app-context";
 import { getMetaConnectionInfo } from "@/lib/meta-auth-store";
 import { enqueueHistoricalBackfill } from "@/lib/historical-backfill";
 
@@ -11,7 +11,7 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { tenant, defaultClient, metaAccessToken, user } = await getAppContext();
+  const { tenant, metaAccessToken, user } = await getAppContext();
 
   const metaConnection = await getMetaConnectionInfo(tenant.id, user.id);
   if (!metaAccessToken) {
@@ -30,7 +30,16 @@ export async function POST(req: Request) {
   }
 
   const depthDays = (body.depthDays ?? 90) as number;
-  const clientId = body.clientId ?? defaultClient.id;
+  const clientId =
+    body.clientId != null
+      ? await resolveClientIdForTenant(tenant.id, body.clientId)
+      : await resolveClientIdForTenant(tenant.id);
+  if (!clientId) {
+    return NextResponse.json(
+      { ok: false, error: "Cadastre um cliente antes de executar o backfill." },
+      { status: 400 }
+    );
+  }
 
   const result = await enqueueHistoricalBackfill({
     tenantId: tenant.id,

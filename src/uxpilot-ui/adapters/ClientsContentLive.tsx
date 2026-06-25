@@ -88,12 +88,42 @@ export function ClientsContentLive() {
         </div>
       ) : cards.length === 0 ? (
         <div
-          className="rounded-xl border p-8 text-center"
+          className="rounded-xl border p-10 text-center"
           style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
         >
-          <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
+          <h3 className="font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
+            Cadastre seu primeiro cliente
+          </h3>
+          <p className="mt-2 font-body text-sm" style={{ color: "var(--text-dim)" }}>
             {t("subtitle")}
           </p>
+          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href="/clients/new"
+              className="ui-btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-heading text-sm font-semibold"
+            >
+              <Plus size={16} />
+              Novo cliente
+            </Link>
+            {process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void fetch("/api/seed/demo", { method: "POST" })
+                    .then((r) => {
+                      if (r.ok) {
+                        window.dispatchEvent(new Event("traffic:campaigns-reload"));
+                        void data.reload();
+                      }
+                    })
+                    .catch(() => {});
+                }}
+                className="ui-btn-secondary rounded-xl px-5 py-2.5 font-heading text-sm font-semibold"
+              >
+                Carregar dados demo
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

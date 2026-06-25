@@ -1,4 +1,10 @@
+"use client";
+
+import { useState } from "react";
+import { useLocale } from "next-intl";
 import { Facebook, Plus, ArrowRight, CheckCircle2 } from "lucide-react";
+
+import { useRouter } from "@/i18n/navigation";
 
 const steps = [
   { label: "Conectar conta Meta Business", done: false },
@@ -7,7 +13,29 @@ const steps = [
   { label: "Convidar membros da equipe", done: false },
 ];
 
+const demoModeEnabled = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+
 export default function ConnectAccountCard() {
+  const locale = useLocale();
+  const router = useRouter();
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const metaOAuthHref = `/api/meta/oauth/start?redirectTo=${encodeURIComponent(`/${locale}/clients/new`)}`;
+
+  async function loadDemo() {
+    setDemoLoading(true);
+    try {
+      const res = await fetch("/api/seed/demo", { method: "POST" });
+      if (res.ok) {
+        window.dispatchEvent(new Event("traffic:campaigns-reload"));
+        router.push("/clients");
+        router.refresh();
+      }
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
   return (
     <div
       className="rounded-2xl overflow-hidden animate-fade-up"
@@ -66,21 +94,27 @@ export default function ConnectAccountCard() {
         </div>
 
         {/* CTA */}
-        <button
+        <a
+          href={metaOAuthHref}
           className="w-full py-3 rounded-xl font-heading font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:brightness-110 active:scale-95"
           style={{ background: "linear-gradient(135deg, #4f46e5, #7c3aed)", color: "#fff" }}
         >
           <Plus size={16} />
           Conectar Meta Ads
           <ArrowRight size={16} />
-        </button>
+        </a>
 
-        <button
-          className="w-full mt-2 py-2 rounded-xl text-sm font-body transition-all hover:opacity-80"
-          style={{ border: "1px solid var(--border-hover)", color: "var(--text-dim)", background: "transparent" }}
-        >
-          Importar dados de demonstração
-        </button>
+        {demoModeEnabled ? (
+          <button
+            type="button"
+            disabled={demoLoading}
+            onClick={() => void loadDemo()}
+            className="w-full mt-2 py-2 rounded-xl text-sm font-body transition-all hover:opacity-80 disabled:opacity-50"
+            style={{ border: "1px solid var(--border-hover)", color: "var(--text-dim)", background: "transparent" }}
+          >
+            {demoLoading ? "Carregando..." : "Importar dados de demonstração"}
+          </button>
+        ) : null}
       </div>
     </div>
   );

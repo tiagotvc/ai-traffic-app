@@ -11,13 +11,15 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const { tenant, defaultClient, metaAccessToken, session } = await getAppContext();
+  const { tenant, metaAccessToken, session } = await getAppContext();
   const body = BodySchema.parse(await req.json().catch(() => ({})));
 
   const { aiRecommendation: recRepo, auditLog: auditRepo } = await repositories();
 
   const rec = await recRepo.findOne({ where: { id: body.recommendationId, tenantId: tenant.id } });
   if (!rec) return NextResponse.json({ ok: false, error: "Recommendation not found" }, { status: 404 });
+
+  const auditClientId = rec.clientId ?? null;
 
   const payload = rec.payload as any;
   const actionType = rec.actionType;
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
     await auditRepo.save(
       auditRepo.create({
         tenantId: tenant.id,
-        clientId: defaultClient.id,
+        clientId: auditClientId,
         kind: "META_APPLY",
         success: true,
         request: { actionType, targetId, recommendationId: rec.id }
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
     await auditRepo.save(
       auditRepo.create({
         tenantId: tenant.id,
-        clientId: defaultClient.id,
+        clientId: auditClientId,
         kind: "META_APPLY",
         success: false,
         errorMessage: msg,

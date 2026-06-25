@@ -8,6 +8,7 @@ import {
 } from "@/lib/meta-business-oauth";
 import { resolveRequestOrigin } from "@/lib/app-url";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
+import { routing } from "@/i18n/routing";
 
 export async function GET(req: Request) {
   if (!isMetaOAuthConfigured()) {
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const redirectTo = url.searchParams.get("redirectTo") ?? "/onboarding/meta/setup";
+  const redirectTo = url.searchParams.get("redirectTo") ?? `/${routing.defaultLocale}/clients/new`;
   const oauthOrigin = resolveRequestOrigin(req);
   const state = createOAuthState();
   await setMetaOAuthCookies(state, redirectTo, oauthOrigin);

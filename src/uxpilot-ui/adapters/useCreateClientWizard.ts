@@ -21,8 +21,8 @@ export type AccountOption = {
 
 export type CreateClientStep = 1 | 2 | 3;
 
-export function useCreateClientWizard(locale: string) {
-  const [step, setStep] = useState<CreateClientStep>(1);
+export function useCreateClientWizard(locale: string, opts?: { metaConnected?: boolean }) {
+  const [step, setStep] = useState<CreateClientStep>(opts?.metaConnected ? 2 : 1);
   const [name, setName] = useState("");
   const [businesses, setBusinesses] = useState<BusinessRow[]>([]);
   const [selectedBm, setSelectedBm] = useState("");
@@ -63,7 +63,10 @@ export function useCreateClientWizard(locale: string) {
 
   useEffect(() => {
     loadBusinesses();
-  }, [loadBusinesses]);
+    if (opts?.metaConnected) {
+      setStep(2);
+    }
+  }, [loadBusinesses, opts?.metaConnected]);
 
   const filteredBusinesses = useMemo(() => {
     const q = bmSearch.trim().toLowerCase();

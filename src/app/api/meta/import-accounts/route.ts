@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
+import { invalidateClientsListCache } from "@/lib/clients-list";
 import { probeAdAccountAccessAnyToken } from "@/lib/creatives-data";
 import { linkClientMetaAccounts } from "@/lib/link-client-meta";
 import { getAllTenantMetaTokens } from "@/lib/meta-auth-store";
@@ -76,6 +77,10 @@ export async function POST(req: Request) {
     });
     linkedSet.add(id);
     created += 1;
+  }
+
+  if (created > 0) {
+    await invalidateClientsListCache(tenant.id);
   }
 
   return NextResponse.json({ ok: true, created, skipped, needsPermission });

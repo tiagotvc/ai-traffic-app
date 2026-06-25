@@ -10,6 +10,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 import { CommandStripProvider } from "@/components/layout/CommandStripContext";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
+import { FirstConnectionGate } from "@/components/onboarding/FirstConnectionGate";
 import { AppBuilderChromeProvider, useAppBuilderChrome } from "@/components/dashboard/canvas/AppBuilderChromeContext";
 import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
 import { cn } from "@/lib/cn";
@@ -358,6 +359,7 @@ function AppShellSkeletonInner({
             )}
           >
             <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
+            <FirstConnectionGate />
             <div
               className={
                 builderImmersive

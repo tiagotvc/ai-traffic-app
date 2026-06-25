@@ -14,6 +14,12 @@ const BodySchema = z.object({
 
 export async function POST(req: Request) {
   const { tenant, defaultClient } = await getAppContext();
+  if (!defaultClient) {
+    return NextResponse.json(
+      { ok: false, error: "Cadastre um cliente antes de usar a IA." },
+      { status: 400 }
+    );
+  }
   const body = BodySchema.parse(await req.json().catch(() => ({})));
   const { aiRecommendation: recRepo } = await repositories();
 

@@ -5,6 +5,7 @@ import { In } from "typeorm";
 import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
+import { cleanupScaffoldDefaultClients } from "@/lib/onboarding-state";
 import {
   resolveMetaAccessTokenForAdAccount,
   resolveWorkspaceMetaAccessToken
@@ -20,7 +21,7 @@ export async function getAppContext() {
   const { session, tenant, user, platformAdmin } = shell;
 
   const ds = await getDataSource();
-  const { user: userRepo, client: clientRepo } = await repositories();
+  const { user: userRepo } = await repositories();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const facebookId = (session as any).meta?.profileId as string | undefined;
@@ -36,19 +37,10 @@ export async function getAppContext() {
     await userRepo.save(user);
   }
 
-  let defaultClient = await clientRepo.findOne({
-    where: { tenantId: tenant.id, name: "Default" }
-  });
-  if (!defaultClient) {
-    defaultClient = clientRepo.create({
-      tenantId: tenant.id,
-      name: "Default",
-      aiContext: {
-        note: "Cliente padrão criado automaticamente no MVP."
-      }
-    });
-    await clientRepo.save(defaultClient);
-  }
+  await cleanupScaffoldDefaultClients(tenant.id);
+
+  const clients = await listClientsForTenant(tenant.id);
+  const defaultClient = clients[0] ?? null;
 
   // Token Meta de ads fica em meta_auth (fluxo "Reconectar Meta"). Não sobrescrever
   // com access_token legado do JWT — isso invalidava reconexões bem-sucedidas.
@@ -115,4 +107,16 @@ export function slugify(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
+}
+
+export async function resolveClientIdForTenant(
+  tenantId: string,
+  clientIdOrSlug?: string | null
+): Promise<string | null> {
+  if (clientIdOrSlug) {
+    const client = await getClientBySlugOrId(tenantId, clientIdOrSlug);
+    return client?.id ?? null;
+  }
+  const clients = await listClientsForTenant(tenantId);
+  return clients[0]?.id ?? null;
 }

@@ -33,7 +33,7 @@ export function useClientsData() {
     setLoading(true);
     try {
       // no-store: a lista muda ao criar/excluir; não pode vir do cache do navegador.
-      const r = await fetch("/api/clients?period=thisWeek", { cache: "no-store" });
+      const r = await fetch(`/api/clients?period=thisWeek&_=${Date.now()}`, { cache: "no-store" });
       const j = await r.json();
       setClients(j.clients ?? []);
     } catch {
