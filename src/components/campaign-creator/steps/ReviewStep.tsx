@@ -1,22 +1,58 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
 import { Sparkles } from "lucide-react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import { countPublishEntities, resolveAdTargetAdsets } from "@/lib/campaign-draft";
+import { ZoneGeoReviewPanel } from "@/components/campaign-creator/ZoneGeoReviewPanel";
+import { countPublishEntities, getActiveAdset, resolveAdTargetAdsets } from "@/lib/campaign-draft";
 
 export function ReviewStep() {
   const t = useTranslations("campaignCreator");
   const tAi = useTranslations("campaignCreator.ai");
   const { payload, setActiveNode } = useCampaignDraft();
   const counts = countPublishEntities(payload);
+  const adset = getActiveAdset(payload);
+  const [personaName, setPersonaName] = useState<string | null>(null);
+  const [zoneName, setZoneName] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [regenError, setRegenError] = useState<string | null>(null);
 
   const isAiDraft = payload.meta?.creationMode === "ai";
   const rationale = payload.meta?.aiRationale;
+
+  useEffect(() => {
+    if (adset.personaId) {
+      fetch(`/api/personas/${adset.personaId}`)
+        .then((r) => r.json())
+        .then((j: { persona?: { name: string } }) => setPersonaName(j.persona?.name ?? adset.personaId ?? null))
+        .catch(() => setPersonaName(adset.personaId ?? null));
+    } else setPersonaName(null);
+    if (adset.zoneId) {
+      fetch(`/api/zones/${adset.zoneId}`)
+        .then((r) => r.json())
+        .then((j: { zone?: { name: string } }) => setZoneName(j.zone?.name ?? adset.zoneId ?? null))
+        .catch(() => setZoneName(adset.zoneId ?? null));
+    } else setZoneName(null);
+  }, [adset.personaId, adset.zoneId]);
+
+  const targetingSummary = (() => {
+    const mode = adset.targetingMode ?? "compiler";
+    if (mode === "compiler" && adset.personaId && adset.zoneId) {
+      return t("reviewTargetingCompiler", {
+        persona: personaName ?? "…",
+        zone: zoneName ?? "…"
+      });
+    }
+    if (mode === "meta_saved" && adset.metaSavedAudienceId) {
+      return t("reviewTargetingMeta", { name: adset.metaSavedAudienceId });
+    }
+    if (adset.targeting.customAudienceIds.length) {
+      return `${adset.targeting.customAudienceIds.length} custom audience(s)`;
+    }
+    return null;
+  })();
 
   async function regenerateWithAi() {
     if (!payload.clientSlug || !payload.adAccountId) return;
@@ -150,6 +186,13 @@ export function ReviewStep() {
       ) : null}
 
       <p className="text-sm text-[var(--text-dim)]">{t("reviewHint")}</p>
+      {targetingSummary ? (
+        <div className="ui-card px-4 py-3 text-sm">
+          <span className="text-[var(--text-dim)]">{t("reviewTargetingSummary")}: </span>
+          <span className="font-medium text-[var(--text-main)]">{targetingSummary}</span>
+        </div>
+      ) : null}
+      {adset.zoneId ? <ZoneGeoReviewPanel zoneId={adset.zoneId} /> : null}
       <div className="ui-card divide-y divide-[var(--border-color)]">
         {rows.map((r) => (
           <div key={r.label} className="flex flex-wrap justify-between gap-2 px-4 py-3 text-sm">

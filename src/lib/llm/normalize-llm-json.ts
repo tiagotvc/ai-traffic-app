@@ -107,7 +107,7 @@ export function normalizeSearchPlanRaw(raw: unknown): unknown {
         "interestSearch",
         "interest_search"
       ),
-      8
+      12
     ),
     behaviorQueries: clampUniqueStrings(
       pickStringArray(
@@ -118,7 +118,17 @@ export function normalizeSearchPlanRaw(raw: unknown): unknown {
         "behaviorSearch",
         "behavior_search"
       ),
-      6
+      12
+    ),
+    lifeEventQueries: clampUniqueStrings(
+      pickStringArray(
+        planRecord,
+        "lifeEventQueries",
+        "life_event_queries",
+        "lifeEvents",
+        "life_events"
+      ),
+      8
     ),
     demographicQueries: clampUniqueStrings(
       pickStringArray(
@@ -129,7 +139,7 @@ export function normalizeSearchPlanRaw(raw: unknown): unknown {
         "demographicSearch",
         "demographic_search"
       ),
-      4
+      8
     )
   };
 }
@@ -179,6 +189,7 @@ export function normalizePersonaRaw(raw: unknown): unknown {
 type AudiencePersonaSearchPlanShape = {
   interestQueries: string[];
   behaviorQueries: string[];
+  lifeEventQueries?: string[];
   demographicQueries: string[];
 };
 
@@ -193,11 +204,11 @@ export function normalizeAudiencePickRaw(raw: unknown): unknown {
     genders: normalizeGenders(firstDefined(record.genders, record.gender, record.genero)),
     interestIds: clampUniqueStrings(
       pickStringArray(record, "interestIds", "interest_ids", "interests"),
-      12
+      20
     ),
     behaviorIds: clampUniqueStrings(
       pickStringArray(record, "behaviorIds", "behavior_ids", "behaviors"),
-      8
+      16
     ),
     demographicIds: clampUniqueStrings(
       pickStringArray(
@@ -207,7 +218,7 @@ export function normalizeAudiencePickRaw(raw: unknown): unknown {
         "demographics",
         "life_events"
       ),
-      6
+      10
     ),
     reasoning: pickString(record, "reasoning", "reason", "raciocinio")
   };

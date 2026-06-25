@@ -33,6 +33,8 @@ import { MetaAudienceCache } from "./MetaAudienceCache";
 import { LookalikeJob } from "./LookalikeJob";
 import { AudienceInsightBreakdown } from "./AudienceInsightBreakdown";
 import { ClientSavedTargeting } from "./ClientSavedTargeting";
+import { UserPersona } from "./UserPersona";
+import { UserZone } from "./UserZone";
 import { CampaignTemplate } from "./CampaignTemplate";
 import { CreativeAsset } from "./CreativeAsset";
 import { MessageTemplate } from "./MessageTemplate";
@@ -106,6 +108,8 @@ export {
   LookalikeJob,
   AudienceInsightBreakdown,
   ClientSavedTargeting,
+  UserPersona,
+  UserZone,
   CampaignTemplate,
   CreativeAsset,
   MessageTemplate,
@@ -201,6 +205,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: LookalikeJob, name: "LookalikeJob" },
   { ctor: AudienceInsightBreakdown, name: "AudienceInsightBreakdown" },
   { ctor: ClientSavedTargeting, name: "ClientSavedTargeting" },
+  { ctor: UserPersona, name: "UserPersona" },
+  { ctor: UserZone, name: "UserZone" },
   { ctor: CampaignTemplate, name: "CampaignTemplate" },
   { ctor: CreativeAsset, name: "CreativeAsset" },
   { ctor: MessageTemplate, name: "MessageTemplate" },
@@ -274,6 +280,8 @@ export const typeOrmEntities = [
   LookalikeJob,
   AudienceInsightBreakdown,
   ClientSavedTargeting,
+  UserPersona,
+  UserZone,
   CampaignTemplate,
   CreativeAsset,
   MessageTemplate,

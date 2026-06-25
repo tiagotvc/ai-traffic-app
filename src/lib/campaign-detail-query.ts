@@ -168,6 +168,7 @@ export async function getCampaignDetail(input: {
   metaAccessToken?: string | null;
   fallbackMetaToken?: string | null;
   hints?: CampaignDetailHints;
+  live?: boolean;
 }) {
   const { campaignMetricSnapshot: campRepo, adAccount: adRepo, client: clientRepo, clientMetaSettings: settingsRepo } =
     await repositories();
@@ -254,23 +255,29 @@ export async function getCampaignDetail(input: {
     }
   }
 
-  const live = await fetchCampaignLive(
-    input.metaCampaignId,
-    input.metaAccessToken,
-    input.fallbackMetaToken
-  );
-  if (live) {
-    status = live.status ?? status;
-    if (live.objective) objective = live.objective;
+  const useLive = input.live !== false;
+  let liveCampaign: Awaited<ReturnType<typeof fetchCampaignLive>> = null;
+  if (useLive) {
+    liveCampaign = await fetchCampaignLive(
+      input.metaCampaignId,
+      input.metaAccessToken,
+      input.fallbackMetaToken
+    );
+    if (liveCampaign) {
+      status = liveCampaign.status ?? status;
+      if (liveCampaign.objective) objective = liveCampaign.objective;
+    }
   }
 
-  const insight = await fetchInsightLive(
-    input.metaCampaignId,
-    since,
-    until,
-    input.metaAccessToken,
-    input.fallbackMetaToken
-  );
+  const insight = useLive
+    ? await fetchInsightLive(
+        input.metaCampaignId,
+        since,
+        until,
+        input.metaAccessToken,
+        input.fallbackMetaToken
+      )
+    : null;
   if (insight) {
     spend = Number(insight.spend) || spend;
     conversions = pickResults(insight) || conversions;
@@ -302,9 +309,13 @@ export async function getCampaignDetail(input: {
   return {
     campaign: {
       id: input.metaCampaignId,
-      name: live?.name ?? input.hints?.campaignName ?? latestInPeriod?.campaignName ?? input.metaCampaignId,
-      status: live?.status ?? status,
-      dailyBudget: live?.daily_budget ? Number(live.daily_budget) / 100 : null,
+      name:
+        liveCampaign?.name ??
+        input.hints?.campaignName ??
+        latestInPeriod?.campaignName ??
+        input.metaCampaignId,
+      status: liveCampaign?.status ?? status,
+      dailyBudget: liveCampaign?.daily_budget ? Number(liveCampaign.daily_budget) / 100 : null,
       clientSlug,
       clientName,
       accountLabel,
@@ -336,6 +347,7 @@ export async function getCampaignTimeseries(input: {
   period: ParsedPeriod;
   metaAccessToken?: string | null;
   fallbackMetaToken?: string | null;
+  live?: boolean;
 }) {
   const { campaignMetricSnapshot: campRepo } = await repositories();
   const { since, until } = resolveSinceUntil(input.period);
@@ -362,7 +374,8 @@ export async function getCampaignTimeseries(input: {
   const snapshotSpend = series.reduce((a, b) => a + b.spend, 0);
   const snapshotConversions = series.reduce((a, b) => a + b.conversions, 0);
   const needsLiveDaily =
-    !series.length || (snapshotSpend === 0 && snapshotConversions === 0);
+    input.live !== false &&
+    (!series.length || (snapshotSpend === 0 && snapshotConversions === 0));
 
   if (needsLiveDaily) {
     for (const token of [input.metaAccessToken, input.fallbackMetaToken]) {

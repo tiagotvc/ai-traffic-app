@@ -11,7 +11,9 @@ import {
   getMetaFacebookLoginConfigId
 } from "@/lib/meta-env";
 import { getMetaBusinessOAuthRedirectUri } from "@/lib/app-url";
+import { fetchMyPermissions } from "@/lib/meta-graph";
 import { persistMetaAuth } from "@/lib/meta-auth-store";
+import { repositories } from "@/db/repositories";
 
 const STATE_COOKIE = "meta_oauth_state";
 const REDIRECT_COOKIE = "meta_oauth_redirect";
@@ -29,11 +31,10 @@ export function buildMetaBusinessOAuthUrl(state: string, origin?: string): strin
 
   if (configId) {
     params.set("config_id", configId);
-    // Scope mínimo para configs Business (Auth.js não participa aqui, mas Meta pode exigir).
-    params.set("scope", "pages_show_list");
-  } else {
-    params.set("scope", META_FACEBOOK_SCOPES);
   }
+  // Sempre solicitar scopes de Marketing API no fluxo "Reconectar Meta".
+  // Antes só pages_show_list era enviado com config_id — gerava erro #200 na conta.
+  params.set("scope", META_FACEBOOK_SCOPES);
 
   return `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
 }
@@ -104,6 +105,26 @@ async function exchangeForLongLivedToken(shortLived: string): Promise<{
   return { access_token: json.access_token, expires_in: json.expires_in };
 }
 
+/** Garante que só o responsável oficial (ou o 1º admin) vira conexão do workspace. */
+export async function ensureWorkspaceMetaConnectionAfterOAuth(
+  userId: string,
+  tenantId: string
+): Promise<void> {
+  const { tenant: tenantRepo, tenantMember: memberRepo } = await repositories();
+  const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
+  if (!tenant) return;
+
+  const member = await memberRepo.findOne({ where: { tenantId, userId } });
+  if (member?.role === "member") return;
+
+  if (tenant.metaConnectionUserId === userId) return;
+
+  if (!tenant.metaConnectionUserId) {
+    tenant.metaConnectionUserId = userId;
+    await tenantRepo.save(tenant);
+  }
+}
+
 export async function exchangeMetaBusinessCode(
   code: string,
   userId: string,
@@ -137,10 +158,18 @@ export async function exchangeMetaBusinessCode(
     accessToken = longLived.access_token;
     expiresIn = longLived.expires_in ?? expiresIn;
   } catch {
-    // Mantém short-lived se a troca falhar (ex.: app em dev).
+    if (process.env.NODE_ENV === "production") {
+      return {
+        ok: false,
+        error:
+          "Não foi possível obter um token de longa duração da Meta. Tente reconectar em alguns minutos."
+      };
+    }
   }
 
-  const expiresAt = expiresIn ? Math.floor(Date.now() / 1000) + expiresIn : null;
+  const expiresAt = expiresIn
+    ? Math.floor(Date.now() / 1000) + expiresIn
+    : Math.floor(Date.now() / 1000) + 60 * 24 * 60 * 60;
 
   await persistMetaAuth(userId, {
     access_token: accessToken,
@@ -148,6 +177,25 @@ export async function exchangeMetaBusinessCode(
     scope: META_FACEBOOK_SCOPES,
     expires_at: expiresAt
   });
+
+  try {
+    const perms = await fetchMyPermissions(accessToken);
+    const granted = new Set(
+      perms.filter((p) => p.status === "granted").map((p) => p.permission)
+    );
+    const required = ["ads_read", "ads_management"] as const;
+    const missing = required.filter((p) => !granted.has(p));
+    if (missing.length) {
+      return {
+        ok: false,
+        error:
+          `Permissões de anúncios não concedidas (${missing.join(", ")}). ` +
+          "Ao reconectar, marque todas as permissões solicitadas e selecione as contas de anúncios no diálogo da Meta."
+      };
+    }
+  } catch {
+    // Em dev a checagem pode falhar; o token já foi salvo.
+  }
 
   return { ok: true };
 }

@@ -5,16 +5,16 @@ import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import {
   AudiencePersonaPreviewSchema,
   AudienceTargetingBriefSchema,
+  generateAdditionalAudienceSegments,
   generateAudiencePersonaPreview,
   generateAudienceTargetingSuggestion,
   AudiencePersonaPreviewPayloadSchema
 } from "@/lib/audience-targeting-ai";
-import { validateClientAdAccount } from "@/lib/audience-api-helpers";
+import { validateClientAdAccount, classifyAudienceAiError, fetchCustomAudiencesOptional } from "@/lib/audience-api-helpers";
 import { assertCreativeMemoryAiAccess } from "@/lib/creative-memory/ai-usage";
 import { classifyLlmError } from "@/lib/llm/generate-json";
 import { getApiKeyForProvider, getLlmProvidersStatus } from "@/lib/llm/keys";
 import type { LlmProviderId } from "@/lib/llm/types";
-import { fetchCustomAudiences } from "@/lib/meta-graph";
 import { persistSavedAudience } from "@/lib/persist-saved-audience";
 import { sanitizeTargetingForMeta } from "@/lib/meta-targeting-sanitize";
 
@@ -33,7 +33,33 @@ const TargetingPostSchema = BriefFieldsSchema.extend({
   persona: AudiencePersonaPreviewPayloadSchema
 });
 
-const PostBodySchema = z.discriminatedUnion("phase", [PersonaPostSchema, TargetingPostSchema]);
+const SegmentItemSchema = z.object({
+  type: z.enum(["interest", "behavior", "demographic"]),
+  id: z.string().min(1),
+  name: z.string().min(1)
+});
+
+const AddSegmentsPostSchema = BriefFieldsSchema.extend({
+  phase: z.literal("add_segments"),
+  persona: AudiencePersonaPreviewPayloadSchema,
+  keepItems: z.array(SegmentItemSchema),
+  addPrompt: z.string().min(3).max(500),
+  suggestionMeta: z.object({
+    title: z.string().min(1),
+    summary: z.string().min(1),
+    name: z.string().min(1),
+    includeCustomAudienceIds: z.array(z.string()).default([]),
+    excludeCustomAudienceIds: z.array(z.string()).default([]),
+    provider: z.enum(["gemini", "claude"]),
+    modelUsed: z.string()
+  })
+});
+
+const PostBodySchema = z.discriminatedUnion("phase", [
+  PersonaPostSchema,
+  TargetingPostSchema,
+  AddSegmentsPostSchema
+]);
 
 const CreateBodySchema = z.object({
   clientId: z.string().min(1),
@@ -98,11 +124,39 @@ export async function POST(req: Request) {
       });
     }
 
+    if (body.phase === "add_segments") {
+      if (!metaAccessToken) {
+        return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
+      }
+      const suggestion = await generateAdditionalAudienceSegments({
+        accessToken: metaAccessToken,
+        adAccountId,
+        provider: provider as LlmProviderId,
+        brief,
+        persona: {
+          ...body.persona,
+          provider: provider as LlmProviderId,
+          modelUsed: body.persona.modelUsed ?? provider
+        },
+        keepItems: body.keepItems,
+        addPrompt: body.addPrompt,
+        existingMeta: body.suggestionMeta,
+        clientName: client.name,
+        personaOnly: false
+      });
+
+      return NextResponse.json({
+        ok: true,
+        suggestion,
+        providers: getLlmProvidersStatus()
+      });
+    }
+
     if (!metaAccessToken) {
       return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
     }
 
-    const audiences = await fetchCustomAudiences(metaAccessToken, adAccountId);
+    const audiences = await fetchCustomAudiencesOptional(metaAccessToken, adAccountId);
     const suggestion = await generateAudienceTargetingSuggestion({
       accessToken: metaAccessToken,
       adAccountId,
@@ -134,10 +188,10 @@ export async function POST(req: Request) {
       adAccountId,
       error: e instanceof Error ? e.message : e
     });
-    const classified = classifyLlmError(e, provider as LlmProviderId);
+    const classified = classifyAudienceAiError(e, provider as LlmProviderId);
     return NextResponse.json(
       { ok: false, error: classified.message, errorCode: classified.code },
-      { status: 502 }
+      { status: classified.status }
     );
   }
 }
@@ -169,6 +223,7 @@ export async function PUT(req: Request) {
       savedAudienceId: result.savedAudienceId,
       storage: result.storage,
       warning: result.warning,
+      removedSegments: result.removedSegments,
       name: body.name
     });
   } catch (e) {

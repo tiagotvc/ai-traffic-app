@@ -6,12 +6,15 @@ import { useLocale, useTranslations } from "next-intl";
 import { CreativePickerModal } from "@/components/campaign-creator/CreativePickerModal";
 import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfigModal";
 import { MessageTemplateEditor } from "@/components/campaign-creator/MessageTemplateEditor";
+import { MetaDynamicParamInput } from "@/components/campaign-creator/MetaDynamicParamInput";
 import { UtmBuilder } from "@/components/campaign-creator/UtmBuilder";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
+import { META_AD_COPY_LIMITS } from "@/lib/meta-ad-creative";
+import { MetaTextVariantsInput } from "@/components/campaign-creator/MetaTextVariantsInput";
 import { adsetsWithReuseCreativeCompatibility, getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
@@ -110,6 +113,32 @@ export function AdStep() {
     setCopyMode("manual");
   }
 
+  function handleImportMany(importedList: ImportedAdConfig[], mode: "copy" | "media" | "all") {
+    const activeAdset = getActiveAdset(payload);
+    let lastId = "";
+    updatePayload((p) => {
+      const newAds = importedList.map((imported) => {
+        const shell = defaultAdItem(locale);
+        const applied = applyImportedToAd(shell, imported, mode);
+        lastId = applied.id;
+        const targets = applied.targetAdsetIds.includes("__all__")
+          ? [activeAdset.id]
+          : applied.targetAdsetIds;
+        return { ...applied, targetAdsetIds: targets.length ? targets : [activeAdset.id] };
+      });
+      let ads = [...p.ads, ...newAds];
+      let adsets = p.adsets;
+      let draft = { ...p, ads, adsets, activeAdId: lastId };
+      for (const newAd of newAds) {
+        adsets = adsetsWithReuseCreativeCompatibility(draft, newAd);
+        draft = { ...draft, adsets };
+      }
+      return { ...p, ads, adsets, activeAdId: lastId };
+    });
+    scrollToAdForm();
+    setCopyMode("manual");
+  }
+
   function setReuseMetaCreative(reuse: boolean) {
     updatePayload((p) => {
       const nextAd = { ...ad, reuseMetaCreative: reuse };
@@ -201,7 +230,10 @@ export function AdStep() {
         error?: string;
       };
       if (!j.ok) throw new Error(j.error ?? "aiFailed");
-      patchAd({ titles: j.titles ?? [], bodies: j.bodies ?? [] });
+      patchAd({
+        titles: (j.titles ?? []).slice(0, META_AD_COPY_LIMITS.titles),
+        bodies: (j.bodies ?? []).slice(0, META_AD_COPY_LIMITS.bodies)
+      });
       setCopyMode("manual");
     } catch (e) {
       setAiError(e instanceof Error ? e.message : "aiFailed");
@@ -222,6 +254,12 @@ export function AdStep() {
         <p className="rounded-xl border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)] px-3 py-2 text-xs text-[var(--violet)]">
           {t("addAdContext", { adset: payload.meta.targetAdsetName })}
         </p>
+      ) : null}
+
+      {payload.meta?.creationMode === "ai" && payload.meta?.wizardGenerated ? (
+        <div className="ui-brain-shelf rounded-xl px-4 py-3 text-sm text-[var(--text-dim)]">
+          {t("aiWizardPickCreative")}
+        </div>
       ) : null}
 
       {!addAdMode ? (
@@ -326,6 +364,7 @@ export function AdStep() {
           defaultCampaignId={payload.meta?.targetMetaCampaignId}
           defaultAdsetId={payload.meta?.targetMetaAdsetId}
           onImport={handleImport}
+          onImportMany={handleImportMany}
         />
       </div>
 
@@ -561,14 +600,14 @@ export function AdStep() {
           disabled={clientRequired}
         />
         <FormField label={t("urlParams")}>
-          <input
+          <MetaDynamicParamInput
             value={ad.urlParams}
-            onChange={(e) => patchAd({ urlParams: e.target.value })}
+            onChange={(v) => patchAd({ urlParams: v })}
             placeholder={t("urlParamsOverrideHint")}
-            className="ui-input font-mono text-xs"
             disabled={clientRequired}
           />
         </FormField>
+        <p className="text-[10px] text-[var(--text-dimmer)]">{t("dynamicParamHint")}</p>
         {!publishReady && payload.clientSlug ? (
           <p className="text-[11px] text-amber-700">{tAds("publishNotReady")}</p>
         ) : null}
@@ -611,24 +650,32 @@ export function AdStep() {
             {aiError ? <p className="text-xs text-red-600">{aiError}</p> : null}
           </div>
         ) : null}
-        <FormField label={tAds("titles")}>
-          <textarea
-            value={ad.titles.join("\n")}
-            onChange={(e) => patchAd({ titles: e.target.value.split("\n") })}
-            className="ui-textarea"
-            rows={4}
-            disabled={clientRequired}
-          />
-        </FormField>
-        <FormField label={tAds("descriptions")}>
-          <textarea
-            value={ad.bodies.join("\n")}
-            onChange={(e) => patchAd({ bodies: e.target.value.split("\n") })}
-            className="ui-textarea"
-            rows={4}
-            disabled={clientRequired}
-          />
-        </FormField>
+        <MetaTextVariantsInput
+          label={tAds("titleLabel")}
+          values={ad.titles.length ? ad.titles : [""]}
+          onChange={(titles) =>
+            patchAd({ titles: titles.slice(0, META_AD_COPY_LIMITS.titles) })
+          }
+          maxItems={META_AD_COPY_LIMITS.titles}
+          placeholder={tAds("titlePlaceholder")}
+          disabled={clientRequired}
+          addLabel={t("adCopyAddTitle")}
+          removeLabel={t("adCopyRemoveVariant")}
+          countLabel={(count, max) => t("adCopyVariantCount", { count, max })}
+        />
+        <MetaTextVariantsInput
+          label={tAds("bodyLabel")}
+          values={ad.bodies.length ? ad.bodies : [""]}
+          onChange={(bodies) =>
+            patchAd({ bodies: bodies.slice(0, META_AD_COPY_LIMITS.bodies) })
+          }
+          maxItems={META_AD_COPY_LIMITS.bodies}
+          placeholder={tAds("bodyPlaceholder")}
+          disabled={clientRequired}
+          addLabel={t("adCopyAddBody")}
+          removeLabel={t("adCopyRemoveVariant")}
+          countLabel={(count, max) => t("adCopyVariantCount", { count, max })}
+        />
       </div>
 
       <div className="ui-card space-y-3 p-4">

@@ -595,31 +595,35 @@ export async function validateTargetingIdList(
     chunks.push(unique.slice(i, i + 40));
   }
 
-  const out: MetaTargetingValidationItem[] = [];
-  for (const chunk of chunks) {
-    const idList = encodeURIComponent(JSON.stringify(chunk));
-    const data = await metaFetch<{
-      data: Array<{
-        id?: string;
-        name?: string;
-        type?: string;
-        valid?: boolean;
-      }>;
-    }>(
-      `/${encodeURIComponent(act)}/targetingvalidation?id_list=${idList}`,
-      accessToken
-    );
-    for (const row of data.data ?? []) {
-      if (!row.id) continue;
-      out.push({
-        id: String(row.id),
-        name: row.name,
-        type: row.type,
-        valid: row.valid
-      });
-    }
-  }
-  return out;
+  const chunkResults = await Promise.all(
+    chunks.map(async (chunk) => {
+      const idList = encodeURIComponent(JSON.stringify(chunk));
+      const data = await metaFetch<{
+        data: Array<{
+          id?: string;
+          name?: string;
+          type?: string;
+          valid?: boolean;
+        }>;
+      }>(
+        `/${encodeURIComponent(act)}/targetingvalidation?id_list=${idList}`,
+        accessToken
+      );
+      const rows: MetaTargetingValidationItem[] = [];
+      for (const row of data.data ?? []) {
+        if (!row.id) continue;
+        rows.push({
+          id: String(row.id),
+          name: row.name,
+          type: row.type,
+          valid: row.valid
+        });
+      }
+      return rows;
+    })
+  );
+
+  return chunkResults.flat();
 }
 
 export type MetaInstagramAccount = { id: string; username?: string };

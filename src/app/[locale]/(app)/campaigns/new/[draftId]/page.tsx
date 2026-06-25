@@ -8,11 +8,14 @@ import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCre
 function DraftContent({ draftId }: { draftId: string }) {
   const searchParams = useSearchParams();
   const startAtReview = searchParams.get("review") === "1";
+  const activeParam = searchParams.get("active");
+  const initialActiveNode =
+    activeParam === "ad" ? "ad" : startAtReview ? "review" : undefined;
 
   return (
     <CampaignCreatorClient
       initialDraftId={draftId}
-      initialActiveNode={startAtReview ? "review" : undefined}
+      initialActiveNode={initialActiveNode}
       variant="uxpilot"
     />
   );

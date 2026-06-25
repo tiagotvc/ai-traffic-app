@@ -60,6 +60,19 @@ function MapFlyTo({ viewport }: { viewport?: MapViewport | null }) {
   return null;
 }
 
+function extendBoundsForCircle(
+  bounds: L.LatLngBounds,
+  lat: number,
+  lng: number,
+  radiusM: number
+) {
+  const latRad = (lat * Math.PI) / 180;
+  const latDelta = radiusM / 111320;
+  const lngDelta = radiusM / (111320 * Math.cos(latRad) || 1);
+  bounds.extend([lat - latDelta, lng - lngDelta]);
+  bounds.extend([lat + latDelta, lng + lngDelta]);
+}
+
 /** Zoom map to include all pin circles when pins are added or removed (not on radius drag). */
 function FitBoundsToPins({
   pins,
@@ -74,17 +87,24 @@ function FitBoundsToPins({
   useEffect(() => {
     if (disabled || pins.length === 0) return;
 
-    const bounds = L.latLngBounds([]);
-    for (const loc of pins) {
-      const coords = mapPinCoords(loc);
-      if (!coords) continue;
-      const radiusM = (loc.meta?.radius ?? 5) * 1000;
-      bounds.extend(L.circle([coords.lat, coords.lng], { radius: radiusM }).getBounds());
-    }
+    const fit = () => {
+      const bounds = L.latLngBounds([]);
+      for (const loc of pins) {
+        const coords = mapPinCoords(loc);
+        if (!coords) continue;
+        const radiusM = (loc.meta?.radius ?? 5) * 1000;
+        extendBoundsForCircle(bounds, coords.lat, coords.lng, radiusM);
+      }
 
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
-    }
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
+      }
+    };
+
+    map.whenReady(() => {
+      map.invalidateSize();
+      window.requestAnimationFrame(fit);
+    });
   }, [map, pinSignature, pins.length, disabled]);
 
   return null;

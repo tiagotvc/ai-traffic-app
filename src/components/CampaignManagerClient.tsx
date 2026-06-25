@@ -6,12 +6,14 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { rememberCampaign } from "@/components/CampaignsListClient";
 import { BudgetEditDrawer } from "@/components/campaign/BudgetEditDrawer";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
+import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
+import { useCampaignDrilldownOptional } from "@/hooks/useCampaignDrilldown";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
 import { Link } from "@/i18n/navigation";
 import { campaignAdsHref, rememberAdset } from "@/lib/campaign-navigation";
-import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
+import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { useCampaignPeriod } from "@/hooks/useCampaignPeriod";
 import { formatPeriodLabel, periodStateToParsed } from "@/lib/report-period";
 import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format";
@@ -462,20 +464,39 @@ export function CampaignManagerClient({
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const { openPanel } = usePublishPanel();
   const urlPeriod = useCampaignPeriod();
-  const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [adsets, setAdsets] = useState<AdSetRow[]>([]);
-  const [campaignPreset, setCampaignPreset] = useState("default");
+  const drilldown = useCampaignDrilldownOptional();
+  const [localCampaign, setCampaign] = useState<Campaign | null>(null);
+  const [localAdsets, setAdsets] = useState<AdSetRow[]>([]);
+  const [localCampaignPreset, setLocalCampaignPreset] = useState("default");
+  const campaign = drilldown && !embedded ? (drilldown.campaign as Campaign | null) : localCampaign;
+  const adsets = drilldown && !embedded ? (drilldown.adsets as AdSetRow[]) : localAdsets;
+  const campaignPreset = drilldown && !embedded ? drilldown.preset : localCampaignPreset;
   const presetMetrics = useMemo(
     () => presetMetricsFor(campaignPreset, customTypesMap),
     [campaignPreset, customTypesMap]
   );
   const kpiMetrics = useMemo(() => presetMetrics.slice(0, 4), [presetMetrics]);
-  const [series, setSeries] = useState<SeriesPoint[]>([]);
-  const [previous, setPrevious] = useState<PrevPeriod | null>(null);
-  const [adsCount, setAdsCount] = useState<number | null>(null);
-  const [adsCountLoading, setAdsCountLoading] = useState(true);
-  const [creativesCount, setCreativesCount] = useState<number | null>(null);
-  const [creativesCountLoading, setCreativesCountLoading] = useState(true);
+  const [localSeries, setSeries] = useState<SeriesPoint[]>([]);
+  const [localPrevious, setPrevious] = useState<PrevPeriod | null>(null);
+  const series = drilldown && !embedded ? (drilldown.series as SeriesPoint[]) : localSeries;
+  const previous =
+    drilldown && !embedded ? (drilldown.previous as PrevPeriod | null) : localPrevious;
+  const [localAdsCount, setAdsCount] = useState<number | null>(null);
+  const [localAdsCountLoading, setAdsCountLoading] = useState(true);
+  const [localCreativesCount, setCreativesCount] = useState<number | null>(null);
+  const [localCreativesCountLoading, setCreativesCountLoading] = useState(true);
+  const adsCount =
+    drilldown && !embedded
+      ? drilldown.counts.ads
+      : localAdsCount;
+  const adsCountLoading =
+    drilldown && !embedded ? drilldown.countsLoading : localAdsCountLoading;
+  const creativesCount =
+    drilldown && !embedded
+      ? drilldown.counts.creatives
+      : localCreativesCount;
+  const creativesCountLoading =
+    drilldown && !embedded ? drilldown.countsLoading : localCreativesCountLoading;
   const [search, setSearch] = useState("");
   const [adsetMetaFilters, setAdsetMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -486,22 +507,28 @@ export function CampaignManagerClient({
   const [activeTab, setActiveTab] = useState<DetailTab>(tab);
   const [refreshing, setRefreshing] = useState(false);
   const [chartLoading, setChartLoading] = useState(true);
+  useEffect(() => {
+    if (drilldown && !embedded) {
+      setChartLoading(drilldown.loading);
+      setRefreshing(drilldown.refreshing);
+    }
+  }, [drilldown, embedded, drilldown?.loading, drilldown?.refreshing]);
   const [syncing, setSyncing] = useState(false);
   const [budgetDrawerOpen, setBudgetDrawerOpen] = useState(false);
-  const [detailPeriod, setDetailPeriod] = useState<PeriodState>(() =>
-    embedded ? periodStateFromQuery(periodQuery) : urlPeriod.period
+  const [embeddedDetailPeriod, setEmbeddedDetailPeriod] = useState<PeriodState>(() =>
+    periodStateFromQuery(periodQuery)
   );
-
-  useEffect(() => {
-    if (!embedded) setDetailPeriod(urlPeriod.period);
-  }, [embedded, urlPeriod.period]);
+  const detailPeriod = embedded
+    ? embeddedDetailPeriod
+    : (drilldown?.period ?? urlPeriod.period);
 
   const onDetailPeriodChange = useCallback(
     (next: PeriodState) => {
-      if (embedded) setDetailPeriod(next);
+      if (embedded) setEmbeddedDetailPeriod(next);
+      else if (drilldown) drilldown.setPeriod(next);
       else urlPeriod.setPeriod(next);
     },
-    [embedded, urlPeriod]
+    [embedded, drilldown, urlPeriod]
   );
 
   const chartPeriodLabel = useMemo(
@@ -529,15 +556,20 @@ export function CampaignManagerClient({
   // Acompanha o período vindo da lista (hub) como padrão; o usuário pode trocar aqui.
   useEffect(() => {
     if (!embedded) return;
-    setDetailPeriod(periodStateFromQuery(periodQuery));
+    setEmbeddedDetailPeriod(periodStateFromQuery(periodQuery));
   }, [embedded, periodQuery]);
 
   const reload = useCallback(() => {
+    if (drilldown && !embedded) {
+      return drilldown.refresh({ live: true });
+    }
     const qs = buildDetailQuery(`?${periodStateToQuery(detailPeriod).toString()}`, seedRow);
     setRefreshing(true);
     setChartLoading(true);
 
-    const detailPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${qs}`)
+    const withLive = (path: string) => `${path}${qs ? `${qs}&live=1` : "?live=1"}`;
+
+    const detailPromise = fetch(withLive(`/api/campaigns/${encodeURIComponent(metaCampaignId)}`))
       .then((r) => r.json())
       .then((j) => {
         if (j.campaign) {
@@ -546,11 +578,11 @@ export function CampaignManagerClient({
         }
       });
 
-    const adsetsPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${qs}`)
+    const adsetsPromise = fetch(withLive(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets`))
       .then((r) => r.json())
       .then((j) => {
         setAdsets((j.adsets ?? []) as AdSetRow[]);
-        if (typeof j.preset === "string") setCampaignPreset(j.preset);
+        if (typeof j.preset === "string") setLocalCampaignPreset(j.preset);
       })
       .catch(() => setAdsets([]));
 
@@ -568,7 +600,9 @@ export function CampaignManagerClient({
       .catch(() => setCreativesCount(0))
       .finally(() => setCreativesCountLoading(false));
 
-    const timeseriesPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries${qs}`)
+    const timeseriesPromise = fetch(
+      withLive(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/timeseries`)
+    )
       .then((r) => r.json())
       .then((j) => {
         setSeries(j.series ?? []);
@@ -579,7 +613,7 @@ export function CampaignManagerClient({
     return Promise.all([detailPromise, adsetsPromise, adsCountPromise, creativesCountPromise, timeseriesPromise]).finally(() => {
       setRefreshing(false);
     });
-  }, [metaCampaignId, clientSlug, detailPeriod, seedRow]);
+  }, [metaCampaignId, clientSlug, detailPeriod, seedRow, drilldown, embedded]);
 
   const refreshFromMeta = useCallback(async () => {
     if (syncing) return;
@@ -619,14 +653,15 @@ export function CampaignManagerClient({
   }, [reload]);
 
   useEffect(() => {
-    if (seedRow && seedRow.metaCampaignId === metaCampaignId) {
+    if (seedRow && seedRow.metaCampaignId === metaCampaignId && (embedded || !drilldown)) {
       setCampaign(campaignFromSeed(seedRow, metaCampaignId));
     }
-  }, [seedRow, metaCampaignId]);
+  }, [seedRow, metaCampaignId, embedded, drilldown]);
 
   useEffect(() => {
+    if (drilldown && !embedded) return;
     reload();
-  }, [reload]);
+  }, [reload, drilldown, embedded]);
 
   const filteredAdsets = useMemo(() => {
     let list = adsets;
@@ -703,6 +738,9 @@ export function CampaignManagerClient({
   };
 
   if (!campaign) {
+    if (drilldown && !embedded && drilldown.loading) {
+      return <CampaignDetailSkeleton compact={embedded} />;
+    }
     return <CampaignDetailSkeleton compact={embedded} />;
   }
 
@@ -722,52 +760,15 @@ export function CampaignManagerClient({
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-heading text-2xl font-bold text-[var(--text-main)]">{campaign.name}</h1>
-            <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-dim)]">
-            <span className="flex items-center gap-1">
-              <span className="inline-block h-4 w-4 rounded bg-blue-600 text-[8px] font-bold leading-4 text-white text-center">
-                f
-              </span>
-              ID: {campaign.id}
-            </span>
-            <span>
-              {t("client")}:{" "}
-              <Link href={`/clients/${slug}`} className="ui-link font-medium">
-                {campaign.clientName}
-              </Link>
-            </span>
-            <span>
-              {t("account")}: {campaign.accountLabel}
-            </span>
-            <span>
-              {t("objective")}: {campaign.objective}
-            </span>
-            <span>
-              {t("dailyBudget")}:{" "}
-              <strong className="text-[var(--text-main)]">
-                {campaign.dailyBudget != null ? formatBRL(campaign.dailyBudget, locale) : "—"}
-              </strong>
-            </span>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <PeriodFilter value={detailPeriod} onChange={onDetailPeriodChange} />
-          <button
-            type="button"
-            onClick={() => void refreshFromMeta()}
-            disabled={syncing}
-            className="ui-btn-secondary inline-flex items-center gap-1.5 px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-            title={syncing ? t("syncing") : t("refresh")}
-            aria-label={t("refresh")}
-          >
-            {syncing ? <Spinner className="h-4 w-4" /> : <span aria-hidden>↻</span>}
-            <span className="hidden sm:inline">{syncing ? t("syncing") : t("refresh")}</span>
-          </button>
+      <CampaignDrilldownHeader
+        campaign={campaign}
+        locale={locale}
+        period={detailPeriod}
+        onPeriodChange={onDetailPeriodChange}
+        onRefresh={() => void refreshFromMeta()}
+        syncing={syncing}
+        translationNs="campaignManager"
+        trailingActions={
           <div className="relative">
             <button
               type="button"
@@ -811,8 +812,8 @@ export function CampaignManagerClient({
               </div>
             ) : null}
           </div>
-        </div>
-      </div>
+        }
+      />
 
       <CampaignDetailTabs
         metaCampaignId={metaCampaignId}

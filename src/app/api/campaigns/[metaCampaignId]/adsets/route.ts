@@ -18,6 +18,7 @@ import {
   type MetaAdSetInsight
 } from "@/lib/meta-graph";
 import { type MetricKey } from "@/lib/dashboard-metrics";
+import { loadAdsetsFromSnapshots } from "@/lib/campaign-snapshot-query";
 import { applyServerTiming } from "@/lib/server-timing";
 import { parsePeriodFromSearchParams, rollingDaysEndingYesterday, yesterdayIso } from "@/lib/report-period";
 
@@ -146,11 +147,8 @@ export async function GET(
     ctxToken
   );
 
-  if (!metaAccessToken && !fallbackMetaToken) {
-    return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
-  }
-
   const period = parsePeriodFromSearchParams(new URL(req.url));
+  const live = new URL(req.url).searchParams.get("live") === "1";
   const { since, until } = resolveSinceUntil(period);
 
   const { campaignPreset: presetRepo } = await repositories();
@@ -159,14 +157,26 @@ export async function GET(
   });
   const preset = presetRow?.preset ?? "default";
 
-  const { adsets, metaMs } = await loadAdSets(
-    tenant.id,
-    metaCampaignId,
-    since,
-    until,
-    metaAccessToken ?? undefined,
-    fallbackMetaToken
-  );
+  let adsets: Awaited<ReturnType<typeof loadAdSets>>["adsets"] = [];
+  let metaMs = 0;
+
+  if (live) {
+    if (!metaAccessToken && !fallbackMetaToken) {
+      return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
+    }
+    const loaded = await loadAdSets(
+      tenant.id,
+      metaCampaignId,
+      since,
+      until,
+      metaAccessToken ?? undefined,
+      fallbackMetaToken
+    );
+    adsets = loaded.adsets;
+    metaMs = loaded.metaMs;
+  } else {
+    adsets = await loadAdsetsFromSnapshots(metaCampaignId, period);
+  }
 
   const res = NextResponse.json({ ok: true, adsets, preset });
   return applyServerTiming(res, { total: Date.now() - t0, meta: metaMs, db: Date.now() - t0 - metaMs });
@@ -193,7 +203,7 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ metaCampaignId: string }> }
 ) {
-  const { tenant, metaAccessToken } = await getAppContext();
+  const { tenant, user, metaAccessToken } = await getAppContext();
   if (!metaAccessToken) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
   }
@@ -253,7 +263,9 @@ export async function POST(
       settings,
       callToAction: settings.defaultCta,
       campaignName: body.campaignName,
-      isCampaignBudget
+      isCampaignBudget,
+      tenantId: tenant.id,
+      userId: user?.id
     });
 
     return NextResponse.json({ ok: true, ...result });

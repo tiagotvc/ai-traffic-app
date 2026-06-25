@@ -59,7 +59,7 @@ async function fetchViaCep(cepDigits: string): Promise<ViaCepParts | null> {
   }
 }
 
-async function geocodeWithPhoton(query: string): Promise<GeocodeResult | null> {
+export async function geocodeWithPhoton(query: string): Promise<GeocodeResult | null> {
   const q = query.trim();
   if (!q) return null;
 
@@ -105,7 +105,7 @@ async function geocodeWithPhoton(query: string): Promise<GeocodeResult | null> {
   }
 }
 
-async function geocodeWithNominatim(
+export async function geocodeWithNominatim(
   query: string,
   opts?: { countrycodes?: string }
 ): Promise<GeocodeResult | null> {

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { ClipboardCheck, FileText, Folder, LayoutGrid, Target } from "lucide-react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { CampaignPublishErrorAlert } from "@/components/campaign-creator/CampaignPublishErrorAlert";
 import { Link } from "@/i18n/navigation";
 import {
   computeDraftScore,
@@ -153,11 +154,17 @@ export function CampaignCreatorUxStepper({ onObjectivePhase = false }: { onObjec
 export function CampaignCreatorUxScorePanel({
   onPublish,
   publishing,
-  onObjectivePhase = false
+  onObjectivePhase = false,
+  publishError,
+  showTargetingFixLink,
+  onFixTargeting
 }: {
   onPublish?: () => void;
   publishing?: boolean;
   onObjectivePhase?: boolean;
+  publishError?: string | null;
+  showTargetingFixLink?: boolean;
+  onFixTargeting?: () => void;
 }) {
   const t = useTranslations("campaignCreator");
   const tCommon = useTranslations("common");
@@ -208,6 +215,13 @@ export function CampaignCreatorUxScorePanel({
       </div>
       {!onObjectivePhase ? (
         <div className="shrink-0 space-y-2 border-t px-4 py-5" style={{ borderColor: "var(--border-color)" }}>
+          {publishError ? (
+            <CampaignPublishErrorAlert
+              message={publishError}
+              showFixLink={showTargetingFixLink}
+              onFix={onFixTargeting}
+            />
+          ) : null}
           {err ? (
             <p className="text-center text-[11px] leading-snug text-red-600">
               {t(err as Parameters<typeof t>[0])}

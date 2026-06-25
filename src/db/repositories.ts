@@ -20,6 +20,8 @@ import type { MessageTemplate } from "@/db/entities/MessageTemplate";
 import type { LookalikeJob } from "@/db/entities/LookalikeJob";
 import type { AudienceInsightBreakdown } from "@/db/entities/AudienceInsightBreakdown";
 import type { ClientSavedTargeting } from "@/db/entities/ClientSavedTargeting";
+import type { UserPersona } from "@/db/entities/UserPersona";
+import type { UserZone } from "@/db/entities/UserZone";
 import type { MetaAdAccountInventory } from "@/db/entities/MetaAdAccountInventory";
 import type { MetaAuth } from "@/db/entities/MetaAuth";
 import type { MetaAudienceCache } from "@/db/entities/MetaAudienceCache";
@@ -104,6 +106,8 @@ const ENTITY = {
   LookalikeJob: "LookalikeJob",
   AudienceInsightBreakdown: "AudienceInsightBreakdown",
   ClientSavedTargeting: "ClientSavedTargeting",
+  UserPersona: "UserPersona",
+  UserZone: "UserZone",
   CampaignTemplate: "CampaignTemplate",
   CreativeAsset: "CreativeAsset",
   MessageTemplate: "MessageTemplate",
@@ -204,6 +208,8 @@ export async function repositories() {
       ds,
       ENTITY.ClientSavedTargeting
     ),
+    userPersona: repositoryFor<UserPersona>(ds, ENTITY.UserPersona),
+    userZone: repositoryFor<UserZone>(ds, ENTITY.UserZone),
     campaignTemplate: repositoryFor<CampaignTemplate>(ds, ENTITY.CampaignTemplate),
     creativeAsset: repositoryFor<CreativeAsset>(ds, ENTITY.CreativeAsset),
     messageTemplate: repositoryFor<MessageTemplate>(ds, ENTITY.MessageTemplate),

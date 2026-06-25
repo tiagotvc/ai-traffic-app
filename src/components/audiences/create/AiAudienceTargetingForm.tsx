@@ -7,6 +7,18 @@ import type {
   AudiencePersonaPreview,
   AudienceTargetingSuggestion
 } from "@/lib/audience-targeting-shared";
+import {
+  canAddMoreSegments,
+  removeSegmentFromSuggestion
+} from "@/lib/audience-targeting-shared";
+import {
+  buildRepairBriefFromIssue,
+  buildRepairPersonaPreview,
+  type PersonaRepairSeed
+} from "@/lib/persona-targeting-types";
+import { PersonaReplacementHintsPanel } from "@/components/audiences/create/PersonaReplacementHintsPanel";
+import { PersonaSegmentChipList } from "@/components/audiences/create/PersonaSegmentChipList";
+import { PersonaAddSegmentsModal } from "@/components/audiences/create/PersonaAddSegmentsModal";
 
 type LlmProviderId = "gemini" | "claude";
 
@@ -18,7 +30,7 @@ export type AiAudienceTargetingFormProps = {
   audiences: AudienceOption[];
   audiencesLoading?: boolean;
   disabled?: boolean;
-  mode?: "save" | "campaign";
+  mode?: "save" | "campaign" | "persona_library";
   ageMin?: number;
   ageMax?: number;
   gender?: "all" | "male" | "female";
@@ -34,9 +46,11 @@ export type AiAudienceTargetingFormProps = {
     metaAudienceId?: string;
     storage?: "meta" | "local";
     warning?: string;
+    personaId?: string;
   }) => void;
   onApproveApply?: (suggestion: AudienceTargetingSuggestion) => Promise<void> | void;
   onError?: (message: string) => void;
+  repairSeed?: PersonaRepairSeed;
 };
 
 export function AiAudienceTargetingForm({
@@ -54,15 +68,20 @@ export function AiAudienceTargetingForm({
   onDemographicsChange,
   onSaved,
   onApproveApply,
-  onError
+  onError,
+  repairSeed
 }: AiAudienceTargetingFormProps) {
   const t = useTranslations("campaignCreator");
+  const tAud = useTranslations("audiences");
+  const isPersonaLibrary = mode === "persona_library";
+  const apiBase = isPersonaLibrary ? "/api/personas/ai-generate" : "/api/ai/audience-targeting";
   const [provider, setProvider] = useState<LlmProviderId>("gemini");
   const [providers, setProviders] = useState({ gemini: false, claude: false });
   const [businessDescription, setBusinessDescription] = useState("");
   const [targetProfile, setTargetProfile] = useState("");
   const [behaviors, setBehaviors] = useState("");
   const [lifestyleHints, setLifestyleHints] = useState("");
+  const [exclusionHints, setExclusionHints] = useState("");
   const [includeIds, setIncludeIds] = useState<string[]>([]);
   const [excludeIds, setExcludeIds] = useState<string[]>([]);
   const [suggestion, setSuggestion] = useState<AudienceTargetingSuggestion | null>(null);
@@ -72,9 +91,61 @@ export function AiAudienceTargetingForm({
   const [pending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [targetingWarning, setTargetingWarning] = useState<string | null>(null);
+  const [demoAgeMin, setDemoAgeMin] = useState(ageMin);
+  const [demoAgeMax, setDemoAgeMax] = useState(ageMax);
+  const [demoGender, setDemoGender] = useState(gender);
+  const [savePersonaName, setSavePersonaName] = useState("");
+  const [addSegmentsOpen, setAddSegmentsOpen] = useState(false);
+  const [segmentActionError, setSegmentActionError] = useState<string | null>(null);
+
+  const effectiveAgeMin = isPersonaLibrary ? demoAgeMin : ageMin;
+  const effectiveAgeMax = isPersonaLibrary ? demoAgeMax : ageMax;
+  const effectiveGender = isPersonaLibrary ? demoGender : gender;
+  const isRepairMode = !!repairSeed?.personaId;
+
+  const keptValidSegmentIds = new Set(
+    repairSeed?.segments.filter((s) => s.valid).map((s) => s.id) ?? []
+  );
+  const replacementAlternativeIds = new Set([
+    ...(suggestion?.replacementHints?.flatMap((h) => h.alternatives.map((a) => a.id)) ?? []),
+    ...(repairSeed?.metaReplacements
+      ?.map((r) => r.replacement?.id)
+      .filter((id): id is string => !!id) ?? [])
+  ]);
+
+  function segmentChipClass(item: { id: string }) {
+    if (repairSeed?.rejectedSegmentIds.includes(item.id)) {
+      return "border border-red-300 bg-red-50 text-red-800 line-through";
+    }
+    if (isRepairMode && replacementAlternativeIds.has(item.id)) {
+      return "border border-emerald-300 bg-emerald-50 font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+    }
+    if (isRepairMode && !keptValidSegmentIds.has(item.id)) {
+      return "border border-violet-300 bg-violet-50 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200";
+    }
+    return "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]";
+  }
 
   useEffect(() => {
-    fetch("/api/ai/audience-targeting")
+    if (!repairSeed) return;
+    const parsed = buildRepairBriefFromIssue({
+      sourcePrompt: repairSeed.sourcePrompt,
+      description: repairSeed.description,
+      personaName: repairSeed.name
+    });
+    setBusinessDescription(parsed.businessDescription);
+    setTargetProfile(parsed.targetProfile);
+    setBehaviors(parsed.behaviors);
+    setLifestyleHints(parsed.lifestyleHints);
+    setDemoAgeMin(repairSeed.ageMin);
+    setDemoAgeMax(repairSeed.ageMax);
+    setDemoGender(repairSeed.gender);
+    setPersonaPreview(buildRepairPersonaPreview(repairSeed));
+  }, [repairSeed]);
+
+  useEffect(() => {
+    fetch(apiBase)
       .then((r) => r.json())
       .then((j: { providers?: { gemini: boolean; claude: boolean } }) => {
         if (j.providers) {
@@ -84,7 +155,7 @@ export function AiAudienceTargetingForm({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [apiBase]);
 
   const activeCustomIds = audienceMode === "include" ? includeIds : excludeIds;
   const audienceSearchNorm = audienceSearch.trim().toLowerCase();
@@ -114,6 +185,20 @@ export function AiAudienceTargetingForm({
     }
   }
 
+  function formatRemovedSegmentsWarning(
+    segments: Array<{ id: string; name?: string }>
+  ): string {
+    const names = segments
+      .map((s) => s.name || s.id)
+      .slice(0, 4)
+      .join(", ");
+    const suffix = segments.length > 4 ? ` (+${segments.length - 4})` : "";
+    return tAud("personaTargetingRemovedWarning", {
+      count: segments.length,
+      names: `${names}${suffix}`
+    });
+  }
+
   function reportError(message: string) {
     setError(message);
     onError?.(message);
@@ -126,13 +211,24 @@ export function AiAudienceTargetingForm({
     setTargetProfile("");
     setBehaviors("");
     setLifestyleHints("");
+    setExclusionHints("");
     setIncludeIds([]);
     setExcludeIds([]);
     setAudienceMode(null);
     setAudienceSearch("");
+    setTargetingWarning(null);
+    setSavePersonaName("");
   }
 
-  function buildBriefPayload() {
+  function resolvedSavePersonaName(): string {
+    const custom = savePersonaName.trim();
+    if (custom) return custom;
+    if (repairSeed?.name?.trim()) return repairSeed.name.trim();
+    return personaPreview?.personaName?.trim() || suggestion?.title?.trim() || "";
+  }
+
+  function buildBriefPayload(avoidSegmentIds: string[] = []) {
+    const rejected = repairSeed?.segments.filter((s) => !s.valid) ?? [];
     return {
       clientId: clientSlug,
       adAccountId,
@@ -141,13 +237,50 @@ export function AiAudienceTargetingForm({
       targetProfile: targetProfile.trim(),
       behaviors: behaviors.trim() || undefined,
       lifestyleHints: lifestyleHints.trim() || undefined,
-      ageMin,
-      ageMax,
-      gender,
+      exclusionHints: exclusionHints.trim() || undefined,
+      ageMin: effectiveAgeMin,
+      ageMax: effectiveAgeMax,
+      gender: effectiveGender,
       countries,
+      includeCustomAudienceIds: isPersonaLibrary ? [] : includeIds,
+      excludeCustomAudienceIds: isPersonaLibrary ? [] : excludeIds,
+      rejectedSegmentIds: rejected.map((s) => s.id),
+      rejectedSegments: rejected.map((s) => ({ id: s.id, name: s.name, type: s.type })),
+      avoidSegmentIds
+    };
+  }
+
+  function buildPersonaBriefPayload(avoidSegmentIds: string[] = []) {
+    return {
+      ...buildBriefPayload(avoidSegmentIds),
       includeCustomAudienceIds: includeIds,
       excludeCustomAudienceIds: excludeIds
     };
+  }
+
+  function refineBriefing() {
+    setPersonaPreview(null);
+    setSuggestion(null);
+    setTargetingWarning(null);
+    setError(null);
+  }
+
+  function handleRemoveSegment(itemId: string) {
+    if (!suggestion) return;
+    if (suggestion.items.length <= 1) {
+      setSegmentActionError(tAud("personaSegmentMinOne"));
+      return;
+    }
+    setSegmentActionError(null);
+    setSuggestion(removeSegmentFromSuggestion(suggestion, itemId));
+  }
+
+  function handleAddSegmentsSuccess(next: AudienceTargetingSuggestion) {
+    setSuggestion(next);
+    setTargetingWarning(
+      next.removedSegments?.length ? formatRemovedSegmentsWarning(next.removedSegments) : null
+    );
+    setSegmentActionError(null);
   }
 
   function generatePersonaPreview() {
@@ -155,12 +288,12 @@ export function AiAudienceTargetingForm({
     setSuggestion(null);
     setPersonaPreview(null);
     startTransition(async () => {
-      const res = await fetch("/api/ai/audience-targeting", {
+      const res = await fetch(apiBase, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          ...buildBriefPayload(),
-          phase: "persona"
+          ...(isPersonaLibrary ? buildPersonaBriefPayload() : buildBriefPayload()),
+          phase: isPersonaLibrary ? "preview" : "persona"
         })
       });
       const j = await res.json();
@@ -172,44 +305,103 @@ export function AiAudienceTargetingForm({
     });
   }
 
-  function searchMetaAndBuild() {
+  function searchMetaAndBuild(options?: { retry?: boolean }) {
     if (!personaPreview) return;
+    const avoidSegmentIds =
+      options?.retry && suggestion ? suggestion.items.map((item) => item.id) : [];
     setError(null);
     setSuggestion(null);
+    setTargetingWarning(null);
     startTransition(async () => {
-      const res = await fetch("/api/ai/audience-targeting", {
+      const res = await fetch(apiBase, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          ...buildBriefPayload(),
+          ...(isPersonaLibrary
+            ? buildPersonaBriefPayload(avoidSegmentIds)
+            : buildBriefPayload(avoidSegmentIds)),
           phase: "targeting",
           persona: personaPreview
         })
       });
       const j = await res.json();
       if (j.ok && j.suggestion) {
-        setSuggestion(j.suggestion as AudienceTargetingSuggestion);
+        const next = j.suggestion as AudienceTargetingSuggestion;
+        setSuggestion(next);
+        setTargetingWarning(
+          next.removedSegments?.length
+            ? formatRemovedSegmentsWarning(next.removedSegments)
+            : null
+        );
       } else {
         reportError(j.error ?? t("aiAudienceFailed"));
       }
     });
   }
 
+  async function validateSuggestionTargeting(
+    targeting: Record<string, unknown>
+  ): Promise<boolean> {
+    const res = await fetch("/api/personas/validate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        adAccountId,
+        targeting
+      })
+    });
+    const j = (await res.json()) as { ok?: boolean; valid?: boolean; error?: string };
+    if (!j.ok || j.valid === false) {
+      reportError(j.error ?? tAud("personaTargetingSaveBlocked"));
+      return false;
+    }
+    return true;
+  }
+
   async function approveAndSave() {
     if (!suggestion) return;
+    if (isPersonaLibrary && (!clientSlug || !adAccountId)) {
+      reportError(tAud("personaNeedsAdAccount"));
+      return;
+    }
     setCreating(true);
     setError(null);
     try {
-      const res = await fetch("/api/ai/audience-targeting", {
-        method: "PUT",
+      const valid = await validateSuggestionTargeting(suggestion.targeting);
+      if (!valid) return;
+
+      const personaNameForSave = resolvedSavePersonaName();
+      if (isPersonaLibrary && !personaNameForSave) {
+        reportError(tAud("personaNameRequired"));
+        return;
+      }
+
+      const isRepair = !!repairSeed?.personaId;
+      const res = await fetch(apiBase, {
+        method: isPersonaLibrary ? "POST" : "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          clientId: clientSlug,
-          adAccountId,
-          name: suggestion.name,
-          targeting: suggestion.targeting,
-          provider: suggestion.provider
-        })
+        body: JSON.stringify(
+          isPersonaLibrary
+            ? {
+                ...buildPersonaBriefPayload(),
+                phase: isRepair ? "repair" : "build",
+                ...(isRepair ? { personaId: repairSeed.personaId } : {}),
+                persona: personaPreview,
+                suggestion: {
+                  title: suggestion.title,
+                  summary: suggestion.summary,
+                  name: personaNameForSave,
+                  targeting: suggestion.targeting
+                }
+              }
+            : {
+                clientId: clientSlug,
+                adAccountId,
+                name: suggestion.name,
+                targeting: suggestion.targeting,
+                provider: suggestion.provider
+              }
+        )
       });
       const j = (await res.json()) as {
         ok?: boolean;
@@ -217,20 +409,26 @@ export function AiAudienceTargetingForm({
         savedAudienceId?: string;
         storage?: "meta" | "local";
         warning?: string;
+        removedSegments?: Array<{ id: string; name?: string }>;
+        persona?: { id: string; name: string };
       };
       if (!j.ok) {
-        reportError(j.error ?? t("aiAudienceSaveFailed"));
+        reportError(j.error ?? (isPersonaLibrary ? tAud("savePersonaFailed") : t("aiAudienceSaveFailed")));
         return;
       }
+      const removedWarning = j.removedSegments?.length
+        ? formatRemovedSegmentsWarning(j.removedSegments)
+        : undefined;
       onSaved?.({
-        name: suggestion.name,
+        name: isPersonaLibrary ? personaNameForSave : suggestion.name,
         metaAudienceId: j.savedAudienceId,
         storage: j.storage,
-        warning: j.warning
+        warning: removedWarning ?? j.warning,
+        personaId: j.persona?.id ?? repairSeed?.personaId
       });
       resetForm();
     } catch {
-      reportError(t("aiAudienceSaveFailed"));
+      reportError(isPersonaLibrary ? tAud("savePersonaFailed") : t("aiAudienceSaveFailed"));
     } finally {
       setCreating(false);
     }
@@ -298,7 +496,29 @@ export function AiAudienceTargetingForm({
         <p className="text-[10px] leading-snug text-amber-700">{t("aiProviderClaudeHint")}</p>
       ) : null}
 
-      {showDemographics ? (
+      {repairSeed && repairSeed.segments.some((s) => !s.valid) ? (
+        <div className="ui-alert-warning space-y-2 p-3 text-xs">
+          <p className="font-medium">{tAud("personaRepairRejectedTitle")}</p>
+          <div className="flex flex-wrap gap-1">
+            {repairSeed.segments
+              .filter((s) => !s.valid)
+              .map((seg) => (
+                <span
+                  key={seg.id}
+                  className="rounded-full border border-red-300 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-800 line-through"
+                >
+                  {seg.name}
+                </span>
+              ))}
+          </div>
+          <p className="text-[var(--text-dim)]">{tAud("personaRepairRejectedHint")}</p>
+          {repairSeed.metaReplacements?.length ? (
+            <PersonaReplacementHintsPanel metaReplacements={repairSeed.metaReplacements} />
+          ) : null}
+        </div>
+      ) : null}
+
+      {showDemographics || isPersonaLibrary ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
             <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicAgeMin")}</label>
@@ -306,10 +526,12 @@ export function AiAudienceTargetingForm({
               type="number"
               min={13}
               max={65}
-              value={ageMin}
-              onChange={(e) =>
-                onDemographicsChange?.({ ageMin: Number(e.target.value) || 18 })
-              }
+              value={effectiveAgeMin}
+              onChange={(e) => {
+                const v = Number(e.target.value) || 18;
+                if (isPersonaLibrary) setDemoAgeMin(v);
+                else onDemographicsChange?.({ ageMin: v });
+              }}
               className="ui-input mt-1 w-full text-sm"
               disabled={disabled}
             />
@@ -320,10 +542,12 @@ export function AiAudienceTargetingForm({
               type="number"
               min={13}
               max={65}
-              value={ageMax}
-              onChange={(e) =>
-                onDemographicsChange?.({ ageMax: Number(e.target.value) || 65 })
-              }
+              value={effectiveAgeMax}
+              onChange={(e) => {
+                const v = Number(e.target.value) || 65;
+                if (isPersonaLibrary) setDemoAgeMax(v);
+                else onDemographicsChange?.({ ageMax: v });
+              }}
               className="ui-input mt-1 w-full text-sm"
               disabled={disabled}
             />
@@ -331,12 +555,12 @@ export function AiAudienceTargetingForm({
           <div>
             <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicGender")}</label>
             <select
-              value={gender}
-              onChange={(e) =>
-                onDemographicsChange?.({
-                  gender: e.target.value as "all" | "male" | "female"
-                })
-              }
+              value={effectiveGender}
+              onChange={(e) => {
+                const v = e.target.value as "all" | "male" | "female";
+                if (isPersonaLibrary) setDemoGender(v);
+                else onDemographicsChange?.({ gender: v });
+              }}
               className="ui-select mt-1 w-full text-sm"
               disabled={disabled}
             >
@@ -395,6 +619,19 @@ export function AiAudienceTargetingForm({
           disabled={disabled}
         />
         <p className="mt-1 text-[10px] text-[var(--text-dim)]">{t("aiAudienceLifestyleHint")}</p>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceExclusions")}</label>
+        <textarea
+          value={exclusionHints}
+          onChange={(e) => setExclusionHints(e.target.value)}
+          rows={2}
+          className="ui-textarea mt-1 w-full text-sm"
+          placeholder={t("aiAudienceExclusionsPh")}
+          disabled={disabled}
+        />
+        <p className="mt-1 text-[10px] text-[var(--text-dimmer)]">{t("aiAudienceExclusionsHint")}</p>
       </div>
 
       {audiences.length > 0 ? (
@@ -540,6 +777,12 @@ export function AiAudienceTargetingForm({
                   {personaPreview.searchPlan.behaviorQueries.join(" · ")}
                 </li>
               ) : null}
+              {(personaPreview.searchPlan.lifeEventQueries?.length ?? 0) > 0 ? (
+                <li>
+                  <span className="font-medium">{t("aiAudiencePreviewLifeEvents")}:</span>{" "}
+                  {personaPreview.searchPlan.lifeEventQueries!.join(" · ")}
+                </li>
+              ) : null}
               {personaPreview.searchPlan.demographicQueries.length > 0 ? (
                 <li>
                   <span className="font-medium">{t("aiAudiencePreviewDemographics")}:</span>{" "}
@@ -553,61 +796,132 @@ export function AiAudienceTargetingForm({
             <button
               type="button"
               disabled={disabled || pending}
-              onClick={searchMetaAndBuild}
-              className="ui-btn-primary w-full text-sm"
+              onClick={() => searchMetaAndBuild()}
+              className="ui-btn-primary w-full text-sm sm:w-auto sm:flex-1"
             >
               {pending ? t("aiAudienceGenerating") : t("aiAudienceSearchMeta")}
             </button>
             <button
               type="button"
-              onClick={() => {
-                setPersonaPreview(null);
-                setSuggestion(null);
-              }}
-              className="text-xs text-slate-500 underline"
+              disabled={disabled || pending}
+              onClick={refineBriefing}
+              className="ui-btn-secondary w-full text-sm sm:w-auto"
             >
-              {t("aiAudienceDiscardPreview")}
+              {t("aiAudienceRefineBriefing")}
             </button>
           </div>
+          <p className="text-[10px] text-[var(--text-dimmer)]">{t("aiAudiencePreviewActionsHint")}</p>
         </div>
       ) : null}
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
+      {targetingWarning ? (
+        <p className="ui-alert-warning text-xs">{targetingWarning}</p>
+      ) : null}
 
       {suggestion ? (
         <div className="space-y-3 rounded-xl border border-[rgba(124,58,237,0.2)] bg-[var(--surface-card)] p-4">
+          {isRepairMode ? (
+            <div className="ui-alert-warning space-y-1 p-3 text-xs">
+              <p className="font-medium text-[var(--text-main)]">{tAud("personaRepairApproveTitle")}</p>
+              <p className="text-[var(--text-dim)]">{tAud("personaRepairApproveHint")}</p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--violet)]">
+                {t("aiAudienceSegmentsTitle")}
+              </p>
+              <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{t("aiAudienceSegmentsHint")}</p>
+            </div>
+          )}
+
+          {suggestion.replacementHints?.length ? (
+            <PersonaReplacementHintsPanel apiHints={suggestion.replacementHints} />
+          ) : null}
+
           <div>
             <p className="text-sm font-semibold text-[var(--text-main)]">{suggestion.title}</p>
             <p className="mt-1 text-xs text-[var(--text-dim)]">{suggestion.summary}</p>
+            {isPersonaLibrary ? (
+              <div className="mt-3 space-y-1">
+                <label className="text-[10px] font-medium uppercase text-[var(--text-dimmer)]">
+                  {tAud("personaSaveName")}
+                </label>
+                <input
+                  value={savePersonaName}
+                  onChange={(e) => setSavePersonaName(e.target.value)}
+                  placeholder={personaPreview?.personaName ?? suggestion.title}
+                  className="ui-input w-full text-sm"
+                  disabled={creating || pending}
+                />
+                <p className="text-[10px] text-[var(--text-dimmer)]">{tAud("personaSaveNameHint")}</p>
+              </div>
+            ) : (
+              <p className="mt-2 text-[10px] text-[var(--text-dimmer)]">
+                {t("aiAudienceSavedName")}:{" "}
+                <span className="font-medium">{suggestion.name}</span>
+              </p>
+            )}
             <p className="mt-2 text-[10px] text-[var(--text-dimmer)]">
-              {t("aiAudienceSavedName")}: <span className="font-medium">{suggestion.name}</span>
-            </p>
-            <p className="text-[10px] text-[var(--text-dimmer)]">
               {t("aiAudienceModel")}: {suggestion.provider} / {suggestion.modelUsed}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
-            {suggestion.items.map((item) => (
-              <span
-                key={`${item.type}-${item.id}`}
-                className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] text-[var(--violet)]"
+          <div className="space-y-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-3">
+            <PersonaSegmentChipList
+              items={suggestion.items}
+              onRemove={handleRemoveSegment}
+              segmentChipClass={(item) => segmentChipClass(item)}
+              replacementAlternativeIds={replacementAlternativeIds}
+              isRepairMode={isRepairMode}
+            />
+            {segmentActionError ? (
+              <p className="text-[10px] text-red-600">{segmentActionError}</p>
+            ) : null}
+            {canAddMoreSegments(suggestion.items) ? (
+              <button
+                type="button"
+                disabled={creating || pending}
+                onClick={() => setAddSegmentsOpen(true)}
+                className="ui-btn-secondary text-xs"
               >
-                {item.type === "interest"
-                  ? t("aiAudienceChipInterest")
-                  : item.type === "behavior"
-                    ? t("aiAudienceChipBehavior")
-                    : t("aiAudienceChipDemo")}
-                : {item.name}
-              </span>
-            ))}
+                {tAud("addSegments")}
+              </button>
+            ) : (
+              <p className="text-[10px] text-[var(--text-dimmer)]">{tAud("personaSegmentAtLimit")}</p>
+            )}
           </div>
+
+          {personaPreview ? (
+            <PersonaAddSegmentsModal
+              open={addSegmentsOpen}
+              onClose={() => setAddSegmentsOpen(false)}
+              apiBase={apiBase}
+              buildPayload={() =>
+                isPersonaLibrary ? buildPersonaBriefPayload() : buildBriefPayload()
+              }
+              persona={personaPreview}
+              suggestion={suggestion}
+              keepItems={suggestion.items}
+              onSuccess={handleAddSegmentsSuccess}
+              onError={reportError}
+            />
+          ) : null}
+
+          {isRepairMode ? (
+            <p className="text-[10px] text-[var(--text-dimmer)]">
+              <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-500" />
+              {tAud("personaRepairLegendReplacement")}
+              <span className="mx-2 inline-block h-2 w-2 rounded-full bg-violet-400" />
+              {tAud("personaRepairLegendNew")}
+            </p>
+          ) : null}
 
           <div className="flex flex-wrap gap-2">
             {mode === "campaign" ? (
               <button
                 type="button"
-                disabled={creating}
+                disabled={creating || pending}
                 onClick={() => void approveApply()}
                 className="ui-btn-primary text-xs"
               >
@@ -616,20 +930,36 @@ export function AiAudienceTargetingForm({
             ) : null}
             <button
               type="button"
-              disabled={creating}
+              disabled={creating || pending || (isPersonaLibrary && !resolvedSavePersonaName())}
               onClick={() => void approveAndSave()}
               className={mode === "campaign" ? "ui-btn-secondary text-xs" : "ui-btn-primary text-xs"}
             >
-              {creating ? t("creating") : t("aiAudienceApproveOnly")}
+              {creating
+                ? t("creating")
+                : isRepairMode
+                  ? tAud("personaRepairApproveSave")
+                  : isPersonaLibrary
+                    ? tAud("savePersona")
+                    : t("aiAudienceApproveSegments")}
             </button>
             <button
               type="button"
-              onClick={() => setSuggestion(null)}
-              className="text-xs text-[var(--text-dim)] underline"
+              disabled={creating || pending}
+              onClick={() => searchMetaAndBuild({ retry: true })}
+              className="ui-btn-secondary text-xs"
             >
-              {t("aiAudienceDiscard")}
+              {pending ? t("aiAudienceGenerating") : t("aiAudienceSearchAgain")}
+            </button>
+            <button
+              type="button"
+              disabled={creating || pending}
+              onClick={refineBriefing}
+              className="ui-btn-secondary text-xs"
+            >
+              {t("aiAudienceRefineBriefing")}
             </button>
           </div>
+          <p className="text-[10px] text-[var(--text-dimmer)]">{t("aiAudienceSegmentsActionsHint")}</p>
         </div>
       ) : null}
     </div>

@@ -649,6 +649,20 @@ h6,
     }
   }
 
+  @keyframes circuit-dash {
+    from {
+      stroke-dashoffset: 120;
+      opacity: 0.2;
+    }
+    50% {
+      opacity: 0.7;
+    }
+    to {
+      stroke-dashoffset: 0;
+      opacity: 0.25;
+    }
+  }
+
   @keyframes taskbar-tpl-shimmer {
     0% {
       transform: translateX(-100%);

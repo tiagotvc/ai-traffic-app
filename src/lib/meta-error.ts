@@ -31,13 +31,15 @@ export function formatMetaGraphError(err: unknown, context?: MetaErrorContext): 
         if (e.code === 104) return `Sessão Meta inválida. Reconecte o Facebook.${code}`;
         if (e.code === 200) {
           const detail = e.message?.trim() || "Permissão negada";
+          const reconnectHint =
+            "Vá em Configurações → Reconectar Meta, autorize ads_read e ads_management e selecione esta conta de anúncios no diálogo da Meta.";
           if (context?.isWorkspaceMember) {
-            return `A conexão Meta do administrador do workspace não tem acesso a esta conta de anúncios (${detail}). Peça ao administrador para reconectar em Configurações ou confirmar que a conta ainda está compartilhada no Gerenciador de Anúncios.${code}`;
+            return `A conexão Meta do administrador não tem acesso a esta conta (${detail}). Peça ao administrador para reconectar e conceder a conta no Gerenciador de Anúncios. ${reconnectHint}${code}`;
           }
           if (context?.tokenSource === "workspace") {
-            return `Sem acesso a esta conta de anúncios com a conexão Meta do workspace (${detail}). Reconecte em Configurações ou verifique se o cliente ainda compartilhou a conta no Gerenciador de Anúncios.${code}`;
+            return `Sem acesso a esta conta com a conexão Meta do workspace (${detail}). ${reconnectHint}${code}`;
           }
-          return `Permissão negada na Meta (${detail}). Reconecte em Configurações ou verifique o acesso à conta no Gerenciador de Anúncios.${code}`;
+          return `Permissão negada na Meta (${detail}). ${reconnectHint}${code}`;
         }
         if (e.code === 4 || e.code === 17 || e.code === 32 || e.code === 613) {
           const title = e.error_user_title?.trim();
@@ -46,6 +48,13 @@ export function formatMetaGraphError(err: unknown, context?: MetaErrorContext): 
             title ||
             "A Meta limitou temporariamente as consultas deste app. Aguarde alguns minutos e tente de novo.";
           return `${base}${code}`;
+        }
+        if (e.error_subcode === 1487694) {
+          return (
+            userHint ||
+            "Uma categoria de segmentação (interesse, comportamento ou demografia) não está mais disponível na Meta. " +
+              "Edite a persona ou o targeting do conjunto, remova segmentos antigos e tente publicar de novo."
+          );
         }
         if (userHint) return `${userHint}${code}`;
         return `${e.message}${code}`;

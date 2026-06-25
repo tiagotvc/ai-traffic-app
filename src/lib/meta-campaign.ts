@@ -6,9 +6,13 @@ import { composeAdLinkUrl, defaultUtm, type UtmTokenContext } from "@/lib/campai
 import { buildMetaAssetFeedSpec } from "@/lib/meta-ad-creative";
 import { mapLimit } from "@/lib/concurrency";
 import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
+import { compileAdsetTargetingInput } from "@/lib/targeting-compiler-server";
 import { pickInstagramActorId } from "@/lib/meta-instagram";
 import { applyConversionEventToPromoted } from "@/lib/meta-promoted-object";
 import { fetchInstagramAccountsForAdAccount, metaPost } from "@/lib/meta-graph";
+import { pruneInvalidTargetingIds } from "@/lib/meta-targeting-prune";
+import { buildPublishTargetingValidationCache } from "@/lib/meta-targeting-validation-cache";
+import { normalizeMetaRadiusKm } from "@/lib/zone-geo-shared";
 
 export type CampaignObjectiveKey =
   | "awareness"
@@ -42,6 +46,12 @@ export type CampaignTargetingInput = {
   countries?: string[];
   cities?: { key: string; radius?: number; distanceUnit?: "mile" | "kilometer" }[];
   customLocations?: Array<{
+    latitude: number;
+    longitude: number;
+    radius?: number;
+    distanceUnit?: "mile" | "kilometer";
+  }>;
+  excludedCustomLocations?: Array<{
     latitude: number;
     longitude: number;
     radius?: number;
@@ -92,6 +102,8 @@ export type CreateCampaignFromDraftInput = {
   linkUrl: string;
   settings?: ClientMetaSettings;
   callToAction?: string;
+  tenantId?: string;
+  userId?: string;
   onProgress?: (step: PublishProgressStep) => void;
 };
 
@@ -158,7 +170,7 @@ function buildTargetingFromInput(t: CampaignTargetingInput): Record<string, unkn
   if (t.cities?.length) {
     geo.cities = t.cities.map((c) => ({
       key: c.key,
-      radius: c.radius ?? 10,
+      radius: normalizeMetaRadiusKm(c.radius ?? 10),
       distance_unit: c.distanceUnit ?? "kilometer"
     }));
   }
@@ -166,7 +178,7 @@ function buildTargetingFromInput(t: CampaignTargetingInput): Record<string, unkn
     geo.custom_locations = t.customLocations.map((c) => ({
       latitude: c.latitude,
       longitude: c.longitude,
-      radius: c.radius ?? 5,
+      radius: normalizeMetaRadiusKm(c.radius ?? 5),
       distance_unit: c.distanceUnit ?? "kilometer"
     }));
   }
@@ -176,6 +188,16 @@ function buildTargetingFromInput(t: CampaignTargetingInput): Record<string, unkn
     age_min: t.ageMin ?? 18,
     age_max: t.ageMax ?? 65
   };
+  if (t.excludedCustomLocations?.length) {
+    targeting.excluded_geo_locations = {
+      custom_locations: t.excludedCustomLocations.map((c) => ({
+        latitude: c.latitude,
+        longitude: c.longitude,
+        radius: normalizeMetaRadiusKm(c.radius ?? 5),
+        distance_unit: c.distanceUnit ?? "kilometer"
+      }))
+    };
+  }
   if (t.genders?.length) targeting.genders = t.genders;
   if (t.locales?.length) targeting.locales = t.locales;
   if (t.flexibleSpecs?.length) {
@@ -185,6 +207,8 @@ function buildTargetingFromInput(t: CampaignTargetingInput): Record<string, unkn
   }
   if (t.advantageAudience) {
     targeting.targeting_automation = { advantage_audience: 1 };
+  } else {
+    targeting.targeting_automation = { advantage_audience: 0 };
   }
   if (t.customAudienceIds?.length) {
     targeting.custom_audiences = t.customAudienceIds.map((id) => ({ id }));
@@ -216,6 +240,36 @@ function resolveTargeting(
   } else {
     base = { geo_locations: { countries: ["BR"] }, age_min: 18, age_max: 65 };
   }
+  const placementFields = placementsToMetaTargeting(adset.placements);
+  return { ...base, ...placementFields };
+}
+
+async function resolveAdsetTargeting(
+  adset: AdSetDraftItem,
+  settings: ClientMetaSettings | undefined,
+  ctx?: { tenantId?: string; userId?: string; metaAccessToken?: string; adAccountId?: string }
+): Promise<Record<string, unknown>> {
+  let base: Record<string, unknown>;
+
+  if (ctx?.tenantId && ctx?.userId) {
+    const compiled = await compileAdsetTargetingInput({
+      adset,
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      metaAccessToken: ctx.metaAccessToken,
+      adAccountId: ctx.adAccountId
+    });
+    if (compiled && Object.keys(compiled).length) {
+      base = buildTargetingFromInput(compiled);
+    } else {
+      base = resolveTargeting(adset, settings);
+      const placementFields = placementsToMetaTargeting(adset.placements);
+      return { ...base, ...placementFields };
+    }
+  } else {
+    base = resolveTargeting(adset, settings);
+  }
+
   const placementFields = placementsToMetaTargeting(adset.placements);
   return { ...base, ...placementFields };
 }
@@ -392,6 +446,7 @@ export async function publishAdToAdset(
     settings?: ClientMetaSettings;
     callToAction?: string;
     campaignName?: string;
+    allowedInstagramActorIds?: string[];
   }
 ): Promise<{ adId: string; creativeId: string }> {
   const actId = normalizeAdAccountId(input.adAccountId);
@@ -399,8 +454,9 @@ export async function publishAdToAdset(
   const campaignName = input.campaignName ?? "Campanha";
   const adName = input.ad.name.trim() || `${campaignName} — Ad`;
 
-  const igAccounts = await fetchInstagramAccountsForAdAccount(input.accessToken, input.adAccountId);
-  const allowedInstagramActorIds = igAccounts.map((a) => a.id);
+  const allowedInstagramActorIds =
+    input.allowedInstagramActorIds ??
+    (await fetchInstagramAccountsForAdAccount(input.accessToken, input.adAccountId)).map((a) => a.id);
 
   return createAdForAdset({
     token: input.accessToken,
@@ -433,6 +489,8 @@ export async function publishAdsetToCampaign(input: {
   callToAction?: string;
   campaignName?: string;
   isCampaignBudget?: boolean;
+  tenantId?: string;
+  userId?: string;
 }): Promise<{ adsetId: string; adId: string; creativeId: string }> {
   const actId = normalizeAdAccountId(input.adAccountId);
   const token = input.accessToken;
@@ -445,14 +503,30 @@ export async function publishAdsetToCampaign(input: {
 
   const adsetName = input.adset.name.trim() || `${campaignName} — Ad Set`;
   const startTime = parseScheduleTime(input.adset.schedule.start, 3600);
-  const targeting = resolveTargeting(input.adset, settings);
+  const targeting = await resolveAdsetTargeting(input.adset, settings, {
+    tenantId: input.tenantId,
+    userId: input.userId,
+    metaAccessToken: token,
+    adAccountId: input.adAccountId
+  });
+  const targetingValidationCache = await buildPublishTargetingValidationCache(
+    [targeting],
+    token,
+    input.adAccountId
+  );
+  const { targeting: prunedTargeting } = await pruneInvalidTargetingIds(
+    targeting,
+    token,
+    input.adAccountId,
+    targetingValidationCache
+  );
 
   const adsetBody: Record<string, string> = {
     name: adsetName,
     campaign_id: input.metaCampaignId,
     billing_event: "IMPRESSIONS",
     optimization_goal: resolveOptimizationGoal(objective, input.adset),
-    targeting: JSON.stringify(targeting),
+    targeting: JSON.stringify(prunedTargeting),
     status: "PAUSED",
     start_time: String(startTime)
   };
@@ -479,9 +553,11 @@ export async function publishAdsetToCampaign(input: {
   if (promoted) adsetBody.promoted_object = JSON.stringify(promoted);
   applyAdsetPublishFields(adsetBody, input.adset, [input.ad]);
 
-  const metaAdset = await metaPost<{ id: string }>(`/${actId}/adsets`, token, adsetBody);
+  const [metaAdset, igAccounts] = await Promise.all([
+    metaPost<{ id: string }>(`/${actId}/adsets`, token, adsetBody),
+    fetchInstagramAccountsForAdAccount(token, input.adAccountId)
+  ]);
 
-  const igAccounts = await fetchInstagramAccountsForAdAccount(token, input.adAccountId);
   const allowedInstagramActorIds = igAccounts.map((a) => a.id);
   const adName = input.ad.name.trim() || `${campaignName} — ${adsetName} — Ad`;
 
@@ -542,20 +618,43 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
   });
 
   input.onProgress?.({ phase: "campaign", current: 0, total: 1, label: campaignName });
-  const campaign = await metaPost<{ id: string }>(`/${actId}/campaigns`, token, campaignBody);
+  const [campaign, igAccounts] = await Promise.all([
+    metaPost<{ id: string }>(`/${actId}/campaigns`, token, campaignBody),
+    fetchInstagramAccountsForAdAccount(token, input.adAccountId)
+  ]);
   input.onProgress?.({ phase: "campaign", current: 1, total: 1 });
 
-  const igAccounts = await fetchInstagramAccountsForAdAccount(token, input.adAccountId);
   const allowedInstagramActorIds = igAccounts.map((a) => a.id);
 
   const adsetResults: PublishDraftV2Result["adsets"] = [];
   const adsetIdMap = new Map<string, string>();
   const totalAdsets = draft.adsets.length;
 
-  await mapLimit(draft.adsets, 2, async (adset, idx) => {
+  const targetingCtx = {
+    tenantId: input.tenantId,
+    userId: input.userId,
+    metaAccessToken: token,
+    adAccountId: input.adAccountId
+  };
+  const resolvedTargetings = await mapLimit(draft.adsets, 6, async (adset) =>
+    resolveAdsetTargeting(adset, settings, targetingCtx)
+  );
+  const targetingValidationCache = await buildPublishTargetingValidationCache(
+    resolvedTargetings,
+    token,
+    input.adAccountId
+  );
+
+  await mapLimit(draft.adsets, 6, async (adset, idx) => {
     const adsetName = adset.name.trim() || `${campaignName} — Ad Set ${idx + 1}`;
     const startTime = parseScheduleTime(adset.schedule.start, 3600);
-    const targeting = resolveTargeting(adset, settings);
+    const targeting = resolvedTargetings[idx]!;
+    const { targeting: prunedTargeting } = await pruneInvalidTargetingIds(
+      targeting,
+      token,
+      input.adAccountId,
+      targetingValidationCache
+    );
     const primaryAd = draft.ads[0]!;
     const pageId = primaryAd.pageId || input.pageId;
 
@@ -564,7 +663,7 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
       campaign_id: campaign.id,
       billing_event: "IMPRESSIONS",
       optimization_goal: resolveOptimizationGoal(objective, adset),
-      targeting: JSON.stringify(targeting),
+      targeting: JSON.stringify(prunedTargeting),
       status: "PAUSED",
       start_time: String(startTime)
     };
@@ -611,7 +710,7 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
   const adResults: PublishAdResult[] = [];
   const totalAds = publishPairs.length;
 
-  await mapLimit(publishPairs, 2, async (pair, idx) => {
+  await mapLimit(publishPairs, 6, async (pair, idx) => {
     const pageId = pair.ad.pageId || input.pageId;
     const adName =
       pair.ad.name.trim() ||
@@ -712,6 +811,10 @@ export async function createFullMetaCampaign(
       {
         id: adsetId,
         name: input.adsetName ?? `${input.campaignName} — Ad Set`,
+        targetingMode: "compiler" as const,
+        personaId: null,
+        zoneId: null,
+        metaSavedAudienceId: null,
         conversionLocation: "website_and_form",
         messagingChannels: [],
         pixelId: null,

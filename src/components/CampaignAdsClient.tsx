@@ -4,9 +4,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { rememberCampaign } from "@/components/CampaignsListClient";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
-import { Badge } from "@/components/ui/Badge";
+import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
 import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
@@ -45,22 +44,9 @@ import {
 } from "@/lib/campaign-meta-filters";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
-import { PeriodFilter } from "@/components/PeriodFilter";
-import { useCampaignPeriod } from "@/hooks/useCampaignPeriod";
+import { useCampaignDrilldown } from "@/hooks/useCampaignDrilldown";
 
 type AdMetrics = Partial<Record<MetricKey, number>>;
-
-type Campaign = {
-  id: string;
-  name: string;
-  status: string;
-  dailyBudget: number | null;
-  clientSlug: string;
-  clientName: string;
-  accountLabel: string;
-  metaAdAccountId: string;
-  objective: string;
-};
 
 type AdRow = {
   id: string;
@@ -75,12 +61,6 @@ type AdRow = {
   };
   metrics?: AdMetrics | null;
 };
-
-function statusVariant(status: string) {
-  if (status === "ACTIVE") return "success" as const;
-  if (status === "PAUSED") return "warning" as const;
-  return "neutral" as const;
-}
 
 function statusLabel(status: string, t: (k: string) => string) {
   if (status === "ACTIVE") return t("statusActive");
@@ -106,10 +86,24 @@ export function CampaignAdsClient({
   const searchParams = useSearchParams();
   const router = useRouter();
   const { openPanel } = usePublishPanel();
-  const { period, setPeriod, periodQueryString } = useCampaignPeriod();
+  const drilldown = useCampaignDrilldown();
+  const {
+    campaign,
+    ads: drilldownAds,
+    counts,
+    countsLoading,
+    period,
+    setPeriod,
+    refresh,
+    loading: drilldownLoading,
+    preset: drilldownPreset
+  } = drilldown;
   const tableLayout = useCampaignTableLayout();
   const { types: customTypes } = useCampaignTypes();
-  const [preset, setPreset] = useState<string>("default");
+  const [preset, setPreset] = useState<string>(drilldownPreset);
+  useEffect(() => {
+    setPreset(drilldownPreset);
+  }, [drilldownPreset]);
   const customTypesMap = useMemo(() => customTypesToMap(customTypes), [customTypes]);
   const metricColumns = useMemo(
     () => metricsColumnsForPreset(preset, customTypesMap),
@@ -133,13 +127,8 @@ export function CampaignAdsClient({
   const [adsetFilter, setAdsetFilter] = useState<string | null>(
     urlAdset ?? initialAdsetId ?? null
   );
-  const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [campaignLoading, setCampaignLoading] = useState(true);
-  const [ads, setAds] = useState<AdRow[]>([]);
-  const [adsetsCount, setAdsetsCount] = useState<number | null>(null);
-  const [creativesCount, setCreativesCount] = useState<number | null>(null);
-  const [adsLoading, setAdsLoading] = useState(true);
-  const [countsLoading, setCountsLoading] = useState(true);
+  const ads = drilldownAds as AdRow[];
+  const adsLoading = drilldownLoading;
   const [search, setSearch] = useState("");
   const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -149,6 +138,17 @@ export function CampaignAdsClient({
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
   const pageSize = 20;
+  const [syncing, setSyncing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await refresh({ live: true });
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncing, refresh]);
 
   useEffect(() => {
     rememberedAdsetAppliedRef.current = false;
@@ -179,13 +179,6 @@ export function CampaignAdsClient({
     }
   }, [urlAdset, urlQueryString, metaCampaignId, clientSlug, initialAdsetId, router]);
 
-  const apiQueryString = useMemo(() => {
-    const params = new URLSearchParams(periodQueryString.replace(/^\?/, ""));
-    if (clientSlug) params.set("client", clientSlug);
-    const qs = params.toString();
-    return qs ? `?${qs}` : "";
-  }, [periodQueryString, clientSlug]);
-
   const toggleSort = (key: string) => {
     setPage(1);
     setSort((s) => {
@@ -193,52 +186,6 @@ export function CampaignAdsClient({
       return { key, dir: "desc" };
     });
   };
-
-  const reload = useCallback(() => {
-    setAdsLoading(true);
-    setCountsLoading(true);
-    setCampaignLoading(true);
-
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}${apiQueryString}`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.campaign) {
-          setCampaign(j.campaign);
-          rememberCampaign(metaCampaignId, j.campaign.clientSlug || clientSlug);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => setCampaignLoading(false));
-
-    fetch("/api/campaign-presets")
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.ok) setPreset(j.presets?.[metaCampaignId] ?? "default");
-      })
-      .catch(() => {});
-
-    fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/ads${apiQueryString}`)
-      .then((r) => r.json())
-      .then((j) => setAds(j.ads ?? []))
-      .catch(() => setAds([]))
-      .finally(() => setAdsLoading(false));
-
-    const adsetsPromise = fetch(
-      `/api/campaigns/${encodeURIComponent(metaCampaignId)}/adsets${apiQueryString}`
-    )
-      .then((r) => r.json())
-      .then((j) => setAdsetsCount((j.adsets ?? []).length))
-      .catch(() => setAdsetsCount(0));
-    const creativesPromise = fetch(`/api/campaigns/${encodeURIComponent(metaCampaignId)}/creatives`)
-      .then((r) => r.json())
-      .then((j) => setCreativesCount(j.total ?? (j.rows ?? []).length))
-      .catch(() => setCreativesCount(0));
-    void Promise.all([adsetsPromise, creativesPromise]).finally(() => setCountsLoading(false));
-  }, [metaCampaignId, clientSlug, apiQueryString]);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
 
   const filtered = useMemo(() => {
     let list = ads.slice();
@@ -333,7 +280,7 @@ export function CampaignAdsClient({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ action })
         });
-        reload();
+        await refresh({ live: true });
       } finally {
         setStatusPendingId(null);
       }
@@ -350,7 +297,7 @@ export function CampaignAdsClient({
     });
   }
 
-  if (campaignLoading && !campaign) {
+  if ((drilldownLoading || adsLoading) && !campaign) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-6 w-56" />
@@ -363,8 +310,11 @@ export function CampaignAdsClient({
     );
   }
 
-  const slug = campaign?.clientSlug || clientSlug;
-  const campaignName = campaign?.name ?? metaCampaignId;
+  if (!campaign) {
+    return null;
+  }
+
+  const slug = campaign.clientSlug || clientSlug;
 
   return (
     <div className="space-y-4">
@@ -380,7 +330,7 @@ export function CampaignAdsClient({
                 href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
                 className="ui-link"
               >
-                {campaignName}
+                {campaign.name}
               </Link>
               {" › "}
               <span>{t("title")}</span>
@@ -393,10 +343,6 @@ export function CampaignAdsClient({
               <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs font-bold text-[var(--violet)]">
                 {adsLoading ? "…" : ads.length}
               </span>
-              <PeriodFilter value={period} onChange={setPeriod} />
-              <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
-                ↻
-              </button>
               <button
                 type="button"
                 onClick={openNewAd}
@@ -421,10 +367,6 @@ export function CampaignAdsClient({
             <p className="mt-1 text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <PeriodFilter value={period} onChange={setPeriod} />
-            <button type="button" onClick={reload} className="ui-btn-secondary px-3 text-sm">
-              ↻
-            </button>
             <button
               type="button"
               onClick={openNewAd}
@@ -438,43 +380,23 @@ export function CampaignAdsClient({
         </div>
       )}
 
-      <div className="ui-card flex flex-wrap items-center gap-3 p-4">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
-          f
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold text-[var(--text-main)]">{campaignName}</span>
-            {campaign ? (
-              <Badge variant={statusVariant(campaign.status)}>{statusLabel(campaign.status, t)}</Badge>
-            ) : null}
-          </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-[var(--text-dim)]">
-            <span>ID: {campaign?.id ?? metaCampaignId}</span>
-            {campaign ? (
-              <>
-                <span>
-                  {t("client")}: {campaign.clientName}
-                </span>
-                <span>
-                  {t("account")}: {campaign.accountLabel}
-                </span>
-                <span>
-                  {t("objective")}: {campaign.objective}
-                </span>
-              </>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      <CampaignDrilldownHeader
+        campaign={campaign}
+        locale={locale}
+        period={period}
+        onPeriodChange={setPeriod}
+        onRefresh={() => void handleRefresh()}
+        syncing={syncing}
+        translationNs="campaignManager"
+      />
 
       <CampaignDetailTabs
         metaCampaignId={metaCampaignId}
         clientSlug={slug}
         activeTab="ads"
-        adsetsCount={countsLoading ? null : adsetsCount}
+        adsetsCount={countsLoading ? null : counts.adsets}
         adsCount={adsLoading ? null : ads.length}
-        creativesCount={countsLoading ? null : creativesCount}
+        creativesCount={countsLoading ? null : counts.creatives}
         embedded={embedded}
         translationNs="adsPage"
         adsetId={adsetFilter}
@@ -553,9 +475,9 @@ export function CampaignAdsClient({
                   </th>
                 ) : null}
                 {metricColumns.map((m) => {
-                  const sortKey = m.kind === "metric" ? m.key : columnRefKey(m);
+                  const sortKey = columnRefKey(m);
                   return (
-                    <th key={columnRefKey(m)} className="whitespace-nowrap px-3 py-2 text-center">
+                    <th key={sortKey} className="whitespace-nowrap px-3 py-2 text-center">
                       <button type="button" onClick={() => toggleSort(sortKey)} className="hover:text-[var(--text-dim)]">
                         {metricColLabel(m)}
                         {sort?.key === sortKey ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}

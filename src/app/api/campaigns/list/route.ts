@@ -60,7 +60,7 @@ export async function GET(req: Request) {
       clientIds = [scopeClient.id];
     }
 
-    const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? "50")));
+    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") ?? "50")));
     const offset = Math.max(0, Number(url.searchParams.get("offset") ?? "0"));
 
     const statusRaw = url.searchParams.get("status");
@@ -73,6 +73,7 @@ export async function GET(req: Request) {
     const onlyAlerts = url.searchParams.get("onlyAlerts") === "1";
     const showZero = url.searchParams.get("showZero") === "1";
     const live = url.searchParams.get("live") === "1";
+    const metadataOnly = url.searchParams.get("metadata") === "1";
     const refresh = url.searchParams.get("refresh") === "1";
     const sortKey = url.searchParams.get("sort");
     const sortDir = url.searchParams.get("dir") === "asc" ? "asc" : "desc";
@@ -111,7 +112,74 @@ export async function GET(req: Request) {
       let rows = cc.rows as ListRow[];
       let total = cc.total;
 
-      if (objectiveRaw === "leads" || objectiveRaw === "sales" || objectiveRaw === "traffic") {
+      const needsObjective =
+        objectiveRaw === "leads" || objectiveRaw === "sales" || objectiveRaw === "traffic";
+
+      if ((metadataOnly || needsObjective) && tokenForMeta) {
+        const originalIds = new Set(rows.map((r) => r.metaCampaignId));
+        const byId = new Map<string, ListRow>(rows.map((r) => [r.metaCampaignId, { ...r }]));
+        const { adAccount: adRepo, client: clientRepo } = await repositories();
+        const clients = await clientRepo.find({ where: { tenantId: tenant.id } });
+        const allowed = new Set(clientIds?.length ? clientIds : clients.map((c) => c.id));
+        let accounts = await adRepo.find({ where: { clientId: In([...allowed]) } });
+        const clientBm = scopeClient?.metaBusinessId?.trim() || null;
+        if (clientBm) {
+          accounts = accounts.filter((a) => matchesClientBusinessScope(a.metaBusinessId, clientBm));
+        }
+        const clientById = new Map(clients.map((c) => [c.id, c]));
+        const tMeta = Date.now();
+        await loadCampaignMetadataFromMetaParallel({
+          accounts: accounts.map((a) => ({
+            id: a.id,
+            metaAdAccountId: a.metaAdAccountId,
+            clientId: a.clientId,
+            label: a.label
+          })),
+          accessToken: tokenForMeta,
+          byId,
+          clientById,
+          slugify,
+          createRow: ({ acc, camp, clientName, clientSlug, budgetFromMeta }) => ({
+            metaCampaignId: camp.id!,
+            campaignName: camp.name ?? camp.id!,
+            clientId: acc.clientId,
+            clientName,
+            clientSlug,
+            clientTag: "",
+            adAccountId: acc.id,
+            accountLabel: acc.label ?? acc.metaAdAccountId,
+            metaAdAccountId: acc.metaAdAccountId,
+            spend: 0,
+            conversions: 0,
+            leads: 0,
+            cpl: null,
+            cpa: null,
+            roas: 0,
+            impressions: 0,
+            clicks: 0,
+            ctr: 0,
+            cpc: 0,
+            cpm: 0,
+            reach: 0,
+            messages: 0,
+            frequency: 0,
+            alertCount: 0,
+            hasAlert: false,
+            dailyBudget: budgetFromMeta,
+            status: camp.status ?? "UNKNOWN",
+            objective: camp.objective ?? null
+          }),
+          patchRow: (row, camp, budgetFromMeta) => {
+            row.status = camp.status ?? row.status;
+            row.objective = camp.objective ?? row.objective ?? null;
+            if (budgetFromMeta != null) row.dailyBudget = budgetFromMeta;
+          }
+        });
+        metaMs += Date.now() - tMeta;
+        rows = [...byId.values()].filter((r) => originalIds.has(r.metaCampaignId));
+      }
+
+      if (needsObjective) {
         rows = filterByObjective(rows, objectiveRaw);
       }
       rows = filterZeroActivityRows(rows, { hideZeroActivity: !showZero });
@@ -143,10 +211,11 @@ export async function GET(req: Request) {
         metricsSource: "db" as const,
         period: { preset: period.preset, since: period.since, until: period.until }
       });
-      return applyServerTiming(res, { total: Date.now() - t0, db: dbMs });
+      return applyServerTiming(res, { total: Date.now() - t0, db: dbMs, meta: metaMs });
     }
 
     const tDb = Date.now();
+    const liveQueryLimit = refresh ? 5000 : Math.min(500, Math.max(limit + offset, limit));
     const cc = await queryCommandCenterCampaigns({
     tenantId: tenant.id,
     clientIds,
@@ -159,7 +228,7 @@ export async function GET(req: Request) {
     since: period.since,
     until: period.until,
     allTime: period.allTime,
-    limit: 5000,
+    limit: liveQueryLimit,
     offset: 0,
     sort: sortKey,
     sortDir,
@@ -194,6 +263,7 @@ export async function GET(req: Request) {
       accountsForEnrich.push({ id: a.id, metaAdAccountId: a.metaAdAccountId, clientId: a.clientId });
     }
 
+    if (refresh) {
     const clientById = new Map(clients.map((c) => [c.id, c]));
 
     const tMetaLoad = Date.now();
@@ -258,6 +328,7 @@ export async function GET(req: Request) {
 
     await loadCampaignsFromMeta(tokenForMeta);
     metaMs += Date.now() - tMetaLoad;
+    }
   }
 
   let rows = [...byId.values()];

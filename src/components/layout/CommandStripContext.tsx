@@ -35,6 +35,8 @@ type CommandStripContextValue = {
   setAccountFilter: (value: string) => void;
   period: PeriodState;
   setPeriod: (value: PeriodState) => void;
+  /** true após o usuário alterar o período (não no mount). */
+  periodUserActivated: boolean;
   clientOptions: ClientOption[];
   adAccounts: AdAccountOpt[];
   setAdAccounts: (accounts: AdAccountOpt[]) => void;
@@ -53,11 +55,16 @@ const CommandStripContext = createContext<CommandStripContextValue | null>(null)
 export function CommandStripProvider({ children }: { children: ReactNode }) {
   const [clientFilter, setClientFilter] = useState("");
   const [accountFilter, setAccountFilter] = useState("");
-  const [period, setPeriod] = useState<PeriodState>({
+  const [period, setPeriodState] = useState<PeriodState>({
     preset: "last30",
     since: "",
     until: ""
   });
+  const [periodUserActivated, setPeriodUserActivated] = useState(false);
+  const setPeriod = useCallback((value: PeriodState) => {
+    setPeriodUserActivated(true);
+    setPeriodState(value);
+  }, []);
   const [clientOptions, setClientOptions] = useState<ClientOption[]>([]);
   const [adAccounts, setAdAccounts] = useState<AdAccountOpt[]>([]);
   const [isEmptyState, setIsEmptyState] = useState(false);
@@ -118,6 +125,7 @@ export function CommandStripProvider({ children }: { children: ReactNode }) {
       setAccountFilter,
       period,
       setPeriod,
+      periodUserActivated,
       clientOptions,
       adAccounts,
       setAdAccounts: setAdAccountsStable,
@@ -133,6 +141,8 @@ export function CommandStripProvider({ children }: { children: ReactNode }) {
       setClientFilterWrapped,
       accountFilter,
       period,
+      setPeriod,
+      periodUserActivated,
       clientOptions,
       adAccounts,
       isEmptyState,
