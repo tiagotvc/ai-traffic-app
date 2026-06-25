@@ -29,13 +29,18 @@ export function useClientsData() {
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     setLoading(true);
-    fetch("/api/clients?period=thisWeek")
-      .then((r) => r.json())
-      .then((j) => setClients(j.clients ?? []))
-      .catch(() => setClients([]))
-      .finally(() => setLoading(false));
+    try {
+      // no-store: a lista muda ao criar/excluir; não pode vir do cache do navegador.
+      const r = await fetch("/api/clients?period=thisWeek", { cache: "no-store" });
+      const j = await r.json();
+      setClients(j.clients ?? []);
+    } catch {
+      setClients([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -91,6 +96,29 @@ export function useClientsData() {
     [deleteClients, t]
   );
 
+  /**
+   * Exclui um cliente já confirmado (sem `window.confirm` — a confirmação fica na UI/modal).
+   * Recarrega a lista sem cache e retorna se deu certo.
+   */
+  const deleteClientConfirmed = useCallback(
+    async (id: string): Promise<boolean> => {
+      const res = await fetch("/api/clients/bulk-delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clientIds: [id] }),
+        cache: "no-store"
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) {
+        window.alert(String(j.error ?? t("deleteFailed")));
+        return false;
+      }
+      await reload();
+      return true;
+    },
+    [reload, t]
+  );
+
   return {
     clients: filtered,
     allClients: clients,
@@ -99,6 +127,7 @@ export function useClientsData() {
     setSearch,
     reload,
     deleteClient,
+    deleteClientConfirmed,
     message,
     isPending,
     locale,

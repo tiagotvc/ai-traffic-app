@@ -143,7 +143,7 @@ export async function GET(req: Request) {
   if (cached) {
     return NextResponse.json(
       { ok: true, clients: cached.clients },
-      { headers: { "Cache-Control": "private, max-age=30" } }
+      { headers: { "Cache-Control": "no-store" } }
     );
   }
 
