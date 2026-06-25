@@ -206,7 +206,7 @@
     "termsSection8Title": "8. Limitation of liability",
     "termsSection8Body": "The service is provided \"as is\". Our maximum liability, where applicable, is limited to fees paid in the last three months of subscription.",
     "supportBadge": "Support",
-    "supportTitle": "Contact",
+    "supportTitle": "Help Center",
     "supportSubtitle": "We're here to help with Orion Agency questions, support, or partnerships.",
     "supportEmailTitle": "Support",
     "supportEmailBody": "Technical questions, platform access, or feature usage.",
@@ -225,6 +225,9 @@
     "supportFormSubject": "Subject",
     "supportFormMessage": "Message",
     "supportFormSubmit": "Send message",
+    "supportFormSending": "Sending...",
+    "supportFormSent": "Message sent! We reply within 48 business hours.",
+    "supportFormError": "Could not send right now. Try again or email support@orionagency.com.br.",
     "supportClosing": "Turning campaign data into smarter decisions.",
     "supportHoursTitle": "Hours",
     "supportHoursBody": "Monday to Friday, 9am–6pm (Brasília time).",
@@ -241,7 +244,9 @@
     "supportFaq5Q": "How does the free trial work?",
     "supportFaq5A": "The Free plan includes a full 7-day trial. No card required to start.",
     "supportFaq6Q": "How do I cancel my subscription?",
-    "supportFaq6A": "In Settings → Plan & billing, cancel renewal. Access continues until the end of the paid period."
+    "supportFaq6A": "In Settings → Plan & billing, cancel renewal. Access continues until the end of the paid period.",
+    "faqBadge": "FAQ",
+    "faqTitle": "Frequently asked questions"
   },
   "common": {
     "brand": "ORION",
@@ -313,6 +318,7 @@
     "highlights": "Highlights",
     "views": "Views",
     "supportSection": "Legal",
+    "home": "Home",
     "support": "Help Center",
     "about": "About Orion Agency",
     "terms": "Terms of Use",
@@ -324,7 +330,29 @@
     "myProfile": "My profile",
     "profileAdminSection": "Administration",
     "upgrade": "Upgrade",
-    "upgradeRequired": "Plan upgrade required"
+    "upgradeRequired": "Plan upgrade required",
+    "menuPreferences": "Preferences",
+    "menuAppearance": "Appearance",
+    "menuLanguage": "Language",
+    "menuUsers": "Users",
+    "menuPlansBilling": "Plans & billing",
+    "menuUsageLimits": "Usage & limits",
+    "menuIntegrations": "Integrations",
+    "menuHelp": "Help center",
+    "menuNews": "What's new",
+    "menuFeedback": "Feedback",
+    "menuSignOutAccount": "Sign out",
+    "menuManagePlan": "Manage plan",
+    "menuAdministrative": "Administrative",
+    "menuPlanUsage": "Plan usage",
+    "menuAdminBadge": "Administrator",
+    "menuRenewal": "Renewal",
+    "secAccount": "Account",
+    "secWorkspace": "Workspace",
+    "secHelp": "Help & support",
+    "secCompany": "Company",
+    "planCycleYearly": "Annual plan",
+    "planCycleMonthly": "Monthly plan"
   },
   "sidebarFooter": {
     "planUsage": "Plan usage",
@@ -917,16 +945,15 @@
     "continueWithFacebook": "Continue with Facebook",
     "facebookRecommended": "Recommended",
     "facebookHandoffTitle": "Secure login via Meta",
-    "facebookHandoffBody": "You’ll be redirected to Meta to confirm your identity. Traffic AI never sees your Facebook password.",
+    "facebookHandoffBody": "You’ll be redirected to Meta to confirm your identity. Orion Agency never sees your Facebook password.",
     "facebookHandoffPermission1": "Name and profile photo to personalize your account",
-    "facebookHandoffSecure": "Encrypted connection — revocable in Facebook settings",
+    "facebookHandoffSecure": "Official Meta OAuth · we never store your Facebook password",
     "facebookRedirectPreview": "Meta dialog preview",
-    "facebookDialogPreview": "Continue as [your account] — Traffic AI will receive name and photo",
+    "facebookDialogPreview": "Continue as [your account] — Orion Agency will receive name and photo",
     "facebookHandoffPageTitle": "Continue with Facebook",
     "facebookHandoffPageSubtitle": "On the next step you confirm your identity on Meta.",
     "facebookHandoffBack": "Back to login",
     "facebookHandoffContinue": "Continue on Meta",
-    "facebookHandoffSecure": "Official Meta OAuth · we never store your Facebook password",
     "orFacebook": "recommended for traffic managers",
     "metaConnectLaterHint": "Meta Business can be connected later in Settings.",
     "termsAccept": "I have read and accept the <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy> and confirm I am at least 18 years old.",
@@ -958,12 +985,12 @@
     "slide3Badge": "What we have today",
     "slide3Title": "Real product. In your operation now.",
     "slide3Subtitle": "Available today to cut operational time and scale results.",
-    "today1": "Advanced, customizable dashboard",
-    "today2": "Real-time creative ranking",
-    "today3": "Agency memory — the more you learn, the faster and sharper your operation gets",
-    "today4": "Sophisticated, beautiful reports ready to impress",
-    "today5": "Automatic report delivery straight to your clients",
-    "today6": "Alerts, automations, and AI Center for creatives and audiences",
+    "today1": "Highlights + Views: a cockpit and fully customizable dashboards",
+    "today2": "Clients, campaigns, ad sets and ads — create and publish on Meta",
+    "today3": "Audiences (custom, lookalike, saved) and live creative ranking",
+    "today4": "Agency Brain: memory that gets sharper every time you use it",
+    "today5": "Beautiful reports + automatic delivery to your clients",
+    "today6": "Alerts and automations that monitor and optimize on their own",
     "slide4Badge": "What we're building",
     "slide4Title": "More tools every month. Same subscription.",
     "slide4Subtitle": "Integrations, automations, and intelligence that will make Orion the market reference.",
@@ -1039,7 +1066,11 @@
       "closeWindowHint": "Return to the main tab to continue.",
       "redirecting": "Redirecting to Meta…",
       "redirectingHint": "Please wait — the Facebook login will open shortly."
-    }
+    },
+    "termsGateTitle": "Before you continue",
+    "termsGateBody": "To use Orion Agency, please read and accept our terms. This is recorded on your account.",
+    "termsGateConfirm": "Accept and continue",
+    "termsGateConfirming": "Saving..."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1857,7 +1888,7 @@
     "active": "Active client",
     "onboardingTitle": "How it works (read once)",
     "onboardingDismiss": "Got it, hide",
-    "onboardingIntro": "Traffic AI mirrors what you already use in Meta. Think of it like this:",
+    "onboardingIntro": "Orion Agency mirrors what you already use in Meta. Think of it like this:",
     "onboardingClient": "Client = agency contract (e.g. Clínica Bella). Groups accounts, goals, and campaigns for that business.",
     "onboardingAdAccount": "Ad account = ad spend wallet in Meta, inside a Business Manager. Link the accounts for this client here.",
     "onboardingCampaign": "Campaign → Ad set → Ad = structure inside the account. You manage this under Campaigns.",
@@ -1914,7 +1945,7 @@
     "pause": "Pause",
     "noCampaigns": "No campaigns — sync with Meta.",
     "deleteClient": "Delete client",
-    "deleteConfirm": "Remove «{name}» from the platform? This deletes linked accounts, goals, alerts, and local history. It does not change anything in Meta — only in Traffic AI.",
+    "deleteConfirm": "Remove «{name}» from the platform? This deletes linked accounts, goals, alerts, and local history. It does not change anything in Meta — only in Orion Agency.",
     "deleteHint": "Use when a contract ends and the client removes your access in Ads Manager.",
     "deleteFailed": "Could not delete the client.",
     "cannotDeleteDefault": "The system Default client cannot be deleted.",
@@ -2066,10 +2097,10 @@
     "addAdsetContext": "New ad set in campaign «{campaign}». The campaign is already set — configure audience, creative, and publish.",
     "publishAdset": "Publish ad set",
     "savedTargetingTitle": "Use saved audience (targeting)",
-    "savedTargetingHint": "Apply an audience created in Traffic AI or imported from Meta. Interests, behaviors, age, and location are sent to Meta when you publish.",
+    "savedTargetingHint": "Apply an audience created in Orion Agency or imported from Meta. Interests, behaviors, age, and location are sent to Meta when you publish.",
     "savedTargetingLoading": "Loading saved audiences…",
     "savedTargetingEmpty": "No saved audiences found. Create one on the Audiences page or with the AI assistant.",
-    "savedTargetingLocalBadge": "Traffic AI",
+    "savedTargetingLocalBadge": "Orion Agency",
     "savedTargetingApply": "Apply targeting to ad set",
     "addAdLoading": "Loading campaign…",
     "publishAd": "Publish ad",
@@ -2216,7 +2247,7 @@
     "aiAudienceGenerating": "Searching Meta…",
     "aiAudienceFailed": "Could not generate audience. Try again.",
     "aiAudienceSaveFailed": "Failed to save audience.",
-    "aiAudienceSavedLocal": "Audience saved to the Traffic AI library (Meta no longer allows creating saved audiences via API).",
+    "aiAudienceSavedLocal": "Audience saved to the Orion Agency library (Meta no longer allows creating saved audiences via API).",
     "aiAudienceSavedName": "Audience name",
     "aiAudienceModel": "Model",
     "aiAudienceChipInterest": "Interest",
@@ -2299,7 +2330,7 @@
     "messageTemplatePick": "Select saved template…",
     "messageTemplateChannel": "Channel",
     "messageTemplateSectionTitle": "Message template",
-    "messageTemplateSectionHint": "Saved in Traffic AI and sent to Meta when you publish the ad.",
+    "messageTemplateSectionHint": "Saved in Orion Agency and sent to Meta when you publish the ad.",
     "messageTemplateGreeting": "Welcome message",
     "messageTemplatePreview": "Conversation preview",
     "messageTemplatePreviewEmpty": "Write the welcome message above.",
@@ -2737,7 +2768,7 @@
   },
   "audiences": {
     "title": "Audiences / Lookalike",
-    "subtitle": "Create, manage and reuse audiences without leaving Traffic AI.",
+    "subtitle": "Create, manage and reuse audiences without leaving Orion Agency.",
     "breadcrumb": "Audiences › Create Lookalike",
     "breadcrumbList": "Audiences",
     "breadcrumbCreate": "Audiences › Create new audience",
@@ -2838,14 +2869,38 @@
     "createHubTitle": "What type of audience do you want to create?",
     "createHubDesc": "Choose a flow aligned with Meta Ads Manager.",
     "createType": {
-      "website": { "title": "Pixel / Website", "desc": "Site visitors and pixel events." },
-      "engagement": { "title": "Engagement", "desc": "Page, Instagram, video, or lead form." },
-      "customer_list": { "title": "Customer list", "desc": "View existing lists (upload in Meta)." },
-      "app": { "title": "App", "desc": "App audiences already created in Meta." },
-      "lookalike": { "title": "Lookalike", "desc": "Create for multiple seeds and percentages." },
-      "saved": { "title": "Saved audience", "desc": "Describe your ideal profile; AI builds interests and behaviors and saves a reviewable audience on Meta." },
-      "combine": { "title": "Combine audiences", "desc": "Include and exclude existing audiences." },
-      "ai": { "title": "AI suggestions", "desc": "New audiences based on conversions and demographics." }
+      "website": {
+        "title": "Pixel / Website",
+        "desc": "Site visitors and pixel events."
+      },
+      "engagement": {
+        "title": "Engagement",
+        "desc": "Page, Instagram, video, or lead form."
+      },
+      "customer_list": {
+        "title": "Customer list",
+        "desc": "View existing lists (upload in Meta)."
+      },
+      "app": {
+        "title": "App",
+        "desc": "App audiences already created in Meta."
+      },
+      "lookalike": {
+        "title": "Lookalike",
+        "desc": "Create for multiple seeds and percentages."
+      },
+      "saved": {
+        "title": "Saved audience",
+        "desc": "Describe your ideal profile; AI builds interests and behaviors and saves a reviewable audience on Meta."
+      },
+      "combine": {
+        "title": "Combine audiences",
+        "desc": "Include and exclude existing audiences."
+      },
+      "ai": {
+        "title": "AI suggestions",
+        "desc": "New audiences based on conversions and demographics."
+      }
     },
     "tosRequiredTitle": "Custom audience terms pending",
     "tosRequiredBody": "Accept Meta custom audience terms before creating audiences.",
@@ -3022,6 +3077,7 @@
     "webhookSaved": "Webhooks saved.",
     "whitelabel": "Visual identity (white-label)",
     "brandName": "Brand name",
+    "brandNamePlaceholder": "Enter the brand name",
     "logoUrl": "Logo (URL)",
     "saved": "Saved successfully.",
     "saveFailed": "Failed to save",
@@ -3087,6 +3143,9 @@
     "metaOAuthRedirectOrigin": "Current app origin: {origin}",
     "metaOAuthRedirectPrimary": "Primary URL for Meta reconnect:",
     "metaOAuthRedirectAll": "Show all recommended URLs",
+    "metaOAuthRedirectOriginLabel": "Current app domain",
+    "metaOAuthRedirectCopy": "Copy URL",
+    "metaOAuthRedirectCopied": "Copied",
     "teamTitle": "Workspace team",
     "teamHint": "Invite colleagues to share the same clients and campaigns.",
     "teamEmail": "Email",
@@ -3207,12 +3266,12 @@
     "trustLine": "Built for managers running multiple Meta client portfolios.",
     "selling4": "Clear permissions — you control what you authorize",
     "metaHandoffTitle": "Meta Business authorization",
-    "metaHandoffBody": "Next, Meta will ask for access to accounts you manage. Traffic AI only reads what you approve.",
+    "metaHandoffBody": "Next, Meta will ask for access to accounts you manage. Orion Agency only reads what you approve.",
     "metaHandoffStep1": "Business Managers and ad accounts",
     "metaHandoffStep2": "Linked Facebook and Instagram pages",
     "metaHandoffStep3": "Metrics and campaigns for creative ranking",
     "metaRedirectPreview": "Preview on Meta",
-    "metaDialogPreview": "Select businesses and assets Traffic AI can access",
+    "metaDialogPreview": "Select businesses and assets Orion Agency can access",
     "metaRedirectNote": "You can revoke access in Facebook Settings → Business integrations.",
     "metaRedirecting": "Redirecting to Meta…",
     "metaSecureNote": "Official Meta OAuth · we never store your Facebook password",
@@ -3232,6 +3291,7 @@
     "statsHypothesesTesting": "in test",
     "statsHypothesesPending": "pending",
     "statsHighImpact": "high impact",
+    "clientLabel": "Client",
     "searchLearningsPlaceholder": "Search learnings…",
     "refineResearch": "Refine research",
     "refiningResearch": "Refining…",
@@ -3349,7 +3409,15 @@
       "competitor_signal": "Competitor signal",
       "agency_pattern": "Agency pattern",
       "client_pattern": "Client pattern"
-    }
+    },
+    "badgeSuggested": "Suggested",
+    "approveLearning": "Accept",
+    "dismissLearning": "Dismiss",
+    "approveLowConfidenceConfirm": "This learning has confidence below 50%. Accept anyway?",
+    "hypothesisFromLearningTitle": "Hypothesis: {title}",
+    "timelineCompetitors": "Competitors compared",
+    "timelineSampleAd": "Ad",
+    "heroTitle": "Agency Brain"
   },
   "agencyBrain": {
     "title": "Agency Brain",
@@ -3878,7 +3946,6 @@
     "filterAllImpact": "All impact",
     "filterAllStatus": "All statuses",
     "filterAllSource": "All sources",
-    "loading": "Loading…",
     "updating": "Updating…",
     "empty": "No learnings yet. Create one manually or detect automatic patterns.",
     "resultsCount": "{count} learning(s)",
@@ -4182,7 +4249,7 @@
     "limitsSubtitle": "Workspace usage compared to your plan.",
     "notIncluded": "Not included",
     "demoProgress": "Demo progress",
-    "nextRenewal": "Next renewal",
+    "nextRenewal": "NEXT RENEWAL",
     "renewalHint": "Automatic {cycle} billing",
     "invoiceAmount": "Invoice amount",
     "limitClients": "Clients",
@@ -4283,7 +4350,7 @@
     "planTabHintBody": "Check limits, invoices, and events in the other tabs.",
     "hideDetails": "Hide",
     "viewPlans": "View plans",
-    "currentPlan": "Current plan",
+    "currentPlan": "YOUR CURRENT PLAN",
     "statusLabel": "Status",
     "renews": "Renews on",
     "trialEnds": "Trial ends on",
@@ -4366,7 +4433,19 @@
     "addonPackAi": "AI pack",
     "addonPackAiDesc": "+50 AI suggestions per month",
     "addonRequestSent": "Request received! Our team will contact you to activate the pack.",
-    "addonsFootnote": "Recurring monthly billing. Cancel anytime."
+    "addonsFootnote": "Recurring monthly billing. Cancel anytime.",
+    "planPersonalizedName": "Custom",
+    "planPersonalizedDesc": "For larger agencies and specific needs.",
+    "planPersonalizedPrice": "Talk to us",
+    "planPersonalizedPriceHint": "We build a plan tailored to you.",
+    "planPersonalizedCta": "Talk to us",
+    "planPersonalizedPerk1": "Tailored limits (clients, accounts, members)",
+    "planPersonalizedPerk2": "Expanded AI credits",
+    "planPersonalizedPerk3": "Dedicated onboarding and support",
+    "planPersonalizedPerk4": "White-label and on-demand integrations",
+    "addonRequestError": "Could not send the request right now. Please try again.",
+    "eventsEmptyHint": "When there is activity related to your subscription, it will show up here.",
+    "statusActiveShort": "Active"
   },
   "billingAdmin": {
     "navPlans": "Plans",
@@ -4506,7 +4585,8 @@
     "usersAddonsHint": "Bonuses added on top of plan limits (e.g. +5 clients on Agency).",
     "usersAddonNote": "Internal note (admin)",
     "usersSaveAddons": "Save addons",
-    "usersAddonExtra": "extra"
+    "usersAddonExtra": "extra",
+    "navContacts": "Contacts"
   },
   "creativesPerf": {
     "breadcrumb": "Creatives",
@@ -4618,7 +4698,7 @@
     "steps": {
       "connect": {
         "title": "Connect Meta Business",
-        "subtitle": "Authorize Traffic AI to access your ad accounts, pages, and metrics."
+        "subtitle": "Authorize Orion Agency to access your ad accounts, pages, and metrics."
       },
       "accounts": {
         "title": "Select ad accounts",

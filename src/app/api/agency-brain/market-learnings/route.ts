@@ -14,6 +14,7 @@ import {
   scanMarketForClient
 } from "@/lib/agency-brain/market-memory-service";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
+import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
 import { resolveCreativeMemoryModelChain } from "@/lib/creative-memory/models";
 import {
   assertCreativeMemoryAiAccess,
@@ -82,6 +83,35 @@ export async function POST(req: Request) {
     if (action === "scan") {
       const scan = await scanMarketForClient(tenant.id, client);
       const nicheBundle = await getMarketInsights(client.niche);
+
+      // Fase 3: registra a pesquisa na timeline do cliente (com quem comparou / quais anúncios).
+      if ((scan.memory.adsAnalyzed ?? 0) > 0) {
+        const competitors = [
+          ...new Set(
+            scan.patterns
+              .map((p) => p.evidence?.competitorName)
+              .filter((n): n is string => Boolean(n))
+          )
+        ].slice(0, 8);
+        const sampleAdUrls = scan.patterns
+          .flatMap((p) => p.evidence?.sampleLibraryUrls ?? [])
+          .filter((u): u is string => Boolean(u))
+          .slice(0, 6);
+        await recordTimelineEvent(tenant.id, client.id, {
+          type: "market_scanned",
+          title: "Pesquisa de mercado (Meta Ad Library)",
+          description: `${scan.memory.adsAnalyzed} anúncio(s) de ${scan.memory.competitorsScanned} concorrente(s) analisados${client.niche ? ` no nicho "${client.niche}"` : ""}.`,
+          sourceType: "market_memory",
+          sourceId: scan.memory.id,
+          metadata: {
+            adsAnalyzed: scan.memory.adsAnalyzed,
+            competitorsScanned: scan.memory.competitorsScanned,
+            competitors,
+            patterns: scan.patterns.slice(0, 6).map((p) => `${p.title}: ${p.body}`),
+            sampleAdUrls
+          }
+        }).catch((err) => console.error("[market scan timeline]", err));
+      }
 
       return NextResponse.json({
         ok: true,

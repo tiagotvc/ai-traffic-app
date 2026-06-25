@@ -23,11 +23,21 @@ export function BillingAddonsClient() {
   const locale = useLocale();
   const currency = resolveBillingCurrency(locale);
   const [selected, setSelected] = useState<AddonKey | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  function requestAddon(key: AddonKey) {
+  async function requestAddon(key: AddonKey) {
     setSelected(key);
-    setMessage(t("addonRequestSent"));
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/billing/addons/request", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ addon: key })
+      });
+      setStatus(res.ok ? "sent" : "error");
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -39,9 +49,14 @@ export function BillingAddonsClient() {
         <p className="mt-2 text-sm text-[var(--text-dim)]">{t("addonsPageSubtitle")}</p>
       </div>
 
-      {message ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          {message}
+      {status === "sent" ? (
+        <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-500">
+          {t("addonRequestSent")}
+        </div>
+      ) : null}
+      {status === "error" ? (
+        <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+          {t("addonRequestError")}
         </div>
       ) : null}
 
@@ -50,11 +65,12 @@ export function BillingAddonsClient() {
           <button
             key={addon.key}
             type="button"
+            disabled={status === "sending"}
             onClick={() => requestAddon(addon.key)}
-            className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition hover:shadow-lg ${
+            className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition hover:shadow-lg disabled:opacity-60 ${
               selected === addon.key
-                ? "border-violet-400 ring-2 ring-violet-200"
-                : "border-[var(--border-color)] bg-white hover:border-[var(--amber)]/40"
+                ? "border-violet-400 ring-2 ring-violet-400/30"
+                : "border-[var(--border-color)] bg-[var(--surface-card)] hover:border-[var(--amber)]/40"
             }`}
           >
             <div className={`mb-4 inline-flex rounded-lg bg-gradient-to-r ${addon.color} px-2.5 py-1 text-xs font-bold text-white`}>

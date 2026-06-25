@@ -1,7 +1,45 @@
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ADMIN_USERS_ROW_GRID } from "@/components/billing/AdminUserUi";
 
-export function BillingPortalSkeleton() {
+export function BillingPortalSkeleton({ embedded = false }: { embedded?: boolean } = {}) {
+  if (embedded) {
+    return (
+      <div className="w-full space-y-6">
+        <div className="flex gap-6 border-b border-[var(--border-color)] pb-2.5">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-5 w-20" />
+          ))}
+        </div>
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="space-y-4">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-10 w-40" />
+            <Skeleton className="h-14 w-full max-w-sm" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+          </div>
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-28 w-28 shrink-0 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-44" />
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-[var(--border-color)] pt-6">
+          <div className="flex justify-between gap-3">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-8 w-32 rounded-lg" />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2.5">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-11 w-40 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -17,9 +55,9 @@ export function BillingPortalSkeleton() {
             <Skeleton key={i} className="h-5 w-20" />
           ))}
         </div>
-        <div className="ui-card p-4">
-          <Skeleton className="h-40 w-full rounded-xl" />
-          <Skeleton className="mt-4 h-24 w-full rounded-xl" />
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-28 w-56" />
         </div>
       </div>
     </div>

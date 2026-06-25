@@ -30,7 +30,7 @@ export async function ConnectMetaButton({
     );
   }
 
-  const btnClass = variant === "secondary" ? "ui-btn-secondary text-xs" : "ui-btn-primary text-xs";
+  const btnClass = variant === "secondary" ? "ui-btn-secondary text-xs" : "ui-btn-accent text-xs";
 
   return (
     <form

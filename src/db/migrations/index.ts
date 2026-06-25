@@ -50,6 +50,8 @@ import { AlertSourceFields_1735831700000 } from "./0047-AlertSourceFields";
 import { DashboardLayoutClientView_1735831800000 } from "./0048-DashboardLayoutClientView";
 import { ClientCommercialAddress1735831600000 } from "./0046-ClientCommercialAddress";
 import { ClientCommercialAddressNormalized1735831700000 } from "./0047-ClientCommercialAddressNormalized";
+import { UserTermsAcceptance_1735831900000 } from "./0049-UserTermsAcceptance";
+import { ContactMessages_1735832000000 } from "./0050-ContactMessages";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -104,5 +106,7 @@ export const appMigrations = [
   AlertSourceFields_1735831700000,
   DashboardLayoutClientView_1735831800000,
   ClientCommercialAddress1735831600000,
-  ClientCommercialAddressNormalized1735831700000
+  ClientCommercialAddressNormalized1735831700000,
+  UserTermsAcceptance_1735831900000,
+  ContactMessages_1735832000000
 ];

@@ -63,7 +63,7 @@ export default function Login() {
             <Zap size={20} className="text-white" />
           </div>
           <div>
-            <p className="font-heading font-bold text-white text-lg leading-tight">Traffic AI</p>
+            <p className="font-heading font-bold text-white text-lg leading-tight">Orion Agency</p>
             <p className="text-xs leading-tight" style={{ color: "#fbbf24" }}>Ads Manager</p>
           </div>
         </div>
@@ -122,7 +122,7 @@ export default function Login() {
             style={{ background: "linear-gradient(135deg, #4f46e5, #7c3aed)" }}>
             <Zap size={16} className="text-white" />
           </div>
-          <p className="font-heading font-bold text-gray-900 text-base">Traffic AI</p>
+          <p className="font-heading font-bold text-gray-900 text-base">Orion Agency</p>
         </div>
 
         <div className="w-full max-w-md">

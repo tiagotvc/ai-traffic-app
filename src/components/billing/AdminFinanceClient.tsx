@@ -58,7 +58,7 @@ function ProviderCard({
       <dl className="mt-3 grid gap-2.5 sm:grid-cols-2">
         <div>
           <dt className="text-[11px] text-[var(--text-dim)]">{t("financeRevenue")}</dt>
-          <dd className="text-lg font-bold tabular-nums text-emerald-700">
+          <dd className="text-lg font-bold tabular-nums text-emerald-500">
             {formatMoney(block.revenueCents, block.currency)}
           </dd>
           <dd className="text-xs text-[var(--text-dimmer)]">{block.paidInvoiceCount} paid</dd>
@@ -74,7 +74,7 @@ function ProviderCard({
         </div>
         <div>
           <dt className="text-xs text-[var(--text-dim)]">{t("financePending")}</dt>
-          <dd className="font-semibold tabular-nums text-amber-700">
+          <dd className="font-semibold tabular-nums text-amber-500">
             {formatMoney(block.pendingCents, block.currency)}
           </dd>
           <dd className="text-xs text-[var(--text-dimmer)]">{block.pendingCount}</dd>

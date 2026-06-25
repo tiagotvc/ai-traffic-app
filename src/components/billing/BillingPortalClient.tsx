@@ -3,18 +3,21 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { Calendar, FileSearch, History, Info, Sparkles, Timer, User, type LucideIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { BillingAddonsCard } from "@/components/billing/BillingAddonsCard";
+import {
+  DsEyebrow,
+  DsFlatChip,
+  DsFlatDivider,
+  DsFlatEmptyState,
+  DsFlatSection,
+  DsPageHeader,
+  DsUnderlineTabs,
+  dsAccentOutlineClass
+} from "@/design-system";
 import { BillingInvoicesTable } from "@/components/billing/BillingInvoicesTable";
 import { BillingPortalSkeleton } from "@/components/billing/BillingSkeletons";
-import {
-  DEFAULT_UPGRADE_DISCOUNT,
-  UpgradePromoCard
-} from "@/components/billing/billing-ui";
 import { BillingLimitsPanel } from "@/components/billing/BillingLimitsPanel";
-import { BillingPlanCard } from "@/components/billing/BillingPlanCard";
-import { DsPageHeader } from "@/design-system";
-import { PageTabs } from "@/components/layout/PageTabs";
 import type { PlanCardData } from "@/components/billing/PlanLimitsCard";
 import type { Entitlements, PlanLimits } from "@/lib/billing/types";
 
@@ -205,7 +208,7 @@ export function BillingPortalClient({
   }
 
   if (loading) {
-    return <BillingPortalSkeleton />;
+    return <BillingPortalSkeleton embedded={embedded} />;
   }
 
   const planLimits = sub?.plan?.limits ?? entitlements?.limits;
@@ -214,6 +217,23 @@ export function BillingPortalClient({
   const nextSlug = NEXT_PLAN_SLUG[planSlug];
   const nextPlan = plans.find((p) => p.slug === nextSlug);
   const showUpgrade = Boolean(nextPlan && planSlug !== "agency");
+  void showUpgrade;
+  void nextPlan;
+
+  const planName = sub?.plan?.name ?? "Free";
+  const cycleLabel = sub?.billingCycle === "yearly" ? t("yearly") : t("monthly");
+  const renewalDateStr = sub?.currentPeriodEnd
+    ? new Date(sub.currentPeriodEnd).toLocaleDateString(locale, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      })
+    : null;
+  const addonChips: { label: string; Icon: LucideIcon; bg: string; color: string }[] = [
+    { label: t("addonClients"), Icon: User, bg: "var(--ui-accent-muted-strong)", color: "var(--ui-accent)" },
+    { label: t("addonAds"), Icon: Timer, bg: "rgba(245,166,35,0.15)", color: "var(--amber-bright)" },
+    { label: t("addonAi"), Icon: Sparkles, bg: "rgba(236,72,153,0.15)", color: "#f472b6" }
+  ];
 
   const tabs = [
     { key: "plan" as const, label: t("tabPlan") },
@@ -223,121 +243,211 @@ export function BillingPortalClient({
   ];
 
   const panels = (
-    <div className="ui-card p-4">
+    <div>
       {activeTab === "plan" ? (
-            <div className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <BillingPlanCard
-                  plan={sub?.plan ?? null}
-                  status={sub?.status ?? "active"}
-                  billingCycle={sub?.billingCycle}
-                  currentPeriodStart={sub?.currentPeriodStart}
-                  currentPeriodEnd={sub?.currentPeriodEnd}
-                  cancelAtPeriodEnd={sub?.cancelAtPeriodEnd}
-                  onCancel={
-                    canManageBilling && sub?.plan?.slug !== "free" && sub?.status === "active"
-                      ? cancelSub
-                      : undefined
-                  }
-                  canManageBilling={canManageBilling}
-                />
-
-                {showUpgrade && nextPlan ? (
-                  <UpgradePromoCard
-                    compact
-                    title={t("upgradeTo", { plan: nextPlan.name })}
-                    description={t("upgradePromoDesc", { percent: DEFAULT_UPGRADE_DISCOUNT })}
-                    discountPercent={DEFAULT_UPGRADE_DISCOUNT}
-                    planName={nextPlan.name}
-                    ctaHref={`/billing/checkout?plan=${nextPlan.id}`}
-                    ctaLabel={t("upgradeNow")}
-                  />
-                ) : (
-                  <div className="rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
-                    <p className="text-sm font-semibold text-[var(--text-main)]">{t("planTabHintTitle")}</p>
-                    <p className="mt-1 text-xs text-[var(--text-dim)]">{t("planTabHintBody")}</p>
+            <div className="space-y-8">
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div className="min-w-0">
+                  <p className="mt-2">
+                    <DsEyebrow>{t("currentPlan")}</DsEyebrow>
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2.5">
+                    <h2 className="font-heading text-4xl font-extrabold leading-none tracking-tight text-[var(--text-main)]">
+                      {planName}
+                    </h2>
+                    {isPaidPlan ? (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          {t("statusActiveShort")}
+                        </span>
+                        <span className="rounded-full bg-[var(--ui-accent-muted-strong)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--ui-accent)]">
+                          {cycleLabel}
+                        </span>
+                      </>
+                    ) : null}
                   </div>
-                )}
+
+                  {renewalDateStr ? (
+                    <div className="mt-5 flex items-start gap-3">
+                      <span
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                        style={{
+                          background: "var(--ui-accent-muted)",
+                          boxShadow: "0 0 24px var(--ui-accent-glow)"
+                        }}
+                      >
+                        <Calendar size={18} className="text-[var(--ui-accent)]" strokeWidth={2} />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="mt-0.5">
+                          <DsEyebrow className="tracking-[0.12em]">{t("nextRenewal")}</DsEyebrow>
+                        </p>
+                        <p className="mt-0.5 text-base font-bold text-[var(--text-main)]">{renewalDateStr}</p>
+                        <p className="mt-0.5 text-xs font-medium text-[var(--ui-accent)]">
+                          {t("renewalHint", { cycle: cycleLabel.toLowerCase() })}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <p className="mt-5 flex items-start gap-1.5 text-xs leading-relaxed text-[var(--text-dimmer)]">
+                    <Info size={14} className="mt-0.5 shrink-0 opacity-70" />
+                    {canManageBilling && isPaidPlan ? (
+                      <button type="button" onClick={cancelSub} className="ui-link text-left">
+                        {sub?.cancelAtPeriodEnd ? t("cancelPending") : t("cancelSubscription")}
+                      </button>
+                    ) : (
+                      t("cancelContactAdmin")
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-4 lg:justify-end">
+                  <div
+                    className="relative flex h-[7.5rem] w-[7.5rem] shrink-0 items-center justify-center"
+                    aria-hidden
+                  >
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: "var(--ui-accent-gradient)" }}
+                    />
+                    <span
+                      className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--ui-accent-ring)]"
+                      style={{ background: "var(--ui-accent-muted)" }}
+                    >
+                      <Calendar size={26} className="text-[var(--ui-accent)]" strokeWidth={1.75} />
+                    </span>
+                  </div>
+                  <div className="min-w-0 max-w-[14rem]">
+                    <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
+                      {t("planTabHintTitle")}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--text-dim)]">
+                      {t("planTabHintBody")}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              {isPaidPlan ? <BillingAddonsCard /> : null}
+              {isPaidPlan ? (
+                <>
+                  <div className="border-t border-[var(--border-color)]" />
+                  <DsFlatSection
+                    title={t("addonsTitle")}
+                    subtitle={t("addonsSubtitle")}
+                    actions={
+                      <Link href="/billing/addons" className={dsAccentOutlineClass}>
+                        {t("addonsCta")}
+                        <span aria-hidden>→</span>
+                      </Link>
+                    }
+                  >
+                    <div className="flex flex-wrap gap-2.5">
+                      {addonChips.map((chip) => (
+                        <DsFlatChip
+                          key={chip.label}
+                          icon={<chip.Icon size={14} strokeWidth={2} />}
+                          label={chip.label}
+                          iconBackground={chip.bg}
+                          iconColor={chip.color}
+                        />
+                      ))}
+                    </div>
+                  </DsFlatSection>
+                </>
+              ) : null}
             </div>
           ) : null}
 
           {activeTab === "limits" && planLimits && entitlements ? (
-            <div>
-              <div className="mb-3">
-                <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("limitsTitle")}</h2>
-                <p className="text-[11px] text-[var(--text-dim)]">{t("limitsSubtitle")}</p>
-              </div>
+            <DsFlatSection
+              title={t("limitsTitle")}
+              subtitle={t("limitsSubtitle")}
+              titleClassName="text-base"
+              className="mt-5 space-y-4"
+            >
               <BillingLimitsPanel limits={planLimits} usage={entitlements.usage} />
-            </div>
+            </DsFlatSection>
           ) : null}
 
           {activeTab === "billing" ? (
-            <div className="space-y-4">
-              <div>
-                <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("invoicesTitle")}</h2>
-                <p className="text-[11px] text-[var(--text-dim)]">{t("invoicesSubtitle")}</p>
-              </div>
-
-              <BillingInvoicesTable
-                invoices={invoices}
-                expandedId={expandedInvoiceId}
-                onToggle={toggleInvoice}
-                onRequestRefund={(id) => {
-                  setRefundInvoiceId(id);
-                  setExpandedInvoiceId(id);
-                }}
-                onUpdated={reload}
-              />
+            <div className="space-y-6">
+              <DsFlatSection
+                title={t("invoicesTitle")}
+                subtitle={t("invoicesSubtitle")}
+                titleClassName="text-base"
+                className="mt-5 space-y-5"
+              >
+                <BillingInvoicesTable
+                  invoices={invoices}
+                  expandedId={expandedInvoiceId}
+                  onToggle={toggleInvoice}
+                  onRequestRefund={(id) => {
+                    setRefundInvoiceId(id);
+                    setExpandedInvoiceId(id);
+                  }}
+                  onUpdated={reload}
+                />
+              </DsFlatSection>
 
               {refundInvoiceId ? (
-                <div className="ui-card bg-[var(--surface-bg)] p-4">
-                  <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("refundTitle")}</h3>
-                  <textarea
-                    value={refundReason}
-                    onChange={(e) => setRefundReason(e.target.value)}
-                    placeholder={t("refundReason")}
-                    className="ui-input mt-2 w-full min-h-[72px] text-xs"
-                  />
-                  <div className="mt-2 flex gap-2">
-                    <button type="button" onClick={requestRefund} className="ui-btn-primary text-xs">
-                      {t("submitRefund")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRefundInvoiceId("")}
-                      className="ui-btn-secondary text-xs"
-                    >
-                      {t("cancel")}
-                    </button>
-                  </div>
-                </div>
+                <>
+                  <DsFlatDivider />
+                  <DsFlatSection title={t("refundTitle")}>
+                    <textarea
+                      value={refundReason}
+                      onChange={(e) => setRefundReason(e.target.value)}
+                      placeholder={t("refundReason")}
+                      className="ui-input mt-3 w-full min-h-[72px] text-xs"
+                    />
+                    <div className="mt-2 flex gap-2">
+                      <button type="button" onClick={requestRefund} className="ui-btn-accent text-xs">
+                        {t("submitRefund")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRefundInvoiceId("")}
+                        className="ui-btn-secondary text-xs"
+                      >
+                        {t("cancel")}
+                      </button>
+                    </div>
+                  </DsFlatSection>
+                </>
               ) : null}
             </div>
           ) : null}
 
           {activeTab === "events" ? (
-            <div>
-              <div className="mb-3">
-                <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("eventsTitle")}</h2>
-                <p className="text-[11px] text-[var(--text-dim)]">{t("eventsSubtitle")}</p>
-              </div>
-              <ul className="divide-y divide-[var(--border-color)] rounded-xl border border-[var(--border-color)] text-xs">
-                {events.map((ev) => (
-                  <li key={ev.id} className="px-3 py-2.5 text-[var(--text-dim)]">
-                    <p className="font-medium text-[var(--text-main)]">{ev.eventType}</p>
-                    <p className="mt-0.5 text-[11px] text-[var(--text-dimmer)]">
-                      {ev.provider} · {new Date(ev.createdAt).toLocaleString()}
-                    </p>
-                  </li>
-                ))}
-                {events.length === 0 ? (
-                  <li className="px-3 py-8 text-center text-[var(--text-dim)]">{t("noEvents")}</li>
-                ) : null}
-              </ul>
-            </div>
+            <DsFlatSection
+              title={t("eventsTitle")}
+              subtitle={t("eventsSubtitle")}
+              titleClassName="text-base"
+              titleIcon={<History size={16} strokeWidth={2} />}
+              className="mt-5 space-y-5"
+            >
+              {events.length > 0 ? (
+                <ul className="divide-y divide-[var(--border-color)] rounded-xl border border-[var(--border-color)] text-xs">
+                  {events.map((ev) => (
+                    <li key={ev.id} className="px-4 py-3.5 text-[var(--text-dim)]">
+                      <p className="font-medium text-[var(--text-main)]">{ev.eventType}</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--text-dimmer)]">
+                        {ev.provider} · {new Date(ev.createdAt).toLocaleString()}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <DsFlatEmptyState
+                  variant="card"
+                  bordered={false}
+                  icon={<FileSearch size={24} strokeWidth={1.75} />}
+                  title={t("noEvents")}
+                  description={t("eventsEmptyHint")}
+                />
+              )}
+            </DsFlatSection>
           ) : null}
     </div>
   );
@@ -360,6 +470,7 @@ export function BillingPortalClient({
           </div>
         ) : null}
 
+        <DsUnderlineTabs tabs={tabs} active={activeTab} onChange={selectTab} accent="brand" />
         {panels}
       </div>
     );
@@ -400,7 +511,7 @@ export function BillingPortalClient({
       ) : null}
 
       <div className="space-y-4">
-        <PageTabs tabs={tabs} active={activeTab} onChange={selectTab} />
+        <DsUnderlineTabs tabs={tabs} active={activeTab} onChange={selectTab} accent="brand" />
         {panels}
       </div>
     </div>

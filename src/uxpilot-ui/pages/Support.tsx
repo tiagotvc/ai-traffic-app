@@ -19,14 +19,14 @@ import { cn } from "@/uxpilot-ui/lib/utils";
 
 const faqs = [
   {
-    question: "Como conecto minha conta Meta Business ao Traffic AI?",
+    question: "Como conecto minha conta Meta Business ao Orion Agency?",
     answer:
       "Acesse Configurações → Integrações → Meta Ads e clique em 'Conectar conta'. Você será redirecionado para autorizar o acesso via OAuth do Facebook. Após a autorização, suas campanhas serão sincronizadas automaticamente em até 15 minutos.",
   },
   {
-    question: "O Traffic AI suporta múltiplos clientes em uma só conta?",
+    question: "O Orion Agency suporta múltiplos clientes em uma só conta?",
     answer:
-      "Sim! O Traffic AI foi desenvolvido especificamente para agências que gerenciam múltiplos clientes. Na seção 'Clientes', você pode criar perfis separados para cada cliente, cada um com suas próprias integrações, campanhas e relatórios.",
+      "Sim! O Orion Agency foi desenvolvido especificamente para agências que gerenciam múltiplos clientes. Na seção 'Clientes', você pode criar perfis separados para cada cliente, cada um com suas próprias integrações, campanhas e relatórios.",
   },
   {
     question: "Com que frequência os dados são atualizados?",
@@ -49,9 +49,9 @@ const faqs = [
       "Você pode cancelar a qualquer momento em Configurações → Plano e Cobrança → Cancelar assinatura. O cancelamento tem efeito ao final do período de cobrança vigente e você mantém acesso a todos os recursos até lá. Não cobramos taxas de cancelamento.",
   },
   {
-    question: "O Traffic AI é compatível com Google Tag Manager?",
+    question: "O Orion Agency é compatível com Google Tag Manager?",
     answer:
-      "Sim. O Traffic AI se integra ao Google Tag Manager e Google Analytics 4, permitindo correlacionar dados de comportamento no site com performance de campanhas. A configuração é feita em Configurações → Integrações → Google Analytics.",
+      "Sim. O Orion Agency se integra ao Google Tag Manager e Google Analytics 4, permitindo correlacionar dados de comportamento no site com performance de campanhas. A configuração é feita em Configurações → Integrações → Google Analytics.",
   },
   {
     question: "Como configurar alertas automáticos?",
@@ -157,7 +157,7 @@ export default function Support() {
               </div>
               <p className="text-indigo-100 text-sm leading-relaxed relative z-10">
                 Nossa equipe de suporte está disponível para resolver suas dúvidas e garantir que você
-                aproveite ao máximo o Traffic AI.
+                aproveite ao máximo o Orion Agency.
               </p>
             </div>
 

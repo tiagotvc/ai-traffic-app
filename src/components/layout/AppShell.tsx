@@ -7,6 +7,7 @@ import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { CommandStripProvider } from "@/components/layout/CommandStripContext";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
+import { FirstLoginTermsGate } from "@/components/auth/FirstLoginTermsGate";
 import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 
@@ -87,6 +88,7 @@ export function AppShell({
               }}
             >
               <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
+              <FirstLoginTermsGate />
               <div className="mx-auto w-full max-w-[1600px]">{children}</div>
             </main>
           </CommandStripProvider>

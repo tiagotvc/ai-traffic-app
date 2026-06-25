@@ -4,18 +4,18 @@ import type { ReactNode } from "react";
 import { adminPlanTier } from "@/lib/billing/admin-plan-styles";
 
 export const PLAN_BADGE: Record<string, string> = {
-  free: "bg-slate-100 text-[var(--text-dim)] ring-slate-200/80",
+  free: "bg-[var(--surface-bg)] text-[var(--text-dim)] ring-slate-200/80",
   basic: "bg-[rgba(124,58,237,0.06)] text-violet-700 ring-violet-200/80",
   advanced: "bg-[rgba(124,58,237,0.1)] text-[var(--violet)] ring-violet-300/60",
-  agency: "bg-gradient-to-r from-amber-100 to-orange-100 text-amber-900 ring-amber-300/60"
+  agency: "bg-gradient-to-r from-amber-500/15 to-orange-500/15 text-amber-500 ring-amber-300/60"
 };
 
 export const STATUS_BADGE: Record<string, { className: string; dot: string }> = {
-  active: { className: "bg-emerald-50 text-emerald-800 ring-emerald-200/80", dot: "bg-emerald-500" },
-  trialing: { className: "bg-blue-50 text-blue-800 ring-blue-200/80", dot: "bg-blue-500" },
+  active: { className: "bg-emerald-500/15 text-emerald-500 ring-emerald-200/80", dot: "bg-emerald-500" },
+  trialing: { className: "bg-blue-500/15 text-blue-500 ring-blue-200/80", dot: "bg-blue-500" },
   past_due: { className: "bg-[rgba(245,166,35,0.12)] text-[var(--amber)] ring-amber-200/80", dot: "bg-amber-500" },
-  suspended: { className: "bg-red-50 text-red-800 ring-red-200/80", dot: "bg-red-500" },
-  canceled: { className: "bg-slate-100 text-[var(--text-dim)] ring-slate-200/80", dot: "bg-slate-400" }
+  suspended: { className: "bg-red-500/15 text-red-500 ring-red-200/80", dot: "bg-red-500" },
+  canceled: { className: "bg-[var(--surface-bg)] text-[var(--text-dim)] ring-slate-200/80", dot: "bg-slate-400" }
 };
 
 export function planBadgeClass(slug: string) {
@@ -206,18 +206,18 @@ export function AdminSection({
   className?: string;
 }) {
   const accents = {
-    violet: "border-[rgba(124,58,237,0.15)] from-violet-50/80 to-white text-[var(--violet)]",
+    violet: "border-[rgba(124,58,237,0.15)] from-violet-500/10 to-transparent text-[var(--violet)]",
     amber: "border-amber-200/80 from-amber-50/90 via-white to-orange-50/50 text-amber-600",
-    slate: "border-[var(--border-color)] from-slate-50/80 to-white text-[var(--text-dim)]",
-    emerald: "border-emerald-100 from-emerald-50/80 to-white text-emerald-600"
+    slate: "border-[var(--border-color)] from-[var(--surface-bg)] to-transparent text-[var(--text-dim)]",
+    emerald: "border-emerald-500/25 from-emerald-500/10 to-transparent text-emerald-600"
   };
 
   return (
     <section
       className={`overflow-hidden rounded-xl border bg-gradient-to-br shadow-sm ${accents[accent]} ${className}`}
     >
-      <div className="flex items-start gap-2.5 border-b border-inherit bg-white/60 px-4 py-3 backdrop-blur-sm">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-black/5">
+      <div className="flex items-start gap-2.5 border-b border-inherit bg-[var(--surface-card)] px-4 py-3 backdrop-blur-sm">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-card)] shadow-sm ring-1 ring-black/5">
           <AdminIcon name={icon} className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
@@ -225,7 +225,7 @@ export function AdminSection({
           {subtitle ? <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{subtitle}</p> : null}
         </div>
       </div>
-      <div className="bg-white/90 p-4">{children}</div>
+      <div className="bg-[var(--surface-card)] p-4">{children}</div>
     </section>
   );
 }
@@ -258,7 +258,7 @@ export function AdminField({
 }
 
 const fieldBase =
-  "w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/50 text-sm text-[var(--text-main)] shadow-sm transition placeholder:text-[var(--text-dimmer)] hover:border-slate-300 focus:border-violet-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-100";
+  "w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/50 text-sm text-[var(--text-main)] shadow-sm transition placeholder:text-[var(--text-dimmer)] hover:border-slate-300 focus:border-violet-400 focus:bg-[var(--surface-card)] focus:outline-none focus:ring-2 focus:ring-violet-100";
 
 export function AdminInput({
   icon,
@@ -354,37 +354,37 @@ export const ADDON_META: Record<
     icon: "clients",
     color: "text-blue-600",
     ring: "ring-blue-100",
-    gradient: "from-blue-50 to-white"
+    gradient: "from-blue-500/10 to-transparent"
   },
   extraAdAccounts: {
     icon: "ads",
     color: "text-[var(--violet)]",
     ring: "ring-violet-100",
-    gradient: "from-violet-50 to-white"
+    gradient: "from-violet-500/10 to-transparent"
   },
   extraMembers: {
     icon: "members",
     color: "text-indigo-600",
     ring: "ring-indigo-100",
-    gradient: "from-indigo-50 to-white"
+    gradient: "from-indigo-500/10 to-transparent"
   },
   extraAutomationRules: {
     icon: "automation",
     color: "text-amber-600",
     ring: "ring-amber-100",
-    gradient: "from-amber-50 to-white"
+    gradient: "from-amber-500/10 to-transparent"
   },
   extraAiRequestsPerMonth: {
     icon: "ai",
     color: "text-pink-600",
     ring: "ring-pink-100",
-    gradient: "from-pink-50 to-white"
+    gradient: "from-pink-500/10 to-transparent"
   },
   extraScheduledReports: {
     icon: "reports",
     color: "text-emerald-600",
     ring: "ring-emerald-100",
-    gradient: "from-emerald-50 to-white"
+    gradient: "from-emerald-500/10 to-transparent"
   }
 };
 
@@ -414,7 +414,7 @@ export function AddonStepperCard({
     >
       <div className="flex items-start gap-2.5">
         <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ${meta.ring} ${meta.color}`}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-card)] shadow-sm ring-1 ${meta.ring} ${meta.color}`}
         >
           <AdminIcon name={meta.icon} className="h-4 w-4" />
         </span>
@@ -432,7 +432,7 @@ export function AddonStepperCard({
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] bg-white text-base font-medium text-[var(--text-dim)] shadow-sm transition hover:border-slate-300 hover:bg-[var(--surface-thead)]"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] text-base font-medium text-[var(--text-dim)] shadow-sm transition hover:border-slate-300 hover:bg-[var(--surface-thead)]"
           aria-label="-1"
         >
           −
@@ -446,7 +446,7 @@ export function AddonStepperCard({
         <button
           type="button"
           onClick={() => onChange(value + 1)}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] bg-white text-base font-medium text-[var(--text-dim)] shadow-sm transition hover:border-violet-300 hover:bg-[rgba(124,58,237,0.06)] hover:text-violet-700"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] text-base font-medium text-[var(--text-dim)] shadow-sm transition hover:border-violet-300 hover:bg-[rgba(124,58,237,0.06)] hover:text-violet-700"
           aria-label="+1"
         >
           +

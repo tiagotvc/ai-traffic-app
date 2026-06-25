@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/cn";
 import { resolveBillingCurrency } from "@/lib/billing/currency";
 import { formatMoney, formatMoneyParts, MONTHLY_PIX_DISCOUNT_PERCENT } from "@/lib/billing/pricing";
 
@@ -17,31 +18,49 @@ export type InvoiceStatusKey =
 
 export type NfStatusKey = "pending" | "issued" | "error" | "not_applicable";
 
-const INVOICE_STATUS_STYLE: Record<
-  InvoiceStatusKey,
-  { dot: string; bg: string; text: string }
-> = {
-  pending: { dot: "bg-amber-400", bg: "bg-amber-50", text: "text-amber-800" },
-  confirmed: { dot: "bg-sky-400", bg: "bg-sky-50", text: "text-sky-800" },
-  paid: { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-800" },
-  overdue: { dot: "bg-red-500", bg: "bg-red-50", text: "text-red-800" },
-  refunded: { dot: "bg-slate-400", bg: "bg-slate-100", text: "text-[var(--text-dim)]" },
-  canceled: { dot: "bg-slate-300", bg: "bg-slate-100", text: "text-[var(--text-dim)]" }
+type StatusStyle = {
+  dot: string;
+  bg: string;
+  text: string;
+  border?: string;
 };
 
-const NF_STATUS_STYLE: Record<NfStatusKey, { dot: string; bg: string; text: string }> = {
-  pending: { dot: "bg-amber-400", bg: "bg-amber-50", text: "text-amber-800" },
-  issued: { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-800" },
-  error: { dot: "bg-red-500", bg: "bg-red-50", text: "text-red-800" },
-  not_applicable: { dot: "bg-slate-300", bg: "bg-[var(--surface-thead)]", text: "text-[var(--text-dim)]" }
+const INVOICE_STATUS_STYLE: Record<InvoiceStatusKey, StatusStyle> = {
+  pending: {
+    dot: "bg-[var(--ui-accent)]",
+    bg: "bg-[var(--ui-accent-muted)]",
+    text: "text-[var(--ui-accent)]",
+    border: "border-[var(--ui-accent-border)]"
+  },
+  confirmed: { dot: "bg-sky-400", bg: "bg-sky-500/15", text: "text-sky-400" },
+  paid: { dot: "bg-emerald-500", bg: "bg-emerald-500/15", text: "text-emerald-500" },
+  overdue: { dot: "bg-red-500", bg: "bg-red-500/15", text: "text-red-400" },
+  refunded: { dot: "bg-slate-400", bg: "bg-[var(--surface-bg)]", text: "text-[var(--text-dim)]" },
+  canceled: { dot: "bg-slate-400", bg: "bg-[var(--surface-bg)]", text: "text-[var(--text-dim)]" }
 };
 
-const SUB_STATUS_STYLE: Record<string, { dot: string; bg: string; text: string }> = {
-  trialing: { dot: "bg-[rgba(124,58,237,0.06)]0", bg: "bg-[rgba(124,58,237,0.06)]", text: "text-[var(--violet)]" },
-  active: { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-800" },
-  past_due: { dot: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-900" },
-  suspended: { dot: "bg-red-500", bg: "bg-red-50", text: "text-red-800" },
-  canceled: { dot: "bg-slate-400", bg: "bg-slate-100", text: "text-[var(--text-dim)]" }
+const NF_STATUS_STYLE: Record<NfStatusKey, StatusStyle> = {
+  pending: {
+    dot: "bg-[var(--ui-accent)]",
+    bg: "bg-[var(--ui-accent-muted)]",
+    text: "text-[var(--ui-accent)]",
+    border: "border-[var(--ui-accent-border)]"
+  },
+  issued: { dot: "bg-emerald-500", bg: "bg-emerald-500/15", text: "text-emerald-500" },
+  error: { dot: "bg-red-500", bg: "bg-red-500/15", text: "text-red-400" },
+  not_applicable: { dot: "bg-slate-400", bg: "bg-[var(--surface-thead)]", text: "text-[var(--text-dim)]" }
+};
+
+const SUB_STATUS_STYLE: Record<string, StatusStyle> = {
+  trialing: { dot: "bg-[var(--ui-accent)]", bg: "bg-[var(--ui-accent-muted)]", text: "text-[var(--ui-accent)]" },
+  active: { dot: "bg-emerald-500", bg: "bg-emerald-500/15", text: "text-emerald-500" },
+  past_due: {
+    dot: "bg-[var(--ui-accent)]",
+    bg: "bg-[var(--ui-accent-muted)]",
+    text: "text-[var(--ui-accent)]"
+  },
+  suspended: { dot: "bg-red-500", bg: "bg-red-500/15", text: "text-red-400" },
+  canceled: { dot: "bg-slate-400", bg: "bg-[var(--surface-bg)]", text: "text-[var(--text-dim)]" }
 };
 
 export function billingCurrency(provider?: string, locale?: string | null) {
@@ -70,22 +89,39 @@ export function daysUntil(dateIso: string | null | undefined): number | null {
 
 export function StatusBadge({
   label,
-  style
+  style,
+  variant = "filled"
 }: {
   label: string;
-  style: { dot: string; bg: string; text: string };
+  style: StatusStyle;
+  variant?: "filled" | "outline";
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${style.bg} ${style.text}`}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+        variant === "outline"
+          ? cn(
+              "border bg-[var(--surface-card)]",
+              style.border ?? "border-[var(--border-color)]",
+              style.text
+            )
+          : cn(style.bg, style.text)
+      )}
     >
-      <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", style.dot)} />
       {label}
     </span>
   );
 }
 
-export function InvoiceStatusBadge({ status }: { status: string }) {
+export function InvoiceStatusBadge({
+  status,
+  variant = "filled"
+}: {
+  status: string;
+  variant?: "filled" | "outline";
+}) {
   const t = useTranslations("billingPage");
   const key = (status in INVOICE_STATUS_STYLE ? status : "pending") as InvoiceStatusKey;
   const labels: Record<InvoiceStatusKey, string> = {
@@ -96,10 +132,18 @@ export function InvoiceStatusBadge({ status }: { status: string }) {
     refunded: t("invoiceStatusRefunded"),
     canceled: t("invoiceStatusCanceled")
   };
-  return <StatusBadge label={labels[key]} style={INVOICE_STATUS_STYLE[key]} />;
+  return <StatusBadge label={labels[key]} style={INVOICE_STATUS_STYLE[key]} variant={variant} />;
 }
 
-export function NfStatusBadge({ status, pdfUrl }: { status: string; pdfUrl?: string | null }) {
+export function NfStatusBadge({
+  status,
+  pdfUrl,
+  variant = "filled"
+}: {
+  status: string;
+  pdfUrl?: string | null;
+  variant?: "filled" | "outline";
+}) {
   const t = useTranslations("billingPage");
   const key = (status in NF_STATUS_STYLE ? status : "pending") as NfStatusKey;
   const labels: Record<NfStatusKey, string> = {
@@ -120,7 +164,7 @@ export function NfStatusBadge({ status, pdfUrl }: { status: string; pdfUrl?: str
       </a>
     );
   }
-  return <StatusBadge label={labels[key]} style={NF_STATUS_STYLE[key]} />;
+  return <StatusBadge label={labels[key]} style={NF_STATUS_STYLE[key]} variant={variant} />;
 }
 
 export function SubscriptionStatusBadge({ status }: { status: string }) {
@@ -178,7 +222,7 @@ export function BillingDrawerShell({
         className="fixed inset-0 z-[200] bg-slate-900/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <aside className="fixed right-0 top-0 z-[201] flex h-dvh w-full max-w-[420px] flex-col bg-white shadow-2xl">
+      <aside className="fixed right-0 top-0 z-[201] flex h-dvh w-full max-w-[420px] flex-col bg-[var(--surface-card)] shadow-2xl">
         <header className="shrink-0 bg-gradient-to-br from-violet-700 via-violet-600 to-indigo-700 px-6 pb-6 pt-6 text-white">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -199,7 +243,7 @@ export function BillingDrawerShell({
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--surface-thead)]/50 px-6 py-5">{children}</div>
         {footer ? (
-          <footer className="shrink-0 border-t border-[var(--border-color)] bg-white px-6 py-4">{footer}</footer>
+          <footer className="shrink-0 border-t border-[var(--border-color)] bg-[var(--surface-card)] px-6 py-4">{footer}</footer>
         ) : null}
       </aside>
     </>,

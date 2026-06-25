@@ -69,6 +69,7 @@ import { DashboardWidgetPermission } from "./DashboardWidgetPermission";
 import { DashboardAiWidget } from "./DashboardAiWidget";
 import { DashboardAddon } from "./DashboardAddon";
 import { TenantAddon } from "./TenantAddon";
+import { ContactMessage } from "./ContactMessage";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
@@ -138,7 +139,8 @@ export {
   DashboardTemplate,
   DashboardWidgetPermission,
   DashboardAiWidget,
-  DashboardAddon
+  DashboardAddon,
+  ContactMessage
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -230,7 +232,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: DashboardTemplate, name: "DashboardTemplate" },
   { ctor: DashboardWidgetPermission, name: "DashboardWidgetPermission" },
   { ctor: DashboardAiWidget, name: "DashboardAiWidget" },
-  { ctor: DashboardAddon, name: "DashboardAddon" }
+  { ctor: DashboardAddon, name: "DashboardAddon" },
+  { ctor: ContactMessage, name: "ContactMessage" }
 ]);
 
 export const typeOrmEntities = [
@@ -300,5 +303,6 @@ export const typeOrmEntities = [
   DashboardTemplate,
   DashboardWidgetPermission,
   DashboardAiWidget,
-  DashboardAddon
+  DashboardAddon,
+  ContactMessage
 ] as const;

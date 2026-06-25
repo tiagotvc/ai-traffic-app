@@ -4,7 +4,7 @@ import type { LegalLocale, LegalPageContent } from "@/lib/marketing/legal-conten
 const pt: LegalPageContent = {
   badge: "Meta / LGPD",
   title: "Instruções de Exclusão de Dados",
-  subtitle: "Como solicitar a remoção dos seus dados no Traffic AI",
+  subtitle: "Como solicitar a remoção dos seus dados no Orion Agency",
   intro:
     "Esta página atende aos requisitos da Meta (Facebook) e da LGPD para exclusão de dados pessoais e desconexão de integrações.",
   sections: [
@@ -30,9 +30,9 @@ const pt: LegalPageContent = {
     {
       title: "3. Revogar acesso Meta (Facebook)",
       paragraphs: [
-        "Você também pode remover o Traffic AI diretamente na Meta:",
+        "Você também pode remover o Orion Agency diretamente na Meta:",
         "1. Acesse facebook.com/settings/applications",
-        "2. Localize Traffic AI / Orion Agency",
+        "2. Localize o app Orion Agency na lista",
         "3. Clique em \"Remover\" ou \"Revogar acesso\"",
         "Isso interrompe novas sincronizações. Para excluir dados já armazenados conosco, envie também o pedido por e-mail."
       ]
@@ -55,8 +55,7 @@ const pt: LegalPageContent = {
     {
       title: "6. Contato",
       paragraphs: [
-        `Privacidade / exclusão: ${LEGAL_CONTACT.privacyEmail}`,
-        `Suporte: ${LEGAL_CONTACT.supportEmail}`,
+        `Contato (privacidade / exclusão): ${LEGAL_CONTACT.supportEmail}`,
         `Localização: ${LEGAL_CONTACT.companyLocation}`
       ]
     }
@@ -66,7 +65,7 @@ const pt: LegalPageContent = {
 const en: LegalPageContent = {
   badge: "Meta / LGPD",
   title: "Data Deletion Instructions",
-  subtitle: "How to request removal of your Traffic AI data",
+  subtitle: "How to request removal of your Orion Agency data",
   intro:
     "This page meets Meta (Facebook) and LGPD requirements for personal data deletion and integration disconnection.",
   sections: [
@@ -92,9 +91,9 @@ const en: LegalPageContent = {
     {
       title: "3. Revoke Meta (Facebook) access",
       paragraphs: [
-        "Remove Traffic AI directly on Meta:",
+        "Remove Orion Agency directly on Meta:",
         "1. Go to facebook.com/settings/applications",
-        "2. Find Traffic AI",
+        "2. Find Orion Agency",
         "3. Click Remove or Revoke access",
         "This stops new syncs. Email us to delete data already stored on our side."
       ]
@@ -117,8 +116,7 @@ const en: LegalPageContent = {
     {
       title: "6. Contact",
       paragraphs: [
-        `Privacy / deletion: ${LEGAL_CONTACT.privacyEmail}`,
-        `Support: ${LEGAL_CONTACT.supportEmail}`,
+        `Contact (privacy / deletion): ${LEGAL_CONTACT.supportEmail}`,
         `Location: ${LEGAL_CONTACT.companyLocation}`
       ]
     }

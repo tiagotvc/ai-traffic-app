@@ -2,20 +2,10 @@
 
 import { useTranslations } from "next-intl";
 
-import { AgencyBrainAiBar } from "@/components/agency-brain/AgencyBrainAiBar";
 import { EvidenceSourcesLegend } from "@/components/agency-brain/insights/EvidenceSources";
-import { RefineResearchBar } from "@/components/agency-brain/insights/RefineResearchBar";
 import type { FeedVariant } from "@/lib/agency-brain/insights/types";
 
-export function BrainFeedHero({
-  variant,
-  clientId,
-  onRefineComplete
-}: {
-  variant: FeedVariant;
-  clientId: string;
-  onRefineComplete?: () => void;
-}) {
+export function BrainFeedHero({ variant }: { variant: FeedVariant }) {
   const t = useTranslations("brainInsights");
   const isLearnings = variant === "learnings";
 
@@ -23,9 +13,6 @@ export function BrainFeedHero({
     <>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs" style={{ color: "var(--text-dim)" }}>
-            Agency Brain
-          </p>
           <div className="flex items-center gap-2">
             <div
               className="flex h-8 w-8 items-center justify-center rounded-lg"
@@ -49,17 +36,13 @@ export function BrainFeedHero({
               className="text-2xl font-bold"
               style={{ color: "var(--text-main)", fontFamily: "var(--font-heading)" }}
             >
-              Agency Brain
+              {t("heroTitle")}
             </h1>
           </div>
           <p className="mt-1 text-sm" style={{ color: "var(--text-dim)" }}>
             {t(isLearnings ? "learningsFeedSubtitle" : "hypothesesFeedSubtitle")}
           </p>
         </div>
-
-        {isLearnings ? (
-          <RefineResearchBar clientId={clientId} onComplete={onRefineComplete} />
-        ) : null}
       </div>
 
       {isLearnings ? (
@@ -68,9 +51,6 @@ export function BrainFeedHero({
             {t("sourcesLegend")}:
           </span>
           <EvidenceSourcesLegend variant="uxpilot" />
-          <div className="ml-auto">
-            <AgencyBrainAiBar variant="uxpilot" />
-          </div>
         </div>
       ) : null}
     </>

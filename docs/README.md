@@ -26,12 +26,19 @@ Organizadas pelas **abas do sidebar** do app.
 | Classificação de criativos | [`criativos/`](./criativos/README.md) | Ranking de criativos por performance. |
 | Relatórios | [`relatorios/`](./relatorios/README.md) | Relatórios simples/completos, agendamentos e exportação em PDF. |
 | Cérebro da agência (Beta) | [`cerebro-da-agencia/`](./cerebro-da-agencia/README.md) | Grupo: Aprendizados, Hipóteses, Automações + módulos estendidos. |
+| Automações | [`automacoes/`](./automacoes/README.md) | Regras se-então que monitoram e otimizam campanhas (motor no sync). |
 
 ### Documentação transversal
 
 | Tema | Pasta | Descrição |
 |---|---|---|
 | Módulo Visão (catálogo de componentes) | [`visao/`](./visao/README.md) | Catálogo conceitual de componentes 100% editáveis para o módulo de dashboards customizados. Complementa a aba [Visões](./visoes/README.md). |
+| Navegação — Sidebar e Menu do Usuário | [`navegacao-sidebar/`](./navegacao-sidebar/README.md) | Abas do sidebar e comportamento do menu do usuário (abre ao lado, fecha ao clicar fora). |
+| Configurações / Perfil | [`configuracoes/`](./configuracoes/README.md) | Tela `/settings` com abas no topo: Geral, Plano & Limites, Integrações, Equipe, Dados. |
+| Institucional & Legal + Conformidade Meta | [`institucional-legal/`](./institucional-legal/README.md) | Central de Ajuda, Sobre, Termos, Privacidade, Exclusão de Dados; marca Orion Agency; e-mail único + envio do formulário; logo; modal de termos no login; requisitos da Meta. |
+| UI — Padrão de Modais | [`ui-modais/`](./ui-modais/README.md) | Padrão único de modais (Esc + clique-fora + superfície) e exceções (gates/drawers). |
+| Pagamentos & Billing | [`pagamentos/`](./pagamentos/README.md) | Auditoria de Stripe/Asaas, webhooks, ciclo de vida da assinatura, segurança e gaps. |
+| Landing, Planos, Addons e Login | [`landing-e-planos/`](./landing-e-planos/README.md) | URL da landing, análise vs. Reportei, recomendação de planos/preços, addons e painel de login. |
 
 ## Convenções
 

@@ -10,7 +10,7 @@ export async function notifyCriticalAlert(input: {
   webhookAlertUrl?: string | null;
 }) {
   const lines = [
-    `[Traffic AI] Alerta crítico — ${input.tenantName}`,
+    `[Orion Agency] Alerta crítico — ${input.tenantName}`,
     `Cliente: ${input.client?.name ?? "—"}`,
     `${input.alert.title}`,
     input.alert.description
@@ -43,7 +43,7 @@ export async function notifyCriticalAlert(input: {
         body: JSON.stringify({
           from: process.env.ALERT_EMAIL_FROM ?? "alerts@traffic-ai.local",
           to: [emailTo],
-          subject: `[Traffic AI] ${input.alert.title}`,
+          subject: `[Orion Agency] ${input.alert.title}`,
           text
         })
       });

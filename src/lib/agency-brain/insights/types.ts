@@ -32,6 +32,9 @@ export type EvidenceSource = {
   detail: string;
 };
 
+/** Status real do DTO (revisão), preservado para habilitar as ações de aceitar/dispensar. */
+export type LearningReviewStatus = "SUGGESTED" | "APPROVED" | "REJECTED" | "ARCHIVED";
+
 export type InsightLearning = {
   id: string;
   title: string;
@@ -39,6 +42,8 @@ export type InsightLearning = {
   confidenceScore: number;
   impactLevel: ImpactLevel;
   status: LearningStatus;
+  /** Status de revisão do backend (SUGGESTED = aguardando aceite). Ausente nos mocks. */
+  reviewStatus?: LearningReviewStatus;
   tags: string[];
   evidenceSummary: string;
   sources: EvidenceSource[];
@@ -73,6 +78,12 @@ export type LearningTimelineEvent = {
   eventType: TimelineEventType;
   sourceType?: EvidenceSourceType;
   sourceDetail?: string;
+  /** Evidência de pesquisa (Fase 3): concorrentes comparados, anúncios e padrões. */
+  evidence?: {
+    competitors?: string[];
+    sampleAdUrls?: string[];
+    patterns?: string[];
+  };
 };
 
 export type BrainFeedStats = {

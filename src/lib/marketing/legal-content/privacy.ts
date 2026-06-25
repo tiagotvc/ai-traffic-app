@@ -6,7 +6,7 @@ const pt: LegalPageContent = {
   title: "Política de Privacidade",
   subtitle: `Última atualização: ${LEGAL_CONTACT.termsUpdatedDate}`,
   intro:
-    'O Traffic AI ("Traffic AI", "nós", "nosso" ou "plataforma") respeita a privacidade de seus usuários e está comprometido com a proteção dos dados pessoais tratados durante a utilização de nossos serviços. Ao utilizar a plataforma, você declara estar ciente das práticas descritas nesta Política, em conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 – LGPD) e demais legislações aplicáveis.',
+    'O Orion Agency ("Orion Agency", "nós", "nosso" ou "plataforma") respeita a privacidade de seus usuários e está comprometido com a proteção dos dados pessoais tratados durante a utilização de nossos serviços. Ao utilizar a plataforma, você declara estar ciente das práticas descritas nesta Política, em conformidade com a Lei Geral de Proteção de Dados Pessoais (Lei nº 13.709/2018 – LGPD) e demais legislações aplicáveis.',
   sections: [
     {
       title: "1. Introdução",
@@ -18,7 +18,7 @@ const pt: LegalPageContent = {
     {
       title: "2. Quem somos",
       paragraphs: [
-        `O Traffic AI é uma plataforma especializada em análise, monitoramento, automação e geração de insights para campanhas de marketing digital, operada a partir de ${LEGAL_CONTACT.companyLocation}.`,
+        `O Orion Agency é uma plataforma especializada em análise, monitoramento, automação e geração de insights para campanhas de marketing digital, operada a partir de ${LEGAL_CONTACT.companyLocation}.`,
         "Nossos serviços podem incluir:"
       ],
       bullets: [
@@ -41,7 +41,7 @@ const pt: LegalPageContent = {
         "Titular: pessoa física a quem os dados se referem",
         "Controlador: responsável pelas decisões referentes ao tratamento dos dados",
         "Operador: quem realiza o tratamento em nome do controlador",
-        "Plataformas Parceiras: serviços integrados ao Traffic AI, como Meta Ads, Google Ads e outras ferramentas de marketing autorizadas pelo usuário"
+        "Plataformas Parceiras: serviços integrados ao Orion Agency, como Meta Ads, Google Ads e outras ferramentas de marketing autorizadas pelo usuário"
       ]
     },
     {
@@ -128,7 +128,7 @@ const pt: LegalPageContent = {
     {
       title: "6. Inteligência artificial",
       paragraphs: [
-        "O Traffic AI utiliza modelos de inteligência artificial (como Google Gemini e outros provedores configurados na infraestrutura) para gerar aprendizados, sugestões, recomendações, insights, alertas e análises automáticas.",
+        "O Orion Agency utiliza modelos de inteligência artificial (como Google Gemini e outros provedores configurados na infraestrutura) para gerar aprendizados, sugestões, recomendações, insights, alertas e análises automáticas.",
         "Os resultados produzidos possuem caráter exclusivamente informativo. O usuário reconhece que:"
       ],
       bullets: [
@@ -164,7 +164,7 @@ const pt: LegalPageContent = {
       title: "9. Transferência internacional de dados",
       paragraphs: [
         "Alguns de nossos fornecedores estão localizados fora do Brasil.",
-        "Ao utilizar o Traffic AI, você reconhece que determinadas informações podem ser processadas em servidores localizados em outros países.",
+        "Ao utilizar o Orion Agency, você reconhece que determinadas informações podem ser processadas em servidores localizados em outros países.",
         "Sempre adotaremos medidas razoáveis para garantir níveis adequados de proteção, conforme exigido pela LGPD."
       ]
     },
@@ -246,7 +246,7 @@ const pt: LegalPageContent = {
     {
       title: "16. Subprocessadores",
       paragraphs: [
-        "O Traffic AI poderá utilizar subprocessadores para operação dos serviços. Exemplos incluem:"
+        "O Orion Agency poderá utilizar subprocessadores para operação dos serviços. Exemplos incluem:"
       ],
       bullets: [
         "Vercel, Supabase, Cloudflare",
@@ -268,15 +268,13 @@ const pt: LegalPageContent = {
     {
       title: "18. Contato",
       paragraphs: [
-        "Dúvidas relacionadas à privacidade, proteção de dados ou exercício de direitos poderão ser encaminhadas através dos canais oficiais do Traffic AI:",
-        `Privacidade / LGPD: ${LEGAL_CONTACT.privacyEmail}`,
-        `Suporte: ${LEGAL_CONTACT.supportEmail}`,
-        `Comercial: ${LEGAL_CONTACT.commercialEmail}`,
+        "Dúvidas relacionadas à privacidade, proteção de dados ou exercício de direitos poderão ser encaminhadas pelo canal oficial do Orion Agency:",
+        `Contato: ${LEGAL_CONTACT.supportEmail}`,
         `Localização: ${LEGAL_CONTACT.companyLocation}`
       ]
     }
   ],
-  footerNote: `© ${new Date().getFullYear()} Traffic AI. Todos os direitos reservados.`
+  footerNote: `© ${new Date().getFullYear()} Orion Agency. Todos os direitos reservados.`
 };
 
 const en: LegalPageContent = {
@@ -284,7 +282,7 @@ const en: LegalPageContent = {
   title: "Privacy Policy",
   subtitle: `Last updated: ${LEGAL_CONTACT.termsUpdatedDateEn}`,
   intro:
-    'Traffic AI ("Traffic AI", "we", "our", or the "platform") respects user privacy and is committed to protecting personal data processed when you use our services. By using the platform, you acknowledge the practices described in this Policy, in compliance with Brazil\'s LGPD (Law No. 13,709/2018) and other applicable laws.',
+    'Orion Agency ("Orion Agency", "we", "our", or the "platform") respects user privacy and is committed to protecting personal data processed when you use our services. By using the platform, you acknowledge the practices described in this Policy, in compliance with Brazil\'s LGPD (Law No. 13,709/2018) and other applicable laws.',
   sections: [
     {
       title: "1. Introduction",
@@ -296,7 +294,7 @@ const en: LegalPageContent = {
     {
       title: "2. Who we are",
       paragraphs: [
-        `Traffic AI is a platform specialized in analysis, monitoring, automation, and insights for digital marketing campaigns, operated from ${LEGAL_CONTACT.companyLocation}.`,
+        `Orion Agency is a platform specialized in analysis, monitoring, automation, and insights for digital marketing campaigns, operated from ${LEGAL_CONTACT.companyLocation}.`,
         "Our services may include:"
       ],
       bullets: [
@@ -319,7 +317,7 @@ const en: LegalPageContent = {
         "Data Subject: the natural person to whom the data refers",
         "Controller: entity responsible for processing decisions",
         "Processor: entity that processes data on behalf of the controller",
-        "Partner Platforms: services integrated with Traffic AI, such as Meta Ads, Google Ads, and other marketing tools authorized by you"
+        "Partner Platforms: services integrated with Orion Agency, such as Meta Ads, Google Ads, and other marketing tools authorized by you"
       ]
     },
     {
@@ -406,7 +404,7 @@ const en: LegalPageContent = {
     {
       title: "6. Artificial intelligence",
       paragraphs: [
-        "Traffic AI uses AI models (such as Google Gemini and other providers configured in our infrastructure) to generate learnings, suggestions, recommendations, insights, alerts, and automated analyses.",
+        "Orion Agency uses AI models (such as Google Gemini and other providers configured in our infrastructure) to generate learnings, suggestions, recommendations, insights, alerts, and automated analyses.",
         "Results are for informational purposes only. You acknowledge that:"
       ],
       bullets: [
@@ -442,7 +440,7 @@ const en: LegalPageContent = {
       title: "9. International data transfers",
       paragraphs: [
         "Some of our providers are located outside Brazil.",
-        "By using Traffic AI, you acknowledge that certain information may be processed on servers in other countries.",
+        "By using Orion Agency, you acknowledge that certain information may be processed on servers in other countries.",
         "We will adopt reasonable measures to ensure adequate protection levels as required by LGPD."
       ]
     },
@@ -521,7 +519,7 @@ const en: LegalPageContent = {
     },
     {
       title: "16. Subprocessors",
-      paragraphs: ["Traffic AI may use subprocessors to operate the services. Examples include:"],
+      paragraphs: ["Orion Agency may use subprocessors to operate the services. Examples include:"],
       bullets: [
         "Vercel, Supabase, Cloudflare",
         "Google (Gemini and Google Ads APIs)",
@@ -542,15 +540,13 @@ const en: LegalPageContent = {
     {
       title: "18. Contact",
       paragraphs: [
-        "Questions about privacy, data protection, or exercising your rights may be sent through Traffic AI's official channels:",
-        `Privacy / LGPD: ${LEGAL_CONTACT.privacyEmail}`,
-        `Support: ${LEGAL_CONTACT.supportEmail}`,
-        `Commercial: ${LEGAL_CONTACT.commercialEmail}`,
+        "Questions about privacy, data protection, or exercising your rights may be sent through Orion Agency's official channel:",
+        `Contact: ${LEGAL_CONTACT.supportEmail}`,
         `Location: ${LEGAL_CONTACT.companyLocation}`
       ]
     }
   ],
-  footerNote: `© ${new Date().getFullYear()} Traffic AI. All rights reserved.`
+  footerNote: `© ${new Date().getFullYear()} Orion Agency. All rights reserved.`
 };
 
 export const privacyContent: Record<LegalLocale, LegalPageContent> = { "pt-BR": pt, en };

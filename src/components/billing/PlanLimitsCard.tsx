@@ -24,7 +24,7 @@ export function BillingBackLink({ href = "/billing/plans", label }: { href?: str
       href={href}
       className="group inline-flex items-center gap-2.5 text-sm font-medium text-[var(--text-dim)] transition hover:text-[var(--violet)]"
     >
-      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-color)] bg-white shadow-sm transition group-hover:border-[var(--amber)]/40 group-hover:bg-[rgba(124,58,237,0.06)] group-hover:text-[var(--violet)]">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-color)] bg-[var(--surface-card)] shadow-sm transition group-hover:border-[var(--amber)]/40 group-hover:bg-[rgba(124,58,237,0.06)] group-hover:text-[var(--violet)]">
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
@@ -388,10 +388,10 @@ function planTier(slug: string): PlanTier {
 }
 
 const TIER_STYLES: Record<PlanTier, string> = {
-  free: "border-[var(--border-color)]/80 bg-white shadow-sm hover:border-slate-300 hover:shadow-md",
-  standard: "border-[var(--border-color)]/80 bg-white shadow-sm hover:border-[var(--amber)]/40 hover:shadow-md",
+  free: "border-[var(--border-color)]/80 bg-[var(--surface-card)] shadow-sm hover:border-slate-300 hover:shadow-md",
+  standard: "border-[var(--border-color)]/80 bg-[var(--surface-card)] shadow-sm hover:border-[var(--amber)]/40 hover:shadow-md",
   popular:
-    "border-violet-300 bg-gradient-to-b from-violet-50 to-white shadow-lg shadow-violet-100/60 ring-1 ring-violet-200 lg:scale-[1.02]",
+    "border-violet-300 bg-gradient-to-b from-violet-500/10 to-transparent shadow-lg shadow-violet-100/60 ring-1 ring-violet-200 lg:scale-[1.02]",
   premium:
     "border-slate-800/20 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl shadow-slate-900/30 ring-1 ring-amber-400/40 lg:scale-[1.05] lg:-mt-2 lg:mb-2"
 };
@@ -475,6 +475,61 @@ export function PlanCard({
   );
 }
 
+/** Card "Personalizado" (Enterprise / sob consulta) — sem preço fixo, CTA de contato. */
+export function ContactPlanCard({ variant = "marketing" }: { variant?: "portal" | "marketing" }) {
+  const t = useTranslations("billingPage");
+  const isMarketing = variant === "marketing";
+  const cardStyle = isMarketing ? MARKETING_TIER_STYLES.standard : TIER_STYLES.standard;
+  const titleClass = isMarketing ? "text-white" : "text-[var(--text-main)]";
+  const descClass = isMarketing ? "text-violet-200/75" : "text-[var(--text-dim)]";
+  const dividerClass = isMarketing ? "border-white/10" : "border-[var(--border-color)]";
+  const perkClass = isMarketing ? "text-violet-200/80" : "text-[var(--text-dim)]";
+  const perks = [
+    t("planPersonalizedPerk1"),
+    t("planPersonalizedPerk2"),
+    t("planPersonalizedPerk3"),
+    t("planPersonalizedPerk4")
+  ];
+
+  return (
+    <div className={`relative flex flex-col rounded-2xl border p-6 transition ${cardStyle}`}>
+      <div className="mb-4">
+        <h2 className={`text-lg font-bold ${titleClass}`}>{t("planPersonalizedName")}</h2>
+        <p className={`mt-1 text-sm leading-relaxed ${descClass}`}>{t("planPersonalizedDesc")}</p>
+      </div>
+
+      <div>
+        <span className={`text-3xl font-bold tracking-tight ${titleClass}`}>{t("planPersonalizedPrice")}</span>
+        <p className={`mt-1 text-sm ${descClass}`}>{t("planPersonalizedPriceHint")}</p>
+      </div>
+
+      <div className={`my-6 border-t pt-5 ${dividerClass}`}>
+        <ul className="space-y-2.5 text-sm">
+          {perks.map((p) => (
+            <li key={p} className={`flex items-center gap-2 ${perkClass}`}>
+              <CheckIcon />
+              {p}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-auto">
+        <Link
+          href="/legal/support"
+          className={`mt-6 block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
+            isMarketing
+              ? "border border-white/20 bg-white/10 text-white hover:bg-white/15"
+              : "border border-[var(--border-color)] text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
+          }`}
+        >
+          {t("planPersonalizedCta")}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export function CheckoutPlanSummary({
   plan,
   cycle,
@@ -491,7 +546,7 @@ export function CheckoutPlanSummary({
   const t = useTranslations("billingPage");
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[rgba(124,58,237,0.15)] bg-gradient-to-br from-violet-50 via-white to-slate-50 shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-[rgba(124,58,237,0.15)] bg-gradient-to-br from-violet-500/10 via-transparent to-transparent shadow-sm">
       <div className="border-b border-amber-100/80 bg-[var(--amber)]/5 px-5 py-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--violet)]">{t("yourPlan")}</p>
         <h2 className="mt-1 text-xl font-bold text-[var(--text-main)]">{plan.name}</h2>
@@ -499,7 +554,7 @@ export function CheckoutPlanSummary({
         {pricing.discountPercent > 0 ? (
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-[var(--text-dim)]">
             <span className="line-through">{formatMoney(pricing.listCents, currency)}</span>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-500">
               {t("discountBadge", { percent: pricing.discountPercent })}
             </span>
           </div>
@@ -531,9 +586,9 @@ export function CheckoutPlanSummary({
 export function DiscountRulesBanner() {
   const t = useTranslations("billingPage");
   return (
-    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-900">
+    <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-500">
       <p className="font-semibold">{t("discountRulesTitle")}</p>
-      <ul className="mt-2 space-y-1 text-emerald-800/90">
+      <ul className="mt-2 space-y-1 text-emerald-500/90">
         <li>{t("discountRuleYearly", { percent: YEARLY_DISCOUNT_PERCENT })}</li>
         <li>{t("discountRuleYearlyPix", { percent: YEARLY_PIX_DISCOUNT_PERCENT })}</li>
         <li>{t("discountRuleYearlyInstallments", { percent: YEARLY_DISCOUNT_PERCENT })}</li>

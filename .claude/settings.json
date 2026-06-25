@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const p=require\\('./messages/pt-BR.json'\\); const e=require\\('./messages/en.json'\\); console.log\\('pt termsAccept:', JSON.stringify\\(p.auth.termsAccept\\)\\); console.log\\('en termsAccept:', JSON.stringify\\(e.auth.termsAccept\\)\\);\")",
+      "Bash(node -e \"require\\('./messages/pt-BR.json'\\);require\\('./messages/en.json'\\);console.log\\('JSON ok'\\)\")",
+      "Bash(command -v chromium-cli)",
+      "Bash(command -v chromium-cli playwright)",
+      "PowerShell(npx tsc --noEmit -p tsconfig.json 2>&1)"
+    ]
+  }
+}

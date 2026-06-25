@@ -4,7 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Traffic AI Design System (UX Pilot v1) ─── */
+/* ─── Orion Agency Design System (UX Pilot v1) ─── */
 :root {
   /* Sidebar — always dark */
   --sidebar-bg: #0a0f14;
@@ -64,9 +64,30 @@
   --brain-shelf-border: rgba(124, 58, 237, 0.18);
 
   /* Legacy aliases (keep for gradual migration) */
-  --brand: var(--violet-bright);
+  --brand: var(--amber-bright);
   --surface: var(--surface-bg);
   --card: var(--surface-card);
+
+  /* Theme-aware UI accent — amber in light, violet in dark */
+  --ui-accent: var(--amber-bright);
+  --ui-accent-muted: rgba(245, 166, 35, 0.12);
+  --ui-accent-muted-strong: rgba(245, 166, 35, 0.14);
+  --ui-accent-border: rgba(245, 166, 35, 0.35);
+  --ui-accent-border-strong: rgba(245, 166, 35, 0.45);
+  --ui-accent-hover: rgba(245, 166, 35, 0.08);
+  --ui-accent-glow: rgba(245, 166, 35, 0.18);
+  --ui-accent-glow-strong: rgba(245, 166, 35, 0.38);
+  --ui-accent-ring: rgba(245, 166, 35, 0.22);
+  --ui-accent-gradient: radial-gradient(
+    circle,
+    rgba(245, 166, 35, 0.38) 0%,
+    rgba(245, 166, 35, 0.12) 45%,
+    transparent 72%
+  );
+  --ui-accent-btn-from: var(--amber-bright);
+  --ui-accent-btn-to: #e8920d;
+  --ui-accent-btn-text: #0f1419;
+  --ui-accent-btn-shadow: rgba(245, 166, 35, 0.22);
 }
 
 [data-theme="dark"] {
@@ -116,6 +137,27 @@
     rgba(168, 85, 247, 0.06) 100%
   );
   --brain-shelf-border: rgba(124, 58, 237, 0.28);
+
+  --brand: var(--violet-bright);
+  --ui-accent: var(--violet-bright);
+  --ui-accent-muted: rgba(124, 58, 237, 0.12);
+  --ui-accent-muted-strong: rgba(124, 58, 237, 0.14);
+  --ui-accent-border: rgba(124, 58, 237, 0.35);
+  --ui-accent-border-strong: rgba(124, 58, 237, 0.45);
+  --ui-accent-hover: rgba(124, 58, 237, 0.08);
+  --ui-accent-glow: rgba(124, 58, 237, 0.18);
+  --ui-accent-glow-strong: rgba(124, 58, 237, 0.38);
+  --ui-accent-ring: rgba(124, 58, 237, 0.22);
+  --ui-accent-gradient: radial-gradient(
+    circle,
+    rgba(124, 58, 237, 0.38) 0%,
+    rgba(124, 58, 237, 0.12) 45%,
+    transparent 72%
+  );
+  --ui-accent-btn-from: var(--violet);
+  --ui-accent-btn-to: var(--violet-bright);
+  --ui-accent-btn-text: #ffffff;
+  --ui-accent-btn-shadow: rgba(124, 58, 237, 0.28);
 }
 
 /* Force light tokens on nested surfaces (e.g. login panel when html is dark) */
@@ -160,6 +202,12 @@
   --chart-active-dot-ring: #ffffff;
   --chart-frame-bg: rgba(248, 250, 252, 0.75);
   --chart-frame-border: rgba(148, 163, 184, 0.22);
+
+  --ui-accent: var(--amber-bright);
+  --ui-accent-btn-from: var(--amber-bright);
+  --ui-accent-btn-to: #e8920d;
+  --ui-accent-btn-text: #0f1419;
+  --ui-accent-btn-shadow: rgba(245, 166, 35, 0.22);
 }
 
 html {
@@ -236,6 +284,12 @@ h6,
   .ui-label {
     @apply text-xs font-medium;
     color: var(--text-dim);
+  }
+
+  /* Checkbox/radio nativos — accent temático (âmbar light, roxo dark). */
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--ui-accent);
   }
 
   /* Header / CommandStrip filter pill inputs */
@@ -328,6 +382,18 @@ h6,
   }
 
   .ui-btn-brand:hover:not(:disabled) {
+    filter: brightness(1.05);
+  }
+
+  /* CTA com accent temático — painéis flat / Configurações (âmbar light, roxo dark) */
+  .ui-btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold shadow-lg transition disabled:opacity-50;
+    background: linear-gradient(135deg, var(--ui-accent-btn-from), var(--ui-accent-btn-to));
+    color: var(--ui-accent-btn-text);
+    box-shadow: 0 8px 20px -6px var(--ui-accent-btn-shadow);
+  }
+
+  .ui-btn-accent:hover:not(:disabled) {
     filter: brightness(1.05);
   }
 

@@ -95,7 +95,7 @@ function RoleBadge({
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-[var(--text-dim)]">
+    <span className="inline-flex items-center rounded-full bg-[var(--surface-bg)] px-2.5 py-1 text-xs font-medium text-[var(--text-dim)]">
       {userLabel}
     </span>
   );
@@ -166,7 +166,7 @@ export function AdminUsersClient() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("usersSearchPlaceholder")}
-            className="w-full rounded-xl border border-[var(--border-color)] bg-white py-2 pl-9 pr-24 text-xs text-[var(--text-main)] shadow-sm transition placeholder:text-[var(--text-dimmer)] focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+            className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] py-2 pl-9 pr-24 text-xs text-[var(--text-main)] shadow-sm transition placeholder:text-[var(--text-dimmer)] focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
           />
           <button
             type="submit"
@@ -188,8 +188,8 @@ export function AdminUsersClient() {
 
           <div className="space-y-2.5">
             {users.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-color)] bg-white/60 px-4 py-12 text-center">
-                <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-[var(--text-dimmer)]">
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--surface-card)] px-4 py-12 text-center">
+                <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-bg)] text-[var(--text-dimmer)]">
                   <AdminIcon name="user" className="h-5 w-5" />
                 </span>
                 <p className="font-medium text-[var(--text-dim)]">{t("usersEmpty")}</p>
@@ -203,7 +203,7 @@ export function AdminUsersClient() {
               users.map((u) => (
                 <article
                   key={u.id}
-                  className={`group ${ADMIN_USERS_ROW_GRID} rounded-xl border border-[var(--border-color)]/90 bg-white py-2.5 shadow-sm transition hover:border-slate-300 hover:shadow-md`}
+                  className={`group ${ADMIN_USERS_ROW_GRID} rounded-xl border border-[var(--border-color)]/90 bg-[var(--surface-card)] py-2.5 shadow-sm transition hover:border-slate-300 hover:shadow-md`}
                 >
                   <div className={`${CELL} min-w-0 gap-3.5`}>
                     <UserAvatar name={u.name} email={u.email} />
@@ -261,7 +261,7 @@ export function AdminUsersClient() {
               type="button"
               disabled={page <= 1 || loading}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-lg border border-[var(--border-color)] bg-white px-2.5 py-1.5 font-medium text-[var(--text-dim)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-2.5 py-1.5 font-medium text-[var(--text-dim)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("usersPrev")}
             </button>
@@ -272,7 +272,7 @@ export function AdminUsersClient() {
               type="button"
               disabled={page >= totalPages || loading}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-lg border border-[var(--border-color)] bg-white px-2.5 py-1.5 font-medium text-[var(--text-dim)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-2.5 py-1.5 font-medium text-[var(--text-dim)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("usersNext")}
             </button>

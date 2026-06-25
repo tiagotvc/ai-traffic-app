@@ -2,6 +2,7 @@ import { repositories } from "@/db/repositories";
 import type { User } from "@/db/entities/User";
 import { hashPassword } from "@/lib/password";
 import { resolveTenantName } from "@/lib/tenant-name";
+import { LEGAL_CONTACT } from "@/lib/marketing/legal-contact";
 
 export type RegisterResult =
   | { ok: true; userId: string }
@@ -36,11 +37,17 @@ export async function registerUser(args: {
 
   const passwordHash = await hashPassword(password);
 
+  // No cadastro o usuário marca o checkbox de aceite dos termos — registramos aqui.
+  const termsAcceptedAt = new Date();
+  const termsAcceptedVersion = LEGAL_CONTACT.termsVersion;
+
   let user: User;
   if (existing) {
     existing.passwordHash = passwordHash;
     if (args.name) existing.name = args.name;
     existing.tenantId = tenant.id;
+    existing.termsAcceptedAt = termsAcceptedAt;
+    existing.termsAcceptedVersion = termsAcceptedVersion;
     user = await userRepo.save(existing);
   } else {
     user = await userRepo.save(
@@ -48,7 +55,9 @@ export async function registerUser(args: {
         email,
         name: args.name?.trim() || null,
         tenantId: tenant.id,
-        passwordHash
+        passwordHash,
+        termsAcceptedAt,
+        termsAcceptedVersion
       })
     );
   }

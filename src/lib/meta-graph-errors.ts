@@ -52,7 +52,7 @@ export function formatMetaSavedAudienceCreateError(error: unknown): string {
   if (isMetaSavedAudienceCreateBlocked(error)) {
     return (
       "A Meta não permite mais criar públicos salvos via API (erro #3). " +
-      "O targeting foi salvo na biblioteca Traffic AI e pode ser usado em campanhas — " +
+      "O targeting foi salvo na biblioteca Orion Agency e pode ser usado em campanhas — " +
       "ao publicar um conjunto de anúncios, o segmento é enviado à Meta normalmente."
     );
   }

@@ -95,12 +95,12 @@ export default function AboutContent() {
                   <Zap size={26} className="text-white" />
                 </div>
                 <div>
-                  <h1 className="font-heading font-bold text-white text-3xl">Traffic AI</h1>
+                  <h1 className="font-heading font-bold text-white text-3xl">Orion Agency</h1>
                   <p className="text-indigo-200 text-sm">A plataforma do gestor de tráfego moderno</p>
                 </div>
               </div>
               <p className="text-indigo-100 text-base leading-relaxed relative z-10 max-w-2xl">
-                Fundada em 2022, o Traffic AI nasceu da frustração de gestores de tráfego que gastavam horas
+                Fundada em 2022, o Orion Agency nasceu da frustração de gestores de tráfego que gastavam horas
                 acessando múltiplas plataformas para reunir dados. Nossa missão é centralizar, automatizar e
                 inteligir a gestão de campanhas digitais.
               </p>
@@ -140,7 +140,7 @@ export default function AboutContent() {
                 </h2>
               </div>
               <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--text-dim)" }}>
-                Acreditamos que decisões de marketing devem ser guiadas por dados, não por intuição. O Traffic AI
+                Acreditamos que decisões de marketing devem ser guiadas por dados, não por intuição. O Orion Agency
                 foi criado para democratizar o acesso a inteligência artificial aplicada ao tráfego pago, permitindo
                 que agências de todos os tamanhos compitam com o mesmo nível de insight das grandes empresas.
               </p>
@@ -281,7 +281,7 @@ export default function AboutContent() {
                 </h2>
               </div>
               <p className="text-sm leading-relaxed" style={{ color: "var(--text-dim)" }}>
-                O Traffic AI é certificado em conformidade com a <strong style={{ color: "var(--text-main)" }}>LGPD (Lei nº 13.709/2018)</strong>,
+                O Orion Agency é certificado em conformidade com a <strong style={{ color: "var(--text-main)" }}>LGPD (Lei nº 13.709/2018)</strong>,
                 aplica criptografia de dados em repouso e em trânsito, e passa por auditorias de segurança regulares.
                 Somos parceiros oficiais da Meta, Google e TikTok para acesso à API de anúncios.
               </p>

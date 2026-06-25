@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Mail, MapPin, MessageCircle, Send, Shield } from "lucide-react";
+import { ChevronDown, Mail, MapPin, Send } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -19,16 +19,23 @@ export function AppInstitutionalSupport() {
   const faqs = getSupportFaqs(locale);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [form, setForm] = useState({ name: "", email: "", company: "", subject: "", message: "" });
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  function submitForm(e: React.FormEvent) {
+  async function submitForm(e: React.FormEvent) {
     e.preventDefault();
-    const body = [
-      form.message,
-      form.company ? `\n\nEmpresa: ${form.company}` : "",
-      `\n\nEnviado via formulário da Orion Agency`
-    ].join("");
-    const mailto = `mailto:${LEGAL_CONTACT.supportEmail}?subject=${encodeURIComponent(form.subject || "Contato Orion Agency")}&body=${encodeURIComponent(`Nome: ${form.name}\nE-mail: ${form.email}${body}`)}`;
-    window.location.href = mailto;
+    setStatus("sending");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form)
+      });
+      if (!res.ok) throw new Error("failed");
+      setStatus("sent");
+      setForm({ name: "", email: "", company: "", subject: "", message: "" });
+    } catch {
+      setStatus("error");
+    }
   }
 
   return (
@@ -44,30 +51,13 @@ export function AppInstitutionalSupport() {
           title={t("supportEmailTitle")}
           body={t("supportEmailBody")}
           email={LEGAL_CONTACT.supportEmail}
-          note={locale === "en" ? LEGAL_CONTACT.supportHoursEn : LEGAL_CONTACT.supportHours}
-        />
-        <ContactCard
-          icon={MessageCircle}
-          iconClass="bg-amber-500/10 text-amber-600"
-          title={t("supportCommercialTitle")}
-          body={t("supportCommercialBody")}
-          email={LEGAL_CONTACT.commercialEmail}
-        />
-        <ContactCard
-          icon={Shield}
-          iconClass="bg-sky-500/10 text-sky-600"
-          title={t("supportPrivacyTitle")}
-          body={t("supportPrivacyBody")}
-          email={LEGAL_CONTACT.privacyEmail}
-          linkHref="/legal/privacy"
-          linkLabel={t("supportPrivacyLink")}
+          note={`${locale === "en" ? LEGAL_CONTACT.supportResponseEn : LEGAL_CONTACT.supportResponse} ${locale === "en" ? LEGAL_CONTACT.supportHoursEn : LEGAL_CONTACT.supportHours}`}
         />
         <ContactCard
           icon={MapPin}
           iconClass="bg-emerald-500/10 text-emerald-600"
           title={t("supportLocationTitle")}
           body={LEGAL_CONTACT.companyLocation}
-          email={LEGAL_CONTACT.supportEmail}
           linkHref="/legal/data-deletion"
           linkLabel={t("supportDataDeletionLink")}
         />
@@ -91,11 +81,21 @@ export function AppInstitutionalSupport() {
                 className="ui-input w-full resize-y"
               />
             </label>
-            <div className="sm:col-span-2">
-              <button type="submit" className="ui-btn-primary inline-flex items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+              <button
+                type="submit"
+                disabled={status === "sending"}
+                className="ui-btn-primary inline-flex items-center gap-2 text-sm disabled:opacity-60"
+              >
                 <Send size={14} />
-                {t("supportFormSubmit")}
+                {status === "sending" ? t("supportFormSending") : t("supportFormSubmit")}
               </button>
+              {status === "sent" ? (
+                <span className="text-xs font-medium text-emerald-500">{t("supportFormSent")}</span>
+              ) : null}
+              {status === "error" ? (
+                <span className="text-xs font-medium text-red-500">{t("supportFormError")}</span>
+              ) : null}
             </div>
           </form>
         </AppInstitutionalSection>
@@ -155,7 +155,7 @@ function ContactCard({
   iconClass: string;
   title: string;
   body: string;
-  email: string;
+  email?: string;
   note?: string;
   linkHref?: string;
   linkLabel?: string;
@@ -167,12 +167,14 @@ function ContactCard({
       </span>
       <h3 className="mt-3 font-heading text-sm font-semibold text-[var(--text-main)]">{title}</h3>
       <p className="mt-2 text-sm text-[var(--text-dim)]">{body}</p>
-      <a
-        href={`mailto:${email}`}
-        className="mt-3 inline-block text-sm font-semibold text-[var(--violet-bright)] hover:underline"
-      >
-        {email}
-      </a>
+      {email ? (
+        <a
+          href={`mailto:${email}`}
+          className="mt-3 inline-block text-sm font-semibold text-[var(--violet-bright)] hover:underline"
+        >
+          {email}
+        </a>
+      ) : null}
       {note ? <p className="mt-2 text-xs text-[var(--text-dimmer)]">{note}</p> : null}
       {linkHref && linkLabel ? (
         <p className="mt-2">

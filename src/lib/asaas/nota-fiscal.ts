@@ -20,7 +20,7 @@ export async function emitAsaasNotaFiscal(input: {
     body: JSON.stringify({
       payment: input.paymentId,
       serviceDescription: input.serviceDescription,
-      observations: `Assinatura Traffic AI — ${input.customerName}`,
+      observations: `Assinatura Orion Agency — ${input.customerName}`,
       value: input.valueCents / 100,
       municipalServiceCode: nfServiceCode || undefined,
       customer: {

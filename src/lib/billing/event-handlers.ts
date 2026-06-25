@@ -164,7 +164,7 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
           customerName: cust?.name ?? "",
           customerCpfCnpj: cust?.cpfCnpj ?? "",
           amountCents: inv.amountCents,
-          description: inv.description ?? "Assinatura Traffic AI"
+          description: inv.description ?? "Assinatura Orion Agency"
         });
       }
     }
@@ -179,7 +179,7 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
         status: "paid",
         paidAt: new Date(),
         nfStatus: provider === "asaas" ? "pending" : "not_applicable",
-        description: "Assinatura Traffic AI"
+        description: "Assinatura Orion Agency"
       })
     );
   }
@@ -244,7 +244,7 @@ export async function emitNotaFiscal(payload: Record<string, unknown>) {
   try {
     const nf = await emitAsaasNotaFiscal({
       paymentId,
-      serviceDescription: (payload.description as string) ?? "Assinatura Traffic AI",
+      serviceDescription: (payload.description as string) ?? "Assinatura Orion Agency",
       valueCents: (payload.amountCents as number) ?? inv.amountCents,
       customerName: (payload.customerName as string) ?? "",
       customerCpfCnpj: (payload.customerCpfCnpj as string) ?? ""

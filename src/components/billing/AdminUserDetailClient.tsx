@@ -224,8 +224,8 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
         <div
           className={`rounded-xl border px-4 py-3 text-sm ${
             message.type === "ok"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-red-200 bg-red-50 text-red-800"
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-500"
+              : "border-red-200 bg-red-500/15 text-red-500"
           }`}
         >
           {message.text}
@@ -470,7 +470,7 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-[var(--text-dim)] ring-1 ring-slate-200">
+                    <span className="rounded-full bg-[var(--surface-card)] px-2.5 py-0.5 text-xs font-medium text-[var(--text-dim)] ring-1 ring-slate-200">
                       {m.role}
                     </span>
                     {m.id !== userId ? (

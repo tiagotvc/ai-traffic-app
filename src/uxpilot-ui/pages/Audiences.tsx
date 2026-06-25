@@ -826,7 +826,7 @@ export default function Audiences() {
                 <h1 className="font-heading font-bold text-2xl" style={{ color: "var(--text-main)" }}>Públicos / Lookalike</h1>
               </div>
               <p className="text-sm font-body mt-1" style={{ color: "var(--text-dim)" }}>
-                Crie, gerencie e reutilize públicos sem sair do Traffic AI.
+                Crie, gerencie e reutilize públicos sem sair do Orion Agency.
               </p>
             </div>
             <div className="flex items-center gap-3">

@@ -1,11 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { Database, User, Zap } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { MetaSetupCallout } from "@/components/MetaSetupCallout";
-import { MetaOAuthRedirectHint } from "@/components/settings/MetaOAuthRedirectHint";
+import { DsFlatSection } from "@/design-system";
+import { cn } from "@/lib/cn";
 
 type WorkspaceMetaInfo = {
   ok: true;
@@ -15,64 +17,41 @@ type WorkspaceMetaInfo = {
   canManage: boolean;
 };
 
-const INTEGRATION_ICONS = {
-  meta: (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H8l4-7v4h3l-4 7z" />
-    </svg>
-  ),
-  whatsapp: (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-    </svg>
-  ),
-  google: (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
-      <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.5 3.4 14.5 2.6 12 2.6 6.9 2.6 2.7 6.8 2.7 12s4.2 9.4 9.3 9.4c5.4 0 8.9-3.8 8.9-9.1 0-.6-.1-1.1-.2-1.5H12z" />
-    </svg>
-  )
-};
+function SoonBadge({ tone }: { tone: "emerald" | "sky" }) {
+  const t = useTranslations("settings");
+  const toneClass =
+    tone === "emerald"
+      ? "bg-emerald-500/15 text-emerald-400"
+      : "bg-sky-500/15 text-sky-400";
 
-function IntegrationCard({
+  return (
+    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", toneClass)}>
+      {t("integrationComingSoon")}
+    </span>
+  );
+}
+
+function ComingSoonCard({
   name,
   description,
   icon,
-  status,
-  statusTone = "neutral",
-  actions,
-  footer,
-  disabled = false
+  badgeTone
 }: {
   name: string;
   description: string;
   icon: ReactNode;
-  status?: ReactNode;
-  statusTone?: "connected" | "disconnected" | "neutral" | "soon";
-  actions?: ReactNode;
-  footer?: ReactNode;
-  disabled?: boolean;
+  badgeTone: "emerald" | "sky";
 }) {
-  const toneClass = {
-    connected: "border-[rgba(16,185,129,0.25)] bg-[rgba(16,185,129,0.06)]",
-    disconnected: "border-[var(--border-color)] bg-[var(--surface-card)]",
-    neutral: "border-[var(--border-color)] bg-[var(--surface-card)]",
-    soon: "border-dashed border-[var(--border-color)] bg-[var(--surface-thead)] opacity-80"
-  }[statusTone];
-
   return (
-    <article className={`ui-card p-4 ${toneClass}`}>
+    <article className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-4">
       <div className="flex items-start gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[rgba(79,70,229,0.12)] text-[var(--violet)]">
-          {icon}
-        </span>
-        <div className="min-w-0 flex-1">
+        <div className="shrink-0">{icon}</div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{name}</h3>
-            {status}
+            <SoonBadge tone={badgeTone} />
           </div>
-          <p className="mt-1 text-xs text-[var(--text-dimmer)]">{description}</p>
-          {!disabled && actions ? <div className="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
-          {footer ? <div className="mt-3 border-t border-[var(--border-color)] pt-3">{footer}</div> : null}
+          <p className="mt-1 text-xs leading-relaxed text-[var(--text-dim)]">{description}</p>
         </div>
       </div>
     </article>
@@ -151,138 +130,152 @@ export function SettingsIntegrationsTab({
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("integrationsPageTitle")}</h2>
-        <p className="text-[11px] text-[var(--text-dimmer)]">{t("integrationsPageSubtitle")}</p>
-      </div>
+    <DsFlatSection
+      title={t("integrationsPageTitle")}
+      subtitle={t("integrationsPageSubtitle")}
+      titleClassName="text-base"
+      className="space-y-6"
+      contentClassName="space-y-8"
+    >
+      {!metaOAuthConfigured ? <MetaSetupCallout /> : null}
 
-      {!metaOAuthConfigured ? <MetaSetupCallout /> : <MetaOAuthRedirectHint />}
-      {message ? (
-        <div className="ui-alert-danger">
-          {message}
-        </div>
-      ) : null}
+      {message ? <div className="ui-alert-danger">{message}</div> : null}
 
-      <IntegrationCard
-        name="Meta Ads"
-        description={t("metaHint")}
-        icon={INTEGRATION_ICONS.meta}
-        statusTone={metaConnected ? "connected" : "disconnected"}
-        status={
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              metaConnected
-                ? "bg-[rgba(16,185,129,0.12)] text-[var(--success)]"
-                : "bg-[var(--surface-thead)] text-[var(--text-dimmer)]"
-            }`}
-          >
-            {metaConnected === null
-              ? tCommon("loading")
-              : metaConnected
-                ? t("metaConnected")
-                : t("metaDisconnected")}
+      <article className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+            <Zap size={18} strokeWidth={2} />
           </span>
-        }
-        actions={
-          <>
-            {connectMetaSlot}
-            <Link
-              href="/settings/meta-assets"
-              className="ui-btn-secondary !px-3 !py-1.5 text-xs"
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">Meta Ads</h3>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                metaConnected
+                  ? "bg-emerald-500/15 text-emerald-400"
+                  : "bg-[var(--surface-thead)] text-[var(--text-dimmer)]"
+              )}
             >
-              {t("metaAssetsLink")}
-            </Link>
-            <Link
-              href="/clients"
-              className="ui-btn-secondary !px-3 !py-1.5 text-xs"
-            >
-              {t("publishClientsLink")}
-            </Link>
-          </>
-        }
-        footer={
-          <>
-            <p className="text-[11px] text-[var(--text-dimmer)]">{t("publishPerClient")}</p>
-            {wsMeta ? (
-              <div className="mt-3 space-y-2">
-                <p className="text-xs font-semibold text-[var(--text-dim)]">{t("workspaceMetaTitle")}</p>
-                <p className="text-[11px] text-[var(--text-dimmer)]">{t("workspaceMetaHint")}</p>
-                <p className="text-xs text-[var(--text-dim)]">
-                  {wsMeta.workspaceConnectionName
-                    ? t("workspaceMetaResponsible", { name: wsMeta.workspaceConnectionName })
-                    : t("workspaceMetaNone")}
-                </p>
-                {wsMeta.canManage ? (
-                  <div className="flex flex-wrap gap-2">
-                    {!wsMeta.isOwner ? (
-                      <button
-                        type="button"
-                        disabled={wsMetaPending}
-                        onClick={() => {
-                          if (!metaConnected) {
-                            setWsMetaMessage(t("workspaceMetaClaimNeedsToken"));
-                            return;
-                          }
-                          runWorkspaceMetaAction({ action: "claim" }, "workspaceMetaClaimed");
-                        }}
-                        className="ui-btn-primary !px-3 !py-1.5 text-xs disabled:opacity-60"
-                      >
-                        {t("workspaceMetaClaim")}
-                      </button>
-                    ) : null}
+              {metaConnected === null
+                ? tCommon("loading")
+                : metaConnected
+                  ? t("metaConnected")
+                  : t("metaDisconnected")}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {connectMetaSlot}
+          <Link href="/settings/meta-assets" className="ui-btn-secondary !px-3 !py-1.5 text-xs">
+            {t("metaAssetsLink")}
+          </Link>
+          <Link href="/clients" className="ui-btn-secondary !px-3 !py-1.5 text-xs">
+            {t("publishClientsLink")}
+          </Link>
+        </div>
+
+        <div className="my-5 border-t border-[var(--border-color)]" />
+
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+              <Database size={16} strokeWidth={2} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[var(--text-main)]">{t("workspaceMetaTitle")}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-dim)]">
+                {t("workspaceMetaHint")}
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-dimmer)]">
+                {t("publishPerClient")}
+              </p>
+              {wsMeta?.canManage ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {!wsMeta.isOwner ? (
                     <button
                       type="button"
                       disabled={wsMetaPending}
                       onClick={() => {
-                        if (!window.confirm(t("workspaceMetaDisconnectConfirm"))) return;
-                        runWorkspaceMetaAction({ action: "disconnect" }, "workspaceMetaDisconnected");
+                        if (!metaConnected) {
+                          setWsMetaMessage(t("workspaceMetaClaimNeedsToken"));
+                          return;
+                        }
+                        runWorkspaceMetaAction({ action: "claim" }, "workspaceMetaClaimed");
                       }}
-                      className="ui-btn-danger !px-3 !py-1.5 text-xs disabled:opacity-60"
+                      className="ui-btn-accent !px-3 !py-1.5 text-xs disabled:opacity-60"
                     >
-                      {t("workspaceMetaDisconnect")}
+                      {t("workspaceMetaClaim")}
                     </button>
-                  </div>
-                ) : wsMeta.workspaceConnectionName ? (
-                  <p className="text-[11px] text-[var(--text-dimmer)]">
-                    {t("workspaceMetaManagedBy", { name: wsMeta.workspaceConnectionName })}
-                  </p>
-                ) : null}
-                {wsMetaMessage ? (
-                  <p className="text-[11px] text-[var(--text-dimmer)]">{wsMetaMessage}</p>
-                ) : null}
-              </div>
-            ) : null}
-          </>
-        }
-      />
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={wsMetaPending}
+                    onClick={() => {
+                      if (!window.confirm(t("workspaceMetaDisconnectConfirm"))) return;
+                      runWorkspaceMetaAction({ action: "disconnect" }, "workspaceMetaDisconnected");
+                    }}
+                    className="ui-btn-danger !px-3 !py-1.5 text-xs disabled:opacity-60"
+                  >
+                    {t("workspaceMetaDisconnect")}
+                  </button>
+                </div>
+              ) : null}
+              {wsMetaMessage ? (
+                <p className="mt-2 text-[11px] text-[var(--text-dimmer)]">{wsMetaMessage}</p>
+              ) : null}
+            </div>
+          </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <IntegrationCard
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+              <User size={16} strokeWidth={2} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[var(--text-main)]">
+                {wsMeta?.workspaceConnectionName
+                  ? t("workspaceMetaResponsible", { name: wsMeta.workspaceConnectionName })
+                  : t("workspaceMetaNone")}
+              </p>
+              {wsMeta?.workspaceConnectionName && !wsMeta.canManage ? (
+                <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-dimmer)]">
+                  {t("workspaceMetaManagedBy", { name: wsMeta.workspaceConnectionName })}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <ComingSoonCard
           name={t("integrationWhatsappTitle")}
           description={t("integrationWhatsappDesc")}
-          icon={INTEGRATION_ICONS.whatsapp}
-          status={
-            <span className="rounded-full bg-[var(--surface-thead)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-dimmer)]">
-              {t("integrationComingSoon")}
+          badgeTone="emerald"
+          icon={
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/15">
+              <svg className="h-5 w-5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+              </svg>
             </span>
           }
-          statusTone="soon"
-          disabled
         />
-        <IntegrationCard
+        <ComingSoonCard
           name={t("integrationGoogleAdsTitle")}
           description={t("integrationGoogleAdsDesc")}
-          icon={INTEGRATION_ICONS.google}
-          status={
-            <span className="rounded-full bg-[var(--surface-thead)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-dimmer)]">
-              {t("integrationComingSoon")}
+          badgeTone="sky"
+          icon={
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-thead)]">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
+                <path
+                  fill="#EA4335"
+                  d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.5 3.4 14.5 2.6 12 2.6 6.9 2.6 2.7 6.8 2.7 12s4.2 9.4 9.3 9.4c5.4 0 8.9-3.8 8.9-9.1 0-.6-.1-1.1-.2-1.5H12z"
+                />
+              </svg>
             </span>
           }
-          statusTone="soon"
-          disabled
         />
       </div>
-    </div>
+    </DsFlatSection>
   );
 }

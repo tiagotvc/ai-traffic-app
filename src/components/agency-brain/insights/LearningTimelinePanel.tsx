@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   BookOpen,
   Brain,
   Calendar,
@@ -237,6 +236,58 @@ export function LearningTimelinePanel({
                           {event.title}
                         </h4>
                         <p className="text-xs leading-relaxed text-[var(--text-dim)]">{event.description}</p>
+
+                        {event.evidence?.competitors?.length ? (
+                          <div className="mt-2.5">
+                            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                              {t("timelineCompetitors")}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {event.evidence.competitors.map((c) => (
+                                <span
+                                  key={c}
+                                  className="rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                                  style={{
+                                    background: "rgba(245,166,35,0.08)",
+                                    borderColor: "rgba(245,166,35,0.22)",
+                                    color: "var(--amber)"
+                                  }}
+                                >
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {event.evidence?.patterns?.length ? (
+                          <ul className="mt-2.5 space-y-1">
+                            {event.evidence.patterns.slice(0, 4).map((p) => (
+                              <li key={p} className="flex items-start gap-1.5 text-[11px] text-[var(--text-dim)]">
+                                <span className="mt-0.5 text-[var(--amber)]" aria-hidden>•</span>
+                                <span>{p}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+
+                        {event.evidence?.sampleAdUrls?.length ? (
+                          <div className="mt-2.5 flex flex-wrap gap-1.5">
+                            {event.evidence.sampleAdUrls.slice(0, 5).map((u, i) => (
+                              <a
+                                key={u}
+                                href={u}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors hover:bg-[var(--row-hover)]"
+                                style={{ borderColor: "var(--border-color)", color: "var(--violet-bright)" }}
+                              >
+                                <Globe size={10} />
+                                {t("timelineSampleAd")} {i + 1}
+                              </a>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -257,7 +308,7 @@ export function LearningTimelinePanel({
           <button
             type="button"
             onClick={onClose}
-            className="flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[var(--surface-bg)]"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[var(--surface-bg)]"
             style={{
               borderColor: "var(--border-color)",
               color: "var(--text-dim)"
@@ -265,16 +316,6 @@ export function LearningTimelinePanel({
           >
             <ArrowLeft size={15} />
             {t("timelineBack")}
-          </button>
-          <button
-            type="button"
-            disabled
-            title={t("generateHypothesisSoon")}
-            className="ml-auto flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold text-[#0f1419] opacity-50 shadow-sm"
-            style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)" }}
-          >
-            {t("generateHypothesis")}
-            <ArrowRight size={15} />
           </button>
         </div>
       </aside>

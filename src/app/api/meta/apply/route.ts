@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     if (email) {
       await sendTransactionalEmail({
         to: email,
-        subject: "Traffic AI — Alteração aplicada na conta",
+        subject: "Orion Agency — Alteração aplicada na conta",
         text:
           `Ação aplicada:\n` +
           `- Tipo: ${actionType}\n` +

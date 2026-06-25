@@ -25,13 +25,13 @@ export function BillingAddonsCard() {
   const t = useTranslations("billingPage");
 
   const addons: Array<{ label: string; icon: keyof typeof ADDON_ICONS; color: string }> = [
-    { label: t("addonClients"), icon: "clients", color: "bg-blue-100 text-blue-600" },
-    { label: t("addonAds"), icon: "ads", color: "bg-amber-100 text-[var(--amber)]" },
-    { label: t("addonAi"), icon: "ai", color: "bg-pink-100 text-pink-600" }
+    { label: t("addonClients"), icon: "clients", color: "bg-blue-500/15 text-blue-500" },
+    { label: t("addonAds"), icon: "ads", color: "bg-amber-500/15 text-[var(--amber-bright)]" },
+    { label: t("addonAi"), icon: "ai", color: "bg-pink-500/15 text-pink-500" }
   ];
 
   return (
-    <div className="rounded-xl border border-amber-200/80 bg-amber-50/40 px-4 py-3 shadow-sm">
+    <div className="rounded-xl border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.06)] px-4 py-3 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-[var(--text-main)]">{t("addonsTitle")}</p>
@@ -51,7 +51,7 @@ export function BillingAddonsCard() {
         {addons.map((a) => (
           <span
             key={a.label}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/80 bg-white px-2.5 py-1.5 text-xs font-medium text-[var(--text-dim)] shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-dim)] shadow-sm"
           >
             <span className={`flex h-6 w-6 items-center justify-center rounded-md ${a.color}`}>
               {ADDON_ICONS[a.icon]}

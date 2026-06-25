@@ -232,9 +232,10 @@ em [`DashboardContentLive`](../../src/uxpilot-ui/adapters/DashboardContentLive.t
 ## Pendências / observações
 
 - **Duas implementações coexistem**: as rotas MVP de learnings/hypotheses usam `BrainFeedPage`
-  com **dados mock** (`useBrainInsights` / `src/lib/agency-brain/insights/`); a versão real por
-  cliente (`AgencyBrainContent`/`HypothesesContent` + APIs `/api/clients/[clientId]/...`) existe
-  mas não está plugada nessas rotas. Definir qual é a oficial e remover/integrar a outra.
+  (`useBrainInsights`, **dados reais** via API, `USE_MOCK=false`); existe também a implementação
+  alternativa `AgencyBrainContent`/`HypothesesContent` (mesmas APIs, com filtros/escopos/IA) não
+  plugada nessas rotas. Definir qual é a oficial e remover/integrar a outra.
+  - **Ações do feed agora funcionam** (antes os botões eram placeholders desabilitados): ver abaixo.
 - `experiments` tem rota/componente mas não está em `AGENCY_BRAIN_MODULE_REGISTRY`; `suggestions`
   está no registry sem `featureFlag`. Alinhar registry × rotas reais.
 - Módulos `timeline`, `chat`, `action-plans`, `labs` são telas **coming soon** (placeholder).
@@ -245,5 +246,65 @@ em [`DashboardContentLive`](../../src/uxpilot-ui/adapters/DashboardContentLive.t
 
 ---
 
+## Telas de Aprendizados/Hipóteses (UI) — atualização
+
+- O cabeçalho [`BrainFeedPage`](../../src/components/agency-brain/insights/BrainFeedPage.tsx)
+  **não tem mais as pills** "Aprendizados / Hipóteses / Logs de pesquisa" — a navegação entre
+  módulos já está no sidebar. (O acesso a "Logs de pesquisa" saiu dessas telas.)
+- Há um **seletor de cliente** (usa `useAgencyBrainClient` → `clients`/`onClientChange`) + busca.
+  Trocar o cliente refaz o fetch (`/api/clients/{slug}/learnings|hypotheses`), resolvendo o
+  problema de não conseguir selecionar/listar.
+- `useBrainInsights` faz **fetch real** (`USE_MOCK=false`); "Nenhum aprendizado" = o cliente
+  selecionado não tem aprendizados APPROVED/SUGGESTED de fato.
+- **"Todos os clientes" (agregado)** ainda **não** é suportado (APIs são por cliente) — follow-up
+  de backend.
+
+## Pesquisa multi-fonte e comparação com concorrentes
+
+Ver documento dedicado: [**pesquisa-e-concorrentes.md**](./pesquisa-e-concorrentes.md).
+
+Resumo: hoje os aprendizados são **sinais sobre as métricas do próprio cliente** (não comparam
+concorrentes). Existe scan da **Meta Ad Library** (concorrentes/padrões) acionado por "Refinar
+pesquisas", mas é **desconectado** da geração dos aprendizados e da timeline; **Google e outras
+fontes não estão integrados**. A timeline mostra só 1 evento sintético e **não registra** as
+pesquisas/comparações. O doc traz o diagnóstico completo (arquivos:linha) e o **roadmap** (IA
+receber contexto de mercado → comparação estruturada → eventos de pesquisa na timeline → multi-fonte).
+
+## Decisões da v1 da tela (2026-06-25)
+
+A tela de Aprendizados foi simplificada para a v1 — foco em **descobertas automáticas**:
+
+- **Título traduzido**: "Cérebro da agência" (antes hardcoded "Agency Brain"), via `brainInsights.heroTitle`.
+- **"Refinar pesquisas" oculto na v1.** A pesquisa multi-fonte (scan da Meta Ad Library) fica para a
+  v2, junto do **"laboratório de cientistas"** (motor principal do Brain). O código do refine foi
+  mantido (`RefineResearchBar`/`useRefineResearch`) para reuso na v2, apenas não é renderizado.
+- **Créditos de IA ocultos** na tela (removido o `AgencyBrainAiBar` do cabeçalho).
+- **Fontes reais apenas**: a legenda mostra só **Meta Ads** e **Agência** (regras/IA sobre dados do
+  cliente) — Mercado/Concorrência/Hipótese dependiam do refine e voltam na v2.
+  ([EvidenceSources.tsx](../../src/components/agency-brain/insights/EvidenceSources.tsx)).
+- **Inputs corrigidos no dark mode**: seletor de cliente usa `ui-select` e a busca usa `ui-input`
+  (antes era `<select>` cru com fundo branco no dark).
+
+## Ações do feed de aprendizados (funcionais)
+
+[`LearningFeedCard`](../../src/components/agency-brain/insights/LearningFeedCard.tsx) +
+[`BrainFeedPage`](../../src/components/agency-brain/insights/BrainFeedPage.tsx):
+
+- O adapter preserva o status real do backend em `InsightLearning.reviewStatus`
+  ([adapters.ts](../../src/lib/agency-brain/insights/adapters.ts)). Antes, `SUGGESTED` era
+  mapeado para "weakening" e aparecia como **ENFRAQUECENDO** — agora aprendizados sugeridos
+  mostram o badge **"Sugerido"**.
+- **Aprendizado SUGGESTED**: botões **Aceitar** (PATCH `.../learnings/{id}/approve`, com `force`
+  + confirmação se confiança < 50) e **Dispensar** (PATCH `.../reject`). Após a ação, o feed
+  recarrega (`useBrainInsights.refresh`).
+- **Aprendizado já aceito (APPROVED)**: botão **Gerar hipótese** (antes desabilitado) cria uma
+  hipótese a partir do aprendizado (POST `.../hypotheses`, categoria GENERAL) e navega para
+  `/agency-brain/hypotheses`.
+- Há também geração de hipóteses por IA em nível de cliente (`.../hypotheses/ai-suggest`,
+  `.../hypotheses/suggest`) — não exposta no card.
+
 ## Histórico de mudanças relevantes
+- 2026-06-24 (parte 3): Ações do feed habilitadas (Aceitar/Dispensar para sugeridos; Gerar
+  hipótese para aprovados); badge "Sugerido" corrigido (antes mostrava "Enfraquecendo").
+- 2026-06-24 (parte 2): Removidas as pills do header; adicionado seletor de cliente + busca.
 - 2026-06-24: Criação da documentação.

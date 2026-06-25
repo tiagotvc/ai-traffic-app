@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
-type DsButtonVariant = "primary" | "brand" | "secondary" | "ghost" | "danger";
+type DsButtonVariant = "primary" | "brand" | "accent" | "secondary" | "ghost" | "danger";
 type DsButtonSize = "sm" | "md" | "lg";
 
 type DsButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -14,6 +14,7 @@ type DsButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 const variantClass: Record<DsButtonVariant, string> = {
   primary: "ui-btn-primary",
   brand: "ui-btn-brand",
+  accent: "ui-btn-accent",
   secondary: "ui-btn-secondary",
   ghost: "ui-btn-ghost",
   danger: "ui-btn-danger"

@@ -5,6 +5,10 @@ import { createHash } from "crypto";
 import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-context";
 import { createSuggestedLearning } from "@/lib/agency-brain/client-learning-service";
 import {
+  getValidMarketMemory,
+  memoryPatternsToInsights
+} from "@/lib/agency-brain/market-memory-service";
+import {
   getCampaignBaselinesMap,
   getClientCampaignMetricsWithComparison
 } from "@/lib/agency-brain/metrics-input";
@@ -29,10 +33,13 @@ function buildLearningDedupeKey(clientId: string, title: string, category: strin
 function toLearningDraft(
   item: AiLearningsResponse["learnings"][number],
   clientId: string,
-  campaignIds: Set<string>
+  campaignIds: Set<string>,
+  market?: { adsAnalyzed: number; competitorsScanned: number }
 ): SuggestedLearningDraft {
   const metaCampaignId =
     item.metaCampaignId && campaignIds.has(item.metaCampaignId) ? item.metaCampaignId : null;
+
+  const isMarketComparison = market && (item.tags ?? []).includes("mercado");
 
   return {
     title: item.title.trim(),
@@ -46,7 +53,11 @@ function toLearningDraft(
       ruleId: "ai_creative_memory",
       reason: item.reason ?? "Análise de IA com base em métricas e memória aprovada",
       metaCampaignId: metaCampaignId ?? undefined,
-      campaignName: item.campaignName
+      campaignName: item.campaignName,
+      // Fase 2: marca que o aprendizado comparou o cliente com o mercado (Meta Ad Library).
+      comparedTo: isMarketComparison
+        ? `Mercado (Meta Ad Library): ${market!.adsAnalyzed} anúncio(s) de ${market!.competitorsScanned} concorrente(s)`
+        : undefined
     },
     dedupeKey: buildLearningDedupeKey(clientId, item.title, item.category)
   };
@@ -59,10 +70,13 @@ function buildPrompt(args: {
   fewShotBlock: string;
   campaigns: Array<{ metaCampaignId: string; campaignName: string; metrics: Record<string, unknown> }>;
   previousCampaigns?: Array<{ metaCampaignId: string; campaignName: string; metrics: Record<string, unknown> }>;
+  market?: { adsAnalyzed: number; competitorsScanned: number; patterns: string[] };
 }): string {
+  const hasMarket = !!args.market && args.market.patterns.length > 0;
   return [
     "Você é um estrategista de performance marketing em uma agência.",
     "Analise métricas recentes e a memória operacional do cliente.",
+    "Quando houver dados de mercado/concorrentes (Meta Ad Library), COMPARE o cliente com o nicho.",
     "Proponha APENAS insights novos que ainda NÃO estejam na memória aprovada.",
     "Foque em padrões acionáveis: criativos, públicos, ofertas, copy e decisões.",
     "",
@@ -80,6 +94,12 @@ function buildPrompt(args: {
     "Resumo da memória:",
     args.brainSummary,
     "",
+    "Mercado / concorrentes (Meta Ad Library — use para COMPARAR o cliente com o nicho):",
+    hasMarket
+      ? `Anúncios analisados: ${args.market!.adsAnalyzed}; concorrentes: ${args.market!.competitorsScanned}.\n` +
+        args.market!.patterns.map((p) => `- ${p}`).join("\n")
+      : "- (sem dados de mercado coletados ainda — use 'Refinar pesquisas' para escanear concorrentes)",
+    "",
     "Campanhas (últimos 7 dias):",
     JSON.stringify(args.campaigns, null, 2),
     "",
@@ -94,7 +114,10 @@ function buildPrompt(args: {
     "- Use metaCampaignId apenas se existir na lista de campanhas.",
     "- Não invente números que contradigam as métricas.",
     "- O confidenceScore será recalculado pelo sistema; foque em evidência numérica.",
-    "- Preferir insights de alto impacto e confiança média/alta."
+    "- Preferir insights de alto impacto e confiança média/alta.",
+    hasMarket
+      ? "- Havendo dados de mercado, gere ao menos 1 learning COMPARANDO o cliente com o nicho (ex.: hook/CTA/formato que os concorrentes usam e o cliente não, ou onde o cliente está acima/abaixo do padrão). Inclua a tag \"mercado\" nesses casos."
+      : "- (sem dados de mercado nesta rodada — gere learnings apenas com base no cliente)"
   ].join("\n");
 }
 
@@ -139,6 +162,18 @@ export async function runAiLearningSuggestionsForClient(
   const brain = await getClientBrainContext(tenantId, clientId);
   const campaignIds = new Set(current.map((r) => r.metaCampaignId));
 
+  // Fase 1: enriquece a IA com o último scan de concorrentes (Meta Ad Library), se houver.
+  const marketMemory = await getValidMarketMemory(tenantId, clientId);
+  const marketContext = marketMemory
+    ? {
+        adsAnalyzed: marketMemory.adsAnalyzed ?? 0,
+        competitorsScanned: marketMemory.competitorsScanned ?? 0,
+        patterns: memoryPatternsToInsights(marketMemory, marketMemory.niche ?? null)
+          .slice(0, 10)
+          .map((insight) => `${insight.title}: ${insight.body}`)
+      }
+    : undefined;
+
   const mapCampaign = (r: (typeof current)[number]) => ({
     metaCampaignId: r.metaCampaignId,
     campaignName: r.campaignName,
@@ -162,7 +197,8 @@ export async function runAiLearningSuggestionsForClient(
     approvedTitles: brain.topLearnings.map((l) => l.title),
     fewShotBlock: buildFewShotBlock(brain.topLearnings),
     campaigns: current.slice(0, 12).map(mapCampaign),
-    previousCampaigns: previous.slice(0, 12).map(mapCampaign)
+    previousCampaigns: previous.slice(0, 12).map(mapCampaign),
+    market: marketContext
   });
 
   let ai: AiLearningsResponse;
@@ -208,7 +244,14 @@ export async function runAiLearningSuggestionsForClient(
   const warnings: string[] = [];
 
   for (const item of ai.learnings) {
-    const draft = toLearningDraft(item, clientId, campaignIds);
+    const draft = toLearningDraft(
+      item,
+      clientId,
+      campaignIds,
+      marketContext
+        ? { adsAnalyzed: marketContext.adsAnalyzed, competitorsScanned: marketContext.competitorsScanned }
+        : undefined
+    );
     const validated = validateAiLearningDraft(draft, current, baselineByCampaign);
     if (!validated.ok) {
       rejected += 1;

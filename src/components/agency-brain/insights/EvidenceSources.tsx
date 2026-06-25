@@ -122,9 +122,14 @@ export function EvidenceSourcesLegend({ variant = "default" }: { variant?: "defa
   const t = useTranslations("brainInsights");
 
   if (variant === "uxpilot") {
+    // v1: mostrar apenas as fontes REAIS das descobertas automáticas (dados do cliente + regras/IA).
+    // Mercado/Concorrência/Hipótese dependem do "Refinar pesquisas" (oculto na v1) e voltam na v2.
+    const realSources = SOURCE_LEGEND_UX.filter(
+      (s) => s.type === "meta_ads" || s.type === "agency"
+    );
     return (
       <>
-        {SOURCE_LEGEND_UX.map((s) => (
+        {realSources.map((s) => (
           <span
             key={s.type}
             className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium"

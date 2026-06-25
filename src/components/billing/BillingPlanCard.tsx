@@ -55,20 +55,18 @@ export function BillingPlanCard({
 
   return (
     <div className="ui-card overflow-hidden">
-      <div className="border-b border-[rgba(124,58,237,0.15)] bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-white">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-200">
+      <div className="bg-gradient-to-br from-violet-600 to-indigo-600 px-5 py-5 text-white">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-200/90">
           {t("currentPlan")}
         </p>
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xl font-bold tracking-tight">{plan?.name ?? "Free"}</p>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <SubscriptionStatusBadge status={displayStatus} />
-            {isPaid ? (
-              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">
-                {cycleLabel}
-              </span>
-            ) : null}
-          </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
+          <h2 className="text-3xl font-extrabold leading-none tracking-tight">{plan?.name ?? "Free"}</h2>
+          <SubscriptionStatusBadge status={displayStatus} />
+          {isPaid ? (
+            <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+              {cycleLabel}
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -94,8 +92,8 @@ export function BillingPlanCard({
         ) : null}
 
         {isPaid && renewalDate ? (
-          <div className="flex items-start gap-3 rounded-lg border border-emerald-100 bg-emerald-50/60 p-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+          <div className="flex items-start gap-3 rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-500">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path
                   strokeLinecap="round"

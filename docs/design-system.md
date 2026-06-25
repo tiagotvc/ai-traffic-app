@@ -23,8 +23,9 @@ Implementação: `src/app/globals.css`, `src/design-system/`, classes `ui-*`.
 | `--text-main` | Texto principal |
 | `--text-dim` | Texto secundário |
 | `--text-dimmer` | Labels, captions |
-| `--amber` / `--amber-bright` | Brand primário, nav ativo |
-| `--violet` / `--violet-bright` | IA, links |
+| `--amber` / `--amber-bright` | Brand primário, nav ativo, CTA |
+| `--violet` / `--violet-bright` | IA, links legados |
+| `--ui-accent` (+ muted, border, hover…) | **Accent temático**: âmbar no light, roxo no dark — use em painéis flat |
 | `--success` / `--danger` | Delta positivo / negativo |
 | `--brain-shelf-bg` | Bloco Agency Brain |
 
@@ -37,8 +38,9 @@ Implementação: `src/app/globals.css`, `src/design-system/`, classes `ui-*`.
 - `.ui-brain-shelf` — container Agency Brain
 
 ### Botões
-- `.ui-btn-primary` — CTA âmbar (gradiente) — **padrão para ações principais**
-- `.ui-btn-brand` — CTA violeta — **ações de IA**
+- `.ui-btn-primary` — CTA âmbar fixo (resto do app: sync, criar, salvar em dashboards)
+- `.ui-btn-accent` — **CTA temático** âmbar (light) / roxo (dark) — **use em painéis flat / Configurações**
+- `.ui-btn-brand` — CTA violeta fixo — **ações de IA** (fora de Configurações)
 - `.ui-btn-secondary` — secundário
 - `.ui-btn-ghost` — ghost
 - `.ui-btn-danger` — destrutivo
@@ -66,8 +68,17 @@ import {
   DsBadge,
   DsButton,
   DsCard,
+  DsFlatChip,
+  DsFlatDivider,
+  DsFlatEmptyState,
+  DsFlatPanel,
+  DsFlatSection,
+  DsFormActions,
+  DsFormField,
   DsPageHeader,
   DsSectionHeader,
+  DsTabBar,
+  DsUnderlineTabs,
   DsTableHeadCell,
   DsTableRow,
   DsTableShell,
@@ -79,6 +90,12 @@ import {
 |------------|-------------|
 | `DsPageHeader` | Título de página + ações |
 | `DsSectionHeader` | Título de seção dentro da página |
+| **`DsFlatPanel`** | Container flat (`space-y-8`); ver [flat-panels.md](design-system/flat-panels.md) |
+| **`DsFlatSection`** | Seção flat com título/subtítulo (Configurações, perfil) |
+| **`DsUnderlineTabs`** | Sub-abas com underline (`accent="brand"`) |
+| **`DsTabBar`** | Abas primárias em pílula no topo |
+| **`DsFlatChip`** | Chip com ícone (+1 cliente, limites) |
+| **`DsFlatEmptyState`** | Empty state flat |
 | `DsCard` | Card com padding/hover opcional |
 | `DsButton` | Botão com variantes do DS |
 | `DsBadge` | Status pills (success, warning, beta…) |
@@ -108,6 +125,11 @@ import {
 - Crítico: `.ui-alert-danger`
 - Atenção: `.ui-alert-warning`
 - IA pendente: `.ui-alert-info`
+
+### Configurações / painéis flat
+- Ver guia completo: **[design-system/flat-panels.md](design-system/flat-panels.md)**
+- `DsFlatPanel` + `DsTabBar` + `DsUnderlineTabs` + `DsFlatSection`
+- Accent via `--ui-accent` (nunca violeta hardcoded)
 
 ## O que NÃO fazer
 

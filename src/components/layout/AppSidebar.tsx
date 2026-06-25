@@ -121,15 +121,15 @@ export function AppSidebar({
       {/* Logo + collapse (desktop sidebar only) */}
       {!isDrawer ? (
       <div
-        className={`flex h-16 shrink-0 items-center border-b border-[var(--sidebar-border)] ${
-          effectiveCollapsed ? "justify-center px-2" : "justify-between gap-2 px-3"
+        className={`relative flex h-16 shrink-0 items-center border-b border-[var(--sidebar-border)] ${
+          effectiveCollapsed ? "justify-center px-2" : "justify-start pl-[22px] pr-3"
         }`}
       >
-        <div className={`flex min-w-0 items-center ${effectiveCollapsed ? "justify-center" : ""}`}>
-          <SidebarLogoIcon collapsed={effectiveCollapsed} />
-        </div>
+        <SidebarLogoIcon collapsed={effectiveCollapsed} />
         {!effectiveCollapsed ? (
-          <SidebarCollapseButton onClick={onToggleCollapse} title={t("collapseSidebar")} />
+          <div className="absolute right-3">
+            <SidebarCollapseButton onClick={onToggleCollapse} title={t("collapseSidebar")} />
+          </div>
         ) : null}
       </div>
       ) : null}
@@ -241,6 +241,7 @@ export function AppSidebar({
 
       <SidebarFooter
         userName={userName}
+        userEmail={userEmail}
         planName={planName}
         subscriptionStatus={subscriptionStatus}
         collapsed={effectiveCollapsed}
