@@ -886,6 +886,7 @@
   "creativesPage": {
     "title": "Criativos",
     "subtitle": "Criativos usados nesta campanha",
+    "metricsPeriodHint": "Métricas considerando o período: {period}",
     "loading": "Carregando…",
     "empty": "Nenhum criativo nesta campanha.",
     "navCampaigns": "Campanhas",

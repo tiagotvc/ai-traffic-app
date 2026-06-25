@@ -242,16 +242,11 @@ export function CampaignDrilldownProvider({ children }: { children: ReactNode })
       prevCacheKeyRef.current = cacheKey;
       return;
     }
-    const campaignPrefix = `${metaCampaignId}:${clientSlug || "_"}:`;
-    const isPeriodChange =
-      prevCacheKeyRef.current != null &&
-      prevCacheKeyRef.current.startsWith(campaignPrefix) &&
-      prevCacheKeyRef.current !== cacheKey;
     prevCacheKeyRef.current = cacheKey;
     setLoading(true);
     setCountsLoading(true);
     void ensureLoaded({
-      live: isPeriodChange ? shouldUseLiveFetch(period) : true
+      live: true
     });
   }, [cacheKey, hydrateFromCache, ensureLoaded, metaCampaignId, clientSlug, period]);
 

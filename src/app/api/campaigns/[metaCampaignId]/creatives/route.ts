@@ -11,6 +11,7 @@ import {
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { compareByRank, meetsMinActivity, rankSpecFor } from "@/lib/creative-ranking";
 import { loadRankConfig } from "@/lib/ranking-config";
+import { parsePeriodFromSearchParams, periodToMetaInsightsRange } from "@/lib/report-period";
 
 export const maxDuration = 60;
 
@@ -65,7 +66,10 @@ export async function GET(
   { params }: { params: Promise<{ metaCampaignId: string }> }
 ) {
   const { metaCampaignId } = await params;
-  const clientSlugParam = new URL(req.url).searchParams.get("clientSlug") || "";
+  const url = new URL(req.url);
+  const clientSlugParam = url.searchParams.get("clientSlug") || "";
+  const period = parsePeriodFromSearchParams(url);
+  const insightRange = periodToMetaInsightsRange(period);
   const { tenant, metaAccessToken: ctxToken } = await getAppContext();
 
   const tokens = await getAllTenantMetaTokens(tenant.id, ctxToken);
@@ -87,7 +91,7 @@ export async function GET(
 
   const { ads } = await fetchAdsForCampaignAnyToken(tokens, metaCampaignId);
   const insights: Map<string, AdInsightMetrics> = ads.length
-    ? await fetchInsightsForCampaignAnyToken(tokens, metaCampaignId)
+    ? await fetchInsightsForCampaignAnyToken(tokens, metaCampaignId, insightRange)
     : new Map();
 
   let campaignName = metaCampaignId;

@@ -11,6 +11,7 @@ import { Link } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import { type MetricKey } from "@/lib/dashboard-metrics";
+import { formatPeriodLabel, periodStateToParsed } from "@/lib/report-period";
 import { useCampaignDrilldown } from "@/hooks/useCampaignDrilldown";
 import { useLocale } from "next-intl";
 
@@ -35,6 +36,7 @@ export function CampaignCreativesClient({
   embedded?: boolean;
 }) {
   const t = useTranslations("creativesPage");
+  const tPeriod = useTranslations("period");
   const locale = useLocale();
   const drilldown = useCampaignDrilldown();
   const {
@@ -50,6 +52,22 @@ export function CampaignCreativesClient({
     loading
   } = drilldown;
   const [syncing, setSyncing] = useState(false);
+
+  const periodLabel = useMemo(() => {
+    return formatPeriodLabel(periodStateToParsed(period), locale, {
+      today: tPeriod("today"),
+      yesterday: tPeriod("yesterday"),
+      thisWeek: tPeriod("thisWeek"),
+      thisMonth: tPeriod("thisMonth"),
+      thisQuarter: tPeriod("thisQuarter"),
+      last7: tPeriod("last7"),
+      last14: tPeriod("last14"),
+      last15: tPeriod("last15"),
+      last30: tPeriod("last30"),
+      custom: tPeriod("custom"),
+      all: tPeriod("all")
+    });
+  }, [period, locale, tPeriod]);
 
   const creatives = useMemo<CreativeItem[]>(
     () =>
@@ -133,6 +151,10 @@ export function CampaignCreativesClient({
         embedded={embedded}
         translationNs="creativesPage"
       />
+
+      <p className="text-xs text-[var(--text-dim)]">
+        {t("metricsPeriodHint", { period: periodLabel })}
+      </p>
 
       <CreativeCardGrid
         creatives={creatives}

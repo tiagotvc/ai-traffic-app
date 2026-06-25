@@ -172,11 +172,28 @@ export async function loadAdsFromSnapshots(
   const { adMetricSnapshot: repo } = await repositories();
   const { since, until } = resolveSinceUntil(period);
 
-  const snaps = period.allTime
-    ? await repo.find({
-        where: { metaCampaignId, metaAdId: Not(IsNull()) },
-        order: { day: "ASC" }
-      })
+  const identitySnaps = await repo.find({
+    where: { metaCampaignId, metaAdId: Not(IsNull()) },
+    order: { day: "DESC" }
+  });
+
+  const identities = new Map<
+    string,
+    { name: string | null; adsetId: string; adsetName: string | null }
+  >();
+  for (const s of identitySnaps) {
+    const id = s.metaAdId!;
+    if (!identities.has(id)) {
+      identities.set(id, {
+        name: s.adName ?? null,
+        adsetId: s.metaAdsetId,
+        adsetName: s.adsetName ?? null
+      });
+    }
+  }
+
+  const periodSnaps = period.allTime
+    ? identitySnaps
     : await repo.find({
         where: { metaCampaignId, metaAdId: Not(IsNull()), day: Between(since, until) },
         order: { day: "ASC" }
@@ -185,9 +202,6 @@ export async function loadAdsFromSnapshots(
   const byAd = new Map<
     string,
     {
-      name: string | null;
-      adsetId: string;
-      adsetName: string | null;
       spend: number;
       impressions: number;
       clicks: number;
@@ -199,12 +213,9 @@ export async function loadAdsFromSnapshots(
     }
   >();
 
-  for (const s of snaps) {
+  for (const s of periodSnaps) {
     const id = s.metaAdId!;
     const ex = byAd.get(id) ?? {
-      name: s.adName ?? null,
-      adsetId: s.metaAdsetId,
-      adsetName: s.adsetName ?? null,
       spend: 0,
       impressions: 0,
       clicks: 0,
@@ -214,8 +225,6 @@ export async function loadAdsFromSnapshots(
       roasSum: 0,
       roasN: 0
     };
-    if (s.adName) ex.name = s.adName;
-    if (s.adsetName) ex.adsetName = s.adsetName;
     ex.spend += num(s.spend);
     ex.impressions += num(s.impressions);
     ex.clicks += num(s.clicks);
@@ -230,23 +239,26 @@ export async function loadAdsFromSnapshots(
     byAd.set(id, ex);
   }
 
-  return [...byAd.entries()].map(([id, agg]) => {
-    const metrics = metricsFromAgg({
-      spend: agg.spend,
-      impressions: agg.impressions,
-      clicks: agg.clicks,
-      reach: agg.reach,
-      conversions: agg.conversions,
-      messages: agg.messages,
-      roasSum: agg.roasSum,
-      roasN: agg.roasN
-    });
+  const emptyAgg = {
+    spend: 0,
+    impressions: 0,
+    clicks: 0,
+    reach: 0,
+    conversions: 0,
+    messages: 0,
+    roasSum: 0,
+    roasN: 0
+  };
+
+  return [...identities.entries()].map(([id, identity]) => {
+    const agg = byAd.get(id) ?? emptyAgg;
+    const metrics = metricsFromAgg(agg);
     return {
       id,
-      name: agg.name ?? id,
+      name: identity.name ?? id,
       status: "ACTIVE",
-      adsetId: agg.adsetId,
-      adsetName: agg.adsetName ?? agg.adsetId,
+      adsetId: identity.adsetId,
+      adsetName: identity.adsetName ?? identity.adsetId,
       metrics
     };
   });
