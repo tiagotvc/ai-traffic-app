@@ -8,6 +8,7 @@ import {
   patchClientMetaSettings
 } from "@/lib/client-meta-settings";
 import { resolveCommercialAddress } from "@/lib/geocode-nominatim";
+import { getAiCreditsFeatureFlags } from "@/lib/ai-credits/feature-flags";
 import { repositories } from "@/db/repositories";
 import { resolveClientMetaBusinessId } from "@/lib/client-meta-business";
 import { resolvePagesForAdAccount } from "@/lib/meta-publish-assets";
@@ -54,7 +55,9 @@ const PatchSchema = z.object({
     })
     .nullable()
     .optional(),
-  commercialAddress: z.string().nullable().optional()
+  commercialAddress: z.string().nullable().optional(),
+  aiEnabled: z.boolean().optional(),
+  aiMonthlyCap: z.number().int().min(0).nullable().optional()
 });
 
 export async function GET(
@@ -117,6 +120,9 @@ export async function GET(
   return NextResponse.json({
     ok: true,
     settings: resolved.settings,
+    aiCredits: {
+      perClientCapsEnabled: (await getAiCreditsFeatureFlags()).perClientCapsEnabled
+    },
     publish: {
       ...resolved.publish,
       ready: !!(resolved.publish.pageId && resolved.publish.linkUrl)

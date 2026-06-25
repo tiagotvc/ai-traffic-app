@@ -69,6 +69,8 @@ import { DashboardWidgetPermission } from "./DashboardWidgetPermission";
 import { DashboardAiWidget } from "./DashboardAiWidget";
 import { DashboardAddon } from "./DashboardAddon";
 import { TenantAddon } from "./TenantAddon";
+import { PlatformSetting } from "./PlatformSetting";
+import { TenantAiPolicy } from "./TenantAiPolicy";
 import { ContactMessage } from "./ContactMessage";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
@@ -133,6 +135,8 @@ export {
   ClientActionPlan,
   ClientActionPlanItem,
   TenantAddon,
+  PlatformSetting,
+  TenantAiPolicy,
   MarketMemory,
   DashboardLayout,
   DashboardWidgetInstance,
@@ -226,6 +230,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: ClientActionPlan, name: "ClientActionPlan" },
   { ctor: ClientActionPlanItem, name: "ClientActionPlanItem" },
   { ctor: TenantAddon, name: "TenantAddon" },
+  { ctor: PlatformSetting, name: "PlatformSetting" },
+  { ctor: TenantAiPolicy, name: "TenantAiPolicy" },
   { ctor: MarketMemory, name: "MarketMemory" },
   { ctor: DashboardLayout, name: "DashboardLayout" },
   { ctor: DashboardWidgetInstance, name: "DashboardWidgetInstance" },
@@ -297,6 +303,8 @@ export const typeOrmEntities = [
   ClientActionPlan,
   ClientActionPlanItem,
   TenantAddon,
+  PlatformSetting,
+  TenantAiPolicy,
   MarketMemory,
   DashboardLayout,
   DashboardWidgetInstance,

@@ -52,6 +52,7 @@ import { ClientCommercialAddress1735831600000 } from "./0046-ClientCommercialAdd
 import { ClientCommercialAddressNormalized1735831700000 } from "./0047-ClientCommercialAddressNormalized";
 import { UserTermsAcceptance_1735831900000 } from "./0049-UserTermsAcceptance";
 import { ContactMessages_1735832000000 } from "./0050-ContactMessages";
+import { AiCreditsLayer_1735832100000 } from "./0051-AiCreditsLayer";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -108,5 +109,6 @@ export const appMigrations = [
   ClientCommercialAddress1735831600000,
   ClientCommercialAddressNormalized1735831700000,
   UserTermsAcceptance_1735831900000,
-  ContactMessages_1735832000000
+  ContactMessages_1735832000000,
+  AiCreditsLayer_1735832100000
 ];

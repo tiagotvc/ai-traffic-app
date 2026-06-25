@@ -118,6 +118,8 @@ export type ClientMetaSettingsPatch = Partial<{
   commercialAddressNormalized: string | null;
   commercialLatitude: number | null;
   commercialLongitude: number | null;
+  aiEnabled: boolean;
+  aiMonthlyCap: number | null;
 }>;
 
 export async function patchClientMetaSettings(
@@ -178,6 +180,10 @@ export async function patchClientMetaSettings(
     }),
     ...(patch.commercialLatitude !== undefined && { commercialLatitude: patch.commercialLatitude }),
     ...(patch.commercialLongitude !== undefined && { commercialLongitude: patch.commercialLongitude }),
+    ...(patch.aiEnabled !== undefined && { aiEnabled: patch.aiEnabled }),
+    ...(patch.aiMonthlyCap !== undefined && {
+      aiMonthlyCap: patch.aiMonthlyCap === null ? null : Math.max(0, patch.aiMonthlyCap)
+    }),
     updatedAt: new Date()
   });
 

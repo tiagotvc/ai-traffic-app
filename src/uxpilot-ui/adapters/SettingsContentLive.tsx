@@ -4,16 +4,17 @@ import type { ReactNode } from "react";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { CreditCard, Plug, Settings as SettingsIcon, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { CreditCard, Plug, Settings as SettingsIcon, ShieldCheck, Sparkles, Users, type LucideIcon } from "lucide-react";
 
 import { BillingPortalClient } from "@/components/billing/BillingPortalClient";
 import { BillingPortalSkeleton } from "@/components/billing/BillingSkeletons";
 import { SettingsClient } from "@/components/SettingsClient";
+import { SettingsAiCreditsTab } from "@/components/settings/SettingsAiCreditsTab";
 import { DsFlatPanel, DsPageHeader, DsTabBar, type DsTab } from "@/design-system";
 
-type TabId = "general" | "plan" | "integrations" | "team" | "data";
+type TabId = "general" | "plan" | "aiCredits" | "integrations" | "team" | "data";
 type SettingsClientTab = "general" | "integrations" | "team" | "data";
-const VALID_TABS: TabId[] = ["general", "plan", "integrations", "team", "data"];
+const VALID_TABS: TabId[] = ["general", "plan", "aiCredits", "integrations", "team", "data"];
 
 export function SettingsContentLive({
   locale,
@@ -28,6 +29,7 @@ export function SettingsContentLive({
 }) {
   const t = useTranslations("settings");
   const tBilling = useTranslations("billingPage");
+  const tAi = useTranslations("aiCredits");
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") as TabId | null;
   const [active, setActive] = useState<TabId>(
@@ -37,6 +39,7 @@ export function SettingsContentLive({
   const iconFor: Record<TabId, LucideIcon> = {
     general: SettingsIcon,
     plan: CreditCard,
+    aiCredits: Sparkles,
     integrations: Plug,
     team: Users,
     data: ShieldCheck
@@ -44,6 +47,7 @@ export function SettingsContentLive({
   const tabs: DsTab<TabId>[] = [
     { value: "general", label: t("tabGeneral") },
     { value: "plan", label: tBilling("tabPlan") },
+    { value: "aiCredits", label: tAi("tabAiCredits") },
     { value: "integrations", label: t("tabIntegrations") },
     { value: "team", label: t("tabTeam") },
     { value: "data", label: t("tabData") }
@@ -59,6 +63,9 @@ export function SettingsContentLive({
           <BillingPortalClient embedded basePath="/settings" />
         </Suspense>
       );
+    }
+    if (id === "aiCredits") {
+      return <SettingsAiCreditsTab />;
     }
     return (
       <SettingsClient

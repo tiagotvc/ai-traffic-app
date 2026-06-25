@@ -56,6 +56,8 @@ import type { ClientExperiment } from "@/db/entities/ClientExperiment";
 import type { ClientActionPlan } from "@/db/entities/ClientActionPlan";
 import type { ClientActionPlanItem } from "@/db/entities/ClientActionPlanItem";
 import type { TenantAddon } from "@/db/entities/TenantAddon";
+import type { PlatformSetting } from "@/db/entities/PlatformSetting";
+import type { TenantAiPolicy } from "@/db/entities/TenantAiPolicy";
 import type { MarketMemory } from "@/db/entities/MarketMemory";
 import type { DashboardAddon } from "@/db/entities/DashboardAddon";
 import type { DashboardAiWidget } from "@/db/entities/DashboardAiWidget";
@@ -130,6 +132,8 @@ const ENTITY = {
   ClientActionPlan: "ClientActionPlan",
   ClientActionPlanItem: "ClientActionPlanItem",
   TenantAddon: "TenantAddon",
+  PlatformSetting: "PlatformSetting",
+  TenantAiPolicy: "TenantAiPolicy",
   MarketMemory: "MarketMemory",
   DashboardLayout: "DashboardLayout",
   DashboardWidgetInstance: "DashboardWidgetInstance",
@@ -231,6 +235,8 @@ export async function repositories() {
     clientActionPlan: repositoryFor<ClientActionPlan>(ds, ENTITY.ClientActionPlan),
     clientActionPlanItem: repositoryFor<ClientActionPlanItem>(ds, ENTITY.ClientActionPlanItem),
     tenantAddon: repositoryFor<TenantAddon>(ds, ENTITY.TenantAddon),
+    platformSetting: repositoryFor<PlatformSetting>(ds, ENTITY.PlatformSetting),
+    tenantAiPolicy: repositoryFor<TenantAiPolicy>(ds, ENTITY.TenantAiPolicy),
     marketMemory: repositoryFor<MarketMemory>(ds, ENTITY.MarketMemory),
     dashboardLayout: repositoryFor<DashboardLayout>(ds, ENTITY.DashboardLayout),
     dashboardWidgetInstance: repositoryFor<DashboardWidgetInstance>(

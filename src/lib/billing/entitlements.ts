@@ -11,6 +11,8 @@ import { getTenantAddonBonuses, mergePlanLimitsWithAddons } from "./tenant-addon
 import { resolveLimits } from "./resolve-limits";
 import type { Entitlements, PlanLimitKey, PlanLimits, TenantUsage } from "./types";
 import { PLATFORM_ADMIN_LIMITS } from "./types";
+import { isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
+import { sumTenantCreditsUsed } from "@/lib/ai-credits/usage-service";
 
 export class PlanLimitError extends Error {
   code = "PLAN_LIMIT" as const;
@@ -104,11 +106,18 @@ export async function getTenantUsage(tenantId: string): Promise<TenantUsage> {
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
-  const aiRequestsThisMonth = await aiRecommendation
-    .createQueryBuilder("r")
-    .where("r.tenantId = :tenantId", { tenantId })
-    .andWhere("r.createdAt >= :monthStart", { monthStart })
-    .getCount();
+
+  const v2 = await isAiCreditsV2Enabled();
+  let aiRequestsThisMonth: number;
+  if (v2) {
+    aiRequestsThisMonth = await sumTenantCreditsUsed(tenantId);
+  } else {
+    aiRequestsThisMonth = await aiRecommendation
+      .createQueryBuilder("r")
+      .where("r.tenantId = :tenantId", { tenantId })
+      .andWhere("r.createdAt >= :monthStart", { monthStart })
+      .getCount();
+  }
 
   return {
     clients: realClients.length || clients.length,

@@ -456,6 +456,16 @@ h6,
     background: rgba(239, 68, 68, 0.1);
   }
 
+  /* Login social Meta/Facebook — azul de marca como variante nomeada (não hex solto) */
+  .ui-btn-meta {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50;
+    background: #1877f2;
+  }
+
+  .ui-btn-meta:hover:not(:disabled) {
+    background: #166fe5;
+  }
+
   /* ─── Alerts ─── */
   .ui-alert-warning {
     @apply rounded-xl border px-3 py-2 text-xs;
@@ -477,6 +487,28 @@ h6,
 
   [data-theme="dark"] .ui-alert-info {
     color: #c4b5fd;
+  }
+
+  /* Learnings feed — violet in light, amber in dark (inverse of global --ui-accent) */
+  .ui-alert-learnings {
+    @apply flex items-center gap-3 rounded-xl px-4 py-3 text-sm;
+    border: 1px solid rgba(124, 58, 237, 0.22);
+    background: rgba(124, 58, 237, 0.07);
+    color: var(--text-dim);
+  }
+
+  [data-theme="dark"] .ui-alert-learnings {
+    border-color: rgba(245, 166, 35, 0.2);
+    background: rgba(245, 166, 35, 0.07);
+  }
+
+  .ui-alert-learnings__icon {
+    @apply h-5 w-5 shrink-0;
+    color: var(--violet-bright);
+  }
+
+  [data-theme="dark"] .ui-alert-learnings__icon {
+    color: var(--amber-bright);
   }
 
   .ui-alert-danger {

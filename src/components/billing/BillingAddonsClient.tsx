@@ -1,7 +1,8 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { BillingBackLink } from "@/components/billing/PlanLimitsCard";
 import { resolveBillingCurrency } from "@/lib/billing/currency";
 import { formatMoney } from "@/lib/billing/pricing";
@@ -21,9 +22,17 @@ const ADDONS: Array<{
 export function BillingAddonsClient() {
   const t = useTranslations("billingPage");
   const locale = useLocale();
+  const searchParams = useSearchParams();
   const currency = resolveBillingCurrency(locale);
   const [selected, setSelected] = useState<AddonKey | null>(null);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  useEffect(() => {
+    const pack = searchParams.get("pack");
+    if (pack === "ai" || pack === "clients" || pack === "adAccounts") {
+      setSelected(pack);
+    }
+  }, [searchParams]);
 
   async function requestAddon(key: AddonKey) {
     setSelected(key);

@@ -243,7 +243,6 @@ export function DashboardCanvas({
                           background: "var(--ui-accent-muted)",
                           color: "var(--ui-accent)"
                         }}
-                        }}
                       >
                         <Move size={14} />
                         {tDash("layoutOrganize")}

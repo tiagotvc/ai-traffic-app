@@ -22,6 +22,9 @@ export function ClientMetaExtras({
   const [syncEnabled, setSyncEnabled] = useState(true);
   const [syncPriority, setSyncPriority] = useState("normal");
   const [automationEnabled, setAutomationEnabled] = useState(false);
+  const [perClientCapsEnabled, setPerClientCapsEnabled] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [aiMonthlyCap, setAiMonthlyCap] = useState("");
   const [tags, setTags] = useState("");
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [includeAudiences, setIncludeAudiences] = useState<string[]>([]);
@@ -48,6 +51,8 @@ export function ClientMetaExtras({
           setSyncEnabled(s.syncEnabled !== false);
           setSyncPriority(s.syncPriority ?? "normal");
           setAutomationEnabled(!!s.automationEnabled);
+          setAiEnabled(s.aiEnabled !== false);
+          setAiMonthlyCap(s.aiMonthlyCap != null ? String(s.aiMonthlyCap) : "");
           setIncludeAudiences(s.defaultCustomAudienceIds ?? []);
           const du = s.defaultUtm;
           if (du) {
@@ -61,6 +66,7 @@ export function ClientMetaExtras({
           setCommercialAddressNormalized(s.commercialAddressNormalized ?? null);
         }
         setTags((j.tags ?? []).join(", "));
+        setPerClientCapsEnabled(!!j.aiCredits?.perClientCapsEnabled);
       });
   }, [clientId]);
 
@@ -84,6 +90,8 @@ export function ClientMetaExtras({
           syncEnabled,
           syncPriority,
           automationEnabled,
+          aiEnabled,
+          aiMonthlyCap: aiMonthlyCap.trim() ? Number(aiMonthlyCap) : null,
           defaultCustomAudienceIds: includeAudiences,
           defaultUtm: {
             source: defaultUtmSource,
@@ -207,6 +215,30 @@ export function ClientMetaExtras({
           />
           {t("automationEnabled")}
         </label>
+        {perClientCapsEnabled ? (
+          <>
+            <label className="mt-2 flex items-center gap-2 text-xs text-[var(--text-dim)]">
+              <input
+                type="checkbox"
+                checked={aiEnabled}
+                onChange={(e) => setAiEnabled(e.target.checked)}
+                className="accent-violet-600"
+              />
+              {t("aiEnabled")}
+            </label>
+            <label className="mt-2 block text-xs text-[var(--text-dim)]">
+              {t("aiMonthlyCap")}
+              <input
+                type="number"
+                min={0}
+                className="ui-input mt-1 w-full max-w-xs"
+                value={aiMonthlyCap}
+                onChange={(e) => setAiMonthlyCap(e.target.value)}
+                placeholder={t("aiMonthlyCapPlaceholder")}
+              />
+            </label>
+          </>
+        ) : null}
         <div className="mt-3 flex justify-end">
           <button
             disabled={isPending}

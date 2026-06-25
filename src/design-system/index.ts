@@ -4,6 +4,8 @@ export { DsBadge } from "./components/DsBadge";
 export { DsButton } from "./components/DsButton";
 export { DsCard } from "./components/DsCard";
 export { DsEyebrow } from "./components/DsEyebrow";
+export { DsModal } from "./components/DsModal";
+export { DsSwitch } from "./components/DsSwitch";
 export { DsFlatChip } from "./components/DsFlatChip";
 export { DsFlatDivider } from "./components/DsFlatDivider";
 export { DsFlatEmptyState } from "./components/DsFlatEmptyState";

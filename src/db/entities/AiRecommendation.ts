@@ -29,5 +29,8 @@ export class AiRecommendation extends AppBaseEntity {
 
   @Column({ type: "jsonb", nullable: true })
   preview?: unknown | null; // de/para renderizável
+
+  @Column({ type: "int", default: 1 })
+  creditsCharged!: number;
 }
 

@@ -129,20 +129,8 @@ export function AgencyBrainNavGroup({
           className={`${sidebarItemClasses(parentActive)} min-w-0 flex-1 !pr-1`}
         >
           <NavIcon d={brainIcon} />
-          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-left">
-            <span className="min-w-0 whitespace-normal leading-snug">
-              {t(AGENCY_BRAIN_MVP_NAV.navKey)}
-            </span>
-            <span
-              className="shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wider"
-              style={{
-                background: "rgba(124,58,237,0.25)",
-                color: "#a78bfa",
-                border: "1px solid rgba(124,58,237,0.4)"
-              }}
-            >
-              Beta
-            </span>
+          <span className="min-w-0 flex-1 whitespace-normal text-left leading-snug">
+            {t(AGENCY_BRAIN_MVP_NAV.navKey)}
           </span>
         </Link>
         <button

@@ -97,6 +97,12 @@ export class ClientMetaSettings {
   @Column({ type: "double precision", nullable: true })
   commercialLongitude?: number | null;
 
+  @Column({ type: "bool", default: true })
+  aiEnabled!: boolean;
+
+  @Column({ type: "int", nullable: true })
+  aiMonthlyCap?: number | null;
+
   @Column({ type: "timestamptz", default: () => "now()" })
   createdAt!: Date;
 

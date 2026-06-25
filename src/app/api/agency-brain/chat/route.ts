@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
-import { billingErrorResponse } from "@/lib/billing/api-errors";
-import { assertLimit } from "@/lib/billing/entitlements";
+import { generateChatAgentResponse } from "@/lib/agency-brain/chat-agent-service";
 import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-context";
 import { AgencyBrainChatSchema } from "@/lib/agency-brain/schemas";
+import { getAiCreditsFeatureFlags } from "@/lib/ai-credits/feature-flags";
+import { billingErrorResponse } from "@/lib/billing/api-errors";
+import { assertLimit } from "@/lib/billing/entitlements";
 import {
   assertCreativeMemoryAiAccess,
+  aiCreditsErrorResponse,
   getCreativeMemoryAiStatus,
   recordCreativeMemoryAiUsage
 } from "@/lib/creative-memory/ai-usage";
@@ -31,10 +34,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
     }
 
+    const flags = await getAiCreditsFeatureFlags();
+    const agentMode = flags.agentLayerEnabled;
+
     try {
       await assertLimit(tenant.id, "allowAgencyBrainChat");
-      await assertCreativeMemoryAiAccess(tenant.id);
+      await assertCreativeMemoryAiAccess(
+        tenant.id,
+        client.id,
+        agentMode ? "chat_with_proposals" : "chat"
+      );
     } catch (err) {
+      const creditsRes = aiCreditsErrorResponse(err);
+      if (creditsRes) return creditsRes;
       const res = billingErrorResponse(err);
       if (res) return res;
       throw err;
@@ -49,11 +61,39 @@ export async function POST(req: Request) {
       });
     }
 
-    const brain = await getClientBrainContext(tenant.id, client.id);
     const aiStatus = await getCreativeMemoryAiStatus(tenant.id);
     const modelChain = resolveCreativeMemoryModelChain(aiStatus.planSlug);
-
     const isMeeting = body.mode === "meeting";
+
+    if (agentMode) {
+      const agentResult = await generateChatAgentResponse({
+        apiKey,
+        tenantId: tenant.id,
+        client,
+        message: body.message,
+        meetingMode: isMeeting,
+        modelChain
+      });
+
+      await recordCreativeMemoryAiUsage({
+        tenantId: tenant.id,
+        clientId: client.id,
+        kind: "chat",
+        creditKind: "chat_with_proposals",
+        createdCount: 1,
+        modelMeta: agentResult.modelMeta
+      });
+
+      return NextResponse.json({
+        ok: true,
+        answer: agentResult.answer,
+        proposals: agentResult.proposals,
+        agentMode: true,
+        modelUsed: modelChain[0]
+      });
+    }
+
+    const brain = await getClientBrainContext(tenant.id, client.id);
     const prompt = [
       isMeeting
         ? "Você está em Modo Reunião com o cliente. Responda em português com tom profissional e consultivo."
@@ -96,6 +136,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       answer: data.answer,
+      agentMode: false,
       modelUsed: modelMeta.modelUsed
     });
   } catch (err) {
