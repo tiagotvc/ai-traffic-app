@@ -13,6 +13,7 @@ import { BillingGateModal } from "@/components/billing/BillingGateModal";
 import { FirstConnectionGate } from "@/components/onboarding/FirstConnectionGate";
 import { AppBuilderChromeProvider, useAppBuilderChrome } from "@/components/dashboard/canvas/AppBuilderChromeContext";
 import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
+import { ThemeConfigApplier } from "@/components/theme/ThemeConfigApplier";
 import { cn } from "@/lib/cn";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 import type { PlanLimits } from "@/lib/billing/types";
@@ -291,6 +292,7 @@ function AppShellSkeletonInner({
 
   return (
     <UxThemeProvider>
+    <ThemeConfigApplier />
     <PublishPanelProvider>
       <CommandStripProvider>
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--surface-bg)] lg:flex-row">

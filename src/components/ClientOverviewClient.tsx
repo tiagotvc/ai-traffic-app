@@ -36,7 +36,7 @@ import { CAMPAIGN_PRESETS, presetMetricsFor } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
-import { CampaignTypeSelectCompact } from "@/components/CreateCampaignTypeModal";
+import { CampaignTypeSelectCompact } from "@/components/campaign/CampaignTypeSelectCompact";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";

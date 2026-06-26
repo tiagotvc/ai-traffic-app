@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Megaphone, Plus, Trash2, Building2, ListFilter, Target, Rows3 } from "lucide-react";
+import { Megaphone, Plus, Trash2, Building2, ListFilter, Target, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   DndContext,
@@ -43,23 +43,24 @@ import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboar
 import { CAMPAIGN_PRESETS } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
-import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
+import { FilterSearchInput } from "@/components/FilterSearchInput";
+import { CampaignGroupExportButton } from "@/components/campaign/CampaignGroupExportButton";
+import { CampaignGroupPager } from "@/components/campaign/CampaignGroupPager";
+import { CampaignMetricsDataBanner } from "@/components/campaign/CampaignMetricsDataBanner";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
-import { CampaignTypeSelectCompact } from "@/components/CreateCampaignTypeModal";
+import { CampaignTypeSelectCompact } from "@/components/campaign/CampaignTypeSelectCompact";
 import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import { columnRefKey } from "@/lib/campaign-table-layout";
+import { getCampaignPresetIconConfig } from "@/lib/campaign-preset-icons";
+import { campaignMetricTone, campaignMetricToneClass } from "@/lib/campaign-table-premium";
 import { sortRowsByKey } from "@/lib/campaign-table-sort";
 import {
   customTypesToMap,
   metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
-import {
-  type AppliedCampaignFilter,
-  matchesCampaignFilters
-} from "@/lib/campaign-meta-filters";
 
 type CampaignRow = {
   metaCampaignId: string;
@@ -97,7 +98,7 @@ type ClientOption = { id: string; slug: string; name: string };
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 type ObjectiveFilter = "ALL" | "leads" | "sales" | "traffic";
 
-const PAGE_SIZES = [25, 50, 100, 200] as const;
+const CAMPAIGN_GROUP_PAGE_SIZE = 10;
 
 /** Colunas fixas à esquerda ao rolar métricas (status + campanha). */
 const STICKY_STATUS_TH =
@@ -205,12 +206,11 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       };
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
-  const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [onlyAlerts, setOnlyAlerts] = useState(false);
   const [showZeroActivity, setShowZeroActivity] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [objectiveFilter, setObjectiveFilter] = useState<ObjectiveFilter>("ALL");
-  const [pageSize, setPageSize] = useState<number>(50);
+  const [groupPages, setGroupPages] = useState<Record<string, number>>({});
   const [page, setPage] = useState(1);
   const [columns, setColumns] = useState<CampaignColumnId[]>(() => loadCampaignColumns());
   const [sortKey, setSortKey] = useState<CampaignColumnId | null>(null);
@@ -222,7 +222,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [creationPickerOpen, setCreationPickerOpen] = useState(false);
   const [, startStatusTransition] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
-  const [metricsSource, setMetricsSource] = useState<"db" | "live" | "live-cached">("db");
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSlug, setSelectedSlug] = useState("");
   const [selectedRow, setSelectedRow] = useState<CampaignRow | null>(null);
@@ -268,29 +268,26 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
   const campaignsPageFilters = useMemo(
     () => (
-      <div className="ui-filter-panel-grid">
-        <div className="col-span-1 sm:col-span-2 xl:col-span-1 xl:min-w-[200px] xl:flex-1">
-          <div className="text-xs text-[var(--text-dim)]">{t("search")}</div>
-          <MetaFilterSearchBar
-            className="mt-1"
+      <>
+        <div className="ui-filter-panel-grid__search">
+          <FilterSearchInput
+            size="wide"
+            className="mt-0 w-full"
+            label={t("search")}
             value={qInput}
             onChange={setQInput}
-            filters={metaFilters}
-            onFiltersChange={(next) => {
-              setMetaFilters(next);
-              setPage(1);
-            }}
+            placeholder={t("searchPlaceholder")}
           />
         </div>
         <FilterSelectDropdown
-          className="w-full"
+          className="ui-filter-panel-field"
           icon={<ListFilter size={14} />}
           label={t("filterStatus")}
           placeholder={t("statusAll")}
           value={statusFilter === "ALL" ? "" : statusFilter}
           onChange={(v) => {
             setStatusFilter((v || "ALL") as StatusFilter);
-            setPage(1);
+            setGroupPages({});
           }}
           options={[
             { value: "ACTIVE", label: t("statusActive") },
@@ -298,14 +295,14 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           ]}
         />
         <FilterSelectDropdown
-          className="w-full"
+          className="ui-filter-panel-field"
           icon={<Target size={14} />}
           label={t("filterObjective")}
           placeholder={t("objectiveAll")}
           value={objectiveFilter === "ALL" ? "" : objectiveFilter}
           onChange={(v) => {
             setObjectiveFilter((v || "ALL") as ObjectiveFilter);
-            setPage(1);
+            setGroupPages({});
           }}
           options={[
             { value: "leads", label: t("objectiveLeads") },
@@ -313,29 +310,13 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             { value: "traffic", label: t("objectiveTraffic") }
           ]}
         />
-        <FilterSelectDropdown
-          className="w-full"
-          icon={<Rows3 size={14} />}
-          label={t("pageSizeLabel")}
-          placeholder={String(pageSize)}
-          clearable={false}
-          value={String(pageSize)}
-          onChange={(v) => {
-            setPageSize(Number(v));
-            setPage(1);
-          }}
-          options={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
-        />
-      </div>
+      </>
     ),
-    [t, qInput, metaFilters, statusFilter, objectiveFilter, pageSize]
+    [t, qInput, statusFilter, objectiveFilter]
   );
 
   const displayRows = useMemo(() => {
     let list = rows;
-    if (metaFilters.length) {
-      list = list.filter((r) => isDraftRow(r) || matchesCampaignFilters(r, metaFilters));
-    }
     if (q.trim()) {
       const qq = q.toLowerCase();
       list = list.filter(
@@ -346,7 +327,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       );
     }
     return list;
-  }, [rows, metaFilters, q]);
+  }, [rows, q]);
 
   const draftDisplayRows = useMemo(
     () => displayRows.filter((r) => isDraftRow(r)),
@@ -477,7 +458,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setQ(qInput);
-      setPage(1);
+      setGroupPages({});
     }, 300);
     return () => window.clearTimeout(timer);
   }, [qInput]);
@@ -532,8 +513,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         params.set("limit", "500");
         params.set("offset", "0");
       } else {
-        params.set("limit", String(pageSize));
-        params.set("offset", String((page - 1) * pageSize));
+        params.set("limit", String(CAMPAIGN_GROUP_PAGE_SIZE));
+        params.set("offset", String((page - 1) * CAMPAIGN_GROUP_PAGE_SIZE));
       }
 
       fetch(`/api/campaigns/list?${params.toString()}`, { signal: ac.signal })
@@ -552,10 +533,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           setTotal(j.total ?? list.length);
           setTotals(j.totals ?? { spend: 0, conversions: 0, leads: 0 });
           setEnrichError(j.enrichError ?? null);
-          const src = j.metricsSource as string;
-          setMetricsSource(
-            src === "live-cached" ? "live-cached" : src === "live" ? "live" : "db"
-          );
+          setDataUpdatedAt(typeof j.dataUpdatedAt === "string" ? j.dataUpdatedAt : null);
           if (selectedIdRef.current && list.some((r) => r.metaCampaignId === selectedIdRef.current)) {
             return;
           }
@@ -578,8 +556,6 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       statusFilter,
       objectiveFilter,
       period,
-      page,
-      pageSize,
       sortKey,
       sortDir,
       groupByType,
@@ -608,6 +584,10 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   useCommandStripPage(useUxChrome ? { hideFilters: true, hideSync: true } : {});
 
   useEffect(() => {
+    setGroupPages({});
+  }, [clientFilter, period.preset, period.since, period.until, statusFilter, objectiveFilter]);
+
+  useEffect(() => {
     if (!selectedId) return;
     // Espera o detalhe (renderizado condicionalmente) entrar no DOM antes de rolar.
     const raf = requestAnimationFrame(() => {
@@ -616,7 +596,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     return () => cancelAnimationFrame(raf);
   }, [selectedId]);
 
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const pageCount = Math.max(1, Math.ceil(total / CAMPAIGN_GROUP_PAGE_SIZE));
 
   useEffect(() => {
     if (page > pageCount) setPage(1);
@@ -852,6 +832,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           icon={<Megaphone size={16} />}
           title={t("title")}
           subtitle={t("subtitleList")}
+          showAccountFilter={false}
           pageFilters={campaignsPageFilters}
           actions={newCampaignSlot}
         />
@@ -881,28 +862,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span
-          className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
-            metricsSource === "live" || metricsSource === "live-cached"
-              ? "bg-[rgba(16,185,129,0.12)] text-[var(--success)]"
-              : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
-          }`}
-          title={
-            metricsSource === "live-cached"
-              ? t("metricsLiveCachedHint")
-              : metricsSource === "live"
-                ? t("metricsLiveHint")
-                : t("metricsDbHint")
-          }
-        >
-          {metricsSource === "live-cached"
-            ? t("metricsLiveCached")
-            : metricsSource === "live"
-              ? t("metricsLive")
-              : t("metricsDb")}
-        </span>
-      </div>
+      <CampaignMetricsDataBanner dataUpdatedAt={dataUpdatedAt} clientFilter={clientFilter} />
 
       {!useUxChrome ? (
       <div className="flex flex-wrap items-center gap-3 ui-card p-4">
@@ -922,14 +882,12 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           />
         ) : null}
         <div className="min-w-[200px] flex-1">
-          <MetaFilterSearchBar
+          <FilterSearchInput
+            size="wide"
+            className="w-full"
             value={qInput}
             onChange={setQInput}
-            filters={metaFilters}
-            onFiltersChange={(next) => {
-              setMetaFilters(next);
-              setPage(1);
-            }}
+            placeholder={t("searchPlaceholder")}
           />
         </div>
         <FilterSelectDropdown
@@ -970,18 +928,6 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             }}
           />
         ) : null}
-        <FilterSelectDropdown
-          icon={<Rows3 size={14} />}
-          label={t("pageSizeLabel")}
-          placeholder={String(pageSize)}
-          clearable={false}
-          value={String(pageSize)}
-          onChange={(v) => {
-            setPageSize(Number(v));
-            setPage(1);
-          }}
-          options={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
-        />
         <label className="flex items-center gap-2 rounded-xl border border-[var(--border-color)] px-3 py-2 text-sm text-[var(--text-dim)]">
           <input
             type="checkbox"
@@ -1134,21 +1080,53 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
               const groupMetricColumns = metricsColumnsForPreset(preset, customTypesMap);
               const groupSort = groupSorts[preset];
               const sorted = sortGroupRows(list, preset, groupMetricColumns);
+              const groupPage = groupPages[preset] ?? 1;
+              const groupPageCount = Math.max(1, Math.ceil(sorted.length / CAMPAIGN_GROUP_PAGE_SIZE));
+              const safeGroupPage = Math.min(groupPage, groupPageCount);
+              const pagedRows = sorted.slice(
+                (safeGroupPage - 1) * CAMPAIGN_GROUP_PAGE_SIZE,
+                safeGroupPage * CAMPAIGN_GROUP_PAGE_SIZE
+              );
               const groupTotals = computeGroupTotals(
                 sorted,
                 groupMetricColumns,
                 tableLayout.customMetricsMap
               );
+              const presetIcon = getCampaignPresetIconConfig(preset);
+              const PresetIcon = presetIcon.Icon;
               return (
-                <div key={preset} className="ui-card overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
-                    <div className="text-sm font-semibold text-[var(--text-main)]">
-                      {groupLabel(preset)}{" "}
-                      <span className="font-normal text-[var(--text-dimmer)]">({list.length})</span>
+                <div key={preset} className="ui-campaign-table-shell">
+                  <div className="ui-campaign-table-shell__header">
+                    <div className="ui-campaign-table-shell__title">
+                      <span className="ui-campaign-table-shell__icon">
+                        <PresetIcon size={18} strokeWidth={2} />
+                      </span>
+                      <span className="truncate">
+                        {groupLabel(preset)}{" "}
+                        <span className="font-normal text-[var(--text-dimmer)]">({list.length})</span>
+                      </span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <CampaignGroupExportButton
+                        groupLabel={groupLabel(preset)}
+                        rows={sorted.map((r) => ({
+                          ...r,
+                          preset: campaignPreset(r)
+                        }))}
+                        metricColumns={groupMetricColumns}
+                        customMetrics={tableLayout.customMetricsMap}
+                      />
+                      <CampaignGroupPager
+                        page={safeGroupPage}
+                        pageCount={groupPageCount}
+                        onPageChange={(next) =>
+                          setGroupPages((prev) => ({ ...prev, [preset]: next }))
+                        }
+                      />
                     </div>
                   </div>
                   <CampaignMobileCards
-                    rows={sorted}
+                    rows={pagedRows}
                     detailHref={campaignDetailHref}
                     formatMoney={(n) => formatBRL(n, locale)}
                     formatRoas={(n) => formatRoas(n, locale)}
@@ -1159,8 +1137,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                     onRemember={rememberCampaign}
                   />
                   <div className="hidden overflow-x-auto md:block">
-                    <table className="w-full min-w-[680px] text-sm">
-                      <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
+                    <table className="ui-campaign-table">
+                      <thead>
                         <tr>
                           <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
                             <button
@@ -1204,7 +1182,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 : ""}
                             </button>
                           </th>
-                          <th className="whitespace-nowrap px-3 py-2 text-center">{tPresets("label")}</th>
+                          <th className={`whitespace-nowrap px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-dimmer)]`}>
+                            {tPresets("label")}
+                          </th>
                           <CampaignTableHead
                             columns={groupMetricColumns}
                             customMetricNames={customMetricNames}
@@ -1212,13 +1192,14 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                             sortDir={groupSort?.dir}
                             onSort={(key) => toggleGroupSort(preset, key)}
                           />
+                          <th className="ui-campaign-table-chevron" aria-hidden />
                         </tr>
                       </thead>
                       <tbody>
-                        {sorted.map((r) => (
+                        {pagedRows.map((r) => (
                           <tr
                             key={r.metaCampaignId}
-                            className="group even:bg-[var(--surface-row-alt)] border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]"
+                            className="group"
                           >
                             <td className={STICKY_STATUS_TD}>
                               <CampaignStatusToggle
@@ -1233,7 +1214,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 <Link
                                   href={campaignDetailHref(r)}
                                   onClick={() => rememberCampaign(r.metaCampaignId, r.clientSlug)}
-                                  className="ui-link block w-full whitespace-normal break-words text-left font-medium"
+                                  className="ui-campaign-table-name block w-full whitespace-normal break-words text-left text-sm"
                                 >
                                   {r.campaignName}
                                 </Link>
@@ -1241,14 +1222,14 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 <button
                                   type="button"
                                   onClick={() => pickCampaign(r)}
-                                  className="ui-link block w-full whitespace-normal break-words text-left font-medium"
+                                  className="ui-campaign-table-name block w-full whitespace-normal break-words text-left text-sm"
                                 >
                                   {r.campaignName}
                                 </button>
                               )}
                             </td>
-                            <td className="truncate px-3 py-2.5 text-center text-[var(--text-dim)]">{r.clientName}</td>
-                            <td className="relative px-3 py-2.5 text-center">
+                            <td className="ui-campaign-table-client truncate text-center text-sm">{r.clientName}</td>
+                            <td className="relative text-center">
                               <CampaignTypeSelectCompact
                                 value={campaignPreset(r)}
                                 customTypes={customTypes}
@@ -1263,41 +1244,50 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 customMetrics={tableLayout.customMetricsMap}
                               />
                             ))}
+                            <td className="ui-campaign-table-chevron">
+                              <ChevronRight size={16} strokeWidth={2} />
+                            </td>
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot className="border-t-2 border-[var(--border-color)] bg-[var(--surface-thead)]/80">
+                      <tfoot>
                         <tr>
-                          <td className={`${STICKY_STATUS_TF} text-[var(--text-dimmer)]`}>—</td>
+                          <td className={`${STICKY_STATUS_TF} ui-campaign-table-footer-empty`} />
                           <td className={STICKY_NAME_TF}>
                             {t("rowTotal")} ({list.length})
                           </td>
-                          <td className="px-3 py-2.5 text-center text-[var(--text-dimmer)]">—</td>
-                          <td className="px-3 py-2.5 text-center text-[var(--text-dimmer)]">—</td>
+                          <td className="ui-campaign-table-footer-empty px-3 py-2.5 text-center" />
+                          <td className="ui-campaign-table-footer-empty px-3 py-2.5 text-center" />
                           {groupMetricColumns.map((col) => {
                             const key = columnRefKey(col);
                             const val = groupTotals[key];
-                            let content = "—";
+                            let content = "";
+                            let toneClass = "font-semibold tabular-nums text-[var(--text-main)]";
                             if (val != null && col.kind === "metric") {
                               content = formatMetricValue(col.key, val, locale);
+                              if (col.key === "spend") toneClass = "ui-campaign-table-spend font-bold";
+                              else if (col.key === "ctr")
+                                toneClass = `${campaignMetricToneClass(campaignMetricTone(content))} font-bold`;
                             } else if (val != null && col.kind === "custom") {
                               const fmt = tableLayout.customMetricsMap[col.id]?.format ?? "number";
-                              if (fmt === "currency") content = formatBRL(val, locale);
-                              else if (fmt === "percent") content = formatPercent(val, 2, locale);
-                              else if (fmt === "multiplier") content = formatRoas(val, locale);
+                              if (fmt === "currency") {
+                                content = formatBRL(val, locale);
+                                toneClass = "ui-campaign-table-spend font-bold";
+                              } else if (fmt === "percent") {
+                                content = formatPercent(val, 2, locale);
+                                toneClass = `${campaignMetricToneClass(campaignMetricTone(content))} font-bold`;
+                              } else if (fmt === "multiplier") content = formatRoas(val, locale);
                               else content = String(Math.round(val * 100) / 100);
                             } else if (val != null) {
                               content = String(val);
                             }
                             return (
-                              <td
-                                key={key}
-                                className="px-3 py-2.5 text-center font-semibold tabular-nums text-[var(--text-main)]"
-                              >
+                              <td key={key} className={`px-3 py-2.5 text-center ${toneClass}`}>
                                 {content}
                               </td>
                             );
                           })}
+                          <td className="ui-campaign-table-chevron" />
                         </tr>
                       </tfoot>
                     </table>
@@ -1407,8 +1397,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-color)] bg-[var(--surface-thead)] px-4 py-3">
           <span className="text-sm font-medium text-[var(--text-main)]">
             {t("pagination", {
-              from: total ? (page - 1) * pageSize + 1 : 0,
-              to: Math.min(page * pageSize, total),
+              from: total ? (page - 1) * CAMPAIGN_GROUP_PAGE_SIZE + 1 : 0,
+              to: Math.min(page * CAMPAIGN_GROUP_PAGE_SIZE, total),
               total
             })}
           </span>

@@ -7,6 +7,7 @@ alwaysApply: true
 # Design System — Traffic AI (UX Pilot v1)
 
 Always follow `docs/design-system.md` when building or editing UI.
+Theme colors: defaults in `globals.css`; runtime overrides via Admin → Temas / DS — see `docs/design-system/themes.md`.
 
 ## Quick rules
 

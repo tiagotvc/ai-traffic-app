@@ -5,7 +5,8 @@ export const PLATFORM_ADMIN_LINKS = [
   { id: "coupons", href: "/admin/billing/coupons", labelKey: "navCoupons" as const },
   { id: "refunds", href: "/admin/billing/refunds", labelKey: "navRefunds" as const },
   { id: "contacts", href: "/admin/contacts", labelKey: "navContacts" as const },
-  { id: "featureFlags", href: "/admin/platform/feature-flags", labelKey: "navFeatureFlags" as const }
+  { id: "featureFlags", href: "/admin/platform/feature-flags", labelKey: "navFeatureFlags" as const },
+  { id: "theme", href: "/admin/platform/theme", labelKey: "navTheme" as const }
 ] as const;
 
 export type PlatformAdminTabId = (typeof PLATFORM_ADMIN_LINKS)[number]["id"];

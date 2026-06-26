@@ -2,8 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { RefreshCw } from "lucide-react";
-import { useTransition } from "react";
 
+import { useManualSyncCooldown } from "@/hooks/useManualSyncCooldown";
 import { cn } from "@/lib/cn";
 
 export function MetaSyncButton({
@@ -21,34 +21,29 @@ export function MetaSyncButton({
   variant?: "toolbar" | "outline" | "prominent";
 }) {
   const tSync = useTranslations("sync");
-  const [syncing, startSync] = useTransition();
-  const text = syncing ? tSync("syncing") : label ?? tSync("syncMeta");
-  const aria = text;
+  const { cooldownSec, syncing, runSync } = useManualSyncCooldown(clientFilter);
 
-  function handleSync() {
-    if (syncing) return;
-    startSync(async () => {
-      const res = await fetch("/api/sync/run", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ clientId: clientFilter || undefined })
-      });
-      if (res.ok) {
-        window.dispatchEvent(new Event("traffic-sync-done"));
-      }
-    });
+  const cooldownMins = cooldownSec > 0 ? Math.max(1, Math.ceil(cooldownSec / 60)) : 0;
+  const disabled = syncing || cooldownSec > 0;
+  const text = syncing ? tSync("syncing") : label ?? tSync("syncMeta");
+  const title =
+    cooldownSec > 0 ? tSync("cooldownHint", { minutes: cooldownMins }) : text;
+
+  async function handleSync() {
+    if (disabled) return;
+    await runSync();
   }
 
   return (
     <button
       type="button"
-      onClick={handleSync}
-      disabled={syncing}
-      title={aria}
-      aria-label={aria}
+      onClick={() => void handleSync()}
+      disabled={disabled}
+      title={title}
+      aria-label={title}
       className={cn(
         "ui-btn-accent-outline ui-btn-responsive font-heading font-semibold",
-        syncing ? "cursor-wait opacity-70" : "active:scale-95",
+        disabled ? "cursor-not-allowed opacity-60" : "active:scale-95",
         className
       )}
     >

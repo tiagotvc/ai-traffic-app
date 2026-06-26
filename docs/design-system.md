@@ -26,8 +26,17 @@ Implementação: `src/app/globals.css`, `src/design-system/`, classes `ui-*`.
 | `--amber` / `--amber-bright` | Brand primário, nav ativo, CTA |
 | `--violet` / `--violet-bright` | IA, links legados |
 | `--ui-accent` (+ muted, border, hover…) | **Accent temático**: âmbar no light, roxo no dark — use em painéis flat |
+| `--ui-accent-btn-*` | CTA preenchido (`.ui-btn-accent`) — gradiente temático |
 | `--success` / `--danger` | Delta positivo / negativo |
 | `--brain-shelf-bg` | Bloco Agency Brain |
+
+## Temas (admin)
+
+Cores light/dark são configuráveis em **Admin → Temas / DS** (`/admin/platform/theme`).
+
+- Defaults em `globals.css`; overrides em `platform_settings` (`design_system_theme_config`)
+- Guia completo: **[design-system/themes.md](design-system/themes.md)**
+- Regra: **light = accent âmbar**, **dark = accent roxo** (padrão Orion; customizável pelo admin)
 
 ## Classes utilitárias (`globals.css`)
 
@@ -53,6 +62,10 @@ Implementação: `src/app/globals.css`, `src/design-system/`, classes `ui-*`.
 **Componentes:** `IconActionButton` (accent), `FilterToggleButton`, `MetaSyncButton` (outline), `DsButton` (`variant="accent" | "accentOutline"`).
 
 **Filtros mobile:** `.ui-filter-panel-grid` — grid 1 coluna no mobile, 2 no tablet, inline no desktop.
+
+**Tabelas de campanha (premium):** `.ui-campaign-table-shell`, `.ui-campaign-table`, `.ui-campaign-table-name` (accent), `.ui-campaign-table-tipo` (pill), `.ui-campaign-table-spend`, `.ui-campaign-metric--good/warn`.
+
+**Toggle (`DsSwitch`):** trilho ativo usa `--toggle-track-on` → accent temático (âmbar light / roxo dark).
 
 ### Formulários
 - `.ui-input`, `.ui-select`, `.ui-textarea`, `.ui-label`
@@ -157,6 +170,8 @@ node scripts/migrate-design-system.mjs
 ```
 
 Rodar após imports do UX Pilot ou quando encontrar classes `slate-*` / `violet-*` soltas.
+
+**Temas:** alterações visuais globais preferencialmente via Admin → Temas / DS ou editando `src/lib/design-system/theme-config.ts` (defaults). Evite hardcode de cores fora dos tokens.
 
 ## Exceções intencionais (não migrar)
 

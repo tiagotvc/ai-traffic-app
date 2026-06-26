@@ -22,6 +22,7 @@ export function PageToolbar({
   pageFilters,
   actions,
   showSync = true,
+  showAccountFilter = true,
   className
 }: {
   eyebrow?: string;
@@ -39,6 +40,7 @@ export function PageToolbar({
   pageFilters?: ReactNode;
   actions?: ReactNode;
   showSync?: boolean;
+  showAccountFilter?: boolean;
   className?: string;
 }) {
   const t = useTranslations("dashboard");
@@ -103,11 +105,12 @@ export function PageToolbar({
 
       {filtersOpen && canFilter ? (
         <div
-          className="ui-filter-panel-grid mt-3 rounded-xl border p-3"
+          className="ui-filter-panel-grid mt-3 rounded-xl border p-3 text-xs [&_button]:py-1.5 [&_button]:text-xs"
           style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
         >
           {hasGlobalFilters ? (
             <GlobalScopeFilters
+              layout="flat"
               clientFilter={strip!.clientFilter}
               setClientFilter={strip!.setClientFilter}
               accountFilter={strip!.accountFilter}
@@ -118,6 +121,7 @@ export function PageToolbar({
               adAccounts={strip!.adAccounts}
               periodFilterDisabled={periodFilterDisabled}
               periodFilterDisabledHint={periodFilterDisabledHint}
+              showAccount={showAccountFilter}
               compact
             />
           ) : null}

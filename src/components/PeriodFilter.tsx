@@ -51,6 +51,7 @@ export function PeriodFilter({
   const t = useTranslations("period");
   const locale = useLocale();
   const [open, setOpen] = useState(false);
+  const [customDraftOpen, setCustomDraftOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [customSince, setCustomSince] = useState(value.since || defaultCustomRange().since);
   const [customUntil, setCustomUntil] = useState(value.until || defaultCustomRange().until);
@@ -82,15 +83,21 @@ export function PeriodFilter({
 
   function pick(preset: PeriodPreset) {
     if (preset === "custom") {
-      onChange({ preset, since: customSince, until: customUntil });
+      if (value.preset === "custom") {
+        if (value.since) setCustomSince(value.since);
+        if (value.until) setCustomUntil(value.until);
+      }
+      setCustomDraftOpen(true);
       return;
     }
+    setCustomDraftOpen(false);
     onChange({ preset, since: "", until: "" });
     setOpen(false);
   }
 
   function applyCustom() {
     onChange({ preset: "custom", since: customSince, until: customUntil });
+    setCustomDraftOpen(false);
     setOpen(false);
   }
 
@@ -98,8 +105,8 @@ export function PeriodFilter({
   const isModal = variant === "modal";
   const useStripTrigger = isStrip || variant === "default";
   const showCustomPanel = isModal
-    ? value.preset === "custom"
-    : !isStrip || value.preset === "custom";
+    ? customDraftOpen || value.preset === "custom"
+    : !isStrip || customDraftOpen || value.preset === "custom";
 
   const stripPresetLabels: Record<(typeof STRIP_PRESETS)[number], string> = {
     today: periodLabels.today,
@@ -113,7 +120,8 @@ export function PeriodFilter({
   };
 
   function renderPresetButton(preset: PeriodPreset, text: string) {
-    const selected = value.preset === preset;
+    const selected =
+      preset === "custom" ? value.preset === "custom" || customDraftOpen : value.preset === preset;
     return (
       <button
         key={preset}
@@ -171,9 +179,11 @@ export function PeriodFilter({
               disabled && "cursor-not-allowed opacity-45"
             )}
             style={{
-              borderColor: value.preset === "custom" ? "var(--ui-accent)" : "var(--border-color)",
-              background: value.preset === "custom" ? "var(--ui-accent-muted)" : "var(--filter-btn-bg)",
-              color: value.preset === "custom" ? "var(--ui-accent)" : "var(--text-dim)"
+              borderColor:
+                value.preset === "custom" || customDraftOpen ? "var(--ui-accent)" : "var(--border-color)",
+              background:
+                value.preset === "custom" || customDraftOpen ? "var(--ui-accent-muted)" : "var(--filter-btn-bg)",
+              color: value.preset === "custom" || customDraftOpen ? "var(--ui-accent)" : "var(--text-dim)"
             }}
           >
             {periodLabels.custom}
@@ -211,7 +221,7 @@ export function PeriodFilter({
   }
 
   return (
-    <div ref={ref} className={useStripTrigger ? "relative inline-block" : "relative"}>
+    <div ref={ref} className="relative w-full">
       <button
         type="button"
         disabled={disabled}

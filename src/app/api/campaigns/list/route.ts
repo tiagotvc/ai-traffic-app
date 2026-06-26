@@ -15,6 +15,24 @@ import { queryCommandCenterCampaigns } from "@/lib/command-center-query";
 import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
 import { applyServerTiming } from "@/lib/server-timing";
 import { parsePeriodFromSearchParams, rollingDaysEndingYesterday } from "@/lib/report-period";
+import { getTenantSyncStatus } from "@/lib/sync-status";
+
+function resolveDataUpdatedAt(
+  sync: Awaited<ReturnType<typeof getTenantSyncStatus>>,
+  cachedAt?: string | null
+): string | null {
+  if (cachedAt) return cachedAt;
+  const accountTimes = sync.accounts
+    .map((a) => a.lastSyncedAt)
+    .filter((t): t is string => Boolean(t))
+    .sort((a, b) => b.localeCompare(a));
+  return (
+    sync.lastManualSyncAt ??
+    sync.lastRun?.finishedAt ??
+    accountTimes[0] ??
+    null
+  );
+}
 
 function filterByObjective<T extends { objective?: string | null }>(
   rows: T[],
@@ -195,6 +213,9 @@ export async function GET(req: Request) {
             })
           : [];
 
+      const syncStatus = await getTenantSyncStatus(tenant.id, clientSlug);
+      const dataUpdatedAt = resolveDataUpdatedAt(syncStatus);
+
       const res = NextResponse.json({
         ok: true,
         rows: [...draftRows, ...withCampaignPresets(rows, presetMap)],
@@ -209,6 +230,7 @@ export async function GET(req: Request) {
         presets: presetMap,
         enrichError: null,
         metricsSource: "db" as const,
+        dataUpdatedAt,
         period: { preset: period.preset, since: period.since, until: period.until }
       });
       return applyServerTiming(res, { total: Date.now() - t0, db: dbMs, meta: metaMs });
@@ -410,6 +432,10 @@ export async function GET(req: Request) {
     presets: presetMap,
     enrichError: enrichError ?? null,
     metricsSource,
+    dataUpdatedAt: resolveDataUpdatedAt(
+      await getTenantSyncStatus(tenant.id, clientSlug),
+      cachedAt ?? new Date().toISOString()
+    ),
     cachedAt,
     period: { preset: period.preset, since: period.since, until: period.until }
   });

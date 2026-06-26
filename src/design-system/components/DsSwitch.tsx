@@ -21,13 +21,14 @@ const knobTranslate: Record<DsSwitchSize, { on: string; off: string }> = {
 
 /**
  * Switch canônico do DS. Usa os tokens `--toggle-*` (trilho on/off, knob, sombra) e é acessível
- * (`role="switch"`). Base do antigo `CampaignStatusToggle`.
+ * (`role="switch"`). `variant="premium"` — gradiente accent (campanhas).
  */
 export function DsSwitch({
   checked,
   onChange,
   disabled,
   size = "md",
+  variant = "default",
   ariaLabel,
   className
 }: {
@@ -35,9 +36,32 @@ export function DsSwitch({
   onChange: () => void;
   disabled?: boolean;
   size?: DsSwitchSize;
+  variant?: "default" | "premium";
   ariaLabel?: string;
   className?: string;
 }) {
+  if (variant === "premium") {
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          onChange();
+        }}
+        className={cn(
+          "ui-switch-premium relative inline-flex shrink-0 items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] focus-visible:ring-offset-1",
+          className
+        )}
+      >
+        <span className="ui-switch-premium__knob pointer-events-none absolute left-0.5 top-0.5" />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -50,7 +74,7 @@ export function DsSwitch({
         onChange();
       }}
       className={cn(
-        "relative inline-flex shrink-0 items-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--violet)] focus-visible:ring-offset-1 disabled:cursor-wait disabled:opacity-60",
+        "relative inline-flex shrink-0 items-center rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] focus-visible:ring-offset-1 disabled:cursor-wait disabled:opacity-60",
         trackClass[size],
         className
       )}

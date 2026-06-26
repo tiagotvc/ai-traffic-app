@@ -22,6 +22,7 @@ export function GlobalScopeFilters({
   periodFilterDisabled = false,
   periodFilterDisabledHint,
   compact = true,
+  layout = "grid",
   showClient = true,
   showAccount = true,
   showPeriod = true
@@ -37,6 +38,8 @@ export function GlobalScopeFilters({
   periodFilterDisabled?: boolean;
   periodFilterDisabledHint?: string;
   compact?: boolean;
+  /** `flat` — filhos diretos para grid pai (PageToolbar); `grid` — grid próprio */
+  layout?: "grid" | "flat";
   showClient?: boolean;
   showAccount?: boolean;
   showPeriod?: boolean;
@@ -47,10 +50,13 @@ export function GlobalScopeFilters({
     ? "text-xs [&_button]:py-1.5 [&_button]:text-xs"
     : undefined;
 
-  return (
-    <div className={cn("ui-filter-panel-grid", pillClass)}>
+  const fieldClass = layout === "flat" ? "ui-filter-panel-field" : undefined;
+
+  const content = (
+    <>
       {showClient ? (
         <FilterSelectDropdown
+          className={fieldClass}
           icon={<Building2 size={13} />}
           label={t("filterClient")}
           placeholder={t("filterAllClients")}
@@ -61,6 +67,7 @@ export function GlobalScopeFilters({
       ) : null}
       {showAccount ? (
         <FilterSelectDropdown
+          className={fieldClass}
           icon={<BarChart2 size={13} />}
           label={t("filterAccount")}
           placeholder={t("filterAllAccounts")}
@@ -71,14 +78,26 @@ export function GlobalScopeFilters({
         />
       ) : null}
       {showPeriod ? (
-        <PeriodFilter
-          value={period}
-          onChange={setPeriod}
-          variant={compact ? "commandStrip" : "modal"}
-          disabled={periodFilterDisabled}
-          disabledHint={periodFilterDisabledHint}
-        />
+        <div className={fieldClass}>
+          <PeriodFilter
+            value={period}
+            onChange={setPeriod}
+            variant={compact ? "commandStrip" : "modal"}
+            disabled={periodFilterDisabled}
+            disabledHint={periodFilterDisabledHint}
+          />
+        </div>
       ) : null}
+    </>
+  );
+
+  if (layout === "flat") {
+    return content;
+  }
+
+  return (
+    <div className={cn("ui-filter-panel-grid", pillClass)}>
+      {content}
     </div>
   );
 }

@@ -1,25 +1,24 @@
 "use client";
 
 import { useMemo } from "react";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { ChevronRight, TrendingDown, TrendingUp } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
+import { campaignPresetBadgeClass } from "@/lib/campaign-preset-badge";
+import {
+  campaignMetricTone,
+  campaignMetricToneClass,
+  campaignPresetCode,
+  CAMPAIGN_ROW_SELECTED_BG
+} from "@/lib/campaign-table-premium";
+import { getCampaignPresetIconConfig } from "@/lib/campaign-preset-icons";
 import type {
   UxCampaignGroup,
   UxCampaignRow,
   UxTableTotals
 } from "@/uxpilot-ui/adapters/campaigns-mappers";
 import { cn } from "@/uxpilot-ui/lib/utils";
-
-const objectiveColors: Record<string, string> = {
-  Conversões: "#7c3aed",
-  Awareness: "#f5a623",
-  Retargeting: "#10b981",
-  Leads: "#7c3aed",
-  Tráfego: "#0ea5e9",
-  Engajamento: "#f43f5e"
-};
 
 type Props = {
   groups: UxCampaignGroup[];
@@ -30,48 +29,42 @@ type Props = {
   onToggleStatus?: (id: string | number, rawStatus?: string) => void;
 };
 
+function CampaignGroupHeader({ groupKey, label, count }: { groupKey: string; label: string; count: number }) {
+  const { Icon } = getCampaignPresetIconConfig(groupKey);
+  return (
+    <div className="ui-campaign-table-shell__header">
+      <div className="ui-campaign-table-shell__title">
+        <span className="ui-campaign-table-shell__icon">
+          <Icon size={18} strokeWidth={2} />
+        </span>
+        <span className="truncate">
+          {label} <span className="font-normal text-[var(--text-dimmer)]">({count})</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function TotalsFooterRow({ totals }: { totals: UxTableTotals }) {
   const t = useTranslations("campaignsPage");
+  const ctrTone = campaignMetricToneClass(campaignMetricTone(totals.ctr));
+
   return (
-    <tr
-      className="border-t-2 font-semibold"
-      style={{ borderColor: "var(--border-color)", background: "var(--surface-thead)" }}
-    >
-      <td className="px-2 py-3" />
-      <td className="px-4 py-3 text-sm font-heading" style={{ color: "var(--text-main)" }}>
-        {t("rowTotal")}
-      </td>
-      <td className="px-4 py-3" />
-      <td className="px-4 py-3 text-sm font-body whitespace-nowrap" style={{ color: "var(--text-dim)" }}>
-        {totals.budget}
-      </td>
-      <td className="px-4 py-3 text-sm font-heading whitespace-nowrap" style={{ color: "var(--amber)" }}>
-        {totals.spend}
-      </td>
-      <td className="px-4 py-3 text-sm font-heading" style={{ color: "var(--text-main)" }}>
-        {totals.roas}
-      </td>
-      <td className="px-4 py-3 text-sm font-body whitespace-nowrap" style={{ color: "var(--text-main)" }}>
-        {totals.cpl}
-      </td>
-      <td className="px-4 py-3 text-sm font-body" style={{ color: "var(--text-main)" }}>
-        {totals.ctr}
-      </td>
-      <td className="px-4 py-3 text-sm font-body" style={{ color: "var(--text-dim)" }}>
-        {totals.impressions}
-      </td>
-      <td className="px-4 py-3 text-sm font-body" style={{ color: "var(--text-dim)" }}>
-        {totals.clicks}
-      </td>
-      <td className="px-4 py-3 text-sm font-body" style={{ color: "var(--text-dim)" }}>
-        {totals.conversions}
-      </td>
-      <td className="px-4 py-3 text-sm font-body" style={{ color: "var(--text-dim)" }}>
-        {totals.frequency}
-      </td>
-      <td className="px-4 py-3 text-sm font-body" style={{ color: "var(--text-dim)" }}>
-        {totals.cpm}
-      </td>
+    <tr>
+      <td />
+      <td>{t("rowTotal")}</td>
+      <td>—</td>
+      <td>—</td>
+      <td className="ui-campaign-table-spend">{totals.spend}</td>
+      <td>{totals.roas}</td>
+      <td>{totals.cpl}</td>
+      <td className={ctrTone}>{totals.ctr}</td>
+      <td className="font-normal text-[var(--text-dim)]">{totals.impressions}</td>
+      <td className="font-normal text-[var(--text-dim)]">{totals.clicks}</td>
+      <td className="font-normal text-[var(--text-dim)]">{totals.conversions}</td>
+      <td className="font-normal text-[var(--text-dim)]">{totals.frequency}</td>
+      <td className="font-normal text-[var(--text-dim)]">{totals.cpm}</td>
+      <td className="ui-campaign-table-chevron" />
     </tr>
   );
 }
@@ -95,14 +88,14 @@ function CampaignRowCells({
       : isActive
         ? t("statusActive")
         : t("statusPaused");
+  const tipoCode = campaignPresetCode(c.preset, c.objective);
+  const ctrTone = campaignMetricToneClass(campaignMetricTone(c.ctr));
 
   return (
     <>
-      <td className="px-2 py-3 w-12 text-center" onClick={(e) => e.stopPropagation()}>
+      <td onClick={(e) => e.stopPropagation()}>
         {c.status === "draft" ? (
-          <span className="text-[10px] font-body" style={{ color: "var(--text-dimmer)" }}>
-            —
-          </span>
+          <span className="text-[10px] text-[var(--text-dimmer)]">—</span>
         ) : (
           <CampaignStatusToggle
             active={isActive}
@@ -113,64 +106,50 @@ function CampaignRowCells({
         )}
       </td>
 
-      <td className="px-4 py-3 min-w-[200px]">
-        <div>
-          {c.status !== "draft" ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectCampaign(String(c.id));
-              }}
-              className="text-left font-body font-medium text-sm hover:underline"
-              style={{ color: "var(--text-main)" }}
-            >
-              {c.name}
-            </button>
-          ) : (
-            <p className="font-body font-medium text-sm" style={{ color: "var(--text-main)" }}>
-              {c.name}
-            </p>
-          )}
-          <p className="text-[11px] font-body mt-0.5" style={{ color: "var(--text-dimmer)" }}>
-            {c.client}
-          </p>
-        </div>
+      <td className="min-w-[200px]">
+        {c.status !== "draft" ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectCampaign(String(c.id));
+            }}
+            className="ui-campaign-table-name text-left text-sm"
+          >
+            {c.name}
+          </button>
+        ) : (
+          <p className="ui-campaign-table-name text-sm">{c.name}</p>
+        )}
       </td>
 
-      <td className="px-4 py-3">
-        <span
-          className="text-[11px] font-body px-2 py-0.5 rounded-full whitespace-nowrap"
-          style={{
-            background: `${objectiveColors[c.objective] || "#94a3b8"}18`,
-            color: objectiveColors[c.objective] || "#94a3b8"
-          }}
-        >
-          {c.objective}
+      <td className="ui-campaign-table-client whitespace-nowrap text-sm">{c.client}</td>
+
+      <td className="text-center">
+        <span className={cn("ui-campaign-table-tipo", campaignPresetBadgeClass(c.preset ?? "default"))}>
+          {tipoCode}
         </span>
       </td>
 
-      <td className="px-4 py-3 text-sm font-body whitespace-nowrap" style={{ color: "var(--text-dim)" }}>
-        {c.budget}
-      </td>
+      <td className="whitespace-nowrap text-sm text-[var(--text-dim)]">{c.budget}</td>
 
-      <td className="px-4 py-3 font-heading font-semibold text-sm whitespace-nowrap" style={{ color: "var(--amber)" }}>
-        {c.spend}
-      </td>
+      <td className="ui-campaign-table-spend whitespace-nowrap text-sm">{c.spend}</td>
 
-      <td className="px-4 py-3">
+      <td>
         {c.roas === "—" ? (
-          <span style={{ color: "var(--text-dimmer)" }}>—</span>
+          <span className="text-[var(--text-dimmer)]">—</span>
         ) : (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-start gap-1">
             {c.trend === "up" ? (
-              <TrendingUp size={12} style={{ color: "#10b981" }} />
+              <TrendingUp size={12} className="text-[var(--success)]" />
             ) : (
-              <TrendingDown size={12} style={{ color: "#ef4444" }} />
+              <TrendingDown size={12} className="text-[var(--danger)]" />
             )}
             <span
-              className="font-heading font-semibold text-sm"
-              style={{ color: c.trend === "up" ? "#10b981" : "#ef4444" }}
+              className={cn(
+                "font-heading text-sm font-semibold",
+                c.trend === "up" ? "text-[var(--success)]" : "text-[var(--danger)]"
+              )}
             >
               {c.roas}
             </span>
@@ -178,32 +157,18 @@ function CampaignRowCells({
         )}
       </td>
 
-      <td className="px-4 py-3 font-body text-sm whitespace-nowrap" style={{ color: "var(--text-main)" }}>
-        {c.cpl}
-      </td>
+      <td className="whitespace-nowrap text-sm text-[var(--text-main)]">{c.cpl}</td>
 
-      <td className="px-4 py-3 font-body text-sm" style={{ color: "var(--text-main)" }}>
-        {c.ctr}
-      </td>
+      <td className={cn("text-sm", ctrTone)}>{c.ctr}</td>
 
-      <td className="px-4 py-3 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-        {c.impressions}
-      </td>
+      <td className="text-sm text-[var(--text-dim)]">{c.impressions}</td>
+      <td className="text-sm text-[var(--text-dim)]">{c.clicks}</td>
+      <td className="text-sm text-[var(--text-dim)]">{c.conversions}</td>
+      <td className="text-sm text-[var(--text-dim)]">{c.frequency}</td>
+      <td className="text-sm text-[var(--text-dim)]">{c.cpm}</td>
 
-      <td className="px-4 py-3 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-        {c.clicks}
-      </td>
-
-      <td className="px-4 py-3 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-        {c.conversions}
-      </td>
-
-      <td className="px-4 py-3 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-        {c.frequency}
-      </td>
-
-      <td className="px-4 py-3 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-        {c.cpm}
+      <td className="ui-campaign-table-chevron">
+        {c.status !== "draft" ? <ChevronRight size={16} strokeWidth={2} /> : null}
       </td>
     </>
   );
@@ -212,7 +177,8 @@ function CampaignRowCells({
 const TABLE_HEADERS = [
   "Status",
   "Campanha",
-  "Objetivo",
+  "Cliente",
+  "Tipo",
   "Budget",
   "Investido",
   "ROAS",
@@ -222,7 +188,8 @@ const TABLE_HEADERS = [
   "Cliques",
   "Conversões",
   "Freq.",
-  "CPM"
+  "CPM",
+  ""
 ] as const;
 
 export function UxCampaignsGroupedTables({
@@ -240,11 +207,8 @@ export function UxCampaignsGroupedTables({
 
   if (!groups.length) {
     return (
-      <div
-        className="rounded-xl border py-16 text-center"
-        style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
-      >
-        <p className="font-heading font-semibold opacity-40" style={{ color: "var(--text-main)" }}>
+      <div className="ui-campaign-table-shell py-16 text-center">
+        <p className="font-heading font-semibold opacity-40 text-[var(--text-main)]">
           Nenhuma campanha encontrada
         </p>
       </div>
@@ -254,133 +218,57 @@ export function UxCampaignsGroupedTables({
   return (
     <div className="space-y-5">
       {groups.map((group) => (
-        <div
-          key={group.key}
-          className="rounded-xl border overflow-hidden"
-          style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
-        >
-          <div
-            className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3"
-            style={{ borderColor: "var(--border-color)" }}
-          >
-            <h2 className="font-heading text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-              {group.label}{" "}
-              <span className="font-normal" style={{ color: "var(--text-dimmer)" }}>
-                ({group.count})
-              </span>
-            </h2>
-          </div>
+        <div key={group.key} className="ui-campaign-table-shell">
+          <CampaignGroupHeader groupKey={group.key} label={group.label} count={group.count} />
 
-          {totalsOpen && group.kpis.length > 0 ? (
-            <div className="border-b px-4 py-3" style={{ borderColor: "var(--border-color)" }}>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
-                {group.kpis.map((kpi) => {
-                  const Icon = kpi.icon;
-                  return (
-                    <div
-                      key={kpi.label}
-                      className="min-w-0 rounded-lg border p-2"
-                      style={{
-                        background: "var(--surface-bg)",
-                        borderColor: "var(--border-color)"
-                      }}
-                    >
-                      <div className="mb-1 flex items-center justify-between gap-1">
-                        <div
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
-                          style={{ background: `${kpi.color}15` }}
-                        >
-                          <Icon size={12} style={{ color: kpi.color }} />
-                        </div>
-                        <span
-                          className="shrink-0 rounded-full px-1 py-0.5 text-[9px] font-heading font-bold"
-                          style={{
-                            background: "rgba(245,166,35,0.1)",
-                            color: "var(--amber)"
-                          }}
-                        >
-                          {kpi.delta}
-                        </span>
-                      </div>
-                      <p
-                        className="truncate font-heading text-sm font-bold"
-                        style={{ color: "var(--text-main)" }}
-                      >
-                        {kpi.value}
-                      </p>
-                      <p
-                        className="mt-0.5 truncate text-[10px] font-body"
-                        style={{ color: "var(--text-dim)" }}
-                      >
-                        {kpi.label}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b" style={{ background: "var(--surface-thead)", borderColor: "var(--border-color)" }}>
-                  {TABLE_HEADERS.map((label) => (
-                    <th
-                      key={label}
-                      className="text-left px-4 py-3 text-[10px] uppercase tracking-widest font-heading whitespace-nowrap"
-                      style={{ color: "var(--text-dimmer)" }}
-                    >
-                      {label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {group.campaigns.map((c, i) => (
-                  <tr
-                    key={c.id}
-                    className={cn(
-                      "border-b transition-colors even:bg-[var(--surface-row-alt)]",
-                      c.status !== "draft" && "cursor-pointer"
-                    )}
-                    style={{
-                      borderColor: "var(--border-color)",
-                      background:
-                        selectedCampaignId === c.id ? "rgba(245,166,35,0.06)" : undefined
-                    }}
-                    onClick={() => {
-                      if (c.status === "draft") return;
-                      onSelectCampaign(String(c.id));
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedCampaignId !== c.id) {
-                        e.currentTarget.style.background = "var(--row-hover)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background =
-                        selectedCampaignId === c.id ? "rgba(245,166,35,0.06)" : "";
-                    }}
-                  >
-                    <CampaignRowCells
-                      c={c}
-                      statusPendingId={statusPendingId}
-                      onSelectCampaign={onSelectCampaign}
-                      onToggleStatus={onToggleStatus}
-                    />
+            <div className="overflow-x-auto">
+              <table className="ui-campaign-table">
+                <thead>
+                  <tr>
+                    {TABLE_HEADERS.map((label, i) => (
+                      <th key={`${label}-${i}`} className={i === TABLE_HEADERS.length - 1 ? "ui-campaign-table-chevron" : undefined}>
+                        {label}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <TotalsFooterRow totals={group.totals} />
-              </tfoot>
-            </table>
+                </thead>
+                <tbody>
+                  {group.campaigns.map((c) => {
+                    const selected = selectedCampaignId === c.id;
+                    return (
+                      <tr
+                        key={c.id}
+                        className={cn(
+                          c.status !== "draft" && "cursor-pointer",
+                          selected && "ui-campaign-table-row--selected"
+                        )}
+                        style={selected ? { background: CAMPAIGN_ROW_SELECTED_BG } : undefined}
+                        onClick={() => {
+                          if (c.status === "draft") return;
+                          onSelectCampaign(String(c.id));
+                        }}
+                      >
+                        <CampaignRowCells
+                          c={c}
+                          statusPendingId={statusPendingId}
+                          onSelectCampaign={onSelectCampaign}
+                          onToggleStatus={onToggleStatus}
+                        />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                {totalsOpen ? (
+                  <tfoot>
+                    <TotalsFooterRow totals={group.totals} />
+                  </tfoot>
+                ) : null}
+              </table>
           </div>
         </div>
       ))}
 
-      <p className="text-center text-xs font-body" style={{ color: "var(--text-dim)" }}>
+      <p className="text-center text-xs text-[var(--text-dim)]">
         {totalCampaigns} campanha{totalCampaigns === 1 ? "" : "s"} em {groups.length} tipo
         {groups.length === 1 ? "" : "s"}
       </p>

@@ -9,6 +9,7 @@ import { CommandStripProvider } from "@/components/layout/CommandStripContext";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
 import { FirstLoginTermsGate } from "@/components/auth/FirstLoginTermsGate";
 import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
+import { ThemeConfigApplier } from "@/components/theme/ThemeConfigApplier";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 
 const STORAGE_KEY = "traffic-ai-sidebar-collapsed";
@@ -62,6 +63,7 @@ export function AppShell({
 
   return (
     <UxThemeProvider>
+    <ThemeConfigApplier />
     <PublishPanelProvider>
       <div className="flex h-screen overflow-hidden bg-[var(--surface-bg)]">
         <AppSidebar

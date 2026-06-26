@@ -34,7 +34,7 @@ export function FilterSearchInput({
       className={cn(
         "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus-within:border-[var(--ui-accent)]",
         size === "default" && "min-w-[240px] sm:min-w-[280px]",
-        size === "wide" && "min-w-[260px] flex-1 sm:min-w-[300px]",
+        size === "wide" && "min-w-[260px] flex-1 sm:min-w-[300px] lg:min-w-[20rem]",
         size === "compact" && "min-w-[8rem] sm:min-w-[10rem]",
         disabled && "cursor-not-allowed opacity-60",
         className

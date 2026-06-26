@@ -4,6 +4,10 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { COLUMN_I18N_KEYS } from "@/lib/campaign-table-columns";
 import {
+  campaignMetricTone,
+  campaignMetricToneClass
+} from "@/lib/campaign-table-premium";
+import {
   columnRefKey,
   resolveColumnNumericValue,
   type MetricRowData,
@@ -49,7 +53,7 @@ export function CampaignTableHead({
         const isMetric = col.kind !== "field";
         const thAlign = "text-center";
         return (
-          <th key={key} className={`whitespace-nowrap px-3 py-2 ${thAlign}`}>
+          <th key={key} className={`whitespace-nowrap px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-dimmer)] ${thAlign}`}>
             {onSort && isMetric ? (
               <button type="button" onClick={() => onSort(key)} className="hover:text-[var(--text-dim)]">
                 {label(col)}
@@ -93,6 +97,7 @@ export function CampaignTableCell({
 
   if (col.kind === "field") {
     let content: string = "—";
+    let toneClass = "text-[var(--text-dim)]";
     switch (col.id) {
       case "campaign":
         content = row.campaignName ?? "—";
@@ -111,36 +116,48 @@ export function CampaignTableCell({
         break;
       case "spend":
         content = formatBRL(row.spend ?? 0, locale);
+        toneClass = "ui-campaign-table-spend";
         break;
       case "conversions":
         content = String(row.conversions ?? 0);
+        toneClass = "font-semibold text-[var(--text-main)]";
         break;
       case "cpa":
         content = row.cpa != null ? formatBRL(row.cpa, locale) : "—";
         break;
       case "roas":
         content = formatRoas(row.roas ?? 0, locale);
+        toneClass = campaignMetricToneClass(campaignMetricTone(content));
         break;
       default:
         break;
     }
-    return <td className={`${className} ${align} text-[var(--text-dim)]`}>{content}</td>;
+    return <td className={`${className} ${align} ${toneClass}`}>{content}</td>;
   }
 
   const val = resolveColumnNumericValue(col, row, customMetrics, evaluateFormula);
   let content = "—";
+  let toneClass = "text-[var(--text-dim)]";
   if (val != null) {
-    if (col.kind === "metric") content = formatMetricValue(col.key, val, locale);
-    else if (col.kind === "custom") {
+    if (col.kind === "metric") {
+      content = formatMetricValue(col.key, val, locale);
+      if (col.key === "spend") toneClass = "ui-campaign-table-spend";
+      else if (col.key === "ctr" || col.key === "roas")
+        toneClass = campaignMetricToneClass(campaignMetricTone(content));
+      else if (col.key === "conversions")
+        toneClass = "font-semibold text-[var(--text-main)]";
+    } else if (col.kind === "custom") {
       const fmt = customMetrics[col.id]?.format ?? "number";
       if (fmt === "currency") content = formatBRL(val, locale);
       else if (fmt === "percent") content = formatPercent(val, 2, locale);
       else if (fmt === "multiplier") content = formatRoas(val, locale);
       else content = val.toLocaleString(locale === "en" ? "en-US" : "pt-BR", { maximumFractionDigits: 2 });
+      if (fmt === "currency") toneClass = "ui-campaign-table-spend";
+      else if (fmt === "percent") toneClass = campaignMetricToneClass(campaignMetricTone(content));
     } else {
       content = val.toLocaleString(locale === "en" ? "en-US" : "pt-BR", { maximumFractionDigits: 0 });
     }
   }
 
-  return <td className={`${className} ${align} text-[var(--text-dim)]`}>{content}</td>;
+  return <td className={`${className} ${align} ${toneClass}`}>{content}</td>;
 }
