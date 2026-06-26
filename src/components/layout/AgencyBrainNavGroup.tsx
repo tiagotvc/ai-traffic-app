@@ -12,6 +12,8 @@ import {
   resolveAgencyBrainFeatures,
   type AgencyBrainFeatureFlags
 } from "@/lib/agency-brain/domain/modules";
+import { isFeatureEnabled } from "@/lib/feature-flags/registry";
+import type { FeatureFlagMap } from "@/lib/feature-flags/types";
 
 const STORAGE_KEY = "agency-brain-nav-expanded";
 
@@ -30,6 +32,8 @@ function readExpandedPreference(inAgencyBrain: boolean): boolean {
 type Props = {
   collapsed: boolean;
   agencyBrainFeatures: AgencyBrainFeatureFlags;
+  /** Feature flags de plataforma (kill-switch). Ausente = tudo habilitado. */
+  platformFeatures?: FeatureFlagMap;
   pathname: string;
   permissionsReady?: boolean;
   isPlatformAdmin?: boolean;
@@ -75,6 +79,7 @@ function isAgencyBrainActive(base: string): boolean {
 export function AgencyBrainNavGroup({
   collapsed,
   agencyBrainFeatures,
+  platformFeatures,
   pathname,
   permissionsReady = true,
   onNavigate
@@ -83,6 +88,9 @@ export function AgencyBrainNavGroup({
   const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
   const inAgencyBrain = base.startsWith("/agency-brain");
   const parentActive = isAgencyBrainActive(base);
+
+  // Kill-switch de plataforma: ausente = habilitado (default ON).
+  const featureOn = (id: string) => !platformFeatures || isFeatureEnabled(platformFeatures, id);
 
   const features = resolveAgencyBrainFeatures(agencyBrainFeatures);
   const allowed = !permissionsReady || features.allowCreativeMemoryAi;
@@ -102,6 +110,9 @@ export function AgencyBrainNavGroup({
       /* ignore */
     }
   }
+
+  // Plataforma desligou o módulo Brain → esconde por completo (não mostra "locked/upgrade").
+  if (permissionsReady && !featureOn("brain")) return null;
 
   if (!allowed) {
     return <AgencyBrainNavLocked collapsed={collapsed} onNavigate={onNavigate} />;
@@ -146,7 +157,7 @@ export function AgencyBrainNavGroup({
 
       {expanded ? (
         <div className="ml-4 space-y-0.5 border-l border-white/10 pl-2">
-          {AGENCY_BRAIN_MVP_NAV_ITEMS.map((item) => {
+          {AGENCY_BRAIN_MVP_NAV_ITEMS.filter((item) => featureOn(`brain.${item.id}`)).map((item) => {
             const active =
               item.id === "learnings" ? isLearningsActive(base) : isHypothesesActive(base);
             return (
@@ -160,13 +171,15 @@ export function AgencyBrainNavGroup({
               </Link>
             );
           })}
-          <Link
-            href="/automations"
-            onClick={() => onNavigate?.()}
-            className={sidebarModuleClasses(undefined, isAutomationsActive(base))}
-          >
-            {t("automations")}
-          </Link>
+          {featureOn("brain.automations") ? (
+            <Link
+              href="/automations"
+              onClick={() => onNavigate?.()}
+              className={sidebarModuleClasses(undefined, isAutomationsActive(base))}
+            >
+              {t("automations")}
+            </Link>
+          ) : null}
         </div>
       ) : null}
     </div>

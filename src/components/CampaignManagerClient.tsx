@@ -23,7 +23,6 @@ import { formatBRL, formatNumber, formatPercent, formatRoas } from "@/lib/format
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
-import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import {
@@ -41,10 +40,6 @@ import {
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
 import { presetMetricsFor } from "@/lib/campaign-presets";
-import {
-  type AppliedCampaignFilter,
-  matchesCampaignFilters
-} from "@/lib/campaign-meta-filters";
 import { METRIC_BY_KEY, MAX_CHART_METRICS, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { ChartContainer } from "@/components/ui/ChartContainer";
 import {
@@ -499,8 +494,6 @@ export function CampaignManagerClient({
       : localCreativesCount;
   const creativesCountLoading =
     drilldown && !embedded ? drilldown.countsLoading : localCreativesCountLoading;
-  const [search, setSearch] = useState("");
-  const [adsetMetaFilters, setAdsetMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [statusPending, setStatusPending] = useState(false);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
@@ -639,25 +632,7 @@ export function CampaignManagerClient({
     reload();
   }, [reload, drilldown, embedded]);
 
-  const filteredAdsets = useMemo(() => {
-    let list = adsets;
-    if (adsetMetaFilters.length) {
-      list = list.filter((a) =>
-        matchesCampaignFilters(
-          {
-            metaCampaignId: a.id,
-            campaignName: a.name ?? a.id,
-            status: a.status,
-            dailyBudget: a.dailyBudget
-          },
-          adsetMetaFilters
-        )
-      );
-    }
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
-    return list.filter((a) => (a.name ?? a.id).toLowerCase().includes(q));
-  }, [adsets, search, adsetMetaFilters]);
+  const filteredAdsets = adsets;
 
   const metricSeries = useCallback(
     (key: MetricKey) => series.map((p) => Number(p[key] ?? 0)),
@@ -759,14 +734,7 @@ export function CampaignManagerClient({
         }
         filtersContent={
           activeTab === "adsets" ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <MetaFilterSearchBar
-                value={search}
-                onChange={setSearch}
-                filters={adsetMetaFilters}
-                onFiltersChange={setAdsetMetaFilters}
-                className="min-w-[240px] flex-1"
-              />
+            <div className="ml-auto shrink-0">
               <CampaignTableColumnsButton />
             </div>
           ) : undefined
@@ -934,10 +902,6 @@ export function CampaignManagerClient({
         ) : (
           <AdsetsTable
             filteredAdsets={filteredAdsets}
-            search={search}
-            setSearch={setSearch}
-            metaFilters={adsetMetaFilters}
-            setMetaFilters={setAdsetMetaFilters}
             metaCampaignId={metaCampaignId}
             slug={slug}
             locale={locale}
@@ -1054,10 +1018,6 @@ function QuickAction({
 
 function AdsetsTable({
   filteredAdsets,
-  search,
-  setSearch,
-  metaFilters,
-  setMetaFilters,
   metaCampaignId,
   slug,
   locale,
@@ -1068,10 +1028,6 @@ function AdsetsTable({
   campaignPreset
 }: {
   filteredAdsets: AdSetRow[];
-  search: string;
-  setSearch: (v: string) => void;
-  metaFilters: AppliedCampaignFilter[];
-  setMetaFilters: (v: AppliedCampaignFilter[]) => void;
   metaCampaignId: string;
   slug: string;
   locale: string;

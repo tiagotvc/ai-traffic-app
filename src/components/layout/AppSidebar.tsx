@@ -21,6 +21,7 @@ import {
   SidebarLogoIcon
 } from "@/components/layout/SidebarUxChrome";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
+import type { FeatureFlagMap } from "@/lib/feature-flags/types";
 import { isNavItemAllowed, type GatedNavId } from "@/lib/billing/nav-permissions";
 import type { PlanLimits } from "@/lib/billing/types";
 import { FREE_LIMITS } from "@/lib/billing/types";
@@ -47,6 +48,7 @@ export function AppSidebar({
   subscriptionStatus,
   allowCreativeMemoryAi = true,
   agencyBrainFeatures,
+  platformFeatures,
   planLimits = FREE_LIMITS,
   planLimitsReady = true,
   isPlatformAdmin = false,
@@ -62,6 +64,7 @@ export function AppSidebar({
   subscriptionStatus?: string;
   allowCreativeMemoryAi?: boolean;
   agencyBrainFeatures?: AgencyBrainFeatureFlags;
+  platformFeatures?: FeatureFlagMap;
   planLimits?: PlanLimits;
   planLimitsReady?: boolean;
   isPlatformAdmin?: boolean;
@@ -229,6 +232,7 @@ export function AppSidebar({
                 <AgencyBrainNavGroup
                   collapsed={effectiveCollapsed}
                   agencyBrainFeatures={brainFeatures}
+                  platformFeatures={platformFeatures}
                   pathname={pathname}
                   permissionsReady={planLimitsReady}
                   onNavigate={onNavigate}

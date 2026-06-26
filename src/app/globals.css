@@ -874,6 +874,22 @@ h6,
     color: #c4b5fd;
   }
 
+  .ui-campaign-meta-card {
+    color: var(--text-dim);
+  }
+
+  .ui-campaign-meta-card dd {
+    color: var(--text-main);
+  }
+
+  .ui-campaign-filters-bar {
+    @apply flex w-full flex-wrap items-center gap-2;
+  }
+
+  .ui-campaign-filters-bar .ui-filter-panel-field {
+    @apply w-auto shrink-0;
+  }
+
   /* Learnings feed — amber in light, violet in dark (matches --ui-accent theme) */
   .ui-alert-learnings {
     @apply flex items-center gap-3 rounded-xl px-4 py-3 text-sm;

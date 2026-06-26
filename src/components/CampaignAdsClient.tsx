@@ -11,7 +11,6 @@ import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
 import { CampaignTabCountBadge } from "@/components/campaign/CampaignTabCountBadge";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
-import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
@@ -41,10 +40,6 @@ import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { useCampaignTableLayout } from "@/hooks/useCampaignTableLayout";
 import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
-import {
-  type AppliedCampaignFilter,
-  matchesCampaignFilters
-} from "@/lib/campaign-meta-filters";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModal";
 import { useCampaignDrilldown } from "@/hooks/useCampaignDrilldown";
@@ -132,8 +127,6 @@ export function CampaignAdsClient({
   );
   const ads = drilldownAds as AdRow[];
   const adsLoading = drilldownLoading;
-  const [search, setSearch] = useState("");
-  const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [previewing, setPreviewing] = useState<AdRow | null>(null);
@@ -195,26 +188,6 @@ export function CampaignAdsClient({
     if (adsetFilter) list = list.filter((a) => a.adsetId === adsetFilter);
     if (statusFilter === "active") list = list.filter((a) => a.status === "ACTIVE");
     if (statusFilter === "paused") list = list.filter((a) => a.status === "PAUSED");
-    if (metaFilters.length) {
-      list = list.filter((a) =>
-        matchesCampaignFilters(
-          {
-            metaCampaignId: a.id,
-            campaignName: a.name ?? a.id,
-            status: a.status
-          },
-          metaFilters
-        )
-      );
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (a) =>
-          (a.name ?? a.id).toLowerCase().includes(q) ||
-          (a.adsetName ?? a.adsetId).toLowerCase().includes(q)
-      );
-    }
     if (sort) {
       const { key, dir } = sort;
       if (key === "name" || key === "adset" || key === "status") {
@@ -253,7 +226,7 @@ export function CampaignAdsClient({
       }
     }
     return list;
-  }, [ads, search, statusFilter, adsetFilter, sort, metricColumns, tableLayout.customMetricsMap, metaFilters]);
+  }, [ads, statusFilter, adsetFilter, sort, metricColumns, tableLayout.customMetricsMap]);
 
   const adsetFilterName = adsetFilter
     ? ads.find((a) => a.adsetId === adsetFilter)?.adsetName ??
@@ -352,35 +325,26 @@ export function CampaignAdsClient({
           </button>
         }
         filtersContent={
-          <div className="flex flex-wrap items-center gap-2">
-            <MetaFilterSearchBar
-              value={search}
-              onChange={(v) => {
-                setSearch(v);
-                setPage(1);
-              }}
-              filters={metaFilters}
-              onFiltersChange={(next) => {
-                setMetaFilters(next);
-                setPage(1);
-              }}
-              className="min-w-[240px] flex-1"
-            />
+          <>
             <FilterSelectDropdown
+              className="ui-filter-panel-field"
               icon={<ListFilter size={14} />}
               label={tCampaigns("filterStatus")}
-              placeholder={t("filterStatusAll")}
+              placeholder={tCampaigns("statusAll")}
               value={statusFilter === "all" ? "" : statusFilter}
-              onChange={(v) => setStatusFilter(v || "all")}
+              onChange={(v) => {
+                setStatusFilter(v || "all");
+                setPage(1);
+              }}
               options={[
                 { value: "active", label: t("filterStatusActive") },
                 { value: "paused", label: t("filterStatusPaused") }
               ]}
             />
-            <div className="ml-auto">
+            <div className="ml-auto shrink-0">
               <CampaignTableColumnsButton />
             </div>
-          </div>
+          </>
         }
       />
 

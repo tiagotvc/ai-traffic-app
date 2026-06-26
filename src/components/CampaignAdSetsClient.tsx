@@ -19,7 +19,6 @@ import { formatBRL, formatNumber, formatRoas } from "@/lib/format";
 import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
-import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { useCampaignDrilldown } from "@/hooks/useCampaignDrilldown";
@@ -38,10 +37,6 @@ import {
 } from "@/lib/campaign-table-metrics";
 import { useCampaignTypes } from "@/hooks/useCampaignTypes";
 import { META_ACTION_CATALOG } from "@/lib/meta-metrics-catalog";
-import {
-  type AppliedCampaignFilter,
-  matchesCampaignFilters
-} from "@/lib/campaign-meta-filters";
 
 
 type AdSetRow = {
@@ -115,8 +110,6 @@ export function CampaignAdSetsClient({
     return "";
   }
 
-  const [search, setSearch] = useState("");
-  const [metaFilters, setMetaFilters] = useState<AppliedCampaignFilter[]>([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [isPending, startTransition] = useTransition();
@@ -147,23 +140,6 @@ export function CampaignAdSetsClient({
     let list = adsets;
     if (statusFilter === "active") list = list.filter((a) => a.status === "ACTIVE");
     if (statusFilter === "paused") list = list.filter((a) => a.status === "PAUSED");
-    if (metaFilters.length) {
-      list = list.filter((a) =>
-        matchesCampaignFilters(
-          {
-            metaCampaignId: a.id,
-            campaignName: a.name ?? a.id,
-            status: a.status,
-            dailyBudget: a.dailyBudget
-          },
-          metaFilters
-        )
-      );
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((a) => (a.name ?? a.id).toLowerCase().includes(q));
-    }
     if (sort) {
       const { key, dir } = sort;
       list = [...list].sort((x, y) => {
@@ -193,7 +169,7 @@ export function CampaignAdSetsClient({
       });
     }
     return list;
-  }, [adsets, search, statusFilter, sort, metaFilters]);
+  }, [adsets, statusFilter, sort]);
 
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -306,35 +282,26 @@ export function CampaignAdSetsClient({
           </button>
         }
         filtersContent={
-          <div className="flex flex-wrap items-center gap-2">
-            <MetaFilterSearchBar
-              value={search}
-              onChange={(v) => {
-                setSearch(v);
-                setPage(1);
-              }}
-              filters={metaFilters}
-              onFiltersChange={(next) => {
-                setMetaFilters(next);
-                setPage(1);
-              }}
-              className="min-w-[240px] flex-1"
-            />
+          <>
             <FilterSelectDropdown
+              className="ui-filter-panel-field"
               icon={<ListFilter size={14} />}
               label={tCampaigns("filterStatus")}
-              placeholder={t("filterStatusAll")}
+              placeholder={tCampaigns("statusAll")}
               value={statusFilter === "all" ? "" : statusFilter}
-              onChange={(v) => setStatusFilter(v || "all")}
+              onChange={(v) => {
+                setStatusFilter(v || "all");
+                setPage(1);
+              }}
               options={[
                 { value: "active", label: t("filterStatusActive") },
                 { value: "paused", label: t("filterStatusPaused") }
               ]}
             />
-            <div className="ml-auto">
+            <div className="ml-auto shrink-0">
               <CampaignTableColumnsButton />
             </div>
-          </div>
+          </>
         }
       />
 
