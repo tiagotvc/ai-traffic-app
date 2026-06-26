@@ -6,7 +6,7 @@ import { Building2, Cog, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-r
 
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { IconLabelLink } from "@/components/ui/IconLabelButton";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { DsButton, DsModal } from "@/design-system";
 import { toUxClientCards, type UxClientCard } from "@/uxpilot-ui/adapters/clients-mappers";
