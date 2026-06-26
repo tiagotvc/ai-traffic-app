@@ -5,10 +5,10 @@ import { useCallback, useMemo, useState } from "react";
 
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
+import { CampaignTabCountBadge } from "@/components/campaign/CampaignTabCountBadge";
 import { CreativeCardGrid, type CreativeItem } from "@/components/creatives/CreativeCardGrid";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
-import { DsPageHeader } from "@/design-system";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import { type MetricKey } from "@/lib/dashboard-metrics";
 import { formatPeriodLabel, periodStateToParsed } from "@/lib/report-period";
@@ -107,28 +107,15 @@ export function CampaignCreativesClient({
   const slug = campaign.clientSlug || clientSlug;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {!embedded ? (
-        <DsPageHeader
-          breadcrumbs={
-            <>
-              <Link href="/campaigns" className="ui-link">
-                {t("navCampaigns")}
-              </Link>
-              {" › "}
-              <Link
-                href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
-                className="ui-link"
-              >
-                {campaign.name}
-              </Link>
-              {" › "}
-              <span>{t("title")}</span>
-            </>
-          }
-          title={t("title")}
-          subtitle={t("subtitle")}
-        />
+        <p className="ui-breadcrumb">
+          <Link href="/campaigns" className="ui-link">
+            {t("navCampaigns")}
+          </Link>
+          {" › "}
+          <span className="text-[var(--text-main)]">{campaign.name}</span>
+        </p>
       ) : null}
 
       <CampaignDrilldownHeader
@@ -139,6 +126,7 @@ export function CampaignCreativesClient({
         onRefresh={() => void handleRefresh()}
         syncing={syncing}
         translationNs="campaignManager"
+        titleBadges={<CampaignTabCountBadge count={countsLoading ? "…" : creatives.length} />}
       />
 
       <CampaignDetailTabs

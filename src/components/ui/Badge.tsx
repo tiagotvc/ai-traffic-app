@@ -5,7 +5,9 @@ const variants = {
   warning: "bg-[rgba(245,166,35,0.12)] text-[var(--amber)] border-[rgba(245,166,35,0.25)]",
   danger: "bg-[rgba(239,68,68,0.12)] text-[var(--danger)] border-[rgba(239,68,68,0.25)]",
   neutral: "bg-[var(--surface-thead)] text-[var(--text-dim)] border-[var(--border-color)]",
-  brand: "bg-[rgba(79,70,229,0.12)] text-[var(--violet)] border-[rgba(79,70,229,0.25)]"
+  brand: "bg-[rgba(79,70,229,0.12)] text-[var(--violet)] border-[rgba(79,70,229,0.25)]",
+  accent:
+    "border-[color-mix(in_srgb,var(--ui-accent)_35%,var(--border-color))] bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]"
 } as const;
 
 export function Badge({

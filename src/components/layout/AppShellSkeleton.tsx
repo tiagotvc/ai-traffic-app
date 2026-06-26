@@ -16,6 +16,7 @@ import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
 import { ThemeConfigApplier } from "@/components/theme/ThemeConfigApplier";
 import { cn } from "@/lib/cn";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
+import type { FeatureFlagMap } from "@/lib/feature-flags/types";
 import type { PlanLimits } from "@/lib/billing/types";
 import { FREE_LIMITS } from "@/lib/billing/types";
 
@@ -29,6 +30,7 @@ type CachedEntitlements = {
   subscriptionStatus: string;
   limits: PlanLimits;
   isPlatformAdmin?: boolean;
+  platformFeatures?: FeatureFlagMap;
 };
 
 function readEntitlementsCache(): CachedEntitlements | null {
@@ -151,6 +153,7 @@ function AppShellSkeletonInner({
   const [allowCreativeMemoryAi, setAllowCreativeMemoryAi] = useState(true);
   const [agencyBrainFeatures, setAgencyBrainFeatures] =
     useState<AgencyBrainFeatureFlags>(DEFAULT_BRAIN_FEATURES);
+  const [platformFeatures, setPlatformFeatures] = useState<FeatureFlagMap>({});
   const [planLimits, setPlanLimits] = useState<PlanLimits>(FREE_LIMITS);
   const [planLimitsReady, setPlanLimitsReady] = useState(false);
   const [platformAdmin, setPlatformAdmin] = useState(isPlatformAdmin);
@@ -162,6 +165,7 @@ function AppShellSkeletonInner({
     setPlanLimits(e.limits);
     setAllowCreativeMemoryAi(e.limits.allowCreativeMemoryAi ?? true);
     setAgencyBrainFeatures(limitsToBrainFeatures(e.limits));
+    setPlatformFeatures(e.platformFeatures ?? {});
     if (e.isPlatformAdmin != null) setPlatformAdmin(!!e.isPlatformAdmin);
   }, []);
 
@@ -218,7 +222,8 @@ function AppShellSkeletonInner({
           planName: e.planName ?? "Free",
           subscriptionStatus: e.status ?? "active",
           limits,
-          isPlatformAdmin: j.isPlatformAdmin != null ? !!j.isPlatformAdmin : undefined
+          isPlatformAdmin: j.isPlatformAdmin != null ? !!j.isPlatformAdmin : undefined,
+          platformFeatures: (j.platformFeatures as FeatureFlagMap | undefined) ?? {}
         };
         applyEntitlements(cached);
         writeEntitlementsCache(cached);
@@ -275,20 +280,23 @@ function AppShellSkeletonInner({
     };
   }, [builderImmersive]);
 
-  const sharedSidebar = sidebarProps(
-    userName,
-    userEmail,
-    planName,
-    planSlug,
-    subscriptionStatus,
-    allowCreativeMemoryAi,
-    agencyBrainFeatures,
-    planLimits,
-    planLimitsReady,
-    platformAdmin,
-    ready ? collapsed : false,
-    toggleCollapsed
-  );
+  const sharedSidebar = {
+    ...sidebarProps(
+      userName,
+      userEmail,
+      planName,
+      planSlug,
+      subscriptionStatus,
+      allowCreativeMemoryAi,
+      agencyBrainFeatures,
+      planLimits,
+      planLimitsReady,
+      platformAdmin,
+      ready ? collapsed : false,
+      toggleCollapsed
+    ),
+    platformFeatures
+  };
 
   return (
     <UxThemeProvider>

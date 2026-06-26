@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { apiErrorResponse, requireAppShellContext } from "@/lib/api-auth";
 import { getEntitlements } from "@/lib/billing/entitlements";
+import { getPlatformFeatureFlags } from "@/lib/feature-flags/service";
+import type { FeatureFlagMap } from "@/lib/feature-flags/types";
 import { redisGetJson, redisSetJson } from "@/lib/redis-cache";
 
 const CACHE_TTL_SEC = 60;
@@ -16,18 +18,22 @@ export async function GET(req: Request) {
       const cached = await redisGetJson<{
         entitlements: Awaited<ReturnType<typeof getEntitlements>>;
         isPlatformAdmin: boolean;
+        platformFeatures: FeatureFlagMap;
       }>(cacheKey);
 
       if (cached) {
         return NextResponse.json(
           { ok: true, ...cached },
-          { headers: { "Cache-Control": "private, max-age=30" } }
+          { headers: { "Cache-Control": "no-store" } }
         );
       }
     }
 
-    const entitlements = await getEntitlements(tenant.id, { platformAdmin });
-    const payload = { entitlements, isPlatformAdmin: platformAdmin };
+    const [entitlements, platformFeatures] = await Promise.all([
+      getEntitlements(tenant.id, { platformAdmin }),
+      getPlatformFeatureFlags()
+    ]);
+    const payload = { entitlements, isPlatformAdmin: platformAdmin, platformFeatures };
     void redisSetJson(cacheKey, payload, CACHE_TTL_SEC);
 
     return NextResponse.json(

@@ -1308,9 +1308,190 @@ h6,
     background: rgb(139 92 246);
   }
 
+  .ui-breadcrumb {
+    @apply mb-1 text-xs;
+    color: var(--text-dim);
+  }
+
   .ds-scroll {
     scrollbar-width: thin;
-    scrollbar-color: var(--scrollbar-color) transparent;
+    scrollbar-color: color-mix(in srgb, var(--ui-accent) 55%, transparent) transparent;
+  }
+
+  .ds-scroll::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .ds-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .ds-scroll::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--ui-accent) 50%, transparent);
+  }
+
+  .ds-scroll::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--ui-accent) 75%, transparent);
+  }
+
+  /* Pills de metadados — visão interna de campanha */
+  .ui-campaign-meta-pill {
+    @apply inline-flex max-w-[min(100%,300px)] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] leading-none;
+  }
+
+  .ui-campaign-meta-pill__label {
+    @apply shrink-0 text-[9px] font-bold uppercase tracking-wider leading-none;
+    opacity: 0.8;
+  }
+
+  .ui-campaign-meta-pill__value {
+    @apply min-w-0 truncate font-semibold leading-none;
+  }
+
+  .ui-campaign-meta-pill--violet {
+    background: rgba(124, 58, 237, 0.1);
+    color: #6d28d9;
+    border-color: rgba(124, 58, 237, 0.22);
+  }
+
+  [data-theme="dark"] .ui-campaign-meta-pill--violet {
+    color: #c4b5fd;
+  }
+
+  .ui-campaign-meta-pill--blue {
+    background: rgba(37, 99, 235, 0.1);
+    color: #1d4ed8;
+    border-color: rgba(37, 99, 235, 0.22);
+  }
+
+  [data-theme="dark"] .ui-campaign-meta-pill--blue {
+    color: #93c5fd;
+  }
+
+  .ui-campaign-meta-pill--amber {
+    background: rgba(245, 166, 35, 0.1);
+    color: #b45309;
+    border-color: rgba(245, 166, 35, 0.25);
+  }
+
+  [data-theme="dark"] .ui-campaign-meta-pill--amber {
+    color: #fcd34d;
+  }
+
+  .ui-campaign-meta-pill--emerald {
+    background: rgba(16, 185, 129, 0.1);
+    color: #047857;
+    border-color: rgba(16, 185, 129, 0.22);
+  }
+
+  [data-theme="dark"] .ui-campaign-meta-pill--emerald {
+    color: #6ee7b7;
+  }
+
+  .ui-campaign-meta-pill--slate {
+    background: color-mix(in srgb, var(--surface-thead) 80%, transparent);
+    color: var(--text-dim);
+    border-color: var(--border-color);
+  }
+
+  .ui-kpi-card {
+    @apply ui-card border p-4;
+    border-color: var(--border-color);
+    background: color-mix(in srgb, var(--surface-card) 98%, var(--surface-bg));
+  }
+
+  .ui-campaign-meta-inline {
+    max-width: 100%;
+  }
+
+  .ui-drilldown-stat-card {
+    @apply relative overflow-hidden rounded-xl border px-4 py-3;
+    border-color: color-mix(in srgb, var(--ui-accent) 28%, var(--border-color));
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--ui-accent-muted) 65%, var(--surface-card)),
+      var(--surface-card)
+    );
+  }
+
+  .ui-drilldown-stat-card::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 3px;
+    background: var(--ui-accent);
+    border-radius: 3px 0 0 3px;
+  }
+
+  .ui-drilldown-stat-card__label {
+    @apply text-[10px] font-semibold uppercase tracking-wide;
+    color: var(--text-dimmer);
+  }
+
+  .ui-drilldown-stat-card__value {
+    @apply mt-1 text-xl font-bold tabular-nums;
+    color: var(--text-main);
+    font-family: var(--font-heading);
+  }
+
+  .ui-campaign-table th:not(:nth-child(2)) {
+    text-align: center;
+  }
+
+  .ui-campaign-table td:not(:nth-child(2)) {
+    text-align: center;
+  }
+
+  .ui-campaign-table td:nth-child(2) {
+    text-align: left;
+  }
+
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--ui-accent) 55%, transparent) transparent;
+  }
+
+  html::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  html::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--ui-accent) 50%, transparent);
+  }
+
+  html::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .ui-kpi-card-compact {
+    @apply ui-card border px-3 py-2.5;
+    border-color: var(--border-color);
+    background: color-mix(in srgb, var(--surface-card) 98%, var(--surface-bg));
+  }
+
+  .ui-adsets-carousel__track {
+    @apply flex cursor-grab gap-3 overflow-x-auto pb-1;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+  }
+
+  .ui-adsets-carousel__track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ui-adsets-carousel__track.is-dragging {
+    @apply cursor-grabbing select-none;
+    scroll-behavior: auto;
+  }
+
+  .ui-adsets-carousel__card {
+    width: min(300px, 82vw);
   }
 
   .report-preview-root .recharts-wrapper {

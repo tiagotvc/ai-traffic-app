@@ -83,11 +83,7 @@ export function AppShell({
             <main
               ref={mainRef}
               onScroll={(e) => setShowTop(e.currentTarget.scrollTop > 400)}
-              className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 md:px-6"
-              style={{
-                scrollbarWidth: "thin",
-                scrollbarColor: "var(--scrollbar-color) transparent"
-              }}
+              className="ds-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 md:px-6"
             >
               <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
               <FirstLoginTermsGate />

@@ -147,6 +147,23 @@ import {
 - Crítico: `.ui-alert-danger`
 - Atenção: `.ui-alert-warning`
 - IA pendente: `.ui-alert-info`
+- Resumo contextual (ex.: totais de conjuntos): `.ui-alert-info` — âmbar no light, roxo no dark
+
+### Visão interna de campanha (drilldown)
+- Guia completo: **[campaigns/drilldown-ui.md](campaigns/drilldown-ui.md)**
+- Header **sem fundo** — título + ações à direita (filtros + refresh)
+- Metadados: `.ui-campaign-meta-pill` (pills coloridas abaixo do título)
+- Período: colapsável via `FilterToggleButton` no header (oculto por padrão)
+- KPIs: `.ui-kpi-card` (card com borda explícita)
+- Filtros de tabela: `CampaignDetailFiltersPanel` abaixo do subtítulo (Conjuntos/Anúncios)
+- Badge pausada: `Badge variant="accent"` (tema-aware)
+- Refresh: `live=1` na campanha aberta — **não** sync global do cliente no header
+- Scroll interno: classe `.ds-scroll` (5px, cor `--ui-accent`)
+
+### Scrollbars (`.ds-scroll`)
+- Largura 5px; thumb com `color-mix(--ui-accent)`
+- Light: âmbar; dark: roxo
+- Aplicar em: `AppShell` `<main>`, sidebars com overflow, tabelas horizontais
 
 ### Configurações / painéis flat
 - Ver guia completo: **[design-system/flat-panels.md](design-system/flat-panels.md)**

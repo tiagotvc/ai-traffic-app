@@ -12,6 +12,9 @@ import { resolveLimits } from "./resolve-limits";
 import type { Entitlements, PlanLimitKey, PlanLimits, TenantUsage } from "./types";
 import { PLATFORM_ADMIN_LIMITS } from "./types";
 import { isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
+import { getPlatformFeatureFlags } from "@/lib/feature-flags/service";
+import { isFeatureEnabled } from "@/lib/feature-flags/registry";
+import type { FeatureFlagMap } from "@/lib/feature-flags/types";
 import { sumTenantCreditsUsed } from "@/lib/ai-credits/usage-service";
 
 export class PlanLimitError extends Error {
@@ -139,6 +142,33 @@ export function applyPlatformAdminEntitlements(entitlements: Entitlements): Enti
   };
 }
 
+/** Limite de plano → id de feature flag de plataforma (kill-switch acima do plano). */
+const PLATFORM_MASKED_LIMITS: Partial<Record<PlanLimitKey, string>> = {
+  allowCreativeMemoryAi: "brain",
+  allowAgencyBrainHypotheses: "brain.hypotheses",
+  allowAgencyBrainDna: "brain.dna",
+  allowAgencyBrainTimeline: "brain.timeline",
+  allowAgencyBrainExperiments: "brain.labs",
+  allowAgencyBrainActionPlans: "brain.action-plans",
+  allowAgencyBrainChat: "brain.chat",
+  allowNavAutomations: "brain.automations"
+};
+
+/**
+ * Aplica os feature flags de plataforma sobre os limites do plano: se a feature está
+ * desligada globalmente, o limite vira `false` (kill-switch). É o "E" entre plano e plataforma.
+ */
+function maskLimitsWithPlatformFlags(limits: PlanLimits, flags: FeatureFlagMap): PlanLimits {
+  let masked: PlanLimits | null = null;
+  for (const [key, featureId] of Object.entries(PLATFORM_MASKED_LIMITS)) {
+    if (!isFeatureEnabled(flags, featureId as string)) {
+      masked = masked ?? { ...limits };
+      (masked as Record<string, unknown>)[key] = false;
+    }
+  }
+  return masked ?? limits;
+}
+
 export async function getEntitlements(
   tenantId: string,
   options?: { platformAdmin?: boolean }
@@ -146,7 +176,9 @@ export async function getEntitlements(
   const { subscription: sub, plan: p } = await getTenantSubscription(tenantId);
   const baseLimits = resolveLimits(p);
   const bonuses = await getTenantAddonBonuses(tenantId);
-  const limits = mergePlanLimitsWithAddons(baseLimits, bonuses);
+  const mergedLimits = mergePlanLimitsWithAddons(baseLimits, bonuses);
+  const platformFlags = await getPlatformFeatureFlags();
+  const limits = maskLimitsWithPlatformFlags(mergedLimits, platformFlags);
   const usage = await getTenantUsage(tenantId);
   const isPaid = p?.slug !== "free" && sub.status === "active";
   const canWrite = sub.status === "active" || sub.status === "trialing" || p?.slug === "free";

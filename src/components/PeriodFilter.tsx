@@ -40,13 +40,15 @@ export function PeriodFilter({
   onChange,
   variant = "default",
   disabled = false,
-  disabledHint
+  disabledHint,
+  className
 }: {
   value: PeriodState;
   onChange: (next: PeriodState) => void;
   variant?: "default" | "commandStrip" | "modal";
   disabled?: boolean;
   disabledHint?: string;
+  className?: string;
 }) {
   const t = useTranslations("period");
   const locale = useLocale();
@@ -221,14 +223,15 @@ export function PeriodFilter({
   }
 
   return (
-    <div ref={ref} className="relative w-full">
+    <div ref={ref} className={cn("relative", className ?? "w-full")}>
       <button
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((o) => !o)}
         title={disabled ? disabledHint : undefined}
         className={cn(
-          "flex w-full items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-all duration-200",
+          "flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-all duration-200",
+          className ? "w-auto min-w-[220px]" : "w-full",
           disabled && "cursor-not-allowed opacity-45"
         )}
         style={{

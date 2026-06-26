@@ -9,13 +9,13 @@ import { ListFilter } from "lucide-react";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
+import { CampaignTabCountBadge } from "@/components/campaign/CampaignTabCountBadge";
 import { CampaignMetricTableFooter } from "@/components/campaign/CampaignMetricTableFooter";
 import { MetaFilterSearchBar } from "@/components/campaign/MetaFilterSearchBar";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTableCell } from "@/components/campaign/CampaignTableColumns";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
-import { DsPageHeader } from "@/design-system";
 import { Link, useRouter } from "@/i18n/navigation";
 import { computeGroupTotals } from "@/lib/campaign-group-totals";
 import {
@@ -320,68 +320,16 @@ export function CampaignAdsClient({
   const slug = campaign.clientSlug || clientSlug;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {!embedded ? (
-        <DsPageHeader
-          breadcrumbs={
-            <>
-              <Link href="/campaigns" className="ui-link">
-                {t("navCampaigns")}
-              </Link>
-              {" › "}
-              <Link
-                href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
-                className="ui-link"
-              >
-                {campaign.name}
-              </Link>
-              {" › "}
-              <span>{t("title")}</span>
-            </>
-          }
-          title={t("title")}
-          subtitle={t("subtitle")}
-          actions={
-            <>
-              <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs font-bold text-[var(--violet)]">
-                {adsLoading ? "…" : ads.length}
-              </span>
-              <button
-                type="button"
-                onClick={openNewAd}
-                disabled={!adsetFilter}
-                title={!adsetFilter ? t("newAdSelectAdset") : undefined}
-                className="ui-btn-primary text-sm disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                + {t("newAd")}
-              </button>
-            </>
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-heading text-2xl font-bold text-[var(--text-main)]">{t("title")}</h1>
-              <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs font-bold text-[var(--violet)]">
-                {adsLoading ? "…" : ads.length}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={openNewAd}
-              disabled={!adsetFilter}
-              title={!adsetFilter ? t("newAdSelectAdset") : undefined}
-              className="ui-btn-primary text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              + {t("newAd")}
-            </button>
-          </div>
-        </div>
-      )}
+        <p className="ui-breadcrumb">
+          <Link href="/campaigns" className="ui-link">
+            {t("navCampaigns")}
+          </Link>
+          {" › "}
+          <span className="text-[var(--text-main)]">{campaign.name}</span>
+        </p>
+      ) : null}
 
       <CampaignDrilldownHeader
         campaign={campaign}
@@ -391,6 +339,49 @@ export function CampaignAdsClient({
         onRefresh={() => void handleRefresh()}
         syncing={syncing}
         translationNs="campaignManager"
+        titleBadges={<CampaignTabCountBadge count={adsLoading ? "…" : ads.length} />}
+        tabActions={
+          <button
+            type="button"
+            onClick={openNewAd}
+            disabled={!adsetFilter}
+            title={!adsetFilter ? t("newAdSelectAdset") : undefined}
+            className="ui-btn-primary text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            + {t("newAd")}
+          </button>
+        }
+        filtersContent={
+          <div className="flex flex-wrap items-center gap-2">
+            <MetaFilterSearchBar
+              value={search}
+              onChange={(v) => {
+                setSearch(v);
+                setPage(1);
+              }}
+              filters={metaFilters}
+              onFiltersChange={(next) => {
+                setMetaFilters(next);
+                setPage(1);
+              }}
+              className="min-w-[240px] flex-1"
+            />
+            <FilterSelectDropdown
+              icon={<ListFilter size={14} />}
+              label={tCampaigns("filterStatus")}
+              placeholder={t("filterStatusAll")}
+              value={statusFilter === "all" ? "" : statusFilter}
+              onChange={(v) => setStatusFilter(v || "all")}
+              options={[
+                { value: "active", label: t("filterStatusActive") },
+                { value: "paused", label: t("filterStatusPaused") }
+              ]}
+            />
+            <div className="ml-auto">
+              <CampaignTableColumnsButton />
+            </div>
+          </div>
+        }
       />
 
       <CampaignDetailTabs
@@ -404,36 +395,6 @@ export function CampaignAdsClient({
         translationNs="adsPage"
         adsetId={adsetFilter}
       />
-
-      <div className="flex flex-wrap items-center gap-2">
-        <MetaFilterSearchBar
-          value={search}
-          onChange={(v) => {
-            setSearch(v);
-            setPage(1);
-          }}
-          filters={metaFilters}
-          onFiltersChange={(next) => {
-            setMetaFilters(next);
-            setPage(1);
-          }}
-          className="min-w-[240px] flex-1"
-        />
-        <FilterSelectDropdown
-          icon={<ListFilter size={14} />}
-          label={tCampaigns("filterStatus")}
-          placeholder={t("filterStatusAll")}
-          value={statusFilter === "all" ? "" : statusFilter}
-          onChange={(v) => setStatusFilter(v || "all")}
-          options={[
-            { value: "active", label: t("filterStatusActive") },
-            { value: "paused", label: t("filterStatusPaused") }
-          ]}
-        />
-        <div className="ml-auto">
-          <CampaignTableColumnsButton />
-        </div>
-      </div>
 
       {adsetFilter ? (
         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -455,7 +416,7 @@ export function CampaignAdsClient({
       ) : null}
 
       <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="ds-scroll overflow-x-auto">
           <table className="w-full min-w-[680px] text-sm">
             <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
               <tr>

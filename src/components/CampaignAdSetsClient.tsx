@@ -8,10 +8,11 @@ import { ListFilter } from "lucide-react";
 import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
+import { CampaignDrilldownStatCard } from "@/components/campaign/CampaignDrilldownStatCard";
+import { CampaignTabCountBadge } from "@/components/campaign/CampaignTabCountBadge";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { usePublishPanel } from "@/components/publish/PublishPanelContext";
-import { DsPageHeader } from "@/design-system";
 import { Link } from "@/i18n/navigation";
 import { campaignAdsHref, rememberAdset } from "@/lib/campaign-navigation";
 import { formatBRL, formatNumber, formatRoas } from "@/lib/format";
@@ -58,26 +59,10 @@ type AdSetRow = {
   metrics?: Partial<Record<MetricKey, number>>;
 };
 
-type SeriesPoint = { day: string; spend: number; conversions: number };
-
-function statusVariant(status: string) {
-  if (status === "ACTIVE") return "success" as const;
-  if (status === "PAUSED") return "warning" as const;
-  return "neutral" as const;
-}
-
 function statusLabel(status: string, t: (k: string) => string) {
   if (status === "ACTIVE") return t("statusActive");
   if (status === "PAUSED") return t("statusPaused");
   return status;
-}
-
-function inferTag(name: string, t: (k: string) => string) {
-  const n = name.toLowerCase();
-  if (n.includes("lookalike") || n.includes("la ")) return t("tagLookalike");
-  if (n.includes("remarketing") || n.includes("retarget")) return t("tagRemarketing");
-  if (n.includes("interesse")) return t("tagInterest");
-  return t("tagSaved");
 }
 
 export function CampaignAdSetsClient({
@@ -98,7 +83,6 @@ export function CampaignAdSetsClient({
   const {
     campaign,
     adsets,
-    series,
     counts,
     countsLoading,
     period,
@@ -287,62 +271,21 @@ export function CampaignAdSetsClient({
 
   const slug = campaign.clientSlug || clientSlug;
   const colors = ["#7c3aed", "#2563eb", "#059669", "#ea580c", "#db2777"];
+  const totalSpend = filtered.reduce((s, a) => s + a.spend, 0);
+  const totalConversions = filtered.reduce((s, a) => s + a.conversions, 0);
+  const avgCpa = totalConversions > 0 ? totalSpend / totalConversions : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {!embedded ? (
-        <DsPageHeader
-          breadcrumbs={
-            <>
-              <Link href="/campaigns" className="ui-link">
-                {t("navCampaigns")}
-              </Link>
-              {" › "}
-              <Link
-                href={`/campaigns/${metaCampaignId}?client=${encodeURIComponent(slug)}`}
-                className="ui-link"
-              >
-                {campaign.name}
-              </Link>
-              {" › "}
-              <span>{t("title")}</span>
-            </>
-          }
-          title={t("title")}
-          subtitle={t("subtitle")}
-          actions={
-            <>
-              <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs font-bold text-[var(--violet)]">
-                {adsets.length}
-              </span>
-              <button type="button" onClick={() => openPanel({ clientSlug: slug })} className="ui-btn-primary text-sm">
-                + {t("newAdset")}
-              </button>
-            </>
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-heading text-2xl font-bold text-[var(--text-main)]">{t("title")}</h1>
-              <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs font-bold text-[var(--violet)]">
-                {adsets.length}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => openPanel({ clientSlug: slug, metaCampaignId, mode: "add-adset" })}
-              className="ui-btn-primary text-sm"
-            >
-              + {t("newAdset")}
-            </button>
-          </div>
-        </div>
-      )}
+        <p className="ui-breadcrumb">
+          <Link href="/campaigns" className="ui-link">
+            {t("navCampaigns")}
+          </Link>
+          {" › "}
+          <span className="text-[var(--text-main)]">{campaign.name}</span>
+        </p>
+      ) : null}
 
       <CampaignDrilldownHeader
         campaign={campaign}
@@ -352,6 +295,47 @@ export function CampaignAdSetsClient({
         onRefresh={() => void handleRefresh()}
         syncing={syncing}
         translationNs="campaignManager"
+        titleBadges={<CampaignTabCountBadge count={adsets.length} />}
+        tabActions={
+          <button
+            type="button"
+            onClick={() => openPanel({ clientSlug: slug, metaCampaignId, mode: "add-adset" })}
+            className="ui-btn-primary text-sm"
+          >
+            + {t("newAdset")}
+          </button>
+        }
+        filtersContent={
+          <div className="flex flex-wrap items-center gap-2">
+            <MetaFilterSearchBar
+              value={search}
+              onChange={(v) => {
+                setSearch(v);
+                setPage(1);
+              }}
+              filters={metaFilters}
+              onFiltersChange={(next) => {
+                setMetaFilters(next);
+                setPage(1);
+              }}
+              className="min-w-[240px] flex-1"
+            />
+            <FilterSelectDropdown
+              icon={<ListFilter size={14} />}
+              label={tCampaigns("filterStatus")}
+              placeholder={t("filterStatusAll")}
+              value={statusFilter === "all" ? "" : statusFilter}
+              onChange={(v) => setStatusFilter(v || "all")}
+              options={[
+                { value: "active", label: t("filterStatusActive") },
+                { value: "paused", label: t("filterStatusPaused") }
+              ]}
+            />
+            <div className="ml-auto">
+              <CampaignTableColumnsButton />
+            </div>
+          </div>
+        }
       />
 
       <CampaignDetailTabs
@@ -365,66 +349,33 @@ export function CampaignAdSetsClient({
         translationNs="adsetsPage"
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <MetaFilterSearchBar
-          value={search}
-          onChange={(v) => {
-            setSearch(v);
-            setPage(1);
-          }}
-          filters={metaFilters}
-          onFiltersChange={(next) => {
-            setMetaFilters(next);
-            setPage(1);
-          }}
-          className="min-w-[240px] flex-1"
+      <div className="grid grid-cols-3 gap-3">
+        <CampaignDrilldownStatCard label={t("totalSpend")} value={formatBRL(totalSpend, locale)} />
+        <CampaignDrilldownStatCard label={t("totalConversions")} value={totalConversions} />
+        <CampaignDrilldownStatCard
+          label="CPA médio"
+          value={avgCpa != null ? formatBRL(avgCpa, locale) : "—"}
         />
-        <FilterSelectDropdown
-          icon={<ListFilter size={14} />}
-          label={tCampaigns("filterStatus")}
-          placeholder={t("filterStatusAll")}
-          value={statusFilter === "all" ? "" : statusFilter}
-          onChange={(v) => setStatusFilter(v || "all")}
-          options={[
-            { value: "active", label: t("filterStatusActive") },
-            { value: "paused", label: t("filterStatusPaused") }
-          ]}
-        />
-        <select className="ui-select w-auto text-sm">
-          <option>{t("filterMetrics")}</option>
-        </select>
-        <button type="button" className="ui-btn-secondary text-xs">
-          {t("moreFilters")}
-        </button>
-        <div className="ml-auto flex gap-2">
-          <CampaignTableColumnsButton />
-          <button type="button" className="ui-btn-secondary text-xs">
-            {t("export")}
-          </button>
-        </div>
       </div>
 
-      <div className="ui-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-sm">
-            <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
+      <div className="ui-campaign-table-shell">
+        <div className="ui-campaign-table-shell__header">
+          <div className="ui-campaign-table-shell__title">
+            <span className="truncate">{t("title")}</span>
+          </div>
+        </div>
+        <div className="ds-scroll overflow-x-auto">
+          <table className="ui-campaign-table min-w-[680px]">
+            <thead>
               <tr>
                 <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("status")}
-                    className="hover:text-[var(--text-dim)]"
-                  >
+                  <button type="button" onClick={() => toggleSort("status")} className="hover:text-[var(--text-main)]">
                     {t("colStatus")}
                     {sort?.key === "status" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
                 </th>
                 <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>
-                  <button
-                    type="button"
-                    onClick={() => toggleSort("name")}
-                    className="hover:text-[var(--text-dim)]"
-                  >
+                  <button type="button" onClick={() => toggleSort("name")} className="hover:text-[var(--text-main)]">
                     {t("colAdset")}
                     {sort?.key === "name" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
@@ -436,7 +387,7 @@ export function CampaignAdSetsClient({
                       <button
                         type="button"
                         onClick={() => toggleSort(sortKey)}
-                        className="hover:text-[var(--text-dim)]"
+                        className="hover:text-[var(--text-main)]"
                       >
                         {metricColLabel(m)}
                         {sort?.key === sortKey ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
@@ -445,7 +396,7 @@ export function CampaignAdSetsClient({
                   );
                 })}
                 <th className="whitespace-nowrap px-3 py-2 text-center">
-                  <button type="button" onClick={() => toggleSort("dailyBudget")} className="hover:text-[var(--text-dim)]">
+                  <button type="button" onClick={() => toggleSort("dailyBudget")} className="hover:text-[var(--text-main)]">
                     {t("colBudget")}
                     {sort?.key === "dailyBudget" ? (sort.dir === "asc" ? " ▲" : " ▼") : ""}
                   </button>
@@ -453,10 +404,10 @@ export function CampaignAdSetsClient({
               </tr>
             </thead>
             <tbody>
-              {paged.map((a, idx) => {
+              {paged.map((a) => {
                 const name = a.name ?? a.id;
                 return (
-                  <tr key={a.id} className="group border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
+                  <tr key={a.id} className="group">
                     <td className={STICKY_STATUS_TD}>
                       <CampaignStatusToggle
                         active={a.status === "ACTIVE"}
@@ -466,27 +417,14 @@ export function CampaignAdSetsClient({
                       />
                     </td>
                     <td className={STICKY_NAME_TD}>
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
-                          style={{ backgroundColor: colors[idx % colors.length] }}
-                        >
-                          {(name[0] ?? "C").toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <Link
-                            href={campaignAdsHref(metaCampaignId, slug, a.id)}
-                            onClick={() => rememberAdset(metaCampaignId, a.id, name)}
-                            className="block whitespace-normal break-words font-medium text-[var(--text-main)] hover:text-[var(--violet-bright)] hover:underline"
-                          >
-                            {name}
-                          </Link>
-                          <div className="text-[10px] text-[var(--text-dimmer)]">{a.id}</div>
-                          <span className="mt-1 inline-block rounded-md bg-[var(--surface-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--text-dim)]">
-                            {inferTag(name, t)}
-                          </span>
-                        </div>
-                      </div>
+                      <Link
+                        href={campaignAdsHref(metaCampaignId, slug, a.id)}
+                        onClick={() => rememberAdset(metaCampaignId, a.id, name)}
+                        className="ui-campaign-table-name block max-w-[280px] whitespace-normal break-words"
+                      >
+                        {name}
+                      </Link>
+                      <div className="mt-0.5 text-[10px] text-[var(--text-dimmer)]">{a.id}</div>
                     </td>
                     {metricColumns.map((col) => (
                       <CampaignTableCell
@@ -521,10 +459,7 @@ export function CampaignAdSetsClient({
                 customMetrics={tableLayout.customMetricsMap}
                 trailingCells={
                   <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-[var(--text-main)]">
-                    {formatBRL(
-                      filtered.reduce((s, a) => s + (a.dailyBudget ?? 0), 0),
-                      locale
-                    )}
+                    {formatBRL(filtered.reduce((s, a) => s + (a.dailyBudget ?? 0), 0), locale)}
                   </td>
                 }
               />
@@ -551,7 +486,7 @@ export function CampaignAdSetsClient({
             >
               ‹
             </button>
-            <span className="font-medium text-[var(--violet)]">{page}</span>
+            <span className="font-medium text-[var(--ui-accent)]">{page}</span>
             <span>/ {totalPages}</span>
             <button
               type="button"
@@ -561,64 +496,11 @@ export function CampaignAdSetsClient({
             >
               ›
             </button>
-            <select className="ui-select ml-2 w-auto py-1 text-xs">
-              <option>20</option>
-            </select>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <div className="ui-card p-4 xl:col-span-1">
-          <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("perfTitle")}</h3>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-            <div>
-              <div className="text-[var(--text-dim)]">{t("totalSpend")}</div>
-              <div className="font-bold text-[var(--text-main)]">
-                {formatBRL(
-                  filtered.reduce((s, a) => s + a.spend, 0),
-                  locale
-                )}
-              </div>
-            </div>
-            <div>
-              <div className="text-[var(--text-dim)]">{t("totalConversions")}</div>
-              <div className="font-bold">
-                {filtered.reduce((s, a) => s + a.conversions, 0)}
-              </div>
-            </div>
-            <div>
-              <div className="text-[var(--text-dim)]">CPA médio</div>
-              <div className="font-bold">
-                {(() => {
-                  const conv = filtered.reduce((s, a) => s + a.conversions, 0);
-                  const spend = filtered.reduce((s, a) => s + a.spend, 0);
-                  return conv > 0 ? formatBRL(spend / conv, locale) : "—";
-                })()}
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 flex h-32 items-end gap-1">
-            {series.map((p) => {
-              const max = Math.max(...series.map((s) => s.spend), 1);
-              return (
-                <div key={p.day} className="flex flex-1 flex-col items-center gap-0.5">
-                  <div
-                    className="w-full rounded-t bg-[rgba(124,58,237,0.06)]0"
-                    style={{ height: `${Math.max(8, (p.spend / max) * 100)}%` }}
-                  />
-                  <div
-                    className="w-full rounded-t bg-emerald-400"
-                    style={{
-                      height: `${Math.max(4, (p.conversions / Math.max(...series.map((s) => s.conversions), 1)) * 60)}%`
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="ui-card p-4">
           <h3 className="text-sm font-semibold">{t("spendDistTitle")}</h3>
           <div className="mt-4 flex items-center gap-4">
@@ -627,9 +509,7 @@ export function CampaignAdSetsClient({
               style={{
                 background: `conic-gradient(${spendShares
                   .map((s, i) => {
-                    const start = spendShares
-                      .slice(0, i)
-                      .reduce((sum, x) => sum + x.pct, 0);
+                    const start = spendShares.slice(0, i).reduce((sum, x) => sum + x.pct, 0);
                     return `${colors[i % colors.length]} ${start}% ${start + s.pct}%`;
                   })
                   .join(", ")})`
@@ -638,38 +518,29 @@ export function CampaignAdSetsClient({
             <ul className="min-w-0 flex-1 space-y-1 text-[11px]">
               {spendShares.slice(0, 4).map((s, i) => (
                 <li key={s.id} className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: colors[i % colors.length] }}
-                  />
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} />
                   <span className="truncate text-[var(--text-dim)]">{s.name}</span>
                   <span className="ml-auto font-medium">{s.pct.toFixed(0)}%</span>
                 </li>
               ))}
             </ul>
           </div>
-          <Link href="/reports" className="mt-3 inline-block text-xs font-medium text-[var(--violet)]">
-            {t("fullReport")}
-          </Link>
         </div>
 
         <div className="ui-card p-4">
-          <div className="flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold">{t("insightsTitle")}</h3>
-            <Badge variant="brand">{insights.length} insights</Badge>
+            <Badge variant="accent">{insights.length}</Badge>
           </div>
-          <ul className="mt-3 space-y-2">
+          <ul className="space-y-2">
             {insights.map((text, i) => (
-              <li
-                key={i}
-                className="flex gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] p-2 text-xs text-[var(--text-dim)]"
-              >
-                <span>{["📈", "🎯", "⏱"][i] ?? "💡"}</span>
-                {text}
+              <li key={i} className="ui-alert-info flex gap-2 p-2.5 text-xs">
+                <span aria-hidden>{["📈", "🎯", "⏱"][i] ?? "💡"}</span>
+                <span>{text}</span>
               </li>
             ))}
           </ul>
-          <button type="button" className="mt-3 text-xs font-medium text-[var(--violet)]">
+          <button type="button" className="mt-3 text-xs font-medium text-[var(--ui-accent)]">
             {t("allInsights")}
           </button>
         </div>
