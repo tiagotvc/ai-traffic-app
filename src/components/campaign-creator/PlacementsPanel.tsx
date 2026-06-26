@@ -13,6 +13,7 @@ import {
   togglePlacementPlatform,
   togglePlacementPosition
 } from "@/lib/campaign-placements";
+import { cn } from "@/lib/cn";
 
 type Props = {
   value: PlacementConfig;
@@ -21,19 +22,21 @@ type Props = {
 };
 
 function toggleBtnClass(active: boolean) {
-  return `rounded-lg px-3 py-1.5 text-xs transition ${
+  return cn(
+    "rounded-lg border px-3 py-1.5 text-xs transition",
     active
-      ? "bg-[rgba(124,58,237,0.1)] font-medium text-[var(--violet)] ring-1 ring-violet-200"
-      : "bg-[var(--surface-bg)] text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
-  }`;
+      ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] font-medium text-[var(--ui-accent)]"
+      : "border-[var(--border-color)] bg-[var(--surface-card)] text-[var(--text-dim)] hover:border-[var(--border-hover)] hover:bg-[var(--surface-bg)]"
+  );
 }
 
 function chipBtnClass(active: boolean) {
-  return `rounded-md px-2 py-1 text-[11px] transition ${
+  return cn(
+    "rounded-md border px-2 py-1 text-[11px] transition",
     active
-      ? "bg-[rgba(124,58,237,0.12)] font-medium text-[var(--violet)] ring-1 ring-violet-200"
-      : "bg-[var(--surface-bg)] text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
-  }`;
+      ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] font-medium text-[var(--ui-accent)]"
+      : "border-[var(--border-color)] bg-[var(--surface-card)] text-[var(--text-dim)] hover:border-[var(--border-hover)] hover:bg-[var(--surface-bg)]"
+  );
 }
 
 export function PlacementsPanel({ value, onChange, disabled }: Props) {
@@ -52,7 +55,7 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-[var(--border-color)] p-3">
+    <div className="space-y-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3">
       <div className="flex gap-2">
         <button
           type="button"
@@ -123,11 +126,12 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
               return (
                 <div
                   key={platform}
-                  className={`rounded-lg border p-3 transition ${
+                  className={cn(
+                    "rounded-lg border p-3 transition",
                     platformOn
-                      ? "border-violet-200 bg-violet-50/30"
-                      : "border-[var(--border-color)] bg-[var(--surface-bg)]/50 opacity-70"
-                  }`}
+                      ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)]/40"
+                      : "border-[var(--border-color)] bg-[var(--surface-bg)] opacity-70"
+                  )}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <button

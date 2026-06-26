@@ -110,7 +110,7 @@ export function CampaignDraftMobileCards({
         return (
           <article
             key={row.metaCampaignId}
-            className="rounded-xl border border-violet-400/30 bg-violet-500/5 p-3"
+            className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3 shadow-sm"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
@@ -119,7 +119,7 @@ export function CampaignDraftMobileCards({
                 </Link>
                 <p className="mt-1 truncate text-xs text-[var(--text-dim)]">{row.clientName}</p>
               </div>
-              <Badge variant="warning">{statusDraftLabel}</Badge>
+              <Badge variant="accent">{statusDraftLabel}</Badge>
             </div>
             <div className="mt-3 flex gap-2">
               <Link href={resumeHref(row)} className="ui-link flex-1 rounded-lg border border-[var(--border-color)] py-2 text-center text-xs font-semibold">

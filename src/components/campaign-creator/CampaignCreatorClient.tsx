@@ -9,11 +9,12 @@ import { CampaignCreatorPreview } from "@/components/campaign-creator/CampaignCr
 import { CampaignCreatorStepPanel } from "@/components/campaign-creator/CampaignCreatorStepPanel";
 import { CampaignCreatorTree } from "@/components/campaign-creator/CampaignCreatorTree";
 import {
-  CampaignCreatorUxFooter,
   CampaignCreatorUxHeader,
-  CampaignCreatorUxScorePanel,
+  CampaignCreatorUxMobileStatusToast,
+  CampaignCreatorUxNav,
   CampaignCreatorUxStepper
 } from "@/uxpilot-ui/adapters/CampaignCreatorUxChrome";
+import { CampaignCreatorUxSidebar } from "@/uxpilot-ui/adapters/CampaignCreatorUxSidebar";
 import {
   CampaignDraftProvider,
   useCampaignDraft
@@ -52,7 +53,8 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
     addAdMode,
     addAdsetMode,
     inheritCampaignMode,
-    addAdLoading
+    addAdLoading,
+    showMobileValidationToast
   } = useCampaignDraft();
   const [showObjective, setShowObjective] = useState(!objectiveChosen && !inheritCampaignMode);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -405,12 +407,14 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
     setShowTargetingFixLink(false);
     const err = validatePublishDraft(payload);
     if (err) {
-      setPublishError(t(err as Parameters<typeof t>[0]));
+      const message = t(err as Parameters<typeof t>[0]);
+      setPublishError(message);
+      showMobileValidationToast("error", message);
       return;
     }
 
     void runPublish();
-  }, [payload, runPublish, t]);
+  }, [payload, runPublish, showMobileValidationToast, t]);
 
   const repairModal = (
     <PersonaTargetingRepairModal
@@ -453,10 +457,16 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
     if (variant !== "uxpilot") return;
     const shell = document.querySelector<HTMLElement>("[data-campaign-creator-shell]")?.closest("main");
     if (!shell) return;
-    const prev = shell.style.overflow;
+    const prevOverflow = shell.style.overflow;
+    const prevDisplay = shell.style.display;
+    const prevFlexDirection = shell.style.flexDirection;
     shell.style.overflow = "hidden";
+    shell.style.display = "flex";
+    shell.style.flexDirection = "column";
     return () => {
-      shell.style.overflow = prev;
+      shell.style.overflow = prevOverflow;
+      shell.style.display = prevDisplay;
+      shell.style.flexDirection = prevFlexDirection;
     };
   }, [variant]);
 
@@ -465,7 +475,7 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
       <div
         className={
           variant === "uxpilot"
-            ? "flex h-full items-center justify-center"
+            ? "flex min-h-0 flex-1 items-center justify-center"
             : "-mx-6 -my-6 flex min-h-[calc(100vh-4rem)] items-center justify-center bg-[var(--surface)]"
         }
       >
@@ -486,32 +496,65 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
   if (variant === "uxpilot") {
     const onObjectivePhase = !addAdMode && !objectiveChosen;
     return (
-      <div
-        className="flex h-full min-h-0 flex-col overflow-hidden"
-        style={{ background: "var(--surface-bg)" }}
-      >
-        <CampaignCreatorUxHeader onObjectivePhase={onObjectivePhase} />
-        <div className="flex min-h-0 flex-1 overflow-hidden">
-          <CampaignCreatorUxStepper onObjectivePhase={onObjectivePhase} />
-          <main className="min-w-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin", background: "var(--surface-bg)" }}>
-            <div className="mx-auto w-full max-w-3xl space-y-4 px-6 py-6">
-              {onObjectivePhase ? <ObjectiveStep /> : stepPanel}
-              {publishErrorAlert}
-              {repairNoticeAlert}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: "var(--surface-bg)" }}>
+          <CampaignCreatorUxHeader onObjectivePhase={onObjectivePhase} />
+          <div
+            className={
+              onObjectivePhase
+                ? "grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr_auto] overflow-hidden px-4 lg:pl-8 lg:pr-4"
+                : "grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr_auto] gap-x-8 overflow-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]"
+            }
+          >
+            <div className="campaign-creator-stepper-row col-start-1 row-start-1 flex shrink-0 items-start border-b border-[var(--border-color)] py-2 lg:py-1.5">
+              <div className="min-w-0 flex-1 overflow-x-auto">
+                <CampaignCreatorUxStepper onObjectivePhase={onObjectivePhase} />
+              </div>
             </div>
-          </main>
-          <CampaignCreatorUxScorePanel
-            onPublish={handlePublish}
-            publishing={publishing}
-            onObjectivePhase={onObjectivePhase}
-            publishError={publishError}
-            showTargetingFixLink={showTargetingFixLink}
-            onFixTargeting={() => void openTargetingRepair()}
-          />
+
+            <main className="col-start-1 row-start-2 flex min-h-0 flex-col overflow-hidden py-3">
+              <div
+                className={
+                  !onObjectivePhase && (activeNode === "campaign" || activeNode === "adset")
+                    ? "campaign-creator-main-scroll flex min-h-0 flex-1 flex-col overflow-hidden"
+                    : "campaign-creator-main-scroll min-h-0 flex-1 overflow-y-auto"
+                }
+              >
+                <div className="campaign-creator-main-scroll__inner flex min-h-0 flex-1 flex-col">
+                {onObjectivePhase ? (
+                  <div className="space-y-3">
+                    <ObjectiveStep />
+                  </div>
+                ) : (
+                  stepPanel
+                )}
+                {publishErrorAlert}
+                {repairNoticeAlert}
+                </div>
+              </div>
+            </main>
+
+            <div className="col-start-1 row-start-3 -mx-4 lg:mx-0">
+              <CampaignCreatorUxNav
+                onPublish={handlePublish}
+                publishing={publishing}
+                onObjectivePhase={onObjectivePhase}
+                placement="footer"
+              />
+            </div>
+
+            <CampaignCreatorUxMobileStatusToast onObjectivePhase={onObjectivePhase} />
+
+            {!onObjectivePhase ? (
+              <aside className="campaign-creator-sidebar hidden min-h-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:block">
+                <div className="campaign-creator-sidebar__inner">
+                  <CampaignCreatorUxSidebar />
+                </div>
+              </aside>
+            ) : null}
+          </div>
+          {repairModal}
+          <CampaignPublishOverlay open={publishing} step={publishProgressStep} />
         </div>
-        {repairModal}
-        <CampaignPublishOverlay open={publishing} step={publishProgressStep} />
-      </div>
     );
   }
 

@@ -32,12 +32,17 @@
   --row-hover: rgba(15, 23, 42, 0.025);
   --surface-row-alt: rgba(15, 23, 42, 0.018);
   --table-sticky-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.14);
+  --surface-sticky-thead: #eef2f6;
+  --surface-sticky-cell: #ffffff;
+  --surface-sticky-cell-alt: #f8fafc;
+  --surface-sticky-cell-hover: #f1f5f9;
   --toggle-track-on: var(--ui-accent-btn-from);
   --toggle-track-off: #94a3b8;
   --toggle-knob: #ffffff;
   --toggle-border: rgba(15, 23, 42, 0.16);
   --toggle-knob-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
   --input-bg: #ffffff;
+  --modal-overlay: rgba(15, 23, 42, 0.45);
   --dropdown-bg: #ffffff;
   --filter-btn-bg: #ffffff;
   --filter-btn-text: #475569;
@@ -109,12 +114,17 @@
   --row-hover: rgba(255, 255, 255, 0.04);
   --surface-row-alt: rgba(255, 255, 255, 0.025);
   --table-sticky-shadow: 4px 0 10px -4px rgba(0, 0, 0, 0.55);
+  --surface-sticky-thead: #181f28;
+  --surface-sticky-cell: #1d2630;
+  --surface-sticky-cell-alt: #1a222c;
+  --surface-sticky-cell-hover: #242e3a;
   --toggle-track-on: var(--ui-accent-btn-to);
   --toggle-track-off: #475569;
   --toggle-knob: #f8fafc;
   --toggle-border: rgba(255, 255, 255, 0.16);
   --toggle-knob-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
   --input-bg: #1d2630;
+  --modal-overlay: rgba(0, 0, 0, 0.55);
   --dropdown-bg: #1d2630;
   --filter-btn-bg: rgba(29, 38, 48, 0.8);
   --filter-btn-text: #94a3b8;
@@ -182,12 +192,17 @@
   --row-hover: rgba(15, 23, 42, 0.025);
   --surface-row-alt: rgba(15, 23, 42, 0.018);
   --table-sticky-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.14);
+  --surface-sticky-thead: #eef2f6;
+  --surface-sticky-cell: #ffffff;
+  --surface-sticky-cell-alt: #f8fafc;
+  --surface-sticky-cell-hover: #f1f5f9;
   --toggle-track-on: var(--ui-accent-btn-from);
   --toggle-track-off: #94a3b8;
   --toggle-knob: #ffffff;
   --toggle-border: rgba(15, 23, 42, 0.16);
   --toggle-knob-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
   --input-bg: #ffffff;
+  --modal-overlay: rgba(15, 23, 42, 0.45);
   --dropdown-bg: #ffffff;
   --filter-btn-bg: #ffffff;
   --filter-btn-text: #475569;
@@ -269,6 +284,15 @@ h6,
     @apply placeholder:text-[var(--text-dimmer)] focus:border-[var(--ui-accent)] focus:ring-[var(--ui-accent-ring)];
   }
 
+  .ui-input[type="datetime-local"] {
+    color-scheme: light dark;
+  }
+
+  [data-theme="dark"] .ui-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.85);
+    opacity: 0.85;
+  }
+
   .ui-textarea {
     @apply resize-none;
   }
@@ -279,6 +303,206 @@ h6,
     background-repeat: no-repeat;
     background-position: right 0.65rem center;
     background-size: 1rem;
+  }
+
+  .ui-form-select-trigger {
+    background: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-main);
+  }
+
+  .ui-form-select-trigger:hover:not(:disabled) {
+    border-color: var(--border-hover);
+  }
+
+  .ui-form-select-trigger--open {
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-ring);
+  }
+
+  .ui-form-select-menu {
+    background: var(--dropdown-bg, var(--surface-card));
+    border-color: var(--border-color);
+  }
+
+  .ui-form-select-option {
+    @apply px-3 py-2.5 transition-colors;
+    color: var(--text-dim);
+  }
+
+  .ui-form-select-option:hover {
+    background: var(--row-hover, var(--surface-bg));
+    color: var(--text-main);
+  }
+
+  .ui-form-select-option--active {
+    background: var(--ui-accent-muted);
+    color: var(--ui-accent);
+    font-weight: 600;
+  }
+
+  /* Wizard nav — rodapé compacto ou flutuante, alinhado ao stepper principal */
+  .ui-wizard-nav--floating {
+    @apply pointer-events-none absolute inset-x-0 bottom-0 z-10 pb-4 sm:pb-6;
+  }
+
+  .ui-wizard-nav--footer {
+    @apply mt-auto shrink-0 pb-2 pt-0;
+    background: var(--surface-bg);
+  }
+
+  .ui-wizard-nav--footer .ui-wizard-nav__actions {
+    @apply flex h-9 w-full items-center justify-between gap-3 px-0;
+  }
+
+  @media (max-width: 1023px) {
+    [data-campaign-creator-shell] .ui-wizard-nav--footer {
+      @apply shrink-0 border-t px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3;
+      border-color: var(--border-color);
+      background: var(--surface-card);
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__actions {
+      @apply mx-auto h-auto w-full max-w-[20rem] gap-3;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__btn-spacer {
+      display: none;
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__btn {
+      @apply min-h-11 w-full min-w-0 rounded-xl px-4 text-sm;
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__btn--back,
+    [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__btn--next {
+      @apply flex-1 basis-0;
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__btn--next:only-child {
+      grid-column: 1 / -1;
+      @apply mx-auto max-w-[9.5rem];
+    }
+  }
+
+  .campaign-creator-mobile-toast {
+    @apply pointer-events-none fixed inset-x-0 z-40 px-4 lg:hidden;
+    bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .campaign-creator-mobile-toast__inner {
+    @apply pointer-events-auto flex min-h-[3.25rem] items-center gap-2.5 rounded-xl border px-4 py-3.5 text-sm font-medium leading-snug shadow-md;
+  }
+
+  .campaign-creator-mobile-toast__inner--solid.ui-alert-danger {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #991b1b;
+  }
+
+  [data-theme="dark"] .campaign-creator-mobile-toast__inner--solid.ui-alert-danger {
+    border-color: #7f1d1d;
+    background: #450a0a;
+    color: #fecaca;
+  }
+
+  .campaign-creator-mobile-toast__inner--solid.ui-alert-warning {
+    border-color: #fcd34d;
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  [data-theme="dark"] .campaign-creator-mobile-toast__inner--solid.ui-alert-warning {
+    border-color: #78350f;
+    background: #451a03;
+    color: #fde68a;
+  }
+
+  .campaign-creator-mobile-toast__inner--solid.ui-alert-success {
+    border-color: #6ee7b7;
+    background: #ecfdf5;
+    color: #047857;
+  }
+
+  [data-theme="dark"] .campaign-creator-mobile-toast__inner--solid.ui-alert-success {
+    border-color: #065f46;
+    background: #064e3b;
+    color: #a7f3d0;
+  }
+
+  @media (max-width: 1023px) {
+    .campaign-creator-stepper-row {
+      @apply pt-4 pb-2;
+    }
+
+    .campaign-creator-header {
+      @apply pb-4;
+    }
+  }
+
+  .ui-wizard-nav__actions {
+    @apply flex w-full items-center gap-2;
+  }
+
+  .ui-wizard-nav--floating .ui-wizard-nav__actions {
+    @apply grid w-full max-w-none items-center px-2 sm:px-3;
+    grid-template-columns: 2.25rem 1fr 2.25rem;
+  }
+
+  @media (max-width: 639px) {
+    .ui-wizard-nav--floating .ui-wizard-nav__actions {
+      grid-template-columns: auto 1fr;
+      gap: 0.75rem;
+    }
+
+    .ui-wizard-nav--floating .ui-wizard-nav__btn--back {
+      grid-column: 1;
+    }
+
+    .ui-wizard-nav--floating .ui-wizard-nav__btn--next {
+      grid-column: 2;
+      justify-self: stretch;
+      width: 100%;
+      min-height: 2.75rem;
+    }
+  }
+
+  .ui-wizard-nav--floating .ui-wizard-nav__actions {
+    @apply pointer-events-auto;
+  }
+
+  .ui-wizard-nav--floating .ui-wizard-nav__btn--back,
+  .ui-wizard-nav--floating .ui-wizard-nav__btn-spacer {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .ui-wizard-nav--floating .ui-wizard-nav__btn--next {
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  .ui-wizard-nav__error {
+    @apply pointer-events-auto w-full px-1 text-[11px] leading-snug text-red-600 sm:px-2;
+  }
+
+  .ui-wizard-nav--footer .ui-wizard-nav__error {
+    @apply mb-0.5 truncate text-left;
+  }
+
+  .ui-wizard-nav--floating .ui-wizard-nav__error {
+    @apply pointer-events-auto;
+  }
+
+  main:has([data-campaign-creator-shell]) {
+    @apply flex min-h-0 flex-col overflow-hidden;
+  }
+
+  main > div:has([data-campaign-creator-shell]) {
+    @apply flex min-h-0 flex-1 flex-col;
+    max-width: none;
   }
 
   .ui-label {
@@ -728,7 +952,7 @@ h6,
 
   /* Stepper horizontal — círculos + linhas (accent temático) */
   .ui-wizard-stepper {
-    @apply mx-auto grid w-full max-w-2xl gap-0;
+    @apply grid w-full gap-0;
     grid-template-columns: repeat(var(--wizard-steps, 3), minmax(0, 1fr));
   }
 
@@ -780,6 +1004,61 @@ h6,
     color: var(--text-main);
   }
 
+  /* Stepper compacto — criador de campanha (5 etapas) */
+  .ui-wizard-stepper--compact .ui-wizard-stepper__line {
+    @apply top-4;
+    left: calc(50% + 1rem);
+    right: calc(-50% + 1rem);
+  }
+
+  .ui-wizard-stepper--compact .ui-wizard-stepper__circle {
+    @apply h-8 w-8 text-xs;
+  }
+
+  .ui-wizard-stepper--compact .ui-wizard-stepper__label {
+    @apply mt-1.5 max-w-[4.75rem] text-[10px] sm:max-w-[5.75rem] sm:text-[11px];
+  }
+
+  /* Stepper compacto — sub-etapas do criador de campanha */
+  .ui-wizard-stepper--mini {
+    @apply max-w-md;
+  }
+
+  .ui-wizard-stepper--mini .ui-wizard-stepper__line {
+    @apply top-3.5;
+    left: calc(50% + 0.875rem);
+    right: calc(-50% + 0.875rem);
+  }
+
+  .ui-wizard-stepper--mini .ui-wizard-stepper__circle {
+    @apply h-7 w-7 text-[10px];
+  }
+
+  .ui-wizard-stepper--mini .ui-wizard-stepper__label {
+    @apply mt-1.5 max-w-[4.5rem] text-[10px] sm:max-w-[5.5rem];
+  }
+
+  /* Micro-círculos na ponte entre etapas principais */
+  .ui-wizard-stepper__circle--micro {
+    @apply h-2 w-2 border p-0 text-[0];
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .ui-wizard-stepper__circle--micro.ui-wizard-stepper__circle--active {
+    @apply h-2.5 w-2.5;
+    box-shadow: 0 0 0 3px var(--ui-accent-ring);
+  }
+
+  .ui-wizard-stepper__circle--micro.ui-wizard-stepper__circle--done {
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+  }
+
+  .ui-wizard-stepper-main {
+    @apply mx-auto flex w-full max-w-5xl items-start;
+  }
+
   /* Toolbar / PageToolbar — accent temático (âmbar light, roxo dark) */
   .ui-toolbar-icon-shell {
     @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg;
@@ -816,6 +1095,18 @@ h6,
   .ui-btn-secondary:hover:not(:disabled) {
     border-color: var(--border-hover);
     background: var(--surface-card);
+  }
+
+  .ui-btn-secondary-accent {
+    @apply ui-btn-secondary;
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+  }
+
+  .ui-btn-secondary-accent:hover:not(:disabled) {
+    border-color: var(--ui-accent-border-strong);
+    background: var(--ui-accent-muted);
+    color: var(--ui-accent);
   }
 
   .ui-btn-ghost {
@@ -1352,6 +1643,66 @@ h6,
     background: color-mix(in srgb, var(--ui-accent) 75%, transparent);
   }
 
+  .ds-scroll--sidebar {
+    scrollbar-color: color-mix(in srgb, var(--ui-accent) 35%, transparent) transparent;
+  }
+
+  .ds-scroll--sidebar::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .ds-scroll--sidebar::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--ui-accent) 35%, transparent);
+  }
+
+  .ds-scroll--sidebar::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  }
+
+  .campaign-creator-sidebar {
+    @apply min-h-0 overflow-y-auto ds-scroll ds-scroll--sidebar;
+    scrollbar-gutter: stable;
+  }
+
+  .campaign-creator-sidebar__inner {
+    @apply pr-3;
+  }
+
+  .campaign-creator-main-scroll {
+    @apply ds-scroll;
+  }
+
+  @media (min-width: 1024px) {
+    .campaign-creator-main-scroll {
+      scrollbar-gutter: stable;
+    }
+  }
+
+  .campaign-creator-main-scroll__inner {
+    @apply lg:pr-5;
+  }
+
+  /* Campaign creator stepper — larger touch targets on mobile */
+  @media (max-width: 1023px) {
+    .campaign-creator-stepper .ui-wizard-stepper--mini {
+      @apply max-w-none;
+    }
+
+    .campaign-creator-stepper .ui-wizard-stepper--mini .ui-wizard-stepper__line {
+      @apply top-[1.125rem];
+      left: calc(50% + 1.25rem);
+      right: calc(-50% + 1.25rem);
+    }
+
+    .campaign-creator-stepper .ui-wizard-stepper--mini .ui-wizard-stepper__circle {
+      @apply h-10 w-10 text-xs;
+    }
+
+    .campaign-creator-stepper .ui-wizard-stepper--mini .ui-wizard-stepper__label {
+      @apply mt-2 max-w-[4.75rem] text-[11px] leading-tight;
+    }
+  }
+
   /* Pills de metadados — visão interna de campanha */
   .ui-campaign-meta-pill {
     @apply inline-flex max-w-[min(100%,300px)] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] leading-none;
@@ -1451,6 +1802,31 @@ h6,
     @apply mt-1 text-xl font-bold tabular-nums;
     color: var(--text-main);
     font-family: var(--font-heading);
+  }
+
+  .ui-spend-distribution-card {
+    @apply relative overflow-hidden rounded-xl border p-4;
+    border-color: color-mix(in srgb, var(--ui-accent) 28%, var(--border-color));
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--ui-accent-muted) 55%, var(--surface-card)),
+      var(--surface-card)
+    );
+  }
+
+  .ui-spend-distribution-card::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 3px;
+    background: var(--ui-accent);
+    border-radius: 3px 0 0 3px;
+  }
+
+  .ui-spend-distribution-card__title {
+    @apply text-sm font-semibold;
+    color: var(--text-main);
   }
 
   .ui-campaign-table th:not(:nth-child(2)) {

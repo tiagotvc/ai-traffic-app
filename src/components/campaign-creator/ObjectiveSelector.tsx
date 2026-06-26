@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { FormSelect } from "@/components/ui/FormSelect";
 import type { BuyingType, CampaignObjectiveKey } from "@/lib/campaign-draft";
 import { CAMPAIGN_OBJECTIVES, objectivesForBuyingType } from "@/lib/campaign-draft";
 
@@ -55,48 +56,65 @@ export function ObjectiveSelector({
       ) : null}
 
       <div className={showHeader ? "mt-5" : ""}>
-        <label className="text-xs font-medium text-[var(--text-dim)]">{t("buyingType")}</label>
-        <select
-          className="ui-select mt-1.5 w-full text-sm"
-          value={buyingType}
-          onChange={(e) => setBuyingType(e.target.value as BuyingType)}
-        >
-          <option value="auction">{t("buyingAuction")}</option>
-          <option value="reservation">{t("buyingReservation")}</option>
-        </select>
+        <label className="ui-label">{t("buyingType")}</label>
+        <div className="mt-1.5">
+          <FormSelect
+            value={buyingType}
+            onChange={(v) => setBuyingType(v as BuyingType)}
+            clearable={false}
+            placeholder={t("buyingType")}
+            options={[
+              { value: "auction", label: t("buyingAuction") },
+              { value: "reservation", label: t("buyingReservation") }
+            ]}
+          />
+        </div>
         {buyingType === "reservation" ? (
-          <p className="mt-1 text-[11px] text-[var(--text-dim)]">{t("buyingReservationHint")}</p>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-dim)]">
+            {t("buyingReservationHint")}
+          </p>
         ) : null}
       </div>
 
-      <p className="mt-5 text-xs font-medium text-[var(--text-dim)]">{t("chooseObjective")}</p>
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        {CAMPAIGN_OBJECTIVES.filter((obj) => availableObjectives.includes(obj)).map((obj) => (
-          <button
-            key={obj}
-            type="button"
-            onClick={() => onObjectiveChange(obj)}
-            className="flex items-start gap-3 rounded-xl border p-4 text-left transition-all"
-            style={{
-              borderColor: objective === obj ? "#a78bfa" : "var(--border-color)",
-              background: objective === obj ? "rgba(124,58,237,0.08)" : "var(--surface-card)"
-            }}
-          >
-            <svg
-              className="mt-0.5 h-5 w-5 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="#7c3aed"
-              strokeWidth={1.75}
+      <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+        {t("chooseObjective")}
+      </p>
+      <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+        {CAMPAIGN_OBJECTIVES.filter((obj) => availableObjectives.includes(obj)).map((obj) => {
+          const selected = objective === obj;
+          return (
+            <button
+              key={obj}
+              type="button"
+              onClick={() => onObjectiveChange(obj)}
+              className={`group flex items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
+                selected
+                  ? "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] shadow-[0_0_0_1px_var(--ui-accent-border)]"
+                  : "border-[var(--border-color)] bg-[var(--surface-bg)] hover:border-[var(--ui-accent-border)] hover:bg-[var(--ui-accent-hover)]"
+              }`}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d={OBJECTIVE_ICONS[obj]} />
-            </svg>
-            <div>
-              <p className="text-sm font-semibold text-[var(--text-main)]">{t(`objective_${obj}`)}</p>
-              <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t(`objective_${obj}_hint`)}</p>
-            </div>
-          </button>
-        ))}
+              <span
+                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                  selected
+                    ? "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]"
+                    : "bg-[var(--surface-card)] text-[var(--ui-accent)] group-hover:bg-[var(--ui-accent-muted)]"
+                }`}
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={OBJECTIVE_ICONS[obj]} />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
+                  {t(`objective_${obj}`)}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-dim)]">
+                  {t(`objective_${obj}_hint`)}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

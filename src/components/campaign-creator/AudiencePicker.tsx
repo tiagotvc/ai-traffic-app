@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import type { PublishAudience } from "@/hooks/usePublishAssets";
+import { cn } from "@/lib/cn";
 
 type Props = {
   audiences: PublishAudience[];
@@ -14,6 +15,8 @@ type Props = {
   onChangeInclude: (ids: string[]) => void;
   onChangeExclude: (ids: string[]) => void;
   disabled?: boolean;
+  /** Omit outer card chrome when rendered inside a modal. */
+  embedded?: boolean;
 };
 
 function subtypeLabel(subtype?: string) {
@@ -34,7 +37,8 @@ export function AudiencePicker({
   excludeIds,
   onChangeInclude,
   onChangeExclude,
-  disabled
+  disabled,
+  embedded = false
 }: Props) {
   const t = useTranslations("campaignCreator");
   const tAds = useTranslations("ads");
@@ -63,21 +67,36 @@ export function AudiencePicker({
     }
   }
 
+  const modeBtnClass = (active: boolean) =>
+    cn(
+      "rounded-lg px-3 py-1.5 text-xs font-medium transition",
+      active
+        ? "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]"
+        : "bg-[var(--surface-card)] text-[var(--text-dim)] ring-1 ring-[var(--border-color)] hover:ring-[var(--ui-accent-border)]"
+    );
+
   return (
-    <div className="space-y-3 rounded-xl border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)]/30 p-3">
-      <div>
-        <p className="text-sm font-semibold text-[var(--text-main)]">{t("savedAudiencesTitle")}</p>
-        <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t("savedAudiencesHint")}</p>
-      </div>
+    <div
+      className={cn(
+        "space-y-3",
+        !embedded && "rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3"
+      )}
+    >
+      {!embedded ? (
+        <div>
+          <p className="text-sm font-semibold text-[var(--text-main)]">{t("savedAudiencesTitle")}</p>
+          <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t("savedAudiencesHint")}</p>
+        </div>
+      ) : null}
 
       {!adAccountId ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-lg border border-[var(--border-color)] bg-[var(--ui-accent-muted)] px-3 py-2 text-xs text-[var(--text-main)]">
           {t("savedAudiencesNeedAccount")}
         </p>
       ) : loading ? (
         <p className="text-xs text-[var(--text-dim)]">{t("savedAudiencesLoading")}</p>
       ) : audiences.length === 0 ? (
-        <p className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2 text-xs text-[var(--text-dim)]">
+        <p className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] px-3 py-2 text-xs text-[var(--text-dim)]">
           {t("savedAudiencesEmpty")}
         </p>
       ) : (
@@ -87,11 +106,7 @@ export function AudiencePicker({
               type="button"
               disabled={disabled}
               onClick={() => setMode("include")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-                mode === "include"
-                  ? "bg-[var(--violet)] text-white"
-                  : "bg-[var(--surface-card)] text-[var(--text-dim)] ring-1 ring-[var(--border-color)]"
-              }`}
+              className={modeBtnClass(mode === "include")}
             >
               {tAds("audienceInclude")} ({includeIds.length})
             </button>
@@ -99,11 +114,7 @@ export function AudiencePicker({
               type="button"
               disabled={disabled}
               onClick={() => setMode("exclude")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium ${
-                mode === "exclude"
-                  ? "bg-slate-700 text-white"
-                  : "bg-[var(--surface-card)] text-[var(--text-dim)] ring-1 ring-[var(--border-color)]"
-              }`}
+              className={modeBtnClass(mode === "exclude")}
             >
               {tAds("audienceExclude")} ({excludeIds.length})
             </button>
@@ -117,7 +128,7 @@ export function AudiencePicker({
             disabled={disabled}
           />
 
-          <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] p-1">
+          <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] p-1">
             {filtered.length === 0 ? (
               <p className="px-2 py-3 text-center text-xs text-[var(--text-dim)]">
                 {t("savedAudiencesNoMatch")}
@@ -132,21 +143,25 @@ export function AudiencePicker({
                 return (
                   <label
                     key={a.id}
-                    className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-xs transition ${
-                      checked ? "bg-[rgba(124,58,237,0.06)]" : "hover:bg-[var(--surface-bg)]"
-                    } ${inOther ? "opacity-50" : ""}`}
+                    className={cn(
+                      "flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-xs transition",
+                      checked
+                        ? "bg-[var(--ui-accent-muted)]"
+                        : "hover:bg-[var(--row-hover)]",
+                      inOther && "opacity-50"
+                    )}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       disabled={disabled || inOther}
                       onChange={() => toggle(a.id)}
-                      className="mt-0.5 accent-violet-600"
+                      className="mt-0.5 accent-[var(--ui-accent)]"
                     />
                     <span className="min-w-0 flex-1">
                       <span className="font-medium text-[var(--text-main)]">{a.name}</span>
                       {a.subtype ? (
-                        <span className="ml-1.5 rounded bg-[var(--surface-bg)] px-1.5 py-0.5 text-[10px] text-[var(--text-dim)]">
+                        <span className="ml-1.5 rounded bg-[var(--surface-card)] px-1.5 py-0.5 text-[10px] text-[var(--text-dim)]">
                           {subtypeLabel(a.subtype)}
                         </span>
                       ) : null}
@@ -160,21 +175,21 @@ export function AudiencePicker({
             )}
           </div>
 
-          {(includeIds.length > 0 || excludeIds.length > 0) ? (
+          {includeIds.length > 0 || excludeIds.length > 0 ? (
             <div className="flex flex-wrap gap-1">
               {includeIds.map((id) => {
                 const a = audiences.find((x) => x.id === id);
                 return (
                   <span
                     key={`inc-${id}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] text-[var(--violet)]"
+                    className="inline-flex items-center gap-1 rounded-full bg-[var(--ui-accent-muted)] px-2 py-0.5 text-[10px] text-[var(--ui-accent)]"
                   >
                     + {a?.name ?? id}
                     <button
                       type="button"
                       disabled={disabled}
                       onClick={() => onChangeInclude(includeIds.filter((x) => x !== id))}
-                      className="text-violet-500 hover:text-[var(--violet)]"
+                      className="text-[var(--ui-accent)] opacity-70 hover:opacity-100"
                     >
                       ×
                     </button>
@@ -186,7 +201,7 @@ export function AudiencePicker({
                 return (
                   <span
                     key={`exc-${id}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-[var(--text-dim)]"
+                    className="inline-flex items-center gap-1 rounded-full border border-[var(--border-color)] bg-[var(--surface-bg)] px-2 py-0.5 text-[10px] text-[var(--text-dim)]"
                   >
                     − {a?.name ?? id}
                     <button

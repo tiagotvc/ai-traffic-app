@@ -1,75 +1,265 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { ClipboardCheck, FileText, Folder, LayoutGrid, Target } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import { CampaignPublishErrorAlert } from "@/components/campaign-creator/CampaignPublishErrorAlert";
 import { Link } from "@/i18n/navigation";
 import {
-  computeDraftScore,
   nextNode,
   prevNode,
   validateAdSetStep,
   validateAdStep,
   validateCampaignStep,
   validatePublishDraft,
+  computeDraftScore,
   type CreatorNode
 } from "@/lib/campaign-draft";
-import { UxCircularProgress, UxScoreItem, UxStepItem } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
+import { UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 
 const NODE_ORDER: CreatorNode[] = ["campaign", "adset", "ad", "review"];
+
+type StepDef = { number: number; label: string; node: CreatorNode | null; disabled?: boolean };
+
+export function computeWizardProgressPercent(options: {
+  onObjectivePhase: boolean;
+  addAdMode: boolean;
+  activeNode: CreatorNode;
+}): number {
+  const { onObjectivePhase, addAdMode, activeNode } = options;
+
+  if (onObjectivePhase) return 20;
+
+  if (addAdMode) {
+    return activeNode === "review" ? 100 : 50;
+  }
+
+  const stepByNode: Record<CreatorNode, number> = {
+    campaign: 2,
+    adset: 3,
+    ad: 4,
+    review: 5
+  };
+
+  return Math.min(100, Math.round(((stepByNode[activeNode] ?? 2) / 5) * 100));
+}
+
+function useCloseHref() {
+  const { payload, addAdMode } = useCampaignDraft();
+  return addAdMode && payload.meta?.targetMetaCampaignId
+    ? `/campaigns/${payload.meta.targetMetaCampaignId}/ads${
+        payload.clientSlug ? `?client=${encodeURIComponent(payload.clientSlug)}` : ""
+      }`
+    : "/campaigns";
+}
+
+function formatSavedLabel(lastSavedAt: Date, t: ReturnType<typeof useTranslations<"campaignCreator">>) {
+  const minutes = Math.max(0, Math.floor((Date.now() - lastSavedAt.getTime()) / 60_000));
+  if (minutes < 1) return t("savedJustNow");
+  return t("savedAgo", { minutes });
+}
+
+function useStepValidationError(onObjectivePhase: boolean) {
+  const { payload, activeNode, addAdMode } = useCampaignDraft();
+
+  if (onObjectivePhase) return null;
+
+  if (addAdMode) {
+    return activeNode === "ad" ? validatePublishDraft(payload) : null;
+  }
+
+  if (activeNode === "campaign") return validateCampaignStep(payload);
+  if (activeNode === "adset") return validateAdSetStep(payload);
+  if (activeNode === "ad") return validateAdStep(payload);
+  return null;
+}
+
+function SavedStatus({
+  onObjectivePhase,
+  saving,
+  lastSavedAt,
+  stepError,
+  compact = false,
+  t
+}: {
+  onObjectivePhase: boolean;
+  saving: boolean;
+  lastSavedAt: Date | null;
+  stepError: string | null;
+  compact?: boolean;
+  t: ReturnType<typeof useTranslations<"campaignCreator">>;
+}) {
+  if (onObjectivePhase) return <span className="w-9 shrink-0" aria-hidden />;
+
+  if (stepError) {
+    return (
+      <span
+        className={
+          compact
+            ? "max-w-[4.5rem] shrink-0 truncate font-body text-[10px] text-red-500"
+            : "max-w-[12rem] truncate font-body text-[11px] text-red-500 sm:max-w-xs"
+        }
+      >
+        {t(stepError as Parameters<typeof t>[0])}
+      </span>
+    );
+  }
+
+  if (saving) {
+    return (
+      <span
+        className={`shrink-0 font-body ${compact ? "text-[11px]" : "text-[11px]"}`}
+        style={{ color: "var(--text-dimmer)" }}
+      >
+        {t("saving")}
+      </span>
+    );
+  }
+
+  if (lastSavedAt) {
+    return (
+      <span
+        className={`inline-flex shrink-0 items-center gap-1 font-body ${compact ? "text-[11px]" : "text-[11px]"}`}
+        style={{ color: "var(--success)" }}
+      >
+        <CheckCircle2 size={compact ? 14 : 13} strokeWidth={2.5} />
+        {compact ? t("saved") : formatSavedLabel(lastSavedAt, t)}
+      </span>
+    );
+  }
+
+  return <span className="w-9 shrink-0" aria-hidden />;
+}
+
+export function CampaignCreatorUxMobileStatusToast({
+  onObjectivePhase = false
+}: {
+  onObjectivePhase?: boolean;
+}) {
+  const { mobileValidationToast, clearMobileValidationToast } = useCampaignDraft();
+
+  useEffect(() => {
+    if (!mobileValidationToast) return;
+    const delayMs = mobileValidationToast.variant === "error" ? 5000 : 4000;
+    const timer = window.setTimeout(() => clearMobileValidationToast(), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [mobileValidationToast, clearMobileValidationToast]);
+
+  if (onObjectivePhase || !mobileValidationToast) return null;
+
+  const { variant, message } = mobileValidationToast;
+  const alertClass =
+    variant === "error"
+      ? "ui-alert-danger"
+      : variant === "warning"
+        ? "ui-alert-warning"
+        : "ui-alert-success";
+
+  const Icon = variant === "error" ? AlertCircle : variant === "warning" ? AlertTriangle : CheckCircle2;
+
+  return (
+    <div className="campaign-creator-mobile-toast" role="alert" aria-live="assertive">
+      <p className={`campaign-creator-mobile-toast__inner campaign-creator-mobile-toast__inner--solid ${alertClass}`}>
+        <Icon size={18} strokeWidth={2.25} className="shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 text-left leading-snug">{message}</span>
+      </p>
+    </div>
+  );
+}
 
 export function CampaignCreatorUxHeader({ onObjectivePhase = false }: { onObjectivePhase?: boolean }) {
   const t = useTranslations("campaignCreator");
   const { payload, saving, lastSavedAt, addAdMode } = useCampaignDraft();
+  const closeHref = useCloseHref();
+  const stepError = useStepValidationError(onObjectivePhase);
+
+  const title = onObjectivePhase
+    ? t("objectiveModalTitle")
+    : addAdMode
+      ? t("addAdTitle")
+      : t("title");
+  const subtitle = onObjectivePhase
+    ? t("objectiveModalHint")
+    : payload.campaign.name || t("newCampaign");
 
   return (
-    <header
-      className="flex w-full shrink-0 items-center gap-3 border-b px-6 py-3"
-      style={{
-        background: "var(--surface-bg)",
-        borderColor: "var(--border-color)"
-      }}
-    >
-      <div className="min-w-0 flex-1">
-        <p className="font-body text-xs leading-relaxed" style={{ color: "var(--text-dimmer)" }}>
-          <Link href="/campaigns" className="hover:underline" style={{ color: "var(--text-dimmer)" }}>
-            {t("breadcrumbCampaigns")}
+    <header className="campaign-creator-header shrink-0 px-4 pb-2 pt-3 lg:pl-8 lg:pr-4 lg:pt-4">
+      {/* Mobile — dedicated creator chrome (close · title) */}
+      <div className="lg:hidden">
+        <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_2.25rem] items-center gap-2">
+          <Link
+            href={closeHref}
+            aria-label={t("close")}
+            className="flex h-9 w-9 items-center justify-center rounded-lg transition-opacity hover:opacity-80"
+          >
+            <X size={22} strokeWidth={2} style={{ color: "var(--ui-accent)" }} />
           </Link>
-          {!onObjectivePhase ? (
-            <>
-              {" › "}
-              <span style={{ color: "var(--text-dim)" }}>{payload.campaign.name || t("newCampaign")}</span>
-            </>
-          ) : null}
-        </p>
-        {!onObjectivePhase ? (
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="font-heading text-xl font-bold leading-tight md:text-2xl" style={{ color: "var(--text-main)" }}>
-              {addAdMode ? t("addAdTitle") : t("title")}
+          <div className="min-w-0 text-center">
+            <h1 className="truncate font-heading text-base font-bold leading-tight" style={{ color: "var(--text-main)" }}>
+              {title}
             </h1>
-            <span
-              className="rounded px-2 py-0.5 font-heading text-xs font-semibold"
-              style={{
-                background: "rgba(245,166,35,0.15)",
-                color: "var(--amber)",
-                border: "1px solid rgba(245,166,35,0.3)"
-              }}
+            <p className="mt-0.5 truncate font-body text-xs leading-snug" style={{ color: "var(--text-dim)" }}>
+              {subtitle}
+            </p>
+          </div>
+          <span className="w-9 shrink-0" aria-hidden />
+        </div>
+      </div>
+
+      {/* Desktop — breadcrumb + title row */}
+      <div className="hidden lg:block">
+        <div className="flex items-center justify-between gap-3">
+          <p className="min-w-0 truncate font-body text-xs leading-relaxed" style={{ color: "var(--text-dimmer)" }}>
+            <Link href="/campaigns" className="hover:underline" style={{ color: "var(--text-dimmer)" }}>
+              {t("breadcrumbCampaigns")}
+            </Link>
+            {!onObjectivePhase && payload.campaign.name ? (
+              <>
+                {" › "}
+                <span style={{ color: "var(--text-dim)" }}>{payload.campaign.name}</span>
+              </>
+            ) : null}
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <SavedStatus
+              onObjectivePhase={onObjectivePhase}
+              saving={saving}
+              lastSavedAt={lastSavedAt}
+              stepError={stepError}
+              t={t}
+            />
+            <Link
+              href={closeHref}
+              aria-label={t("close")}
+              className="flex h-8 w-8 items-center justify-center rounded-lg transition-opacity hover:opacity-80"
             >
-              {t("draftStatus")}
-            </span>
-            {saving ? (
-              <span className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-                {t("saving")}
-              </span>
-            ) : lastSavedAt ? (
-              <span className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-                {t("saved")}
+              <X size={20} strokeWidth={2} style={{ color: "var(--ui-accent)" }} />
+            </Link>
+          </div>
+        </div>
+        <div className="mt-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-heading text-xl font-bold" style={{ color: "var(--text-main)" }}>
+              {title}
+            </h1>
+            {!onObjectivePhase ? (
+              <span
+                className="rounded px-2 py-0.5 font-heading text-xs font-semibold"
+                style={{
+                  background: "var(--ui-accent-muted)",
+                  color: "var(--ui-accent)",
+                  border: "1px solid var(--ui-accent-border)"
+                }}
+              >
+                {t("draftStatus")}
               </span>
             ) : null}
           </div>
-        ) : null}
+          <p className="mt-0.5 font-body text-sm" style={{ color: "var(--text-dim)" }}>
+            {subtitle}
+          </p>
+        </div>
       </div>
     </header>
   );
@@ -77,207 +267,216 @@ export function CampaignCreatorUxHeader({ onObjectivePhase = false }: { onObject
 
 export function CampaignCreatorUxStepper({ onObjectivePhase = false }: { onObjectivePhase?: boolean }) {
   const t = useTranslations("campaignCreator");
-  const { payload, activeNode, setActiveNode, addAdMode } = useCampaignDraft();
+  const { payload, activeNode, setActiveNode, addAdMode, setObjectiveChosen } = useCampaignDraft();
   const visited = (n: CreatorNode) => payload.visitedNodes.includes(n);
-  const closeHref =
-    addAdMode && payload.meta?.targetMetaCampaignId
-      ? `/campaigns/${payload.meta.targetMetaCampaignId}/ads${
-          payload.clientSlug ? `?client=${encodeURIComponent(payload.clientSlug)}` : ""
-        }`
-      : "/campaigns";
 
-  const steps = addAdMode
-    ? [
-        { node: "ad" as CreatorNode, stepNum: 1, label: t("treeAd"), sublabel: "Criativo e textos", icon: FileText },
-        { node: "review" as CreatorNode, stepNum: 2, label: t("treeReview"), sublabel: "Verificar e publicar", icon: ClipboardCheck }
-      ]
-    : onObjectivePhase
-      ? [
-          { node: null as CreatorNode | null, stepNum: 1, label: "Objetivo", sublabel: "Tipo e objetivo da campanha", icon: Target },
-          { node: "campaign" as CreatorNode, stepNum: 2, label: "Campanha", sublabel: t("treeCampaign"), icon: Folder, disabled: true },
-          { node: "adset" as CreatorNode, stepNum: 3, label: t("treeAdset"), sublabel: "Público e orçamento", icon: LayoutGrid, disabled: true },
-          { node: "ad" as CreatorNode, stepNum: 4, label: t("treeAd"), sublabel: "Criativo e textos", icon: FileText, disabled: true },
-          { node: "review" as CreatorNode, stepNum: 5, label: t("treeReview"), sublabel: "Verificar e publicar", icon: ClipboardCheck, disabled: true }
-        ]
-      : [
-          { node: "campaign" as CreatorNode, stepNum: 1, label: "Campanha", sublabel: "Nome e configuração", icon: Folder },
-          { node: "adset" as CreatorNode, stepNum: 2, label: t("treeAdset"), sublabel: "Público e orçamento", icon: LayoutGrid },
-          { node: "ad" as CreatorNode, stepNum: 3, label: t("treeAd"), sublabel: "Criativo e textos", icon: FileText },
-          { node: "review" as CreatorNode, stepNum: 4, label: t("treeReview"), sublabel: "Verificar e publicar", icon: ClipboardCheck }
-        ];
+  let steps: StepDef[];
+  let current: number;
+
+  if (addAdMode) {
+    steps = [
+      { number: 1, label: t("treeAd"), node: "ad" },
+      { number: 2, label: t("treeReview"), node: "review" }
+    ];
+    current = activeNode === "review" ? 2 : 1;
+  } else if (onObjectivePhase) {
+    steps = [
+      { number: 1, label: t("objective"), node: null },
+      { number: 2, label: t("treeCampaign"), node: "campaign", disabled: true },
+      { number: 3, label: t("treeAdset"), node: "adset", disabled: true },
+      { number: 4, label: t("treeAd"), node: "ad", disabled: true },
+      { number: 5, label: t("treeReview"), node: "review", disabled: true }
+    ];
+    current = 1;
+  } else {
+    steps = [
+      { number: 1, label: t("objective"), node: null },
+      { number: 2, label: t("treeCampaign"), node: "campaign" },
+      { number: 3, label: t("treeAdset"), node: "adset" },
+      { number: 4, label: t("treeAd"), node: "ad" },
+      { number: 5, label: t("treeReview"), node: "review" }
+    ];
+    const nodeIndex = NODE_ORDER.indexOf(activeNode);
+    current = nodeIndex >= 0 ? nodeIndex + 2 : 2;
+  }
+
+  const horizontalSteps = steps.map((s) => ({
+    number: s.number,
+    label: s.label,
+    disabled:
+      s.number === 1
+        ? false
+        : s.disabled ??
+          (s.node ? !visited(s.node) && activeNode !== s.node : onObjectivePhase ? s.number > 1 : true)
+  }));
+
+  function onStepClick(stepNum: number) {
+    const step = steps.find((s) => s.number === stepNum);
+    if (stepNum === 1 && !onObjectivePhase && !addAdMode) {
+      setObjectiveChosen(false);
+      return;
+    }
+    if (!step?.node) return;
+    if (visited(step.node) || activeNode === step.node) setActiveNode(step.node);
+  }
 
   return (
-    <div
-      className="hidden w-56 flex-shrink-0 flex-col border-r lg:flex"
-      style={{ background: "var(--surface-bg)", borderColor: "var(--border-color)" }}
-    >
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        <p className="mb-5 px-1 font-heading text-[10px] font-bold tracking-widest" style={{ color: "var(--text-dimmer)" }}>
-          ETAPAS
-        </p>
-        <div className="relative flex flex-col">
-          <div className="absolute bottom-8 left-[18px] top-8 w-px" style={{ background: "var(--border-color)" }} />
-          {steps.map((s) => {
-            const idx = s.node ? NODE_ORDER.indexOf(s.node) : -1;
-            const activeIdx = onObjectivePhase ? -1 : NODE_ORDER.indexOf(activeNode);
-            const isObjectiveStep = onObjectivePhase && s.stepNum === 1;
-            return (
-              <UxStepItem
-                key={s.node ?? "objective"}
-                stepNum={s.stepNum}
-                label={s.label}
-                sublabel={s.sublabel}
-                active={isObjectiveStep || activeNode === s.node}
-                completed={!onObjectivePhase && s.node ? activeIdx > idx : false}
-                disabled={"disabled" in s && s.disabled ? true : s.node ? !visited(s.node) && activeNode !== s.node : false}
-                onClick={() => {
-                  if (s.node && (visited(s.node) || activeNode === s.node)) setActiveNode(s.node);
-                }}
-              />
-            );
-          })}
-        </div>
-      </div>
-      <div className="shrink-0 border-t px-4 py-5" style={{ borderColor: "var(--border-color)" }}>
-        <Link
-          href={closeHref}
-          className="block w-full rounded-xl border px-4 py-2.5 text-center font-heading text-sm font-semibold"
-          style={{ borderColor: "var(--border-color)", color: "var(--text-dim)", background: "var(--surface-bg)" }}
-        >
-          {t("close")}
-        </Link>
-      </div>
+    <div className="campaign-creator-stepper w-full lg:max-w-3xl">
+      <UxHorizontalStepper
+        size="mini"
+        steps={horizontalSteps}
+        current={current}
+        onStepClick={onStepClick}
+      />
     </div>
   );
 }
 
-export function CampaignCreatorUxScorePanel({
+/** Indicador compacto de progresso — visível só em mobile/tablet, ao lado do stepper. */
+export function CampaignCreatorUxMobileProgress({
+  onObjectivePhase = false
+}: {
+  onObjectivePhase?: boolean;
+}) {
+  const t = useTranslations("campaignCreator");
+  const { payload, activeNode, addAdMode, objectiveChosen } = useCampaignDraft();
+
+  if (onObjectivePhase) return null;
+
+  const stepPercent = computeWizardProgressPercent({
+    onObjectivePhase: !addAdMode && !objectiveChosen,
+    addAdMode,
+    activeNode
+  });
+  const score = computeDraftScore(payload);
+  const circumference = 2 * Math.PI * 14;
+  const offset = circumference - (score / 100) * circumference;
+
+  return (
+    <div
+      className="flex shrink-0 items-center gap-1.5 pt-0.5 lg:hidden"
+      aria-label={t("campaignScore")}
+    >
+      <div className="relative h-9 w-9">
+        <svg className="h-9 w-9 -rotate-90" viewBox="0 0 36 36" aria-hidden>
+          <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border-color)" strokeWidth="3" />
+          <circle
+            cx="18"
+            cy="18"
+            r="14"
+            fill="none"
+            stroke="var(--ui-accent)"
+            strokeWidth="3"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center font-heading text-[10px] font-bold text-[var(--ui-accent)]">
+          {score}
+        </span>
+      </div>
+      <span className="font-heading text-[11px] font-semibold text-[var(--ui-accent)]">
+        {t("wizardProgress", { percent: stepPercent })}
+      </span>
+    </div>
+  );
+}
+
+/** Navegação do criador — rodapé compacto ou inline. */
+export function CampaignCreatorUxNav({
   onPublish,
   publishing,
   onObjectivePhase = false,
-  publishError,
-  showTargetingFixLink,
-  onFixTargeting
+  placement = "footer"
 }: {
   onPublish?: () => void;
   publishing?: boolean;
   onObjectivePhase?: boolean;
-  publishError?: string | null;
-  showTargetingFixLink?: boolean;
-  onFixTargeting?: () => void;
+  placement?: "floating" | "footer" | "inline";
 }) {
   const t = useTranslations("campaignCreator");
   const tCommon = useTranslations("common");
-  const { payload, activeNode, setActiveNode, addAdMode } = useCampaignDraft();
-  const score = computeDraftScore(payload);
+  const { payload, activeNode, setActiveNode, addAdMode, setObjectiveChosen, showMobileValidationToast } =
+    useCampaignDraft();
 
-  const err = addAdMode
-    ? activeNode === "ad"
-      ? validatePublishDraft(payload)
-      : null
-    : activeNode === "campaign"
-      ? validateCampaignStep(payload)
-      : activeNode === "adset"
-        ? validateAdSetStep(payload)
-        : activeNode === "ad"
-          ? validateAdStep(payload)
-          : null;
+  const err = useStepValidationError(onObjectivePhase);
+
+  const showBack =
+    !onObjectivePhase &&
+    (addAdMode ? activeNode !== "ad" : true);
+
+  function goNext() {
+    if (onObjectivePhase) {
+      setObjectiveChosen(true);
+      setActiveNode("campaign");
+      return;
+    }
+    if (err) {
+      showMobileValidationToast("error", t(err as Parameters<typeof t>[0]));
+      return;
+    }
+    const n = nextNode(activeNode);
+    if (n) setActiveNode(n);
+  }
+
+  function goPrev() {
+    if (!addAdMode && activeNode === "campaign") {
+      setObjectiveChosen(false);
+      return;
+    }
+    const p = prevNode(activeNode);
+    if (p) setActiveNode(p);
+  }
+
+  const wrapperClass =
+    placement === "floating"
+      ? "ui-wizard-nav--floating"
+      : placement === "footer"
+        ? "ui-wizard-nav--footer"
+        : "mt-6 space-y-3";
 
   return (
-    <div
-      className="hidden w-60 flex-shrink-0 flex-col border-l xl:flex"
-      style={{ background: "var(--surface-bg)", borderColor: "var(--border-color)" }}
-    >
-      <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5">
-        <div>
-          <p className="mb-3 font-heading text-sm font-bold" style={{ color: "var(--text-main)" }}>
-            {t("campaignScore")}
-          </p>
-          <div className="flex items-start gap-3">
-            <UxCircularProgress value={score} />
-            <p className="mt-1 font-body text-xs leading-relaxed" style={{ color: "var(--text-dim)" }}>
-              {t("scoreHint")}
-            </p>
-          </div>
-        </div>
-        <div style={{ height: 1, background: "var(--border-color)" }} />
-        <div>
-          <p className="mb-3 font-heading text-[10px] font-semibold tracking-widest" style={{ color: "var(--text-dimmer)" }}>
-            COMPLETUDE
-          </p>
-          <div className="space-y-2.5">
-            <UxScoreItem label="Cliente" done={!!payload.clientSlug} />
-            <UxScoreItem label="Campanha" done={!!payload.campaign.name.trim()} />
-            <UxScoreItem label="Conjunto" done={!!payload.adsets[0]?.name?.trim()} />
-            <UxScoreItem label="Anúncio" done={payload.ads.some((a) => a.titles.some((x) => x.trim()))} />
-          </div>
-        </div>
+    <div className={wrapperClass}>
+      <div
+        className={
+          placement === "floating" || placement === "footer"
+            ? "ui-wizard-nav__actions"
+            : `flex items-center gap-2 ${showBack ? "justify-between" : "justify-end"}`
+        }
+      >
+        {showBack ? (
+          <button
+            type="button"
+            onClick={goPrev}
+            className="ui-wizard-nav__btn ui-wizard-nav__btn--back ui-btn-secondary inline-flex h-9 items-center justify-center gap-1.5 px-4 text-sm font-heading font-medium lg:px-3"
+          >
+            <ChevronLeft size={18} strokeWidth={2.5} className="lg:h-4 lg:w-4" />
+            {t("back")}
+          </button>
+        ) : (
+          <span className="ui-wizard-nav__btn-spacer" aria-hidden />
+        )}
+        {onObjectivePhase || activeNode !== "review" ? (
+          <button
+            type="button"
+            onClick={goNext}
+            className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1.5 px-5 text-sm font-heading font-semibold lg:px-4"
+          >
+            {t("next")}
+            <ChevronRight size={18} strokeWidth={2.5} className="lg:h-4 lg:w-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={publishing}
+            onClick={onPublish}
+            className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1.5 px-5 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50 lg:px-4"
+          >
+            {publishing ? tCommon("sending") : addAdMode ? t("publishAd") : t("publish")}
+          </button>
+        )}
       </div>
-      {!onObjectivePhase ? (
-        <div className="shrink-0 space-y-2 border-t px-4 py-5" style={{ borderColor: "var(--border-color)" }}>
-          {publishError ? (
-            <CampaignPublishErrorAlert
-              message={publishError}
-              showFixLink={showTargetingFixLink}
-              onFix={onFixTargeting}
-            />
-          ) : null}
-          {err ? (
-            <p className="text-center text-[11px] leading-snug text-red-600">
-              {t(err as Parameters<typeof t>[0])}
-            </p>
-          ) : null}
-          {activeNode !== "campaign" && !(addAdMode && activeNode === "ad") ? (
-            <button
-              type="button"
-              onClick={() => {
-                const p = prevNode(activeNode);
-                if (p) setActiveNode(p);
-              }}
-              className="w-full rounded-xl border px-4 py-2.5 font-heading text-sm font-semibold"
-              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)", background: "var(--surface-bg)" }}
-            >
-              {t("back")}
-            </button>
-          ) : null}
-          {activeNode === "review" ? (
-            <button
-              type="button"
-              disabled={publishing}
-              onClick={onPublish}
-              className="w-full rounded-xl px-4 py-3 font-heading text-sm font-bold shadow-lg transition-all hover:brightness-110 disabled:opacity-60"
-              style={{
-                background: "linear-gradient(135deg, #f5a623, #e8920d)",
-                color: "#0f1419",
-                boxShadow: "0 4px 16px rgba(245,166,35,0.35)"
-              }}
-            >
-              {publishing ? tCommon("sending") : addAdMode ? t("publishAd") : t("publish")}
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={!!err}
-              onClick={() => {
-                const n = nextNode(activeNode);
-                if (n) setActiveNode(n);
-              }}
-              className="w-full rounded-xl px-4 py-3 font-heading text-sm font-bold shadow-lg transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{
-                background: "linear-gradient(135deg, #f5a623, #e8920d)",
-                color: "#0f1419",
-                boxShadow: "0 4px 16px rgba(245,166,35,0.35)"
-              }}
-            >
-              {t("next")}
-            </button>
-          )}
-        </div>
-      ) : null}
     </div>
   );
-}
-
-export function CampaignCreatorUxFooter() {
-  return null;
 }

@@ -11,7 +11,7 @@ import { normalizeMetaRadiusKm } from "@/lib/zone-geo-shared";
 
 const GeoRadiusMapInner = dynamic(
   () => import("@/components/campaign-creator/GeoRadiusMapInner").then((m) => m.GeoRadiusMapInner),
-  { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-xl bg-[var(--surface-bg)]" /> }
+  { ssr: false, loading: () => <div className="h-[200px] animate-pulse rounded-xl bg-[var(--surface-bg)] lg:h-52" /> }
 );
 
 type Props = {
@@ -69,7 +69,7 @@ export function GeoRadiusMapPicker({
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-2">
+        <div className="order-2 space-y-2 lg:order-1">
           <p className="text-xs font-medium text-[var(--text-dim)]">{t("mapPinsList")}</p>
           {mapPins.length === 0 ? (
             <p className="text-[11px] text-[var(--text-dimmer)]">{t("mapEmpty")}</p>
@@ -116,6 +116,7 @@ export function GeoRadiusMapPicker({
             </ul>
           )}
         </div>
+        <div className="order-1 lg:order-2">
         <GeoRadiusMapInner
           pins={mapPins}
           onAdd={handleAdd}
@@ -123,6 +124,7 @@ export function GeoRadiusMapPicker({
           commercialMarker={commercialMarker}
           selectedPin={selectedPin}
         />
+        </div>
       </div>
     </div>
   );

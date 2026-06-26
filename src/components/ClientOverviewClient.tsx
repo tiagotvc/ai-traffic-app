@@ -45,6 +45,14 @@ import {
   customTypesToMap,
   metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
+import {
+  STICKY_NAME_TD,
+  STICKY_NAME_TF,
+  STICKY_NAME_TH,
+  STICKY_STATUS_TD,
+  STICKY_STATUS_TF,
+  STICKY_STATUS_TH
+} from "@/lib/campaign-table-sticky";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
 
@@ -103,19 +111,6 @@ function campaignMetric(row: CampaignRow, key: MetricKey): number {
       return 0;
   }
 }
-
-const STICKY_STATUS_TH =
-  "sticky left-0 z-30 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
-const STICKY_STATUS_TD =
-  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-card)] px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)] group-hover:bg-[var(--row-hover)]";
-const STICKY_NAME_TH =
-  "sticky left-14 z-20 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
-const STICKY_NAME_TD =
-  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-card)] px-4 py-2.5 text-left align-top shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)] group-hover:bg-[var(--row-hover)]";
-const STICKY_STATUS_TF =
-  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2.5 text-center shadow-[4px_0_8px_-4px_rgba(15,23,42,0.12)]";
-const STICKY_NAME_TF =
-  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2.5 text-left align-top font-semibold text-[var(--text-main)] shadow-[4px_0_8px_-4px_rgba(15,23,42,0.08)]";
 
 export function ClientOverviewClient({ clientId }: { clientId: string }) {
   const t = useTranslations("clientOverview");

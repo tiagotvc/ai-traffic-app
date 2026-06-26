@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { PersonaSummary } from "@/components/audiences/PersonasLibraryClient";
 import { PersonaDetailPanel } from "@/components/audiences/PersonaDetailPanel";
 import { AiPersonaForm } from "@/components/audiences/create/AiPersonaForm";
+import { FormSelect } from "@/components/ui/FormSelect";
 import type { PersonaTargetingIssue, PersonaTargetingSummary } from "@/lib/persona-targeting-types";
 import { PersonaMetaValidationPanel } from "@/components/campaign-creator/PersonaMetaValidationPanel";
 import { PersonaTargetingRepairModal } from "@/components/campaign-creator/PersonaTargetingRepairModal";
+import { DsModal } from "@/design-system/components/DsModal";
 
 type Props = {
   value: string | null | undefined;
@@ -37,6 +40,7 @@ function revalidatePersona(
 
 export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChange }: Props) {
   const t = useTranslations("campaignCreator");
+  const tAud = useTranslations("audiences");
   const [personas, setPersonas] = useState<PersonaSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -117,10 +121,11 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
           ) : null}
           <button
             type="button"
-            className="ui-link-amber text-xs"
+            className="ui-btn-secondary-accent inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium"
             disabled={disabled}
             onClick={() => setShowCreate(true)}
           >
+            <Sparkles size={11} />
             {t("createPersonaWithAi")}
           </button>
         </div>
@@ -129,19 +134,13 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
       {loading ? (
         <p className="text-xs text-[var(--text-dim)]">{t("loading")}</p>
       ) : (
-        <select
-          className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
-          disabled={disabled}
+        <FormSelect
           value={value ?? ""}
-          onChange={(e) => onChange(e.target.value || null)}
-        >
-          <option value="">{t("selectPersonaPlaceholder")}</option>
-          {personas.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+          onChange={(id) => onChange(id || null)}
+          placeholder={t("selectPersonaPlaceholder")}
+          disabled={disabled}
+          options={personas.map((p) => ({ value: p.id, label: p.name }))}
+        />
       )}
 
       {selected?.description ? (
@@ -162,7 +161,7 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
           <p>{t("personaTargetingSelectWarning")}</p>
           <button
             type="button"
-            className="ui-link-amber text-xs font-medium"
+            className="ui-link text-xs font-medium"
             onClick={() => setRepairOpen(true)}
           >
             {t("personaTargetingFixNow")}
@@ -188,45 +187,53 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
         onPersonaReplaced={(_oldId, newId) => onChange(newId)}
       />
 
-      {showCreate ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="ui-card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5">
-            <AiPersonaForm
-              clientSlug={clientSlug}
-              adAccountId={adAccountId}
-              onClose={() => setShowCreate(false)}
-              onSaved={(personaId) => {
-                setShowCreate(false);
-                fetch("/api/personas")
-                  .then((r) => r.json())
-                  .then((j: { personas?: PersonaSummary[] }) => {
-                    const list = j.personas ?? [];
-                    setPersonas(list);
-                    if (personaId) onChange(personaId);
-                    else if (list[0]) onChange(list[0].id);
-                  });
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
+      <DsModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        title={tAud("newPersona")}
+        subtitle={t("createPersonaWithAiHint")}
+        titleIcon={<Sparkles size={16} />}
+        width="xl"
+      >
+        <AiPersonaForm
+          embedded
+          clientSlug={clientSlug}
+          adAccountId={adAccountId}
+          onClose={() => setShowCreate(false)}
+          onSaved={(personaId) => {
+            setShowCreate(false);
+            fetch("/api/personas")
+              .then((r) => r.json())
+              .then((j: { personas?: PersonaSummary[] }) => {
+                const list = j.personas ?? [];
+                setPersonas(list);
+                if (personaId) onChange(personaId);
+                else if (list[0]) onChange(list[0].id);
+              });
+          }}
+        />
+      </DsModal>
 
-      {showEdit && selected ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="ui-card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5">
-            <PersonaDetailPanel
-              persona={selected}
-              clientSlug={clientSlug}
-              adAccountId={adAccountId}
-              allowDelete={false}
-              onClose={() => setShowEdit(false)}
-              onUpdated={(updated) => {
-                handlePersonaUpdated(updated);
-                setShowEdit(false);
-              }}
-            />
-          </div>
-        </div>
+      {selected ? (
+        <DsModal
+          open={showEdit}
+          onClose={() => setShowEdit(false)}
+          title={selected.name}
+          width="xl"
+        >
+          <PersonaDetailPanel
+            persona={selected}
+            clientSlug={clientSlug}
+            adAccountId={adAccountId}
+            allowDelete={false}
+            embedded
+            onClose={() => setShowEdit(false)}
+            onUpdated={(updated) => {
+              handlePersonaUpdated(updated);
+              setShowEdit(false);
+            }}
+          />
+        </DsModal>
       ) : null}
     </div>
   );

@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { MapPin, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { ZoneSummary } from "@/components/audiences/ZonesLibraryClient";
 import { AiZoneForm } from "@/components/audiences/create/AiZoneForm";
+import { FormSelect } from "@/components/ui/FormSelect";
+import { DsModal } from "@/design-system/components/DsModal";
 
 type Props = {
   value: string | null | undefined;
@@ -14,6 +17,7 @@ type Props = {
 
 export function ZonePicker({ value, disabled, onChange }: Props) {
   const t = useTranslations("campaignCreator");
+  const tAud = useTranslations("audiences");
   const [zones, setZones] = useState<ZoneSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -37,10 +41,11 @@ export function ZonePicker({ value, disabled, onChange }: Props) {
         <span className="text-sm font-medium text-[var(--text-main)]">{t("selectZone")}</span>
         <button
           type="button"
-          className="ui-link-amber text-xs"
+          className="ui-btn-secondary-accent inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium"
           disabled={disabled}
           onClick={() => setShowCreate(true)}
         >
+          <Sparkles size={11} />
           {t("createZoneWithAi")}
         </button>
       </div>
@@ -48,44 +53,41 @@ export function ZonePicker({ value, disabled, onChange }: Props) {
       {loading ? (
         <p className="text-xs text-[var(--text-dim)]">{t("loading")}</p>
       ) : (
-        <select
-          className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
-          disabled={disabled}
+        <FormSelect
           value={value ?? ""}
-          onChange={(e) => onChange(e.target.value || null)}
-        >
-          <option value="">{t("selectZonePlaceholder")}</option>
-          {zones.map((z) => (
-            <option key={z.id} value={z.id}>
-              {z.name}
-            </option>
-          ))}
-        </select>
+          onChange={(id) => onChange(id || null)}
+          placeholder={t("selectZonePlaceholder")}
+          disabled={disabled}
+          options={zones.map((z) => ({ value: z.id, label: z.name }))}
+        />
       )}
 
       {selected?.description ? (
         <p className="text-xs text-[var(--text-dim)]">{selected.description}</p>
       ) : null}
 
-      {showCreate ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="ui-card max-h-[90vh] w-full max-w-lg overflow-y-auto p-5">
-            <AiZoneForm
-              onClose={() => setShowCreate(false)}
-              onSaved={() => {
-                setShowCreate(false);
-                fetch("/api/zones")
-                  .then((r) => r.json())
-                  .then((j: { zones?: ZoneSummary[] }) => {
-                    const list = j.zones ?? [];
-                    setZones(list);
-                    if (list[0]) onChange(list[0].id);
-                  });
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
+      <DsModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        title={tAud("newZone")}
+        titleIcon={<MapPin size={16} />}
+        width="lg"
+      >
+        <AiZoneForm
+          embedded
+          onClose={() => setShowCreate(false)}
+          onSaved={() => {
+            setShowCreate(false);
+            fetch("/api/zones")
+              .then((r) => r.json())
+              .then((j: { zones?: ZoneSummary[] }) => {
+                const list = j.zones ?? [];
+                setZones(list);
+                if (list[0]) onChange(list[0].id);
+              });
+          }}
+        />
+      </DsModal>
     </div>
   );
 }

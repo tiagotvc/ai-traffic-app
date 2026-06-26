@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
@@ -19,7 +19,7 @@ export function UxCircularProgress({ value }: { value: number }) {
           cy="32"
           r={r}
           fill="none"
-          stroke="#f5a623"
+          stroke="var(--ui-accent)"
           strokeWidth="5"
           strokeDasharray={circ}
           strokeDashoffset={offset}
@@ -27,7 +27,7 @@ export function UxCircularProgress({ value }: { value: number }) {
           style={{ transition: "stroke-dashoffset 0.5s ease" }}
         />
       </svg>
-      <span className="absolute font-heading text-base font-bold" style={{ color: "var(--amber)" }}>
+      <span className="absolute font-heading text-base font-bold" style={{ color: "var(--ui-accent)" }}>
         {value}
       </span>
     </div>
@@ -68,6 +68,90 @@ export function UxFormCard({ children }: { children: ReactNode }) {
   );
 }
 
+/** Conteúdo de passo do wizard sem card interno — campos direto no fundo da página. */
+export function UxWizardStepContent({ children }: { children: ReactNode }) {
+  return <div className="space-y-3">{children}</div>;
+}
+
+/** Seção colapsável do wizard (details/summary). */
+export function WizardAccordionSection({
+  title,
+  hint,
+  defaultOpen = false,
+  children
+}: {
+  title: string;
+  hint?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="group rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)]"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0">
+          <span className="font-heading text-sm font-semibold text-[var(--text-main)]">{title}</span>
+          {hint ? <p className="mt-0.5 text-xs text-[var(--text-dim)]">{hint}</p> : null}
+        </div>
+        <ChevronDown
+          size={16}
+          strokeWidth={2}
+          className="shrink-0 text-[var(--text-dim)] transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <div className="space-y-4 border-t border-[var(--border-color)] px-4 py-4">{children}</div>
+    </details>
+  );
+}
+
+/** Seção estática do formulário (título + campos visíveis de uma vez). */
+export function WizardFormSection({
+  title,
+  hint,
+  children
+}: {
+  title: string;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-4">
+      <div>
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{title}</h3>
+        {hint ? <p className="mt-0.5 text-xs text-[var(--text-dim)]">{hint}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/** Painel interno de modais grandes do wizard (import, IA, etc.). */
+export function UxWizardModalPanel({
+  children,
+  className,
+  size = "lg"
+}: {
+  children: ReactNode;
+  className?: string;
+  size?: "md" | "lg" | "xl";
+}) {
+  const maxW = size === "xl" ? "max-w-4xl" : size === "lg" ? "max-w-3xl" : "max-w-2xl";
+  return (
+    <div
+      className={cn(
+        "flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-2xl",
+        maxW,
+        className
+      )}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function UxStepItem({
   active,
   completed,
@@ -95,15 +179,25 @@ export function UxStepItem({
       <div
         className="z-10 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-all"
         style={{
-          background: completed ? "rgba(245,166,35,0.12)" : active ? "#f5a623" : "var(--surface-bg)",
-          border: completed || active ? "2px solid #f5a623" : "2px solid var(--border-color)",
-          boxShadow: active ? "0 0 0 4px rgba(245,166,35,0.12)" : "none"
+          background: completed
+            ? "var(--ui-accent-muted)"
+            : active
+              ? "linear-gradient(135deg, var(--ui-accent-btn-from), var(--ui-accent-btn-to))"
+              : "var(--surface-bg)",
+          border: completed || active ? "2px solid var(--ui-accent)" : "2px solid var(--border-color)",
+          boxShadow: active ? "0 0 0 4px var(--ui-accent-ring)" : "none"
         }}
       >
         {completed ? (
-          <Check size={13} style={{ color: "#f5a623" }} strokeWidth={2.5} />
+          <Check size={13} style={{ color: "var(--ui-accent)" }} strokeWidth={2.5} />
         ) : (
-          <span style={{ color: active ? "#0f1419" : "var(--text-dimmer)", fontSize: 11, fontWeight: 700 }}>
+          <span
+            style={{
+              color: active ? "var(--ui-accent-btn-text)" : "var(--text-dimmer)",
+              fontSize: 11,
+              fontWeight: 700
+            }}
+          >
             {stepNum}
           </span>
         )}
@@ -111,7 +205,9 @@ export function UxStepItem({
       <div className="min-w-0 flex-1 pt-1.5">
         <p
           className="truncate font-heading text-sm font-semibold leading-tight"
-          style={{ color: active ? "var(--amber)" : completed ? "var(--text-main)" : "var(--text-dim)" }}
+          style={{
+            color: active ? "var(--ui-accent)" : completed ? "var(--text-main)" : "var(--text-dim)"
+          }}
         >
           {label}
         </p>
@@ -128,16 +224,26 @@ export function UxStepItem({
 export function UxHorizontalStepper({
   steps,
   current,
-  onStepClick
+  onStepClick,
+  size = "default"
 }: {
   steps: Array<{ number: number; label: string; disabled?: boolean }>;
   current: number;
   onStepClick: (step: number) => void;
+  size?: "default" | "mini" | "compact";
 }) {
+  const isMini = size === "mini";
+  const isCompact = size === "compact";
+  const checkSize = isMini ? 12 : isCompact ? 14 : 16;
+
   return (
     <nav
       aria-label="Etapas"
-      className="ui-wizard-stepper"
+      className={cn(
+        "ui-wizard-stepper",
+        isMini && "ui-wizard-stepper--mini",
+        isCompact && "ui-wizard-stepper--compact"
+      )}
       style={{ ["--wizard-steps" as string]: steps.length }}
     >
       {steps.map((s, i) => {
@@ -166,7 +272,7 @@ export function UxHorizontalStepper({
                   done && "ui-wizard-stepper__circle--done"
                 )}
               >
-                {done ? <Check size={16} strokeWidth={2.5} /> : s.number}
+                {done ? <Check size={checkSize} strokeWidth={2.5} /> : s.number}
               </span>
               <span
                 className={cn(
@@ -178,6 +284,167 @@ export function UxHorizontalStepper({
                 {s.label}
               </span>
             </button>
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
+
+type WizardStepCircleProps = {
+  number: number;
+  label: string;
+  done: boolean;
+  active: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+};
+
+function WizardStepCircle({ number, label, done, active, disabled, onClick }: WizardStepCircleProps) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="flex w-[4.25rem] shrink-0 flex-col items-center disabled:cursor-not-allowed disabled:opacity-45 sm:w-[5rem]"
+    >
+      <span
+        className={cn(
+          "ui-wizard-stepper__circle",
+          active && "ui-wizard-stepper__circle--active",
+          done && "ui-wizard-stepper__circle--done"
+        )}
+      >
+        {done ? <Check size={16} strokeWidth={2.5} /> : number}
+      </span>
+      <span
+        className={cn(
+          "ui-wizard-stepper__label mt-2.5 max-w-[4.25rem] text-center sm:max-w-[5rem]",
+          active && "ui-wizard-stepper__label--active",
+          done && !active && "ui-wizard-stepper__label--done"
+        )}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function WizardStepConnector({ done }: { done: boolean }) {
+  return (
+    <div
+      className={cn(
+        "mt-5 h-0.5 min-w-2 flex-1 self-start",
+        done ? "bg-[var(--ui-accent)]" : "bg-[var(--border-color)]"
+      )}
+      aria-hidden
+    />
+  );
+}
+
+/** Ponte com micro-círculos entre duas etapas principais. */
+export function UxMicroStepBridge({
+  count,
+  current,
+  onStepClick,
+  interactive = false,
+  ariaLabel = "Sub-etapas"
+}: {
+  count: number;
+  current: number;
+  onStepClick?: (index: number) => void;
+  interactive?: boolean;
+  ariaLabel?: string;
+}) {
+  const leftDone = current > 0;
+  const rightDone = current > count;
+
+  return (
+    <div
+      className="flex min-w-[2.75rem] max-w-[5.5rem] flex-1 items-center self-start pt-[1.125rem] sm:max-w-[6.5rem]"
+      aria-label={ariaLabel}
+    >
+      <div className={cn("h-0.5 flex-1", leftDone ? "bg-[var(--ui-accent)]" : "bg-[var(--border-color)]")} />
+      <div className="flex items-center gap-1 px-0.5 sm:gap-1.5">
+        {Array.from({ length: count }, (_, i) => {
+          const n = i + 1;
+          const done = current > n;
+          const active = current === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              disabled={!interactive}
+              onClick={() => onStepClick?.(n)}
+              className={cn(
+                "ui-wizard-stepper__circle ui-wizard-stepper__circle--micro shrink-0 transition-all",
+                active && "ui-wizard-stepper__circle--active",
+                done && "ui-wizard-stepper__circle--done",
+                !interactive && "cursor-default"
+              )}
+              aria-current={active ? "step" : undefined}
+            />
+          );
+        })}
+      </div>
+      <div className={cn("h-0.5 flex-1", rightDone ? "bg-[var(--ui-accent)]" : "bg-[var(--border-color)]")} />
+    </div>
+  );
+}
+
+export type WizardMicroBridge = {
+  afterStepIndex: number;
+  count: number;
+  current: number;
+  interactive?: boolean;
+  onStepClick?: (index: number) => void;
+  ariaLabel?: string;
+};
+
+/** Stepper principal do criador com micro-pontos entre etapas principais. */
+export function UxCampaignCreatorMainStepper({
+  steps,
+  current,
+  onStepClick,
+  microBridges = []
+}: {
+  steps: Array<{ number: number; label: string; disabled?: boolean }>;
+  current: number;
+  onStepClick: (step: number) => void;
+  microBridges?: WizardMicroBridge[];
+}) {
+  return (
+    <nav aria-label="Etapas" className="ui-wizard-stepper-main">
+      {steps.map((s, i) => {
+        const done = current > s.number;
+        const active = current === s.number;
+        const disabled = s.disabled ?? false;
+        const isLast = i === steps.length - 1;
+        const bridge = microBridges.find((b) => b.afterStepIndex === i);
+
+        return (
+          <div key={s.number} className="contents">
+            <WizardStepCircle
+              number={s.number}
+              label={s.label}
+              done={done}
+              active={active}
+              disabled={disabled}
+              onClick={() => !disabled && onStepClick(s.number)}
+            />
+            {!isLast ? (
+              bridge ? (
+                <UxMicroStepBridge
+                  count={bridge.count}
+                  current={bridge.current}
+                  interactive={bridge.interactive}
+                  onStepClick={bridge.onStepClick}
+                  ariaLabel={bridge.ariaLabel}
+                />
+              ) : (
+                <WizardStepConnector done={current > s.number} />
+              )
+            ) : null}
           </div>
         );
       })}

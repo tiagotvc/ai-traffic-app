@@ -9,6 +9,7 @@ import { CampaignDetailTabs } from "@/components/campaign/CampaignDetailTabs";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CampaignDrilldownHeader } from "@/components/campaign/CampaignDrilldownHeader";
 import { CampaignDrilldownStatCard } from "@/components/campaign/CampaignDrilldownStatCard";
+import { CampaignSpendDistributionCard } from "@/components/campaign/CampaignSpendDistributionCard";
 import { CampaignTabCountBadge } from "@/components/campaign/CampaignTabCountBadge";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
@@ -246,7 +247,6 @@ export function CampaignAdSetsClient({
   }
 
   const slug = campaign.clientSlug || clientSlug;
-  const colors = ["#7c3aed", "#2563eb", "#059669", "#ea580c", "#db2777"];
   const totalSpend = filtered.reduce((s, a) => s + a.spend, 0);
   const totalConversions = filtered.reduce((s, a) => s + a.conversions, 0);
   const avgCpa = totalConversions > 0 ? totalSpend / totalConversions : null;
@@ -468,31 +468,14 @@ export function CampaignAdSetsClient({
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="ui-card p-4">
-          <h3 className="text-sm font-semibold">{t("spendDistTitle")}</h3>
-          <div className="mt-4 flex items-center gap-4">
-            <div
-              className="relative h-28 w-28 shrink-0 rounded-full"
-              style={{
-                background: `conic-gradient(${spendShares
-                  .map((s, i) => {
-                    const start = spendShares.slice(0, i).reduce((sum, x) => sum + x.pct, 0);
-                    return `${colors[i % colors.length]} ${start}% ${start + s.pct}%`;
-                  })
-                  .join(", ")})`
-              }}
-            />
-            <ul className="min-w-0 flex-1 space-y-1 text-[11px]">
-              {spendShares.slice(0, 4).map((s, i) => (
-                <li key={s.id} className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} />
-                  <span className="truncate text-[var(--text-dim)]">{s.name}</span>
-                  <span className="ml-auto font-medium">{s.pct.toFixed(0)}%</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        <CampaignSpendDistributionCard
+          title={t("spendDistTitle")}
+          slices={spendShares}
+          totalSpend={totalSpend}
+          formatSpend={(value) => formatBRL(value, locale)}
+          emptyLabel={t("spendDistEmpty")}
+          totalLabel={t("spendDistTotal")}
+        />
 
         <div className="ui-card p-4">
           <div className="mb-3 flex items-center justify-between">

@@ -141,6 +141,8 @@ function AppShellSkeletonInner({
   const t = useTranslations("nav");
   const pathname = usePathname();
   const { immersive: builderImmersive } = useAppBuilderChrome();
+  const isCampaignCreator = pathname.includes("/campaigns/new");
+  const hideMobileAppHeader = builderImmersive || isCampaignCreator;
   const [collapsed, setCollapsed] = useState(false);
   const [ready, setReady] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -304,8 +306,8 @@ function AppShellSkeletonInner({
     <PublishPanelProvider>
       <CommandStripProvider>
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--surface-bg)] lg:flex-row">
-        {/* Mobile top bar — hidden in app builder immersive mode */}
-        {!builderImmersive ? (
+        {/* Mobile top bar — hidden in app builder immersive mode and campaign creator */}
+        {!hideMobileAppHeader ? (
         <header className="flex shrink-0 items-center gap-2 border-b border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2.5 lg:hidden print:hidden">
           <button
             type="button"
@@ -324,7 +326,7 @@ function AppShellSkeletonInner({
         ) : null}
 
         {/* Mobile drawer */}
-        {!builderImmersive && mobileMenuOpen ? (
+        {!hideMobileAppHeader && mobileMenuOpen ? (
           <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0f14] lg:hidden print:hidden" role="dialog" aria-modal="true">
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--sidebar-border)] px-4 py-3">
               <OrionAgencyLogo size="sm" variant="dark" />

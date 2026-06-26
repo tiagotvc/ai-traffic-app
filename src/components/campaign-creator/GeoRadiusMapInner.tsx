@@ -181,7 +181,7 @@ export function GeoRadiusMapInner({
 
   return (
     <div className="space-y-2">
-      <div className="h-80 overflow-hidden rounded-xl border border-[var(--border-color)]">
+      <div className="h-[200px] overflow-hidden rounded-xl border border-[var(--border-color)] lg:h-52">
         <MapContainer
           center={initialCenter}
           zoom={initialZoom}

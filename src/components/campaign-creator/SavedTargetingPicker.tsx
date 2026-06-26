@@ -90,20 +90,18 @@ export function SavedTargetingPicker({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/40 p-3">
+    <div className="space-y-3">
       <div>
-        <p className="text-sm font-semibold text-slate-900">{t("savedTargetingTitle")}</p>
-        <p className="mt-0.5 text-[11px] text-slate-500">{t("savedTargetingHint")}</p>
+        <p className="text-sm font-semibold text-[var(--text-main)]">{t("savedTargetingTitle")}</p>
+        <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t("savedTargetingHint")}</p>
       </div>
 
       {!clientSlug || !adAccountId ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          {t("savedAudiencesNeedAccount")}
-        </p>
+        <p className="ui-alert-warning text-xs">{t("savedAudiencesNeedAccount")}</p>
       ) : loading ? (
-        <p className="text-xs text-slate-500">{t("savedTargetingLoading")}</p>
+        <p className="text-xs text-[var(--text-dim)]">{t("savedTargetingLoading")}</p>
       ) : items.length === 0 ? (
-        <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+        <p className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2 text-xs text-[var(--text-dim)]">
           {t("savedTargetingEmpty")}
         </p>
       ) : (
@@ -116,9 +114,9 @@ export function SavedTargetingPicker({
             disabled={disabled}
           />
 
-          <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1">
+          <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] p-1">
             {filtered.length === 0 ? (
-              <p className="px-2 py-3 text-center text-xs text-slate-500">
+              <p className="px-2 py-3 text-center text-xs text-[var(--text-dim)]">
                 {t("savedAudiencesNoMatch")}
               </p>
             ) : (
@@ -126,7 +124,9 @@ export function SavedTargetingPicker({
                 <label
                   key={a.id}
                   className={`flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-xs transition ${
-                    selectedId === a.id ? "bg-emerald-50" : "hover:bg-slate-50"
+                    selectedId === a.id
+                      ? "bg-[var(--ui-accent-muted)]"
+                      : "hover:bg-[var(--surface-bg)]"
                   }`}
                 >
                   <input
@@ -135,12 +135,12 @@ export function SavedTargetingPicker({
                     checked={selectedId === a.id}
                     disabled={disabled}
                     onChange={() => setSelectedId(a.id)}
-                    className="mt-0.5 accent-emerald-600"
+                    className="mt-0.5 accent-[var(--ui-accent)]"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="font-medium text-slate-800">{a.name}</span>
+                    <span className="font-medium text-[var(--text-main)]">{a.name}</span>
                     {a.storage === "local" ? (
-                      <span className="ml-1.5 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] text-violet-700">
+                      <span className="ml-1.5 rounded bg-[var(--ui-accent-muted)] px-1.5 py-0.5 text-[10px] text-[var(--ui-accent)]">
                         {t("savedTargetingLocalBadge")}
                       </span>
                     ) : null}
@@ -154,7 +154,7 @@ export function SavedTargetingPicker({
             type="button"
             disabled={disabled || !selected}
             onClick={apply}
-            className="ui-btn-primary w-full text-xs"
+            className="ui-btn-secondary-accent text-xs disabled:cursor-not-allowed disabled:opacity-50"
           >
             {t("savedTargetingApply")}
           </button>

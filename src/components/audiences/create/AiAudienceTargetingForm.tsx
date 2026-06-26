@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import type {
@@ -17,8 +17,13 @@ import {
   type PersonaRepairSeed
 } from "@/lib/persona-targeting-types";
 import { PersonaReplacementHintsPanel } from "@/components/audiences/create/PersonaReplacementHintsPanel";
+import { AudienceCreationInsightsPanel } from "@/components/audiences/create/AudienceCreationInsightsPanel";
 import { PersonaSegmentChipList } from "@/components/audiences/create/PersonaSegmentChipList";
 import { PersonaAddSegmentsModal } from "@/components/audiences/create/PersonaAddSegmentsModal";
+import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
+import { FormSelect, type FormSelectOption } from "@/components/ui/FormSelect";
+import { DsModal } from "@/design-system/components/DsModal";
+import { cn } from "@/lib/cn";
 
 type LlmProviderId = "gemini" | "claude";
 
@@ -97,6 +102,7 @@ export function AiAudienceTargetingForm({
   const [demoGender, setDemoGender] = useState(gender);
   const [savePersonaName, setSavePersonaName] = useState("");
   const [addSegmentsOpen, setAddSegmentsOpen] = useState(false);
+  const [customAudiencesOpen, setCustomAudiencesOpen] = useState(false);
   const [segmentActionError, setSegmentActionError] = useState<string | null>(null);
 
   const effectiveAgeMin = isPersonaLibrary ? demoAgeMin : ageMin;
@@ -122,9 +128,9 @@ export function AiAudienceTargetingForm({
       return "border border-emerald-300 bg-emerald-50 font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
     }
     if (isRepairMode && !keptValidSegmentIds.has(item.id)) {
-      return "border border-violet-300 bg-violet-50 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200";
+      return "border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] font-semibold text-[var(--ui-accent)]";
     }
-    return "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]";
+    return "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]";
   }
 
   useEffect(() => {
@@ -453,8 +459,20 @@ export function AiAudienceTargetingForm({
     targetProfile.trim().length >= 3 &&
     (provider === "gemini" ? providers.gemini : providers.claude);
 
+  const genderOptions = useMemo(
+    (): FormSelectOption[] => [
+      { value: "all", label: t("aiDemographicGenderAll") },
+      { value: "female", label: t("aiDemographicGenderFemale") },
+      { value: "male", label: t("aiDemographicGenderMale") }
+    ],
+    [t]
+  );
+
   return (
     <div className="space-y-3">
+      {isPersonaLibrary ? (
+        <AiCreditCostHint kind="audience_suggestions" calls={2} className="w-full justify-center" />
+      ) : null}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2">
         <span className="text-[10px] font-medium uppercase text-[var(--text-dim)]">
           {t("aiProviderLabel")}
@@ -554,150 +572,193 @@ export function AiAudienceTargetingForm({
           </div>
           <div>
             <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicGender")}</label>
-            <select
+            <FormSelect
               value={effectiveGender}
-              onChange={(e) => {
-                const v = e.target.value as "all" | "male" | "female";
-                if (isPersonaLibrary) setDemoGender(v);
-                else onDemographicsChange?.({ gender: v });
+              onChange={(v) => {
+                const next = v as "all" | "male" | "female";
+                if (isPersonaLibrary) setDemoGender(next);
+                else onDemographicsChange?.({ gender: next });
               }}
-              className="ui-select mt-1 w-full text-sm"
+              placeholder={t("aiDemographicGender")}
+              options={genderOptions}
+              clearable={false}
               disabled={disabled}
-            >
-              <option value="all">{t("aiDemographicGenderAll")}</option>
-              <option value="female">{t("aiDemographicGenderFemale")}</option>
-              <option value="male">{t("aiDemographicGenderMale")}</option>
-            </select>
+              className="mt-1"
+            />
           </div>
         </div>
       ) : null}
 
-      <div>
-        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBusiness")}</label>
-        <textarea
-          value={businessDescription}
-          onChange={(e) => setBusinessDescription(e.target.value)}
-          rows={2}
-          className="ui-textarea mt-1 w-full text-sm"
-          placeholder={t("aiAudienceBusinessPh")}
-          disabled={disabled}
-        />
-      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBusiness")}</label>
+          <textarea
+            value={businessDescription}
+            onChange={(e) => setBusinessDescription(e.target.value)}
+            rows={2}
+            className="ui-textarea mt-1 w-full text-sm"
+            placeholder={t("aiAudienceBusinessPh")}
+            disabled={disabled}
+          />
+        </div>
 
-      <div>
-        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceProfile")}</label>
-        <textarea
-          value={targetProfile}
-          onChange={(e) => setTargetProfile(e.target.value)}
-          rows={2}
-          className="ui-textarea mt-1 w-full text-sm"
-          placeholder={t("aiAudienceProfilePh")}
-          disabled={disabled}
-        />
-      </div>
+        <div>
+          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceProfile")}</label>
+          <textarea
+            value={targetProfile}
+            onChange={(e) => setTargetProfile(e.target.value)}
+            rows={2}
+            className="ui-textarea mt-1 w-full text-sm"
+            placeholder={t("aiAudienceProfilePh")}
+            disabled={disabled}
+          />
+        </div>
 
-      <div>
-        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBehaviors")}</label>
-        <textarea
-          value={behaviors}
-          onChange={(e) => setBehaviors(e.target.value)}
-          rows={2}
-          className="ui-textarea mt-1 w-full text-sm"
-          placeholder={t("aiAudienceBehaviorsPh")}
-          disabled={disabled}
-        />
-      </div>
+        <div>
+          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBehaviors")}</label>
+          <textarea
+            value={behaviors}
+            onChange={(e) => setBehaviors(e.target.value)}
+            rows={2}
+            className="ui-textarea mt-1 w-full text-sm"
+            placeholder={t("aiAudienceBehaviorsPh")}
+            disabled={disabled}
+          />
+        </div>
 
-      <div>
-        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceLifestyle")}</label>
-        <textarea
-          value={lifestyleHints}
-          onChange={(e) => setLifestyleHints(e.target.value)}
-          rows={2}
-          className="ui-textarea mt-1 w-full text-sm"
-          placeholder={t("aiAudienceLifestylePh")}
-          disabled={disabled}
-        />
-        <p className="mt-1 text-[10px] text-[var(--text-dim)]">{t("aiAudienceLifestyleHint")}</p>
-      </div>
+        <div>
+          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceLifestyle")}</label>
+          <textarea
+            value={lifestyleHints}
+            onChange={(e) => setLifestyleHints(e.target.value)}
+            rows={2}
+            className="ui-textarea mt-1 w-full text-sm"
+            placeholder={t("aiAudienceLifestylePh")}
+            disabled={disabled}
+          />
+          <p className="mt-1 text-[10px] text-[var(--text-dim)]">{t("aiAudienceLifestyleHint")}</p>
+        </div>
 
-      <div>
-        <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceExclusions")}</label>
-        <textarea
-          value={exclusionHints}
-          onChange={(e) => setExclusionHints(e.target.value)}
-          rows={2}
-          className="ui-textarea mt-1 w-full text-sm"
-          placeholder={t("aiAudienceExclusionsPh")}
-          disabled={disabled}
-        />
-        <p className="mt-1 text-[10px] text-[var(--text-dimmer)]">{t("aiAudienceExclusionsHint")}</p>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceExclusions")}</label>
+          <textarea
+            value={exclusionHints}
+            onChange={(e) => setExclusionHints(e.target.value)}
+            rows={2}
+            className="ui-textarea mt-1 w-full text-sm"
+            placeholder={t("aiAudienceExclusionsPh")}
+            disabled={disabled}
+          />
+          <p className="mt-1 text-[10px] text-[var(--text-dimmer)]">{t("aiAudienceExclusionsHint")}</p>
+        </div>
       </div>
 
       {audiences.length > 0 ? (
-        <div className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] p-3">
-          <p className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceIncludeCustom")}</p>
-          <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{t("aiAudienceIncludeCustomHint")}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => openAudiencePicker("include")}
-              className={`rounded px-2 py-1 text-[10px] font-medium ${
-                audienceMode === "include" ? "bg-[var(--violet)] text-white" : "bg-[var(--surface-bg)]"
-              }`}
-            >
-              {t("aiAudienceModeInclude")}
-              {includeIds.length > 0 ? (
-                <span className="ml-1 rounded-full bg-white/25 px-1.5">{includeIds.length}</span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              onClick={() => openAudiencePicker("exclude")}
-              className={`rounded px-2 py-1 text-[10px] font-medium ${
-                audienceMode === "exclude" ? "bg-slate-700 text-white" : "bg-[var(--surface-bg)]"
-              }`}
-            >
-              {t("aiAudienceModeExclude")}
-              {excludeIds.length > 0 ? (
-                <span className="ml-1 rounded-full bg-white/25 px-1.5">{excludeIds.length}</span>
-              ) : null}
-            </button>
-          </div>
-          {audienceMode ? (
-            <div className="mt-3 space-y-2 border-t border-[var(--border-color)] pt-3">
-              <input
-                type="search"
-                value={audienceSearch}
-                onChange={(e) => setAudienceSearch(e.target.value)}
-                placeholder={t("savedAudiencesSearch")}
-                className="ui-input w-full text-sm"
-                disabled={disabled}
-              />
-              <div className="max-h-40 space-y-1 overflow-y-auto">
-                {audiencesLoading ? (
-                  <p className="text-[10px] text-[var(--text-dimmer)]">{t("savedAudiencesLoading")}</p>
-                ) : filteredAudiences.length === 0 ? (
-                  <p className="text-[10px] text-[var(--text-dimmer)]">{t("savedAudiencesNoMatch")}</p>
-                ) : (
-                  filteredAudiences.map((a) => (
-                    <label
-                      key={a.id}
-                      className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-[var(--surface-bg)]"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={activeCustomIds.includes(a.id)}
-                        onChange={() => toggleCustomAudience(a.id)}
-                        disabled={disabled}
-                      />
-                      <span className="truncate">{a.name}</span>
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setAudienceMode("include");
+              setCustomAudiencesOpen(true);
+            }}
+            className="ui-btn-secondary-accent px-3 py-1.5 text-xs"
+          >
+            {t("aiAudienceIncludeCustom")}
+          </button>
+          {includeIds.length > 0 || excludeIds.length > 0 ? (
+            <span className="rounded-full bg-[var(--ui-accent-muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--ui-accent)]">
+              +{includeIds.length} / −{excludeIds.length}
+            </span>
           ) : null}
+          <DsModal
+            open={customAudiencesOpen}
+            onClose={() => setCustomAudiencesOpen(false)}
+            title={t("aiAudienceIncludeCustom")}
+            subtitle={t("aiAudienceIncludeCustomHint")}
+            width="md"
+            footer={
+              <button
+                type="button"
+                className="ui-btn-accent px-4 py-2 text-sm font-heading font-semibold"
+                onClick={() => setCustomAudiencesOpen(false)}
+              >
+                {tAud("close")}
+              </button>
+            }
+          >
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => openAudiencePicker("include")}
+                  className={cn(
+                    "rounded-lg px-2 py-1 text-[10px] font-medium",
+                    audienceMode === "include"
+                      ? "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]"
+                      : "bg-[var(--surface-bg)] text-[var(--text-dim)] ring-1 ring-[var(--border-color)]"
+                  )}
+                >
+                  {t("aiAudienceModeInclude")}
+                  {includeIds.length > 0 ? (
+                    <span className="ml-1 rounded-full bg-white/25 px-1.5">{includeIds.length}</span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAudiencePicker("exclude")}
+                  className={cn(
+                    "rounded-lg px-2 py-1 text-[10px] font-medium",
+                    audienceMode === "exclude"
+                      ? "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]"
+                      : "bg-[var(--surface-bg)] text-[var(--text-dim)] ring-1 ring-[var(--border-color)]"
+                  )}
+                >
+                  {t("aiAudienceModeExclude")}
+                  {excludeIds.length > 0 ? (
+                    <span className="ml-1 rounded-full bg-white/25 px-1.5">{excludeIds.length}</span>
+                  ) : null}
+                </button>
+              </div>
+              {audienceMode ? (
+                <div className="space-y-2">
+                  <input
+                    type="search"
+                    value={audienceSearch}
+                    onChange={(e) => setAudienceSearch(e.target.value)}
+                    placeholder={t("savedAudiencesSearch")}
+                    className="ui-input w-full text-sm"
+                    disabled={disabled}
+                  />
+                  <div className="max-h-48 space-y-1 overflow-y-auto">
+                    {audiencesLoading ? (
+                      <p className="text-[10px] text-[var(--text-dimmer)]">{t("savedAudiencesLoading")}</p>
+                    ) : filteredAudiences.length === 0 ? (
+                      <p className="text-[10px] text-[var(--text-dimmer)]">{t("savedAudiencesNoMatch")}</p>
+                    ) : (
+                      filteredAudiences.map((a) => (
+                        <label
+                          key={a.id}
+                          className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-[var(--row-hover)]"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={activeCustomIds.includes(a.id)}
+                            onChange={() => toggleCustomAudience(a.id)}
+                            disabled={disabled}
+                            className="accent-[var(--ui-accent)]"
+                          />
+                          <span className="truncate">{a.name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-[var(--text-dimmer)]">{t("aiAudienceIncludeCustomHint")}</p>
+              )}
+            </div>
+          </DsModal>
         </div>
       ) : null}
 
@@ -819,8 +880,19 @@ export function AiAudienceTargetingForm({
         <p className="ui-alert-warning text-xs">{targetingWarning}</p>
       ) : null}
 
+      {personaPreview || suggestion ? (
+        <AudienceCreationInsightsPanel
+          ageMin={effectiveAgeMin}
+          ageMax={effectiveAgeMax}
+          gender={effectiveGender}
+          segmentCount={suggestion?.items.length ?? 0}
+          validSegmentCount={suggestion?.items.length}
+          aiInsightSummary={suggestion?.summary ?? null}
+        />
+      ) : null}
+
       {suggestion ? (
-        <div className="space-y-3 rounded-xl border border-[rgba(124,58,237,0.2)] bg-[var(--surface-card)] p-4">
+        <div className="space-y-3 rounded-xl border border-[var(--ui-accent-border)] bg-[var(--surface-card)] p-4">
           {isRepairMode ? (
             <div className="ui-alert-warning space-y-1 p-3 text-xs">
               <p className="font-medium text-[var(--text-main)]">{tAud("personaRepairApproveTitle")}</p>
@@ -828,7 +900,7 @@ export function AiAudienceTargetingForm({
             </div>
           ) : (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--violet)]">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-accent)]">
                 {t("aiAudienceSegmentsTitle")}
               </p>
               <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{t("aiAudienceSegmentsHint")}</p>
@@ -912,7 +984,7 @@ export function AiAudienceTargetingForm({
             <p className="text-[10px] text-[var(--text-dimmer)]">
               <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-500" />
               {tAud("personaRepairLegendReplacement")}
-              <span className="mx-2 inline-block h-2 w-2 rounded-full bg-violet-400" />
+              <span className="mx-2 inline-block h-2 w-2 rounded-full bg-[var(--ui-accent)]" />
               {tAud("personaRepairLegendNew")}
             </p>
           ) : null}

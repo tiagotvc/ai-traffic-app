@@ -20,6 +20,8 @@ type Props = {
   clientSlug?: string;
   adAccountId?: string;
   allowDelete?: boolean;
+  /** Omit title/close row when rendered inside DsModal. */
+  embedded?: boolean;
   onClose: () => void;
   onUpdated?: (persona: PersonaSummary) => void;
   onDeleted?: (personaId: string) => void;
@@ -95,6 +97,7 @@ export function PersonaDetailPanel({
   clientSlug,
   adAccountId,
   allowDelete = true,
+  embedded = false,
   onClose,
   onUpdated,
   onDeleted
@@ -238,35 +241,50 @@ export function PersonaDetailPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {editing ? (
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="ui-input w-full font-heading text-lg"
-              placeholder={t("personaSaveName")}
-            />
-          ) : (
-            <h2 className="font-heading text-lg text-[var(--text-main)]">{persona.name}</h2>
-          )}
-          <p className="mt-1 text-xs text-[var(--text-dimmer)]">
+      {embedded ? (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-[var(--text-dimmer)]">
             {t("personaUpdatedAt", {
               date: formatUpdatedAt(persona.updatedAt, locale)
             })}
           </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
           {!editing ? (
             <button type="button" className="ui-btn-secondary text-sm" onClick={() => setEditing(true)}>
               {t("editPersona")}
             </button>
           ) : null}
-          <button type="button" className="ui-btn-secondary text-sm" onClick={onClose}>
-            {t("close")}
-          </button>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {editing ? (
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="ui-input w-full font-heading text-lg"
+                placeholder={t("personaSaveName")}
+              />
+            ) : (
+              <h2 className="font-heading text-lg text-[var(--text-main)]">{persona.name}</h2>
+            )}
+            <p className="mt-1 text-xs text-[var(--text-dimmer)]">
+              {t("personaUpdatedAt", {
+                date: formatUpdatedAt(persona.updatedAt, locale)
+              })}
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            {!editing ? (
+              <button type="button" className="ui-btn-secondary text-sm" onClick={() => setEditing(true)}>
+                {t("editPersona")}
+              </button>
+            ) : null}
+            <button type="button" className="ui-btn-secondary text-sm" onClick={onClose}>
+              {t("close")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {editing ? (
         <div className="space-y-3 rounded-xl border border-[var(--border-color)] p-3">

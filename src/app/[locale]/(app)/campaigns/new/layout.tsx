@@ -2,7 +2,7 @@ export default function NewCampaignLayout({ children }: { children: React.ReactN
   return (
     <div
       data-campaign-creator-shell
-      className="-mx-4 -mb-4 flex h-[calc(100dvh-4.25rem)] min-h-0 flex-col max-lg:h-[calc(100dvh-7.75rem)] md:-mx-6 lg:-mb-7"
+      className="-mx-4 -my-5 flex min-h-0 flex-1 flex-col md:-mx-6 [html[data-sidebar-collapsed]_&]:md:-mx-8"
       style={{ background: "var(--surface-bg)" }}
     >
       {children}

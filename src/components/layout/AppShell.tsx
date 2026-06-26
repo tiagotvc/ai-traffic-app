@@ -49,6 +49,14 @@ export function AppShell({
     setReady(true);
   }, []);
 
+  useEffect(() => {
+    if (!ready) return;
+    document.documentElement.toggleAttribute("data-sidebar-collapsed", collapsed);
+    return () => {
+      document.documentElement.removeAttribute("data-sidebar-collapsed");
+    };
+  }, [collapsed, ready]);
+
   function toggleCollapsed() {
     setCollapsed((prev) => {
       const next = !prev;

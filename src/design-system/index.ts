@@ -3,6 +3,7 @@ export { DsAccentOutlineButton, DsAccentOutlineLink, dsAccentOutlineClass } from
 export { DsBadge } from "./components/DsBadge";
 export { DsButton } from "./components/DsButton";
 export { DsCard } from "./components/DsCard";
+export { DsChoiceCard } from "./components/DsChoiceCard";
 export { DsEyebrow } from "./components/DsEyebrow";
 export { DsModal } from "./components/DsModal";
 export { DsSwitch } from "./components/DsSwitch";

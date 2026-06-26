@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import { AiPersonaForm } from "@/components/audiences/create/AiPersonaForm";
 import { PersonaSegmentAuditPanel } from "@/components/campaign-creator/PersonaSegmentAuditPanel";
 import type { PersonaRepairSeed, PersonaTargetingIssue } from "@/lib/persona-targeting-types";
+import { UxModalPortal } from "@/uxpilot-ui/adapters/UxModalPortal";
+import { UxWizardModalPanel } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 
 export type { PersonaTargetingIssue } from "@/lib/persona-targeting-types";
 
@@ -98,8 +100,8 @@ export function PersonaTargetingRepairModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4">
-      <div className="ui-card flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden shadow-xl">
+    <UxModalPortal open={open} onClose={onClose}>
+      <UxWizardModalPanel size="xl" className="max-h-[min(920px,92vh)]">
         <div className="space-y-2 border-b border-[var(--border-color)] p-5">
           <h2 className="font-heading text-lg text-[var(--text-main)]">
             {t("personaTargetingRepairTitle")}
@@ -193,7 +195,7 @@ export function PersonaTargetingRepairModal({
             {t("personaTargetingBackToCampaign")}
           </button>
         </div>
-      </div>
-    </div>
+      </UxWizardModalPanel>
+    </UxModalPortal>
   );
 }

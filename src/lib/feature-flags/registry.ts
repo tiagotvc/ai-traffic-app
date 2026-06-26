@@ -11,6 +11,32 @@ import type { FeatureFlagMap, FeatureNode } from "./types";
  */
 export const FEATURE_REGISTRY: FeatureNode[] = [
   {
+    id: "campaigns",
+    label: "Campanhas",
+    description: "Criador e gestão de campanhas Meta.",
+    children: [
+      {
+        id: "campaigns.meta-app-development-notice",
+        label: "Aviso app Meta em desenvolvimento",
+        description:
+          "Texto no passo Anúncio lembrando importar criativo quando o app não está aprovado para publicar."
+      }
+    ]
+  },
+  {
+    id: "audiences",
+    label: "Públicos",
+    description: "Biblioteca de personas, zonas e criação com IA.",
+    children: [
+      {
+        id: "audiences.ai-insights-preview",
+        label: "Preview insights IA (criação de persona)",
+        description:
+          "Mostra cartões de resumo e insights da IA na criação de persona. Sem métricas fictícias de alcance."
+      }
+    ]
+  },
+  {
     id: "brain",
     label: "Agency Brain",
     description: "Módulo de inteligência/memória da agência.",

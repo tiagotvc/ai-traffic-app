@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 
 import type { PublishAsset } from "@/hooks/usePublishAssets";
 import { MAX_CREATIVE_VIDEO_BYTES, VIDEO_UPLOAD_CHUNK_BYTES } from "@/lib/creative-upload-limits";
+import { UxModalPortal } from "@/uxpilot-ui/adapters/UxModalPortal";
+import { UxWizardModalPanel } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 
 type ApiJson = {
   ok?: boolean;
@@ -225,8 +227,8 @@ export function CreativePickerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-[var(--surface-card)] p-6 shadow-xl">
+    <UxModalPortal open={open} onClose={onClose}>
+      <UxWizardModalPanel size="xl" className="max-h-[min(920px,92vh)] overflow-y-auto p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("creativeModalTitle")}</h2>
@@ -324,7 +326,7 @@ export function CreativePickerModal({
             {t("creativeDone")}
           </button>
         </div>
-      </div>
-    </div>
+      </UxWizardModalPanel>
+    </UxModalPortal>
   );
 }

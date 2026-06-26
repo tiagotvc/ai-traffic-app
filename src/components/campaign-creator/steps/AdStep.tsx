@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Image, Link2, Settings, UserCircle } from "lucide-react";
 
 import { CreativePickerModal } from "@/components/campaign-creator/CreativePickerModal";
 import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfigModal";
@@ -10,6 +11,9 @@ import { MetaDynamicParamInput } from "@/components/campaign-creator/MetaDynamic
 import { UtmBuilder } from "@/components/campaign-creator/UtmBuilder";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { FormField } from "@/components/ui/FormField";
+import { FormSelect, type FormSelectOption } from "@/components/ui/FormSelect";
+import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
+import { WizardAccordionSection } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
@@ -18,6 +22,9 @@ import { MetaTextVariantsInput } from "@/components/campaign-creator/MetaTextVar
 import { adsetsWithReuseCreativeCompatibility, getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
+
+type AdView = "setup" | "identity" | "creative" | "destination";
 
 export function AdStep() {
   const t = useTranslations("campaignCreator");
@@ -41,7 +48,9 @@ export function AdStep() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [identityUnlocked, setIdentityUnlocked] = useState(false);
   const [whatsappManualEntry, setWhatsappManualEntry] = useState(false);
+  const [activeView, setActiveView] = useState<AdView>("setup");
   const topRef = useRef<HTMLDivElement>(null);
+  const showMetaAppDevelopmentNotice = usePlatformFeature("campaigns.meta-app-development-notice");
 
   const ad = getActiveAd(payload);
   const adset = getActiveAdset(payload);
@@ -68,6 +77,11 @@ export function AdStep() {
   const pageWhatsappOptions = useMemo(
     () => whatsappNumbers.filter((w) => w.pageId === ad.pageId),
     [whatsappNumbers, ad.pageId]
+  );
+
+  const pageOptions = useMemo(
+    (): FormSelectOption[] => pages.map((p) => ({ value: p.metaPageId, label: p.name })),
+    [pages]
   );
 
   function patchAd(patch: Partial<AdDraftItem>) {
@@ -261,7 +275,8 @@ export function AdStep() {
   }
 
   return (
-    <div ref={topRef} className="space-y-4">
+    <div ref={topRef} className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 space-y-3 bg-[var(--surface-bg)]">
       {clientRequired ? (
         <p className="ui-alert-warning px-3 py-2 text-xs text-amber-800">
           {t("selectClientFirst")}
@@ -280,6 +295,31 @@ export function AdStep() {
         </div>
       ) : null}
 
+        <div>
+          <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">{t("treeAd")}</h2>
+          <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("adStepHint")}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 lg:hidden">
+          <DsChoiceCard compact title={t("adSub_setup")} icon={<Settings size={16} />} accent={activeView === "setup"} onClick={() => setActiveView("setup")} />
+          <DsChoiceCard compact title={t("identitySection")} icon={<UserCircle size={16} />} accent={activeView === "identity"} onClick={() => setActiveView("identity")} />
+          <DsChoiceCard compact title={t("adSub_creative")} icon={<Image size={16} />} accent={activeView === "creative"} onClick={() => setActiveView("creative")} />
+          <DsChoiceCard compact title={t("destinationSection")} icon={<Link2 size={16} />} accent={activeView === "destination"} onClick={() => setActiveView("destination")} />
+        </div>
+
+        <div className="hidden gap-4 lg:grid lg:grid-cols-4">
+          <DsChoiceCard title={t("adSub_setup")} description={t("adSection_setup_hint")} icon={<Settings size={18} />} accent={activeView === "setup"} onClick={() => setActiveView("setup")} className="h-full" />
+          <DsChoiceCard title={t("identitySection")} description={t("adSection_identity_hint")} icon={<UserCircle size={18} />} accent={activeView === "identity"} onClick={() => setActiveView("identity")} className="h-full" />
+          <DsChoiceCard title={t("adSub_creative")} description={t("adSection_creative_hint")} icon={<Image size={18} />} accent={activeView === "creative"} onClick={() => setActiveView("creative")} className="h-full" />
+          <DsChoiceCard title={t("destinationSection")} description={t("adSection_destination_hint")} icon={<Link2 size={18} />} accent={activeView === "destination"} onClick={() => setActiveView("destination")} className="h-full" />
+        </div>
+      </div>
+
+      <div className="campaign-creator-main-scroll min-h-0 flex-1 overflow-y-auto pt-4 pb-2">
+        <div className="campaign-creator-main-scroll__inner space-y-3">
+
+      {activeView === "setup" ? (
+        <>
       {!addAdMode ? (
         <div className="ui-card space-y-3 p-4">
           <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("adAssignmentTitle")}</h3>
@@ -363,28 +403,14 @@ export function AdStep() {
         ))}
       </div>
 
-      <div className="relative">
-        <button
-          type="button"
-          data-import-ad-trigger
-          onClick={() => setImportOpen((v) => !v)}
-          disabled={clientRequired || !payload.adAccountId}
-          className={`ui-btn-secondary text-xs ${importOpen ? "ring-2 ring-violet-300" : ""}`}
-        >
-          {t("importAdConfig")}
-        </button>
-        <ImportAdConfigModal
-          open={importOpen}
-          inline
-          onClose={() => setImportOpen(false)}
-          clientSlug={payload.clientSlug}
-          adAccountId={payload.adAccountId}
-          defaultCampaignId={payload.meta?.targetMetaCampaignId}
-          defaultAdsetId={payload.meta?.targetMetaAdsetId}
-          onImport={handleImport}
-          onImportMany={handleImportMany}
-        />
-      </div>
+      <button
+        type="button"
+        onClick={() => setImportOpen(true)}
+        disabled={clientRequired || !payload.adAccountId}
+        className="ui-btn-secondary text-xs"
+      >
+        {t("importAdConfig")}
+      </button>
 
       {ad.metaCreativeId ? (
         <div className="rounded-xl border border-amber-400/40 bg-amber-500/5 p-4 space-y-2">
@@ -405,30 +431,32 @@ export function AdStep() {
             </span>
           </label>
         </div>
-      ) : (
+      ) : showMetaAppDevelopmentNotice ? (
         <p className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] px-4 py-3 text-xs text-[var(--text-dim)]">
           {t("devModeCreativeNote")}
         </p>
-      )}
+      ) : null}
 
       <FormField label={t("adName")}>
         <input
           value={ad.name}
           onChange={(e) => patchAd({ name: e.target.value })}
-          className="ui-input"
+          placeholder={t("adNamePlaceholder")}
+          className="ui-input border-[var(--border-hover)] shadow-sm"
           disabled={clientRequired}
         />
       </FormField>
+        </>
+      ) : null}
 
-      <div className="ui-card space-y-3 p-4">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("identitySection")}</h3>
-          {inheritedLocked ? (
-            <span className="rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] font-medium text-[var(--violet)]">
-              {t("inheritedFromAdset")}
-            </span>
-          ) : null}
-        </div>
+      {activeView === "identity" ? (
+      <WizardAccordionSection title={t("identitySection")} defaultOpen>
+      <div className="space-y-3">
+        {inheritedLocked ? (
+          <span className="inline-flex rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] font-medium text-[var(--violet)]">
+            {t("inheritedFromAdset")}
+          </span>
+        ) : null}
         {inheritedLocked ? (
           <div className="space-y-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] p-3 text-xs text-[var(--text-dim)]">
             <p>
@@ -471,22 +499,16 @@ export function AdStep() {
               </div>
             ) : null}
             <FormField label={tAds("page")}>
-              <select
+              <FormSelect
                 value={ad.pageId}
-                onChange={(e) => {
+                onChange={(pageId) => {
                   setWhatsappManualEntry(false);
-                  patchAd({ pageId: e.target.value });
+                  patchAd({ pageId });
                 }}
-                className="ui-select"
+                placeholder={tAds("selectPage")}
+                options={pageOptions}
                 disabled={clientRequired}
-              >
-                <option value="">{tAds("selectPage")}</option>
-                {pages.map((p) => (
-                  <option key={p.metaPageId} value={p.metaPageId}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              />
             </FormField>
             {instagramAccounts.length > 0 ? (
               <FormField label={tAds("instagram")}>
@@ -527,8 +549,13 @@ export function AdStep() {
           </>
         )}
       </div>
+      </WizardAccordionSection>
+      ) : null}
 
-      <div className="ui-card space-y-3 p-4">
+      {activeView === "creative" ? (
+      <>
+      <WizardAccordionSection title={t("copyTabManual")} defaultOpen>
+      <div className="space-y-3">
         <div className="flex gap-2 border-b border-[var(--border-color)] pb-2">
           <button
             type="button"
@@ -592,9 +619,10 @@ export function AdStep() {
           countLabel={(count, max) => t("adCopyVariantCount", { count, max })}
         />
       </div>
+      </WizardAccordionSection>
 
-      <div className="ui-card space-y-3 p-4">
-        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{tAds("media")}</h3>
+      <WizardAccordionSection title={tAds("media")} defaultOpen>
+      <div className="space-y-3">
         <div className="flex gap-2">
           <button
             type="button"
@@ -659,9 +687,14 @@ export function AdStep() {
           </div>
         ) : null}
       </div>
+      </WizardAccordionSection>
+      </>
+      ) : null}
 
-      <div className="ui-card space-y-3 p-4">
-        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("destinationSection")}</h3>
+      {activeView === "destination" ? (
+      <>
+      <WizardAccordionSection title={t("destinationSection")} defaultOpen>
+      <div className="space-y-3">
         <FormField label={t("destinationType")}>
           <select
             value={ad.destinationType}
@@ -816,6 +849,49 @@ export function AdStep() {
           <p className="text-[11px] text-amber-700">{tAds("publishNotReady")}</p>
         ) : null}
       </div>
+      </WizardAccordionSection>
+
+      <WizardAccordionSection title={t("trackingSection")}>
+        <label className="flex items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={ad.tracking.websiteEvents}
+            onChange={(e) =>
+              patchAd({
+                tracking: { ...ad.tracking, websiteEvents: e.target.checked }
+              })
+            }
+            className="accent-[var(--ui-accent)]"
+          />
+          {t("trackWebsite")}
+        </label>
+      </WizardAccordionSection>
+
+      <div className="rounded-xl border border-dashed border-[var(--ui-accent-border)] bg-[var(--surface-card)] p-4 space-y-3">
+        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("addAnotherAdTitle")}</h3>
+        <p className="text-xs text-[var(--text-dim)]">{t("addAnotherAdHint")}</p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => addAd("same_text")}
+            className="ui-btn-secondary flex-1 text-xs"
+          >
+            {t("presetSameText")}
+          </button>
+          <button
+            type="button"
+            onClick={() => addAd("same_image")}
+            className="ui-btn-secondary flex-1 text-xs"
+          >
+            {t("presetSameImage")}
+          </button>
+        </div>
+      </div>
+      </>
+      ) : null}
+
+        </div>
+      </div>
 
       <CreativePickerModal
         open={creativeOpen}
@@ -830,43 +906,16 @@ export function AdStep() {
         adAccountId={payload.adAccountId}
       />
 
-      <div className="ui-card space-y-2 p-4">
-        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("trackingSection")}</h3>
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={ad.tracking.websiteEvents}
-            onChange={(e) =>
-              patchAd({
-                tracking: { ...ad.tracking, websiteEvents: e.target.checked }
-              })
-            }
-            className="accent-violet-600"
-          />
-          {t("trackWebsite")}
-        </label>
-      </div>
-
-      <div className="ui-card space-y-3 border-dashed border-[rgba(124,58,237,0.2)] p-4">
-        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("addAnotherAdTitle")}</h3>
-        <p className="text-xs text-[var(--text-dim)]">{t("addAnotherAdHint")}</p>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => addAd("same_text")}
-            className="ui-btn-secondary flex-1 text-xs transition-transform duration-200 hover:scale-[1.03] hover:border-violet-300 hover:bg-violet-50 hover:text-violet-800"
-          >
-            {t("presetSameText")}
-          </button>
-          <button
-            type="button"
-            onClick={() => addAd("same_image")}
-            className="ui-btn-secondary flex-1 text-xs transition-transform duration-200 hover:scale-[1.03] hover:border-violet-300 hover:bg-violet-50 hover:text-violet-800"
-          >
-            {t("presetSameImage")}
-          </button>
-        </div>
-      </div>
+      <ImportAdConfigModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        clientSlug={payload.clientSlug}
+        adAccountId={payload.adAccountId}
+        defaultCampaignId={payload.meta?.targetMetaCampaignId}
+        defaultAdsetId={payload.meta?.targetMetaAdsetId}
+        onImport={handleImport}
+        onImportMany={handleImportMany}
+      />
     </div>
   );
 }

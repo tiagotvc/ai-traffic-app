@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode
 } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import {
   type CampaignDraftPayload,
@@ -24,8 +24,15 @@ import {
   newDraftId,
   parseCampaignDraftPayload
 } from "@/lib/campaign-draft";
+import { draftFallbackName, relocalizeDraftDefaultNames } from "@/lib/campaign-draft-i18n";
 
 type ClientOption = { id: string; slug: string; name: string };
+
+export type MobileValidationToast = {
+  variant: "error" | "warning" | "success";
+  message: string;
+  nonce: number;
+};
 
 type CampaignDraftContextValue = {
   draftId: string | null;
@@ -38,6 +45,7 @@ type CampaignDraftContextValue = {
   saveError: string | null;
   lastSavedAt: Date | null;
   clients: ClientOption[];
+  clientsLoading: boolean;
   objectiveChosen: boolean;
   setObjectiveChosen: (v: boolean) => void;
   flushSave: () => Promise<void>;
@@ -45,6 +53,9 @@ type CampaignDraftContextValue = {
   addAdsetMode: boolean;
   inheritCampaignMode: boolean;
   addAdLoading: boolean;
+  mobileValidationToast: MobileValidationToast | null;
+  showMobileValidationToast: (variant: MobileValidationToast["variant"], message: string) => void;
+  clearMobileValidationToast: () => void;
 };
 
 const CampaignDraftContext = createContext<CampaignDraftContextValue | null>(null);
@@ -72,6 +83,8 @@ export function CampaignDraftProvider({
   initialActiveNode?: CreatorNode;
 }) {
   const locale = useLocale();
+  const t = useTranslations("campaignCreator");
+  const prevLocaleRef = useRef(locale);
   const [draftId, setDraftId] = useState<string | null>(initialDraftId ?? null);
   const [draftName, setDraftName] = useState("");
   const [payload, setPayload] = useState<CampaignDraftPayload>(() => {
@@ -90,6 +103,9 @@ export function CampaignDraftProvider({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [clients, setClients] = useState<ClientOption[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(true);
+  const [mobileValidationToast, setMobileValidationToast] = useState<MobileValidationToast | null>(null);
+  const mobileToastNonce = useRef(0);
   const payloadRef = useRef(payload);
   const draftIdRef = useRef(draftId);
   const draftNameRef = useRef(draftName);
@@ -100,10 +116,20 @@ export function CampaignDraftProvider({
   draftNameRef.current = draftName;
 
   useEffect(() => {
+    if (prevLocaleRef.current === locale) return;
+    prevLocaleRef.current = locale;
+    setPayload((prev) =>
+      relocalizeDraftDefaultNames(prev, (key) => t(key as Parameters<typeof t>[0]))
+    );
+  }, [locale, t]);
+
+  useEffect(() => {
+    setClientsLoading(true);
     fetch("/api/clients?minimal=1")
       .then((r) => r.json())
       .then((j: { clients?: ClientOption[] }) => setClients(j.clients ?? []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setClientsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -166,7 +192,7 @@ export function CampaignDraftProvider({
             ...defaultAdItem(locale),
             ...inherited,
             id: adId,
-            name: locale === "en" ? "New Ad" : "Novo anúncio",
+            name: defaultAdItem(locale).name,
             titles: [],
             bodies: [],
             imageHashes: [],
@@ -246,13 +272,13 @@ export function CampaignDraftProvider({
             ...defaultAdSetItem(locale),
             ...(j.inheritedAdset ?? {}),
             id: adsetDraftId,
-            name: locale === "en" ? "New Ad Set" : "Novo conjunto de anúncios"
+            name: defaultAdSetItem(locale).name
           };
           const freshAd = {
             ...defaultAdItem(locale),
             ...(j.inheritedAd ?? {}),
             id: adId,
-            name: locale === "en" ? "New Ad" : "Novo anúncio",
+            name: defaultAdItem(locale).name,
             titles: [],
             bodies: [],
             imageHashes: [],
@@ -290,7 +316,7 @@ export function CampaignDraftProvider({
   const persist = useCallback(async () => {
     if (isInheritedCampaignDraft(payloadRef.current)) return;
     const p = payloadRef.current;
-    const name = draftNameRef.current || p.campaign.name || "Rascunho";
+    const name = draftNameRef.current || p.campaign.name || draftFallbackName(locale);
     const clientId = clients.find((c) => c.slug === p.clientSlug || c.id === p.clientSlug)?.id ?? null;
     setSaving(true);
     setSaveError(null);
@@ -327,7 +353,7 @@ export function CampaignDraftProvider({
     } finally {
       setSaving(false);
     }
-  }, [clients]);
+  }, [clients, locale]);
 
   const scheduleSave = useCallback(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -350,6 +376,18 @@ export function CampaignDraftProvider({
     },
     [scheduleSave]
   );
+
+  const showMobileValidationToast = useCallback(
+    (variant: MobileValidationToast["variant"], message: string) => {
+      mobileToastNonce.current += 1;
+      setMobileValidationToast({ variant, message, nonce: mobileToastNonce.current });
+    },
+    []
+  );
+
+  const clearMobileValidationToast = useCallback(() => {
+    setMobileValidationToast(null);
+  }, []);
 
   const setActiveNodeWrapped = useCallback(
     (n: CreatorNode) => {
@@ -374,13 +412,17 @@ export function CampaignDraftProvider({
       saveError,
       lastSavedAt,
       clients,
+      clientsLoading,
       objectiveChosen,
       setObjectiveChosen,
       flushSave: persist,
       addAdMode: isAddAdDraft(payload),
       addAdsetMode: payload.meta?.publishMode === "add_adset",
       inheritCampaignMode: isInheritedCampaignDraft(payload),
-      addAdLoading
+      addAdLoading,
+      mobileValidationToast,
+      showMobileValidationToast,
+      clearMobileValidationToast
     }),
     [
       draftId,
@@ -393,9 +435,13 @@ export function CampaignDraftProvider({
       saveError,
       lastSavedAt,
       clients,
+      clientsLoading,
       objectiveChosen,
       persist,
-      addAdLoading
+      addAdLoading,
+      mobileValidationToast,
+      showMobileValidationToast,
+      clearMobileValidationToast
     ]
   );
 

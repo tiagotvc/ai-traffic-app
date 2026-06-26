@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
+import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import type { ZoneGeoRules } from "@/db/entities/UserZone";
 
 type ZonePreview = {
@@ -14,9 +15,11 @@ type ZonePreview = {
 type Props = {
   onClose: () => void;
   onSaved: () => void;
+  /** Omit title/close row when rendered inside DsModal. */
+  embedded?: boolean;
 };
 
-export function AiZoneForm({ onClose, onSaved }: Props) {
+export function AiZoneForm({ onClose, onSaved, embedded = false }: Props) {
   const t = useTranslations("audiences");
   const [prompt, setPrompt] = useState("");
   const [defaultRadiusKm, setDefaultRadiusKm] = useState(3);
@@ -105,12 +108,16 @@ export function AiZoneForm({ onClose, onSaved }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading text-lg text-[var(--text-main)]">{t("newZone")}</h2>
-        <button type="button" className="ui-btn-secondary text-sm" onClick={onClose}>
-          {t("close")}
-        </button>
-      </div>
+      {!embedded ? (
+        <div className="flex items-center justify-between">
+          <h2 className="font-heading text-lg text-[var(--text-main)]">{t("newZone")}</h2>
+          <button type="button" className="ui-btn-secondary text-sm" onClick={onClose}>
+            {t("close")}
+          </button>
+        </div>
+      ) : null}
+
+      <AiCreditCostHint kind="generic" calls={2} className="w-full justify-center" />
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2">
         <span className="text-[10px] font-medium uppercase text-[var(--text-dim)]">
@@ -142,7 +149,7 @@ export function AiZoneForm({ onClose, onSaved }: Props) {
         <label className="block space-y-1">
           <span className="text-sm text-[var(--text-dim)]">{t("zonePromptLabel")}</span>
           <textarea
-            className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-3 text-sm"
+            className="ui-textarea text-sm"
             rows={4}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -158,7 +165,7 @@ export function AiZoneForm({ onClose, onSaved }: Props) {
               min={1}
               max={70}
               step={1}
-              className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
+              className="ui-input text-sm"
               value={defaultRadiusKm}
               onChange={(e) => {
                 const next = Number(e.target.value);

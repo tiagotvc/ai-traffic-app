@@ -8,6 +8,7 @@ import { DsModal } from "@/design-system";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import type { BuyingType, CampaignObjectiveKey } from "@/lib/campaign-draft";
 import { CAMPAIGN_OBJECTIVES, objectivesForBuyingType } from "@/lib/campaign-draft";
+import { applyObjectiveDefaultNames } from "@/lib/campaign-draft-i18n";
 
 const OBJECTIVE_ICONS: Record<CampaignObjectiveKey, string> = {
   awareness: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z",
@@ -31,37 +32,9 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
   }
 
   function select(obj: CampaignObjectiveKey) {
-    const nameKey = `defaultName_${obj}` as const;
-    const adsetKey = `defaultAdset_${obj}` as const;
-    const adKey = `defaultAd_${obj}` as const;
-    updatePayload((p) => ({
-      ...p,
-      objective: obj,
-      campaign: {
-        ...p.campaign,
-        name:
-          p.campaign.name.startsWith("Nova") || p.campaign.name.startsWith("New")
-            ? t(nameKey)
-            : p.campaign.name
-      },
-      adsets: p.adsets.map((a, i) =>
-        i === 0
-          ? {
-              ...a,
-              name:
-                a.name.startsWith("Novo") || a.name.startsWith("New") ? t(adsetKey) : a.name
-            }
-          : a
-      ),
-      ads: p.ads.map((a, i) =>
-        i === 0
-          ? {
-              ...a,
-              name: a.name.startsWith("Novo") || a.name.startsWith("New") ? t(adKey) : a.name
-            }
-          : a
-      )
-    }));
+    updatePayload((p) =>
+      applyObjectiveDefaultNames(p, obj, (key) => t(key as Parameters<typeof t>[0]))
+    );
     setObjectiveChosen(true);
     setActiveNode("campaign");
     onClose();

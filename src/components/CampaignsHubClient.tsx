@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Megaphone, Plus, Trash2, Building2, ListFilter, Target, ChevronRight } from "lucide-react";
+import { Megaphone, Plus, Trash2, Building2, ListFilter, Target, ChevronRight, FilePenLine } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   DndContext,
@@ -61,6 +61,14 @@ import {
   customTypesToMap,
   metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
+import {
+  STICKY_NAME_TD,
+  STICKY_NAME_TF,
+  STICKY_NAME_TH,
+  STICKY_STATUS_TD,
+  STICKY_STATUS_TF,
+  STICKY_STATUS_TH
+} from "@/lib/campaign-table-sticky";
 
 type CampaignRow = {
   metaCampaignId: string;
@@ -99,20 +107,6 @@ type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 type ObjectiveFilter = "ALL" | "leads" | "sales" | "traffic";
 
 const CAMPAIGN_GROUP_PAGE_SIZE = 10;
-
-/** Colunas fixas à esquerda ao rolar métricas (status + campanha). */
-const STICKY_STATUS_TH =
-  "sticky left-0 z-30 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2 text-center shadow-[var(--table-sticky-shadow)]";
-const STICKY_STATUS_TD =
-  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-card)] px-2 py-2.5 text-center shadow-[var(--table-sticky-shadow)] group-hover:bg-[var(--row-hover)] group-even:bg-[var(--surface-row-alt)]";
-const STICKY_NAME_TH =
-  "sticky left-14 z-20 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2 text-left align-top shadow-[var(--table-sticky-shadow)]";
-const STICKY_NAME_TD =
-  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-card)] px-4 py-2.5 text-left align-top shadow-[var(--table-sticky-shadow)] group-hover:bg-[var(--row-hover)] group-even:bg-[var(--surface-row-alt)]";
-const STICKY_STATUS_TF =
-  "sticky left-0 z-20 w-14 min-w-[3.5rem] bg-[var(--surface-thead)] px-2 py-2.5 text-center shadow-[var(--table-sticky-shadow)]";
-const STICKY_NAME_TF =
-  "sticky left-14 z-10 min-w-[10rem] bg-[var(--surface-thead)] px-4 py-2.5 text-left align-top font-semibold text-[var(--text-main)] shadow-[var(--table-sticky-shadow)]";
 
 function statusVariant(status?: string): "success" | "warning" | "neutral" {
   if (status === "ACTIVE") return "success";
@@ -976,24 +970,18 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           ) : (
             <>
               {draftDisplayRows.length > 0 ? (
-                <div
-                  className="ui-card overflow-hidden"
-                  style={{ borderColor: "rgba(124,58,237,0.35)" }}
-                >
-                  <div
-                    className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3"
-                    style={{
-                      borderColor: "var(--border-color)",
-                      background: "rgba(124,58,237,0.08)"
-                    }}
-                  >
-                    <div className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      {t("draftsSectionTitle")}{" "}
-                      <span className="font-normal" style={{ color: "var(--text-dim)" }}>
-                        ({draftDisplayRows.length})
+                <div className="ui-campaign-table-shell">
+                  <div className="ui-campaign-table-shell__header">
+                    <div className="ui-campaign-table-shell__title">
+                      <span className="ui-campaign-table-shell__icon">
+                        <FilePenLine size={18} strokeWidth={2} />
+                      </span>
+                      <span className="truncate">
+                        {t("draftsSectionTitle")}{" "}
+                        <span className="font-normal text-[var(--text-dimmer)]">({draftDisplayRows.length})</span>
                       </span>
                     </div>
-                    <span className="text-xs font-body" style={{ color: "var(--text-dim)" }}>
+                    <span className="hidden text-xs font-body text-[var(--text-dim)] sm:inline">
                       {t("draftsSectionHint")}
                     </span>
                   </div>
@@ -1007,11 +995,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                     discardLabel={t("discardDraft")}
                   />
                   <div className="hidden overflow-x-auto md:block">
-                    <table className="w-full min-w-[680px] text-sm">
-                      <thead
-                        className="text-xs font-semibold uppercase"
-                        style={{ background: "var(--surface-thead)", color: "var(--text-dim)" }}
-                      >
+                    <table className="ui-campaign-table min-w-[680px]">
+                      <thead>
                         <tr>
                           <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>{t("filterStatus")}</th>
                           <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>{t("colCampaign")}</th>
@@ -1027,21 +1012,20 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                           return (
                             <tr
                               key={r.metaCampaignId}
-                              className="group even:bg-[var(--surface-row-alt)] border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]"
-                              style={{ borderColor: "var(--border-color)" }}
+                              className="group border-t border-[var(--border-color)] even:bg-[var(--surface-row-alt)] hover:bg-[var(--row-hover)]"
                             >
                               <td className={STICKY_STATUS_TD}>
-                                <Badge variant="warning">{t("statusDraft")}</Badge>
+                                <Badge variant="accent">{t("statusDraft")}</Badge>
                               </td>
                               <td className={STICKY_NAME_TD}>
                                 <Link
                                   href={draftResumeHref(r)}
-                                  className="ui-link block whitespace-normal break-words text-left font-medium"
+                                  className="ui-campaign-table-name block whitespace-normal break-words text-left text-sm"
                                 >
                                   {r.campaignName}
                                 </Link>
                               </td>
-                              <td className="truncate px-3 py-2.5 text-center text-[var(--text-dim)]">
+                              <td className="ui-campaign-table-client truncate text-center text-sm">
                                 {r.clientName}
                               </td>
                               <td className="px-3 py-2.5 text-center">

@@ -32,8 +32,8 @@ export function UxModalPortal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-sm"
+      style={{ background: "var(--modal-overlay)" }}
       role="dialog"
       aria-modal="true"
       onClick={(e) => {

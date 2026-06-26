@@ -17,7 +17,7 @@ export function CampaignCreatorStepPanel({ stepKey, direction, children }: Props
         : "";
 
   return (
-    <div key={stepKey} className={animClass}>
+    <div key={stepKey} className={`flex min-h-0 flex-1 flex-col ${animClass}`.trim()}>
       {children}
     </div>
   );
