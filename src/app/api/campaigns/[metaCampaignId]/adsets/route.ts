@@ -267,7 +267,7 @@ export async function POST(
       objective: body.objective,
       campaign: body.campaign,
       pageId: publish.metaPageId,
-      linkUrl: publish.metaLinkUrl,
+      linkUrl: publish.metaLinkUrl ?? "",
       settings,
       callToAction: settings.defaultCta,
       campaignName: body.campaignName,

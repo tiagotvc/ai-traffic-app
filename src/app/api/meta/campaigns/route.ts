@@ -143,7 +143,7 @@ export async function POST(req: Request) {
         adAccountId: draft.adAccountId,
         draft,
         pageId: publish.metaPageId,
-        linkUrl: publish.metaLinkUrl,
+        linkUrl: publish.metaLinkUrl ?? "",
         settings,
         callToAction: settings.defaultCta,
         tenantId: tenant.id,
@@ -241,7 +241,7 @@ export async function POST(req: Request) {
       descriptions: body.descriptions,
       imageHashes: body.assetIds,
       pageId: publish.metaPageId,
-      linkUrl: publish.metaLinkUrl,
+      linkUrl: publish.metaLinkUrl ?? "",
       settings,
       callToAction: settings.defaultCta,
       targeting: body.targeting

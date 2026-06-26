@@ -580,7 +580,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: number | undefined;
 
     async function pollSyncStatus() {
       const qs = clientFilter ? `?clientId=${encodeURIComponent(clientFilter)}` : "";

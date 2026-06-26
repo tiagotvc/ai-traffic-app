@@ -86,7 +86,7 @@ export async function POST(
       } as import("@/lib/campaign-draft").AdSetDraftItem,
       objective: body.objective,
       pageId: publish.metaPageId,
-      linkUrl: publish.metaLinkUrl,
+      linkUrl: publish.metaLinkUrl ?? "",
       settings,
       callToAction: settings.defaultCta,
       campaignName: body.campaignName

@@ -230,7 +230,7 @@ export function CampaignStep() {
             readOnly
             className="ui-input bg-[var(--surface-bg)]"
           />
-        </div>
+        </FormField>
 
         <div className="hidden gap-4 sm:grid-cols-3 lg:grid">
           <DsChoiceCard
@@ -258,6 +258,7 @@ export function CampaignStep() {
             className="h-full"
           />
         </div>
+      </div>
       </div>
 
       <div className="campaign-creator-main-scroll min-h-0 flex-1 overflow-y-auto pt-4 pb-2">
@@ -315,7 +316,7 @@ export function CampaignStep() {
                 <p className="mt-1 text-xs text-red-600">
                   {accountsErrorMessage(tAds, accountsError)}{" "}
                   {accountsError === "permission_denied" || accountsError === "meta_not_connected" ? (
-                    <a href="/settings/integrations" className="font-semibold underline">
+                    <a href="/settings/meta-assets" className="font-semibold underline">
                       {tAds("adAccountsSettingsLink")}
                     </a>
                   ) : accountsError === "account_not_linked" ? (
@@ -331,7 +332,7 @@ export function CampaignStep() {
               {!accountsLoading && !accountsError && payload.clientSlug && accounts.length === 0 ? (
                 <p className="mt-1 text-xs text-[var(--text-dim)]">
                   {tAds("adAccountsEmpty")}{" "}
-                  <a href="/settings/integrations" className="font-semibold underline text-[var(--ui-accent)]">
+                  <a href="/settings/meta-assets" className="font-semibold underline text-[var(--ui-accent)]">
                     {tAds("adAccountsSettingsLink")}
                   </a>
                   {" · "}
