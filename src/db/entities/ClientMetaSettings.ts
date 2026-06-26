@@ -25,6 +25,10 @@ export class ClientMetaSettings {
   @Column({ type: "text", nullable: true })
   metaPixelId?: string | null;
 
+  /** Pixels vinculados ao cliente (multi-select). metaPixelId = default (primeiro da lista). */
+  @Column({ type: "jsonb", default: () => "'[]'" })
+  linkedMetaPixelIds!: string[];
+
   @Column({ type: "text", nullable: true })
   metaLeadFormId?: string | null;
 

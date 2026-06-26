@@ -28,6 +28,7 @@ export async function getOrCreateClientMetaSettings(clientId: string): Promise<C
       specialAdCategories: [],
       defaultCustomAudienceIds: [],
       defaultExcludedAudienceIds: [],
+      linkedMetaPixelIds: [],
       // sensible defaults for dashboard
       defaultDashboardMetrics: ["spend", "conversions"],
       defaultClientMetric: "roas"
@@ -88,6 +89,7 @@ export async function listClientIdsForUser(tenantId: string, userId: string): Pr
 export type ClientMetaSettingsPatch = Partial<{
   defaultAdAccountId: string | null;
   metaPixelId: string | null;
+  linkedMetaPixelIds: string[];
   metaLeadFormId: string | null;
   instagramActorId: string | null;
   defaultObjective: string;
@@ -140,6 +142,13 @@ export async function patchClientMetaSettings(
       defaultAdAccountId: patch.defaultAdAccountId?.trim() || null
     }),
     ...(patch.metaPixelId !== undefined && { metaPixelId: patch.metaPixelId?.trim() || null }),
+    ...(patch.linkedMetaPixelIds !== undefined && {
+      linkedMetaPixelIds: patch.linkedMetaPixelIds.filter(Boolean),
+      metaPixelId:
+        patch.metaPixelId !== undefined
+          ? patch.metaPixelId?.trim() || null
+          : patch.linkedMetaPixelIds[0]?.trim() || settings.metaPixelId
+    }),
     ...(patch.metaLeadFormId !== undefined && {
       metaLeadFormId: patch.metaLeadFormId?.trim() || null
     }),

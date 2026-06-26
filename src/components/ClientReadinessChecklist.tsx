@@ -20,8 +20,9 @@ export function ClientReadinessChecklist({ clientId }: { clientId: string }) {
       const linked = (accounts.linkedMetaIds ?? []).length > 0;
       const bm = Boolean(accounts.clientMetaBusinessId);
       const page = Boolean(meta.client?.metaPageId);
-      const url = Boolean(meta.client?.metaLinkUrl);
-      const pixel = Boolean(meta.settings?.metaPixelId);
+      const pixel =
+        Boolean(meta.settings?.metaPixelId) ||
+        (meta.settings?.linkedMetaPixelIds ?? []).length > 0;
       const synced = (sync.accounts ?? []).some(
         (a: { status: string }) => a.status === "ok"
       );
@@ -29,9 +30,13 @@ export function ClientReadinessChecklist({ clientId }: { clientId: string }) {
         { id: "bm", ok: bm, label: t("readyBm") },
         { id: "accounts", ok: linked, label: t("readyAccounts") },
         { id: "page", ok: page, label: t("readyPage") },
-        { id: "url", ok: url, label: t("readyUrl") },
         { id: "pixel", ok: pixel, label: t("readyPixel") },
-        { id: "sync", ok: synced, label: t("readySync"), href: "/settings/meta-assets" }
+        {
+          id: "sync",
+          ok: synced,
+          label: t("readySync"),
+          href: synced ? undefined : `/campaigns?client=${encodeURIComponent(clientId)}`
+        }
       ]);
     });
   }, [clientId, t]);

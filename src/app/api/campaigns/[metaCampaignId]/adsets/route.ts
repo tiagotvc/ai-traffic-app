@@ -9,7 +9,7 @@ import {
   AdSetDraftItemSchema
 } from "@/lib/campaign-draft";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
-import { requireMetaPublishConfig } from "@/lib/client-publish-config";
+import { resolveAdPublishConfig, PublishConfigError } from "@/lib/client-publish-config";
 import { publishAdsetToCampaign } from "@/lib/meta-campaign";
 import {
   fetchAdSetInsightsForCampaign,
@@ -225,16 +225,24 @@ export async function POST(
 
   let publish;
   try {
-    publish = requireMetaPublishConfig({
-      metaPageId: body.ad.pageId || client.metaPageId,
-      metaLinkUrl: body.ad.linkUrl || client.metaLinkUrl
+    publish = resolveAdPublishConfig({
+      client,
+      pageId: body.ad.pageId,
+      linkUrl: body.ad.linkUrl,
+      destinationType: body.ad.destinationType
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof PublishConfigError) {
+      return NextResponse.json(
+        { ok: false, error: err.code, message: err.message },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       {
         ok: false,
         error: "CLIENT_PUBLISH_CONFIG_REQUIRED",
-        message: "Configure página e URL de destino do cliente."
+        message: "Selecione a Página Meta (ou configure no perfil do cliente)."
       },
       { status: 400 }
     );

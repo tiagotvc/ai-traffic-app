@@ -19,7 +19,10 @@ export type AccountOption = {
   spendLast30d: number | null;
 };
 
-export type CreateClientStep = 1 | 2 | 3;
+export type WizardPageOption = { metaPageId: string; name: string };
+export type WizardPixelOption = { id: string; name: string };
+
+export type CreateClientStep = 1 | 2 | 3 | 4;
 
 export function useCreateClientWizard(locale: string, opts?: { metaConnected?: boolean }) {
   const [step, setStep] = useState<CreateClientStep>(opts?.metaConnected ? 2 : 1);
@@ -32,7 +35,13 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bmSearch, setBmSearch] = useState("");
   const [accountSearch, setAccountSearch] = useState("");
+  const [wizardPages, setWizardPages] = useState<WizardPageOption[]>([]);
+  const [wizardPixels, setWizardPixels] = useState<WizardPixelOption[]>([]);
+  const [loadingWizardAssets, setLoadingWizardAssets] = useState(false);
+  const [selectedPageId, setSelectedPageId] = useState("");
+  const [selectedPixelIds, setSelectedPixelIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [metaAdsConnected, setMetaAdsConnected] = useState<boolean | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const loadBusinesses = useCallback(() => {
@@ -61,12 +70,51 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
       .finally(() => setLoadingAccounts(false));
   }, []);
 
+  const loadWizardAssets = useCallback(
+    (bmId: string, accountIds: string[], bmName: string | null) => {
+      if (!bmId || accountIds.length === 0) return;
+      setLoadingWizardAssets(true);
+      setWizardPages([]);
+      setWizardPixels([]);
+      const qs = new URLSearchParams({
+        metaBusinessId: bmId,
+        metaAdAccountIds: accountIds.join(",")
+      });
+      if (bmName) qs.set("metaBusinessName", bmName);
+      fetch(`/api/meta/wizard-assets?${qs.toString()}`)
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.ok) {
+            setWizardPages(j.pages ?? []);
+            setWizardPixels(j.pixels ?? []);
+            if (j.pages?.length === 1) {
+              setSelectedPageId(j.pages[0].metaPageId);
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingWizardAssets(false));
+    },
+    []
+  );
+
   useEffect(() => {
     loadBusinesses();
+    fetch("/api/settings/meta")
+      .then((r) => r.json())
+      .then((j) => setMetaAdsConnected(!!j.connected))
+      .catch(() => setMetaAdsConnected(false));
     if (opts?.metaConnected) {
       setStep(2);
     }
   }, [loadBusinesses, opts?.metaConnected]);
+
+  useEffect(() => {
+    if (step === 4 && selectedBm && selected.size > 0) {
+      const bmName = businesses.find((b) => b.metaBusinessId === selectedBm)?.name ?? null;
+      loadWizardAssets(selectedBm, [...selected], bmName);
+    }
+  }, [step, selectedBm, selected, businesses, loadWizardAssets]);
 
   const filteredBusinesses = useMemo(() => {
     const q = bmSearch.trim().toLowerCase();
@@ -84,13 +132,27 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
 
   const canContinueStep1 = name.trim().length > 0;
   const canContinueStep2 = !!selectedBm;
+  const canContinueStep3 = selected.size > 0;
+  const canCreate = !!selectedPageId.trim();
   const selectedBmName = businesses.find((b) => b.metaBusinessId === selectedBm)?.name ?? null;
 
   const score =
-    (canContinueStep1 ? 34 : 0) + (canContinueStep2 ? 33 : 0) + (selected.size > 0 ? 33 : 0);
+    (canContinueStep1 ? 25 : 0) +
+    (canContinueStep2 ? 25 : 0) +
+    (canContinueStep3 ? 25 : 0) +
+    (canCreate ? 25 : 0);
 
   function toggleAccount(id: string) {
     setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function togglePixel(id: string) {
+    setSelectedPixelIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -105,15 +167,18 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
   function selectBusiness(bmId: string) {
     setSelectedBm(bmId);
     setSelected(new Set());
+    setSelectedPageId("");
+    setSelectedPixelIds(new Set());
     setAccountSearch("");
     loadAccounts(bmId);
     setStep(3);
   }
 
-  function create(onCreated: () => void, onError: (msg: string) => void) {
+  function create(onCreated: (slug: string) => void, onError: (msg: string) => void) {
     setError(null);
     const bmName = businesses.find((b) => b.metaBusinessId === selectedBm)?.name;
     startTransition(async () => {
+      const linkedMetaPixelIds = [...selectedPixelIds];
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -121,7 +186,10 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
           name: name.trim(),
           metaBusinessId: selectedBm || undefined,
           metaBusinessName: bmName || undefined,
-          metaAdAccountIds: [...selected]
+          metaAdAccountIds: [...selected],
+          metaPageId: selectedPageId.trim(),
+          linkedMetaPixelIds,
+          metaPixelId: linkedMetaPixelIds[0] ?? undefined
         })
       });
       const j = await res.json().catch(() => null);
@@ -131,7 +199,8 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
         onError(msg);
         return;
       }
-      onCreated();
+      const slug = String(j.client?.slug ?? "");
+      onCreated(slug);
     });
   }
 
@@ -159,10 +228,20 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
     setBmSearch,
     accountSearch,
     setAccountSearch,
+    wizardPages,
+    wizardPixels,
+    loadingWizardAssets,
+    selectedPageId,
+    setSelectedPageId,
+    selectedPixelIds,
+    togglePixel,
     error,
+    metaAdsConnected,
     isPending,
     canContinueStep1,
     canContinueStep2,
+    canContinueStep3,
+    canCreate,
     score,
     selectBusiness,
     create,

@@ -110,5 +110,6 @@ export const appMigrations = [
   ClientCommercialAddressNormalized1735831700000,
   UserTermsAcceptance_1735831900000,
   ContactMessages_1735832000000,
-  AiCreditsLayer_1735832100000
+  AiCreditsLayer_1735832100000,
+  ClientLinkedMetaPixelIds1735832200000
 ];

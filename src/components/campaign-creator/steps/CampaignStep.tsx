@@ -155,27 +155,80 @@ export function CampaignStep() {
           <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("campaignStepHint")}</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 lg:hidden">
-          <DsChoiceCard
-            compact
-            title={t("campaignSub_client")}
-            icon={<Building2 size={16} />}
-            accent={activeSection === "clientAccount"}
-            onClick={() => setActiveSection("clientAccount")}
-          />
-          <DsChoiceCard
-            compact
-            title={t("campaignSub_basics")}
-            icon={<Tag size={16} />}
-            accent={activeSection === "identity"}
-            onClick={() => setActiveSection("identity")}
-          />
-          <DsChoiceCard
-            compact
-            title={t("campaignSub_budget")}
-            icon={<Wallet size={16} />}
-            accent={activeSection === "budget"}
-            onClick={() => setActiveSection("budget")}
+      <FormField label={t("campaignName")}>
+        <input
+          value={payload.campaign.name}
+          onChange={(e) =>
+            updatePayload((p) => ({
+              ...p,
+              campaign: { ...p.campaign, name: e.target.value }
+            }))
+          }
+          className="ui-input"
+        />
+      </FormField>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <FormField label={tAds("adAccount")}>
+          {!payload.clientSlug ? (
+            <select className="ui-select" disabled>
+              <option value="">{tAds("selectClient")}</option>
+            </select>
+          ) : accountsLoading ? (
+            <div className="ui-input text-[var(--text-dimmer)]">{t("loading")}</div>
+          ) : (
+            <select
+              value={payload.adAccountId}
+              onChange={(e) => updatePayload({ adAccountId: e.target.value })}
+              className="ui-select"
+            >
+              <option value="">{tAds("adAccountRequired")}</option>
+              {accounts.map((a) => (
+                <option key={a.metaAdAccountId} value={a.metaAdAccountId}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          )}
+          {accountsError ? (
+            <p className="mt-1 text-xs text-red-600">
+              {accountsErrorMessage(tAds, accountsError)}{" "}
+              {accountsError === "permission_denied" || accountsError === "meta_not_connected" ? (
+                <a href="/settings/meta-assets" className="font-semibold underline">
+                  {tAds("adAccountsSettingsLink")}
+                </a>
+              ) : accountsError === "account_not_linked" ? (
+                <a
+                  href={`/clients/${encodeURIComponent(payload.clientSlug)}/settings`}
+                  className="font-semibold underline"
+                >
+                  {tAds("adAccountsClientLink")}
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+          {!accountsLoading && !accountsError && payload.clientSlug && accounts.length === 0 ? (
+            <p className="mt-1 text-xs text-amber-700">
+              {tAds("adAccountsEmpty")}{" "}
+              <a href="/settings/meta-assets" className="font-semibold underline">
+                {tAds("adAccountsSettingsLink")}
+              </a>
+              {" · "}
+              <a
+                href={`/clients/${encodeURIComponent(payload.clientSlug)}/settings`}
+                className="font-semibold underline"
+              >
+                {tAds("adAccountsClientLink")}
+              </a>
+            </p>
+          ) : null}
+        </FormField>
+
+        <FormField label={t("objective")}>
+          <input
+            value={t(`objective_${payload.objective}`)}
+            readOnly
+            className="ui-input bg-[var(--surface-bg)]"
           />
         </div>
 

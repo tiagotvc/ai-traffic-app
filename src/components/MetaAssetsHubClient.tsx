@@ -42,6 +42,8 @@ export function MetaAssetsHubClient({
   const [accounts, setAccounts] = useState<AssetAccount[]>([]);
   const [pages, setPages] = useState<AssetPage[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [discovering, setDiscovering] = useState(false);
+  const [autoDiscoverAttempted, setAutoDiscoverAttempted] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const loadBusinesses = useCallback(() => {
@@ -76,6 +78,23 @@ export function MetaAssetsHubClient({
     loadBusinesses();
     loadAssets("");
   }, [loadBusinesses, loadAssets]);
+
+  useEffect(() => {
+    if (autoDiscoverAttempted || discovering || isPending) return;
+    if (totals.pages > 0 || totals.adAccounts > 0) return;
+    setAutoDiscoverAttempted(true);
+    setDiscovering(true);
+    fetch("/api/meta/discover", { method: "POST" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) {
+          loadBusinesses();
+          loadAssets(selectedBm);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setDiscovering(false));
+  }, [autoDiscoverAttempted, discovering, isPending, totals.pages, totals.adAccounts, loadBusinesses, loadAssets, selectedBm]);
 
   useEffect(() => {
     loadAssets(selectedBm);
@@ -132,6 +151,12 @@ export function MetaAssetsHubClient({
         }
       />
       <p className="-mt-3 text-[11px] text-[var(--violet)]">{t("discoverFixHint")}</p>
+
+      {discovering || isPending ? (
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] px-4 py-3 text-sm text-[var(--text-dim)]">
+          {t("syncingAssets")}
+        </div>
+      ) : null}
 
       {message ? (
         <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] px-4 py-3 text-sm text-[var(--text-dim)]">
@@ -220,8 +245,10 @@ export function MetaAssetsHubClient({
                     <span className="shrink-0 font-mono text-[10px] text-[var(--text-dimmer)]">{p.metaPageId}</span>
                   </li>
                 ))
+              ) : discovering ? (
+                <li className="py-2 text-[var(--text-dim)]">{t("syncingAssets")}</li>
               ) : (
-                <li className="py-2 text-[var(--text-dim)]">{t("emptyPages")}</li>
+                <li className="py-2 text-[var(--text-dim)]">{t("emptyPagesNoDiscover")}</li>
               )}
             </ul>
           </div>

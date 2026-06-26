@@ -18,6 +18,19 @@ export async function linkClientMetaAccounts(input: {
   const { adAccount: adAccountRepo, client: clientRepo, metaAdAccountInventory: inventoryRepo } =
     await repositories();
 
+  if (input.metaAccessToken && input.metaBusinessId) {
+    try {
+      await runMetaDiscoverForBusiness(
+        input.tenantId,
+        input.metaAccessToken,
+        input.metaBusinessId,
+        null
+      );
+    } catch {
+      /* segue com inventário existente */
+    }
+  }
+
   const allAvailable = await listMetaAdAccountOptions({
     tenantId: input.tenantId,
     metaAccessToken: input.metaAccessToken,
@@ -147,6 +160,7 @@ export async function applyClientMetaSettings(input: {
   metaPageId?: string | null;
   metaLinkUrl?: string | null;
   metaPixelId?: string | null;
+  linkedMetaPixelIds?: string[];
   defaultAdAccountId?: string | null;
 }) {
   const settings = await getOrCreateClientMetaSettings(input.client.id);
@@ -161,7 +175,11 @@ export async function applyClientMetaSettings(input: {
   const { client: clientRepo, clientMetaSettings: settingsRepo } = await repositories();
   await clientRepo.save(input.client);
 
-  if (input.metaPixelId !== undefined) {
+  if (input.linkedMetaPixelIds !== undefined) {
+    const ids = input.linkedMetaPixelIds.map((id) => id.trim()).filter(Boolean);
+    settings.linkedMetaPixelIds = ids;
+    settings.metaPixelId = input.metaPixelId?.trim() || ids[0] || null;
+  } else if (input.metaPixelId !== undefined) {
     settings.metaPixelId = input.metaPixelId?.trim() || null;
   }
   if (input.defaultAdAccountId !== undefined) {
