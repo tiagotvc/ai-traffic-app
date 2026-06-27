@@ -389,7 +389,8 @@ export function AdSetStep() {
 
   return (
     <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
-      <div className="campaign-creator-step-sticky-header space-y-3">
+      <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pb-2">
+        <div className="space-y-3">
         {!payload.clientSlug ? (
           <p className="ui-alert-warning px-3 py-2 text-xs">{t("selectClientFirst")}</p>
         ) : null}
@@ -491,10 +492,7 @@ export function AdSetStep() {
             className={!canGoTo("schedule") ? "pointer-events-none" : undefined}
           />
         </div>
-      </div>
 
-      <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pt-5 pb-2">
-        <div className="space-y-3">
         {activeView === "compiler" ? compilerTargetingSections() : null}
 
         {activeView === "advanced" ? (
