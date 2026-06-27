@@ -224,10 +224,8 @@ export function AdSetStep() {
       <div className="campaign-creator-budget-body space-y-3">
         <AdSetCompilerLeadCards
           appliedAudienceName={adset.metaSavedAudienceName ?? null}
-          adsetName={adset.name}
           disabled={clientRequired}
           onOpenSavedAudience={() => setSavedAudienceModalOpen(true)}
-          onOpenConfiguration={() => setConfigModalOpen(true)}
         />
 
         <AdSetPersonaZonePanel
