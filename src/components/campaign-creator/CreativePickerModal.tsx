@@ -1,12 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Image, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
+import { DsButton } from "@/design-system";
 import type { PublishAsset } from "@/hooks/usePublishAssets";
 import { MAX_CREATIVE_VIDEO_BYTES, VIDEO_UPLOAD_CHUNK_BYTES } from "@/lib/creative-upload-limits";
-import { UxModalPortal } from "@/uxpilot-ui/adapters/UxModalPortal";
-import { UxWizardModalPanel } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
+import { cn } from "@/lib/cn";
 
 type ApiJson = {
   ok?: boolean;
@@ -68,8 +70,6 @@ export function CreativePickerModal({
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localAssets, setLocalAssets] = useState<PublishAsset[]>([]);
-
-  if (!open) return null;
 
   const libraryAssets = assets.filter((a) => (a.kind ?? "image") === mediaKind);
   const localOfKind = localAssets.filter((a) => (a.kind ?? "image") === mediaKind);
@@ -227,44 +227,45 @@ export function CreativePickerModal({
   }
 
   return (
-    <UxModalPortal open={open} onClose={onClose}>
-      <UxWizardModalPanel size="xl" className="max-h-[min(920px,92vh)] overflow-y-auto p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="font-heading text-lg font-semibold text-[var(--text-main)]">{t("creativeModalTitle")}</h2>
-            <p className="mt-1 text-sm text-[var(--text-dim)]">
-              {mediaKind === "video" ? t("creativeModalHintVideo") : t("creativeModalHint")}
-            </p>
-          </div>
-          <button type="button" onClick={onClose} className="text-[var(--text-dimmer)] hover:text-[var(--text-dim)]">
-            ✕
-          </button>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading || !clientSlug}
-            className="ui-btn-secondary text-sm"
+    <CreatorModalShell
+      open={open}
+      onClose={onClose}
+      title={t("creativeModalTitle")}
+      subtitle={mediaKind === "video" ? t("creativeModalHintVideo") : t("creativeModalHint")}
+      titleIcon={<Image size={16} />}
+      width="xl"
+      className="max-h-[min(920px,92vh)]"
+      contentClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0"
+      onCancel={onClose}
+      onPrimary={onClose}
+      primaryLabel={t("creativeDone")}
+      showPrimaryCheck={false}
+    >
+      <div className="flex shrink-0 flex-wrap gap-2 border-b border-[var(--border-color)] px-5 py-3">
+        <DsButton
+          variant="secondary"
+          size="sm"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading || !clientSlug}
+        >
+          {uploading
+            ? t("uploading")
+            : mediaKind === "video"
+              ? t("creativeUploadVideo")
+              : t("creativeUpload")}
+        </DsButton>
+        {mediaKind === "image" ? (
+          <DsButton
+            variant="secondary"
+            size="sm"
+            onClick={() => void handleGenerateVariants()}
+            disabled={generating || !selectedIds.length}
+            className="inline-flex items-center gap-1.5"
           >
-            {uploading
-              ? t("uploading")
-              : mediaKind === "video"
-                ? t("creativeUploadVideo")
-                : t("creativeUpload")}
-          </button>
-          {mediaKind === "image" ? (
-            <button
-              type="button"
-              onClick={() => void handleGenerateVariants()}
-              disabled={generating || !selectedIds.length}
-              className="ui-btn-secondary text-sm"
-            >
-              {generating ? t("generatingAi") : t("creativeAiVariants")}
-            </button>
-          ) : null}
-        </div>
+            <Sparkles size={13} aria-hidden />
+            {generating ? t("generatingAi") : t("creativeAiVariants")}
+          </DsButton>
+        ) : null}
         <input
           ref={fileRef}
           type="file"
@@ -276,57 +277,56 @@ export function CreativePickerModal({
             e.target.value = "";
           }}
         />
+      </div>
 
-        {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
+      {error ? (
+        <p className="shrink-0 px-5 pt-3 text-xs text-red-600">{error}</p>
+      ) : null}
 
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {allAssets.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={() => toggle(a.id)}
-              className={`overflow-hidden rounded-xl border-2 text-left transition ${
-                selected.has(a.id) ? "border-violet-500 ring-2 ring-violet-200" : "border-[var(--border-color)]"
-              }`}
-            >
-              <div className="aspect-square bg-[var(--surface-bg)]">
-                {a.kind === "video" && a.url?.startsWith("blob:") ? (
-                  <video src={a.url} className="h-full w-full object-cover" muted playsInline />
-                ) : a.url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={a.url} alt={a.label} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full flex-col items-center justify-center px-1 text-center text-[10px] text-[var(--text-dimmer)]">
-                    {a.kind === "video" ? (
-                      <span className="text-lg">▶</span>
-                    ) : null}
-                    <span>{a.label.slice(0, 12)}</span>
-                  </div>
-                )}
-              </div>
-              <p className="truncate p-1.5 text-[10px] text-[var(--text-dim)]">{a.label}</p>
-            </button>
-          ))}
-        </div>
-
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {allAssets.length === 0 ? (
-          <p className="mt-4 text-center text-xs text-[var(--text-dimmer)]">
+          <p className="py-8 text-center text-xs text-[var(--text-dimmer)]">
             {mediaKind === "video" ? t("creativeEmptyVideo") : t("creativeEmptyImage")}
           </p>
-        ) : null}
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {allAssets.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => toggle(a.id)}
+                className={cn(
+                  "overflow-hidden rounded-xl border-2 text-left transition",
+                  selected.has(a.id)
+                    ? "border-[var(--ui-accent)] ring-2 ring-[var(--ui-accent-muted)]"
+                    : "border-[var(--border-color)] hover:border-[var(--text-dimmer)]"
+                )}
+              >
+                <div className="aspect-square bg-[var(--surface-bg)]">
+                  {a.kind === "video" && a.url?.startsWith("blob:") ? (
+                    <video src={a.url} className="h-full w-full object-cover" muted playsInline />
+                  ) : a.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={a.url} alt={a.label} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center px-1 text-center text-[10px] text-[var(--text-dimmer)]">
+                      {a.kind === "video" ? <span className="text-lg">▶</span> : null}
+                      <span>{a.label.slice(0, 12)}</span>
+                    </div>
+                  )}
+                </div>
+                <p className="truncate p-1.5 text-[10px] text-[var(--text-dim)]">{a.label}</p>
+              </button>
+            ))}
+          </div>
+        )}
 
         <p className="mt-3 text-xs text-[var(--text-dim)]">
           {mediaKind === "video"
             ? t("creativeSelectedVideos", { count: selectedIds.length })
             : t("creativeSelected", { count: selectedIds.length })}
         </p>
-
-        <div className="mt-4 flex justify-end">
-          <button type="button" onClick={onClose} className="ui-btn-primary text-sm">
-            {t("creativeDone")}
-          </button>
-        </div>
-      </UxWizardModalPanel>
-    </UxModalPortal>
+      </div>
+    </CreatorModalShell>
   );
 }

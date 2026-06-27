@@ -1,12 +1,23 @@
 import "server-only";
 
 import { getDataSource } from "@/db/data-source";
+import { repositories } from "@/db/repositories";
 import { getClientCampaignMetrics } from "@/lib/agency-brain/metrics-input";
+import {
+  getValidMarketMemory,
+  parseClientCompetitors
+} from "@/lib/agency-brain/market-memory-service";
 import type { CampaignMetricsRow } from "@/lib/agency-brain/types";
 import { getCampaignPresetsMap } from "@/lib/campaign-preset-store";
 import type { CampaignObjectiveKey, CreatorNode } from "@/lib/campaign-draft";
 import { mapLimit } from "@/lib/concurrency";
 import { fetchCampaigns } from "@/lib/meta-graph";
+import {
+  fetchMetaAdLibrary,
+  isMetaAdLibraryConfigured,
+  resolveSearchTerms
+} from "@/lib/meta-ad-library";
+import { attachRecommendationsToInsight } from "@/lib/campaign-creator/creator-brain-recommendations";
 import { rollingDaysEndingYesterday } from "@/lib/report-period";
 
 export type CreatorBrainMetric = "cpa" | "cpc" | "ctr";
@@ -30,6 +41,7 @@ export type CreatorBrainResearchStep = {
     | "client_campaigns"
     | "agency_search"
     | "agency_matched"
+    | "meta_competitor_search"
     | "metrics_computed"
     | "benchmark";
   status: CreatorBrainResearchStepStatus;
@@ -53,6 +65,9 @@ export type CreatorBrainInsightPayload = {
   totalSampleCount: number;
   agencySampleCount?: number;
   marketCampaignCount?: number;
+  /** Ads found in Meta Ad Library for client competitors (informational). */
+  metaCompetitorAdCount?: number;
+  metaCompetitorsScanned?: number;
   referenceCampaignName?: string;
   clientMedianValue?: number | null;
   agencyMedianValue?: number | null;
@@ -73,6 +88,8 @@ export type CreatorBrainInsightPayload = {
   analyzedCampaigns?: CreatorBrainAnalyzedCampaign[];
   analyzedCampaignNames?: string[];
   guidanceKey?: string;
+  /** Actionable recommendation keys for i18n (params optional). */
+  recommendations?: Array<{ key: string; params?: Record<string, string | number> }>;
   activeNode: CreatorNode;
   windowDays: number;
 };
@@ -400,11 +417,75 @@ function buildAnalyzedCampaigns(
   return [...clientEntries, ...agencyEntries].slice(0, 12);
 }
 
+type MetaCompetitorResearchResult = {
+  adsCount: number;
+  competitorsScanned: number;
+  status: CreatorBrainResearchStepStatus;
+  detail?: string;
+};
+
+async function resolveMetaCompetitorResearch(input: {
+  tenantId: string;
+  clientId?: string | null;
+}): Promise<MetaCompetitorResearchResult> {
+  if (!input.clientId) {
+    return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "no_client_selected" };
+  }
+
+  const { client: clientRepo } = await repositories();
+  const client = await clientRepo.findOne({ where: { id: input.clientId, tenantId: input.tenantId } });
+  if (!client) {
+    return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "no_client_selected" };
+  }
+
+  const competitors = parseClientCompetitors(client.competitors);
+  if (!competitors.length) {
+    return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "no_competitors" };
+  }
+
+  if (!isMetaAdLibraryConfigured()) {
+    return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "api_not_configured" };
+  }
+
+  const cached = await getValidMarketMemory(input.tenantId, input.clientId);
+  if (cached) {
+    const adsCount = cached.adsAnalyzed ?? 0;
+    const competitorsScanned = cached.competitorsScanned ?? 0;
+    return {
+      adsCount,
+      competitorsScanned,
+      status: adsCount > 0 ? "done" : "fallback"
+    };
+  }
+
+  const searchTerms = resolveSearchTerms(client.niche);
+  const fetchResult = await fetchMetaAdLibrary({
+    competitors: competitors.map((c) => ({ name: c.name, pageId: c.pageId })),
+    searchTerms,
+    marketCountry: client.marketCountry,
+    maxAdsPerQuery: 15
+  });
+
+  if (!fetchResult.apiConfigured) {
+    return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "api_not_configured" };
+  }
+
+  const competitorsScanned = competitors.filter((c) => c.pageId).length || competitors.length;
+  const adsCount = fetchResult.ads.length;
+
+  return {
+    adsCount,
+    competitorsScanned,
+    status: adsCount > 0 ? "done" : "fallback"
+  };
+}
+
 function buildResearchLog(input: {
   clientId?: string | null;
   clientCount: number;
   agencyTotalScanned: number;
   agencyCount: number;
+  metaCompetitor: MetaCompetitorResearchResult;
   usesBenchmark: boolean;
   benchmarkOnly: boolean;
   metricsComputed: boolean;
@@ -425,6 +506,12 @@ function buildResearchLog(input: {
       step: "agency_matched",
       status: input.agencyCount > 0 ? "done" : "skipped",
       count: input.agencyCount
+    },
+    {
+      step: "meta_competitor_search",
+      status: input.metaCompetitor.status,
+      count: input.metaCompetitor.adsCount,
+      detail: input.metaCompetitor.detail
     }
   ];
 
@@ -454,6 +541,7 @@ function attachResearchMetadata(
   input: {
     clientId?: string | null;
     agencyTotalScanned: number;
+    metaCompetitor: MetaCompetitorResearchResult;
     usesBenchmark: boolean;
     benchmarkOnly: boolean;
     metricsComputed: boolean;
@@ -464,6 +552,7 @@ function attachResearchMetadata(
     clientCount: clientRows.length,
     agencyTotalScanned: input.agencyTotalScanned,
     agencyCount: agencyRows.length,
+    metaCompetitor: input.metaCompetitor,
     usesBenchmark: input.usesBenchmark,
     benchmarkOnly: input.benchmarkOnly,
     metricsComputed: input.metricsComputed
@@ -472,6 +561,8 @@ function attachResearchMetadata(
 
   return {
     ...payload,
+    metaCompetitorAdCount: input.metaCompetitor.adsCount,
+    metaCompetitorsScanned: input.metaCompetitor.competitorsScanned,
     researchLog,
     researchSteps: researchLog,
     analyzedCampaigns,
@@ -492,7 +583,7 @@ export async function buildCreatorBrainInsight(input: {
   const metric = primaryMetricForObjective(input.objective);
   const benchmark = OBJECTIVE_BENCHMARKS[input.objective];
 
-  const [clientRows, tenantRows, tenantObjectiveMap, presetMap] = await Promise.all([
+  const [clientRows, tenantRows, tenantObjectiveMap, presetMap, metaCompetitor] = await Promise.all([
     input.clientId
       ? getClientCampaignMetrics(input.tenantId, input.clientId, windowDays)
       : Promise.resolve([] as CampaignMetricsRow[]),
@@ -501,7 +592,11 @@ export async function buildCreatorBrainInsight(input: {
       tenantId: input.tenantId,
       accessToken: input.metaAccessToken ?? null
     }),
-    getCampaignPresetsMap(input.tenantId)
+    getCampaignPresetsMap(input.tenantId),
+    resolveMetaCompetitorResearch({
+      tenantId: input.tenantId,
+      clientId: input.clientId
+    })
   ]);
 
   const similarClientRows = clientRows
@@ -528,7 +623,7 @@ export async function buildCreatorBrainInsight(input: {
   const noRealData = agencyMedian == null && clientMedian == null;
 
   if (noRealData) {
-    return attachResearchMetadata(
+    const payload = attachResearchMetadata(
       {
         kind: "data",
         dataSource: "benchmark",
@@ -556,11 +651,15 @@ export async function buildCreatorBrainInsight(input: {
       {
         clientId: input.clientId,
         agencyTotalScanned: tenantRows.length,
+        metaCompetitor,
         usesBenchmark: true,
         benchmarkOnly: true,
         metricsComputed: false
       }
     );
+    return attachRecommendationsToInsight(payload, input.objective, {
+      hasClient: Boolean(input.clientId)
+    });
   }
 
   const displayMedian = agencyMedian ?? clientMedian ?? benchmark.market;
@@ -598,7 +697,7 @@ export async function buildCreatorBrainInsight(input: {
   const estimateAnchor = clientMedian ?? agencyMedian ?? benchmark.market;
   const { low: estimateLow, high: estimateHigh } = buildEstimateRange(metric, estimateAnchor, confidence);
 
-  return attachResearchMetadata(
+  const payload = attachResearchMetadata(
     {
       kind: "data",
       dataSource,
@@ -631,9 +730,13 @@ export async function buildCreatorBrainInsight(input: {
     {
       clientId: input.clientId,
       agencyTotalScanned: tenantRows.length,
+      metaCompetitor,
       usesBenchmark: usesBenchmarkForDisplay,
       benchmarkOnly: false,
       metricsComputed: true
     }
   );
+  return attachRecommendationsToInsight(payload, input.objective, {
+    hasClient: Boolean(input.clientId)
+  });
 }

@@ -1,40 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { CheckCircle2, ChevronRight, Pause, Play, Sparkles } from "lucide-react";
+import { ChevronRight, Pause, Play, Sparkles } from "lucide-react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { CampaignCreatorScoreBar } from "@/components/campaign-creator/CampaignCreatorScoreBar";
+import {
+  OrionBrainCardFeedback,
+  OrionBrainResearchChecklist
+} from "@/components/campaign-creator/OrionBrainResearchFeedback";
+import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { DsModal } from "@/design-system/components/DsModal";
-import { useAiCreditCost } from "@/hooks/useAiCreditCost";
-import type {
-  CreatorBrainInsightPayload,
-  CreatorBrainResearchStep
-} from "@/lib/campaign-creator/creator-brain-insights";
+import { useCreatorBrainInsight } from "@/hooks/useCreatorBrainInsight";
+import type { CreatorBrainInsightPayload } from "@/lib/campaign-creator/creator-brain-insights";
+import {
+  buildCreatorBrainRecommendations,
+  type CreatorBrainRecommendation
+} from "@/lib/campaign-creator/creator-brain-recommendations";
 import { ORION_BRAIN_OPEN_EVENT } from "@/lib/campaign-creator/orion-brain-bridge";
+import {
+  isBenchmarkOnly,
+  resolveResearchSteps,
+  resolveTotalSampleCount,
+  shouldShowBenchmarkFallbackMessage
+} from "@/lib/campaign-creator/orion-brain-utils";
 import { formatBRL, formatPercent } from "@/lib/format";
-
-const BRAIN_PAUSED_KEY = "orion-creator-brain-paused";
-const BRAIN_CACHE_PREFIX = "orion-creator-brain-cache:";
-
-function readBrainCache(cacheKey: string): CreatorBrainInsightPayload | null {
-  try {
-    const raw = window.sessionStorage.getItem(BRAIN_CACHE_PREFIX + cacheKey);
-    if (!raw) return null;
-    return JSON.parse(raw) as CreatorBrainInsightPayload;
-  } catch {
-    return null;
-  }
-}
-
-function writeBrainCache(cacheKey: string, insight: CreatorBrainInsightPayload) {
-  try {
-    window.sessionStorage.setItem(BRAIN_CACHE_PREFIX + cacheKey, JSON.stringify(insight));
-  } catch {
-    /* ignore */
-  }
-}
 
 function formatMetricValue(metric: CreatorBrainInsightPayload["metric"], value: number, locale: string) {
   if (metric === "ctr") return formatPercent(value, 1, locale === "en" ? "en" : "pt-BR");
@@ -122,64 +113,53 @@ function DataLayerBadges({
   );
 }
 
+function formatRecommendationParams(
+  rec: CreatorBrainRecommendation,
+  locale: string
+): Record<string, string | number> {
+  const params: Record<string, string | number> = { ...(rec.params ?? {}) };
+  const brLocale = locale === "en" ? "en" : "pt-BR";
+
+  for (const key of ["budget", "cpc", "cpa", "median", "minBudget"] as const) {
+    if (params[key] != null && typeof params[key] === "number") {
+      params[key] = formatBRL(params[key], brLocale);
+    }
+  }
+
+  return params;
+}
+
+function RecommendationsList({
+  recommendations,
+  t,
+  locale,
+  compact
+}: {
+  recommendations: CreatorBrainRecommendation[];
+  t: ReturnType<typeof useTranslations<"campaignCreator">>;
+  locale: string;
+  compact?: boolean;
+}) {
+  if (!recommendations.length) return null;
+
+  return (
+    <ul className={compact ? "mt-2 space-y-1.5" : "mt-2 list-disc space-y-2 pl-4"}>
+      {recommendations.map((rec) => (
+        <li
+          key={rec.key}
+          className={`leading-relaxed text-[var(--text-main)] ${compact ? "text-[11px]" : "text-xs"}`}
+        >
+          {t(rec.key as Parameters<typeof t>[0], formatRecommendationParams(rec, locale))}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function primaryMetric(objective: string): CreatorBrainInsightPayload["metric"] {
   if (objective === "leads" || objective === "sales" || objective === "app") return "cpa";
   if (objective === "awareness" || objective === "traffic" || objective === "engagement") return "cpc";
   return "cpa";
-}
-
-function resolveTotalSampleCount(insight: CreatorBrainInsightPayload): number {
-  if (insight.totalSampleCount > 0) return insight.totalSampleCount;
-  return insight.similarCampaignCount + (insight.agencySampleCount ?? 0);
-}
-
-function ResearchTimeline({
-  steps,
-  t
-}: {
-  steps: CreatorBrainResearchStep[];
-  t: ReturnType<typeof useTranslations<"campaignCreator">>;
-}) {
-  function stepLabel(step: CreatorBrainResearchStep): string {
-    if (step.step === "client_campaigns") {
-      if (step.detail === "no_client_selected") return t("brainResearchClientNoClient");
-      if (step.status === "done") return t("brainResearchClientDone", { count: step.count ?? 0 });
-      return t("brainResearchClientSkipped");
-    }
-    if (step.step === "agency_search") {
-      return t("brainResearchAgencySearch", { count: step.count ?? 0 });
-    }
-    if (step.step === "agency_matched") {
-      if (step.status === "done") return t("brainResearchAgencyMatched", { count: step.count ?? 0 });
-      return t("brainResearchAgencySkipped");
-    }
-    if (step.step === "metrics_computed") {
-      return t("brainResearchMetricsComputed", { count: step.count ?? 0 });
-    }
-    if (step.status === "fallback") return t("brainResearchBenchmarkFallback");
-    return t("brainResearchBenchmarkDone");
-  }
-
-  return (
-    <ol className="mt-2 space-y-2">
-      {steps.map((step) => (
-        <li key={step.step} className="flex items-start gap-2 text-xs text-[var(--text-dim)]">
-          <CheckCircle2
-            size={14}
-            strokeWidth={2.25}
-            className={`mt-0.5 shrink-0 ${
-              step.status === "fallback"
-                ? "text-amber-500"
-                : step.status === "done"
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-[var(--text-dimmer)]"
-            }`}
-          />
-          <span>{stepLabel(step)}</span>
-        </li>
-      ))}
-    </ol>
-  );
 }
 
 function AnalyzedCampaignsList({
@@ -232,17 +212,8 @@ function CampaignsAnalyzedNote({
   t: ReturnType<typeof useTranslations<"campaignCreator">>;
 }) {
   const totalSampleCount = resolveTotalSampleCount(insight);
-  const benchmarkOnly =
-    insight.usesBenchmark &&
-    totalSampleCount === 0 &&
-    insight.insightVariant === "benchmark_reference";
 
-  if (benchmarkOnly) {
-    return (
-      <p className="text-xs leading-relaxed text-[var(--text-dim)]">{t("brainNoSyncedCampaigns")}</p>
-    );
-  }
-
+  if (shouldShowBenchmarkFallbackMessage(insight)) return null;
   if (totalSampleCount <= 0) return null;
 
   if (agencyOnly && insight.agencySampleCount) {
@@ -263,20 +234,13 @@ function CampaignsAnalyzedNote({
 export function CampaignCreatorBrainTips() {
   const t = useTranslations("campaignCreator");
   const locale = useLocale();
-  const brainCreditCost = useAiCreditCost("creator_brain");
   const { payload, activeNode } = useCampaignDraft();
-  const [insight, setInsight] = useState<CreatorBrainInsightPayload | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const { insight, loading, paused, togglePaused } = useCreatorBrainInsight({
+    objective: payload.objective,
+    activeNode,
+    clientSlug: payload.clientSlug
+  });
   const [modalOpen, setModalOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      setPaused(window.localStorage.getItem(BRAIN_PAUSED_KEY) === "1");
-    } catch {
-      setPaused(false);
-    }
-  }, []);
 
   useEffect(() => {
     function handleOpenRequest() {
@@ -286,76 +250,31 @@ export function CampaignCreatorBrainTips() {
     return () => window.removeEventListener(ORION_BRAIN_OPEN_EVENT, handleOpenRequest);
   }, []);
 
-  const cacheKey = useMemo(
-    () => `${payload.clientSlug ?? ""}|${payload.objective}|${activeNode}`,
-    [activeNode, payload.clientSlug, payload.objective]
-  );
-
-  useEffect(() => {
-    if (paused) {
-      setInsight(readBrainCache(cacheKey));
-      setLoading(false);
-      return;
-    }
-
-    const cached = readBrainCache(cacheKey);
-    if (cached) {
-      setInsight(cached);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-
-    const params = new URLSearchParams({
-      objective: payload.objective,
-      activeNode
-    });
-    if (payload.clientSlug) params.set("clientSlug", payload.clientSlug);
-
-    fetch(`/api/campaign-creator/brain-insights?${params}`)
-      .then((r) => r.json())
-      .then((j: { ok?: boolean; insight?: CreatorBrainInsightPayload }) => {
-        if (cancelled) return;
-        const next = j.insight ?? null;
-        setInsight(next);
-        if (next) writeBrainCache(cacheKey, next);
-      })
-      .catch(() => {
-        if (!cancelled) setInsight(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeNode, cacheKey, paused, payload.clientSlug, payload.objective]);
-
-  function togglePaused() {
-    const next = !paused;
-    setPaused(next);
-    try {
-      window.localStorage.setItem(BRAIN_PAUSED_KEY, next ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
-  }
-
   const metric = insight?.metric ?? primaryMetric(payload.objective);
   const objectiveLabel = t(`objective_${payload.objective}`);
   const hasData = insight?.kind === "data" && insight.marketMedianValue != null;
   const variant = insight?.insightVariant;
   const totalSampleCount = insight ? resolveTotalSampleCount(insight) : 0;
-  const researchSteps = insight?.researchSteps ?? insight?.researchLog ?? [];
+  const researchSteps = insight ? resolveResearchSteps(insight) : [];
   const analyzedCampaignNames =
     insight?.analyzedCampaignNames ?? insight?.analyzedCampaigns?.map((c) => c.name) ?? [];
-  const benchmarkOnly =
-    Boolean(insight?.usesBenchmark && totalSampleCount === 0 && insight.insightVariant === "benchmark_reference");
+  const benchmarkOnly = insight ? isBenchmarkOnly(insight) : false;
   const agencyOnlyInsight =
     Boolean(!payload.clientSlug && insight?.insightVariant === "agency_reference" && (insight.agencySampleCount ?? 0) > 0);
+
+  const recommendations = insight
+    ? buildCreatorBrainRecommendations({
+        objective: payload.objective,
+        insight,
+        draftContext: {
+          hasClient: Boolean(payload.clientSlug),
+          dailyBudgetBRL: payload.campaign.dailyBudgetBRL,
+          activeNode
+        }
+      })
+    : [];
+
+  const sidebarRecommendations = recommendations.slice(0, 2);
 
   function renderInsightText() {
     if (!insight) return null;
@@ -447,8 +366,10 @@ export function CampaignCreatorBrainTips() {
                     })
                   : t("brainModalSampleDetail", { count: totalSampleCount, days: insight.windowDays })}
               </p>
-            ) : benchmarkOnly ? (
+            ) : shouldShowBenchmarkFallbackMessage(insight) ? (
               <p className="mt-2 text-xs leading-relaxed text-[var(--text-dim)]">{t("brainNoSyncedCampaigns")}</p>
+            ) : benchmarkOnly ? (
+              <p className="mt-2 text-xs leading-relaxed text-[var(--text-dim)]">{t("brainBenchmarkNote")}</p>
             ) : null}
             <div className="mt-2">
               <CampaignsAnalyzedNote insight={insight} agencyOnly={agencyOnlyInsight} t={t} />
@@ -461,7 +382,7 @@ export function CampaignCreatorBrainTips() {
             <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
               {t("brainResearchTimeline")}
             </h3>
-            <ResearchTimeline steps={researchSteps} t={t} />
+            <OrionBrainResearchChecklist steps={researchSteps} />
             {analyzedCampaignNames.length ? (
               <div className="mt-3">
                 <p className="text-[11px] font-medium text-[var(--text-dimmer)]">
@@ -508,9 +429,13 @@ export function CampaignCreatorBrainTips() {
           <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
             {t("brainModalRecommendations")}
           </h3>
-          <p className="mt-2 text-xs leading-relaxed text-[var(--text-main)]">
-            {hasData ? renderInsightText() : renderGuidanceText()}
-          </p>
+          {recommendations.length ? (
+            <RecommendationsList recommendations={recommendations} t={t} locale={locale} />
+          ) : (
+            <p className="mt-2 text-xs leading-relaxed text-[var(--text-main)]">
+              {hasData ? renderInsightText() : renderGuidanceText()}
+            </p>
+          )}
           {hasData && insight.referenceCampaignName ? (
             <p className="mt-2 text-xs text-[var(--text-dim)]">
               {t("brainModalBestReference", { name: insight.referenceCampaignName })}
@@ -551,20 +476,9 @@ export function CampaignCreatorBrainTips() {
           <p className="mt-3 text-xs leading-relaxed text-[var(--text-dim)]">{t("brainLoading")}</p>
         ) : hasData && insight ? (
           <>
-            {totalSampleCount > 0 ? (
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                <CheckCircle2 size={12} strokeWidth={2.25} className="shrink-0" />
-                {t("brainSampleBadge", { count: totalSampleCount })}
-              </div>
-            ) : benchmarkOnly ? (
-              <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-dim)]">{t("brainNoSyncedCampaigns")}</p>
-            ) : null}
-
-            {totalSampleCount > 0 ? (
-              <div className="mt-2">
-                <CampaignsAnalyzedNote insight={insight} agencyOnly={agencyOnlyInsight} t={t} />
-              </div>
-            ) : null}
+            <div className="mt-3">
+              <OrionBrainCardFeedback insight={insight} compact />
+            </div>
 
             {agencyOnlyInsight && insight.agencySampleCount ? (
               <p className="mt-2 text-xs leading-relaxed text-[var(--text-main)]">
@@ -573,6 +487,15 @@ export function CampaignCreatorBrainTips() {
                   count: insight.agencySampleCount
                 })}
               </p>
+            ) : null}
+
+            {sidebarRecommendations.length ? (
+              <RecommendationsList
+                recommendations={sidebarRecommendations}
+                t={t}
+                locale={locale}
+                compact
+              />
             ) : null}
 
             <div className="campaign-creator-sidebar-card-inset mt-3 px-3">
@@ -602,9 +525,7 @@ export function CampaignCreatorBrainTips() {
 
             {!paused ? (
               <div className="mt-3 flex justify-center">
-                <span className="inline-flex items-center rounded-full border border-[var(--ui-accent)]/35 bg-[var(--ui-accent-muted)] px-3 py-1 text-[11px] font-medium text-[var(--ui-accent)]">
-                  {t("brainCreditCostHint", { count: brainCreditCost })}
-                </span>
+                <AiCreditCostHint kind="creator_brain" variant="pill" />
               </div>
             ) : null}
 

@@ -54,6 +54,8 @@ import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/cn";
+import { OrionBrainCardFeedback } from "@/components/campaign-creator/OrionBrainResearchFeedback";
+import { useCreatorBrainInsight } from "@/hooks/useCreatorBrainInsight";
 import { openOrionBrainBenchmark } from "@/lib/campaign-creator/orion-brain-bridge";
 
 
@@ -369,9 +371,15 @@ export function CampaignStep() {
 
   const tAds = useTranslations("ads");
 
-  const { payload, updatePayload, clients, clientsLoading } = useCampaignDraft();
+  const { payload, updatePayload, clients, clientsLoading, activeNode } = useCampaignDraft();
 
   const { accounts, accountsLoading, accountsError } = useCampaignStepEffects();
+
+  const { insight: brainInsight, loading: brainLoading, paused: brainPaused } = useCreatorBrainInsight({
+    objective: payload.objective,
+    activeNode,
+    clientSlug: payload.clientSlug
+  });
 
   const [copyModalOpen, setCopyModalOpen] = useState(false);
 
@@ -945,11 +953,15 @@ export function CampaignStep() {
 
               </span>
 
-              <p className="campaign-creator-budget-orion-tip__text">
+              <div className="campaign-creator-budget-orion-tip__text">
 
-                {t(BUDGET_ORION_TIP_KEYS[payload.objective])}
+                {!brainPaused && !brainLoading && brainInsight?.kind === "data" ? (
+                  <OrionBrainCardFeedback insight={brainInsight} compact showSampleBadge />
+                ) : (
+                  <p>{t(BUDGET_ORION_TIP_KEYS[payload.objective])}</p>
+                )}
 
-              </p>
+              </div>
 
             </div>
 

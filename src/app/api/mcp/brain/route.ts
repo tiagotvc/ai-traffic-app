@@ -33,15 +33,19 @@ export async function POST(req: Request) {
     );
   }
 
+  // `brain.mcp.write` cascateia de `brain.mcp` (já garantida acima).
+  const writeEnabled = await isPlatformFeatureEnabled("brain.mcp.write");
+  const opts = { writeEnabled };
+
   // Batch JSON-RPC.
   if (Array.isArray(body)) {
-    const results = (await Promise.all(body.map((r) => handleMcpRequest(tenantId, r)))).filter(
-      Boolean
-    );
+    const results = (
+      await Promise.all(body.map((r) => handleMcpRequest(tenantId, r, opts)))
+    ).filter(Boolean);
     return NextResponse.json(results);
   }
 
-  const res = await handleMcpRequest(tenantId, body as Record<string, unknown>);
+  const res = await handleMcpRequest(tenantId, body as Record<string, unknown>, opts);
   if (!res) return new NextResponse(null, { status: 202 }); // notificação
   return NextResponse.json(res);
 }

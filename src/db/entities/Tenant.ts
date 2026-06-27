@@ -32,5 +32,13 @@ export class Tenant extends AppBaseEntity {
 
   @Column({ type: "text", nullable: true })
   webhookReportUrl?: string | null;
+
+  /**
+   * Janela/modelo de atribuição preferida (preset; ver `meta-attribution.ts`).
+   * Null = default da Meta (sem alterar comportamento). Aplicado nos relatórios
+   * quando a flag `meta.attribution` estiver ligada.
+   */
+  @Column({ type: "text", nullable: true })
+  attributionWindow?: string | null;
 }
 

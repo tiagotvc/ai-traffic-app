@@ -6,12 +6,16 @@ import {
   AtSign,
   ChevronRight,
   Download,
+  FileText,
   Image,
   Layers,
   LayoutGrid,
   Link2,
+  MessageCircle,
+  MousePointerClick,
   ScanLine,
   Settings,
+  Sparkles,
   Tag,
   Target,
   UserCircle,
@@ -19,18 +23,18 @@ import {
 } from "lucide-react";
 
 import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard";
+import { CreatorAiModalShell } from "@/components/campaign-creator/CreatorModalShell";
+import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { CreativePickerModal } from "@/components/campaign-creator/CreativePickerModal";
 import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfigModal";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
 import { MessageTemplateEditor } from "@/components/campaign-creator/MessageTemplateEditor";
 import { MetaDynamicParamInput } from "@/components/campaign-creator/MetaDynamicParamInput";
-import { UtmBuilder } from "@/components/campaign-creator/UtmBuilder";
+import { creatorDynamicParamInputClass, UtmBuilder } from "@/components/campaign-creator/UtmBuilder";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { useAdStepSubflow } from "@/components/campaign-creator/AdStepSubflowContext";
-import { FormField } from "@/components/ui/FormField";
 import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
-import { WizardAccordionSection } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
@@ -41,6 +45,8 @@ import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
 import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
 import { cn } from "@/lib/cn";
+
+const AD_COPY_AI_CREDITS = { kind: "campaign_generate" as const, calls: 1 };
 
 function AdAssignmentChoiceCard({
   selected,
@@ -107,6 +113,7 @@ export function AdStep() {
   const [creativeOpen, setCreativeOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [copyMode, setCopyMode] = useState<"manual" | "ai">("manual");
+  const [aiCopyModalOpen, setAiCopyModalOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -165,6 +172,38 @@ export function AdStep() {
   const adsetOptions = useMemo(
     () => payload.adsets.map((a) => ({ value: a.id, label: a.name })),
     [payload.adsets]
+  );
+
+  const destinationTypeOptions = useMemo(() => {
+    const options = [
+      { value: "website", label: t("destWebsite") },
+      ...(payload.objective === "leads"
+        ? [{ value: "instant_form", label: t("destInstantForm") }]
+        : []),
+      { value: "whatsapp", label: t("destWhatsapp") }
+    ];
+    return options;
+  }, [payload.objective, t]);
+
+  const leadFormOptions = useMemo(
+    () => leadForms.map((f) => ({ value: f.id, label: f.name })),
+    [leadForms]
+  );
+
+  const whatsappSelectOptions = useMemo(
+    () => pageWhatsappOptions.map((w) => ({ value: w.waMeUrl, label: w.phone })),
+    [pageWhatsappOptions]
+  );
+
+  const callToActionOptions = useMemo(
+    () => [
+      { value: "LEARN_MORE", label: t("ctaLearnMore") },
+      { value: "SIGN_UP", label: t("ctaSignUp") },
+      { value: "SHOP_NOW", label: t("ctaShopNow") },
+      { value: "CONTACT_US", label: t("ctaContactUs") },
+      { value: "WHATSAPP_MESSAGE", label: t("ctaWhatsapp") }
+    ],
+    [t]
   );
 
   function patchAd(patch: Partial<AdDraftItem>) {
@@ -337,6 +376,7 @@ export function AdStep() {
         bodies: (j.bodies ?? []).slice(0, META_AD_COPY_LIMITS.bodies)
       });
       setCopyMode("manual");
+      setAiCopyModalOpen(false);
     } catch (e) {
       setAiError(e instanceof Error ? e.message : "aiFailed");
     } finally {
@@ -594,341 +634,401 @@ export function AdStep() {
       ) : null}
 
       {activeView === "creative" ? (
-      <>
-      <WizardAccordionSection title={t("copyTabManual")} defaultOpen>
-      <div className="space-y-3">
-        <div className="flex gap-2 border-b border-[var(--border-color)] pb-2">
-          <button
-            type="button"
-            onClick={() => setCopyMode("manual")}
-            className={`text-xs font-medium ${copyMode === "manual" ? "text-[var(--violet)]" : "text-[var(--text-dim)]"}`}
-          >
-            {t("copyTabManual")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setCopyMode("ai")}
-            className={`text-xs font-medium ${copyMode === "ai" ? "text-[var(--violet)]" : "text-[var(--text-dim)]"}`}
-          >
-            {t("copyTabAi")}
-          </button>
-        </div>
-        {copyMode === "ai" ? (
-          <div className="space-y-2">
-            <textarea
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder={t("copyAiPlaceholder")}
-              className="ui-textarea text-sm"
-              rows={3}
-            />
+        <div className="campaign-creator-section-stack space-y-3">
+          <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
+            <div
+              className="grid grid-cols-2 gap-1 rounded-lg border p-1"
+              style={{
+                borderColor: "var(--creator-card-border, var(--border-color))",
+                background: "var(--creator-card-bg-inset, var(--surface-bg))"
+              }}
+              role="radiogroup"
+              aria-label={t("adSub_creative")}
+            >
+              <button
+                type="button"
+                role="radio"
+                aria-checked={copyMode === "manual"}
+                onClick={() => setCopyMode("manual")}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition",
+                  copyMode === "manual"
+                    ? "bg-[var(--ui-accent-muted)] text-[var(--violet)] shadow-sm"
+                    : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                )}
+              >
+                {t("copyTabManual")}
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={copyMode === "ai"}
+                onClick={() => {
+                  setCopyMode("ai");
+                  setAiCopyModalOpen(true);
+                }}
+                className={cn(
+                  "inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition",
+                  copyMode === "ai"
+                    ? "bg-[var(--ui-accent-muted)] text-[var(--violet)] shadow-sm"
+                    : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                )}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Sparkles size={12} className="shrink-0" aria-hidden />
+                  {t("copyTabAi")}
+                  <AiCreditCostHint
+                    kind={AD_COPY_AI_CREDITS.kind}
+                    calls={AD_COPY_AI_CREDITS.calls}
+                    variant="pill"
+                  />
+                </span>
+              </button>
+            </div>
+
+            {copyMode === "manual" ? (
+              <div className="space-y-4">
+                <MetaTextVariantsInput
+                  label={tAds("titleLabel")}
+                  values={ad.titles.length ? ad.titles : [""]}
+                  onChange={(titles) =>
+                    patchAd({ titles: titles.slice(0, META_AD_COPY_LIMITS.titles) })
+                  }
+                  maxItems={META_AD_COPY_LIMITS.titles}
+                  placeholder={tAds("titlePlaceholder")}
+                  disabled={clientRequired}
+                  addLabel={t("adCopyAddTitle")}
+                  removeLabel={t("adCopyRemoveVariant")}
+                  countLabel={(count, max) => t("adCopyVariantCount", { count, max })}
+                />
+                <MetaTextVariantsInput
+                  label={tAds("bodyLabel")}
+                  values={ad.bodies.length ? ad.bodies : [""]}
+                  onChange={(bodies) =>
+                    patchAd({ bodies: bodies.slice(0, META_AD_COPY_LIMITS.bodies) })
+                  }
+                  maxItems={META_AD_COPY_LIMITS.bodies}
+                  placeholder={tAds("bodyPlaceholder")}
+                  disabled={clientRequired}
+                  addLabel={t("adCopyAddBody")}
+                  removeLabel={t("adCopyRemoveVariant")}
+                  countLabel={(count, max) => t("adCopyVariantCount", { count, max })}
+                  multiline
+                />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs leading-relaxed text-[var(--text-dim)]">
+                  {t("copyAiPlaceholder")}
+                </p>
+                <AiCreditCostHint
+                  kind={AD_COPY_AI_CREDITS.kind}
+                  calls={AD_COPY_AI_CREDITS.calls}
+                  className="w-full justify-center"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAiCopyModalOpen(true)}
+                  disabled={clientRequired}
+                  className="ui-btn-secondary-accent inline-flex w-full items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Sparkles size={13} aria-hidden />
+                  {t("copyAiGenerate")}
+                </button>
+              </div>
+            )}
+          </section>
+
+          <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
+            <h4 className="campaign-creator-section-title">{tAds("media")}</h4>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={tAds("media")}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={ad.format === "single_image"}
+                onClick={() => patchAd({ format: "single_image", videoIds: [] })}
+                disabled={clientRequired}
+                className={cn(
+                  "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--chip-sm",
+                  ad.format === "single_image"
+                    ? "campaign-creator-budget-choice-card--selected"
+                    : "campaign-creator-budget-choice-card--unselected"
+                )}
+              >
+                <ChoiceCardCheck selected={ad.format === "single_image"} compact />
+                <span className="campaign-creator-budget-choice-card__label">{t("formatImage")}</span>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={ad.format === "video"}
+                onClick={() => patchAd({ format: "video", imageHashes: [] })}
+                disabled={clientRequired}
+                className={cn(
+                  "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--chip-sm",
+                  ad.format === "video"
+                    ? "campaign-creator-budget-choice-card--selected"
+                    : "campaign-creator-budget-choice-card--unselected"
+                )}
+              >
+                <ChoiceCardCheck selected={ad.format === "video"} compact />
+                <span className="campaign-creator-budget-choice-card__label">{t("formatVideo")}</span>
+              </button>
+            </div>
             <button
               type="button"
-              onClick={() => void generateCopy()}
-              disabled={aiLoading || !aiPrompt.trim()}
-              className="ui-btn-primary text-sm"
+              onClick={() => setCreativeOpen(true)}
+              disabled={clientRequired || !payload.adAccountId}
+              className="ui-btn-secondary inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {aiLoading ? t("generatingAi") : t("copyAiGenerate")}
+              {t("creativeOpenModal")}
             </button>
-            {aiError ? <p className="text-xs text-red-600">{aiError}</p> : null}
-          </div>
-        ) : null}
-        <MetaTextVariantsInput
-          label={tAds("titleLabel")}
-          values={ad.titles.length ? ad.titles : [""]}
-          onChange={(titles) =>
-            patchAd({ titles: titles.slice(0, META_AD_COPY_LIMITS.titles) })
-          }
-          maxItems={META_AD_COPY_LIMITS.titles}
-          placeholder={tAds("titlePlaceholder")}
-          disabled={clientRequired}
-          addLabel={t("adCopyAddTitle")}
-          removeLabel={t("adCopyRemoveVariant")}
-          countLabel={(count, max) => t("adCopyVariantCount", { count, max })}
-        />
-        <MetaTextVariantsInput
-          label={tAds("bodyLabel")}
-          values={ad.bodies.length ? ad.bodies : [""]}
-          onChange={(bodies) =>
-            patchAd({ bodies: bodies.slice(0, META_AD_COPY_LIMITS.bodies) })
-          }
-          maxItems={META_AD_COPY_LIMITS.bodies}
-          placeholder={tAds("bodyPlaceholder")}
-          disabled={clientRequired}
-          addLabel={t("adCopyAddBody")}
-          removeLabel={t("adCopyRemoveVariant")}
-          countLabel={(count, max) => t("adCopyVariantCount", { count, max })}
-        />
-      </div>
-      </WizardAccordionSection>
-
-      <WizardAccordionSection title={tAds("media")} defaultOpen>
-      <div className="space-y-3">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => patchAd({ format: "single_image", videoIds: [] })}
-            disabled={clientRequired}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-              ad.format === "single_image"
-                ? "border-violet-500 bg-[rgba(124,58,237,0.06)] text-[var(--violet)]"
-                : "border-[var(--border-color)] text-[var(--text-dim)] hover:border-[var(--border-color)]"
-            }`}
-          >
-            {t("formatImage")}
-          </button>
-          <button
-            type="button"
-            onClick={() => patchAd({ format: "video", imageHashes: [] })}
-            disabled={clientRequired}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-              ad.format === "video"
-                ? "border-violet-500 bg-[rgba(124,58,237,0.06)] text-[var(--violet)]"
-                : "border-[var(--border-color)] text-[var(--text-dim)] hover:border-[var(--border-color)]"
-            }`}
-          >
-            {t("formatVideo")}
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={() => setCreativeOpen(true)}
-          disabled={clientRequired || !payload.adAccountId}
-          className="ui-btn-primary text-sm"
-        >
-          {t("creativeOpenModal")}
-        </button>
-        <p className="text-xs text-[var(--text-dim)]">
-          {ad.format === "video"
-            ? t("creativeSelectedVideos", {
-                count: ad.videoIds.length
-              })
-            : tAds("selected", { count: ad.imageHashes.length })}
-        </p>
-        {mediaPreviews.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {mediaPreviews.map((m) => (
-              <div
-                key={m.id}
-                className="overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)]"
-              >
-                {m.kind === "video" && m.url?.startsWith("blob:") ? (
-                  <video src={m.url} className="h-16 w-16 object-cover" muted playsInline />
-                ) : m.url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.url} alt={m.label} className="h-16 w-16 object-cover" />
-                ) : (
-                  <div className="flex h-16 w-16 flex-col items-center justify-center px-1 text-center text-[9px] text-[var(--text-dim)]">
-                    {m.kind === "video" ? <span className="text-sm">▶</span> : null}
-                    {m.label}
+            <p className="text-xs text-[var(--text-dim)]">
+              {ad.format === "video"
+                ? t("creativeSelectedVideos", {
+                    count: ad.videoIds.length
+                  })
+                : tAds("selected", { count: ad.imageHashes.length })}
+            </p>
+            {mediaPreviews.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {mediaPreviews.map((m) => (
+                  <div
+                    key={m.id}
+                    className="overflow-hidden rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))]"
+                  >
+                    {m.kind === "video" && m.url?.startsWith("blob:") ? (
+                      <video src={m.url} className="h-16 w-16 object-cover" muted playsInline />
+                    ) : m.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.url} alt={m.label} className="h-16 w-16 object-cover" />
+                    ) : (
+                      <div className="flex h-16 w-16 flex-col items-center justify-center px-1 text-center text-[9px] text-[var(--text-dim)]">
+                        {m.kind === "video" ? <span className="text-sm">▶</span> : null}
+                        {m.label}
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-      </WizardAccordionSection>
-      </>
+            ) : null}
+          </section>
+        </div>
       ) : null}
 
       {activeView === "destination" ? (
-      <>
-      <WizardAccordionSection title={t("destinationSection")} defaultOpen>
-      <div className="space-y-3">
-        <FormField label={t("destinationType")}>
-          <select
-            value={ad.destinationType}
-            onChange={(e) => {
-              const destinationType = e.target.value as AdDraftItem["destinationType"];
-              const patch: Partial<AdDraftItem> = { destinationType };
-              if (
-                destinationType === "whatsapp" &&
-                (!ad.callToAction || ad.callToAction === "LEARN_MORE")
-              ) {
-                patch.callToAction = "WHATSAPP_MESSAGE";
-              }
-              patchAd(patch);
-            }}
-            className="ui-select"
-            disabled={clientRequired}
-          >
-            <option value="website">{t("destWebsite")}</option>
-            {payload.objective === "leads" ? (
-              <option value="instant_form">{t("destInstantForm")}</option>
-            ) : null}
-            <option value="whatsapp">{t("destWhatsapp")}</option>
-          </select>
-        </FormField>
-        {ad.destinationType === "instant_form" && payload.objective === "leads" ? (
-          <FormField label={t("leadForm")}>
-            <select
-              value={ad.leadFormId ?? ""}
-              onChange={(e) => patchAd({ leadFormId: e.target.value || null })}
-              className="ui-select"
-              disabled={clientRequired}
-            >
-              <option value="">{t("selectLeadForm")}</option>
-              {leadForms.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </FormField>
-        ) : ad.destinationType === "whatsapp" ? (
-          <div className="space-y-2">
-            {pageWhatsappOptions.length > 0 && !whatsappManualEntry ? (
-              <FormField label={t("destWhatsappSelect")}>
-                <select
-                  value={
-                    pageWhatsappOptions.some((w) => w.waMeUrl === ad.linkUrl) ? ad.linkUrl : ""
+        <div className="campaign-creator-section-stack space-y-3">
+          <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
+            <h4 className="campaign-creator-section-title">{t("destinationSection")}</h4>
+
+            <div className="campaign-creator-objective-fields-row lg:grid-cols-3">
+              <FilterSelectDropdown
+                className="ui-filter-panel-field"
+                valueClassName="max-w-none"
+                creatorField
+                icon={<Link2 size={13} />}
+                label={t("destinationType")}
+                placeholder={t("destinationType")}
+                value={ad.destinationType}
+                onChange={(destinationType) => {
+                  const nextType = destinationType as AdDraftItem["destinationType"];
+                  const patch: Partial<AdDraftItem> = { destinationType: nextType };
+                  if (
+                    nextType === "whatsapp" &&
+                    (!ad.callToAction || ad.callToAction === "LEARN_MORE")
+                  ) {
+                    patch.callToAction = "WHATSAPP_MESSAGE";
                   }
-                  onChange={(e) => {
-                    const waMeUrl = e.target.value;
-                    if (waMeUrl) {
-                      patchAd({ linkUrl: waMeUrl, callToAction: "WHATSAPP_MESSAGE" });
-                    }
-                  }}
-                  className="ui-select"
-                  disabled={clientRequired}
-                >
-                  <option value="">{t("destWhatsappSelectPlaceholder")}</option>
-                  {pageWhatsappOptions.map((w) => (
-                    <option key={w.waMeUrl} value={w.waMeUrl}>
-                      {w.phone}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            ) : (
-              <p className="text-xs text-amber-700">{t("destWhatsappEmpty")}</p>
-            )}
-            {pageWhatsappOptions.length > 0 ? (
-              <button
-                type="button"
-                className="text-[11px] text-[var(--violet)] hover:underline"
-                onClick={() => setWhatsappManualEntry((v) => !v)}
-              >
-                {t("destWhatsappManualFallback")}
-              </button>
-            ) : null}
-            {(whatsappManualEntry || pageWhatsappOptions.length === 0) ? (
-              <FormField label={t("destWhatsappUrl")}>
-                <input
+                  patchAd(patch);
+                }}
+                options={destinationTypeOptions}
+                disabled={clientRequired}
+                clearable={false}
+              />
+
+              {ad.destinationType !== "instant_form" && ad.destinationType !== "whatsapp" ? (
+                <FilterTextField
+                  className={`${creatorFilterFieldClass} min-w-0`}
+                  icon={<Link2 size={13} />}
+                  label={tAds("destinationUrl")}
+                  placeholder="https://"
                   value={ad.linkUrl}
-                  onChange={(e) => patchAd({ linkUrl: e.target.value })}
-                  placeholder="https://wa.me/..."
-                  className="ui-input"
+                  onChange={(linkUrl) => patchAd({ linkUrl })}
                   disabled={clientRequired}
                 />
-              </FormField>
+              ) : null}
+
+              <FilterSelectDropdown
+                className="ui-filter-panel-field"
+                valueClassName="max-w-none"
+                creatorField
+                icon={<MousePointerClick size={13} />}
+                label={t("callToAction")}
+                placeholder={t("callToAction")}
+                value={ad.callToAction || "LEARN_MORE"}
+                onChange={(callToAction) => patchAd({ callToAction })}
+                options={callToActionOptions}
+                disabled={clientRequired}
+                clearable={false}
+              />
+            </div>
+
+            {ad.destinationType === "instant_form" && payload.objective === "leads" ? (
+              <FilterSelectDropdown
+                className="ui-filter-panel-field"
+                valueClassName="max-w-none"
+                creatorField
+                icon={<FileText size={13} />}
+                label={t("leadForm")}
+                placeholder={t("selectLeadForm")}
+                value={ad.leadFormId ?? ""}
+                onChange={(leadFormId) => patchAd({ leadFormId: leadFormId || null })}
+                options={leadFormOptions}
+                disabled={clientRequired}
+                clearable={false}
+                emptyMessage={!leadForms.length ? t("selectLeadForm") : undefined}
+              />
+            ) : ad.destinationType === "whatsapp" ? (
+              <div className="space-y-2">
+                {pageWhatsappOptions.length > 0 && !whatsappManualEntry ? (
+                  <FilterSelectDropdown
+                    className="ui-filter-panel-field"
+                    valueClassName="max-w-none"
+                    creatorField
+                    icon={<MessageCircle size={13} />}
+                    label={t("destWhatsappSelect")}
+                    placeholder={t("destWhatsappSelectPlaceholder")}
+                    value={
+                      pageWhatsappOptions.some((w) => w.waMeUrl === ad.linkUrl) ? ad.linkUrl : ""
+                    }
+                    onChange={(waMeUrl) => {
+                      if (waMeUrl) {
+                        patchAd({ linkUrl: waMeUrl, callToAction: "WHATSAPP_MESSAGE" });
+                      }
+                    }}
+                    options={whatsappSelectOptions}
+                    disabled={clientRequired}
+                    clearable={false}
+                  />
+                ) : (
+                  <p className="text-xs text-amber-700">{t("destWhatsappEmpty")}</p>
+                )}
+                {pageWhatsappOptions.length > 0 ? (
+                  <button
+                    type="button"
+                    className="text-[11px] text-[var(--violet)] hover:underline"
+                    onClick={() => setWhatsappManualEntry((v) => !v)}
+                  >
+                    {t("destWhatsappManualFallback")}
+                  </button>
+                ) : null}
+                {whatsappManualEntry || pageWhatsappOptions.length === 0 ? (
+                  <FilterTextField
+                    className={creatorFilterFieldClass}
+                    icon={<MessageCircle size={13} />}
+                    label={t("destWhatsappUrl")}
+                    placeholder="https://wa.me/..."
+                    value={ad.linkUrl}
+                    onChange={(linkUrl) => patchAd({ linkUrl })}
+                    disabled={clientRequired}
+                  />
+                ) : null}
+              </div>
             ) : null}
-          </div>
-        ) : (
-          <FormField label={tAds("destinationUrl")}>
-            <input
-              value={ad.linkUrl}
-              onChange={(e) => patchAd({ linkUrl: e.target.value })}
-              placeholder="https://"
-              className="ui-input"
+
+            {showMessagingTemplate ? (
+              <MessageTemplateEditor
+                clientSlug={payload.clientSlug}
+                value={ad.messageTemplate}
+                defaultChannel={
+                  adset.messagingChannels.includes("whatsapp")
+                    ? "whatsapp"
+                    : adset.messagingChannels.includes("messenger")
+                      ? "messenger"
+                      : adset.messagingChannels.includes("instagram")
+                        ? "instagram"
+                        : "whatsapp"
+                }
+                onChange={(messageTemplate) => {
+                  patchAd({
+                    messageTemplate,
+                    whatsappWelcomeMessage: messageTemplate?.greeting?.trim() || null
+                  });
+                }}
+                disabled={clientRequired}
+              />
+            ) : null}
+
+            {!publishReady && payload.clientSlug ? (
+              <p className="text-[11px] text-amber-700">{tAds("publishNotReady")}</p>
+            ) : null}
+          </section>
+
+          <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
+            <UtmBuilder
+              value={ad.utm}
+              onChange={(utm) => patchAd({ utm })}
               disabled={clientRequired}
             />
-          </FormField>
-        )}
-        <FormField label={t("callToAction")}>
-          <select
-            value={ad.callToAction || "LEARN_MORE"}
-            onChange={(e) => patchAd({ callToAction: e.target.value })}
-            className="ui-select"
-            disabled={clientRequired}
-          >
-            <option value="LEARN_MORE">{t("ctaLearnMore")}</option>
-            <option value="SIGN_UP">{t("ctaSignUp")}</option>
-            <option value="SHOP_NOW">{t("ctaShopNow")}</option>
-            <option value="CONTACT_US">{t("ctaContactUs")}</option>
-            <option value="WHATSAPP_MESSAGE">{t("ctaWhatsapp")}</option>
-          </select>
-        </FormField>
-        {showMessagingTemplate ? (
-          <MessageTemplateEditor
-            clientSlug={payload.clientSlug}
-            value={ad.messageTemplate}
-            defaultChannel={
-              adset.messagingChannels.includes("whatsapp")
-                ? "whatsapp"
-                : adset.messagingChannels.includes("messenger")
-                  ? "messenger"
-                  : adset.messagingChannels.includes("instagram")
-                    ? "instagram"
-                    : "whatsapp"
-            }
-            onChange={(messageTemplate) => {
-              patchAd({
-                messageTemplate,
-                whatsappWelcomeMessage: messageTemplate?.greeting?.trim() || null
-              });
-            }}
-            disabled={clientRequired}
-          />
-        ) : null}
-        <UtmBuilder
-          value={ad.utm}
-          onChange={(utm) => patchAd({ utm })}
-          disabled={clientRequired}
-        />
-        <FormField label={t("urlParams")}>
-          <MetaDynamicParamInput
-            value={ad.urlParams}
-            onChange={(v) => patchAd({ urlParams: v })}
-            placeholder={t("urlParamsOverrideHint")}
-            disabled={clientRequired}
-          />
-        </FormField>
-        <p className="text-[10px] text-[var(--text-dimmer)]">{t("dynamicParamHint")}</p>
-        {!publishReady && payload.clientSlug ? (
-          <p className="text-[11px] text-amber-700">{tAds("publishNotReady")}</p>
-        ) : null}
-      </div>
-      </WizardAccordionSection>
+            <div className="space-y-1.5 border-t border-[var(--creator-card-border,var(--border-color))] pt-3">
+              <label className="block text-xs font-medium text-[var(--text-dim)]">
+                {t("urlParams")}
+              </label>
+              <MetaDynamicParamInput
+                value={ad.urlParams}
+                onChange={(urlParams) => patchAd({ urlParams })}
+                placeholder={t("urlParamsOverrideHint")}
+                disabled={clientRequired}
+                className={creatorDynamicParamInputClass}
+              />
+            </div>
+          </section>
 
-      <WizardAccordionSection title={t("trackingSection")}>
-        <label className="flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={ad.tracking.websiteEvents}
-            onChange={(e) =>
-              patchAd({
-                tracking: { ...ad.tracking, websiteEvents: e.target.checked }
-              })
-            }
-            className="accent-[var(--ui-accent)]"
-          />
-          {t("trackWebsite")}
-        </label>
-      </WizardAccordionSection>
+          <section className="campaign-creator-card campaign-creator-budget-side-card">
+            <h4 className="campaign-creator-section-title">{t("trackingSection")}</h4>
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-[var(--text-main)]">
+              <input
+                type="checkbox"
+                checked={ad.tracking.websiteEvents}
+                onChange={(e) =>
+                  patchAd({
+                    tracking: { ...ad.tracking, websiteEvents: e.target.checked }
+                  })
+                }
+                className="accent-[var(--ui-accent)]"
+                disabled={clientRequired}
+              />
+              {t("trackWebsite")}
+            </label>
+          </section>
 
-      <div className="rounded-xl border border-dashed border-[var(--ui-accent-border)] bg-[var(--surface-card)] p-4 space-y-3">
-        <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("addAnotherAdTitle")}</h3>
-        <p className="text-xs text-[var(--text-dim)]">{t("addAnotherAdHint")}</p>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => addAd("same_text")}
-            className="ui-btn-secondary flex-1 text-xs"
-          >
-            {t("presetSameText")}
-          </button>
-          <button
-            type="button"
-            onClick={() => addAd("same_image")}
-            className="ui-btn-secondary flex-1 text-xs"
-          >
-            {t("presetSameImage")}
-          </button>
+          <div className="campaign-creator-adset-refine-card space-y-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[var(--text-main)]">
+                {t("addAnotherAdTitle")}
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-dim)]">
+                {t("addAnotherAdHint")}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => addAd("same_text")}
+                className="ui-btn-accent-outline inline-flex flex-1 items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold"
+              >
+                {t("presetSameText")}
+              </button>
+              <button
+                type="button"
+                onClick={() => addAd("same_image")}
+                className="ui-btn-accent-outline inline-flex flex-1 items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold"
+              >
+                {t("presetSameImage")}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-      </>
       ) : null}
 
       <CampaignCreatorUxMobileSummary />
@@ -959,6 +1059,45 @@ export function AdStep() {
         onImport={handleImport}
         onImportMany={handleImportMany}
       />
+
+      <CreatorAiModalShell
+        open={aiCopyModalOpen}
+        onClose={() => {
+          setAiCopyModalOpen(false);
+          if (!aiLoading) setCopyMode("manual");
+        }}
+        title={t("copyTabAi")}
+        subtitle={t("copyAiPlaceholder")}
+        titleIcon={<Sparkles size={16} />}
+        width="md"
+        aiCredits={AD_COPY_AI_CREDITS}
+        onClear={() => {
+          setAiPrompt("");
+          setAiError(null);
+        }}
+        clearDisabled={aiLoading || !aiPrompt.trim()}
+        onCancel={() => {
+          setAiCopyModalOpen(false);
+          setCopyMode("manual");
+        }}
+        onPrimary={() => void generateCopy()}
+        primaryLabel={aiLoading ? t("generatingAi") : t("copyAiGenerate")}
+        primaryDisabled={!aiPrompt.trim()}
+        primaryLoading={aiLoading}
+        showPrimaryCheck={false}
+      >
+        <div className="space-y-2">
+          <textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder={t("copyAiPlaceholder")}
+            className="ui-textarea w-full rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-sm"
+            rows={5}
+            disabled={aiLoading}
+          />
+          {aiError ? <p className="text-xs text-red-600">{aiError}</p> : null}
+        </div>
+      </CreatorAiModalShell>
     </div>
   );
 }

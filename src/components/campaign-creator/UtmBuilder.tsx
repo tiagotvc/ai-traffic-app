@@ -2,9 +2,11 @@
 
 import { useTranslations } from "next-intl";
 
-import { FormField } from "@/components/ui/FormField";
 import { MetaDynamicParamInput } from "@/components/campaign-creator/MetaDynamicParamInput";
 import { type UtmFields } from "@/lib/campaign-utm";
+
+export const creatorDynamicParamInputClass =
+  "w-full rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-3 py-2 text-xs font-mono text-[var(--text-main)] outline-none transition focus:border-[var(--ui-accent)] placeholder:text-[var(--text-dimmer)] disabled:cursor-not-allowed disabled:opacity-60";
 
 type Props = {
   value: UtmFields;
@@ -30,20 +32,26 @@ export function UtmBuilder({ value, onChange, disabled }: Props) {
   ];
 
   return (
-    <div className="space-y-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)]/50 p-3">
-      <p className="text-xs font-medium text-[var(--text-dim)]">{t("utmBuilderTitle")}</p>
-      <p className="text-[10px] text-[var(--text-dimmer)]">{t("dynamicParamHint")}</p>
+    <div className="space-y-3">
+      <div>
+        <h4 className="campaign-creator-section-title">{t("utmBuilderTitle")}</h4>
+        <p className="mt-1 text-[10px] leading-relaxed text-[var(--text-dimmer)]">
+          {t("dynamicParamHint")}
+        </p>
+      </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         {fields.map(({ key, label, placeholder }) => (
-          <FormField key={key} label={label}>
+          <div key={key} className="space-y-1.5">
+            <label className="block text-xs font-medium text-[var(--text-dim)]">{label}</label>
             <MetaDynamicParamInput
               value={value[key]}
               onChange={(v) => patch({ [key]: v })}
               placeholder={placeholder}
               disabled={disabled}
+              className={creatorDynamicParamInputClass}
             />
-          </FormField>
+          </div>
         ))}
       </div>
     </div>

@@ -55,6 +55,7 @@ import { ContactMessages_1735832000000 } from "./0050-ContactMessages";
 import { AiCreditsLayer_1735832100000 } from "./0051-AiCreditsLayer";
 import { ClientLinkedMetaPixelIds1735832200000 } from "./0052-ClientLinkedMetaPixelIds";
 import { McpTokens_1735832300000 } from "./0053-McpTokens";
+import { TenantAttributionWindow_1735832400000 } from "./0054-TenantAttributionWindow";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -114,5 +115,6 @@ export const appMigrations = [
   ContactMessages_1735832000000,
   AiCreditsLayer_1735832100000,
   ClientLinkedMetaPixelIds1735832200000,
-  McpTokens_1735832300000
+  McpTokens_1735832300000,
+  TenantAttributionWindow_1735832400000
 ];

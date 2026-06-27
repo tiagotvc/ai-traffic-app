@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { Check, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AiCreditBalanceSuffix } from "@/components/ui/AiCreditBalanceSuffix";
 import { useAiCreditCost } from "@/hooks/useAiCreditCost";
 import type { AiCreditKind } from "@/lib/ai-credits/types";
 import { Sparkles } from "lucide-react";
@@ -262,9 +263,10 @@ export function CreatorAiCreditsBar({
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)]/40 px-3 py-2">
-      <p className="inline-flex items-center gap-1.5 text-[11px] text-[var(--text-dim)]">
+      <p className="inline-flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-dim)]">
         <Sparkles size={12} className="shrink-0 text-[var(--ui-accent)]" aria-hidden />
         {t("aiCreditsWillBeUsed", { cost: total })}
+        <AiCreditBalanceSuffix />
       </p>
       {learnMoreHref ? (
         <Link href={learnMoreHref} className="ui-link shrink-0 text-[11px] font-medium">
