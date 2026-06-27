@@ -8,6 +8,7 @@ import { mapLimit } from "@/lib/concurrency";
 import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
 import { compileAdsetTargetingInput } from "@/lib/targeting-compiler-server";
 import { pickInstagramActorId } from "@/lib/meta-instagram";
+import { resolveCtaForObjective } from "@/lib/meta-cta";
 import { applyConversionEventToPromoted } from "@/lib/meta-promoted-object";
 import { fetchInstagramAccountsForAdAccount, metaPost } from "@/lib/meta-graph";
 import { pruneInvalidTargetingIds } from "@/lib/meta-targeting-prune";
@@ -392,19 +393,17 @@ async function createAdForAdset(args: {
     };
     const resolvedLink = composeAdLinkUrl(baseLink, ad.utm, ad.urlParams, utmCtx);
 
-    const resolvedCta =
+    const resolvedCta = resolveCtaForObjective(
+      objective,
       ad.callToAction.trim() ||
-      (ad.destinationType === "whatsapp"
-        ? "WHATSAPP_MESSAGE"
-        : objective === "leads" && ad.destinationType === "instant_form"
-          ? "SIGN_UP"
-          : cta);
+        (ad.destinationType === "whatsapp"
+          ? "WHATSAPP_MESSAGE"
+          : objective === "leads" && ad.destinationType === "instant_form"
+            ? "SIGN_UP"
+            : cta)
+    );
 
-    const assetFeedSpec = buildMetaAssetFeedSpec({
-      ad,
-      resolvedLink,
-      resolvedCta
-    });
+    const assetFeedSpec = buildMetaAssetFeedSpec({ ad, resolvedLink, resolvedCta });
 
     const instagramId = pickInstagramActorId(
       [ad.instagramActorId, settings?.instagramActorId],

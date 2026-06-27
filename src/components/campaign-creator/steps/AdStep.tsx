@@ -44,6 +44,7 @@ import { MetaTextVariantsInput } from "@/components/campaign-creator/MetaTextVar
 import { adsetsWithReuseCreativeCompatibility, getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
+import { allowedCtasForObjective, type MetaCtaValue } from "@/lib/meta-cta";
 import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
 import { cn } from "@/lib/cn";
 
@@ -195,16 +196,29 @@ export function AdStep() {
     [pageWhatsappOptions]
   );
 
-  const callToActionOptions = useMemo(
-    () => [
-      { value: "LEARN_MORE", label: t("ctaLearnMore") },
-      { value: "SIGN_UP", label: t("ctaSignUp") },
-      { value: "SHOP_NOW", label: t("ctaShopNow") },
-      { value: "CONTACT_US", label: t("ctaContactUs") },
-      { value: "WHATSAPP_MESSAGE", label: t("ctaWhatsapp") }
-    ],
-    [t]
-  );
+  const callToActionOptions = useMemo(() => {
+    const labels: Record<string, string> = {
+      LEARN_MORE: t("ctaLearnMore"),
+      SIGN_UP: t("ctaSignUp"),
+      SHOP_NOW: t("ctaShopNow"),
+      CONTACT_US: t("ctaContactUs"),
+      WHATSAPP_MESSAGE: t("ctaWhatsapp")
+    };
+    return allowedCtasForObjective(payload.objective).map((value) => ({
+      value,
+      label: labels[value] ?? value
+    }));
+  }, [t, payload.objective]);
+
+  // Keep the CTA valid for the campaign objective — reset to the objective's default
+  // when the current one isn't allowed (e.g. SHOP_NOW on a Leads campaign).
+  useEffect(() => {
+    const allowed = allowedCtasForObjective(payload.objective);
+    if (ad.callToAction && !allowed.includes(ad.callToAction as MetaCtaValue)) {
+      patchAd({ callToAction: allowed[0] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payload.objective, ad.callToAction, ad.id]);
 
   function patchAd(patch: Partial<AdDraftItem>) {
     updatePayload((p) => ({
