@@ -301,7 +301,7 @@ export default function Campaigns() {
                     color: "var(--text-main)",
                     borderColor: "var(--border-color)",
                   }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "var(--amber)")}
+                  onFocus={e => (e.currentTarget.style.borderColor = "var(--ui-accent)")}
                   onBlur={e => (e.currentTarget.style.borderColor = "var(--border-color)")}
                 />
               </div>
@@ -314,7 +314,7 @@ export default function Campaigns() {
                   className="px-3 py-2 rounded-lg text-xs font-heading font-semibold border transition-all"
                   style={
                     statusFilter === s
-                      ? { background: "rgba(245,166,35,0.1)", borderColor: "rgba(245,166,35,0.3)", color: "var(--amber)" }
+                      ? { background: "rgba(245,166,35,0.1)", borderColor: "rgba(245,166,35,0.3)", color: "var(--ui-accent)" }
                       : { borderColor: "var(--border-color)", color: "var(--text-dim)" }
                   }
                 >
@@ -418,7 +418,7 @@ export default function Campaigns() {
                             <ArrowUpDown
                               size={9}
                               className={cn(sortKey === h.key ? "opacity-100" : "opacity-30")}
-                              style={{ color: sortKey === h.key ? "var(--amber)" : undefined }}
+                              style={{ color: sortKey === h.key ? "var(--ui-accent)" : undefined }}
                             />
                           )}
                         </div>
@@ -499,7 +499,7 @@ export default function Campaigns() {
                       </td>
 
                       {/* Spend */}
-                      <td className="px-4 py-3 font-heading font-semibold text-sm whitespace-nowrap" style={{ color: "var(--amber)" }}>
+                      <td className="px-4 py-3 font-heading font-semibold text-sm whitespace-nowrap" style={{ color: "var(--ui-accent)" }}>
                         {c.spend}
                       </td>
 
@@ -574,7 +574,7 @@ export default function Campaigns() {
                             <button
                               className="p-1.5 rounded-lg transition-colors"
                               title={c.status === "active" ? "Pausar" : "Ativar"}
-                              style={{ color: c.status === "active" ? "var(--amber)" : "#10b981" }}
+                              style={{ color: c.status === "active" ? "var(--ui-accent)" : "#10b981" }}
                               onMouseEnter={e => (e.currentTarget.style.background = "var(--border-color)")}
                               onMouseLeave={e => (e.currentTarget.style.background = "")}
                             >

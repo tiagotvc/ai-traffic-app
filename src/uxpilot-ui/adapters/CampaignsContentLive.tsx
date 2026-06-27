@@ -240,7 +240,7 @@ export function CampaignsContentLive() {
           <Link
             href={`/campaigns/${selectedId}?client=${encodeURIComponent(selectedSlug)}`}
             className="text-xs font-medium"
-            style={{ color: "var(--amber)" }}
+            style={{ color: "var(--ui-accent)" }}
           >
             {t("openFullPage")}
           </Link>

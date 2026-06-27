@@ -35,7 +35,7 @@ export function AudiencesView() {
             }
             style={
               tab === item.id
-                ? { background: "rgba(245,166,35,0.12)", borderBottom: "2px solid var(--amber)" }
+                ? { background: "rgba(245,166,35,0.12)", borderBottom: "2px solid var(--ui-accent)" }
                 : undefined
             }
           >

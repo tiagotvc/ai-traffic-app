@@ -81,7 +81,7 @@ export function UxCampaignRowActionBar({
             style={{
               borderColor: isActive ? "rgba(245,166,35,0.45)" : "rgba(16,185,129,0.45)",
               background: isActive ? "rgba(245,166,35,0.12)" : "rgba(16,185,129,0.12)",
-              color: isActive ? "var(--amber)" : "#10b981"
+              color: isActive ? "var(--ui-accent)" : "#10b981"
             }}
           >
             {isActive ? <Pause size={13} /> : <Play size={13} />}

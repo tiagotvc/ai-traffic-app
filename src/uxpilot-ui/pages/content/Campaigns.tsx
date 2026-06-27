@@ -427,7 +427,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                     color: "var(--text-main)",
                     borderColor: "var(--border-color)",
                   }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "var(--amber)")}
+                  onFocus={e => (e.currentTarget.style.borderColor = "var(--ui-accent)")}
                   onBlur={e => (e.currentTarget.style.borderColor = "var(--border-color)")}
                 />
               </div>
@@ -440,7 +440,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                   className="px-3 py-2 rounded-lg text-xs font-heading font-semibold border transition-all"
                   style={
                     statusFilter === s
-                      ? { background: "rgba(245,166,35,0.1)", borderColor: "rgba(245,166,35,0.3)", color: "var(--amber)" }
+                      ? { background: "rgba(245,166,35,0.1)", borderColor: "rgba(245,166,35,0.3)", color: "var(--ui-accent)" }
                       : { borderColor: "var(--border-color)", color: "var(--text-dim)" }
                   }
                 >
@@ -466,7 +466,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                 {isLive && (live?.metaFilters?.length ?? 0) > 0 ? (
                   <span
                     className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-heading font-bold"
-                    style={{ background: "var(--amber)", color: "#0f1419" }}
+                    style={{ background: "var(--ui-accent)", color: "#0f1419" }}
                   >
                     {live!.metaFilters!.length}
                   </span>
@@ -483,7 +483,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                       ? {
                           background: "rgba(245,166,35,0.1)",
                           borderColor: "rgba(245,166,35,0.3)",
-                          color: "var(--amber)"
+                          color: "var(--ui-accent)"
                         }
                       : { borderColor: "var(--border-color)", color: "var(--text-dim)" }
                   }
@@ -600,7 +600,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                             <ArrowUpDown
                               size={9}
                               className={cn(sortKey === h.key ? "opacity-100" : "opacity-30")}
-                              style={{ color: sortKey === h.key ? "var(--amber)" : undefined }}
+                              style={{ color: sortKey === h.key ? "var(--ui-accent)" : undefined }}
                             />
                           )}
                         </div>
@@ -736,7 +736,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                       </td>
 
                       {/* Spend */}
-                      <td className="px-4 py-3 font-heading font-semibold text-sm whitespace-nowrap" style={{ color: "var(--amber)" }}>
+                      <td className="px-4 py-3 font-heading font-semibold text-sm whitespace-nowrap" style={{ color: "var(--ui-accent)" }}>
                         {c.spend}
                       </td>
 
@@ -812,7 +812,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                             <button
                               className="p-1.5 rounded-lg transition-colors"
                               title={c.status === "active" ? "Pausar" : "Ativar"}
-                              style={{ color: c.status === "active" ? "var(--amber)" : "#10b981" }}
+                              style={{ color: c.status === "active" ? "var(--ui-accent)" : "#10b981" }}
                               onMouseEnter={e => (e.currentTarget.style.background = "var(--border-color)")}
                               onMouseLeave={e => (e.currentTarget.style.background = "")}
                             >

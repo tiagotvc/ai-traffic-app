@@ -23,14 +23,14 @@ export function UxCampaignRowSelector({
       }}
       className={cn(
         "flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all",
-        selected ? "border-[var(--amber)]" : "border-[var(--border-color)]",
+        selected ? "border-[var(--ui-accent)]" : "border-[var(--border-color)]",
         disabled && "cursor-wait opacity-60"
       )}
     >
       <span
         className={cn(
           "rounded-full transition-all",
-          selected ? "h-2.5 w-2.5 bg-[var(--amber)]" : "h-2 w-2 bg-[#05080c]"
+          selected ? "h-2.5 w-2.5 bg-[var(--ui-accent)]" : "h-2 w-2 bg-[#05080c]"
         )}
       />
     </button>

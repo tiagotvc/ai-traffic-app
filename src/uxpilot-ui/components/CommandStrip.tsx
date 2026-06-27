@@ -28,7 +28,7 @@ function SelectDropdown({ icon, label, options, value, onChange }: SelectDropdow
         style={{
           color: "var(--text-main)",
           background: "var(--filter-btn-bg)",
-          borderColor: open ? "var(--amber)" : "var(--border-color)",
+          borderColor: open ? "var(--ui-accent)" : "var(--border-color)",
         }}
       >
         <span style={{ color: "var(--text-dim)" }}>{icon}</span>
@@ -47,7 +47,7 @@ function SelectDropdown({ icon, label, options, value, onChange }: SelectDropdow
               onClick={() => { onChange(opt); setOpen(false); }}
               className="w-full text-left px-3 py-2 text-sm font-body transition-colors"
               style={{
-                color: value === opt ? "var(--amber)" : "var(--text-dim)",
+                color: value === opt ? "var(--ui-accent)" : "var(--text-dim)",
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--row-hover)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ""; }}
@@ -100,7 +100,7 @@ export default function CommandStrip({ onToggleEmpty, isEmptyState }: Props) {
             )}
             style={isEmptyState ? {
               borderColor: "rgba(245,166,35,0.5)",
-              color: "var(--amber)",
+              color: "var(--ui-accent)",
               background: "rgba(245,166,35,0.1)",
             } : {
               borderColor: "var(--border-color)",
