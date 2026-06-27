@@ -71,6 +71,7 @@ export function AdSetConfigurationPanel({
               value={adset.name}
               maxLength={META_ADSET_NAME_MAX_LENGTH}
               onChange={(e) => onPatchAdset({ name: e.target.value.slice(0, META_ADSET_NAME_MAX_LENGTH) })}
+              onFocus={(e) => e.target.select()}
               placeholder={t("adsetNamePlaceholder")}
               className="ui-input border-[var(--border-hover)] pr-16 shadow-sm"
               disabled={clientRequired}

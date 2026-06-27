@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { CalendarDays, SlidersHorizontal, Users } from "lucide-react";
 
 import { AdSetCompilerLeadCards } from "@/components/campaign-creator/AdSetCompilerLeadCards";
-import { AdSetConfigurationModal } from "@/components/campaign-creator/AdSetConfigurationModal";
+import { AdSetConfigurationPanel } from "@/components/campaign-creator/AdSetConfigurationPanel";
 import { AdSetPersonaZonePanel } from "@/components/campaign-creator/AdSetPersonaZonePanel";
 import { AdvancedTargetingPanel } from "@/components/campaign-creator/AdvancedTargetingPanel";
 import { CustomAudiencesModal } from "@/components/campaign-creator/CustomAudiencesModal";
@@ -60,7 +60,6 @@ export function AdSetStep() {
   const [importOpen, setImportOpen] = useState(false);
   const [customAudiencesOpen, setCustomAudiencesOpen] = useState(false);
   const [savedAudienceModalOpen, setSavedAudienceModalOpen] = useState(false);
-  const [configModalOpen, setConfigModalOpen] = useState(false);
   const { section: activeView, canGoTo, isSectionVisited, goTo } = useAdSetStepSubflow();
   const [commercialLocation, setCommercialLocation] = useState<{
     address: string | null;
@@ -436,28 +435,19 @@ export function AdSetStep() {
           <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("adsetStepHint")}</p>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="min-w-0 flex-1">
-            <FormField label={t("adsetName")}>
-              <input
-                value={adset.name}
-                onChange={(e) => patchAdset({ name: e.target.value })}
-                onFocus={(e) => e.target.select()}
-                placeholder={t("adsetNamePlaceholder")}
-                className="ui-input border-[var(--border-hover)] shadow-sm"
-                disabled={clientRequired}
-              />
-            </FormField>
-          </div>
-          <button
-            type="button"
-            onClick={() => setConfigModalOpen(true)}
-            disabled={clientRequired}
-            className="ui-btn-secondary shrink-0 text-xs disabled:opacity-50"
-          >
-            {t("adsetConfigurationSelectButton")}
-          </button>
-        </div>
+        <AdSetConfigurationPanel
+          layout="stacked"
+          payload={payload}
+          adset={adset}
+          clientRequired={clientRequired}
+          addAdsetMode={addAdsetMode}
+          dynamicCreativeLockedByReuse={dynamicCreativeLockedByReuse}
+          conversionLocationOptions={conversionLocationOptions}
+          pixelOptions={pixelOptions}
+          conversionEventOptions={conversionEventOptions}
+          onPatchAdset={patchAdset}
+          onImport={() => setImportOpen(true)}
+        />
 
         <div className="rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-3 py-2.5">
           <p className="text-xs font-semibold text-[var(--ui-accent)]">{t("targetingMethodNoticeTitle")}</p>
@@ -608,24 +598,6 @@ export function AdSetStep() {
         disabled={clientRequired}
         selectedId={adset.metaSavedAudienceId}
         onApply={handleApplySavedAudience}
-      />
-
-      <AdSetConfigurationModal
-        open={configModalOpen}
-        onClose={() => setConfigModalOpen(false)}
-        payload={payload}
-        adset={adset}
-        clientRequired={clientRequired}
-        addAdsetMode={addAdsetMode}
-        dynamicCreativeLockedByReuse={dynamicCreativeLockedByReuse}
-        conversionLocationOptions={conversionLocationOptions}
-        pixelOptions={pixelOptions}
-        conversionEventOptions={conversionEventOptions}
-        onPatchAdset={patchAdset}
-        onImport={() => {
-          setConfigModalOpen(false);
-          setImportOpen(true);
-        }}
       />
 
       <CustomAudiencesModal
