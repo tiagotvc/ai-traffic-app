@@ -186,7 +186,7 @@ export function LearningFilters({
         >
           {expanded ? t("collapseFilters") : t("expandFilters")}
           {activeFilterCount > 0 ? (
-            <span className="rounded-full bg-[var(--amber-bright)] px-1 py-0.5 text-[9px] font-bold text-white">
+            <span className="rounded-full bg-[var(--ui-accent)] px-1 py-0.5 text-[9px] font-bold text-white">
               {activeFilterCount}
             </span>
           ) : null}
@@ -333,7 +333,7 @@ export function LearningFilters({
               type="button"
               className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition ${
                 !tagFilter
-                  ? "bg-[var(--amber-bright)] text-white"
+                  ? "bg-[var(--ui-accent)] text-white"
                   : "bg-white text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
               }`}
               onClick={() => onTagFilterChange("")}
@@ -346,7 +346,7 @@ export function LearningFilters({
                 type="button"
                 className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition ${
                   tagFilter === tag
-                    ? "bg-[var(--amber-bright)] text-white"
+                    ? "bg-[var(--ui-accent)] text-white"
                     : "bg-white text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
                 }`}
                 onClick={() => onTagFilterChange(tagFilter === tag ? "" : tag)}

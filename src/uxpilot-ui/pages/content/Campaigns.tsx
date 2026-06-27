@@ -394,8 +394,8 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
               <div
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
                 style={{
-                  background: "rgba(245,166,35,0.12)",
-                  border: "1px solid rgba(245,166,35,0.25)"
+                  background: "var(--ui-accent-muted)",
+                  border: "1px solid var(--ui-accent-border)"
                 }}
               >
                 <Megaphone size={18} style={{ color: "#f5a623" }} />
@@ -440,7 +440,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                   className="px-3 py-2 rounded-lg text-xs font-heading font-semibold border transition-all"
                   style={
                     statusFilter === s
-                      ? { background: "rgba(245,166,35,0.1)", borderColor: "rgba(245,166,35,0.3)", color: "var(--ui-accent)" }
+                      ? { background: "var(--ui-accent-muted)", borderColor: "var(--ui-accent-border)", color: "var(--ui-accent)" }
                       : { borderColor: "var(--border-color)", color: "var(--text-dim)" }
                   }
                 >
@@ -481,8 +481,8 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                   style={
                     totalsOpen
                       ? {
-                          background: "rgba(245,166,35,0.1)",
-                          borderColor: "rgba(245,166,35,0.3)",
+                          background: "var(--ui-accent-muted)",
+                          borderColor: "var(--ui-accent-border)",
                           color: "var(--ui-accent)"
                         }
                       : { borderColor: "var(--border-color)", color: "var(--text-dim)" }
@@ -622,7 +622,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                         borderColor: "var(--border-color)",
                         background:
                           isLive && selectedRowId === c.id
-                            ? "rgba(245,166,35,0.06)"
+                            ? "var(--ui-accent-muted)"
                             : undefined,
                       }}
                       onClick={() => {
@@ -637,7 +637,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background =
                           isLive && selectedRowId === c.id
-                            ? "rgba(245,166,35,0.06)"
+                            ? "var(--ui-accent-muted)"
                             : "";
                       }}
                     >
@@ -711,7 +711,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                                 ? "bg-green-400 animate-pulse"
                                 : c.status === "draft"
                                 ? "bg-slate-400"
-                                : "bg-amber-500"
+                                : "bg-[var(--ui-accent)]"
                             )}
                           />
                           <span

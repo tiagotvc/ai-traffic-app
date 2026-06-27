@@ -160,7 +160,7 @@ export function LearningFeedCard({
                   className="rounded-full border px-2 py-0.5 text-[11px]"
                   style={{
                     background: "rgba(250,204,21,0.07)",
-                    color: "var(--amber-bright)",
+                    color: "var(--ui-accent)",
                     borderColor: "rgba(250,204,21,0.18)"
                   }}
                 >

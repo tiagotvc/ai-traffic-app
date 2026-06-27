@@ -135,7 +135,7 @@ export function LearningTimelinePanel({
               </div>
               <span
                 className="text-[11px] font-bold uppercase tracking-[0.14em]"
-                style={{ color: "var(--amber)", fontFamily: "var(--font-heading)" }}
+                style={{ color: "var(--ui-accent)", fontFamily: "var(--font-heading)" }}
               >
                 {t("timelineTitle")}
               </span>
@@ -174,7 +174,7 @@ export function LearningTimelinePanel({
             <ConfidenceBar score={learning.confidenceScore} />
           </div>
           <div className="flex items-center gap-1.5 text-xs text-[var(--text-dimmer)]">
-            <Calendar size={12} style={{ color: "var(--amber)" }} />
+            <Calendar size={12} style={{ color: "var(--ui-accent)" }} />
             {t("timelineUpdatedAt", { date: formatUpdatedAt(learning.updatedAt, locale) })}
           </div>
         </div>
@@ -192,7 +192,7 @@ export function LearningTimelinePanel({
                 className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
                 style={{ background: "rgba(245,166,35,0.12)" }}
               >
-                <Lightbulb size={20} style={{ color: "var(--amber)" }} />
+                <Lightbulb size={20} style={{ color: "var(--ui-accent)" }} />
               </div>
               <p className="text-sm text-[var(--text-dim)]">{t("timelineEmpty")}</p>
             </div>
@@ -250,7 +250,7 @@ export function LearningTimelinePanel({
                                   style={{
                                     background: "rgba(245,166,35,0.08)",
                                     borderColor: "rgba(245,166,35,0.22)",
-                                    color: "var(--amber)"
+                                    color: "var(--ui-accent)"
                                   }}
                                 >
                                   {c}
@@ -264,7 +264,7 @@ export function LearningTimelinePanel({
                           <ul className="mt-2.5 space-y-1">
                             {event.evidence.patterns.slice(0, 4).map((p) => (
                               <li key={p} className="flex items-start gap-1.5 text-[11px] text-[var(--text-dim)]">
-                                <span className="mt-0.5 text-[var(--amber)]" aria-hidden>•</span>
+                                <span className="mt-0.5 text-[var(--ui-accent)]" aria-hidden>•</span>
                                 <span>{p}</span>
                               </li>
                             ))}

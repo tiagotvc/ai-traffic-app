@@ -147,7 +147,7 @@ export function LearningsFilterBar({
               >
                 {t("expandFilters")}
                 {advancedActiveCount > 0 ? (
-                  <span className="rounded-full bg-[var(--amber-bright)] px-1 py-px text-[9px] font-bold text-white">
+                  <span className="rounded-full bg-[var(--ui-accent)] px-1 py-px text-[9px] font-bold text-white">
                     {advancedActiveCount}
                   </span>
                 ) : null}
