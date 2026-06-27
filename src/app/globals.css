@@ -3094,6 +3094,17 @@ h6,
     background: transparent;
   }
 
+  /* Método de segmentação não escolhido — hachura diagonal leve. */
+  .campaign-creator-choice-cards .ds-choice-card-inline.ds-choice-card--hatched {
+    background-image: repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--text-dimmer) 10%, transparent) 0,
+      color-mix(in srgb, var(--text-dimmer) 10%, transparent) 1px,
+      transparent 1px,
+      transparent 8px
+    );
+  }
+
   .campaign-creator-insights-stack {
     @apply w-full;
   }

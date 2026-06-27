@@ -527,9 +527,9 @@ export function AdSetStep() {
             onClick={() => selectView("compiler")}
             className={cn(
               !canGoTo("compiler") && "pointer-events-none",
-              targetingMethod === "compiler" &&
-                activeView !== "compiler" &&
-                "font-semibold ring-2 ring-[var(--ui-accent)] ring-offset-2 ring-offset-[var(--surface-bg)]"
+              targetingMethod === "compiler"
+                ? activeView !== "compiler" && "[&_span]:font-bold"
+                : "ds-choice-card--hatched"
             )}
           />
           <DsChoiceCard
@@ -545,9 +545,9 @@ export function AdSetStep() {
             onClick={() => selectView("advanced")}
             className={cn(
               !canGoTo("advanced") && "pointer-events-none",
-              targetingMethod === "advanced" &&
-                activeView !== "advanced" &&
-                "font-semibold ring-2 ring-[var(--ui-accent)] ring-offset-2 ring-offset-[var(--surface-bg)]"
+              targetingMethod === "advanced"
+                ? activeView !== "advanced" && "[&_span]:font-bold"
+                : "ds-choice-card--hatched"
             )}
           />
           <DsChoiceCard
