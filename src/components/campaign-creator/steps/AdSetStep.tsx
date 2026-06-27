@@ -18,6 +18,7 @@ import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCr
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { useAdSetStepSubflow, type AdSetSection } from "@/components/campaign-creator/AdSetStepSubflowContext";
 import { FormField } from "@/components/ui/FormField";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { type FormSelectOption } from "@/components/ui/FormSelect";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, type ImportedAdConfig } from "@/lib/campaign-ad-import";
@@ -76,6 +77,7 @@ export function AdSetStep() {
   const [importOpen, setImportOpen] = useState(false);
   const [customAudiencesOpen, setCustomAudiencesOpen] = useState(false);
   const [savedAudienceModalOpen, setSavedAudienceModalOpen] = useState(false);
+  const [pendingMethodSwitch, setPendingMethodSwitch] = useState<"compiler" | "advanced" | null>(null);
   const { section: activeView, canGoTo, isSectionVisited, goTo } = useAdSetStepSubflow();
   const [commercialLocation, setCommercialLocation] = useState<{
     address: string | null;
@@ -343,6 +345,28 @@ export function AdSetStep() {
     }
   }
 
+  function applyMethodSwitch(method: "compiler" | "advanced") {
+    if (method === "advanced") {
+      patchAdset({ targetingMode: "advanced", personaId: null, zoneId: null });
+    } else {
+      patchAdset({
+        targetingMode: "compiler",
+        targeting: {
+          ...targeting,
+          locations: [],
+          ageMin: 18,
+          ageMax: 65,
+          gender: "all",
+          interests: [],
+          locales: [],
+          detailedGroups: [],
+          advantageAudience: false
+        }
+      });
+    }
+    goTo(method);
+  }
+
   function selectView(view: AdSetView) {
     // Schedule is not a targeting method — free navigation.
     if (view === "schedule") {
@@ -350,31 +374,19 @@ export function AdSetStep() {
       return;
     }
 
-    // Switching the targeting method disables and clears the other one.
-    if (view !== targetingMethod) {
-      if (view === "advanced") {
-        if (compilerHasData && !window.confirm(t("targetingSwitchConfirmToAdvanced"))) return;
-        patchAdset({ targetingMode: "advanced", personaId: null, zoneId: null });
-      } else {
-        if (advancedHasData && !window.confirm(t("targetingSwitchConfirmToCompiler"))) return;
-        patchAdset({
-          targetingMode: "compiler",
-          targeting: {
-            ...targeting,
-            locations: [],
-            ageMin: 18,
-            ageMax: 65,
-            gender: "all",
-            interests: [],
-            locales: [],
-            detailedGroups: [],
-            advantageAudience: false
-          }
-        });
-      }
+    // Same method already active — just navigate to it.
+    if (view === targetingMethod) {
+      goTo(view);
+      return;
     }
 
-    goTo(view);
+    // Switching method: confirm first if the other one already has data.
+    const otherHasData = view === "advanced" ? compilerHasData : advancedHasData;
+    if (otherHasData) {
+      setPendingMethodSwitch(view);
+      return;
+    }
+    applyMethodSwitch(view);
   }
 
   function selectAdset(id: string) {
@@ -513,7 +525,12 @@ export function AdSetStep() {
             muted={compilerLocked || (!isSectionVisited("compiler") && activeView !== "compiler")}
             visited={!compilerLocked && isSectionVisited("compiler") && activeView !== "compiler"}
             onClick={() => selectView("compiler")}
-            className={!canGoTo("compiler") ? "pointer-events-none" : undefined}
+            className={cn(
+              !canGoTo("compiler") && "pointer-events-none",
+              targetingMethod === "compiler" &&
+                activeView !== "compiler" &&
+                "font-semibold ring-2 ring-[var(--ui-accent)] ring-offset-2 ring-offset-[var(--surface-bg)]"
+            )}
           />
           <DsChoiceCard
             layout="inline"
@@ -526,7 +543,12 @@ export function AdSetStep() {
             muted={advancedLocked || (!isSectionVisited("advanced") && activeView !== "advanced")}
             visited={!advancedLocked && isSectionVisited("advanced") && activeView !== "advanced"}
             onClick={() => selectView("advanced")}
-            className={!canGoTo("advanced") ? "pointer-events-none" : undefined}
+            className={cn(
+              !canGoTo("advanced") && "pointer-events-none",
+              targetingMethod === "advanced" &&
+                activeView !== "advanced" &&
+                "font-semibold ring-2 ring-[var(--ui-accent)] ring-offset-2 ring-offset-[var(--surface-bg)]"
+            )}
           />
           <DsChoiceCard
             layout="inline"
@@ -657,6 +679,24 @@ export function AdSetStep() {
         onChangeInclude={(customAudienceIds) => patchTargeting({ customAudienceIds })}
         onChangeExclude={(excludedAudienceIds) => patchTargeting({ excludedAudienceIds })}
         disabled={clientRequired}
+      />
+
+      <ConfirmDialog
+        open={pendingMethodSwitch !== null}
+        title={t("targetingSwitchTitle")}
+        description={
+          pendingMethodSwitch === "advanced"
+            ? t("targetingSwitchConfirmToAdvanced")
+            : t("targetingSwitchConfirmToCompiler")
+        }
+        confirmLabel={t("targetingSwitchConfirmCta")}
+        cancelLabel={t("modalCancel")}
+        variant="danger"
+        onConfirm={() => {
+          if (pendingMethodSwitch) applyMethodSwitch(pendingMethodSwitch);
+          setPendingMethodSwitch(null);
+        }}
+        onCancel={() => setPendingMethodSwitch(null)}
       />
     </div>
   );
