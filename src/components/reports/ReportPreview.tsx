@@ -240,7 +240,7 @@ export function ReportPreview({
           <ul className="mt-4 space-y-2 border-t border-[var(--border-color)] pt-4">
             {data.aiAnalysis.keyFindings.map((item, i) => (
               <li key={i} className="text-sm text-[var(--text-dim)]">
-                <span className="mr-1.5 text-[var(--amber)]">•</span>
+                <span className="mr-1.5 text-[var(--ui-accent)]">•</span>
                 {item}
               </li>
             ))}
@@ -292,7 +292,7 @@ export function ReportPreview({
                 <YAxis tick={TICK} {...AXIS} width={48} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
                 <Legend wrapperStyle={{ fontSize: 11, color: "var(--text-dim)" }} />
-                <Bar dataKey="current" name={t("periodCurrent")} fill="var(--amber)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="current" name={t("periodCurrent")} fill="var(--ui-accent)" radius={[4, 4, 0, 0]} />
                 <Bar
                   dataKey="previous"
                   name={t("periodPrevious")}
@@ -443,7 +443,7 @@ export function ReportPreview({
         <div className="text-sm font-semibold text-[var(--text-main)]">{t("goalResultsTitle")}</div>
         <div className="report-pdf-grid-3 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.08)] p-4">
-            <div className="text-xs font-medium text-[var(--amber)]">{t("goalPrimary")}</div>
+            <div className="text-xs font-medium text-[var(--ui-accent)]">{t("goalPrimary")}</div>
             <div className="font-heading mt-1 text-2xl font-bold text-[var(--text-main)]">
               {formatMetricValue(data.client.goalMetric, goalValue, locale)}
             </div>
@@ -493,7 +493,7 @@ export function ReportPreview({
                   type="monotone"
                   dataKey="current"
                   name={t("periodCurrent")}
-                  stroke="var(--amber)"
+                  stroke="var(--ui-accent)"
                   strokeWidth={2}
                   dot={false}
                 />

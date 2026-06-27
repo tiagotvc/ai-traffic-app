@@ -166,7 +166,7 @@ export function ClientsHubClient() {
           return (
             <div
               key={c.id}
-              className={`ui-card p-4 transition hover:border-[var(--amber)]/40 hover:shadow-cardHover ${
+              className={`ui-card p-4 transition hover:border-[var(--ui-accent)]/40 hover:shadow-cardHover ${
                 selected[c.id] ? "ring-2 ring-[rgba(245,166,35,0.25)]" : ""
               }`}
             >

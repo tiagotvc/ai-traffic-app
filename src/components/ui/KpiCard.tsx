@@ -29,7 +29,7 @@ export function KpiCard({
             {icon ? (
               <div
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                style={{ background: "rgba(245,166,35,0.12)", color: "var(--amber)" }}
+                style={{ background: "var(--ui-accent-muted)", color: "var(--ui-accent)" }}
               >
                 {icon}
               </div>

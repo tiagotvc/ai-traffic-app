@@ -10,7 +10,7 @@ export type DsUnderlineTabAccent = "amber" | "brand" | "violet";
 
 /**
  * Sub-abas com underline — ex.: Plano | Limites | Faturamento dentro de Configurações.
- * `brand` / `violet` usam `--ui-accent` (âmbar no light, roxo no dark).
+ * `brand` / `violet` usam `--ui-accent` (roxo no light e dark).
  */
 export function DsUnderlineTabs<T extends string>({
   tabs,
@@ -28,7 +28,7 @@ export function DsUnderlineTabs<T extends string>({
   const useBrand = accent === "brand" || accent === "violet" || accent === "amber";
   const activeClass = useBrand
     ? "border-[var(--ui-accent)] text-[var(--ui-accent)]"
-    : "border-[var(--amber-bright)] text-[var(--amber)]";
+    : "border-[var(--ui-accent)] text-[var(--ui-accent)]";
 
   return (
     <div className={cn("flex flex-wrap gap-4", className)}>

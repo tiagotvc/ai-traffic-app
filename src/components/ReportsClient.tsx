@@ -380,7 +380,7 @@ export function ReportsClient() {
               style={{ background: "rgba(245,166,35,0.12)" }}
               aria-hidden
             >
-              <BarChart3 size={22} className="text-[var(--amber)]" />
+              <BarChart3 size={22} className="text-[var(--ui-accent)]" />
             </div>
             <h2 className="mt-3 text-lg font-semibold text-[var(--text-main)]">{t("emptyPreviewTitle")}</h2>
             <p className="mt-2 max-w-md text-sm text-[var(--text-dim)]">{t("emptyPreviewHint")}</p>

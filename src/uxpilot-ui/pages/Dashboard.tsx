@@ -42,7 +42,7 @@ export default function Dashboard() {
               className="tab-transition px-4 py-1.5 rounded-lg text-xs font-heading font-semibold border"
               style={
                 !isEmptyState
-                  ? { background: "rgba(245,166,35,0.1)", borderColor: "rgba(245,166,35,0.4)", color: "var(--ui-accent)" }
+                  ? { background: "var(--ui-accent-muted)", borderColor: "var(--ui-accent-border-strong)", color: "var(--ui-accent)" }
                   : { background: "transparent", borderColor: "var(--border-color)", color: "var(--text-dimmer)" }
               }
             >

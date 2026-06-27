@@ -60,7 +60,7 @@ export function MetaOnboardingClient() {
 
         {phase === "discovering" ? (
           <div className="mt-6 flex items-center gap-3 text-sm text-[var(--text-dim)]">
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--amber-bright)] border-t-transparent" />
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--ui-accent)] border-t-transparent" />
             {t("discovering")}
           </div>
         ) : null}
