@@ -69,30 +69,30 @@
   --brain-shelf-border: rgba(124, 58, 237, 0.18);
 
   /* Legacy aliases (keep for gradual migration) */
-  --brand: var(--amber-bright);
+  --brand: var(--violet-bright);
   --surface: var(--surface-bg);
   --card: var(--surface-card);
 
-  /* Theme-aware UI accent — amber in light, violet in dark */
-  --ui-accent: var(--amber-bright);
-  --ui-accent-muted: rgba(245, 166, 35, 0.12);
-  --ui-accent-muted-strong: rgba(245, 166, 35, 0.14);
-  --ui-accent-border: rgba(245, 166, 35, 0.35);
-  --ui-accent-border-strong: rgba(245, 166, 35, 0.45);
-  --ui-accent-hover: rgba(245, 166, 35, 0.08);
-  --ui-accent-glow: rgba(245, 166, 35, 0.18);
-  --ui-accent-glow-strong: rgba(245, 166, 35, 0.38);
-  --ui-accent-ring: rgba(245, 166, 35, 0.22);
+  /* Theme-aware UI accent — violet in light and dark (amber reserved for warnings) */
+  --ui-accent: var(--violet-bright);
+  --ui-accent-muted: rgba(124, 58, 237, 0.1);
+  --ui-accent-muted-strong: rgba(124, 58, 237, 0.14);
+  --ui-accent-border: rgba(124, 58, 237, 0.32);
+  --ui-accent-border-strong: rgba(124, 58, 237, 0.42);
+  --ui-accent-hover: rgba(124, 58, 237, 0.06);
+  --ui-accent-glow: rgba(124, 58, 237, 0.16);
+  --ui-accent-glow-strong: rgba(124, 58, 237, 0.32);
+  --ui-accent-ring: rgba(124, 58, 237, 0.2);
   --ui-accent-gradient: radial-gradient(
     circle,
-    rgba(245, 166, 35, 0.38) 0%,
-    rgba(245, 166, 35, 0.12) 45%,
+    rgba(124, 58, 237, 0.32) 0%,
+    rgba(124, 58, 237, 0.1) 45%,
     transparent 72%
   );
-  --ui-accent-btn-from: var(--amber-bright);
-  --ui-accent-btn-to: #e8920d;
-  --ui-accent-btn-text: #0f1419;
-  --ui-accent-btn-shadow: rgba(245, 166, 35, 0.22);
+  --ui-accent-btn-from: var(--violet);
+  --ui-accent-btn-to: var(--violet-bright);
+  --ui-accent-btn-text: #ffffff;
+  --ui-accent-btn-shadow: rgba(124, 58, 237, 0.24);
 }
 
 [data-theme="dark"] {
@@ -218,11 +218,26 @@
   --chart-frame-bg: rgba(248, 250, 252, 0.75);
   --chart-frame-border: rgba(148, 163, 184, 0.22);
 
-  --ui-accent: var(--amber-bright);
-  --ui-accent-btn-from: var(--amber-bright);
-  --ui-accent-btn-to: #e8920d;
-  --ui-accent-btn-text: #0f1419;
-  --ui-accent-btn-shadow: rgba(245, 166, 35, 0.22);
+  --brand: var(--violet-bright);
+  --ui-accent: var(--violet-bright);
+  --ui-accent-muted: rgba(124, 58, 237, 0.1);
+  --ui-accent-muted-strong: rgba(124, 58, 237, 0.14);
+  --ui-accent-border: rgba(124, 58, 237, 0.32);
+  --ui-accent-border-strong: rgba(124, 58, 237, 0.42);
+  --ui-accent-hover: rgba(124, 58, 237, 0.06);
+  --ui-accent-glow: rgba(124, 58, 237, 0.16);
+  --ui-accent-glow-strong: rgba(124, 58, 237, 0.32);
+  --ui-accent-ring: rgba(124, 58, 237, 0.2);
+  --ui-accent-gradient: radial-gradient(
+    circle,
+    rgba(124, 58, 237, 0.32) 0%,
+    rgba(124, 58, 237, 0.1) 45%,
+    transparent 72%
+  );
+  --ui-accent-btn-from: var(--violet);
+  --ui-accent-btn-to: var(--violet-bright);
+  --ui-accent-btn-text: #ffffff;
+  --ui-accent-btn-shadow: rgba(124, 58, 237, 0.24);
 }
 
 html {
@@ -1450,26 +1465,17 @@ h6,
     @apply w-auto shrink-0;
   }
 
-  /* Learnings feed — amber in light, violet in dark (matches --ui-accent theme) */
+  /* Learnings feed — uses global --ui-accent */
   .ui-alert-learnings {
     @apply flex items-center gap-3 rounded-xl px-4 py-3 text-sm;
-    border: 1px solid rgba(245, 166, 35, 0.2);
-    background: rgba(245, 166, 35, 0.07);
+    border: 1px solid var(--ui-accent-border);
+    background: var(--ui-accent-muted);
     color: var(--text-dim);
-  }
-
-  [data-theme="dark"] .ui-alert-learnings {
-    border-color: rgba(124, 58, 237, 0.22);
-    background: rgba(124, 58, 237, 0.07);
   }
 
   .ui-alert-learnings__icon {
     @apply h-5 w-5 shrink-0;
-    color: var(--amber-bright);
-  }
-
-  [data-theme="dark"] .ui-alert-learnings__icon {
-    color: var(--violet-bright);
+    color: var(--ui-accent);
   }
 
   .ui-alert-danger {
@@ -1935,22 +1941,9 @@ h6,
     --creator-card-border: rgba(15, 23, 42, 0.11);
   }
 
-  /* Light mode — purple accent; inactive stepper/choice cards use muted purple */
+  /* Light mode — elevated card surfaces; inactive stepper/choice cards use muted purple */
   :root:not([data-theme="dark"]) [data-campaign-creator-shell],
   [data-theme="light"] [data-campaign-creator-shell] {
-    --ui-accent: var(--violet-bright);
-    --ui-accent-muted: rgba(124, 58, 237, 0.1);
-    --ui-accent-muted-strong: rgba(124, 58, 237, 0.14);
-    --ui-accent-border: rgba(124, 58, 237, 0.32);
-    --ui-accent-border-strong: rgba(124, 58, 237, 0.42);
-    --ui-accent-hover: rgba(124, 58, 237, 0.06);
-    --ui-accent-glow: rgba(124, 58, 237, 0.16);
-    --ui-accent-glow-strong: rgba(124, 58, 237, 0.32);
-    --ui-accent-ring: rgba(124, 58, 237, 0.2);
-    --ui-accent-btn-from: var(--violet);
-    --ui-accent-btn-to: var(--violet-bright);
-    --ui-accent-btn-text: #ffffff;
-    --ui-accent-btn-shadow: rgba(124, 58, 237, 0.24);
     --creator-card-bg: #ffffff;
     --creator-card-bg-inset: #e8edf3;
     --creator-card-border: rgba(15, 23, 42, 0.12);

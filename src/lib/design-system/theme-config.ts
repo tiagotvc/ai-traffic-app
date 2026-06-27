@@ -58,12 +58,12 @@ export const DEFAULT_LIGHT_PALETTE: ThemePalette = {
   textDim: "#475569",
   textDimmer: "#64748b",
   borderColor: "rgba(15, 23, 42, 0.08)",
-  uiAccent: "#f5a623",
-  uiAccentMuted: "rgba(245, 166, 35, 0.12)",
-  uiAccentBorder: "rgba(245, 166, 35, 0.35)",
-  uiAccentBtnFrom: "#f5a623",
-  uiAccentBtnTo: "#e8920d",
-  uiAccentBtnText: "#0f1419",
+  uiAccent: "#7c3aed",
+  uiAccentMuted: "rgba(124, 58, 237, 0.1)",
+  uiAccentBorder: "rgba(124, 58, 237, 0.32)",
+  uiAccentBtnFrom: "#4f46e5",
+  uiAccentBtnTo: "#7c3aed",
+  uiAccentBtnText: "#ffffff",
   brandPrimary: "#f5a623",
   brandSecondary: "#7c3aed"
 };
