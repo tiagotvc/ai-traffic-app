@@ -50,6 +50,22 @@ export function AdSetStep() {
   const adset = getActiveAdset(payload);
   const targeting = adset.targeting;
   const clientRequired = !payload.clientSlug;
+
+  // Mutual exclusivity: Persona+Zone (compiler) and Advanced segmentation cannot be
+  // used together. Whichever method has data "locks" the other.
+  const targetingMethod: "compiler" | "advanced" =
+    adset.targetingMode === "advanced" ? "advanced" : "compiler";
+  const compilerHasData = !!(adset.personaId || adset.zoneId);
+  const advancedHasData =
+    targeting.locations.length > 0 ||
+    targeting.interests.length > 0 ||
+    targeting.detailedGroups.length > 0 ||
+    targeting.locales.length > 0 ||
+    targeting.gender !== "all" ||
+    targeting.ageMin !== 18 ||
+    targeting.ageMax !== 65;
+  const compilerLocked = targetingMethod === "advanced" && advancedHasData;
+  const advancedLocked = targetingMethod === "compiler" && compilerHasData;
   const dynamicCreativeLockedByReuse = payload.ads.some(
     (ad) =>
       usesReusedMetaCreative(ad) &&
@@ -328,9 +344,37 @@ export function AdSetStep() {
   }
 
   function selectView(view: AdSetView) {
+    // Schedule is not a targeting method — free navigation.
+    if (view === "schedule") {
+      goTo("schedule");
+      return;
+    }
+
+    // Switching the targeting method disables and clears the other one.
+    if (view !== targetingMethod) {
+      if (view === "advanced") {
+        if (compilerHasData && !window.confirm(t("targetingSwitchConfirmToAdvanced"))) return;
+        patchAdset({ targetingMode: "advanced", personaId: null, zoneId: null });
+      } else {
+        if (advancedHasData && !window.confirm(t("targetingSwitchConfirmToCompiler"))) return;
+        patchAdset({
+          targetingMode: "compiler",
+          targeting: {
+            ...targeting,
+            locations: [],
+            ageMin: 18,
+            ageMax: 65,
+            gender: "all",
+            interests: [],
+            locales: [],
+            detailedGroups: [],
+            advantageAudience: false
+          }
+        });
+      }
+    }
+
     goTo(view);
-    if (view === "compiler") patchAdset({ targetingMode: "compiler" });
-    else if (view === "advanced") patchAdset({ targetingMode: "advanced" });
   }
 
   function selectAdset(id: string) {
@@ -461,22 +505,26 @@ export function AdSetStep() {
           <DsChoiceCard
             layout="inline"
             title={t("targetingMode_compiler")}
-            description={t("targetingMode_compiler_hint")}
+            description={
+              compilerLocked ? t("targetingMethodLockedByAdvanced") : t("targetingMode_compiler_hint")
+            }
             icon={<Users size={16} />}
             accent={activeView === "compiler"}
-            muted={!isSectionVisited("compiler") && activeView !== "compiler"}
-            visited={isSectionVisited("compiler") && activeView !== "compiler"}
+            muted={compilerLocked || (!isSectionVisited("compiler") && activeView !== "compiler")}
+            visited={!compilerLocked && isSectionVisited("compiler") && activeView !== "compiler"}
             onClick={() => selectView("compiler")}
             className={!canGoTo("compiler") ? "pointer-events-none" : undefined}
           />
           <DsChoiceCard
             layout="inline"
             title={t("targetingMode_advanced")}
-            description={t("targetingMode_advanced_hint")}
+            description={
+              advancedLocked ? t("targetingMethodLockedByCompiler") : t("targetingMode_advanced_hint")
+            }
             icon={<SlidersHorizontal size={16} />}
             accent={activeView === "advanced"}
-            muted={!isSectionVisited("advanced") && activeView !== "advanced"}
-            visited={isSectionVisited("advanced") && activeView !== "advanced"}
+            muted={advancedLocked || (!isSectionVisited("advanced") && activeView !== "advanced")}
+            visited={!advancedLocked && isSectionVisited("advanced") && activeView !== "advanced"}
             onClick={() => selectView("advanced")}
             className={!canGoTo("advanced") ? "pointer-events-none" : undefined}
           />
