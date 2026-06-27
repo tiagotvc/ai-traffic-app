@@ -1,12 +1,19 @@
 "use client";
 
-import { Sparkles, Target, Users } from "lucide-react";
+import type { ReactNode } from "react";
+import { AlertTriangle, Eye, Sparkles, Target, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
+import type { DraftTargeting } from "@/lib/campaign-draft";
+import {
+  computeDraftTargetingAlerts,
+  computeTargetingBreadth,
+  countDraftTargetingSegments,
+  summarizeDraftLocations,
+  type TargetingBreadth
+} from "@/lib/campaign-targeting-insights";
 import { cn } from "@/lib/cn";
-
-type Breadth = "narrow" | "balanced" | "broad";
 
 type Props = {
   ageMin: number;
@@ -15,17 +22,23 @@ type Props = {
   segmentCount?: number;
   validSegmentCount?: number;
   aiInsightSummary?: string | null;
+  /** When set, shows preview + alerts cards from live draft targeting. */
+  targeting?: DraftTargeting;
+  layout?: "grid" | "stack";
+  showPreview?: boolean;
+  showAlerts?: boolean;
+  showAiInsignia?: boolean;
+  locationLabel?: string | null;
 };
 
-function computeBreadth(ageMin: number, ageMax: number, segmentCount: number): Breadth {
-  const ageSpan = Math.max(0, ageMax - ageMin);
-  if (ageSpan >= 30 || segmentCount <= 2) return "broad";
-  if (ageSpan <= 14 && segmentCount >= 5) return "narrow";
-  return "balanced";
-}
-
-function BreadthGauge({ breadth, t }: { breadth: Breadth; t: ReturnType<typeof useTranslations<"audiences">> }) {
-  const positions: Record<Breadth, number> = { narrow: 18, balanced: 50, broad: 82 };
+function BreadthGauge({
+  breadth,
+  t
+}: {
+  breadth: TargetingBreadth;
+  t: ReturnType<typeof useTranslations<"audiences">>;
+}) {
+  const positions: Record<TargetingBreadth, number> = { narrow: 18, balanced: 50, broad: 82 };
   const label =
     breadth === "narrow"
       ? t("audienceInsightsBreadthNarrow")
@@ -36,7 +49,7 @@ function BreadthGauge({ breadth, t }: { breadth: Breadth; t: ReturnType<typeof u
   return (
     <div className="space-y-2">
       <div className="relative h-2 overflow-hidden rounded-full bg-[var(--surface-bg)]">
-        <div className="absolute inset-y-0 left-0 w-1/3 rounded-l-full bg-emerald-200/80" />
+        <div className="absolute inset-y-0 left-0 w-1/3 rounded-l-full bg-emerald-300/90" />
         <div className="absolute inset-y-0 left-1/3 w-1/3 bg-amber-200/80" />
         <div className="absolute inset-y-0 right-0 w-1/3 rounded-r-full bg-sky-200/80" />
         <div
@@ -55,18 +68,46 @@ function BreadthGauge({ breadth, t }: { breadth: Breadth; t: ReturnType<typeof u
   );
 }
 
+function InsightCard({
+  children,
+  className
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3.5 shadow-sm",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function AudienceCreationInsightsPanel({
   ageMin,
   ageMax,
   gender,
   segmentCount = 0,
   validSegmentCount,
-  aiInsightSummary
+  aiInsightSummary,
+  targeting,
+  layout = "grid",
+  showPreview = false,
+  showAlerts = false,
+  showAiInsignia = true,
+  locationLabel
 }: Props) {
   const t = useTranslations("audiences");
   const showAiInsightsPreview = usePlatformFeature("audiences.ai-insights-preview");
-  const breadth = computeBreadth(ageMin, ageMax, segmentCount);
-  const validatedCount = validSegmentCount ?? segmentCount;
+  const effectiveSegmentCount = targeting ? countDraftTargetingSegments(targeting) : segmentCount;
+  const breadth = computeTargetingBreadth(ageMin, ageMax, effectiveSegmentCount, targeting);
+  const validatedCount = validSegmentCount ?? effectiveSegmentCount;
+  const resolvedLocation =
+    locationLabel?.trim() || (targeting ? summarizeDraftLocations(targeting) : null);
 
   const genderLabel =
     gender === "male"
@@ -75,12 +116,27 @@ export function AudienceCreationInsightsPanel({
         ? t("personaGenderFemale")
         : t("personaGenderAll");
 
+  const alerts =
+    showAlerts && targeting
+      ? computeDraftTargetingAlerts(targeting, {
+          ageWide: t("audienceInsightsAlertAgeWide"),
+          radiusWide: (v) => t("audienceInsightsAlertRadiusWide", v),
+          noLocation: t("audienceInsightsAlertNoLocation"),
+          noInterests: t("audienceInsightsAlertNoInterests")
+        })
+      : [];
+
+  const rootClass =
+    layout === "stack"
+      ? "campaign-creator-insights-stack flex flex-col gap-3"
+      : "grid gap-3 sm:grid-cols-2";
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-4 shadow-sm">
+    <div className={rootClass}>
+      <InsightCard>
         <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
-            <Users size={16} strokeWidth={2.25} />
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+            <Users size={15} strokeWidth={2.25} />
           </span>
           <div>
             <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
@@ -92,20 +148,20 @@ export function AudienceCreationInsightsPanel({
 
         <BreadthGauge breadth={breadth} t={t} />
 
-        <dl className="mt-4 space-y-2 text-xs">
+        <dl className="mt-3 space-y-1.5 text-xs">
           <div className="flex items-center justify-between gap-2">
             <dt className="text-[var(--text-dim)]">{t("personaDemographics")}</dt>
             <dd className="font-medium text-[var(--text-main)]">
               {ageMin}–{ageMax} · {genderLabel}
             </dd>
           </div>
-          {segmentCount > 0 ? (
+          {effectiveSegmentCount > 0 ? (
             <div className="flex items-center justify-between gap-2">
               <dt className="text-[var(--text-dim)]">{t("personaTargetingSegments")}</dt>
               <dd className="font-medium text-[var(--text-main)]">
                 {t("audienceInsightsSegmentCount", {
                   valid: validatedCount,
-                  total: segmentCount
+                  total: effectiveSegmentCount
                 })}
               </dd>
             </div>
@@ -113,26 +169,15 @@ export function AudienceCreationInsightsPanel({
             <p className="text-[10px] text-[var(--text-dimmer)]">{t("audienceInsightsNoSegmentsYet")}</p>
           )}
         </dl>
-      </div>
+      </InsightCard>
 
-      <div
-        className={cn(
-          "rounded-xl border p-4 shadow-sm",
-          showAiInsightsPreview
-            ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)]/40"
-            : "border-dashed border-[var(--border-color)] bg-[var(--surface-bg)]"
-        )}
+      {showAiInsignia && showAiInsightsPreview ? (
+      <InsightCard
+        className="border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)]/40"
       >
         <div className="mb-3 flex items-center gap-2">
-          <span
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-lg",
-              showAiInsightsPreview
-                ? "bg-[var(--ui-accent)] text-white"
-                : "bg-[var(--surface-card)] text-[var(--text-dimmer)]"
-            )}
-          >
-            <Sparkles size={16} strokeWidth={2.25} />
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--ui-accent)] text-white">
+            <Sparkles size={15} strokeWidth={2.25} />
           </span>
           <div>
             <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
@@ -145,26 +190,90 @@ export function AudienceCreationInsightsPanel({
           </div>
         </div>
 
-        {showAiInsightsPreview && aiInsightSummary?.trim() ? (
+        {aiInsightSummary?.trim() ? (
           <div className="space-y-2">
             <p className="text-xs leading-relaxed text-[var(--text-dim)]">{aiInsightSummary}</p>
             <p className="text-[10px] text-[var(--text-dimmer)]">{t("audienceInsightsAiDisclaimer")}</p>
           </div>
-        ) : showAiInsightsPreview ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-4 text-center">
-            <Target size={20} className="text-[var(--text-dimmer)]" strokeWidth={1.75} />
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2 py-3 text-center">
+            <Target size={18} className="text-[var(--text-dimmer)]" strokeWidth={1.75} />
             <p className="text-xs text-[var(--text-dim)]">{t("audienceInsightsAiPreviewEmpty")}</p>
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
-            <Sparkles size={20} className="text-[var(--text-dimmer)]" strokeWidth={1.75} />
-            <p className="text-xs font-medium text-[var(--text-dim)]">{t("audienceInsightsAiComingSoon")}</p>
-            <p className="max-w-[14rem] text-[10px] text-[var(--text-dimmer)]">
-              {t("audienceInsightsAiComingSoonHint")}
+        )}
+      </InsightCard>
+      ) : null}
+
+      {showPreview && targeting ? (
+        <InsightCard>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--surface-bg)] text-[var(--ui-accent)]">
+              <Eye size={15} strokeWidth={2.25} />
+            </span>
+            <div>
+              <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
+                {t("audienceInsightsPreviewTitle")}
+              </p>
+              <p className="text-[10px] text-[var(--text-dimmer)]">{t("audienceInsightsPreviewHint")}</p>
+            </div>
+          </div>
+          <dl className="space-y-1.5 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-[var(--text-dim)]">{t("personaDemographics")}</dt>
+              <dd className="font-medium text-[var(--text-main)]">
+                {targeting.ageMin}–{targeting.ageMax} ·{" "}
+                {targeting.gender === "male"
+                  ? t("personaGenderMale")
+                  : targeting.gender === "female"
+                    ? t("personaGenderFemale")
+                    : t("personaGenderAll")}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-[var(--text-dim)]">{t("audienceInsightsPreviewLocation")}</dt>
+              <dd className="max-w-[55%] truncate text-right font-medium text-[var(--text-main)]">
+                {resolvedLocation ?? t("audienceInsightsPreviewLocationEmpty")}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <dt className="text-[var(--text-dim)]">{t("audienceInsightsPreviewInterests")}</dt>
+              <dd className="font-medium text-[var(--text-main)]">
+                {t("audienceInsightsPreviewInterestsCount", {
+                  count: countDraftTargetingSegments(targeting)
+                })}
+              </dd>
+            </div>
+          </dl>
+        </InsightCard>
+      ) : null}
+
+      {showAlerts && targeting ? (
+        <InsightCard>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+              <AlertTriangle size={15} strokeWidth={2.25} />
+            </span>
+            <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
+              {t("audienceInsightsAlertsTitle")}
             </p>
           </div>
-        )}
-      </div>
+          {alerts.length ? (
+            <ul className="space-y-1.5">
+              {alerts.map((alert) => (
+                <li
+                  key={alert}
+                  className="flex items-start gap-2 rounded-lg bg-amber-50 px-2.5 py-2 text-[11px] leading-snug text-amber-900"
+                >
+                  <AlertTriangle size={12} className="mt-0.5 shrink-0" strokeWidth={2.25} />
+                  <span>{alert}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-[var(--text-dim)]">{t("audienceInsightsAlertsClear")}</p>
+          )}
+        </InsightCard>
+      ) : null}
     </div>
   );
 }

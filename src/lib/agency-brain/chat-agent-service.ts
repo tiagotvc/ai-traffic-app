@@ -7,7 +7,7 @@ import { slugify } from "@/lib/app-context";
 import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-context";
 import { loadClientSignals } from "@/lib/agency-brain/client-signals";
 import { signalsToActionDrafts } from "@/lib/agency-brain/signal-mappers";
-import { geminiGenerateJson } from "@/lib/gemini";
+import { aiGenerateJson } from "@/lib/ai/generate";
 import type { ActionSuggestionType } from "@/lib/action-suggestions/types";
 
 const ProposalSchema = z.object({
@@ -128,12 +128,21 @@ export async function generateChatAgentResponse(args: {
     `Pergunta: ${args.message}`
   ].join("\n");
 
-  const { data, ...modelMeta } = await geminiGenerateJson({
-    apiKey: args.apiKey,
+  // Roteador de IA: tarefa de propor ações = acertividade (tende a Claude quando
+  // habilitado; cai para Gemini se a flag/chave Claude não estiver disponível).
+  const { data, meta } = await aiGenerateJson({
+    task: { kind: "agent_proposal", complexity: "medium", label: "brain.chat.proposals" },
     prompt,
     schema: ChatAgentResponseSchema,
-    modelChain: args.modelChain
+    geminiApiKey: args.apiKey
   });
+  const modelMeta = {
+    modelRequested: `${meta.provider}:${meta.model}`,
+    modelUsed: `${meta.provider}:${meta.model}`,
+    fallbackFrom: meta.fellBackFrom
+      ? `${meta.fellBackFrom.provider}:${meta.fellBackFrom.model}`
+      : undefined
+  };
 
   let proposals: ChatAgentProposal[] = data.proposals.map((p, i) => ({
     ...p,

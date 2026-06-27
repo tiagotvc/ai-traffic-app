@@ -19,8 +19,18 @@
 
 - **Plano/billing (`PlanLimits`):** o que cada plano inclui (upsell). Continua existindo.
 - **AI-credits flags** (`creditsV2Enabled`, pesos): seção separada na mesma aba, sistema próprio.
-- **MCP:** **não existe no código** — é só recomendação de roadmap em
-  [cerebro-da-agencia/plano-acao-vs-redtrack.md](./cerebro-da-agencia/plano-acao-vs-redtrack.md).
+
+## Módulos registrados (2026-06-27)
+
+Além de **Brain**, **Campanhas** e **Públicos**, o registry agora tem:
+
+- **`ai`** — Inteligência Artificial: `ai.router` (roteador Gemini+Claude — OFF = só Gemini),
+  `ai.gemini`, `ai.claude`. Aplicado em [`src/lib/ai/generate.ts`](../src/lib/ai/generate.ts)
+  via `isPlatformFeatureEnabled`. Ver [ai-router](./ai-router/README.md).
+- **`brain.mcp`** — servidor MCP sobre o Brain. ✅ **Implementado (read-only)** — ver
+  [mcp](./mcp/README.md). (+ `brain.mcp.write` — escrita, **pendente** P1.4.)
+- **`meta`** — `meta.capi` (Conversions API) e `meta.attribution` (janelas). **Flags criadas;
+  implementação pendente** (P0/P2 do plano).
 
 ## Arquitetura
 

@@ -9,6 +9,7 @@ export type AiCreditKind =
   | "recommendations"
   | "audience_suggestions"
   | "campaign_generate"
+  | "creator_brain"
   | "generic";
 
 export type AiCreditWeights = Record<AiCreditKind, number>;

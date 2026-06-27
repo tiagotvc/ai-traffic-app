@@ -29,5 +29,5 @@ export function useAiCreditCost(kind: AiCreditKind): number {
     };
   }, [kind]);
 
-  return cost;
+  return Math.max(1, cost);
 }

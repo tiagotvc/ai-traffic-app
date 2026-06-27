@@ -78,6 +78,7 @@ export type MetaCampaign = {
   status?: string;
   objective?: string;
   daily_budget?: string;
+  buying_type?: string;
 };
 
 export type MetaAdSet = {
@@ -1179,7 +1180,7 @@ export async function fetchCampaigns(accessToken: string, adAccountId: string): 
 }
 
 export async function fetchCampaign(accessToken: string, campaignId: string): Promise<MetaCampaign> {
-  const fields = ["id", "name", "status", "objective", "daily_budget"].join(",");
+  const fields = ["id", "name", "status", "objective", "daily_budget", "buying_type"].join(",");
   return metaFetch<MetaCampaign>(`/${encodeURIComponent(campaignId)}?fields=${encodeURIComponent(fields)}`, accessToken);
 }
 

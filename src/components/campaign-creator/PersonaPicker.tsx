@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Pencil, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { PersonaSummary } from "@/components/audiences/PersonasLibraryClient";
-import { PersonaDetailPanel } from "@/components/audiences/PersonaDetailPanel";
+import { formatPersonaGender, PersonaDetailPanel } from "@/components/audiences/PersonaDetailPanel";
 import { AiPersonaForm } from "@/components/audiences/create/AiPersonaForm";
 import { FormSelect } from "@/components/ui/FormSelect";
 import type { PersonaTargetingIssue, PersonaTargetingSummary } from "@/lib/persona-targeting-types";
+import { formatPersonaCardSummary } from "@/lib/adset-display-summary";
 import { PersonaMetaValidationPanel } from "@/components/campaign-creator/PersonaMetaValidationPanel";
 import { PersonaTargetingRepairModal } from "@/components/campaign-creator/PersonaTargetingRepairModal";
 import { DsModal } from "@/design-system/components/DsModal";
@@ -18,6 +19,8 @@ type Props = {
   clientSlug: string;
   adAccountId: string;
   disabled?: boolean;
+  variant?: "default" | "adset";
+  hideTitle?: boolean;
   onChange: (personaId: string | null) => void;
 };
 
@@ -38,9 +41,18 @@ function revalidatePersona(
     .catch(() => ({ issue: null, summary: null }));
 }
 
-export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChange }: Props) {
+export function PersonaPicker({
+  value,
+  clientSlug,
+  adAccountId,
+  disabled,
+  variant = "default",
+  hideTitle,
+  onChange
+}: Props) {
   const t = useTranslations("campaignCreator");
   const tAud = useTranslations("audiences");
+  const isAdset = variant === "adset";
   const [personas, setPersonas] = useState<PersonaSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -104,32 +116,44 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
     }
   }
 
+  const selectedCardSummary =
+    selected &&
+    formatPersonaCardSummary(
+      selected,
+      formatPersonaGender(selected.gender, tAud),
+      t("personaCardInterests")
+    );
+
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-[var(--text-main)]">{t("selectPersona")}</span>
-        <div className="flex shrink-0 items-center gap-2">
-          {selected ? (
+      {!isAdset ? (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-medium text-[var(--text-main)]">{t("selectPersona")}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            {selected ? (
+              <button
+                type="button"
+                className="ui-link text-xs"
+                disabled={disabled}
+                onClick={() => setShowEdit(true)}
+              >
+                {t("editPersona")}
+              </button>
+            ) : null}
             <button
               type="button"
-              className="ui-link text-xs"
+              className="ui-btn-secondary-accent inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium"
               disabled={disabled}
-              onClick={() => setShowEdit(true)}
+              onClick={() => setShowCreate(true)}
             >
-              {t("editPersona")}
+              <Sparkles size={11} />
+              {t("createPersonaWithAi")}
             </button>
-          ) : null}
-          <button
-            type="button"
-            className="ui-btn-secondary-accent inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium"
-            disabled={disabled}
-            onClick={() => setShowCreate(true)}
-          >
-            <Sparkles size={11} />
-            {t("createPersonaWithAi")}
-          </button>
+          </div>
         </div>
-      </div>
+      ) : hideTitle ? null : (
+        <span className="text-xs font-semibold text-[var(--text-main)]">{t("personaColumnLabel")}</span>
+      )}
 
       {loading ? (
         <p className="text-xs text-[var(--text-dim)]">{t("loading")}</p>
@@ -143,7 +167,30 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
         />
       )}
 
-      {selected?.description ? (
+      {selected && isAdset ? (
+        <div className="campaign-creator-adset-picker-card">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-[var(--text-main)]">{selected.name}</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-dim)]">
+                {selectedCardSummary}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="inline-flex shrink-0 rounded-md p-1.5 text-[var(--text-dim)] transition hover:bg-[var(--surface-card)] hover:text-[var(--ui-accent)]"
+              disabled={disabled}
+              onClick={() => setShowEdit(true)}
+              aria-label={t("editPersona")}
+              title={t("editPersona")}
+            >
+              <Pencil size={14} />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {!isAdset && selected?.description ? (
         <p className="text-xs text-[var(--text-dim)]">{selected.description}</p>
       ) : null}
 
@@ -167,6 +214,18 @@ export function PersonaPicker({ value, clientSlug, adAccountId, disabled, onChan
             {t("personaTargetingFixNow")}
           </button>
         </div>
+      ) : null}
+
+      {isAdset ? (
+        <button
+          type="button"
+          className="ui-btn-secondary-accent inline-flex w-full items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium"
+          disabled={disabled}
+          onClick={() => setShowCreate(true)}
+        >
+          <Sparkles size={13} />
+          {t("createPersonaWithAi")}
+        </button>
       ) : null}
 
       <PersonaTargetingRepairModal

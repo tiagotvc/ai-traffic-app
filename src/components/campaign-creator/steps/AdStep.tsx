@@ -10,6 +10,7 @@ import { MessageTemplateEditor } from "@/components/campaign-creator/MessageTemp
 import { MetaDynamicParamInput } from "@/components/campaign-creator/MetaDynamicParamInput";
 import { UtmBuilder } from "@/components/campaign-creator/UtmBuilder";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { useAdStepSubflow } from "@/components/campaign-creator/AdStepSubflowContext";
 import { FormField } from "@/components/ui/FormField";
 import { FormSelect, type FormSelectOption } from "@/components/ui/FormSelect";
 import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
@@ -23,8 +24,7 @@ import { adsetsWithReuseCreativeCompatibility, getActiveAd, getActiveAdset, defa
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
-
-type AdView = "setup" | "identity" | "creative" | "destination";
+import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
 
 export function AdStep() {
   const t = useTranslations("campaignCreator");
@@ -48,7 +48,7 @@ export function AdStep() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [identityUnlocked, setIdentityUnlocked] = useState(false);
   const [whatsappManualEntry, setWhatsappManualEntry] = useState(false);
-  const [activeView, setActiveView] = useState<AdView>("setup");
+  const { section: activeView, canGoTo, isSectionVisited, goTo } = useAdStepSubflow();
   const topRef = useRef<HTMLDivElement>(null);
   const showMetaAppDevelopmentNotice = usePlatformFeature("campaigns.meta-app-development-notice");
 
@@ -275,8 +275,8 @@ export function AdStep() {
   }
 
   return (
-    <div ref={topRef} className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 space-y-3 bg-[var(--surface-bg)]">
+    <div ref={topRef} className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
+      <div className="campaign-creator-step-sticky-header space-y-3">
       {clientRequired ? (
         <p className="ui-alert-warning px-3 py-2 text-xs text-amber-800">
           {t("selectClientFirst")}
@@ -300,23 +300,16 @@ export function AdStep() {
           <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("adStepHint")}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 lg:hidden">
-          <DsChoiceCard compact title={t("adSub_setup")} icon={<Settings size={16} />} accent={activeView === "setup"} onClick={() => setActiveView("setup")} />
-          <DsChoiceCard compact title={t("identitySection")} icon={<UserCircle size={16} />} accent={activeView === "identity"} onClick={() => setActiveView("identity")} />
-          <DsChoiceCard compact title={t("adSub_creative")} icon={<Image size={16} />} accent={activeView === "creative"} onClick={() => setActiveView("creative")} />
-          <DsChoiceCard compact title={t("destinationSection")} icon={<Link2 size={16} />} accent={activeView === "destination"} onClick={() => setActiveView("destination")} />
-        </div>
-
-        <div className="hidden gap-4 lg:grid lg:grid-cols-4">
-          <DsChoiceCard title={t("adSub_setup")} description={t("adSection_setup_hint")} icon={<Settings size={18} />} accent={activeView === "setup"} onClick={() => setActiveView("setup")} className="h-full" />
-          <DsChoiceCard title={t("identitySection")} description={t("adSection_identity_hint")} icon={<UserCircle size={18} />} accent={activeView === "identity"} onClick={() => setActiveView("identity")} className="h-full" />
-          <DsChoiceCard title={t("adSub_creative")} description={t("adSection_creative_hint")} icon={<Image size={18} />} accent={activeView === "creative"} onClick={() => setActiveView("creative")} className="h-full" />
-          <DsChoiceCard title={t("destinationSection")} description={t("adSection_destination_hint")} icon={<Link2 size={18} />} accent={activeView === "destination"} onClick={() => setActiveView("destination")} className="h-full" />
+        <div className="campaign-creator-choice-cards campaign-creator-choice-cards--4">
+          <DsChoiceCard layout="inline" title={t("adSub_setup")} description={t("adSection_setup_hint")} icon={<Settings size={16} />} accent={activeView === "setup"} muted={!isSectionVisited("setup") && activeView !== "setup"} visited={isSectionVisited("setup") && activeView !== "setup"} onClick={() => goTo("setup")} className={!canGoTo("setup") ? "pointer-events-none" : undefined} />
+          <DsChoiceCard layout="inline" title={t("identitySection")} description={t("adSection_identity_hint")} icon={<UserCircle size={16} />} accent={activeView === "identity"} muted={!isSectionVisited("identity") && activeView !== "identity"} visited={isSectionVisited("identity") && activeView !== "identity"} onClick={() => goTo("identity")} className={!canGoTo("identity") ? "pointer-events-none" : undefined} />
+          <DsChoiceCard layout="inline" title={t("adSub_creative")} description={t("adSection_creative_hint")} icon={<Image size={16} />} accent={activeView === "creative"} muted={!isSectionVisited("creative") && activeView !== "creative"} visited={isSectionVisited("creative") && activeView !== "creative"} onClick={() => goTo("creative")} className={!canGoTo("creative") ? "pointer-events-none" : undefined} />
+          <DsChoiceCard layout="inline" title={t("destinationSection")} description={t("adSection_destination_hint")} icon={<Link2 size={16} />} accent={activeView === "destination"} muted={!isSectionVisited("destination") && activeView !== "destination"} visited={isSectionVisited("destination") && activeView !== "destination"} onClick={() => goTo("destination")} className={!canGoTo("destination") ? "pointer-events-none" : undefined} />
         </div>
       </div>
 
-      <div className="campaign-creator-main-scroll min-h-0 flex-1 overflow-y-auto pt-4 pb-2">
-        <div className="campaign-creator-main-scroll__inner space-y-3">
+      <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pt-5 pb-2">
+        <div className="space-y-3">
 
       {activeView === "setup" ? (
         <>
@@ -889,6 +882,8 @@ export function AdStep() {
       </div>
       </>
       ) : null}
+
+      <CampaignCreatorUxMobileSummary />
 
         </div>
       </div>

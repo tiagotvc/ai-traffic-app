@@ -23,6 +23,7 @@ type Props = {
   /** When false, hides the placeholder row in the menu (no clear-to-empty). Default true. */
   clearable?: boolean;
   className?: string;
+  valueClassName?: string;
 };
 
 export function FilterSelectDropdown({
@@ -35,7 +36,8 @@ export function FilterSelectDropdown({
   disabled = false,
   menuPlacement = "bottom",
   clearable = true,
-  className
+  className,
+  valueClassName
 }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -72,7 +74,14 @@ export function FilterSelectDropdown({
         >
           {label}:
         </span>
-        <span className="max-w-[88px] truncate font-body text-sm sm:max-w-[140px]">{selectedLabel}</span>
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate font-body text-sm max-w-[88px] sm:max-w-[140px]",
+            valueClassName
+          )}
+        >
+          {selectedLabel}
+        </span>
         <ChevronDown
           size={14}
           className={cn("ml-auto shrink-0 transition-transform", open && "rotate-180")}

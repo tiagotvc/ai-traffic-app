@@ -10,15 +10,18 @@ import { CampaignCreatorStepPanel } from "@/components/campaign-creator/Campaign
 import { CampaignCreatorTree } from "@/components/campaign-creator/CampaignCreatorTree";
 import {
   CampaignCreatorUxHeader,
-  CampaignCreatorUxMobileStatusToast,
+  CampaignCreatorUxStatusToast,
   CampaignCreatorUxNav,
-  CampaignCreatorUxStepper
+  CampaignCreatorUxStepperRow
 } from "@/uxpilot-ui/adapters/CampaignCreatorUxChrome";
 import { CampaignCreatorUxSidebar } from "@/uxpilot-ui/adapters/CampaignCreatorUxSidebar";
 import {
   CampaignDraftProvider,
   useCampaignDraft
 } from "@/components/campaign-creator/CampaignDraftContext";
+import { CampaignStepSubflowProvider } from "@/components/campaign-creator/CampaignStepSubflowContext";
+import { AdSetStepSubflowProvider } from "@/components/campaign-creator/AdSetStepSubflowContext";
+import { AdStepSubflowProvider } from "@/components/campaign-creator/AdStepSubflowContext";
 import { ObjectiveSelectModal } from "@/components/campaign-creator/ObjectiveSelectModal";
 import type { PersonaTargetingIssue } from "@/lib/persona-targeting-types";
 import { PersonaTargetingRepairModal } from "@/components/campaign-creator/PersonaTargetingRepairModal";
@@ -29,7 +32,6 @@ import {
   startMetaPublishWaitCycle,
   type CampaignPublishProgressStep
 } from "@/lib/campaign-publish-progress";
-import { ObjectiveStep } from "@/components/campaign-creator/steps/ObjectiveStep";
 import { AdSetStep } from "@/components/campaign-creator/steps/AdSetStep";
 import { AdStep } from "@/components/campaign-creator/steps/AdStep";
 import { CampaignStep } from "@/components/campaign-creator/steps/CampaignStep";
@@ -494,63 +496,46 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
   );
 
   if (variant === "uxpilot") {
-    const onObjectivePhase = !addAdMode && !objectiveChosen;
     return (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: "var(--surface-bg)" }}>
-          <CampaignCreatorUxHeader onObjectivePhase={onObjectivePhase} />
+          <CampaignCreatorUxHeader />
+          <CampaignCreatorUxStatusToast />
           <div
-            className={
-              onObjectivePhase
-                ? "grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr_auto] overflow-hidden px-4 lg:pl-8 lg:pr-4"
-                : "grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr_auto] gap-x-8 overflow-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]"
-            }
+            className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr] gap-x-8 overflow-x-visible overflow-y-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]"
           >
-            <div className="campaign-creator-stepper-row col-start-1 row-start-1 flex shrink-0 items-start border-b border-[var(--border-color)] py-2 lg:py-1.5">
-              <div className="min-w-0 flex-1 overflow-x-auto">
-                <CampaignCreatorUxStepper onObjectivePhase={onObjectivePhase} />
-              </div>
-            </div>
+            <CampaignCreatorUxStepperRow onPublish={handlePublish} publishing={publishing} />
 
-            <main className="col-start-1 row-start-2 flex min-h-0 flex-col overflow-hidden py-3">
+            <main className="relative col-start-1 row-start-2 flex min-h-0 min-w-0 w-full flex-col overflow-x-visible overflow-y-hidden py-3">
               <div
                 className={
-                  !onObjectivePhase && (activeNode === "campaign" || activeNode === "adset")
-                    ? "campaign-creator-main-scroll flex min-h-0 flex-1 flex-col overflow-hidden"
-                    : "campaign-creator-main-scroll min-h-0 flex-1 overflow-y-auto"
+                  activeNode === "campaign" || activeNode === "adset" || activeNode === "ad"
+                    ? "campaign-creator-main-scroll flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-x-visible overflow-y-auto lg:overflow-y-hidden"
+                    : "campaign-creator-main-scroll min-h-0 min-w-0 w-full flex-1 overflow-y-auto"
                 }
               >
-                <div className="campaign-creator-main-scroll__inner flex min-h-0 flex-1 flex-col">
-                {onObjectivePhase ? (
-                  <div className="space-y-3">
-                    <ObjectiveStep />
-                  </div>
-                ) : (
-                  stepPanel
-                )}
+                <div className="campaign-creator-main-scroll__inner flex min-h-0 min-w-0 w-full flex-1 flex-col">
+                {stepPanel}
                 {publishErrorAlert}
                 {repairNoticeAlert}
                 </div>
               </div>
             </main>
 
-            <div className="col-start-1 row-start-3 -mx-4 lg:mx-0">
+            <aside className="campaign-creator-sidebar hidden min-h-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:block">
+              <div className="campaign-creator-sidebar__inner">
+                <CampaignCreatorUxSidebar />
+              </div>
+            </aside>
+          </div>
+
+          <div className="campaign-creator-footer-outer shrink-0 lg:hidden">
+            <div className="campaign-creator-footer-band">
               <CampaignCreatorUxNav
                 onPublish={handlePublish}
                 publishing={publishing}
-                onObjectivePhase={onObjectivePhase}
                 placement="footer"
               />
             </div>
-
-            <CampaignCreatorUxMobileStatusToast onObjectivePhase={onObjectivePhase} />
-
-            {!onObjectivePhase ? (
-              <aside className="campaign-creator-sidebar hidden min-h-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:block">
-                <div className="campaign-creator-sidebar__inner">
-                  <CampaignCreatorUxSidebar />
-                </div>
-              </aside>
-            ) : null}
           </div>
           {repairModal}
           <CampaignPublishOverlay open={publishing} step={publishProgressStep} />
@@ -628,7 +613,13 @@ export function CampaignCreatorClient({
       initialAddAdset={initialAddAdset}
       initialActiveNode={initialActiveNode}
     >
-      <CampaignCreatorInner variant={variant} />
+      <CampaignStepSubflowProvider>
+        <AdSetStepSubflowProvider>
+          <AdStepSubflowProvider>
+            <CampaignCreatorInner variant={variant} />
+          </AdStepSubflowProvider>
+        </AdSetStepSubflowProvider>
+      </CampaignStepSubflowProvider>
     </CampaignDraftProvider>
   );
 }

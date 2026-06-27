@@ -73,6 +73,31 @@ export function UxWizardStepContent({ children }: { children: ReactNode }) {
   return <div className="space-y-3">{children}</div>;
 }
 
+/** Campo select compacto: ícone + label + input, sem card/accordion. */
+export function WizardInlineSelectField({
+  icon,
+  label,
+  children,
+  className
+}: {
+  icon: ReactNode;
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-w-0 items-start gap-2.5", className)}>
+      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1 space-y-1">
+        <span className="block font-body text-[11px] font-medium text-[var(--text-dim)]">{label}</span>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /** Seção colapsável do wizard (details/summary). */
 export function WizardAccordionSection({
   title,
@@ -249,13 +274,18 @@ export function UxHorizontalStepper({
       {steps.map((s, i) => {
         const done = current > s.number;
         const active = current === s.number;
+        const future = !done && !active;
         const disabled = s.disabled ?? false;
         const isLast = i === steps.length - 1;
         return (
           <div key={s.number} className="ui-wizard-stepper__item">
             {!isLast ? (
               <div
-                className={cn("ui-wizard-stepper__line", done && "ui-wizard-stepper__line--done")}
+                className={cn(
+                  "ui-wizard-stepper__line",
+                  done && "ui-wizard-stepper__line--done",
+                  future && "ui-wizard-stepper__line--future"
+                )}
                 aria-hidden
               />
             ) : null}
@@ -263,13 +293,14 @@ export function UxHorizontalStepper({
               type="button"
               disabled={disabled}
               onClick={() => onStepClick(s.number)}
-              className="flex flex-col items-center disabled:cursor-not-allowed disabled:opacity-45"
+              className="flex flex-col items-center disabled:cursor-not-allowed"
             >
               <span
                 className={cn(
                   "ui-wizard-stepper__circle",
                   active && "ui-wizard-stepper__circle--active",
-                  done && "ui-wizard-stepper__circle--done"
+                  done && "ui-wizard-stepper__circle--done",
+                  future && "ui-wizard-stepper__circle--future"
                 )}
               >
                 {done ? <Check size={checkSize} strokeWidth={2.5} /> : s.number}
@@ -278,7 +309,8 @@ export function UxHorizontalStepper({
                 className={cn(
                   "ui-wizard-stepper__label max-w-[7.5rem] sm:max-w-[9rem]",
                   active && "ui-wizard-stepper__label--active",
-                  done && !active && "ui-wizard-stepper__label--done"
+                  done && !active && "ui-wizard-stepper__label--done",
+                  future && "ui-wizard-stepper__label--future"
                 )}
               >
                 {s.label}

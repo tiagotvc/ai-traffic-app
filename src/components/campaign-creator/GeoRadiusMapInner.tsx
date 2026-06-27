@@ -42,6 +42,17 @@ type Props = {
   selectedPin?: string | null;
 };
 
+function MapInvalidateSize() {
+  const map = useMap();
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => map.invalidateSize(), 0);
+    return () => window.clearTimeout(timer);
+  }, [map]);
+
+  return null;
+}
+
 function MapClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
   useMapEvents({
     click(e) {
@@ -192,6 +203,7 @@ export function GeoRadiusMapInner({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          <MapInvalidateSize />
           <MapClickHandler onPick={handleMapClick} />
           <MapFlyTo viewport={viewport} />
           <FitBoundsToPins pins={pins} disabled={!!viewport} />

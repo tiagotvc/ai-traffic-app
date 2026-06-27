@@ -2,10 +2,17 @@ import { getTranslations } from "next-intl/server";
 
 import { BillingPlansClient } from "@/components/billing/BillingPlansClient";
 import { LandingCapabilities } from "@/components/marketing/LandingCapabilities";
-import { LandingCta, LandingMission } from "@/components/marketing/LandingMission";
+import { LandingCta } from "@/components/marketing/LandingMission";
 import { LandingFaq } from "@/components/marketing/LandingFaq";
-import { LandingProductPreview } from "@/components/marketing/LandingProductPreview";
+import { LandingHowItWorks } from "@/components/marketing/LandingHowItWorks";
+import { LandingLegalStrip } from "@/components/marketing/LandingLegalStrip";
+import { LandingProblem } from "@/components/marketing/LandingProblem";
+import { LandingProductSamples } from "@/components/marketing/LandingProductSamples";
+import { LandingProof } from "@/components/marketing/LandingProof";
+import { LandingStickyCta } from "@/components/marketing/LandingStickyCta";
+import { LandingWorkSplit } from "@/components/marketing/LandingWorkSplit";
 import { MarketingHero } from "@/components/marketing/MarketingHero";
+import { MarketingReveal } from "@/components/marketing/motion/MarketingReveal";
 import { StackCostComparison } from "@/components/marketing/StackCostComparison";
 import { Link } from "@/i18n/navigation";
 
@@ -16,55 +23,59 @@ export async function LandingPage() {
     <>
       <MarketingHero />
 
-      <LandingMission />
+      <LandingProblem />
+
+      <LandingWorkSplit />
+
+      <LandingHowItWorks />
+
+      <LandingProductSamples />
 
       <LandingCapabilities />
 
-      <LandingProductPreview />
-
-      <section id="compare" className="border-b border-white/5 bg-[#0d1520] px-4 py-16 sm:px-6 sm:py-20">
-        <StackCostComparison />
-      </section>
-
-      <section id="product" className="border-b border-white/5 px-4 py-16 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          <h2 className="font-heading text-2xl font-bold text-white sm:text-3xl">{t("productTitle")}</h2>
-          <p className="mt-3 max-w-2xl text-violet-200/70">{t("productSubtitle")}</p>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {(["pillar1", "pillar2", "pillar3"] as const).map((key) => (
-              <div
-                key={key}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-violet-400/25 hover:bg-white/[0.05]"
-              >
-                <h3 className="font-heading text-lg font-semibold text-white">{t(`${key}Title`)}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-violet-200/65">{t(`${key}Body`)}</p>
-              </div>
-            ))}
+      <section id="compare" className="marketing-section marketing-section-alt">
+        <MarketingReveal>
+          <div className="mx-auto mb-8 max-w-6xl text-center">
+            <p className="marketing-section-title">{t("stackBadge")}</p>
+            <h2 className="marketing-section-heading">{t("stackTitle")}</h2>
+            <p className="marketing-section-sub mx-auto max-w-2xl">{t("stackSubtitle")}</p>
           </div>
+        </MarketingReveal>
+        <div className="mx-auto max-w-6xl">
+          <StackCostComparison />
+          <p className="mt-6 text-center">
+            <Link href="#pricing" className="text-sm font-semibold text-[var(--ui-accent)] hover:underline">
+              {t("compareToPricingCta")} →
+            </Link>
+          </p>
         </div>
       </section>
 
-      <section id="pricing" className="bg-[#0a0f14] px-4 py-16 sm:px-6 sm:py-20">
+      <section id="pricing" className="marketing-section">
         <div className="mx-auto max-w-6xl space-y-8">
-          <div className="text-center">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-400/90">
-              {t("pricingBadge")}
-            </p>
-            <h2 className="font-heading text-2xl font-bold text-white sm:text-3xl">{t("pricingTitle")}</h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm text-violet-200/65">{t("pricingSubtitle")}</p>
-          </div>
+          <MarketingReveal className="text-center">
+            <p className="marketing-section-title">{t("pricingBadge")}</p>
+            <h2 className="marketing-section-heading">{t("pricingTitle")}</h2>
+            <p className="marketing-section-sub mx-auto max-w-xl">{t("pricingSubtitle")}</p>
+          </MarketingReveal>
           <BillingPlansClient variant="marketing" layout="slider" />
           <p className="text-center">
-            <Link href="/pricing" className="text-sm font-semibold text-amber-400 hover:text-amber-300">
+            <Link href="/pricing" className="text-sm font-semibold text-[var(--ui-accent)] hover:underline">
               {t("viewAllPlans")} →
             </Link>
           </p>
         </div>
       </section>
 
+      <LandingProof />
+
       <LandingFaq />
 
       <LandingCta />
+
+      <LandingLegalStrip />
+
+      <LandingStickyCta />
     </>
   );
 }

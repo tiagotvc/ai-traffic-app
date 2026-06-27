@@ -44,6 +44,19 @@ export function FormSelect({
   const displayLabel = selected?.label ?? placeholder;
   const isDisabled = disabled || loading;
 
+  if (loading) {
+    return (
+      <div
+        ref={ref}
+        className={cn("relative w-full", className)}
+        aria-busy="true"
+        aria-label={placeholder}
+      >
+        <div className="skeleton-shimmer h-[2.625rem] w-full rounded-xl" />
+      </div>
+    );
+  }
+
   return (
     <div ref={ref} className={cn("relative w-full", className)}>
       <button

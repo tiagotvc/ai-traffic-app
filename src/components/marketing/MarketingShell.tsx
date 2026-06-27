@@ -14,10 +14,10 @@ const LOCALE_LABELS: Record<AppLocale, string> = {
 };
 
 const NAV = [
-  { href: "/#capabilities", key: "navProduct" as const },
-  { href: "/#samples", key: "navSamples" as const },
+  { href: "/#product", key: "navProduct" as const },
+  { href: "/#how-it-works", key: "navHowItWorks" as const },
   { href: "/#compare", key: "navCompare" as const },
-  { href: "/pricing", key: "navPricing" as const },
+  { href: "/#pricing", key: "navPricing" as const },
   { href: "/about", key: "navAbout" as const },
   { href: "/support", key: "navSupport" as const }
 ];
@@ -36,8 +36,8 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f14] text-[#f8fafc]">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0f14]/90 backdrop-blur-md">
+    <div className="marketing-ds-root min-h-screen" data-theme="dark">
+      <header className="sticky top-0 z-40 border-b border-[var(--border-color)] bg-[var(--surface-header)] backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="shrink-0">
             <TrafficAILogo size="sm" productLabel={tCommon("product")} variant="dark" />
@@ -48,7 +48,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.key}
                 href={item.href}
-                className="text-sm font-medium text-violet-100/80 transition hover:text-white"
+                className="text-sm font-medium text-[var(--text-dim)] transition hover:text-[var(--text-main)]"
               >
                 {t(item.key)}
               </Link>
@@ -56,7 +56,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="hidden items-center gap-2 sm:flex">
-            <div className="flex rounded-lg border border-white/10 p-0.5">
+            <div className="flex rounded-lg border border-[var(--border-color)] p-0.5">
               {routing.locales.map((loc) => (
                 <button
                   key={loc}
@@ -64,31 +64,25 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
                   onClick={() => pickLocale(loc)}
                   className="rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
                   style={{
-                    background: locale === loc ? "rgba(245,166,35,0.2)" : "transparent",
-                    color: locale === loc ? "#f5a623" : "#94a3b8"
+                    background: locale === loc ? "var(--ui-accent-muted)" : "transparent",
+                    color: locale === loc ? "var(--amber-bright)" : "var(--text-dimmer)"
                   }}
                 >
                   {LOCALE_LABELS[loc]}
                 </button>
               ))}
             </div>
-            <Link
-              href="/login"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-violet-100/90 transition hover:text-white"
-            >
+            <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-dim)] hover:text-[var(--text-main)]">
               {t("signIn")}
             </Link>
-            <Link
-              href="/login?callbackUrl=/dashboard"
-              className="rounded-lg bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-2 text-sm font-bold text-[#0f1419] shadow-lg shadow-amber-500/20 transition hover:brightness-105"
-            >
+            <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent px-4 py-2 text-sm font-semibold">
               {t("startFree")}
             </Link>
           </div>
 
           <button
             type="button"
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-violet-100 md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border-color)] text-[var(--text-dim)] md:hidden"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? t("closeMenu") : t("openMenu")}
           >
@@ -97,14 +91,14 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {mobileOpen ? (
-          <div className="border-t border-white/10 px-4 py-4 md:hidden">
+          <div className="border-t border-[var(--border-color)] px-4 py-4 md:hidden">
             <nav className="flex flex-col gap-2">
               {NAV.map((item) => (
                 <Link
                   key={item.key}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-violet-100/90 hover:bg-white/5"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-dim)] hover:bg-[var(--surface-card)]"
                 >
                   {t(item.key)}
                 </Link>
@@ -114,14 +108,14 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
               <Link
                 href="/login"
                 onClick={() => setMobileOpen(false)}
-                className="flex-1 rounded-lg border border-white/10 py-2.5 text-center text-sm font-semibold"
+                className="ui-btn-secondary flex-1 py-2.5 text-center text-sm font-semibold"
               >
                 {t("signIn")}
               </Link>
               <Link
                 href="/login?callbackUrl=/dashboard"
                 onClick={() => setMobileOpen(false)}
-                className="flex-1 rounded-lg bg-amber-400 py-2.5 text-center text-sm font-bold text-[#0f1419]"
+                className="ui-btn-accent flex-1 py-2.5 text-center text-sm font-semibold"
               >
                 {t("startFree")}
               </Link>
@@ -132,34 +126,34 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
 
       <main>{children}</main>
 
-      <footer className="border-t border-white/10 bg-[#070b10]">
+      <footer className="border-t border-[var(--border-color)] bg-[var(--surface-bg)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
             <TrafficAILogo size="sm" productLabel={tCommon("product")} variant="dark" />
-            <p className="mt-2 max-w-sm text-sm text-violet-200/60">{t("footerTagline")}</p>
+            <p className="mt-2 max-w-sm text-sm text-[var(--text-dim)]">{t("footerTagline")}</p>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-violet-200/70">
-            <Link href="/pricing" className="hover:text-white">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--text-dim)]">
+            <Link href="/pricing" className="hover:text-[var(--text-main)]">
               {t("navPricing")}
             </Link>
-            <Link href="/about" className="hover:text-white">
+            <Link href="/about" className="hover:text-[var(--text-main)]">
               {t("navAbout")}
             </Link>
-            <Link href="/support" className="hover:text-white">
+            <Link href="/support" className="hover:text-[var(--text-main)]">
               {t("navSupport")}
             </Link>
-            <Link href="/terms" className="hover:text-white">
+            <Link href="/terms" className="hover:text-[var(--text-main)]">
               {t("navTerms")}
             </Link>
-            <Link href="/privacy" className="hover:text-white">
+            <Link href="/privacy" className="hover:text-[var(--text-main)]">
               {t("navPrivacy")}
             </Link>
-            <Link href="/data-deletion" className="hover:text-white">
+            <Link href="/data-deletion" className="hover:text-[var(--text-main)]">
               {t("navDataDeletion")}
             </Link>
           </div>
         </div>
-        <div className="border-t border-white/5 py-4 text-center text-xs text-violet-200/40">
+        <div className="border-t border-[var(--border-color)] py-4 text-center text-xs text-[var(--text-dimmer)]">
           {t("footerCopyright", { year: new Date().getFullYear() })}
         </div>
       </footer>

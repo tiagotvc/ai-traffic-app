@@ -187,8 +187,29 @@ dados que já lemos da Meta, sem construir tracking server-side genérico.
 - O comparativo de features do Orion baseia-se no estado do código em jun/2026 (arquivos
   referenciados acima); reconfirmar in-repo antes de decisões de roadmap.
 
+## Status de implementação (2026-06-27)
+
+| Item | Status | Onde |
+|---|---|---|
+| **P1.1** Agente com ações nomeadas (propor→aprovar→executar) | ✅ Feito | `chat-agent-service.ts`, `action-suggestions/*`, rotas `execute`/`reject` |
+| **P1.2** Explicabilidade (cita o aprendizado) | ✅ Feito (básico) | `evidence` + `linkedLearningIds` no `action-suggestion-generator.ts` |
+| **Roteador de IA (Gemini+Claude)** | ✅ **Feito** (novo) | [`src/lib/ai/*`](../../src/lib/ai/generate.ts) + flags `ai.*` — ver [ai-router](../ai-router/README.md) |
+| **P1.3** Servidor MCP (read-only) | ✅ **Feito** | `src/lib/mcp/*` + `/api/mcp/brain` + `/api/mcp/tokens` — ver [mcp](../mcp/README.md) |
+| **P1.4** MCP read/write | 🟡 Flag criada (`brain.mcp.write`), **a implementar** | idem |
+| **P0** Meta CAPI | 🟡 Flag criada (`meta.capi`), cliente/UI **a implementar** | idem |
+| **P2** Janelas de atribuição | 🟡 Flag criada (`meta.attribution`), **a implementar** | idem |
+
+> O agente hoje roteia via `aiGenerateJson` (não mais `geminiGenerateJson` direto): a tarefa
+> `agent_proposal` tende a **Claude** quando habilitado (flag + `ANTHROPIC_API_KEY`), com **fallback
+> para Gemini**. Resolve a decisão em aberto "provedor de IA" → agora é **híbrido roteado**.
+
 ## Histórico
 
+- 2026-06-27 (parte 2): Implementado o **servidor MCP read-only (P1.3)** sobre o Brain — tokens por
+  tenant (entidade + migração 0052), endpoint JSON-RPC `/api/mcp/brain`, gestão de tokens. Ver [mcp](../mcp/README.md).
+- 2026-06-27: Implementado o **roteador de IA (Gemini+Claude)** + flags `ai.*`/`brain.mcp`/`meta.*`
+  (todas desligáveis separadamente). P1.1/P1.2 confirmados feitos; P1.4/P0/P2 com flag criada,
+  implementação pendente.
 - 2026-06-25: Documento criado a partir da pesquisa de mercado da RedTrack.io — recomendações
   P0 (Meta CAPI), P1 (agente/MCP sobre o Agency Brain) e P2 (atribuição no Meta), com fases
   ancoradas no código atual. Tracking multicanal e anti-fraude marcados como fora de escopo.

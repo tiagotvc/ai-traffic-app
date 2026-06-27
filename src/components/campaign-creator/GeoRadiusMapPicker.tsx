@@ -24,6 +24,7 @@ type Props = {
   onCenterCommercial?: () => void;
   centerCommercialDisabled?: boolean;
   centerCommercialHint?: string | null;
+  instanceKey?: string;
 };
 
 export function GeoRadiusMapPicker({
@@ -35,7 +36,8 @@ export function GeoRadiusMapPicker({
   commercialMarker,
   onCenterCommercial,
   centerCommercialDisabled,
-  centerCommercialHint
+  centerCommercialHint,
+  instanceKey
 }: Props) {
   const t = useTranslations("campaignCreator");
   const mapPins = pins.filter(isMapPinLocation);
@@ -64,8 +66,8 @@ export function GeoRadiusMapPicker({
           </button>
         ) : null}
       </div>
-      {centerCommercialHint ? (
-        <p className="text-[11px] text-amber-800">{centerCommercialHint}</p>
+      {centerCommercialHint && centerCommercialDisabled ? (
+        <p className="text-[10px] text-[var(--text-dimmer)]">{centerCommercialHint}</p>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -118,6 +120,7 @@ export function GeoRadiusMapPicker({
         </div>
         <div className="order-1 lg:order-2">
         <GeoRadiusMapInner
+          key={instanceKey}
           pins={mapPins}
           onAdd={handleAdd}
           viewport={viewport}

@@ -37,21 +37,15 @@ export async function LandingCta() {
   const t = await getTranslations("marketing");
 
   return (
-    <section className="px-4 py-16 sm:px-6">
-      <div className="mx-auto max-w-3xl rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-violet-950/40 to-indigo-950/40 p-8 text-center sm:p-10">
-        <h2 className="font-heading text-2xl font-bold text-white sm:text-3xl">{t("ctaTitle")}</h2>
-        <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-violet-200/75">{t("ctaSubtitle")}</p>
+    <section className="marketing-section px-4 py-16 sm:px-6">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-8 text-center sm:p-10">
+        <h2 className="font-heading text-2xl font-bold text-[var(--text-main)] sm:text-3xl">{t("ctaTitle")}</h2>
+        <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-[var(--text-dim)]">{t("ctaSubtitle")}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/login?callbackUrl=/dashboard"
-            className="rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-8 py-3 text-sm font-bold text-[#0f1419] shadow-lg shadow-amber-500/25 transition hover:brightness-105"
-          >
+          <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent px-8 py-3 text-sm font-semibold">
             {t("startFree")}
           </Link>
-          <Link
-            href="/pricing"
-            className="rounded-xl border border-white/20 bg-white/5 px-8 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-          >
+          <Link href="/pricing" className="ui-btn-secondary px-8 py-3 text-sm font-semibold">
             {t("viewPricing")}
           </Link>
         </div>

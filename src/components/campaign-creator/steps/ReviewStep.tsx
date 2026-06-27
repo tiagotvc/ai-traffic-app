@@ -7,6 +7,7 @@ import { Sparkles } from "lucide-react";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { ZoneGeoReviewPanel } from "@/components/campaign-creator/ZoneGeoReviewPanel";
 import { countPublishEntities, getActiveAdset, resolveAdTargetAdsets } from "@/lib/campaign-draft";
+import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
 
 export function ReviewStep() {
   const t = useTranslations("campaignCreator");
@@ -45,7 +46,7 @@ export function ReviewStep() {
         zone: zoneName ?? "…"
       });
     }
-    if (mode === "meta_saved" && adset.metaSavedAudienceId) {
+    if (adset.metaSavedAudienceId) {
       return t("reviewTargetingMeta", { name: adset.metaSavedAudienceId });
     }
     if (adset.targeting.customAudienceIds.length) {
@@ -242,6 +243,8 @@ export function ReviewStep() {
       </div>
 
       <p className="text-xs text-[var(--text-dim)]">{t("publishPausedNote")}</p>
+
+      <CampaignCreatorUxMobileSummary />
     </div>
   );
 }

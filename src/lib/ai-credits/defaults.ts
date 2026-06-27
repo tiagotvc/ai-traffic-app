@@ -16,6 +16,7 @@ export const DEFAULT_AI_CREDIT_WEIGHTS: AiCreditWeights = {
   recommendations: 1,
   audience_suggestions: 1,
   campaign_generate: 2,
+  creator_brain: 1,
   generic: 1
 };
 

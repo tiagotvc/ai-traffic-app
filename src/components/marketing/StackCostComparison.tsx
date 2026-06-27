@@ -116,7 +116,7 @@ export function StackCostComparison({ className }: { className?: string }) {
 
     return [
       { name: stackLabel, value: stackValue / 100, fill: "rgba(248,113,113,0.75)" },
-      { name: orionLabel, value: orionValue / 100, fill: "#f5a623" }
+      { name: orionLabel, value: orionValue / 100, fill: "var(--amber-bright)" }
     ];
   }, [selectedPlan, orionPricing, cycle, stackMonthlyCents, orionDisplayCents, t]);
 
@@ -133,16 +133,6 @@ export function StackCostComparison({ className }: { className?: string }) {
   return (
     <section className={cn("relative", className)}>
       <div className="mx-auto max-w-6xl">
-        <div className="mb-10 text-center">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-400/90">
-            {t("stackBadge")}
-          </p>
-          <h2 className="font-heading text-2xl font-bold text-white sm:text-3xl">{t("stackTitle")}</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-violet-200/70">
-            {t("stackSubtitle")}
-          </p>
-        </div>
-
         <div className="mb-6 flex w-full flex-col items-center gap-10">
           <BillingCycleToggle cycle={cycle} onChange={setCycle} variant="marketing" />
           <MarketingPlanStackPicker
@@ -160,8 +150,8 @@ export function StackCostComparison({ className }: { className?: string }) {
 
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
           <div className="space-y-4">
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-              <div className="grid grid-cols-[1fr_auto] gap-x-4 border-b border-white/10 bg-white/[0.04] px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-violet-300/70 sm:px-5">
+            <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)]">
+              <div className="grid grid-cols-[1fr_auto] gap-x-4 border-b border-[var(--border-color)] bg-[var(--surface-header)] px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-dimmer)] sm:px-5">
                 <span>{t("stackColTool")}</span>
                 <span>{t("stackColPrice")}</span>
               </div>
@@ -169,30 +159,30 @@ export function StackCostComparison({ className }: { className?: string }) {
                 {stackTools.map((tool) => (
                   <li
                     key={tool.id}
-                    className="grid grid-cols-[1fr_auto] gap-x-4 border-b border-white/5 px-4 py-3.5 last:border-0 sm:px-5"
+                    className="grid grid-cols-[1fr_auto] gap-x-4 border-b border-[var(--border-color)] px-4 py-3.5 last:border-0 sm:px-5"
                   >
                     <div>
-                      <span className="text-sm text-violet-100/90">{t(tool.labelKey)}</span>
-                      <p className="mt-1 text-[11px] leading-snug text-amber-200/70">
-                        <span className="font-medium text-amber-300/80">{t("stackMapsToLabel")}</span>{" "}
+                      <span className="text-sm text-[var(--text-main)]">{t(tool.labelKey)}</span>
+                      <p className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
+                        <span className="font-medium text-[var(--amber-bright)]">{t("stackMapsToLabel")}</span>{" "}
                         {t(tool.mapsToKey)}
                       </p>
                       <a
                         href={tool.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-1 block text-[10px] text-violet-400/50 hover:text-amber-300/80"
+                        className="mt-1 block text-[10px] text-[var(--text-dimmer)] hover:text-[var(--ui-accent)]"
                       >
                         {t(tool.sourceKey)}
                       </a>
                     </div>
-                    <span className="text-sm font-semibold text-violet-200/60 line-through decoration-violet-400/40">
+                    <span className="text-sm font-semibold text-[var(--text-dim)] line-through decoration-[var(--text-dimmer)]">
                       {formatBenchmarkPrice(isBr ? tool.monthlyBrlCents : tool.monthlyUsdCents, isBr)}
                     </span>
                   </li>
                 ))}
               </ul>
-              <div className="flex items-center justify-between border-t border-white/10 bg-red-950/20 px-4 py-4 sm:px-5">
+              <div className="flex items-center justify-between border-t border-[var(--border-color)] bg-red-950/20 px-4 py-4 sm:px-5">
                 <span className="text-sm font-semibold text-red-200/90">{t("stackTotalLabel")}</span>
                 <span className="font-heading text-lg font-bold text-red-300">
                   {formatBenchmarkPrice(stackMonthlyCents, isBr)}
@@ -201,41 +191,40 @@ export function StackCostComparison({ className }: { className?: string }) {
               </div>
             </div>
 
-            <p className="text-center text-[10px] leading-relaxed text-violet-400/45">{t("stackSourcesNote")}</p>
-            <p className="text-center text-[10px] leading-relaxed text-violet-400/55">{t("stackDisclaimer")}</p>
+            <p className="text-center text-[10px] leading-relaxed text-[var(--text-dimmer)]">{t("stackSourcesNote")}</p>
+            <p className="text-center text-[10px] leading-relaxed text-[var(--text-dimmer)]">{t("stackDisclaimer")}</p>
           </div>
 
           <div className="space-y-4">
-            <div className="relative overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-br from-violet-950/80 via-indigo-950/80 to-slate-950/90 p-6 shadow-xl shadow-violet-950/40">
-              <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-amber-500/15 blur-2xl" />
-              <p className="text-xs font-semibold uppercase tracking-wider text-amber-300/80">
+            <div className="relative overflow-hidden rounded-2xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-6 shadow-xl">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--amber-bright)]">
                 {t("orionLabel")}
               </p>
-              <h3 className="mt-2 font-heading text-xl font-bold text-white">
+              <h3 className="mt-2 font-heading text-xl font-bold text-[var(--text-main)]">
                 {selectedPlan?.name ?? t("orionPlanName")}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-violet-200/75">{t(orionIncludesKey)}</p>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">{t(orionIncludesKey)}</p>
 
-              <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-3">
-                <p className="text-xs font-semibold text-violet-100/90">{t("stackOrionExtraTitle")}</p>
-                <p className="mt-1 text-xs leading-relaxed text-violet-200/70">{t("stackOrionExtraBody")}</p>
+              <div className="mt-4 rounded-xl border border-[var(--ui-accent-border)] bg-[var(--surface-card)] px-4 py-3">
+                <p className="text-xs font-semibold text-[var(--text-main)]">{t("stackOrionExtraTitle")}</p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--text-dim)]">{t("stackOrionExtraBody")}</p>
               </div>
 
               <div className="mt-6 flex flex-wrap items-baseline gap-2">
                 {orionPricing && orionPricing.discountPercent > 0 && cycle === "yearly" ? (
-                  <span className="text-sm text-violet-300/50 line-through">
+                  <span className="text-sm text-[var(--text-dimmer)] line-through">
                     {formatMoney(orionPricing.listCents, currency)}
                   </span>
                 ) : null}
-                <span className="font-heading text-4xl font-bold text-amber-300">
+                <span className="font-heading text-4xl font-bold text-[var(--amber-bright)]">
                   {orionPricing ? formatMoney(orionPricing.finalCents, currency) : "—"}
                 </span>
-                <span className="text-sm text-violet-200/60">
+                <span className="text-sm text-[var(--text-dim)]">
                   {cycle === "yearly" ? t("orionPerYear") : t("orionPerMonth")}
                 </span>
               </div>
               {cycle === "yearly" && orionPricing ? (
-                <p className="mt-1 text-xs text-violet-300/60">
+                <p className="mt-1 text-xs text-[var(--text-dimmer)]">
                   {t("orionEffectiveMonthly", {
                     value: formatMoney(Math.round(orionPricing.finalCents / 12), currency)
                   })}
@@ -259,8 +248,8 @@ export function StackCostComparison({ className }: { className?: string }) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-violet-300/70">
+            <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-dimmer)]">
                 {t("chartCompareTitle")}
               </p>
               <div className="h-[200px]">
@@ -272,17 +261,18 @@ export function StackCostComparison({ className }: { className?: string }) {
                       type="category"
                       dataKey="name"
                       width={100}
-                      tick={{ fill: "rgba(196,181,253,0.85)", fontSize: 11 }}
+                      tick={{ fill: "var(--text-dim)", fontSize: 11 }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <Tooltip
                       cursor={{ fill: "rgba(255,255,255,0.04)" }}
                       contentStyle={{
-                        background: "#0f1419",
-                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "var(--surface-card)",
+                        border: "1px solid var(--border-color)",
                         borderRadius: 12,
-                        fontSize: 12
+                        fontSize: 12,
+                        color: "var(--text-main)"
                       }}
                       formatter={(value) => {
                         const n = Number(value);
@@ -301,8 +291,8 @@ export function StackCostComparison({ className }: { className?: string }) {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-violet-300/70">
+            <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-dimmer)]">
                 {t("chartTrendTitle")}
               </p>
               <div className="h-[160px]">
@@ -311,17 +301,18 @@ export function StackCostComparison({ className }: { className?: string }) {
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                     <XAxis
                       dataKey="month"
-                      tick={{ fill: "rgba(196,181,253,0.5)", fontSize: 10 }}
+                      tick={{ fill: "var(--text-dimmer)", fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <YAxis hide />
                     <Tooltip
                       contentStyle={{
-                        background: "#0f1419",
-                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "var(--surface-card)",
+                        border: "1px solid var(--border-color)",
                         borderRadius: 12,
-                        fontSize: 11
+                        fontSize: 11,
+                        color: "var(--text-main)"
                       }}
                       formatter={(value, name) => {
                         const n = Number(value);
@@ -335,11 +326,11 @@ export function StackCostComparison({ className }: { className?: string }) {
                       }}
                     />
                     <Bar dataKey="stack" fill="rgba(248,113,113,0.55)" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="orion" fill="#f5a623" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="orion" fill="var(--amber-bright)" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <p className="mt-2 text-[10px] text-violet-400/50">{t("chartTrendHint")}</p>
+              <p className="mt-2 text-[10px] text-[var(--text-dimmer)]">{t("chartTrendHint")}</p>
             </div>
           </div>
         </div>

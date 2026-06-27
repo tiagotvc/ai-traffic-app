@@ -22,9 +22,11 @@ import {
   isAddAdDraft,
   isInheritedCampaignDraft,
   newDraftId,
-  parseCampaignDraftPayload
+  parseCampaignDraftPayload,
+  patchWizardNavigation
 } from "@/lib/campaign-draft";
 import { draftFallbackName, relocalizeDraftDefaultNames } from "@/lib/campaign-draft-i18n";
+import { inferWizardActiveNode } from "@/lib/creator-wizard-nav";
 
 type ClientOption = { id: string; slug: string; name: string };
 
@@ -153,6 +155,9 @@ export function CampaignDraftProvider({
           }
         } else if (initialActiveNode) {
           setActiveNode(initialActiveNode);
+        } else {
+          const savedNode = parsed.meta?.wizardNavigation?.activeNode;
+          setActiveNode(savedNode ?? inferWizardActiveNode(parsed.visitedNodes));
         }
       })
       .catch(() => {});
@@ -392,10 +397,15 @@ export function CampaignDraftProvider({
   const setActiveNodeWrapped = useCallback(
     (n: CreatorNode) => {
       setActiveNode(n);
-      updatePayload((p) => ({
-        ...p,
-        visitedNodes: p.visitedNodes.includes(n) ? p.visitedNodes : [...p.visitedNodes, n]
-      }));
+      updatePayload((p) =>
+        patchWizardNavigation(
+          {
+            ...p,
+            visitedNodes: p.visitedNodes.includes(n) ? p.visitedNodes : [...p.visitedNodes, n]
+          },
+          { activeNode: n }
+        )
+      );
     },
     [updatePayload]
   );

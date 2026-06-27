@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { FormSelect } from "@/components/ui/FormSelect";
@@ -25,6 +26,8 @@ type Props = {
   onBuyingTypeChange: (bt: BuyingType) => void;
   onObjectiveChange: (obj: CampaignObjectiveKey) => void;
   showHeader?: boolean;
+  compact?: boolean;
+  hideBuyingType?: boolean;
 };
 
 export function ObjectiveSelector({
@@ -32,7 +35,9 @@ export function ObjectiveSelector({
   objective,
   onBuyingTypeChange,
   onObjectiveChange,
-  showHeader = true
+  showHeader = true,
+  compact = false,
+  hideBuyingType = false
 }: Props) {
   const t = useTranslations("campaignCreator");
   const availableObjectives = objectivesForBuyingType(buyingType);
@@ -55,31 +60,62 @@ export function ObjectiveSelector({
         </div>
       ) : null}
 
-      <div className={showHeader ? "mt-5" : ""}>
-        <label className="ui-label">{t("buyingType")}</label>
-        <div className="mt-1.5">
-          <FormSelect
-            value={buyingType}
-            onChange={(v) => setBuyingType(v as BuyingType)}
-            clearable={false}
-            placeholder={t("buyingType")}
-            options={[
-              { value: "auction", label: t("buyingAuction") },
-              { value: "reservation", label: t("buyingReservation") }
-            ]}
-          />
+      {!hideBuyingType ? (
+        <div
+          className={
+            compact
+              ? "flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-3"
+              : showHeader
+                ? "mt-5"
+                : ""
+          }
+        >
+          <div className={compact ? "min-w-0 flex-1 sm:max-w-[14rem]" : "w-full"}>
+            <label className={compact ? "ui-label text-[10px]" : "ui-label"}>{t("buyingType")}</label>
+            <div className={compact ? "mt-1" : "mt-1.5"}>
+              <FormSelect
+                className={compact ? "[&_button]:min-h-[2rem] [&_button]:py-1 [&_button]:text-xs" : undefined}
+                value={buyingType}
+                onChange={(v) => setBuyingType(v as BuyingType)}
+                clearable={false}
+                placeholder={t("buyingType")}
+                options={[
+                  { value: "auction", label: t("buyingAuction") },
+                  { value: "reservation", label: t("buyingReservation") }
+                ]}
+              />
+            </div>
+          </div>
+          {buyingType === "reservation" ? (
+            <p
+              className={
+                compact
+                  ? "text-[10px] leading-snug text-[var(--text-dim)] sm:mb-1 sm:flex-1"
+                  : "mt-1.5 text-[11px] leading-relaxed text-[var(--text-dim)]"
+              }
+            >
+              {t("buyingReservationHint")}
+            </p>
+          ) : null}
         </div>
-        {buyingType === "reservation" ? (
-          <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-dim)]">
-            {t("buyingReservationHint")}
-          </p>
-        ) : null}
-      </div>
+      ) : null}
 
-      <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+      <p
+        className={
+          compact
+            ? "mt-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-dimmer)]"
+            : "mt-6 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-dimmer)]"
+        }
+      >
         {t("chooseObjective")}
       </p>
-      <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+      <div
+        className={
+          compact
+            ? "campaign-creator-objective-grid--compact mt-2"
+            : "mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3"
+        }
+      >
         {CAMPAIGN_OBJECTIVES.filter((obj) => availableObjectives.includes(obj)).map((obj) => {
           const selected = objective === obj;
           return (
@@ -87,31 +123,44 @@ export function ObjectiveSelector({
               key={obj}
               type="button"
               onClick={() => onObjectiveChange(obj)}
-              className={`group flex items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
-                selected
-                  ? "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] shadow-[0_0_0_1px_var(--ui-accent-border)]"
-                  : "border-[var(--border-color)] bg-[var(--surface-bg)] hover:border-[var(--ui-accent-border)] hover:bg-[var(--ui-accent-hover)]"
-              }`}
+              className={`campaign-creator-objective-card group ${
+                compact ? "campaign-creator-objective-card--compact" : ""
+              } ${selected ? "campaign-creator-objective-card--selected" : ""}`}
             >
-              <span
-                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                  selected
-                    ? "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]"
-                    : "bg-[var(--surface-card)] text-[var(--ui-accent)] group-hover:bg-[var(--ui-accent-muted)]"
-                }`}
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <span className="campaign-creator-objective-card__check" aria-hidden>
+                {selected ? <Check size={12} strokeWidth={3} /> : null}
+              </span>
+
+              <span className="campaign-creator-objective-card__icon">
+                <svg
+                  className={compact ? "h-5 w-5" : "h-4 w-4"}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d={OBJECTIVE_ICONS[obj]} />
                 </svg>
               </span>
-              <div className="min-w-0">
-                <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
-                  {t(`objective_${obj}`)}
-                </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-dim)]">
+
+              <p
+                className={
+                  compact
+                    ? "mt-1.5 line-clamp-2 text-center font-heading text-xs font-semibold leading-tight text-[var(--text-main)]"
+                    : "mt-3 font-heading text-sm font-semibold text-[var(--text-main)]"
+                }
+              >
+                {t(`objective_${obj}`)}
+              </p>
+              {compact ? (
+                <p className="mt-1 hidden line-clamp-2 px-0.5 text-center text-[10px] leading-snug text-[var(--text-dim)] md:block">
                   {t(`objective_${obj}_hint`)}
                 </p>
-              </div>
+              ) : (
+                <p className="mt-1.5 pr-6 text-[11px] leading-relaxed text-[var(--text-dim)]">
+                  {t(`objective_${obj}_hint`)}
+                </p>
+              )}
             </button>
           );
         })}

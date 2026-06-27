@@ -39,6 +39,10 @@ Organizadas pelas **abas do sidebar** do app.
 | UI — Padrão de Modais | [`ui-modais/`](./ui-modais/README.md) | Padrão único de modais (Esc + clique-fora + superfície) e exceções (gates/drawers). |
 | Pagamentos & Billing | [`pagamentos/`](./pagamentos/README.md) | Auditoria de Stripe/Asaas, webhooks, ciclo de vida da assinatura, segurança e gaps. |
 | Landing, Planos, Addons e Login | [`landing-e-planos/`](./landing-e-planos/README.md) | URL da landing, análise vs. Reportei, recomendação de planos/preços, addons e painel de login. |
+| **Inteligência competitiva** | [`concorrentes/`](./concorrentes/README.md) | Análise de concorrentes + cruzamento conosco + estratégia. Inclui **VT Group "Traffic AI"** (modelo vitalício) e por que ele é insustentável. |
+| **Roteador de IA (Gemini+Claude)** | [`ai-router/`](./ai-router/README.md) | Camada única que decide qual modelo usar por tarefa (economia × acertividade), com fallback cross-provider. Flags `ai.*`. |
+| **Servidor MCP (Agency Brain)** | [`mcp/`](./mcp/README.md) | Expõe o Brain via MCP (read-only) para ferramentas de IA externas. Tokens por tenant; flag `brain.mcp`. |
+| **Feature Flags (plataforma)** | [`feature-flags.md`](./feature-flags.md) | Liga/desliga hierárquico de módulos/funcionalidades (admin), incl. `ai.*`, `brain.mcp`, `meta.*`. |
 
 ## Convenções
 

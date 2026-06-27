@@ -29,6 +29,7 @@ const WEIGHT_KEYS: (keyof AiCreditWeights)[] = [
   "recommendations",
   "audience_suggestions",
   "campaign_generate",
+  "creator_brain",
   "generic"
 ];
 

@@ -54,7 +54,52 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         description: "Assistente conversacional sobre a memória do cliente.",
         dependsOn: ["brain.learnings"]
       },
-      { id: "brain.automations", label: "Automações" }
+      { id: "brain.automations", label: "Automações" },
+      {
+        id: "brain.mcp",
+        label: "Servidor MCP",
+        description:
+          "Expõe o Agency Brain via MCP (Model Context Protocol) para ferramentas de IA externas.",
+        children: [
+          {
+            id: "brain.mcp.write",
+            label: "MCP — ações de escrita",
+            description: "Permite que o MCP execute ações (com confirmação). Padrão: só leitura."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: "ai",
+    label: "Inteligência Artificial",
+    description: "Provedores e roteamento de IA (Gemini + Claude).",
+    children: [
+      {
+        id: "ai.router",
+        label: "Roteador Gemini + Claude",
+        description:
+          "Escolhe o melhor modelo por tarefa (economia × acertividade). Desligado: usa só Gemini."
+      },
+      { id: "ai.gemini", label: "Provedor Gemini", description: "Permite uso do Google Gemini." },
+      { id: "ai.claude", label: "Provedor Claude", description: "Permite uso do Anthropic Claude." }
+    ]
+  },
+  {
+    id: "meta",
+    label: "Meta — Conversões",
+    description: "Integrações server-side com a Meta.",
+    children: [
+      {
+        id: "meta.capi",
+        label: "Conversions API (CAPI)",
+        description: "Envio server-side de eventos de conversão para a Meta."
+      },
+      {
+        id: "meta.attribution",
+        label: "Janelas de atribuição",
+        description: "Seleção de janela/modelo de atribuição nos relatórios/dashboard."
+      }
     ]
   }
   // TODO: adicionar módulos Dashboard, Campanhas, Criativos, Relatórios… conforme forem

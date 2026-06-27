@@ -49,7 +49,7 @@ function geminiGenerateContentUrl(model: string): URL {
   );
 }
 
-function extractJson(text: string): unknown {
+export function extractJson(text: string): unknown {
   const fenced = text.match(/```json\s*([\s\S]*?)```/i);
   if (fenced?.[1]) return JSON.parse(fenced[1]);
 

@@ -238,7 +238,17 @@ export const CampaignDraftPayloadV2Schema = z.object({
           })
         )
         .optional(),
-      wizardGenerated: z.boolean().optional()
+      wizardGenerated: z.boolean().optional(),
+      /** Persisted wizard position so reload restores step + sub-sections. */
+      wizardNavigation: z
+        .object({
+          activeNode: z.enum(["campaign", "adset", "ad", "review"]).optional(),
+          campaignSection: z.enum(["objective", "clientAccountIdentity", "budget"]).optional(),
+          /** legacy "meta_saved" coerced to "compiler" on restore */
+          adsetSection: z.enum(["compiler", "meta_saved", "advanced", "schedule"]).optional(),
+          adSection: z.enum(["setup", "identity", "creative", "destination"]).optional()
+        })
+        .optional()
     })
     .optional()
 });
@@ -795,7 +805,12 @@ export function validateAdSetStep(d: CampaignDraftPayload): string | null {
     const hasManualGeo = t.locations.length > 0;
 
     if (mode === "compiler") {
-      if (!hasCompilerPair && !t.customAudienceIds.length && !hasManualGeo) {
+      if (
+        !hasCompilerPair &&
+        !t.customAudienceIds.length &&
+        !hasManualGeo &&
+        !adset.metaSavedAudienceId
+      ) {
         return "audienceRequired";
       }
     } else if (mode === "meta_saved") {
@@ -903,6 +918,26 @@ export function nextNode(node: CreatorNode): CreatorNode | null {
 export function prevNode(node: CreatorNode): CreatorNode | null {
   const i = CREATOR_NODE_ORDER.indexOf(node);
   return i > 0 ? CREATOR_NODE_ORDER[i - 1]! : null;
+}
+
+export type WizardNavigationState = NonNullable<
+  NonNullable<CampaignDraftPayload["meta"]>["wizardNavigation"]
+>;
+
+export function patchWizardNavigation(
+  payload: CampaignDraftPayload,
+  patch: Partial<WizardNavigationState>
+): CampaignDraftPayload {
+  return {
+    ...payload,
+    meta: {
+      ...payload.meta,
+      wizardNavigation: {
+        ...payload.meta?.wizardNavigation,
+        ...patch
+      }
+    }
+  };
 }
 
 /** @deprecated use CampaignDraftPayloadV2Schema */

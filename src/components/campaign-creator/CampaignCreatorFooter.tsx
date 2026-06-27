@@ -3,6 +3,10 @@
 import { useTranslations } from "next-intl";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { useAdSetStepSubflowOptional } from "@/components/campaign-creator/AdSetStepSubflowContext";
+import { useAdStepSubflowOptional } from "@/components/campaign-creator/AdStepSubflowContext";
+import { useCampaignStepSubflowOptional } from "@/components/campaign-creator/CampaignStepSubflowContext";
+import { resolveSubflowStepError } from "@/components/campaign-creator/subflow-step-validation";
 import { Link } from "@/i18n/navigation";
 import {
   nextNode,
@@ -12,6 +16,7 @@ import {
   validateCampaignStep,
   validatePublishDraft
 } from "@/lib/campaign-draft";
+import { resolveCreatorBackNav } from "@/lib/creator-wizard-nav";
 
 export function CampaignCreatorFooter({
   onPublish,
@@ -24,34 +29,60 @@ export function CampaignCreatorFooter({
   const tCommon = useTranslations("common");
   const { activeNode, setActiveNode, payload, saving, lastSavedAt, addAdMode, addAdsetMode, inheritCampaignMode } =
     useCampaignDraft();
+  const campaignSubflow = useCampaignStepSubflowOptional();
+  const adsetSubflow = useAdSetStepSubflowOptional();
+  const adSubflow = useAdStepSubflowOptional();
 
   const err = addAdMode
     ? activeNode === "ad"
-      ? validatePublishDraft(payload)
+      ? resolveSubflowStepError(adSubflow, () => validatePublishDraft(payload))
       : null
     : addAdsetMode
       ? activeNode === "adset"
-        ? validateAdSetStep(payload)
+        ? resolveSubflowStepError(adsetSubflow, () => validateAdSetStep(payload))
         : activeNode === "ad"
-          ? validateAdStep(payload)
+          ? resolveSubflowStepError(adSubflow, () => validateAdStep(payload))
           : null
       : activeNode === "campaign"
-        ? validateCampaignStep(payload)
+        ? resolveSubflowStepError(campaignSubflow, () => validateCampaignStep(payload))
         : activeNode === "adset"
-          ? validateAdSetStep(payload)
+          ? resolveSubflowStepError(adsetSubflow, () => validateAdSetStep(payload))
           : activeNode === "ad"
-            ? validateAdStep(payload)
+            ? resolveSubflowStepError(adSubflow, () => validateAdStep(payload))
             : null;
 
   function goNext() {
+    if (err) return;
+    if (activeNode === "campaign" && campaignSubflow && !campaignSubflow.isLast) {
+      campaignSubflow.goNext();
+      return;
+    }
+    if (activeNode === "adset" && adsetSubflow && !adsetSubflow.isLast) {
+      adsetSubflow.goNext();
+      return;
+    }
+    if (activeNode === "ad" && adSubflow && !adSubflow.isLast) {
+      adSubflow.goNext();
+      return;
+    }
     const n = nextNode(activeNode);
     if (n) setActiveNode(n);
   }
 
   function goPrev() {
+    if (activeNode === "campaign" && campaignSubflow?.goPrev()) return;
+    if (activeNode === "adset" && adsetSubflow?.goPrev()) return;
+    if (activeNode === "ad" && adSubflow?.goPrev()) return;
     const p = prevNode(activeNode);
     if (p) setActiveNode(p);
   }
+
+  const { showBack, backEnabled } = resolveCreatorBackNav({
+    addAdMode,
+    addAdsetMode,
+    activeNode,
+    campaignIsFirst: activeNode === "campaign" ? campaignSubflow?.isFirst : false
+  });
 
   return (
     <footer className="flex shrink-0 items-center justify-between border-t border-[var(--border-color)] bg-[var(--surface-card)] px-4 py-3">
@@ -84,8 +115,13 @@ export function CampaignCreatorFooter({
         {lastSavedAt && !saving ? (
           <span className="hidden text-[11px] text-emerald-600 sm:inline">{t("allSaved")}</span>
         ) : null}
-        {activeNode !== "campaign" && !(addAdMode && activeNode === "ad") && !(addAdsetMode && activeNode === "adset") ? (
-          <button type="button" className="ui-btn-secondary text-xs" onClick={goPrev}>
+        {showBack ? (
+          <button
+            type="button"
+            className="ui-btn-secondary text-xs disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={!backEnabled}
+            onClick={backEnabled ? goPrev : undefined}
+          >
             {t("back")}
           </button>
         ) : null}

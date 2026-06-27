@@ -23,6 +23,13 @@ import {
 } from "@/lib/meta-graph";
 import { getTenantMetaAccessToken } from "@/lib/meta-auth-store";
 
+function mapMetaBuyingType(value?: string | null): CampaignDraftPayload["buyingType"] {
+  if (!value) return "auction";
+  const normalized = value.toUpperCase();
+  if (normalized === "RESERVED" || normalized === "RESERVATION") return "reservation";
+  return "auction";
+}
+
 const OBJECTIVE_REVERSE: Record<string, CampaignDraftPayload["objective"]> = {
   OUTCOME_AWARENESS: "awareness",
   OUTCOME_TRAFFIC: "traffic",
@@ -404,6 +411,9 @@ export async function GET(
 
     const patch: Partial<CampaignDraftPayload> = {
       objective,
+      buyingType: mapMetaBuyingType(campaign.buying_type),
+      clientSlug: clientCtx?.clientId ?? "",
+      adAccountId: clientCtx?.metaAdAccountId ?? "",
       campaign: {
         name: campaign.name ?? "",
         budgetLevel: campaign.daily_budget ? "campaign" : "adset",
@@ -449,10 +459,16 @@ export async function GET(
           tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
         }
       ],
+      copyFromCampaignEnabled: true,
       copyFromCampaignId: metaCampaignId
     };
 
-    return NextResponse.json({ ok: true, patch, adAccountId });
+    return NextResponse.json({
+      ok: true,
+      patch,
+      adAccountId: clientCtx?.metaAdAccountId ?? null,
+      clientSlug: clientCtx?.clientId ?? null
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Erro ao importar campanha";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

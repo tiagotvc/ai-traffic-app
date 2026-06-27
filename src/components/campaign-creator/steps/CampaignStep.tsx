@@ -1,467 +1,1172 @@
 "use client";
 
+
+
 import { useEffect, useState } from "react";
+
 import { useLocale, useTranslations } from "next-intl";
-import { Building2, Tag, Wallet } from "lucide-react";
+
+import {
+  Briefcase,
+  Building2,
+  ChevronRight,
+  Copy,
+  CreditCard,
+  Home,
+  Landmark,
+  Lightbulb,
+  Megaphone,
+  Tag,
+  Target,
+  Wallet
+} from "lucide-react";
+
+
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import { FormField } from "@/components/ui/FormField";
-import { FormSelect } from "@/components/ui/FormSelect";
-import { FormFieldSkeleton } from "@/components/ui/FormSkeleton";
+
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+
+import { FilterTextField } from "@/components/FilterTextField";
+
+import { CopyCampaignModal } from "@/components/campaign-creator/CopyCampaignModal";
+
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
+
 import { usePublishAssets, type PublishAccountsError } from "@/hooks/usePublishAssets";
-import type { CampaignDraftPayload } from "@/lib/campaign-draft";
-import { parseCampaignDraftPayload } from "@/lib/campaign-draft";
+
+import type { BuyingType, CampaignDraftPayload, CampaignObjectiveKey } from "@/lib/campaign-draft";
+
+import { objectivesForBuyingType, parseCampaignDraftPayload } from "@/lib/campaign-draft";
+
+import { applyObjectiveDefaultNames } from "@/lib/campaign-draft-i18n";
+
+import { useCampaignStepSubflow } from "@/components/campaign-creator/CampaignStepSubflowContext";
+
+import { ObjectiveSelector } from "@/components/campaign-creator/ObjectiveSelector";
+import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
+
 import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
-import { WizardAccordionSection } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
+
+import type { LucideIcon } from "lucide-react";
+
+import { cn } from "@/lib/cn";
+
+
 
 const SPECIAL_CATEGORIES = [
+
   "CREDIT",
+
   "EMPLOYMENT",
+
   "HOUSING",
+
   "ISSUES_ELECTIONS_POLITICS"
+
 ] as const;
 
-type CampaignSection = "clientAccount" | "identity" | "budget";
 
-type SourceCampaign = { id: string; name: string; objective?: string; status?: string };
+
+const SPECIAL_CATEGORY_ICONS: Record<(typeof SPECIAL_CATEGORIES)[number], LucideIcon> = {
+
+  CREDIT: CreditCard,
+
+  EMPLOYMENT: Briefcase,
+
+  HOUSING: Home,
+
+  ISSUES_ELECTIONS_POLITICS: Landmark
+
+};
+
+
+
+function BudgetLevelCard({
+
+  selected,
+
+  recommended,
+
+  title,
+
+  description,
+
+  onSelect
+
+}: {
+
+  selected: boolean;
+
+  recommended?: boolean;
+
+  title: string;
+
+  description: string;
+
+  onSelect: () => void;
+
+}) {
+
+  const t = useTranslations("campaignCreator");
+
+  return (
+
+    <button
+
+      type="button"
+
+      onClick={onSelect}
+
+      className={cn(
+
+        "campaign-creator-budget-level-card",
+
+        selected
+
+          ? "campaign-creator-budget-level-card--selected"
+
+          : "campaign-creator-budget-level-card--unselected"
+
+      )}
+
+    >
+
+      <span
+
+        className={cn(
+
+          "campaign-creator-budget-level-card__radio",
+
+          selected
+
+            ? "campaign-creator-budget-level-card__radio--selected"
+
+            : "campaign-creator-budget-level-card__radio--unselected"
+
+        )}
+
+        aria-hidden
+
+      >
+
+        {selected ? <span className="campaign-creator-budget-level-card__radio-dot" /> : null}
+
+      </span>
+
+      <div className="min-w-0 flex-1">
+
+        <div className="flex flex-wrap items-center gap-1.5">
+
+          <p className="campaign-creator-budget-level-card__title">{title}</p>
+
+          {recommended ? (
+
+            <span className="campaign-creator-budget-level-card__badge">{t("budgetRecommended")}</span>
+
+          ) : null}
+
+        </div>
+
+        <p className="campaign-creator-budget-level-card__description">{description}</p>
+
+      </div>
+
+    </button>
+
+  );
+
+}
+
+
+
+function BudgetSpecialCategoryToggle({
+
+  checked,
+
+  label,
+
+  icon: Icon,
+
+  onToggle
+
+}: {
+
+  checked: boolean;
+
+  label: string;
+
+  icon: LucideIcon;
+
+  onToggle: () => void;
+
+}) {
+
+  return (
+
+    <button
+
+      type="button"
+
+      aria-pressed={checked}
+
+      onClick={onToggle}
+
+      className={cn(
+
+        "campaign-creator-budget-special-toggle",
+
+        checked
+
+          ? "campaign-creator-budget-special-toggle--selected"
+
+          : "campaign-creator-budget-special-toggle--unselected"
+
+      )}
+
+    >
+
+      <span
+
+        className={cn(
+
+          "campaign-creator-budget-special-toggle__icon",
+
+          checked
+
+            ? "campaign-creator-budget-special-toggle__icon--selected"
+
+            : "campaign-creator-budget-special-toggle__icon--unselected"
+
+        )}
+
+      >
+
+        <Icon size={14} strokeWidth={2} aria-hidden />
+
+      </span>
+
+      <span className="campaign-creator-budget-special-toggle__label">{label}</span>
+
+    </button>
+
+  );
+
+}
+
+
+
+function scrollToOrionBrainSidebar() {
+
+  const sidebar = document.querySelector(".campaign-creator-sidebar");
+
+  if (!sidebar) return;
+
+  sidebar.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  const brainButton = sidebar.querySelector<HTMLButtonElement>(".ui-btn-accent-outline");
+
+  brainButton?.focus({ preventScroll: true });
+
+}
+
+
+
+const BUDGET_ORION_TIP_KEYS: Record<CampaignObjectiveKey, `budgetOrionTip_${CampaignObjectiveKey}`> = {
+
+  awareness: "budgetOrionTip_awareness",
+
+  traffic: "budgetOrionTip_traffic",
+
+  engagement: "budgetOrionTip_engagement",
+
+  leads: "budgetOrionTip_leads",
+
+  app: "budgetOrionTip_app",
+
+  sales: "budgetOrionTip_sales"
+
+};
+
+
 
 function accountsErrorMessage(
+
   tAds: ReturnType<typeof useTranslations<"ads">>,
+
   code: PublishAccountsError
+
 ): string {
+
   switch (code) {
+
     case "account_not_linked":
+
       return tAds("adAccountsNotLinked");
+
     case "permission_denied":
+
       return tAds("adAccountsPermissionDenied");
+
     case "client_not_found":
+
       return tAds("adAccountsClientNotFound");
+
     case "meta_not_connected":
+
       return tAds("adAccountsMetaNotConnected");
+
     default:
+
       return tAds("adAccountsLoadFailed");
+
   }
+
 }
+
+
 
 function useCampaignStepEffects() {
+
   const locale = useLocale();
+
   const { payload, updatePayload, clients } = useCampaignDraft();
+
   const { accounts, accountsLoading, defaultAdAccountId, accountsError } = usePublishAssets(
+
     payload.clientSlug,
+
     payload.adAccountId
+
   );
+
   const { defaultTargeting } = useClientPublishDefaults(payload.clientSlug, locale);
 
+
+
   useEffect(() => {
+
     if (!payload.clientSlug || !clients.length) return;
+
     if (clients.some((c) => c.id === payload.clientSlug)) return;
+
     const match = clients.find((c) => c.slug === payload.clientSlug);
+
     if (match) updatePayload({ clientSlug: match.id });
+
   }, [clients, payload.clientSlug, updatePayload]);
 
+
+
   useEffect(() => {
+
     if (!payload.adAccountId && defaultAdAccountId) {
+
       updatePayload({ adAccountId: defaultAdAccountId });
+
     }
+
   }, [defaultAdAccountId, payload.adAccountId, updatePayload]);
 
+
+
   useEffect(() => {
+
     if (accountsLoading || !accounts.length) return;
+
     if (payload.adAccountId && !accounts.some((a) => a.metaAdAccountId === payload.adAccountId)) {
+
       updatePayload({ adAccountId: defaultAdAccountId ?? "" });
+
     }
+
   }, [accounts, accountsLoading, defaultAdAccountId, payload.adAccountId, updatePayload]);
 
+
+
   useEffect(() => {
+
     if (!defaultTargeting?.locations.length) return;
+
     updatePayload((p) => {
+
       const activeId = p.activeAdsetId ?? p.adsets[0]?.id;
+
       const adset = p.adsets.find((a) => a.id === activeId) ?? p.adsets[0];
+
       if (!adset || adset.targeting.locations.length) return p;
+
       return {
+
         ...p,
+
         adsets: p.adsets.map((a) =>
+
           a.id === activeId
+
             ? {
+
                 ...a,
+
                 targeting: {
+
                   ...a.targeting,
+
                   locations: defaultTargeting.locations,
+
                   ageMin: defaultTargeting.ageMin,
+
                   ageMax: defaultTargeting.ageMax,
+
                   customAudienceIds: defaultTargeting.includeAud,
+
                   excludedAudienceIds: defaultTargeting.excludeAud
+
                 }
+
               }
+
             : a
+
         )
+
       };
+
     });
+
   }, [defaultTargeting, updatePayload]);
 
+
+
   return { accounts, accountsLoading, accountsError };
+
 }
 
+
+
+
 export function CampaignStep() {
+
   const t = useTranslations("campaignCreator");
+
   const tAds = useTranslations("ads");
+
   const { payload, updatePayload, clients, clientsLoading } = useCampaignDraft();
+
   const { accounts, accountsLoading, accountsError } = useCampaignStepEffects();
-  const [sources, setSources] = useState<SourceCampaign[]>([]);
-  const [sourcesLoading, setSourcesLoading] = useState(false);
+
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+
+  const [copySourceName, setCopySourceName] = useState<string | null>(null);
+
   const [copyError, setCopyError] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<CampaignSection>("clientAccount");
 
-  useEffect(() => {
-    if (!payload.copyFromCampaignEnabled || !payload.clientSlug) {
-      setSources([]);
-      return;
-    }
-    setSourcesLoading(true);
-    fetch(`/api/campaigns/creator-sources?clientId=${encodeURIComponent(payload.clientSlug)}`)
-      .then((r) => r.json())
-      .then((j: { campaigns?: SourceCampaign[] }) => setSources(j.campaigns ?? []))
-      .catch(() => setSources([]))
-      .finally(() => setSourcesLoading(false));
-  }, [payload.copyFromCampaignEnabled, payload.clientSlug]);
+  const { section: activeSection, canGoTo, isSectionVisited, goTo } = useCampaignStepSubflow();
 
-  async function applySnapshot(campaignId: string) {
+
+
+  function applyObjective(obj: CampaignObjectiveKey) {
+
+    updatePayload((p) =>
+
+      applyObjectiveDefaultNames(p, obj, (key) => t(key as Parameters<typeof t>[0]))
+
+    );
+
+  }
+
+
+
+  function applyBuyingType(bt: BuyingType) {
+
+    updatePayload((p) => {
+
+      const objs = objectivesForBuyingType(bt);
+
+      const nextObjective = objs.includes(p.objective) ? p.objective : objs[0]!;
+
+      return { ...p, buyingType: bt, objective: nextObjective };
+
+    });
+
+  }
+
+
+
+  async function applySnapshot(campaignId: string, campaignName?: string) {
+
     if (campaignId.startsWith("draft:")) return;
+
     setCopyError(null);
+
     try {
+
       const res = await fetch(
+
         `/api/campaigns/${encodeURIComponent(campaignId)}/creator-snapshot`
+
       );
-      const j = (await res.json()) as { ok?: boolean; patch?: Partial<CampaignDraftPayload>; error?: string };
+
+      const j = (await res.json()) as {
+        ok?: boolean;
+        patch?: Partial<CampaignDraftPayload>;
+        adAccountId?: string | null;
+        clientSlug?: string | null;
+        error?: string;
+      };
+
       if (!j.ok || !j.patch) throw new Error("copyFailed");
+
       const merged = parseCampaignDraftPayload({
         ...payload,
         ...j.patch,
+        clientSlug: j.patch.clientSlug || j.clientSlug || payload.clientSlug,
+        adAccountId: j.patch.adAccountId || j.adAccountId || payload.adAccountId,
         copyFromCampaignEnabled: true,
         copyFromCampaignId: campaignId
       });
+
       updatePayload(merged);
+
+      if (campaignName) setCopySourceName(campaignName);
+
     } catch (e) {
+
       setCopyError(e instanceof Error ? e.message : "copyFailed");
+
     }
+
   }
 
+  async function handleCopySelect(campaignId: string, campaignName: string) {
+
+    setCopyModalOpen(false);
+
+    await applySnapshot(campaignId, campaignName);
+
+  }
+
+
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 space-y-3 bg-[var(--surface-bg)]">
+
+    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
+
+      <div className="campaign-creator-step-sticky-header space-y-3">
+
         <div>
+
           <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">{t("treeCampaign")}</h2>
+
           <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("campaignStepHint")}</p>
+
         </div>
 
-        <div className="grid grid-cols-3 gap-2 lg:hidden">
-          <DsChoiceCard
-            compact
-            title={t("campaignSub_client")}
-            icon={<Building2 size={16} />}
-            accent={activeSection === "clientAccount"}
-            onClick={() => setActiveSection("clientAccount")}
-          />
-          <DsChoiceCard
-            compact
-            title={t("campaignSub_basics")}
-            icon={<Tag size={16} />}
-            accent={activeSection === "identity"}
-            onClick={() => setActiveSection("identity")}
-          />
-          <DsChoiceCard
-            compact
-            title={t("campaignSub_budget")}
-            icon={<Wallet size={16} />}
-            accent={activeSection === "budget"}
-            onClick={() => setActiveSection("budget")}
-          />
-        </div>
 
-        <div className="hidden gap-4 sm:grid-cols-3 lg:grid">
+
+        <div className="campaign-creator-choice-cards campaign-creator-choice-cards--2">
+
           <DsChoiceCard
-            title={`${t("campaignSub_client")} + ${t("campaignSub_account")}`}
-            description={t("campaignSection_clientAccount_hint")}
-            icon={<Building2 size={18} />}
-            accent={activeSection === "clientAccount"}
-            onClick={() => setActiveSection("clientAccount")}
-            className="h-full"
+
+            layout="inline"
+
+            title={t("campaignSub_objective")}
+
+            description={t("campaignSection_objective_hint")}
+
+            icon={<Target size={18} />}
+
+            accent={activeSection === "objective"}
+            muted={!isSectionVisited("objective") && activeSection !== "objective"}
+            visited={isSectionVisited("objective") && activeSection !== "objective"}
+            onClick={() => goTo("objective")}
+            className={!canGoTo("objective") ? "pointer-events-none" : undefined}
+
           />
+
           <DsChoiceCard
-            title={t("campaignSub_basics")}
-            description={t("campaignSection_identity_hint")}
-            icon={<Tag size={18} />}
-            accent={activeSection === "identity"}
-            onClick={() => setActiveSection("identity")}
-            className="h-full"
-          />
-          <DsChoiceCard
+
+            layout="inline"
+
             title={t("campaignSub_budget")}
+
             description={t("campaignSection_budget_hint")}
+
             icon={<Wallet size={18} />}
+
             accent={activeSection === "budget"}
-            onClick={() => setActiveSection("budget")}
-            className="h-full"
+            muted={!isSectionVisited("budget") && activeSection !== "budget"}
+            visited={isSectionVisited("budget") && activeSection !== "budget"}
+            onClick={() => goTo("budget")}
+            className={!canGoTo("budget") ? "pointer-events-none" : undefined}
+
           />
+
         </div>
+
       </div>
 
-      <div className="campaign-creator-main-scroll min-h-0 flex-1 overflow-y-auto pt-4 pb-2">
-        <div className="campaign-creator-main-scroll__inner space-y-3">
 
-      {activeSection === "clientAccount" ? (
+
+      <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pt-5 pb-2">
+
         <div className="space-y-3">
-          <WizardAccordionSection title={t("campaignSub_client")} defaultOpen>
-            <FormField label={tAds("clientLabel")}>
-              {clientsLoading ? (
-                <div aria-busy="true" aria-label={t("loading")}>
-                  <FormFieldSkeleton />
-                </div>
-              ) : (
-                <FormSelect
-                  value={payload.clientSlug}
-                  onChange={(clientId) =>
-                    updatePayload({
-                      clientSlug: clientId,
-                      adAccountId: "",
-                      copyFromCampaignEnabled: false,
-                      copyFromCampaignId: null
-                    })
-                  }
-                  placeholder={tAds("selectClient")}
-                  options={clients.map((c) => ({ value: c.id, label: c.name }))}
-                />
-              )}
-            </FormField>
-          </WizardAccordionSection>
 
-          <WizardAccordionSection title={t("campaignSub_account")}>
-            <FormField label={tAds("adAccount")}>
-              {!payload.clientSlug ? (
-                <FormSelect
-                  value=""
-                  onChange={() => {}}
-                  disabled
-                  placeholder={tAds("selectClient")}
-                  options={[]}
-                />
-              ) : accountsLoading ? (
-                <div aria-busy="true" aria-label={t("loading")}>
-                  <FormFieldSkeleton />
-                </div>
-              ) : (
-                <FormSelect
-                  value={payload.adAccountId}
-                  onChange={(adAccountId) => updatePayload({ adAccountId })}
-                  placeholder={tAds("adAccountRequired")}
-                  options={accounts.map((a) => ({ value: a.metaAdAccountId, label: a.label }))}
-                />
-              )}
-              {accountsError ? (
-                <p className="mt-1 text-xs text-red-600">
-                  {accountsErrorMessage(tAds, accountsError)}{" "}
-                  {accountsError === "permission_denied" || accountsError === "meta_not_connected" ? (
-                    <a href="/settings/integrations" className="font-semibold underline">
-                      {tAds("adAccountsSettingsLink")}
-                    </a>
-                  ) : accountsError === "account_not_linked" ? (
-                    <a
-                      href={`/clients/${encodeURIComponent(payload.clientSlug)}/settings`}
-                      className="font-semibold underline"
-                    >
-                      {tAds("adAccountsClientLink")}
-                    </a>
-                  ) : null}
-                </p>
-              ) : null}
-              {!accountsLoading && !accountsError && payload.clientSlug && accounts.length === 0 ? (
-                <p className="mt-1 text-xs text-[var(--text-dim)]">
-                  {tAds("adAccountsEmpty")}{" "}
-                  <a href="/settings/integrations" className="font-semibold underline text-[var(--ui-accent)]">
-                    {tAds("adAccountsSettingsLink")}
-                  </a>
-                  {" · "}
-                  <a
-                    href={`/clients/${encodeURIComponent(payload.clientSlug)}/settings`}
-                    className="font-semibold underline text-[var(--ui-accent)]"
-                  >
-                    {tAds("adAccountsClientLink")}
-                  </a>
-                </p>
-              ) : null}
-            </FormField>
-          </WizardAccordionSection>
 
-          <WizardAccordionSection title={t("copyCampaignTitle")} hint={t("copyCampaignHint")}>
-            <div className="flex gap-4 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={!payload.copyFromCampaignEnabled}
-                  onChange={() =>
-                    updatePayload({ copyFromCampaignEnabled: false, copyFromCampaignId: null })
-                  }
-                  className="accent-[var(--ui-accent)]"
-                />
-                {t("copyCampaignNo")}
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={payload.copyFromCampaignEnabled}
-                  onChange={() => updatePayload({ copyFromCampaignEnabled: true })}
-                  className="accent-[var(--ui-accent)]"
-                />
-                {t("copyCampaignYes")}
-              </label>
+
+      {activeSection === "objective" ? (
+
+        <div className="campaign-creator-section-stack space-y-4">
+
+          <div className="campaign-creator-copy-card campaign-creator-copy-card--lead">
+
+            <div className="campaign-creator-copy-card__content">
+
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+
+                <Copy size={15} />
+
+              </span>
+
+              <div className="min-w-0 flex-1">
+
+                <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
+
+                  {t("copyCampaignOptionalTitle")}
+
+                </p>
+
+                <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-dim)]">
+
+                  {t("copyCampaignHint")}
+
+                </p>
+
+                {payload.copyFromCampaignId && copySourceName ? (
+
+                  <p className="mt-1 truncate text-xs font-medium text-[var(--ui-accent)]">
+
+                    {copySourceName}
+
+                  </p>
+
+                ) : null}
+
+              </div>
+
             </div>
-            {payload.copyFromCampaignEnabled ? (
-              !payload.clientSlug ? (
-                <p className="text-xs text-[var(--text-dim)]">{t("selectClientFirst")}</p>
-              ) : sourcesLoading ? (
-                <div aria-busy="true" aria-label={t("loading")}>
-                  <FormFieldSkeleton />
-                </div>
-              ) : (
-                <FormSelect
-                  value={payload.copyFromCampaignId ?? ""}
-                  onChange={(id) => {
-                    const nextId = id || null;
-                    updatePayload({ copyFromCampaignId: nextId });
-                    if (nextId && !nextId.startsWith("draft:")) void applySnapshot(nextId);
-                  }}
-                  placeholder={t("copyCampaignSelect")}
-                  options={sources.map((c) => ({ value: c.id, label: c.name }))}
-                />
-              )
-            ) : null}
-            {copyError ? (
+
+            <button
+
+              type="button"
+
+              onClick={() => setCopyModalOpen(true)}
+
+              className="campaign-creator-copy-card__action ui-btn-secondary inline-flex shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-xs font-heading font-medium"
+
+            >
+
+              <Copy size={13} strokeWidth={2.25} />
+
+              {t("copyCampaignSelectButton")}
+
+              <ChevronRight size={14} strokeWidth={2.25} />
+
+            </button>
+
+          </div>
+
+          {copyError ? (
+
+            <p className="-mt-2 text-xs text-red-600">
+
+              {copyError === "copyFailed" ? t("copyFailed") : copyError}
+
+            </p>
+
+          ) : null}
+
+          <CopyCampaignModal
+
+            open={copyModalOpen}
+
+            onClose={() => setCopyModalOpen(false)}
+
+            clientSlug={payload.clientSlug}
+
+            selectedId={payload.copyFromCampaignId}
+
+            onSelect={(id, name) => void handleCopySelect(id, name)}
+
+          />
+
+          <ObjectiveSelector
+
+            buyingType={payload.buyingType}
+
+            objective={payload.objective}
+
+            onBuyingTypeChange={applyBuyingType}
+
+            onObjectiveChange={applyObjective}
+
+            showHeader={false}
+
+            compact
+
+            hideBuyingType
+
+          />
+
+          <section className="campaign-creator-section space-y-3">
+
+            <div className="campaign-creator-objective-fields-row">
+
+              <FilterSelectDropdown
+
+                className="ui-filter-panel-field ui-filter-panel-field--buying-type"
+
+                icon={<Landmark size={13} />}
+
+                label={t("buyingType")}
+
+                placeholder={t("buyingType")}
+
+                value={payload.buyingType}
+
+                onChange={(v) => applyBuyingType(v as BuyingType)}
+
+                clearable={false}
+
+                options={[
+
+                  { value: "auction", label: t("buyingAuction") },
+
+                  { value: "reservation", label: t("buyingReservation") }
+
+                ]}
+
+              />
+
+              <FilterSelectDropdown
+
+                className="ui-filter-panel-field ui-filter-panel-field--client"
+
+                icon={<Building2 size={13} />}
+
+                label={tAds("clientLabel")}
+
+                placeholder={tAds("selectClient")}
+
+                value={payload.clientSlug}
+
+                onChange={(clientId) =>
+
+                  updatePayload({
+
+                    clientSlug: clientId,
+
+                    adAccountId: "",
+
+                    copyFromCampaignEnabled: false,
+
+                    copyFromCampaignId: null
+
+                  })
+
+                }
+
+                options={clients.map((c) => ({ value: c.id, label: c.name }))}
+
+                disabled={clientsLoading}
+
+                clearable={false}
+
+              />
+
+              <FilterSelectDropdown
+
+                className="ui-filter-panel-field ui-filter-panel-field--ad-account"
+
+                valueClassName="max-w-none"
+
+                icon={<Megaphone size={13} />}
+
+                label={tAds("adAccount")}
+
+                placeholder={!payload.clientSlug ? tAds("selectClient") : tAds("adAccountRequired")}
+
+                value={payload.adAccountId}
+
+                onChange={(adAccountId) => updatePayload({ adAccountId })}
+
+                options={accounts.map((a) => ({ value: a.metaAdAccountId, label: a.label }))}
+
+                disabled={!payload.clientSlug || accountsLoading}
+
+                clearable={false}
+
+              />
+
+              <FilterTextField
+
+                className="ui-filter-panel-field"
+
+                icon={<Tag size={13} />}
+
+                label={t("campaignName")}
+
+                placeholder={t("campaignName")}
+
+                value={payload.campaign.name}
+
+                onChange={(name) =>
+
+                  updatePayload((p) => ({
+
+                    ...p,
+
+                    campaign: { ...p.campaign, name }
+
+                  }))
+
+                }
+
+              />
+
+            </div>
+
+
+
+            {accountsError ? (
+
               <p className="text-xs text-red-600">
-                {copyError === "copyFailed" ? t("copyFailed") : copyError}
+
+                {accountsErrorMessage(tAds, accountsError)}{" "}
+
+                {accountsError === "permission_denied" || accountsError === "meta_not_connected" ? (
+
+                  <a href="/settings/integrations" className="font-semibold underline">
+
+                    {tAds("adAccountsSettingsLink")}
+
+                  </a>
+
+                ) : accountsError === "account_not_linked" ? (
+
+                  <a
+
+                    href={`/clients/${encodeURIComponent(payload.clientSlug)}/settings`}
+
+                    className="font-semibold underline"
+
+                  >
+
+                    {tAds("adAccountsClientLink")}
+
+                  </a>
+
+                ) : null}
+
               </p>
+
             ) : null}
-          </WizardAccordionSection>
+
+            {!accountsLoading && !accountsError && payload.clientSlug && accounts.length === 0 ? (
+
+              <p className="text-xs text-[var(--text-dim)]">
+
+                {tAds("adAccountsEmpty")}{" "}
+
+                <a href="/settings/integrations" className="font-semibold underline text-[var(--ui-accent)]">
+
+                  {tAds("adAccountsSettingsLink")}
+
+                </a>
+
+                {" · "}
+
+                <a
+
+                  href={`/clients/${encodeURIComponent(payload.clientSlug)}/settings`}
+
+                  className="font-semibold underline text-[var(--ui-accent)]"
+
+                >
+
+                  {tAds("adAccountsClientLink")}
+
+                </a>
+
+              </p>
+
+            ) : null}
+
+            {payload.buyingType === "reservation" ? (
+
+              <p className="text-xs leading-snug text-[var(--text-dim)]">{t("buyingReservationHint")}</p>
+
+            ) : null}
+
+          </section>
+
         </div>
+
       ) : null}
 
-      {activeSection === "identity" ? (
-        <WizardAccordionSection title={t("campaignSub_basics")} defaultOpen>
-          <FormField label={t("campaignName")}>
-            <input
-              value={payload.campaign.name}
-              onChange={(e) =>
-                updatePayload((p) => ({
-                  ...p,
-                  campaign: { ...p.campaign, name: e.target.value }
-                }))
-              }
-              className="ui-input"
-            />
-          </FormField>
-          <FormField label={t("objective")}>
-            <input
-              value={t(`objective_${payload.objective}`)}
-              readOnly
-              className="ui-input bg-[var(--surface-bg)]"
-            />
-          </FormField>
-        </WizardAccordionSection>
-      ) : null}
+
 
       {activeSection === "budget" ? (
-        <WizardAccordionSection title={t("campaignSub_budget")} defaultOpen>
-          <p className="text-xs text-[var(--text-dim)]">{t("budgetSection")}</p>
-          <div className="space-y-2">
-            <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border-color)] p-3 transition hover:border-[var(--ui-accent-border)]">
-              <input
-                type="radio"
-                name="budgetLevel"
-                checked={payload.campaign.budgetLevel === "campaign"}
-                onChange={() =>
-                  updatePayload((p) => ({
-                    ...p,
-                    campaign: { ...p.campaign, budgetLevel: "campaign" }
-                  }))
-                }
-                className="mt-1 accent-[var(--ui-accent)]"
-              />
-              <div>
-                <p className="text-sm font-medium text-[var(--text-main)]">{t("budgetCbo")}</p>
-                <p className="text-[11px] text-[var(--text-dim)]">{t("budgetCboHint")}</p>
-              </div>
-            </label>
-            <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-[var(--border-color)] p-3 transition hover:border-[var(--ui-accent-border)]">
-              <input
-                type="radio"
-                name="budgetLevel"
-                checked={payload.campaign.budgetLevel === "adset"}
-                onChange={() =>
-                  updatePayload((p) => ({
-                    ...p,
-                    campaign: { ...p.campaign, budgetLevel: "adset" }
-                  }))
-                }
-                className="mt-1 accent-[var(--ui-accent)]"
-              />
-              <div>
-                <p className="text-sm font-medium text-[var(--text-main)]">{t("budgetAbo")}</p>
-                <p className="text-[11px] text-[var(--text-dim)]">{t("budgetAboHint")}</p>
-              </div>
-            </label>
-          </div>
-          <FormField label={tAds("dailyBudget")}>
-            <input
-              type="number"
-              min={1}
-              value={payload.campaign.dailyBudgetBRL}
-              onChange={(e) =>
-                updatePayload((p) => ({
-                  ...p,
-                  campaign: { ...p.campaign, dailyBudgetBRL: Number(e.target.value) || 0 }
-                }))
-              }
-              className="ui-input"
-            />
-          </FormField>
 
-          <div className="space-y-3">
-            <h4 className="font-heading text-xs font-semibold text-[var(--text-main)]">{t("specialCategories")}</h4>
-            <p className="text-[11px] text-[var(--text-dim)]">{t("specialCategoriesHint")}</p>
-            <div className="flex flex-wrap gap-2">
-              {SPECIAL_CATEGORIES.map((cat) => {
-                const checked = payload.campaign.specialAdCategories.includes(cat);
-                return (
-                  <label
-                    key={cat}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--border-color)] px-2 py-1 text-xs"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() =>
-                        updatePayload((p) => ({
-                          ...p,
-                          campaign: {
-                            ...p.campaign,
-                            specialAdCategories: checked
-                              ? p.campaign.specialAdCategories.filter((c) => c !== cat)
-                              : [...p.campaign.specialAdCategories, cat]
-                          }
-                        }))
-                      }
-                      className="accent-[var(--ui-accent)]"
-                    />
-                    {t(`specialCat_${cat}`)}
-                  </label>
-                );
-              })}
+        <div className="campaign-creator-budget-body">
+
+          <header className="campaign-creator-budget-header">
+
+            <h3 className="campaign-creator-budget-header__title">{t("campaignSub_budget")}</h3>
+
+            <p className="campaign-creator-budget-header__subtitle">{t("budgetSectionDescription")}</p>
+
+          </header>
+
+
+
+          <section className="campaign-creator-budget-group">
+
+            <h4 className="campaign-creator-section-title">{t("budgetTypeLabel")}</h4>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+
+              <BudgetLevelCard
+
+                selected={payload.campaign.budgetLevel === "campaign"}
+
+                recommended
+
+                title={t("budgetCbo")}
+
+                description={t("budgetCboHint")}
+
+                onSelect={() =>
+
+                  updatePayload((p) => ({
+
+                    ...p,
+
+                    campaign: { ...p.campaign, budgetLevel: "campaign" }
+
+                  }))
+
+                }
+
+              />
+
+              <BudgetLevelCard
+
+                selected={payload.campaign.budgetLevel === "adset"}
+
+                title={t("budgetAbo")}
+
+                description={t("budgetAboHint")}
+
+                onSelect={() =>
+
+                  updatePayload((p) => ({
+
+                    ...p,
+
+                    campaign: { ...p.campaign, budgetLevel: "adset" }
+
+                  }))
+
+                }
+
+              />
+
             </div>
+
+          </section>
+
+
+
+          <section className="campaign-creator-budget-group">
+
+            <label className="campaign-creator-section-title" htmlFor="campaign-daily-budget">
+
+              {t("budgetDailyLabel")}
+
+            </label>
+
+            <div className="campaign-creator-budget-daily-input">
+
+              <span className="campaign-creator-budget-daily-input__prefix" aria-hidden>
+
+                R$
+
+              </span>
+
+              <input
+
+                id="campaign-daily-budget"
+
+                type="number"
+
+                min={1}
+
+                step={1}
+
+                value={payload.campaign.dailyBudgetBRL}
+
+                onChange={(e) =>
+
+                  updatePayload((p) => ({
+
+                    ...p,
+
+                    campaign: { ...p.campaign, dailyBudgetBRL: Number(e.target.value) || 0 }
+
+                  }))
+
+                }
+
+                className="campaign-creator-budget-daily-input__field"
+
+                aria-label={tAds("dailyBudget")}
+
+              />
+
+            </div>
+
+          </section>
+
+
+
+          <section className="campaign-creator-budget-group">
+
+            <div className="campaign-creator-budget-special-header">
+
+              <h4 className="campaign-creator-section-title">{t("specialCategories")}</h4>
+
+              <a
+
+                href="https://www.facebook.com/business/help/298908943825054"
+
+                target="_blank"
+
+                rel="noopener noreferrer"
+
+                className="campaign-creator-budget-special-learn-more"
+
+              >
+
+                {t("specialCategoriesLearnMore")}
+
+              </a>
+
+            </div>
+
+            <p className="text-xs leading-snug text-[var(--text-dim)]">{t("specialCategoriesHint")}</p>
+
+            <div className="campaign-creator-budget-special-toggles">
+
+              {SPECIAL_CATEGORIES.map((cat) => {
+
+                const checked = payload.campaign.specialAdCategories.includes(cat);
+
+                return (
+
+                  <BudgetSpecialCategoryToggle
+
+                    key={cat}
+
+                    checked={checked}
+
+                    label={t(`specialCat_${cat}`)}
+
+                    icon={SPECIAL_CATEGORY_ICONS[cat]}
+
+                    onToggle={() =>
+
+                      updatePayload((p) => ({
+
+                        ...p,
+
+                        campaign: {
+
+                          ...p.campaign,
+
+                          specialAdCategories: checked
+
+                            ? p.campaign.specialAdCategories.filter((c) => c !== cat)
+
+                            : [...p.campaign.specialAdCategories, cat]
+
+                        }
+
+                      }))
+
+                    }
+
+                  />
+
+                );
+
+              })}
+
+            </div>
+
+          </section>
+
+
+
+          <div className="campaign-creator-budget-orion-tip">
+
+            <div className="campaign-creator-budget-orion-tip__content">
+
+              <span className="campaign-creator-budget-orion-tip__icon">
+
+                <Lightbulb size={14} strokeWidth={2.25} aria-hidden />
+
+              </span>
+
+              <p className="campaign-creator-budget-orion-tip__text">
+
+                {t(BUDGET_ORION_TIP_KEYS[payload.objective])}
+
+              </p>
+
+            </div>
+
+            <button
+
+              type="button"
+
+              onClick={scrollToOrionBrainSidebar}
+
+              className="campaign-creator-budget-orion-tip__action ui-btn-accent-outline"
+
+            >
+
+              {t("budgetViewBenchmark")}
+
+              <ChevronRight size={14} strokeWidth={2.5} aria-hidden />
+
+            </button>
+
           </div>
-        </WizardAccordionSection>
-      ) : null}
+
         </div>
+
+      ) : null}
+
+      <CampaignCreatorUxMobileSummary />
+
+        </div>
+
       </div>
+
     </div>
+
   );
+
 }
+

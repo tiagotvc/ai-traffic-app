@@ -74,6 +74,7 @@ import { TenantAddon } from "./TenantAddon";
 import { PlatformSetting } from "./PlatformSetting";
 import { TenantAiPolicy } from "./TenantAiPolicy";
 import { ContactMessage } from "./ContactMessage";
+import { McpToken } from "./McpToken";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
@@ -148,7 +149,8 @@ export {
   DashboardWidgetPermission,
   DashboardAiWidget,
   DashboardAddon,
-  ContactMessage
+  ContactMessage,
+  McpToken
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -245,7 +247,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: DashboardWidgetPermission, name: "DashboardWidgetPermission" },
   { ctor: DashboardAiWidget, name: "DashboardAiWidget" },
   { ctor: DashboardAddon, name: "DashboardAddon" },
-  { ctor: ContactMessage, name: "ContactMessage" }
+  { ctor: ContactMessage, name: "ContactMessage" },
+  { ctor: McpToken, name: "McpToken" }
 ]);
 
 export const typeOrmEntities = [
@@ -320,5 +323,6 @@ export const typeOrmEntities = [
   DashboardWidgetPermission,
   DashboardAiWidget,
   DashboardAddon,
-  ContactMessage
+  ContactMessage,
+  McpToken
 ] as const;

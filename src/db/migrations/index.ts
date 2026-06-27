@@ -53,6 +53,7 @@ import { ClientCommercialAddressNormalized1735831700000 } from "./0047-ClientCom
 import { UserTermsAcceptance_1735831900000 } from "./0049-UserTermsAcceptance";
 import { ContactMessages_1735832000000 } from "./0050-ContactMessages";
 import { AiCreditsLayer_1735832100000 } from "./0051-AiCreditsLayer";
+import { McpTokens_1735832200000 } from "./0052-McpTokens";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -110,5 +111,6 @@ export const appMigrations = [
   ClientCommercialAddressNormalized1735831700000,
   UserTermsAcceptance_1735831900000,
   ContactMessages_1735832000000,
-  AiCreditsLayer_1735832100000
+  AiCreditsLayer_1735832100000,
+  McpTokens_1735832200000
 ];

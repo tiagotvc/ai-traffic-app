@@ -12,26 +12,42 @@ import {
 } from "react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import type { CampaignDraftPayload } from "@/lib/campaign-draft";
+import { patchWizardNavigation, type CampaignDraftPayload } from "@/lib/campaign-draft";
 
-export const CAMPAIGN_SUB_STEPS = ["client", "account", "basics", "budget"] as const;
-export type CampaignSubStep = (typeof CAMPAIGN_SUB_STEPS)[number];
+export const CAMPAIGN_SECTIONS = ["objective", "budget"] as const;
+export type CampaignSection = (typeof CAMPAIGN_SECTIONS)[number];
 
-export function validateCampaignSubStep(
+/** Legacy persisted section — merged into objective screen. */
+export type LegacyCampaignSection = "clientAccountIdentity";
+
+export function normalizeCampaignSection(
+  section: string | undefined
+): CampaignSection {
+  if (section === "budget") return "budget";
+  return "objective";
+}
+
+function migrateVisitedThrough(section: string | undefined): number {
+  if (section === "budget") return 1;
+  if (section === "clientAccountIdentity") return 1;
+  return 0;
+}
+
+function validateObjectiveSetup(payload: CampaignDraftPayload): string | null {
+  if (!payload.clientSlug.trim()) return "clientRequired";
+  if (!payload.adAccountId.trim()) return "adAccountRequired";
+  if (payload.copyFromCampaignEnabled && !payload.copyFromCampaignId) return "copyCampaignRequired";
+  if (!payload.campaign.name.trim()) return "campaignNameRequired";
+  return null;
+}
+
+export function validateCampaignSection(
   payload: CampaignDraftPayload,
-  subStep: CampaignSubStep
+  section: CampaignSection
 ): string | null {
-  switch (subStep) {
-    case "client":
-      if (!payload.clientSlug.trim()) return "clientRequired";
-      return null;
-    case "account":
-      if (!payload.adAccountId.trim()) return "adAccountRequired";
-      if (payload.copyFromCampaignEnabled && !payload.copyFromCampaignId) return "copyCampaignRequired";
-      return null;
-    case "basics":
-      if (!payload.campaign.name.trim()) return "campaignNameRequired";
-      return null;
+  switch (section) {
+    case "objective":
+      return validateObjectiveSetup(payload);
     case "budget":
       if (payload.campaign.dailyBudgetBRL < 1) return "budgetRequired";
       return null;
@@ -39,12 +55,13 @@ export function validateCampaignSubStep(
 }
 
 type SubflowContextValue = {
-  subStep: CampaignSubStep;
-  subStepIndex: number;
+  section: CampaignSection;
+  sectionIndex: number;
   isFirst: boolean;
   isLast: boolean;
-  canGoTo: (step: CampaignSubStep) => boolean;
-  goTo: (step: CampaignSubStep) => void;
+  canGoTo: (section: CampaignSection) => boolean;
+  isSectionVisited: (section: CampaignSection) => boolean;
+  goTo: (section: CampaignSection) => void;
   goNext: () => boolean;
   goPrev: () => boolean;
   validateCurrent: () => string | null;
@@ -53,71 +70,94 @@ type SubflowContextValue = {
 const SubflowContext = createContext<SubflowContextValue | null>(null);
 
 export function CampaignStepSubflowProvider({ children }: { children: ReactNode }) {
-  const { activeNode } = useCampaignDraft();
-  const [subStep, setSubStep] = useState<CampaignSubStep>("client");
-  const [visitedThrough, setVisitedThrough] = useState(0);
+  const { activeNode, payload, updatePayload } = useCampaignDraft();
+  const savedSection = payload.meta?.wizardNavigation?.campaignSection;
+  const [section, setSection] = useState<CampaignSection>(() =>
+    normalizeCampaignSection(savedSection)
+  );
+  const [visitedThrough, setVisitedThrough] = useState(() => migrateVisitedThrough(savedSection));
   const prevActiveNode = useRef(activeNode);
+
+  const persistSection = useCallback(
+    (next: CampaignSection) => {
+      updatePayload((p) => patchWizardNavigation(p, { campaignSection: next }));
+    },
+    [updatePayload]
+  );
 
   useEffect(() => {
     if (activeNode === "campaign" && prevActiveNode.current !== "campaign") {
-      setSubStep("client");
-      setVisitedThrough(0);
+      const restored = normalizeCampaignSection(payload.meta?.wizardNavigation?.campaignSection);
+      setSection(restored);
+      setVisitedThrough(migrateVisitedThrough(payload.meta?.wizardNavigation?.campaignSection));
     }
     prevActiveNode.current = activeNode;
-  }, [activeNode]);
+  }, [activeNode, payload.meta?.wizardNavigation?.campaignSection]);
 
-  const subStepIndex = CAMPAIGN_SUB_STEPS.indexOf(subStep);
+  const sectionIndex = CAMPAIGN_SECTIONS.indexOf(section);
 
   const canGoTo = useCallback(
-    (step: CampaignSubStep) => {
+    (target: CampaignSection) => {
       if (activeNode !== "campaign") return false;
-      const idx = CAMPAIGN_SUB_STEPS.indexOf(step);
-      return idx <= visitedThrough || idx === subStepIndex;
+      const idx = CAMPAIGN_SECTIONS.indexOf(target);
+      return idx <= visitedThrough || idx === sectionIndex;
     },
-    [activeNode, subStepIndex, visitedThrough]
+    [activeNode, sectionIndex, visitedThrough]
+  );
+
+  const isSectionVisited = useCallback(
+    (target: CampaignSection) => {
+      const idx = CAMPAIGN_SECTIONS.indexOf(target);
+      return idx <= visitedThrough;
+    },
+    [visitedThrough]
   );
 
   const goTo = useCallback(
-    (step: CampaignSubStep) => {
-      if (!canGoTo(step)) return;
-      setSubStep(step);
+    (target: CampaignSection) => {
+      if (!canGoTo(target)) return;
+      setSection(target);
+      persistSection(target);
     },
-    [canGoTo]
+    [canGoTo, persistSection]
   );
 
   const goNext = useCallback(() => {
-    if (subStepIndex >= CAMPAIGN_SUB_STEPS.length - 1) return false;
-    const next = CAMPAIGN_SUB_STEPS[subStepIndex + 1]!;
-    setVisitedThrough((v) => Math.max(v, subStepIndex + 1));
-    setSubStep(next);
+    if (sectionIndex >= CAMPAIGN_SECTIONS.length - 1) return false;
+    const next = CAMPAIGN_SECTIONS[sectionIndex + 1]!;
+    setVisitedThrough((v) => Math.max(v, sectionIndex + 1));
+    setSection(next);
+    persistSection(next);
     return true;
-  }, [subStepIndex]);
+  }, [sectionIndex, persistSection]);
 
   const goPrev = useCallback(() => {
-    if (subStepIndex <= 0) return false;
-    setSubStep(CAMPAIGN_SUB_STEPS[subStepIndex - 1]!);
+    if (sectionIndex <= 0) return false;
+    const prev = CAMPAIGN_SECTIONS[sectionIndex - 1]!;
+    setSection(prev);
+    persistSection(prev);
     return true;
-  }, [subStepIndex]);
+  }, [sectionIndex, persistSection]);
 
-  const { payload } = useCampaignDraft();
   const validateCurrent = useCallback(
-    () => validateCampaignSubStep(payload, subStep),
-    [payload, subStep]
+    () => validateCampaignSection(payload, section),
+    [payload, section]
   );
 
   const value = useMemo(
     (): SubflowContextValue => ({
-      subStep,
-      subStepIndex,
-      isFirst: subStepIndex === 0,
-      isLast: subStepIndex === CAMPAIGN_SUB_STEPS.length - 1,
+      section,
+      sectionIndex,
+      isFirst: sectionIndex === 0,
+      isLast: sectionIndex === CAMPAIGN_SECTIONS.length - 1,
       canGoTo,
+      isSectionVisited,
       goTo,
       goNext,
       goPrev,
       validateCurrent
     }),
-    [subStep, subStepIndex, canGoTo, goTo, goNext, goPrev, validateCurrent]
+    [section, sectionIndex, canGoTo, isSectionVisited, goTo, goNext, goPrev, validateCurrent]
   );
 
   return <SubflowContext.Provider value={value}>{children}</SubflowContext.Provider>;

@@ -16,7 +16,7 @@ type Props = {
 export function AiCreditCostHint({ kind, calls = 1, className }: Props) {
   const t = useTranslations("campaignCreator");
   const unitCost = useAiCreditCost(kind);
-  const total = unitCost * calls;
+  const total = Math.max(1, unitCost * calls);
 
   return (
     <p
