@@ -466,7 +466,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                 {isLive && (live?.metaFilters?.length ?? 0) > 0 ? (
                   <span
                     className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-heading font-bold"
-                    style={{ background: "var(--ui-accent)", color: "#0f1419" }}
+                    style={{ background: "var(--ui-accent)", color: "var(--ui-accent-btn-text)" }}
                   >
                     {live!.metaFilters!.length}
                   </span>
@@ -497,7 +497,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
               <button
                 onClick={() => navigate("/campaigns/new")}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-heading font-bold shadow-lg transition-all hover:brightness-110 active:scale-95"
-                style={{ background: "linear-gradient(135deg, #f5a623, #e8920d)", color: "#0f1419" }}
+                style={{ background: "linear-gradient(135deg, var(--ui-accent-btn-from), var(--ui-accent-btn-to))", color: "var(--ui-accent-btn-text)" }}
               >
                 <Plus size={15} />
                 Nova Campanha

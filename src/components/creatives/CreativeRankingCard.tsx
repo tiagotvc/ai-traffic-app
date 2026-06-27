@@ -125,11 +125,11 @@ export function CreativeRankingCard({
       }`}
       style={{
         background: "var(--surface-card)",
-        border: isFirst ? "1.5px solid rgba(245,166,35,0.5)" : "1px solid var(--border-color)",
+        border: isFirst ? "1.5px solid var(--ui-accent-border-strong)" : "1px solid var(--border-color)",
         boxShadow: isFirst
           ? isReport
             ? "none"
-            : "0 4px 24px rgba(245,166,35,0.1)"
+            : "0 4px 24px var(--ui-accent-glow)"
           : isReport
             ? "none"
             : "0 1px 6px rgba(0,0,0,0.06)"
@@ -206,7 +206,7 @@ export function CreativeRankingCard({
             {campaignType ? (
               <div
                 className="absolute bottom-3 left-3 z-[2] rounded-full px-2.5 py-1 text-xs font-medium"
-                style={{ background: "rgba(245,166,35,0.85)", color: "#0f1419" }}
+                style={{ background: "var(--ui-accent)", color: "var(--ui-accent-btn-text)" }}
               >
                 {campaignType}
               </div>
@@ -301,7 +301,7 @@ export function CreativeRankingCard({
             <p
               className={`truncate font-bold ${
                 isReport ? "text-[10px]" : "text-sm"
-              } ${key === primaryMetric ? "text-[var(--amber)]" : "text-[var(--text-main)]"}`}
+              } ${key === primaryMetric ? "text-[var(--ui-accent)]" : "text-[var(--text-main)]"}`}
             >
               {formatMetricValue(key, Number(metrics[key] ?? 0), locale)}
             </p>
@@ -310,12 +310,12 @@ export function CreativeRankingCard({
         {!isReport && displayMetrics[5] ? (
           <div
             className="col-span-2 flex items-center justify-between rounded-lg px-3 py-2"
-            style={{ background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.18)" }}
+            style={{ background: "var(--ui-accent-muted)", border: "1px solid var(--ui-accent-border)" }}
           >
-            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--amber)]">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-accent)]">
               {tMetrics(METRIC_BY_KEY[displayMetrics[5]].label)}
             </span>
-            <span className="text-sm font-bold text-[var(--amber)]">
+            <span className="text-sm font-bold text-[var(--ui-accent)]">
               {formatMetricValue(displayMetrics[5], Number(metrics[displayMetrics[5]] ?? 0), locale)}
             </span>
           </div>
@@ -329,9 +329,9 @@ export function CreativeRankingCard({
           onClick={onPreview}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all"
           style={{
-            background: "rgba(245,166,35,0.12)",
-            color: "var(--amber)",
-            border: "1px solid rgba(245,166,35,0.3)"
+            background: "var(--ui-accent-muted)",
+            color: "var(--ui-accent)",
+            border: "1px solid var(--ui-accent-border)"
           }}
         >
           <Eye size={13} />

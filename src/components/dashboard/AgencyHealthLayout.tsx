@@ -166,7 +166,7 @@ export function AgencyHealthLayout({
                   </td>
                   <td
                     className="px-4 py-3 text-sm font-semibold"
-                    style={{ color: "var(--amber-bright)", fontFamily: "var(--font-heading)" }}
+                    style={{ color: "var(--ui-accent)", fontFamily: "var(--font-heading)" }}
                   >
                     {client.spend}
                   </td>

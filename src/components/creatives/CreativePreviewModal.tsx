@@ -310,7 +310,7 @@ export function CreativePreviewModal({
               <div className="mt-0.5 flex flex-wrap items-center gap-2">
                 <span
                   className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-                  style={{ background: "rgba(245,166,35,0.12)", color: "var(--amber)" }}
+                  style={{ background: "var(--ui-accent-muted)", color: "var(--ui-accent)" }}
                 >
                   {creativeType === "Video" && <Video size={10} />}
                   {creativeType === "Imagem" && <Image size={10} />}
@@ -384,9 +384,9 @@ export function CreativePreviewModal({
                 onClick={() => setMainTab(tab.key)}
                 className="rounded-t-lg px-4 py-2 text-sm font-medium transition-all"
                 style={{
-                  color: mainTab === tab.key ? "var(--amber)" : "var(--text-dim)",
-                  background: mainTab === tab.key ? "rgba(245,166,35,0.08)" : "transparent",
-                  borderBottom: mainTab === tab.key ? "2px solid var(--amber)" : "2px solid transparent"
+                  color: mainTab === tab.key ? "var(--ui-accent)" : "var(--text-dim)",
+                  background: mainTab === tab.key ? "var(--ui-accent-muted)" : "transparent",
+                  borderBottom: mainTab === tab.key ? "2px solid var(--ui-accent)" : "2px solid transparent"
                 }}
               >
                 {tab.label}
@@ -451,14 +451,14 @@ export function CreativePreviewModal({
                       <div className="flex items-center gap-3">
                         <div
                           className="flex h-8 w-8 items-center justify-center rounded-lg"
-                          style={{ background: "rgba(245,166,35,0.12)" }}
+                          style={{ background: "var(--ui-accent-muted)" }}
                         >
-                          <BarChart2 size={15} style={{ color: "var(--amber)" }} />
+                          <BarChart2 size={15} style={{ color: "var(--ui-accent)" }} />
                         </div>
                         <div>
                           <Link
                             href={`/campaigns/${c.id}?client=${encodeURIComponent(usage.clientSlug)}`}
-                            className="text-sm font-semibold text-[var(--text-main)] hover:text-[var(--amber)]"
+                            className="text-sm font-semibold text-[var(--text-main)] hover:text-[var(--ui-accent)]"
                           >
                             {c.name}
                           </Link>
@@ -490,9 +490,9 @@ export function CreativePreviewModal({
                       onClick={() => setFormat(f.key)}
                       className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-all"
                       style={{
-                        background: active ? "var(--amber)" : "var(--surface-bg)",
+                        background: active ? "var(--ui-accent)" : "var(--surface-bg)",
                         color: active ? "#0f1419" : "var(--text-dim)",
-                        borderColor: active ? "var(--amber)" : "var(--border-color)",
+                        borderColor: active ? "var(--ui-accent)" : "var(--border-color)",
                         fontWeight: active ? 600 : 400
                       }}
                     >
@@ -550,7 +550,7 @@ export function CreativePreviewModal({
             type="button"
             onClick={onClose}
             className="rounded-lg px-5 py-2 text-sm font-semibold"
-            style={{ background: "var(--amber)", color: "#0f1419" }}
+            style={{ background: "var(--ui-accent)", color: "#0f1419" }}
           >
             {t("close")}
           </button>

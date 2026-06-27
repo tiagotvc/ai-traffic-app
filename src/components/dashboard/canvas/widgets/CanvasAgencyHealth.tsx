@@ -123,7 +123,7 @@ export function CanvasAgencyHealth({
                     {client.name}
                   </Link>
                 </td>
-                <td className="truncate px-3 py-2.5 text-sm font-semibold" style={{ color: "var(--amber-bright)" }}>
+                <td className="truncate px-3 py-2.5 text-sm font-semibold" style={{ color: "var(--ui-accent)" }}>
                   {client.spend}
                 </td>
                 <td className="truncate px-3 py-2.5 text-sm font-semibold" style={{ color: "var(--success)" }}>

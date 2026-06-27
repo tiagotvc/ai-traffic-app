@@ -314,7 +314,7 @@ export default function Campaigns() {
                   className="px-3 py-2 rounded-lg text-xs font-heading font-semibold border transition-all"
                   style={
                     statusFilter === s
-                      ? { background: "rgba(245,166,35,0.1)", borderColor: "rgba(245,166,35,0.3)", color: "var(--ui-accent)" }
+                      ? { background: "var(--ui-accent-muted)", borderColor: "var(--ui-accent-border)", color: "var(--ui-accent)" }
                       : { borderColor: "var(--border-color)", color: "var(--text-dim)" }
                   }
                 >
@@ -474,7 +474,7 @@ export default function Campaigns() {
                                 ? "bg-green-400 animate-pulse"
                                 : c.status === "draft"
                                 ? "bg-slate-400"
-                                : "bg-amber-500"
+                                : "bg-[var(--ui-accent)]"
                             )}
                           />
                           <span

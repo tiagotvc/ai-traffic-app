@@ -2,7 +2,7 @@
 
 Reusable components and CSS patterns used in the **Campaign Creator** wizard (`variant="uxpilot"`). Use this catalog when building new creator screens or porting patterns to other flows.
 
-**Scope:** `[data-campaign-creator-shell]` in `globals.css` overrides accent tokens (violet in light, violet in dark) and defines card surfaces. All examples assume the creator shell is mounted.
+**Scope:** `[data-campaign-creator-shell]` in `globals.css` defines elevated card surfaces and creator-specific inactive stepper/choice tokens. **Primary accent (`--ui-accent`) is now violet app-wide** (light and dark); the shell no longer overrides accent colors — only card/step tokens.
 
 **i18n namespace:** `campaignCreator` unless noted.
 
@@ -61,7 +61,7 @@ Reusable components and CSS patterns used in the **Campaign Creator** wizard (`v
 
 **File:** `src/app/globals.css` (block starting at `[data-campaign-creator-shell]`)
 
-**Purpose:** Scoped design tokens for the wizard — elevated card surfaces and violet accent in light mode.
+**Purpose:** Scoped design tokens for the wizard — elevated card surfaces. Accent colors inherit global `--ui-accent` (violet).
 
 **CSS variables (light):**
 
@@ -70,7 +70,7 @@ Reusable components and CSS patterns used in the **Campaign Creator** wizard (`v
 | `--creator-card-bg` | `#ffffff` | Primary card background |
 | `--creator-card-bg-inset` | `#e8edf3` | Inset panels, stat blocks |
 | `--creator-card-border` | `rgba(15,23,42,0.12)` | Card borders |
-| `--ui-accent` | violet | Primary accent (overrides global amber in shell) |
+| `--ui-accent` | violet (global) | Primary accent — inherited from `:root` |
 | `--ui-accent-muted` | violet 10% | Icon backgrounds, badges |
 | `--ui-accent-border` | violet 32% | Outlines, dashed cards |
 | `--creator-step-future-*` | muted violet | Inactive stepper steps |
@@ -834,6 +834,10 @@ Inline status pills and row actions (no full-size buttons).
 | Campaigns listing tables | `src/components/CampaignsHubClient.tsx` |
 
 ---
+
+## Global accent (2025-06)
+
+Primary UI accent is **violet in both light and dark mode** via `--ui-accent` in `globals.css`. Amber (`--amber`, `--amber-bright`) remains for **semantic warnings only** (alerts, low-confidence insights, past-due billing). Campaign creator shell scopes card surfaces and inactive stepper tones only — not accent color.
 
 ## Related docs
 

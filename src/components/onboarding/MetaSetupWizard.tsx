@@ -94,7 +94,7 @@ export function MetaSetupWizard({
           <span
             key={s}
             className={`h-2 w-2 rounded-full ${
-              i <= stepIndex ? "bg-[var(--amber)]" : "bg-[var(--border-color)]"
+              i <= stepIndex ? "bg-[var(--ui-accent)]" : "bg-[var(--border-color)]"
             }`}
           />
         ))}

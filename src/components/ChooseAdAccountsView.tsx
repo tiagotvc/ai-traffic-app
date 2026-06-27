@@ -59,7 +59,7 @@ function Steps({ step }: { step: "bm" | "accounts" }) {
       <span className={`flex items-center gap-1.5 ${step === "accounts" ? "text-[var(--violet)]" : "text-[var(--text-main)]"}`}>
         <span
           className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
-            step === "accounts" ? "bg-amber-100 text-[var(--amber)]" : "bg-[var(--amber)] text-[#0f1419]"
+            step === "accounts" ? "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]" : "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]"
           }`}
         >
           {step === "accounts" ? <Icon d={ICONS.check} className="h-3 w-3" /> : "2"}
@@ -70,7 +70,7 @@ function Steps({ step }: { step: "bm" | "accounts" }) {
       <span className={`flex items-center gap-1.5 ${step === "accounts" ? "text-[var(--text-main)]" : "text-[var(--text-dimmer)]"}`}>
         <span
           className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
-            step === "accounts" ? "bg-[var(--amber)] text-[#0f1419]" : "bg-slate-200 text-[var(--text-dim)]"
+            step === "accounts" ? "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]" : "bg-slate-200 text-[var(--text-dim)]"
           }`}
         >
           3

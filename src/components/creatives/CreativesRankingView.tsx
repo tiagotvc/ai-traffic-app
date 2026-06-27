@@ -238,10 +238,10 @@ export function CreativesRankingView({
 
             {g.promising.length && !embedInReport ? (
               <div className="border-t border-[var(--border-color)]">
-                <div className="flex items-start gap-2 bg-[rgba(245,166,35,0.08)] px-4 py-2.5">
-                  <span className="text-[var(--amber)]">✦</span>
+                <div className="flex items-start gap-2 bg-[var(--ui-accent-muted)] px-4 py-2.5">
+                  <span className="text-[var(--ui-accent)]">✦</span>
                   <div>
-                    <div className="text-xs font-semibold text-[var(--amber)]">{t("promisingTitle")}</div>
+                    <div className="text-xs font-semibold text-[var(--ui-accent)]">{t("promisingTitle")}</div>
                     <div className="text-[11px] text-[var(--text-dim)]">{t("promisingDesc")}</div>
                   </div>
                 </div>

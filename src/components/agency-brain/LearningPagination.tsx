@@ -81,8 +81,8 @@ export function LearningPagination({
                     className={[
                       "min-w-[2rem] rounded-lg px-2 py-1 text-xs font-semibold tabular-nums transition",
                       active
-                        ? "bg-[var(--amber-bright)] text-white shadow-sm"
-                        : "text-[var(--text-dim)] hover:bg-[var(--ui-accent)]/10 hover:text-[var(--amber-bright)]"
+                        ? "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)] shadow-sm"
+                        : "text-[var(--text-dim)] hover:bg-[var(--ui-accent-muted)] hover:text-[var(--ui-accent)]"
                     ].join(" ")}
                   >
                     {pageNum}

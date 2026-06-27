@@ -200,7 +200,7 @@ export function CreativeCardGrid({
                   onClick={() => setCmpMode(mode)}
                   className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                     cmpMode === mode
-                      ? "bg-[rgba(245,166,35,0.12)] text-[var(--amber)]"
+                      ? "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]"
                       : "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
                   }`}
                 >
@@ -236,10 +236,10 @@ export function CreativeCardGrid({
                       ))}
                     </tr>
                   ))}
-                  <tr className="bg-[rgba(245,166,35,0.06)]/40 font-semibold hover:bg-[var(--row-hover)]">
-                    <td className="px-4 py-2.5 text-[var(--amber)]">{t("total")}</td>
+                  <tr className="bg-[var(--ui-accent-muted)]/40 font-semibold hover:bg-[var(--row-hover)]">
+                    <td className="px-4 py-2.5 text-[var(--ui-accent)]">{t("total")}</td>
                     {metrics.map((m) => (
-                      <td key={m} className="px-3 py-2.5 text-right tabular-nums text-[var(--amber)]">
+                      <td key={m} className="px-3 py-2.5 text-right tabular-nums text-[var(--ui-accent)]">
                         {formatMetricValue(m, Number(comparing.metrics[m] ?? 0), locale)}
                       </td>
                     ))}
