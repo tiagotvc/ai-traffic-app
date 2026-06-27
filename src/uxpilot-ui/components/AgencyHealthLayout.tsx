@@ -149,7 +149,7 @@ export default function AgencyHealthLayout({ isEmptyState }: Props) {
                       <span className="font-body font-medium text-sm" style={{ color: "var(--text-main)" }}>{client.name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-heading font-semibold text-sm" style={{ color: "var(--amber)" }}>
+                  <td className="px-4 py-3 font-heading font-semibold text-sm" style={{ color: "var(--ui-accent)" }}>
                     {client.spend}
                   </td>
                   <td className="px-4 py-3 font-heading font-semibold text-sm" style={{ color: "var(--success)" }}>
