@@ -627,8 +627,9 @@ export function CampaignStep() {
               <FilterTextField
                 className="ui-filter-panel-field"
                 icon={<Tag size={13} />}
-                label={`${t("campaignName")} *`}
+                label={t("campaignName")}
                 placeholder={t("campaignNamePlaceholder")}
+                selectOnFocus
                 value={payload.campaign.name}
                 onChange={(name) =>
                   updatePayload((p) => ({

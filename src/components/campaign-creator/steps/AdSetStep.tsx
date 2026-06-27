@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { CalendarDays, SlidersHorizontal, Tag, Users } from "lucide-react";
+import { CalendarDays, SlidersHorizontal, Users } from "lucide-react";
 
 import { AdSetCompilerLeadCards } from "@/components/campaign-creator/AdSetCompilerLeadCards";
 import { AdSetConfigurationModal } from "@/components/campaign-creator/AdSetConfigurationModal";
@@ -18,7 +18,6 @@ import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCr
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { useAdSetStepSubflow, type AdSetSection } from "@/components/campaign-creator/AdSetStepSubflowContext";
 import { FormField } from "@/components/ui/FormField";
-import { FilterTextField } from "@/components/FilterTextField";
 import { type FormSelectOption } from "@/components/ui/FormSelect";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, type ImportedAdConfig } from "@/lib/campaign-ad-import";
@@ -439,15 +438,28 @@ export function AdSetStep() {
           <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("adsetStepHint")}</p>
         </div>
 
-        <FilterTextField
-          className="ui-filter-panel-field"
-          icon={<Tag size={13} />}
-          label={`${t("adsetName")} *`}
-          placeholder={t("adsetNamePlaceholder")}
-          value={adset.name}
-          onChange={(name) => patchAdset({ name })}
-          disabled={clientRequired}
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <FormField label={t("adsetName")}>
+              <input
+                value={adset.name}
+                onChange={(e) => patchAdset({ name: e.target.value })}
+                onFocus={(e) => e.target.select()}
+                placeholder={t("adsetNamePlaceholder")}
+                className="ui-input border-[var(--border-hover)] shadow-sm"
+                disabled={clientRequired}
+              />
+            </FormField>
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfigModalOpen(true)}
+            disabled={clientRequired}
+            className="ui-btn-secondary shrink-0 text-xs disabled:opacity-50"
+          >
+            {t("adsetConfigurationSelectButton")}
+          </button>
+        </div>
 
         <div className="rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-3 py-2.5">
           <p className="text-xs font-semibold text-[var(--ui-accent)]">{t("targetingMethodNoticeTitle")}</p>

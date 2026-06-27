@@ -135,10 +135,11 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
   const canGoTo = useCallback(
     (target: AdSetSection) => {
       if (activeNode !== "adset") return false;
-      const idx = ADSET_SECTIONS.indexOf(target);
-      return idx <= visitedThrough || idx === sectionIndex;
+      // Targeting method (Persona+Zone vs Advanced) and Schedule are an either/or
+      // choice the user picks directly — allow free navigation between sections.
+      return (ADSET_SECTIONS as readonly string[]).includes(target);
     },
-    [activeNode, sectionIndex, visitedThrough]
+    [activeNode]
   );
 
   const isSectionVisited = useCallback(
@@ -152,6 +153,7 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
   const goTo = useCallback(
     (target: AdSetSection) => {
       if (!canGoTo(target)) return;
+      setVisitedThrough((v) => Math.max(v, ADSET_SECTIONS.indexOf(target)));
       setSection(target);
       persistSection(target);
     },
