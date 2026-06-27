@@ -2,17 +2,33 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Image, Link2, Settings, UserCircle } from "lucide-react";
+import {
+  AtSign,
+  ChevronRight,
+  Download,
+  Image,
+  Layers,
+  LayoutGrid,
+  Link2,
+  ScanLine,
+  Settings,
+  Tag,
+  Target,
+  UserCircle,
+  type LucideIcon
+} from "lucide-react";
 
+import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard";
 import { CreativePickerModal } from "@/components/campaign-creator/CreativePickerModal";
 import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfigModal";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { FilterTextField } from "@/components/FilterTextField";
 import { MessageTemplateEditor } from "@/components/campaign-creator/MessageTemplateEditor";
 import { MetaDynamicParamInput } from "@/components/campaign-creator/MetaDynamicParamInput";
 import { UtmBuilder } from "@/components/campaign-creator/UtmBuilder";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { useAdStepSubflow } from "@/components/campaign-creator/AdStepSubflowContext";
 import { FormField } from "@/components/ui/FormField";
-import { FormSelect, type FormSelectOption } from "@/components/ui/FormSelect";
 import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
 import { WizardAccordionSection } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
@@ -23,8 +39,56 @@ import { MetaTextVariantsInput } from "@/components/campaign-creator/MetaTextVar
 import { adsetsWithReuseCreativeCompatibility, getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
-import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
+import { cn } from "@/lib/cn";
+
+function AdAssignmentChoiceCard({
+  selected,
+  label,
+  description,
+  icon: Icon,
+  onSelect
+}: {
+  selected: boolean;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row",
+        selected
+          ? "campaign-creator-budget-choice-card--selected"
+          : "campaign-creator-budget-choice-card--unselected"
+      )}
+    >
+      <ChoiceCardCheck selected={selected} />
+      <span
+        className={cn(
+          "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline",
+          selected
+            ? "campaign-creator-budget-choice-card__icon--selected"
+            : "campaign-creator-budget-choice-card__icon--unselected"
+        )}
+        aria-hidden
+      >
+        <Icon size={18} strokeWidth={1.75} />
+      </span>
+      <span className="campaign-creator-budget-choice-card__content">
+        <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
+          {label}
+        </span>
+        <span className="campaign-creator-budget-choice-card__description">{description}</span>
+      </span>
+    </button>
+  );
+}
 
 export function AdStep() {
   const t = useTranslations("campaignCreator");
@@ -50,7 +114,6 @@ export function AdStep() {
   const [whatsappManualEntry, setWhatsappManualEntry] = useState(false);
   const { section: activeView, canGoTo, isSectionVisited, goTo } = useAdStepSubflow();
   const topRef = useRef<HTMLDivElement>(null);
-  const showMetaAppDevelopmentNotice = usePlatformFeature("campaigns.meta-app-development-notice");
 
   const ad = getActiveAd(payload);
   const adset = getActiveAdset(payload);
@@ -60,6 +123,11 @@ export function AdStep() {
     ad.destinationType === "whatsapp" ||
     ad.callToAction === "WHATSAPP_MESSAGE";
   const clientRequired = !payload.clientSlug;
+  const creatorFilterFieldClass =
+    "ui-filter-panel-field campaign-creator-budget-daily-input !border-[var(--creator-card-border,var(--border-color))] !bg-[var(--creator-card-bg-inset,var(--surface-bg))]";
+  const pageEmptyMessage = assetsError
+    ? `${t("identityAssetsError")} ${t("identityAssetsErrorCode", { code: assetsError })}`
+    : t("identityPagesEmpty");
 
   const mediaPreviews = useMemo(() => {
     const ids = ad.format === "video" ? ad.videoIds : ad.imageHashes;
@@ -80,8 +148,23 @@ export function AdStep() {
   );
 
   const pageOptions = useMemo(
-    (): FormSelectOption[] => pages.map((p) => ({ value: p.metaPageId, label: p.name })),
+    () => pages.map((p) => ({ value: p.metaPageId, label: p.name })),
     [pages]
+  );
+
+  const instagramOptions = useMemo(
+    () => instagramAccounts.map((i) => ({ value: i.id, label: `@${i.username}` })),
+    [instagramAccounts]
+  );
+
+  const pixelOptions = useMemo(
+    () => pixels.map((p) => ({ value: p.id, label: p.name })),
+    [pixels]
+  );
+
+  const adsetOptions = useMemo(
+    () => payload.adsets.map((a) => ({ value: a.id, label: a.name })),
+    [payload.adsets]
   );
 
   function patchAd(patch: Partial<AdDraftItem>) {
@@ -103,10 +186,6 @@ export function AdStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-fill only when page/options change
   }, [ad.destinationType, ad.pageId, pageWhatsappOptions, whatsappManualEntry]);
 
-  function selectAd(id: string) {
-    updatePayload({ activeAdId: id });
-  }
-
   function scrollToAdForm() {
     requestAnimationFrame(() => {
       topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -124,15 +203,6 @@ export function AdStep() {
       return { ...p, ads: [...p.ads, clone], activeAdId: newId };
     });
     scrollToAdForm();
-  }
-
-  function removeAd(adId: string) {
-    if (payload.ads.length <= 1) return;
-    updatePayload((p) => {
-      const ads = p.ads.filter((a) => a.id !== adId);
-      const activeAdId = p.activeAdId === adId ? ads[0]!.id : p.activeAdId;
-      return { ...p, ads, activeAdId };
-    });
   }
 
   function handleImport(imported: ImportedAdConfig, mode: "copy" | "media" | "all") {
@@ -300,9 +370,8 @@ export function AdStep() {
           <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("adStepHint")}</p>
         </div>
 
-        <div className="campaign-creator-choice-cards campaign-creator-choice-cards--4">
+        <div className="campaign-creator-choice-cards campaign-creator-choice-cards--3">
           <DsChoiceCard layout="inline" title={t("adSub_setup")} description={t("adSection_setup_hint")} icon={<Settings size={16} />} accent={activeView === "setup"} muted={!isSectionVisited("setup") && activeView !== "setup"} visited={isSectionVisited("setup") && activeView !== "setup"} onClick={() => goTo("setup")} className={!canGoTo("setup") ? "pointer-events-none" : undefined} />
-          <DsChoiceCard layout="inline" title={t("identitySection")} description={t("adSection_identity_hint")} icon={<UserCircle size={16} />} accent={activeView === "identity"} muted={!isSectionVisited("identity") && activeView !== "identity"} visited={isSectionVisited("identity") && activeView !== "identity"} onClick={() => goTo("identity")} className={!canGoTo("identity") ? "pointer-events-none" : undefined} />
           <DsChoiceCard layout="inline" title={t("adSub_creative")} description={t("adSection_creative_hint")} icon={<Image size={16} />} accent={activeView === "creative"} muted={!isSectionVisited("creative") && activeView !== "creative"} visited={isSectionVisited("creative") && activeView !== "creative"} onClick={() => goTo("creative")} className={!canGoTo("creative") ? "pointer-events-none" : undefined} />
           <DsChoiceCard layout="inline" title={t("destinationSection")} description={t("adSection_destination_hint")} icon={<Link2 size={16} />} accent={activeView === "destination"} muted={!isSectionVisited("destination") && activeView !== "destination"} visited={isSectionVisited("destination") && activeView !== "destination"} onClick={() => goTo("destination")} className={!canGoTo("destination") ? "pointer-events-none" : undefined} />
         </div>
@@ -312,242 +381,216 @@ export function AdStep() {
         <div className="space-y-3">
 
       {activeView === "setup" ? (
-        <>
-      {!addAdMode ? (
-        <div className="ui-card space-y-3 p-4">
-          <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("adAssignmentTitle")}</h3>
-          <div className="space-y-2 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={payload.adAssignment === "all_adsets"}
-                onChange={() =>
-                  updatePayload((p) => ({
-                    ...p,
-                    adAssignment: "all_adsets",
-                    ads: p.ads.map((a) => ({ ...a, targetAdsetIds: ["__all__"] }))
-                  }))
-                }
-                className="accent-violet-600"
-              />
-              {t("adAssignmentAll")}
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={payload.adAssignment === "single"}
-                onChange={() => updatePayload({ adAssignment: "single" })}
-                className="accent-violet-600"
-              />
-              {t("adAssignmentSingle")}
-            </label>
-          </div>
-          {payload.adAssignment === "single" ? (
-            <select
-              value={payload.selectedAdsetIdForAds ?? payload.adsets[0]?.id ?? ""}
-              onChange={(e) => {
-                const id = e.target.value;
-                updatePayload((p) => ({
-                  ...p,
-                  selectedAdsetIdForAds: id,
-                  ads: p.ads.map((a) =>
-                    a.id === ad.id ? { ...a, targetAdsetIds: [id] } : a
-                  )
-                }));
-              }}
-              className="ui-select text-sm"
-            >
-              {payload.adsets.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-2">
-        {payload.ads.map((a) => (
-          <span key={a.id} className="inline-flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => selectAd(a.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs ${
-                ad.id === a.id
-                  ? "bg-[rgba(124,58,237,0.1)] font-medium text-[var(--violet)]"
-                  : "bg-[var(--surface-bg)] text-[var(--text-dim)]"
-              }`}
-            >
-              {a.name || t("treeAd")}
-            </button>
-            {payload.ads.length > 1 ? (
-              <button
-                type="button"
-                onClick={() => removeAd(a.id)}
-                className="rounded-md px-1 py-0.5 text-xs text-[var(--text-dimmer)] hover:bg-red-50 hover:text-red-600"
-                title={t("removeAd")}
-                aria-label={t("removeAd")}
-              >
-                ×
-              </button>
-            ) : null}
-          </span>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setImportOpen(true)}
-        disabled={clientRequired || !payload.adAccountId}
-        className="ui-btn-secondary text-xs"
-      >
-        {t("importAdConfig")}
-      </button>
-
-      {ad.metaCreativeId ? (
-        <div className="rounded-xl border border-amber-400/40 bg-amber-500/5 p-4 space-y-2">
-          <label className="flex cursor-pointer items-start gap-2">
-            <input
-              type="checkbox"
-              checked={ad.reuseMetaCreative}
-              onChange={(e) => setReuseMetaCreative(e.target.checked)}
-              className="mt-0.5"
-              disabled={clientRequired}
-            />
-            <span className="text-sm text-[var(--text-main)]">
-              <span className="font-medium">{t("reuseMetaCreativeLabel")}</span>
-              <span className="mt-1 block text-xs text-[var(--text-dim)]">{t("reuseMetaCreativeHint")}</span>
-              <span className="mt-1 block font-mono text-[10px] text-[var(--text-dimmer)]">
-                {t("reuseMetaCreativeId", { id: ad.metaCreativeId })}
+        <div className="campaign-creator-section-stack space-y-3">
+          <div className="campaign-creator-copy-card campaign-creator-copy-card--lead">
+            <div className="campaign-creator-copy-card__content">
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+                <Download size={15} />
               </span>
-            </span>
-          </label>
-        </div>
-      ) : showMetaAppDevelopmentNotice ? (
-        <p className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] px-4 py-3 text-xs text-[var(--text-dim)]">
-          {t("devModeCreativeNote")}
-        </p>
-      ) : null}
-
-      <FormField label={t("adName")}>
-        <input
-          value={ad.name}
-          onChange={(e) => patchAd({ name: e.target.value })}
-          placeholder={t("adNamePlaceholder")}
-          className="ui-input border-[var(--border-hover)] shadow-sm"
-          disabled={clientRequired}
-        />
-      </FormField>
-        </>
-      ) : null}
-
-      {activeView === "identity" ? (
-      <WizardAccordionSection title={t("identitySection")} defaultOpen>
-      <div className="space-y-3">
-        {inheritedLocked ? (
-          <span className="inline-flex rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] font-medium text-[var(--violet)]">
-            {t("inheritedFromAdset")}
-          </span>
-        ) : null}
-        {inheritedLocked ? (
-          <div className="space-y-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] p-3 text-xs text-[var(--text-dim)]">
-            <p>
-              <span className="font-medium text-[var(--text-dim)]">{tAds("page")}:</span>{" "}
-              {(pages.find((p) => p.metaPageId === ad.pageId)?.name ?? ad.pageId) || "—"}
-            </p>
-            {ad.instagramActorId ? (
-              <p>
-                <span className="font-medium text-[var(--text-dim)]">{tAds("instagram")}:</span> @
-                {instagramAccounts.find((i) => i.id === ad.instagramActorId)?.username ??
-                  ad.instagramActorId}
-              </p>
-            ) : null}
-            {adset.pixelId ? (
-              <p>
-                <span className="font-medium text-[var(--text-dim)]">{tAds("pixel")}:</span>{" "}
-                {pixels.find((p) => p.id === adset.pixelId)?.name ?? adset.pixelId}
-              </p>
-            ) : null}
+              <div className="min-w-0 flex-1">
+                <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
+                  {t("importAdTitle")}
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-dim)]">
+                  {t("importAdHint")}
+                </p>
+              </div>
+            </div>
             <button
               type="button"
-              onClick={() => setIdentityUnlocked(true)}
-              className="text-[11px] text-[var(--violet)] hover:underline"
+              onClick={() => setImportOpen(true)}
+              disabled={clientRequired || !payload.adAccountId}
+              className="campaign-creator-copy-card__action ui-btn-secondary inline-flex shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-xs font-heading font-medium disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {t("unlockInheritedIdentity")}
+              {t("importAdConfig")}
+              <ChevronRight size={14} strokeWidth={2.25} />
             </button>
           </div>
-        ) : (
-          <>
-            {!pages.length && payload.adAccountId ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                <p>{assetsError ? t("identityAssetsError") : t("identityPagesEmpty")}</p>
-                <button
-                  type="button"
-                  onClick={() => void loadAssets(payload.adAccountId)}
-                  className="mt-1 font-medium text-[var(--violet)] underline"
-                >
-                  {t("identityRecheck")}
-                </button>
-                {assetsError ? (
-                  <p className="mt-1 text-[10px] opacity-80">
-                    {t("identityAssetsErrorCode", { code: assetsError })}
+
+          {!addAdMode ? (
+            <section className="campaign-creator-card campaign-creator-budget-side-card">
+              <h4 className="campaign-creator-section-title">{t("adAssignmentTitle")}</h4>
+              <div
+                className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                role="radiogroup"
+                aria-label={t("adAssignmentTitle")}
+              >
+                <AdAssignmentChoiceCard
+                  selected={payload.adAssignment === "all_adsets"}
+                  label={t("adAssignmentAll")}
+                  description={t("adAssignmentAllHint")}
+                  icon={LayoutGrid}
+                  onSelect={() =>
+                    updatePayload((p) => ({
+                      ...p,
+                      adAssignment: "all_adsets",
+                      ads: p.ads.map((a) => ({ ...a, targetAdsetIds: ["__all__"] }))
+                    }))
+                  }
+                />
+                <AdAssignmentChoiceCard
+                  selected={payload.adAssignment === "single"}
+                  label={t("adAssignmentSingle")}
+                  description={t("adAssignmentSingleHint")}
+                  icon={Target}
+                  onSelect={() => updatePayload({ adAssignment: "single" })}
+                />
+              </div>
+              {payload.adAssignment === "single" ? (
+                <div className="campaign-creator-budget-special-inline">
+                  <FilterSelectDropdown
+                    className="ui-filter-panel-field"
+                    valueClassName="max-w-none"
+                    icon={<Layers size={13} />}
+                    label={t("treeAdset")}
+                    placeholder={t("treeAdset")}
+                    value={payload.selectedAdsetIdForAds ?? payload.adsets[0]?.id ?? ""}
+                    onChange={(id) =>
+                      updatePayload((p) => ({
+                        ...p,
+                        selectedAdsetIdForAds: id,
+                        ads: p.ads.map((a) =>
+                          a.id === ad.id ? { ...a, targetAdsetIds: [id] } : a
+                        )
+                      }))
+                    }
+                    options={adsetOptions}
+                    clearable={false}
+                  />
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
+          <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
+            <h4 className="campaign-creator-section-title">{t("identitySection")}</h4>
+            {inheritedLocked ? (
+              <span className="inline-flex rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] font-medium text-[var(--violet)]">
+                {t("inheritedFromAdset")}
+              </span>
+            ) : null}
+            {inheritedLocked ? (
+              <div className="space-y-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] p-3 text-xs text-[var(--text-dim)]">
+                <p>
+                  <span className="font-medium text-[var(--text-dim)]">{tAds("page")}:</span>{" "}
+                  {(pages.find((p) => p.metaPageId === ad.pageId)?.name ?? ad.pageId) || "—"}
+                </p>
+                {ad.instagramActorId ? (
+                  <p>
+                    <span className="font-medium text-[var(--text-dim)]">{tAds("instagram")}:</span> @
+                    {instagramAccounts.find((i) => i.id === ad.instagramActorId)?.username ??
+                      ad.instagramActorId}
                   </p>
                 ) : null}
+                {adset.pixelId ? (
+                  <p>
+                    <span className="font-medium text-[var(--text-dim)]">{tAds("pixel")}:</span>{" "}
+                    {pixels.find((p) => p.id === adset.pixelId)?.name ?? adset.pixelId}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setIdentityUnlocked(true)}
+                  className="text-[11px] text-[var(--violet)] hover:underline"
+                >
+                  {t("unlockInheritedIdentity")}
+                </button>
               </div>
-            ) : null}
-            <FormField label={tAds("page")}>
-              <FormSelect
-                value={ad.pageId}
-                onChange={(pageId) => {
-                  setWhatsappManualEntry(false);
-                  patchAd({ pageId });
-                }}
-                placeholder={tAds("selectPage")}
-                options={pageOptions}
-                disabled={clientRequired}
-              />
-            </FormField>
-            {instagramAccounts.length > 0 ? (
-              <FormField label={tAds("instagram")}>
-                <select
-                  value={ad.instagramActorId ?? ""}
-                  onChange={(e) => patchAd({ instagramActorId: e.target.value || null })}
-                  className="ui-select"
+            ) : (
+              <>
+                <div className="campaign-creator-objective-fields-row lg:grid-cols-2">
+                  <FilterSelectDropdown
+                    className="ui-filter-panel-field"
+                    valueClassName="max-w-none"
+                    creatorField
+                    icon={<UserCircle size={13} />}
+                    label={tAds("page")}
+                    placeholder={tAds("selectPage")}
+                    value={ad.pageId}
+                    onChange={(pageId) => {
+                      setWhatsappManualEntry(false);
+                      patchAd({ pageId });
+                    }}
+                    options={pageOptions}
+                    disabled={clientRequired}
+                    clearable={false}
+                    emptyMessage={!pages.length && payload.adAccountId ? pageEmptyMessage : undefined}
+                    emptyActionLabel={
+                      !pages.length && payload.adAccountId ? t("identityRecheck") : undefined
+                    }
+                    onEmptyAction={
+                      !pages.length && payload.adAccountId
+                        ? () => void loadAssets(payload.adAccountId)
+                        : undefined
+                    }
+                  />
+                  <FilterTextField
+                    className={creatorFilterFieldClass}
+                    icon={<Tag size={13} />}
+                    label={t("adName")}
+                    placeholder={t("adNamePlaceholder")}
+                    value={ad.name}
+                    onChange={(name) => patchAd({ name })}
+                    disabled={clientRequired}
+                  />
+                </div>
+                {instagramAccounts.length > 0 ? (
+                  <FilterSelectDropdown
+                    className="ui-filter-panel-field"
+                    valueClassName="max-w-none"
+                    icon={<AtSign size={13} />}
+                    label={tAds("instagram")}
+                    placeholder={tAds("instagramNone")}
+                    value={ad.instagramActorId ?? ""}
+                    onChange={(instagramActorId) =>
+                      patchAd({ instagramActorId: instagramActorId || null })
+                    }
+                    options={instagramOptions}
+                    disabled={clientRequired}
+                  />
+                ) : pages.length > 0 && payload.adAccountId ? (
+                  <p className="text-xs text-amber-700">{t("identityInstagramEmpty")}</p>
+                ) : null}
+                {pixels.length > 0 && payload.objective === "sales" ? (
+                  <FilterSelectDropdown
+                    className="ui-filter-panel-field"
+                    valueClassName="max-w-none"
+                    icon={<ScanLine size={13} />}
+                    label={tAds("pixel")}
+                    placeholder={tAds("pixelNone")}
+                    value={ad.pixelId ?? ""}
+                    onChange={(pixelId) => patchAd({ pixelId: pixelId || null })}
+                    options={pixelOptions}
+                    disabled={clientRequired}
+                  />
+                ) : null}
+              </>
+            )}
+          </section>
+
+          {ad.metaCreativeId ? (
+            <section className="campaign-creator-card campaign-creator-budget-side-card">
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={ad.reuseMetaCreative}
+                  onChange={(e) => setReuseMetaCreative(e.target.checked)}
+                  className="mt-0.5 accent-[var(--ui-accent)]"
                   disabled={clientRequired}
-                >
-                  <option value="">{tAds("instagramNone")}</option>
-                  {instagramAccounts.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      @{i.username}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            ) : pages.length > 0 && payload.adAccountId ? (
-              <p className="text-xs text-amber-700">{t("identityInstagramEmpty")}</p>
-            ) : null}
-            {pixels.length > 0 && payload.objective === "sales" ? (
-              <FormField label={tAds("pixel")}>
-                <select
-                  value={ad.pixelId ?? ""}
-                  onChange={(e) => patchAd({ pixelId: e.target.value || null })}
-                  className="ui-select"
-                  disabled={clientRequired}
-                >
-                  <option value="">{tAds("pixelNone")}</option>
-                  {pixels.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            ) : null}
-          </>
-        )}
-      </div>
-      </WizardAccordionSection>
+                />
+                <span className="min-w-0 text-sm text-[var(--text-main)]">
+                  <span className="font-medium">{t("reuseMetaCreativeLabel")}</span>
+                  <span className="mt-1 block text-xs text-[var(--text-dim)]">
+                    {t("reuseMetaCreativeHint")}
+                  </span>
+                  <span className="mt-1 block font-mono text-[10px] text-[var(--text-dimmer)]">
+                    {t("reuseMetaCreativeId", { id: ad.metaCreativeId })}
+                  </span>
+                </span>
+              </label>
+            </section>
+          ) : null}
+        </div>
       ) : null}
 
       {activeView === "creative" ? (

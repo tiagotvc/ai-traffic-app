@@ -12,6 +12,7 @@ import { CustomAudiencesModal } from "@/components/campaign-creator/CustomAudien
 import { SavedAudienceModal } from "@/components/campaign-creator/SavedAudienceModal";
 import { ImportAdsetConfigModal } from "@/components/campaign-creator/ImportAdsetConfigModal";
 import type { MapViewport } from "@/components/campaign-creator/GeoRadiusMapPicker";
+import { CampaignCreatorDateTimeField } from "@/components/campaign-creator/CampaignCreatorDateTimeField";
 import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
 import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
@@ -517,43 +518,44 @@ export function AdSetStep() {
 
         {activeView === "schedule" ? (
           <div className="campaign-creator-advanced-targeting-body">
-            <section className="campaign-creator-card campaign-creator-card--compact">
-              <h4 className="campaign-creator-budget-header__title text-sm">{t("scheduleSection")}</h4>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <FormField label={t("scheduleStart")}>
-                  <input
-                    type="datetime-local"
-                    value={adset.schedule.start ?? ""}
-                    onChange={(e) =>
-                      patchAdset({
-                        schedule: { ...adset.schedule, start: e.target.value || null }
-                      })
-                    }
-                    className="ui-input"
-                    disabled={clientRequired}
-                  />
-                </FormField>
-                <FormField label={t("scheduleEnd")}>
-                  <input
-                    type="datetime-local"
-                    value={adset.schedule.end ?? ""}
-                    onChange={(e) =>
-                      patchAdset({
-                        schedule: { ...adset.schedule, end: e.target.value || null }
-                      })
-                    }
-                    className="ui-input"
-                    disabled={clientRequired}
-                  />
-                </FormField>
-              </div>
-            </section>
+            <div className="campaign-creator-budget-top-grid">
+              <section className="campaign-creator-card campaign-creator-budget-side-card">
+                <h4 className="campaign-creator-section-title">{t("scheduleSection")}</h4>
+                <div className="mt-2 flex min-h-0 flex-1 flex-col space-y-3">
+                  <FormField label={t("scheduleStart")}>
+                    <CampaignCreatorDateTimeField
+                      value={adset.schedule.start ?? ""}
+                      onChange={(start) =>
+                        patchAdset({
+                          schedule: { ...adset.schedule, start: start || null }
+                        })
+                      }
+                      disabled={clientRequired}
+                      aria-label={t("scheduleStart")}
+                    />
+                  </FormField>
+                  <FormField label={t("scheduleEnd")}>
+                    <CampaignCreatorDateTimeField
+                      value={adset.schedule.end ?? ""}
+                      onChange={(end) =>
+                        patchAdset({
+                          schedule: { ...adset.schedule, end: end || null }
+                        })
+                      }
+                      disabled={clientRequired}
+                      clearable
+                      aria-label={t("scheduleEnd")}
+                    />
+                  </FormField>
+                </div>
+              </section>
 
-            <PlacementsPanel
-              value={adset.placements}
-              onChange={(placements) => patchAdset({ placements })}
-              disabled={clientRequired}
-            />
+              <PlacementsPanel
+                value={adset.placements}
+                onChange={(placements) => patchAdset({ placements })}
+                disabled={clientRequired}
+              />
+            </div>
           </div>
         ) : null}
 

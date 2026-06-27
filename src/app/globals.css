@@ -325,6 +325,10 @@ h6,
     border-color: var(--border-color);
   }
 
+  .ui-form-select-menu--portal {
+    max-height: min(15rem, calc(100vh - 1rem));
+  }
+
   .ui-form-select-option {
     @apply px-3 py-2.5 transition-colors;
     color: var(--text-dim);
@@ -1956,6 +1960,94 @@ h6,
     @apply text-xs;
   }
 
+  .campaign-creator-datetime-field {
+    @apply shadow-[0_1px_2px_rgba(0,0,0,0.03)] focus-within:border-[var(--ui-accent-border)];
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg-inset, var(--filter-btn-bg));
+  }
+
+  .campaign-creator-datetime-field__time-select .ui-form-select-trigger {
+    @apply rounded-md px-2 py-1 text-xs shadow-none;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
+  }
+
+  .campaign-creator-datetime-field__time-select .ui-form-select-trigger--open {
+    @apply shadow-none;
+  }
+
+  .campaign-creator-datetime-field__time-select .ui-form-select-menu {
+    @apply max-h-48;
+  }
+
+  .campaign-creator-datetime-calendar-popover {
+    @apply rounded-xl border p-2 shadow-2xl;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
+  }
+
+  .campaign-creator-datetime-calendar-popover--portal {
+    max-height: min(20rem, calc(100vh - 1rem));
+    overflow-y: auto;
+  }
+
+  .campaign-creator-datetime-calendar__header {
+    @apply mb-2 flex items-center justify-between gap-2;
+  }
+
+  .campaign-creator-datetime-calendar__title {
+    @apply flex-1 truncate text-center text-sm font-medium capitalize;
+    color: var(--text-main);
+  }
+
+  .campaign-creator-datetime-calendar__nav {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg-inset, var(--surface-bg));
+    color: var(--text-dim);
+  }
+
+  .campaign-creator-datetime-calendar__nav:hover {
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+  }
+
+  .campaign-creator-datetime-calendar__weekdays {
+    @apply mb-1 grid grid-cols-7 gap-0.5;
+  }
+
+  .campaign-creator-datetime-calendar__weekday {
+    @apply py-1 text-center text-[10px] font-medium uppercase tracking-wide;
+    color: var(--text-dimmer);
+  }
+
+  .campaign-creator-datetime-calendar__grid {
+    @apply grid grid-cols-7 gap-0.5;
+  }
+
+  .campaign-creator-datetime-calendar__day {
+    @apply flex h-8 w-full items-center justify-center rounded-md text-xs font-medium transition-colors;
+    color: var(--text-main);
+  }
+
+  .campaign-creator-datetime-calendar__day:hover:not(.campaign-creator-datetime-calendar__day--empty) {
+    background: var(--ui-accent-muted);
+    color: var(--ui-accent);
+  }
+
+  .campaign-creator-datetime-calendar__day--selected {
+    background: var(--ui-accent) !important;
+    color: #fff !important;
+  }
+
+  .campaign-creator-datetime-calendar__day--today {
+    @apply ring-1 ring-inset ring-[var(--ui-accent-border)];
+  }
+
+  .campaign-creator-datetime-calendar__day--empty {
+    @apply pointer-events-none;
+  }
+
   .campaign-creator-adset-dynamic-card {
     @apply rounded-xl border p-4;
     border-color: var(--creator-card-border, var(--border-color));
@@ -2048,6 +2140,7 @@ h6,
 
   .campaign-creator-budget-side-card {
     @apply !space-y-2 !p-3;
+    overflow: visible;
   }
 
   .campaign-creator-budget-level-stack {
@@ -2089,6 +2182,22 @@ h6,
 
   .campaign-creator-budget-choice-card--chip-sm {
     @apply inline-flex min-h-[1.75rem] min-w-0 items-center rounded-md border px-2 py-1 pr-6 text-left;
+  }
+
+  .campaign-creator-budget-choice-card--chip-with-icon {
+    @apply gap-1.5 pl-2;
+  }
+
+  .campaign-creator-budget-choice-card--chip-sm.campaign-creator-budget-choice-card--chip-with-icon {
+    @apply gap-1 pl-1.5;
+  }
+
+  .campaign-creator-budget-choice-card__icon--chip-inline {
+    @apply h-4 w-4 shrink-0 rounded;
+  }
+
+  .campaign-creator-budget-choice-card--chip-sm .campaign-creator-budget-choice-card__icon--chip-inline {
+    @apply h-3.5 w-3.5;
   }
 
   .campaign-creator-budget-choice-card--chip .campaign-creator-budget-choice-card__label,

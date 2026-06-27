@@ -247,6 +247,7 @@ export const CampaignDraftPayloadV2Schema = z.object({
           campaignSection: z.enum(["objective", "clientAccountIdentity", "budget"]).optional(),
           /** legacy "meta_saved" coerced to "compiler" on restore */
           adsetSection: z.enum(["compiler", "meta_saved", "advanced", "schedule"]).optional(),
+          /** legacy "identity" coerced to "setup" on restore */
           adSection: z.enum(["setup", "identity", "creative", "destination"]).optional()
         })
         .optional()

@@ -26,6 +26,7 @@ type MultiSelectChoiceCardProps = {
   selected: boolean;
   label: string;
   icon?: LucideIcon;
+  iconInline?: boolean;
   disabled?: boolean;
   onToggle: () => void;
   size?: "md" | "sm";
@@ -35,11 +36,13 @@ export function MultiSelectChoiceCard({
   selected,
   label,
   icon: Icon,
+  iconInline,
   disabled,
   onToggle,
   size = "md"
 }: MultiSelectChoiceCardProps) {
   const isCompact = size === "sm";
+  const useTile = Boolean(Icon && !isCompact && !iconInline);
 
   return (
     <button
@@ -49,18 +52,19 @@ export function MultiSelectChoiceCard({
       onClick={onToggle}
       className={cn(
         "campaign-creator-budget-choice-card",
-        Icon && !isCompact
+        useTile
           ? "campaign-creator-budget-choice-card--tile"
           : isCompact
             ? "campaign-creator-budget-choice-card--chip-sm"
             : "campaign-creator-budget-choice-card--chip",
+        Icon && iconInline && "campaign-creator-budget-choice-card--chip-with-icon",
         selected
           ? "campaign-creator-budget-choice-card--selected"
           : "campaign-creator-budget-choice-card--unselected"
       )}
     >
       <ChoiceCardCheck selected={selected} compact={isCompact} />
-      {Icon && !isCompact ? (
+      {Icon && useTile ? (
         <span
           className={cn(
             "campaign-creator-budget-choice-card__icon",
@@ -71,6 +75,18 @@ export function MultiSelectChoiceCard({
           aria-hidden
         >
           <Icon size={18} strokeWidth={1.75} />
+        </span>
+      ) : Icon && iconInline ? (
+        <span
+          className={cn(
+            "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--chip-inline",
+            selected
+              ? "campaign-creator-budget-choice-card__icon--selected"
+              : "campaign-creator-budget-choice-card__icon--unselected"
+          )}
+          aria-hidden
+        >
+          <Icon size={isCompact ? 12 : 14} strokeWidth={1.75} />
         </span>
       ) : null}
       <span className="campaign-creator-budget-choice-card__label">{label}</span>

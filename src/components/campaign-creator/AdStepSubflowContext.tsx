@@ -21,8 +21,23 @@ import {
 } from "@/lib/campaign-draft";
 import { validateAdCreativeForMeta } from "@/lib/meta-ad-creative";
 
-export const AD_SECTIONS = ["setup", "identity", "creative", "destination"] as const;
+export const AD_SECTIONS = ["setup", "creative", "destination"] as const;
 export type AdSection = (typeof AD_SECTIONS)[number];
+
+function normalizeAdSection(raw: string | undefined): AdSection {
+  if (raw === "identity") return "setup";
+  if (raw && (AD_SECTIONS as readonly string[]).includes(raw)) return raw as AdSection;
+  return "setup";
+}
+
+function initialVisitedThrough(rawSection: string | undefined): number {
+  const normalized = normalizeAdSection(rawSection);
+  let idx = AD_SECTIONS.indexOf(normalized);
+  if (rawSection === "identity") idx = Math.max(idx, 0);
+  if (rawSection === "creative") idx = Math.max(idx, 1);
+  if (rawSection === "destination") idx = Math.max(idx, 2);
+  return Math.max(0, idx);
+}
 
 export function validateAdSection(
   payload: CampaignDraftPayload,
@@ -33,10 +48,8 @@ export function validateAdSection(
 
   switch (section) {
     case "setup":
-      if (!ad.name.trim()) return "adNameRequired";
-      return null;
-    case "identity":
       if (!ad.pageId.trim()) return "pageRequired";
+      if (!ad.name.trim()) return "adNameRequired";
       return null;
     case "creative":
       if (usesReusedMetaCreative(ad)) {
@@ -79,10 +92,8 @@ const SubflowContext = createContext<SubflowContextValue | null>(null);
 export function AdStepSubflowProvider({ children }: { children: ReactNode }) {
   const { activeNode, payload, updatePayload } = useCampaignDraft();
   const savedSection = payload.meta?.wizardNavigation?.adSection;
-  const [section, setSection] = useState<AdSection>(savedSection ?? "setup");
-  const [visitedThrough, setVisitedThrough] = useState(() =>
-    Math.max(0, AD_SECTIONS.indexOf(savedSection ?? "setup"))
-  );
+  const [section, setSection] = useState<AdSection>(() => normalizeAdSection(savedSection));
+  const [visitedThrough, setVisitedThrough] = useState(() => initialVisitedThrough(savedSection));
   const prevActiveNode = useRef(activeNode);
 
   const persistSection = useCallback(
@@ -94,9 +105,9 @@ export function AdStepSubflowProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (activeNode === "ad" && prevActiveNode.current !== "ad") {
-      const restored = payload.meta?.wizardNavigation?.adSection ?? "setup";
+      const restored = normalizeAdSection(payload.meta?.wizardNavigation?.adSection);
       setSection(restored);
-      setVisitedThrough(Math.max(0, AD_SECTIONS.indexOf(restored)));
+      setVisitedThrough(initialVisitedThrough(payload.meta?.wizardNavigation?.adSection));
     }
     prevActiveNode.current = activeNode;
   }, [activeNode, payload.meta?.wizardNavigation?.adSection]);
