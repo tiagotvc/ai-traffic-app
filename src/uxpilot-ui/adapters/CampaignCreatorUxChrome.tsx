@@ -359,7 +359,7 @@ export function CampaignCreatorUxNav({
 }: {
   onPublish?: () => void;
   publishing?: boolean;
-  placement?: "floating" | "footer" | "inline" | "stepper";
+  placement?: "floating" | "footer" | "inline" | "stepper" | "sidebar";
 }) {
   const t = useTranslations("campaignCreator");
   const tCommon = useTranslations("common");
@@ -413,21 +413,27 @@ export function CampaignCreatorUxNav({
         ? "ui-wizard-nav--footer"
         : placement === "stepper"
           ? "ui-wizard-nav--stepper"
-          : "mt-6 space-y-3";
+          : placement === "sidebar"
+            ? "ui-wizard-nav--sidebar"
+            : "mt-6 space-y-3";
 
   const footerNav = placement === "footer";
   const stepperNav = placement === "stepper";
+  const sidebarNav = placement === "sidebar";
 
   return (
     <div className={wrapperClass}>
       <div
         className={
-          placement === "floating" || placement === "footer" || placement === "stepper"
+          placement === "floating" ||
+          placement === "footer" ||
+          placement === "stepper" ||
+          placement === "sidebar"
             ? "ui-wizard-nav__actions"
             : `flex items-center gap-2 ${showBack ? "justify-between" : "justify-end"}`
         }
       >
-        {footerNav || stepperNav || showBack ? (
+        {footerNav || stepperNav || sidebarNav || showBack ? (
           <button
             type="button"
             disabled={!backEnabled}
@@ -445,7 +451,7 @@ export function CampaignCreatorUxNav({
           <button
             type="button"
             onClick={goNext}
-            className={`ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 rounded-lg px-4 text-sm font-heading font-semibold${footerNav || stepperNav ? "" : " ml-auto"}`}
+            className={`ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 rounded-lg px-4 text-sm font-heading font-semibold${footerNav || stepperNav || sidebarNav ? "" : " ml-auto"}`}
           >
             {t("next")}
             <ChevronRight size={16} strokeWidth={2.5} />
@@ -455,7 +461,7 @@ export function CampaignCreatorUxNav({
             type="button"
             disabled={publishing}
             onClick={onPublish}
-            className={`ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 rounded-lg px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50${footerNav || stepperNav ? "" : " ml-auto"}`}
+            className={`ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 rounded-lg px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50${footerNav || stepperNav || sidebarNav ? "" : " ml-auto"}`}
           >
             {publishing ? tCommon("sending") : addAdMode ? t("publishAd") : t("publish")}
           </button>
@@ -465,21 +471,12 @@ export function CampaignCreatorUxNav({
   );
 }
 
-/** Linha do stepper com navegação inline no desktop (lg+). */
-export function CampaignCreatorUxStepperRow({
-  onPublish,
-  publishing
-}: {
-  onPublish?: () => void;
-  publishing?: boolean;
-}) {
+/** Linha do stepper — navegação desktop fica no rodapé fixo da sidebar. */
+export function CampaignCreatorUxStepperRow() {
   return (
     <div className="campaign-creator-stepper-row col-start-1 row-start-1 flex shrink-0 items-center gap-3 border-b border-[var(--border-color)] py-2 lg:gap-4 lg:py-1.5">
       <div className="min-w-0 flex-1 overflow-x-auto">
         <CampaignCreatorUxStepper />
-      </div>
-      <div className="hidden shrink-0 lg:block">
-        <CampaignCreatorUxNav onPublish={onPublish} publishing={publishing} placement="stepper" />
       </div>
     </div>
   );

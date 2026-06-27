@@ -4,7 +4,6 @@ import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import { getClientCampaignMetrics } from "@/lib/agency-brain/metrics-input";
 import {
-  getValidMarketMemory,
   parseClientCompetitors
 } from "@/lib/agency-brain/market-memory-service";
 import type { CampaignMetricsRow } from "@/lib/agency-brain/types";
@@ -422,6 +421,8 @@ type MetaCompetitorResearchResult = {
   competitorsScanned: number;
   status: CreatorBrainResearchStepStatus;
   detail?: string;
+  /** True when Meta Ad Library HTTP API was invoked (not skipped). */
+  apiCalled?: boolean;
 };
 
 async function resolveMetaCompetitorResearch(input: {
@@ -446,18 +447,6 @@ async function resolveMetaCompetitorResearch(input: {
   const nicheOnly = competitors.length === 0;
   const searchTerms = resolveSearchTerms(client.niche);
 
-  const cached = await getValidMarketMemory(input.tenantId, input.clientId);
-  if (cached) {
-    const adsCount = cached.adsAnalyzed ?? 0;
-    const competitorsScanned = cached.competitorsScanned ?? 0;
-    return {
-      adsCount,
-      competitorsScanned,
-      status: adsCount > 0 ? "done" : "fallback",
-      detail: nicheOnly ? "niche_keywords_only" : undefined
-    };
-  }
-
   const fetchResult = await fetchMetaAdLibrary({
     competitors: competitors.map((c) => ({ name: c.name, pageId: c.pageId })),
     searchTerms,
@@ -474,17 +463,43 @@ async function resolveMetaCompetitorResearch(input: {
     : competitors.filter((c) => c.pageId).length || competitors.length;
   const adsCount = fetchResult.ads.length;
 
+  if (fetchResult.apiError) {
+    console.warn(
+      "[creator-brain/meta_competitor_search]",
+      input.clientId,
+      fetchResult.apiError,
+      { adsCount, nicheOnly, competitors: competitors.length }
+    );
+  } else {
+    console.info(
+      "[creator-brain/meta_competitor_search]",
+      input.clientId,
+      { adsCount, nicheOnly, competitors: competitors.length, searchTerms: searchTerms.slice(0, 3) }
+    );
+  }
+
+  let detail: string | undefined;
+  if (fetchResult.apiError && adsCount === 0) {
+    detail = "api_error";
+  } else if (nicheOnly) {
+    detail = "niche_keywords_only";
+  }
+
   return {
     adsCount,
     competitorsScanned,
     status: adsCount > 0 ? "done" : "fallback",
-    detail: nicheOnly ? "niche_keywords_only" : undefined
+    detail,
+    apiCalled: true
   };
 }
 
 function buildResearchLog(input: {
   clientId?: string | null;
-  clientCount: number;
+  /** Synced Meta campaigns for the client (before objective filter). */
+  clientSyncedCount: number;
+  /** Client campaigns matching objective + meaningful metrics. */
+  clientMatchedCount: number;
   agencyTotalScanned: number;
   agencyCount: number;
   metaCompetitor: MetaCompetitorResearchResult;
@@ -492,12 +507,21 @@ function buildResearchLog(input: {
   benchmarkOnly: boolean;
   metricsComputed: boolean;
 }): CreatorBrainResearchStep[] {
+  let clientDetail: string | undefined;
+  if (!input.clientId) {
+    clientDetail = "no_client_selected";
+  } else if (input.clientSyncedCount === 0) {
+    clientDetail = "no_synced_campaigns";
+  } else if (input.clientMatchedCount === 0) {
+    clientDetail = "no_objective_match";
+  }
+
   const steps: CreatorBrainResearchStep[] = [
     {
       step: "client_campaigns",
-      status: input.clientCount > 0 ? "done" : "skipped",
-      count: input.clientCount,
-      detail: input.clientId ? undefined : "no_client_selected"
+      status: input.clientSyncedCount > 0 ? "done" : "skipped",
+      count: input.clientSyncedCount,
+      detail: clientDetail
     },
     {
       step: "agency_search",
@@ -513,7 +537,10 @@ function buildResearchLog(input: {
       step: "meta_competitor_search",
       status: input.metaCompetitor.status,
       count: input.metaCompetitor.adsCount,
-      detail: input.metaCompetitor.detail
+      detail:
+        input.metaCompetitor.status === "skipped"
+          ? input.metaCompetitor.detail
+          : input.metaCompetitor.detail
     }
   ];
 
@@ -521,7 +548,7 @@ function buildResearchLog(input: {
     steps.push({
       step: "metrics_computed",
       status: "done",
-      count: input.clientCount + input.agencyCount
+      count: input.clientMatchedCount + input.agencyCount
     });
   }
 
@@ -542,6 +569,7 @@ function attachResearchMetadata(
   agencyRows: CampaignMetricsRow[],
   input: {
     clientId?: string | null;
+    clientSyncedCount: number;
     agencyTotalScanned: number;
     metaCompetitor: MetaCompetitorResearchResult;
     usesBenchmark: boolean;
@@ -551,7 +579,8 @@ function attachResearchMetadata(
 ): CreatorBrainInsightPayload {
   const researchLog = buildResearchLog({
     clientId: input.clientId,
-    clientCount: clientRows.length,
+    clientSyncedCount: input.clientSyncedCount,
+    clientMatchedCount: clientRows.length,
     agencyTotalScanned: input.agencyTotalScanned,
     agencyCount: agencyRows.length,
     metaCompetitor: input.metaCompetitor,
@@ -644,7 +673,11 @@ export async function buildCreatorBrainInsight(input: {
         estimateHigh: benchmark.high,
         confidence: benchmark.confidence,
         creditCost: input.creditCost,
-        dataLayers: { client: false, agency: false, benchmark: true },
+        dataLayers: {
+          client: similarClientRows.length > 0 || clientRows.length > 0,
+          agency: similarAgencyRows.length > 0,
+          benchmark: true
+        },
         activeNode: input.activeNode,
         windowDays
       },
@@ -652,6 +685,7 @@ export async function buildCreatorBrainInsight(input: {
       similarAgencyRows,
       {
         clientId: input.clientId,
+        clientSyncedCount: clientRows.length,
         agencyTotalScanned: tenantRows.length,
         metaCompetitor,
         usesBenchmark: true,
@@ -720,7 +754,7 @@ export async function buildCreatorBrainInsight(input: {
       confidence,
       creditCost: input.creditCost,
       dataLayers: {
-        client: similarClientRows.length > 0,
+        client: similarClientRows.length > 0 || clientRows.length > 0,
         agency: similarAgencyRows.length > 0,
         benchmark: usesBenchmarkForDisplay
       },
@@ -731,6 +765,7 @@ export async function buildCreatorBrainInsight(input: {
     similarAgencyRows,
     {
       clientId: input.clientId,
+      clientSyncedCount: clientRows.length,
       agencyTotalScanned: tenantRows.length,
       metaCompetitor,
       usesBenchmark: usesBenchmarkForDisplay,

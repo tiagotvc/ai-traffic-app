@@ -161,9 +161,15 @@ function dataQualityRecommendations(
   if (
     draft?.hasClient &&
     (metaStep?.detail === "no_competitors" ||
+      metaStep?.detail === "api_not_configured" ||
+      metaStep?.detail === "api_error" ||
       (metaStep?.detail === "niche_keywords_only" && (metaStep.count ?? 0) === 0))
   ) {
-    recs.push({ key: "brainRecAddCompetitors" });
+    if (metaStep?.detail === "api_not_configured" || metaStep?.detail === "api_error") {
+      recs.push({ key: "brainRecConfigureMetaAdLibrary" });
+    } else {
+      recs.push({ key: "brainRecAddCompetitors" });
+    }
   }
 
   if (insight.usesBenchmark && agencyScanned > 0 && totalSampleCount === 0) {

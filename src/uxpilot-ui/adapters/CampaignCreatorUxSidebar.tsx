@@ -8,7 +8,10 @@ import { CampaignCreatorBrainTips } from "@/components/campaign-creator/Campaign
 import { CampaignCreatorScoreBar } from "@/components/campaign-creator/CampaignCreatorScoreBar";
 import { CampaignCreatorSummaryModal } from "@/components/campaign-creator/CampaignCreatorSummaryModal";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import { computeWizardProgressPercent } from "@/uxpilot-ui/adapters/CampaignCreatorUxChrome";
+import {
+  CampaignCreatorUxNav,
+  computeWizardProgressPercent
+} from "@/uxpilot-ui/adapters/CampaignCreatorUxChrome";
 import { computeDraftScore } from "@/lib/campaign-draft";
 
 function scoreBandLabel(score: number, t: ReturnType<typeof useTranslations<"campaignCreator">>) {
@@ -82,13 +85,26 @@ function SidebarProgressCard({ onOpenSummary }: { onOpenSummary: () => void }) {
   );
 }
 
-export function CampaignCreatorUxSidebar() {
+export function CampaignCreatorUxSidebar({
+  onPublish,
+  publishing
+}: {
+  onPublish?: () => void;
+  publishing?: boolean;
+}) {
   const [summaryOpen, setSummaryOpen] = useState(false);
 
   return (
-    <div className="space-y-3 py-1">
-      <SidebarProgressCard onOpenSummary={() => setSummaryOpen(true)} />
-      <CampaignCreatorBrainTips />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="campaign-creator-sidebar__scroll min-h-0 flex-1 overflow-y-auto">
+        <div className="campaign-creator-sidebar__inner space-y-3 py-1">
+          <SidebarProgressCard onOpenSummary={() => setSummaryOpen(true)} />
+          <CampaignCreatorBrainTips />
+        </div>
+      </div>
+      <div className="campaign-creator-sidebar-footer shrink-0">
+        <CampaignCreatorUxNav onPublish={onPublish} publishing={publishing} placement="sidebar" />
+      </div>
       <CampaignCreatorSummaryModal open={summaryOpen} onClose={() => setSummaryOpen(false)} />
     </div>
   );

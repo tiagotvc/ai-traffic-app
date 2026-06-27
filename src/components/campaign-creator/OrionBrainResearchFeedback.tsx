@@ -20,6 +20,10 @@ type CampaignCreatorT = ReturnType<typeof useTranslations<"campaignCreator">>;
 function researchStepLabel(step: CreatorBrainResearchStep, t: CampaignCreatorT): string {
   if (step.step === "client_campaigns") {
     if (step.detail === "no_client_selected") return t("brainResearchClientNoClient");
+    if (step.detail === "no_synced_campaigns") return t("brainResearchClientNoSynced");
+    if (step.detail === "no_objective_match") {
+      return t("brainResearchClientNoObjectiveMatch", { count: step.count ?? 0 });
+    }
     if (step.status === "done") return t("brainResearchClientDone", { count: step.count ?? 0 });
     return t("brainResearchClientSkipped");
   }
@@ -33,6 +37,7 @@ function researchStepLabel(step: CreatorBrainResearchStep, t: CampaignCreatorT):
   if (step.step === "meta_competitor_search") {
     if (step.detail === "no_client_selected") return t("brainResearchMetaNoClient");
     if (step.detail === "api_not_configured") return t("brainResearchMetaApiNotConfigured");
+    if (step.detail === "api_error") return t("brainResearchMetaApiError");
     if (step.detail === "no_competitors") return t("brainResearchMetaNoCompetitors");
     if (step.detail === "niche_keywords_only") {
       if (step.status === "done") return t("brainResearchMetaNicheDone", { count: step.count ?? 0 });
@@ -40,6 +45,7 @@ function researchStepLabel(step: CreatorBrainResearchStep, t: CampaignCreatorT):
     }
     if (step.status === "done") return t("brainResearchMetaDone", { count: step.count ?? 0 });
     if (step.status === "fallback") return t("brainResearchMetaSkipped");
+    if (step.status === "skipped") return t("brainResearchMetaNoClient");
     return t("brainResearchMetaNoCompetitors");
   }
   if (step.step === "metrics_computed") {

@@ -14,16 +14,24 @@ export function resolveAgencyScannedCount(insight: CreatorBrainInsightPayload): 
   return getResearchStepCount(resolveResearchSteps(insight), "agency_search");
 }
 
-/** Campaigns consulted for the sidebar badge (matched samples, else agency/client scan totals). */
+/** Campaigns consulted for the sidebar badge (matched samples + Meta-synced client campaigns). */
 export function resolveConsultedCampaignsCount(insight: CreatorBrainInsightPayload): number {
   const totalSampleCount = resolveTotalSampleCount(insight);
   if (totalSampleCount > 0) return totalSampleCount;
 
   const steps = resolveResearchSteps(insight);
-  const agencyScanned = getResearchStepCount(steps, "agency_search");
-  if (agencyScanned > 0) return agencyScanned;
+  const clientSynced = getResearchStepCount(steps, "client_campaigns");
+  const agencyMatched = getResearchStepCount(steps, "agency_matched");
+  const metaStep = steps.find((s) => s.step === "meta_competitor_search");
+  const metaApiCalled = metaStep?.status === "done" || metaStep?.status === "fallback";
 
-  return getResearchStepCount(steps, "client_campaigns");
+  if (clientSynced > 0) return clientSynced;
+  if (agencyMatched > 0) return agencyMatched;
+
+  const agencyScanned = getResearchStepCount(steps, "agency_search");
+  if (metaApiCalled && agencyScanned > 0) return agencyScanned;
+
+  return 0;
 }
 
 /** Ensures modal timeline steps exist; backfills meta search for older payloads. */
@@ -89,7 +97,7 @@ export function filterCardResearchSteps(steps: CreatorBrainResearchStep[]): Crea
   return normalizeResearchSteps(steps);
 }
 
-/** Modal timeline: done steps, agency search, meta search, and benchmark fallback only. */
+/** Modal timeline: done steps, agency search, meta search (incl. skipped), and benchmark fallback only. */
 export function filterHighlightResearchSteps(steps: CreatorBrainResearchStep[]): CreatorBrainResearchStep[] {
   return filterCardResearchSteps(steps).filter(
     (step) =>

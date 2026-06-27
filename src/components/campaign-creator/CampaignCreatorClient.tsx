@@ -503,7 +503,7 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
           <div
             className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr] gap-x-8 overflow-x-visible overflow-y-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]"
           >
-            <CampaignCreatorUxStepperRow onPublish={handlePublish} publishing={publishing} />
+            <CampaignCreatorUxStepperRow />
 
             <main className="relative col-start-1 row-start-2 flex min-h-0 min-w-0 w-full flex-col overflow-x-visible overflow-y-hidden py-3">
               <div
@@ -521,10 +521,8 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
               </div>
             </main>
 
-            <aside className="campaign-creator-sidebar hidden min-h-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:block">
-              <div className="campaign-creator-sidebar__inner">
-                <CampaignCreatorUxSidebar />
-              </div>
+            <aside className="campaign-creator-sidebar hidden min-h-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:flex lg:flex-col lg:overflow-hidden">
+              <CampaignCreatorUxSidebar onPublish={handlePublish} publishing={publishing} />
             </aside>
           </div>
 
