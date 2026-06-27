@@ -282,22 +282,20 @@ export function ImportAdConfigModal({
         />
       </div>
 
-      <div className="relative min-h-[240px] flex-1 overflow-y-auto p-3">
+      <div className="min-h-[240px] flex-1 overflow-y-auto p-3">
         {loading ? (
           <div
-            className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-[var(--surface-card)]/75 text-xs text-[var(--text-dim)] backdrop-blur-[1px]"
+            className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-xs font-medium text-[var(--text-dim)]"
             aria-live="polite"
             aria-busy="true"
           >
             <span
-              className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--ui-accent)] border-t-transparent"
+              className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--ui-accent)] border-t-transparent"
               aria-hidden
             />
             {t("importAdLoading")}
           </div>
-        ) : null}
-
-        {!loading && items.length === 0 ? (
+        ) : items.length === 0 ? (
           <p className="p-4 text-center text-xs text-[var(--text-dim)]">{emptyMessage}</p>
         ) : (
           <>
