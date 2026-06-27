@@ -450,6 +450,40 @@ h6,
     [data-campaign-creator-shell] .ui-wizard-nav--stepper .ui-wizard-nav__actions {
       @apply flex h-9 items-center justify-end gap-2;
     }
+
+    [data-campaign-creator-shell] .campaign-creator-sidebar {
+      @apply flex min-h-0 flex-col overflow-hidden;
+    }
+
+    [data-campaign-creator-shell] .campaign-creator-sidebar__scroll {
+      @apply min-h-0 flex-1 overflow-y-auto ds-scroll ds-scroll--sidebar;
+      scrollbar-gutter: stable;
+    }
+
+    [data-campaign-creator-shell] .campaign-creator-sidebar-footer {
+      @apply shrink-0 border-t border-[var(--border-color)] bg-[var(--surface-bg)] pt-3;
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--sidebar {
+      @apply shrink-0 pb-0 pt-0;
+      background: transparent;
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--sidebar .ui-wizard-nav__actions {
+      @apply flex h-9 w-full items-center justify-between gap-2;
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--sidebar .ui-wizard-nav__btn {
+      @apply rounded-lg;
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--sidebar .ui-wizard-nav__btn--back {
+      @apply shrink-0;
+    }
+
+    [data-campaign-creator-shell] .ui-wizard-nav--sidebar .ui-wizard-nav__btn--next {
+      @apply ml-auto shrink-0;
+    }
   }
 
   .campaign-creator-status-toast {
@@ -781,6 +815,8 @@ h6,
     border-color: var(--border-color);
     background: var(--surface-card);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+    /* Sticky columns match card surface — no heavy thead bar */
+    --surface-sticky-thead: var(--surface-card);
   }
 
   .ui-campaign-table-shell__header {
@@ -842,13 +878,14 @@ h6,
   }
 
   .ui-campaign-table thead tr {
-    background: color-mix(in srgb, var(--surface-thead) 92%, transparent);
+    background: transparent;
     border-bottom: 1px solid var(--border-color);
   }
 
   .ui-campaign-table th {
-    @apply whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.1em];
+    @apply whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide;
     color: var(--text-dimmer);
+    background: transparent;
   }
 
   .ui-campaign-table th:first-child {
@@ -1024,8 +1061,8 @@ h6,
   }
 
   .ui-campaign-table tfoot tr {
-    border-top: 2px solid var(--border-color);
-    background: color-mix(in srgb, var(--surface-thead) 95%, var(--surface-bg));
+    border-top: 1px solid var(--border-color);
+    background: transparent;
   }
 
   .ui-campaign-table tfoot td {
@@ -1042,6 +1079,126 @@ h6,
   .ui-campaign-table-chevron {
     @apply w-10 px-2 text-center;
     color: var(--text-dimmer);
+  }
+
+  /* Compact campaign tables — Campaign Creator DS density (~40–48px rows) */
+  .ui-campaign-table-shell--compact {
+    @apply rounded-xl;
+    --creator-card-bg: var(--surface-card);
+    --creator-card-bg-inset: color-mix(in srgb, var(--surface-card) 94%, var(--surface-bg));
+    --creator-card-border: var(--border-color);
+    --surface-sticky-thead: var(--creator-card-bg);
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
+    box-shadow: none;
+  }
+
+  [data-theme="dark"] .ui-campaign-table-shell--compact {
+    --creator-card-bg: #161922;
+    --creator-card-bg-inset: #121820;
+    --creator-card-border: rgba(255, 255, 255, 0.09);
+    --surface-sticky-thead: var(--creator-card-bg);
+  }
+
+  :root:not([data-theme="dark"]) .ui-campaign-table-shell--compact,
+  [data-theme="light"] .ui-campaign-table-shell--compact {
+    --creator-card-bg: #ffffff;
+    --creator-card-bg-inset: #e8edf3;
+    --creator-card-border: rgba(15, 23, 42, 0.12);
+    --surface-sticky-thead: var(--creator-card-bg);
+  }
+
+  .ui-campaign-table-shell--compact .ui-campaign-table-shell__header {
+    @apply px-3 py-2.5;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg-inset, var(--surface-bg));
+  }
+
+  .ui-campaign-table-shell--compact .ui-campaign-table-shell__title {
+    @apply gap-2 text-sm font-semibold;
+  }
+
+  .ui-campaign-table-shell--compact .ui-campaign-table-shell__icon {
+    @apply h-7 w-7 rounded-lg;
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact {
+    @apply min-w-[640px] text-xs;
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact thead tr {
+    border-bottom-color: var(--creator-card-border, var(--border-color));
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact th {
+    @apply px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide;
+    color: var(--text-dimmer);
+    background: transparent;
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact tfoot tr {
+    border-top-color: var(--creator-card-border, var(--border-color));
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact td {
+    @apply px-2.5 py-2 align-middle;
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact th:first-child {
+    @apply w-12 min-w-[3rem];
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact tfoot td {
+    @apply px-2.5 py-2 text-xs;
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact .ui-campaign-table-name {
+    @apply text-xs font-medium;
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact .ui-campaign-table-client {
+    @apply text-xs;
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact .ui-campaign-table-chevron {
+    @apply w-8 px-1.5;
+  }
+
+  .ui-campaign-table.ui-campaign-table--compact .ui-campaign-table-chevron svg {
+    @apply h-3.5 w-3.5;
+  }
+
+  .ds-table-compact-badge {
+    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium leading-none;
+  }
+
+  .ds-table-compact-badge--accent {
+    @apply border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] text-[var(--ui-accent)];
+  }
+
+  .ds-table-compact-badge--neutral {
+    @apply border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-[var(--text-dim)];
+  }
+
+  .ds-table-compact-badge--success {
+    @apply border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400;
+  }
+
+  .ds-table-compact-action {
+    @apply inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium transition-colors disabled:cursor-wait disabled:opacity-60;
+    color: var(--ui-accent);
+  }
+
+  .ds-table-compact-action:hover:not(:disabled) {
+    background: var(--ui-accent-muted);
+  }
+
+  .ds-table-compact-action--danger {
+    color: var(--danger);
+  }
+
+  .ds-table-compact-action--danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.08);
   }
 
   /* Stepper horizontal — círculos + linhas (accent temático) */
@@ -2067,8 +2224,7 @@ h6,
   }
 
   .campaign-creator-sidebar {
-    @apply min-h-0 overflow-y-auto ds-scroll ds-scroll--sidebar;
-    scrollbar-gutter: stable;
+    @apply min-h-0;
   }
 
   .campaign-creator-sidebar__inner {

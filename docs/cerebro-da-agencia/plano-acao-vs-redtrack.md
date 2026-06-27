@@ -196,8 +196,8 @@ dados que já lemos da Meta, sem construir tracking server-side genérico.
 | **Roteador de IA (Gemini+Claude)** | ✅ **Feito** (novo) | [`src/lib/ai/*`](../../src/lib/ai/generate.ts) + flags `ai.*` — ver [ai-router](../ai-router/README.md) |
 | **P1.3** Servidor MCP (read-only) | ✅ **Feito** | `src/lib/mcp/*` + `/api/mcp/brain` + `/api/mcp/tokens` — ver [mcp](../mcp/README.md) |
 | **P1.4** MCP escrita | ✅ **Feito** | `brain-server.ts` (`propose_action` → proposta PENDENTE) atrás de `brain.mcp.write` |
-| **P0** Meta CAPI | ✅ **Feito** (engine + hash + dedupe + teste) — P0.3/P0.4 pendentes | `src/lib/meta-capi*` + `/api/meta/capi/test` — ver [meta-conversions](../meta-conversions/README.md) |
-| **P2** Janelas de atribuição | ✅ **Fundação feita** (presets + preferência + API); wiring de insights = passo final | `src/lib/meta-attribution.ts`, `tenant-attribution.ts`, `/api/meta/attribution` |
+| **P0** Meta CAPI | ✅ **Feito** — engine + hash + dedupe + teste + **produção** + **log/status** (P0.3/P0.4). Falta só UI/painel | `src/lib/meta-capi*`, `/api/meta/capi`(+`/test`,`/status`), `CapiEventLog` — ver [meta-conversions](../meta-conversions/README.md) |
+| **P2** Janelas de atribuição | ✅ **Feito** — presets + preferência + API + **preview isolado** (read-only, sem tocar ranking/snapshots) | `src/lib/meta-attribution.ts`, `tenant-attribution.ts`, `/api/meta/attribution(/preview)` |
 
 > O agente hoje roteia via `aiGenerateJson` (não mais `geminiGenerateJson` direto): a tarefa
 > `agent_proposal` tende a **Claude** quando habilitado (flag + `ANTHROPIC_API_KEY`), com **fallback
@@ -205,10 +205,13 @@ dados que já lemos da Meta, sem construir tracking server-side genérico.
 
 ## Histórico
 
+- 2026-06-27 (parte 4): **P0.3/P0.4** concluídos — envio CAPI em produção (`/api/meta/capi`),
+  `CapiEventLog` + status (`/api/meta/capi/status`); e **P2** concluído com **preview isolado**
+  (`/api/meta/attribution/preview`, live/read-only) + param opcional `action_attribution_windows`
+  em `fetchAccountInsightsDaily` (default off → não toca sync/ranking). Resta só UI/painel da CAPI.
 - 2026-06-27 (parte 3): **P1.4** (MCP escrita → propostas pendentes), **P0** (Meta CAPI: engine +
   hash PII + dedupe + endpoint de teste) e **P2** (fundação de atribuição: presets + preferência por
-  tenant + API). Ver [meta-conversions](../meta-conversions/README.md). Restam P0.3/P0.4 (eventos
-  reais + UI) e o wiring de insights da atribuição.
+  tenant + API). Ver [meta-conversions](../meta-conversions/README.md).
 - 2026-06-27 (parte 2): Implementado o **servidor MCP read-only (P1.3)** sobre o Brain — tokens por
   tenant (entidade + migração 0052), endpoint JSON-RPC `/api/mcp/brain`, gestão de tokens. Ver [mcp](../mcp/README.md).
 - 2026-06-27: Implementado o **roteador de IA (Gemini+Claude)** + flags `ai.*`/`brain.mcp`/`meta.*`

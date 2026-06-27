@@ -23,13 +23,15 @@ export function CampaignTableHead({
   customMetricNames,
   sortKey,
   sortDir,
-  onSort
+  onSort,
+  compact = false
 }: {
   columns: TableColumnRef[];
   customMetricNames?: Record<string, string>;
   sortKey?: string | null;
   sortDir?: "asc" | "desc";
   onSort?: (key: string) => void;
+  compact?: boolean;
 }) {
   const t = useTranslations("campaignsPage");
   const tMetrics = useTranslations("metrics");
@@ -52,8 +54,12 @@ export function CampaignTableHead({
         const key = columnRefKey(col);
         const isMetric = col.kind !== "field";
         const thAlign = "text-center";
+        const thPadding = compact ? "" : "px-3 py-2.5 text-[11px]";
         return (
-          <th key={key} className={`whitespace-nowrap px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-dimmer)] ${thAlign}`}>
+          <th
+            key={key}
+            className={`whitespace-nowrap font-semibold uppercase tracking-[0.1em] text-[var(--text-dimmer)] ${thPadding} ${thAlign}`}
+          >
             {onSort && isMetric ? (
               <button type="button" onClick={() => onSort(key)} className="hover:text-[var(--text-dim)]">
                 {label(col)}
@@ -73,7 +79,8 @@ export function CampaignTableCell({
   col,
   row,
   customMetrics,
-  className = "px-3 py-2.5"
+  className,
+  compact = false
 }: {
   col: TableColumnRef;
   row: MetricRowData & {
@@ -86,8 +93,10 @@ export function CampaignTableCell({
   };
   customMetrics: Record<string, { id: string; name: string; formula: string; format: string }>;
   className?: string;
+  compact?: boolean;
 }) {
   const locale = useLocale();
+  const cellClassName = className ?? (compact ? "" : "px-3 py-2.5");
   const align =
     col.kind === "field" && col.id === "campaign"
       ? "text-left align-top whitespace-normal break-words"
@@ -132,7 +141,7 @@ export function CampaignTableCell({
       default:
         break;
     }
-    return <td className={`${className} ${align} ${toneClass}`}>{content}</td>;
+    return <td className={`${cellClassName} ${align} ${toneClass}`}>{content}</td>;
   }
 
   const val = resolveColumnNumericValue(col, row, customMetrics, evaluateFormula);
@@ -159,5 +168,5 @@ export function CampaignTableCell({
     }
   }
 
-  return <td className={`${className} ${align} ${toneClass}`}>{content}</td>;
+  return <td className={`${cellClassName} ${align} ${toneClass}`}>{content}</td>;
 }

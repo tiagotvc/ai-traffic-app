@@ -62,12 +62,12 @@ import {
   metricsColumnsForPreset
 } from "@/lib/campaign-table-metrics";
 import {
-  STICKY_NAME_TD,
-  STICKY_NAME_TF,
-  STICKY_NAME_TH,
-  STICKY_STATUS_TD,
-  STICKY_STATUS_TF,
-  STICKY_STATUS_TH
+  STICKY_NAME_TD_COMPACT,
+  STICKY_NAME_TF_COMPACT,
+  STICKY_NAME_TH_COMPACT,
+  STICKY_STATUS_TD_COMPACT,
+  STICKY_STATUS_TF_COMPACT,
+  STICKY_STATUS_TH_COMPACT
 } from "@/lib/campaign-table-sticky";
 
 type CampaignRow = {
@@ -1032,20 +1032,41 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           ) : (
             <>
               {draftDisplayRows.length > 0 ? (
-                <div className="ui-campaign-table-shell">
+                <div className="ui-campaign-table-shell ui-campaign-table-shell--compact">
                   <div className="ui-campaign-table-shell__header">
                     <div className="ui-campaign-table-shell__title">
                       <span className="ui-campaign-table-shell__icon">
-                        <FilePenLine size={18} strokeWidth={2} />
+                        <FilePenLine size={15} strokeWidth={2} />
                       </span>
                       <span className="truncate">
                         {t("draftsSectionTitle")}{" "}
                         <span className="font-normal text-[var(--text-dimmer)]">({draftDisplayRows.length})</span>
                       </span>
                     </div>
-                    <span className="hidden text-xs font-body text-[var(--text-dim)] sm:inline">
-                      {t("draftsSectionHint")}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="hidden text-xs font-body text-[var(--text-dim)] sm:inline">
+                        {t("draftsSectionHint")}
+                      </span>
+                      <CampaignGroupExportButton
+                        groupLabel={t("draftsSectionTitle")}
+                        rows={draftDisplayRows.map((r) => ({
+                          campaignName: r.campaignName,
+                          clientName: r.clientName,
+                          status: "DRAFT",
+                          preset: "default",
+                          spend: 0,
+                          conversions: 0,
+                          leads: 0,
+                          roas: 0,
+                          cpa: null,
+                          cpl: null
+                        }))}
+                        metricColumns={[]}
+                        customMetrics={tableLayout.customMetricsMap}
+                        clientLabel={clientFilter ? clientLabel : undefined}
+                        clientSlug={clientFilter || undefined}
+                      />
+                    </div>
                   </div>
                   <CampaignDraftMobileCards
                     rows={draftDisplayRows}
@@ -1057,14 +1078,14 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                     discardLabel={t("discardDraft")}
                   />
                   <div className="hidden overflow-x-auto md:block">
-                    <table className="ui-campaign-table min-w-[680px]">
+                    <table className="ui-campaign-table ui-campaign-table--compact min-w-[640px]">
                       <thead>
                         <tr>
-                          <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>{t("filterStatus")}</th>
-                          <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>{t("colCampaign")}</th>
-                          <th className="whitespace-nowrap px-3 py-2 text-center">{t("colClient")}</th>
-                          <th className="whitespace-nowrap px-3 py-2 text-center">{t("resumeDraft")}</th>
-                          <th className="whitespace-nowrap px-3 py-2 text-center">{t("discardDraft")}</th>
+                          <th className={`whitespace-nowrap ${STICKY_STATUS_TH_COMPACT}`}>{t("filterStatus")}</th>
+                          <th className={`whitespace-nowrap ${STICKY_NAME_TH_COMPACT}`}>{t("colCampaign")}</th>
+                          <th className="whitespace-nowrap text-center">{t("colClient")}</th>
+                          <th className="whitespace-nowrap text-center">{t("resumeDraft")}</th>
+                          <th className="whitespace-nowrap text-center">{t("discardDraft")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1072,43 +1093,37 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                           const templateId = draftTemplateIdFromRow(r);
                           const discarding = draftDiscardPendingId === templateId;
                           return (
-                            <tr
-                              key={r.metaCampaignId}
-                              className="group border-t border-[var(--border-color)] even:bg-[var(--surface-row-alt)] hover:bg-[var(--row-hover)]"
-                            >
-                              <td className={STICKY_STATUS_TD}>
-                                <Badge variant="accent">{t("statusDraft")}</Badge>
+                            <tr key={r.metaCampaignId} className="group">
+                              <td className={STICKY_STATUS_TD_COMPACT}>
+                                <span className="ds-table-compact-badge ds-table-compact-badge--accent">
+                                  {t("statusDraft")}
+                                </span>
                               </td>
-                              <td className={STICKY_NAME_TD}>
+                              <td className={STICKY_NAME_TD_COMPACT}>
                                 <Link
                                   href={draftResumeHref(r)}
-                                  className="ui-campaign-table-name block whitespace-normal break-words text-left text-sm"
+                                  className="ui-campaign-table-name block whitespace-normal break-words text-left"
                                 >
                                   {r.campaignName}
                                 </Link>
                               </td>
-                              <td className="ui-campaign-table-client truncate text-center text-sm">
+                              <td className="ui-campaign-table-client truncate text-center">
                                 {r.clientName}
                               </td>
-                              <td className="px-3 py-2.5 text-center">
-                                <Link href={draftResumeHref(r)} className="ui-link text-xs font-medium">
+                              <td className="text-center">
+                                <Link href={draftResumeHref(r)} className="ds-table-compact-action">
                                   {t("resumeDraft")}
                                 </Link>
                               </td>
-                              <td className="px-3 py-2.5 text-center">
+                              <td className="text-center">
                                 <button
                                   type="button"
                                   disabled={discarding}
                                   onClick={() => requestDiscardDraft(r)}
-                                  className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:cursor-wait disabled:opacity-60"
-                                  style={{
-                                    borderColor: "rgba(239,68,68,0.35)",
-                                    color: "#ef4444",
-                                    background: "rgba(239,68,68,0.06)"
-                                  }}
+                                  className="ds-table-compact-action ds-table-compact-action--danger"
                                   title={t("discardDraft")}
                                 >
-                                  <Trash2 size={13} />
+                                  <Trash2 size={12} />
                                   {t("discardDraft")}
                                 </button>
                               </td>
@@ -1141,11 +1156,11 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
               const presetIcon = getCampaignPresetIconConfig(preset);
               const PresetIcon = presetIcon.Icon;
               return (
-                <div key={preset} className="ui-campaign-table-shell">
+                <div key={preset} className="ui-campaign-table-shell ui-campaign-table-shell--compact">
                   <div className="ui-campaign-table-shell__header">
                     <div className="ui-campaign-table-shell__title">
                       <span className="ui-campaign-table-shell__icon">
-                        <PresetIcon size={18} strokeWidth={2} />
+                        <PresetIcon size={15} strokeWidth={2} />
                       </span>
                       <span className="truncate">
                         {groupLabel(preset)}{" "}
@@ -1161,6 +1176,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                         }))}
                         metricColumns={groupMetricColumns}
                         customMetrics={tableLayout.customMetricsMap}
+                        clientLabel={clientFilter ? clientLabel : undefined}
+                        clientSlug={clientFilter || undefined}
                       />
                       <CampaignGroupPager
                         page={safeGroupPage}
@@ -1183,10 +1200,10 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                     onRemember={rememberCampaign}
                   />
                   <div className="hidden overflow-x-auto md:block">
-                    <table className="ui-campaign-table">
+                    <table className="ui-campaign-table ui-campaign-table--compact">
                       <thead>
                         <tr>
-                          <th className={`whitespace-nowrap ${STICKY_STATUS_TH}`}>
+                          <th className={`whitespace-nowrap ${STICKY_STATUS_TH_COMPACT}`}>
                             <button
                               type="button"
                               onClick={() => toggleGroupSort(preset, "status")}
@@ -1200,7 +1217,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 : ""}
                             </button>
                           </th>
-                          <th className={`whitespace-nowrap ${STICKY_NAME_TH}`}>
+                          <th className={`whitespace-nowrap ${STICKY_NAME_TH_COMPACT}`}>
                             <button
                               type="button"
                               onClick={() => toggleGroupSort(preset, "name")}
@@ -1214,7 +1231,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 : ""}
                             </button>
                           </th>
-                          <th className="whitespace-nowrap px-3 py-2 text-center">
+                          <th className="whitespace-nowrap text-center">
                             <button
                               type="button"
                               onClick={() => toggleGroupSort(preset, "client")}
@@ -1228,7 +1245,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 : ""}
                             </button>
                           </th>
-                          <th className={`whitespace-nowrap px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-dimmer)]`}>
+                          <th className="whitespace-nowrap text-center">
                             {tPresets("label")}
                           </th>
                           <CampaignTableHead
@@ -1237,6 +1254,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                             sortKey={groupSort?.key}
                             sortDir={groupSort?.dir}
                             onSort={(key) => toggleGroupSort(preset, key)}
+                            compact
                           />
                           <th className="ui-campaign-table-chevron" aria-hidden />
                         </tr>
@@ -1247,7 +1265,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                             key={r.metaCampaignId}
                             className="group"
                           >
-                            <td className={STICKY_STATUS_TD}>
+                            <td className={STICKY_STATUS_TD_COMPACT}>
                               <CampaignStatusToggle
                                 active={r.status === "ACTIVE"}
                                 disabled={statusPendingId === r.metaCampaignId}
@@ -1255,12 +1273,12 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 onChange={() => toggleCampaignStatus(r.metaCampaignId, r.status)}
                               />
                             </td>
-                            <td className={STICKY_NAME_TD}>
+                            <td className={STICKY_NAME_TD_COMPACT}>
                               {useUxChrome ? (
                                 <Link
                                   href={campaignDetailHref(r)}
                                   onClick={() => rememberCampaign(r.metaCampaignId, r.clientSlug)}
-                                  className="ui-campaign-table-name block w-full whitespace-normal break-words text-left text-sm"
+                                  className="ui-campaign-table-name block w-full whitespace-normal break-words text-left"
                                 >
                                   {r.campaignName}
                                 </Link>
@@ -1268,13 +1286,13 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 <button
                                   type="button"
                                   onClick={() => pickCampaign(r)}
-                                  className="ui-campaign-table-name block w-full whitespace-normal break-words text-left text-sm"
+                                  className="ui-campaign-table-name block w-full whitespace-normal break-words text-left"
                                 >
                                   {r.campaignName}
                                 </button>
                               )}
                             </td>
-                            <td className="ui-campaign-table-client truncate text-center text-sm">{r.clientName}</td>
+                            <td className="ui-campaign-table-client truncate text-center">{r.clientName}</td>
                             <td className="relative text-center">
                               <CampaignTypeSelectCompact
                                 value={campaignPreset(r)}
@@ -1288,22 +1306,23 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                                 col={col}
                                 row={r}
                                 customMetrics={tableLayout.customMetricsMap}
+                                compact
                               />
                             ))}
                             <td className="ui-campaign-table-chevron">
-                              <ChevronRight size={16} strokeWidth={2} />
+                              <ChevronRight size={14} strokeWidth={2} />
                             </td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td className={`${STICKY_STATUS_TF} ui-campaign-table-footer-empty`} />
-                          <td className={STICKY_NAME_TF}>
+                          <td className={`${STICKY_STATUS_TF_COMPACT} ui-campaign-table-footer-empty`} />
+                          <td className={STICKY_NAME_TF_COMPACT}>
                             {t("rowTotal")} ({list.length})
                           </td>
-                          <td className="ui-campaign-table-footer-empty px-3 py-2.5 text-center" />
-                          <td className="ui-campaign-table-footer-empty px-3 py-2.5 text-center" />
+                          <td className="ui-campaign-table-footer-empty text-center" />
+                          <td className="ui-campaign-table-footer-empty text-center" />
                           {groupMetricColumns.map((col) => {
                             const key = columnRefKey(col);
                             const val = groupTotals[key];
@@ -1328,7 +1347,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                               content = String(val);
                             }
                             return (
-                              <td key={key} className={`px-3 py-2.5 text-center ${toneClass}`}>
+                              <td key={key} className={`text-center ${toneClass}`}>
                                 {content}
                               </td>
                             );
