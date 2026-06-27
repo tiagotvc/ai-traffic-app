@@ -103,6 +103,7 @@
   --app-page-padding-x-right-lg: 1rem;
   --app-page-padding-y: 1rem;
   --app-page-padding-y-lg: 1.75rem;
+  --app-page-gap-x: 2rem;
   --app-section-gap: 1.25rem;
   --app-section-gap-lg: 1.5rem;
   --app-sidebar-width: 16rem;
@@ -286,33 +287,19 @@ h6,
 
 @layer components {
   /* ─── App shell & page layout (Campaign Creator spacing standard) ─── */
+  /* Matches Campaign Creator: px-4 below lg; lg:pl-8 lg:pr-4; full-bleed (no max-width). */
   .app-shell-content {
-    @apply mx-auto w-full;
-    max-width: var(--app-content-max-width);
+    @apply w-full;
     padding-left: var(--app-page-padding-x);
     padding-right: var(--app-page-padding-x);
     padding-top: var(--app-page-padding-y);
     padding-bottom: var(--app-page-padding-y);
   }
 
-  @media (min-width: 640px) {
-    .app-shell-content {
-      padding-left: var(--app-page-padding-x-sm);
-      padding-right: var(--app-page-padding-x-sm);
-    }
-  }
-
-  @media (min-width: 768px) {
-    .app-shell-content {
-      padding-left: var(--app-page-padding-x-md);
-      padding-right: var(--app-page-padding-x-md);
-    }
-  }
-
   @media (min-width: 1024px) {
     .app-shell-content {
       padding-left: var(--app-page-padding-x-lg);
-      padding-right: var(--app-page-padding-x-lg);
+      padding-right: var(--app-page-padding-x-right-lg);
       padding-top: var(--app-page-padding-y-lg);
       padding-bottom: var(--app-page-padding-y-lg);
     }
@@ -326,24 +313,10 @@ h6,
     margin-bottom: calc(-1 * var(--app-page-padding-y));
   }
 
-  @media (min-width: 640px) {
-    .app-shell-breakout {
-      margin-left: calc(-1 * var(--app-page-padding-x-sm));
-      margin-right: calc(-1 * var(--app-page-padding-x-sm));
-    }
-  }
-
-  @media (min-width: 768px) {
-    .app-shell-breakout {
-      margin-left: calc(-1 * var(--app-page-padding-x-md));
-      margin-right: calc(-1 * var(--app-page-padding-x-md));
-    }
-  }
-
   @media (min-width: 1024px) {
     .app-shell-breakout {
       margin-left: calc(-1 * var(--app-page-padding-x-lg));
-      margin-right: calc(-1 * var(--app-page-padding-x-lg));
+      margin-right: calc(-1 * var(--app-page-padding-x-right-lg));
       margin-top: calc(-1 * var(--app-page-padding-y-lg));
       margin-bottom: calc(-1 * var(--app-page-padding-y-lg));
     }

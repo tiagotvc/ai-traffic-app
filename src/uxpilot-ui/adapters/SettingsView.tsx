@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { SettingsContentLive } from "@/uxpilot-ui/adapters/SettingsContentLive";
+import { UxPageMain } from "@/uxpilot-ui/adapters/UxPageMain";
 
 export function SettingsView({
   locale,
@@ -16,11 +17,13 @@ export function SettingsView({
   connectMetaSlot: ReactNode;
 }) {
   return (
-    <SettingsContentLive
-      locale={locale}
-      metaOAuthConfigured={metaOAuthConfigured}
-      metaOAuthError={metaOAuthError}
-      connectMetaSlot={connectMetaSlot}
-    />
+    <UxPageMain gap="loose">
+      <SettingsContentLive
+        locale={locale}
+        metaOAuthConfigured={metaOAuthConfigured}
+        metaOAuthError={metaOAuthError}
+        connectMetaSlot={connectMetaSlot}
+      />
+    </UxPageMain>
   );
 }

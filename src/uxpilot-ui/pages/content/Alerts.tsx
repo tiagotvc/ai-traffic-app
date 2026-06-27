@@ -66,7 +66,7 @@ export default function AlertsContent({ live }: { live?: AlertsLiveProps } = {})
   }
 
   const pageShellClass = isLive
-    ? "app-page-shell app-page-shell--loose w-full"
+    ? "w-full space-y-5"
     : "flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-5";
   const PageTag = isLive ? "div" : "main";
 

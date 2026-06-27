@@ -1,8 +1,24 @@
 # App layout spacing
 
-Standard page spacing for the live app shell, derived from the **Campaign Creator** wizard (`variant="uxpilot"`). Use these tokens and utilities so hub screens (Campanhas, Dashboard, Clientes, etc.) share the same horizontal breathing room as the creator.
+Standard page spacing for the live app shell, derived from the **Campaign Creator** wizard (`variant="uxpilot"`). Hub screens (Campanhas, Dashboard, Clientes, etc.) use the same horizontal inset as the creator main column.
 
 **Related:** [campaign-creator-design-system.md](./campaign-creator-design-system.md) (creator-specific shell, cards, stepper).
+
+---
+
+## Measured values — Campaign Creator (reference)
+
+Source: `CampaignCreatorClient.tsx` grid, `CampaignCreatorUxChrome.tsx` header, `globals.css` `[data-campaign-creator-shell]`.
+
+| Breakpoint | Left inset | Right inset | Main ↔ sidebar gap | Sidebar width | Max width |
+|------------|------------|-------------|--------------------|---------------|-----------|
+| `< lg` | `16px` (`px-4`) | `16px` (`px-4`) | — (stacked) | hidden | none (full bleed) |
+| `lg` | `32px` (`lg:pl-8`) | `16px` (`lg:pr-4`) | `32px` (`gap-x-8`) | `256px` (`16rem`) | none |
+| `xl` | `32px` | `16px` | `32px` | `288px` (`18rem`) | none |
+
+Creator uses `.app-shell-breakout` to negate shell padding, then applies its own grid: `px-4 lg:pl-8 lg:pr-4 gap-x-8 lg:grid-cols-[minmax(0,1fr)_16rem] xl:grid-cols-[minmax(0,1fr)_18rem]`.
+
+Hub pages (no right sidebar) use the **same left/right inset** as creator (`32px` / `16px` on desktop), not the wider symmetric `32px` / `32px` or centered `max-width` that caused extra whitespace.
 
 ---
 
@@ -10,18 +26,19 @@ Standard page spacing for the live app shell, derived from the **Campaign Creato
 
 | Token | Value | Use |
 |-------|-------|-----|
-| `--app-content-max-width` | `1600px` | Max width of main content column |
-| `--app-page-padding-x` | `1rem` | Mobile horizontal padding (`px-4`) |
-| `--app-page-padding-x-sm` | `1.25rem` | `sm` breakpoint (`px-5`) |
-| `--app-page-padding-x-md` | `1.5rem` | `md` breakpoint (`px-6`) |
-| `--app-page-padding-x-lg` | `2rem` | Desktop left/right base (`lg:px-8` / `lg:pl-8`) |
-| `--app-page-padding-x-right-lg` | `1rem` | Creator grid right column inset (`lg:pr-4`) |
-| `--app-page-padding-y` | `1rem` | Mobile vertical padding (`py-4`) |
-| `--app-page-padding-y-lg` | `1.75rem` | Desktop vertical padding (`lg:py-7`) |
-| `--app-section-gap` | `1.25rem` | Default gap between page sections (`space-y-5`) |
-| `--app-section-gap-lg` | `1.5rem` | Loose section gap (`space-y-6`) |
+| `--app-content-max-width` | `1600px` | Optional cap for `DsFlatPanel centered` only — **not** applied to `.app-shell-content` |
+| `--app-page-padding-x` | `1rem` (`16px`) | Horizontal padding below `lg` (`px-4`) |
+| `--app-page-padding-x-lg` | `2rem` (`32px`) | Desktop left inset (`lg:pl-8`) |
+| `--app-page-padding-x-right-lg` | `1rem` (`16px`) | Desktop right inset (`lg:pr-4`) |
+| `--app-page-padding-y` | `1rem` | Mobile vertical padding |
+| `--app-page-padding-y-lg` | `1.75rem` | Desktop vertical padding |
+| `--app-page-gap-x` | `2rem` (`32px`) | Creator main ↔ sidebar gap (`gap-x-8`) |
+| `--app-section-gap` | `1.25rem` | Default gap between page sections |
+| `--app-section-gap-lg` | `1.5rem` | Loose section gap |
 | `--app-sidebar-width` | `16rem` | Creator right sidebar (`lg`) |
 | `--app-sidebar-width-xl` | `18rem` | Creator right sidebar (`xl`) |
+
+Legacy tokens `--app-page-padding-x-sm` / `--app-page-padding-x-md` remain in `:root` but are **not** used by `.app-shell-content` (creator keeps `px-4` until `lg`).
 
 ---
 
@@ -29,17 +46,21 @@ Standard page spacing for the live app shell, derived from the **Campaign Creato
 
 ### `.app-shell-content`
 
-Applied once in **`AppShellSkeleton`** (and legacy `AppShell`) on the inner wrapper around `{children}`. Owns **all horizontal and vertical page padding** and `max-width: var(--app-content-max-width)`.
+Applied once in **`AppShellSkeleton`** (and legacy `AppShell`) on the inner wrapper around `{children}`.
 
-Do **not** add `px-4`, `md:px-6`, or `max-w-*` on live route roots unless you are intentionally breaking out (see below).
+- **Full bleed** within the main column (`w-full`, no `max-width`, no `mx-auto`)
+- **Below `lg`:** symmetric `16px` horizontal padding
+- **`lg+`:** asymmetric `32px` left / `16px` right — matches creator header and grid
+
+Do **not** add `px-4`, `md:px-6`, or `max-w-*` on live route roots unless intentionally breaking out.
 
 ### `.app-shell-breakout`
 
-Negates `.app-shell-content` padding. Used by **Campaign Creator** layout (`campaigns/new/layout.tsx`) so the wizard can apply its own grid padding (`lg:pl-8 lg:pr-4`, sidebar columns).
+Negates `.app-shell-content` padding (including asymmetric right at `lg+`). Used by **Campaign Creator** (`campaigns/new/layout.tsx`) so the wizard applies its own grid padding.
 
 ### `.app-page-shell` / `.app-page-shell--loose`
 
-Vertical **section stack** only (`display: flex; flex-direction: column; gap: var(--app-section-gap)`). No horizontal padding.
+Vertical **section stack** only. No horizontal padding.
 
 ---
 
@@ -47,33 +68,22 @@ Vertical **section stack** only (`display: flex; flex-direction: column; gap: va
 
 | Component | File | Role |
 |-----------|------|------|
-| `AppPageShell` | `src/components/layout/AppPageShell.tsx` | Canonical section stack; props: `gap`, `as`, `className` |
-| `UxPageMain` | `src/uxpilot-ui/adapters/UxPageMain.tsx` | Thin wrapper: `<AppPageShell as="main">` for UX Pilot live routes |
+| `AppPageShell` | `src/components/layout/AppPageShell.tsx` | Canonical section stack |
+| `UxPageMain` | `src/uxpilot-ui/adapters/UxPageMain.tsx` | `<AppPageShell as="main">` for live routes |
 
-**Example — live hub route:**
+**Live routes using `UxPageMain`:** Campanhas, Dashboard (via `AppPageShell`), Clientes, Audiências, Relatórios, Criativos, Configurações, Alertas, Automações.
 
-```tsx
-export function CampaignsView() {
-  return (
-    <UxPageMain gap="loose">
-      <CampaignsHubClient useUxChrome />
-    </UxPageMain>
-  );
-}
-```
+---
 
-**Example — page with internal sections only (padding from shell):**
+## Root cause of extra hub whitespace (fixed)
 
-```tsx
-export function DashboardContentLive() {
-  return (
-    <AppPageShell as="main" className="flex-1 overflow-y-auto">
-      <PageToolbar … />
-      <div className="tab-transition space-y-5">…</div>
-    </AppPageShell>
-  );
-}
-```
+| Issue | Hub (before) | Creator |
+|-------|--------------|---------|
+| Max width | `max-width: 1600px` + `mx-auto` centered column | Full bleed, no cap |
+| Right padding at `lg+` | `32px` symmetric | `16px` (`lg:pr-4`) |
+| `sm`/`md` padding | `20px` / `24px` | `16px` until `lg` |
+
+Hub pages looked like they reserved sidebar space on the right (extra `16px` padding + centering margins on wide viewports).
 
 ---
 
@@ -84,50 +94,23 @@ export function DashboardContentLive() {
 | Shell breakout | `.app-shell-breakout` on `[data-campaign-creator-shell]` |
 | Header | `px-4 lg:pl-8 lg:pr-4`, `pt-3 pb-3 lg:pt-4 lg:pb-4` |
 | Main grid | `px-4 lg:pl-8 lg:pr-4`, `gap-x-8`, `lg:grid-cols-[minmax(0,1fr)_16rem]`, `xl:…_18rem` |
-| Section stack (steps) | `.campaign-creator-section-stack` → `space-y-6` |
-| Sidebar cards | `.campaign-creator-sidebar-card` → `p-4` |
-| Step content cards | `.campaign-creator-card` → default `p-4`, `--compact` tighter |
+| Sidebar width | `--app-sidebar-width` / `--app-sidebar-width-xl` |
 
 ---
 
 ## Migration checklist
 
-When adding or refactoring a live screen:
-
-1. Rely on **`AppShellSkeleton` → `.app-shell-content`** for page padding — remove duplicate `px-*` / `py-*` on `<main>`.
+1. Rely on **`AppShellSkeleton` → `.app-shell-content`** for page padding.
 2. Wrap route content in **`UxPageMain`** or **`AppPageShell`** for section gaps.
-3. Avoid **`max-w-4xl` / `max-w-5xl` / `mx-auto`** on full hub pages; use full `--app-content-max-width` unless the UX is intentionally narrow (forms, legal, invite).
-4. **`DsFlatPanel` `centered`** now maps to `--app-content-max-width`, not `max-w-5xl`.
-5. Mock-only UX Pilot pages under `uxpilot-ui/pages/content/` may keep legacy padding for standalone preview; live adapters should not double-pad.
+3. Avoid **`max-w-*` / `mx-auto`** on full hub pages.
+4. Mock-only UX Pilot pages under `uxpilot-ui/pages/content/` may keep legacy padding for standalone preview.
 
 ---
 
-## Before / after (key screens)
+## Files
 
-### Campanhas hub
-
-| | Before | After |
-|---|--------|--------|
-| Shell | `AppShellSkeleton` `lg:px-8` + inner `max-w-[1600px]` | `.app-shell-content` (same effective padding, tokenized) |
-| Route | `UxPageMain` added **`px-4 md:px-6 py-5`** again | `UxPageMain` → section gap only (`gap="loose"`) |
-| Content | ~56px inset each side on desktop (double pad) | ~32px inset (`--app-page-padding-x-lg`), full 1600px table width |
-
-### Dashboard (Destaques)
-
-| | Before | After |
-|---|--------|--------|
-| Shell | Same as above | `.app-shell-content` |
-| Route | `DashboardContentLive` used `px-0 py-0` (single pad — already wider) | `AppPageShell as="main"` — consistent section gap, no extra horizontal pad |
-| Content | Full shell width | Unchanged width; aligned tokens and gap rhythm with Campanhas |
-
----
-
-## Files touched (spacing standard)
-
-- `src/app/globals.css` — tokens + `.app-shell-content`, `.app-shell-breakout`, `.app-page-shell`
-- `src/components/layout/AppPageShell.tsx` — new
-- `src/components/layout/AppShellSkeleton.tsx`, `AppShell.tsx`
+- `src/app/globals.css` — tokens, `.app-shell-content`, `.app-shell-breakout`
+- `src/components/layout/AppPageShell.tsx`, `AppShellSkeleton.tsx`
 - `src/uxpilot-ui/adapters/UxPageMain.tsx`
-- Live routes: `CampaignsView`, `ClientsView`, `AudiencesView`, `DashboardContentLive`, `ReportsView`, `AlertsView`, `CreativesView`, `SettingsContentLive`, `AutomationsRulesView`
+- Live routes: `CampaignsView`, `ClientsView`, `AudiencesView`, `DashboardContentLive`, `ReportsView`, `AlertsView`, `CreativesView`, `SettingsView`, `AutomationsRulesView`
 - `src/app/[locale]/(app)/campaigns/new/layout.tsx` — `.app-shell-breakout`
-- `src/design-system/components/DsFlatPanel.tsx` — `centered` uses app max width
