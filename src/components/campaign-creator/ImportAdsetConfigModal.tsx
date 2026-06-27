@@ -9,8 +9,10 @@ import {
   useImportTreeLoader,
   type ImportTreeItem
 } from "@/components/campaign-creator/useImportTreeLoader";
+import { CreatorModalHeader } from "@/components/campaign-creator/CreatorModalShell";
 import { UxModalPortal } from "@/uxpilot-ui/adapters/UxModalPortal";
 import { UxWizardModalPanel } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
+import { Download } from "lucide-react";
 
 type Step = "campaigns" | "adsets";
 
@@ -148,39 +150,29 @@ export function ImportAdsetConfigModal({
   return (
     <UxModalPortal open={open} onClose={onClose}>
       <UxWizardModalPanel size="lg" className="max-h-[min(720px,92vh)]">
-        <div className="border-b border-[var(--border-color)] px-5 py-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              {step !== "campaigns" ? (
-                <button
-                  type="button"
-                  onClick={goBack}
-                  className="text-xs font-medium text-[var(--ui-accent)] hover:underline"
-                >
-                  ← {t("importAdBack")}
-                </button>
-              ) : null}
-              <h2 className="font-heading mt-1 text-base font-semibold text-[var(--text-main)]">
-                {t("importAdsetTitle")}
-              </h2>
-              <p className="mt-0.5 text-xs text-[var(--text-dim)]">{t("importAdsetHint")}</p>
-              <p className="mt-2 text-[11px] font-medium text-[var(--ui-accent)]">{stepLabel}</p>
-              {campaignName ? (
-                <p className="text-[10px] text-[var(--text-dimmer)]">{campaignName}</p>
-              ) : null}
-            </div>
+        <CreatorModalHeader
+          title={t("importAdsetTitle")}
+          subtitle={t("importAdsetHint")}
+          titleIcon={<Download size={16} />}
+          onClose={onClose}
+        />
+        <div className="border-b border-[var(--border-color)] px-5 py-3">
+          {step !== "campaigns" ? (
             <button
               type="button"
-              onClick={onClose}
-              className="shrink-0 rounded-lg p-1.5 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
-              aria-label={t("importAdCancel")}
+              onClick={goBack}
+              className="mb-2 text-xs font-medium text-[var(--ui-accent)] hover:underline"
             >
-              ×
+              ← {t("importAdBack")}
             </button>
-          </div>
+          ) : null}
+          <p className="text-[11px] font-medium text-[var(--ui-accent)]">{stepLabel}</p>
+          {campaignName ? (
+            <p className="text-[10px] text-[var(--text-dimmer)]">{campaignName}</p>
+          ) : null}
         </div>
 
-        <div className="border-b border-[var(--border-color)] p-4">
+        <div className="border-b border-[var(--border-color)] px-5 py-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}

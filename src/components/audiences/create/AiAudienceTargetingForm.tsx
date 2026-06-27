@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState, useTransition } from "react";
+import { Briefcase, ShieldOff, Sparkles, Target, User, Waves } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type {
@@ -20,6 +21,11 @@ import { PersonaReplacementHintsPanel } from "@/components/audiences/create/Pers
 import { AudienceCreationInsightsPanel } from "@/components/audiences/create/AudienceCreationInsightsPanel";
 import { PersonaSegmentChipList } from "@/components/audiences/create/PersonaSegmentChipList";
 import { PersonaAddSegmentsModal } from "@/components/audiences/create/PersonaAddSegmentsModal";
+import {
+  CreatorAiPreviewSection,
+  CreatorAiPromptField,
+  CreatorAiProviderPicker
+} from "@/components/campaign-creator/CreatorAiModalParts";
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { FormSelect, type FormSelectOption } from "@/components/ui/FormSelect";
 import { DsModal } from "@/design-system/components/DsModal";
@@ -56,9 +62,25 @@ export type AiAudienceTargetingFormProps = {
   onApproveApply?: (suggestion: AudienceTargetingSuggestion) => Promise<void> | void;
   onError?: (message: string) => void;
   repairSeed?: PersonaRepairSeed;
+  /** When true, credits/footer actions live in CreatorAiModalShell. */
+  shellMode?: boolean;
+  onActionStateChange?: (state: AiAudienceTargetingFormActionState) => void;
 };
 
-export function AiAudienceTargetingForm({
+export type AiAudienceTargetingFormActionState = {
+  canSave: boolean;
+  canClear: boolean;
+  pending: boolean;
+  creating: boolean;
+};
+
+export type AiAudienceTargetingFormHandle = {
+  reset: () => void;
+  save: () => void;
+};
+
+export const AiAudienceTargetingForm = forwardRef<AiAudienceTargetingFormHandle, AiAudienceTargetingFormProps>(
+function AiAudienceTargetingForm({
   clientSlug,
   adAccountId,
   audiences,
@@ -74,8 +96,10 @@ export function AiAudienceTargetingForm({
   onSaved,
   onApproveApply,
   onError,
-  repairSeed
-}: AiAudienceTargetingFormProps) {
+  repairSeed,
+  shellMode = false,
+  onActionStateChange
+}: AiAudienceTargetingFormProps, ref) {
   const t = useTranslations("campaignCreator");
   const tAud = useTranslations("audiences");
   const isPersonaLibrary = mode === "persona_library";
@@ -459,6 +483,48 @@ export function AiAudienceTargetingForm({
     targetProfile.trim().length >= 3 &&
     (provider === "gemini" ? providers.gemini : providers.claude);
 
+  const canSave =
+    !!suggestion &&
+    !creating &&
+    !pending &&
+    (!isPersonaLibrary || !!resolvedSavePersonaName());
+
+  useImperativeHandle(ref, () => ({
+    reset: resetForm,
+    save: () => void approveAndSave()
+  }));
+
+  useEffect(() => {
+    onActionStateChange?.({
+      canSave,
+      canClear: Boolean(
+        businessDescription ||
+          targetProfile ||
+          behaviors ||
+          lifestyleHints ||
+          exclusionHints ||
+          personaPreview ||
+          suggestion
+      ),
+      pending,
+      creating
+    });
+  }, [
+    canSave,
+    businessDescription,
+    targetProfile,
+    behaviors,
+    lifestyleHints,
+    exclusionHints,
+    personaPreview,
+    suggestion,
+    pending,
+    creating,
+    onActionStateChange
+  ]);
+
+  const usePersonaShellFields = isPersonaLibrary;
+
   const genderOptions = useMemo(
     (): FormSelectOption[] => [
       { value: "all", label: t("aiDemographicGenderAll") },
@@ -469,50 +535,63 @@ export function AiAudienceTargetingForm({
   );
 
   return (
-    <div className="space-y-3">
-      {isPersonaLibrary ? (
+    <div className="space-y-4">
+      {isPersonaLibrary && !shellMode ? (
         <AiCreditCostHint kind="audience_suggestions" calls={2} className="w-full justify-center" />
       ) : null}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2">
-        <span className="text-[10px] font-medium uppercase text-[var(--text-dim)]">
-          {t("aiProviderLabel")}
-        </span>
-        <label className="flex items-center gap-1.5 text-xs">
-          <input
-            type="radio"
-            name="ai-provider-form"
-            checked={provider === "gemini"}
-            onChange={() => setProvider("gemini")}
-            disabled={disabled || !providers.gemini}
-          />
-          Gemini
-          {!providers.gemini ? (
-            <span className="text-[10px] text-amber-600">({t("aiProviderOff")})</span>
-          ) : null}
-        </label>
-        <label className="flex items-center gap-1.5 text-xs">
-          <input
-            type="radio"
-            name="ai-provider-form"
-            checked={provider === "claude"}
-            onChange={() => setProvider("claude")}
-            disabled={disabled || !providers.claude}
-          />
-          Claude
-          {!providers.claude ? (
-            <span
-              className="text-[10px] text-amber-600"
-              title={t("aiProviderClaudeHint")}
-            >
-              ({t("aiProviderOff")})
-            </span>
-          ) : null}
-        </label>
-      </div>
 
-      {!providers.claude ? (
-        <p className="text-[10px] leading-snug text-amber-700">{t("aiProviderClaudeHint")}</p>
-      ) : null}
+      {usePersonaShellFields ? (
+        <CreatorAiProviderPicker
+          provider={provider}
+          onChange={setProvider}
+          providers={providers}
+          disabled={disabled}
+          name="ai-provider-persona-form"
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2">
+            <span className="text-[10px] font-medium uppercase text-[var(--text-dim)]">
+              {t("aiProviderLabel")}
+            </span>
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="radio"
+                name="ai-provider-form"
+                checked={provider === "gemini"}
+                onChange={() => setProvider("gemini")}
+                disabled={disabled || !providers.gemini}
+              />
+              Gemini
+              {!providers.gemini ? (
+                <span className="text-[10px] text-amber-600">({t("aiProviderOff")})</span>
+              ) : null}
+            </label>
+            <label className="flex items-center gap-1.5 text-xs">
+              <input
+                type="radio"
+                name="ai-provider-form"
+                checked={provider === "claude"}
+                onChange={() => setProvider("claude")}
+                disabled={disabled || !providers.claude}
+              />
+              Claude
+              {!providers.claude ? (
+                <span
+                  className="text-[10px] text-amber-600"
+                  title={t("aiProviderClaudeHint")}
+                >
+                  ({t("aiProviderOff")})
+                </span>
+              ) : null}
+            </label>
+          </div>
+
+          {!providers.claude ? (
+            <p className="text-[10px] leading-snug text-amber-700">{t("aiProviderClaudeHint")}</p>
+          ) : null}
+        </>
+      )}
 
       {repairSeed && repairSeed.segments.some((s) => !s.valid) ? (
         <div className="ui-alert-warning space-y-2 p-3 text-xs">
@@ -589,68 +668,119 @@ export function AiAudienceTargetingForm({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBusiness")}</label>
-          <textarea
-            value={businessDescription}
-            onChange={(e) => setBusinessDescription(e.target.value)}
-            rows={2}
-            className="ui-textarea mt-1 w-full text-sm"
-            placeholder={t("aiAudienceBusinessPh")}
-            disabled={disabled}
-          />
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {usePersonaShellFields ? (
+          <>
+            <CreatorAiPromptField
+              icon={<Briefcase size={14} />}
+              label={t("aiAudienceBusiness")}
+              value={businessDescription}
+              onChange={setBusinessDescription}
+              placeholder={t("aiAudienceBusinessPh")}
+              disabled={disabled}
+            />
+            <CreatorAiPromptField
+              icon={<User size={14} />}
+              label={t("aiAudienceProfile")}
+              value={targetProfile}
+              onChange={setTargetProfile}
+              placeholder={t("aiAudienceProfilePh")}
+              disabled={disabled}
+            />
+            <CreatorAiPromptField
+              icon={<Target size={14} />}
+              label={t("aiAudienceBehaviors")}
+              value={behaviors}
+              onChange={setBehaviors}
+              placeholder={t("aiAudienceBehaviorsPh")}
+              disabled={disabled}
+            />
+            <CreatorAiPromptField
+              icon={<Waves size={14} />}
+              label={t("aiAudienceLifestyle")}
+              value={lifestyleHints}
+              onChange={setLifestyleHints}
+              placeholder={t("aiAudienceLifestylePh")}
+              hint={t("aiAudienceLifestyleHint")}
+              disabled={disabled}
+            />
+            <div className="sm:col-span-2">
+              <CreatorAiPromptField
+                icon={<ShieldOff size={14} />}
+                label={t("aiAudienceExclusions")}
+                value={exclusionHints}
+                onChange={setExclusionHints}
+                placeholder={t("aiAudienceExclusionsPh")}
+                hint={t("aiAudienceExclusionsHint")}
+                disabled={disabled}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBusiness")}</label>
+              <textarea
+                value={businessDescription}
+                onChange={(e) => setBusinessDescription(e.target.value)}
+                rows={2}
+                className="ui-textarea mt-1 w-full text-sm"
+                placeholder={t("aiAudienceBusinessPh")}
+                disabled={disabled}
+              />
+            </div>
 
-        <div>
-          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceProfile")}</label>
-          <textarea
-            value={targetProfile}
-            onChange={(e) => setTargetProfile(e.target.value)}
-            rows={2}
-            className="ui-textarea mt-1 w-full text-sm"
-            placeholder={t("aiAudienceProfilePh")}
-            disabled={disabled}
-          />
-        </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceProfile")}</label>
+              <textarea
+                value={targetProfile}
+                onChange={(e) => setTargetProfile(e.target.value)}
+                rows={2}
+                className="ui-textarea mt-1 w-full text-sm"
+                placeholder={t("aiAudienceProfilePh")}
+                disabled={disabled}
+              />
+            </div>
 
-        <div>
-          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBehaviors")}</label>
-          <textarea
-            value={behaviors}
-            onChange={(e) => setBehaviors(e.target.value)}
-            rows={2}
-            className="ui-textarea mt-1 w-full text-sm"
-            placeholder={t("aiAudienceBehaviorsPh")}
-            disabled={disabled}
-          />
-        </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceBehaviors")}</label>
+              <textarea
+                value={behaviors}
+                onChange={(e) => setBehaviors(e.target.value)}
+                rows={2}
+                className="ui-textarea mt-1 w-full text-sm"
+                placeholder={t("aiAudienceBehaviorsPh")}
+                disabled={disabled}
+              />
+            </div>
 
-        <div>
-          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceLifestyle")}</label>
-          <textarea
-            value={lifestyleHints}
-            onChange={(e) => setLifestyleHints(e.target.value)}
-            rows={2}
-            className="ui-textarea mt-1 w-full text-sm"
-            placeholder={t("aiAudienceLifestylePh")}
-            disabled={disabled}
-          />
-          <p className="mt-1 text-[10px] text-[var(--text-dim)]">{t("aiAudienceLifestyleHint")}</p>
-        </div>
+            <div>
+              <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceLifestyle")}</label>
+              <textarea
+                value={lifestyleHints}
+                onChange={(e) => setLifestyleHints(e.target.value)}
+                rows={2}
+                className="ui-textarea mt-1 w-full text-sm"
+                placeholder={t("aiAudienceLifestylePh")}
+                disabled={disabled}
+              />
+              <p className="mt-1 text-[10px] text-[var(--text-dim)]">{t("aiAudienceLifestyleHint")}</p>
+            </div>
 
-        <div className="sm:col-span-2">
-          <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceExclusions")}</label>
-          <textarea
-            value={exclusionHints}
-            onChange={(e) => setExclusionHints(e.target.value)}
-            rows={2}
-            className="ui-textarea mt-1 w-full text-sm"
-            placeholder={t("aiAudienceExclusionsPh")}
-            disabled={disabled}
-          />
-          <p className="mt-1 text-[10px] text-[var(--text-dimmer)]">{t("aiAudienceExclusionsHint")}</p>
-        </div>
+            <div className="sm:col-span-2">
+              <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiAudienceExclusions")}</label>
+              <textarea
+                value={exclusionHints}
+                onChange={(e) => setExclusionHints(e.target.value)}
+                rows={2}
+                className="ui-textarea mt-1 w-full text-sm"
+                placeholder={t("aiAudienceExclusionsPh")}
+                disabled={disabled}
+              />
+              <p className="mt-1 text-[10px] text-[var(--text-dimmer)]">{t("aiAudienceExclusionsHint")}</p>
+            </div>
+          </>
+        )}
       </div>
 
       {audiences.length > 0 ? (
@@ -763,14 +893,32 @@ export function AiAudienceTargetingForm({
       ) : null}
 
       {!personaPreview ? (
-        <button
-          type="button"
-          disabled={disabled || pending || !canGenerate}
-          onClick={generatePersonaPreview}
-          className="ui-btn-primary w-full text-sm"
-        >
-          {pending ? t("aiAudiencePreviewGenerating") : t("aiAudiencePreviewGenerate")}
-        </button>
+        usePersonaShellFields ? (
+          <CreatorAiPreviewSection
+            title={t("aiAudiencePreviewTitle")}
+            hint={t("aiAudiencePreviewHint")}
+            action={
+              <button
+                type="button"
+                disabled={disabled || pending || !canGenerate}
+                onClick={generatePersonaPreview}
+                className="ui-btn-accent inline-flex w-full items-center justify-center gap-1.5 text-sm font-heading font-semibold sm:w-auto"
+              >
+                <Sparkles size={14} aria-hidden />
+                {pending ? t("aiAudiencePreviewGenerating") : t("aiAudiencePreviewGenerate")}
+              </button>
+            }
+          />
+        ) : (
+          <button
+            type="button"
+            disabled={disabled || pending || !canGenerate}
+            onClick={generatePersonaPreview}
+            className="ui-btn-primary w-full text-sm"
+          >
+            {pending ? t("aiAudiencePreviewGenerating") : t("aiAudiencePreviewGenerate")}
+          </button>
+        )
       ) : null}
 
       {personaPreview && !suggestion ? (
@@ -1004,7 +1152,13 @@ export function AiAudienceTargetingForm({
               type="button"
               disabled={creating || pending || (isPersonaLibrary && !resolvedSavePersonaName())}
               onClick={() => void approveAndSave()}
-              className={mode === "campaign" ? "ui-btn-secondary text-xs" : "ui-btn-primary text-xs"}
+              className={
+                shellMode && isPersonaLibrary
+                  ? "hidden"
+                  : mode === "campaign"
+                    ? "ui-btn-secondary text-xs"
+                    : "ui-btn-primary text-xs"
+              }
             >
               {creating
                 ? t("creating")
@@ -1036,4 +1190,4 @@ export function AiAudienceTargetingForm({
       ) : null}
     </div>
   );
-}
+});

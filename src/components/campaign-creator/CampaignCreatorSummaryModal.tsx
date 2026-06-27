@@ -11,7 +11,7 @@ import {
   Users
 } from "lucide-react";
 
-import { DsModal } from "@/design-system/components/DsModal";
+import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import {
   adHasMedia,
@@ -154,13 +154,14 @@ export function CampaignCreatorSummaryModal({
   const showAdContext = activeNode === "ad" || activeNode === "review";
 
   return (
-    <DsModal
+    <CreatorModalShell
       open={open}
       onClose={onClose}
       title={t("sidebarContextCampaign")}
       subtitle={t("summaryModalSubtitle")}
       titleIcon={<ClipboardList size={15} strokeWidth={2.25} />}
       width="md"
+      hideFooter
     >
       <div className="space-y-5">
         <SummarySection icon={<ClipboardList size={14} aria-hidden />} title={t("sidebarContextCampaign")}>
@@ -221,6 +222,6 @@ export function CampaignCreatorSummaryModal({
           </SummarySection>
         ) : null}
       </div>
-    </DsModal>
+    </CreatorModalShell>
   );
 }

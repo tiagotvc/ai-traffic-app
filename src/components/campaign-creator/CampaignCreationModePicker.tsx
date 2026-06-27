@@ -3,7 +3,8 @@
 import { useTranslations } from "next-intl";
 import { PenLine, Sparkles } from "lucide-react";
 
-import { DsChoiceCard, DsModal } from "@/design-system";
+import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
+import { DsChoiceCard } from "@/design-system";
 
 type Props = {
   open: boolean;
@@ -23,13 +24,15 @@ export function CampaignCreationModePicker({ open, onClose, clientSlug }: Props)
   const t = useTranslations("campaignCreator.ai");
 
   return (
-    <DsModal
+    <CreatorModalShell
       open={open}
       onClose={onClose}
       title={t("modePickerTitle")}
       subtitle={t("modePickerHint")}
+      titleIcon={<Sparkles size={16} />}
       width="md"
-      contentClassName="pb-5"
+      contentClassName="pb-1"
+      hideFooter
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <DsChoiceCard
@@ -48,6 +51,6 @@ export function CampaignCreationModePicker({ open, onClose, clientSlug }: Props)
           accent
         />
       </div>
-    </DsModal>
+    </CreatorModalShell>
   );
 }

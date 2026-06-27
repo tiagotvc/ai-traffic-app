@@ -1,22 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { AiAudienceTargetingForm } from "@/components/audiences/create/AiAudienceTargetingForm";
+import {
+  AiAudienceTargetingForm,
+  type AiAudienceTargetingFormActionState,
+  type AiAudienceTargetingFormHandle
+} from "@/components/audiences/create/AiAudienceTargetingForm";
 import type { PersonaRepairSeed } from "@/lib/persona-targeting-types";
 
 type Props = {
   clientSlug: string;
   adAccountId: string;
   repairSeed?: PersonaRepairSeed;
-  /** Omit title/close row when rendered inside DsModal. */
+  /** Omit title/close row when rendered inside CreatorAiModalShell. */
   embedded?: boolean;
+  shellMode?: boolean;
   onClose: () => void;
   onSaved: (personaId?: string) => void;
+  onActionStateChange?: (state: AiAudienceTargetingFormActionState) => void;
 };
 
-export function AiPersonaForm({ clientSlug, adAccountId, repairSeed, embedded = false, onClose, onSaved }: Props) {
+export const AiPersonaForm = forwardRef<AiAudienceTargetingFormHandle, Props>(function AiPersonaForm(
+  {
+    clientSlug,
+    adAccountId,
+    repairSeed,
+    embedded = false,
+    shellMode = false,
+    onClose,
+    onSaved,
+    onActionStateChange
+  },
+  ref
+) {
   const t = useTranslations("audiences");
   const [audiences, setAudiences] = useState<{ id: string; name: string }[]>([]);
   const [audiencesLoading, setAudiencesLoading] = useState(false);
@@ -42,7 +60,7 @@ export function AiPersonaForm({ clientSlug, adAccountId, repairSeed, embedded = 
 
   return (
     <div className="space-y-4">
-      {!embedded ? (
+      {!embedded && !shellMode ? (
         <div className="flex items-center justify-between">
           <h2 className="font-heading text-lg text-[var(--text-main)]">
             {isRepair ? t("repairPersonaTitle") : t("newPersona")}
@@ -54,12 +72,13 @@ export function AiPersonaForm({ clientSlug, adAccountId, repairSeed, embedded = 
       ) : null}
 
       {needsAccount ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
           {t("personaNeedsAdAccount")}
         </p>
       ) : null}
 
       <AiAudienceTargetingForm
+        ref={ref}
         mode="persona_library"
         clientSlug={clientSlug}
         adAccountId={adAccountId}
@@ -67,8 +86,10 @@ export function AiPersonaForm({ clientSlug, adAccountId, repairSeed, embedded = 
         audiencesLoading={audiencesLoading}
         disabled={needsAccount}
         repairSeed={repairSeed}
+        shellMode={shellMode}
+        onActionStateChange={onActionStateChange}
         onSaved={(result) => onSaved(result.personaId)}
       />
     </div>
   );
-}
+});

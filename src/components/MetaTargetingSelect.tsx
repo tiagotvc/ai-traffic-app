@@ -45,13 +45,45 @@ function mapResults(type: SearchType, results: unknown[]): TargetingItem[] {
   }));
 }
 
+function TargetingChips({
+  selected,
+  onRemove
+}: {
+  selected: TargetingItem[];
+  onRemove: (value: string) => void;
+}) {
+  if (selected.length === 0) return null;
+
+  return (
+    <>
+      {selected.map((s) => (
+        <span
+          key={s.value}
+          className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs text-[var(--violet)]"
+        >
+          {s.label}
+          <button
+            type="button"
+            onClick={() => onRemove(s.value)}
+            className="text-violet-500 hover:text-[var(--violet)]"
+            aria-label="Remover"
+          >
+            ×
+          </button>
+        </span>
+      ))}
+    </>
+  );
+}
+
 export function MetaTargetingSelect({
   type,
   placeholder,
   selected,
   onAdd,
   onRemove,
-  disabled
+  disabled,
+  chipsPlacement = "above"
 }: {
   type: SearchType;
   placeholder?: string;
@@ -59,6 +91,7 @@ export function MetaTargetingSelect({
   onAdd: (item: TargetingItem) => void;
   onRemove: (value: string) => void;
   disabled?: boolean;
+  chipsPlacement?: "above" | "below";
 }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<TargetingItem[]>([]);
@@ -103,34 +136,24 @@ export function MetaTargetingSelect({
 
   const selectedValues = new Set(selected.map((s) => s.value));
 
+  const chips = (
+    <div className="flex flex-wrap gap-1.5">
+      <TargetingChips selected={selected} onRemove={onRemove} />
+    </div>
+  );
+
   return (
     <div ref={boxRef} className="relative">
-      <div className="flex flex-wrap gap-1.5">
-        {selected.map((s) => (
-          <span
-            key={s.value}
-            className="inline-flex items-center gap-1 rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-xs text-[var(--violet)]"
-          >
-            {s.label}
-            <button
-              type="button"
-              onClick={() => onRemove(s.value)}
-              className="text-violet-500 hover:text-[var(--violet)]"
-              aria-label="Remover"
-            >
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
+      {chipsPlacement === "above" ? chips : null}
       <input
         value={q}
         disabled={disabled}
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => results.length && setOpen(true)}
         placeholder={placeholder}
-        className="ui-input mt-1 w-full disabled:opacity-60"
+        className={`ui-input w-full disabled:opacity-60 ${chipsPlacement === "above" && selected.length > 0 ? "mt-1" : ""}`}
       />
+      {chipsPlacement === "below" ? <div className="mt-1.5">{chips}</div> : null}
       {open && (loading || results.length > 0) ? (
         <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-lg">
           {loading ? (

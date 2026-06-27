@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { CalendarDays, SlidersHorizontal, Users } from "lucide-react";
 
-import { AdSetConfigurationPanel } from "@/components/campaign-creator/AdSetConfigurationPanel";
+import { AdSetCompilerLeadCards } from "@/components/campaign-creator/AdSetCompilerLeadCards";
+import { AdSetConfigurationModal } from "@/components/campaign-creator/AdSetConfigurationModal";
 import { AdSetPersonaZonePanel } from "@/components/campaign-creator/AdSetPersonaZonePanel";
 import { AdvancedTargetingPanel } from "@/components/campaign-creator/AdvancedTargetingPanel";
 import { CustomAudiencesModal } from "@/components/campaign-creator/CustomAudiencesModal";
-import { SavedTargetingPicker } from "@/components/campaign-creator/SavedTargetingPicker";
+import { SavedAudienceModal } from "@/components/campaign-creator/SavedAudienceModal";
 import { ImportAdsetConfigModal } from "@/components/campaign-creator/ImportAdsetConfigModal";
 import type { MapViewport } from "@/components/campaign-creator/GeoRadiusMapPicker";
 import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
@@ -30,9 +31,8 @@ import {
   resolveAdTargetAdsets,
   usesReusedMetaCreative
 } from "@/lib/campaign-draft";
-import type { AdSetDraftItem, DraftTargeting } from "@/lib/campaign-draft";
+import type { AdSetDraftItem, DraftTargeting, TargetingItem } from "@/lib/campaign-draft";
 import { defaultScheduleStartLocal } from "@/lib/campaign-placements";
-import { WizardAccordionSection } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
 import { cn } from "@/lib/cn";
 
@@ -58,6 +58,8 @@ export function AdSetStep() {
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [customAudiencesOpen, setCustomAudiencesOpen] = useState(false);
+  const [savedAudienceModalOpen, setSavedAudienceModalOpen] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
   const { section: activeView, canGoTo, isSectionVisited, goTo } = useAdSetStepSubflow();
   const [commercialLocation, setCommercialLocation] = useState<{
     address: string | null;
@@ -166,6 +168,12 @@ export function AdSetStep() {
       );
   }, [payload.clientSlug]);
 
+  useEffect(() => {
+    if (activeView === "advanced") {
+      setMapViewport(null);
+    }
+  }, [activeView]);
+
   function centerOnCommercialAddress() {
     if (commercialLocation.lat != null && commercialLocation.lng != null) {
       setMapViewport({
@@ -174,6 +182,26 @@ export function AdSetStep() {
       });
       return;
     }
+    setMapViewport(null);
+  }
+
+  function flyToGeoLocation(item: TargetingItem) {
+    const query = [item.label, item.meta?.countryCode].filter(Boolean).join(", ");
+    const zoom =
+      item.meta?.type === "country" ? 4 : item.meta?.type === "region" ? 7 : 11;
+    fetch(`/api/geocode?q=${encodeURIComponent(query)}`)
+      .then((r) => r.json())
+      .then(
+        (j: { ok?: boolean; latitude?: number; longitude?: number }) => {
+          if (j.ok && j.latitude != null && j.longitude != null) {
+            setMapViewport({ center: [j.latitude, j.longitude], zoom });
+          }
+        }
+      )
+      .catch(() => undefined);
+  }
+
+  function clearMapViewport() {
     setMapViewport(null);
   }
 
@@ -187,73 +215,19 @@ export function AdSetStep() {
   const customAudienceCount =
     targeting.customAudienceIds.length + targeting.excludedAudienceIds.length;
 
-  function customAudiencesButton(label: string) {
-    return (
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          disabled={clientRequired}
-          onClick={() => setCustomAudiencesOpen(true)}
-          className="ui-btn-secondary-accent inline-flex items-center gap-2 px-3 py-1.5 text-xs"
-        >
-          {label}
-          {customAudienceCount > 0 ? (
-            <span className="rounded-full bg-[var(--ui-accent-muted)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ui-accent)]">
-              {customAudienceCount}
-            </span>
-          ) : null}
-        </button>
-        {customAudienceCount > 0 ? (
-          <span className="text-[10px] text-[var(--text-dimmer)]">
-            {t("customAudiencesIncludedLegend", { count: customAudienceCount })}
-          </span>
-        ) : null}
-      </div>
-    );
-  }
+  const includedAudienceCount = targeting.customAudienceIds.length;
+  const excludedAudienceCount = targeting.excludedAudienceIds.length;
 
   function compilerTargetingSections() {
     return (
       <div className="campaign-creator-budget-body space-y-3">
-        <div className="campaign-creator-adset-two-col">
-          <div className="campaign-creator-card flex min-h-0 flex-col">
-            <div className="campaign-creator-budget-header shrink-0">
-              <p className="campaign-creator-budget-header__title">{t("loadSavedAudienceTitle")}</p>
-              <p className="campaign-creator-budget-header__subtitle">{t("loadSavedAudienceHint")}</p>
-            </div>
-            <div className="mt-2.5 min-h-0 flex-1">
-              <SavedTargetingPicker
-                clientSlug={payload.clientSlug}
-                adAccountId={payload.adAccountId}
-                disabled={clientRequired}
-                compact
-                hideHeader
-                onApply={handleApplySavedAudience}
-              />
-            </div>
-          </div>
-
-          <div className="campaign-creator-card flex min-h-0 flex-col">
-            <div className="campaign-creator-budget-header shrink-0">
-              <p className="campaign-creator-budget-header__title">{t("adsetSection_configuration_title")}</p>
-            </div>
-            <div className="mt-2.5 min-h-0 flex-1">
-              <AdSetConfigurationPanel
-                layout="stacked"
-                payload={payload}
-                adset={adset}
-                clientRequired={clientRequired}
-                addAdsetMode={addAdsetMode}
-                dynamicCreativeLockedByReuse={dynamicCreativeLockedByReuse}
-                conversionLocationOptions={conversionLocationOptions}
-                pixelOptions={pixelOptions}
-                conversionEventOptions={conversionEventOptions}
-                onPatchAdset={patchAdset}
-                onImport={() => setImportOpen(true)}
-              />
-            </div>
-          </div>
-        </div>
+        <AdSetCompilerLeadCards
+          appliedAudienceName={adset.metaSavedAudienceName ?? null}
+          adsetName={adset.name}
+          disabled={clientRequired}
+          onOpenSavedAudience={() => setSavedAudienceModalOpen(true)}
+          onOpenConfiguration={() => setConfigModalOpen(true)}
+        />
 
         <AdSetPersonaZonePanel
           personaId={adset.personaId}
@@ -269,6 +243,46 @@ export function AdSetStep() {
       </div>
     );
   }
+
+  useEffect(() => {
+    if (
+      !adset.metaSavedAudienceId ||
+      adset.metaSavedAudienceName ||
+      !payload.clientSlug ||
+      !payload.adAccountId
+    ) {
+      return;
+    }
+
+    const qs = new URLSearchParams({
+      clientId: payload.clientSlug,
+      adAccountId: payload.adAccountId
+    });
+
+    fetch(`/api/meta/saved-audiences?${qs}`)
+      .then((r) => r.json())
+      .then(
+        (j: {
+          ok?: boolean;
+          audiences?: Array<{ id: string; name: string }>;
+        }) => {
+          if (!j.ok) return;
+          const found = j.audiences?.find((a) => a.id === adset.metaSavedAudienceId);
+          if (found?.name) {
+            patchAdset({ metaSavedAudienceName: found.name });
+          }
+        }
+      )
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adset.metaSavedAudienceId, adset.metaSavedAudienceName, payload.clientSlug, payload.adAccountId]);
+
+  useEffect(() => {
+    if (!adset.metaSavedAudienceId && adset.metaSavedAudienceName) {
+      patchAdset({ metaSavedAudienceName: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adset.metaSavedAudienceId, adset.metaSavedAudienceName]);
 
   useEffect(() => {
     if (adset.schedule.start) return;
@@ -307,6 +321,7 @@ export function AdSetStep() {
     patchAdset({
       targetingMode: "compiler",
       metaSavedAudienceId: audienceId ?? null,
+      metaSavedAudienceName: audienceName,
       targeting: next
     });
     if (!adset.name.trim() || isDefaultAdsetName(adset.name)) {
@@ -468,6 +483,8 @@ export function AdSetStep() {
             <AdvancedTargetingPanel
               mapInstanceKey={activeView}
               targeting={targeting}
+              clientSlug={payload.clientSlug}
+              adAccountId={payload.adAccountId}
               clientRequired={clientRequired}
               metaGeoLocations={metaGeoLocations}
               mapViewport={mapViewport}
@@ -486,17 +503,23 @@ export function AdSetStep() {
                 commercialLocation.lng == null
               }
               centerCommercialHint={commercialCenterHint}
-              customAudiencesTrigger={customAudiencesButton(t("savedAudiencesTitle"))}
+              savedAudiencesCount={audiences.length}
+              includedAudienceCount={includedAudienceCount}
+              excludedAudienceCount={excludedAudienceCount}
+              onRefineAudience={() => setCustomAudiencesOpen(true)}
               onPatchTargeting={patchTargeting}
               onCenterCommercial={centerOnCommercialAddress}
+              onGeoLocationAdd={flyToGeoLocation}
+              onMapPinAdded={clearMapViewport}
             />
           </div>
         ) : null}
 
         {activeView === "schedule" ? (
-          <div className="space-y-3">
-            <WizardAccordionSection title={t("scheduleSection")} defaultOpen>
-              <div className="grid gap-3 md:grid-cols-2">
+          <div className="campaign-creator-advanced-targeting-body">
+            <section className="campaign-creator-card campaign-creator-card--compact">
+              <h4 className="campaign-creator-budget-header__title text-sm">{t("scheduleSection")}</h4>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <FormField label={t("scheduleStart")}>
                   <input
                     type="datetime-local"
@@ -524,15 +547,13 @@ export function AdSetStep() {
                   />
                 </FormField>
               </div>
-            </WizardAccordionSection>
+            </section>
 
-            <WizardAccordionSection title={t("placements")} defaultOpen>
-              <PlacementsPanel
-                value={adset.placements}
-                onChange={(placements) => patchAdset({ placements })}
-                disabled={clientRequired}
-              />
-            </WizardAccordionSection>
+            <PlacementsPanel
+              value={adset.placements}
+              onChange={(placements) => patchAdset({ placements })}
+              disabled={clientRequired}
+            />
           </div>
         ) : null}
 
@@ -547,6 +568,34 @@ export function AdSetStep() {
         adAccountId={payload.adAccountId}
         defaultCampaignId={payload.meta?.targetMetaCampaignId}
         onImport={handleImportAdset}
+      />
+
+      <SavedAudienceModal
+        open={savedAudienceModalOpen}
+        onClose={() => setSavedAudienceModalOpen(false)}
+        clientSlug={payload.clientSlug}
+        adAccountId={payload.adAccountId}
+        disabled={clientRequired}
+        selectedId={adset.metaSavedAudienceId}
+        onApply={handleApplySavedAudience}
+      />
+
+      <AdSetConfigurationModal
+        open={configModalOpen}
+        onClose={() => setConfigModalOpen(false)}
+        payload={payload}
+        adset={adset}
+        clientRequired={clientRequired}
+        addAdsetMode={addAdsetMode}
+        dynamicCreativeLockedByReuse={dynamicCreativeLockedByReuse}
+        conversionLocationOptions={conversionLocationOptions}
+        pixelOptions={pixelOptions}
+        conversionEventOptions={conversionEventOptions}
+        onPatchAdset={patchAdset}
+        onImport={() => {
+          setConfigModalOpen(false);
+          setImportOpen(true);
+        }}
       />
 
       <CustomAudiencesModal

@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapPin, Pencil, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { ZoneSummary } from "@/components/audiences/ZonesLibraryClient";
 import { ZoneDetailPanel } from "@/components/audiences/ZoneDetailPanel";
-import { AiZoneForm } from "@/components/audiences/create/AiZoneForm";
+import { AiZoneForm, type AiZoneFormActionState, type AiZoneFormHandle } from "@/components/audiences/create/AiZoneForm";
 import { FormSelect } from "@/components/ui/FormSelect";
 import { formatZoneHierarchySummary } from "@/lib/adset-display-summary";
-import { DsModal } from "@/design-system/components/DsModal";
+import { CreatorAiModalShell, CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 
 type Props = {
   value: string | null | undefined;
@@ -27,6 +27,12 @@ export function ZonePicker({ value, disabled, variant = "default", hideTitle, on
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const zoneFormRef = useRef<AiZoneFormHandle>(null);
+  const [zoneFormState, setZoneFormState] = useState<AiZoneFormActionState>({
+    canSave: false,
+    canClear: false,
+    pending: false
+  });
 
   useEffect(() => {
     setLoading(true);
@@ -69,7 +75,7 @@ export function ZonePicker({ value, disabled, variant = "default", hideTitle, on
 
       {loading ? (
         <p className="text-xs text-[var(--text-dim)]">{t("loading")}</p>
-      ) : (
+      ) : zones.length > 0 ? (
         <FormSelect
           value={value ?? ""}
           onChange={(id) => onChange(id || null)}
@@ -77,7 +83,7 @@ export function ZonePicker({ value, disabled, variant = "default", hideTitle, on
           disabled={disabled}
           options={zones.map((z) => ({ value: z.id, label: z.name }))}
         />
-      )}
+      ) : null}
 
       {selected && isAdset ? (
         <div className="campaign-creator-adset-picker-card">
@@ -118,15 +124,27 @@ export function ZonePicker({ value, disabled, variant = "default", hideTitle, on
         </button>
       ) : null}
 
-      <DsModal
+      <CreatorAiModalShell
         open={showCreate}
         onClose={() => setShowCreate(false)}
         title={tAud("newZone")}
+        subtitle={t("createZoneWithAiHint")}
         titleIcon={<MapPin size={16} />}
         width="lg"
+        aiCredits={{ kind: "generic", calls: 2 }}
+        onClear={() => zoneFormRef.current?.reset()}
+        clearDisabled={!zoneFormState.canClear || zoneFormState.pending}
+        onCancel={() => setShowCreate(false)}
+        onPrimary={() => zoneFormRef.current?.save()}
+        primaryLabel={tAud("saveZone")}
+        primaryDisabled={!zoneFormState.canSave}
+        primaryLoading={zoneFormState.pending}
       >
         <AiZoneForm
+          ref={zoneFormRef}
           embedded
+          shellMode
+          onActionStateChange={setZoneFormState}
           onClose={() => setShowCreate(false)}
           onSaved={() => {
             setShowCreate(false);
@@ -139,14 +157,15 @@ export function ZonePicker({ value, disabled, variant = "default", hideTitle, on
               });
           }}
         />
-      </DsModal>
+      </CreatorAiModalShell>
 
       {selected ? (
-        <DsModal
+        <CreatorModalShell
           open={showEdit}
           onClose={() => setShowEdit(false)}
           title={selected.name}
           width="lg"
+          hideFooter
         >
           <ZoneDetailPanel
             zone={selected}
@@ -156,7 +175,7 @@ export function ZonePicker({ value, disabled, variant = "default", hideTitle, on
               setShowEdit(false);
             }}
           />
-        </DsModal>
+        </CreatorModalShell>
       ) : null}
     </div>
   );

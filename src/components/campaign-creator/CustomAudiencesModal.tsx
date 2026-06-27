@@ -1,9 +1,10 @@
 "use client";
 
+import { Filter } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { AudiencePicker } from "@/components/campaign-creator/AudiencePicker";
-import { DsModal } from "@/design-system/components/DsModal";
+import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import type { PublishAudience } from "@/hooks/usePublishAssets";
 
 type Props = {
@@ -34,16 +35,17 @@ export function CustomAudiencesModal({
   const t = useTranslations("campaignCreator");
 
   return (
-    <DsModal
+    <CreatorModalShell
       open={open}
       onClose={onClose}
       title={t("metaRefineOptional")}
+      subtitle={t("refineAudienceSubtitle")}
+      titleIcon={<Filter size={16} />}
       width="lg"
-      footer={
-        <button type="button" className="ui-btn-accent px-4 py-2 text-sm font-heading font-semibold" onClick={onClose}>
-          {t("close")}
-        </button>
-      }
+      onCancel={onClose}
+      onPrimary={onClose}
+      primaryLabel={t("close")}
+      showPrimaryCheck={false}
     >
       <AudiencePicker
         audiences={audiences}
@@ -56,6 +58,6 @@ export function CustomAudiencesModal({
         disabled={disabled}
         embedded
       />
-    </DsModal>
+    </CreatorModalShell>
   );
 }

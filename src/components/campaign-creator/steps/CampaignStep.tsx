@@ -9,11 +9,14 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   Briefcase,
   Building2,
+  Check,
   ChevronRight,
   Copy,
   CreditCard,
   Home,
   Landmark,
+  Layers,
+  LayoutGrid,
   Lightbulb,
   Megaphone,
   Tag,
@@ -51,6 +54,7 @@ import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/cn";
+import { openOrionBrainBenchmark } from "@/lib/campaign-creator/orion-brain-bridge";
 
 
 
@@ -82,194 +86,108 @@ const SPECIAL_CATEGORY_ICONS: Record<(typeof SPECIAL_CATEGORIES)[number], Lucide
 
 
 
-function BudgetLevelCard({
-
-  selected,
-
-  recommended,
-
-  title,
-
-  description,
-
-  onSelect
-
-}: {
-
-  selected: boolean;
-
-  recommended?: boolean;
-
-  title: string;
-
-  description: string;
-
-  onSelect: () => void;
-
-}) {
-
-  const t = useTranslations("campaignCreator");
-
+function BudgetChoiceCardCheck({ selected }: { selected: boolean }) {
   return (
-
-    <button
-
-      type="button"
-
-      onClick={onSelect}
-
-      className={cn(
-
-        "campaign-creator-budget-level-card",
-
-        selected
-
-          ? "campaign-creator-budget-level-card--selected"
-
-          : "campaign-creator-budget-level-card--unselected"
-
-      )}
-
-    >
-
-      <span
-
-        className={cn(
-
-          "campaign-creator-budget-level-card__radio",
-
-          selected
-
-            ? "campaign-creator-budget-level-card__radio--selected"
-
-            : "campaign-creator-budget-level-card__radio--unselected"
-
-        )}
-
-        aria-hidden
-
-      >
-
-        {selected ? <span className="campaign-creator-budget-level-card__radio-dot" /> : null}
-
-      </span>
-
-      <div className="min-w-0 flex-1">
-
-        <div className="flex flex-wrap items-center gap-1.5">
-
-          <p className="campaign-creator-budget-level-card__title">{title}</p>
-
-          {recommended ? (
-
-            <span className="campaign-creator-budget-level-card__badge">{t("budgetRecommended")}</span>
-
-          ) : null}
-
-        </div>
-
-        <p className="campaign-creator-budget-level-card__description">{description}</p>
-
-      </div>
-
-    </button>
-
+    <span className="campaign-creator-budget-choice-card__check" aria-hidden>
+      {selected ? <Check size={10} strokeWidth={3} /> : null}
+    </span>
   );
-
 }
-
-
 
 function BudgetSpecialCategoryToggle({
-
   checked,
-
   label,
-
   icon: Icon,
-
   onToggle
-
 }: {
-
   checked: boolean;
-
   label: string;
-
   icon: LucideIcon;
-
   onToggle: () => void;
-
 }) {
-
   return (
-
     <button
-
       type="button"
-
       aria-pressed={checked}
-
       onClick={onToggle}
-
       className={cn(
-
-        "campaign-creator-budget-special-toggle",
-
+        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--tile",
         checked
-
-          ? "campaign-creator-budget-special-toggle--selected"
-
-          : "campaign-creator-budget-special-toggle--unselected"
-
+          ? "campaign-creator-budget-choice-card--selected"
+          : "campaign-creator-budget-choice-card--unselected"
       )}
-
     >
-
+      <BudgetChoiceCardCheck selected={checked} />
       <span
-
         className={cn(
-
-          "campaign-creator-budget-special-toggle__icon",
-
+          "campaign-creator-budget-choice-card__icon",
           checked
-
-            ? "campaign-creator-budget-special-toggle__icon--selected"
-
-            : "campaign-creator-budget-special-toggle__icon--unselected"
-
+            ? "campaign-creator-budget-choice-card__icon--selected"
+            : "campaign-creator-budget-choice-card__icon--unselected"
         )}
-
+        aria-hidden
       >
-
-        <Icon size={14} strokeWidth={2} aria-hidden />
-
+        <Icon size={18} strokeWidth={1.75} />
       </span>
-
-      <span className="campaign-creator-budget-special-toggle__label">{label}</span>
-
+      <span className="campaign-creator-budget-choice-card__label">{label}</span>
     </button>
-
   );
-
 }
 
-
-
-function scrollToOrionBrainSidebar() {
-
-  const sidebar = document.querySelector(".campaign-creator-sidebar");
-
-  if (!sidebar) return;
-
-  sidebar.scrollIntoView({ behavior: "smooth", block: "nearest" });
-
-  const brainButton = sidebar.querySelector<HTMLButtonElement>(".ui-btn-accent-outline");
-
-  brainButton?.focus({ preventScroll: true });
-
+function BudgetLevelCard({
+  selected,
+  label,
+  description,
+  icon: Icon,
+  recommendedBadge,
+  onSelect
+}: {
+  selected: boolean;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  recommendedBadge?: string;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row",
+        selected
+          ? "campaign-creator-budget-choice-card--selected"
+          : "campaign-creator-budget-choice-card--unselected"
+      )}
+    >
+      <BudgetChoiceCardCheck selected={selected} />
+      <span
+        className={cn(
+          "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline",
+          selected
+            ? "campaign-creator-budget-choice-card__icon--selected"
+            : "campaign-creator-budget-choice-card__icon--unselected"
+        )}
+        aria-hidden
+      >
+        <Icon size={18} strokeWidth={1.75} />
+      </span>
+      <span className="campaign-creator-budget-choice-card__content">
+        <span className="campaign-creator-budget-choice-card__title-row">
+          <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
+            {label}
+          </span>
+          {recommendedBadge ? (
+            <span className="campaign-creator-budget-choice-card__badge">{recommendedBadge}</span>
+          ) : null}
+        </span>
+        <span className="campaign-creator-budget-choice-card__description">{description}</span>
+      </span>
+    </button>
+  );
 }
-
 
 
 const BUDGET_ORION_TIP_KEYS: Record<CampaignObjectiveKey, `budgetOrionTip_${CampaignObjectiveKey}`> = {
@@ -694,24 +612,6 @@ export function CampaignStep() {
 
           />
 
-          <ObjectiveSelector
-
-            buyingType={payload.buyingType}
-
-            objective={payload.objective}
-
-            onBuyingTypeChange={applyBuyingType}
-
-            onObjectiveChange={applyObjective}
-
-            showHeader={false}
-
-            compact
-
-            hideBuyingType
-
-          />
-
           <section className="campaign-creator-section space-y-3">
 
             <div className="campaign-creator-objective-fields-row">
@@ -904,6 +804,24 @@ export function CampaignStep() {
 
           </section>
 
+          <ObjectiveSelector
+
+            buyingType={payload.buyingType}
+
+            objective={payload.objective}
+
+            onBuyingTypeChange={applyBuyingType}
+
+            onObjectiveChange={applyObjective}
+
+            showHeader={false}
+
+            compact
+
+            hideBuyingType
+
+          />
+
         </div>
 
       ) : null}
@@ -924,191 +842,96 @@ export function CampaignStep() {
 
 
 
-          <section className="campaign-creator-budget-group">
-
-            <h4 className="campaign-creator-section-title">{t("budgetTypeLabel")}</h4>
-
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-
-              <BudgetLevelCard
-
-                selected={payload.campaign.budgetLevel === "campaign"}
-
-                recommended
-
-                title={t("budgetCbo")}
-
-                description={t("budgetCboHint")}
-
-                onSelect={() =>
-
-                  updatePayload((p) => ({
-
-                    ...p,
-
-                    campaign: { ...p.campaign, budgetLevel: "campaign" }
-
-                  }))
-
-                }
-
-              />
-
-              <BudgetLevelCard
-
-                selected={payload.campaign.budgetLevel === "adset"}
-
-                title={t("budgetAbo")}
-
-                description={t("budgetAboHint")}
-
-                onSelect={() =>
-
-                  updatePayload((p) => ({
-
-                    ...p,
-
-                    campaign: { ...p.campaign, budgetLevel: "adset" }
-
-                  }))
-
-                }
-
-              />
-
-            </div>
-
-          </section>
-
-
-
-          <section className="campaign-creator-budget-group">
-
-            <label className="campaign-creator-section-title" htmlFor="campaign-daily-budget">
-
-              {t("budgetDailyLabel")}
-
-            </label>
-
-            <div className="campaign-creator-budget-daily-input">
-
-              <span className="campaign-creator-budget-daily-input__prefix" aria-hidden>
-
-                R$
-
-              </span>
-
-              <input
-
-                id="campaign-daily-budget"
-
-                type="number"
-
-                min={1}
-
-                step={1}
-
-                value={payload.campaign.dailyBudgetBRL}
-
-                onChange={(e) =>
-
-                  updatePayload((p) => ({
-
-                    ...p,
-
-                    campaign: { ...p.campaign, dailyBudgetBRL: Number(e.target.value) || 0 }
-
-                  }))
-
-                }
-
-                className="campaign-creator-budget-daily-input__field"
-
-                aria-label={tAds("dailyBudget")}
-
-              />
-
-            </div>
-
-          </section>
-
-
-
-          <section className="campaign-creator-budget-group">
-
-            <div className="campaign-creator-budget-special-header">
-
-              <h4 className="campaign-creator-section-title">{t("specialCategories")}</h4>
-
-              <a
-
-                href="https://www.facebook.com/business/help/298908943825054"
-
-                target="_blank"
-
-                rel="noopener noreferrer"
-
-                className="campaign-creator-budget-special-learn-more"
-
+          <div className="campaign-creator-budget-top-grid">
+            <section className="campaign-creator-card campaign-creator-budget-side-card">
+              <h4 className="campaign-creator-section-title">{t("budgetTypeLabel")}</h4>
+              <div
+                className="campaign-creator-budget-level-stack"
+                role="radiogroup"
+                aria-label={t("budgetTypeLabel")}
               >
+                <BudgetLevelCard
+                  selected={payload.campaign.budgetLevel === "campaign"}
+                  label={t("budgetCbo")}
+                  description={t("budgetCboHint")}
+                  icon={Layers}
+                  recommendedBadge={t("budgetRecommended")}
+                  onSelect={() =>
+                    updatePayload((p) => ({
+                      ...p,
+                      campaign: { ...p.campaign, budgetLevel: "campaign" }
+                    }))
+                  }
+                />
+                <BudgetLevelCard
+                  selected={payload.campaign.budgetLevel === "adset"}
+                  label={t("budgetAbo")}
+                  description={t("budgetAboHint")}
+                  icon={LayoutGrid}
+                  onSelect={() =>
+                    updatePayload((p) => ({
+                      ...p,
+                      campaign: { ...p.campaign, budgetLevel: "adset" }
+                    }))
+                  }
+                />
+              </div>
+            </section>
 
-                {t("specialCategoriesLearnMore")}
+            <section className="campaign-creator-card campaign-creator-budget-side-card">
+              <label className="campaign-creator-section-title" htmlFor="campaign-daily-budget">
+                {t("budgetDailyLabel")}
+              </label>
+              <div className="campaign-creator-budget-daily-input">
+                <span className="campaign-creator-budget-daily-input__prefix" aria-hidden>
+                  R$
+                </span>
+                <input
+                  id="campaign-daily-budget"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={payload.campaign.dailyBudgetBRL}
+                  onChange={(e) =>
+                    updatePayload((p) => ({
+                      ...p,
+                      campaign: { ...p.campaign, dailyBudgetBRL: Number(e.target.value) || 0 }
+                    }))
+                  }
+                  className="campaign-creator-budget-daily-input__field"
+                  aria-label={tAds("dailyBudget")}
+                />
+              </div>
 
-              </a>
-
-            </div>
-
-            <p className="text-xs leading-snug text-[var(--text-dim)]">{t("specialCategoriesHint")}</p>
-
-            <div className="campaign-creator-budget-special-toggles">
-
-              {SPECIAL_CATEGORIES.map((cat) => {
-
-                const checked = payload.campaign.specialAdCategories.includes(cat);
-
-                return (
-
-                  <BudgetSpecialCategoryToggle
-
-                    key={cat}
-
-                    checked={checked}
-
-                    label={t(`specialCat_${cat}`)}
-
-                    icon={SPECIAL_CATEGORY_ICONS[cat]}
-
-                    onToggle={() =>
-
-                      updatePayload((p) => ({
-
-                        ...p,
-
-                        campaign: {
-
-                          ...p.campaign,
-
-                          specialAdCategories: checked
-
-                            ? p.campaign.specialAdCategories.filter((c) => c !== cat)
-
-                            : [...p.campaign.specialAdCategories, cat]
-
+              <div className="campaign-creator-budget-special-inline">
+                <span className="campaign-creator-budget-special-inline__label">{t("specialCategories")}</span>
+                <div className="campaign-creator-budget-special-toggles">
+                  {SPECIAL_CATEGORIES.map((cat) => {
+                    const checked = payload.campaign.specialAdCategories.includes(cat);
+                    return (
+                      <BudgetSpecialCategoryToggle
+                        key={cat}
+                        checked={checked}
+                        label={t(`specialCat_${cat}`)}
+                        icon={SPECIAL_CATEGORY_ICONS[cat]}
+                        onToggle={() =>
+                          updatePayload((p) => ({
+                            ...p,
+                            campaign: {
+                              ...p.campaign,
+                              specialAdCategories: checked
+                                ? p.campaign.specialAdCategories.filter((c) => c !== cat)
+                                : [...p.campaign.specialAdCategories, cat]
+                            }
+                          }))
                         }
-
-                      }))
-
-                    }
-
-                  />
-
-                );
-
-              })}
-
-            </div>
-
-          </section>
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          </div>
 
 
 
@@ -1131,13 +954,9 @@ export function CampaignStep() {
             </div>
 
             <button
-
               type="button"
-
-              onClick={scrollToOrionBrainSidebar}
-
+              onClick={openOrionBrainBenchmark}
               className="campaign-creator-budget-orion-tip__action ui-btn-accent-outline"
-
             >
 
               {t("budgetViewBenchmark")}

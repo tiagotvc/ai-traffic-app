@@ -164,7 +164,7 @@ function normalizeObjective(obj: CampaignObjectiveKey | LegacyObjectiveKey): Cam
   return obj as CampaignObjectiveKey;
 }
 
-function buildTargetingFromInput(t: CampaignTargetingInput): Record<string, unknown> {
+export function buildMetaTargetingSpec(t: CampaignTargetingInput): Record<string, unknown> {
   const geo: Record<string, unknown> = {};
   if (t.countries?.length) geo.countries = t.countries;
   if (t.cities?.length) {
@@ -234,7 +234,7 @@ function resolveTargeting(
   const targetingApi = draftTargetingToApi(adset.targeting);
   let base: Record<string, unknown>;
   if (Object.keys(targetingApi).length) {
-    base = buildTargetingFromInput(targetingApi);
+    base = buildMetaTargetingSpec(targetingApi);
   } else if (settings) {
     base = buildTargetingFromSettings(settings);
   } else {
@@ -260,7 +260,7 @@ async function resolveAdsetTargeting(
       adAccountId: ctx.adAccountId
     });
     if (compiled && Object.keys(compiled).length) {
-      base = buildTargetingFromInput(compiled);
+      base = buildMetaTargetingSpec(compiled);
     } else {
       base = resolveTargeting(adset, settings);
       const placementFields = placementsToMetaTargeting(adset.placements);
@@ -815,6 +815,7 @@ export async function createFullMetaCampaign(
         personaId: null,
         zoneId: null,
         metaSavedAudienceId: null,
+        metaSavedAudienceName: null,
         conversionLocation: "website_and_form",
         messagingChannels: [],
         pixelId: null,

@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState, useTransition } from "react";
+import { MapPin } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
+import {
+  CreatorAiPreviewSection,
+  CreatorAiPromptField,
+  CreatorAiProviderPicker
+} from "@/components/campaign-creator/CreatorAiModalParts";
 import type { ZoneGeoRules } from "@/db/entities/UserZone";
 
 type ZonePreview = {
@@ -12,14 +17,30 @@ type ZonePreview = {
   places: Array<{ label: string; city?: string; state?: string; radiusKm?: number }>;
 };
 
+export type AiZoneFormActionState = {
+  canSave: boolean;
+  canClear: boolean;
+  pending: boolean;
+};
+
+export type AiZoneFormHandle = {
+  reset: () => void;
+  save: () => void;
+};
+
 type Props = {
   onClose: () => void;
   onSaved: () => void;
-  /** Omit title/close row when rendered inside DsModal. */
+  /** Omit title/close row when rendered inside CreatorAiModalShell. */
   embedded?: boolean;
+  shellMode?: boolean;
+  onActionStateChange?: (state: AiZoneFormActionState) => void;
 };
 
-export function AiZoneForm({ onClose, onSaved, embedded = false }: Props) {
+export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneForm(
+  { onClose, onSaved, embedded = false, shellMode = false, onActionStateChange },
+  ref
+) {
   const t = useTranslations("audiences");
   const [prompt, setPrompt] = useState("");
   const [defaultRadiusKm, setDefaultRadiusKm] = useState(3);
@@ -30,7 +51,6 @@ export function AiZoneForm({ onClose, onSaved, embedded = false }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [providers, setProviders] = useState({ gemini: false, claude: false });
-  const tCreator = useTranslations("campaignCreator");
 
   useEffect(() => {
     fetch("/api/zones/ai-generate")
@@ -44,6 +64,15 @@ export function AiZoneForm({ onClose, onSaved, embedded = false }: Props) {
       })
       .catch(() => {});
   }, []);
+
+  function resetForm() {
+    setPrompt("");
+    setDefaultRadiusKm(3);
+    setPreview(null);
+    setGeoRules(null);
+    setResolvedName("");
+    setError(null);
+  }
 
   function runPreview() {
     setError(null);
@@ -106,9 +135,24 @@ export function AiZoneForm({ onClose, onSaved, embedded = false }: Props) {
     });
   }
 
+  const canSave = !!geoRules && !pending;
+
+  useImperativeHandle(ref, () => ({
+    reset: resetForm,
+    save
+  }));
+
+  useEffect(() => {
+    onActionStateChange?.({
+      canSave,
+      canClear: Boolean(prompt || preview || geoRules),
+      pending
+    });
+  }, [canSave, prompt, preview, geoRules, pending, onActionStateChange]);
+
   return (
     <div className="space-y-4">
-      {!embedded ? (
+      {!embedded && !shellMode ? (
         <div className="flex items-center justify-between">
           <h2 className="font-heading text-lg text-[var(--text-main)]">{t("newZone")}</h2>
           <button type="button" className="ui-btn-secondary text-sm" onClick={onClose}>
@@ -117,49 +161,26 @@ export function AiZoneForm({ onClose, onSaved, embedded = false }: Props) {
         </div>
       ) : null}
 
-      <AiCreditCostHint kind="generic" calls={2} className="w-full justify-center" />
-
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2">
-        <span className="text-[10px] font-medium uppercase text-[var(--text-dim)]">
-          {tCreator("aiProviderLabel")}
-        </span>
-        <label className="flex items-center gap-1.5 text-xs">
-          <input
-            type="radio"
-            name="zone-ai-provider"
-            checked={provider === "gemini"}
-            onChange={() => setProvider("gemini")}
-            disabled={!providers.gemini}
-          />
-          Gemini
-        </label>
-        <label className="flex items-center gap-1.5 text-xs">
-          <input
-            type="radio"
-            name="zone-ai-provider"
-            checked={provider === "claude"}
-            onChange={() => setProvider("claude")}
-            disabled={!providers.claude}
-          />
-          Claude
-        </label>
-      </div>
+      <CreatorAiProviderPicker
+        provider={provider}
+        onChange={setProvider}
+        providers={providers}
+        name="zone-ai-provider"
+      />
 
       <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-        <label className="block space-y-1">
-          <span className="text-sm text-[var(--text-dim)]">{t("zonePromptLabel")}</span>
-          <textarea
-            className="ui-textarea text-sm"
-            rows={4}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder={t("zonePromptPlaceholder")}
-          />
-        </label>
+        <CreatorAiPromptField
+          icon={<MapPin size={14} />}
+          label={t("zonePromptLabel")}
+          value={prompt}
+          onChange={setPrompt}
+          placeholder={t("zonePromptPlaceholder")}
+          rows={4}
+        />
 
         <label className="block space-y-1 sm:min-w-[8rem]">
-          <span className="text-sm text-[var(--text-dim)]">{t("zoneRadiusLabel")}</span>
-          <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-[var(--text-dim)]">{t("zoneRadiusLabel")}</span>
+          <div className="mt-1.5 flex items-center gap-2">
             <input
               type="number"
               min={1}
@@ -179,6 +200,23 @@ export function AiZoneForm({ onClose, onSaved, embedded = false }: Props) {
         </label>
       </div>
 
+      {!preview ? (
+        <CreatorAiPreviewSection
+          title={t("previewZone")}
+          hint={t("zonePlacesLimitHint")}
+          action={
+            <button
+              type="button"
+              className="ui-btn-accent inline-flex w-full items-center justify-center gap-1.5 text-sm font-heading font-semibold sm:w-auto"
+              disabled={pending || !prompt.trim()}
+              onClick={runPreview}
+            >
+              {pending ? t("generating") : t("previewZone")}
+            </button>
+          }
+        />
+      ) : null}
+
       {preview ? (
         <div className="ui-card space-y-2 p-3 text-sm">
           <p className="font-medium text-[var(--text-main)]">{preview.zoneName}</p>
@@ -192,6 +230,16 @@ export function AiZoneForm({ onClose, onSaved, embedded = false }: Props) {
             ))}
           </ul>
           <p className="text-[11px] text-[var(--text-dimmer)]">{t("zonePlacesLimitHint")}</p>
+          {!geoRules ? (
+            <button
+              type="button"
+              className="ui-btn-secondary text-sm"
+              disabled={pending}
+              onClick={geocode}
+            >
+              {t("geocodeZone")}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -203,17 +251,19 @@ export function AiZoneForm({ onClose, onSaved, embedded = false }: Props) {
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="ui-btn-secondary" disabled={pending || !prompt.trim()} onClick={runPreview}>
-          {pending ? t("generating") : t("previewZone")}
-        </button>
-        <button type="button" className="ui-btn-secondary" disabled={pending || !preview} onClick={geocode}>
-          {t("geocodeZone")}
-        </button>
-        <button type="button" className="ui-btn-brand" disabled={pending || !geoRules} onClick={save}>
-          {t("saveZone")}
-        </button>
-      </div>
+      {!shellMode ? (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="ui-btn-secondary" disabled={pending || !prompt.trim()} onClick={runPreview}>
+            {pending ? t("generating") : t("previewZone")}
+          </button>
+          <button type="button" className="ui-btn-secondary" disabled={pending || !preview} onClick={geocode}>
+            {t("geocodeZone")}
+          </button>
+          <button type="button" className="ui-btn-brand" disabled={pending || !geoRules} onClick={save}>
+            {t("saveZone")}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
-}
+});

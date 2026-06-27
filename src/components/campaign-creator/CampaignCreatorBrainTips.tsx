@@ -12,6 +12,7 @@ import type {
   CreatorBrainInsightPayload,
   CreatorBrainResearchStep
 } from "@/lib/campaign-creator/creator-brain-insights";
+import { ORION_BRAIN_OPEN_EVENT } from "@/lib/campaign-creator/orion-brain-bridge";
 import { formatBRL, formatPercent } from "@/lib/format";
 
 const BRAIN_PAUSED_KEY = "orion-creator-brain-paused";
@@ -277,6 +278,14 @@ export function CampaignCreatorBrainTips() {
     }
   }, []);
 
+  useEffect(() => {
+    function handleOpenRequest() {
+      setModalOpen(true);
+    }
+    window.addEventListener(ORION_BRAIN_OPEN_EVENT, handleOpenRequest);
+    return () => window.removeEventListener(ORION_BRAIN_OPEN_EVENT, handleOpenRequest);
+  }, []);
+
   const cacheKey = useMemo(
     () => `${payload.clientSlug ?? ""}|${payload.objective}|${activeNode}`,
     [activeNode, payload.clientSlug, payload.objective]
@@ -514,7 +523,7 @@ export function CampaignCreatorBrainTips() {
 
   return (
     <>
-      <div className="campaign-creator-sidebar-card">
+      <div className="campaign-creator-sidebar-card" data-orion-brain-tips>
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
@@ -601,6 +610,7 @@ export function CampaignCreatorBrainTips() {
 
             <button
               type="button"
+              data-orion-brain-open
               onClick={() => setModalOpen(true)}
               className="ui-btn-accent-outline mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-heading font-semibold"
             >

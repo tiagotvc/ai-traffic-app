@@ -22,6 +22,9 @@ export function applyImportedToAdset(
   if (!active.metaSavedAudienceId && imported.metaSavedAudienceId) {
     next.metaSavedAudienceId = imported.metaSavedAudienceId;
   }
+  if (!active.metaSavedAudienceName && imported.metaSavedAudienceName) {
+    next.metaSavedAudienceName = imported.metaSavedAudienceName;
+  }
 
   return next;
 }

@@ -1,17 +1,23 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import type { MapViewport } from "@/components/campaign-creator/GeoRadiusMapInner";
+import { GeoRadiusPinList } from "@/components/campaign-creator/GeoRadiusPinList";
 import type { TargetingItem } from "@/lib/campaign-draft";
 import { isMapPinLocation } from "@/lib/campaign-draft";
-import { normalizeMetaRadiusKm } from "@/lib/zone-geo-shared";
 
 const GeoRadiusMapInner = dynamic(
   () => import("@/components/campaign-creator/GeoRadiusMapInner").then((m) => m.GeoRadiusMapInner),
-  { ssr: false, loading: () => <div className="h-[200px] animate-pulse rounded-xl bg-[var(--surface-bg)] lg:h-52" /> }
+  {
+    ssr: false,
+    loading: () => (
+      <div className="campaign-creator-advanced-targeting-map campaign-creator-advanced-targeting-map--stacked animate-pulse bg-[var(--creator-card-bg-inset,var(--surface-bg))]" />
+    )
+  }
 );
 
 type Props = {
@@ -25,6 +31,11 @@ type Props = {
   centerCommercialDisabled?: boolean;
   centerCommercialHint?: string | null;
   instanceKey?: string;
+  compact?: boolean;
+  split?: boolean;
+  /** Renders only the map shell (controls live in the parent panel). */
+  mapOnly?: boolean;
+  onOpenMarkedAreas?: () => void;
 };
 
 export function GeoRadiusMapPicker({
@@ -37,7 +48,11 @@ export function GeoRadiusMapPicker({
   onCenterCommercial,
   centerCommercialDisabled,
   centerCommercialHint,
-  instanceKey
+  instanceKey,
+  compact = false,
+  split = false,
+  mapOnly = false,
+  onOpenMarkedAreas
 }: Props) {
   const t = useTranslations("campaignCreator");
   const mapPins = pins.filter(isMapPinLocation);
@@ -47,6 +62,113 @@ export function GeoRadiusMapPicker({
     onAdd(item);
     setSelectedPin(item.value);
   };
+
+  if (mapOnly) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <GeoRadiusMapInner
+          key={instanceKey}
+          pins={mapPins}
+          onAdd={handleAdd}
+          viewport={viewport}
+          commercialMarker={commercialMarker}
+          selectedPin={selectedPin}
+          stacked
+        />
+      </div>
+    );
+  }
+
+  if (split) {
+    return (
+      <div className="flex min-h-0 flex-col gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="min-w-0 text-[10px] leading-snug text-[var(--text-dim)]">{t("mapClickHint")}</p>
+          {onCenterCommercial ? (
+            <button
+              type="button"
+              onClick={onCenterCommercial}
+              disabled={centerCommercialDisabled}
+              className="ui-btn-secondary shrink-0 whitespace-nowrap px-2 py-1 text-[10px] disabled:opacity-50"
+            >
+              {t("centerCommercialAddress")}
+            </button>
+          ) : null}
+        </div>
+        {centerCommercialHint && centerCommercialDisabled ? (
+          <p className="text-[10px] text-[var(--text-dimmer)]">{centerCommercialHint}</p>
+        ) : null}
+
+        <GeoRadiusMapInner
+          key={instanceKey}
+          pins={mapPins}
+          onAdd={handleAdd}
+          viewport={viewport}
+          commercialMarker={commercialMarker}
+          selectedPin={selectedPin}
+          split
+        />
+
+        {onOpenMarkedAreas ? (
+          <button
+            type="button"
+            onClick={onOpenMarkedAreas}
+            className="ui-btn-secondary inline-flex w-full items-center justify-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium"
+          >
+            {t("markedAreasViewEditButton", { count: mapPins.length })}
+            <ChevronRight size={13} strokeWidth={2.25} />
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (compact) {
+    return (
+      <div className="space-y-2.5">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-[var(--text-main)]">{t("mapSectionTitle")}</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-[var(--text-dim)]">{t("mapClickHint")}</p>
+          </div>
+          {onCenterCommercial ? (
+            <button
+              type="button"
+              onClick={onCenterCommercial}
+              disabled={centerCommercialDisabled}
+              className="ui-btn-secondary shrink-0 whitespace-nowrap px-2 py-1 text-[10px] disabled:opacity-50"
+            >
+              {t("centerCommercialAddress")}
+            </button>
+          ) : null}
+        </div>
+        {centerCommercialHint && centerCommercialDisabled ? (
+          <p className="text-[10px] text-[var(--text-dimmer)]">{centerCommercialHint}</p>
+        ) : null}
+
+        <GeoRadiusMapInner
+          key={instanceKey}
+          pins={mapPins}
+          onAdd={handleAdd}
+          viewport={viewport}
+          commercialMarker={commercialMarker}
+          selectedPin={selectedPin}
+          compact
+        />
+
+        {onOpenMarkedAreas ? (
+          <button
+            type="button"
+            onClick={onOpenMarkedAreas}
+            className="ui-btn-secondary inline-flex w-full items-center justify-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium"
+          >
+            {t("markedAreasViewEditButton", { count: mapPins.length })}
+            <ChevronRight size={13} strokeWidth={2.25} />
+          </button>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 rounded-xl border border-violet-200/60 bg-violet-500/5 p-4">
@@ -73,60 +195,23 @@ export function GeoRadiusMapPicker({
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="order-2 space-y-2 lg:order-1">
           <p className="text-xs font-medium text-[var(--text-dim)]">{t("mapPinsList")}</p>
-          {mapPins.length === 0 ? (
-            <p className="text-[11px] text-[var(--text-dimmer)]">{t("mapEmpty")}</p>
-          ) : (
-            <ul className="space-y-2">
-              {mapPins.map((loc) => (
-                <li
-                  key={loc.value}
-                  onMouseEnter={() => setSelectedPin(loc.value)}
-                  className={`flex flex-wrap items-center gap-2 rounded-xl border p-2 text-xs transition-colors ${
-                    selectedPin === loc.value
-                      ? "border-[#1877F2]/50 bg-[#1877F2]/5"
-                      : "border-[var(--border-color)] bg-[var(--surface-card)]"
-                  }`}
-                >
-                  <span className="flex-1 font-medium text-[var(--text-main)]">{loc.label}</span>
-                  <label className="flex items-center gap-1 text-[var(--text-dim)]">
-                    <span className="min-w-[3rem] font-semibold text-[#1877F2]">
-                      {loc.meta?.radius ?? 5} km
-                    </span>
-                    <input
-                      type="range"
-                      min={1}
-                      max={70}
-                      value={loc.meta?.radius ?? 5}
-                      onFocus={() => setSelectedPin(loc.value)}
-                      onChange={(e) => {
-                        setSelectedPin(loc.value);
-                        onUpdateRadius(loc.value, normalizeMetaRadiusKm(Number(e.target.value)));
-                      }}
-                      className="w-24 accent-[#1877F2]"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(loc.value)}
-                    className="text-[var(--text-dimmer)] hover:text-red-500"
-                    aria-label={t("mapRemovePin")}
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <GeoRadiusPinList
+            pins={mapPins}
+            selectedPin={selectedPin}
+            onSelectPin={setSelectedPin}
+            onUpdateRadius={onUpdateRadius}
+            onRemove={onRemove}
+          />
         </div>
         <div className="order-1 lg:order-2">
-        <GeoRadiusMapInner
-          key={instanceKey}
-          pins={mapPins}
-          onAdd={handleAdd}
-          viewport={viewport}
-          commercialMarker={commercialMarker}
-          selectedPin={selectedPin}
-        />
+          <GeoRadiusMapInner
+            key={instanceKey}
+            pins={mapPins}
+            onAdd={handleAdd}
+            viewport={viewport}
+            commercialMarker={commercialMarker}
+            selectedPin={selectedPin}
+          />
         </div>
       </div>
     </div>

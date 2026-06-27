@@ -1,5 +1,6 @@
 "use client";
 
+import { MousePointerClick, Monitor, Smartphone, Sparkles, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { PlacementConfig, PlacementPlatform } from "@/lib/campaign-placements";
@@ -15,27 +16,74 @@ import {
 } from "@/lib/campaign-placements";
 import { cn } from "@/lib/cn";
 
+import { ChoiceCardCheck, MultiSelectChoiceCard } from "./BudgetChoiceCard";
+
 type Props = {
   value: PlacementConfig;
   onChange: (next: PlacementConfig) => void;
   disabled?: boolean;
 };
 
-function toggleBtnClass(active: boolean) {
-  return cn(
-    "rounded-lg border px-3 py-1.5 text-xs transition",
-    active
-      ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] font-medium text-[var(--ui-accent)]"
-      : "border-[var(--border-color)] bg-[var(--surface-card)] text-[var(--text-dim)] hover:border-[var(--border-hover)] hover:bg-[var(--surface-bg)]"
-  );
-}
+const DEVICE_ICONS = {
+  mobile: Smartphone,
+  desktop: Monitor
+} as const satisfies Record<(typeof DEVICE_PLATFORMS)[number], LucideIcon>;
 
-function chipBtnClass(active: boolean) {
-  return cn(
-    "rounded-md border px-2 py-1 text-[11px] transition",
-    active
-      ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] font-medium text-[var(--ui-accent)]"
-      : "border-[var(--border-color)] bg-[var(--surface-card)] text-[var(--text-dim)] hover:border-[var(--border-hover)] hover:bg-[var(--surface-bg)]"
+function PlacementModeCard({
+  selected,
+  label,
+  description,
+  icon: Icon,
+  recommendedBadge,
+  disabled,
+  onSelect
+}: {
+  selected: boolean;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  recommendedBadge?: string;
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row",
+        selected
+          ? "campaign-creator-budget-choice-card--selected"
+          : "campaign-creator-budget-choice-card--unselected"
+      )}
+    >
+      <ChoiceCardCheck selected={selected} />
+      <span
+        className={cn(
+          "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline",
+          selected
+            ? "campaign-creator-budget-choice-card__icon--selected"
+            : "campaign-creator-budget-choice-card__icon--unselected"
+        )}
+        aria-hidden
+      >
+        <Icon size={18} strokeWidth={1.75} />
+      </span>
+      <span className="campaign-creator-budget-choice-card__content">
+        <span className="campaign-creator-budget-choice-card__title-row">
+          <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
+            {label}
+          </span>
+          {recommendedBadge ? (
+            <span className="campaign-creator-budget-choice-card__badge">{recommendedBadge}</span>
+          ) : null}
+        </span>
+        <span className="campaign-creator-budget-choice-card__description">{description}</span>
+      </span>
+    </button>
   );
 }
 
@@ -55,54 +103,61 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3">
-      <div className="flex gap-2">
-        <button
-          type="button"
+    <section className="campaign-creator-card campaign-creator-card--compact">
+      <h4 className="campaign-creator-budget-header__title text-sm">{t("placements")}</h4>
+
+      <div
+        className="mt-3 grid gap-2 sm:grid-cols-2"
+        role="radiogroup"
+        aria-label={t("placements")}
+      >
+        <PlacementModeCard
+          selected={value.mode === "advantage_plus"}
+          label={t("placementsAdvantage")}
+          description={t("placementsAdvantageHint")}
+          icon={Sparkles}
+          recommendedBadge={t("budgetRecommended")}
           disabled={disabled}
-          onClick={() => onChange({ ...value, mode: "advantage_plus" })}
-          className={toggleBtnClass(value.mode === "advantage_plus")}
-        >
-          {t("placementsAdvantage")}
-        </button>
-        <button
-          type="button"
+          onSelect={() => onChange({ ...value, mode: "advantage_plus" })}
+        />
+        <PlacementModeCard
+          selected={value.mode === "manual"}
+          label={t("placementsManual")}
+          description={t("placementsManualHint")}
+          icon={MousePointerClick}
           disabled={disabled}
-          onClick={() => onChange(defaultManualPlacements())}
-          className={toggleBtnClass(value.mode === "manual")}
-        >
-          {t("placementsManual")}
-        </button>
+          onSelect={() => onChange(defaultManualPlacements())}
+        />
       </div>
 
       {value.mode === "manual" ? (
-        <>
+        <div className="campaign-creator-placements-manual mt-3 space-y-3 border-t pt-3">
           <div>
-            <p className="mb-1 text-xs font-medium text-[var(--text-dim)]">{t("placementPlatforms")}</p>
+            <p className="mb-1.5 text-xs font-semibold text-[var(--text-main)]">{t("placementPlatforms")}</p>
             <div className="flex flex-wrap gap-2">
               {PLACEMENT_PLATFORMS.map((p) => (
-                <button
+                <MultiSelectChoiceCard
                   key={p}
-                  type="button"
+                  selected={value.platforms.includes(p)}
+                  label={platformLabel(p)}
                   disabled={disabled}
-                  onClick={() => onChange(togglePlacementPlatform(value, p))}
-                  className={toggleBtnClass(value.platforms.includes(p))}
-                >
-                  {platformLabel(p)}
-                </button>
+                  onToggle={() => onChange(togglePlacementPlatform(value, p))}
+                />
               ))}
             </div>
           </div>
 
           <div>
-            <p className="mb-1 text-xs font-medium text-[var(--text-dim)]">{t("placementDevices")}</p>
-            <div className="flex flex-wrap gap-2">
+            <p className="mb-1.5 text-xs font-semibold text-[var(--text-main)]">{t("placementDevices")}</p>
+            <div className="grid grid-cols-2 gap-1.5">
               {DEVICE_PLATFORMS.map((d) => (
-                <button
+                <MultiSelectChoiceCard
                   key={d}
-                  type="button"
+                  selected={value.devices.includes(d)}
+                  label={deviceLabel(d)}
+                  icon={DEVICE_ICONS[d]}
                   disabled={disabled}
-                  onClick={() =>
+                  onToggle={() =>
                     onChange({
                       ...value,
                       devices: value.devices.includes(d)
@@ -110,16 +165,13 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
                         : [...value.devices, d]
                     })
                   }
-                  className={toggleBtnClass(value.devices.includes(d))}
-                >
-                  {deviceLabel(d)}
-                </button>
+                />
               ))}
             </div>
           </div>
 
-          <div className="space-y-3">
-            <p className="text-xs font-medium text-[var(--text-dim)]">{t("placementPositions")}</p>
+          <div className="space-y-2.5">
+            <p className="text-xs font-semibold text-[var(--text-main)]">{t("placementPositions")}</p>
             {PLACEMENT_TREE.map(({ platform, positions }) => {
               const platformOn = value.platforms.includes(platform);
               const selected = positionsForPlatform(value, platform);
@@ -129,19 +181,17 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
                   className={cn(
                     "rounded-lg border p-3 transition",
                     platformOn
-                      ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)]/40"
-                      : "border-[var(--border-color)] bg-[var(--surface-bg)] opacity-70"
+                      ? "border-[var(--ui-accent-border)] bg-[color-mix(in_srgb,var(--ui-accent-muted)_40%,var(--creator-card-bg-inset,var(--surface-bg)))]"
+                      : "border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] opacity-70"
                   )}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
+                    <MultiSelectChoiceCard
+                      selected={platformOn}
+                      label={platformLabel(platform)}
                       disabled={disabled}
-                      onClick={() => onChange(togglePlacementPlatform(value, platform))}
-                      className={`${toggleBtnClass(platformOn)} font-semibold`}
-                    >
-                      {platformLabel(platform)}
-                    </button>
+                      onToggle={() => onChange(togglePlacementPlatform(value, platform))}
+                    />
                     {platformOn ? (
                       <span className="text-[10px] text-[var(--text-dimmer)]">
                         {t("placementSelectedCount", { count: selected.length })}
@@ -154,15 +204,14 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
                         const key = positionKey(platform, pos);
                         const active = value.positions.includes(key);
                         return (
-                          <button
+                          <MultiSelectChoiceCard
                             key={key}
-                            type="button"
+                            selected={active}
+                            label={positionLabel(platform, pos)}
+                            size="sm"
                             disabled={disabled}
-                            onClick={() => onChange(togglePlacementPosition(value, platform, pos))}
-                            className={chipBtnClass(active)}
-                          >
-                            {positionLabel(platform, pos)}
-                          </button>
+                            onToggle={() => onChange(togglePlacementPosition(value, platform, pos))}
+                          />
                         );
                       })}
                     </div>
@@ -173,8 +222,8 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
               );
             })}
           </div>
-        </>
+        </div>
       ) : null}
-    </div>
+    </section>
   );
 }

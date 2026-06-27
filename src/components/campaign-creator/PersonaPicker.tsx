@@ -1,18 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pencil, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { PersonaSummary } from "@/components/audiences/PersonasLibraryClient";
 import { formatPersonaGender, PersonaDetailPanel } from "@/components/audiences/PersonaDetailPanel";
 import { AiPersonaForm } from "@/components/audiences/create/AiPersonaForm";
+import type {
+  AiAudienceTargetingFormActionState,
+  AiAudienceTargetingFormHandle
+} from "@/components/audiences/create/AiAudienceTargetingForm";
 import { FormSelect } from "@/components/ui/FormSelect";
 import type { PersonaTargetingIssue, PersonaTargetingSummary } from "@/lib/persona-targeting-types";
 import { formatPersonaCardSummary } from "@/lib/adset-display-summary";
 import { PersonaMetaValidationPanel } from "@/components/campaign-creator/PersonaMetaValidationPanel";
 import { PersonaTargetingRepairModal } from "@/components/campaign-creator/PersonaTargetingRepairModal";
-import { DsModal } from "@/design-system/components/DsModal";
+import { CreatorAiModalShell, CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 
 type Props = {
   value: string | null | undefined;
@@ -61,6 +65,13 @@ export function PersonaPicker({
   const [personaIssue, setPersonaIssue] = useState<PersonaTargetingIssue | null>(null);
   const [personaSummary, setPersonaSummary] = useState<PersonaTargetingSummary | null>(null);
   const [repairOpen, setRepairOpen] = useState(false);
+  const personaFormRef = useRef<AiAudienceTargetingFormHandle>(null);
+  const [personaFormState, setPersonaFormState] = useState<AiAudienceTargetingFormActionState>({
+    canSave: false,
+    canClear: false,
+    pending: false,
+    creating: false
+  });
 
   function loadPersonas() {
     setLoading(true);
@@ -157,7 +168,7 @@ export function PersonaPicker({
 
       {loading ? (
         <p className="text-xs text-[var(--text-dim)]">{t("loading")}</p>
-      ) : (
+      ) : personas.length > 0 ? (
         <FormSelect
           value={value ?? ""}
           onChange={(id) => onChange(id || null)}
@@ -165,7 +176,7 @@ export function PersonaPicker({
           disabled={disabled}
           options={personas.map((p) => ({ value: p.id, label: p.name }))}
         />
-      )}
+      ) : null}
 
       {selected && isAdset ? (
         <div className="campaign-creator-adset-picker-card">
@@ -246,18 +257,29 @@ export function PersonaPicker({
         onPersonaReplaced={(_oldId, newId) => onChange(newId)}
       />
 
-      <DsModal
+      <CreatorAiModalShell
         open={showCreate}
         onClose={() => setShowCreate(false)}
         title={tAud("newPersona")}
         subtitle={t("createPersonaWithAiHint")}
         titleIcon={<Sparkles size={16} />}
         width="xl"
+        aiCredits={{ kind: "audience_suggestions", calls: 2 }}
+        onClear={() => personaFormRef.current?.reset()}
+        clearDisabled={!personaFormState.canClear || personaFormState.pending || personaFormState.creating}
+        onCancel={() => setShowCreate(false)}
+        onPrimary={() => personaFormRef.current?.save()}
+        primaryLabel={tAud("savePersona")}
+        primaryDisabled={!personaFormState.canSave}
+        primaryLoading={personaFormState.creating}
       >
         <AiPersonaForm
+          ref={personaFormRef}
           embedded
+          shellMode
           clientSlug={clientSlug}
           adAccountId={adAccountId}
+          onActionStateChange={setPersonaFormState}
           onClose={() => setShowCreate(false)}
           onSaved={(personaId) => {
             setShowCreate(false);
@@ -271,14 +293,15 @@ export function PersonaPicker({
               });
           }}
         />
-      </DsModal>
+      </CreatorAiModalShell>
 
       {selected ? (
-        <DsModal
+        <CreatorModalShell
           open={showEdit}
           onClose={() => setShowEdit(false)}
           title={selected.name}
           width="xl"
+          hideFooter
         >
           <PersonaDetailPanel
             persona={selected}
@@ -292,7 +315,7 @@ export function PersonaPicker({
               setShowEdit(false);
             }}
           />
-        </DsModal>
+        </CreatorModalShell>
       ) : null}
     </div>
   );

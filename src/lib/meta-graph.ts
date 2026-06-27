@@ -588,6 +588,38 @@ export async function searchGeoLocations(accessToken: string, q: string): Promis
   }));
 }
 
+export type MetaDeliveryEstimate = {
+  estimateReady: boolean;
+  usersLowerBound: number | null;
+  usersUpperBound: number | null;
+};
+
+/** Meta Marketing API delivery estimate (monthly active users in targeting). */
+export async function fetchDeliveryEstimate(
+  accessToken: string,
+  adAccountId: string,
+  targetingSpec: Record<string, unknown>
+): Promise<MetaDeliveryEstimate> {
+  const actId = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const spec = encodeURIComponent(JSON.stringify(targetingSpec));
+  const data = await metaFetch<{
+    data?: Array<{
+      estimate_ready?: boolean;
+      estimate_mau_lower_bound?: number;
+      estimate_mau_upper_bound?: number;
+    }>;
+  }>(
+    `/${actId}/delivery_estimate?targeting_spec=${spec}&optimization_goal=REACH`,
+    accessToken
+  );
+  const row = data.data?.[0];
+  return {
+    estimateReady: row?.estimate_ready ?? false,
+    usersLowerBound: row?.estimate_mau_lower_bound ?? null,
+    usersUpperBound: row?.estimate_mau_upper_bound ?? null
+  };
+}
+
 export type MetaLocale = { key: number; name: string };
 
 export async function searchAdLocales(accessToken: string, q: string): Promise<MetaLocale[]> {

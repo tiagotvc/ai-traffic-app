@@ -2,9 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
-
-import { DsModal } from "@/design-system";
+import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import type { BuyingType, CampaignObjectiveKey } from "@/lib/campaign-draft";
 import { CAMPAIGN_OBJECTIVES, objectivesForBuyingType } from "@/lib/campaign-draft";
@@ -41,17 +39,13 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
   }
 
   return (
-    <DsModal
+    <CreatorModalShell
       open={open}
       onClose={onClose}
       title={t("objectiveModalTitle")}
       subtitle={t("objectiveModalHint")}
       width="lg"
-      footer={
-        <Link href="/campaigns" className="ui-link text-xs">
-          {t("close")}
-        </Link>
-      }
+      hideFooter
     >
         <div>
           <label className="text-xs font-medium text-[var(--text-dim)]">{t("buyingType")}</label>
@@ -97,6 +91,6 @@ export function ObjectiveSelectModal({ open, onClose }: { open: boolean; onClose
             </button>
           ))}
         </div>
-    </DsModal>
+    </CreatorModalShell>
   );
 }

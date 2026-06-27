@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Loader2 } from "lucide-react";
 
 import { mapMetaTargetingToDraft } from "@/lib/meta-adset-import";
 import type { DraftTargeting } from "@/lib/campaign-draft";
@@ -19,6 +20,9 @@ type Props = {
   disabled?: boolean;
   compact?: boolean;
   hideHeader?: boolean;
+  modalMode?: boolean;
+  selectedId?: string | null;
+  applying?: boolean;
   onApply: (targeting: DraftTargeting, audienceName: string, audienceId?: string) => void;
 };
 
@@ -28,13 +32,22 @@ export function SavedTargetingPicker({
   disabled,
   compact,
   hideHeader,
+  modalMode,
+  selectedId: selectedIdProp,
+  applying,
   onApply
 }: Props) {
   const t = useTranslations("campaignCreator");
   const [items, setItems] = useState<SavedTargetingAudience[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(selectedIdProp ?? null);
+
+  useEffect(() => {
+    if (selectedIdProp !== undefined) {
+      setSelectedId(selectedIdProp);
+    }
+  }, [selectedIdProp]);
 
   useEffect(() => {
     if (!clientSlug || !adAccountId) {
@@ -93,8 +106,10 @@ export function SavedTargetingPicker({
     onApply(mapMetaTargetingToDraft(selected.targeting), selected.name, selected.id);
   }
 
+  const listMaxHeight = modalMode ? "max-h-72" : compact ? "max-h-28" : "max-h-48";
+
   return (
-    <div className={compact ? "space-y-2" : "space-y-3"}>
+    <div className={compact || modalMode ? "space-y-2" : "space-y-3"}>
       {!hideHeader ? (
         <div>
           <p className="text-sm font-semibold text-[var(--text-main)]">{t("savedTargetingTitle")}</p>
@@ -105,7 +120,10 @@ export function SavedTargetingPicker({
       {!clientSlug || !adAccountId ? (
         <p className="ui-alert-warning text-xs">{t("savedAudiencesNeedAccount")}</p>
       ) : loading ? (
-        <p className="text-xs text-[var(--text-dim)]">{t("savedTargetingLoading")}</p>
+        <div className="flex items-center justify-center gap-2 py-8 text-sm text-[var(--text-dim)]">
+          <Loader2 size={18} className="animate-spin" />
+          <span>{t("savedTargetingLoading")}</span>
+        </div>
       ) : items.length === 0 ? (
         <p className="rounded-lg border border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-2.5 py-2 text-xs text-[var(--text-dim)]">
           {t("savedTargetingEmpty")}
@@ -116,14 +134,12 @@ export function SavedTargetingPicker({
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder={t("savedAudiencesSearch")}
-            className={`ui-input ${compact ? "py-1.5 text-xs" : "text-xs"}`}
-            disabled={disabled}
+            className={`ui-input ${compact || modalMode ? "py-1.5 text-xs" : "text-xs"}`}
+            disabled={disabled || applying}
           />
 
           <div
-            className={`space-y-0.5 overflow-y-auto rounded-lg border border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] p-1 ${
-              compact ? "max-h-28" : "max-h-48"
-            }`}
+            className={`space-y-0.5 overflow-y-auto rounded-lg border border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] p-1 ${listMaxHeight}`}
           >
             {filtered.length === 0 ? (
               <p className="px-2 py-2 text-center text-xs text-[var(--text-dim)]">
@@ -134,7 +150,7 @@ export function SavedTargetingPicker({
                 <label
                   key={a.id}
                   className={`flex cursor-pointer items-center gap-2 rounded-md px-2 transition ${
-                    compact ? "py-1 text-xs" : "items-start rounded-lg py-1.5 text-xs"
+                    compact || modalMode ? "py-1 text-xs" : "items-start rounded-lg py-1.5 text-xs"
                   } ${
                     selectedId === a.id
                       ? "bg-[var(--ui-accent-muted)]"
@@ -145,7 +161,7 @@ export function SavedTargetingPicker({
                     type="radio"
                     name="saved-targeting"
                     checked={selectedId === a.id}
-                    disabled={disabled}
+                    disabled={disabled || applying}
                     onChange={() => setSelectedId(a.id)}
                     className="shrink-0 accent-[var(--ui-accent)]"
                   />
@@ -164,13 +180,22 @@ export function SavedTargetingPicker({
 
           <button
             type="button"
-            disabled={disabled || !selected}
+            disabled={disabled || applying || !selected}
             onClick={apply}
-            className={`ui-btn-secondary-accent w-full disabled:cursor-not-allowed disabled:opacity-50 ${
-              compact ? "py-1.5 text-xs" : "text-xs"
+            className={`ui-btn-secondary-accent inline-flex w-full items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+              compact || modalMode ? "py-1.5 text-xs" : "text-xs"
             }`}
           >
-            {compact ? t("savedTargetingApplyShort") : t("savedTargetingApply")}
+            {applying ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                {t("savedAudienceApplying")}
+              </>
+            ) : compact ? (
+              t("savedTargetingApplyShort")
+            ) : (
+              t("savedTargetingApply")
+            )}
           </button>
         </>
       )}
