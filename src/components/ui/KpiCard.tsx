@@ -9,7 +9,7 @@ export function KpiCard({
   deltaPositive,
   icon,
   sparkline,
-  sparkColor = "var(--amber-bright)",
+  sparkColor = "var(--ui-accent)",
   footer
 }: {
   label: string;

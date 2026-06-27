@@ -90,7 +90,7 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
   return (
     <div className="space-y-5">
       <DsPageHeader title={t("personasLibraryTitle")} subtitle={t("personasLibrarySubtitle")} />
-      <p className="text-xs font-medium" style={{ color: "var(--amber)" }}>
+      <p className="text-xs font-medium" style={{ color: "var(--ui-accent)" }}>
         {t("personasLibraryBadge")}
       </p>
 

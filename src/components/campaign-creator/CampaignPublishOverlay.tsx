@@ -63,7 +63,7 @@ export function CampaignPublishOverlay({ open, step }: Props) {
         <div className="mx-auto mb-6 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-[var(--surface-thead)]">
           <Cog
             size={38}
-            className="animate-spin text-[var(--amber-bright)]"
+            className="animate-spin text-[var(--ui-accent)]"
             strokeWidth={1.6}
             aria-hidden
           />

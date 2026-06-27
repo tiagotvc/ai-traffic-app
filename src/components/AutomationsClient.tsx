@@ -258,7 +258,7 @@ export function AutomationsClient() {
                   onClick={() => setTab(key)}
                   className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                     tab === key
-                      ? "bg-[var(--amber-bright)] text-[#0f1419] shadow-sm"
+                      ? "bg-[var(--ui-accent)] text-[#0f1419] shadow-sm"
                       : "text-[var(--text-dim)] hover:bg-[var(--surface-thead)]"
                   }`}
                 >

@@ -51,7 +51,7 @@ export function ZonesLibraryClient() {
   return (
     <div className="space-y-5">
       <DsPageHeader title={t("zonesLibraryTitle")} subtitle={t("zonesLibrarySubtitle")} />
-      <p className="text-xs font-medium" style={{ color: "var(--amber)" }}>
+      <p className="text-xs font-medium" style={{ color: "var(--ui-accent)" }}>
         {t("zonesLibraryBadge")}
       </p>
 

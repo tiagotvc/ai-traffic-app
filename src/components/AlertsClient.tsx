@@ -117,7 +117,7 @@ export function AlertsClient() {
               onClick={() => setDays(d)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 days === d
-                  ? "bg-[rgba(245,166,35,0.15)] text-[var(--amber)]"
+                  ? "bg-[rgba(245,166,35,0.15)] text-[var(--ui-accent)]"
                   : "text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
               }`}
             >
@@ -134,7 +134,7 @@ export function AlertsClient() {
               onClick={() => setLevel(l)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 level === l
-                  ? "bg-[rgba(245,166,35,0.15)] text-[var(--amber)]"
+                  ? "bg-[rgba(245,166,35,0.15)] text-[var(--ui-accent)]"
                   : "text-[var(--text-dim)] hover:bg-[var(--row-hover)]"
               }`}
             >

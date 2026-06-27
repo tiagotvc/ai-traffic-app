@@ -11,7 +11,7 @@ const LOCALE_SHORT: Record<AppLocale, string> = {
 };
 
 const ACTIVE_PILL =
-  "bg-[var(--amber-bright)] text-[#0f1419] shadow-sm shadow-black/15";
+  "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)] shadow-sm shadow-black/15";
 
 export function LanguageSwitcher({
   variant = "default",

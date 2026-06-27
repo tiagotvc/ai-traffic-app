@@ -469,7 +469,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                   onClick={() => setListTab(key)}
                   className={`flex-1 px-3 py-3 text-xs font-medium sm:text-sm ${
                     listTab === key
-                      ? "border-b-2 border-[var(--amber)] text-[var(--ui-accent)]"
+                      ? "border-b-2 border-[var(--ui-accent)] text-[var(--ui-accent)]"
                       : "text-[var(--text-dim)]"
                   }`}
                 >
