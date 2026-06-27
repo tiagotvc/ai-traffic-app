@@ -11,7 +11,10 @@ import {
   filterCardResearchSteps,
   filterHighlightResearchSteps,
   isBenchmarkOnly,
+  resolveConsultationCounts,
   resolveConsultedCampaignsCount,
+  resolveMetaAdsConsultedCount,
+  resolveSyncedCampaignsCount,
   shouldShowBenchmarkFallbackMessage
 } from "@/lib/campaign-creator/orion-brain-utils";
 
@@ -35,17 +38,22 @@ function researchStepLabel(step: CreatorBrainResearchStep, t: CampaignCreatorT):
     return t("brainResearchAgencySkipped");
   }
   if (step.step === "meta_competitor_search") {
-    if (step.detail === "no_client_selected") return t("brainResearchMetaNoClient");
     if (step.detail === "api_not_configured") return t("brainResearchMetaApiNotConfigured");
     if (step.detail === "api_error") return t("brainResearchMetaApiError");
     if (step.detail === "no_competitors") return t("brainResearchMetaNoCompetitors");
+    if (step.detail === "objective_keywords_only") {
+      if (step.status === "done") return t("brainResearchMetaObjectiveDone", { count: step.count ?? 0 });
+      return t("brainResearchMetaObjectiveEmpty");
+    }
     if (step.detail === "niche_keywords_only") {
       if (step.status === "done") return t("brainResearchMetaNicheDone", { count: step.count ?? 0 });
       return t("brainResearchMetaNicheEmpty");
     }
+    if (step.detail === "legacy_cache") return t("brainResearchMetaLegacy");
     if (step.status === "done") return t("brainResearchMetaDone", { count: step.count ?? 0 });
     if (step.status === "fallback") return t("brainResearchMetaSkipped");
-    if (step.status === "skipped") return t("brainResearchMetaNoClient");
+    if (step.detail === "no_client_selected") return t("brainResearchMetaNoClient");
+    if (step.status === "skipped") return t("brainResearchMetaSkipped");
     return t("brainResearchMetaNoCompetitors");
   }
   if (step.step === "metrics_computed") {
@@ -96,26 +104,82 @@ export function OrionBrainResearchChecklist({
   );
 }
 
-function OrionBrainConsultedCampaignsBadge({ count }: { count: number }) {
+function OrionBrainConsultedCampaignsBadge({
+  campaignCount,
+  metaAdsCount
+}: {
+  campaignCount: number;
+  metaAdsCount: number;
+}) {
   const t = useTranslations("campaignCreator");
-  if (count <= 0) return null;
+  if (campaignCount <= 0 && metaAdsCount <= 0) return null;
 
   return (
-    <div className="campaign-creator-orion-sample-badge">
-      <CheckCircle2 size={12} strokeWidth={2.25} className="shrink-0" aria-hidden />
-      <span>{t("brainConsultedCampaignsBadge", { count })}</span>
+    <div className="flex flex-col gap-1">
+      {campaignCount > 0 ? (
+        <div className="campaign-creator-orion-sample-badge">
+          <CheckCircle2 size={12} strokeWidth={2.25} className="shrink-0" aria-hidden />
+          <span>{t("brainConsultedCampaignsBadge", { count: campaignCount })}</span>
+        </div>
+      ) : null}
+      {metaAdsCount > 0 ? (
+        <div className="campaign-creator-orion-sample-badge">
+          <CheckCircle2 size={12} strokeWidth={2.25} className="shrink-0" aria-hidden />
+          <span>{t("brainConsultedMetaAdsBadge", { count: metaAdsCount })}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
 
 /** @deprecated Use unified consulted-campaigns badge; kept for existing imports. */
 export function OrionBrainSampleBadge({ count }: { count: number }) {
-  return <OrionBrainConsultedCampaignsBadge count={count} />;
+  return <OrionBrainConsultedCampaignsBadge campaignCount={count} metaAdsCount={0} />;
 }
 
 /** @deprecated Use unified consulted-campaigns badge; kept for existing imports. */
 export function OrionBrainAgencyScannedBadge({ count }: { count: number }) {
-  return <OrionBrainConsultedCampaignsBadge count={count} />;
+  return <OrionBrainConsultedCampaignsBadge campaignCount={count} metaAdsCount={0} />;
+}
+
+export function OrionBrainConsultationSummary({
+  insight,
+  className = ""
+}: {
+  insight: CreatorBrainInsightPayload;
+  className?: string;
+}) {
+  const t = useTranslations("campaignCreator");
+  const { clientSynced, agencySynced, metaAds } = resolveConsultationCounts(insight);
+  const matchedSamples = resolveSyncedCampaignsCount(insight);
+  const showMetaTokenHint = insight.metaAdLibraryConfigured === false;
+
+  const lines: string[] = [];
+  if (clientSynced > 0) {
+    lines.push(t("brainConsultationClientSynced", { count: clientSynced }));
+  }
+  if (agencySynced > 0) {
+    lines.push(t("brainConsultationAgencySynced", { count: agencySynced }));
+  }
+  if (matchedSamples > 0 && matchedSamples !== clientSynced + agencySynced) {
+    lines.push(t("brainConsultationMatchedSamples", { count: matchedSamples }));
+  }
+  if (metaAds > 0) {
+    lines.push(t("brainConsultationMetaAds", { count: metaAds }));
+  }
+
+  if (!lines.length && !showMetaTokenHint) return null;
+
+  return (
+    <div className={`space-y-1 text-xs leading-relaxed text-[var(--text-dim)] ${className}`.trim()}>
+      {lines.map((line) => (
+        <p key={line}>{line}</p>
+      ))}
+      {showMetaTokenHint ? (
+        <p className="text-amber-700 dark:text-amber-400">{t("brainResearchMetaApiNotConfigured")}</p>
+      ) : null}
+    </div>
+  );
 }
 
 export function OrionBrainCardFeedback({
@@ -130,6 +194,8 @@ export function OrionBrainCardFeedback({
   className?: string;
 }) {
   const t = useTranslations("campaignCreator");
+  const campaignCount = resolveSyncedCampaignsCount(insight);
+  const metaAdsCount = resolveMetaAdsConsultedCount(insight);
   const consultedCount = resolveConsultedCampaignsCount(insight);
   const benchmarkOnly = isBenchmarkOnly(insight);
   const showFallbackMessage = shouldShowBenchmarkFallbackMessage(insight);
@@ -141,7 +207,7 @@ export function OrionBrainCardFeedback({
   return (
     <div className={`space-y-2 ${className}`.trim()}>
       {showSampleBadge && consultedCount > 0 ? (
-        <OrionBrainConsultedCampaignsBadge count={consultedCount} />
+        <OrionBrainConsultedCampaignsBadge campaignCount={campaignCount} metaAdsCount={metaAdsCount} />
       ) : null}
 
       {!compact && showFallbackMessage ? (

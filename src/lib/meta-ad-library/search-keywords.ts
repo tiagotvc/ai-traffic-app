@@ -1,4 +1,5 @@
 import type { ClientNiche } from "@/lib/agency-brain/domain/schemas";
+import type { CampaignObjectiveKey } from "@/lib/campaign-draft";
 
 /** Fallback search terms when no competitors are registered. */
 export const NICHE_SEARCH_KEYWORDS: Record<ClientNiche, string[]> = {
@@ -17,6 +18,20 @@ export function resolveSearchTerms(niche: string | null | undefined): string[] {
     return NICHE_SEARCH_KEYWORDS[key];
   }
   return ["oferta", "promoção"];
+}
+
+/** Search terms for Meta Ad Library when no client is selected (agency-level scan). */
+export const OBJECTIVE_SEARCH_KEYWORDS: Record<CampaignObjectiveKey, string[]> = {
+  awareness: ["reconhecimento de marca", "lançamento", "alcance"],
+  traffic: ["acesse o site", "tráfego", "clique aqui"],
+  engagement: ["engajamento", "curta e comente", "interação"],
+  leads: ["cadastre-se", "formulário", "lead"],
+  app: ["baixe o app", "instale grátis", "app mobile"],
+  sales: ["compre agora", "oferta", "promoção"]
+};
+
+export function resolveObjectiveSearchTerms(objective: CampaignObjectiveKey): string[] {
+  return OBJECTIVE_SEARCH_KEYWORDS[objective] ?? ["oferta", "promoção"];
 }
 
 /** Map market country to Meta Ad Library ad_reached_countries codes. */

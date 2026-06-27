@@ -53,24 +53,27 @@ export default function AlertsContent({ live }: { live?: AlertsLiveProps } = {})
 
   if (isLive && live?.loading) {
     return (
-      <main className="flex-1 overflow-y-auto px-4 py-5 md:px-6">
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-24 animate-pulse rounded-xl border"
-              style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
-            />
-          ))}
-        </div>
-      </main>
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-24 animate-pulse rounded-xl border"
+            style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
+          />
+        ))}
+      </div>
     );
   }
 
+  const pageShellClass = isLive
+    ? "app-page-shell app-page-shell--loose w-full"
+    : "flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-5";
+  const PageTag = isLive ? "div" : "main";
+
   return (
-    <main
-          className="flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-5"
-          style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
+    <PageTag
+          className={pageShellClass}
+          style={isLive ? undefined : { scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
         >
           {/* Header */}
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -262,6 +265,6 @@ export default function AlertsContent({ live }: { live?: AlertsLiveProps } = {})
               );
             })}
           </div>
-        </main>
+        </PageTag>
   );
 }

@@ -376,7 +376,7 @@ function AppShellSkeletonInner({
               className={
                 builderImmersive
                   ? "flex h-full min-h-0 w-full flex-col"
-                  : "w-full px-4 py-4 sm:px-5 md:px-6 lg:mx-auto lg:max-w-[1600px] lg:px-8 lg:py-7"
+                  : "app-shell-content w-full"
               }
             >
               {children}

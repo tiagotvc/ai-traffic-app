@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/cn";
 
 export function ClientSyncBanner({ clientId }: { clientId: string }) {
   const t = useTranslations("sync");
@@ -57,11 +58,12 @@ export function ClientSyncBanner({ clientId }: { clientId: string }) {
 
   return (
     <div
-      className={`ui-card border px-4 py-3 text-sm ${
+      className={cn(
+        "ui-card border px-4 py-3 text-sm",
         done
           ? "border-[rgba(16,185,129,0.25)] bg-[rgba(16,185,129,0.06)] text-[var(--text-dim)]"
-          : "border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.08)] text-[var(--text-dim)]"
-      }`}
+          : "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] text-[var(--text-dim)]"
+      )}
       role="status"
     >
       <p>{done ? t("syncComplete") : t("syncingCampaigns")}</p>

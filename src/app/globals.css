@@ -93,6 +93,20 @@
   --ui-accent-btn-to: var(--violet-bright);
   --ui-accent-btn-text: #ffffff;
   --ui-accent-btn-shadow: rgba(124, 58, 237, 0.24);
+
+  /* App page shell — aligned with Campaign Creator layout */
+  --app-content-max-width: 1600px;
+  --app-page-padding-x: 1rem;
+  --app-page-padding-x-sm: 1.25rem;
+  --app-page-padding-x-md: 1.5rem;
+  --app-page-padding-x-lg: 2rem;
+  --app-page-padding-x-right-lg: 1rem;
+  --app-page-padding-y: 1rem;
+  --app-page-padding-y-lg: 1.75rem;
+  --app-section-gap: 1.25rem;
+  --app-section-gap-lg: 1.5rem;
+  --app-sidebar-width: 16rem;
+  --app-sidebar-width-xl: 18rem;
 }
 
 [data-theme="dark"] {
@@ -271,6 +285,80 @@ h6,
 }
 
 @layer components {
+  /* ─── App shell & page layout (Campaign Creator spacing standard) ─── */
+  .app-shell-content {
+    @apply mx-auto w-full;
+    max-width: var(--app-content-max-width);
+    padding-left: var(--app-page-padding-x);
+    padding-right: var(--app-page-padding-x);
+    padding-top: var(--app-page-padding-y);
+    padding-bottom: var(--app-page-padding-y);
+  }
+
+  @media (min-width: 640px) {
+    .app-shell-content {
+      padding-left: var(--app-page-padding-x-sm);
+      padding-right: var(--app-page-padding-x-sm);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .app-shell-content {
+      padding-left: var(--app-page-padding-x-md);
+      padding-right: var(--app-page-padding-x-md);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-shell-content {
+      padding-left: var(--app-page-padding-x-lg);
+      padding-right: var(--app-page-padding-x-lg);
+      padding-top: var(--app-page-padding-y-lg);
+      padding-bottom: var(--app-page-padding-y-lg);
+    }
+  }
+
+  /** Negates `.app-shell-content` padding — used by Campaign Creator full-bleed shell. */
+  .app-shell-breakout {
+    margin-left: calc(-1 * var(--app-page-padding-x));
+    margin-right: calc(-1 * var(--app-page-padding-x));
+    margin-top: calc(-1 * var(--app-page-padding-y));
+    margin-bottom: calc(-1 * var(--app-page-padding-y));
+  }
+
+  @media (min-width: 640px) {
+    .app-shell-breakout {
+      margin-left: calc(-1 * var(--app-page-padding-x-sm));
+      margin-right: calc(-1 * var(--app-page-padding-x-sm));
+    }
+  }
+
+  @media (min-width: 768px) {
+    .app-shell-breakout {
+      margin-left: calc(-1 * var(--app-page-padding-x-md));
+      margin-right: calc(-1 * var(--app-page-padding-x-md));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-shell-breakout {
+      margin-left: calc(-1 * var(--app-page-padding-x-lg));
+      margin-right: calc(-1 * var(--app-page-padding-x-lg));
+      margin-top: calc(-1 * var(--app-page-padding-y-lg));
+      margin-bottom: calc(-1 * var(--app-page-padding-y-lg));
+    }
+  }
+
+  /** Page content stack — vertical section rhythm; horizontal padding comes from `.app-shell-content`. */
+  .app-page-shell {
+    @apply flex min-w-0 w-full flex-1 flex-col;
+    gap: var(--app-section-gap);
+  }
+
+  .app-page-shell--loose {
+    gap: var(--app-section-gap-lg);
+  }
+
   /* ─── Cards & surfaces ─── */
   .ui-card {
     @apply rounded-2xl border shadow-sm;
@@ -1438,15 +1526,14 @@ h6,
 
   .ui-alert-info {
     @apply rounded-xl border px-3 py-2 text-xs;
-    border-color: rgba(245, 166, 35, 0.2);
-    background: rgba(245, 166, 35, 0.07);
-    color: #92400e;
+    border-color: var(--ui-accent-border);
+    background: var(--ui-accent-muted);
+    color: var(--text-dim);
   }
 
-  [data-theme="dark"] .ui-alert-info {
-    border-color: rgba(124, 58, 237, 0.22);
-    background: rgba(124, 58, 237, 0.07);
-    color: #c4b5fd;
+  .ui-alert-info__icon {
+    @apply h-4 w-4 shrink-0;
+    color: var(--ui-accent);
   }
 
   .ui-campaign-meta-card {

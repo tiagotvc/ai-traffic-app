@@ -10,6 +10,8 @@ import { DashboardCustomizeModal } from "@/components/dashboard/DashboardCustomi
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
 import { MetricPrism } from "@/components/dashboard/MetricPrism";
 import { PageToolbar } from "@/components/layout/PageToolbar";
+import { AppPageShell } from "@/components/layout/AppPageShell";
+import { DsInfoBanner } from "@/design-system";
 import {
   CHART_PANEL_MIN_HEIGHT,
   resolveVisibleSectionOrder,
@@ -158,10 +160,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
   }
 
   return (
-    <main
-      className="flex-1 space-y-4 overflow-y-auto px-0 py-0 md:px-0"
-      style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
-    >
+    <AppPageShell as="main" className="flex-1 overflow-y-auto">
       <PageToolbar
         icon={<Sparkles size={16} />}
         title={t("highlights")}
@@ -200,7 +199,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
         }
       />
 
-      {data.note ? <div className="ui-alert-info">{data.note}</div> : null}
+      {data.note ? <DsInfoBanner className="px-4 py-2.5 text-sm">{data.note}</DsInfoBanner> : null}
 
       <div className="tab-transition animate-fade-up space-y-5">
         {!data.loading && data.isEmptyState ? (
@@ -256,6 +255,6 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
           }}
         />
       ) : null}
-    </main>
+    </AppPageShell>
   );
 }

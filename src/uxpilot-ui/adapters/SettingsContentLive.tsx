@@ -82,7 +82,7 @@ export function SettingsContentLive({
   }
 
   return (
-    <DsFlatPanel centered>
+    <DsFlatPanel>
       <DsPageHeader
         title={t("title")}
         subtitle={t("subtitle")}

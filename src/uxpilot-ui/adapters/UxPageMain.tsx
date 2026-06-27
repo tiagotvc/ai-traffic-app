@@ -2,20 +2,22 @@
 
 import type { ReactNode } from "react";
 
-/** Shared UX Pilot page shell (matches synced `<main>` layout). */
+import { AppPageShell } from "@/components/layout/AppPageShell";
+import { cn } from "@/lib/cn";
+
+/** Shared UX Pilot page shell — section gaps only; padding from `.app-shell-content`. */
 export function UxPageMain({
   children,
-  className = ""
+  className = "",
+  gap = "default"
 }: {
   children: ReactNode;
   className?: string;
+  gap?: "default" | "loose";
 }) {
   return (
-    <main
-      className={`ux-pilot-page flex-1 space-y-4 overflow-y-auto px-4 py-5 md:px-6 ${className}`.trim()}
-      style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
-    >
+    <AppPageShell as="main" gap={gap} className={cn("ux-pilot-page", className)}>
       {children}
-    </main>
+    </AppPageShell>
   );
 }

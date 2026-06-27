@@ -13,6 +13,7 @@ export { DsFlatEmptyState } from "./components/DsFlatEmptyState";
 export { DsFlatPanel } from "./components/DsFlatPanel";
 export { DsFlatSection, type DsFlatSectionTone } from "./components/DsFlatSection";
 export { DsFormActions, DsFormField } from "./components/DsFormField";
+export { DsInfoBanner } from "./components/DsInfoBanner";
 export { DsPageHeader } from "./components/DsPageHeader";
 export { DsSectionHeader } from "./components/DsSectionHeader";
 export { DsTableHeadCell, DsTableRow, DsTableShell } from "./components/DsTableShell";

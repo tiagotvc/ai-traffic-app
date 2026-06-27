@@ -91,11 +91,11 @@ export function AppShell({
             <main
               ref={mainRef}
               onScroll={(e) => setShowTop(e.currentTarget.scrollTop > 400)}
-              className="ds-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-5 md:px-6"
+              className="ds-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
             >
               <BillingGateModal planSlug={planSlug} status={subscriptionStatus} />
               <FirstLoginTermsGate />
-              <div className="mx-auto w-full max-w-[1600px]">{children}</div>
+              <div className="app-shell-content w-full">{children}</div>
             </main>
           </CommandStripProvider>
         </div>

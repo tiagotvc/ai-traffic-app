@@ -14,7 +14,7 @@ import {
   type DragEndEvent
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
-import { DsPageHeader } from "@/design-system";
+import { DsInfoBanner, DsPageHeader } from "@/design-system";
 import { CampaignHeaderCell } from "@/components/CampaignHeaderCell";
 import { CampaignManagerClient } from "@/components/CampaignManagerClient";
 import { rememberCampaign } from "@/components/CampaignsListClient";
@@ -908,7 +908,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       )}
 
       {loading && shouldCampaignListFetchLive({ clientFilter, periodUserActivated }) ? (
-        <div className="ui-alert-info">{t("loadingMetaToday")}</div>
+        <DsInfoBanner loading className="px-4 py-2.5 text-sm">
+          {t("loadingMetaToday")}
+        </DsInfoBanner>
       ) : null}
 
       {enrichError ? (
@@ -1013,9 +1015,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       ) : null}
 
       {clientFilter ? (
-        <p className="ui-alert-info text-xs">
+        <DsInfoBanner className="px-4 py-2.5 text-xs">
           {t("clientScopeHint", { client: clientLabel })}
-        </p>
+        </DsInfoBanner>
       ) : null}
 
       {groupByType ? (

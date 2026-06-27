@@ -7,6 +7,7 @@ import { extractMarketPatterns, buildScanStats } from "@/lib/agency-brain/market
 import type { MarketInsightDto } from "@/lib/agency-brain/market-learnings-service";
 import {
   fetchMetaAdLibrary,
+  isMetaAdLibraryConfigured,
   resolveCoverageLevel,
   resolveSearchTerms,
   type ClientCompetitor
@@ -65,11 +66,32 @@ export async function scanMarketForClient(
   const searchTerms = resolveSearchTerms(client.niche);
   const marketCountry = client.marketCountry ?? "BR";
 
+  if (!isMetaAdLibraryConfigured()) {
+    console.warn(
+      "[agency-brain/market_scan]",
+      client.id,
+      "META_AD_LIBRARY_ACCESS_TOKEN not configured — scan limited to niche static insights"
+    );
+  }
+
   const fetchResult = await fetchMetaAdLibrary({
     competitors: competitors.map((c) => ({ name: c.name, pageId: c.pageId })),
     searchTerms,
     marketCountry
   });
+
+  if (fetchResult.apiError) {
+    console.warn("[agency-brain/market_scan]", client.id, fetchResult.apiError, {
+      adsCount: fetchResult.ads.length,
+      competitors: competitors.length
+    });
+  } else if (fetchResult.apiConfigured) {
+    console.info("[agency-brain/market_scan]", client.id, {
+      adsCount: fetchResult.ads.length,
+      competitors: competitors.length,
+      searchTerms: searchTerms.slice(0, 3)
+    });
+  }
 
   const patterns = extractMarketPatterns(fetchResult.ads, client.niche ?? null);
   const stats = buildScanStats(fetchResult.ads);

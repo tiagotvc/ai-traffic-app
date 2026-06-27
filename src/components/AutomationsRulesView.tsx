@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { Bell, PauseCircle, Plus, Trash2, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
 
 import { PageToolbar } from "@/components/layout/PageToolbar";
+import { AppPageShell } from "@/components/layout/AppPageShell";
 import { UxAutomationsPageSkeleton } from "@/uxpilot-ui/adapters/ux-skeleton";
 
 const TEMPLATE_ICONS = {
@@ -264,10 +265,7 @@ export function AutomationsRulesView() {
   };
 
   return (
-    <main
-      className="flex-1 space-y-5 overflow-y-auto px-4 py-5 md:px-6"
-      style={{ scrollbarWidth: "thin", scrollbarColor: "var(--scrollbar-color) transparent" }}
-    >
+    <AppPageShell as="main" gap="loose" className="flex-1 overflow-y-auto">
       <PageToolbar
         icon={<Zap size={16} />}
         title="Automações"
@@ -633,6 +631,6 @@ export function AutomationsRulesView() {
           </div>
         </div>
       ) : null}
-    </main>
+    </AppPageShell>
   );
 }

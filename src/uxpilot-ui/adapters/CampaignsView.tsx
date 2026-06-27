@@ -5,7 +5,7 @@ import { UxPageMain } from "@/uxpilot-ui/adapters/UxPageMain";
 
 export function CampaignsView() {
   return (
-    <UxPageMain className="space-y-5">
+    <UxPageMain gap="loose">
       <CampaignsHubClient useUxChrome />
     </UxPageMain>
   );

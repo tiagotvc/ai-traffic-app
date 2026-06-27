@@ -146,8 +146,8 @@ import {
 ### Alertas / Atrito
 - Crítico: `.ui-alert-danger`
 - Atenção: `.ui-alert-warning`
-- IA pendente: `.ui-alert-info`
-- Resumo contextual (ex.: totais de conjuntos): `.ui-alert-info` — âmbar no light, roxo no dark
+- IA pendente: `.ui-alert-info` / `DsInfoBanner`
+- Resumo contextual (ex.: totais de conjuntos): `.ui-alert-info` — roxo accent (`--ui-accent`) em light e dark
 
 ### Visão interna de campanha (drilldown)
 - Guia completo: **[campaigns/drilldown-ui.md](campaigns/drilldown-ui.md)**

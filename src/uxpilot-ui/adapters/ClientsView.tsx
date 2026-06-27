@@ -5,7 +5,7 @@ import { UxPageMain } from "@/uxpilot-ui/adapters/UxPageMain";
 
 export function ClientsView() {
   return (
-    <UxPageMain className="space-y-5">
+    <UxPageMain gap="loose">
       <ClientsContentLive />
     </UxPageMain>
   );

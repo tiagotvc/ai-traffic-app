@@ -14,6 +14,7 @@ import { fetchCampaigns } from "@/lib/meta-graph";
 import {
   fetchMetaAdLibrary,
   isMetaAdLibraryConfigured,
+  resolveObjectiveSearchTerms,
   resolveSearchTerms
 } from "@/lib/meta-ad-library";
 import { attachRecommendationsToInsight } from "@/lib/campaign-creator/creator-brain-recommendations";
@@ -66,7 +67,15 @@ export type CreatorBrainInsightPayload = {
   marketCampaignCount?: number;
   /** Ads found in Meta Ad Library for client competitors (informational). */
   metaCompetitorAdCount?: number;
+  /** Alias for UI — ads returned from Meta Ad Library API. */
+  metaAdsConsultedCount?: number;
   metaCompetitorsScanned?: number;
+  /** Whether META_AD_LIBRARY_ACCESS_TOKEN (or system token) is configured. */
+  metaAdLibraryConfigured?: boolean;
+  /** Synced Meta campaigns in period (client), before objective filter. */
+  clientSyncedCampaignCount?: number;
+  /** Synced Meta campaigns in period (whole agency), before objective filter. */
+  agencySyncedCampaignCount?: number;
   referenceCampaignName?: string;
   clientMedianValue?: number | null;
   agencyMedianValue?: number | null;
@@ -428,19 +437,55 @@ type MetaCompetitorResearchResult = {
 async function resolveMetaCompetitorResearch(input: {
   tenantId: string;
   clientId?: string | null;
+  objective: CampaignObjectiveKey;
 }): Promise<MetaCompetitorResearchResult> {
+  if (!isMetaAdLibraryConfigured()) {
+    console.warn("[creator-brain/meta_competitor_search] skipped — META_AD_LIBRARY_ACCESS_TOKEN not configured");
+    return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "api_not_configured" };
+  }
+
   if (!input.clientId) {
-    return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "no_client_selected" };
+    const searchTerms = resolveObjectiveSearchTerms(input.objective);
+    const fetchResult = await fetchMetaAdLibrary({
+      competitors: [],
+      searchTerms,
+      marketCountry: "BR",
+      maxAdsPerQuery: 15
+    });
+
+    if (!fetchResult.apiConfigured) {
+      return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "api_not_configured" };
+    }
+
+    const adsCount = fetchResult.ads.length;
+    if (fetchResult.apiError) {
+      console.warn(
+        "[creator-brain/meta_competitor_search]",
+        "agency_objective_search",
+        fetchResult.apiError,
+        { adsCount, objective: input.objective, searchTerms: searchTerms.slice(0, 3) }
+      );
+    } else {
+      console.info(
+        "[creator-brain/meta_competitor_search]",
+        "agency_objective_search",
+        { adsCount, objective: input.objective, searchTerms: searchTerms.slice(0, 3) }
+      );
+    }
+
+    return {
+      adsCount,
+      competitorsScanned: 0,
+      status: adsCount > 0 ? "done" : "fallback",
+      detail: fetchResult.apiError && adsCount === 0 ? "api_error" : "objective_keywords_only",
+      apiCalled: true
+    };
   }
 
   const { client: clientRepo } = await repositories();
   const client = await clientRepo.findOne({ where: { id: input.clientId, tenantId: input.tenantId } });
   if (!client) {
     return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "no_client_selected" };
-  }
-
-  if (!isMetaAdLibraryConfigured()) {
-    return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "api_not_configured" };
   }
 
   const competitors = parseClientCompetitors(client.competitors);
@@ -593,7 +638,11 @@ function attachResearchMetadata(
   return {
     ...payload,
     metaCompetitorAdCount: input.metaCompetitor.adsCount,
+    metaAdsConsultedCount: input.metaCompetitor.adsCount,
     metaCompetitorsScanned: input.metaCompetitor.competitorsScanned,
+    metaAdLibraryConfigured: isMetaAdLibraryConfigured(),
+    clientSyncedCampaignCount: input.clientSyncedCount,
+    agencySyncedCampaignCount: input.agencyTotalScanned,
     researchLog,
     researchSteps: researchLog,
     analyzedCampaigns,
@@ -626,7 +675,8 @@ export async function buildCreatorBrainInsight(input: {
     getCampaignPresetsMap(input.tenantId),
     resolveMetaCompetitorResearch({
       tenantId: input.tenantId,
-      clientId: input.clientId
+      clientId: input.clientId,
+      objective: input.objective
     })
   ]);
 

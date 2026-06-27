@@ -12,12 +12,18 @@ export function DsFlatPanel({
   className
 }: {
   children: ReactNode;
-  /** Centraliza com `max-w-5xl` — padrão da tela Configurações. */
+  /** Constrain to `--app-content-max-width` (full app width). Prefer unset for hub screens. */
   centered?: boolean;
   className?: string;
 }) {
   return (
-    <div className={cn("space-y-8", centered && "mx-auto w-full max-w-5xl", className)}>
+    <div
+      className={cn(
+        "space-y-8",
+        centered && "mx-auto w-full max-w-[var(--app-content-max-width)]",
+        className
+      )}
+    >
       {children}
     </div>
   );

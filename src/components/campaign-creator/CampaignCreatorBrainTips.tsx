@@ -8,6 +8,7 @@ import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftCon
 import { CampaignCreatorScoreBar } from "@/components/campaign-creator/CampaignCreatorScoreBar";
 import {
   OrionBrainCardFeedback,
+  OrionBrainConsultationSummary,
   OrionBrainResearchChecklist
 } from "@/components/campaign-creator/OrionBrainResearchFeedback";
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
@@ -376,6 +377,7 @@ export function CampaignCreatorBrainTips() {
             <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
               {t("brainResearchTimeline")}
             </h3>
+            <OrionBrainConsultationSummary insight={insight} className="mt-2" />
             <OrionBrainResearchChecklist steps={researchSteps} />
             {analyzedCampaignNames.length ? (
               <div className="mt-3">

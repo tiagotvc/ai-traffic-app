@@ -15,6 +15,7 @@ import { DashboardTemplatesModal } from "@/components/dashboard/canvas/Dashboard
 import { layoutHasWidgetPeriodOverrides } from "@/lib/dashboard/widget-period";
 import { HIGHLIGHTS_LAYOUT_EDITOR_V2 } from "@/lib/dashboard/highlights-layout-flags";
 import { cn } from "@/lib/cn";
+import { DsInfoBanner } from "@/design-system";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import type { LayoutDto } from "@/lib/dashboard/widget-catalog";
@@ -298,7 +299,7 @@ export function DashboardCanvas({
       ) : null}
 
       {dashboardData.note && !effectiveEditMode ? (
-        <div className="ui-alert-info mx-4 mt-2 shrink-0">{dashboardData.note}</div>
+        <DsInfoBanner className="mx-4 mt-2 shrink-0 px-4 py-2.5 text-sm">{dashboardData.note}</DsInfoBanner>
       ) : null}
 
       <div className={cn(!highlightsMode && "min-h-0 flex-1 overflow-hidden")}>
@@ -403,7 +404,9 @@ export function DashboardCanvas({
             </button>
           </div>
         ) : null}
-        {dashboardData.note ? <div className="ui-alert-info mb-4">{dashboardData.note}</div> : null}
+        {dashboardData.note ? (
+          <DsInfoBanner className="mb-4 px-4 py-2.5 text-sm">{dashboardData.note}</DsInfoBanner>
+        ) : null}
         <AppCanvasScopeProvider widgets={widgets}>
           {layoutLoading ? (
             <DashboardGridSkeleton />

@@ -76,13 +76,22 @@ Reusable components and CSS patterns used in the **Campaign Creator** wizard (`v
 | `--creator-step-future-*` | muted violet | Inactive stepper steps |
 | `--creator-choice-inactive-*` | muted violet | Unselected choice chips |
 
-**Usage:** Wrap the wizard root with `data-campaign-creator-shell` (set in page layout / `CampaignCreatorClient`).
+**Usage:** Wrap the wizard root with `data-campaign-creator-shell` (set in page layout / `CampaignCreatorClient`). The layout uses `.app-shell-breakout` to negate shell padding; see [app-layout-spacing.md](./app-layout-spacing.md).
 
 ```tsx
-<div data-campaign-creator-shell className="flex min-h-0 flex-1 flex-col">
+<div data-campaign-creator-shell className="app-shell-breakout flex min-h-0 flex-1 flex-col">
   {/* wizard content */}
 </div>
 ```
+
+**Page padding (creator grid, after breakout):**
+
+| Breakpoint | Horizontal | Vertical (header) |
+|------------|------------|-------------------|
+| default | `px-4` | `pt-3 pb-3` |
+| `lg+` | `pl-8 pr-4` | `pt-4 pb-4` |
+
+**Grid:** `gap-x-8`, sidebar `16rem` (`lg`) / `18rem` (`xl`). Section stack: `space-y-6` (`.campaign-creator-section-stack`).
 
 ---
 
@@ -841,5 +850,6 @@ Primary UI accent is **violet in both light and dark mode** via `--ui-accent` in
 
 ## Related docs
 
+- [app-layout-spacing.md](./app-layout-spacing.md) — app-wide page shell tokens (derived from creator spacing)
 - [design-system.md](./design-system.md) — global tokens and `ui-*` utilities
 - [design-system/themes.md](./design-system/themes.md) — theme overrides

@@ -21,7 +21,7 @@ export function AudiencesView() {
   ];
 
   return (
-    <UxPageMain className="space-y-5">
+    <UxPageMain gap="loose">
       <div className="flex flex-wrap gap-2 border-b border-[var(--border-subtle)] pb-3">
         {tabs.map((item) => (
           <button

@@ -14,23 +14,54 @@ export function resolveAgencyScannedCount(insight: CreatorBrainInsightPayload): 
   return getResearchStepCount(resolveResearchSteps(insight), "agency_search");
 }
 
-/** Campaigns consulted for the sidebar badge (matched samples + Meta-synced client campaigns). */
-export function resolveConsultedCampaignsCount(insight: CreatorBrainInsightPayload): number {
-  const totalSampleCount = resolveTotalSampleCount(insight);
-  if (totalSampleCount > 0) return totalSampleCount;
+export function resolveMetaAdsConsultedCount(insight: CreatorBrainInsightPayload): number {
+  return insight.metaAdsConsultedCount ?? insight.metaCompetitorAdCount ?? 0;
+}
 
+export type ConsultationCounts = {
+  clientSynced: number;
+  agencySynced: number;
+  agencyMatched: number;
+  metaAds: number;
+  /** Matched samples used for metrics (client + agency). */
+  matchedSamples: number;
+};
+
+export function resolveConsultationCounts(insight: CreatorBrainInsightPayload): ConsultationCounts {
   const steps = resolveResearchSteps(insight);
-  const clientSynced = getResearchStepCount(steps, "client_campaigns");
+  const clientSynced =
+    insight.clientSyncedCampaignCount ?? getResearchStepCount(steps, "client_campaigns");
+  const agencySynced =
+    insight.agencySyncedCampaignCount ?? getResearchStepCount(steps, "agency_search");
   const agencyMatched = getResearchStepCount(steps, "agency_matched");
-  const metaStep = steps.find((s) => s.step === "meta_competitor_search");
-  const metaApiCalled = metaStep?.status === "done" || metaStep?.status === "fallback";
+  const matchedSamples = resolveTotalSampleCount(insight);
+  const metaAds = resolveMetaAdsConsultedCount(insight);
 
+  return { clientSynced, agencySynced, agencyMatched, metaAds, matchedSamples };
+}
+
+/** Synced Meta campaigns consulted (client + agency pool). */
+export function resolveSyncedCampaignsCount(insight: CreatorBrainInsightPayload): number {
+  const { clientSynced, agencyMatched, agencySynced, matchedSamples } = resolveConsultationCounts(insight);
+  if (matchedSamples > 0) return matchedSamples;
+  if (clientSynced > 0 && agencyMatched > 0) return clientSynced + agencyMatched;
   if (clientSynced > 0) return clientSynced;
   if (agencyMatched > 0) return agencyMatched;
+  if (agencySynced > 0) return agencySynced;
+  return 0;
+}
 
-  const agencyScanned = getResearchStepCount(steps, "agency_search");
-  if (metaApiCalled && agencyScanned > 0) return agencyScanned;
+/** Sidebar badge: synced campaigns, or Meta ads when only Ad Library was queried. */
+export function resolveConsultedCampaignsCount(insight: CreatorBrainInsightPayload): number {
+  const synced = resolveSyncedCampaignsCount(insight);
+  if (synced > 0) return synced;
 
+  const steps = resolveResearchSteps(insight);
+  const metaStep = steps.find((s) => s.step === "meta_competitor_search");
+  const metaApiCalled = metaStep?.status === "done" || metaStep?.status === "fallback";
+  const metaAds = resolveMetaAdsConsultedCount(insight);
+
+  if (metaApiCalled && metaAds > 0) return metaAds;
   return 0;
 }
 
@@ -83,14 +114,10 @@ export function getResearchStepCount(
 
 /** Generic benchmark copy only when no synced campaigns were consulted at all. */
 export function shouldShowBenchmarkFallbackMessage(insight: CreatorBrainInsightPayload): boolean {
-  const totalSampleCount = resolveTotalSampleCount(insight);
-  if (totalSampleCount > 0) return false;
-
-  const steps = resolveResearchSteps(insight);
-  const agencyScanned = getResearchStepCount(steps, "agency_search");
-  const clientCount = getResearchStepCount(steps, "client_campaigns");
-
-  return agencyScanned === 0 && clientCount === 0;
+  const { clientSynced, agencySynced, metaAds } = resolveConsultationCounts(insight);
+  const matchedSamples = resolveTotalSampleCount(insight);
+  if (matchedSamples > 0) return false;
+  return agencySynced === 0 && clientSynced === 0 && metaAds === 0;
 }
 
 export function filterCardResearchSteps(steps: CreatorBrainResearchStep[]): CreatorBrainResearchStep[] {

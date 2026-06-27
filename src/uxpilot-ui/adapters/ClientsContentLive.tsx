@@ -8,7 +8,7 @@ import { PageToolbar } from "@/components/layout/PageToolbar";
 import { IconLabelLink } from "@/components/ui/IconLabelButton";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
-import { DsButton, DsModal } from "@/design-system";
+import { DsButton, DsInfoBanner, DsModal } from "@/design-system";
 import { toUxClientCards, type UxClientCard } from "@/uxpilot-ui/adapters/clients-mappers";
 import { useClientsData } from "@/uxpilot-ui/adapters/useClientsData";
 
@@ -74,7 +74,9 @@ export function ClientsContentLive() {
         }
       />
 
-      {data.message ? <div className="ui-alert-info text-sm">{data.message}</div> : null}
+      {data.message ? (
+        <DsInfoBanner className="px-4 py-2.5 text-sm">{data.message}</DsInfoBanner>
+      ) : null}
 
       {data.loading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -791,10 +791,16 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
   const filteredLiveCreatives = isLive ? (filteredCreatives as UxCreativeCard[]) : [];
   const filteredMockCreatives = !isLive ? (filteredCreatives as CreativeCard[]) : [];
 
+  const liveEmbedded = isLive && live?.hideChrome;
+  const pageShellClass = liveEmbedded
+    ? "w-full"
+    : "flex-1 overflow-y-auto px-4 py-6 sm:px-6";
+  const PageTag = liveEmbedded ? "div" : "main";
+
   return (
-    <main
-          className="flex-1 overflow-y-auto px-4 py-6 sm:px-6"
-          style={{ scrollbarWidth: "thin" }}
+    <PageTag
+          className={pageShellClass}
+          style={liveEmbedded ? undefined : { scrollbarWidth: "thin" }}
           onClick={() => closeAll()}
         >
           {/* ── Page Header (mock only) ── */}
@@ -991,6 +997,6 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
               ≡ Ordenado por: Score (maior — menor)
             </p>
           </div>
-        </main>
+        </PageTag>
   );
 }
