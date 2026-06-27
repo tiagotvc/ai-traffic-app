@@ -415,11 +415,27 @@ async function createAdForAdset(args: {
     const welcome = buildPageWelcomeMessage(ad);
     if (welcome) objectStory.page_welcome_message = welcome;
 
-    const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
-      name: `${campaignName} — ${adName} Creative`,
-      object_story_spec: JSON.stringify(objectStory),
-      asset_feed_spec: JSON.stringify(assetFeedSpec)
-    });
+    const createCreative = (story: Record<string, unknown>) =>
+      metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
+        name: `${campaignName} — ${adName} Creative`,
+        object_story_spec: JSON.stringify(story),
+        asset_feed_spec: JSON.stringify(assetFeedSpec)
+      });
+
+    let creative: { id: string };
+    try {
+      creative = await createCreative(objectStory);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Meta sometimes rejects an instagram_actor_id that isn't valid for the chosen
+      // page. Don't block publishing — retry with the page identity only.
+      if (instagramId && /instagram_actor_id/i.test(msg)) {
+        const { instagram_actor_id: _omitInstagram, ...storyWithoutInstagram } = objectStory;
+        creative = await createCreative(storyWithoutInstagram);
+      } else {
+        throw err;
+      }
+    }
     creativeId = creative.id;
   }
 

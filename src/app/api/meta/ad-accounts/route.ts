@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { In } from "typeorm";
 
 import { repositories } from "@/db/repositories";
-import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { apiErrorResponse, requireAppShellContext } from "@/lib/api-auth";
+import { getClientBySlugOrId } from "@/lib/app-context";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
 
 export async function GET(req: Request) {
   try {
-    const { tenant } = await getAppContext();
+    // Ad accounts are read from the DB only — use the light auth context instead of
+    // getAppContext (which resolves the Meta token + entitlements and was adding
+    // several seconds of latency to this endpoint).
+    const { tenant } = await requireAppShellContext();
     const url = new URL(req.url);
     const clientIdParam = url.searchParams.get("clientId");
 
@@ -66,6 +70,8 @@ export async function GET(req: Request) {
       defaultAdAccountId: accounts[0]?.metaAdAccountId ?? null
     });
   } catch (e) {
+    const authResponse = apiErrorResponse(e, "meta/ad-accounts");
+    if (authResponse.status !== 500) return authResponse;
     const message = e instanceof Error ? e.message : "Failed to load ad accounts";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

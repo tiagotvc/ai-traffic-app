@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { getCachedMetaAssets, setCachedMetaAssets } from "@/lib/meta-assets-cache";
 import { getInventoryMap } from "@/lib/meta-ad-accounts";
 import { listTenantInventory } from "@/lib/meta-discover";
 import {
@@ -17,14 +18,24 @@ import {
   STANDARD_CONVERSION_EVENTS
 } from "@/lib/meta-graph";
 
-/** Returns the path of a Meta CDN URL (host + query stripped) for stable comparison. */
-function normalizeMetaCdnPath(url?: string | null): string | null {
-  if (!url) return null;
+/**
+ * Stable comparison tokens for a Meta CDN URL: the path (host + query stripped) and
+ * the leading numeric id of the filename (the underlying photo/object id). Used to
+ * match a video thumbnail against the auto-generated ad image of the same media.
+ */
+function metaCdnTokens(url?: string | null): string[] {
+  if (!url) return [];
+  let pathname: string;
   try {
-    return new URL(url).pathname;
+    pathname = new URL(url).pathname;
   } catch {
-    return null;
+    return [];
   }
+  const tokens = [`path:${pathname}`];
+  const file = pathname.split("/").pop() ?? "";
+  const leadingId = file.match(/^(\d{6,})/)?.[1];
+  if (leadingId) tokens.push(`id:${leadingId}`);
+  return tokens;
 }
 
 async function validateClientAdAccount(
@@ -78,6 +89,11 @@ export async function GET(req: Request) {
     );
   }
 
+  const cached = await getCachedMetaAssets<Record<string, unknown>>(tenant.id, adAccountId);
+  if (cached) {
+    return NextResponse.json({ ok: true, ...cached });
+  }
+
   const inv = await getInventoryMap(tenant.id);
   const bmFilter = inv.get(adAccountId)?.metaBusinessId ?? undefined;
 
@@ -114,17 +130,18 @@ export async function GET(req: Request) {
     whatsappNumbers = waRows;
 
     // Meta auto-generates ad images from uploaded videos (thumbnails) that pollute
-    // the image library. Drop any ad image whose URL matches a video thumbnail so the
-    // image picker only shows real image creatives.
-    const videoThumbPaths = new Set(
-      videoRows.map((vid) => normalizeMetaCdnPath(vid.picture)).filter((p): p is string => !!p)
-    );
+    // the image library. Drop any ad image that shares a CDN path or photo id with a
+    // video thumbnail so the image picker only shows real image creatives.
+    const videoThumbTokens = new Set<string>();
+    for (const vid of videoRows) {
+      for (const token of metaCdnTokens(vid.picture)) videoThumbTokens.add(token);
+    }
 
     const imageAssets = imageRows
       .filter((img) => !!img.hash)
       .filter((img) => {
-        const path = normalizeMetaCdnPath(img.url);
-        return !path || !videoThumbPaths.has(path);
+        const tokens = metaCdnTokens(img.url);
+        return !tokens.some((token) => videoThumbTokens.has(token));
       })
       .map((img) => ({
         id: img.hash as string,
@@ -153,8 +170,7 @@ export async function GET(req: Request) {
     ];
   }
 
-  return NextResponse.json({
-    ok: true,
+  const payload = {
     adAccounts,
     pages,
     pixels,
@@ -162,5 +178,12 @@ export async function GET(req: Request) {
     whatsappNumbers,
     assets,
     customConversions
-  });
+  };
+
+  // Only cache once the Meta token resolved real data — never cache empty results.
+  if (metaAccessToken) {
+    await setCachedMetaAssets(tenant.id, adAccountId, payload);
+  }
+
+  return NextResponse.json({ ok: true, ...payload });
 }
