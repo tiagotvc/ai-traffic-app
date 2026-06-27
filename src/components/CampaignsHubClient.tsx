@@ -217,6 +217,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [, startStatusTransition] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [dataUpdatedAt, setDataUpdatedAt] = useState<string | null>(null);
+  const [syncPolling, setSyncPolling] = useState(false);
+  const [needsAutoSync, setNeedsAutoSync] = useState(false);
+  const [syncTriggering, setSyncTriggering] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedSlug, setSelectedSlug] = useState("");
   const [selectedRow, setSelectedRow] = useState<CampaignRow | null>(null);
@@ -574,6 +577,65 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       window.removeEventListener("traffic-sync-done", onSync);
     };
   }, [load, reloadPresets]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | undefined;
+
+    async function pollSyncStatus() {
+      const qs = clientFilter ? `?clientId=${encodeURIComponent(clientFilter)}` : "";
+      try {
+        const res = await fetch(`/api/sync/status${qs}`);
+        const j = (await res.json()) as {
+          needsAutoSync?: boolean;
+          activeSyncRunId?: string | null;
+          lastRun?: { status?: string } | null;
+        };
+        if (cancelled) return;
+        const running =
+          !!j.activeSyncRunId ||
+          j.lastRun?.status === "running" ||
+          j.lastRun?.status === "queued";
+        setSyncPolling(running);
+        setNeedsAutoSync(!!j.needsAutoSync && !running);
+        if (running) {
+          timer = window.setTimeout(pollSyncStatus, 2500);
+        }
+      } catch {
+        if (!cancelled) {
+          setSyncPolling(false);
+        }
+      }
+    }
+
+    void pollSyncStatus();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [clientFilter]);
+
+  async function triggerClientSync() {
+    setSyncTriggering(true);
+    try {
+      const res = await fetch("/api/sync/run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          clientId: clientFilter || undefined,
+          auto: true
+        })
+      });
+      if (res.ok) {
+        setSyncPolling(true);
+        setNeedsAutoSync(false);
+        window.dispatchEvent(new Event("traffic-sync-done"));
+        load({ live: true });
+      }
+    } finally {
+      setSyncTriggering(false);
+    }
+  }
 
   useCommandStripPage(useUxChrome ? { hideFilters: true, hideSync: true } : {});
 
@@ -1441,21 +1503,34 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         <p className="text-center text-sm text-[var(--text-dim)]">{t("pickRowHint")}</p>
       ) : total > 0 && useUxChrome ? null : (
         <div className="ui-card space-y-4 p-8 text-center">
-          <p className="text-lg font-semibold text-[var(--text-main)]">{t("emptyTitle")}</p>
-          <p className="mx-auto max-w-lg text-sm text-[var(--text-dim)]">{t("emptyExplain")}</p>
+          <p className="text-lg font-semibold text-[var(--text-main)]">
+            {syncPolling || syncTriggering ? tSync("syncingCampaigns") : t("emptyTitle")}
+          </p>
+          <p className="mx-auto max-w-lg text-sm text-[var(--text-dim)]">
+            {syncPolling || syncTriggering
+              ? t("emptySyncingExplain")
+              : needsAutoSync
+                ? t("emptyNeedsSyncExplain")
+                : t("emptyExplain")}
+          </p>
           <div className="flex flex-wrap justify-center gap-2">
-            <button type="button" onClick={() => openPanel()} className="ui-btn-accent">
-              {t("createFirst")}
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                fetch("/api/sync/run", { method: "POST" }).then(() => load({ live: true }))
-              }
-              className="ui-btn-accent-outline"
-            >
-              {t("syncNow")}
-            </button>
+            {!syncPolling && !syncTriggering ? (
+              <button type="button" onClick={() => openPanel()} className="ui-btn-accent">
+                {t("createFirst")}
+              </button>
+            ) : null}
+            {syncPolling || syncTriggering ? (
+              <p className="text-sm text-[var(--text-dim)]">{tSync("syncing")}</p>
+            ) : (
+              <button
+                type="button"
+                disabled={syncTriggering}
+                onClick={() => void triggerClientSync()}
+                className="ui-btn-accent-outline"
+              >
+                {needsAutoSync ? t("syncNowHighlight") : t("syncNow")}
+              </button>
+            )}
           </div>
         </div>
       )}

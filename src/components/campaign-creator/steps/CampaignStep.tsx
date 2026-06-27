@@ -562,8 +562,6 @@ export function CampaignStep() {
 
         </div>
 
-
-
         <div className="campaign-creator-choice-cards campaign-creator-choice-cards--2">
 
           <DsChoiceCard
@@ -606,13 +604,9 @@ export function CampaignStep() {
 
       </div>
 
-
-
       <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pt-5 pb-2">
 
         <div className="space-y-3">
-
-
 
       {activeSection === "objective" ? (
 

@@ -15,7 +15,9 @@ export function ClientMetaExtras({
   defaultAdAccountId: string;
 }) {
   const t = useTranslations("client");
-  const [metaPixelId, setMetaPixelId] = useState("");
+  const [linkedPixelIds, setLinkedPixelIds] = useState<string[]>([]);
+  const [availablePixels, setAvailablePixels] = useState<Array<{ id: string; name: string }>>([]);
+  const [pixelsLoading, setPixelsLoading] = useState(false);
   const [metaLeadFormId, setMetaLeadFormId] = useState("");
   const [instagramActorId, setInstagramActorId] = useState("");
   const [defaultCta, setDefaultCta] = useState("LEARN_MORE");
@@ -44,7 +46,10 @@ export function ClientMetaExtras({
       .then((j) => {
         const s = j.settings;
         if (s) {
-          setMetaPixelId(s.metaPixelId ?? "");
+          const ids =
+            (s.linkedMetaPixelIds as string[] | undefined)?.filter(Boolean) ??
+            (s.metaPixelId ? [s.metaPixelId] : []);
+          setLinkedPixelIds(ids);
           setMetaLeadFormId(s.metaLeadFormId ?? "");
           setInstagramActorId(s.instagramActorId ?? "");
           setDefaultCta(s.defaultCta ?? "LEARN_MORE");
@@ -72,6 +77,20 @@ export function ClientMetaExtras({
 
   useEffect(() => {
     if (!defaultAdAccountId) return;
+    setPixelsLoading(true);
+    fetch(
+      `/api/meta/assets?clientId=${encodeURIComponent(clientId)}&adAccountId=${encodeURIComponent(defaultAdAccountId)}`
+    )
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setAvailablePixels(j.pixels ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setPixelsLoading(false));
+  }, [clientId, defaultAdAccountId]);
+
+  useEffect(() => {
+    if (!defaultAdAccountId) return;
     fetch(`/api/meta/audiences?adAccountId=${encodeURIComponent(defaultAdAccountId)}`)
       .then((r) => r.json())
       .then((j) => setAudiences(j.audiences ?? []));
@@ -83,7 +102,8 @@ export function ClientMetaExtras({
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          metaPixelId: metaPixelId || null,
+          linkedMetaPixelIds: linkedPixelIds,
+          metaPixelId: linkedPixelIds[0] ?? null,
           metaLeadFormId: metaLeadFormId || null,
           instagramActorId: instagramActorId || null,
           defaultCta,
@@ -129,7 +149,40 @@ export function ClientMetaExtras({
       <div className="ui-card p-4">
         <div className="text-sm font-semibold">{t("metaAdvanced")}</div>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label={t("metaPixelId")} value={metaPixelId} onChange={setMetaPixelId} />
+          <div className="sm:col-span-2">
+            <div className="text-xs text-[var(--text-dim)]">{t("metaPixelId")}</div>
+            <p className="mt-1 text-[11px] text-[var(--text-dimmer)]">{t("metaPixelsHint")}</p>
+            {pixelsLoading ? (
+              <p className="mt-2 text-xs text-[var(--text-dim)]">{t("loadingPixels")}</p>
+            ) : availablePixels.length === 0 ? (
+              <p className="mt-2 text-xs text-[var(--text-dimmer)]">{t("noPixelsAvailable")}</p>
+            ) : (
+              <div className="mt-2 max-h-36 space-y-1 overflow-y-auto rounded-xl border border-[var(--border-color)] p-2">
+                {availablePixels.map((px) => (
+                  <label
+                    key={px.id}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={linkedPixelIds.includes(px.id)}
+                      onChange={(e) => {
+                        setLinkedPixelIds((prev) =>
+                          e.target.checked
+                            ? [...prev, px.id]
+                            : prev.filter((id) => id !== px.id)
+                        );
+                      }}
+                      className="accent-violet-600"
+                    />
+                    <span>
+                      {px.name} <span className="text-[var(--text-dim)]">({px.id})</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           <Field label={t("metaLeadFormId")} value={metaLeadFormId} onChange={setMetaLeadFormId} />
           <Field label={t("instagramActorId")} value={instagramActorId} onChange={setInstagramActorId} />
           <div>

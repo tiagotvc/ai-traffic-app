@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class McpTokens_1735832200000 implements MigrationInterface {
-  name = "McpTokens_1735832200000";
+export class McpTokens_1735832300000 implements MigrationInterface {
+  name = "McpTokens_1735832300000";
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

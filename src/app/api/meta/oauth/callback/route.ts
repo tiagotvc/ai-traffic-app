@@ -7,6 +7,7 @@ import {
   exchangeMetaBusinessCode,
   readMetaOAuthCookies
 } from "@/lib/meta-business-oauth";
+import { runMetaDiscover } from "@/lib/meta-discover";
 import { resolveRequestOrigin } from "@/lib/app-url";
 import { routing } from "@/i18n/routing";
 
@@ -57,6 +58,15 @@ export async function GET(req: Request) {
   }
 
   await ensureWorkspaceMetaConnectionAfterOAuth(userId, tenantId);
+
+  try {
+    const ctx = await getAppContext();
+    if (ctx.metaAccessToken) {
+      await runMetaDiscover(tenantId, ctx.metaAccessToken);
+    }
+  } catch {
+    /* redirect mesmo se discover falhar — wizard fará fetch live */
+  }
 
   const targetPath = redirectTo?.startsWith("/") ? redirectTo : fallback;
   const targetUrl = new URL(targetPath, appOrigin);

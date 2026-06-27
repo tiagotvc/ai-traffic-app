@@ -5,7 +5,7 @@ import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, getMetaAccessTokenForAdAccount } from "@/lib/app-context";
 import { CampaignDraftPayloadSchema } from "@/lib/campaign-draft";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
-import { requireMetaPublishConfig } from "@/lib/client-publish-config";
+import { resolveAdPublishConfig, PublishConfigError } from "@/lib/client-publish-config";
 import { createCampaignFromDraft, createFullMetaCampaign } from "@/lib/meta-campaign";
 import { MetaCreativeValidationError } from "@/lib/meta-ad-creative";
 import { formatMetaGraphError } from "@/lib/meta-error";
@@ -106,29 +106,26 @@ export async function POST(req: Request) {
     if (!primaryAd) {
       return NextResponse.json({ ok: false, error: "Rascunho sem anúncios" }, { status: 400 });
     }
-    const overridePage = primaryAd.pageId?.trim();
-    const overrideLink = primaryAd.linkUrl?.trim();
-
-    if (overrideLink && primaryAd.destinationType === "website") {
-      try {
-        new URL(overrideLink);
-      } catch {
-        return NextResponse.json({ ok: false, error: "URL de destino inválida" }, { status: 400 });
-      }
-    }
-
     let publish;
     try {
-      publish = requireMetaPublishConfig({
-        metaPageId: overridePage || client.metaPageId,
-        metaLinkUrl: overrideLink || client.metaLinkUrl
+      publish = resolveAdPublishConfig({
+        client,
+        pageId: primaryAd.pageId,
+        linkUrl: primaryAd.linkUrl,
+        destinationType: primaryAd.destinationType
       });
-    } catch {
+    } catch (err) {
+      if (err instanceof PublishConfigError) {
+        return NextResponse.json(
+          { ok: false, error: err.code, message: err.message },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         {
           ok: false,
           error: "CLIENT_PUBLISH_CONFIG_REQUIRED",
-          message: "Selecione a Página Meta e a URL de destino (ou configure no perfil do cliente)."
+          message: "Selecione a Página Meta (ou configure no perfil do cliente)."
         },
         { status: 400 }
       );
@@ -146,7 +143,7 @@ export async function POST(req: Request) {
         adAccountId: draft.adAccountId,
         draft,
         pageId: publish.metaPageId,
-        linkUrl: publish.metaLinkUrl,
+        linkUrl: publish.metaLinkUrl ?? "",
         settings,
         callToAction: settings.defaultCta,
         tenantId: tenant.id,
@@ -198,30 +195,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
   }
 
-  const overridePage = body.metaPageId?.trim();
-  const overrideLink = body.metaLinkUrl?.trim();
-
-  if (overrideLink) {
-    try {
-      new URL(overrideLink);
-    } catch {
-      return NextResponse.json({ ok: false, error: "URL de destino inválida" }, { status: 400 });
-    }
-  }
-
   let publish;
   try {
-    publish = requireMetaPublishConfig({
-      metaPageId: overridePage || client.metaPageId,
-      metaLinkUrl: overrideLink || client.metaLinkUrl
+    publish = resolveAdPublishConfig({
+      client,
+      pageId: body.metaPageId,
+      linkUrl: body.metaLinkUrl,
+      destinationType: body.metaLinkUrl?.trim() ? "website" : undefined
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof PublishConfigError) {
+      return NextResponse.json(
+        { ok: false, error: err.code, message: err.message },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
       {
         ok: false,
         error: "CLIENT_PUBLISH_CONFIG_REQUIRED",
-        message:
-          "Selecione a Página Meta e a URL de destino do anúncio (ou configure no perfil do cliente)."
+        message: "Selecione a Página Meta (ou configure no perfil do cliente)."
       },
       { status: 400 }
     );
@@ -248,7 +241,7 @@ export async function POST(req: Request) {
       descriptions: body.descriptions,
       imageHashes: body.assetIds,
       pageId: publish.metaPageId,
-      linkUrl: publish.metaLinkUrl,
+      linkUrl: publish.metaLinkUrl ?? "",
       settings,
       callToAction: settings.defaultCta,
       targeting: body.targeting

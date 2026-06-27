@@ -165,6 +165,8 @@ export function SettingsIntegrationsTab({
           </div>
         </div>
 
+        <p className="mt-3 text-xs leading-relaxed text-[var(--text-dim)]">{t("metaAdsVsLoginHint")}</p>
+
         <div className="mt-4 flex flex-wrap gap-2">
           {connectMetaSlot}
           <Link href="/settings/meta-assets" className="ui-btn-secondary px-3 py-1.5 text-xs">

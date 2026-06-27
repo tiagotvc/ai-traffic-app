@@ -20,6 +20,7 @@ const PatchSchema = z.object({
   metaPageId: z.string().nullable().optional(),
   metaLinkUrl: z.string().nullable().optional(),
   metaPixelId: z.string().nullable().optional(),
+  linkedMetaPixelIds: z.array(z.string()).optional(),
   metaLeadFormId: z.string().nullable().optional(),
   instagramActorId: z.string().nullable().optional(),
   defaultObjective: z.enum(["leads", "sales", "traffic"]).optional(),
@@ -125,7 +126,7 @@ export async function GET(
     },
     publish: {
       ...resolved.publish,
-      ready: !!(resolved.publish.pageId && resolved.publish.linkUrl)
+      ready: !!resolved.publish.pageId
     },
     client: {
       metaPageId: client?.metaPageId ?? null,

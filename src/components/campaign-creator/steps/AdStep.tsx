@@ -31,7 +31,7 @@ export function AdStep() {
   const tAds = useTranslations("ads");
   const locale = useLocale();
   const { payload, updatePayload, addAdMode } = useCampaignDraft();
-  const { assets, pages, instagramAccounts, pixels, whatsappNumbers, loadAssets } = usePublishAssets(
+  const { assets, pages, instagramAccounts, pixels, whatsappNumbers, loadAssets, assetsError } = usePublishAssets(
     payload.clientSlug,
     payload.adAccountId
   );
@@ -481,7 +481,7 @@ export function AdStep() {
           <>
             {!pages.length && payload.adAccountId ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                <p>{t("identityPagesEmpty")}</p>
+                <p>{assetsError ? t("identityAssetsError") : t("identityPagesEmpty")}</p>
                 <button
                   type="button"
                   onClick={() => void loadAssets(payload.adAccountId)}
@@ -489,6 +489,11 @@ export function AdStep() {
                 >
                   {t("identityRecheck")}
                 </button>
+                {assetsError ? (
+                  <p className="mt-1 text-[10px] opacity-80">
+                    {t("identityAssetsErrorCode", { code: assetsError })}
+                  </p>
+                ) : null}
               </div>
             ) : null}
             <FormField label={tAds("page")}>

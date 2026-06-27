@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { DsPageHeader } from "@/design-system";
 import { ClientMetaExtras } from "@/components/ClientMetaExtras";
 import { ClientReadinessChecklist } from "@/components/ClientReadinessChecklist";
+import { ClientSyncBanner } from "@/components/ClientSyncBanner";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { UxFormCard } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
@@ -79,7 +80,6 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
   const [bmFilter, setBmFilter] = useState<string>("");
   const [linkedMetaIds, setLinkedMetaIds] = useState<string[]>([]);
   const [metaPageId, setMetaPageId] = useState("");
-  const [metaLinkUrl, setMetaLinkUrl] = useState("");
   const [availablePages, setAvailablePages] = useState<
     Array<{ id: string; name: string; metaBusinessId?: string | null }>
   >([]);
@@ -157,7 +157,6 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
       .then((j) => {
         if (j.client) {
           setMetaPageId(j.client.metaPageId ?? "");
-          setMetaLinkUrl(j.client.metaLinkUrl ?? "");
         }
         setAvailablePages(j.availablePages ?? []);
         setPublishReady(!!j.publish?.ready);
@@ -244,6 +243,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
         ) : null}
 
         <ClientReadinessChecklist clientId={clientId} />
+        <ClientSyncBanner clientId={clientId} />
 
         <div className="ui-card p-4">
           <div className="flex items-start justify-between gap-3">
@@ -331,7 +331,7 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
           ) : (
             <div className="ui-alert-success mt-2">{t("publishReady")}</div>
           )}
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3">
             <div>
               <div className="ui-label">{t("metaPageId")}</div>
               {filteredPages.length > 0 ? (
@@ -356,15 +356,6 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                 </div>
               )}
             </div>
-            <div>
-              <div className="ui-label">{t("metaLinkUrl")}</div>
-              <input
-                value={metaLinkUrl}
-                onChange={(e) => setMetaLinkUrl(e.target.value)}
-                placeholder="https://seusite.com.br"
-                className="mt-1 w-full rounded-xl ui-input"
-              />
-            </div>
           </div>
           <div className="mt-3 flex justify-end">
             <UxSaveButton
@@ -376,11 +367,11 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
                     {
                       method: "PATCH",
                       headers: { "content-type": "application/json" },
-                      body: JSON.stringify({ metaPageId: metaPageId || null, metaLinkUrl: metaLinkUrl || null })
+                      body: JSON.stringify({ metaPageId: metaPageId || null })
                     }
                   );
                   const j = await res.json();
-                  setPublishReady(!!(j.publish?.pageId && j.publish?.linkUrl));
+                  setPublishReady(!!j.publish?.pageId);
                   notify(j.ok ? "success" : "error", j.ok ? t("publishSaved") : j.error ?? t("loadError"));
                 });
               }}
