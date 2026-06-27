@@ -133,10 +133,9 @@ export function AdSetConfigurationPanel({
           </FormField>
         ) : null}
 
-        {(adset.conversionLocation === "website" ||
-          adset.conversionLocation === "website_and_form" ||
-          payload.objective === "sales") &&
-        pixelOptions.length > 0 ? (
+        {adset.conversionLocation === "website" ||
+        adset.conversionLocation === "website_and_form" ||
+        payload.objective === "sales" ? (
           <div className={cn("grid gap-3 sm:grid-cols-2", !isStacked && "campaign-creator-budget-group")}>
             <FormField label={tAds("pixel")}>
               <FormSelect
@@ -146,6 +145,9 @@ export function AdSetConfigurationPanel({
                 options={pixelOptions}
                 disabled={clientRequired}
               />
+              {pixelOptions.length === 0 ? (
+                <p className="mt-1 text-[11px] text-[var(--text-dim)]">{t("pixelEmptyHint")}</p>
+              ) : null}
             </FormField>
             <FormField label={t("conversionEvent")}>
               <FormSelect

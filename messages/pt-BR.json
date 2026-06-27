@@ -3014,6 +3014,7 @@
     "uploadRequestTooLarge": "O servidor recusou o envio (limite de tamanho da requisição). O app agora envia em partes; reinicie o servidor e tente de novo.",
     "videoTooLarge": "Vídeo muito grande (máx. 100 MB).",
     "imageTooLarge": "Imagem muito grande (máx. 30 MB).",
+    "pixelEmptyHint": "Nenhum pixel vinculado a esta conta. Conecte um pixel nas configurações da conta na Meta.",
     "campaignNamePlaceholder": "Ex.: Black Friday — Conversões",
     "identityPagesLoading": "Carregando páginas vinculadas…",
     "targetingMethodNoticeTitle": "Escolha um método de segmentação",

@@ -3011,6 +3011,7 @@
     "uploadRequestTooLarge": "The server rejected the upload (request size limit). The app now uploads in chunks; restart the server and try again.",
     "videoTooLarge": "Video is too large (max 100 MB).",
     "imageTooLarge": "Image is too large (max 30 MB).",
+    "pixelEmptyHint": "No pixel linked to this account. Connect one in the account settings on Meta.",
     "campaignNamePlaceholder": "e.g. Black Friday — Conversions",
     "identityPagesLoading": "Loading linked pages…",
     "targetingMethodNoticeTitle": "Pick one targeting method",
