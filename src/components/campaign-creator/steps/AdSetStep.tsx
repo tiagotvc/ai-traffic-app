@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { CalendarDays, SlidersHorizontal, Users } from "lucide-react";
+import { CalendarDays, SlidersHorizontal, Tag, Users } from "lucide-react";
 
 import { AdSetCompilerLeadCards } from "@/components/campaign-creator/AdSetCompilerLeadCards";
 import { AdSetConfigurationModal } from "@/components/campaign-creator/AdSetConfigurationModal";
@@ -18,6 +18,7 @@ import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCr
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { useAdSetStepSubflow, type AdSetSection } from "@/components/campaign-creator/AdSetStepSubflowContext";
 import { FormField } from "@/components/ui/FormField";
+import { FilterTextField } from "@/components/FilterTextField";
 import { type FormSelectOption } from "@/components/ui/FormSelect";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, type ImportedAdConfig } from "@/lib/campaign-ad-import";
@@ -436,6 +437,23 @@ export function AdSetStep() {
         <div>
           <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">{t("treeAdset")}</h2>
           <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("adsetStepHint")}</p>
+        </div>
+
+        <FilterTextField
+          className="ui-filter-panel-field"
+          icon={<Tag size={13} />}
+          label={`${t("adsetName")} *`}
+          placeholder={t("adsetNamePlaceholder")}
+          value={adset.name}
+          onChange={(name) => patchAdset({ name })}
+          disabled={clientRequired}
+        />
+
+        <div className="rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-3 py-2.5">
+          <p className="text-xs font-semibold text-[var(--ui-accent)]">{t("targetingMethodNoticeTitle")}</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-dim)]">
+            {t("targetingMethodNoticeBody")}
+          </p>
         </div>
 
         <div className="campaign-creator-choice-cards campaign-creator-choice-cards--3">

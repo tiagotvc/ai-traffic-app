@@ -881,6 +881,32 @@ export async function uploadAdImage(
   });
 }
 
+/**
+ * Upload an image to the ad account library from raw bytes (multipart), instead of
+ * passing a remote `url`. Required when the source is a local file assembled from
+ * chunked parts — Meta cannot fetch `data:` URLs.
+ */
+export async function uploadAdImageBytes(
+  accessToken: string,
+  adAccountId: string,
+  file: Buffer,
+  fileName: string,
+  name: string
+): Promise<{ images: Record<string, { hash: string }> }> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const form = new FormData();
+  form.append("access_token", accessToken);
+  form.append("name", name);
+  form.append(fileName, new Blob([new Uint8Array(file)]), fileName);
+
+  const url = `${GRAPH_BASE}/${encodeURIComponent(act)}/adimages`;
+  const { data } = await metaFetchWithRateLimit<{ images: Record<string, { hash: string }> }>(url, {
+    method: "POST",
+    body: form
+  });
+  return data;
+}
+
 export async function uploadAdVideo(
   accessToken: string,
   adAccountId: string,

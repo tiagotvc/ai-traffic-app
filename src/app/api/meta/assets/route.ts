@@ -17,6 +17,16 @@ import {
   STANDARD_CONVERSION_EVENTS
 } from "@/lib/meta-graph";
 
+/** Returns the path of a Meta CDN URL (host + query stripped) for stable comparison. */
+function normalizeMetaCdnPath(url?: string | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return null;
+  }
+}
+
 async function validateClientAdAccount(
   tenantId: string,
   clientSlug: string,
@@ -102,8 +112,20 @@ export async function GET(req: Request) {
     pixels = pixelRows.map((p) => ({ id: p.id, name: p.name?.trim() || p.id }));
     instagramAccounts = igRows;
     whatsappNumbers = waRows;
+
+    // Meta auto-generates ad images from uploaded videos (thumbnails) that pollute
+    // the image library. Drop any ad image whose URL matches a video thumbnail so the
+    // image picker only shows real image creatives.
+    const videoThumbPaths = new Set(
+      videoRows.map((vid) => normalizeMetaCdnPath(vid.picture)).filter((p): p is string => !!p)
+    );
+
     const imageAssets = imageRows
       .filter((img) => !!img.hash)
+      .filter((img) => {
+        const path = normalizeMetaCdnPath(img.url);
+        return !path || !videoThumbPaths.has(path);
+      })
       .map((img) => ({
         id: img.hash as string,
         label: img.name?.trim() || (img.hash as string),
