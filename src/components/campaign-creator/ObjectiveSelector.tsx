@@ -103,7 +103,7 @@ export function ObjectiveSelector({
       <p
         className={
           compact
-            ? "mt-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-dimmer)]"
+            ? "mt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-dimmer)]"
             : "mt-6 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text-dimmer)]"
         }
       >
@@ -112,7 +112,7 @@ export function ObjectiveSelector({
       <div
         className={
           compact
-            ? "campaign-creator-objective-grid--compact mt-2"
+            ? "campaign-creator-objective-grid--compact mt-3"
             : "mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3"
         }
       >

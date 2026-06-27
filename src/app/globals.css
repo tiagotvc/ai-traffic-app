@@ -1891,12 +1891,18 @@ h6,
   }
 
   .campaign-creator-objective-card--compact {
-    @apply flex w-full !min-h-[5.25rem] flex-col items-center justify-center rounded-xl p-2.5 text-center;
+    @apply flex w-full !min-h-[5.75rem] flex-col items-center justify-center rounded-xl p-3 text-center;
   }
 
   @media (min-width: 768px) {
     .campaign-creator-objective-card--compact {
-      @apply min-h-[6.75rem] py-3;
+      @apply min-h-[7.25rem] py-3.5;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .campaign-creator-objective-card--compact {
+      @apply min-h-[8rem] py-4;
     }
   }
 
