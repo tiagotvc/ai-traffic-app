@@ -453,26 +453,30 @@ export async function fetchUserPages(accessToken: string): Promise<MetaFacebookP
   return fetchGraphPaged<MetaFacebookPage>("/me/accounts?fields=id,name&limit=100", accessToken);
 }
 
-/** Páginas que a conta de anúncios pode promover (live Graph API). */
+/**
+ * Páginas que a conta de anúncios pode promover (live Graph API).
+ *
+ * Usa apenas a edge `promote_pages`, que é a válida no nó `act_<id>`. A antiga
+ * `assigned_pages` não existe nesse nó (só em Business/System User) e sempre
+ * retornava o erro `(#100) nonexisting field`. Páginas atribuídas via Business
+ * já chegam pelo inventário local em `resolvePagesForAdAccount`.
+ */
 export async function fetchPagesForAdAccount(
   accessToken: string,
   adAccountId: string
 ): Promise<MetaFacebookPage[]> {
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
-  for (const edge of ["assigned_pages", "promote_pages"] as const) {
-    try {
-      const rows = await fetchGraphPaged<MetaFacebookPage>(
-        `/${encodeURIComponent(act)}/${edge}?fields=id,name&limit=100`,
-        accessToken
-      );
-      if (rows.length) return rows;
-    } catch (err) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn(`[meta-graph] ${edge} for ${act}:`, err);
-      }
+  try {
+    return await fetchGraphPaged<MetaFacebookPage>(
+      `/${encodeURIComponent(act)}/promote_pages?fields=id,name&limit=100`,
+      accessToken
+    );
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[meta-graph] promote_pages for ${act}:`, err);
     }
+    return [];
   }
-  return [];
 }
 
 /** Instagram vinculado às páginas (fallback quando instagram_accounts da conta vem vazio). */
