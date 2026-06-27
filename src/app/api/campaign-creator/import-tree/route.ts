@@ -60,7 +60,11 @@ function filterCampaignsForClient(
   if (!scoped) return rows.slice(0, 40);
   const needle = prefix.toLowerCase();
   const filtered = rows.filter((c) => (c.name ?? "").toLowerCase().includes(needle));
-  return filtered.slice(0, 40);
+  // The ad account is already validated as belonging to the client, so when no
+  // campaign matches the client name prefix (e.g. campaigns created directly on Meta
+  // without the prefix) fall back to all of the account's campaigns instead of an
+  // empty list.
+  return (filtered.length ? filtered : rows).slice(0, 40);
 }
 
 export async function GET(req: Request) {
