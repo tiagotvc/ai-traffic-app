@@ -29,8 +29,9 @@ Além de **Brain**, **Campanhas** e **Públicos**, o registry agora tem:
   via `isPlatformFeatureEnabled`. Ver [ai-router](./ai-router/README.md).
 - **`brain.mcp`** — servidor MCP sobre o Brain. ✅ **Implementado (read-only)** — ver
   [mcp](./mcp/README.md). (+ `brain.mcp.write` — escrita, **pendente** P1.4.)
-- **`meta`** — `meta.capi` (Conversions API) e `meta.attribution` (janelas). **Flags criadas;
-  implementação pendente** (P0/P2 do plano).
+- **`meta`** — `meta.capi` (Conversions API ✅ engine+teste) e `meta.attribution` (janelas ✅ fundação).
+  Ver [meta-conversions](./meta-conversions/README.md). (P0.3/P0.4 e wiring de insights pendentes.)
+- **`brain.mcp.write`** — escrita via MCP. ✅ **Implementado** (`propose_action` → proposta pendente).
 
 ## Arquitetura
 

@@ -15,17 +15,31 @@ type Props = {
   className?: string;
   /** Compact pill for tabs/buttons; default bordered hint for forms. */
   variant?: "hint" | "pill";
+  /** When set, shows credits consumed on the last successful action. */
+  consumed?: boolean;
+  /** Override consumed amount (defaults to unit cost × calls). */
+  consumedAmount?: number;
 };
 
-export function AiCreditCostHint({ kind, calls = 1, className, variant = "hint" }: Props) {
+export function AiCreditCostHint({
+  kind,
+  calls = 1,
+  className,
+  variant = "hint",
+  consumed = false,
+  consumedAmount
+}: Props) {
   const t = useTranslations("campaignCreator");
   const unitCost = useAiCreditCost(kind);
   const total = Math.max(1, unitCost * calls);
+  const charged = consumedAmount ?? total;
 
   if (variant === "pill") {
     return (
       <span className={cn("ui-ai-credit-pill", className)}>
-        {t("aiCreditCostPill", { count: total })}
+        {consumed
+          ? t("aiCreditConsumedPill", { count: charged })
+          : t("aiCreditCostPill", { count: total })}
         <AiCreditBalanceSuffix />
       </span>
     );

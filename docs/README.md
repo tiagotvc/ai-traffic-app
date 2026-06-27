@@ -41,7 +41,8 @@ Organizadas pelas **abas do sidebar** do app.
 | Landing, Planos, Addons e Login | [`landing-e-planos/`](./landing-e-planos/README.md) | URL da landing, análise vs. Reportei, recomendação de planos/preços, addons e painel de login. |
 | **Inteligência competitiva** | [`concorrentes/`](./concorrentes/README.md) | Análise de concorrentes + cruzamento conosco + estratégia. Inclui **VT Group "Traffic AI"** (modelo vitalício) e por que ele é insustentável. |
 | **Roteador de IA (Gemini+Claude)** | [`ai-router/`](./ai-router/README.md) | Camada única que decide qual modelo usar por tarefa (economia × acertividade), com fallback cross-provider. Flags `ai.*`. |
-| **Servidor MCP (Agency Brain)** | [`mcp/`](./mcp/README.md) | Expõe o Brain via MCP (read-only) para ferramentas de IA externas. Tokens por tenant; flag `brain.mcp`. |
+| **Servidor MCP (Agency Brain)** | [`mcp/`](./mcp/README.md) | Expõe o Brain via MCP (read + escrita/propostas) para ferramentas de IA externas. Tokens por tenant; flags `brain.mcp(.write)`. |
+| **Meta — CAPI & Atribuição** | [`meta-conversions/`](./meta-conversions/README.md) | Conversions API (server-side + hash PII + dedupe + teste) e janelas de atribuição. Flags `meta.capi`/`meta.attribution`. |
 | **Feature Flags (plataforma)** | [`feature-flags.md`](./feature-flags.md) | Liga/desliga hierárquico de módulos/funcionalidades (admin), incl. `ai.*`, `brain.mcp`, `meta.*`. |
 
 ## Convenções

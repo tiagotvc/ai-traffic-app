@@ -11,7 +11,7 @@ import {
   filterCardResearchSteps,
   filterHighlightResearchSteps,
   isBenchmarkOnly,
-  resolveTotalSampleCount,
+  resolveConsultedCampaignsCount,
   shouldShowBenchmarkFallbackMessage
 } from "@/lib/campaign-creator/orion-brain-utils";
 
@@ -32,10 +32,15 @@ function researchStepLabel(step: CreatorBrainResearchStep, t: CampaignCreatorT):
   }
   if (step.step === "meta_competitor_search") {
     if (step.detail === "no_client_selected") return t("brainResearchMetaNoClient");
-    if (step.detail === "no_competitors") return t("brainResearchMetaNoCompetitors");
     if (step.detail === "api_not_configured") return t("brainResearchMetaApiNotConfigured");
+    if (step.detail === "no_competitors") return t("brainResearchMetaNoCompetitors");
+    if (step.detail === "niche_keywords_only") {
+      if (step.status === "done") return t("brainResearchMetaNicheDone", { count: step.count ?? 0 });
+      return t("brainResearchMetaNicheEmpty");
+    }
     if (step.status === "done") return t("brainResearchMetaDone", { count: step.count ?? 0 });
-    return t("brainResearchMetaSkipped");
+    if (step.status === "fallback") return t("brainResearchMetaSkipped");
+    return t("brainResearchMetaNoCompetitors");
   }
   if (step.step === "metrics_computed") {
     return t("brainResearchMetricsComputed", { count: step.count ?? 0 });
@@ -85,16 +90,26 @@ export function OrionBrainResearchChecklist({
   );
 }
 
-export function OrionBrainSampleBadge({ count }: { count: number }) {
+function OrionBrainConsultedCampaignsBadge({ count }: { count: number }) {
   const t = useTranslations("campaignCreator");
   if (count <= 0) return null;
 
   return (
     <div className="campaign-creator-orion-sample-badge">
       <CheckCircle2 size={12} strokeWidth={2.25} className="shrink-0" aria-hidden />
-      <span>{t("brainSampleBadge", { count })}</span>
+      <span>{t("brainConsultedCampaignsBadge", { count })}</span>
     </div>
   );
+}
+
+/** @deprecated Use unified consulted-campaigns badge; kept for existing imports. */
+export function OrionBrainSampleBadge({ count }: { count: number }) {
+  return <OrionBrainConsultedCampaignsBadge count={count} />;
+}
+
+/** @deprecated Use unified consulted-campaigns badge; kept for existing imports. */
+export function OrionBrainAgencyScannedBadge({ count }: { count: number }) {
+  return <OrionBrainConsultedCampaignsBadge count={count} />;
 }
 
 export function OrionBrainCardFeedback({
@@ -109,26 +124,24 @@ export function OrionBrainCardFeedback({
   className?: string;
 }) {
   const t = useTranslations("campaignCreator");
-  const totalSampleCount = resolveTotalSampleCount(insight);
+  const consultedCount = resolveConsultedCampaignsCount(insight);
   const benchmarkOnly = isBenchmarkOnly(insight);
   const showFallbackMessage = shouldShowBenchmarkFallbackMessage(insight);
 
-  if (totalSampleCount === 0 && !showFallbackMessage && !showSampleBadge) {
+  if (consultedCount === 0 && !showFallbackMessage && !showSampleBadge) {
     return null;
   }
 
   return (
     <div className={`space-y-2 ${className}`.trim()}>
-      {showSampleBadge && totalSampleCount > 0 ? <OrionBrainSampleBadge count={totalSampleCount} /> : null}
+      {showSampleBadge && consultedCount > 0 ? (
+        <OrionBrainConsultedCampaignsBadge count={consultedCount} />
+      ) : null}
 
-      {showFallbackMessage ? (
-        <p className={`leading-relaxed text-[var(--text-dim)] ${compact ? "text-[11px]" : "text-xs"}`}>
-          {t("brainNoSyncedCampaigns")}
-        </p>
-      ) : benchmarkOnly && totalSampleCount === 0 ? (
-        <p className={`leading-relaxed text-[var(--text-dim)] ${compact ? "text-[11px]" : "text-xs"}`}>
-          {t("brainBenchmarkNote")}
-        </p>
+      {!compact && showFallbackMessage ? (
+        <p className="text-xs leading-relaxed text-[var(--text-dim)]">{t("brainNoSyncedCampaigns")}</p>
+      ) : !compact && benchmarkOnly && consultedCount === 0 ? (
+        <p className="text-xs leading-relaxed text-[var(--text-dim)]">{t("brainBenchmarkNote")}</p>
       ) : null}
     </div>
   );

@@ -20,7 +20,6 @@ import {
 } from "@/lib/campaign-creator/creator-brain-recommendations";
 import { ORION_BRAIN_OPEN_EVENT } from "@/lib/campaign-creator/orion-brain-bridge";
 import {
-  isBenchmarkOnly,
   resolveResearchSteps,
   resolveTotalSampleCount,
   shouldShowBenchmarkFallbackMessage
@@ -258,7 +257,6 @@ export function CampaignCreatorBrainTips() {
   const researchSteps = insight ? resolveResearchSteps(insight) : [];
   const analyzedCampaignNames =
     insight?.analyzedCampaignNames ?? insight?.analyzedCampaigns?.map((c) => c.name) ?? [];
-  const benchmarkOnly = insight ? isBenchmarkOnly(insight) : false;
   const agencyOnlyInsight =
     Boolean(!payload.clientSlug && insight?.insightVariant === "agency_reference" && (insight.agencySampleCount ?? 0) > 0);
 
@@ -273,8 +271,6 @@ export function CampaignCreatorBrainTips() {
         }
       })
     : [];
-
-  const sidebarRecommendations = recommendations.slice(0, 2);
 
   function renderInsightText() {
     if (!insight) return null;
@@ -368,8 +364,6 @@ export function CampaignCreatorBrainTips() {
               </p>
             ) : shouldShowBenchmarkFallbackMessage(insight) ? (
               <p className="mt-2 text-xs leading-relaxed text-[var(--text-dim)]">{t("brainNoSyncedCampaigns")}</p>
-            ) : benchmarkOnly ? (
-              <p className="mt-2 text-xs leading-relaxed text-[var(--text-dim)]">{t("brainBenchmarkNote")}</p>
             ) : null}
             <div className="mt-2">
               <CampaignsAnalyzedNote insight={insight} agencyOnly={agencyOnlyInsight} t={t} />
@@ -480,24 +474,6 @@ export function CampaignCreatorBrainTips() {
               <OrionBrainCardFeedback insight={insight} compact />
             </div>
 
-            {agencyOnlyInsight && insight.agencySampleCount ? (
-              <p className="mt-2 text-xs leading-relaxed text-[var(--text-main)]">
-                {t("brainInsightAgencyFound", {
-                  objective: objectiveLabel,
-                  count: insight.agencySampleCount
-                })}
-              </p>
-            ) : null}
-
-            {sidebarRecommendations.length ? (
-              <RecommendationsList
-                recommendations={sidebarRecommendations}
-                t={t}
-                locale={locale}
-                compact
-              />
-            ) : null}
-
             <div className="campaign-creator-sidebar-card-inset mt-3 px-3">
               <StatRow label={t("brainStatObjective")} value={objectiveLabel} />
               <StatRow
@@ -525,7 +501,12 @@ export function CampaignCreatorBrainTips() {
 
             {!paused ? (
               <div className="mt-3 flex justify-center">
-                <AiCreditCostHint kind="creator_brain" variant="pill" />
+                <AiCreditCostHint
+                  kind="creator_brain"
+                  variant="pill"
+                  consumed
+                  consumedAmount={insight.creditCost}
+                />
               </div>
             ) : null}
 
@@ -540,9 +521,26 @@ export function CampaignCreatorBrainTips() {
             </button>
           </>
         ) : (
-          <div className="campaign-creator-sidebar-card-inset mt-3 px-3.5 py-3">
-            <p className="text-xs leading-relaxed text-[var(--text-main)]">{renderGuidanceText()}</p>
-          </div>
+          <>
+            {insight ? (
+              <div className="mt-3">
+                <OrionBrainCardFeedback insight={insight} compact />
+              </div>
+            ) : null}
+            <div className="campaign-creator-sidebar-card-inset mt-3 px-3.5 py-3">
+              <p className="text-xs leading-relaxed text-[var(--text-main)]">{renderGuidanceText()}</p>
+            </div>
+            {insight && !paused ? (
+              <div className="mt-3 flex justify-center">
+                <AiCreditCostHint
+                  kind="creator_brain"
+                  variant="pill"
+                  consumed
+                  consumedAmount={insight.creditCost}
+                />
+              </div>
+            ) : null}
+          </>
         )}
       </div>
 

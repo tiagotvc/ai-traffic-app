@@ -438,14 +438,13 @@ async function resolveMetaCompetitorResearch(input: {
     return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "no_client_selected" };
   }
 
-  const competitors = parseClientCompetitors(client.competitors);
-  if (!competitors.length) {
-    return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "no_competitors" };
-  }
-
   if (!isMetaAdLibraryConfigured()) {
     return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "api_not_configured" };
   }
+
+  const competitors = parseClientCompetitors(client.competitors);
+  const nicheOnly = competitors.length === 0;
+  const searchTerms = resolveSearchTerms(client.niche);
 
   const cached = await getValidMarketMemory(input.tenantId, input.clientId);
   if (cached) {
@@ -454,11 +453,11 @@ async function resolveMetaCompetitorResearch(input: {
     return {
       adsCount,
       competitorsScanned,
-      status: adsCount > 0 ? "done" : "fallback"
+      status: adsCount > 0 ? "done" : "fallback",
+      detail: nicheOnly ? "niche_keywords_only" : undefined
     };
   }
 
-  const searchTerms = resolveSearchTerms(client.niche);
   const fetchResult = await fetchMetaAdLibrary({
     competitors: competitors.map((c) => ({ name: c.name, pageId: c.pageId })),
     searchTerms,
@@ -470,13 +469,16 @@ async function resolveMetaCompetitorResearch(input: {
     return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "api_not_configured" };
   }
 
-  const competitorsScanned = competitors.filter((c) => c.pageId).length || competitors.length;
+  const competitorsScanned = nicheOnly
+    ? 0
+    : competitors.filter((c) => c.pageId).length || competitors.length;
   const adsCount = fetchResult.ads.length;
 
   return {
     adsCount,
     competitorsScanned,
-    status: adsCount > 0 ? "done" : "fallback"
+    status: adsCount > 0 ? "done" : "fallback",
+    detail: nicheOnly ? "niche_keywords_only" : undefined
   };
 }
 

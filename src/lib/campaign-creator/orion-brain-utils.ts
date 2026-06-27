@@ -4,33 +4,49 @@ import type {
 } from "@/lib/campaign-creator/creator-brain-insights";
 
 export const BRAIN_PAUSED_KEY = "orion-creator-brain-paused";
-export const BRAIN_CACHE_PREFIX = "orion-creator-brain-cache:";
-
-export function readBrainCache(cacheKey: string): CreatorBrainInsightPayload | null {
-  try {
-    const raw = window.sessionStorage.getItem(BRAIN_CACHE_PREFIX + cacheKey);
-    if (!raw) return null;
-    return JSON.parse(raw) as CreatorBrainInsightPayload;
-  } catch {
-    return null;
-  }
-}
-
-export function writeBrainCache(cacheKey: string, insight: CreatorBrainInsightPayload) {
-  try {
-    window.sessionStorage.setItem(BRAIN_CACHE_PREFIX + cacheKey, JSON.stringify(insight));
-  } catch {
-    /* ignore */
-  }
-}
 
 export function resolveTotalSampleCount(insight: CreatorBrainInsightPayload): number {
   if (insight.totalSampleCount > 0) return insight.totalSampleCount;
   return insight.similarCampaignCount + (insight.agencySampleCount ?? 0);
 }
 
+export function resolveAgencyScannedCount(insight: CreatorBrainInsightPayload): number {
+  return getResearchStepCount(resolveResearchSteps(insight), "agency_search");
+}
+
+/** Campaigns consulted for the sidebar badge (matched samples, else agency/client scan totals). */
+export function resolveConsultedCampaignsCount(insight: CreatorBrainInsightPayload): number {
+  const totalSampleCount = resolveTotalSampleCount(insight);
+  if (totalSampleCount > 0) return totalSampleCount;
+
+  const steps = resolveResearchSteps(insight);
+  const agencyScanned = getResearchStepCount(steps, "agency_search");
+  if (agencyScanned > 0) return agencyScanned;
+
+  return getResearchStepCount(steps, "client_campaigns");
+}
+
+/** Ensures modal timeline steps exist; backfills meta search for older payloads. */
+export function normalizeResearchSteps(steps: CreatorBrainResearchStep[]): CreatorBrainResearchStep[] {
+  const merged = steps.some((step) => step.step === "meta_competitor_search")
+    ? steps
+    : [
+        ...steps,
+        {
+          step: "meta_competitor_search" as const,
+          status: "skipped" as const,
+          detail: "legacy_cache"
+        }
+      ];
+
+  return ORION_CARD_RESEARCH_STEPS.map((stepKey) => merged.find((step) => step.step === stepKey)).filter(
+    (step): step is CreatorBrainResearchStep => step != null
+  );
+}
+
 export function resolveResearchSteps(insight: CreatorBrainInsightPayload): CreatorBrainResearchStep[] {
-  return insight.researchSteps ?? insight.researchLog ?? [];
+  const raw = insight.researchSteps ?? insight.researchLog ?? [];
+  return normalizeResearchSteps(raw);
 }
 
 export function isBenchmarkOnly(insight: CreatorBrainInsightPayload): boolean {
@@ -70,9 +86,7 @@ export function shouldShowBenchmarkFallbackMessage(insight: CreatorBrainInsightP
 }
 
 export function filterCardResearchSteps(steps: CreatorBrainResearchStep[]): CreatorBrainResearchStep[] {
-  return ORION_CARD_RESEARCH_STEPS.map((stepKey) => steps.find((s) => s.step === stepKey)).filter(
-    (step): step is CreatorBrainResearchStep => step != null
-  );
+  return normalizeResearchSteps(steps);
 }
 
 /** Modal timeline: done steps, agency search, meta search, and benchmark fallback only. */

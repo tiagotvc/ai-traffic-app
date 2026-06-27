@@ -158,7 +158,11 @@ function dataQualityRecommendations(
     recs.push({ key: "brainRecSyncClientCampaigns" });
   }
 
-  if (metaStep?.detail === "no_competitors" && draft?.hasClient) {
+  if (
+    draft?.hasClient &&
+    (metaStep?.detail === "no_competitors" ||
+      (metaStep?.detail === "niche_keywords_only" && (metaStep.count ?? 0) === 0))
+  ) {
     recs.push({ key: "brainRecAddCompetitors" });
   }
 

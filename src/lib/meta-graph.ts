@@ -922,10 +922,20 @@ const INSIGHT_METRIC_FIELDS = [
 export async function fetchAccountInsightsDaily(
   accessToken: string,
   adAccountId: string,
-  datePreset = "last_30d"
+  datePreset = "last_30d",
+  /**
+   * Opcional (P2). Quando informado, adiciona `action_attribution_windows` à
+   * chamada. **Default undefined = comportamento atual** — não usar no sync/ranking;
+   * só no preview de atribuição, para não alterar os snapshots/ranking.
+   */
+  attributionWindows?: string[]
 ): Promise<MetaInsightRow[]> {
   const fields = INSIGHT_METRIC_FIELDS.join(",");
-  const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=${datePreset}&limit=500`;
+  const attr =
+    attributionWindows && attributionWindows.length
+      ? `&action_attribution_windows=${encodeURIComponent(JSON.stringify(attributionWindows))}`
+      : "";
+  const path = `/${encodeURIComponent(adAccountId)}/insights?fields=${encodeURIComponent(fields)}&time_increment=1&date_preset=${datePreset}${attr}&limit=500`;
   return fetchGraphPaged<MetaInsightRow>(path, accessToken);
 }
 

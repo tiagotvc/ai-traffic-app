@@ -3,14 +3,15 @@ import { NextResponse } from "next/server";
 import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
 import { FeatureDisabledError } from "@/lib/feature-flags/service";
-import { resolveWorkspaceMetaAccessToken } from "@/lib/meta-auth-store";
+import type { CapiActionSource } from "@/lib/meta-capi";
 import { sendClientConversion } from "@/lib/meta-capi-service";
+import { resolveWorkspaceMetaAccessToken } from "@/lib/meta-auth-store";
 import { isWorkspaceAdmin } from "@/lib/workspace-members";
 
 /**
- * Dispara um evento de **teste** da CAPI (com `test_event_code`) para validar a
- * conexão no Events Manager → "Test Events". Só admin do workspace; gate `meta.capi`.
- * Critério de pronto do P0: este evento aparece no Events Manager com dedupe (event_id).
+ * Envio de evento de conversão em **produção** via CAPI (P0.3). Admin do
+ * workspace; gate `meta.capi`. Recebe os dados do evento + PII (que é hasheada
+ * no envio) e registra no log de observabilidade.
  */
 export async function POST(req: Request) {
   try {
@@ -21,15 +22,18 @@ export async function POST(req: Request) {
 
     const body = (await req.json().catch(() => ({}))) as {
       clientId?: string;
-      testEventCode?: string;
       eventName?: string;
+      actionSource?: CapiActionSource;
+      eventId?: string;
+      eventSourceUrl?: string;
+      userData?: Record<string, string>;
+      customData?: Record<string, unknown>;
       pixelId?: string;
     };
-    if (!body.clientId) {
-      return NextResponse.json({ ok: false, error: "clientId required" }, { status: 400 });
+    if (!body.clientId || !body.eventName) {
+      return NextResponse.json({ ok: false, error: "clientId and eventName required" }, { status: 400 });
     }
 
-    // Garante que o cliente pertence ao workspace.
     const { client: clientRepo } = await repositories();
     const client = await clientRepo.findOne({ where: { id: body.clientId, tenantId: tenant.id } });
     if (!client) return NextResponse.json({ ok: false, error: "client_not_found" }, { status: 404 });
@@ -42,12 +46,17 @@ export async function POST(req: Request) {
       clientId: body.clientId,
       accessToken: token,
       pixelId: body.pixelId,
-      testEventCode: body.testEventCode,
       event: {
-        eventName: body.eventName || "PageView",
-        actionSource: "website",
-        eventId: `test-${Date.now()}`,
-        userData: { clientUserAgent: req.headers.get("user-agent") ?? undefined }
+        eventName: body.eventName,
+        actionSource: body.actionSource ?? "website",
+        eventId: body.eventId,
+        eventSourceUrl: body.eventSourceUrl,
+        userData: {
+          ...(body.userData ?? {}),
+          clientUserAgent:
+            body.userData?.clientUserAgent ?? req.headers.get("user-agent") ?? undefined
+        },
+        customData: body.customData
       }
     });
 

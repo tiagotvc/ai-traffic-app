@@ -3,13 +3,8 @@ import { z } from "zod";
 
 import { CAMPAIGN_OBJECTIVES } from "@/lib/campaign-draft";
 import { buildCreatorBrainInsight } from "@/lib/campaign-creator/creator-brain-insights";
-import {
-  aiCreditsErrorResponse,
-  assertAiCreditsAccess,
-  resolveCreditCost
-} from "@/lib/ai-credits/credits-service";
-import { getAiCreditWeights, isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
-import { getTenantAiPolicy } from "@/lib/ai-credits/policy-service";
+import { aiCreditsErrorResponse, assertAiCreditsAccess } from "@/lib/ai-credits/credits-service";
+import { isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
@@ -79,17 +74,12 @@ export async function GET(req: Request) {
     });
 
     const v2 = await isAiCreditsV2Enabled();
-    if (v2 && clientId) {
-      const [weights, policy] = await Promise.all([
-        getAiCreditWeights(),
-        getTenantAiPolicy(tenant.id)
-      ]);
-      const charged = resolveCreditCost("creator_brain", weights, policy.customWeights);
+    if (v2) {
       const { aiRecommendation: recRepo } = await repositories();
       await recRepo.save(
         recRepo.create({
           tenantId: tenant.id,
-          clientId,
+          clientId: clientId ?? null,
           targetId: "campaign_creator",
           actionType: "CM_AI_ACTIONS",
           payload: {
@@ -97,11 +87,11 @@ export async function GET(req: Request) {
             objective: parsed.data.objective,
             activeNode: parsed.data.activeNode,
             insightVariant: insight.insightVariant ?? null,
-            creditsCharged: charged
+            creditsCharged: creditCost
           },
-          justification: `Orion Brain (criador): insight ${parsed.data.objective} (${charged} crédito(s))`,
+          justification: `Orion Brain (criador): insight ${parsed.data.objective} (${creditCost} crédito(s))`,
           status: "APPLIED",
-          creditsCharged: charged
+          creditsCharged: creditCost
         })
       );
     }

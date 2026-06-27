@@ -75,6 +75,7 @@ import { PlatformSetting } from "./PlatformSetting";
 import { TenantAiPolicy } from "./TenantAiPolicy";
 import { ContactMessage } from "./ContactMessage";
 import { McpToken } from "./McpToken";
+import { CapiEventLog } from "./CapiEventLog";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
@@ -150,7 +151,8 @@ export {
   DashboardAiWidget,
   DashboardAddon,
   ContactMessage,
-  McpToken
+  McpToken,
+  CapiEventLog
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -248,7 +250,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: DashboardAiWidget, name: "DashboardAiWidget" },
   { ctor: DashboardAddon, name: "DashboardAddon" },
   { ctor: ContactMessage, name: "ContactMessage" },
-  { ctor: McpToken, name: "McpToken" }
+  { ctor: McpToken, name: "McpToken" },
+  { ctor: CapiEventLog, name: "CapiEventLog" }
 ]);
 
 export const typeOrmEntities = [
@@ -324,5 +327,6 @@ export const typeOrmEntities = [
   DashboardAiWidget,
   DashboardAddon,
   ContactMessage,
-  McpToken
+  McpToken,
+  CapiEventLog
 ] as const;
