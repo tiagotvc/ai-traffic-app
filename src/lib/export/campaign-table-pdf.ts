@@ -12,6 +12,14 @@ import { campaignPresetCode } from "@/lib/campaign-table-premium";
 import { formatBRL, formatPercent, formatRoas } from "@/lib/format";
 import { formatMetricValue } from "@/lib/dashboard-metrics";
 import { evaluateFormula } from "@/lib/metric-formula";
+import {
+  accentSoftPdfRgb,
+  fetchLogoBytes,
+  hexToPdfRgb,
+  resolveExportAccentColor,
+  type CampaignExportBranding
+} from "@/lib/export/campaign-export-branding";
+import { downloadBytes } from "@/lib/export/download-bytes";
 import { sanitizePdfText, truncatePdfText, wrapPdfText } from "@/lib/export/pdf-text";
 
 const A4 = { w: 595.28, h: 841.89 };
@@ -25,25 +33,34 @@ const FOOTER_Y = 24;
 const COMPACT_HEADER_HEIGHT = 72;
 const FULL_HEADER_HEIGHT = 88;
 
-const C = {
+const BASE = {
   headerBg: rgb(0.059, 0.09, 0.165),
-  accent: rgb(0.961, 0.651, 0.137),
   textLight: rgb(0.945, 0.961, 0.976),
   textMuted: rgb(0.58, 0.639, 0.722),
   textDark: rgb(0.059, 0.09, 0.165),
   tableHeadBg: rgb(0.118, 0.161, 0.231),
-  tableHeadText: rgb(0.796, 0.835, 0.882),
+  tableHeadText: rgb(0.945, 0.961, 0.976),
   rowAlt: rgb(0.973, 0.98, 0.988),
-  rowBorder: rgb(0.886, 0.906, 0.941),
-  totalsBg: rgb(0.945, 0.961, 0.976),
+  rowAltViolet: rgb(0.965, 0.961, 0.996),
+  rowBorder: rgb(0.91, 0.91, 0.94),
   totalsText: rgb(0.059, 0.09, 0.165)
 };
+
+function pdfPalette(accentHex: string) {
+  const accent = hexToPdfRgb(accentHex);
+  return {
+    ...BASE,
+    accent,
+    accentSoft: accentSoftPdfRgb(accentHex)
+  };
+}
 
 export type CampaignPdfRow = {
   campaignName: string;
   clientName: string;
   status?: string;
   preset?: string;
+  isDraft?: boolean;
   spend: number;
   conversions: number;
   leads: number;
@@ -70,6 +87,8 @@ export type CampaignPdfLabels = {
   campaignsCount: (n: number) => string;
   clientScope: (client: string) => string;
   allClients: string;
+  periodLabel?: string;
+  chartsSectionTitle?: string;
 };
 
 type CustomMetricDef = {
@@ -93,6 +112,7 @@ type TableLayout = {
   headerLines: string[][];
   tableHeaderHeight: number;
   metricStartIndex: number;
+  colors: ReturnType<typeof pdfPalette>;
 };
 
 function pageSize(landscape: boolean): PageSize {
@@ -219,14 +239,19 @@ function drawPageFooter(
   pageSize: PageSize,
   pageNum: number,
   pageTotal: number,
-  label: string
+  label: string,
+  footerContact?: string,
+  colors = BASE
 ) {
-  page.drawText(sanitizePdfText(label), {
+  const leftText = footerContact
+    ? sanitizePdfText(`${footerContact} · ${label}`)
+    : sanitizePdfText(label);
+  page.drawText(truncatePdfText(leftText, 90), {
     x: MARGIN,
     y: FOOTER_Y,
     size: 8,
     font,
-    color: C.textMuted
+    color: colors.textMuted
   });
   const pageText = sanitizePdfText(`${pageNum}/${pageTotal}`);
   const textWidth = font.widthOfTextAtSize(pageText, 8);
@@ -235,92 +260,143 @@ function drawPageFooter(
     y: FOOTER_Y,
     size: 8,
     font,
-    color: C.textMuted
+    color: colors.textMuted
   });
 }
 
-function drawCoverHeader(
+function drawCenteredText(
+  page: PDFPage,
+  text: string,
+  y: number,
+  pageWidth: number,
+  font: PDFFont,
+  size: number,
+  color: ReturnType<typeof rgb>
+) {
+  const safe = sanitizePdfText(text);
+  const textWidth = font.widthOfTextAtSize(safe, size);
+  page.drawText(safe, {
+    x: (pageWidth - textWidth) / 2,
+    y,
+    size,
+    font,
+    color
+  });
+}
+
+async function drawCoverHeader(
+  doc: PDFDocument,
   page: PDFPage,
   pageSize: PageSize,
   font: PDFFont,
   fontBold: PDFFont,
   compact: boolean,
   input: {
-    brandName?: string;
+    agencyName?: string;
     groupLabel: string;
     clientLabel: string;
     generatedAt: string;
     countLabel: string;
     clientScopeLabel?: string;
-  }
-): number {
+    periodLabel?: string;
+    logoUrl?: string;
+    includeLogo?: boolean;
+  },
+  colors: ReturnType<typeof pdfPalette>
+): Promise<number> {
   const headerHeight = compact ? COMPACT_HEADER_HEIGHT : FULL_HEADER_HEIGHT;
   page.drawRectangle({
     x: 0,
     y: pageSize.h - headerHeight,
     width: pageSize.w,
     height: headerHeight,
-    color: C.headerBg
+    color: colors.headerBg
   });
   page.drawRectangle({
     x: 0,
     y: pageSize.h - headerHeight,
     width: pageSize.w,
-    height: 3,
-    color: C.accent
+    height: 4,
+    color: colors.accent
   });
 
-  let y = pageSize.h - (compact ? 22 : 28);
-  if (input.brandName) {
-    page.drawText(truncatePdfText(input.brandName, 56), {
-      x: MARGIN,
-      y,
-      size: 9,
-      font,
-      color: C.accent
-    });
-    y -= compact ? 12 : 14;
+  let y = pageSize.h - (compact ? 24 : 30);
+
+  if (input.includeLogo && input.logoUrl) {
+    const logo = await fetchLogoBytes(input.logoUrl);
+    if (logo) {
+      try {
+        const embedded =
+          logo.kind === "jpg" ? await doc.embedJpg(logo.bytes) : await doc.embedPng(logo.bytes);
+        const maxLogoH = compact ? 22 : 28;
+        const scale = Math.min(maxLogoH / embedded.height, 120 / embedded.width, 1);
+        const drawW = embedded.width * scale;
+        const drawH = embedded.height * scale;
+        page.drawImage(embedded, {
+          x: (pageSize.w - drawW) / 2,
+          y: y - drawH + 4,
+          width: drawW,
+          height: drawH
+        });
+        y -= drawH + (compact ? 8 : 10);
+      } catch {
+        /* skip broken logo */
+      }
+    }
   }
 
-  page.drawText(truncatePdfText(input.groupLabel, 72), {
-    x: MARGIN,
+  if (input.agencyName) {
+    drawCenteredText(page, truncatePdfText(input.agencyName, 56), y, pageSize.w, font, 9, colors.accent);
+    y -= compact ? 14 : 16;
+  }
+
+  drawCenteredText(
+    page,
+    truncatePdfText(input.groupLabel, 72),
     y,
-    size: compact ? 14 : 16,
-    font: fontBold,
-    color: C.textLight
-  });
-  y -= compact ? 14 : 16;
+    pageSize.w,
+    fontBold,
+    compact ? 15 : 18,
+    colors.textLight
+  );
+  y -= compact ? 16 : 20;
 
   if (input.clientScopeLabel) {
-    page.drawText(truncatePdfText(input.clientScopeLabel, 96), {
-      x: MARGIN,
+    drawCenteredText(
+      page,
+      truncatePdfText(input.clientScopeLabel, 96),
       y,
-      size: 8.5,
+      pageSize.w,
       font,
-      color: C.textMuted
-    });
-    y -= 11;
+      8.5,
+      colors.textMuted
+    );
+    y -= 12;
   }
 
-  page.drawText(truncatePdfText(`${input.countLabel} · ${input.generatedAt}`, 110), {
-    x: MARGIN,
+  const metaParts = [input.countLabel, input.periodLabel, input.generatedAt].filter(Boolean);
+  drawCenteredText(
+    page,
+    truncatePdfText(metaParts.join(" · "), 120),
     y,
-    size: 8,
+    pageSize.w,
     font,
-    color: C.textMuted
-  });
+    8,
+    colors.textMuted
+  );
 
-  return pageSize.h - headerHeight - 12;
+  return pageSize.h - headerHeight - 16;
 }
 
 function drawTableHeaderRow(layout: TableLayout) {
-  const { page, fontBold, y, colWidths, contentWidth, headerLines, tableHeaderHeight } = layout;
+  const { page, fontBold, y, colWidths, contentWidth, headerLines, tableHeaderHeight, colors } =
+    layout;
   page.drawRectangle({
     x: MARGIN,
     y: y - tableHeaderHeight + 4,
     width: contentWidth,
     height: tableHeaderHeight,
-    color: C.tableHeadBg
+    color: colors.tableHeadBg
   });
 
   let x = MARGIN + 4;
@@ -336,7 +412,7 @@ function drawTableHeaderRow(layout: TableLayout) {
         y: topY - lineIndex * HEADER_LINE_HEIGHT,
         size: HEADER_FONT_SIZE,
         font: fontBold,
-        color: C.tableHeadText
+        color: colors.tableHeadText
       });
     });
     x += colWidths[i]!;
@@ -346,9 +422,13 @@ function drawTableHeaderRow(layout: TableLayout) {
 function drawDataRow(
   layout: TableLayout,
   cells: string[],
-  opts?: { bold?: boolean; bg?: typeof C.rowAlt | typeof C.totalsBg }
+  opts?: {
+    bold?: boolean;
+    bg?: ReturnType<typeof pdfPalette>["rowAlt"] | ReturnType<typeof pdfPalette>["accentSoft"] | ReturnType<typeof pdfPalette>["rowAltViolet"];
+    drawBorder?: boolean;
+  }
 ) {
-  const { page, font, fontBold, y, colWidths, metricStartIndex } = layout;
+  const { page, font, fontBold, y, colWidths, metricStartIndex, colors } = layout;
   const rowFont = opts?.bold ? fontBold : font;
   const bg = opts?.bg;
 
@@ -377,17 +457,19 @@ function drawDataRow(
       y: y - 10,
       size: DATA_FONT_SIZE,
       font: rowFont,
-      color: opts?.bold ? C.totalsText : C.textDark
+      color: opts?.bold ? colors.totalsText : colors.textDark
     });
     x += colWidths[i]!;
   }
 
-  page.drawLine({
-    start: { x: MARGIN, y: y - ROW_HEIGHT + 2 },
-    end: { x: MARGIN + layout.contentWidth, y: y - ROW_HEIGHT + 2 },
-    thickness: 0.4,
-    color: C.rowBorder
-  });
+  if (opts?.drawBorder) {
+    page.drawLine({
+      start: { x: MARGIN, y: y - ROW_HEIGHT + 2 },
+      end: { x: MARGIN + layout.contentWidth, y: y - ROW_HEIGHT + 2 },
+      thickness: 0.25,
+      color: colors.rowBorder
+    });
+  }
 }
 
 function buildTableRows(
@@ -453,11 +535,19 @@ export async function buildCampaignTablePdf(input: {
   metricColumnLabels?: string[];
   includeTypeColumn?: boolean;
   landscape?: boolean;
+  chartImages?: Array<{ title: string; pngBytes: Uint8Array }>;
+  branding?: CampaignExportBranding;
 }): Promise<Uint8Array> {
   const locale = input.locale ?? "pt-BR";
   const includeTypeColumn = input.includeTypeColumn ?? true;
   const landscape = input.landscape ?? false;
   const size = pageSize(landscape);
+  const accentHex = resolveExportAccentColor(input.branding?.accentColor);
+  const colors = pdfPalette(accentHex);
+  const reportTitle = input.branding?.reportTitle?.trim() || input.groupLabel;
+  const agencyName =
+    input.branding?.agencyName?.trim() || input.branding?.brandName?.trim() || input.brandName;
+  const footerContact = input.branding?.footerContact?.trim();
   const customNames = Object.fromEntries(
     Object.entries(input.customMetrics).map(([id, m]) => [id, m.name])
   );
@@ -551,14 +641,17 @@ export async function buildCampaignTablePdf(input: {
     const page = doc.addPage([size.w, size.h]);
     const isFirst = pageIndex === 0;
     const startY = isFirst
-      ? drawCoverHeader(page, size, font, fontBold, compactHeader, {
-          brandName: input.brandName,
-          groupLabel: input.groupLabel,
+      ? await drawCoverHeader(doc, page, size, font, fontBold, compactHeader, {
+          agencyName,
+          groupLabel: reportTitle,
           clientLabel: input.clientLabel ?? input.labels.allClients,
           generatedAt,
           countLabel,
-          clientScopeLabel
-        })
+          clientScopeLabel,
+          periodLabel: input.labels.periodLabel,
+          logoUrl: input.branding?.logoUrl,
+          includeLogo: input.branding?.includeLogo
+        }, colors)
       : size.h - 28 - tableHeaderHeight;
 
     if (!isFirst) {
@@ -567,14 +660,14 @@ export async function buildCampaignTablePdf(input: {
         y: size.h - 24,
         width: size.w,
         height: 24,
-        color: C.headerBg
+        color: colors.headerBg
       });
-      page.drawText(truncatePdfText(input.groupLabel, 90), {
+      page.drawText(truncatePdfText(reportTitle, 90), {
         x: MARGIN,
         y: size.h - 16,
         size: 9,
         font: fontBold,
-        color: C.textLight
+        color: colors.textLight
       });
     }
 
@@ -589,7 +682,8 @@ export async function buildCampaignTablePdf(input: {
       headers,
       headerLines,
       tableHeaderHeight,
-      metricStartIndex
+      metricStartIndex,
+      colors
     };
 
     drawTableHeaderRow(layout);
@@ -601,7 +695,13 @@ export async function buildCampaignTablePdf(input: {
       const isTotals = pageIndex === pageChunks.length - 1 && rowIndex === chunk.length - 1;
       drawDataRow(layout, cells, {
         bold: isTotals,
-        bg: isTotals ? C.totalsBg : rowIndex % 2 === 1 ? C.rowAlt : undefined
+        bg: isTotals
+          ? colors.accentSoft
+          : rowIndex % 2 === 1
+            ? colors.rowAltViolet
+            : rowIndex % 2 === 0 && rowIndex > 0
+              ? colors.rowAlt
+              : undefined
       });
       layout.y -= ROW_HEIGHT;
     }
@@ -612,24 +712,80 @@ export async function buildCampaignTablePdf(input: {
       size,
       pageIndex + 1,
       pageTotal,
-      input.labels.pageOf(pageIndex + 1, pageTotal)
+      input.labels.pageOf(pageIndex + 1, pageTotal),
+      footerContact,
+      colors
     );
+  }
+
+  const chartImages = (input.chartImages ?? []).filter((c) => c.pngBytes.byteLength > 0);
+  if (chartImages.length > 0) {
+    const chartsPerPage = 1;
+    const chartPageTotal = Math.ceil(chartImages.length / chartsPerPage);
+    const tablePageTotal = pageTotal;
+    const combinedTotal = tablePageTotal + chartPageTotal;
+
+    for (let chartPageIndex = 0; chartPageIndex < chartPageTotal; chartPageIndex++) {
+      const page = doc.addPage([size.w, size.h]);
+      const slice = chartImages.slice(
+        chartPageIndex * chartsPerPage,
+        chartPageIndex * chartsPerPage + chartsPerPage
+      );
+
+      page.drawRectangle({
+        x: 0,
+        y: size.h - 28,
+        width: size.w,
+        height: 28,
+        color: colors.headerBg
+      });
+      page.drawRectangle({
+        x: 0,
+        y: size.h - 28,
+        width: size.w,
+        height: 3,
+        color: colors.accent
+      });
+
+      const sectionTitle = input.labels.chartsSectionTitle ?? "Charts";
+      drawCenteredText(page, sectionTitle, size.h - 18, size.w, fontBold, 10, colors.textLight);
+
+      let chartY = size.h - 56;
+      for (const chart of slice) {
+        try {
+          const png = await doc.embedPng(chart.pngBytes);
+          const maxW = size.w - MARGIN * 2;
+          const maxH = (size.h - 96) / chartsPerPage;
+          const scale = Math.min(maxW / png.width, maxH / png.height, 1);
+          const drawW = png.width * scale;
+          const drawH = png.height * scale;
+          const x = (size.w - drawW) / 2;
+          chartY -= drawH;
+          page.drawImage(png, { x, y: chartY, width: drawW, height: drawH });
+          chartY -= 12;
+        } catch {
+          /* skip invalid chart image */
+        }
+      }
+
+      drawPageFooter(
+        page,
+        font,
+        size,
+        tablePageTotal + chartPageIndex + 1,
+        combinedTotal,
+        input.labels.pageOf(tablePageTotal + chartPageIndex + 1, combinedTotal),
+        footerContact,
+        colors
+      );
+    }
   }
 
   return doc.save();
 }
 
 export function downloadPdfBytes(bytes: Uint8Array, filename: string) {
-  const blob = new Blob([Uint8Array.from(bytes)], { type: "application/pdf" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.rel = "noopener";
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
+  downloadBytes(bytes, filename, "application/pdf");
 }
 
 export function buildCampaignPdfFilename(input: {

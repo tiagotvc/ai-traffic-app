@@ -78,7 +78,7 @@ export function assertWizardProviderConfigured(preferred: LlmProviderId = "claud
   return provider;
 }
 
-async function withProviderFallback<T>(
+export async function withProviderFallback<T>(
   preferred: LlmProviderId,
   fn: (provider: LlmProviderId) => Promise<T>
 ): Promise<{ result: T; provider: LlmProviderId }> {

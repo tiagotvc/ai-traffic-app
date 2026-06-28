@@ -58,6 +58,7 @@ import { McpTokens_1735832300000 } from "./0053-McpTokens";
 import { TenantAttributionWindow_1735832400000 } from "./0054-TenantAttributionWindow";
 import { CapiEventLogs_1735832500000 } from "./0055-CapiEventLogs";
 import { ReportTemplates_1735832600000 } from "./0056-ReportTemplates";
+import { ReportScheduleParams_1735832700000 } from "./0057-ReportScheduleParams";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -120,5 +121,6 @@ export const appMigrations = [
   McpTokens_1735832300000,
   TenantAttributionWindow_1735832400000,
   CapiEventLogs_1735832500000,
-  ReportTemplates_1735832600000
+  ReportTemplates_1735832600000,
+  ReportScheduleParams_1735832700000
 ];

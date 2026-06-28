@@ -3,17 +3,17 @@
 import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import {
-  BarChart3,
   Home,
   LayoutGrid,
   Megaphone,
-  Target,
   Trophy,
   Users
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { AgencyBrainNavGroup } from "@/components/layout/AgencyBrainNavGroup";
+import { AudiencesNavGroup } from "@/components/layout/AudiencesNavGroup";
+import { ReportsNavGroup } from "@/components/layout/ReportsNavGroup";
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import {
   SidebarCollapseButton,
@@ -105,26 +105,13 @@ export function AppSidebar({
       gate: "campaigns"
     },
     {
-      id: "audiences",
-      href: "/audiences",
-      label: t("audiences"),
-      icon: <Target size={18} strokeWidth={1.75} className="shrink-0" />,
-      gate: "audiences"
-    },
-    {
       id: "creatives",
       href: "/creatives",
       label: t("creatives"),
       icon: <Trophy size={18} strokeWidth={1.75} className="shrink-0" />,
       gate: "creatives"
     },
-    {
-      id: "reports",
-      href: "/reports",
-      label: t("reports"),
-      icon: <BarChart3 size={18} strokeWidth={1.75} className="shrink-0" />,
-      gate: "reports"
-    }
+
   ];
 
   function isActive(item: NavItem) {
@@ -255,6 +242,15 @@ export function AppSidebar({
           return (
             <Fragment key={item.id}>
               {navItem}
+              {item.id === "campaigns" ? (
+                <AudiencesNavGroup
+                  collapsed={effectiveCollapsed}
+                  planLimits={planLimits}
+                  planLimitsReady={planLimitsReady}
+                  pathname={pathname}
+                  onNavigate={onNavigate}
+                />
+              ) : null}
               {item.id === "creatives" ? (
                 <AgencyBrainNavGroup
                   collapsed={effectiveCollapsed}
@@ -262,6 +258,15 @@ export function AppSidebar({
                   platformFeatures={platformFeatures}
                   pathname={pathname}
                   permissionsReady={planLimitsReady}
+                  onNavigate={onNavigate}
+                />
+              ) : null}
+              {item.id === "creatives" ? (
+                <ReportsNavGroup
+                  collapsed={effectiveCollapsed}
+                  planLimits={planLimits}
+                  planLimitsReady={planLimitsReady}
+                  pathname={pathname}
                   onNavigate={onNavigate}
                 />
               ) : null}

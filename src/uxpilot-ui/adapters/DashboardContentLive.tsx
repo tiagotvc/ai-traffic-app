@@ -21,8 +21,10 @@ import {
   toChartData,
   toDashboardCampaignStatus,
   toDashboardFunnelSteps,
+  toDashboardObjectiveBreakdown,
   toDashboardProfitByCampaign,
   toDashboardTopCampaigns,
+  toDashboardTopCampaignsBySpend,
   toMetricPrismProps
 } from "@/uxpilot-ui/adapters/dashboard-mappers";
 import { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
@@ -41,6 +43,7 @@ const PAGE_CHART_METRICS: MetricKey[] = [
 
 export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean }) {
   const t = useTranslations("dashboard");
+  const tPresets = useTranslations("campaignPresets");
   const data = useDashboardData();
   const isMobile = useIsMobile();
   const [customizeOpen, setCustomizeOpen] = useState(false);
@@ -61,6 +64,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
     series: data.series,
     dominantPreset: data.dominantPreset,
     heroMetrics: data.dashboardLayout.heroMetrics,
+    periodMetrics: data.dashboardLayout.periodMetrics,
     locale: data.locale,
     metricLabel: data.metricLabel,
     vsLabel: data.vsLabel,
@@ -97,7 +101,21 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
           other: t("widgetCampaignStatusOther")
         }
       }),
+      campaignObjectives: toDashboardObjectiveBreakdown({
+        campaigns: data.campaignSnapshots,
+        labelForPreset: (preset) => {
+          const key = preset.startsWith("custom:") ? "default" : preset;
+          if (key in { default: 1, lead_whatsapp: 1, lead_site: 1, sales: 1, reach: 1 }) {
+            return tPresets(key as "default");
+          }
+          return preset;
+        }
+      }),
       topCampaigns: toDashboardTopCampaigns({
+        campaigns: data.campaignSnapshots,
+        locale: data.locale
+      }),
+      topCampaignsBySpend: toDashboardTopCampaignsBySpend({
         campaigns: data.campaignSnapshots,
         locale: data.locale
       }),
@@ -106,7 +124,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
         locale: data.locale
       })
     };
-  }, [data.summary, data.locale, data.campaignSnapshots, data.metricLabel, t]);
+  }, [data.summary, data.locale, data.campaignSnapshots, data.metricLabel, t, tPresets]);
   const emptyStateItems = [
     t("emptyStateItem1"),
     t("emptyStateItem2"),
@@ -246,7 +264,9 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
                     <DashboardInsightPanels
                       funnelSteps={insightPanels.funnelSteps}
                       campaignStatus={insightPanels.campaignStatus}
+                      campaignObjectives={insightPanels.campaignObjectives}
                       topCampaigns={insightPanels.topCampaigns}
+                      topCampaignsBySpend={insightPanels.topCampaignsBySpend}
                       profitByCampaign={insightPanels.profitByCampaign}
                       adLibraryInsights={data.adLibraryInsights}
                       adLibraryLoading={data.adLibraryLoading}
@@ -255,7 +275,8 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
                       performanceChart={{
                         data: chartData,
                         activeMetrics: pageChartMetrics,
-                        onToggleMetric: data.toggleChartMetric,
+                        onToggleMetric: (key) =>
+                          data.toggleChartMetric(key, { scope: PAGE_CHART_METRICS }),
                         formatValue: data.formatMetricValue,
                         metricLabels: data.chartMetricLabels,
                         metricSummary: data.summary ?? undefined,

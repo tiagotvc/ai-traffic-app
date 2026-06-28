@@ -592,16 +592,22 @@ export function useDashboardData() {
   );
 
   const toggleChartMetric = useCallback(
-    (key: MetricKey) => {
+    (key: MetricKey, options?: { scope?: MetricKey[] }) => {
       setChartMetrics((cur) => {
-        const next = cur.includes(key)
-          ? cur.length > 1
-            ? cur.filter((k) => k !== key)
-            : cur
-          : cur.length >= MAX_CHART_METRICS
-            ? cur
-            : [...cur, key];
-        if (next !== cur) persistChartMetrics(next);
+        const scope = options?.scope;
+        const scoped = scope ? cur.filter((k) => scope.includes(k)) : cur;
+        const outside = scope ? cur.filter((k) => !scope.includes(k)) : [];
+
+        const nextScoped = scoped.includes(key)
+          ? scoped.length > 1
+            ? scoped.filter((k) => k !== key)
+            : scoped
+          : scoped.length >= MAX_CHART_METRICS
+            ? scoped
+            : [...scoped, key];
+
+        const next = scope ? nextScoped : [...outside, ...nextScoped];
+        if (next.join("|") !== cur.join("|")) persistChartMetrics(next);
         return next;
       });
     },

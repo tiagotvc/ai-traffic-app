@@ -516,8 +516,15 @@ export function SidebarUserBlock({
       <MenuLink href="/legal/terms" icon={<ScrollText size={15} />} label={tNav("terms")} external />
       <MenuLink href="/legal/privacy" icon={<Shield size={15} />} label={tNav("privacy")} external />
       <MenuLink href="/legal/data-deletion" icon={<Trash2 size={15} />} label={tNav("dataDeletion")} />
+    </>
+  );
 
-      <div className="my-1.5 border-t" style={{ borderColor: "var(--sidebar-border)" }} />
+  const accountFooterClass = `sidebar-account-footer ${
+    collapsed ? "sidebar-account-footer--collapsed" : "sidebar-account-footer--expanded"
+  }`;
+
+  const signOutFooter = (
+    <div className={accountFooterClass}>
       <button
         type="button"
         disabled={signingOut}
@@ -525,48 +532,46 @@ export function SidebarUserBlock({
           setMenuOpen(false);
           onSignOut();
         }}
-        className="flex w-full items-center gap-2.5 px-3 py-2.5 font-body text-[13px] font-medium text-[#ef4444] transition-colors hover:bg-[rgba(239,68,68,0.08)] disabled:opacity-60"
+        className="sidebar-account-footer__sign-out-btn font-body"
       >
         <LogOut size={15} />
         {signingOut ? tCommon("signingOut") : tNav("menuSignOutAccount")}
       </button>
-    </>
+    </div>
   );
 
   return (
-    <div
-      ref={rootRef}
-      className={`relative shrink-0 ${collapsed ? "flex justify-center p-3" : "p-3 pt-2"}`}
-      style={{ borderTop: "1px solid var(--sidebar-border)" }}
-    >
-      <button
-        type="button"
-        onClick={() => setMenuOpen((v) => !v)}
-        className={`flex items-center text-left transition-all hover:opacity-95 ${
-          collapsed
-            ? ""
-            : "w-full gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-2.5 py-2"
-        }`}
-        title={userName}
-      >
-        <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-body text-xs font-semibold text-white"
-          style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
+    <div ref={rootRef} className="relative shrink-0">
+      <div className={accountFooterClass}>
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          className={`flex items-center text-left transition-all hover:opacity-95 ${
+            collapsed
+              ? ""
+              : "w-full gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-2.5 py-2"
+          }`}
+          title={userName}
         >
-          {initial}
-        </div>
-        {!collapsed ? (
-          <>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-body text-[13px] font-medium text-[#f8fafc]">{userName}</p>
-              <p className="truncate font-body text-[11px] text-[#94a3b8]">
-                {isPlatformAdmin ? tNav("userRoleAdmin") : subtitle}
-              </p>
-            </div>
-            <ChevronRight size={15} className="shrink-0 text-[#64748b]" aria-hidden />
-          </>
-        ) : null}
-      </button>
+          <div
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-body text-xs font-semibold text-white"
+            style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
+          >
+            {initial}
+          </div>
+          {!collapsed ? (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-body text-[13px] font-medium text-[#f8fafc]">{userName}</p>
+                <p className="truncate font-body text-[11px] text-[#94a3b8]">
+                  {isPlatformAdmin ? tNav("userRoleAdmin") : subtitle}
+                </p>
+              </div>
+              <ChevronRight size={15} className="shrink-0 text-[#64748b]" aria-hidden />
+            </>
+          ) : null}
+        </button>
+      </div>
 
       {menuOpen ? (
         mobileFullScreen ? (
@@ -581,14 +586,18 @@ export function SidebarUserBlock({
                 <ChevronLeft size={18} />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto pb-3">{menuPanel}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto">{menuPanel}</div>
+            {signOutFooter}
           </div>
         ) : (
           <div
-            className="absolute bottom-0 left-full z-50 max-h-[calc(100vh-1rem)] w-72 overflow-y-auto rounded-r-xl border border-l-0 pb-2 shadow-2xl"
+            className={`sidebar-account-panel fixed z-50 flex w-72 flex-col overflow-hidden rounded-r-xl border border-l-0 shadow-2xl ${
+              collapsed ? "left-16" : "left-60"
+            }`}
             style={{ background: "#0a0f14", borderColor: "var(--sidebar-border)" }}
           >
-            {menuPanel}
+            <div className="min-h-0 flex-1 overflow-y-auto">{menuPanel}</div>
+            {signOutFooter}
           </div>
         )
       ) : null}

@@ -12,14 +12,14 @@ import {
 import { validateClientAdAccount, classifyAudienceAiError, fetchCustomAudiencesOptional } from "@/lib/audience-api-helpers";
 import { assertCreativeMemoryAiAccess } from "@/lib/creative-memory/ai-usage";
 import { classifyLlmError } from "@/lib/llm/generate-json";
-import { getApiKeyForProvider, getLlmProvidersStatus } from "@/lib/llm/keys";
-import type { LlmProviderId } from "@/lib/llm/types";
+import { runPersonaAiWithRouter } from "@/lib/ai/persona-provider";
+import { getLlmProvidersStatus } from "@/lib/llm/keys";
 import { createUserPersona, getUserPersona, updateUserPersona } from "@/lib/user-persona-zone";
 import { finalizeFlexibleSpecTargeting } from "@/lib/meta-targeting-prune";
 import { enrichTargetingWithMetaNames } from "@/lib/meta-segment-replacement";
 
 const BriefFieldsSchema = AudienceTargetingBriefSchema.extend({
-  provider: z.enum(["gemini", "claude"]).default("gemini")
+  provider: z.enum(["gemini", "claude"]).optional()
 });
 
 const PersonaPreviewSchema = BriefFieldsSchema.extend({
@@ -126,7 +126,12 @@ function buildSourcePrompt(brief: z.infer<typeof BriefFieldsSchema>) {
 }
 
 export async function GET() {
-  return NextResponse.json({ ok: true, providers: getLlmProvidersStatus() });
+  const providers = getLlmProvidersStatus();
+  return NextResponse.json({
+    ok: true,
+    providers,
+    aiAvailable: providers.gemini || providers.claude
+  });
 }
 
 export async function POST(req: Request) {
@@ -171,10 +176,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const provider = body.provider as LlmProviderId;
-  if (!getApiKeyForProvider(provider)) {
-    return NextResponse.json({ ok: false, error: "IA não configurada" }, { status: 503 });
-  }
+  const provider = body.provider as "gemini" | "claude" | undefined;
 
   try {
     await assertCreativeMemoryAiAccess(tenant.id);
@@ -186,8 +188,10 @@ export async function POST(req: Request) {
   if (body.phase === "preview") {
     try {
       const brief = AudienceTargetingBriefSchema.parse(body);
-      const persona = await generateAudiencePersonaPreview({ provider, brief });
-      return NextResponse.json({ ok: true, persona });
+      const { result: persona, provider: usedProvider } = await runPersonaAiWithRouter("preview", (p) =>
+        generateAudiencePersonaPreview({ provider: p, brief })
+      );
+      return NextResponse.json({ ok: true, persona, provider: usedProvider });
     } catch (e) {
       const classified = classifyLlmError(e, provider);
       return NextResponse.json({ ok: false, error: classified.message }, { status: 502 });
@@ -222,23 +226,28 @@ export async function POST(req: Request) {
         ...body,
         gender: body.gender ?? body.persona.suggestedGender
       });
-      const suggestion = await generateAdditionalAudienceSegments({
-        accessToken,
-        adAccountId: body.adAccountId,
-        provider,
-        brief,
-        persona: { ...body.persona, provider, modelUsed: body.persona.modelUsed ?? provider },
-        keepItems: body.keepItems,
-        addPrompt: body.addPrompt,
-        existingMeta: body.suggestionMeta,
-        personaOnly: true
-      });
+      const { result: suggestion, provider: usedProvider } = await runPersonaAiWithRouter(
+        "add_segments",
+        (p) =>
+          generateAdditionalAudienceSegments({
+            accessToken,
+            adAccountId: body.adAccountId,
+            provider: p,
+            brief,
+            persona: { ...body.persona, provider: p, modelUsed: body.persona.modelUsed ?? p },
+            keepItems: body.keepItems,
+            addPrompt: body.addPrompt,
+            existingMeta: body.suggestionMeta,
+            personaOnly: true
+          })
+      );
       return NextResponse.json({
         ok: true,
-        suggestion: { ...suggestion, targeting: stripPersonaTargeting(suggestion.targeting) }
+        suggestion: { ...suggestion, targeting: stripPersonaTargeting(suggestion.targeting) },
+        provider: usedProvider
       });
     } catch (e) {
-      const classified = classifyAudienceAiError(e, provider);
+      const classified = classifyAudienceAiError(e, provider ?? "gemini");
       return NextResponse.json(
         { ok: false, error: classified.message, errorCode: classified.code },
         { status: classified.status }
@@ -253,25 +262,28 @@ export async function POST(req: Request) {
     });
 
     const audiences = await fetchCustomAudiencesOptional(accessToken, body.adAccountId);
-    const suggestion = await generateAudienceTargetingSuggestion({
-      accessToken,
-      adAccountId: body.adAccountId,
-      provider,
-      brief,
-      persona: { ...body.persona, provider, modelUsed: body.persona.modelUsed ?? "" },
-      customAudiences: audiences.map((a) => ({
-        id: a.id,
-        name: a.name,
-        subtype: a.subtype
-      }))
-    });
+    const { result: suggestion, provider: usedProvider } = await runPersonaAiWithRouter("targeting", (p) =>
+      generateAudienceTargetingSuggestion({
+        accessToken,
+        adAccountId: body.adAccountId,
+        provider: p,
+        brief,
+        persona: { ...body.persona, provider: p, modelUsed: body.persona.modelUsed ?? "" },
+        customAudiences: audiences.map((a) => ({
+          id: a.id,
+          name: a.name,
+          subtype: a.subtype
+        }))
+      })
+    );
 
     const personaTargeting = stripPersonaTargeting(suggestion.targeting);
 
     if (body.phase === "targeting") {
       return NextResponse.json({
         ok: true,
-        suggestion: { ...suggestion, targeting: personaTargeting }
+        suggestion: { ...suggestion, targeting: personaTargeting },
+        provider: usedProvider
       });
     }
 
@@ -332,7 +344,7 @@ export async function POST(req: Request) {
       removedSegments: removed.length ? removed : undefined
     });
   } catch (e) {
-    const classified = classifyAudienceAiError(e, provider);
+    const classified = classifyAudienceAiError(e, provider ?? "gemini");
     return NextResponse.json(
       { ok: false, error: classified.message, errorCode: classified.code },
       { status: classified.status }

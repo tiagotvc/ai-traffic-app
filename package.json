@@ -29,6 +29,7 @@
     "@supabase/supabase-js": "^2.49.8",
     "clsx": "^2.1.1",
     "dotenv": "latest",
+    "exceljs": "^4.4.0",
     "framer-motion": "^12.38.0",
     "html2pdf.js": "^0.14.0",
     "inngest": "^3.35.1",

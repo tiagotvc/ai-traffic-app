@@ -1,8 +1,15 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
-import { Building2, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
+import {
+  Building2,
+  Facebook,
+  Plus,
+  Trash2,
+  TrendingDown,
+  TrendingUp
+} from "lucide-react";
 
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { IconLabelLink } from "@/components/ui/IconLabelButton";
@@ -10,27 +17,145 @@ import { OrionActionLoadingOverlay } from "@/components/ui/OrionActionLoadingOve
 import { Link, useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { DsButton, DsInfoBanner, DsModal } from "@/design-system";
+import { cn } from "@/lib/cn";
+import { getCampaignPresetIconConfig } from "@/lib/campaign-preset-icons";
 import { toUxClientCards, type UxClientCard } from "@/uxpilot-ui/adapters/clients-mappers";
 import { useClientsData } from "@/uxpilot-ui/adapters/useClientsData";
 
-function StatusPill({ status, alertCount }: { status: "healthy" | "warning"; alertCount: number }) {
+type MetricTileVariant = "purple" | "neutral";
+
+const METRIC_TILE_STYLES: Record<
+  MetricTileVariant,
+  { bg: string; border: string; label: string; value: string }
+> = {
+  purple: {
+    bg: "color-mix(in srgb, var(--ui-accent-muted) 65%, var(--creator-card-bg, var(--surface-card)))",
+    border: "1px solid var(--ui-accent-border)",
+    label: "var(--ui-accent)",
+    value: "var(--ui-accent)"
+  },
+  neutral: {
+    bg: "color-mix(in srgb, var(--creator-card-bg, var(--surface-card)) 92%, var(--border-color))",
+    border: "1px solid var(--creator-card-border, var(--border-color))",
+    label: "var(--text-dimmer)",
+    value: "var(--text-main)"
+  }
+};
+
+function StatusPill({
+  status,
+  alertCount,
+  healthyLabel,
+  alertLabel
+}: {
+  status: "healthy" | "warning";
+  alertCount: number;
+  healthyLabel: string;
+  alertLabel: string;
+}) {
   const healthy = status === "healthy";
   return (
     <span
-      className="text-[10px] font-heading font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
-      style={{
-        background: healthy ? "rgba(16,185,129,0.12)" : "rgba(245,166,35,0.12)",
-        color: healthy ? "#10b981" : "#f5a623",
-        border: `1px solid ${healthy ? "rgba(16,185,129,0.25)" : "rgba(245,166,35,0.25)"}`
-      }}
+      className={cn(
+        "rounded-full px-2 py-0.5 font-heading text-[10px] font-bold uppercase tracking-wide",
+        healthy
+          ? "border border-emerald-500/25 bg-emerald-500/10 text-emerald-500"
+          : "border border-amber-500/25 bg-amber-500/10 text-amber-500"
+      )}
     >
-      {healthy ? "Saudável" : `${alertCount} alerta${alertCount === 1 ? "" : "s"}`}
+      {healthy ? healthyLabel : alertLabel}
     </span>
+  );
+}
+
+function ClientMetricTile({
+  label,
+  value,
+  variant
+}: {
+  label: string;
+  value: string;
+  variant: MetricTileVariant;
+}) {
+  const s = METRIC_TILE_STYLES[variant];
+  return (
+    <div
+      className="flex min-w-0 flex-1 flex-col items-center rounded-lg px-2 py-2 text-center"
+      style={{ background: s.bg, border: s.border }}
+    >
+      <div className="font-heading text-sm font-bold tabular-nums" style={{ color: s.value }}>
+        {value}
+      </div>
+      <div
+        className="mt-0.5 font-body text-[10px] font-semibold uppercase tracking-wide"
+        style={{ color: s.label }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function ClientIntegrationsRow({
+  client,
+  t
+}: {
+  client: UxClientCard;
+  t: ReturnType<typeof useTranslations<"clientsHub">>;
+}) {
+  const detailParts: string[] = [];
+  if (client.accounts > 0) {
+    detailParts.push(t("integrationAccounts", { count: client.accounts }));
+  }
+  if (client.pixelCount > 0) {
+    detailParts.push(t("integrationPixels", { count: client.pixelCount }));
+  }
+  if (client.hasPage) {
+    detailParts.push(t("integrationPageLinked"));
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 font-medium",
+          client.metaConnected ? "text-[var(--text-main)]" : "text-[var(--text-dim)]"
+        )}
+      >
+        <Facebook
+          size={12}
+          aria-hidden
+          className={client.metaConnected ? "text-[var(--ui-accent)]" : "text-[var(--text-dimmer)]"}
+        />
+        {client.metaConnected ? t("metaConnectedShort") : t("metaDisconnectedShort")}
+      </span>
+      {detailParts.map((part) => (
+        <Fragment key={part}>
+          <span className="text-[var(--text-dimmer)]" aria-hidden>
+            ·
+          </span>
+          <span className="text-[var(--text-dim)]">{part}</span>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+function ClientGoalRow({ preset, label }: { preset: string; label: string }) {
+  const { Icon: PresetIcon } = getCampaignPresetIconConfig(preset);
+  return (
+    <div className="flex items-center gap-2">
+      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+        <PresetIcon size={14} aria-hidden />
+      </span>
+      <span className="truncate font-body text-sm text-[var(--text-main)]">{label}</span>
+    </div>
   );
 }
 
 export function ClientsContentLive() {
   const t = useTranslations("clientsHub");
+  const tPresets = useTranslations("campaignPresets");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const data = useClientsData();
@@ -40,6 +165,15 @@ export function ClientsContentLive() {
   const [deleting, setDeleting] = useState(false);
 
   useCommandStripPage({ hideFilters: true, hideSync: true });
+
+  function presetLabel(preset: string) {
+    if (preset.startsWith("custom:")) return preset.slice("custom:".length);
+    try {
+      return tPresets(preset as "default");
+    } catch {
+      return preset;
+    }
+  }
 
   async function handleConfirmDelete() {
     if (!confirmClient) return;
@@ -53,7 +187,7 @@ export function ClientsContentLive() {
   }
 
   return (
-    <>
+    <div data-dashboard-shell className="contents">
       <PageToolbar
         icon={<Building2 size={16} />}
         title={t("title")}
@@ -82,28 +216,19 @@ export function ClientsContentLive() {
       {data.loading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-48 animate-pulse rounded-xl border"
-              style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
-            />
+            <div key={i} className="campaign-creator-card h-48 animate-pulse" />
           ))}
         </div>
       ) : cards.length === 0 ? (
-        <div
-          className="rounded-xl border p-10 text-center"
-          style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
-        >
-          <h3 className="font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
+        <div className="campaign-creator-card p-10 text-center">
+          <h3 className="font-heading text-lg font-bold text-[var(--text-main)]">
             Cadastre seu primeiro cliente
           </h3>
-          <p className="mt-2 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-            {t("subtitle")}
-          </p>
+          <p className="mt-2 font-body text-sm text-[var(--text-dim)]">{t("subtitle")}</p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/clients/new"
-              className="ui-btn-primary inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-semibold"
+              className="ui-btn-accent inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-semibold"
             >
               <Plus size={16} />
               Novo cliente
@@ -144,83 +269,72 @@ export function ClientsContentLive() {
                     router.push(`/clients/${client.slug}`);
                   }
                 }}
-                className="group kpi-card-hover animate-fade-up cursor-pointer overflow-hidden rounded-xl border text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
+                className="campaign-creator-card kpi-card-hover animate-fade-up cursor-pointer text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
                 style={{
-                  background: "var(--surface-card)",
-                  borderColor: "var(--border-color)",
                   animationDelay: `${i * 80}ms`,
                   animationFillMode: "both"
                 }}
               >
-                <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${client.color}, transparent)` }} />
-                <div className="p-5">
-                  <div className="mb-4 flex items-start justify-between gap-2">
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div
-                        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl font-heading text-lg font-bold"
-                        style={{ background: `${client.color}20`, border: `1px solid ${client.color}30` }}
-                      >
-                        <span style={{ color: client.color }}>{client.logo}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="truncate font-heading text-base font-semibold" style={{ color: "var(--text-main)" }}>
-                          {client.name}
-                        </h3>
-                        <p className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                          {client.subtitle}
-                        </p>
-                      </div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] font-heading text-lg font-bold text-[var(--ui-accent)]">
+                      {client.logo}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <StatusPill status={client.status} alertCount={client.alertCount} />
-                      {protectedClient ? null : (
-                        <button
-                          type="button"
-                          title={t("deleteClient")}
-                          aria-label={t("deleteClient")}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmClient(client);
-                          }}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--text-dimmer)] opacity-0 transition-all hover:bg-[rgba(239,68,68,0.1)] hover:text-[#ef4444] focus-visible:opacity-100 group-hover:opacity-100"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                    <div className="min-w-0">
+                      <h3 className="truncate font-heading text-base font-semibold text-[var(--text-main)]">
+                        {client.name}
+                      </h3>
+                      <p className="font-body text-xs text-[var(--text-dim)]">
+                        {t("adAccountsSubtitle", { count: client.accounts })}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="mb-4 grid grid-cols-3 gap-2">
-                    {[
-                      { label: client.budgetLabel, value: client.budgetValue, color: "#f5a623" },
-                      { label: "ROAS", value: client.roasValue, color: "#10b981" },
-                      { label: "CPL", value: client.cplValue, color: "var(--text-dim)" }
-                    ].map((k) => (
-                      <div
-                        key={k.label}
-                        className="rounded-lg p-2 text-center"
-                        style={{ background: "var(--surface-thead)" }}
+                  <div className="flex items-center gap-2">
+                    <StatusPill
+                      status={client.status}
+                      alertCount={client.alertCount}
+                      healthyLabel={t("statusHealthy")}
+                      alertLabel={t("alertCount", { count: client.alertCount })}
+                    />
+                    {protectedClient ? null : (
+                      <button
+                        type="button"
+                        title={t("deleteClient")}
+                        aria-label={t("deleteClient")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmClient(client);
+                        }}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--creator-card-border,var(--border-color))] text-[var(--text-dimmer)] transition-colors hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-500"
                       >
-                        <div className="font-heading text-sm font-bold" style={{ color: k.color }}>
-                          {k.value}
-                        </div>
-                        <div className="mt-0.5 font-body text-[10px]" style={{ color: "var(--text-dimmer)" }}>
-                          {k.label}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                      {client.accounts} {client.accounts === 1 ? "conta conectada" : "contas conectadas"}
-                    </span>
-                    {client.status === "healthy" ? (
-                      <TrendingUp size={12} style={{ color: "#10b981" }} />
-                    ) : (
-                      <TrendingDown size={12} style={{ color: "#f5a623" }} />
+                        <Trash2 size={14} />
+                      </button>
                     )}
                   </div>
+                </div>
+
+                <div className="mt-3">
+                  <p className="campaign-creator-orion-section-label mb-1.5">{t("integrationsSection")}</p>
+                  <ClientIntegrationsRow client={client} t={t} />
+                </div>
+
+                <div className="mt-2.5">
+                  <p className="campaign-creator-orion-section-label mb-1.5">{t("goalSection")}</p>
+                  <ClientGoalRow preset={client.dominantPreset} label={presetLabel(client.dominantPreset)} />
+                </div>
+
+                <div className="mt-3 flex gap-2">
+                  <ClientMetricTile label={client.budgetLabel} value={client.budgetValue} variant="purple" />
+                  <ClientMetricTile label="ROAS" value={client.roasValue} variant="neutral" />
+                  <ClientMetricTile label="CPL" value={client.cplValue} variant="neutral" />
+                </div>
+
+                <div className="mt-2 flex items-center justify-end">
+                  {client.status === "healthy" ? (
+                    <TrendingUp size={12} className="text-emerald-500" />
+                  ) : (
+                    <TrendingDown size={12} className="text-amber-500" />
+                  )}
                 </div>
               </div>
             );
@@ -228,7 +342,6 @@ export function ClientsContentLive() {
         </div>
       )}
 
-      {/* Modal de confirmação de exclusão */}
       <DsModal
         open={!!confirmClient}
         onClose={() => (deleting ? undefined : setConfirmClient(null))}
@@ -251,7 +364,6 @@ export function ClientsContentLive() {
         </p>
       </DsModal>
 
-      {/* Overlay de carregamento */}
       <OrionActionLoadingOverlay
         open={deleting}
         title={t("deleteLoadingTitle")}
@@ -259,6 +371,6 @@ export function ClientsContentLive() {
         subtitle={tCommon("pleaseWait")}
         ariaLabelledBy="client-delete-loading-title"
       />
-    </>
+    </div>
   );
 }

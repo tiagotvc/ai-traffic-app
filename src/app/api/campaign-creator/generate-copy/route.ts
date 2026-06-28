@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { getClientBrainContext } from "@/lib/agency-brain/get-client-brain-context";
 import { generateAdCopy } from "@/lib/campaign-creator-ai";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
 const BodySchema = z.object({
   prompt: z.string().min(3),
@@ -15,28 +16,30 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) {
-    return NextResponse.json({ ok: false, error: "AI_NOT_CONFIGURED" }, { status: 503 });
-  }
+  try {
+    await assertFeatureEnabled("campaigns.ai-copy");
 
-  const body = BodySchema.parse(await req.json().catch(() => ({})));
-  const { tenant } = await getAppContext();
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: "AI_NOT_CONFIGURED" }, { status: 503 });
+    }
 
-  let clientContext: string | undefined;
-  if (body.clientId) {
-    const client = await getClientBySlugOrId(tenant.id, body.clientId);
-    if (client) {
-      try {
-        const brain = await getClientBrainContext(tenant.id, client.id);
-        clientContext = brain.summaryText;
-      } catch {
-        /* optional */
+    const body = BodySchema.parse(await req.json().catch(() => ({})));
+    const { tenant } = await getAppContext();
+
+    let clientContext: string | undefined;
+    if (body.clientId) {
+      const client = await getClientBySlugOrId(tenant.id, body.clientId);
+      if (client) {
+        try {
+          const brain = await getClientBrainContext(tenant.id, client.id);
+          clientContext = brain.summaryText;
+        } catch {
+          /* optional */
+        }
       }
     }
-  }
 
-  try {
     const data = await generateAdCopy({
       apiKey,
       prompt: body.prompt,
@@ -48,6 +51,9 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, ...data });
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     const msg = err instanceof Error ? err.message : "AI error";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }

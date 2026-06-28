@@ -19,7 +19,42 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         id: "campaigns.meta-app-development-notice",
         label: "Aviso app Meta em desenvolvimento",
         description:
-          "Texto no passo Anúncio lembrando importar criativo quando o app não está aprovado para publicar."
+          "Opção de reutilizar criativo importado no passo Anúncio (evita erro 1885183 com app em desenvolvimento)."
+      },
+      {
+        id: "campaigns.brain",
+        label: "Orion Brain no criador",
+        description:
+          "Insights, benchmarks e recomendações da memória da agência durante a criação de campanha.",
+        children: [
+          {
+            id: "campaigns.brain.sidebar",
+            label: "Dicas na sidebar",
+            description: "Card Orion Brain na barra lateral do criador (dicas, modal e recomendações)."
+          },
+          {
+            id: "campaigns.brain.insights",
+            label: "Insights no passo Campanha",
+            description: "Benchmark e feedback inline no passo de orçamento/campanha."
+          },
+          {
+            id: "campaigns.brain.meta-research",
+            label: "Pesquisa Meta Ad Library",
+            description:
+              "Consulta anúncios de concorrentes via Meta Ad Library ao montar o insight (consome créditos).",
+            dependsOn: ["campaigns.brain.insights"]
+          }
+        ]
+      },
+      {
+        id: "campaigns.ai-generate",
+        label: "Gerar campanha por IA",
+        description: "Modo assistido por IA: wizard de criação e preenchimento automático do rascunho."
+      },
+      {
+        id: "campaigns.ai-copy",
+        label: "Copy e criativos por IA",
+        description: "Geração de textos de anúncio e variantes de criativo nos passos do criador."
       }
     ]
   },
@@ -33,6 +68,18 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         label: "Preview insights IA (criação de persona)",
         description:
           "Mostra cartões de resumo e insights da IA na criação de persona. Sem métricas fictícias de alcance."
+      },
+      {
+        id: "audiences.personaInsights",
+        label: "Persona — Insights & Comparação",
+        description:
+          "Compara a persona com dados reais da Meta (tamanho, demografia, validade dos segmentos) + recomendações por IA. Read-only."
+      },
+      {
+        id: "audiences.personaTargetingBuilder",
+        label: "Persona — editor de segmentos Meta",
+        description:
+          "Mostra a edição de segmentos Meta (interesses/comportamentos/demográficos) dentro do criador de persona. Desligue para concentrar segmentos no Criador de Públicos Meta."
       }
     ]
   },
@@ -84,6 +131,61 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         id: "reports.v2",
         label: "Relatório v2 (com IA)",
         description: "Gerar por IA, análise/insights por IA e destaques de anomalia."
+      },
+      {
+        id: "reports.v3",
+        label: "Relatório v3 (entrega ao cliente)",
+        description: "Agendamento parametrizável + entrega automática ao cliente final.",
+        children: [
+          {
+            id: "reports.v3.emailPdf",
+            label: "Entrega: E-mail com PDF",
+            description: "Envia o relatório em PDF anexo por e-mail."
+          },
+          {
+            id: "reports.v3.emailLink",
+            label: "Entrega: E-mail com link",
+            description: "Envia e-mail com link público estável do relatório (ao vivo)."
+          },
+          {
+            id: "reports.v3.whatsapp",
+            label: "Entrega: WhatsApp",
+            description: "Envia resumo + link via WhatsApp Business Cloud API (requer credenciais)."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: "scientists",
+    label: "Cientistas (Labs)",
+    description: "Agentes de pesquisa (cientistas). Ative/desative cada um individualmente (beta).",
+    children: [
+      {
+        id: "scientists.competitor",
+        label: "Marketing Scientist (concorrentes)",
+        description:
+          "Pesquisa concorrentes (Meta Ad Library, TikTok, landing pages) — hooks, ofertas e padrões de mercado. Alimenta a comparação automática da persona."
+      },
+      {
+        id: "scientists.consumer",
+        label: "Consumer Scientist",
+        description: "Pesquisa o comportamento e as motivações do público-alvo."
+      },
+      {
+        id: "scientists.trend",
+        label: "Trend Scientist",
+        description: "Detecta tendências e momentum de mercado."
+      },
+      {
+        id: "scientists.hypothesis",
+        label: "Hypothesis Scientist",
+        description: "Gera hipóteses testáveis a partir dos achados."
+      },
+      {
+        id: "scientists.confidence",
+        label: "Confidence Scientist",
+        description: "Valida estatisticamente a confiança dos achados."
       }
     ]
   },

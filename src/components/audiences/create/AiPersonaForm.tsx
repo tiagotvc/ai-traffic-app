@@ -8,6 +8,7 @@ import {
   type AiAudienceTargetingFormActionState,
   type AiAudienceTargetingFormHandle
 } from "@/components/audiences/create/AiAudienceTargetingForm";
+import type { PersonaCreatorSectionKey } from "@/components/audiences/create/persona-creator-steps";
 import type { PersonaRepairSeed } from "@/lib/persona-targeting-types";
 
 type Props = {
@@ -17,6 +18,8 @@ type Props = {
   /** Omit title/close row when rendered inside CreatorAiModalShell. */
   embedded?: boolean;
   shellMode?: boolean;
+  manualMode?: boolean;
+  personaSection?: PersonaCreatorSectionKey;
   onClose: () => void;
   onSaved: (personaId?: string) => void;
   onActionStateChange?: (state: AiAudienceTargetingFormActionState) => void;
@@ -29,6 +32,8 @@ export const AiPersonaForm = forwardRef<AiAudienceTargetingFormHandle, Props>(fu
     repairSeed,
     embedded = false,
     shellMode = false,
+    manualMode = false,
+    personaSection,
     onClose,
     onSaved,
     onActionStateChange
@@ -87,6 +92,8 @@ export const AiPersonaForm = forwardRef<AiAudienceTargetingFormHandle, Props>(fu
         disabled={needsAccount}
         repairSeed={repairSeed}
         shellMode={shellMode}
+        manualMode={manualMode}
+        personaSection={personaSection}
         onActionStateChange={onActionStateChange}
         onSaved={(result) => onSaved(result.personaId)}
       />

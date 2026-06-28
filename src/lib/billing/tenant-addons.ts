@@ -48,7 +48,8 @@ export function mergePlanLimitsWithAddons(base: PlanLimits, bonuses: TenantAddon
     allowDashboardResize: base.allowDashboardResize,
     allowDashboardAiWidgets: base.allowDashboardAiWidgets,
     allowDashboardAiBuilder: base.allowDashboardAiBuilder,
-    allowDashboardSharing: base.allowDashboardSharing
+    allowDashboardSharing: base.allowDashboardSharing,
+    allowWhiteLabel: base.allowWhiteLabel
   };
 }
 

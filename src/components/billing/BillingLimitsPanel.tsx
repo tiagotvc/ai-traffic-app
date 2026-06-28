@@ -231,10 +231,12 @@ export function PlanLimitsGrid({ limits }: { limits: PlanLimits }) {
 
 export function BillingLimitsPanel({
   limits,
-  usage
+  usage,
+  compact = false
 }: {
   limits: PlanLimits;
   usage: TenantUsage;
+  compact?: boolean;
 }) {
   const t = useTranslations("billingPage");
 
@@ -307,7 +309,13 @@ export function BillingLimitsPanel({
   ];
 
   return (
-    <div className="grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+      className={
+        compact
+          ? "grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3"
+          : "grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3"
+      }
+    >
       {rows.map((row) => (
         <LimitItem
           key={row.key}

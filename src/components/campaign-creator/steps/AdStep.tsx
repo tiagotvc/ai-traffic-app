@@ -37,6 +37,7 @@ import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftCon
 import { useAdStepSubflow } from "@/components/campaign-creator/AdStepSubflowContext";
 import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
 import { useClientPublishDefaults } from "@/hooks/useClientPublishDefaults";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
 import { META_AD_COPY_LIMITS } from "@/lib/meta-ad-creative";
@@ -122,6 +123,8 @@ export function AdStep() {
   const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const { section: activeView, canGoTo, isSectionVisited, goTo } = useAdStepSubflow();
   const topRef = useRef<HTMLDivElement>(null);
+  const metaAppNoticeEnabled = usePlatformFeature("campaigns.meta-app-development-notice");
+  const aiCopyEnabled = usePlatformFeature("campaigns.ai-copy");
 
   const ad = getActiveAd(payload);
   const adset = getActiveAdset(payload);
@@ -630,7 +633,7 @@ export function AdStep() {
             )}
           </section>
 
-          {ad.metaCreativeId ? (
+          {ad.metaCreativeId && metaAppNoticeEnabled ? (
             <section className="campaign-creator-card campaign-creator-budget-side-card">
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input
@@ -659,7 +662,10 @@ export function AdStep() {
         <div className="campaign-creator-section-stack space-y-3">
           <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
             <div
-              className="grid grid-cols-2 gap-1 rounded-lg border p-1"
+              className={cn(
+                "grid gap-1 rounded-lg border p-1",
+                aiCopyEnabled ? "grid-cols-2" : "grid-cols-1"
+              )}
               style={{
                 borderColor: "var(--creator-card-border, var(--border-color))",
                 background: "var(--creator-card-bg-inset, var(--surface-bg))"
@@ -681,34 +687,36 @@ export function AdStep() {
               >
                 {t("copyTabManual")}
               </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={copyMode === "ai"}
-                onClick={() => {
-                  setCopyMode("ai");
-                  setAiCopyModalOpen(true);
-                }}
-                className={cn(
-                  "inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition",
-                  copyMode === "ai"
-                    ? "bg-[var(--ui-accent-muted)] text-[var(--violet)] shadow-sm"
-                    : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
-                )}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <Sparkles size={12} className="shrink-0" aria-hidden />
-                  {t("copyTabAi")}
-                  <AiCreditCostHint
-                    kind={AD_COPY_AI_CREDITS.kind}
-                    calls={AD_COPY_AI_CREDITS.calls}
-                    variant="pill"
-                  />
-                </span>
-              </button>
+              {aiCopyEnabled ? (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={copyMode === "ai"}
+                  onClick={() => {
+                    setCopyMode("ai");
+                    setAiCopyModalOpen(true);
+                  }}
+                  className={cn(
+                    "inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition",
+                    copyMode === "ai"
+                      ? "bg-[var(--ui-accent-muted)] text-[var(--violet)] shadow-sm"
+                      : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                  )}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Sparkles size={12} className="shrink-0" aria-hidden />
+                    {t("copyTabAi")}
+                    <AiCreditCostHint
+                      kind={AD_COPY_AI_CREDITS.kind}
+                      calls={AD_COPY_AI_CREDITS.calls}
+                      variant="pill"
+                    />
+                  </span>
+                </button>
+              ) : null}
             </div>
 
-            {copyMode === "manual" ? (
+            {copyMode === "manual" || !aiCopyEnabled ? (
               <div className="space-y-4">
                 <MetaTextVariantsInput
                   label={tAds("titleLabel")}
@@ -1108,7 +1116,8 @@ export function AdStep() {
         }}
       />
 
-      <CreatorAiModalShell
+      {aiCopyEnabled ? (
+        <CreatorAiModalShell
         open={aiCopyModalOpen}
         onClose={() => {
           setAiCopyModalOpen(false);
@@ -1146,6 +1155,7 @@ export function AdStep() {
           {aiError ? <p className="text-xs text-red-600">{aiError}</p> : null}
         </div>
       </CreatorAiModalShell>
+      ) : null}
     </div>
   );
 }

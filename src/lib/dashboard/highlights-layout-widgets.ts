@@ -1,6 +1,8 @@
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import {
+  DEFAULT_PERIOD_METRICS,
   MAX_HERO_METRICS,
+  MAX_PERIOD_METRICS,
   resolveHeroMetricKeys,
   type DashboardLayoutPrefs
 } from "@/lib/dashboard-layout-prefs";
@@ -51,12 +53,8 @@ export function resolveHighlightsHeroKeys(heroMetrics?: MetricKey[]): MetricKey[
   return resolved.length ? resolved : FALLBACK_HERO;
 }
 
-export function resolveSecondaryMetricKeys(heroMetrics?: MetricKey[], dominantPreset?: string): MetricKey[] {
-  const heroKeys = resolveHighlightsHeroKeys(heroMetrics);
-  return presetMetricsFor(dominantPreset)
-    .concat(QUICK_METRICS)
-    .filter((k, i, arr) => !heroKeys.includes(k) && arr.indexOf(k) === i)
-    .slice(0, 6);
+export function resolveSecondaryMetricKeys(_heroMetrics?: MetricKey[], _dominantPreset?: string): MetricKey[] {
+  return DEFAULT_PERIOD_METRICS.slice(0, MAX_PERIOD_METRICS);
 }
 
 function heroCardWidth(count: number): number {

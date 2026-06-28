@@ -1,5 +1,10 @@
-import { AudiencesView } from "@/uxpilot-ui/adapters/AudiencesView";
+import { redirect } from "next/navigation";
 
-export default function AudiencesPage() {
-  return <AudiencesView />;
+export default async function AudiencesIndexPage({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  redirect(`/${locale}/audiences/personas`);
 }

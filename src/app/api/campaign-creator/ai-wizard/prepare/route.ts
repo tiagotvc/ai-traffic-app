@@ -10,10 +10,13 @@ import {
 } from "@/lib/campaign-creator/ai-wizard-prepare";
 import { assertCreativeMemoryAiAccess } from "@/lib/creative-memory/ai-usage";
 import { classifyLlmError, llmErrorHttpStatus } from "@/lib/llm/generate-json";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
 export async function POST(req: Request) {
   let usedProvider: "gemini" | "claude" = "claude";
   try {
+    await assertFeatureEnabled("campaigns.ai-generate");
+
     const { tenant, user, metaAccessToken } = await getAppContext();
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -57,6 +60,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, ...preparedBody, provider: usedProvider });
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     console.error("[ai-wizard prepare]", err);
     const classified = classifyLlmError(err, usedProvider);
     const message = err instanceof Error ? err.message : classified.message;

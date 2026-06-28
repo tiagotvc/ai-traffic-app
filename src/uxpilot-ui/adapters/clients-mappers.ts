@@ -12,8 +12,11 @@ export type UxClientCard = {
   name: string;
   logo: string;
   color: string;
-  subtitle: string;
   accounts: number;
+  metaConnected: boolean;
+  pixelCount: number;
+  hasPage: boolean;
+  dominantPreset: string;
   budgetLabel: string;
   budgetValue: string;
   roasValue: string;
@@ -45,8 +48,11 @@ export function toUxClientCards(clients: ClientRow[], locale: string): UxClientC
       name: c.name,
       logo: c.name.trim().charAt(0).toUpperCase() || "?",
       color: CARD_COLORS[i % CARD_COLORS.length],
-      subtitle: `${c.accounts} ${c.accounts === 1 ? "conta" : "contas"}`,
       accounts: c.accounts,
+      dominantPreset: c.dominantPreset ?? "default",
+      metaConnected: c.metaConnected ?? c.accounts > 0,
+      pixelCount: c.pixelCount ?? 0,
+      hasPage: c.hasPage ?? false,
       budgetLabel: "Investimento",
       budgetValue: metricValue(c, spendKey, locale),
       roasValue,

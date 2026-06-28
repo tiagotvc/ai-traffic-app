@@ -1,7 +1,15 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState, useTransition } from "react";
-import { Briefcase, ShieldOff, Sparkles, Target, User, Waves } from "lucide-react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  useTransition
+} from "react";
+import { Briefcase, Hash, ShieldOff, Sparkles, Target, User, Users, Waves } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type {
@@ -9,27 +17,43 @@ import type {
   AudienceTargetingSuggestion
 } from "@/lib/audience-targeting-shared";
 import {
+  buildFlexibleSpecFromSegmentItems,
   canAddMoreSegments,
-  removeSegmentFromSuggestion
+  extractPersonaTargetingItems,
+  removeSegmentFromSuggestion,
+  type AudienceTargetingSuggestionItem
 } from "@/lib/audience-targeting-shared";
+import { PersonaManualMetaSegmentsPanel } from "@/components/audiences/create/PersonaManualMetaSegmentsPanel";
 import {
   buildRepairBriefFromIssue,
   buildRepairPersonaPreview,
   type PersonaRepairSeed
 } from "@/lib/persona-targeting-types";
+import {
+  personaSectionShowsField,
+  personaStepShowsField,
+  type PersonaCreatorSectionKey,
+  type PersonaCreatorStepKey
+} from "@/components/audiences/create/persona-creator-steps";
 import { PersonaReplacementHintsPanel } from "@/components/audiences/create/PersonaReplacementHintsPanel";
 import { AudienceCreationInsightsPanel } from "@/components/audiences/create/AudienceCreationInsightsPanel";
 import { PersonaSegmentChipList } from "@/components/audiences/create/PersonaSegmentChipList";
 import { PersonaAddSegmentsModal } from "@/components/audiences/create/PersonaAddSegmentsModal";
 import {
   CreatorAiPreviewSection,
-  CreatorAiPromptField,
-  CreatorAiProviderPicker
+  CreatorAiPromptField
 } from "@/components/campaign-creator/CreatorAiModalParts";
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
-import { FormSelect, type FormSelectOption } from "@/components/ui/FormSelect";
+import { FilterSelectDropdown, type FilterSelectOption } from "@/components/FilterSelectDropdown";
+import { FilterTextField } from "@/components/FilterTextField";
 import { DsModal } from "@/design-system/components/DsModal";
 import { cn } from "@/lib/cn";
+import { usePersonaCreatorScoreOptional } from "@/components/audiences/create/PersonaCreatorScoreContext";
+import {
+  buildPersonaDraftScoreInput,
+  computePersonaDraftScore,
+  type PersonaDraftScoreInput
+} from "@/lib/persona-draft-score";
 
 type LlmProviderId = "gemini" | "claude";
 
@@ -64,6 +88,12 @@ export type AiAudienceTargetingFormProps = {
   repairSeed?: PersonaRepairSeed;
   /** When true, credits/footer actions live in CreatorAiModalShell. */
   shellMode?: boolean;
+  /** When set, only the matching persona creator section fields are shown. */
+  personaSection?: PersonaCreatorSectionKey;
+  /** From-scratch persona — same briefing fields as AI, without Motor de IA / credits. */
+  manualMode?: boolean;
+  /** @deprecated Prefer personaSection */
+  personaStep?: PersonaCreatorStepKey;
   onActionStateChange?: (state: AiAudienceTargetingFormActionState) => void;
 };
 
@@ -72,6 +102,10 @@ export type AiAudienceTargetingFormActionState = {
   canClear: boolean;
   pending: boolean;
   creating: boolean;
+  /** Live field snapshot for persona creator sidebar score. */
+  personaScoreInput?: PersonaDraftScoreInput;
+  /** Precomputed sidebar score (0–100) when mode is persona_library. */
+  personaDraftScore?: number;
 };
 
 export type AiAudienceTargetingFormHandle = {
@@ -98,6 +132,9 @@ function AiAudienceTargetingForm({
   onError,
   repairSeed,
   shellMode = false,
+  manualMode = false,
+  personaSection,
+  personaStep,
   onActionStateChange
 }: AiAudienceTargetingFormProps, ref) {
   const t = useTranslations("campaignCreator");
@@ -128,11 +165,135 @@ function AiAudienceTargetingForm({
   const [addSegmentsOpen, setAddSegmentsOpen] = useState(false);
   const [customAudiencesOpen, setCustomAudiencesOpen] = useState(false);
   const [segmentActionError, setSegmentActionError] = useState<string | null>(null);
+  const [manualSegments, setManualSegments] = useState<AudienceTargetingSuggestionItem[]>([]);
+  // Flags do módulo de públicos (persona): editor de segmentos × insights.
+  const [audienceFlags, setAudienceFlags] = useState({
+    personaInsights: true,
+    personaTargetingBuilder: true,
+    marketingScientist: true
+  });
+  useEffect(() => {
+    fetch("/api/audiences/flags")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.ok) {
+          setAudienceFlags({
+            personaInsights: j.personaInsights !== false,
+            personaTargetingBuilder: j.personaTargetingBuilder !== false,
+            marketingScientist: j.marketingScientist !== false
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+  const personaCreatorScore = usePersonaCreatorScoreOptional();
+  const setPersonaCreatorScoreInput = personaCreatorScore?.setScoreInput;
+  const onActionStateChangeRef = useRef(onActionStateChange);
+
+  useEffect(() => {
+    onActionStateChangeRef.current = onActionStateChange;
+  }, [onActionStateChange]);
 
   const effectiveAgeMin = isPersonaLibrary ? demoAgeMin : ageMin;
   const effectiveAgeMax = isPersonaLibrary ? demoAgeMax : ageMax;
   const effectiveGender = isPersonaLibrary ? demoGender : gender;
   const isRepairMode = !!repairSeed?.personaId;
+
+  // Targeting usado nos Insights & Comparação (gerado pela IA ou montado dos segmentos manuais).
+  const insightsTargeting: Record<string, unknown> | null =
+    (suggestion?.targeting as Record<string, unknown> | undefined) ??
+    (manualSegments.length
+      ? {
+          flexible_spec: [
+            {
+              interests: manualSegments
+                .filter((s) => s.type === "interest")
+                .map((s) => ({ id: s.id, name: s.name })),
+              behaviors: manualSegments
+                .filter((s) => s.type === "behavior")
+                .map((s) => ({ id: s.id, name: s.name }))
+            }
+          ],
+          age_min: effectiveAgeMin,
+          age_max: effectiveAgeMax,
+          ...(effectiveGender === "male"
+            ? { genders: [1] }
+            : effectiveGender === "female"
+              ? { genders: [2] }
+              : {})
+        }
+      : null);
+
+  // Comparação automática (Orion Brain): roda em background quando há público + cliente,
+  // a flag está ligada e o usuário NÃO pausou. O resultado vai pro contexto (card Orion Brain).
+  const insightsBriefText = [businessDescription, targetProfile, behaviors, lifestyleHints]
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+  const insightsReady =
+    isPersonaLibrary &&
+    Boolean(clientSlug) &&
+    Boolean(adAccountId) &&
+    (Boolean(insightsTargeting) || (Boolean(businessDescription.trim()) && Boolean(targetProfile.trim())));
+  const insightsSignature = insightsReady
+    ? JSON.stringify({
+        ids: insightsTargeting
+          ? extractPersonaTargetingItems(insightsTargeting)
+              .map((i) => i.id)
+              .sort()
+          : [],
+        brief: insightsBriefText.slice(0, 400),
+        effectiveAgeMin,
+        effectiveAgeMax,
+        effectiveGender,
+        clientSlug,
+        adAccountId
+      })
+    : null;
+  const setInsightsResult = personaCreatorScore?.setInsightsResult;
+  const setInsightsLoading = personaCreatorScore?.setInsightsLoading;
+  const brainPaused = personaCreatorScore?.paused ?? false;
+
+  useEffect(() => {
+    if (!setInsightsResult || !setInsightsLoading) return;
+    if (
+      !insightsSignature ||
+      !audienceFlags.personaInsights ||
+      !audienceFlags.marketingScientist ||
+      brainPaused
+    )
+      return;
+    let active = true;
+    const handle = setTimeout(() => {
+      setInsightsLoading(true);
+      fetch("/api/personas/insights", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          clientId: clientSlug,
+          adAccountId,
+          targeting: insightsTargeting ?? {},
+          ageMin: effectiveAgeMin,
+          ageMax: effectiveAgeMax,
+          gender: effectiveGender,
+          narrative: personaPreview?.narrative || insightsBriefText || undefined
+        })
+      })
+        .then((r) => r.json())
+        .then((j) => {
+          if (active && j?.ok) setInsightsResult(j);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (active) setInsightsLoading(false);
+        });
+    }, 1200);
+    return () => {
+      active = false;
+      clearTimeout(handle);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insightsSignature, audienceFlags.personaInsights, audienceFlags.marketingScientist, brainPaused]);
 
   const keptValidSegmentIds = new Set(
     repairSeed?.segments.filter((s) => s.valid).map((s) => s.id) ?? []
@@ -175,6 +336,7 @@ function AiAudienceTargetingForm({
   }, [repairSeed]);
 
   useEffect(() => {
+    if (manualMode) return;
     fetch(apiBase)
       .then((r) => r.json())
       .then((j: { providers?: { gemini: boolean; claude: boolean } }) => {
@@ -185,7 +347,7 @@ function AiAudienceTargetingForm({
         }
       })
       .catch(() => {});
-  }, [apiBase]);
+  }, [apiBase, manualMode]);
 
   const activeCustomIds = audienceMode === "include" ? includeIds : excludeIds;
   const audienceSearchNorm = audienceSearch.trim().toLowerCase();
@@ -248,6 +410,97 @@ function AiAudienceTargetingForm({
     setAudienceSearch("");
     setTargetingWarning(null);
     setSavePersonaName("");
+    setManualSegments([]);
+  }
+
+  function buildManualPersonaDescription(): string {
+    return [
+      businessDescription.trim(),
+      targetProfile.trim(),
+      behaviors.trim(),
+      lifestyleHints.trim(),
+      exclusionHints.trim()
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  }
+
+  function buildManualPersonaTargeting(): Record<string, unknown> {
+    const genders =
+      effectiveGender === "male" ? [1] : effectiveGender === "female" ? [2] : undefined;
+    const targeting: Record<string, unknown> = {
+      age_min: effectiveAgeMin,
+      age_max: effectiveAgeMax
+    };
+    if (genders) targeting.genders = genders;
+    const flexible = buildFlexibleSpecFromSegmentItems(manualSegments);
+    if (flexible.length) targeting.flexible_spec = flexible;
+    if (includeIds.length) {
+      targeting.custom_audiences = includeIds.map((id) => ({ id }));
+    }
+    if (excludeIds.length) {
+      targeting.excluded_custom_audiences = excludeIds.map((id) => ({ id }));
+    }
+    return targeting;
+  }
+
+  function resolvedManualPersonaName(): string {
+    const custom = savePersonaName.trim();
+    if (custom) return custom;
+    return targetProfile.trim().slice(0, 120) || businessDescription.trim().slice(0, 80);
+  }
+
+  async function saveManualPersona() {
+    const name = resolvedManualPersonaName();
+    if (!name) {
+      reportError(tAud("personaNameRequired"));
+      return;
+    }
+    if (businessDescription.trim().length < 3 || resolvedTargetProfile().length < 3) {
+      reportError(t("aiAudienceBriefTooShort"));
+      return;
+    }
+    if (!clientSlug || !adAccountId) {
+      reportError(tAud("personaNeedsAdAccount"));
+      return;
+    }
+    const description = buildManualPersonaDescription();
+    const targeting = buildManualPersonaTargeting();
+    setCreating(true);
+    setError(null);
+    try {
+      const valid = await validateSuggestionTargeting(targeting);
+      if (!valid) return;
+      const res = await fetch("/api/personas", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          adAccountId,
+          name,
+          description,
+          ageMin: effectiveAgeMin,
+          ageMax: effectiveAgeMax,
+          gender: effectiveGender,
+          targeting,
+          sourcePrompt: description
+        })
+      });
+      const j = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        persona?: { id: string; name: string };
+      };
+      if (!j.ok) {
+        reportError(j.error ?? tAud("savePersonaFailed"));
+        return;
+      }
+      onSaved?.({ name, personaId: j.persona?.id });
+      resetForm();
+    } catch {
+      reportError(tAud("savePersonaFailed"));
+    } finally {
+      setCreating(false);
+    }
   }
 
   function resolvedSavePersonaName(): string {
@@ -257,14 +510,17 @@ function AiAudienceTargetingForm({
     return personaPreview?.personaName?.trim() || suggestion?.title?.trim() || "";
   }
 
+  function resolvedTargetProfile(): string {
+    return targetProfile.trim();
+  }
+
   function buildBriefPayload(avoidSegmentIds: string[] = []) {
     const rejected = repairSeed?.segments.filter((s) => !s.valid) ?? [];
-    return {
+    const base = {
       clientId: clientSlug,
       adAccountId,
-      provider,
       businessDescription: businessDescription.trim(),
-      targetProfile: targetProfile.trim(),
+      targetProfile: resolvedTargetProfile(),
       behaviors: behaviors.trim() || undefined,
       lifestyleHints: lifestyleHints.trim() || undefined,
       exclusionHints: exclusionHints.trim() || undefined,
@@ -278,6 +534,7 @@ function AiAudienceTargetingForm({
       rejectedSegments: rejected.map((s) => ({ id: s.id, name: s.name, type: s.type })),
       avoidSegmentIds
     };
+    return isPersonaLibrary ? base : { ...base, provider };
   }
 
   function buildPersonaBriefPayload(avoidSegmentIds: string[] = []) {
@@ -478,24 +735,77 @@ function AiAudienceTargetingForm({
     }
   }
 
+  const aiAvailable = providers.gemini || providers.claude;
   const canGenerate =
     businessDescription.trim().length >= 3 &&
-    targetProfile.trim().length >= 3 &&
-    (provider === "gemini" ? providers.gemini : providers.claude);
+    resolvedTargetProfile().length >= 3 &&
+    (isPersonaLibrary ? aiAvailable : provider === "gemini" ? providers.gemini : providers.claude);
 
-  const canSave =
-    !!suggestion &&
-    !creating &&
-    !pending &&
-    (!isPersonaLibrary || !!resolvedSavePersonaName());
+  const canSave = manualMode
+    ? businessDescription.trim().length >= 3 &&
+      resolvedTargetProfile().length >= 3 &&
+      !!resolvedManualPersonaName() &&
+      !creating &&
+      !pending
+    : !!suggestion &&
+      !creating &&
+      !pending &&
+      (!isPersonaLibrary || !!resolvedSavePersonaName());
 
   useImperativeHandle(ref, () => ({
     reset: resetForm,
-    save: () => void approveAndSave()
+    save: () => void (manualMode ? saveManualPersona() : approveAndSave())
   }));
 
+  const personaScoreInput = useMemo(
+    () =>
+      isPersonaLibrary
+        ? buildPersonaDraftScoreInput({
+            manualMode,
+            businessDescription,
+            targetProfile,
+            behaviors,
+            lifestyleHints,
+            exclusionHints,
+            savePersonaName,
+            suggestion,
+            personaPreview,
+            manualSegmentCount: manualSegments.length,
+            ageMin: effectiveAgeMin,
+            ageMax: effectiveAgeMax,
+            gender: effectiveGender
+          })
+        : undefined,
+    [
+      isPersonaLibrary,
+      manualMode,
+      businessDescription,
+      targetProfile,
+      behaviors,
+      lifestyleHints,
+      exclusionHints,
+      savePersonaName,
+      suggestion,
+      personaPreview,
+      manualSegments.length,
+      effectiveAgeMin,
+      effectiveAgeMax,
+      effectiveGender
+    ]
+  );
+
+  const personaDraftScore = useMemo(
+    () => (personaScoreInput ? computePersonaDraftScore(personaScoreInput) : 0),
+    [personaScoreInput]
+  );
+
   useEffect(() => {
-    onActionStateChange?.({
+    if (!setPersonaCreatorScoreInput || !personaScoreInput) return;
+    setPersonaCreatorScoreInput(personaScoreInput);
+  }, [personaScoreInput, setPersonaCreatorScoreInput]);
+
+  useEffect(() => {
+    onActionStateChangeRef.current?.({
       canSave,
       canClear: Boolean(
         businessDescription ||
@@ -503,11 +813,15 @@ function AiAudienceTargetingForm({
           behaviors ||
           lifestyleHints ||
           exclusionHints ||
+          savePersonaName ||
           personaPreview ||
-          suggestion
+          suggestion ||
+          manualSegments.length
       ),
       pending,
-      creating
+      creating,
+      personaScoreInput,
+      personaDraftScore: isPersonaLibrary ? personaDraftScore : undefined
     });
   }, [
     canSave,
@@ -516,17 +830,30 @@ function AiAudienceTargetingForm({
     behaviors,
     lifestyleHints,
     exclusionHints,
+    savePersonaName,
     personaPreview,
     suggestion,
+    manualSegments.length,
     pending,
     creating,
-    onActionStateChange
+    personaScoreInput,
+    personaDraftScore,
+    isPersonaLibrary
   ]);
 
   const usePersonaShellFields = isPersonaLibrary;
+  const show = (field: Parameters<typeof personaSectionShowsField>[1]) => {
+    if (personaSection) {
+      return personaSectionShowsField(personaSection, field, { manual: manualMode });
+    }
+    if (personaStep) {
+      return personaStepShowsField(personaStep, field);
+    }
+    return true;
+  };
 
   const genderOptions = useMemo(
-    (): FormSelectOption[] => [
+    (): FilterSelectOption[] => [
       { value: "all", label: t("aiDemographicGenderAll") },
       { value: "female", label: t("aiDemographicGenderFemale") },
       { value: "male", label: t("aiDemographicGenderMale") }
@@ -536,19 +863,11 @@ function AiAudienceTargetingForm({
 
   return (
     <div className="space-y-4">
-      {isPersonaLibrary && !shellMode ? (
+      {isPersonaLibrary && !shellMode && !manualMode ? (
         <AiCreditCostHint kind="audience_suggestions" calls={2} className="w-full justify-center" />
       ) : null}
 
-      {usePersonaShellFields ? (
-        <CreatorAiProviderPicker
-          provider={provider}
-          onChange={setProvider}
-          providers={providers}
-          disabled={disabled}
-          name="ai-provider-persona-form"
-        />
-      ) : (
+      {!manualMode && !usePersonaShellFields ? (
         <>
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-2">
             <span className="text-[10px] font-medium uppercase text-[var(--text-dim)]">
@@ -591,7 +910,7 @@ function AiAudienceTargetingForm({
             <p className="text-[10px] leading-snug text-amber-700">{t("aiProviderClaudeHint")}</p>
           ) : null}
         </>
-      )}
+      ) : null}
 
       {repairSeed && repairSeed.segments.some((s) => !s.valid) ? (
         <div className="ui-alert-warning space-y-2 p-3 text-xs">
@@ -615,62 +934,67 @@ function AiAudienceTargetingForm({
         </div>
       ) : null}
 
-      {showDemographics || isPersonaLibrary ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div>
-            <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicAgeMin")}</label>
-            <input
-              type="number"
-              min={13}
-              max={65}
-              value={effectiveAgeMin}
-              onChange={(e) => {
-                const v = Number(e.target.value) || 18;
-                if (isPersonaLibrary) setDemoAgeMin(v);
-                else onDemographicsChange?.({ ageMin: v });
-              }}
-              className="ui-input mt-1 w-full text-sm"
-              disabled={disabled}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicAgeMax")}</label>
-            <input
-              type="number"
-              min={13}
-              max={65}
-              value={effectiveAgeMax}
-              onChange={(e) => {
-                const v = Number(e.target.value) || 65;
-                if (isPersonaLibrary) setDemoAgeMax(v);
-                else onDemographicsChange?.({ ageMax: v });
-              }}
-              className="ui-input mt-1 w-full text-sm"
-              disabled={disabled}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-[var(--text-dim)]">{t("aiDemographicGender")}</label>
-            <FormSelect
-              value={effectiveGender}
-              onChange={(v) => {
-                const next = v as "all" | "male" | "female";
-                if (isPersonaLibrary) setDemoGender(next);
-                else onDemographicsChange?.({ gender: next });
-              }}
-              placeholder={t("aiDemographicGender")}
-              options={genderOptions}
-              clearable={false}
-              disabled={disabled}
-              className="mt-1"
-            />
-          </div>
+      {(showDemographics || isPersonaLibrary) && show("demographics") ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <FilterTextField
+            creatorField
+            icon={<Hash size={13} />}
+            label={t("aiDemographicAgeMin")}
+            value={String(effectiveAgeMin)}
+            onChange={(v) => {
+              const next = Number(v) || 18;
+              if (isPersonaLibrary) setDemoAgeMin(next);
+              else onDemographicsChange?.({ ageMin: next });
+            }}
+            type="number"
+            min={13}
+            max={65}
+            selectOnFocus
+            disabled={disabled}
+          />
+          <FilterTextField
+            creatorField
+            icon={<Hash size={13} />}
+            label={t("aiDemographicAgeMax")}
+            value={String(effectiveAgeMax)}
+            onChange={(v) => {
+              const next = Number(v) || 65;
+              if (isPersonaLibrary) setDemoAgeMax(next);
+              else onDemographicsChange?.({ ageMax: next });
+            }}
+            type="number"
+            min={13}
+            max={65}
+            selectOnFocus
+            disabled={disabled}
+          />
+          <FilterSelectDropdown
+            creatorField
+            icon={<Users size={13} />}
+            label={t("aiDemographicGender")}
+            placeholder={t("aiDemographicGenderAll")}
+            value={effectiveGender}
+            onChange={(v) => {
+              const next = v as "all" | "male" | "female";
+              if (isPersonaLibrary) setDemoGender(next);
+              else onDemographicsChange?.({ gender: next });
+            }}
+            options={genderOptions}
+            clearable={false}
+            disabled={disabled}
+          />
         </div>
       ) : null}
 
+      {(show("business") ||
+        show("profile") ||
+        show("behaviors") ||
+        show("lifestyle") ||
+        show("exclusions")) && (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {usePersonaShellFields ? (
           <>
+            {show("business") ? (
             <CreatorAiPromptField
               icon={<Briefcase size={14} />}
               label={t("aiAudienceBusiness")}
@@ -679,6 +1003,8 @@ function AiAudienceTargetingForm({
               placeholder={t("aiAudienceBusinessPh")}
               disabled={disabled}
             />
+            ) : null}
+            {show("profile") ? (
             <CreatorAiPromptField
               icon={<User size={14} />}
               label={t("aiAudienceProfile")}
@@ -687,6 +1013,8 @@ function AiAudienceTargetingForm({
               placeholder={t("aiAudienceProfilePh")}
               disabled={disabled}
             />
+            ) : null}
+            {show("behaviors") ? (
             <CreatorAiPromptField
               icon={<Target size={14} />}
               label={t("aiAudienceBehaviors")}
@@ -695,6 +1023,8 @@ function AiAudienceTargetingForm({
               placeholder={t("aiAudienceBehaviorsPh")}
               disabled={disabled}
             />
+            ) : null}
+            {show("lifestyle") ? (
             <CreatorAiPromptField
               icon={<Waves size={14} />}
               label={t("aiAudienceLifestyle")}
@@ -704,6 +1034,8 @@ function AiAudienceTargetingForm({
               hint={t("aiAudienceLifestyleHint")}
               disabled={disabled}
             />
+            ) : null}
+            {show("exclusions") ? (
             <div className="sm:col-span-2">
               <CreatorAiPromptField
                 icon={<ShieldOff size={14} />}
@@ -715,6 +1047,7 @@ function AiAudienceTargetingForm({
                 disabled={disabled}
               />
             </div>
+            ) : null}
           </>
         ) : (
           <>
@@ -782,8 +1115,20 @@ function AiAudienceTargetingForm({
           </>
         )}
       </div>
+      )}
 
-      {audiences.length > 0 ? (
+      {/* Segmentos Meta: NÃO aparecem no Criador de Persona (vivem no Criador de Públicos Meta).
+          Mantidos para outros modos (ex.: targeting de campanha) quando o admin habilita a flag. */}
+      {manualMode && show("metaSegments") && !isPersonaLibrary && audienceFlags.personaTargetingBuilder ? (
+        <PersonaManualMetaSegmentsPanel
+          segments={manualSegments}
+          onChange={setManualSegments}
+          disabled={disabled || creating}
+        />
+      ) : null}
+
+
+      {show("objectives") ? (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -857,7 +1202,12 @@ function AiAudienceTargetingForm({
                     value={audienceSearch}
                     onChange={(e) => setAudienceSearch(e.target.value)}
                     placeholder={t("savedAudiencesSearch")}
-                    className="ui-input w-full text-sm"
+                    className={cn(
+                      "w-full rounded-lg border px-3 py-2 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.03)] focus:border-[var(--ui-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent-ring)]",
+                      usePersonaShellFields
+                        ? "border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))]"
+                        : "ui-input"
+                    )}
                     disabled={disabled}
                   />
                   <div className="max-h-48 space-y-1 overflow-y-auto">
@@ -892,7 +1242,7 @@ function AiAudienceTargetingForm({
         </div>
       ) : null}
 
-      {!personaPreview ? (
+      {show("preview") && !manualMode && !personaPreview ? (
         usePersonaShellFields ? (
           <CreatorAiPreviewSection
             title={t("aiAudiencePreviewTitle")}
@@ -921,28 +1271,53 @@ function AiAudienceTargetingForm({
         )
       ) : null}
 
-      {personaPreview && !suggestion ? (
-        <div className="space-y-3 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
+      {show("preview") && !manualMode && personaPreview && !suggestion ? (
+        <CreatorAiPreviewSection
+          title={t("aiAudiencePreviewTitle")}
+          hint={t("aiAudiencePreviewHint")}
+        >
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
-              {t("aiAudiencePreviewTitle")}
-            </p>
-            <p className="mt-0.5 text-[10px] text-sky-700">{t("aiAudiencePreviewHint")}</p>
+            <p className="text-sm font-semibold text-[var(--text-main)]">{personaPreview.personaName}</p>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--text-dim)]">{personaPreview.narrative}</p>
           </div>
 
-          <div>
-            <p className="text-sm font-semibold text-slate-900">{personaPreview.personaName}</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-700">{personaPreview.narrative}</p>
-          </div>
+          {usePersonaShellFields ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <FilterTextField
+                creatorField
+                readOnly
+                icon={<Hash size={13} />}
+                label={t("aiDemographicAgeMin")}
+                value={String(effectiveAgeMin)}
+                onChange={() => {}}
+              />
+              <FilterTextField
+                creatorField
+                readOnly
+                icon={<Hash size={13} />}
+                label={t("aiDemographicAgeMax")}
+                value={String(effectiveAgeMax)}
+                onChange={() => {}}
+              />
+              <FilterTextField
+                creatorField
+                readOnly
+                icon={<Users size={13} />}
+                label={t("aiDemographicGender")}
+                value={genderOptions.find((o) => o.value === effectiveGender)?.label ?? effectiveGender}
+                onChange={() => {}}
+              />
+            </div>
+          ) : null}
 
           {personaPreview.traits.length > 0 ? (
             <div>
-              <p className="text-[10px] font-medium text-slate-600">{t("aiAudiencePreviewTraits")}</p>
+              <p className="text-[10px] font-medium text-[var(--text-dimmer)]">{t("aiAudiencePreviewTraits")}</p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {personaPreview.traits.map((trait) => (
                   <span
                     key={trait}
-                    className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-700 ring-1 ring-sky-200"
+                    className="rounded-full bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-2 py-0.5 text-[10px] text-[var(--text-main)] ring-1 ring-[var(--creator-card-border,var(--border-color))]"
                   >
                     {trait}
                   </span>
@@ -953,14 +1328,14 @@ function AiAudienceTargetingForm({
 
           {personaPreview.lifestyleCorrelates.length > 0 ? (
             <div>
-              <p className="text-[10px] font-medium text-slate-600">
+              <p className="text-[10px] font-medium text-[var(--text-dimmer)]">
                 {t("aiAudiencePreviewCorrelates")}
               </p>
               <div className="mt-1 flex flex-wrap gap-1">
                 {personaPreview.lifestyleCorrelates.map((item) => (
                   <span
                     key={item}
-                    className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] text-sky-900"
+                    className="rounded-full bg-[var(--ui-accent-muted)] px-2 py-0.5 text-[10px] text-[var(--ui-accent)]"
                   >
                     {item}
                   </span>
@@ -970,31 +1345,31 @@ function AiAudienceTargetingForm({
           ) : null}
 
           <div>
-            <p className="text-[10px] font-medium text-slate-600">
+            <p className="text-[10px] font-medium text-[var(--text-dimmer)]">
               {t("aiAudiencePreviewSearchTerms")}
             </p>
-            <ul className="mt-1 space-y-1 text-[10px] text-slate-600">
+            <ul className="mt-1 space-y-1 text-[10px] text-[var(--text-dim)]">
               {personaPreview.searchPlan.interestQueries.length > 0 ? (
                 <li>
-                  <span className="font-medium">{t("aiAudiencePreviewInterests")}:</span>{" "}
+                  <span className="font-medium text-[var(--text-main)]">{t("aiAudiencePreviewInterests")}:</span>{" "}
                   {personaPreview.searchPlan.interestQueries.join(" · ")}
                 </li>
               ) : null}
               {personaPreview.searchPlan.behaviorQueries.length > 0 ? (
                 <li>
-                  <span className="font-medium">{t("aiAudiencePreviewBehaviors")}:</span>{" "}
+                  <span className="font-medium text-[var(--text-main)]">{t("aiAudiencePreviewBehaviors")}:</span>{" "}
                   {personaPreview.searchPlan.behaviorQueries.join(" · ")}
                 </li>
               ) : null}
               {(personaPreview.searchPlan.lifeEventQueries?.length ?? 0) > 0 ? (
                 <li>
-                  <span className="font-medium">{t("aiAudiencePreviewLifeEvents")}:</span>{" "}
+                  <span className="font-medium text-[var(--text-main)]">{t("aiAudiencePreviewLifeEvents")}:</span>{" "}
                   {personaPreview.searchPlan.lifeEventQueries!.join(" · ")}
                 </li>
               ) : null}
               {personaPreview.searchPlan.demographicQueries.length > 0 ? (
                 <li>
-                  <span className="font-medium">{t("aiAudiencePreviewDemographics")}:</span>{" "}
+                  <span className="font-medium text-[var(--text-main)]">{t("aiAudiencePreviewDemographics")}:</span>{" "}
                   {personaPreview.searchPlan.demographicQueries.join(" · ")}
                 </li>
               ) : null}
@@ -1006,7 +1381,7 @@ function AiAudienceTargetingForm({
               type="button"
               disabled={disabled || pending}
               onClick={() => searchMetaAndBuild()}
-              className="ui-btn-primary w-full text-sm sm:w-auto sm:flex-1"
+              className="ui-btn-accent inline-flex w-full items-center justify-center gap-1.5 text-sm font-heading font-semibold sm:w-auto sm:flex-1"
             >
               {pending ? t("aiAudienceGenerating") : t("aiAudienceSearchMeta")}
             </button>
@@ -1020,7 +1395,115 @@ function AiAudienceTargetingForm({
             </button>
           </div>
           <p className="text-[10px] text-[var(--text-dimmer)]">{t("aiAudiencePreviewActionsHint")}</p>
-        </div>
+        </CreatorAiPreviewSection>
+      ) : null}
+
+      {show("preview") && manualMode ? (
+        <CreatorAiPreviewSection
+          title={t("aiAudiencePreviewTitle")}
+          hint={tAud("personaManualPreviewHint")}
+        >
+          <div className="space-y-1">
+            <FilterTextField
+              creatorField
+              icon={<User size={13} />}
+              label={tAud("personaSaveName")}
+              value={savePersonaName}
+              onChange={setSavePersonaName}
+              placeholder={resolvedManualPersonaName() || tAud("personaManualNamePh")}
+              disabled={disabled || creating}
+            />
+            <p className="text-[10px] text-[var(--text-dimmer)]">{tAud("personaManualSaveNameHint")}</p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <FilterTextField
+              creatorField
+              readOnly
+              icon={<Hash size={13} />}
+              label={t("aiDemographicAgeMin")}
+              value={String(effectiveAgeMin)}
+              onChange={() => {}}
+            />
+            <FilterTextField
+              creatorField
+              readOnly
+              icon={<Hash size={13} />}
+              label={t("aiDemographicAgeMax")}
+              value={String(effectiveAgeMax)}
+              onChange={() => {}}
+            />
+            <FilterTextField
+              creatorField
+              readOnly
+              icon={<Users size={13} />}
+              label={t("aiDemographicGender")}
+              value={genderOptions.find((o) => o.value === effectiveGender)?.label ?? effectiveGender}
+              onChange={() => {}}
+            />
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] p-3">
+            {businessDescription.trim() ? (
+              <div>
+                <p className="text-[10px] font-medium text-[var(--text-dimmer)]">{t("aiAudienceBusiness")}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-main)]">{businessDescription.trim()}</p>
+              </div>
+            ) : null}
+            {resolvedTargetProfile() ? (
+              <div>
+                <p className="text-[10px] font-medium text-[var(--text-dimmer)]">{t("aiAudienceProfile")}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-main)]">{resolvedTargetProfile()}</p>
+              </div>
+            ) : null}
+            {behaviors.trim() ? (
+              <div>
+                <p className="text-[10px] font-medium text-[var(--text-dimmer)]">{t("aiAudienceBehaviors")}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-main)]">{behaviors.trim()}</p>
+              </div>
+            ) : null}
+            {lifestyleHints.trim() ? (
+              <div>
+                <p className="text-[10px] font-medium text-[var(--text-dimmer)]">{t("aiAudienceLifestyle")}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-main)]">{lifestyleHints.trim()}</p>
+              </div>
+            ) : null}
+            {exclusionHints.trim() ? (
+              <div>
+                <p className="text-[10px] font-medium text-[var(--text-dimmer)]">{t("aiAudienceExclusions")}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-main)]">{exclusionHints.trim()}</p>
+              </div>
+            ) : null}
+            {(includeIds.length > 0 || excludeIds.length > 0) ? (
+              <div>
+                <p className="text-[10px] font-medium text-[var(--text-dimmer)]">{t("aiAudienceIncludeCustom")}</p>
+                <p className="mt-0.5 text-xs text-[var(--text-main)]">
+                  +{includeIds.length} / −{excludeIds.length}
+                </p>
+              </div>
+            ) : null}
+            {manualSegments.length > 0 ? (
+              <div>
+                <p className="text-[10px] font-medium text-[var(--text-dimmer)]">
+                  {t("aiAudienceSegmentsTitle")}
+                </p>
+                <div className="mt-2">
+                  <PersonaSegmentChipList
+                    items={manualSegments}
+                    readOnly
+                    segmentChipClass={() =>
+                      "rounded-full bg-[var(--ui-accent-muted)] px-2 py-0.5 text-[10px] text-[var(--ui-accent)]"
+                    }
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {!canSave && !creating ? (
+            <p className="text-[10px] text-[var(--text-dimmer)]">{t("aiAudienceBriefTooShort")}</p>
+          ) : null}
+        </CreatorAiPreviewSection>
       ) : null}
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
@@ -1028,7 +1511,7 @@ function AiAudienceTargetingForm({
         <p className="ui-alert-warning text-xs">{targetingWarning}</p>
       ) : null}
 
-      {personaPreview || suggestion ? (
+      {show("preview") && !manualMode && (personaPreview || suggestion) ? (
         <AudienceCreationInsightsPanel
           ageMin={effectiveAgeMin}
           ageMax={effectiveAgeMax}
@@ -1039,8 +1522,8 @@ function AiAudienceTargetingForm({
         />
       ) : null}
 
-      {suggestion ? (
-        <div className="space-y-3 rounded-xl border border-[var(--ui-accent-border)] bg-[var(--surface-card)] p-4">
+      {show("preview") && !manualMode && suggestion ? (
+        <section className="campaign-creator-card space-y-3">
           {isRepairMode ? (
             <div className="ui-alert-warning space-y-1 p-3 text-xs">
               <p className="font-medium text-[var(--text-main)]">{tAud("personaRepairApproveTitle")}</p>
@@ -1048,7 +1531,7 @@ function AiAudienceTargetingForm({
             </div>
           ) : (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-accent)]">
+              <p className="campaign-creator-orion-section-label text-[var(--ui-accent)]">
                 {t("aiAudienceSegmentsTitle")}
               </p>
               <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{t("aiAudienceSegmentsHint")}</p>
@@ -1064,14 +1547,13 @@ function AiAudienceTargetingForm({
             <p className="mt-1 text-xs text-[var(--text-dim)]">{suggestion.summary}</p>
             {isPersonaLibrary ? (
               <div className="mt-3 space-y-1">
-                <label className="text-[10px] font-medium uppercase text-[var(--text-dimmer)]">
-                  {tAud("personaSaveName")}
-                </label>
-                <input
+                <FilterTextField
+                  creatorField
+                  icon={<User size={13} />}
+                  label={tAud("personaSaveName")}
                   value={savePersonaName}
-                  onChange={(e) => setSavePersonaName(e.target.value)}
+                  onChange={setSavePersonaName}
                   placeholder={personaPreview?.personaName ?? suggestion.title}
-                  className="ui-input w-full text-sm"
                   disabled={creating || pending}
                 />
                 <p className="text-[10px] text-[var(--text-dimmer)]">{tAud("personaSaveNameHint")}</p>
@@ -1087,7 +1569,7 @@ function AiAudienceTargetingForm({
             </p>
           </div>
 
-          <div className="space-y-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-3">
+          <div className="space-y-3 rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] p-3">
             <PersonaSegmentChipList
               items={suggestion.items}
               onRemove={handleRemoveSegment}
@@ -1186,7 +1668,7 @@ function AiAudienceTargetingForm({
             </button>
           </div>
           <p className="text-[10px] text-[var(--text-dimmer)]">{t("aiAudienceSegmentsActionsHint")}</p>
-        </div>
+        </section>
       ) : null}
     </div>
   );

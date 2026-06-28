@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Plus, Sparkles, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { AiPersonaForm } from "@/components/audiences/create/AiPersonaForm";
+import { PersonaCreateModeSheet } from "@/components/audiences/PersonaCreateModeSheet";
 import { PersonaDetailPanel, formatPersonaGender } from "@/components/audiences/PersonaDetailPanel";
-import { DsPageHeader } from "@/design-system";
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
+import { DsInfoBanner } from "@/design-system";
+import { useRouter } from "@/i18n/navigation";
 
 export type PersonaSummary = {
   id: string;
@@ -28,10 +30,11 @@ type Props = {
 export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId: adAccountIdProp }: Props) {
   const t = useTranslations("audiences");
   const tm = useTranslations("audiencesMisc");
+  const router = useRouter();
   const [personas, setPersonas] = useState<PersonaSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreateMode, setShowCreateMode] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<PersonaSummary | null>(null);
   const [clientSlug, setClientSlug] = useState(clientSlugProp ?? "");
   const [adAccountId, setAdAccountId] = useState(adAccountIdProp ?? "");
@@ -47,7 +50,6 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
       .then((r) => r.json())
       .then(
         (j: {
-          ok?: boolean;
           clients?: Array<{
             slug: string;
             defaultAdAccountId: string | null;
@@ -89,42 +91,52 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
   }, [load]);
 
   return (
-    <div className="space-y-5">
-      <DsPageHeader title={t("personasLibraryTitle")} subtitle={t("personasLibrarySubtitle")} titleIcon={<Users size={16} aria-hidden />} />
-      <p className="text-xs font-medium" style={{ color: "var(--ui-accent)" }}>
-        {t("personasLibraryBadge")}
-      </p>
-
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitleBlock
+          title={t("personasLibraryTitle")}
+          subtitle={t("personasLibrarySubtitle")}
+          titleIcon={<Users size={16} aria-hidden />}
+          badge={
+            <span
+              className="rounded-full px-2 py-0.5 font-heading text-[10px] font-semibold uppercase tracking-wide"
+              style={{
+                background: "var(--ui-accent-muted)",
+                color: "var(--ui-accent)",
+                border: "1px solid var(--ui-accent-border)"
+              }}
+            >
+              {t("personasLibraryBadge")}
+            </span>
+          }
+        />
         <button
           type="button"
-          className="ui-btn-primary inline-flex items-center gap-2"
-          onClick={() => setShowCreate(true)}
+          className="ui-btn-accent inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-semibold"
+          onClick={() => setShowCreateMode(true)}
         >
           <Plus size={16} />
           {t("newPersona")}
         </button>
       </div>
 
-      {error ? (
-        <p className="text-sm text-red-600">{error}</p>
-      ) : null}
+      <DsInfoBanner className="px-4 py-2.5 text-sm">{t("personasLibraryAureumAlert")}</DsInfoBanner>
+
+      {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       {loading ? (
-        <p className="text-sm text-[var(--text-dim)]">{t("loadingPersonas")}</p>
+        <div className="dashboard-kpi-card flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center !min-h-0">
+          <p className="text-sm text-[var(--text-dim)]">{t("loadingPersonas")}</p>
+        </div>
       ) : personas.length === 0 ? (
-        <div className="ui-card flex flex-col items-center gap-3 p-10 text-center">
-          <Users size={32} className="text-[var(--text-dimmer)]" />
+        <div className="dashboard-kpi-card flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center !min-h-0">
+          <Users size={32} className="text-[var(--text-dimmer)]" aria-hidden />
           <p className="text-sm text-[var(--text-dim)]">{t("noPersonasYet")}</p>
-          <button type="button" className="ui-btn-brand inline-flex items-center gap-2" onClick={() => setShowCreate(true)}>
-            <Sparkles size={16} />
-            {t("createFirstPersona")}
-          </button>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {personas.map((p) => (
-            <article key={p.id} className="ui-card flex flex-col gap-2 p-4">
+            <article key={p.id} className="campaign-creator-card flex flex-col gap-2 p-4">
               <h3 className="font-heading text-[var(--text-main)]">{p.name}</h3>
               {p.description ? (
                 <p className="line-clamp-3 text-sm text-[var(--text-dim)]">{p.description}</p>
@@ -144,39 +156,33 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
         </div>
       )}
 
-      {showCreate ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="ui-card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5">
-            <AiPersonaForm
-              clientSlug={clientSlug}
-              adAccountId={adAccountId}
-              onClose={() => setShowCreate(false)}
-              onSaved={() => {
-                setShowCreate(false);
-                startTransition(() => load());
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
+      <PersonaCreateModeSheet
+        open={showCreateMode}
+        onClose={() => setShowCreateMode(false)}
+        onSelectManual={() => router.push("/audiences/personas/create?mode=manual")}
+        onSelectAi={() => router.push("/audiences/personas/create?mode=ai")}
+        onSelectExisting={() => router.push("/audiences/personas/create?mode=existing")}
+      />
 
       {selectedPersona ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="ui-card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-5">
-            <PersonaDetailPanel
-              persona={selectedPersona}
-              clientSlug={clientSlug}
-              adAccountId={adAccountId}
-              onClose={() => setSelectedPersona(null)}
-              onUpdated={(updated) => {
-                setPersonas((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-                setSelectedPersona(updated);
-              }}
-              onDeleted={(id) => {
-                setPersonas((prev) => prev.filter((p) => p.id !== id));
-                setSelectedPersona(null);
-              }}
-            />
+          <div className="campaign-creator-card max-h-[90vh] w-full max-w-2xl overflow-hidden p-0">
+            <div className="max-h-[90vh] overflow-y-auto p-5">
+              <PersonaDetailPanel
+                persona={selectedPersona}
+                clientSlug={clientSlug}
+                adAccountId={adAccountId}
+                onClose={() => setSelectedPersona(null)}
+                onUpdated={(updated) => {
+                  setPersonas((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+                  setSelectedPersona(updated);
+                }}
+                onDeleted={(id) => {
+                  setPersonas((prev) => prev.filter((p) => p.id !== id));
+                  setSelectedPersona(null);
+                }}
+              />
+            </div>
           </div>
         </div>
       ) : null}

@@ -46,7 +46,8 @@ export function ReportsAiGenerateTrigger({ onGenerate, busy = false }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="ui-btn-accent inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium"
+        className="ui-btn-accent-outline inline-flex items-center gap-1.5"
+        title={t("aiGenerateModalSubtitle")}
       >
         <Sparkles size={14} aria-hidden />
         <span>{t("aiGenerateButton")}</span>

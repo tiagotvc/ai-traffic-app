@@ -1,8 +1,10 @@
 "use client";
 
+import { Ticket } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { DsPageHeader } from "@/design-system";
+import { FilterTextField } from "@/components/FilterTextField";
 
 type CouponRow = {
   id: string;
@@ -77,118 +79,120 @@ export function AdminCouponsClient() {
 
   return (
     <div className="w-full space-y-4">
-      <DsPageHeader title={t("couponsTitle")} subtitle={t("couponsSubtitle")} />
+      <DsPageHeader
+        title={t("couponsTitle")}
+        subtitle={t("couponsSubtitle")}
+        titleIcon={<Ticket size={16} />}
+      />
 
       {message ? (
-        <div className="ui-alert-info px-4 py-3 text-sm">
+        <div className="campaign-creator-card campaign-creator-card--compact px-4 py-3 text-sm text-[var(--text-main)]">
           {message}
         </div>
       ) : null}
 
-      <form onSubmit={createCoupon} className="ui-card p-4">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-[var(--text-dim)]">{t("couponCreate")}</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="text-xs font-semibold text-[var(--text-dim)]">{t("couponCode")}</span>
-            <input
-              required
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              className="ui-input mt-1 w-full uppercase"
-              placeholder="TESTE99"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs font-semibold text-[var(--text-dim)]">{t("couponPercent")}</span>
-            <input
-              required
-              type="number"
-              min={1}
-              max={100}
-              value={percentOff}
-              onChange={(e) => setPercentOff(e.target.value)}
-              className="ui-input mt-1 w-full"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs font-semibold text-[var(--text-dim)]">{t("couponMaxUses")}</span>
-            <input
-              type="number"
-              min={1}
-              value={maxUses}
-              onChange={(e) => setMaxUses(e.target.value)}
-              placeholder={t("couponUnlimited")}
-              className="ui-input mt-1 w-full"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs font-semibold text-[var(--text-dim)]">{t("couponMinCharge")}</span>
-            <input
-              required
-              value={minCharge}
-              onChange={(e) => setMinCharge(e.target.value)}
-              className="ui-input mt-1 w-full"
-            />
-          </label>
+      <form onSubmit={createCoupon} className="campaign-creator-card campaign-creator-card--compact">
+        <h2 className="campaign-creator-orion-section-label mb-3">{t("couponCreate")}</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FilterTextField
+            creatorField
+            icon={<Ticket size={14} />}
+            label={t("couponCode")}
+            value={code}
+            onChange={(v) => setCode(v.toUpperCase())}
+            placeholder="TESTE99"
+          />
+          <FilterTextField
+            creatorField
+            icon={<span className="text-xs font-bold">%</span>}
+            label={t("couponPercent")}
+            value={percentOff}
+            onChange={setPercentOff}
+            inputClassName="tabular-nums"
+          />
+          <FilterTextField
+            creatorField
+            icon={<span className="text-[10px] font-semibold">#</span>}
+            label={t("couponMaxUses")}
+            value={maxUses}
+            onChange={setMaxUses}
+            placeholder={t("couponUnlimited")}
+          />
+          <FilterTextField
+            creatorField
+            icon={<span className="text-[10px] font-semibold">R$</span>}
+            label={t("couponMinCharge")}
+            value={minCharge}
+            onChange={setMinCharge}
+          />
         </div>
-        <button
-          type="submit"
-          className="mt-3 ui-btn-primary text-xs"
-        >
+        <button type="submit" className="mt-4 ui-btn-primary text-xs">
           {t("couponCreateBtn")}
         </button>
       </form>
 
-      <div className="ui-card overflow-hidden">
-        <table className="w-full text-xs">
-          <thead className="bg-[var(--surface-thead)] text-left text-[11px] uppercase text-[var(--text-dim)]">
-            <tr>
-              <th className="px-3 py-2">{t("couponCode")}</th>
-              <th className="px-3 py-2">{t("couponPercent")}</th>
-              <th className="px-3 py-2">{t("couponUsage")}</th>
-              <th className="px-3 py-2">{t("couponMinCharge")}</th>
-              <th className="px-3 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+      <div className="ui-campaign-table-shell ui-campaign-table-shell--compact overflow-hidden">
+        <div className="ui-campaign-table-shell__header">
+          <div className="ui-campaign-table-shell__title">
+            <span className="ui-campaign-table-shell__icon">
+              <Ticket size={15} strokeWidth={2} />
+            </span>
+            <span>{t("couponsTitle")}</span>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="ui-campaign-table ui-campaign-table--compact w-full">
+            <thead>
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-[var(--text-dimmer)]">
-                  {t("loading")}
-                </td>
+                <th>{t("couponCode")}</th>
+                <th>{t("couponPercent")}</th>
+                <th>{t("couponUsage")}</th>
+                <th>{t("couponMinCharge")}</th>
+                <th />
               </tr>
-            ) : coupons.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-[var(--text-dimmer)]">
-                  {t("couponEmpty")}
-                </td>
-              </tr>
-            ) : (
-              coupons.map((c) => (
-                <tr key={c.id} className="border-t border-[var(--border-color)]">
-                  <td className="px-3 py-2 font-mono font-bold">{c.code}</td>
-                  <td className="px-3 py-2">{c.percentOff}%</td>
-                  <td className="px-3 py-2">
-                    {c.usedCount}
-                    {c.maxUses != null ? ` / ${c.maxUses}` : ` (${t("couponUnlimited")})`}
-                  </td>
-                  <td className="px-3 py-2">R$ {(c.minChargeCents / 100).toFixed(2)}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => toggleActive(c)}
-                      className={`rounded-lg px-3 py-1 text-xs font-semibold ${
-                        c.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-[var(--text-dim)]"
-                      }`}
-                    >
-                      {c.isActive ? t("couponActive") : t("inactive")}
-                    </button>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="py-6 text-center text-[var(--text-dimmer)]">
+                    {t("loading")}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : coupons.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-6 text-center text-[var(--text-dimmer)]">
+                    {t("couponEmpty")}
+                  </td>
+                </tr>
+              ) : (
+                coupons.map((c) => (
+                  <tr key={c.id}>
+                    <td className="font-mono font-bold">{c.code}</td>
+                    <td>{c.percentOff}%</td>
+                    <td>
+                      {c.usedCount}
+                      {c.maxUses != null ? ` / ${c.maxUses}` : ` (${t("couponUnlimited")})`}
+                    </td>
+                    <td>R$ {(c.minChargeCents / 100).toFixed(2)}</td>
+                    <td className="text-right">
+                      <button
+                        type="button"
+                        onClick={() => toggleActive(c)}
+                        className={
+                          c.isActive
+                            ? "ds-table-compact-badge ds-table-compact-badge--success"
+                            : "ds-table-compact-badge ds-table-compact-badge--neutral"
+                        }
+                      >
+                        {c.isActive ? t("couponActive") : t("inactive")}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

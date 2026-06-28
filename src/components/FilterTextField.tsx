@@ -22,6 +22,9 @@ type Props = {
   suffix?: React.ReactNode;
   /** Match campaign creator inset fields (FilterSelectDropdown in wizard steps). */
   creatorField?: boolean;
+  type?: "text" | "password" | "email" | "url" | "number";
+  min?: number;
+  max?: number;
   "aria-label"?: string;
 };
 
@@ -41,6 +44,9 @@ export function FilterTextField({
   countFormatter,
   suffix,
   creatorField = false,
+  type = "text",
+  min,
+  max,
   "aria-label": ariaLabel
 }: Props) {
   const countSuffix =
@@ -91,7 +97,7 @@ export function FilterTextField({
         {label}:
       </span>
       <input
-        type="text"
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={selectOnFocus ? (e) => e.target.select() : undefined}
@@ -106,6 +112,8 @@ export function FilterTextField({
         )}
         style={{ color: "var(--text-main)" }}
         maxLength={maxLength}
+        min={type === "number" ? min : undefined}
+        max={type === "number" ? max : undefined}
       />
       {trailing}
     </div>

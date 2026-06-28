@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 
 import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { DsButton } from "@/design-system";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import type { PublishAsset } from "@/hooks/usePublishAssets";
 import {
   MAX_CREATIVE_IMAGE_BYTES,
@@ -74,6 +75,7 @@ export function CreativePickerModal({
   onVariantsGenerated
 }: Props) {
   const t = useTranslations("campaignCreator");
+  const aiCopyEnabled = usePlatformFeature("campaigns.ai-copy");
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -289,7 +291,7 @@ export function CreativePickerModal({
               ? t("creativeUploadVideo")
               : t("creativeUpload")}
         </DsButton>
-        {mediaKind === "image" ? (
+        {mediaKind === "image" && aiCopyEnabled ? (
           <DsButton
             variant="secondary"
             size="sm"

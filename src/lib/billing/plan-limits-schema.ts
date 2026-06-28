@@ -34,5 +34,6 @@ export const planLimitsSchema = z.object({
     z.literal("advanced")
   ]),
   allowDashboardAiBuilder: z.boolean(),
-  allowDashboardSharing: z.boolean()
+  allowDashboardSharing: z.boolean(),
+  allowWhiteLabel: z.boolean()
 });

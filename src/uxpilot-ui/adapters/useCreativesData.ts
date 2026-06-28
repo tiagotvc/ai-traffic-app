@@ -84,13 +84,11 @@ export function useCreativesData() {
   }, [clientId]);
 
   const loadRanking = useCallback(() => {
-    if (!clientId || accountsLoading) {
-      if (!clientId) setLoading(false);
-      return;
-    }
+    if (clientId && accountsLoading) return;
     setLoading(true);
     setLoadError(null);
-    fetch(`/api/creatives/performance?clientId=${encodeURIComponent(clientId)}&${periodQuery}`)
+    const clientQs = clientId ? `clientId=${encodeURIComponent(clientId)}&` : "";
+    fetch(`/api/creatives/performance?${clientQs}${periodQuery}`)
       .then(async (r) => {
         const text = await r.text();
         let j: Record<string, unknown> = {};

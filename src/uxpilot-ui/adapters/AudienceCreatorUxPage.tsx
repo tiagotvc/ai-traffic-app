@@ -24,28 +24,29 @@ import {
 
 import { TosBanner } from "@/components/audiences/create/TosBanner";
 import type { AudienceCreateContext, AudienceOptions } from "@/components/audiences/create/types";
+import { AudienceCreationInsightsPanel } from "@/components/audiences/create/AudienceCreationInsightsPanel";
 import {
   ChoiceCardCheck,
   MultiSelectChoiceCard
 } from "@/components/campaign-creator/BudgetChoiceCard";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
+import { DsChoiceCard } from "@/design-system";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
 import { UxHorizontalStepper, UxScoreItem } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 
-type AudienceStepKey = "type" | "details" | "rules" | "review";
+type AudienceStepKey = "setup" | "rules" | "review";
 type AudienceTypeChoice = "custom" | "lookalike" | "saved" | "";
 
-const AUDIENCE_STEPS: { id: AudienceStepKey; label: string; sublabel: string }[] = [
-  { id: "type", label: "Tipo de Público", sublabel: "Selecione a categoria" },
-  { id: "details", label: "Detalhes", sublabel: "Nome e configurações" },
-  { id: "rules", label: "Regras", sublabel: "Fonte e segmentação" },
-  { id: "review", label: "Revisão", sublabel: "Confirmar e criar" }
+const AUDIENCE_STEPS: { id: AudienceStepKey; label: string }[] = [
+  { id: "setup", label: "Tipo e detalhes" },
+  { id: "rules", label: "Regras" },
+  { id: "review", label: "Revisão" }
 ];
 
-const STEP_ORDER: AudienceStepKey[] = ["type", "details", "rules", "review"];
+const STEP_ORDER: AudienceStepKey[] = ["setup", "rules", "review"];
 
 type HubClient = { slug: string; name: string };
 
@@ -55,6 +56,8 @@ type Props = {
   clientSlug: string;
   onClientChange: (slug: string) => void;
   onBack: () => void;
+  /** Parent layout already provides campaign-creator-shell wrapper. */
+  bareShell?: boolean;
 };
 
 function AudienceChoiceRow({
@@ -148,10 +151,11 @@ function CreatorNumberField({
   );
 }
 
-export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange, onBack }: Props) {
+export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange, onBack, bareShell }: Props) {
   const t = useTranslations("audiences");
   const [pending, startTransition] = useTransition();
-  const [step, setStep] = useState<AudienceStepKey>("type");
+  const [step, setStep] = useState<AudienceStepKey>("setup");
+  const [nameTouched, setNameTouched] = useState(false);
   const [typeChoice, setTypeChoice] = useState<AudienceTypeChoice>("");
   const [audienceName, setAudienceName] = useState("");
   const [source, setSource] = useState("instagram");
@@ -197,6 +201,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
   }, [seedAudiences, seedAudienceId]);
 
   useEffect(() => {
+    if (bareShell) return;
     const shell = document.querySelector<HTMLElement>("[data-campaign-creator-shell]")?.closest("main");
     if (!shell) return;
     const prevOverflow = shell.style.overflow;
@@ -210,7 +215,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
       shell.style.display = prevDisplay;
       shell.style.flexDirection = prevFlexDirection;
     };
-  }, []);
+  }, [bareShell]);
 
   const typeLabel =
     typeChoice === "custom"
@@ -222,9 +227,15 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
           : "—";
 
   const canNext =
-    step === "type" ? typeChoice !== "" : step === "details" ? audienceName.trim() !== "" : true;
+    step === "setup"
+      ? typeChoice !== "" && audienceName.trim() !== ""
+      : true;
 
   const goNext = () => {
+    if (step === "setup" && audienceName.trim() === "") {
+      setNameTouched(true);
+      return;
+    }
     const next = STEP_ORDER[currentIdx + 1];
     if (next) setStep(next);
   };
@@ -412,10 +423,14 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
   const scoreCircumference = 2 * Math.PI * 32;
   const scoreOffset = scoreCircumference - (score / 100) * scoreCircumference;
 
+  const shellClass = bareShell
+    ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+    : "app-shell-breakout flex min-h-0 flex-1 flex-col overflow-hidden";
+
   return (
     <div
-      data-campaign-creator-shell
-      className="app-shell-breakout flex min-h-0 flex-1 flex-col overflow-hidden"
+      {...(bareShell ? {} : { "data-campaign-creator-shell": true })}
+      className={shellClass}
       style={{ background: "var(--surface-bg)" }}
     >
       <header className="campaign-creator-header shrink-0 px-4 pb-3 pt-3 lg:pl-8 lg:pr-4 lg:pb-4 lg:pt-4">
@@ -481,69 +496,52 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 onBlocked={setTosBlocked}
               />
 
-              {step === "type" ? (
+              {step === "setup" ? (
                 <div className="animate-fade-up space-y-4">
                   <div>
                     <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
-                      Tipo de Público
+                      Tipo e detalhes do público
                     </h2>
                     <p className="mt-1 text-xs text-[var(--text-dim)]">
-                      Selecione a categoria do público que deseja criar.
+                      Escolha o tipo, dê um nome e configure as opções básicas.
                     </p>
                   </div>
 
-                  <section className="campaign-creator-card space-y-2">
-                    {[
-                      {
-                        id: "custom" as AudienceTypeChoice,
-                        label: "Público Personalizado",
-                        desc: "Baseado em interações com seu perfil, site, app ou lista de clientes.",
-                        icon: Users
-                      },
-                      {
-                        id: "lookalike" as AudienceTypeChoice,
-                        label: "Público Semelhante (Lookalike)",
-                        desc: "Encontre pessoas com perfil parecido ao de seus melhores clientes.",
-                        icon: Copy
-                      },
-                      {
-                        id: "saved" as AudienceTypeChoice,
-                        label: "Público Salvo",
-                        desc: "Segmentação manual por interesses, dados demográficos e comportamentos.",
-                        icon: Globe
-                      }
-                    ].map((opt) => (
-                      <AudienceChoiceRow
-                        key={opt.id}
-                        selected={typeChoice === opt.id}
-                        label={opt.label}
-                        description={opt.desc}
-                        icon={opt.icon}
-                        onSelect={() => setTypeChoice(opt.id)}
-                      />
-                    ))}
+                  <section className="campaign-creator-card">
+                    <h3 className="campaign-creator-section-title mb-3">Tipo de público</h3>
+                    <div className="campaign-creator-choice-cards campaign-creator-choice-cards--3">
+                      {[
+                        {
+                          id: "custom" as AudienceTypeChoice,
+                          label: "Público Personalizado",
+                          desc: "Interações com perfil, site ou lista de clientes.",
+                          icon: Users
+                        },
+                        {
+                          id: "lookalike" as AudienceTypeChoice,
+                          label: "Lookalike",
+                          desc: "Pessoas parecidas com seus melhores clientes.",
+                          icon: Copy
+                        },
+                        {
+                          id: "saved" as AudienceTypeChoice,
+                          label: "Público Salvo",
+                          desc: "Interesses, demografia e comportamentos.",
+                          icon: Globe
+                        }
+                      ].map((opt) => (
+                        <DsChoiceCard
+                          key={opt.id}
+                          layout="inline"
+                          title={opt.label}
+                          description={opt.desc}
+                          icon={<opt.icon size={18} />}
+                          accent={typeChoice === opt.id}
+                          onClick={() => setTypeChoice(opt.id)}
+                        />
+                      ))}
+                    </div>
                   </section>
-
-                  <div className="ui-alert-warning flex items-start gap-3 text-xs">
-                    <AlertCircle size={15} className="mt-0.5 shrink-0" aria-hidden />
-                    <p>
-                      O tipo escolhido define quais configurações estarão disponíveis nas próximas etapas.
-                      Você poderá ajustar os detalhes antes de finalizar.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-
-              {step === "details" ? (
-                <div className="animate-fade-up space-y-4">
-                  <div>
-                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
-                      Detalhes do Público
-                    </h2>
-                    <p className="mt-1 text-xs text-[var(--text-dim)]">
-                      Dê um nome e configure as opções básicas do público.
-                    </p>
-                  </div>
 
                   <section className="campaign-creator-card">
                     <FilterTextField
@@ -552,8 +550,14 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                       label="Nome do público"
                       placeholder="Ex: [ENVOLV] [IG] Seguidores 30D"
                       value={audienceName}
-                      onChange={setAudienceName}
+                      onChange={(v) => {
+                        setAudienceName(v);
+                        setNameTouched(true);
+                      }}
                     />
+                    {nameTouched && !audienceName.trim() ? (
+                      <p className="mt-2 text-xs text-red-600">Informe um nome para continuar.</p>
+                    ) : null}
                   </section>
 
                   <section className="campaign-creator-card space-y-3">
@@ -673,22 +677,37 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
 
                   {typeChoice === "custom" ? (
                     <>
-                      <section className="campaign-creator-card space-y-2">
+                      <section className="campaign-creator-card space-y-3">
                         <h3 className="campaign-creator-section-title">Ação de engajamento</h3>
-                        {[
-                          { v: "INSTAGRAM_PROFILE_FOLLOW", label: "Seguiu o perfil do Instagram" },
-                          { v: "INSTAGRAM_PROFILE_ENGAGE", label: "Interagiu com o perfil do Instagram" },
-                          { v: "PAGE_ENGAGED", label: "Interagiu com a Página do Facebook" },
-                          { v: "PURCHASE", label: "Realizou uma compra (Pixel)" },
-                          { v: "LEAD", label: "Enviou um formulário de lead" }
-                        ].map((opt) => (
-                          <AudienceChoiceRow
-                            key={opt.v}
-                            selected={ruleAction === opt.v}
-                            label={opt.label}
-                            onSelect={() => setRuleAction(opt.v)}
-                          />
-                        ))}
+                        <div className="campaign-creator-choice-cards campaign-creator-choice-cards--2">
+                          {[
+                            { v: "INSTAGRAM_PROFILE_FOLLOW", label: "Seguiu o perfil do Instagram", icon: Instagram },
+                            { v: "INSTAGRAM_PROFILE_ENGAGE", label: "Interagiu com o perfil do Instagram", icon: Instagram },
+                            { v: "PAGE_ENGAGED", label: "Interagiu com a Página do Facebook", icon: Facebook },
+                            { v: "PURCHASE", label: "Realizou uma compra (Pixel)", icon: Activity },
+                            { v: "LEAD", label: "Enviou um formulário de lead", icon: Tag }
+                          ].map((opt) => (
+                            <button
+                              key={opt.v}
+                              type="button"
+                              onClick={() => setRuleAction(opt.v)}
+                              className={cn(
+                                "campaign-creator-budget-choice-card w-full text-left",
+                                ruleAction === opt.v
+                                  ? "campaign-creator-budget-choice-card--selected"
+                                  : "campaign-creator-budget-choice-card--unselected"
+                              )}
+                            >
+                              <ChoiceCardCheck selected={ruleAction === opt.v} />
+                              <span className="campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline">
+                                <opt.icon size={18} strokeWidth={1.75} />
+                              </span>
+                              <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
+                                {opt.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
                       </section>
 
                       <section className="campaign-creator-card space-y-3">
@@ -936,8 +955,21 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               </div>
 
               <div className="campaign-creator-sidebar-card">
-                <p className="campaign-creator-orion-section-label mb-2">Dica</p>
-                <p className="text-xs leading-relaxed text-[var(--text-dim)]">{tipText}</p>
+                <p className="campaign-creator-orion-section-label mb-2">Orion Brain</p>
+                <AudienceCreationInsightsPanel
+                  ageMin={parseInt(ageMin, 10) || 18}
+                  ageMax={parseInt(ageMax, 10) || 65}
+                  gender={
+                    genders.length === 1 && genders.includes("Masculino")
+                      ? "male"
+                      : genders.length === 1 && genders.includes("Feminino")
+                        ? "female"
+                        : "all"
+                  }
+                  layout="stack"
+                  showAiInsignia
+                />
+                <p className="mt-3 text-xs leading-relaxed text-[var(--text-dim)]">{tipText}</p>
               </div>
 
               <div className="hidden lg:block">

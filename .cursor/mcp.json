@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "orion_agency": {
+      "url": "https://www.searchapi.io/mcp?token=${env:SEARCHAPI_API_KEY}",
+      "transport": "http"
+    }
+  }
+}

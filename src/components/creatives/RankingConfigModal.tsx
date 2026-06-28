@@ -1,19 +1,23 @@
 "use client";
 
-import { SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
-import { DsButton } from "@/design-system";
+import { DsInfoBanner } from "@/design-system";
 import {
+  isUnusualRankDirection,
+  METRIC_DEFAULT_DIR,
+  metricUsesLowerIsBetter,
   RANKABLE_METRICS,
   RANKABLE_PRESETS,
-  type RankConfig
+  type RankConfig,
+  type RankSpec
 } from "@/lib/creative-ranking";
-import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
+import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 
 export function RankingConfigModal({
   onClose,
@@ -41,14 +45,14 @@ export function RankingConfigModal({
       .catch(() => {});
   }, []);
 
-  function setSpec(preset: string, patch: { metric?: string; dir?: "asc" | "desc" }) {
+  function setSpec(preset: string, patch: Partial<RankSpec>) {
     setConfig((c) =>
       c
         ? {
             ...c,
             specs: {
               ...c.specs,
-              [preset]: { ...c.specs[preset], ...patch } as RankConfig["specs"][string]
+              [preset]: { ...c.specs[preset], ...patch }
             }
           }
         : c
@@ -90,38 +94,67 @@ export function RankingConfigModal({
       title={t("cfgTitle")}
       subtitle={t("cfgSubtitle")}
       titleIcon={<SlidersHorizontal size={18} aria-hidden />}
-      width="lg"
-      hideFooter
+      width="xl"
+      onClear={() => defaults && setConfig(defaults)}
+      clearDisabled={!defaults}
+      onCancel={onClose}
+      cancelLabel={t("cfgCancel")}
+      onPrimary={save}
+      primaryLabel={t("cfgSave")}
+      primaryDisabled={!config}
+      primaryLoading={saving}
+      showPrimaryCheck={false}
     >
       {!config ? (
         <div className="py-8 text-center text-sm text-[var(--text-dim)]">…</div>
       ) : (
-        <>
-          <FilterTextField
-            creatorField
-            icon={<SlidersHorizontal size={14} />}
-            label={t("cfgMinImpr")}
-            value={String(config.minImpressions)}
-            onChange={(v) =>
-              setConfig((c) =>
-                c ? { ...c, minImpressions: Math.max(0, Number(v) || 0) } : c
-              )
-            }
-            placeholder="100"
-          />
+        <div className="space-y-4">
+          <DsInfoBanner className="text-xs leading-relaxed">{t("cfgHelpIntro")}</DsInfoBanner>
 
-          <div className="mt-4 space-y-2">
-            <h3 className="campaign-creator-orion-section-label">{t("cfgMetric")}</h3>
+          <div className="rounded-xl border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-3 py-3">
+            <FilterTextField
+              creatorField
+              icon={<SlidersHorizontal size={14} />}
+              label={t("cfgMinImpr")}
+              value={String(config.minImpressions)}
+              onChange={(v) =>
+                setConfig((c) =>
+                  c ? { ...c, minImpressions: Math.max(0, Number(v) || 0) } : c
+                )
+              }
+              placeholder="100"
+            />
+            <p className="mt-2 text-[11px] leading-relaxed text-[var(--text-dim)]">{t("cfgMinImprHelp")}</p>
+          </div>
+
+          <div className="space-y-2">
+            <div>
+              <h3 className="campaign-creator-orion-section-label">{t("cfgByCampaignType")}</h3>
+              <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-dim)]">{t("cfgByCampaignTypeHelp")}</p>
+            </div>
+
             {RANKABLE_PRESETS.map((preset) => {
               const spec = config.specs[preset];
+              const unusual = isUnusualRankDirection(spec.metric, spec.dir);
+              const lowerIsBetter = metricUsesLowerIsBetter(spec.metric);
+
               return (
                 <div
                   key={preset}
-                  className="campaign-creator-sidebar-card-inset flex flex-wrap items-center gap-2 px-3 py-2.5"
+                  className="campaign-creator-sidebar-card-inset grid gap-2.5 px-3 py-3 sm:grid-cols-2 sm:items-start"
                 >
-                  <span className="min-w-[96px] shrink-0 text-xs font-semibold text-[var(--text-main)]">
-                    {tPresets(preset)}
-                  </span>
+                  <div className="space-y-1 sm:col-span-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-[var(--text-main)]">{tPresets(preset)}</span>
+                      <span className="text-[10px] text-[var(--text-dimmer)]">
+                        {t("cfgRankedByPreview", {
+                          metric: tMetrics(METRIC_BY_KEY[spec.metric].label),
+                          direction: spec.dir === "desc" ? t("rankHigher") : t("rankLower")
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
                   <FilterSelectDropdown
                     creatorField
                     icon={<TrendingUp size={14} />}
@@ -129,45 +162,49 @@ export function RankingConfigModal({
                     placeholder={t("cfgMetric")}
                     clearable={false}
                     value={spec.metric}
-                    onChange={(v) => setSpec(preset, { metric: v })}
+                    onChange={(v) => {
+                      const metric = v as MetricKey;
+                      const patch: Partial<RankSpec> = { metric };
+                      const typical = METRIC_DEFAULT_DIR[metric];
+                      if (typical) patch.dir = typical;
+                      setSpec(preset, patch);
+                    }}
                     options={metricOptions}
-                    className="min-w-[140px] flex-1"
+                    className="min-w-0"
                   />
                   <FilterSelectDropdown
                     creatorField
-                    icon={<TrendingDown size={14} />}
+                    icon={spec.dir === "desc" ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                     label={t("cfgDirection")}
                     placeholder={t("cfgDirection")}
                     clearable={false}
                     value={spec.dir}
                     onChange={(v) => setSpec(preset, { dir: v as "asc" | "desc" })}
                     options={directionOptions}
-                    className="min-w-[140px] flex-1"
+                    className="min-w-0"
                   />
+
+                  <div className="space-y-1 sm:col-span-2">
+                    <p className="text-[11px] leading-relaxed text-[var(--text-dim)]">
+                      {lowerIsBetter ? t("cfgDirectionCostHint") : t("cfgDirectionVolumeHint")}
+                    </p>
+
+                    {unusual ? (
+                      <p className="inline-flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-600 dark:text-amber-400">
+                        <AlertTriangle size={12} className="mt-0.5 shrink-0" aria-hidden />
+                        {t("cfgUnusualDirection")}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}
           </div>
 
-          <footer className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-color)] pt-3">
-            <button
-              type="button"
-              onClick={() => defaults && setConfig(defaults)}
-              disabled={!defaults}
-              className="text-xs font-medium text-[var(--text-dim)] transition hover:text-[var(--text-main)] disabled:opacity-50"
-            >
-              {t("cfgReset")}
-            </button>
-            <div className="flex flex-wrap items-center gap-2">
-              <DsButton variant="secondary" size="sm" onClick={onClose}>
-                {t("cfgCancel")}
-              </DsButton>
-              <DsButton variant="accent" size="sm" onClick={save} disabled={saving}>
-                {t("cfgSave")}
-              </DsButton>
-            </div>
-          </footer>
-        </>
+          <DsInfoBanner className="text-xs leading-relaxed">
+            {t("cfgScoreNote")}
+          </DsInfoBanner>
+        </div>
       )}
     </CreatorModalShell>
   );

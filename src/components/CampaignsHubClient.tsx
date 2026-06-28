@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Megaphone, Plus, Trash2, Building2, ListFilter, Target, ChevronRight, FilePenLine } from "lucide-react";
+import { Megaphone, Plus, Trash2, Building2, ListFilter, Target, ChevronRight, FilePenLine, FileDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   DndContext,
@@ -44,7 +44,7 @@ import { CAMPAIGN_PRESETS } from "@/lib/campaign-presets";
 import { CampaignTableColumnsButton } from "@/components/CampaignTableColumnsButton";
 import { CampaignTableCell, CampaignTableHead } from "@/components/campaign/CampaignTableColumns";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
-import { CampaignGroupExportButton } from "@/components/campaign/CampaignGroupExportButton";
+import { CampaignExportModal, toCampaignExportRows } from "@/components/campaign/CampaignExportModal";
 import { CampaignGroupPager } from "@/components/campaign/CampaignGroupPager";
 import { CampaignMetricsDataBanner } from "@/components/campaign/CampaignMetricsDataBanner";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
@@ -214,6 +214,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const [draftDiscardPendingId, setDraftDiscardPendingId] = useState<string | null>(null);
   const [draftDiscardTarget, setDraftDiscardTarget] = useState<CampaignRowLike | null>(null);
   const [creationPickerOpen, setCreationPickerOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [, startStatusTransition] = useTransition();
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [dataUpdatedAt, setDataUpdatedAt] = useState<string | null>(null);
@@ -251,17 +252,6 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       setLocalClientFilter(clientFromUrl);
     }
   }, [searchParams, useUxChrome, strip]);
-
-  const newCampaignSlot = useMemo(
-    () => (
-      <IconActionButton
-        icon={<Plus size={16} />}
-        label={t("newCampaign")}
-        onClick={() => setCreationPickerOpen(true)}
-      />
-    ),
-    [t]
-  );
 
   const campaignsPageFilters = useMemo(
     () => (
@@ -339,6 +329,37 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     if (isDraftRow(row)) return "default";
     return presets[row.metaCampaignId] ?? row.preset ?? "default";
   }
+
+  const exportRows = useMemo(
+    () =>
+      toCampaignExportRows(
+        displayRows.map((r) => ({
+          ...r,
+          preset: campaignPreset(r),
+          isDraft: isDraftRow(r)
+        }))
+      ),
+    [displayRows, presets]
+  );
+
+  const newCampaignSlot = useMemo(
+    () => (
+      <>
+        <IconActionButton
+          icon={<FileDown size={16} />}
+          label={t("exportReport")}
+          onClick={() => setExportModalOpen(true)}
+          disabled={!exportRows.length}
+        />
+        <IconActionButton
+          icon={<Plus size={16} />}
+          label={t("newCampaign")}
+          onClick={() => setCreationPickerOpen(true)}
+        />
+      </>
+    ),
+    [t, exportRows.length]
+  );
 
   function draftResumeHref(r: CampaignRowLike): string {
     const qs = r.clientSlug ? `?client=${encodeURIComponent(r.clientSlug)}` : "";
@@ -884,6 +905,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     <div className="space-y-4">
       {useUxChrome ? (
         <PageToolbar
+          filterCreatorFields
           eyebrow={t("breadcrumb")}
           icon={<Megaphone size={16} />}
           title={t("title")}
@@ -1049,25 +1071,6 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                       <span className="hidden text-xs font-body text-[var(--text-dim)] sm:inline">
                         {t("draftsSectionHint")}
                       </span>
-                      <CampaignGroupExportButton
-                        groupLabel={t("draftsSectionTitle")}
-                        rows={draftDisplayRows.map((r) => ({
-                          campaignName: r.campaignName,
-                          clientName: r.clientName,
-                          status: "DRAFT",
-                          preset: "default",
-                          spend: 0,
-                          conversions: 0,
-                          leads: 0,
-                          roas: 0,
-                          cpa: null,
-                          cpl: null
-                        }))}
-                        metricColumns={[]}
-                        customMetrics={tableLayout.customMetricsMap}
-                        clientLabel={clientFilter ? clientLabel : undefined}
-                        clientSlug={clientFilter || undefined}
-                      />
                     </div>
                   </div>
                   <CampaignDraftMobileCards
@@ -1170,17 +1173,6 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
                       </span>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <CampaignGroupExportButton
-                        groupLabel={groupLabel(preset)}
-                        rows={sorted.map((r) => ({
-                          ...r,
-                          preset: campaignPreset(r)
-                        }))}
-                        metricColumns={groupMetricColumns}
-                        customMetrics={tableLayout.customMetricsMap}
-                        clientLabel={clientFilter ? clientLabel : undefined}
-                        clientSlug={clientFilter || undefined}
-                      />
                       <CampaignGroupPager
                         page={safeGroupPage}
                         pageCount={groupPageCount}
@@ -1559,6 +1551,19 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         open={creationPickerOpen}
         onClose={() => setCreationPickerOpen(false)}
         clientSlug={clientFilter || undefined}
+      />
+      <CampaignExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        rows={exportRows}
+        groupLabel={t("exportReportTitle")}
+        customMetrics={tableLayout.customMetricsMap}
+        clientLabel={clientFilter ? clientLabel : undefined}
+        clientSlug={clientFilter || undefined}
+        period={period}
+        periodReadOnly={useUxChrome}
+        onPeriodChange={useUxChrome ? undefined : setPeriod}
+        customTypeNames={customTypes.map((ct) => ({ id: ct.id, name: ct.name }))}
       />
       <ConfirmDialog
         open={draftDiscardTarget != null}

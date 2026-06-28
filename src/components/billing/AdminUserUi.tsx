@@ -1,28 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { adminPlanTier } from "@/lib/billing/admin-plan-styles";
 
-export const PLAN_BADGE: Record<string, string> = {
-  free: "bg-[var(--surface-bg)] text-[var(--text-dim)] ring-slate-200/80",
-  basic: "bg-[rgba(124,58,237,0.06)] text-violet-700 ring-violet-200/80",
-  advanced: "bg-[rgba(124,58,237,0.1)] text-[var(--violet)] ring-violet-300/60",
-  agency: "bg-gradient-to-r from-amber-500/15 to-orange-500/15 text-amber-500 ring-amber-300/60"
-};
-
-export const STATUS_BADGE: Record<string, { className: string; dot: string }> = {
-  active: { className: "bg-emerald-500/15 text-emerald-500 ring-emerald-200/80", dot: "bg-emerald-500" },
-  trialing: { className: "bg-blue-500/15 text-blue-500 ring-blue-200/80", dot: "bg-blue-500" },
-  past_due: { className: "bg-[rgba(245,166,35,0.12)] text-[var(--amber)] ring-amber-200/80", dot: "bg-amber-500" },
-  suspended: { className: "bg-red-500/15 text-red-500 ring-red-200/80", dot: "bg-red-500" },
-  canceled: { className: "bg-[var(--surface-bg)] text-[var(--text-dim)] ring-slate-200/80", dot: "bg-slate-400" }
-};
-
-export function planBadgeClass(slug: string) {
-  return PLAN_BADGE[slug] ?? PLAN_BADGE[adminPlanTier(slug) === "premium" ? "agency" : "basic"];
-}
-
-/** Grid da listagem admin — colunas distribuídas na largura total. */
 export const ADMIN_USERS_ROW_GRID =
   "grid w-full grid-cols-[minmax(220px,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(96px,auto)] items-center gap-x-6 px-4";
 

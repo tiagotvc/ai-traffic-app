@@ -28,16 +28,14 @@ export function prevPeriodHasBaseline(prev: SummaryLike | null | undefined): boo
   );
 }
 
-/** Percent change vs previous period with sane caps for tiny baselines. */
+/** Percent change vs previous period with sane caps for near-zero baselines. */
 export function formatDeltaPct(cur: number, prev: number | null | undefined): number | null {
-  if (prev == null || !Number.isFinite(prev)) return null;
+  if (prev == null || !Number.isFinite(prev) || !Number.isFinite(cur)) return null;
   if (cur <= 0 && prev <= 0) return 0;
   if (prev <= 0) return null;
 
   const absPrev = Math.abs(prev);
-  const absCur = Math.abs(cur);
-  const minBaseline = Math.max(absCur * 0.05, 1e-4);
-  if (absPrev < minBaseline) return null;
+  if (absPrev < 1e-6) return null;
 
   const delta = pctDelta(cur, prev);
   if (delta === null) return null;
@@ -57,7 +55,8 @@ export function resolveMetricDelta(
   }
   if (prev <= 0 && cur <= 0) return { kind: "none" };
   if (prev <= 0 && cur > 0) {
-    return opts?.allowNew === false ? { kind: "none" } : { kind: "new" };
+    if (opts?.allowNew !== false) return { kind: "new" };
+    return { kind: "pct", value: MAX_DELTA_PCT };
   }
 
   const delta = formatDeltaPct(cur, prev);

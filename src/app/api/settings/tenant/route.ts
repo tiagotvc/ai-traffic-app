@@ -10,6 +10,10 @@ const PatchSchema = z.object({
   agencyBrainNicheShareOptIn: z.boolean().optional()
 });
 
+function touchesWhiteLabel(body: z.infer<typeof PatchSchema>) {
+  return body.brandName !== undefined || body.logoUrl !== undefined;
+}
+
 export async function GET() {
   const { tenant } = await getAppContext();
   return NextResponse.json({
@@ -25,9 +29,16 @@ export async function GET() {
 }
 
 export async function PATCH(req: Request) {
-  const { tenant } = await getAppContext();
+  const { tenant, entitlements } = await getAppContext();
   const { tenant: tenantRepo } = await repositories();
   const body = PatchSchema.parse(await req.json().catch(() => ({})));
+
+  if (touchesWhiteLabel(body) && !entitlements.limits.allowWhiteLabel) {
+    return NextResponse.json(
+      { ok: false, error: "plan_white_label_required" },
+      { status: 403 }
+    );
+  }
 
   if (body.brandName !== undefined) tenant.brandName = body.brandName;
   if (body.logoUrl !== undefined) tenant.logoUrl = body.logoUrl || null;

@@ -7,11 +7,7 @@ export function CampaignCreatorScoreBar({ value }: { value: number }) {
   return (
     <div className="relative h-2 overflow-hidden rounded-full">
       <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to right, rgb(239 68 68 / 0.95), rgb(250 204 21 / 0.95), rgb(251 146 60 / 0.95), rgb(16 185 129 / 0.95))"
-        }}
+        className="absolute inset-0 campaign-creator-score-gradient"
         aria-hidden
       />
       <div

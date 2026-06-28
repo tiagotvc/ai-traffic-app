@@ -113,7 +113,7 @@ export function AgeBreakdownCard({
               <BarChart
                 data={displayChartRows}
                 layout="vertical"
-                margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
+                margin={{ top: 4, right: 8, left: 0, bottom: 4 }}
               >
                 <CartesianGrid {...premiumGridProps()} horizontal={false} />
                 <XAxis
@@ -127,7 +127,7 @@ export function AgeBreakdownCard({
                 <YAxis
                   type="category"
                   dataKey="label"
-                  width={48}
+                  width={44}
                   tick={{ ...premiumAxisTick(), fontSize: 10 }}
                   axisLine={false}
                   tickLine={false}
@@ -156,8 +156,8 @@ export function AgeBreakdownCard({
             </p>
           ) : null}
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[420px] text-left text-[10px]">
+          <div className="min-w-0 overflow-x-auto">
+            <table className="w-full text-left text-[10px]">
               <thead>
                 <tr className="text-[var(--text-dimmer)]">
                   <th className="pb-1.5 pr-2 font-semibold uppercase tracking-wide">{t("ageBreakdownColSegment")}</th>

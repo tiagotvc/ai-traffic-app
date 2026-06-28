@@ -171,7 +171,6 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
     setSelectedPixelIds(new Set());
     setAccountSearch("");
     loadAccounts(bmId);
-    setStep(3);
   }
 
   function create(onCreated: (slug: string) => void, onError: (msg: string) => void) {

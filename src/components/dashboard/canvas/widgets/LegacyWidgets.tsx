@@ -86,7 +86,7 @@ export function QuickPillsWidget({ data }: { data: DashboardData }) {
     value: m.value,
     change: m.change,
     trend: m.trend,
-    color: m.key ? METRIC_BY_KEY[m.key]?.color : undefined,
+    color: m.key ? METRIC_BY_KEY[m.key]?.color : m.color,
     metricKey: m.key
   }));
 

@@ -6,11 +6,15 @@ import type { LearningDto } from "@/lib/agency-brain/types";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import {
   METRIC_BY_KEY,
-  QUICK_METRICS,
   formatMetricValue,
   type MetricKey
 } from "@/lib/dashboard-metrics";
-import { MAX_HERO_METRICS, resolveHeroMetricKeys } from "@/lib/dashboard-layout-prefs";
+import {
+  MAX_HERO_METRICS,
+  MAX_PERIOD_METRICS,
+  resolveHeroMetricKeys,
+  resolvePeriodMetricKeys
+} from "@/lib/dashboard-layout-prefs";
 import {
   formatDayLabel,
   MAX_DELTA_PCT,
@@ -84,12 +88,41 @@ function deltaMeta(
 }
 
 function heroDelta(key: MetricKey, summary: Summary, prevSummary: Summary | null): MetricDeltaResult {
-  if (!prevSummary || !prevPeriodHasBaseline(prevSummary)) return { kind: "none" };
+  if (!prevSummary) return { kind: "none" };
+
   const cur = Number(summary[key] ?? 0);
-  const rawPrev = prevSummary[key];
-  if (rawPrev == null || !Number.isFinite(Number(rawPrev))) return { kind: "none" };
-  const prev = Number(rawPrev);
-  return resolveMetricDelta(cur, prev, { allowNew: prev === 0 });
+  const prev = Number(prevSummary[key] ?? 0);
+  const allowNew = !prevPeriodHasBaseline(prevSummary);
+
+  return resolveMetricDelta(cur, prev, { allowNew });
+}
+
+function buildKpiCard(
+  key: MetricKey,
+  summary: Summary,
+  prevSummary: Summary | null,
+  series: SeriesPoint[],
+  args: {
+    locale: string;
+    metricLabel: (key: MetricKey) => string;
+    vsLabel: string;
+    newDeltaLabel: string;
+  }
+): KpiCard {
+  const delta = heroDelta(key, summary, prevSummary);
+  const { change, trend } = deltaMeta(key, delta, args.newDeltaLabel);
+  return {
+    metricKey: key,
+    label: args.metricLabel(key),
+    value: formatMetricValue(key, summary[key] ?? 0, args.locale),
+    change,
+    trend,
+    color: METRIC_BY_KEY[key].color,
+    sparkData: normalizeSparkSeries(series.map((p) => p[key] ?? 0)),
+    sparkLabels: series.map((p) => formatDayLabel(p.day, args.locale)),
+    formatSparkValue: (v: number) => formatMetricValue(key, v, args.locale),
+    subLabel: args.vsLabel
+  };
 }
 
 function normalizeSparkSeries(values: number[]): number[] {
@@ -99,12 +132,37 @@ function normalizeSparkSeries(values: number[]): number[] {
   return [0, 0];
 }
 
+function buildPeriodMetric(
+  key: MetricKey,
+  summary: Summary,
+  prevSummary: Summary | null,
+  args: {
+    locale: string;
+    metricLabel: (key: MetricKey) => string;
+    vsLabel: string;
+    newDeltaLabel: string;
+  }
+): SecondaryMetric {
+  const delta = heroDelta(key, summary, prevSummary);
+  const { change, trend } = deltaMeta(key, delta, args.newDeltaLabel);
+  return {
+    key,
+    label: args.metricLabel(key),
+    value: formatMetricValue(key, summary[key] ?? 0, args.locale),
+    change,
+    trend,
+    subLabel: args.vsLabel,
+    color: METRIC_BY_KEY[key].color
+  };
+}
+
 export function toMetricPrismProps(args: {
   summary: Summary;
   prevSummary: Summary | null;
   series: SeriesPoint[];
   dominantPreset?: string;
   heroMetrics?: MetricKey[];
+  periodMetrics?: MetricKey[];
   locale: string;
   metricLabel: (key: MetricKey) => string;
   vsLabel: string;
@@ -116,46 +174,24 @@ export function toMetricPrismProps(args: {
     series,
     dominantPreset,
     heroMetrics,
+    periodMetrics,
     locale,
     metricLabel,
     vsLabel,
     newDeltaLabel = "Novo"
   } = args;
+  const cardArgs = { locale, metricLabel, vsLabel, newDeltaLabel };
   const presetHero = presetMetricsFor(dominantPreset).slice(0, MAX_HERO_METRICS);
   const heroKeys = resolveHeroMetricKeys(heroMetrics ?? [], presetHero);
 
-  const primaryKPIs: KpiCard[] = heroKeys.map((key) => {
-    const delta = heroDelta(key, summary, prevSummary);
-    const { change, trend } = deltaMeta(key, delta, newDeltaLabel);
-    return {
-      metricKey: key,
-      label: metricLabel(key),
-      value: formatMetricValue(key, summary[key] ?? 0, locale),
-      change,
-      trend,
-      color: METRIC_BY_KEY[key].color,
-      sparkData: normalizeSparkSeries(series.map((p) => p[key] ?? 0)),
-      sparkLabels: series.map((p) => formatDayLabel(p.day, locale)),
-      formatSparkValue: (v: number) => formatMetricValue(key, v, locale),
-      subLabel: vsLabel
-    };
-  });
+  const primaryKPIs: KpiCard[] = heroKeys.map((key) =>
+    buildKpiCard(key, summary, prevSummary, series, cardArgs)
+  );
 
-  const secondaryKeys = presetMetricsFor(dominantPreset)
-    .concat(QUICK_METRICS)
-    .filter((k, i, arr) => !heroKeys.includes(k) && arr.indexOf(k) === i)
-    .slice(0, 8);
-  const secondaryMetrics: SecondaryMetric[] = secondaryKeys.map((key) => {
-    const delta = heroDelta(key, summary, prevSummary);
-    const { change, trend } = deltaMeta(key, delta, newDeltaLabel);
-    return {
-      key,
-      label: metricLabel(key),
-      value: formatMetricValue(key, summary[key] ?? 0, locale),
-      change,
-      trend
-    };
-  });
+  const secondaryKeys = resolvePeriodMetricKeys(periodMetrics ?? []);
+  const secondaryMetrics: SecondaryMetric[] = secondaryKeys.map((key) =>
+    buildPeriodMetric(key, summary, prevSummary, cardArgs)
+  );
 
   return { primaryKPIs, secondaryMetrics };
 }
@@ -364,7 +400,7 @@ export type DashboardFunnelStep = {
 };
 
 export type DashboardCampaignStatusBucket = {
-  id: "active" | "paused" | "draft" | "other";
+  id: string;
   label: string;
   count: number;
   color: string;
@@ -564,6 +600,49 @@ export function toDashboardTopCampaigns(args: {
       spend: formatBRL(row.spend ?? 0, locale),
       roas: formatRoas(row.roas ?? 0, locale),
       status: row.status ?? "—"
+    }));
+}
+
+export function toDashboardTopCampaignsBySpend(args: {
+  campaigns: DashboardCampaignSnapshot[];
+  locale: string;
+  limit?: number;
+}): DashboardTopCampaignRow[] {
+  const { campaigns, locale, limit = 5 } = args;
+  return [...campaigns]
+    .filter((row) => !row.isDraft && (row.spend ?? 0) > 0)
+    .sort((a, b) => (b.spend ?? 0) - (a.spend ?? 0))
+    .slice(0, limit)
+    .map((row) => ({
+      id: `${row.metaCampaignId}-spend`,
+      name: row.campaignName,
+      clientName: row.clientName ?? "—",
+      spend: formatBRL(row.spend ?? 0, locale),
+      roas: formatRoas(row.roas ?? 0, locale),
+      status: row.status ?? "—"
+    }));
+}
+
+const OBJECTIVE_COLORS = ["#7c3aed", "#6366f1", "#14b8a6", "#10b981", "#f59e0b", "#ec4899", "#64748b"];
+
+export function toDashboardObjectiveBreakdown(args: {
+  campaigns: DashboardCampaignSnapshot[];
+  labelForPreset?: (preset: string) => string;
+}): DashboardCampaignStatusBucket[] {
+  const counts = new Map<string, number>();
+  for (const row of args.campaigns) {
+    if (row.isDraft) continue;
+    const key = row.preset ?? "default";
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([preset, count], index) => ({
+      id: `objective-${preset}`,
+      label: args.labelForPreset?.(preset) ?? preset,
+      count,
+      color: OBJECTIVE_COLORS[index % OBJECTIVE_COLORS.length]
     }));
 }
 

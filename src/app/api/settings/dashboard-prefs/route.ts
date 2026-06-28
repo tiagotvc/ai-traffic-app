@@ -6,6 +6,7 @@ import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
 import {
   DASHBOARD_SECTION_KEYS,
   MAX_HERO_METRICS,
+  MAX_PERIOD_METRICS,
   normalizeDashboardLayout
 } from "@/lib/dashboard-layout-prefs";
 import {
@@ -31,6 +32,11 @@ const LayoutSchema = z.object({
   heroMetrics: z
     .array(z.string())
     .max(MAX_HERO_METRICS)
+    .refine((arr) => arr.every((k) => k in METRIC_BY_KEY), "métrica inválida")
+    .optional(),
+  periodMetrics: z
+    .array(z.string())
+    .max(MAX_PERIOD_METRICS)
     .refine((arr) => arr.every((k) => k in METRIC_BY_KEY), "métrica inválida")
     .optional(),
   sectionOrder: z

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
+import { PageFilterBar } from "@/components/layout/PageFilterBar";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
 import { FilterToggleButton } from "@/components/ui/FilterToggleButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
@@ -96,9 +97,7 @@ export function PageToolbar({
       </div>
 
       {filtersOpen && canFilter ? (
-        <div
-          className="ui-filter-panel-grid ui-filter-panel-grid--campaign-creator ui-filter-panel-card mt-3 p-3 text-xs [&_button]:py-1.5 [&_button]:text-xs"
-        >
+        <PageFilterBar>
           {hasGlobalFilters ? (
             <GlobalScopeFilters
               layout="flat"
@@ -118,7 +117,7 @@ export function PageToolbar({
             />
           ) : null}
           {pageFilters}
-        </div>
+        </PageFilterBar>
       ) : null}
     </div>
   );

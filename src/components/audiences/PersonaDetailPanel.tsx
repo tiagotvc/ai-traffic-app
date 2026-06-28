@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Hash, Users } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
 import type { PersonaSummary } from "@/components/audiences/PersonasLibraryClient";
 import { PersonaAddSegmentsModal } from "@/components/audiences/create/PersonaAddSegmentsModal";
+import { PersonaInsightsPanel } from "@/components/audiences/PersonaInsightsPanel";
 import { PersonaSegmentChipList } from "@/components/audiences/create/PersonaSegmentChipList";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { FilterTextField } from "@/components/FilterTextField";
 import {
   canAddMoreSegments,
   extractPersonaTargetingItems,
@@ -134,6 +138,15 @@ export function PersonaDetailPanel({
   const displayItems = editing ? editItems : segmentsToSuggestionItems(persona);
   const canEditSegments = editing && !!clientSlug && !!adAccountId;
 
+  const genderOptions = useMemo(
+    () => [
+      { value: "all", label: t("personaGenderAll") },
+      { value: "female", label: t("personaGenderFemale") },
+      { value: "male", label: t("personaGenderMale") }
+    ],
+    [t]
+  );
+
   function handleRemoveSegment(itemId: string) {
     if (editItems.length <= 1) {
       setSegmentError(t("personaSegmentMinOne"));
@@ -239,6 +252,17 @@ export function PersonaDetailPanel({
     targeting: editTargeting
   });
 
+  // Fase 2 — editor de segmentos Meta no criador de persona é gateado por flag.
+  const [segmentsBuilderEnabled, setSegmentsBuilderEnabled] = useState(true);
+  useEffect(() => {
+    fetch("/api/audiences/flags")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.ok) setSegmentsBuilderEnabled(j.personaTargetingBuilder !== false);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="space-y-4">
       {embedded ? (
@@ -297,41 +321,39 @@ export function PersonaDetailPanel({
               className="ui-input mt-1 w-full text-sm"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="text-xs font-medium text-[var(--text-dim)]">{tCreator("aiDemographicAgeMin")}</label>
-              <input
-                type="number"
-                min={13}
-                max={65}
-                value={ageMin}
-                onChange={(e) => setAgeMin(Number(e.target.value) || 18)}
-                className="ui-input mt-1 w-full text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--text-dim)]">{tCreator("aiDemographicAgeMax")}</label>
-              <input
-                type="number"
-                min={13}
-                max={65}
-                value={ageMax}
-                onChange={(e) => setAgeMax(Number(e.target.value) || 65)}
-                className="ui-input mt-1 w-full text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-[var(--text-dim)]">{tCreator("aiDemographicGender")}</label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                className="ui-select mt-1 w-full text-sm"
-              >
-                <option value="all">{t("personaGenderAll")}</option>
-                <option value="female">{t("personaGenderFemale")}</option>
-                <option value="male">{t("personaGenderMale")}</option>
-              </select>
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <FilterTextField
+              creatorField
+              icon={<Hash size={13} />}
+              label={tCreator("aiDemographicAgeMin")}
+              value={String(ageMin)}
+              onChange={(v) => setAgeMin(Number(v) || 18)}
+              type="number"
+              min={13}
+              max={65}
+              selectOnFocus
+            />
+            <FilterTextField
+              creatorField
+              icon={<Hash size={13} />}
+              label={tCreator("aiDemographicAgeMax")}
+              value={String(ageMax)}
+              onChange={(v) => setAgeMax(Number(v) || 65)}
+              type="number"
+              min={13}
+              max={65}
+              selectOnFocus
+            />
+            <FilterSelectDropdown
+              creatorField
+              icon={<Users size={13} />}
+              label={tCreator("aiDemographicGender")}
+              placeholder={t("personaGenderAll")}
+              value={gender}
+              onChange={setGender}
+              options={genderOptions}
+              clearable={false}
+            />
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -389,6 +411,7 @@ export function PersonaDetailPanel({
         </div>
       ) : null}
 
+      {segmentsBuilderEnabled ? (
       <div className="space-y-2">
         <p className="text-[10px] font-medium uppercase text-[var(--text-dimmer)]">
           {t("personaTargetingSegments")}
@@ -416,6 +439,17 @@ export function PersonaDetailPanel({
           <p className="text-[10px] text-[var(--text-dimmer)]">{t("personaSegmentAtLimit")}</p>
         ) : null}
       </div>
+      ) : null}
+
+      <PersonaInsightsPanel
+        targeting={persona.targeting}
+        ageMin={persona.ageMin}
+        ageMax={persona.ageMax}
+        gender={persona.gender}
+        narrative={persona.description ?? undefined}
+        clientSlug={clientSlug}
+        adAccountId={adAccountId}
+      />
 
       {canEditSegments ? (
         <PersonaAddSegmentsModal

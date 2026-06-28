@@ -124,3 +124,29 @@ export function compareByRank(
   const vb = rankValue(b, spec);
   return spec.dir === "asc" ? va - vb : vb - va;
 }
+
+/** Typical sort direction per metric — UX hints only; does not alter ranking. */
+export const METRIC_DEFAULT_DIR: Partial<Record<MetricKey, "asc" | "desc">> = {
+  roas: "desc",
+  conversions: "desc",
+  messages: "desc",
+  ctr: "desc",
+  reach: "desc",
+  impressions: "desc",
+  clicks: "desc",
+  cpa: "asc",
+  cpmsg: "asc",
+  cpc: "asc",
+  cpm: "asc",
+  spend: "asc",
+  frequency: "asc"
+};
+
+export function isUnusualRankDirection(metric: MetricKey, dir: "asc" | "desc"): boolean {
+  const typical = METRIC_DEFAULT_DIR[metric];
+  return typical != null && typical !== dir;
+}
+
+export function metricUsesLowerIsBetter(metric: MetricKey): boolean {
+  return METRIC_DEFAULT_DIR[metric] === "asc";
+}

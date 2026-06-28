@@ -52,6 +52,9 @@ export type ClientListCard = {
   dominantPreset: string;
   accounts: number;
   alertCount: number;
+  metaConnected: boolean;
+  pixelCount: number;
+  hasPage: boolean;
 };
 
 export async function buildClientListCards(
@@ -64,13 +67,18 @@ export async function buildClientListCards(
     metricSnapshot: metricsRepo,
     campaignMetricSnapshot: campRepo,
     campaignPreset: presetRepo,
-    alert: alertRepo
+    alert: alertRepo,
+    clientMetaSettings: metaSettingsRepo
   } = await repositories();
 
   const clientIds = clients.map((c) => c.id);
-  const accounts = clientIds.length
-    ? await adAccountRepo.find({ where: { clientId: In(clientIds) } })
-    : [];
+  const [accounts, metaSettingsRows] = await Promise.all([
+    clientIds.length ? adAccountRepo.find({ where: { clientId: In(clientIds) } }) : Promise.resolve([]),
+    clientIds.length
+      ? metaSettingsRepo.find({ where: { clientId: In(clientIds) } })
+      : Promise.resolve([])
+  ]);
+  const metaSettingsByClient = new Map(metaSettingsRows.map((s) => [s.clientId, s]));
 
   const accountIds = accounts.map((a) => a.id);
   const accountToClient = new Map(accounts.map((a) => [a.id, a.clientId]));
@@ -220,6 +228,11 @@ export async function buildClientListCards(
       roas
     };
 
+    const metaSettings = metaSettingsByClient.get(c.id);
+    const linkedPixels = metaSettings?.linkedMetaPixelIds?.filter(Boolean) ?? [];
+    const pixelCount =
+      linkedPixels.length > 0 ? linkedPixels.length : metaSettings?.metaPixelId ? 1 : 0;
+
     return {
       id: c.id,
       slug: slugify(c.name),
@@ -228,7 +241,10 @@ export async function buildClientListCards(
       metrics: metricsAgg,
       dominantPreset: dominantPreset(c.id),
       accounts: clientAccounts.length,
-      alertCount: alertCountByClient.get(c.id) ?? 0
+      alertCount: alertCountByClient.get(c.id) ?? 0,
+      metaConnected: !!c.metaBusinessId || clientAccounts.length > 0,
+      pixelCount,
+      hasPage: !!c.metaPageId
     };
   });
 }

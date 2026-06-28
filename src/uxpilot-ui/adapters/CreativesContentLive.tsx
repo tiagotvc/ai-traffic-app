@@ -28,6 +28,9 @@ export function CreativesContentLive() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilterTab, setActiveFilterTab] = useState("Todos");
   const [previewing, setPreviewing] = useState<CreativeItem | null>(null);
+  const [previewMeta, setPreviewMeta] = useState<{ rank: number; score: number; campaignType?: string } | null>(
+    null
+  );
   const [comparing, setComparing] = useState<CreativeItem | null>(null);
 
   useCommandStripPage({ hideFilters: true, hideSync: true });
@@ -49,6 +52,7 @@ export function CreativesContentLive() {
   const filterTabs = useMemo(() => presetTabsFromGroups(data.groups, presetLabel), [data.groups, tPresets]);
 
   function handlePreview(card: UxCreativeCard) {
+    setPreviewMeta({ rank: card.rank, score: card.score, campaignType: card.campaignType });
     setPreviewing(card.raw);
   }
 
@@ -63,6 +67,8 @@ export function CreativesContentLive() {
         icon={<Trophy size={16} />}
         title={t("rankingTitle")}
         subtitle={t("rankingSubtitle")}
+        showGlobalFilters
+        showSync
         search={{
           value: searchQuery,
           onChange: setSearchQuery,
@@ -77,7 +83,7 @@ export function CreativesContentLive() {
             options={filterTabs.map((tab) => ({ value: tab, label: tab }))}
             value={activeFilterTab}
             onChange={setActiveFilterTab}
-            className="w-full max-w-none sm:w-auto"
+            className="ui-filter-panel-field min-w-[10rem] flex-1 sm:max-w-[14rem]"
           />
         }
         actions={
@@ -95,6 +101,7 @@ export function CreativesContentLive() {
           loading: data.loading || data.clientsLoading,
           searchQuery,
           activeFilterTab,
+          onActiveFilterTabChange: setActiveFilterTab,
           onOpenCriteria: () => data.setConfigOpen(true),
           onPreview: (creative) => handlePreview(creative as UxCreativeCard),
           onCompare: (creative) => handleCompare(creative as UxCreativeCard),
@@ -108,11 +115,17 @@ export function CreativesContentLive() {
           adIds={previewing.adIds}
           imageUrl={previewing.imageUrl ?? previewing.thumbnailUrl}
           name={previewing.name}
+          rank={previewMeta?.rank}
+          score={previewMeta?.score}
           type={previewing.type}
+          campaignType={previewMeta?.campaignType}
           status={previewing.status}
           metrics={previewing.metrics}
           campaignsUsed={previewing.campaigns?.length ?? previewing.adsCount ?? 0}
-          onClose={() => setPreviewing(null)}
+          onClose={() => {
+            setPreviewing(null);
+            setPreviewMeta(null);
+          }}
         />
       ) : null}
 

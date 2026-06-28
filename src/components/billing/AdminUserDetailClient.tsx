@@ -9,7 +9,6 @@ import { DsPageHeader } from "@/design-system";
 import {
   AddonStepperCard,
   AdminField,
-  AdminIcon,
   AdminInput,
   AdminSaveButton,
   AdminSection,

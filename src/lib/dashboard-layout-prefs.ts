@@ -21,6 +21,8 @@ export type DashboardLayoutPrefs = {
   sections: DashboardSections;
   /** Empty = use campaign preset defaults. */
   heroMetrics: MetricKey[];
+  /** Period strip metrics; empty = DEFAULT_PERIOD_METRICS. */
+  periodMetrics: MetricKey[];
   /** Custom section order; missing keys append defaults at the end. */
   sectionOrder: DashboardSectionKey[];
   chartSize: ChartPanelSize;
@@ -72,13 +74,25 @@ export const DEFAULT_DASHBOARD_SECTIONS: DashboardSections = {
 export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutPrefs = {
   sections: { ...DEFAULT_DASHBOARD_SECTIONS },
   heroMetrics: [],
+  periodMetrics: [],
   sectionOrder: [...DEFAULT_DASHBOARD_SECTION_ORDER],
   chartSize: "default"
 };
 
-export const MAX_HERO_METRICS = 8;
+export const MAX_HERO_METRICS = 10;
 
-/** Default hero row when user prefs are empty (Destaques v2 — up to 8 compact KPI cards, 4+4 grid). */
+/** Period strip under hero — 5 cards matching hero KPI style (2 rows of 5 on xl). */
+export const MAX_PERIOD_METRICS = 5;
+
+export const DEFAULT_PERIOD_METRICS: MetricKey[] = [
+  "impressions",
+  "messages",
+  "roas",
+  "cpa",
+  "frequency"
+];
+
+/** Default hero row when user prefs are empty (Destaques v2 — up to 10 KPI cards, 5+5 grid). */
 export const DEFAULT_DASHBOARD_HERO_METRICS: MetricKey[] = [
   "spend",
   "ctr",
@@ -87,7 +101,9 @@ export const DEFAULT_DASHBOARD_HERO_METRICS: MetricKey[] = [
   "clicks",
   "cpc",
   "roas",
-  "cpm"
+  "cpm",
+  "impressions",
+  "messages"
 ];
 
 export const CHART_PANEL_MIN_HEIGHT: Record<ChartPanelSize, number> = {
@@ -98,9 +114,9 @@ export const CHART_PANEL_MIN_HEIGHT: Record<ChartPanelSize, number> = {
 
 /** Default chart plot height for Destaques page variant (px). */
 export const DASHBOARD_PAGE_CHART_HEIGHT: Record<ChartPanelSize, number> = {
-  compact: 210,
-  default: 250,
-  tall: 290
+  compact: 240,
+  default: 300,
+  tall: 340
 };
 
 /** localStorage key for selected Performance chart metrics (Destaques). */
@@ -147,11 +163,25 @@ export function normalizeDashboardHeroMetrics(raw: unknown): MetricKey[] {
   return [...new Set(valid)].slice(0, MAX_HERO_METRICS);
 }
 
+export function normalizePeriodMetrics(raw: unknown): MetricKey[] {
+  if (!Array.isArray(raw)) return [];
+  const valid = raw.filter(
+    (k): k is MetricKey => typeof k === "string" && k in METRIC_BY_KEY
+  );
+  return [...new Set(valid)].slice(0, MAX_PERIOD_METRICS);
+}
+
+export function resolvePeriodMetricKeys(userPeriodMetrics: MetricKey[]): MetricKey[] {
+  if (userPeriodMetrics.length > 0) return userPeriodMetrics.slice(0, MAX_PERIOD_METRICS);
+  return DEFAULT_PERIOD_METRICS.slice(0, MAX_PERIOD_METRICS);
+}
+
 export function normalizeDashboardLayout(raw: unknown): DashboardLayoutPrefs {
   if (!raw || typeof raw !== "object") {
     return {
       sections: { ...DEFAULT_DASHBOARD_SECTIONS },
       heroMetrics: [],
+      periodMetrics: [],
       sectionOrder: [...DEFAULT_DASHBOARD_SECTION_ORDER],
       chartSize: "default"
     };
@@ -171,6 +201,7 @@ export function normalizeDashboardLayout(raw: unknown): DashboardLayoutPrefs {
   return {
     sections,
     heroMetrics: normalizeDashboardHeroMetrics(obj.heroMetrics),
+    periodMetrics: normalizePeriodMetrics(obj.periodMetrics),
     sectionOrder: normalizeSectionOrder(obj.sectionOrder),
     chartSize: normalizeChartPanelSize(obj.chartSize)
   };

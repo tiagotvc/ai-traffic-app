@@ -21,7 +21,70 @@ import type {
 
 type ChartPoint = { label: string } & Partial<Record<MetricKey, number>>;
 
-const FUNNEL_PALETTE = ["#7c3aed", "#6366f1", "#8b5cf6", "#a78bfa"];
+const FUNNEL_PALETTE = ["#7c3aed", "#6366f1", "#14b8a6", "#8b5cf6"];
+
+function MarketingFunnelVisual({
+  steps,
+  rateLabel
+}: {
+  steps: DashboardFunnelStep[];
+  rateLabel: (rate: string) => string;
+}) {
+  const max = Math.max(...steps.map((s) => s.numeric), 1);
+  const stageCount = Math.max(steps.length, 1);
+  const taperStart = 100;
+  const taperEnd = 42;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col justify-between gap-1.5 py-0.5">
+      {steps.map((step, index) => {
+        const taperPct =
+          stageCount <= 1
+            ? taperStart
+            : taperStart - (index / (stageCount - 1)) * (taperStart - taperEnd);
+        const valueRatio = step.numeric / max;
+        const widthPct = Math.max(taperPct * (0.55 + valueRatio * 0.45), taperEnd * 0.65);
+        const color = FUNNEL_PALETTE[index % FUNNEL_PALETTE.length];
+
+        return (
+          <div key={step.id} className="relative flex-1">
+            {index > 0 && step.rateFromPrev ? (
+              <div className="mb-1 flex items-center justify-center gap-1.5">
+                <span
+                  className="rounded-full px-2 py-0.5 text-[9px] font-semibold tabular-nums"
+                  style={{
+                    background: "color-mix(in srgb, #14b8a6 14%, transparent)",
+                    color: "#0d9488",
+                    border: "1px solid color-mix(in srgb, #14b8a6 28%, transparent)"
+                  }}
+                >
+                  {rateLabel(step.rateFromPrev)}
+                </span>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-center">
+              <div
+                className="relative flex h-9 items-center justify-center overflow-hidden rounded-xl px-3 transition-all sm:h-10"
+                style={{
+                  width: `${widthPct}%`,
+                  background: `linear-gradient(90deg, color-mix(in srgb, ${color} 88%, #fff) 0%, color-mix(in srgb, ${color} 68%, #1e1b4b) 100%)`,
+                  boxShadow: `inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent)`
+                }}
+              >
+                <span className="absolute left-2.5 top-1 truncate text-[9px] font-medium text-white/85">
+                  {step.label}
+                </span>
+                <span className="truncate text-[11px] font-bold tabular-nums text-white drop-shadow-sm">
+                  {step.value}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function PanelShell({
   title,
@@ -61,93 +124,11 @@ function EmptyPanelNote({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TaperedFunnelVisual({
-  steps,
-  rateLabel
-}: {
-  steps: DashboardFunnelStep[];
-  rateLabel: (rate: string) => string;
-}) {
-  const max = Math.max(...steps.map((s) => s.numeric), 1);
-  const height = 168;
-  const segmentH = height / Math.max(steps.length, 1);
-  const maxW = 220;
-  const cx = 130;
-
-  return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-4">
-      <svg
-        viewBox={`0 0 260 ${height + 8}`}
-        className="mx-auto w-full max-w-[260px] shrink-0"
-        role="img"
-        aria-hidden
-      >
-        <defs>
-          {steps.map((_, i) => (
-            <linearGradient key={i} id={`dash-funnel-grad-${i}`} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor={FUNNEL_PALETTE[i % FUNNEL_PALETTE.length]} stopOpacity={0.95} />
-              <stop offset="100%" stopColor={FUNNEL_PALETTE[(i + 1) % FUNNEL_PALETTE.length]} stopOpacity={0.7} />
-            </linearGradient>
-          ))}
-        </defs>
-        {steps.map((step, i) => {
-          const topFrac = Math.max(step.numeric / max, 0.12);
-          const nextStep = steps[i + 1];
-          const bottomFrac = nextStep ? Math.max(nextStep.numeric / max, 0.08) : topFrac * 0.55;
-          const topW = maxW * topFrac;
-          const bottomW = maxW * bottomFrac;
-          const y = i * segmentH + 2;
-          const points = `${cx - topW / 2},${y} ${cx + topW / 2},${y} ${cx + bottomW / 2},${y + segmentH - 3} ${cx - bottomW / 2},${y + segmentH - 3}`;
-          return (
-            <polygon
-              key={step.id}
-              points={points}
-              fill={`url(#dash-funnel-grad-${i})`}
-              stroke="color-mix(in srgb, var(--ui-accent) 25%, transparent)"
-              strokeWidth={0.75}
-            />
-          );
-        })}
-      </svg>
-      <div className="min-w-0 flex-1 space-y-2">
-        {steps.map((step, index) => (
-          <div
-            key={step.id}
-            className="flex items-start justify-between gap-2 rounded-lg border px-2.5 py-2"
-            style={{
-              borderColor: "var(--creator-card-border, var(--border-color))",
-              background: "var(--creator-card-bg-inset, var(--surface-bg))"
-            }}
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: FUNNEL_PALETTE[index % FUNNEL_PALETTE.length] }}
-                />
-                <span className="text-[11px] font-medium text-[var(--text-dim)]">{step.label}</span>
-              </div>
-              {index > 0 && step.rateFromPrev ? (
-                <p className="mt-0.5 pl-3.5 text-[9px] text-[var(--text-dimmer)]">
-                  {rateLabel(step.rateFromPrev)}
-                </p>
-              ) : null}
-            </div>
-            <span className="shrink-0 font-heading text-sm font-bold tabular-nums text-[var(--text-main)]">
-              {step.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function VirtualFunnelPanel({ steps }: { steps: DashboardFunnelStep[] }) {
   const t = useTranslations("dashboard");
   return (
-    <PanelShell title={t("widgetFunnelTitle")} subtitle={t("widgetFunnelSubtitle")}>
-      <TaperedFunnelVisual
+    <PanelShell title={t("widgetFunnelTitle")} subtitle={t("widgetFunnelSubtitle")} className="min-h-[300px]">
+      <MarketingFunnelVisual
         steps={steps}
         rateLabel={(rate) => t("widgetFunnelRate", { rate })}
       />
@@ -155,73 +136,201 @@ function VirtualFunnelPanel({ steps }: { steps: DashboardFunnelStep[] }) {
   );
 }
 
-function CampaignStatusPanel({ buckets }: { buckets: DashboardCampaignStatusBucket[] }) {
+function CampaignStatusDistributionChart({
+  buckets,
+  total
+}: {
+  buckets: DashboardCampaignStatusBucket[];
+  total: number;
+}) {
   const t = useTranslations("dashboard");
-  const total = buckets.reduce((sum, b) => sum + b.count, 0);
-  const pieData = buckets.filter((b) => b.count > 0);
+  const chartRows = buckets.map((bucket) => ({
+    ...bucket,
+    pct: total > 0 ? Math.round((bucket.count / total) * 100) : 0
+  }));
 
   return (
-    <PanelShell title={t("widgetCampaignStatusTitle")}>
-      {total === 0 ? (
-        <EmptyPanelNote>{t("widgetCampaignStatusEmpty")}</EmptyPanelNote>
-      ) : (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          {pieData.length > 0 ? (
-            <ChartContainer height={120} className="mx-auto w-full max-w-[140px] shrink-0 sm:mx-0">
-              <PremiumChartFrame compact>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="count"
-                    nameKey="label"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="52%"
-                    outerRadius="88%"
-                    paddingAngle={2}
-                    stroke="none"
+    <div className="min-h-0 flex-1">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+        {t("widgetCampaignStatusDistribution")}
+      </p>
+      <ChartContainer height={Math.max(140, chartRows.length * 36 + 12)} className="w-full min-w-0">
+        <PremiumChartFrame compact>
+          <BarChart
+            data={chartRows}
+            layout="vertical"
+            margin={{ top: 2, right: 8, left: 0, bottom: 2 }}
+          >
+            <XAxis type="number" domain={[0, 100]} hide />
+            <YAxis
+              type="category"
+              dataKey="label"
+              width={68}
+              tick={{ ...premiumAxisTick(), fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              cursor={{ fill: "rgba(124,58,237,0.06)" }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.[0]?.payload) return null;
+                const row = payload[0].payload as (typeof chartRows)[number];
+                return (
+                  <div
+                    className="rounded-lg border px-3 py-2 text-xs shadow-lg"
+                    style={{
+                      background: "var(--creator-card-bg, var(--surface-card))",
+                      borderColor: "var(--creator-card-border, var(--border-color))"
+                    }}
                   >
-                    {pieData.map((bucket) => (
-                      <Cell key={bucket.id} fill={bucket.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </PremiumChartFrame>
-            </ChartContainer>
-          ) : null}
-          <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
-            {buckets.map((bucket) => (
-              <div
-                key={bucket.id}
-                className="rounded-lg border px-2.5 py-2"
-                style={{
-                  borderColor: "var(--creator-card-border, var(--border-color))",
-                  background: "var(--creator-card-bg-inset, var(--surface-bg))"
-                }}
-              >
-                <div className="mb-1 flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full" style={{ background: bucket.color }} />
-                  <span className="text-[10px] font-medium text-[var(--text-dim)]">{bucket.label}</span>
-                </div>
-                <p className="font-heading text-lg font-bold tabular-nums text-[var(--text-main)]">
-                  {bucket.count}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </PanelShell>
+                    <p className="font-semibold text-[var(--text-main)]">{row.label}</p>
+                    <p className="tabular-nums text-[var(--text-dim)]">
+                      {t("widgetCampaignStatusTooltip", { count: row.count, pct: row.pct })}
+                    </p>
+                  </div>
+                );
+              }}
+            />
+            <Bar dataKey="pct" radius={[0, 6, 6, 0]} maxBarSize={22}>
+              {chartRows.map((row) => (
+                <Cell key={row.id} fill={row.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </PremiumChartFrame>
+      </ChartContainer>
+    </div>
   );
 }
 
-function TopCampaignsPanel({ rows }: { rows: DashboardTopCampaignRow[] }) {
+function CampaignStatusPanel({
+  buckets,
+  objectiveBuckets
+}: {
+  buckets: DashboardCampaignStatusBucket[];
+  objectiveBuckets: DashboardCampaignStatusBucket[];
+}) {
+  const t = useTranslations("dashboard");
+  const total = buckets.reduce((sum, b) => sum + b.count, 0);
+  const pieData = buckets.filter((b) => b.count > 0);
+  const objectiveTotal = objectiveBuckets.reduce((sum, b) => sum + b.count, 0);
+
+  return (
+    <div className="flex h-full min-h-[300px] flex-col gap-4">
+      <PanelShell title={t("widgetCampaignStatusTitle")} className="min-h-0 flex-1">
+        {total === 0 ? (
+          <EmptyPanelNote>{t("widgetCampaignStatusEmpty")}</EmptyPanelNote>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+            <div className="grid shrink-0 grid-cols-1 gap-4 sm:grid-cols-[minmax(0,140px)_1fr] sm:items-start">
+              {pieData.length > 0 ? (
+                <ChartContainer height={128} className="mx-auto w-full max-w-[140px] sm:mx-0">
+                  <PremiumChartFrame compact>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        dataKey="count"
+                        nameKey="label"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="48%"
+                        outerRadius="88%"
+                        paddingAngle={2}
+                        stroke="none"
+                      >
+                        {pieData.map((bucket) => (
+                          <Cell key={bucket.id} fill={bucket.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </PremiumChartFrame>
+                </ChartContainer>
+              ) : null}
+              <div className="grid min-w-0 grid-cols-2 gap-2">
+                {buckets.map((bucket) => (
+                  <div
+                    key={bucket.id}
+                    className="rounded-lg border px-2.5 py-2"
+                    style={{
+                      borderColor: "var(--creator-card-border, var(--border-color))",
+                      background: "var(--creator-card-bg-inset, var(--surface-bg))"
+                    }}
+                  >
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full" style={{ background: bucket.color }} />
+                      <span className="text-[10px] font-medium text-[var(--text-dim)]">{bucket.label}</span>
+                    </div>
+                    <p className="font-heading text-lg font-bold tabular-nums text-[var(--text-main)]">
+                      {bucket.count}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="min-h-0 shrink-0 border-t border-[var(--creator-card-border,var(--border-color))] pt-3">
+              <CampaignStatusDistributionChart buckets={buckets} total={total} />
+            </div>
+          </div>
+        )}
+      </PanelShell>
+
+      <PanelShell
+        title={t("widgetCampaignObjectiveTitle")}
+        subtitle={t("widgetCampaignObjectiveSubtitle")}
+        className="min-h-0 shrink-0"
+      >
+        {objectiveTotal === 0 ? (
+          <EmptyPanelNote>{t("widgetCampaignObjectiveEmpty")}</EmptyPanelNote>
+        ) : (
+          <CampaignStatusDistributionChart buckets={objectiveBuckets} total={objectiveTotal} />
+        )}
+      </PanelShell>
+    </div>
+  );
+}
+
+function TopCampaignsRow({
+  byRank,
+  bySpend
+}: {
+  byRank: DashboardTopCampaignRow[];
+  bySpend: DashboardTopCampaignRow[];
+}) {
   const t = useTranslations("dashboard");
 
   return (
-    <PanelShell title={t("widgetTopCampaignsTitle")} subtitle={t("widgetTopCampaignsSubtitle")}>
+    <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-2">
+      <TopCampaignsPanel
+        title={t("widgetTopCampaignsTitle")}
+        subtitle={t("widgetTopCampaignsSubtitle")}
+        rows={byRank}
+        emptyLabel={t("widgetTopCampaignsEmpty")}
+      />
+      <TopCampaignsPanel
+        title={t("widgetTopBySpendTitle")}
+        subtitle={t("widgetTopBySpendSubtitle")}
+        rows={bySpend}
+        emptyLabel={t("widgetTopCampaignsEmpty")}
+      />
+    </div>
+  );
+}
+
+function TopCampaignsPanel({
+  title,
+  subtitle,
+  rows,
+  emptyLabel
+}: {
+  title: string;
+  subtitle: string;
+  rows: DashboardTopCampaignRow[];
+  emptyLabel: string;
+}) {
+  return (
+    <PanelShell title={title} subtitle={subtitle}>
       {rows.length === 0 ? (
-        <EmptyPanelNote>{t("widgetTopCampaignsEmpty")}</EmptyPanelNote>
+        <EmptyPanelNote>{emptyLabel}</EmptyPanelNote>
       ) : (
         <div className="space-y-2">
           {rows.map((row, index) => (
@@ -380,16 +489,16 @@ function AdLibraryInsightsPanel({
         : t("widgetAdLibrarySubtitleUnconfigured");
 
   return (
-    <PanelShell title={t("widgetAdLibraryTitle")} subtitle={subtitle}>
+    <PanelShell title={t("widgetAdLibraryTitle")} subtitle={subtitle} className="min-h-[320px]">
       {isLoading ? (
         <div className="skeleton-shimmer h-[160px] w-full rounded-lg" />
       ) : displaySegments.length === 0 ? (
         <EmptyPanelNote>{t("widgetAdLibraryEmpty")}</EmptyPanelNote>
       ) : (
-        <div className="space-y-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
           {insights?.source === "sample" ? (
             <p
-              className="rounded-lg border px-2.5 py-1.5 text-[10px]"
+              className="shrink-0 rounded-lg border px-2.5 py-1.5 text-[10px]"
               style={{
                 borderColor: "var(--creator-card-border, var(--border-color))",
                 color: "var(--text-dimmer)",
@@ -400,28 +509,16 @@ function AdLibraryInsightsPanel({
             </p>
           ) : null}
           {insights?.formats && insights.formats.length > 0 ? (
-            <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
-                {t("widgetAdLibraryFormats")}
-              </p>
-              <div className="space-y-1.5">
-                {insights.formats.map((seg) => (
-                  <SegmentBar key={seg.id} segment={seg} />
-                ))}
-              </div>
-            </div>
+            <SegmentBarGroup
+              title={t("widgetAdLibraryFormats")}
+              segments={insights.formats}
+            />
           ) : null}
           {insights?.ctas && insights.ctas.length > 0 ? (
-            <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
-                {t("widgetAdLibraryCtas")}
-              </p>
-              <div className="space-y-1.5">
-                {insights.ctas.map((seg) => (
-                  <SegmentBar key={seg.id} segment={seg} />
-                ))}
-              </div>
-            </div>
+            <SegmentBarGroup
+              title={t("widgetAdLibraryCtas")}
+              segments={insights.ctas}
+            />
           ) : null}
         </div>
       )}
@@ -429,22 +526,53 @@ function AdLibraryInsightsPanel({
   );
 }
 
-function SegmentBar({ segment }: { segment: { label: string; sharePct: number; count: number; color: string } }) {
+function SegmentBarGroup({
+  title,
+  segments
+}: {
+  title: string;
+  segments: { id: string; label: string; sharePct: number; count: number; color: string }[];
+}) {
+  const maxShare = Math.max(...segments.map((s) => s.sharePct), 1);
+
+  return (
+    <div className="min-h-0 flex-1">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+        {title}
+      </p>
+      <div className="space-y-3">
+        {segments.map((seg) => (
+          <SegmentBar key={seg.id} segment={seg} maxShare={maxShare} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SegmentBar({
+  segment,
+  maxShare
+}: {
+  segment: { label: string; sharePct: number; count: number; color: string };
+  maxShare: number;
+}) {
+  const widthPct = maxShare > 0 ? (segment.sharePct / maxShare) * 100 : segment.sharePct;
+
   return (
     <div>
-      <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px]">
+      <div className="mb-1 flex items-center justify-between gap-2 text-[11px]">
         <span className="truncate font-medium text-[var(--text-dim)]">{segment.label}</span>
         <span className="shrink-0 tabular-nums text-[var(--text-dimmer)]">
           {segment.sharePct}% · {segment.count}
         </span>
       </div>
       <div
-        className="h-1.5 overflow-hidden rounded-full"
+        className="h-3.5 overflow-hidden rounded-full sm:h-4"
         style={{ background: "var(--creator-card-bg-inset, var(--surface-bg))" }}
       >
         <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${Math.max(segment.sharePct, 4)}%`, background: segment.color }}
+          className="h-full min-w-[6%] rounded-full transition-all"
+          style={{ width: `${Math.max(widthPct, 8)}%`, background: segment.color }}
         />
       </div>
     </div>
@@ -454,7 +582,9 @@ function SegmentBar({ segment }: { segment: { label: string; sharePct: number; c
 export function DashboardInsightPanels({
   funnelSteps,
   campaignStatus,
+  campaignObjectives,
   topCampaigns,
+  topCampaignsBySpend,
   profitByCampaign,
   adLibraryInsights,
   adLibraryLoading,
@@ -467,7 +597,9 @@ export function DashboardInsightPanels({
 }: {
   funnelSteps: DashboardFunnelStep[];
   campaignStatus: DashboardCampaignStatusBucket[];
+  campaignObjectives: DashboardCampaignStatusBucket[];
   topCampaigns: DashboardTopCampaignRow[];
+  topCampaignsBySpend: DashboardTopCampaignRow[];
   profitByCampaign: DashboardProfitCampaignRow[];
   adLibraryInsights: DashboardAdLibraryInsights | null;
   adLibraryLoading?: boolean;
@@ -493,45 +625,50 @@ export function DashboardInsightPanels({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-          <div className="campaign-creator-card campaign-creator-card--compact xl:col-span-8">
+      <div className="flex flex-col gap-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <div className="campaign-creator-card campaign-creator-card--compact xl:col-span-1">
             <div className="skeleton-shimmer mb-2 h-3 w-32 rounded" />
-            <div className="skeleton-shimmer h-40 w-full rounded-lg" />
+            <div className="skeleton-shimmer h-48 w-full rounded-lg" />
           </div>
-          <div className="campaign-creator-card campaign-creator-card--compact xl:col-span-4">
+          <div className="campaign-creator-card campaign-creator-card--compact xl:col-span-1">
             <div className="skeleton-shimmer mb-2 h-3 w-24 rounded" />
-            <div className="skeleton-shimmer h-40 w-full rounded-lg" />
+            <div className="skeleton-shimmer h-48 w-full rounded-lg" />
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          {[1, 2].map((i) => (
             <div key={i} className="campaign-creator-card campaign-creator-card--compact">
               <div className="skeleton-shimmer mb-2 h-3 w-24 rounded" />
-              <div className="skeleton-shimmer h-24 w-full rounded-lg" />
+              <div className="skeleton-shimmer h-32 w-full rounded-lg" />
             </div>
           ))}
+        </div>
+        <div className="campaign-creator-card campaign-creator-card--compact">
+          <div className="skeleton-shimmer mb-2 h-3 w-24 rounded" />
+          <div className="skeleton-shimmer h-24 w-full rounded-lg" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       {(showPerformance || showAgeBreakdown) && (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-2">
           {showPerformance && performanceChart ? (
-            <div className="campaign-creator-card campaign-creator-card--compact flex min-h-0 flex-col xl:col-span-8">
+            <div className="campaign-creator-card campaign-creator-card--compact flex min-h-[400px] min-w-0 flex-col xl:col-span-1">
               <DashboardPerformanceChart
                 {...performanceChart}
                 title={t("metricsChartTitle")}
                 variant="page"
                 dualAxisAlways
+                fillHeight
               />
             </div>
           ) : null}
           {showAgeBreakdown ? (
-            <div className="xl:col-span-4">
+            <div className="flex h-full min-h-[400px] min-w-0 xl:col-span-1">
               <AgeBreakdownCard
                 rows={ageBreakdown ?? []}
                 isLoading={ageBreakdownLoading}
@@ -542,13 +679,14 @@ export function DashboardInsightPanels({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-2">
         <VirtualFunnelPanel steps={funnelSteps} />
-        <CampaignStatusPanel buckets={campaignStatus} />
-        <TopCampaignsPanel rows={topCampaigns} />
+        <CampaignStatusPanel buckets={campaignStatus} objectiveBuckets={campaignObjectives} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <TopCampaignsRow byRank={topCampaigns} bySpend={topCampaignsBySpend} />
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <ProfitByCampaignPanel rows={profitByCampaign} />
         <AdLibraryInsightsPanel insights={adLibraryInsights} isLoading={adLibraryLoading} />
       </div>

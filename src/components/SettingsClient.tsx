@@ -3,28 +3,55 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
-import { Info, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  AtSign,
+  Building2,
+  Database,
+  ImageIcon,
+  Info,
+  KeyRound,
+  Link2,
+  Lock,
+  Plug,
+  Sparkles,
+  User,
+  Users
+} from "lucide-react";
 import {
   DsFlatDivider,
   DsFlatPanel,
   DsFlatSection,
-  DsFormActions,
-  DsFormField
+  DsFormField,
+  DsButton
 } from "@/design-system";
+import { FilterTextField } from "@/components/FilterTextField";
+import { Link } from "@/i18n/navigation";
 import { SettingsIntegrationsTab } from "@/components/settings/SettingsIntegrationsTab";
-import { PageTabs } from "@/components/layout/PageTabs";
+import { SettingsFooterSave } from "@/components/settings/SettingsFooterSave";
+import {
+  SettingsSectionNav,
+  type SettingsNavItem
+} from "@/components/settings/SettingsSectionNav";
 import { WorkspaceTeamSection } from "@/components/WorkspaceTeamSection";
+import type { Entitlements } from "@/lib/billing/types";
 
-type SettingsTab = "general" | "team" | "integrations" | "webhooks" | "data";
+type SettingsTab = "account" | "team" | "integrations" | "webhooks" | "data";
 
 export type { SettingsTab };
 
-const VALID_TABS = new Set<SettingsTab>(["general", "team", "integrations", "webhooks", "data"]);
+const VALID_TABS = new Set<SettingsTab>([
+  "account",
+  "team",
+  "integrations",
+  "webhooks",
+  "data"
+]);
 
 export function parseSettingsTab(raw: string | null): SettingsTab {
+  if (raw === "general" || raw === "branding") return "account";
   if (raw && VALID_TABS.has(raw as SettingsTab)) return raw as SettingsTab;
-  return "general";
+  return "account";
 }
 
 function parseTab(raw: string | null): SettingsTab {
@@ -39,7 +66,8 @@ export function SettingsClient({
   embedded = false,
   bare = false,
   activeTab: controlledTab,
-  onActiveTabChange
+  onActiveTabChange,
+  allowWhiteLabel: allowWhiteLabelProp
 }: {
   locale: string;
   metaOAuthConfigured: boolean;
@@ -49,6 +77,8 @@ export function SettingsClient({
   bare?: boolean;
   activeTab?: SettingsTab;
   onActiveTabChange?: (tab: SettingsTab) => void;
+  /** When omitted, fetched from `/api/me/entitlements`. */
+  allowWhiteLabel?: boolean;
 }) {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
@@ -58,6 +88,8 @@ export function SettingsClient({
   const [internalTab, setInternalTab] = useState<SettingsTab>(() => parseTab(searchParams.get("tab")));
   const activeTab = controlledTab ?? internalTab;
   const setActiveTab = onActiveTabChange ?? setInternalTab;
+
+  const [allowWhiteLabel, setAllowWhiteLabel] = useState(allowWhiteLabelProp ?? false);
 
   const [brandName, setBrandName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
@@ -107,6 +139,20 @@ export function SettingsClient({
   }, [t]);
 
   useEffect(() => {
+    if (allowWhiteLabelProp !== undefined) {
+      setAllowWhiteLabel(allowWhiteLabelProp);
+      return;
+    }
+    fetch("/api/me/entitlements")
+      .then((r) => r.json())
+      .then((j) => {
+        const entitlements = j.entitlements as Entitlements | undefined;
+        setAllowWhiteLabel(Boolean(entitlements?.limits?.allowWhiteLabel));
+      })
+      .catch(() => setAllowWhiteLabel(false));
+  }, [allowWhiteLabelProp]);
+
+  useEffect(() => {
     loadTenant();
     fetch("/api/settings/account")
       .then((r) => r.json())
@@ -127,7 +173,7 @@ export function SettingsClient({
 
   useEffect(() => {
     const tab = parseTab(searchParams.get("tab"));
-    if (VALID_TABS.has(tab)) {
+    if (VALID_TABS.has(tab) || searchParams.get("tab") === "general") {
       setActiveTab(tab);
     }
   }, [searchParams, setActiveTab]);
@@ -139,358 +185,400 @@ export function SettingsClient({
     router.replace(`/settings?${params.toString()}`, { scroll: false });
   }
 
-  const tabs: Array<{ key: SettingsTab; label: string }> = [
-    { key: "general", label: t("tabGeneral") },
-    { key: "team", label: t("tabTeam") },
-    { key: "integrations", label: t("tabIntegrations") },
-    { key: "webhooks", label: t("tabWebhooks") },
-    { key: "data", label: t("tabData") }
-  ];
+  const loginMethodsLabel =
+    account == null
+      ? "—"
+      : [
+          account.hasPassword ? t("accountMethodPassword") : null,
+          account.hasGoogle ? "Google" : null,
+          account.hasFacebook ? "Facebook" : null
+        ]
+          .filter(Boolean)
+          .join(" · ") || "—";
+
+  const navItems = useMemo((): SettingsNavItem<SettingsTab>[] => {
+    const icons: Record<SettingsTab, typeof User> = {
+      account: User,
+      team: Users,
+      integrations: Plug,
+      webhooks: Link2,
+      data: Database
+    };
+    const descriptions: Record<SettingsTab, string> = {
+      account: t("navAccountDesc"),
+      team: t("navTeamDesc"),
+      integrations: t("navIntegrationsDesc"),
+      webhooks: t("webhooksSubtitle"),
+      data: t("navDataDesc")
+    };
+    const labels: Record<SettingsTab, string> = {
+      account: t("navAccountTitle"),
+      team: t("navTeamTitle"),
+      integrations: t("navIntegrationsTitle"),
+      webhooks: t("tabWebhooks"),
+      data: t("navDataTitle")
+    };
+    return (Object.keys(icons) as SettingsTab[]).map((key) => ({
+      value: key,
+      label: labels[key],
+      description: descriptions[key],
+      icon: icons[key]
+    }));
+  }, [t]);
 
   const panels = (
     <DsFlatPanel className={bare ? undefined : "ui-card p-4"}>
-        {activeTab === "general" ? (
-          <div className="space-y-8">
-            <DsFlatSection title={t("accountTitle")} subtitle={t("accountSubtitle")}>
-              {account ? (
-                <div className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg bg-[var(--surface-bg)] px-3 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
-                        E-mail
-                      </p>
-                      <p className="mt-0.5 text-sm font-medium text-[var(--text-main)]">{account.email}</p>
-                    </div>
-                    <div className="rounded-lg bg-[var(--surface-bg)] px-3 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
-                        {t("accountLoginMethods")}
-                      </p>
-                      <p className="mt-0.5 text-xs text-[var(--text-dim)]">
-                        {[
-                          account.hasPassword ? t("accountMethodPassword") : null,
-                          account.hasGoogle ? "Google" : null,
-                          account.hasFacebook ? "Facebook" : null
-                        ]
-                          .filter(Boolean)
-                          .join(" · ") || "—"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {account.hasPassword ? (
-                    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] p-3">
-                      <p className="text-xs font-semibold text-[var(--text-main)]">{t("passwordTitle")}</p>
-                      <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t("passwordHint")}</p>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                        <DsFormField label={t("currentPassword")}>
-                          <input
-                            type="password"
-                            value={currentPassword}
-                            onChange={(e) => setCurrentPassword(e.target.value)}
-                            className="ui-input w-full text-sm"
-                            autoComplete="current-password"
-                          />
-                        </DsFormField>
-                        <DsFormField label={t("newPassword")}>
-                          <input
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            className="ui-input w-full text-sm"
-                            autoComplete="new-password"
-                          />
-                        </DsFormField>
-                        <DsFormField label={t("confirmPassword")}>
-                          <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="ui-input w-full text-sm"
-                            autoComplete="new-password"
-                          />
-                        </DsFormField>
-                      </div>
-                      <DsFormActions message={passwordMessage}>
-                        <button
-                          type="button"
-                          disabled={
-                            passwordPending ||
-                            !currentPassword ||
-                            newPassword.length < 6 ||
-                            newPassword !== confirmPassword
-                          }
-                          onClick={() => {
-                            setPasswordMessage(null);
-                            startPasswordTransition(async () => {
-                              const res = await fetch("/api/settings/password", {
-                                method: "PATCH",
-                                headers: { "content-type": "application/json" },
-                                body: JSON.stringify({ currentPassword, newPassword })
-                              });
-                              const json = await res.json().catch(() => ({}));
-                              if (!res.ok || !json.ok) {
-                                setPasswordMessage(
-                                  json.error === "wrong_password"
-                                    ? t("passwordWrong")
-                                    : t("saveFailed")
-                                );
-                                return;
-                              }
-                              setCurrentPassword("");
-                              setNewPassword("");
-                              setConfirmPassword("");
-                              setPasswordMessage(t("passwordChanged"));
-                            });
-                          }}
-                          className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
-                        >
-                          {passwordPending ? tCommon("loading") : t("passwordChangeBtn")}
-                        </button>
-                      </DsFormActions>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-[var(--text-dim)]">{t("passwordOAuthOnly")}</p>
-                  )}
+      {activeTab === "account" ? (
+        <div className="space-y-8">
+          <DsFlatSection title={t("accountTitle")} subtitle={t("accountSubtitle")}>
+            {account ? (
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FilterTextField
+                    creatorField
+                    icon={<AtSign size={13} />}
+                    label={t("fieldEmail")}
+                    value={account.email}
+                    onChange={() => {}}
+                    readOnly
+                  />
+                  <FilterTextField
+                    creatorField
+                    icon={<KeyRound size={13} />}
+                    label={t("accountLoginMethods")}
+                    value={loginMethodsLabel}
+                    onChange={() => {}}
+                    readOnly
+                  />
                 </div>
-              ) : (
-                <p className="text-xs text-[var(--text-dim)]">{tCommon("loading")}</p>
-              )}
-            </DsFlatSection>
 
-            <DsFlatDivider />
-
-            <DsFlatSection title={t("whitelabel")} subtitle={t("whitelabelHint")}>
-              <div className="grid gap-3 md:grid-cols-2">
-                <DsFormField label={t("brandName")}>
-                  <input
-                    value={brandName}
-                    onChange={(e) => setBrandName(e.target.value)}
-                    className="ui-input w-full"
-                    placeholder={t("brandNamePlaceholder")}
-                  />
-                </DsFormField>
-                <DsFormField label={t("logoUrl")}>
-                  <input
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    className="ui-input w-full"
-                    placeholder="https://exemplo.com/logo.png"
-                  />
-                </DsFormField>
-              </div>
-              <div className="mt-3">
-                <DsFormActions message={message}>
-                  <button
-                    disabled={isPending}
-                    onClick={() => {
-                      setMessage(null);
-                      startTransition(async () => {
-                        const res = await fetch("/api/settings/tenant", {
-                          method: "PATCH",
-                          headers: { "content-type": "application/json" },
-                          body: JSON.stringify({ brandName, logoUrl })
+                {account.hasPassword ? (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-[var(--text-main)]">{t("passwordTitle")}</p>
+                    <p className="text-[11px] text-[var(--text-dim)]">{t("passwordHint")}</p>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <DsFormField label={t("currentPassword")}>
+                        <FilterTextField
+                          creatorField
+                          type="password"
+                          icon={<Lock size={13} />}
+                          label={t("currentPassword")}
+                          value={currentPassword}
+                          onChange={setCurrentPassword}
+                          inputClassName="font-body"
+                          aria-label={t("currentPassword")}
+                        />
+                      </DsFormField>
+                      <DsFormField label={t("newPassword")}>
+                        <FilterTextField
+                          creatorField
+                          type="password"
+                          icon={<Lock size={13} />}
+                          label={t("newPassword")}
+                          value={newPassword}
+                          onChange={setNewPassword}
+                          aria-label={t("newPassword")}
+                        />
+                      </DsFormField>
+                      <DsFormField label={t("confirmPassword")}>
+                        <FilterTextField
+                          creatorField
+                          type="password"
+                          icon={<Lock size={13} />}
+                          label={t("confirmPassword")}
+                          value={confirmPassword}
+                          onChange={setConfirmPassword}
+                          aria-label={t("confirmPassword")}
+                        />
+                      </DsFormField>
+                    </div>
+                    {passwordMessage ? (
+                      <p className="text-xs text-[var(--text-dim)]">{passwordMessage}</p>
+                    ) : null}
+                    <DsButton
+                      type="button"
+                      variant="accent"
+                      size="md"
+                      disabled={
+                        passwordPending ||
+                        !currentPassword ||
+                        newPassword.length < 6 ||
+                        newPassword !== confirmPassword
+                      }
+                      onClick={() => {
+                        setPasswordMessage(null);
+                        startPasswordTransition(async () => {
+                          const res = await fetch("/api/settings/password", {
+                            method: "PATCH",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ currentPassword, newPassword })
+                          });
+                          const json = await res.json().catch(() => ({}));
+                          if (!res.ok || !json.ok) {
+                            setPasswordMessage(
+                              json.error === "wrong_password" ? t("passwordWrong") : t("saveFailed")
+                            );
+                            return;
+                          }
+                          setCurrentPassword("");
+                          setNewPassword("");
+                          setConfirmPassword("");
+                          setPasswordMessage(t("passwordChanged"));
                         });
-                        const json = await res.json().catch(() => null);
-                        setMessage(json?.ok ? t("saved") : json?.error ?? t("saveFailed"));
-                      });
-                    }}
-                    className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
-                  >
-                    {isPending ? tCommon("loading") : tCommon("save")}
-                  </button>
-                </DsFormActions>
+                      }}
+                    >
+                      {passwordPending ? tCommon("loading") : t("passwordChangeBtn")}
+                    </DsButton>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--text-dim)]">{t("passwordOAuthOnly")}</p>
+                )}
               </div>
-            </DsFlatSection>
+            ) : (
+              <p className="text-xs text-[var(--text-dim)]">{tCommon("loading")}</p>
+            )}
+          </DsFlatSection>
 
-            <DsFlatDivider />
+          <DsFlatDivider />
 
-            <DsFlatSection
-              title={t("agencyBrainPrivacyTitle")}
-              subtitle={t("agencyBrainPrivacyHint")}
-              titleAdornment={<Sparkles size={14} className="text-[var(--ui-accent)]" />}
-            >
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-main)]">
-                <input
-                  type="checkbox"
-                  checked={nicheShareOptIn}
-                  onChange={(e) => setNicheShareOptIn(e.target.checked)}
-                  className="rounded border-[var(--border-color)]"
+          <DsFlatSection
+            title={t("agencyBrainPrivacyTitle")}
+            subtitle={t("agencyBrainPrivacyHint")}
+            titleAdornment={<Sparkles size={14} className="text-[var(--ui-accent)]" />}
+          >
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-main)]">
+              <input
+                type="checkbox"
+                checked={nicheShareOptIn}
+                onChange={(e) => setNicheShareOptIn(e.target.checked)}
+                className="rounded border-[var(--border-color)]"
+              />
+              <span className="text-xs">{t("agencyBrainNicheShareOptIn")}</span>
+              <Info size={13} className="text-[var(--text-dimmer)]" />
+            </label>
+            <SettingsFooterSave
+              onSave={() => {
+                setNicheShareMessage(null);
+                startNicheShareTransition(async () => {
+                  const res = await fetch("/api/settings/tenant", {
+                    method: "PATCH",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ agencyBrainNicheShareOptIn: nicheShareOptIn })
+                  });
+                  const json = await res.json().catch(() => null);
+                  setNicheShareMessage(
+                    json?.ok ? t("agencyBrainPrivacySaved") : json?.error ?? t("saveFailed")
+                  );
+                });
+              }}
+              disabled={nicheSharePending}
+              loading={nicheSharePending}
+              loadingLabel={tCommon("loading")}
+              saveLabel={tCommon("save")}
+              message={nicheShareMessage}
+            />
+          </DsFlatSection>
+
+          <DsFlatDivider />
+
+          <DsFlatSection title={t("whitelabel")} subtitle={t("whitelabelHint")}>
+            {allowWhiteLabel ? (
+              <>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <DsFormField label={t("brandName")}>
+                    <FilterTextField
+                      creatorField
+                      icon={<Building2 size={13} />}
+                      label={t("brandName")}
+                      value={brandName}
+                      onChange={setBrandName}
+                      placeholder={t("brandNamePlaceholder")}
+                    />
+                  </DsFormField>
+                  <DsFormField label={t("logoUrl")}>
+                    <FilterTextField
+                      creatorField
+                      icon={<ImageIcon size={13} />}
+                      label={t("logoUrl")}
+                      value={logoUrl}
+                      onChange={setLogoUrl}
+                      placeholder="https://exemplo.com/logo.png"
+                    />
+                  </DsFormField>
+                </div>
+                <SettingsFooterSave
+                  onSave={() => {
+                    setMessage(null);
+                    startTransition(async () => {
+                      const res = await fetch("/api/settings/tenant", {
+                        method: "PATCH",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ brandName, logoUrl })
+                      });
+                      const json = await res.json().catch(() => null);
+                      if (json?.error === "plan_white_label_required") {
+                        setMessage(t("whitelabelUpgradeRequired"));
+                        return;
+                      }
+                      setMessage(json?.ok ? t("saved") : json?.error ?? t("saveFailed"));
+                    });
+                  }}
+                  disabled={isPending}
+                  loading={isPending}
+                  loadingLabel={tCommon("loading")}
+                  saveLabel={tCommon("save")}
+                  message={message}
                 />
-                <span className="text-xs">{t("agencyBrainNicheShareOptIn")}</span>
-                <Info size={13} className="text-[var(--text-dimmer)]" />
-              </label>
-              <div className="mt-3">
-                <DsFormActions message={nicheShareMessage}>
-                  <button
-                    type="button"
-                    disabled={nicheSharePending}
-                    onClick={() => {
-                      setNicheShareMessage(null);
-                      startNicheShareTransition(async () => {
-                        const res = await fetch("/api/settings/tenant", {
-                          method: "PATCH",
-                          headers: { "content-type": "application/json" },
-                          body: JSON.stringify({ agencyBrainNicheShareOptIn: nicheShareOptIn })
-                        });
-                        const json = await res.json().catch(() => null);
-                        setNicheShareMessage(
-                          json?.ok ? t("agencyBrainPrivacySaved") : json?.error ?? t("saveFailed")
-                        );
-                      });
-                    }}
-                    className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
-                  >
-                    {nicheSharePending ? tCommon("loading") : tCommon("save")}
-                  </button>
-                </DsFormActions>
+              </>
+            ) : (
+              <div className="rounded-xl border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] p-4">
+                <p className="text-sm text-[var(--text-main)]">{t("whitelabelUpgradeTitle")}</p>
+                <p className="mt-1 text-xs text-[var(--text-dim)]">{t("whitelabelUpgradeHint")}</p>
+                <Link href="/billing/plans" className="ui-btn-accent mt-4 inline-flex px-4 py-2 text-sm">
+                  {t("whitelabelUpgradeCta")}
+                </Link>
               </div>
-            </DsFlatSection>
-          </div>
-        ) : null}
+            )}
+          </DsFlatSection>
+        </div>
+      ) : null}
 
-        {activeTab === "team" ? (
-          <WorkspaceTeamSection workspaceName={brandName} />
-        ) : null}
+      {activeTab === "team" ? <WorkspaceTeamSection workspaceName={brandName} /> : null}
 
-        {activeTab === "integrations" ? (
-          <SettingsIntegrationsTab
-            locale={locale}
-            metaOAuthConfigured={metaOAuthConfigured}
-            metaOAuthError={metaOAuthError}
-            connectMetaSlot={connectMetaSlot}
+      {activeTab === "integrations" ? (
+        <SettingsIntegrationsTab
+          locale={locale}
+          metaOAuthConfigured={metaOAuthConfigured}
+          metaOAuthError={metaOAuthError}
+          connectMetaSlot={connectMetaSlot}
+        />
+      ) : null}
+
+      {activeTab === "webhooks" ? (
+        <div className="space-y-4">
+          <DsFlatSection title={t("webhookAlertLabel")} subtitle={t("webhookAlertHint")}>
+            <FilterTextField
+              creatorField
+              icon={<Link2 size={13} />}
+              label="URL"
+              value={webhookAlertUrl}
+              onChange={setWebhookAlertUrl}
+              placeholder="https://hooks.slack.com/..."
+              inputClassName="font-mono text-xs"
+            />
+          </DsFlatSection>
+          <DsFlatSection title={t("webhookReportLabel")} subtitle={t("webhookReportHint")}>
+            <FilterTextField
+              creatorField
+              icon={<Link2 size={13} />}
+              label="URL"
+              value={webhookReportUrl}
+              onChange={setWebhookReportUrl}
+              placeholder="https://..."
+              inputClassName="font-mono text-xs"
+            />
+          </DsFlatSection>
+          <SettingsFooterSave
+            onSave={() => {
+              setWebhookMessage(null);
+              startWebhookTransition(async () => {
+                const res = await fetch("/api/settings/webhooks", {
+                  method: "PATCH",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ webhookAlertUrl, webhookReportUrl })
+                });
+                const json = await res.json().catch(() => ({}));
+                setWebhookMessage(json?.ok ? t("webhookSaved") : json?.error ?? t("saveFailed"));
+              });
+            }}
+            disabled={webhookPending}
+            loading={webhookPending}
+            loadingLabel={tCommon("loading")}
+            saveLabel={tCommon("save")}
+            message={webhookMessage}
           />
-        ) : null}
+        </div>
+      ) : null}
 
-        {activeTab === "webhooks" ? (
-          <div className="space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--text-main)]">{t("webhooksTitle")}</h2>
-              <p className="text-[11px] text-[var(--text-dim)]">{t("webhooksSubtitle")}</p>
-            </div>
-            <DsFlatSection title={t("webhookAlertLabel")} subtitle={t("webhookAlertHint")}>
-              <DsFormField label="URL">
-                <input
-                  value={webhookAlertUrl}
-                  onChange={(e) => setWebhookAlertUrl(e.target.value)}
-                  className="ui-input w-full font-mono text-xs"
-                  placeholder="https://hooks.slack.com/..."
-                />
-              </DsFormField>
-            </DsFlatSection>
-            <DsFlatSection title={t("webhookReportLabel")} subtitle={t("webhookReportHint")}>
-              <DsFormField label="URL">
-                <input
-                  value={webhookReportUrl}
-                  onChange={(e) => setWebhookReportUrl(e.target.value)}
-                  className="ui-input w-full font-mono text-xs"
-                  placeholder="https://..."
-                />
-              </DsFormField>
-            </DsFlatSection>
-            <DsFormActions message={webhookMessage}>
-              <button
-                type="button"
-                disabled={webhookPending}
-                onClick={() => {
-                  setWebhookMessage(null);
-                  startWebhookTransition(async () => {
-                    const res = await fetch("/api/settings/webhooks", {
-                      method: "PATCH",
-                      headers: { "content-type": "application/json" },
-                      body: JSON.stringify({ webhookAlertUrl, webhookReportUrl })
-                    });
-                    const json = await res.json().catch(() => ({}));
-                    setWebhookMessage(json?.ok ? t("webhookSaved") : json?.error ?? t("saveFailed"));
-                  });
-                }}
-                className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
-              >
-                {webhookPending ? tCommon("loading") : tCommon("save")}
-              </button>
-            </DsFormActions>
-          </div>
-        ) : null}
-
-        {activeTab === "data" ? (
-          <div className="space-y-8">
-            <DsFlatSection title={t("demoDataTitle")} subtitle={t("demoDataHint")}>
-              <p className="text-[11px] text-[var(--text-dimmer)]">{t("demoDataNames")}</p>
-              {purgeMessage ? <p className="mt-2 text-xs text-[var(--text-dim)]">{purgeMessage}</p> : null}
-              <button
-                type="button"
-                disabled={purgePending}
-                onClick={() => {
-                  if (!window.confirm(t("demoDataConfirm"))) return;
-                  setPurgeMessage(null);
-                  startPurgeTransition(async () => {
-                    const res = await fetch("/api/workspace/purge-demo", { method: "POST" });
-                    const json = await res.json().catch(() => ({}));
-                    if (!res.ok || !json.ok) {
-                      setPurgeMessage(String(json.error ?? t("demoDataFailed")));
-                      return;
-                    }
-                    setPurgeMessage(
-                      t("demoDataDone", {
-                        clients: json.removedClients ?? 0,
-                        accounts: json.removedAdAccounts ?? 0
-                      })
-                    );
-                    window.dispatchEvent(new Event("traffic:campaigns-reload"));
-                  });
-                }}
-                className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/15 disabled:opacity-60"
-              >
-                {purgePending ? tCommon("loading") : t("demoDataAction")}
-              </button>
-            </DsFlatSection>
-
-            <DsFlatDivider />
-
-            <DsFlatSection
-              title={t("resetDataTitle")}
-              subtitle={t("resetDataHint")}
-              tone="danger"
+      {activeTab === "data" ? (
+        <div className="space-y-8">
+          <DsFlatSection title={t("demoDataTitle")} subtitle={t("demoDataHint")}>
+            <p className="text-[11px] text-[var(--text-dimmer)]">{t("demoDataNames")}</p>
+            {purgeMessage ? <p className="mt-2 text-xs text-[var(--text-dim)]">{purgeMessage}</p> : null}
+            <button
+              type="button"
+              disabled={purgePending}
+              onClick={() => {
+                if (!window.confirm(t("demoDataConfirm"))) return;
+                setPurgeMessage(null);
+                startPurgeTransition(async () => {
+                  const res = await fetch("/api/workspace/purge-demo", { method: "POST" });
+                  const json = await res.json().catch(() => ({}));
+                  if (!res.ok || !json.ok) {
+                    setPurgeMessage(String(json.error ?? t("demoDataFailed")));
+                    return;
+                  }
+                  setPurgeMessage(
+                    t("demoDataDone", {
+                      clients: json.removedClients ?? 0,
+                      accounts: json.removedAdAccounts ?? 0
+                    })
+                  );
+                  window.dispatchEvent(new Event("traffic:campaigns-reload"));
+                });
+              }}
+              className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/15 disabled:opacity-60"
             >
-              <p className="text-[11px] text-[var(--text-dimmer)]">{t("resetDataKeeps")}</p>
-              <DsFormField label={t("resetDataConfirmLabel")}>
-                <input
-                  value={resetText}
-                  onChange={(e) => setResetText(e.target.value)}
-                  placeholder="RESET"
-                  className="ui-input !py-1.5 font-mono text-sm"
-                />
-              </DsFormField>
-              {resetMessage ? <p className="mt-2 text-xs text-[var(--text-dim)]">{resetMessage}</p> : null}
-              <button
-                type="button"
-                disabled={resetPending || resetText !== "RESET"}
-                onClick={() => {
-                  if (resetText !== "RESET") return;
-                  if (!window.confirm(t("resetDataConfirm"))) return;
-                  setResetMessage(null);
-                  startResetTransition(async () => {
-                    const res = await fetch("/api/settings/reset-workspace-data", {
-                      method: "POST",
-                      headers: { "content-type": "application/json" },
-                      body: JSON.stringify({ confirm: "RESET" })
-                    });
-                    const json = await res.json().catch(() => ({}));
-                    if (!res.ok || !json.ok) {
-                      setResetMessage(String(json.error ?? t("resetDataFailed")));
-                      return;
-                    }
-                    setResetText("");
-                    setResetMessage(t("resetDataDone", { total: json.totalDeleted ?? 0 }));
-                    window.dispatchEvent(new Event("traffic:campaigns-reload"));
+              {purgePending ? tCommon("loading") : t("demoDataAction")}
+            </button>
+          </DsFlatSection>
+
+          <DsFlatDivider />
+
+          <DsFlatSection title={t("resetDataTitle")} subtitle={t("resetDataHint")} tone="danger">
+            <p className="text-[11px] text-[var(--text-dimmer)]">{t("resetDataKeeps")}</p>
+            <DsFormField label={t("resetDataConfirmLabel")}>
+              <FilterTextField
+                creatorField
+                icon={<Lock size={13} />}
+                label={t("resetDataConfirmLabel")}
+                value={resetText}
+                onChange={setResetText}
+                placeholder="RESET"
+                inputClassName="font-mono text-sm"
+              />
+            </DsFormField>
+            {resetMessage ? <p className="mt-2 text-xs text-[var(--text-dim)]">{resetMessage}</p> : null}
+            <button
+              type="button"
+              disabled={resetPending || resetText !== "RESET"}
+              onClick={() => {
+                if (resetText !== "RESET") return;
+                if (!window.confirm(t("resetDataConfirm"))) return;
+                setResetMessage(null);
+                startResetTransition(async () => {
+                  const res = await fetch("/api/settings/reset-workspace-data", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ confirm: "RESET" })
                   });
-                }}
-                className="mt-3 w-full rounded-lg border border-rose-300 bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-50 sm:w-auto"
-              >
-                {resetPending ? tCommon("loading") : t("resetDataAction")}
-              </button>
-            </DsFlatSection>
-          </div>
-        ) : null}
+                  const json = await res.json().catch(() => ({}));
+                  if (!res.ok || !json.ok) {
+                    setResetMessage(String(json.error ?? t("resetDataFailed")));
+                    return;
+                  }
+                  setResetText("");
+                  setResetMessage(t("resetDataDone", { total: json.totalDeleted ?? 0 }));
+                  window.dispatchEvent(new Event("traffic:campaigns-reload"));
+                });
+              }}
+              className="mt-3 w-full rounded-lg border border-rose-300 bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500 disabled:opacity-50 sm:w-auto"
+            >
+              {resetPending ? tCommon("loading") : t("resetDataAction")}
+            </button>
+          </DsFlatSection>
+        </div>
+      ) : null}
     </DsFlatPanel>
   );
 
@@ -500,8 +588,17 @@ export function SettingsClient({
 
   return (
     <div className="space-y-4">
-      <PageTabs tabs={tabs} active={activeTab} onChange={selectTab} />
-      {panels}
+      <div className="settings-layout flex flex-col gap-6 lg:flex-row lg:gap-8">
+        <aside className="settings-layout__nav w-full shrink-0 lg:w-52 xl:w-56">
+          <SettingsSectionNav
+            items={navItems}
+            active={activeTab}
+            onChange={selectTab}
+            ariaLabel={t("title")}
+          />
+        </aside>
+        <div className="settings-layout__content min-w-0 flex-1">{panels}</div>
+      </div>
     </div>
   );
 }

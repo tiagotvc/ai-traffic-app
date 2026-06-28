@@ -14,6 +14,7 @@ import {
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { DsModal } from "@/design-system/components/DsModal";
 import { useCreatorBrainInsight } from "@/hooks/useCreatorBrainInsight";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { resolveDraftClient } from "@/lib/campaign-draft-client";
 import type { CreatorBrainInsightPayload } from "@/lib/campaign-creator/creator-brain-insights";
 import {
@@ -235,13 +236,14 @@ function CampaignsAnalyzedNote({
 export function CampaignCreatorBrainTips() {
   const t = useTranslations("campaignCreator");
   const locale = useLocale();
+  const brainSidebarEnabled = usePlatformFeature("campaigns.brain.sidebar");
   const { payload, activeNode, clients } = useCampaignDraft();
   const validClient = Boolean(resolveDraftClient(payload.clientSlug, clients));
   const { insight, loading, paused, togglePaused } = useCreatorBrainInsight({
     objective: payload.objective,
     activeNode,
     clientSlug: payload.clientSlug,
-    enabled: validClient
+    enabled: brainSidebarEnabled && validClient
   });
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -444,6 +446,8 @@ export function CampaignCreatorBrainTips() {
       </div>
     );
   }
+
+  if (!brainSidebarEnabled) return null;
 
   return (
     <>

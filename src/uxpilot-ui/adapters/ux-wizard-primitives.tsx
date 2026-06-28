@@ -168,7 +168,7 @@ export function UxWizardModalPanel({
     <div
       {...rest}
       className={cn(
-        "flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-2xl",
+        "flex min-h-0 w-full flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-2xl",
         maxW,
         className
       )}

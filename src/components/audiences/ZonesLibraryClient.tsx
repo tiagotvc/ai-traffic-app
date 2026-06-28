@@ -4,16 +4,16 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { MapPin, Plus, Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { AiZoneForm } from "@/components/audiences/create/AiZoneForm";
 import { ZoneDetailPanel } from "@/components/audiences/ZoneDetailPanel";
-import { DsPageHeader } from "@/design-system";
-import type { ZoneGeoRules } from "@/db/entities/UserZone";
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
+import { DsButton } from "@/design-system";
+import { useRouter } from "@/i18n/navigation";
 
 export type ZoneSummary = {
   id: string;
   name: string;
   description: string | null;
-  geoRules: ZoneGeoRules;
+  geoRules: import("@/db/entities/UserZone").ZoneGeoRules;
   sourcePrompt: string | null;
   updatedAt: string;
 };
@@ -21,10 +21,10 @@ export type ZoneSummary = {
 export function ZonesLibraryClient() {
   const t = useTranslations("audiences");
   const tm = useTranslations("audiencesMisc");
+  const router = useRouter();
   const [zones, setZones] = useState<ZoneSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
   const [selectedZone, setSelectedZone] = useState<ZoneSummary | null>(null);
   const [, startTransition] = useTransition();
 
@@ -51,20 +51,33 @@ export function ZonesLibraryClient() {
 
   return (
     <div className="space-y-5">
-      <DsPageHeader title={t("zonesLibraryTitle")} subtitle={t("zonesLibrarySubtitle")} titleIcon={<MapPin size={16} aria-hidden />} />
-      <p className="text-xs font-medium" style={{ color: "var(--ui-accent)" }}>
-        {t("zonesLibraryBadge")}
-      </p>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          className="ui-btn-primary inline-flex items-center gap-2"
-          onClick={() => setShowCreate(true)}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitleBlock
+          title={t("zonesLibraryTitle")}
+          subtitle={t("zonesLibrarySubtitle")}
+          titleIcon={<MapPin size={16} aria-hidden />}
+          badge={
+            <span
+              className="rounded-full px-2 py-0.5 font-heading text-[10px] font-semibold uppercase tracking-wide"
+              style={{
+                background: "var(--ui-accent-muted)",
+                color: "var(--ui-accent)",
+                border: "1px solid var(--ui-accent-border)"
+              }}
+            >
+              {t("zonesLibraryBadge")}
+            </span>
+          }
+        />
+        <DsButton
+          variant="accent"
+          size="sm"
+          className="inline-flex items-center gap-2"
+          onClick={() => router.push("/audiences/zones/create")}
         >
           <Plus size={16} />
           {t("newZone")}
-        </button>
+        </DsButton>
       </div>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -72,13 +85,13 @@ export function ZonesLibraryClient() {
       {loading ? (
         <p className="text-sm text-[var(--text-dim)]">{t("loadingZones")}</p>
       ) : zones.length === 0 ? (
-        <div className="ui-card flex flex-col items-center gap-3 p-10 text-center">
+        <div className="campaign-creator-card flex flex-col items-center gap-3 p-10 text-center">
           <MapPin size={32} className="text-[var(--text-dimmer)]" />
           <p className="text-sm text-[var(--text-dim)]">{t("noZonesYet")}</p>
-          <button type="button" className="ui-btn-brand inline-flex items-center gap-2" onClick={() => setShowCreate(true)}>
+          <DsButton variant="brand" size="sm" className="inline-flex items-center gap-2" onClick={() => router.push("/audiences/zones/create")}>
             <Sparkles size={16} />
             {t("createFirstZone")}
-          </button>
+          </DsButton>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -87,7 +100,7 @@ export function ZonesLibraryClient() {
             const cityCount = z.geoRules.cities?.length ?? 0;
             const countryCount = z.geoRules.countries?.length ?? 0;
             return (
-              <article key={z.id} className="ui-card flex flex-col gap-2 p-4">
+              <article key={z.id} className="campaign-creator-card flex flex-col gap-2 p-4">
                 <h3 className="font-heading text-[var(--text-main)]">{z.name}</h3>
                 {z.description ? (
                   <p className="line-clamp-2 text-sm text-[var(--text-dim)]">{z.description}</p>
@@ -112,31 +125,19 @@ export function ZonesLibraryClient() {
         </div>
       )}
 
-      {showCreate ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="ui-card max-h-[90vh] w-full max-w-lg overflow-y-auto p-5">
-            <AiZoneForm
-              onClose={() => setShowCreate(false)}
-              onSaved={() => {
-                setShowCreate(false);
-                startTransition(() => load());
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
-
       {selectedZone ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="ui-card max-h-[90vh] w-full max-w-4xl overflow-y-auto p-5">
-            <ZoneDetailPanel
-              zone={selectedZone}
-              onClose={() => setSelectedZone(null)}
-              onSaved={(updated) => {
-                setSelectedZone(updated);
-                startTransition(() => load());
-              }}
-            />
+          <div className="campaign-creator-card max-h-[90vh] w-full max-w-4xl overflow-hidden p-0">
+            <div className="max-h-[90vh] overflow-y-auto p-5">
+              <ZoneDetailPanel
+                zone={selectedZone}
+                onClose={() => setSelectedZone(null)}
+                onSaved={(updated) => {
+                  setSelectedZone(updated);
+                  startTransition(() => load());
+                }}
+              />
+            </div>
           </div>
         </div>
       ) : null}

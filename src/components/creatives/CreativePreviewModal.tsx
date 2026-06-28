@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   BarChart2,
   BookImage,
+  Eye,
   Image,
   Instagram,
   LayoutGrid,
@@ -11,12 +12,13 @@ import {
   Play,
   Smartphone,
   Star,
-  Video,
-  X
+  Video
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
+import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/cn";
 import { bestCreativePreviewUrl } from "@/lib/creative-preview-url";
 import { formatMetricValue, METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 
@@ -26,6 +28,13 @@ const FORMATS = [
   { key: "INSTAGRAM_STANDARD", labelKey: "fmtInstagram", icon: Instagram },
   { key: "INSTAGRAM_STORY", labelKey: "fmtStory", icon: BookImage }
 ] as const;
+
+const METRIC_GROUPS: Array<{ labelKey: string; keys: MetricKey[] }> = [
+  { labelKey: "previewGroupPerformance", keys: ["roas", "cpa", "conversions"] },
+  { labelKey: "previewGroupEngagement", keys: ["ctr", "cpc", "cpmsg"] },
+  { labelKey: "previewGroupDelivery", keys: ["cpm", "impressions", "reach", "frequency"] },
+  { labelKey: "previewGroupSpend", keys: ["spend"] }
+];
 
 type Copy = { bodies: string[]; titles: string[]; descriptions: string[]; ctas: string[] };
 type CopyByCampaign = {
@@ -78,12 +87,45 @@ function mapStatusLabel(status?: string): "Ativo" | "Pausado" | "Encerrado" {
   return "Encerrado";
 }
 
+function MetricTile({
+  metricKey,
+  value,
+  locale,
+  label,
+  accent
+}: {
+  metricKey: MetricKey;
+  value: number;
+  locale: string;
+  label: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border px-3 py-2",
+        accent
+          ? "border-emerald-500/20 bg-emerald-500/8"
+          : "border-[var(--creator-card-border,var(--border-color))] bg-[var(--surface-card)]"
+      )}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">{label}</p>
+      <p
+        className={cn("mt-0.5 text-sm font-bold", accent ? "text-emerald-500" : "text-[var(--text-main)]")}
+      >
+        {formatMetricValue(metricKey, value, locale)}
+      </p>
+    </div>
+  );
+}
+
 export function CreativePreviewModal({
   adId,
   adIds,
   imageUrl,
   name,
   rank = 1,
+  score: scoreProp,
   type,
   campaignType,
   status,
@@ -96,6 +138,7 @@ export function CreativePreviewModal({
   imageUrl: string | null;
   name: string;
   rank?: number;
+  score?: number;
   type?: string;
   campaignType?: string;
   status?: string;
@@ -111,7 +154,7 @@ export function CreativePreviewModal({
   const adIdsKey = resolvedAdIds.join(",");
   const previewImage = bestCreativePreviewUrl(imageUrl, imageUrl);
 
-  const [mainTab, setMainTab] = useState<MainTab>(hasAds ? "preview" : "preview");
+  const [mainTab, setMainTab] = useState<MainTab>("preview");
   const [format, setFormat] = useState<string>("MOBILE_FEED_STANDARD");
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -120,32 +163,25 @@ export function CreativePreviewModal({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(false);
 
-  const score = Math.max(35, 100 - (rank - 1) * 8);
+  const score = scoreProp ?? Math.max(35, 100 - (rank - 1) * 8);
   const scoreColor = getScoreColor(score);
   const creativeType = mapCreativeType(type);
   const statusLabel = mapStatusLabel(status);
   const isFirst = rank === 1;
 
-  const metricStrip = useMemo(
-    () =>
-      [
-        { key: "roas" as MetricKey, color: "#10b981" },
-        { key: "ctr" as MetricKey, color: "var(--text-main)" },
-        { key: "cpa" as MetricKey, color: "var(--text-main)" },
-        { key: "cpm" as MetricKey, color: "var(--text-main)" },
-        { key: "impressions" as MetricKey, color: "var(--text-main)" },
-        { key: "spend" as MetricKey, color: "#f5a623" }
-      ].filter((m) => metrics?.[m.key] != null || m.key === "ctr" || m.key === "spend"),
-    [metrics]
-  );
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const metricGroups = useMemo(() => {
+    if (!metrics) return [];
+    return METRIC_GROUPS.map((group) => ({
+      label: t(group.labelKey),
+      items: group.keys
+        .filter((key) => metrics[key] != null && Number(metrics[key]) > 0)
+        .map((key) => ({
+          key,
+          label: tMetrics(METRIC_BY_KEY[key].label),
+          value: Number(metrics[key] ?? 0)
+        }))
+    })).filter((group) => group.items.length > 0);
+  }, [metrics, t, tMetrics]);
 
   useEffect(() => {
     if (!hasAds) return;
@@ -234,7 +270,6 @@ export function CreativePreviewModal({
     ? { campaigns: detail.campaigns, clientSlug: detail.clientSlug, placements: detail.placements }
     : null;
 
-  const previewW = preview?.width ?? 360;
   const previewH = preview?.height ?? 640;
   const primaryBody = mergedCopy?.bodies[0] ?? copiesToShow?.[0]?.copy.bodies[0] ?? "";
 
@@ -278,284 +313,240 @@ export function CreativePreviewModal({
   ];
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <CreatorModalShell
+      open
+      onClose={onClose}
+      title={name}
+      subtitle={campaignType}
+      titleIcon={<Eye size={18} aria-hidden />}
+      width="lg"
+      onPrimary={onClose}
+      primaryLabel={t("close")}
+      showPrimaryCheck={false}
+      contentClassName="flex min-h-0 flex-1 flex-col overflow-hidden !p-0"
     >
-      <div
-        className="flex max-h-[92vh] w-full max-w-[720px] flex-col rounded-2xl shadow-2xl"
-        style={{ background: "var(--surface-card)", border: "1px solid var(--border-color)" }}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+      <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--border-color)] px-5 py-2.5">
         <div
-          className="flex shrink-0 items-start justify-between px-6 py-4"
-          style={{ borderBottom: "1px solid var(--border-color)" }}
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+          style={{
+            background: isFirst ? "#f5a623" : "var(--creator-card-bg-inset,var(--surface-bg))",
+            color: isFirst ? "#fff" : "var(--text-dim)",
+            border: !isFirst ? "1px solid var(--creator-card-border,var(--border-color))" : "none"
+          }}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-              style={{
-                background: isFirst ? "#f5a623" : "var(--surface-bg)",
-                color: isFirst ? "#fff" : "var(--text-dim)",
-                border: !isFirst ? "1px solid var(--border-color)" : "none"
-              }}
-            >
-              {isFirst ? <Star size={13} fill="#fff" color="#fff" /> : `#${rank}`}
-            </div>
-            <div className="min-w-0">
-              <h2 className="truncate pr-2 text-base font-semibold text-[var(--text-main)]">{name}</h2>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                <span
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-                  style={{ background: "var(--ui-accent-muted)", color: "var(--ui-accent)" }}
-                >
-                  {creativeType === "Video" && <Video size={10} />}
-                  {creativeType === "Imagem" && <Image size={10} />}
-                  {creativeType === "Carrossel" && <LayoutGrid size={10} />}
-                  {creativeType}
-                </span>
-                {campaignType ? (
-                  <span
-                    className="rounded-full px-2 py-0.5 text-xs"
-                    style={{ background: "rgba(245,166,35,0.08)", color: "var(--text-dim)" }}
-                  >
-                    {campaignType}
-                  </span>
-                ) : null}
-                <span
-                  className="rounded-full px-2 py-0.5 text-xs font-semibold"
-                  style={{
-                    background: statusLabel === "Ativo" ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.1)",
-                    color: statusLabel === "Ativo" ? "#10b981" : "#ef4444"
-                  }}
-                >
-                  ● {statusLabel}
-                </span>
-                <span
-                  className="rounded-full px-2.5 py-0.5 text-xs font-bold"
-                  style={{ background: `${scoreColor}20`, color: scoreColor }}
-                >
-                  Score {score}
-                </span>
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors"
-            style={{ background: "var(--row-hover)" }}
-            aria-label="close"
-          >
-            <X size={16} style={{ color: "var(--text-dim)" }} />
-          </button>
+          {isFirst ? <Star size={11} fill="#fff" color="#fff" /> : `#${rank}`}
         </div>
-
-        {metrics ? (
-          <div
-            className="flex shrink-0 flex-wrap items-center gap-4 px-6 py-3"
-            style={{ borderBottom: "1px solid var(--border-color)", background: "var(--surface-bg)" }}
-          >
-            {metricStrip.map((m) => (
-              <div key={m.key} className="flex flex-col">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
-                  {tMetrics(METRIC_BY_KEY[m.key].label)}
-                </span>
-                <span className="text-sm font-bold" style={{ color: m.color }}>
-                  {formatMetricValue(m.key, Number(metrics[m.key] ?? 0), locale)}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {hasAds ? (
-          <div
-            className="flex shrink-0 gap-1 px-6 pt-3"
-            style={{ borderBottom: "1px solid var(--border-color)" }}
-          >
-            {mainTabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setMainTab(tab.key)}
-                className="rounded-t-lg px-4 py-2 text-sm font-medium transition-all"
-                style={{
-                  color: mainTab === tab.key ? "var(--ui-accent)" : "var(--text-dim)",
-                  background: mainTab === tab.key ? "var(--ui-accent-muted)" : "transparent",
-                  borderBottom: mainTab === tab.key ? "2px solid var(--ui-accent)" : "2px solid transparent"
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        <div className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-          {mainTab === "copy" ? (
-            <div className="space-y-4 px-6 py-6">
-              {detailLoading ? (
-                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyLoading")}</p>
-              ) : detailError ? (
-                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyEmpty")}</p>
-              ) : copiesToShow ? (
-                copiesToShow.map((row) => (
-                  <div key={`${row.campaignId}-${row.adId}`} className="space-y-3">
-                    <div className="text-sm font-semibold text-[var(--text-main)]">{row.campaignName}</div>
-                    <div className="text-[11px] text-[var(--text-dim)]">
-                      {t("colAdset")}: {row.adsetName}
-                    </div>
-                    <CopySection copy={row.copy} />
-                  </div>
-                ))
-              ) : isCopyEmpty || !mergedCopy ? (
-                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyEmpty")}</p>
-              ) : (
-                <CopySection copy={mergedCopy} />
-              )}
-            </div>
-          ) : mainTab === "usage" ? (
-            <div className="space-y-3 px-6 py-6">
-              {detailLoading ? (
-                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyLoading")}</p>
-              ) : !usage || !usage.campaigns.length ? (
-                <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("usageEmpty")}</p>
-              ) : (
-                <>
-                  <p className="mb-4 text-sm text-[var(--text-dim)]">
-                    {t("usedInCampaigns", { n: campaignsUsed || usage.campaigns.length })}
-                  </p>
-                  {usage.placements.length ? (
-                    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
-                      <div className="text-sm font-semibold text-[var(--text-main)]">{t("placementsTitle")}</div>
-                      <div className="mt-2 space-y-2">
-                        {usage.placements.map((p) => (
-                          <div key={p.adsetId} className="rounded-lg bg-[var(--surface-card)] p-2">
-                            <div className="text-xs font-medium text-[var(--text-dim)]">
-                              {p.campaignName} · {p.adsetName}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  {usage.campaigns.map((c) => (
-                    <div
-                      key={c.id}
-                      className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-8 w-8 items-center justify-center rounded-lg"
-                          style={{ background: "var(--ui-accent-muted)" }}
-                        >
-                          <BarChart2 size={15} style={{ color: "var(--ui-accent)" }} />
-                        </div>
-                        <div>
-                          <Link
-                            href={`/campaigns/${c.id}?client=${encodeURIComponent(usage.clientSlug)}`}
-                            className="text-sm font-semibold text-[var(--text-main)] hover:text-[var(--ui-accent)]"
-                          >
-                            {c.name}
-                          </Link>
-                        </div>
-                      </div>
-                      <span
-                        className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                        style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}
-                      >
-                        Ativa
-                      </span>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-          ) : loading || detailLoading ? (
-            <p className="py-12 text-center text-sm text-[var(--text-dim)]">{t("previewLoading")}</p>
-          ) : preview && !err && hasAds ? (
-            <div className="px-6 py-5">
-              <div className="mb-5 flex flex-wrap items-center gap-2">
-                {FORMATS.map((f) => {
-                  const Icon = f.icon;
-                  const active = format === f.key;
-                  return (
-                    <button
-                      key={f.key}
-                      type="button"
-                      onClick={() => setFormat(f.key)}
-                      className="flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm transition-all"
-                      style={{
-                        background: active ? "var(--ui-accent)" : "var(--surface-bg)",
-                        color: active ? "#0f1419" : "var(--text-dim)",
-                        borderColor: active ? "var(--ui-accent)" : "var(--border-color)",
-                        fontWeight: active ? 600 : 400
-                      }}
-                    >
-                      <Icon size={13} />
-                      {t(f.labelKey)}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mx-auto w-full overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-lg">
-                <iframe
-                  title="ad-preview"
-                  src={preview.src}
-                  scrolling="yes"
-                  style={{ width: "100%", height: previewH, minHeight: 480 }}
-                  className="block border-0"
-                />
-              </div>
-            </div>
-          ) : previewImage ? (
-            <div className="flex items-center justify-center px-6 py-8">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={previewImage}
-                alt={name}
-                className="max-h-[480px] max-w-full rounded-xl object-contain"
-              />
-              {creativeType === "Video" ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div
-                    className="flex h-14 w-14 items-center justify-center rounded-full"
-                    style={{ background: "rgba(0,0,0,0.55)" }}
-                  >
-                    <Play size={22} fill="#fff" style={{ color: "#fff", marginLeft: 3 }} />
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ) : primaryBody ? (
-            <div className="px-6 py-6">
-              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
-                <p className="text-sm leading-relaxed text-[var(--text-main)]">{primaryBody}</p>
-              </div>
-            </div>
-          ) : (
-            <p className="py-12 text-center text-sm text-[var(--text-dim)]">{t("previewUnavailable")}</p>
+        <span className="inline-flex items-center gap-1 rounded-full border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ui-accent)]">
+          {creativeType === "Video" && <Video size={10} />}
+          {creativeType === "Imagem" && <Image size={10} />}
+          {creativeType === "Carrossel" && <LayoutGrid size={10} />}
+          {creativeType}
+        </span>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+            statusLabel === "Ativo"
+              ? "ds-table-compact-badge ds-table-compact-badge--success"
+              : "ds-table-compact-badge ds-table-compact-badge--neutral"
           )}
-        </div>
-
-        <div
-          className="flex shrink-0 items-center justify-end px-6 py-4"
-          style={{ borderTop: "1px solid var(--border-color)" }}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-5 py-2 text-sm font-semibold"
-            style={{ background: "var(--ui-accent)", color: "#0f1419" }}
-          >
-            {t("close")}
-          </button>
-        </div>
+          {statusLabel}
+        </span>
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+          style={{ background: `${scoreColor}20`, color: scoreColor }}
+        >
+          Score {score}
+        </span>
       </div>
-    </div>
+
+      {metricGroups.length ? (
+        <div className="shrink-0 space-y-3 border-b border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-5 py-3">
+          {metricGroups.map((group) => (
+            <div key={group.label}>
+              <p className="campaign-creator-orion-section-label mb-2">{group.label}</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {group.items.map((item) => (
+                  <MetricTile
+                    key={item.key}
+                    metricKey={item.key}
+                    value={item.value}
+                    locale={locale}
+                    label={item.label}
+                    accent={item.key === "roas"}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {hasAds ? (
+        <div className="flex shrink-0 gap-1 border-b border-[var(--border-color)] px-5 py-2">
+          {mainTabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setMainTab(tab.key)}
+              className={cn(
+                "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--chip-sm",
+                mainTab === tab.key
+                  ? "campaign-creator-budget-choice-card--selected"
+                  : "campaign-creator-budget-choice-card--unselected"
+              )}
+            >
+              <span className="campaign-creator-budget-choice-card__label">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" style={{ scrollbarWidth: "thin" }}>
+        {mainTab === "copy" ? (
+          <div className="space-y-4 px-5 py-5">
+            {detailLoading ? (
+              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyLoading")}</p>
+            ) : detailError ? (
+              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyEmpty")}</p>
+            ) : copiesToShow ? (
+              copiesToShow.map((row) => (
+                <div key={`${row.campaignId}-${row.adId}`} className="space-y-3">
+                  <div className="text-sm font-semibold text-[var(--text-main)]">{row.campaignName}</div>
+                  <div className="text-[11px] text-[var(--text-dim)]">
+                    {t("colAdset")}: {row.adsetName}
+                  </div>
+                  <CopySection copy={row.copy} />
+                </div>
+              ))
+            ) : isCopyEmpty || !mergedCopy ? (
+              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyEmpty")}</p>
+            ) : (
+              <CopySection copy={mergedCopy} />
+            )}
+          </div>
+        ) : mainTab === "usage" ? (
+          <div className="space-y-3 px-5 py-5">
+            {detailLoading ? (
+              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("copyLoading")}</p>
+            ) : !usage || !usage.campaigns.length ? (
+              <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("usageEmpty")}</p>
+            ) : (
+              <>
+                <p className="mb-4 text-sm text-[var(--text-dim)]">
+                  {t("usedInCampaigns", { n: campaignsUsed || usage.campaigns.length })}
+                </p>
+                {usage.placements.length ? (
+                  <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
+                    <div className="text-sm font-semibold text-[var(--text-main)]">{t("placementsTitle")}</div>
+                    <div className="mt-2 space-y-2">
+                      {usage.placements.map((p) => (
+                        <div key={p.adsetId} className="rounded-lg bg-[var(--surface-card)] p-2">
+                          <div className="text-xs font-medium text-[var(--text-dim)]">
+                            {p.campaignName} · {p.adsetName}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {usage.campaigns.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-8 w-8 items-center justify-center rounded-lg"
+                        style={{ background: "var(--ui-accent-muted)" }}
+                      >
+                        <BarChart2 size={15} style={{ color: "var(--ui-accent)" }} />
+                      </div>
+                      <div>
+                        <Link
+                          href={`/campaigns/${c.id}?client=${encodeURIComponent(usage.clientSlug)}`}
+                          className="text-sm font-semibold text-[var(--text-main)] hover:text-[var(--ui-accent)]"
+                        >
+                          {c.name}
+                        </Link>
+                      </div>
+                    </div>
+                    <span
+                      className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                      style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}
+                    >
+                      Ativa
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        ) : loading || detailLoading ? (
+          <p className="py-12 text-center text-sm text-[var(--text-dim)]">{t("previewLoading")}</p>
+        ) : preview && !err && hasAds ? (
+          <div className="px-5 py-5">
+            <div className="mb-4 flex flex-wrap items-center gap-1.5">
+              {FORMATS.map((f) => {
+                const Icon = f.icon;
+                const active = format === f.key;
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setFormat(f.key)}
+                    className={cn(
+                      "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--chip-with-icon inline-flex items-center gap-1.5",
+                      active
+                        ? "campaign-creator-budget-choice-card--selected"
+                        : "campaign-creator-budget-choice-card--unselected"
+                    )}
+                  >
+                    <Icon size={12} aria-hidden />
+                    <span className="campaign-creator-budget-choice-card__label">{t(f.labelKey)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mx-auto w-full overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-lg">
+              <iframe
+                title="ad-preview"
+                src={preview.src}
+                scrolling="yes"
+                style={{ width: "100%", height: previewH, minHeight: 480 }}
+                className="block border-0"
+              />
+            </div>
+          </div>
+        ) : previewImage ? (
+          <div className="relative flex items-center justify-center px-5 py-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewImage}
+              alt={name}
+              className="max-h-[480px] max-w-full rounded-xl object-contain"
+            />
+            {creativeType === "Video" ? (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div
+                  className="flex h-14 w-14 items-center justify-center rounded-full"
+                  style={{ background: "rgba(0,0,0,0.55)" }}
+                >
+                  <Play size={22} fill="#fff" style={{ color: "#fff", marginLeft: 3 }} />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : primaryBody ? (
+          <div className="px-5 py-6">
+            <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
+              <p className="text-sm leading-relaxed text-[var(--text-main)]">{primaryBody}</p>
+            </div>
+          </div>
+        ) : (
+          <p className="py-12 text-center text-sm text-[var(--text-dim)]">{t("previewUnavailable")}</p>
+        )}
+      </div>
+    </CreatorModalShell>
   );
 }

@@ -29,6 +29,7 @@ export function resolveLimits(plan: PlanLimitsSource): PlanLimits {
     allowDashboardResize: raw.allowDashboardResize ?? false,
     allowDashboardAiWidgets: raw.allowDashboardAiWidgets ?? false,
     allowDashboardAiBuilder: raw.allowDashboardAiBuilder ?? false,
-    allowDashboardSharing: raw.allowDashboardSharing ?? false
+    allowDashboardSharing: raw.allowDashboardSharing ?? false,
+    allowWhiteLabel: raw.allowWhiteLabel ?? false
   };
 }

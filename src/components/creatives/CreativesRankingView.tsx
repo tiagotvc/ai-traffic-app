@@ -76,12 +76,7 @@ export function CreativesRankingView({
       setLoading(false);
       return;
     }
-    if (!clientId) {
-      setGroups([]);
-      setLoading(false);
-      return;
-    }
-    if (accountsLoading) {
+    if (accountsLoading && clientId) {
       setLoading(true);
       return;
     }
@@ -89,7 +84,7 @@ export function CreativesRankingView({
     setLoading(true);
     setLoadError(null);
     const params = new URLSearchParams(periodQuery);
-    params.set("clientId", clientId);
+    if (clientId) params.set("clientId", clientId);
     if (adAccountId) params.set("adAccountId", adAccountId);
     fetch(`/api/creatives/performance?${params.toString()}`)
       .then(async (r) => {
@@ -172,7 +167,7 @@ export function CreativesRankingView({
     return (
       <div className="space-y-4" data-report-creatives-ready="true">
         {banner}
-        <div className="ui-card space-y-3 p-8 text-center">
+        <div className="campaign-creator-card space-y-3 p-6 text-center">
           <p className="text-sm text-rose-600">{loadError}</p>
           <button type="button" onClick={load} className="ui-btn-secondary text-sm">
             {t("retry")}
@@ -186,7 +181,7 @@ export function CreativesRankingView({
     return (
       <div className="space-y-4" data-report-creatives-ready="true">
         {banner}
-        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("empty")}</div>
+        <div className="campaign-creator-card p-6 text-center text-sm text-[var(--text-dim)]">{t("empty")}</div>
       </div>
     );
   }
@@ -201,15 +196,15 @@ export function CreativesRankingView({
         const compactBest = maxBest != null;
         const totalCount = compactBest ? best.length : g.best.length + g.promising.length + g.noSpend.length;
         return (
-          <div key={g.preset} className="ui-card overflow-hidden">
+          <div key={g.preset} className="campaign-creator-card overflow-hidden p-0">
             <div
-              className={`flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] ${
-                embedInReport ? "px-3 py-2" : "px-4 py-3"
+              className={`flex flex-wrap items-center justify-between gap-2 border-b border-[var(--creator-card-border,var(--border-color))] ${
+                embedInReport ? "px-3 py-2" : "px-3 py-2.5"
               }`}
             >
               <div className="min-w-0">
                 <div
-                  className={`font-semibold text-[var(--text-main)] ${
+                  className={`font-heading font-semibold text-[var(--text-main)] ${
                     embedInReport ? "text-xs" : "text-sm"
                   }`}
                 >
@@ -217,10 +212,12 @@ export function CreativesRankingView({
                   <span className="font-normal text-[var(--text-dimmer)]">({totalCount})</span>
                 </div>
                 {!embedInReport ? (
-                  <div className="text-[11px] text-[var(--text-dimmer)]">{rankHint(g.primaryMetric)}</div>
+                  <div className="text-[10px] text-[var(--text-dimmer)]">{rankHint(g.primaryMetric)}</div>
                 ) : null}
               </div>
-              {!embedInReport ? <Badge variant="brand">{tPresets(g.preset)}</Badge> : null}
+              {!embedInReport ? (
+                <span className="ds-table-compact-badge ds-table-compact-badge--accent">{tPresets(g.preset)}</span>
+              ) : null}
             </div>
 
             {best.length ? (
@@ -237,12 +234,12 @@ export function CreativesRankingView({
             )}
 
             {g.promising.length && !embedInReport ? (
-              <div className="border-t border-[var(--border-color)]">
-                <div className="flex items-start gap-2 bg-[var(--ui-accent-muted)] px-4 py-2.5">
+              <div className="border-t border-[var(--creator-card-border,var(--border-color))]">
+                <div className="flex items-start gap-2 bg-[var(--ui-accent-muted)] px-3 py-2">
                   <span className="text-[var(--ui-accent)]">✦</span>
                   <div>
-                    <div className="text-xs font-semibold text-[var(--ui-accent)]">{t("promisingTitle")}</div>
-                    <div className="text-[11px] text-[var(--text-dim)]">{t("promisingDesc")}</div>
+                    <div className="text-[11px] font-semibold text-[var(--ui-accent)]">{t("promisingTitle")}</div>
+                    <div className="text-[10px] text-[var(--text-dim)]">{t("promisingDesc")}</div>
                   </div>
                 </div>
                 <CreativeCardGrid
@@ -264,7 +261,7 @@ export function CreativesRankingView({
                     onClick={() =>
                       setExpandedZero((prev) => ({ ...prev, [g.preset]: !prev[g.preset] }))
                     }
-                    className="text-xs font-medium text-[var(--violet)] hover:underline"
+                    className="ds-table-compact-action text-[11px]"
                   >
                     {zeroOpen ? t("showLess") : t("showMoreZero", { n: g.noSpend.length })}
                   </button>

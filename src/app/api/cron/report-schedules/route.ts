@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { LessThanOrEqual } from "typeorm";
 
 import { repositories } from "@/db/repositories";
-import { buildClientReportPdf, buildClientWhatsappSummary } from "@/lib/report-generate";
-import { sendReportEmail } from "@/lib/report-notify";
+import { deliverScheduledReport } from "@/lib/report-delivery";
 
 function authCron(req: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -34,27 +33,11 @@ export async function POST(req: Request) {
       : await clientRepo.findOne({ where: { tenantId: tenant.id }, order: { createdAt: "ASC" } });
     if (!client) continue;
 
-    if (schedule.format === "whatsapp") {
-      const text = await buildClientWhatsappSummary({ tenant, client });
-      if (schedule.recipients.length) {
-        await sendReportEmail({
-          to: schedule.recipients[0]!,
-          subject: `Resumo WhatsApp — ${client.name}`,
-          text
-        });
-      }
-    } else {
-      const bytes = await buildClientReportPdf({ tenant, client });
-      if (schedule.recipients.length) {
-        const safeName = client.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-        await sendReportEmail({
-          to: schedule.recipients[0]!,
-          subject: `Relatório ${client.name} — ${tenant.brandName ?? tenant.name}`,
-          text: `Relatório automático de ${client.name}.`,
-          pdfBytes: bytes,
-          filename: `relatorio-${safeName}.pdf`
-        });
-      }
+    // v3 — entrega pelo canal escolhido (cada canal atrás de feature flag).
+    try {
+      await deliverScheduledReport(schedule, tenant, client);
+    } catch {
+      /* falha de entrega não trava o avanço do agendamento */
     }
 
     schedule.lastRunAt = now;

@@ -5,6 +5,7 @@ import { CAMPAIGN_OBJECTIVES } from "@/lib/campaign-draft";
 import { buildCreatorBrainInsight } from "@/lib/campaign-creator/creator-brain-insights";
 import { aiCreditsErrorResponse, assertAiCreditsAccess } from "@/lib/ai-credits/credits-service";
 import { isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { listClientIdsForUser } from "@/lib/client-meta-settings";
@@ -17,6 +18,8 @@ const QuerySchema = z.object({
 
 export async function GET(req: Request) {
   try {
+    await assertFeatureEnabled("campaigns.brain");
+
     const { tenant, user, metaAccessToken } = await getAppContext();
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -98,6 +101,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, insight, creditCost });
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     console.error("[campaign-creator/brain-insights]", err);
     return NextResponse.json({ ok: false, error: "Falha ao gerar insight" }, { status: 500 });
   }

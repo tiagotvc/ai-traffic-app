@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Trophy,
   SlidersHorizontal,
@@ -574,23 +574,19 @@ function CreativeCardItem({
 
   return (
     <div
-      className="rounded-xl overflow-hidden transition-all hover:translate-y-[-2px]"
+      className="campaign-creator-card campaign-creator-card--compact overflow-hidden !space-y-0 !p-0 transition-all hover:-translate-y-px"
       style={{
-        background: "var(--surface-card)",
-        border: isFirst ? "1.5px solid rgba(245,166,35,0.5)" : "1px solid var(--border-color)",
-        boxShadow: isFirst
-          ? "0 4px 24px rgba(245,166,35,0.1)"
-          : "0 1px 6px rgba(0,0,0,0.06)",
-        transition: "all 0.2s ease",
+        borderColor: isFirst ? "var(--ui-accent-border)" : undefined,
+        boxShadow: isFirst ? "0 2px 12px var(--ui-accent-glow)" : undefined
       }}
     >
       {/* ── Thumbnail Section ── */}
-      <div className="relative flex h-40 items-center justify-center overflow-hidden bg-[#0f1419]">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--creator-card-bg-inset,var(--surface-bg))]">
         <img
           src={creative.img_url ?? undefined}
           alt={creative.title}
           decoding="async"
-          className="max-h-full max-w-full object-contain object-center"
+          className="absolute inset-0 block h-full w-full object-cover object-center"
         />
         {/* Gradient overlay */}
         <div
@@ -644,7 +640,7 @@ function CreativeCardItem({
 
       {/* ── Card Body ── */}
       <div className="px-4 py-3" style={{ borderBottom: "1px solid var(--border-color)" }}>
-        <p className="text-sm font-body font-semibold leading-snug line-clamp-1 mb-1" style={{ color: "var(--text-main)" }}>
+        <p className="text-sm font-body font-semibold leading-snug whitespace-normal break-words line-clamp-4 mb-1" style={{ color: "var(--text-main)" }}>
           {creative.title}
         </p>
         <p className="text-xs font-body" style={{ color: "var(--text-dimmer)" }}>
@@ -744,12 +740,16 @@ export type CreativesLiveProps = {
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   activeFilterTab?: string;
+  onActiveFilterTabChange?: (tab: string) => void;
   onOpenCriteria?: () => void;
   headerActions?: ReactNode;
   onPreview?: (creative: UxCreativeCard) => void;
   onCompare?: (creative: UxCreativeCard) => void;
   hideChrome?: boolean;
+  pageSize?: number;
 };
+
+const RANKING_PAGE_SIZE = 10;
 
 export default function CreativesContent({ live }: { live?: CreativesLiveProps } = {}) {
   const isLive = Boolean(live);
@@ -758,10 +758,14 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
   const [selectedAccount, setSelectedAccount] = useState("[ativo] CA 03 – Gabi Dawson – Paciente Final");
   const [activeFilterTab, setActiveFilterTab] = useState("Todos");
   const resolvedFilterTab = isLive && live!.activeFilterTab !== undefined ? live!.activeFilterTab : activeFilterTab;
+  const setResolvedFilterTab =
+    isLive && live!.onActiveFilterTabChange ? live!.onActiveFilterTabChange : setActiveFilterTab;
   const [localSearchQuery, setLocalSearchQuery] = useState("");
   const searchQuery = isLive ? (live!.searchQuery ?? "") : localSearchQuery;
   const setSearchQuery = isLive ? (live!.onSearchChange ?? (() => {})) : setLocalSearchQuery;
   const sourceFilterTabs = isLive ? live!.filterTabs : filterTabs;
+  const pageSize = isLive ? (live!.pageSize ?? RANKING_PAGE_SIZE) : RANKING_PAGE_SIZE;
+  const [page, setPage] = useState(1);
   const [clientOpen, setClientOpen] = useState(false);
   const [periodOpen, setPeriodOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -789,8 +793,17 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
     return matchesTab && matchesSearch;
   });
 
-  const filteredLiveCreatives = isLive ? (filteredCreatives as UxCreativeCard[]) : [];
-  const filteredMockCreatives = !isLive ? (filteredCreatives as CreativeCard[]) : [];
+  useEffect(() => {
+    setPage(1);
+  }, [resolvedFilterTab, searchQuery, sourceCreatives.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCreatives.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * pageSize;
+  const pagedCreatives = filteredCreatives.slice(pageStart, pageStart + pageSize);
+
+  const filteredLiveCreatives = isLive ? (pagedCreatives as UxCreativeCard[]) : [];
+  const filteredMockCreatives = !isLive ? (pagedCreatives as CreativeCard[]) : [];
 
   const liveEmbedded = isLive && live?.hideChrome;
   const pageShellClass = liveEmbedded
@@ -931,7 +944,62 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
           </>
           ) : null}
 
-          {/* ── Info Banner ── */}
+          {liveEmbedded && isLive ? (
+            <>
+              <DsInfoBanner className="mb-4 text-xs">
+                Ranking calculado com base nos critérios configurados por tipo de campanha. Criativos com menos de{" "}
+                <strong className="text-[var(--ui-accent)]">100 impressões</strong> no período não entram na classificação.
+                Clique em{" "}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCriteria();
+                  }}
+                  className="font-semibold text-[var(--ui-accent)] underline"
+                >
+                  Critérios de ranqueamento
+                </button>{" "}
+                para personalizar as métricas.
+              </DsInfoBanner>
+
+              <div className="campaign-creator-card campaign-creator-card--compact mb-4 flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-[11px] text-[var(--text-dimmer)]">
+                <span>
+                  Exibindo {filteredCreatives.length ? pageStart + 1 : 0}–
+                  {Math.min(pageStart + pageSize, filteredCreatives.length)} de {filteredCreatives.length} criativos
+                  {filteredCreatives.length !== sourceCreatives.length
+                    ? ` (${sourceCreatives.length} no total)`
+                    : ""}
+                </span>
+                <span>≡ Ordenado por: Score (maior — menor)</span>
+                {totalPages > 1 ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={safePage <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="ui-btn-secondary min-w-[2rem] px-2.5 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      ‹
+                    </button>
+                    <span className="rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-2.5 py-1 font-semibold tabular-nums text-[var(--ui-accent)]">
+                      {safePage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="ui-btn-secondary min-w-[2rem] px-2.5 py-1 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      ›
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+
+          {!liveEmbedded ? (
           <DsInfoBanner className="mb-4 text-xs">
             Ranking calculado com base nos critérios configurados por tipo de campanha. Criativos com menos de{" "}
             <strong className="text-[var(--ui-accent)]">100 impressões</strong> no período não entram na classificação.
@@ -948,10 +1016,15 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
             </button>{" "}
             para personalizar as métricas.
           </DsInfoBanner>
+          ) : null}
 
           {/* ── Cards Grid ── */}
           {isLive && live?.loading ? (
-            <CreativeRankingCardsSkeleton count={8} />
+            <CreativeRankingCardsSkeleton count={pageSize} />
+          ) : filteredCreatives.length === 0 && isLive ? (
+            <div className="campaign-creator-card p-8 text-center text-sm text-[var(--text-dim)]">
+              Nenhum criativo encontrado para os filtros selecionados.
+            </div>
           ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {isLive
@@ -991,15 +1064,17 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
           </div>
           )}
 
-          {/* ── Footer ── */}
+          {!liveEmbedded ? (
           <div className="mt-4 flex items-center justify-between">
             <p className="text-[11px] text-[var(--text-dimmer)]">
-              Exibindo {(isLive ? filteredLiveCreatives : filteredMockCreatives).length} de {sourceCreatives.length} criativos
+              Exibindo {filteredCreatives.length ? pageStart + 1 : 0}–
+              {Math.min(pageStart + pageSize, filteredCreatives.length)} de {filteredCreatives.length} criativos
             </p>
             <p className="text-[11px] text-[var(--text-dimmer)]">
               ≡ Ordenado por: Score (maior — menor)
             </p>
           </div>
+          ) : null}
         </PageTag>
   );
 }

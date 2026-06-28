@@ -155,7 +155,7 @@ export function CreatorAiPromptField({
         maxLength={maxLength}
         placeholder={placeholder}
         disabled={disabled}
-        className="ui-textarea w-full text-sm"
+        className="ui-textarea w-full rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-sm shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
       />
       <div className="flex items-center justify-between gap-2">
         {hint ? <p className="text-[10px] text-[var(--text-dimmer)]">{hint}</p> : <span />}
@@ -179,9 +179,9 @@ export function CreatorAiPreviewSection({
   action?: ReactNode;
 }) {
   return (
-    <section className="space-y-3 rounded-xl border border-[var(--ui-accent-border)] bg-[var(--surface-bg)] p-4">
+    <section className="campaign-creator-card space-y-3">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-accent)]">{title}</p>
+        <p className="campaign-creator-orion-section-label text-[var(--ui-accent)]">{title}</p>
         {hint ? <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{hint}</p> : null}
       </div>
       {children}

@@ -54,6 +54,8 @@ export type PlanLimits = {
   allowDashboardAiWidgets: false | "basic" | "premium" | "advanced";
   allowDashboardAiBuilder: boolean;
   allowDashboardSharing: boolean;
+  /** Custom brand name and logo in exports, reports and workspace chrome */
+  allowWhiteLabel: boolean;
 };
 
 export type ExternalPrices = {
@@ -92,7 +94,8 @@ export const FREE_LIMITS: PlanLimits = {
   allowDashboardResize: false,
   allowDashboardAiWidgets: false,
   allowDashboardAiBuilder: false,
-  allowDashboardSharing: false
+  allowDashboardSharing: false,
+  allowWhiteLabel: false
 };
 
 export const BASIC_LIMITS: PlanLimits = {
@@ -123,7 +126,8 @@ export const BASIC_LIMITS: PlanLimits = {
   allowDashboardResize: false,
   allowDashboardAiWidgets: false,
   allowDashboardAiBuilder: false,
-  allowDashboardSharing: false
+  allowDashboardSharing: false,
+  allowWhiteLabel: false
 };
 
 export const ADVANCED_LIMITS: PlanLimits = {
@@ -154,7 +158,8 @@ export const ADVANCED_LIMITS: PlanLimits = {
   allowDashboardResize: true,
   allowDashboardAiWidgets: "basic",
   allowDashboardAiBuilder: false,
-  allowDashboardSharing: false
+  allowDashboardSharing: false,
+  allowWhiteLabel: true
 };
 
 export const AGENCY_LIMITS: PlanLimits = {
@@ -185,7 +190,8 @@ export const AGENCY_LIMITS: PlanLimits = {
   allowDashboardResize: true,
   allowDashboardAiWidgets: "premium",
   allowDashboardAiBuilder: false,
-  allowDashboardSharing: true
+  allowDashboardSharing: true,
+  allowWhiteLabel: true
 };
 
 export const MASTER_LIMITS: PlanLimits = {

@@ -15,6 +15,7 @@ import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 import { usePathname, useRouter } from "@/i18n/navigation";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("billingAdmin");
   const tNav = useTranslations("nav");
   const pathname = usePathname();
   const router = useRouter();

@@ -1,11 +1,12 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 
 import { AiCampaignWizardClient } from "@/components/campaign-creator/AiCampaignWizardClient";
 import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
 import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCreatorClient";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 
@@ -19,10 +20,19 @@ function shouldShowModePicker(mode: string | null, fromCampaign: string | null) 
 function NewCampaignContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const aiGenerateEnabled = usePlatformFeature("campaigns.ai-generate");
   const client = searchParams.get("client") ?? undefined;
   const mode = searchParams.get("mode");
   const fromCampaign = searchParams.get("fromCampaign");
   const adset = searchParams.get("adset");
+
+  useEffect(() => {
+    if (mode === "ai" && !aiGenerateEnabled) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("mode", "manual");
+      router.replace(`/campaigns/new?${params.toString()}`);
+    }
+  }, [mode, aiGenerateEnabled, router, searchParams]);
 
   useCommandStripPage({ hideFilters: true, hideSync: true });
 
@@ -53,6 +63,7 @@ function NewCampaignContent() {
   }
 
   if (mode === "ai") {
+    if (!aiGenerateEnabled) return null;
     return <AiCampaignWizardClient initialClientSlug={client} />;
   }
 

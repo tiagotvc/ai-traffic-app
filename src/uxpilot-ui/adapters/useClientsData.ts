@@ -12,6 +12,9 @@ export type ClientRow = {
   roas: number;
   accounts: number;
   alertCount: number;
+  metaConnected?: boolean;
+  pixelCount?: number;
+  hasPage?: boolean;
   metrics?: Partial<Record<MetricKey, number>>;
   dominantPreset?: string;
 };

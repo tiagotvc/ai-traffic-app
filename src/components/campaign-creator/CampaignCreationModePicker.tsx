@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard";
 import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { useRouter } from "@/i18n/navigation";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { cn } from "@/lib/cn";
 
 type CreationMode = "manual" | "ai";
@@ -20,7 +21,7 @@ type Props = {
 function buildHref(mode: CreationMode, clientSlug?: string) {
   const params = new URLSearchParams();
   if (clientSlug) params.set("client", clientSlug);
-  if (mode === "ai") params.set("mode", "ai");
+  params.set("mode", mode);
   const qs = params.toString();
   return `/campaigns/new${qs ? `?${qs}` : ""}`;
 }
@@ -77,6 +78,7 @@ export function CampaignCreationModePicker({ open, onClose, clientSlug }: Props)
   const t = useTranslations("campaignCreator.ai");
   const tc = useTranslations("campaignCreator");
   const router = useRouter();
+  const aiGenerateEnabled = usePlatformFeature("campaigns.ai-generate");
   const [selected, setSelected] = useState<CreationMode | null>(null);
 
   useEffect(() => {
@@ -106,7 +108,10 @@ export function CampaignCreationModePicker({ open, onClose, clientSlug }: Props)
       showPrimaryCheck={false}
     >
       <div
-        className="grid items-stretch gap-4 sm:grid-cols-2"
+        className={cn(
+          "grid items-stretch gap-4",
+          aiGenerateEnabled ? "sm:grid-cols-2" : "grid-cols-1"
+        )}
         role="radiogroup"
         aria-label={t("modePickerTitle")}
       >
@@ -117,13 +122,15 @@ export function CampaignCreationModePicker({ open, onClose, clientSlug }: Props)
           icon={PenLine}
           onSelect={() => setSelected("manual")}
         />
-        <ModeChoiceCard
-          selected={selected === "ai"}
-          label={t("modeAiTitle")}
-          description={t("modeAiHint")}
-          icon={Sparkles}
-          onSelect={() => setSelected("ai")}
-        />
+        {aiGenerateEnabled ? (
+          <ModeChoiceCard
+            selected={selected === "ai"}
+            label={t("modeAiTitle")}
+            description={t("modeAiHint")}
+            icon={Sparkles}
+            onSelect={() => setSelected("ai")}
+          />
+        ) : null}
       </div>
     </CreatorModalShell>
   );

@@ -19,13 +19,15 @@ export function DsFormField({
 /** Linha de ações alinhada à direita + mensagem de feedback. */
 export function DsFormActions({
   children,
-  message
+  message,
+  className
 }: {
   children: ReactNode;
-  message?: string | null;
+  message?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div>
+    <div className={className}>
       <div className="flex justify-end">{children}</div>
       {message ? <p className="mt-2 text-[11px] text-[var(--text-dimmer)]">{message}</p> : null}
     </div>

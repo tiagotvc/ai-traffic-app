@@ -219,7 +219,8 @@ const BOOLEAN_LIMIT_KEYS = [
   "allowDashboardCanvas",
   "allowDashboardResize",
   "allowDashboardAiBuilder",
-  "allowDashboardSharing"
+  "allowDashboardSharing",
+  "allowWhiteLabel"
 ] as const;
 
 const TIER_LIMIT_KEYS = ["allowDashboardAiWidgets"] as const;

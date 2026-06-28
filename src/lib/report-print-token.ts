@@ -27,9 +27,10 @@ function sign(data: string): string {
 }
 
 export function createReportPrintToken(
-  input: Omit<ReportPrintTokenPayload, "exp">
+  input: Omit<ReportPrintTokenPayload, "exp">,
+  ttlMs: number = TTL_MS
 ): string {
-  const payload: ReportPrintTokenPayload = { ...input, exp: Date.now() + TTL_MS };
+  const payload: ReportPrintTokenPayload = { ...input, exp: Date.now() + ttlMs };
   const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   const signature = sign(body);
   return `${body}.${signature}`;

@@ -82,8 +82,27 @@ router Gemini+Claude, MCP, brandName/logoUrl no `Tenant`) para fechar a maioria 
     painel [`ReportsConsolidatedPanel`](../../src/components/reports/ReportsConsolidatedPanel.tsx)
     (modal: tabela cliente × investimento/conversões/CPA/ROAS/CTR + total + export CSV). Só leitura de
     snapshots — **não toca ranking/criação**.
-11. 🟡 **Templates de relatório** — salvar/reusar seções+métricas+branding. **Próximo** (precisa de
-    entidade `ReportTemplate` + migração + CRUD + UI). Espelha "linked templates" do Whatagraph.
+11. ✅ **Templates de relatório** — entidade [`ReportTemplate`](../../src/db/entities/ReportTemplate.ts)
+    (migração `0056`) + CRUD [`/api/report-templates`](../../src/app/api/report-templates/route.ts) (+`[id]`)
+    + UI [`ReportsTemplatesControl`](../../src/components/reports/ReportsTemplatesControl.tsx) (salvar
+    atual / aplicar / excluir). Salva **tipo + métricas + período**. Tudo gated `reports.v2`.
+12. ✅ **Agendamento parametrizável + entrega ao cliente (v3)** — ver seção abaixo.
+13. 🟡 **YoY** — próximo (comparação "ano anterior" threaded em preview + CSV + PDF).
+
+## v3 — Agendamento parametrizável + entrega ao cliente (2026-06-28)
+
+Agendamento agora guarda **tipo + período + canal + telefone** (migração `0057`) e o cron entrega pelo
+**canal escolhido**, cada um atrás de **feature flag** (admin decide quais oferecer; o usuário escolhe
+entre os habilitados):
+
+- Flags: `reports.v3` (pai) + `reports.v3.emailPdf` + `reports.v3.emailLink` + `reports.v3.whatsapp`.
+- Canais ([`report-delivery.ts`](../../src/lib/report-delivery.ts), flag-gated, skip se desligado/sem config):
+  - **email_pdf** — PDF anexo (Resend).
+  - **email_link** — e-mail com **link público estável** (token de 90 dias → `/report-print?pdfToken=`).
+  - **whatsapp** — WhatsApp Business Cloud API (resumo + link; requer `WHATSAPP_TOKEN`/`WHATSAPP_PHONE_ID`).
+- Cron [`/api/cron/report-schedules`](../../src/app/api/cron/report-schedules/route.ts) usa
+  `deliverScheduledReport`. UI: o form de agendamento ([`ReportsClient`](../../src/components/ReportsClient.tsx))
+  mostra só os canais habilitados (via `/api/reports/flags`) + tipo + período + telefone (WhatsApp).
 12. **Customização de seções** + **YoY** — escolher quais seções entram e comparar com ano anterior.
 13. **Schedule parametrizável** — hoje agenda sempre o relatório "padrão"; permitir tipo/período/métricas
     por agendamento (campos novos em `ReportSchedule`).
@@ -150,6 +169,11 @@ Aplicação:
   ao relatório clássico. Sem quebra em nenhum dos casos.
 
 ## Histórico
+- 2026-06-28 (parte 3): **v3 — agendamento parametrizável + entrega ao cliente** (3 canais
+  email_pdf/email_link/whatsapp, cada um por feature flag; migração 0057; `report-delivery.ts`; cron
+  e UI atualizados). YoY = próximo.
+- 2026-06-28 (parte 2): **R3 — templates de relatório** (`ReportTemplate` + migração 0056 + CRUD + UI
+  salvar/aplicar/excluir), gated `reports.v2`. R3 (consolidado + templates) concluído.
 - 2026-06-28: **R3 — consolidado de agência** (builder + endpoint + painel modal com tabela e CSV),
   atrás de `reports.v2`. Templates de relatório = próximo.
 - 2026-06-27 (parte 4): **split v1/v2 por feature flag** (`reports.v1`/`reports.v2`) com gate de

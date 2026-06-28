@@ -7,7 +7,7 @@ import { isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 
 import { CLAUDE_MODELS, claudeGenerateText, getAnthropicApiKey } from "./claude";
 import { GEMINI_MODELS, chooseAiModel } from "./router";
-import type { AiGenerateMeta, AiProvider, AiTask } from "./types";
+import type { AiGenerateMeta, AiModelChoice, AiProvider, AiTask } from "./types";
 
 export type AiGenerateJsonResult<T> = { data: T; meta: AiGenerateMeta };
 
@@ -22,6 +22,19 @@ async function loadAvailability(hasGemini: boolean, hasClaude: boolean) {
     geminiEnabled: geminiFlag && hasGemini,
     claudeEnabled: claudeFlag && hasClaude
   };
+}
+
+/** Resolve provedor + modelo via roteador Orion Brain (sem escolha do usuário). */
+export async function resolveAiModelChoice(task: AiTask): Promise<AiModelChoice> {
+  const geminiKey = process.env.GEMINI_API_KEY?.trim() ?? undefined;
+  const claudeKey = getAnthropicApiKey();
+  const av = await loadAvailability(Boolean(geminiKey), Boolean(claudeKey));
+  if (!av.geminiEnabled && !av.claudeEnabled) {
+    throw new Error(
+      "Nenhum provedor de IA disponível (verifique as flags ai.gemini/ai.claude e as chaves GEMINI_API_KEY/ANTHROPIC_API_KEY)."
+    );
+  }
+  return chooseAiModel(task, av);
 }
 
 /**

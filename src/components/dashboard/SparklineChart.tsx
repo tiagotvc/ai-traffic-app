@@ -14,14 +14,14 @@ import {
 
 import { PremiumChartTooltip } from "@/components/charts/PremiumChartTooltip";
 import { formatSparkAxisValue } from "@/lib/dashboard/metric-kpi-theme";
-import { premiumActiveDot, premiumRechartsTooltipProps } from "@/lib/dashboard/premium-chart-theme";
+import { premiumActiveDot, premiumAreaGradientStops, premiumGridProps, premiumRechartsTooltipProps } from "@/lib/dashboard/premium-chart-theme";
 
 interface Props {
   data: number[];
   labels?: string[];
   color: string;
   formatValue?: (value: number) => string;
-  variant?: "default" | "premium";
+  variant?: "default" | "premium" | "creator";
   dark?: boolean;
 }
 
@@ -103,27 +103,45 @@ export function SparklineChart({
     );
   }
 
-  if (variant === "premium") {
-    const grid = dark ? "rgba(148,163,184,0.14)" : "rgba(148,163,184,0.35)";
-    const tick = dark ? "#94a3b8" : "#94a3b8";
+  if (variant === "creator" || variant === "premium") {
+    const isCreator = variant === "creator";
+    const grid = isCreator
+      ? "color-mix(in srgb, var(--chart-grid) 65%, transparent)"
+      : dark
+        ? "rgba(148,163,184,0.14)"
+        : "rgba(148,163,184,0.35)";
+    const tick = "var(--chart-tick)";
     const lastIndex = plotData.length - 1;
     const yDomain = sparkYDomain(plotData.map((p) => p.v));
     const axisTick = { fill: tick, fontSize: 8, fontWeight: 600 as const };
+    const lineColor = isCreator ? color : color;
+    const gradientStops = isCreator
+      ? premiumAreaGradientStops(lineColor)
+      : [
+          { offset: "0%", stopColor: color, stopOpacity: dark ? 0.42 : 0.22 },
+          { offset: "55%", stopColor: color, stopOpacity: dark ? 0.14 : 0.08 },
+          { offset: "100%", stopColor: color, stopOpacity: 0.01 }
+        ];
 
     return (
       <div className="dashboard-kpi-card__spark-inner h-full min-h-[48px] w-full">
         <ResponsiveContainer width="100%" height={48}>
           <AreaChart
             data={plotData}
-            margin={{ top: 6, right: 2, left: 2, bottom: 0 }}
+            margin={{ top: 4, right: isCreator ? 4 : 2, left: isCreator ? 0 : 2, bottom: 0 }}
           >
             <defs>
               <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={dark ? 0.42 : 0.22} />
-                <stop offset="55%" stopColor={color} stopOpacity={dark ? 0.14 : 0.08} />
-                <stop offset="100%" stopColor={color} stopOpacity={0.01} />
+                {gradientStops.map((stop) => (
+                  <stop
+                    key={stop.offset}
+                    offset={stop.offset}
+                    stopColor={stop.stopColor}
+                    stopOpacity={stop.stopOpacity}
+                  />
+                ))}
               </linearGradient>
-              {dark ? (
+              {!isCreator && dark ? (
                 <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
                   <feGaussianBlur stdDeviation="2.5" result="blur" />
                   <feMerge>
@@ -133,29 +151,35 @@ export function SparklineChart({
                 </filter>
               ) : null}
             </defs>
-            <CartesianGrid stroke={grid} strokeDasharray="3 3" vertical={false} />
-            <YAxis
-              yAxisId="left"
-              width={30}
-              orientation="left"
-              axisLine={false}
-              tickLine={false}
-              tick={axisTick}
-              tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
-              domain={yDomain}
-              tickCount={2}
+            <CartesianGrid
+              {...(isCreator ? premiumGridProps() : { stroke: grid, strokeDasharray: "3 3", vertical: false })}
             />
-            <YAxis
-              yAxisId="right"
-              width={30}
-              orientation="right"
-              axisLine={false}
-              tickLine={false}
-              tick={axisTick}
-              tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
-              domain={yDomain}
-              tickCount={2}
-            />
+            {!isCreator ? (
+              <>
+                <YAxis
+                  yAxisId="left"
+                  width={30}
+                  orientation="left"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={axisTick}
+                  tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
+                  domain={yDomain}
+                  tickCount={2}
+                />
+                <YAxis
+                  yAxisId="right"
+                  width={30}
+                  orientation="right"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={axisTick}
+                  tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
+                  domain={yDomain}
+                  tickCount={2}
+                />
+              </>
+            ) : null}
             <Tooltip
               {...premiumRechartsTooltipProps}
               content={({ active, payload }) => {
@@ -170,35 +194,37 @@ export function SparklineChart({
               }}
             />
             <Area
-              yAxisId="left"
+              yAxisId={isCreator ? undefined : "left"}
               type="monotone"
               dataKey="v"
-              stroke={color}
+              stroke={lineColor}
               fill={`url(#${fillId})`}
-              strokeWidth={dark ? 2.25 : 2}
+              strokeWidth={isCreator ? 1.75 : dark ? 2.25 : 2}
               dot={false}
-              activeDot={premiumActiveDot(color)}
-              animationDuration={900}
+              activeDot={premiumActiveDot(lineColor)}
+              animationDuration={isCreator ? 700 : 900}
               animationEasing="ease-out"
-              style={{ filter: dark ? `drop-shadow(0 0 6px ${color}88)` : undefined }}
+              style={{ filter: !isCreator && dark ? `drop-shadow(0 0 6px ${color}88)` : undefined }}
             />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="v"
-              stroke="transparent"
-              dot={(props) => (
-                <LastPointDot
-                  {...props}
-                  lastIndex={lastIndex}
-                  color={color}
-                  glowId={glowId}
-                  dark={dark}
-                />
-              )}
-              activeDot={false}
-              legendType="none"
-            />
+            {!isCreator ? (
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="v"
+                stroke="transparent"
+                dot={(props) => (
+                  <LastPointDot
+                    {...props}
+                    lastIndex={lastIndex}
+                    color={color}
+                    glowId={glowId}
+                    dark={dark}
+                  />
+                )}
+                activeDot={false}
+                legendType="none"
+              />
+            ) : null}
           </AreaChart>
         </ResponsiveContainer>
       </div>

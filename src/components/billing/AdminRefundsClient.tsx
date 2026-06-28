@@ -1,5 +1,6 @@
 "use client";
 
+import { RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { DsPageHeader } from "@/design-system";
@@ -45,41 +46,83 @@ export function AdminRefundsClient() {
 
   return (
     <div className="w-full space-y-4">
-      <DsPageHeader title={t("title")} subtitle={t("refundsSubtitle")} />
-      {error ? <p className="text-xs text-red-600">{error}</p> : null}
-      <div className="ui-card overflow-hidden">
+      <DsPageHeader
+        title={t("title")}
+        subtitle={t("refundsSubtitle")}
+        titleIcon={<RotateCcw size={16} />}
+      />
+      {error ? (
+        <div className="campaign-creator-card campaign-creator-card--compact px-4 py-3 text-xs text-red-600">
+          {error}
+        </div>
+      ) : null}
+      <div className="ui-campaign-table-shell ui-campaign-table-shell--compact overflow-hidden">
+        <div className="ui-campaign-table-shell__header">
+          <div className="ui-campaign-table-shell__title">
+            <span className="ui-campaign-table-shell__icon">
+              <RotateCcw size={15} strokeWidth={2} />
+            </span>
+            <span>{t("title")}</span>
+          </div>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[var(--surface-thead)] text-[11px] uppercase">
+          <table className="ui-campaign-table ui-campaign-table--compact w-full text-left">
+            <thead>
               <tr>
-                <th className="px-3 py-2">{t("colDate")}</th>
-                <th className="px-3 py-2">{t("colProvider")}</th>
-                <th className="px-3 py-2">{t("colReason")}</th>
-                <th className="px-3 py-2">{t("colStatus")}</th>
-                <th className="px-3 py-2" />
+                <th>{t("colDate")}</th>
+                <th>{t("colProvider")}</th>
+                <th>{t("colReason")}</th>
+                <th>{t("colStatus")}</th>
+                <th />
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-t">
-                  <td className="px-3 py-2">{new Date(r.createdAt).toLocaleString()}</td>
-                  <td className="px-3 py-2">{r.provider}</td>
-                  <td className="max-w-xs truncate px-3 py-2">{r.reason}</td>
-                  <td className="px-3 py-2">{r.status}</td>
-                  <td className="px-3 py-2">
-                    {r.status === "pending" ? (
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => act(r.id, "approve")} className="text-emerald-600">
-                          {t("approve")}
-                        </button>
-                        <button type="button" onClick={() => act(r.id, "reject")} className="text-red-600">
-                          {t("reject")}
-                        </button>
-                      </div>
-                    ) : null}
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-[var(--text-dimmer)]">
+                    {t("loading")}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                rows.map((r) => (
+                  <tr key={r.id}>
+                    <td>{new Date(r.createdAt).toLocaleString()}</td>
+                    <td>{r.provider}</td>
+                    <td className="max-w-xs truncate">{r.reason}</td>
+                    <td>
+                      <span
+                        className={`ds-table-compact-badge ${
+                          r.status === "pending"
+                            ? "ds-table-compact-badge--accent"
+                            : "ds-table-compact-badge--neutral"
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td>
+                      {r.status === "pending" ? (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => act(r.id, "approve")}
+                            className="ds-table-compact-action text-emerald-600"
+                          >
+                            {t("approve")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => act(r.id, "reject")}
+                            className="ds-table-compact-action ds-table-compact-action--danger"
+                          >
+                            {t("reject")}
+                          </button>
+                        </div>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

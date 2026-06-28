@@ -6,6 +6,7 @@ import { Sparkles } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 
 import { DsFlatSection } from "@/design-system";
+import { SettingsFooterSave } from "@/components/settings/SettingsFooterSave";
 import type { AiCreditsUsageDto, TenantAiPolicyDto } from "@/lib/ai-credits/types";
 
 type AiCreditsPayload = {
@@ -186,15 +187,14 @@ export function SettingsAiCreditsTab() {
               </label>
             ) : null}
           </div>
-          <button
-            type="button"
-            className="ui-btn-accent mt-4"
+          <SettingsFooterSave
+            onSave={save}
             disabled={isPending}
-            onClick={save}
-          >
-            {isPending ? t("saving") : t("save")}
-          </button>
-          {message ? <p className="mt-2 text-sm text-[var(--text-dim)]">{message}</p> : null}
+            loading={isPending}
+            loadingLabel={t("saving")}
+            saveLabel={t("save")}
+            message={message}
+          />
         </DsFlatSection>
       ) : null}
 

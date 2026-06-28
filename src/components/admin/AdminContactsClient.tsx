@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Mail, MailOpen } from "lucide-react";
+import { Mail, MailOpen, MessageSquare } from "lucide-react";
 
 import { DsPageHeader } from "@/design-system";
 
@@ -59,7 +59,11 @@ export function AdminContactsClient() {
 
   return (
     <div className="space-y-5">
-      <DsPageHeader title="Mensagens de contato" subtitle="Mensagens enviadas pelos formulários de contato." />
+      <DsPageHeader
+        title="Mensagens de contato"
+        subtitle="Mensagens enviadas pelos formulários de contato."
+        titleIcon={<MessageSquare size={16} />}
+      />
 
       {loading ? (
         <div className="space-y-2">
@@ -68,10 +72,7 @@ export function AdminContactsClient() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div
-          className="rounded-xl border px-4 py-10 text-center text-sm"
-          style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-        >
+        <div className="campaign-creator-card campaign-creator-card--compact px-4 py-10 text-center text-sm text-[var(--text-dim)]">
           Nenhuma mensagem ainda.
         </div>
       ) : (
@@ -79,23 +80,21 @@ export function AdminContactsClient() {
           {rows.map((row) => (
             <article
               key={row.id}
-              className="rounded-xl border p-4"
-              style={{
-                borderColor: "var(--border-color)",
-                background: row.status === "new" ? "rgba(124,58,237,0.04)" : "var(--surface-card)"
-              }}
+              className={`campaign-creator-card campaign-creator-card--compact ${
+                row.status === "new" ? "ring-1 ring-[var(--ui-accent-border)]" : ""
+              }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     {row.status === "new" ? (
-                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: "#7c3aed" }} />
+                      <span className="ds-table-compact-badge ds-table-compact-badge--accent">Nova</span>
                     ) : null}
                     <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{row.subject}</h3>
                   </div>
                   <p className="mt-0.5 text-xs text-[var(--text-dim)]">
                     {row.name} ·{" "}
-                    <a href={`mailto:${row.email}`} className="text-[var(--violet-bright)] hover:underline">
+                    <a href={`mailto:${row.email}`} className="text-[var(--ui-accent)] hover:underline">
                       {row.email}
                     </a>
                     {row.company ? ` · ${row.company}` : ""}
@@ -106,8 +105,7 @@ export function AdminContactsClient() {
                   <button
                     type="button"
                     onClick={() => setStatus(row.id, row.status === "new" ? "read" : "new")}
-                    className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-[var(--surface-bg)]"
-                    style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                    className="ui-btn-accent-outline inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-heading font-semibold"
                   >
                     {row.status === "new" ? <MailOpen size={13} /> : <Mail size={13} />}
                     {row.status === "new" ? "Marcar como lida" : "Marcar como nova"}

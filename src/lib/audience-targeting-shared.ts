@@ -230,6 +230,28 @@ export function removeSegmentFromSuggestion(
   };
 }
 
+/** Build Meta flexible_spec from manually picked segment chips (no AI). */
+export function buildFlexibleSpecFromSegmentItems(
+  items: AudienceTargetingSuggestionItem[]
+): Array<Record<string, Array<{ id: string; name: string }>>> {
+  const spec: Record<string, Array<{ id: string; name: string }>> = {};
+
+  for (const item of items) {
+    const bucket =
+      item.type === "interest"
+        ? "interests"
+        : item.type === "behavior"
+          ? "behaviors"
+          : "life_events";
+    if (!spec[bucket]) spec[bucket] = [];
+    if (!spec[bucket]!.some((row) => row.id === item.id)) {
+      spec[bucket]!.push({ id: item.id, name: item.name });
+    }
+  }
+
+  return Object.keys(spec).length ? [spec] : [];
+}
+
 export function mergeSuggestionSegments(
   existing: AudienceTargetingSuggestionItem[],
   added: AudienceTargetingSuggestionItem[]

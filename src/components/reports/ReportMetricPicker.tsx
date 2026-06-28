@@ -6,13 +6,16 @@ import { useState } from "react";
 
 import { ReportMetricsModal } from "@/components/reports/ReportMetricsModal";
 import type { MetricKey } from "@/lib/dashboard-metrics";
+import { cn } from "@/lib/cn";
 
 export function ReportMetricPicker({
   selected,
-  onChange
+  onChange,
+  className
 }: {
   selected: MetricKey[];
   onChange: (next: MetricKey[]) => void;
+  className?: string;
 }) {
   const t = useTranslations("reports");
   const [open, setOpen] = useState(false);
@@ -22,7 +25,10 @@ export function ReportMetricPicker({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="ui-btn-secondary inline-flex items-center gap-1.5 text-xs"
+        className={cn(
+          "ui-btn-secondary inline-flex items-center gap-1.5 self-end text-xs",
+          className
+        )}
       >
         <BarChart2 size={14} aria-hidden />
         {t("selectMetrics")}

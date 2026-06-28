@@ -70,6 +70,8 @@ export function ReportsConsolidatedPanel({
         type="button"
         onClick={openPanel}
         className="ui-btn-secondary inline-flex items-center gap-1.5"
+        title={t("consolidatedHint")}
+        aria-label={t("consolidatedHint")}
       >
         <LayoutList size={14} aria-hidden />
         {t("consolidatedButton")}
@@ -79,7 +81,7 @@ export function ReportsConsolidatedPanel({
         open={open}
         onClose={() => setOpen(false)}
         title={t("consolidatedTitle")}
-        subtitle={data?.period?.currentLabel}
+        subtitle={t("consolidatedSubtitle")}
         titleIcon={<LayoutList size={15} strokeWidth={2.25} />}
         width="lg"
         footer={
@@ -103,9 +105,16 @@ export function ReportsConsolidatedPanel({
         {loading ? (
           <p className="py-8 text-center text-sm text-[var(--text-dim)]">{tCommon("loading")}</p>
         ) : !data || !data.rows.length ? (
-          <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("consolidatedEmpty")}</p>
+          <div className="py-8 text-center">
+            <p className="text-sm font-medium text-[var(--text-main)]">{t("consolidatedEmpty")}</p>
+            <p className="mt-2 text-xs text-[var(--text-dim)]">{t("consolidatedEmptyHint")}</p>
+          </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="space-y-3">
+            {data.period?.currentLabel ? (
+              <p className="text-xs text-[var(--text-dim)]">{data.period.currentLabel}</p>
+            ) : null}
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--border-color)] text-left text-[11px] uppercase tracking-wide text-[var(--text-dimmer)]">
@@ -138,6 +147,7 @@ export function ReportsConsolidatedPanel({
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </DsModal>

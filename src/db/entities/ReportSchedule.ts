@@ -15,6 +15,22 @@ export class ReportSchedule extends AppBaseEntity {
   @Column({ type: "text", default: "pdf" })
   format!: string;
 
+  /** Canal de entrega ao cliente (v3): email_pdf | email_link | whatsapp. */
+  @Column({ type: "text", default: "email_pdf" })
+  deliveryChannel!: string;
+
+  /** Tipo do relatório agendado (parametrizável): simple | complete. */
+  @Column({ type: "text", default: "simple" })
+  reportType!: string;
+
+  /** Período preset do relatório agendado (ex.: last7, last30). Null = por frequência. */
+  @Column({ type: "text", nullable: true })
+  periodPreset?: string | null;
+
+  /** Telefone do cliente (E.164) quando o canal é WhatsApp. */
+  @Column({ type: "text", nullable: true })
+  recipientPhone?: string | null;
+
   @Column({ type: "text", default: "weekly" })
   frequency!: string;
 

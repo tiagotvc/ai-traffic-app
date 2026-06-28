@@ -5,19 +5,15 @@ import { useTranslations } from "next-intl";
 import { Eye, Filter, Info, Plus, RefreshCw, Search, Target, Users, Building2, BarChart2 } from "lucide-react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
-import { PageToolbar } from "@/components/layout/PageToolbar";
-import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
-import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
-import { IconActionButton } from "@/components/ui/IconActionButton";
-import { DsPageHeader } from "@/design-system";
-import type { AudienceCreateContext, SavedAudienceSummary } from "@/components/audiences/create/types";
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
+import { DsButton, DsPageHeader } from "@/design-system";
+import type { SavedAudienceSummary } from "@/components/audiences/create/types";
 import { AudienceDetailModal } from "@/components/audiences/AudienceDetailModal";
 import { Badge } from "@/components/ui/Badge";
 import { OutlineIcon } from "@/components/ui/OutlineIcon";
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { formatMetaGraphErrorMessage } from "@/lib/meta-graph-errors";
-import { AudienceCreatorUxPage } from "@/uxpilot-ui/adapters/AudienceCreatorUxPage";
 
 const AUDIENCES_ICON_PATH =
   "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z";
@@ -64,10 +60,8 @@ function AudienceListInfoBanner() {
 
 export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?: boolean } = {}) {
   const t = useTranslations("audiences");
-  const strip = useCommandStripOptional();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
-
-  const [view, setView] = useState<"list" | "create">("list");
   const [hubLoading, setHubLoading] = useState(true);
   const [audiencesLoading, setAudiencesLoading] = useState(false);
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -96,47 +90,8 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
   clientsRef.current = clients;
 
   const openCreateView = useCallback(() => {
-    setView("create");
-    setError(null);
-    setMessage(null);
-  }, []);
-
-  const createAudienceSlot = useMemo(
-    () => (
-      <IconActionButton
-        icon={<Plus size={16} />}
-        label={t("createNewAudience")}
-        disabled={!metaConnected || !adAccountId}
-        onClick={openCreateView}
-      />
-    ),
-    [t, metaConnected, adAccountId, openCreateView]
-  );
-
-  useCommandStripPage({ hideFilters: true, hideSync: true });
-
-  useEffect(() => {
-    if (!useUxChrome || !strip) return;
-    strip.setAdAccounts(accounts.map((a) => ({ id: a.metaAdAccountId, label: a.label })));
-  }, [useUxChrome, accounts, strip]);
-
-  useEffect(() => {
-    if (!useUxChrome || !strip || hubLoading) return;
-    if (strip.clientFilter && strip.clientFilter !== clientSlug) {
-      setClientSlug(strip.clientFilter);
-      return;
-    }
-    if (!strip.clientFilter && clientSlug) {
-      strip.setClientFilter(clientSlug);
-    }
-  }, [useUxChrome, strip, strip?.clientFilter, clientSlug, hubLoading]);
-
-  useEffect(() => {
-    if (!useUxChrome || !strip) return;
-    if (strip.accountFilter && strip.accountFilter !== adAccountId) {
-      setAdAccountId(strip.accountFilter);
-    }
-  }, [useUxChrome, strip, strip?.accountFilter, adAccountId]);
+    router.push("/audiences/meta/create");
+  }, [router]);
 
   const loadContext = useCallback(async () => {
     setHubLoading(true);
@@ -256,22 +211,6 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
     return filteredAudiences.slice(start, start + PAGE_SIZE);
   }, [filteredAudiences, page]);
 
-  const createCtx: AudienceCreateContext | null =
-    client && adAccountId
-      ? {
-          clientSlug,
-          clientName: client.name,
-          adAccountId,
-          audiences,
-          onSuccess: (msg) => setMessage(msg),
-          onError: (msg) => setError(msg),
-          onRefresh: () => {
-            void loadAudiences(true);
-            void loadContext();
-          }
-        }
-      : null;
-
   const toggleAttach = (audienceId: string, attach: boolean) => {
     if (!client) return;
     const current = new Set(client.defaultCustomAudienceIds);
@@ -328,30 +267,6 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
     </div>
   );
 
-  if (view === "create") {
-    return (
-      <>
-        <AudienceDetailModal
-          open={!!detailAudience}
-          onClose={() => setDetailAudience(null)}
-          summary={detailAudience}
-          clientSlug={clientSlug}
-          adAccountId={adAccountId}
-        />
-        {createCtx ? (
-          <AudienceCreatorUxPage
-            ctx={createCtx}
-            clients={clients.map((c) => ({ slug: c.slug, name: c.name }))}
-            clientSlug={clientSlug}
-            onClientChange={setClientSlug}
-            onBack={() => setView("list")}
-          />
-        ) : (
-          <p className="py-12 text-center text-sm text-[var(--text-dim)]">{t("selectClientFirst")}</p>
-        )}
-      </>
-    );
-  }
 
   return (
     <div className="space-y-5">
@@ -363,38 +278,100 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         adAccountId={adAccountId}
       />
       {useUxChrome ? (
-        <PageToolbar
-          eyebrow={t("breadcrumbList")}
-          icon={<Users size={16} aria-hidden />}
-          title={t("title")}
-          subtitle={t("subtitle")}
-          search={
-            listTab !== "templates"
-              ? {
-                  value: search,
-                  onChange: setSearch,
-                  placeholder: t("searchAudiences")
-                }
-              : undefined
+      <>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageTitleBlock
+          title={t("metaAudiencesTitle")}
+          subtitle={t("metaFeatureHint")}
+          titleIcon={<Users size={16} aria-hidden />}
+          badge={
+            <span
+              className="rounded-full px-2 py-0.5 font-heading text-[10px] font-semibold uppercase tracking-wide"
+              style={{
+                background: "var(--ui-accent-muted)",
+                color: "var(--ui-accent)",
+                border: "1px solid var(--ui-accent-border)"
+              }}
+            >
+              {t("metaFeatureBadge")}
+            </span>
           }
-          pageFilters={
-            <FilterSelectDropdown
-              icon={<Filter size={13} />}
-              label=""
-              placeholder={t("tabSaved")}
-              options={[
-                { value: "saved", label: t("tabSaved") },
-                { value: "excluded", label: t("tabExcluded") },
-                { value: "templates", label: t("tabTemplates") }
-              ]}
-              value={listTab}
-              onChange={(v) => setListTab(v as typeof listTab)}
-              className="w-full max-w-none sm:w-auto"
-            />
-          }
-          actions={createAudienceSlot}
         />
-      ) : (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <DsButton
+            variant="accent"
+            size="sm"
+            className="inline-flex items-center gap-2"
+            disabled={!metaConnected || !adAccountId}
+            onClick={openCreateView}
+          >
+            <Plus size={16} />
+            {t("createNewAudience")}
+          </DsButton>
+          <button
+            type="button"
+            onClick={() => void loadAudiences(true)}
+            disabled={!adAccountId || audiencesLoading}
+            className="ui-btn-secondary inline-flex items-center gap-1.5 text-sm"
+          >
+            <RefreshCw size={14} className={audiencesLoading ? "animate-spin" : ""} />
+            {t("refresh")}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterSelectDropdown
+          icon={<Building2 size={14} />}
+          label={t("selectClient")}
+          placeholder={t("selectClient")}
+          value={clientSlug}
+          onChange={setClientSlug}
+          disabled={hubLoading}
+          clearable={false}
+          options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+        />
+        {accounts.length > 1 ? (
+          <FilterSelectDropdown
+            icon={<BarChart2 size={14} />}
+            label={t("selectAdAccount")}
+            placeholder={t("selectAdAccount")}
+            value={adAccountId}
+            onChange={setAdAccountId}
+            disabled={accountsLoading}
+            clearable={false}
+            options={accounts.map((a) => ({ value: a.metaAdAccountId, label: a.label }))}
+          />
+        ) : null}
+        <FilterSelectDropdown
+          icon={<Filter size={13} />}
+          label=""
+          placeholder={t("tabSaved")}
+          options={[
+            { value: "saved", label: t("tabSaved") },
+            { value: "excluded", label: t("tabExcluded") },
+            { value: "templates", label: t("tabTemplates") }
+          ]}
+          value={listTab}
+          onChange={(v) => setListTab(v as typeof listTab)}
+          className="w-full max-w-none sm:w-auto"
+        />
+        {listTab !== "templates" ? (
+          <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dimmer)]" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchAudiences")}
+              className="ui-input h-9 w-full pl-9 text-sm"
+            />
+          </div>
+        ) : null}
+      </div>
+      </>
+      ) : null}
+
+      {!useUxChrome ? (
       <DsPageHeader
         breadcrumbs={t("breadcrumbList")}
         title={t("title")}
@@ -404,11 +381,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => {
-                setView("create");
-                setError(null);
-                setMessage(null);
-              }}
+              onClick={openCreateView}
               disabled={!metaConnected || !adAccountId}
               className="ui-btn-primary text-sm"
             >
@@ -425,7 +398,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
           </div>
         }
       />
-      )}
+      ) : null}
 
       {!hubLoading && !metaConnected ? (
         <div className="ui-alert-warning text-sm">
@@ -527,8 +500,8 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                   ) : null}
                 </div>
               ) : (
-                <div className={useUxChrome ? "" : "space-y-2"}>
-                  {pagedAudiences.map((a, index) => {
+                <div className={useUxChrome ? "space-y-3 p-1" : "space-y-2"}>
+                  {pagedAudiences.map((a) => {
                     const attached = client?.defaultCustomAudienceIds.includes(a.id);
                     if (useUxChrome) {
                       const kindColor =
@@ -538,21 +511,9 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                             ? { bg: "rgba(245,166,35,0.13)", color: "#f59e0b" }
                             : { bg: "rgba(79,70,229,0.12)", color: "#818cf8" };
                       return (
-                        <div
+                        <article
                           key={`${a.adAccountId}-${a.id}`}
-                          className="group flex items-center gap-4 px-5 py-4 transition-colors"
-                          style={{
-                            borderBottom:
-                              index === pagedAudiences.length - 1 && page >= totalPages
-                                ? "none"
-                                : "1px solid var(--border-color)"
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "var(--row-hover)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "transparent";
-                          }}
+                          className="campaign-creator-card flex flex-wrap items-center gap-4 p-4 transition-colors hover:bg-[var(--row-hover)]"
                         >
                           <div
                             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
@@ -631,7 +592,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                               </button>
                             ) : null}
                           </div>
-                        </div>
+                        </article>
                       );
                     }
                     return (
@@ -688,34 +649,29 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                     </p>
                   ) : null}
                   {totalPages > 1 ? (
-                    <div
-                      className="flex items-center justify-between border-t px-5 py-3"
-                      style={{ borderColor: "var(--border-color)" }}
-                    >
-                      <p className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-                        {filteredAudiences.length} público{filteredAudiences.length === 1 ? "" : "s"}
+                    <div className="campaign-creator-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                      <p className="font-body text-xs text-[var(--text-dimmer)]">
+                        {t("audienceCount", { count: filteredAudiences.length })}
                       </p>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           disabled={page <= 1}
                           onClick={() => setPage((p) => Math.max(1, p - 1))}
-                          className="rounded-lg border px-3 py-1 font-body text-xs disabled:opacity-40"
-                          style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                          className="ui-btn-secondary px-3 py-1 text-xs disabled:opacity-40"
                         >
-                          Anterior
+                          {t("previous")}
                         </button>
-                        <span className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
+                        <span className="font-body text-xs text-[var(--text-dim)]">
                           {page} / {totalPages}
                         </span>
                         <button
                           type="button"
                           disabled={page >= totalPages}
                           onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                          className="rounded-lg border px-3 py-1 font-body text-xs disabled:opacity-40"
-                          style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                          className="ui-btn-secondary px-3 py-1 text-xs disabled:opacity-40"
                         >
-                          Próxima
+                          {t("next")}
                         </button>
                       </div>
                     </div>

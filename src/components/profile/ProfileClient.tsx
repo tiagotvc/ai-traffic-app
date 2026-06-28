@@ -20,9 +20,16 @@ import { Settings as SettingsIcon } from "lucide-react";
 export type ProfileTab = PortalTab | SettingsTab;
 
 const BILLING_TABS = new Set<PortalTab>(["plan", "limits", "billing", "events"]);
-const SETTINGS_TABS = new Set<SettingsTab>(["general", "team", "integrations", "webhooks", "data"]);
+const SETTINGS_TABS = new Set<SettingsTab>([
+  "account",
+  "team",
+  "integrations",
+  "webhooks",
+  "data"
+]);
 
 function parseProfileTab(raw: string | null): ProfileTab {
+  if (raw === "general" || raw === "branding") return "account";
   if (raw && BILLING_TABS.has(raw as PortalTab)) return raw as PortalTab;
   if (raw && SETTINGS_TABS.has(raw as SettingsTab)) return raw as SettingsTab;
   return "plan";
@@ -71,13 +78,12 @@ function ProfileClientInner({
   const tabs = useMemo(
     () => [
       { key: "plan" as const, label: tBilling("tabPlan") },
-      { key: "limits" as const, label: tBilling("tabLimits") },
       {
         key: "billing" as const,
         label: tBilling("tabBilling")
       },
       { key: "events" as const, label: tBilling("tabEvents") },
-      { key: "general" as const, label: tSettings("tabGeneral") },
+      { key: "account" as const, label: tSettings("tabAccount") },
       { key: "team" as const, label: tSettings("tabTeam") },
       { key: "integrations" as const, label: tSettings("tabIntegrations") },
       { key: "webhooks" as const, label: tSettings("tabWebhooks") },
@@ -87,7 +93,7 @@ function ProfileClientInner({
   );
 
   const billingTab = isBillingTab(activeTab) ? activeTab : "plan";
-  const settingsTab = !isBillingTab(activeTab) ? activeTab : "general";
+  const settingsTab = !isBillingTab(activeTab) ? activeTab : "account";
 
   return (
     <div className="w-full space-y-4">

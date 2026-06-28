@@ -85,14 +85,14 @@ function CreatorModalFooter({
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
         {onCancel ? (
-          <DsButton variant="secondary" size="sm" onClick={onCancel}>
+          <DsButton variant="secondary" size="md" onClick={onCancel}>
             {cancelLabel ?? t("modalCancel")}
           </DsButton>
         ) : null}
         {onPrimary ? (
           <DsButton
             variant="accent"
-            size="sm"
+            size="md"
             onClick={onPrimary}
             disabled={primaryDisabled || primaryLoading}
             form={primaryForm}
@@ -215,7 +215,7 @@ export function CreatorModalShell({
         data-creator-modal-shell
         size={widthClass[width]}
         className={cn(
-          "max-h-[min(920px,92vh)] border-[var(--creator-card-border,var(--border-color))] bg-[var(--surface-bg)]",
+          "flex max-h-[min(920px,92vh)] min-h-0 flex-col border-[var(--creator-card-border,var(--border-color))] bg-[var(--surface-bg)]",
           className
         )}
       >
@@ -226,7 +226,9 @@ export function CreatorModalShell({
           showAiBadge={showAiBadge}
           onClose={onClose}
         />
-        <div className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-4", contentClassName)}>{children}</div>
+        <div className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4", contentClassName)}>
+          {children}
+        </div>
         {footer !== undefined ? footer : defaultFooter}
       </UxWizardModalPanel>
     </UxModalPortal>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { Palette, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { DsFlatSection, DsPageHeader, DsUnderlineTabs } from "@/design-system";
+import { DsPageHeader, DsUnderlineTabs } from "@/design-system";
 import {
   DEFAULT_THEME_CONFIG,
   mergeThemeConfig,
@@ -229,9 +229,9 @@ export function AdminThemeClient() {
       />
 
       {message ? (
-        <p className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: "var(--border-color)" }}>
+        <div className="campaign-creator-card campaign-creator-card--compact px-3 py-2 text-sm">
           {message}
-        </p>
+        </div>
       ) : null}
 
       <DsUnderlineTabs
@@ -247,7 +247,8 @@ export function AdminThemeClient() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           {GROUPS.map((group) => (
-            <DsFlatSection key={group} title={t(`themeGroup_${group}`)}>
+            <section key={group} className="campaign-creator-card campaign-creator-card--compact">
+              <h2 className="campaign-creator-orion-section-label mb-4">{t(`themeGroup_${group}`)}</h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 {THEME_TOKEN_DEFS.filter((def) => def.group === group).map((def) => (
                   <ColorField
@@ -260,15 +261,15 @@ export function AdminThemeClient() {
                   />
                 ))}
               </div>
-            </DsFlatSection>
+            </section>
           ))}
         </div>
 
         <div className="space-y-3 xl:sticky xl:top-4 xl:self-start">
-          <p className="font-heading text-sm font-semibold text-[var(--text-main)]">
-            {t("themePreviewHeading")}
-          </p>
-          <ThemePreview mode={mode} palette={palette} />
+          <p className="campaign-creator-orion-section-label">{t("themePreviewHeading")}</p>
+          <div className="campaign-creator-sidebar-card">
+            <ThemePreview mode={mode} palette={palette} />
+          </div>
         </div>
       </div>
 

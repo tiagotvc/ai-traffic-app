@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getAppContext } from "@/lib/app-context";
 import { fetchImageAsBase64, generateImageVariants } from "@/lib/gemini-image";
 import { uploadAdImage } from "@/lib/meta-graph";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
 const BodySchema = z.object({
   adAccountId: z.string().min(1),
@@ -14,25 +15,27 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) {
-    return NextResponse.json({ ok: false, error: "AI_NOT_CONFIGURED" }, { status: 503 });
-  }
-
-  const { metaAccessToken } = await getAppContext();
-  if (!metaAccessToken) {
-    return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
-  }
-
-  const body = BodySchema.parse(await req.json().catch(() => ({})));
-  if (!body.sourceImageUrl && !body.sourceImageHash) {
-    return NextResponse.json(
-      { ok: false, error: "sourceImageUrl or sourceImageHash required" },
-      { status: 400 }
-    );
-  }
-
   try {
+    await assertFeatureEnabled("campaigns.ai-copy");
+
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: "AI_NOT_CONFIGURED" }, { status: 503 });
+    }
+
+    const { metaAccessToken } = await getAppContext();
+    if (!metaAccessToken) {
+      return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
+    }
+
+    const body = BodySchema.parse(await req.json().catch(() => ({})));
+    if (!body.sourceImageUrl && !body.sourceImageHash) {
+      return NextResponse.json(
+        { ok: false, error: "sourceImageUrl or sourceImageHash required" },
+        { status: 400 }
+      );
+    }
+
     let imageUrl = body.sourceImageUrl;
     if (!imageUrl && body.sourceImageHash) {
       return NextResponse.json(
@@ -70,6 +73,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, variants: hashes });
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     const msg = err instanceof Error ? err.message : "Imagen error";
     const isUnavailable = msg.toLowerCase().includes("imagen unavailable");
     return NextResponse.json(

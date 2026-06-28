@@ -17,10 +17,13 @@ import {
   recordCreativeMemoryAiUsage
 } from "@/lib/creative-memory/ai-usage";
 import { classifyLlmError } from "@/lib/llm/generate-json";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
 export async function POST(req: Request) {
   let usedProvider: "gemini" | "claude" = "claude";
   try {
+    await assertFeatureEnabled("campaigns.ai-generate");
+
     const { tenant, user, metaAccessToken } = await getAppContext();
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -98,6 +101,9 @@ export async function POST(req: Request) {
       rationale: result.rationale
     });
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     console.error("[ai-wizard generate]", err);
     const classified = classifyLlmError(err, usedProvider);
     return NextResponse.json(

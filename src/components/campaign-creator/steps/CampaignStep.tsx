@@ -56,6 +56,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { OrionBrainCardFeedback } from "@/components/campaign-creator/OrionBrainResearchFeedback";
 import { useCreatorBrainInsight } from "@/hooks/useCreatorBrainInsight";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { resolveDraftClient } from "@/lib/campaign-draft-client";
 import { openOrionBrainBenchmark } from "@/lib/campaign-creator/orion-brain-bridge";
 
@@ -377,11 +378,12 @@ export function CampaignStep() {
   const { accounts, accountsLoading, accountsError } = useCampaignStepEffects();
 
   const validClient = Boolean(resolveDraftClient(payload.clientSlug, clients));
+  const brainInsightsEnabled = usePlatformFeature("campaigns.brain.insights");
   const { insight: brainInsight, loading: brainLoading, paused: brainPaused } = useCreatorBrainInsight({
     objective: payload.objective,
     activeNode,
     clientSlug: payload.clientSlug,
-    enabled: validClient
+    enabled: brainInsightsEnabled && validClient
   });
 
   const [copyModalOpen, setCopyModalOpen] = useState(false);
@@ -947,7 +949,10 @@ export function CampaignStep() {
 
               <div className="campaign-creator-budget-orion-tip__text">
 
-                {!brainPaused && !brainLoading && brainInsight?.kind === "data" ? (
+                {brainInsightsEnabled &&
+                !brainPaused &&
+                !brainLoading &&
+                brainInsight?.kind === "data" ? (
                   <OrionBrainCardFeedback insight={brainInsight} compact showSampleBadge />
                 ) : (
                   <p>{t(BUDGET_ORION_TIP_KEYS[payload.objective])}</p>
@@ -957,17 +962,19 @@ export function CampaignStep() {
 
             </div>
 
-            <button
-              type="button"
-              onClick={openOrionBrainBenchmark}
-              className="campaign-creator-budget-orion-tip__action ui-btn-accent-outline"
-            >
+            {brainInsightsEnabled ? (
+              <button
+                type="button"
+                onClick={openOrionBrainBenchmark}
+                className="campaign-creator-budget-orion-tip__action ui-btn-accent-outline"
+              >
 
-              {t("budgetViewBenchmark")}
+                {t("budgetViewBenchmark")}
 
-              <ChevronRight size={14} strokeWidth={2.5} aria-hidden />
+                <ChevronRight size={14} strokeWidth={2.5} aria-hidden />
 
-            </button>
+              </button>
+            ) : null}
 
           </div>
 

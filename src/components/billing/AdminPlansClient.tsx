@@ -1,5 +1,6 @@
 "use client";
 
+import { CreditCard } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { AdminPlansSkeleton } from "@/components/billing/BillingSkeletons";
@@ -257,7 +258,7 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
+            <h3 className="campaign-creator-orion-section-label mb-3">
               {t("sectionPricesUsd")}
             </h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -287,7 +288,7 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
+            <h3 className="campaign-creator-orion-section-label mb-3">
               {t("sectionPricesBrl")}
             </h3>
             <p className="mb-3 text-xs text-[var(--text-dim)]">{t("sectionPricesBrlHint")}</p>
@@ -318,7 +319,7 @@ function PlanEditor({
           </div>
 
           <div>
-            <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
+            <h3 className="campaign-creator-orion-section-label mb-3">
               {t("sectionLimits")}
             </h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -627,7 +628,11 @@ export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] 
 
   return (
     <div className="w-full space-y-4">
-      <DsPageHeader title={t("plansTitle")} subtitle={t("plansSubtitle")} />
+      <DsPageHeader
+        title={t("plansTitle")}
+        subtitle={t("plansSubtitle")}
+        titleIcon={<CreditCard size={16} />}
+      />
 
       {error ? (
         <div className="ui-alert-danger px-4 py-3 text-sm">

@@ -19,6 +19,7 @@ import {
   resolveSearchTerms
 } from "@/lib/meta-ad-library";
 import { attachRecommendationsToInsight } from "@/lib/campaign-creator/creator-brain-recommendations";
+import { isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 import { rollingDaysEndingYesterday } from "@/lib/report-period";
 
 export type CreatorBrainMetric = "cpa" | "cpc" | "ctr";
@@ -667,6 +668,7 @@ export async function buildCreatorBrainInsight(input: {
   const windowDays = input.windowDays ?? 30;
   const metric = primaryMetricForObjective(input.objective);
   const benchmark = OBJECTIVE_BENCHMARKS[input.objective];
+  const metaResearchEnabled = await isPlatformFeatureEnabled("campaigns.brain.meta-research");
 
   const [clientRows, tenantRows, tenantObjectiveMap, presetMap, metaCompetitor] = await Promise.all([
     input.clientId
@@ -678,11 +680,18 @@ export async function buildCreatorBrainInsight(input: {
       accessToken: input.metaAccessToken ?? null
     }),
     getCampaignPresetsMap(input.tenantId),
-    resolveMetaCompetitorResearch({
-      tenantId: input.tenantId,
-      clientId: input.clientId,
-      objective: input.objective
-    })
+    metaResearchEnabled
+      ? resolveMetaCompetitorResearch({
+          tenantId: input.tenantId,
+          clientId: input.clientId,
+          objective: input.objective
+        })
+      : Promise.resolve({
+          adsCount: 0,
+          competitorsScanned: 0,
+          status: "skipped" as const,
+          detail: "feature_disabled"
+        })
   ]);
 
   const similarClientRows = clientRows

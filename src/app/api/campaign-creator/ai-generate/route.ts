@@ -15,6 +15,7 @@ import {
 import { validateClientAdAccount } from "@/lib/audience-api-helpers";
 import { classifyLlmError } from "@/lib/llm/generate-json";
 import type { LlmProviderId } from "@/lib/llm/types";
+import { assertFeatureEnabled, FeatureDisabledError } from "@/lib/feature-flags/service";
 
 const BodySchema = z.object({
   clientId: z.string().min(1),
@@ -26,6 +27,8 @@ const BodySchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    await assertFeatureEnabled("campaigns.ai-generate");
+
     const { tenant, metaAccessToken } = await getAppContext();
     if (!metaAccessToken) {
       return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
@@ -122,6 +125,9 @@ export async function POST(req: Request) {
       modelUsed: result.modelMeta.modelUsed
     });
   } catch (err) {
+    if (err instanceof FeatureDisabledError) {
+      return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
+    }
     console.error("[campaign-creator ai-generate]", err);
     const classified = classifyLlmError(err, "gemini");
     return NextResponse.json(

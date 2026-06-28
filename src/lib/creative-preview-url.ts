@@ -1,4 +1,11 @@
 const META_CDN_HOSTS = ["fbcdn.net", "facebook.com", "fbsbx.com"];
+const DIRECT_VIDEO_RE = /\.(mp4|mov|webm|m4v)(\?|$)/i;
+
+function isDirectVideoUrl(url: string) {
+  const lower = url.toLowerCase();
+  if (DIRECT_VIDEO_RE.test(url)) return true;
+  return lower.includes("/video/") && !/\.(jpe?g|png|webp|gif)(\?|$)/i.test(url);
+}
 
 function isMetaCdnUrl(url: string) {
   return META_CDN_HOSTS.some((host) => url.includes(host));
@@ -59,7 +66,10 @@ export function creativePreviewUrlCandidates(
   const primary = img || thumb;
   if (!primary) return [];
 
-  const originals = uniqueUrls([img, thumb]);
+  const imgIsVideo = img ? isDirectVideoUrl(img) : false;
+  const ordered =
+    imgIsVideo && thumb ? uniqueUrls([thumb, img]) : uniqueUrls([img, thumb]);
+  const originals = ordered;
   if (!isMetaCdnUrl(primary)) return originals;
 
   const upgraded = uniqueUrls(originals.map(upgradeMetaCdnPath));
@@ -73,19 +83,11 @@ export function creativePreviewProxyUrl(url: string): string {
   return `/api/creatives/preview?u=${encodeURIComponent(url)}`;
 }
 
-/** Cover só quando há imagem full distinta do thumb — evita zoom em preview minúsculo. */
+/** Use object-cover whenever any preview URL exists (ranking cards fill card width). */
 export function shouldUseCoverPreview(
   imageUrl?: string | null,
   thumbnailUrl?: string | null,
-  opts?: { report?: boolean }
+  _opts?: { report?: boolean }
 ): boolean {
-  if (opts?.report) {
-    return Boolean(imageUrl?.trim() || thumbnailUrl?.trim());
-  }
-  const img = imageUrl?.trim();
-  if (!img) return false;
-  const thumb = thumbnailUrl?.trim();
-  if (!thumb) return true;
-  if (img === thumb) return false;
-  return true;
+  return Boolean(imageUrl?.trim() || thumbnailUrl?.trim());
 }

@@ -29,11 +29,14 @@ Além de **Brain**, **Campanhas** e **Públicos**, o registry agora tem:
   via `isPlatformFeatureEnabled`. Ver [ai-router](./ai-router/README.md).
 - **`brain.mcp`** — servidor MCP sobre o Brain. ✅ **Implementado (read-only)** — ver
   [mcp](./mcp/README.md). (+ `brain.mcp.write` — escrita, **pendente** P1.4.)
-- **`reports`** — módulo de Relatórios, com `reports.v1` (clássico, sem IA) e `reports.v2` (com IA:
-  gerar por IA, análise/insights e anomalias). **Desligar v1 ou v2 independentemente** sem afetar o
-  outro (desligar o pai `reports` cascateia nos dois). Gate de servidor: `buildReportPreview` só
-  computa IA/anomalias com `reports.v2`; `/api/reports/ai-config` exige `reports.v2`. UI lê
-  `/api/reports/flags`. Ver [relatórios](./relatorios/plano-melhorias-relatorios-dashboard.md).
+- **`reports`** — módulo de Relatórios:
+  - `reports.v1` (clássico, sem IA) e `reports.v2` (IA: gerar por IA, análise/insights, anomalias,
+    consolidado e templates). Desligáveis independentemente.
+  - `reports.v3` (entrega ao cliente) + canais `reports.v3.emailPdf` / `reports.v3.emailLink` /
+    `reports.v3.whatsapp` — **cada canal liga/desliga separado**; o usuário só escolhe entre os
+    habilitados. Gate de servidor em `report-delivery.ts` (skip se canal off) + `buildReportPreview`
+    (IA/anomalias só com v2) + `/api/reports/ai-config` (exige v2). UI lê `/api/reports/flags`.
+    Ver [relatórios](./relatorios/plano-melhorias-relatorios-dashboard.md).
 - **`meta`** — `meta.capi` (Conversions API ✅ engine+teste) e `meta.attribution` (janelas ✅ fundação).
   Ver [meta-conversions](./meta-conversions/README.md). (P0.3/P0.4 e wiring de insights pendentes.)
 - **`brain.mcp.write`** — escrita via MCP. ✅ **Implementado** (`propose_action` → proposta pendente).

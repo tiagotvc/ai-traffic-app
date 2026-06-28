@@ -13,6 +13,8 @@ type Props = {
   items: AudienceTargetingSuggestionItem[];
   onRemove?: (itemId: string) => void;
   readOnly?: boolean;
+  /** When true, the last segment can be removed (manual Meta picker). */
+  allowRemoveLast?: boolean;
   segmentChipClass?: (item: AudienceTargetingSuggestionItem) => string;
   replacementAlternativeIds?: Set<string>;
   isRepairMode?: boolean;
@@ -28,6 +30,7 @@ export function PersonaSegmentChipList({
   items,
   onRemove,
   readOnly = false,
+  allowRemoveLast = false,
   segmentChipClass,
   replacementAlternativeIds,
   isRepairMode = false
@@ -56,7 +59,8 @@ export function PersonaSegmentChipList({
                   const chipClass =
                     segmentChipClass?.(item) ??
                     "rounded-full bg-[rgba(124,58,237,0.1)] px-2 py-0.5 text-[10px] text-[var(--violet)]";
-                  const canRemove = !readOnly && onRemove && items.length > 1;
+                  const canRemove =
+                    !readOnly && onRemove && (allowRemoveLast || items.length > 1);
                   return (
                     <span
                       key={`${item.type}-${item.id}`}
