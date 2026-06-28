@@ -99,7 +99,16 @@ Os mocks NÃO usam cards na aba Plano nem wrapper de card nas demais sub-abas. T
 
 > Ajustado por **inspeção dos mocks** (sem tooling de browser/screenshot no ambiente).
 
+## Ferramentas avançadas (aba Integrações) — 2026-06-27
+
+[`AdvancedToolsPanel`](../../src/components/settings/AdvancedToolsPanel.tsx) renderiza abaixo da aba
+**Integrações**, com 3 seções (cada uma **some** se a flag estiver off, via 404): **Servidor MCP**
+(gerar/revogar tokens, token exibido 1×), **CAPI** (cliente + evento de teste + status 24h/erro),
+**Janela de atribuição** (salvar preferência + **Simular** read-only). Backends:
+[mcp](../mcp/README.md), [meta-conversions](../meta-conversions/README.md).
+
 ## Histórico
+- 2026-06-27: painel **Ferramentas avançadas** (MCP/CAPI/Atribuição) na aba Integrações.
 - 2026-06-23: Padrão flat componentizado no DS (`DsFlatPanel`, `DsFlatSection`, …) + [flat-panels.md](../design-system/flat-panels.md).
 - 2026-06-25 (parte 4): **layout flat** em todas as sub-abas de Configurações (como os mocks);
   menu do avatar refeito (header+plano+seções Conta/Workspace/Ajuda/Empresa); deep-link `?tab=`.

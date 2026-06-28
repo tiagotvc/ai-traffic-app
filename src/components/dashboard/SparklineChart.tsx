@@ -25,6 +25,19 @@ interface Props {
   dark?: boolean;
 }
 
+function sparkYDomain(values: number[]): [number, number] {
+  const finite = values.filter((v) => Number.isFinite(v));
+  if (finite.length === 0) return [0, 1];
+  const min = Math.min(...finite);
+  const max = Math.max(...finite);
+  if (min === max) {
+    const pad = max === 0 ? 1 : Math.abs(max) * 0.15 || 1;
+    return [min - pad, max + pad];
+  }
+  const span = max - min;
+  return [min - span * 0.08, max + span * 0.08];
+}
+
 function LastPointDot({
   cx,
   cy,
@@ -71,8 +84,15 @@ export function SparklineChart({
     v,
     label: labels?.[i] ?? ""
   }));
+  const plotData =
+    chartData.length === 1
+      ? [
+          { ...chartData[0], i: 0 },
+          { ...chartData[0], i: 1 }
+        ]
+      : chartData;
 
-  if (chartData.length < 2) {
+  if (plotData.length < 2) {
     return (
       <div
         className="flex h-full min-h-[48px] items-center justify-center rounded text-[10px]"
@@ -86,12 +106,17 @@ export function SparklineChart({
   if (variant === "premium") {
     const grid = dark ? "rgba(148,163,184,0.14)" : "rgba(148,163,184,0.35)";
     const tick = dark ? "#94a3b8" : "#94a3b8";
-    const lastIndex = chartData.length - 1;
+    const lastIndex = plotData.length - 1;
+    const yDomain = sparkYDomain(plotData.map((p) => p.v));
+    const axisTick = { fill: tick, fontSize: 8, fontWeight: 600 as const };
 
     return (
-      <div className="h-full min-h-[56px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+      <div className="dashboard-kpi-card__spark-inner h-full min-h-[48px] w-full">
+        <ResponsiveContainer width="100%" height={48}>
+          <AreaChart
+            data={plotData}
+            margin={{ top: 6, right: 2, left: 2, bottom: 0 }}
+          >
             <defs>
               <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={color} stopOpacity={dark ? 0.42 : 0.22} />
@@ -110,13 +135,26 @@ export function SparklineChart({
             </defs>
             <CartesianGrid stroke={grid} strokeDasharray="3 3" vertical={false} />
             <YAxis
-              width={36}
+              yAxisId="left"
+              width={30}
+              orientation="left"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: tick, fontSize: 9, fontWeight: 600 }}
+              tick={axisTick}
               tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
-              domain={["dataMin", "dataMax"]}
-              tickCount={3}
+              domain={yDomain}
+              tickCount={2}
+            />
+            <YAxis
+              yAxisId="right"
+              width={30}
+              orientation="right"
+              axisLine={false}
+              tickLine={false}
+              tick={axisTick}
+              tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
+              domain={yDomain}
+              tickCount={2}
             />
             <Tooltip
               {...premiumRechartsTooltipProps}
@@ -132,6 +170,7 @@ export function SparklineChart({
               }}
             />
             <Area
+              yAxisId="left"
               type="monotone"
               dataKey="v"
               stroke={color}
@@ -144,6 +183,7 @@ export function SparklineChart({
               style={{ filter: dark ? `drop-shadow(0 0 6px ${color}88)` : undefined }}
             />
             <Line
+              yAxisId="left"
               type="monotone"
               dataKey="v"
               stroke="transparent"

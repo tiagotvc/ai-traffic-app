@@ -9,7 +9,7 @@ import { CreativePreviewModal } from "@/components/creatives/CreativePreviewModa
 import { RankingConfigModal } from "@/components/creatives/RankingConfigModal";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { PageToolbar } from "@/components/layout/PageToolbar";
-import { IconActionButton } from "@/components/ui/IconActionButton";
+import { DsAccentOutlineButton } from "@/design-system";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import type { CreativeItem } from "@/components/creatives/CreativeCardGrid";
 import {
@@ -59,7 +59,7 @@ export function CreativesContentLive() {
   return (
     <>
       <PageToolbar
-        eyebrow={t("rankingTitle")}
+        filterCreatorFields
         icon={<Trophy size={16} />}
         title={t("rankingTitle")}
         subtitle={t("rankingSubtitle")}
@@ -70,7 +70,8 @@ export function CreativesContentLive() {
         }}
         pageFilters={
           <FilterSelectDropdown
-            icon={<Filter size={13} style={{ color: "var(--ui-accent)" }} />}
+            creatorField
+            icon={<Filter size={14} />}
             label=""
             placeholder={t("campaignTypeFilter")}
             options={filterTabs.map((tab) => ({ value: tab, label: tab }))}
@@ -80,11 +81,10 @@ export function CreativesContentLive() {
           />
         }
         actions={
-          <IconActionButton
-            icon={<SlidersHorizontal size={16} />}
-            label={t("cfgButton")}
-            onClick={() => data.setConfigOpen(true)}
-          />
+          <DsAccentOutlineButton type="button" onClick={() => data.setConfigOpen(true)}>
+            <SlidersHorizontal size={14} />
+            {t("cfgButton")}
+          </DsAccentOutlineButton>
         }
       />
 

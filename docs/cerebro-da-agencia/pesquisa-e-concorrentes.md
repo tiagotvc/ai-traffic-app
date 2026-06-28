@@ -43,7 +43,7 @@ Tiers `weak|medium|strong`. Confiança em [`confidence-score.ts`](../../src/lib/
 
 | Peça | Arquivo | O que faz |
 |---|---|---|
-| Meta Ad Library | [`meta-ad-library/official-graph-provider.ts`](../../src/lib/meta-ad-library/official-graph-provider.ts) | `fetchMetaAdLibrary()` busca anúncios por `client.competitors` (pageIds) e por termos do nicho na Graph `ads_archive`. Requer `META_AD_LIBRARY_ACCESS_TOKEN`/`META_SYSTEM_USER_TOKEN`. |
+| Meta Ad Library | [`meta-ad-library/provider.ts`](../../src/lib/meta-ad-library/provider.ts) | `fetchMetaAdLibrary()` busca anúncios por `client.competitors` (pageIds) e por termos do nicho. **Prioridade:** SearchAPI (`SEARCHAPI_API_KEY`, [`searchapi-provider.ts`](../../src/lib/meta-ad-library/searchapi-provider.ts)); fallback Meta Graph `ads_archive` ([`official-graph-provider.ts`](../../src/lib/meta-ad-library/official-graph-provider.ts)) com `META_AD_LIBRARY_ACCESS_TOKEN`/`META_SYSTEM_USER_TOKEN`. |
 | Extração de padrões | [`market-pattern-extractor.ts`](../../src/lib/agency-brain/market-pattern-extractor.ts) | Top hooks/headlines, formatos, CTAs dos anúncios dos concorrentes (com nome do anunciante e link). |
 | Memória de mercado | `MarketMemory` entity + [`market-memory-service.ts`](../../src/lib/agency-brain/market-memory-service.ts) | Persiste o scan (TTL ~72h): `patternsJson`, `adsAnalyzed`, `competitorsScanned`. |
 | Síntese IA de mercado | [`market-learnings-service.ts`](../../src/lib/agency-brain/market-learnings-service.ts) | IA gera 2-4 **insights gerais do nicho** a partir dos padrões — não comparação direta com o cliente. |
@@ -88,7 +88,7 @@ mock/roadmap (GA4, Search Console, TikTok, LinkedIn), mas **nenhuma integração
 - Sequência confirmada: [`useRefineResearch.ts`](../../src/components/agency-brain/insights/useRefineResearch.ts)
   já roda **scan → detect → IA → síntese** de forma sequencial, então a IA usa o scan **fresco** da
   mesma rodada de "Refinar pesquisas".
-- **Pré-requisitos para funcionar de fato:** `META_AD_LIBRARY_ACCESS_TOKEN`/`META_SYSTEM_USER_TOKEN`
+- **Pré-requisitos para funcionar de fato:** `SEARCHAPI_API_KEY` **ou** `META_AD_LIBRARY_ACCESS_TOKEN`/`META_SYSTEM_USER_TOKEN`
   configurado, `GEMINI_API_KEY` configurado, e o cliente ter `competitors` (pageIds) e/ou `niche`
   preenchidos. Sem scan prévio (MarketMemory ausente), a IA roda só com dados do cliente (degrada
   graciosamente) e o prompt sugere rodar "Refinar pesquisas".

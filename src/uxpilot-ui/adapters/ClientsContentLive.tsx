@@ -2,10 +2,11 @@
 
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Building2, Cog, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { Building2, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { IconLabelLink } from "@/components/ui/IconLabelButton";
+import { OrionActionLoadingOverlay } from "@/components/ui/OrionActionLoadingOverlay";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { DsButton, DsInfoBanner, DsModal } from "@/design-system";
@@ -13,7 +14,6 @@ import { toUxClientCards, type UxClientCard } from "@/uxpilot-ui/adapters/client
 import { useClientsData } from "@/uxpilot-ui/adapters/useClientsData";
 
 function StatusPill({ status, alertCount }: { status: "healthy" | "warning"; alertCount: number }) {
-  const tc = useTranslations("clientsHub");
   const healthy = status === "healthy";
   return (
     <span
@@ -24,14 +24,13 @@ function StatusPill({ status, alertCount }: { status: "healthy" | "warning"; ale
         border: `1px solid ${healthy ? "rgba(16,185,129,0.25)" : "rgba(245,166,35,0.25)"}`
       }}
     >
-      {healthy ? tc("statusHealthy") : tc("alertCount", { count: alertCount })}
+      {healthy ? "Saudável" : `${alertCount} alerta${alertCount === 1 ? "" : "s"}`}
     </span>
   );
 }
 
 export function ClientsContentLive() {
   const t = useTranslations("clientsHub");
-  const tc = useTranslations("clientsHub");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const data = useClientsData();
@@ -58,13 +57,13 @@ export function ClientsContentLive() {
       <PageToolbar
         icon={<Building2 size={16} />}
         title={t("title")}
-        subtitle={tc("clientCount", { count: cards.length })}
+        subtitle={`${cards.length} ${cards.length === 1 ? "cliente" : "clientes"}`}
         showGlobalFilters={false}
         showSync={false}
         search={{
           value: data.search,
           onChange: data.setSearch,
-          placeholder: tc("searchClients")
+          placeholder: "Buscar clientes..."
         }}
         actions={
           <IconLabelLink
@@ -96,7 +95,7 @@ export function ClientsContentLive() {
           style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
         >
           <h3 className="font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-            {tc("emptyStateTitle")}
+            Cadastre seu primeiro cliente
           </h3>
           <p className="mt-2 font-body text-sm" style={{ color: "var(--text-dim)" }}>
             {t("subtitle")}
@@ -104,10 +103,10 @@ export function ClientsContentLive() {
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/clients/new"
-              className="ui-btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-heading text-sm font-semibold"
+              className="ui-btn-primary inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-semibold"
             >
               <Plus size={16} />
-              {tc("newClient")}
+              Novo cliente
             </Link>
             {process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? (
               <button
@@ -122,9 +121,9 @@ export function ClientsContentLive() {
                     })
                     .catch(() => {});
                 }}
-                className="ui-btn-secondary rounded-xl px-5 py-2.5 font-heading text-sm font-semibold"
+                className="ui-btn-secondary px-5 py-2.5 font-heading text-sm font-semibold"
               >
-                {tc("loadDemoData")}
+                Carregar dados demo
               </button>
             ) : null}
           </div>
@@ -214,7 +213,7 @@ export function ClientsContentLive() {
 
                   <div className="flex items-center justify-between">
                     <span className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                      {tc("accountsConnected", { count: client.accounts })}
+                      {client.accounts} {client.accounts === 1 ? "conta conectada" : "contas conectadas"}
                     </span>
                     {client.status === "healthy" ? (
                       <TrendingUp size={12} style={{ color: "#10b981" }} />
@@ -252,24 +251,14 @@ export function ClientsContentLive() {
         </p>
       </DsModal>
 
-      {/* Overlay de carregamento (mesma animação da criação de campanha) */}
-      {deleting ? (
-        <div
-          className="pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center"
-          role="alertdialog"
-          aria-modal="true"
-          aria-busy="true"
-        >
-          <div className="absolute inset-0 bg-[#05080c]/85 backdrop-blur-lg" aria-hidden />
-          <div className="ui-card relative z-10 mx-4 w-full max-w-sm px-8 py-10 text-center shadow-2xl">
-            <div className="mx-auto mb-6 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-[var(--surface-thead)]">
-              <Cog size={38} className="animate-spin text-[var(--ui-accent)]" strokeWidth={1.6} aria-hidden />
-            </div>
-            <h2 className="font-heading text-lg text-[var(--text-main)]">{tc("deletingClient")}</h2>
-            <p className="mt-2 text-sm text-[var(--text-dim)]">{tc("pleaseWait")}</p>
-          </div>
-        </div>
-      ) : null}
+      {/* Overlay de carregamento */}
+      <OrionActionLoadingOverlay
+        open={deleting}
+        title={t("deleteLoadingTitle")}
+        message={t("deleteLoadingMessage")}
+        subtitle={tCommon("pleaseWait")}
+        ariaLabelledBy="client-delete-loading-title"
+      />
     </>
   );
 }

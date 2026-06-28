@@ -64,7 +64,8 @@ export function HeroKpisWidget({
     heroMetrics,
     locale: data.locale,
     metricLabel: data.metricLabel,
-    vsLabel: data.vsLabel
+    vsLabel: data.vsLabel,
+    newDeltaLabel: data.deltaNewLabel
   });
   return <MetricPrismPrimary primaryKPIs={primaryKPIs} isLoading={data.loading} />;
 }
@@ -77,14 +78,16 @@ export function QuickPillsWidget({ data }: { data: DashboardData }) {
     dominantPreset: data.dominantPreset,
     locale: data.locale,
     metricLabel: data.metricLabel,
-    vsLabel: data.vsLabel
+    vsLabel: data.vsLabel,
+    newDeltaLabel: data.deltaNewLabel
   });
   const items: CanvasMetricItem[] = secondaryMetrics.map((m) => ({
     label: m.label,
     value: m.value,
     change: m.change,
     trend: m.trend,
-    color: m.key ? METRIC_BY_KEY[m.key]?.color : undefined
+    color: m.key ? METRIC_BY_KEY[m.key]?.color : undefined,
+    metricKey: m.key
   }));
 
   return <CanvasMetricStrip items={items} isLoading={data.loading} />;

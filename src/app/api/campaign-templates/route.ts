@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
-import { getAppContext } from "@/lib/app-context";
+import { getAppContext, resolveClientIdForTenant } from "@/lib/app-context";
 import { CampaignDraftPayloadSchema } from "@/lib/campaign-draft";
 
 const BodySchema = z.object({
@@ -32,10 +32,14 @@ export async function POST(req: Request) {
   const body = BodySchema.parse(await req.json().catch(() => ({})));
   const { campaignTemplate: repo } = await repositories();
 
+  const clientId = body.clientId
+    ? (await resolveClientIdForTenant(tenant.id, body.clientId)) ?? null
+    : null;
+
   const template = await repo.save(
     repo.create({
       tenantId: tenant.id,
-      clientId: body.clientId ?? null,
+      clientId,
       name: body.name,
       payload: body.payload
     })

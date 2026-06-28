@@ -33,7 +33,7 @@ import type { ReportPreviewPayload } from "@/lib/report-preview-types";
 import { Settings2 } from "lucide-react";
 
 const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"]);
-const PIE_COLORS = ["#f5a623", "#7c3aed", "#10b981", "#6366f1", "#ec4899", "#0ea5e9", "#94a3b8"];
+const PIE_COLORS = ["#7c3aed", "#6366f1", "#10b981", "#ec4899", "#0ea5e9", "#8b5cf6", "#94a3b8"];
 
 const GRID_STROKE = "var(--border-color)";
 const TICK = { fill: "var(--text-dimmer)", fontSize: 10 };
@@ -57,7 +57,7 @@ function ReportChartCard({
 }) {
   return (
     <div
-      className={`report-pdf-chart-card report-pdf-block ui-card overflow-hidden p-4 ${solo ? "report-pdf-solo" : ""}`}
+      className={`report-pdf-chart-card report-pdf-block campaign-creator-card overflow-hidden !p-4 ${solo ? "report-pdf-solo" : ""}`}
     >
       <div className="text-sm font-semibold text-[var(--text-main)]">{title}</div>
       <div className={`mt-3 ${solo ? "w-full" : ""}`}>{children}</div>
@@ -77,6 +77,8 @@ export function ReportPreview({
   adAccountId,
   initialCreativeGroups,
   initialBreakdownLayout,
+  brandName,
+  logoUrl,
   variant = "preview"
 }: {
   data: ReportPreviewPayload;
@@ -90,6 +92,8 @@ export function ReportPreview({
   adAccountId?: string;
   initialCreativeGroups?: ReportCreativeGroup[];
   initialBreakdownLayout?: ReportBreakdownLayoutItem[];
+  brandName?: string;
+  logoUrl?: string;
   variant?: "preview" | "print";
 }) {
   const t = useTranslations("reports");
@@ -161,8 +165,21 @@ export function ReportPreview({
 
   return (
     <div id={rootId} className={`${rootClass} overflow-visible`}>
-      <div className={`report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-color)] pb-4 ${isPrint ? "report-print-avoid-break" : ""}`}>
+      <div className={`report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--creator-card-border,var(--border-color))] pb-4 ${isPrint ? "report-print-avoid-break" : ""}`}>
         <div>
+          {logoUrl || brandName ? (
+            <div className="mb-2 flex items-center gap-2">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt={brandName ?? ""} className="h-7 w-auto object-contain" />
+              ) : null}
+              {brandName ? (
+                <span className="font-heading text-sm font-semibold text-[var(--text-main)]">
+                  {brandName}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="text-xs font-medium text-[var(--text-dim)]">
             {isPrint ? t("printTitle") : t("previewTitle")}
           </div>
@@ -187,6 +204,29 @@ export function ReportPreview({
         </div>
       </div>
 
+      {data.anomalies.length ? (
+        <div className={`flex flex-wrap gap-2 ${isPrint ? "report-print-avoid-break" : ""}`}>
+          {data.anomalies.map((a) => {
+            const up = a.delta > 0;
+            const good = a.direction === "good";
+            return (
+              <span
+                key={a.key}
+                className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium"
+                style={{
+                  borderColor: good ? "rgba(16,185,129,0.35)" : "rgba(239,68,68,0.35)",
+                  background: good ? "rgba(16,185,129,0.10)" : "rgba(239,68,68,0.10)",
+                  color: good ? "#10b981" : "#ef4444"
+                }}
+              >
+                {up ? "▲" : "▼"} {tMetrics(METRIC_BY_KEY[a.key].label)} {up ? "+" : ""}
+                {Math.round(a.delta)}%
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+
       <section className={`${sectionClass}`}>
         {!isPrint && onKpiEditModeChange ? (
           <div className="no-print mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -196,8 +236,7 @@ export function ReportPreview({
             <button
               type="button"
               onClick={() => onKpiEditModeChange(!kpiEditMode)}
-              className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
-              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+              className="ui-btn-secondary inline-flex items-center gap-2 text-xs"
             >
               <Settings2 size={14} />
               {kpiEditMode ? t("kpiCustomizeDone") : t("kpiCustomize")}
@@ -226,7 +265,7 @@ export function ReportPreview({
         />
       </section>
 
-      <section className={`${sectionClass} ui-card overflow-hidden p-4 report-print-avoid-break`}>
+      <section className={`${sectionClass} campaign-creator-card overflow-hidden !p-4 report-print-avoid-break`}>
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("narrativeTitle")}</div>
           {data.aiAnalysis ? (
@@ -237,7 +276,7 @@ export function ReportPreview({
         </div>
         <p className="mt-3 text-sm leading-relaxed text-[var(--text-dim)]">{data.narrative}</p>
         {data.aiAnalysis?.keyFindings.length ? (
-          <ul className="mt-4 space-y-2 border-t border-[var(--border-color)] pt-4">
+          <ul className="mt-4 space-y-2 border-t border-[var(--creator-card-border,var(--border-color))] pt-4">
             {data.aiAnalysis.keyFindings.map((item, i) => (
               <li key={i} className="text-sm text-[var(--text-dim)]">
                 <span className="mr-1.5 text-[var(--ui-accent)]">•</span>
@@ -305,7 +344,7 @@ export function ReportPreview({
         </ReportChartCard>
       </section>
 
-      <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4`}>
+      <section className={`${sectionClass} report-pdf-block campaign-creator-card overflow-hidden !p-4`}>
         <div className="text-sm font-semibold text-[var(--text-main)] report-print-avoid-break">
           {t("spendByCampaignTitle")}
         </div>
@@ -360,7 +399,7 @@ export function ReportPreview({
                 {t("campaignSpendTableTitle", { count: campaignsWithSpend.length })}
               </div>
               <div
-                className={`rounded-xl border border-[var(--border-color)] ${
+                className={`campaign-creator-sidebar-card-inset ${
                   isPrint ? "report-print-table-wrap" : "overflow-x-auto"
                 }`}
               >
@@ -368,7 +407,7 @@ export function ReportPreview({
                   className={`w-full text-left text-xs ${isPrint ? "report-print-table" : "min-w-[420px]"}`}
                 >
                   <thead>
-                    <tr className="border-b border-[var(--border-color)] bg-[var(--surface-bg)]">
+                    <tr className="border-b border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))]">
                       <th className="px-3 py-2.5 font-semibold text-[var(--text-dim)]">{t("colCampaign")}</th>
                       <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">{t("spend")}</th>
                       <th className="px-3 py-2.5 text-right font-semibold text-[var(--text-dim)]">
@@ -386,7 +425,7 @@ export function ReportPreview({
                     {campaignsWithSpend.map((row) => (
                       <tr
                         key={row.metaCampaignId}
-                        className="border-b border-[var(--border-color)] last:border-b-0"
+                        className="border-b border-[var(--creator-card-border,var(--border-color))] last:border-b-0"
                       >
                         <td className="max-w-[220px] truncate px-3 py-2.5 font-medium text-[var(--text-main)]">
                           {row.name}
@@ -407,7 +446,7 @@ export function ReportPreview({
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="bg-[var(--surface-bg)] font-semibold">
+                    <tr className="bg-[var(--creator-card-bg-inset,var(--surface-bg))] font-semibold">
                       <td className="px-3 py-2.5 text-[var(--text-main)]">{t("campaignSpendTotal")}</td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-right text-[var(--text-main)]">
                         {formatBRL(data.summary.spend ?? 0, locale)}
@@ -439,10 +478,10 @@ export function ReportPreview({
         />
       ) : null}
 
-      <section className={`${sectionClass} report-pdf-block ui-card overflow-hidden p-4 report-print-avoid-break`}>
+      <section className={`${sectionClass} report-pdf-block campaign-creator-card overflow-hidden !p-4 report-print-avoid-break`}>
         <div className="text-sm font-semibold text-[var(--text-main)]">{t("goalResultsTitle")}</div>
         <div className="report-pdf-grid-3 mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.08)] p-4">
+          <div className="rounded-lg border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-4">
             <div className="text-xs font-medium text-[var(--ui-accent)]">{t("goalPrimary")}</div>
             <div className="font-heading mt-1 text-2xl font-bold text-[var(--text-main)]">
               {formatMetricValue(data.client.goalMetric, goalValue, locale)}
@@ -451,13 +490,13 @@ export function ReportPreview({
               {tMetrics(METRIC_BY_KEY[data.client.goalMetric].label)}
             </div>
           </div>
-          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
+          <div className="campaign-creator-sidebar-card-inset p-4">
             <div className="text-xs font-medium text-[var(--text-dim)]">{t("goalPrevious")}</div>
             <div className="font-heading mt-1 text-2xl font-bold text-[var(--text-main)]">
               {prevGoal > 0 ? formatMetricValue(data.client.goalMetric, prevGoal, locale) : "—"}
             </div>
           </div>
-          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
+          <div className="campaign-creator-sidebar-card-inset p-4">
             <div className="text-xs font-medium text-[var(--text-dim)]">{t("goalChange")}</div>
             <div
               className="font-heading mt-1 text-2xl font-bold"
@@ -513,7 +552,7 @@ export function ReportPreview({
       </section>
 
       {reportType === "complete" && data.recommendations.length ? (
-        <section className={`${sectionClass} report-pdf-block ui-card p-4 report-print-avoid-break`}>
+        <section className={`${sectionClass} report-pdf-block campaign-creator-card !p-4 report-print-avoid-break`}>
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("recommendationsTitle")}</div>
           <p className="mt-1 text-xs text-[var(--text-dim)]">{t("recommendationsSubtitle")}</p>
           <div className="mt-4 space-y-3">
@@ -524,8 +563,8 @@ export function ReportPreview({
                   rec.priority === "high"
                     ? "border-[rgba(239,68,68,0.25)] bg-[rgba(239,68,68,0.06)]"
                     : rec.priority === "medium"
-                      ? "border-[rgba(245,166,35,0.25)] bg-[rgba(245,166,35,0.06)]"
-                      : "border-[var(--border-color)] bg-[var(--surface-bg)]"
+                      ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)]"
+                      : "border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))]"
                 }`}
               >
                 <div className="text-sm font-semibold text-[var(--text-main)]">{rec.title}</div>

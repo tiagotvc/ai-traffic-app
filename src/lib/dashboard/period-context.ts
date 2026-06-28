@@ -21,7 +21,8 @@ export function buildDashboardPeriodContext(args: {
   }
 
   const vsLabel = tDash("vsPrevPeriod");
+  const deltaNewLabel = tDash("deltaNew");
   const chartSubtitle = `${periodLabel} · ${vsLabel}`;
 
-  return { periodLabel, vsLabel, chartSubtitle };
+  return { periodLabel, vsLabel, deltaNewLabel, chartSubtitle };
 }

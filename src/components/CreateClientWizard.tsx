@@ -2,8 +2,13 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { Building2, CreditCard, Search, Tag, Users } from "lucide-react";
 
+import { FilterTextField } from "@/components/FilterTextField";
+import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
+import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard";
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/cn";
 import { formatBRL } from "@/lib/format";
 
 type BusinessRow = {
@@ -73,7 +78,6 @@ export function CreateClientWizard({
       .catch(() => {});
   }, []);
 
-  // Carrega APENAS as contas da BM selecionada (não lista todas as contas).
   const loadAccounts = useCallback((bmId: string) => {
     setLoadingAccounts(true);
     setAccounts([]);
@@ -90,16 +94,6 @@ export function CreateClientWizard({
   useEffect(() => {
     if (open) loadBusinesses();
   }, [open, loadBusinesses]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") close();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -159,6 +153,13 @@ export function CreateClientWizard({
   const headerTitle =
     step === "accounts" ? t("chooseAccounts") : step === "bm" ? t("pickBm") : t("title");
 
+  const headerSubtitle =
+    step === "name"
+      ? t("titleHint")
+      : step === "bm"
+        ? t("pickBmHint")
+        : t("chooseAccountsHint");
+
   return (
     <>
       {controlledOpen === undefined ? (
@@ -167,189 +168,197 @@ export function CreateClientWizard({
         </button>
       ) : null}
 
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onMouseDown={close}
-        >
-          <div
-            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-[var(--surface-card)] shadow-xl"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-[var(--border-color)] px-5 py-4">
-              <div className="text-base font-semibold text-[var(--text-main)]">{headerTitle}</div>
-              <button
-                type="button"
-                onClick={close}
-                className="rounded-lg p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
-                aria-label={t("cancel")}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Etapa 1: nome */}
-            {step === "name" ? (
-              <div className="space-y-3 px-5 py-5">
-                {inventoryEmpty ? (
-                  <div className="ui-alert-warning px-3 py-2 text-xs text-amber-900">
+      <CreatorModalShell
+        open={open}
+        onClose={close}
+        title={headerTitle}
+        subtitle={headerSubtitle}
+        titleIcon={<Users size={18} aria-hidden />}
+        width="lg"
+        cancelLabel={step === "name" ? t("cancel") : t("back")}
+        onCancel={
+          step === "name"
+            ? close
+            : step === "bm"
+              ? () => setStep("name")
+              : () => setStep("bm")
+        }
+        onPrimary={
+          step === "name"
+            ? () => setStep("bm")
+            : step === "accounts"
+              ? create
+              : undefined
+        }
+        primaryLabel={step === "name" ? t("next") : step === "accounts" ? (isPending ? t("creating") : t("create")) : undefined}
+        primaryDisabled={
+          step === "name" ? !name.trim() : step === "accounts" ? isPending || selected.size === 0 : true
+        }
+        primaryLoading={step === "accounts" && isPending}
+        showPrimaryCheck={step === "accounts"}
+        contentClassName="space-y-4"
+      >
+        {step === "name" ? (
+          <>
+            {inventoryEmpty ? (
+              <div className="campaign-creator-copy-card campaign-creator-copy-card--lead text-xs">
+                <div className="campaign-creator-copy-card__content">
+                  <span className="text-[var(--text-dim)]">
                     {t("emptyInventory")}{" "}
-                    <Link
-                      href="/settings/meta-assets"
-                      className="font-medium text-[var(--violet)] underline"
+                    <Link href="/settings/meta-assets" className="font-medium text-[var(--ui-accent)] underline">
+                      {t("goMetaAssets")}
+                    </Link>
+                  </span>
+                </div>
+              </div>
+            ) : null}
+            <section className="campaign-creator-card">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (name.trim()) setStep("bm");
+                }}
+              >
+                <FilterTextField
+                  creatorField
+                  icon={<Tag size={13} />}
+                  label={t("clientName")}
+                  placeholder={tHub("newClientPlaceholder")}
+                  value={name}
+                  onChange={setName}
+                />
+              </form>
+            </section>
+          </>
+        ) : null}
+
+        {step === "bm" ? (
+          <section className="campaign-creator-card">
+            <div className="campaign-creator-sidebar-card-inset max-h-72 space-y-2 overflow-y-auto p-2">
+              {businesses.length === 0 ? (
+                <div className="py-8 text-center text-sm text-[var(--text-dim)]">
+                  {t("noAvailableAccounts")}{" "}
+                  <Link href="/settings/meta-assets" className="font-medium text-[var(--ui-accent)] underline">
+                    {t("goMetaAssets")}
+                  </Link>
+                </div>
+              ) : (
+                businesses.map((bm) => (
+                  <button
+                    key={bm.metaBusinessId}
+                    type="button"
+                    onClick={() => goToAccounts(bm.metaBusinessId)}
+                    className="campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row campaign-creator-budget-choice-card--unselected w-full"
+                  >
+                    <ChoiceCardCheck selected={false} />
+                    <span
+                      className="campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline campaign-creator-budget-choice-card__icon--unselected"
+                      aria-hidden
                     >
+                      <Building2 size={18} strokeWidth={1.75} />
+                    </span>
+                    <span className="campaign-creator-budget-choice-card__content">
+                      <span className="campaign-creator-budget-choice-card__title-row">
+                        <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
+                          {bm.name}
+                        </span>
+                      </span>
+                      <span className="campaign-creator-budget-choice-card__description">
+                        {t("bmCounts", { accounts: bm.adAccountCount, pages: bm.pageCount })}
+                      </span>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {step === "accounts" ? (
+          <>
+            <section className="campaign-creator-card space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="rounded-full border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-2.5 py-0.5 font-heading text-[11px] font-semibold text-[var(--ui-accent)]">
+                  {t("selectedCount", { count: selected.size })}
+                </span>
+                <span className="campaign-creator-orion-section-label">{t("spentLast30d")}</span>
+              </div>
+
+              <FilterTextField
+                creatorField
+                icon={<Search size={13} />}
+                label={t("stepAccounts")}
+                placeholder={t("searchAccounts")}
+                value={query}
+                onChange={setQuery}
+              />
+
+              <div className="campaign-creator-sidebar-card-inset max-h-72 overflow-y-auto">
+                {loadingAccounts ? (
+                  <div className="py-8 text-center text-sm text-[var(--text-dim)]">{t("loadingAccounts")}</div>
+                ) : filtered.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-[var(--text-dim)]">
+                    {t("noAvailableAccounts")}{" "}
+                    <Link href="/settings/meta-assets" className="font-medium text-[var(--ui-accent)] underline">
                       {t("goMetaAssets")}
                     </Link>
                   </div>
-                ) : null}
-                <label className="block text-xs text-[var(--text-dim)]">{t("clientName")}</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="ui-input w-full"
-                  placeholder={tHub("newClientPlaceholder")}
-                  autoFocus
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && name.trim()) setStep("bm");
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={!name.trim()}
-                  onClick={() => setStep("bm")}
-                  className="ui-btn-primary w-full disabled:opacity-60"
-                >
-                  {t("next")}
-                </button>
-              </div>
-            ) : null}
-
-            {/* Etapa 2: escolher BM */}
-            {step === "bm" ? (
-              <div className="flex flex-1 flex-col overflow-hidden">
-                <div className="flex-1 space-y-1 overflow-y-auto px-5 py-4">
-                  {businesses.length === 0 ? (
-                    <div className="py-8 text-center text-sm text-[var(--text-dim)]">
-                      {t("noAvailableAccounts")}{" "}
-                      <Link
-                        href="/settings/meta-assets"
-                        className="font-medium text-[var(--violet)] underline"
-                      >
-                        {t("goMetaAssets")}
-                      </Link>
-                    </div>
-                  ) : (
-                    businesses.map((bm) => (
-                      <button
-                        key={bm.metaBusinessId}
-                        type="button"
-                        onClick={() => goToAccounts(bm.metaBusinessId)}
-                        className="flex w-full items-center justify-between gap-2 rounded-xl border border-[var(--border-color)] px-3 py-2.5 text-left hover:border-violet-300 hover:bg-[rgba(124,58,237,0.06)]/40"
-                      >
-                        <span className="text-sm font-medium text-[var(--text-main)]">{bm.name}</span>
-                        <span className="text-xs text-[var(--text-dim)]">
-                          {t("bmCounts", { accounts: bm.adAccountCount, pages: bm.pageCount })}
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
-                <div className="border-t border-[var(--border-color)] px-5 py-3">
-                  <button type="button" onClick={() => setStep("name")} className="ui-btn-secondary">
-                    {t("back")}
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Etapa 3: contas da BM selecionada (estilo Birch) */}
-            {step === "accounts" ? (
-              <>
-                <div className="px-5 pt-4">
-                  <p className="text-xs text-[var(--text-dim)]">{t("chooseAccountsHint")}</p>
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={t("searchAccounts")}
-                    className="ui-input mt-3 w-full"
-                  />
-                  <div className="mt-2 flex items-center justify-between text-[11px] font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
-                    <span>{t("selectedCount", { count: selected.size })}</span>
-                    <span>{t("spentLast30d")}</span>
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto px-5">
-                  {loadingAccounts ? (
-                    <div className="py-8 text-center text-sm text-[var(--text-dim)]">
-                      {t("loadingAccounts")}
-                    </div>
-                  ) : filtered.length === 0 ? (
-                    <div className="py-8 text-center text-sm text-[var(--text-dim)]">
-                      {t("noAvailableAccounts")}{" "}
-                      <Link
-                        href="/settings/meta-assets"
-                        className="font-medium text-[var(--violet)] underline"
-                      >
-                        {t("goMetaAssets")}
-                      </Link>
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-[var(--border-color)]">
-                      {filtered.map((acc) => {
-                        const checked = selected.has(acc.metaAdAccountId);
-                        return (
-                          <li key={acc.metaAdAccountId}>
-                            <label className="flex cursor-pointer items-center gap-3 py-2.5 hover:bg-[var(--surface-bg)]/60">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => toggle(acc.metaAdAccountId)}
-                                className="h-4 w-4 rounded border-[var(--border-color)] text-[var(--violet)] focus:ring-violet-500"
-                              />
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-medium text-[var(--text-main)]">
-                                  {acc.label}
-                                </div>
-                                <div className="truncate text-xs text-[var(--text-dimmer)]">
-                                  ID: {acc.metaAdAccountId}
-                                </div>
+                ) : (
+                  <ul>
+                    {filtered.map((acc) => {
+                      const checked = selected.has(acc.metaAdAccountId);
+                      return (
+                        <li
+                          key={acc.metaAdAccountId}
+                          className="border-b border-[var(--creator-card-border,var(--border-color))] last:border-b-0"
+                        >
+                          <label
+                            className={cn(
+                              "flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors",
+                              checked && "bg-[var(--ui-accent-muted)]"
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggle(acc.metaAdAccountId)}
+                              className="h-4 w-4 rounded accent-[var(--ui-accent)]"
+                            />
+                            <span
+                              className={cn(
+                                "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                                checked
+                                  ? "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]"
+                                  : "bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-[var(--text-dim)]"
+                              )}
+                              aria-hidden
+                            >
+                              <CreditCard size={14} />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-medium text-[var(--text-main)]">
+                                {acc.label}
                               </div>
-                              <div className="shrink-0 text-sm font-semibold text-[var(--text-dim)]">
-                                {acc.spendLast30d != null ? formatBRL(acc.spendLast30d, locale) : "—"}
+                              <div className="truncate text-xs text-[var(--text-dimmer)]">
+                                ID: {acc.metaAdAccountId}
                               </div>
-                            </label>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
+                            </div>
+                            <div className="shrink-0 text-sm font-semibold text-[var(--text-dim)]">
+                              {acc.spendLast30d != null ? formatBRL(acc.spendLast30d, locale) : "—"}
+                            </div>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </section>
 
-                {error ? (
-                  <div className="mx-5 mt-2 ui-alert-danger px-3 py-2 text-xs text-rose-700">
-                    {error}
-                  </div>
-                ) : null}
-
-                <div className="flex items-center justify-between gap-2 border-t border-[var(--border-color)] px-5 py-3">
-                  <button type="button" onClick={() => setStep("bm")} className="ui-btn-secondary">
-                    {t("back")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isPending || selected.size === 0}
-                    onClick={create}
-                    className="ui-btn-primary disabled:opacity-60"
-                  >
-                    {isPending ? t("creating") : t("create")}
-                  </button>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+            {error ? <div className="ui-alert-danger px-3 py-2 text-xs">{error}</div> : null}
+          </>
+        ) : null}
+      </CreatorModalShell>
     </>
   );
 }

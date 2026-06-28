@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 
+import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 import { MarketingDashboardShowcase } from "@/components/marketing/MarketingDashboardShowcase";
 import { MarketingStagger, MarketingStaggerItem } from "@/components/marketing/motion/MarketingStagger";
 import { useReducedMotion } from "@/components/marketing/motion/useReducedMotion";
@@ -23,27 +24,36 @@ export function MarketingHero() {
       };
 
   return (
-    <section className="relative overflow-hidden px-4 py-16 sm:px-6 sm:py-20 lg:py-24">
+    <section className="marketing-hero relative overflow-hidden px-4 py-16 sm:px-6 sm:py-20 lg:py-24">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-950/55 via-[var(--surface-bg)] to-indigo-950/45" />
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
+        className="pointer-events-none absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage: "radial-gradient(circle at 1px 1px, var(--text-main) 1px, transparent 0)",
           backgroundSize: "32px 32px"
         }}
       />
       <div
-        className="pointer-events-none absolute -right-24 -top-24 h-96 w-96 rounded-full blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--ui-accent-glow) 0%, transparent 65%)" }}
+        className="pointer-events-none absolute -right-24 -top-24 h-[28rem] w-[28rem] rounded-full blur-3xl"
+        style={{ background: "radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 65%)" }}
       />
       <div
-        className="pointer-events-none absolute -bottom-32 left-0 h-80 w-80 rounded-full blur-3xl"
-        style={{ background: "color-mix(in srgb, var(--ui-accent) 12%, transparent)" }}
+        className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full blur-3xl"
+        style={{ background: "radial-gradient(circle, rgba(79,70,229,0.14) 0%, transparent 70%)" }}
+      />
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/3 h-64 w-64 -translate-x-1/2 rounded-full blur-3xl"
+        style={{ background: "radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)" }}
       />
 
       <div className="relative mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-12">
         <div>
-          <motion.p className="marketing-badge" {...motionProps}>
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--amber-bright)]" />
+          <motion.div className="mb-8" {...motionProps}>
+            <OrionAgencyLogo size="xl" variant="dark" />
+          </motion.div>
+
+          <motion.p className="marketing-badge" {...motionProps} transition={{ ...motionProps.transition, delay: 0.03 }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--ui-accent)]" />
             {t("heroBadge")}
           </motion.p>
 
@@ -53,7 +63,7 @@ export function MarketingHero() {
             transition={{ ...motionProps.transition, delay: 0.05 }}
           >
             {t("heroTitlePrefix")}
-            <span className="bg-gradient-to-r from-[var(--ui-accent)] to-[var(--amber-bright)] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[var(--ui-accent)] to-violet-300 bg-clip-text text-transparent">
               {t("heroTitleHighlight")}
             </span>
             {t("heroTitleSuffix")}
@@ -84,7 +94,7 @@ export function MarketingHero() {
             {HERO_POINTS.map((key) => (
               <MarketingStaggerItem key={key}>
                 <div className="marketing-card marketing-card-muted p-4">
-                  <span className="font-heading text-xs font-bold text-[var(--amber-bright)]">
+                  <span className="font-heading text-xs font-bold text-[var(--ui-accent)]">
                     {String(HERO_POINTS.indexOf(key) + 1).padStart(2, "0")}
                   </span>
                   <p className="mt-2 text-sm leading-snug text-[var(--text-main)]">{t(key)}</p>

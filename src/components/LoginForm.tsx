@@ -61,7 +61,7 @@ export function LoginForm({
     <button
       type="button"
       onClick={openLegal("terms")}
-      className="font-semibold text-amber-300 underline-offset-2 hover:text-amber-200 hover:underline"
+      className="font-semibold text-[var(--ui-accent)] underline-offset-2 hover:underline"
     >
       {chunks}
     </button>
@@ -71,7 +71,7 @@ export function LoginForm({
     <button
       type="button"
       onClick={openLegal("privacy")}
-      className="font-semibold text-amber-300 underline-offset-2 hover:text-amber-200 hover:underline"
+      className="font-semibold text-[var(--ui-accent)] underline-offset-2 hover:underline"
     >
       {chunks}
     </button>
@@ -200,7 +200,7 @@ export function LoginForm({
               checked={termsAccepted}
               onChange={(e) => setTermsAccepted(e.target.checked)}
               required
-              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-white/20 bg-white/5 accent-amber-400"
+              className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-white/20 bg-white/5 accent-[var(--ui-accent)]"
             />
             <label
               htmlFor="terms-accept"

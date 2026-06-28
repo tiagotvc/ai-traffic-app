@@ -245,8 +245,17 @@ export const CampaignDraftPayloadV2Schema = z.object({
         .object({
           activeNode: z.enum(["campaign", "adset", "ad", "review"]).optional(),
           campaignSection: z.enum(["objective", "clientAccountIdentity", "budget"]).optional(),
-          /** legacy "meta_saved" coerced to "compiler" on restore */
-          adsetSection: z.enum(["compiler", "meta_saved", "advanced", "schedule"]).optional(),
+          /** legacy targeting values coerced to segmentation on restore */
+          adsetSection: z
+            .enum([
+              "setup",
+              "segmentation",
+              "compiler",
+              "meta_saved",
+              "advanced",
+              "schedule"
+            ])
+            .optional(),
           /** legacy "identity" coerced to "setup" on restore */
           adSection: z.enum(["setup", "identity", "creative", "destination"]).optional()
         })

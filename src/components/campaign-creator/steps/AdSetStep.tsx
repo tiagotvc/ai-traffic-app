@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { CalendarDays, SlidersHorizontal, Users } from "lucide-react";
+import {
+  CalendarClock,
+  Settings2,
+  SlidersHorizontal,
+  Users,
+  type LucideIcon
+} from "lucide-react";
 
 import { AdSetCompilerLeadCards } from "@/components/campaign-creator/AdSetCompilerLeadCards";
 import { AdSetConfigurationPanel } from "@/components/campaign-creator/AdSetConfigurationPanel";
@@ -16,7 +22,7 @@ import { CampaignCreatorDateTimeField } from "@/components/campaign-creator/Camp
 import { PlacementsPanel } from "@/components/campaign-creator/PlacementsPanel";
 import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import { useAdSetStepSubflow, type AdSetSection } from "@/components/campaign-creator/AdSetStepSubflowContext";
+import { useAdSetStepSubflow } from "@/components/campaign-creator/AdSetStepSubflowContext";
 import { FormField } from "@/components/ui/FormField";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { type FormSelectOption } from "@/components/ui/FormSelect";
@@ -35,10 +41,57 @@ import {
 } from "@/lib/campaign-draft";
 import type { AdSetDraftItem, DraftTargeting, TargetingItem } from "@/lib/campaign-draft";
 import { defaultScheduleStartLocal } from "@/lib/campaign-placements";
+import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard";
 import { DsChoiceCard } from "@/design-system/components/DsChoiceCard";
 import { cn } from "@/lib/cn";
 
-type AdSetView = AdSetSection;
+function TargetingMethodChoiceCard({
+  selected,
+  label,
+  description,
+  icon: Icon,
+  onSelect
+}: {
+  selected: boolean;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row h-full min-h-[9.5rem]",
+        selected
+          ? "campaign-creator-budget-choice-card--selected"
+          : "campaign-creator-budget-choice-card--unselected"
+      )}
+    >
+      <ChoiceCardCheck selected={selected} />
+      <span
+        className={cn(
+          "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline",
+          selected
+            ? "campaign-creator-budget-choice-card__icon--selected"
+            : "campaign-creator-budget-choice-card__icon--unselected"
+        )}
+        aria-hidden
+      >
+        <Icon size={18} strokeWidth={1.75} />
+      </span>
+      <span className="campaign-creator-budget-choice-card__content">
+        <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
+          {label}
+        </span>
+        <span className="campaign-creator-budget-choice-card__description">{description}</span>
+      </span>
+    </button>
+  );
+}
 
 export function AdSetStep() {
   const t = useTranslations("campaignCreator");
@@ -52,8 +105,7 @@ export function AdSetStep() {
   const targeting = adset.targeting;
   const clientRequired = !payload.clientSlug;
 
-  // Mutual exclusivity: Persona+Zone (compiler) and Advanced segmentation cannot be
-  // used together. Whichever method has data "locks" the other.
+  // Mutual exclusivity: Orion (compiler) and Meta (advanced) cannot be used together.
   const targetingMethod: "compiler" | "advanced" =
     adset.targetingMode === "advanced" ? "advanced" : "compiler";
   const compilerHasData = !!(adset.personaId || adset.zoneId);
@@ -78,7 +130,7 @@ export function AdSetStep() {
   const [customAudiencesOpen, setCustomAudiencesOpen] = useState(false);
   const [savedAudienceModalOpen, setSavedAudienceModalOpen] = useState(false);
   const [pendingMethodSwitch, setPendingMethodSwitch] = useState<"compiler" | "advanced" | null>(null);
-  const { section: activeView, canGoTo, isSectionVisited, goTo } = useAdSetStepSubflow();
+  const { section: activeSection, canGoTo, isSectionVisited, goTo } = useAdSetStepSubflow();
   const [commercialLocation, setCommercialLocation] = useState<{
     address: string | null;
     normalized: string | null;
@@ -187,10 +239,10 @@ export function AdSetStep() {
   }, [payload.clientSlug]);
 
   useEffect(() => {
-    if (activeView === "advanced") {
+    if (targetingMethod === "advanced") {
       setMapViewport(null);
     }
-  }, [activeView]);
+  }, [targetingMethod]);
 
   function centerOnCommercialAddress() {
     if (commercialLocation.lat != null && commercialLocation.lng != null) {
@@ -364,29 +416,17 @@ export function AdSetStep() {
         }
       });
     }
-    goTo(method);
   }
 
-  function selectView(view: AdSetView) {
-    // Schedule is not a targeting method — free navigation.
-    if (view === "schedule") {
-      goTo("schedule");
-      return;
-    }
+  function selectTargetingMethod(method: "compiler" | "advanced") {
+    if (method === targetingMethod) return;
 
-    // Same method already active — just navigate to it.
-    if (view === targetingMethod) {
-      goTo(view);
-      return;
-    }
-
-    // Switching method: confirm first if the other one already has data.
-    const otherHasData = view === "advanced" ? compilerHasData : advancedHasData;
+    const otherHasData = method === "advanced" ? compilerHasData : advancedHasData;
     if (otherHasData) {
-      setPendingMethodSwitch(view);
+      setPendingMethodSwitch(method);
       return;
     }
-    applyMethodSwitch(view);
+    applyMethodSwitch(method);
   }
 
   function selectAdset(id: string) {
@@ -443,10 +483,54 @@ export function AdSetStep() {
     });
   }
 
+  const scheduleSection = (
+    <div className="campaign-creator-advanced-targeting-body">
+      <h4 className="campaign-creator-section-title">{t("adsetSection_schedule_title")}</h4>
+      <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{t("adsetSection_schedule_hint")}</p>
+      <div className="campaign-creator-budget-top-grid mt-3">
+        <section className="campaign-creator-card campaign-creator-budget-side-card">
+          <h4 className="campaign-creator-section-title">{t("scheduleSection")}</h4>
+          <div className="mt-2 flex min-h-0 flex-1 flex-col space-y-3">
+            <FormField label={t("scheduleStart")}>
+              <CampaignCreatorDateTimeField
+                value={adset.schedule.start ?? ""}
+                onChange={(start) =>
+                  patchAdset({
+                    schedule: { ...adset.schedule, start: start || null }
+                  })
+                }
+                disabled={clientRequired}
+                aria-label={t("scheduleStart")}
+              />
+            </FormField>
+            <FormField label={t("scheduleEnd")}>
+              <CampaignCreatorDateTimeField
+                value={adset.schedule.end ?? ""}
+                onChange={(end) =>
+                  patchAdset({
+                    schedule: { ...adset.schedule, end: end || null }
+                  })
+                }
+                disabled={clientRequired}
+                clearable
+                aria-label={t("scheduleEnd")}
+              />
+            </FormField>
+          </div>
+        </section>
+
+        <PlacementsPanel
+          value={adset.placements}
+          onChange={(placements) => patchAdset({ placements })}
+          disabled={clientRequired}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
-      <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pb-2">
-        <div className="space-y-3">
+      <div className="campaign-creator-step-sticky-header space-y-3">
         {!payload.clientSlug ? (
           <p className="ui-alert-warning px-3 py-2 text-xs">{t("selectClientFirst")}</p>
         ) : null}
@@ -492,160 +576,132 @@ export function AdSetStep() {
           <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("adsetStepHint")}</p>
         </div>
 
-        <AdSetConfigurationPanel
-          layout="stacked"
-          payload={payload}
-          adset={adset}
-          clientRequired={clientRequired}
-          addAdsetMode={addAdsetMode}
-          dynamicCreativeLockedByReuse={dynamicCreativeLockedByReuse}
-          conversionLocationOptions={conversionLocationOptions}
-          pixelOptions={pixelOptions}
-          conversionEventOptions={conversionEventOptions}
-          onPatchAdset={patchAdset}
-          onImport={() => setImportOpen(true)}
-        />
-
-        <div className="rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-3 py-2.5">
-          <p className="text-xs font-semibold text-[var(--ui-accent)]">{t("targetingMethodNoticeTitle")}</p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-dim)]">
-            {t("targetingMethodNoticeBody")}
-          </p>
-        </div>
-
         <div className="campaign-creator-choice-cards campaign-creator-choice-cards--3">
           <DsChoiceCard
             layout="inline"
-            title={t("targetingMode_compiler")}
-            description={
-              compilerLocked ? t("targetingMethodLockedByAdvanced") : t("targetingMode_compiler_hint")
-            }
-            icon={<Users size={16} />}
-            accent={activeView === "compiler"}
-            muted={compilerLocked || (!isSectionVisited("compiler") && activeView !== "compiler")}
-            visited={!compilerLocked && isSectionVisited("compiler") && activeView !== "compiler"}
-            onClick={() => selectView("compiler")}
-            className={cn(
-              !canGoTo("compiler") && "pointer-events-none",
-              targetingMethod === "compiler"
-                ? activeView !== "compiler" && "[&_span]:font-bold"
-                : "ds-choice-card--hatched"
-            )}
+            title={t("adsetSub_setup")}
+            description={t("adsetSection_setup_hint")}
+            icon={<Settings2 size={18} />}
+            accent={activeSection === "setup"}
+            muted={!isSectionVisited("setup") && activeSection !== "setup"}
+            visited={isSectionVisited("setup") && activeSection !== "setup"}
+            onClick={() => goTo("setup")}
+            className={!canGoTo("setup") ? "pointer-events-none" : undefined}
           />
           <DsChoiceCard
             layout="inline"
-            title={t("targetingMode_advanced")}
-            description={
-              advancedLocked ? t("targetingMethodLockedByCompiler") : t("targetingMode_advanced_hint")
-            }
-            icon={<SlidersHorizontal size={16} />}
-            accent={activeView === "advanced"}
-            muted={advancedLocked || (!isSectionVisited("advanced") && activeView !== "advanced")}
-            visited={!advancedLocked && isSectionVisited("advanced") && activeView !== "advanced"}
-            onClick={() => selectView("advanced")}
-            className={cn(
-              !canGoTo("advanced") && "pointer-events-none",
-              targetingMethod === "advanced"
-                ? activeView !== "advanced" && "[&_span]:font-bold"
-                : "ds-choice-card--hatched"
-            )}
+            title={t("adsetSub_segmentation")}
+            description={t("adsetSection_segmentation_hint")}
+            icon={<Users size={18} />}
+            accent={activeSection === "segmentation"}
+            muted={!isSectionVisited("segmentation") && activeSection !== "segmentation"}
+            visited={isSectionVisited("segmentation") && activeSection !== "segmentation"}
+            onClick={() => goTo("segmentation")}
+            className={!canGoTo("segmentation") ? "pointer-events-none" : undefined}
           />
           <DsChoiceCard
             layout="inline"
-            title={t("adsetSection_schedule_short")}
+            title={t("adsetSub_schedule")}
             description={t("adsetSection_schedule_hint")}
-            icon={<CalendarDays size={16} />}
-            accent={activeView === "schedule"}
-            muted={!isSectionVisited("schedule") && activeView !== "schedule"}
-            visited={isSectionVisited("schedule") && activeView !== "schedule"}
-            onClick={() => selectView("schedule")}
+            icon={<CalendarClock size={18} />}
+            accent={activeSection === "schedule"}
+            muted={!isSectionVisited("schedule") && activeSection !== "schedule"}
+            visited={isSectionVisited("schedule") && activeSection !== "schedule"}
+            onClick={() => goTo("schedule")}
             className={!canGoTo("schedule") ? "pointer-events-none" : undefined}
           />
         </div>
+      </div>
 
-        {activeView === "compiler" ? compilerTargetingSections() : null}
-
-        {activeView === "advanced" ? (
-          <div className="space-y-3">
-            <AdvancedTargetingPanel
-              mapInstanceKey={activeView}
-              targeting={targeting}
-              clientSlug={payload.clientSlug}
-              adAccountId={payload.adAccountId}
+      <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pt-5 pb-2">
+        <div className="space-y-3">
+          {activeSection === "setup" ? (
+            <AdSetConfigurationPanel
+              layout="stacked"
+              payload={payload}
+              adset={adset}
               clientRequired={clientRequired}
-              metaGeoLocations={metaGeoLocations}
-              mapViewport={mapViewport}
-              commercialMarker={
-                commercialLocation.lat != null && commercialLocation.lng != null
-                  ? {
-                      lat: commercialLocation.lat,
-                      lng: commercialLocation.lng,
-                      label: commercialLocation.normalized ?? commercialLocation.address ?? undefined
-                    }
-                  : null
-              }
-              centerCommercialDisabled={
-                clientRequired ||
-                commercialLocation.lat == null ||
-                commercialLocation.lng == null
-              }
-              centerCommercialHint={commercialCenterHint}
-              savedAudiencesCount={audiences.length}
-              includedAudienceCount={includedAudienceCount}
-              excludedAudienceCount={excludedAudienceCount}
-              onRefineAudience={() => setCustomAudiencesOpen(true)}
-              onPatchTargeting={patchTargeting}
-              onCenterCommercial={centerOnCommercialAddress}
-              onGeoLocationAdd={flyToGeoLocation}
-              onMapPinAdded={clearMapViewport}
+              addAdsetMode={addAdsetMode}
+              dynamicCreativeLockedByReuse={dynamicCreativeLockedByReuse}
+              conversionLocationOptions={conversionLocationOptions}
+              pixelOptions={pixelOptions}
+              conversionEventOptions={conversionEventOptions}
+              onPatchAdset={patchAdset}
+              onImport={() => setImportOpen(true)}
             />
-          </div>
-        ) : null}
+          ) : null}
 
-        {activeView === "schedule" ? (
-          <div className="campaign-creator-advanced-targeting-body">
-            <div className="campaign-creator-budget-top-grid">
-              <section className="campaign-creator-card campaign-creator-budget-side-card">
-                <h4 className="campaign-creator-section-title">{t("scheduleSection")}</h4>
-                <div className="mt-2 flex min-h-0 flex-1 flex-col space-y-3">
-                  <FormField label={t("scheduleStart")}>
-                    <CampaignCreatorDateTimeField
-                      value={adset.schedule.start ?? ""}
-                      onChange={(start) =>
-                        patchAdset({
-                          schedule: { ...adset.schedule, start: start || null }
-                        })
-                      }
-                      disabled={clientRequired}
-                      aria-label={t("scheduleStart")}
-                    />
-                  </FormField>
-                  <FormField label={t("scheduleEnd")}>
-                    <CampaignCreatorDateTimeField
-                      value={adset.schedule.end ?? ""}
-                      onChange={(end) =>
-                        patchAdset({
-                          schedule: { ...adset.schedule, end: end || null }
-                        })
-                      }
-                      disabled={clientRequired}
-                      clearable
-                      aria-label={t("scheduleEnd")}
-                    />
-                  </FormField>
+          {activeSection === "segmentation" ? (
+            <>
+              <div
+                className="grid items-stretch gap-4 sm:grid-cols-2"
+                role="radiogroup"
+                aria-label={t("adsetSub_segmentation")}
+              >
+                <TargetingMethodChoiceCard
+                  selected={targetingMethod === "compiler"}
+                  label={t("targetingSegment_orion")}
+                  description={
+                    compilerLocked ? t("targetingMethodLockedByAdvanced") : t("targetingSegment_orion_hint")
+                  }
+                  icon={Users}
+                  onSelect={() => selectTargetingMethod("compiler")}
+                />
+                <TargetingMethodChoiceCard
+                  selected={targetingMethod === "advanced"}
+                  label={t("targetingSegment_meta")}
+                  description={
+                    advancedLocked ? t("targetingMethodLockedByCompiler") : t("targetingSegment_meta_hint")
+                  }
+                  icon={SlidersHorizontal}
+                  onSelect={() => selectTargetingMethod("advanced")}
+                />
+              </div>
+
+              {targetingMethod === "compiler" ? compilerTargetingSections() : null}
+
+              {targetingMethod === "advanced" ? (
+                <div className="space-y-3">
+                  <AdvancedTargetingPanel
+                    mapInstanceKey="advanced"
+                    targeting={targeting}
+                    clientSlug={payload.clientSlug}
+                    adAccountId={payload.adAccountId}
+                    clientRequired={clientRequired}
+                    metaGeoLocations={metaGeoLocations}
+                    mapViewport={mapViewport}
+                    commercialMarker={
+                      commercialLocation.lat != null && commercialLocation.lng != null
+                        ? {
+                            lat: commercialLocation.lat,
+                            lng: commercialLocation.lng,
+                            label: commercialLocation.normalized ?? commercialLocation.address ?? undefined
+                          }
+                        : null
+                    }
+                    centerCommercialDisabled={
+                      clientRequired ||
+                      commercialLocation.lat == null ||
+                      commercialLocation.lng == null
+                    }
+                    centerCommercialHint={commercialCenterHint}
+                    savedAudiencesCount={audiences.length}
+                    includedAudienceCount={includedAudienceCount}
+                    excludedAudienceCount={excludedAudienceCount}
+                    onRefineAudience={() => setCustomAudiencesOpen(true)}
+                    onPatchTargeting={patchTargeting}
+                    onCenterCommercial={centerOnCommercialAddress}
+                    onGeoLocationAdd={flyToGeoLocation}
+                    onMapPinAdded={clearMapViewport}
+                  />
                 </div>
-              </section>
+              ) : null}
+            </>
+          ) : null}
 
-              <PlacementsPanel
-                value={adset.placements}
-                onChange={(placements) => patchAdset({ placements })}
-                disabled={clientRequired}
-              />
-            </div>
-          </div>
-        ) : null}
+          {activeSection === "schedule" ? scheduleSection : null}
 
-        <CampaignCreatorUxMobileSummary />
+          <CampaignCreatorUxMobileSummary />
         </div>
       </div>
 

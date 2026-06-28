@@ -5,7 +5,8 @@ import {
   resolveConsultationCounts,
   resolveConsultedCampaignsCount,
   resolveMetaAdsConsultedCount,
-  resolveSyncedCampaignsCount
+  resolveSyncedCampaignsCount,
+  wasMetaResearchAttempted
 } from "@/lib/campaign-creator/orion-brain-utils";
 
 function baseInsight(
@@ -55,6 +56,25 @@ describe("orion-brain-utils consultation counts", () => {
     expect(resolveSyncedCampaignsCount(insight)).toBe(15);
     expect(resolveConsultedCampaignsCount(insight)).toBe(15);
     expect(resolveMetaAdsConsultedCount(insight)).toBe(3);
+  });
+
+  it("detects meta research attempt vs skip", () => {
+    expect(
+      wasMetaResearchAttempted({
+        step: "meta_competitor_search",
+        status: "fallback",
+        count: 0,
+        detail: "api_error"
+      })
+    ).toBe(true);
+    expect(
+      wasMetaResearchAttempted({
+        step: "meta_competitor_search",
+        status: "skipped",
+        count: 0,
+        detail: "api_not_configured"
+      })
+    ).toBe(false);
   });
 
   it("uses meta ads for badge when only Ad Library was queried", () => {

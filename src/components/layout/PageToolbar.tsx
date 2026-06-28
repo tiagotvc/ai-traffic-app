@@ -8,6 +8,7 @@ import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
 import { FilterToggleButton } from "@/components/ui/FilterToggleButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 import { cn } from "@/lib/cn";
 
 export function PageToolbar({
@@ -23,6 +24,7 @@ export function PageToolbar({
   actions,
   showSync = true,
   showAccountFilter = true,
+  filterCreatorFields = false,
   className
 }: {
   eyebrow?: string;
@@ -41,6 +43,8 @@ export function PageToolbar({
   actions?: ReactNode;
   showSync?: boolean;
   showAccountFilter?: boolean;
+  /** Inset creator field styling inside the filter panel (Destaques / Reports pattern). */
+  filterCreatorFields?: boolean;
   className?: string;
 }) {
   const t = useTranslations("dashboard");
@@ -56,25 +60,13 @@ export function PageToolbar({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {eyebrow ? (
-            <p className="mb-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
-              {eyebrow}
-            </p>
+            <p className="mb-1 font-body text-xs text-[var(--text-dim)]">{eyebrow}</p>
           ) : null}
-          <div className="flex items-center gap-2">
-            {icon ? <div className="ui-toolbar-icon-shell">{icon}</div> : null}
-            {typeof title === "string" ? (
-              <h1 className="font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
-                {title}
-              </h1>
-            ) : (
-              title
-            )}
-          </div>
-          {subtitle ? (
-            <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-              {subtitle}
-            </p>
-          ) : null}
+          <PageTitleBlock
+            title={title}
+            subtitle={subtitle}
+            titleIcon={icon}
+          />
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
@@ -105,12 +97,12 @@ export function PageToolbar({
 
       {filtersOpen && canFilter ? (
         <div
-          className="ui-filter-panel-grid mt-3 rounded-xl border p-3 text-xs [&_button]:py-1.5 [&_button]:text-xs"
-          style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
+          className="ui-filter-panel-grid ui-filter-panel-grid--campaign-creator ui-filter-panel-card mt-3 p-3 text-xs [&_button]:py-1.5 [&_button]:text-xs"
         >
           {hasGlobalFilters ? (
             <GlobalScopeFilters
               layout="flat"
+              creatorField={filterCreatorFields}
               clientFilter={strip!.clientFilter}
               setClientFilter={strip!.setClientFilter}
               accountFilter={strip!.accountFilter}

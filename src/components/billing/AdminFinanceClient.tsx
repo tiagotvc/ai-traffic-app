@@ -1,5 +1,6 @@
 "use client";
 
+import { Receipt, Wallet } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { DsPageHeader } from "@/design-system";
@@ -42,54 +43,56 @@ function ProviderCard({
 }) {
   const t = useTranslations("billingAdmin");
   return (
-    <div className="ui-card p-4">
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="text-sm font-semibold text-[var(--text-main)]">{title}</h2>
+    <div className="campaign-creator-card campaign-creator-card--compact">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{title}</h2>
+          <p className="mt-0.5 text-xs text-[var(--text-dim)]">{block.currency}</p>
+        </div>
         <a
           href={dashboardUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs ui-link"
+          className="ui-btn-accent-outline px-2.5 py-1 text-[11px] font-heading font-semibold"
         >
           {t("financeOpenDashboard")}
         </a>
       </div>
-      <p className="mt-1 text-xs text-[var(--text-dim)]">{block.currency}</p>
-      <dl className="mt-3 grid gap-2.5 sm:grid-cols-2">
-        <div>
-          <dt className="text-[11px] text-[var(--text-dim)]">{t("financeRevenue")}</dt>
-          <dd className="text-lg font-bold tabular-nums text-emerald-500">
+      <dl className="grid gap-2.5 sm:grid-cols-2">
+        <div className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-2">
+          <dt className="campaign-creator-orion-section-label">{t("financeRevenue")}</dt>
+          <dd className="mt-1 text-lg font-bold tabular-nums text-emerald-500">
             {formatMoney(block.revenueCents, block.currency)}
           </dd>
-          <dd className="text-xs text-[var(--text-dimmer)]">{block.paidInvoiceCount} paid</dd>
+          <dd className="text-[11px] text-[var(--text-dimmer)]">{block.paidInvoiceCount} paid</dd>
         </div>
-        <div>
-          <dt className="text-[11px] text-[var(--text-dim)]">{t("financeMrr")}</dt>
-          <dd className="text-lg font-bold tabular-nums text-[var(--text-main)]">
+        <div className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-2">
+          <dt className="campaign-creator-orion-section-label">{t("financeMrr")}</dt>
+          <dd className="mt-1 text-lg font-bold tabular-nums text-[var(--text-main)]">
             {formatMoney(block.mrrCents, block.currency)}
           </dd>
-          <dd className="text-xs text-[var(--text-dimmer)]">
+          <dd className="text-[11px] text-[var(--text-dimmer)]">
             {block.activeSubscriptions} {t("financeActiveSubs")}
           </dd>
         </div>
-        <div>
-          <dt className="text-xs text-[var(--text-dim)]">{t("financePending")}</dt>
-          <dd className="font-semibold tabular-nums text-amber-500">
+        <div className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-2">
+          <dt className="campaign-creator-orion-section-label">{t("financePending")}</dt>
+          <dd className="mt-1 font-semibold tabular-nums text-[var(--amber)]">
             {formatMoney(block.pendingCents, block.currency)}
           </dd>
-          <dd className="text-xs text-[var(--text-dimmer)]">{block.pendingCount}</dd>
+          <dd className="text-[11px] text-[var(--text-dimmer)]">{block.pendingCount}</dd>
         </div>
-        <div>
-          <dt className="text-xs text-[var(--text-dim)]">{t("financeRefunded")}</dt>
-          <dd className="font-semibold tabular-nums text-[var(--text-dim)]">
+        <div className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-2">
+          <dt className="campaign-creator-orion-section-label">{t("financeRefunded")}</dt>
+          <dd className="mt-1 font-semibold tabular-nums text-[var(--text-dim)]">
             {formatMoney(block.refundedCents, block.currency)}
           </dd>
-          <dd className="text-xs text-[var(--text-dimmer)]">{block.refundedCount}</dd>
+          <dd className="text-[11px] text-[var(--text-dimmer)]">{block.refundedCount}</dd>
         </div>
         {balance ? (
-          <div className="sm:col-span-2">
-            <dt className="text-xs text-[var(--text-dim)]">{t("financeProviderBalance")}</dt>
-            <dd className="font-semibold text-[var(--text-main)]">{balance}</dd>
+          <div className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-2 sm:col-span-2">
+            <dt className="campaign-creator-orion-section-label">{t("financeProviderBalance")}</dt>
+            <dd className="mt-1 font-semibold text-[var(--text-main)]">{balance}</dd>
           </div>
         ) : null}
       </dl>
@@ -146,7 +149,11 @@ export function AdminFinanceClient() {
 
   return (
     <div className="w-full space-y-4">
-      <DsPageHeader title={t("financeTitle")} subtitle={t("financeSubtitle")} />
+      <DsPageHeader
+        title={t("financeTitle")}
+        subtitle={t("financeSubtitle")}
+        titleIcon={<Wallet size={16} />}
+      />
 
       <div className="grid gap-3 lg:grid-cols-2">
         <ProviderCard
@@ -163,31 +170,38 @@ export function AdminFinanceClient() {
         />
       </div>
 
-      <div className="ui-card overflow-hidden">
-        <h2 className="border-b border-[var(--border-color)] bg-[var(--surface-thead)]/80 px-4 py-2.5 text-sm font-semibold text-[var(--text-main)]">
-          {t("financeRecentInvoices")}
-        </h2>
+      <div className="ui-campaign-table-shell ui-campaign-table-shell--compact overflow-hidden">
+        <div className="ui-campaign-table-shell__header">
+          <div className="ui-campaign-table-shell__title">
+            <span className="ui-campaign-table-shell__icon">
+              <Receipt size={15} strokeWidth={2} />
+            </span>
+            <span>{t("financeRecentInvoices")}</span>
+          </div>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[var(--surface-thead)]/50 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+          <table className="ui-campaign-table ui-campaign-table--compact w-full text-left">
+            <thead>
               <tr>
-                <th className="px-4 py-2">{t("colDate")}</th>
-                <th className="px-4 py-2">{t("colProvider")}</th>
-                <th className="px-4 py-2">{t("colAmount")}</th>
-                <th className="px-4 py-2">{t("colStatus")}</th>
+                <th>{t("colDate")}</th>
+                <th>{t("colProvider")}</th>
+                <th>{t("colAmount")}</th>
+                <th>{t("colStatus")}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border-color)]">
+            <tbody>
               {invoices.map((inv) => (
                 <tr key={inv.id}>
-                  <td className="px-4 py-2">
-                    {new Date(inv.createdAt).toLocaleDateString(locale)}
-                  </td>
-                  <td className="px-4 py-2">{inv.provider}</td>
-                  <td className="px-4 py-2 font-semibold tabular-nums">
+                  <td>{new Date(inv.createdAt).toLocaleDateString(locale)}</td>
+                  <td>{inv.provider}</td>
+                  <td className="font-semibold tabular-nums">
                     {formatMoney(inv.amountCents, inv.currency ?? "BRL")}
                   </td>
-                  <td className="px-4 py-2">{inv.status}</td>
+                  <td>
+                    <span className="ds-table-compact-badge ds-table-compact-badge--neutral">
+                      {inv.status}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

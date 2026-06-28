@@ -6,24 +6,24 @@ export async function LandingMission() {
   const t = await getTranslations("marketing");
 
   return (
-    <section className="border-b border-white/5 px-4 py-16 sm:px-6">
+    <section className="marketing-section marketing-section-alt">
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-violet-300/80">{t("missionBadge")}</p>
-            <h2 className="mt-2 font-heading text-2xl font-bold text-white sm:text-3xl">{t("missionTitle")}</h2>
-            <p className="mt-4 text-sm leading-relaxed text-violet-200/75">{t("missionBody")}</p>
-            <p className="mt-3 text-sm font-medium text-amber-200/90">{t("missionHighlight")}</p>
+            <p className="marketing-section-title">{t("missionBadge")}</p>
+            <h2 className="marketing-section-heading">{t("missionTitle")}</h2>
+            <p className="marketing-section-sub">{t("missionBody")}</p>
+            <p className="mt-3 text-sm font-medium text-[var(--ui-accent)]">{t("missionHighlight")}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {(["missionStat1", "missionStat2", "missionStat3", "missionStat4"] as const).map((key) => (
               <div
                 key={key}
-                className="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-center"
+                className="marketing-card p-4 text-center"
               >
-                <div className="font-heading text-2xl font-bold text-amber-300">{t(`${key}Value`)}</div>
-                <div className="mt-1 text-[11px] leading-snug text-violet-200/65">{t(`${key}Label`)}</div>
+                <div className="font-heading text-2xl font-bold text-[var(--ui-accent)]">{t(`${key}Value`)}</div>
+                <div className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">{t(`${key}Label`)}</div>
               </div>
             ))}
           </div>

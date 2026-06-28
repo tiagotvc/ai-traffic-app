@@ -24,7 +24,14 @@ import {
   mergeBreakdownLayout,
   serializeBreakdownLayout
 } from "@/lib/report-breakdown-layout";
-import { BarChart2, BarChart3, Building2, ExternalLink, FileText } from "lucide-react";
+import { ReportsAiGenerateTrigger } from "@/components/reports/ReportsAiGenerateTrigger";
+import { ReportsConsolidatedPanel } from "@/components/reports/ReportsConsolidatedPanel";
+import {
+  ReportsTemplatesControl,
+  type ReportTemplateConfig
+} from "@/components/reports/ReportsTemplatesControl";
+import { FilterToggleButton } from "@/components/ui/FilterToggleButton";
+import { BarChart2, BarChart3, Building2, Download, ExternalLink, FileText } from "lucide-react";
 
 import { DsPageHeader } from "@/design-system";
 
@@ -83,6 +90,21 @@ export function ReportsClient() {
   const [scheduleName, setScheduleName] = useState("");
   const [scheduleFreq, setScheduleFreq] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [scheduleEmail, setScheduleEmail] = useState("");
+  const [showFilters, setShowFilters] = useState(true);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [pendingAiGenerate, setPendingAiGenerate] = useState(false);
+  // Flags: v1 = relatório clássico (sem IA), v2 = relatório com IA. Default ON
+  // enquanto carrega; cada um pode ser desligado no admin sem afetar o outro.
+  const [reportsFlags, setReportsFlags] = useState({ v1: true, v2: true });
+
+  useEffect(() => {
+    fetch("/api/reports/flags")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j?.ok) setReportsFlags({ v1: !!j.v1, v2: !!j.v2 });
+      })
+      .catch(() => {});
+  }, []);
 
   const periodQuery = useMemo(() => periodStateToQuery(period).toString(), [period]);
 
@@ -217,9 +239,75 @@ export function ReportsClient() {
     tMetrics
   ]);
 
+  // R2.6 — dispara o preview depois que a config da IA é aplicada ao estado.
+  useEffect(() => {
+    if (!pendingAiGenerate || !selectedClient) return;
+    setPendingAiGenerate(false);
+    void loadPreview();
+  }, [pendingAiGenerate, selectedClient, loadPreview]);
+
+  async function generateByAi(prompt: string): Promise<boolean> {
+    if (!prompt.trim() || !strip) return false;
+    setAiBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/reports/ai-config", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+      const j = await res.json();
+      if (!res.ok || !j.ok || !j.config) {
+        setMessage(j.error ?? t("aiGenerateFailed"));
+        return false;
+      }
+      const c = j.config as {
+        clientSlug: string | null;
+        periodPreset: string;
+        reportType: "simple" | "complete";
+        metrics: string[];
+      };
+      if (c.clientSlug) strip.setClientFilter(c.clientSlug);
+      if (c.periodPreset)
+        strip.setPeriod({ preset: c.periodPreset as PeriodState["preset"], since: "", until: "" });
+      if (c.reportType) setReportType(c.reportType);
+      if (Array.isArray(c.metrics) && c.metrics.length) {
+        const valid = c.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[];
+        if (valid.length) setSelectedMetrics(valid.slice(0, 6));
+      }
+      setPendingAiGenerate(true);
+      return true;
+    } catch {
+      setMessage(t("aiGenerateFailed"));
+      return false;
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  function applyTemplate(c: ReportTemplateConfig) {
+    setReportType(c.reportType);
+    const valid = (c.metrics ?? []).filter((m) => m in METRIC_BY_KEY) as MetricKey[];
+    if (valid.length) setSelectedMetrics(valid);
+    if (c.periodPreset && strip) {
+      strip.setPeriod({ preset: c.periodPreset as PeriodState["preset"], since: "", until: "" });
+    }
+  }
+
   function openPrintView() {
     if (!printViewUrl) return;
     window.open(printViewUrl, "_blank", "noopener,noreferrer");
+  }
+
+  function downloadCsv() {
+    if (!selectedClient) return;
+    const qs = new URLSearchParams(periodQuery);
+    qs.set("clientId", selectedClient.slug);
+    qs.set("type", reportType);
+    qs.set("locale", locale);
+    if (preview) qs.set("goalLabel", tMetrics(METRIC_BY_KEY[preview.client.goalMetric].label));
+    if (adAccountId) qs.set("adAccountId", adAccountId);
+    window.open(`/api/reports/export?${qs.toString()}`, "_blank", "noopener,noreferrer");
   }
 
   function createSchedule() {
@@ -274,7 +362,7 @@ export function ReportsClient() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-reports-shell>
       <DsPageHeader
         breadcrumbs={t("breadcrumb")}
         title={t("title")}
@@ -282,72 +370,128 @@ export function ReportsClient() {
         titleIcon={<BarChart3 size={16} />}
         actions={
           <>
-            <button
-              type="button"
-              className={preview ? "ui-btn-secondary" : "ui-btn-primary"}
-              onClick={() => void loadPreview()}
-              disabled={previewLoading || !selectedClient}
-            >
-              {previewLoading ? tCommon("loading") : preview ? t("refreshPreview") : t("previewReport")}
-            </button>
-            {preview ? (
+            <FilterToggleButton
+              open={showFilters}
+              showLabel={t("showFilters")}
+              hideLabel={t("hideFilters")}
+              onClick={() => setShowFilters((v) => !v)}
+            />
+            {reportsFlags.v2 ? (
+              <ReportsConsolidatedPanel periodQuery={periodQuery} locale={locale} />
+            ) : null}
+            {reportsFlags.v2 ? (
+              <ReportsTemplatesControl
+                current={{
+                  reportType,
+                  metrics: selectedMetrics,
+                  periodPreset: period.preset
+                }}
+                onApply={applyTemplate}
+              />
+            ) : null}
+            {reportsFlags.v1 ? (
               <button
                 type="button"
-                className="ui-btn-primary inline-flex items-center gap-1.5"
-                onClick={openPrintView}
-                disabled={!printViewUrl}
-                title={t("openPrintViewHint")}
+                className={preview ? "ui-btn-secondary" : "ui-btn-primary"}
+                onClick={() => void loadPreview()}
+                disabled={previewLoading || !selectedClient}
               >
-                <ExternalLink size={14} aria-hidden />
-                {t("openPrintView")}
+                {previewLoading
+                  ? tCommon("loading")
+                  : preview
+                    ? t("refreshPreview")
+                    : t("previewReport")}
               </button>
+            ) : null}
+            {preview ? (
+              <>
+                <button
+                  type="button"
+                  className="ui-btn-secondary inline-flex items-center gap-1.5"
+                  onClick={downloadCsv}
+                  title={t("exportCsvHint")}
+                >
+                  <Download size={14} aria-hidden />
+                  {t("exportCsv")}
+                </button>
+                <button
+                  type="button"
+                  className="ui-btn-primary inline-flex items-center gap-1.5"
+                  onClick={openPrintView}
+                  disabled={!printViewUrl}
+                  title={t("openPrintViewHint")}
+                >
+                  <ExternalLink size={14} aria-hidden />
+                  {t("openPrintView")}
+                </button>
+              </>
             ) : null}
           </>
         }
       />
 
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {strip ? (
-            <>
-              <FilterSelectDropdown
-                icon={<Building2 size={14} />}
-                label={tDashboard("filterClient")}
-                placeholder={tDashboard("filterAllClients")}
-                value={strip.clientFilter}
-                onChange={strip.setClientFilter}
-                options={strip.clientOptions.map((c) => ({ value: c.slug, label: c.name }))}
-              />
-              <FilterSelectDropdown
-                icon={<BarChart2 size={14} />}
-                label={tDashboard("filterAccount")}
-                placeholder={t("allAdAccounts")}
-                value={strip.accountFilter}
-                onChange={strip.setAccountFilter}
-                disabled={!strip.clientFilter && strip.adAccounts.length === 0}
-                options={strip.adAccounts.map((a) => ({ value: a.id, label: a.label }))}
-              />
-              <PeriodFilter value={period} onChange={strip.setPeriod} variant="commandStrip" />
-            </>
-          ) : null}
-          <FilterSelectDropdown
-            icon={<FileText size={14} />}
-            label={t("reportTypeLabel")}
-            placeholder={t("typeSimple")}
-            clearable={false}
-            options={[
-              { value: "simple", label: t("typeSimple") },
-              { value: "complete", label: t("typeComplete") }
-            ]}
-            value={reportType}
-            onChange={(v) => setReportType((v || "simple") as "simple" | "complete")}
-          />
+      {reportsFlags.v2 ? (
+        <div className="flex flex-wrap items-center justify-end">
+          <ReportsAiGenerateTrigger onGenerate={generateByAi} busy={aiBusy} />
         </div>
+      ) : null}
 
-        <div className="ui-card p-3 sm:p-4">
+      <div className="space-y-3">
+        {showFilters ? (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {strip ? (
+              <>
+                <FilterSelectDropdown
+                  className="min-w-0 w-full"
+                  creatorField
+                  icon={<Building2 size={14} />}
+                  label={tDashboard("filterClient")}
+                  placeholder={tDashboard("filterAllClients")}
+                  value={strip.clientFilter}
+                  onChange={strip.setClientFilter}
+                  options={strip.clientOptions.map((c) => ({ value: c.slug, label: c.name }))}
+                />
+                <FilterSelectDropdown
+                  className="min-w-0 w-full"
+                  creatorField
+                  icon={<BarChart2 size={14} />}
+                  label={tDashboard("filterAccount")}
+                  placeholder={t("allAdAccounts")}
+                  value={strip.accountFilter}
+                  onChange={strip.setAccountFilter}
+                  disabled={!strip.clientFilter && strip.adAccounts.length === 0}
+                  options={strip.adAccounts.map((a) => ({ value: a.id, label: a.label }))}
+                />
+                <div className="min-w-0 w-full">
+                  <PeriodFilter value={period} onChange={strip.setPeriod} variant="commandStrip" />
+                </div>
+              </>
+            ) : null}
+            <FilterSelectDropdown
+              className="min-w-0 w-full"
+              creatorField
+              icon={<FileText size={14} />}
+              label={t("reportTypeLabel")}
+              placeholder={t("typeSimple")}
+              clearable={false}
+              options={[
+                { value: "simple", label: t("typeSimple") },
+                { value: "complete", label: t("typeComplete") }
+              ]}
+              value={reportType}
+              onChange={(v) => setReportType((v || "simple") as "simple" | "complete")}
+            />
+          </div>
+        ) : null}
+
+        {reportsFlags.v1 ? (
           <ReportMetricPicker selected={selectedMetrics} onChange={setSelectedMetrics} />
-        </div>
+        ) : null}
       </div>
+
+      {!reportsFlags.v1 && !reportsFlags.v2 ? (
+        <p className="text-xs text-[var(--text-dim)]">{t("reportsAllDisabled")}</p>
+      ) : null}
 
       {previewError ? <p className="text-xs text-rose-600">{previewError}</p> : null}
       {message ? <p className="text-xs text-[var(--text-dim)]">{message}</p> : null}
@@ -360,7 +504,7 @@ export function ReportsClient() {
             <ChartCardSkeleton />
           </div>
         ) : preview ? (
-          <div className="ui-card p-4 sm:p-6">
+          <div className="campaign-creator-card !p-4 sm:!p-6">
             <ReportPreview
               data={preview}
               selectedMetrics={selectedMetrics}
@@ -374,10 +518,9 @@ export function ReportsClient() {
             />
           </div>
         ) : (
-          <div className="ui-card flex min-h-[320px] flex-col items-center justify-center p-8 text-center">
+          <div className="campaign-creator-card flex min-h-[320px] flex-col items-center justify-center !p-8 text-center">
             <div
-              className="flex h-12 w-12 items-center justify-center rounded-xl"
-              style={{ background: "rgba(245,166,35,0.12)" }}
+              className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)]"
               aria-hidden
             >
               <BarChart3 size={22} className="text-[var(--ui-accent)]" />
@@ -387,8 +530,8 @@ export function ReportsClient() {
           </div>
         )}
 
-        <section className="ui-card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[var(--border-color)] px-4 py-3">
+        <section className="campaign-creator-card overflow-hidden !p-0">
+          <div className="flex items-center justify-between border-b border-[var(--creator-card-border,var(--border-color))] px-4 py-3">
             <h2 className="text-sm font-semibold text-[var(--text-main)]">{t("scheduledTitle")}</h2>
             <button
               type="button"
@@ -399,7 +542,7 @@ export function ReportsClient() {
             </button>
           </div>
           {showScheduleForm ? (
-            <div className="space-y-2 border-b border-[var(--border-color)] px-4 py-3">
+            <div className="space-y-2 border-b border-[var(--creator-card-border,var(--border-color))] px-4 py-3">
               <input
                 value={scheduleName}
                 onChange={(e) => setScheduleName(e.target.value)}
@@ -428,7 +571,7 @@ export function ReportsClient() {
           ) : null}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-[var(--surface-thead)] text-xs font-semibold uppercase text-[var(--text-dim)]">
+              <thead className="bg-[var(--creator-card-bg-inset,var(--surface-thead))] text-xs font-semibold uppercase text-[var(--text-dim)]">
                 <tr>
                   <th className="px-4 py-3">{t("colName")}</th>
                   <th className="px-4 py-3">{t("colFrequency")}</th>
@@ -447,7 +590,7 @@ export function ReportsClient() {
                   </tr>
                 ) : (
                   schedules.map((row) => (
-                    <tr key={row.id} className="border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
+                    <tr key={row.id} className="border-t border-[var(--creator-card-border,var(--border-color))] hover:bg-[var(--row-hover)]">
                       <td className="px-4 py-3 font-medium text-[var(--text-main)]">
                         {row.name}
                         {row.clientName ? (

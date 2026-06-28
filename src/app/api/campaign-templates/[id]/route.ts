@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
-import { getAppContext } from "@/lib/app-context";
+import { getAppContext, resolveClientIdForTenant } from "@/lib/app-context";
 import { CampaignDraftPayloadSchema } from "@/lib/campaign-draft";
 
 const PatchSchema = z.object({
   name: z.string().min(1).optional(),
   payload: CampaignDraftPayloadSchema.optional(),
-  clientId: z.string().uuid().nullable().optional()
+  clientId: z.string().nullable().optional()
 });
 
 type RouteCtx = { params: Promise<{ id: string }> };
@@ -35,7 +35,11 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
   }
   if (body.name !== undefined) template.name = body.name;
   if (body.payload !== undefined) template.payload = body.payload;
-  if (body.clientId !== undefined) template.clientId = body.clientId;
+  if (body.clientId !== undefined) {
+    template.clientId = body.clientId
+      ? (await resolveClientIdForTenant(tenant.id, body.clientId)) ?? null
+      : null;
+  }
   await repo.save(template);
   return NextResponse.json({ ok: true, template });
 }

@@ -15,9 +15,16 @@ function sessionHasEmail(auth: { user?: { email?: string | null } } | null) {
   return typeof email === "string" && email.length > 0;
 }
 
+const STATIC_PUBLIC_FILE = /\.(?:png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|mp4|webm|pdf)$/i;
+
 export default auth((req) => {
   const isLoggedIn = sessionHasEmail(req.auth);
   const path = req.nextUrl.pathname;
+
+  // Public folder assets must bypass auth + locale middleware or <img src="/…"> 404s.
+  if (path.startsWith("/brand/") || STATIC_PUBLIC_FILE.test(path)) {
+    return NextResponse.next();
+  }
 
   if (path.startsWith("/api")) {
     if (!isLoggedIn && !isPublicApiPath(path)) {
@@ -49,5 +56,7 @@ export default auth((req) => {
 
 export const config = {
   // Exclude large video upload — middleware body buffering truncates multipart payloads.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/creative-assets/video).*)"]
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|brand/|.*\\.(?:png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|mp4|webm|pdf)$|api/creative-assets/video).*)"
+  ]
 };

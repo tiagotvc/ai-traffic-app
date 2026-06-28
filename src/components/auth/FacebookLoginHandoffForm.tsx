@@ -22,7 +22,7 @@ export function FacebookLoginHandoffForm({
     <div className="w-full max-w-[420px]">
       <Link
         href="/login"
-        className="inline-flex items-center gap-1 text-sm font-medium text-violet-200/70 transition hover:text-amber-300"
+        className="inline-flex items-center gap-1 text-sm font-medium text-violet-200/70 transition hover:text-violet-300"
       >
         <span aria-hidden>←</span>
         {t("facebookHandoffBack")}

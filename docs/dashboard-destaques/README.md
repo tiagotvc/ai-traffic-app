@@ -46,7 +46,7 @@ preferências antigas as tenham ligadas).
 
 ### Ordem de seções (atual)
 
-`brainShelf` → (`heroKpis` + `secondaryMetrics`) → (`chart` + `ageBreakdown` lado a lado)
+`brainShelf` → (`heroKpis` + `secondaryMetrics` + **widgets MVP**) → (`chart` + `ageBreakdown` lado a lado)
 
 ---
 
@@ -82,14 +82,15 @@ preferências antigas as tenham ligadas).
 ### 2. KPIs compostos com comparação de período (`heroKpis`)
 
 - **Componente:** [`src/components/dashboard/MetricPrism.tsx`](../../src/components/dashboard/MetricPrism.tsx) (`KpiCardTile`).
-- Cards grandes (até 3 por linha) com: ícone, label, valor, badge de tendência (vs. período
-  anterior), sub-label e **sparkline**.
-- O sparkline (`SparklineChart`) teve a **altura aumentada para 96px** (`h-[96px] min-h-[96px]`)
-  para o gráfico aparecer melhor — o card cresce junto.
+- Cards compactos (até 3 por linha) com: ícone, label, valor, badge de tendência (vs. período
+  anterior), sub-label e **mini sparkline** (52px).
+- **Superfície:** classe `dashboard-kpi-card` — borda inset como `campaign-creator-sidebar-card`,
+  **sem** faixa colorida no topo (removido o `borderTop` por métrica).
+- Valores em `text-lg` / `--text-main`; cor da métrica só no ícone e no sparkline.
 - Quais métricas aparecem: `dashboardLayout.heroMetrics` (até `MAX_HERO_METRICS = 3`); vazio =
   usa os defaults do preset da campanha.
 
-**No dash:** ficam como estão (só o ajuste de altura do gráfico). No [Visão](../visao/README.md#componente-kpi-card-com-comparação)
+**No dash:** layout denso alinhado ao Campaign Creator DS. No [Visão](../visao/README.md#componente-kpi-card-com-comparação)
 serão **totalmente ajustáveis** (tipo de gráfico, cruzamento com outra métrica, cor, fonte,
 quais dados aparecem).
 
@@ -99,9 +100,8 @@ quais dados aparecem).
 
 - **Componente:** [`src/components/dashboard/canvas/widgets/CanvasMetricStrip.tsx`](../../src/components/dashboard/canvas/widgets/CanvasMetricStrip.tsx)
   (renderizado dentro do `MetricPrism`).
-- Cards compactos: cor (dot), label, valor e badge de tendência.
-- **Grid responsivo:** até **6 por linha** no desktop, quebrando conforme a tela
-  (`grid-cols-2 sm:grid-cols-3 lg:grid-cols-6`, ajustado pela quantidade de itens).
+- Chips compactos (`dashboard-metric-chip`): dot, label, valor e badge de tendência.
+- **Grid responsivo:** até **8 por linha** no desktop (`lg:grid-cols-8`), fonte `text-xs` / labels `text-[10px]`.
 - **Tooltip nativo no valor:** o valor tem `title={item.value}`, então ao passar o mouse sobre
   um valor truncado (com `...`) é possível ver o número completo.
 
@@ -117,10 +117,9 @@ configurável do card de métrica.
 - Gráfico comparativo de várias métricas ao longo do período, com chips para ligar/desligar métricas.
 - **Cruzamento limitado a 3 métricas:** já garantido por `MAX_CHART_METRICS = 3`
   (`useDashboardData.toggleChartMetric` ignora a 4ª).
-- **Correção do corte inferior:** altura do gráfico (`page`) subiu de 280 → **320px**, o eixo X
-  ganhou `height=36` + `tickMargin=6` e a margem inferior do chart subiu para `bottom: 12`, para
-  os rótulos/números não cortarem embaixo.
-- Altura do painel: `chartSize` (compact 300 / default 380 / tall 480) via `CHART_PANEL_MIN_HEIGHT`.
+- **Altura compacta:** plot `180–220px` via `DASHBOARD_PAGE_CHART_HEIGHT` (por `chartSize`);
+  painel mínimo `CHART_PANEL_MIN_HEIGHT` (compact 220 / default 260 / tall 320).
+- Wrapper: `dashboard-card dashboard-card--compact`.
 
 **No dash:** mantém o tipo de gráfico (área). No [Visão](../visao/README.md#componente-gráfico-comparativo)
 poderá trocar o tipo de gráfico (`area`/`bar`/`line`/`pie`/`radar`/`composed`/…), cores, legenda, eixos.
@@ -133,8 +132,8 @@ poderá trocar o tipo de gráfico (`area`/`bar`/`line`/`pie`/`radar`/`composed`/
 ### 5. Faixa etária — gráfico de barras + tabela (`ageBreakdown`)
 
 - **Componente:** [`src/components/dashboard/AgeBreakdownCard.tsx`](../../src/components/dashboard/AgeBreakdownCard.tsx).
-- Card com **gráfico de barras horizontais** (gasto por faixa) **+ tabela** (segmento, gasto,
-  share %, conversões, CPA).
+- Card `dashboard-card--compact` com **gráfico de barras horizontais** (~140–180px) **+ tabela**
+  compacta (`text-[10px]`, headers uppercase).
 - **Layout:** agora dividindo a linha **lado a lado com o gráfico de performance** (grid
   `xl:grid-cols-2`) quando ambos estão visíveis — cada um ocupa metade do espaço.
 - A tabela aparece logo abaixo do gráfico de barras dentro do mesmo card (altura do card cresce
@@ -159,7 +158,27 @@ Os componentes continuam no código (não foram deletados) para reuso no Visão.
 
 ---
 
-## 6. Personalização ("Personalizar") — v1 simples
+### 6. Widgets MVP inspirados em benchmarks (fase 1)
+
+Renderizados **abaixo dos KPIs e chips secundários**, fixos na v1 (fora do modal Personalizar).
+
+- **Componente:** [`src/components/dashboard/DashboardInsightPanels.tsx`](../../src/components/dashboard/DashboardInsightPanels.tsx)
+- **Mappers:** `toDashboardMetricSections`, `toDashboardFunnelSteps`, `toDashboardCampaignStatus`, `toDashboardTopCampaigns` em `dashboard-mappers.ts`
+- **Dados de campanhas:** `useDashboardData()` → `GET /api/campaigns/list`
+
+| Widget | Descrição |
+|--------|-----------|
+| **Seções de métricas** | Três cards rotulados CONVERSÃO / FUNIL / FECHAMENTO com 4 células compactas cada (métricas reais + delta vs. período anterior). |
+| **Funil virtual** | Impressões → Cliques → Alcance (proxy de page views) → Conversões, com barras proporcionais e taxa entre etapas quando há base. |
+| **Status de campanhas** | Contagem por status (ativa / pausada / rascunho / outras) a partir da listagem de campanhas. |
+| **Top campanhas** | Top 3 por gasto no período (nome, cliente, gasto, ROAS). |
+| **Gráfico de evolução** | Mantido em `DashboardPerformanceChart` — chips ROAS / Gasto / Cliques + correções de domínio do eixo Y. |
+
+Empty states quando não há dados; sem números inventados.
+
+---
+
+### 7. Personalização ("Personalizar") — v1 simples
 
 - **Componente:** [`src/components/dashboard/DashboardCustomizeModal.tsx`](../../src/components/dashboard/DashboardCustomizeModal.tsx).
 - Botão "Personalizar" na toolbar (escondido em mobile e no empty state).
@@ -184,8 +203,27 @@ Os componentes continuam no código (não foram deletados) para reuso no Visão.
 `brainHypothesesCount`), `ageBreakdown`, `locale`, `metricLabel`, `formatMetricValue`, etc.
 Empty state: quando não há gasto nem contas conectadas, mostra `ConnectAccountCard` + checklist.
 
+## CSS — classes Destaques (`globals.css`)
+
+| Classe | Uso |
+|--------|-----|
+| `dashboard-card` | Painéis de gráfico / alerta — borda e fundo creator-style |
+| `dashboard-card--compact` | Padding `p-3` |
+| `dashboard-kpi-card` | KPI hero com sparkline |
+| `dashboard-kpi-card__spark` | Frame inset do mini gráfico |
+| `dashboard-metric-chip` | Métricas secundárias em strip |
+| `dashboard-panel` | Alias legado (canvas) — mesmo visual compacto |
+
+Ver também [campaign-creator-design-system.md](../campaign-creator-design-system.md) § Card surfaces.
+
+---
+
 ## Histórico de mudanças relevantes
 
+- **2026-06-27 (widgets + fixes):** Sidebar Brain restaurado (ícone `Brain`, submenu Aprendizados/Hipóteses/Automações); ícones legados revertidos (só Dashboard usa `Home` + label "Dashboard"); gaps `--app-section-gap` entre seções do dash; sparklines/KPI deltas/gráfico de performance/faixa etária corrigidos; widgets MVP (`DashboardInsightPanels`).
+- **2026-06-27:** Redesign compacto alinhado ao Campaign Creator DS: removidas faixas coloridas
+  no topo dos KPIs; cards/gráficos menores; até 8 métricas secundárias; gaps `--app-section-gap`;
+  novas classes `dashboard-card`, `dashboard-kpi-card`, `dashboard-metric-chip`.
 - **2026-06-24 (build):** Correção de erros de tipo que quebravam o `next build` de produção
   (o `next dev` não falha neles): `PageToolbar.tsx` (`canFilter` coagido a `boolean`) e
   `alert-widget-config.ts` (preset `auto` adicionado ao `ALERT_THEME_PRESETS`). Os erros

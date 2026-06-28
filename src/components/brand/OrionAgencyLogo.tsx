@@ -1,88 +1,39 @@
 "use client";
 
-import type { ComponentProps } from "react";
+import type { ComponentProps, CSSProperties } from "react";
 
 import { useAppDarkMode } from "@/hooks/useAppDarkMode";
 import { cn } from "@/lib/cn";
 
+import whiteLogo from "../../../public/brand/white_logo.png";
+
+const LOGO_SRC = whiteLogo.src;
+
 type LogoSize = "sm" | "md" | "lg" | "xl";
-/** `dark` = texto claro (fundo escuro). `light` = texto escuro (fundo claro). `auto` = segue data-theme. */
+/** `dark` = white logo (dark backgrounds). `light` = dark logo (light backgrounds). `auto` = follows data-theme. */
 type LogoVariant = "dark" | "light" | "gold" | "auto";
 
-const WIDTH: Record<LogoSize, number> = {
-  sm: 78,
-  md: 95,
-  lg: 114,
-  xl: 138
+/** Full wordmark height — PNG already includes "orion AGENCY" text. */
+const WORDMARK_HEIGHT: Record<LogoSize, number> = {
+  sm: 36,
+  md: 44,
+  lg: 52,
+  xl: 60
 };
 
-const ACCENT = "#f5a623";
+/** Collapsed sidebar / icon-only slot (crops to the purple mark on the left). */
+const ICON_SIZE: Record<LogoSize, number> = {
+  sm: 36,
+  md: 44,
+  lg: 52,
+  xl: 60
+};
 
-function OrionWordmarkSvg({
-  variant,
-  width
-}: {
-  variant: Exclude<LogoVariant, "auto">;
-  width: number;
-}) {
-  const ink = variant === "dark" ? "#ffffff" : "#0f172a";
-  const sub = variant === "dark" ? "rgba(255,255,255,0.65)" : "#64748b";
-  const accent = variant === "dark" ? ACCENT : "#d4880a";
-
-  return (
-    <svg
-      width={width}
-      height={width * 0.56}
-      viewBox="0 0 150 84"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      {/* "O" como ícone-letra (maior), seguido de RION para formar a palavra ORION */}
-      <circle
-        cx="20"
-        cy="30"
-        r="16"
-        stroke={ink}
-        strokeWidth="3.4"
-        fill="none"
-        strokeLinecap="round"
-        strokeDasharray="84 14"
-        transform="rotate(-32 20 30)"
-      />
-      <path
-        d="M20 22.5 L21.76 27.57 L27.13 27.68 L22.85 30.93 L24.41 36.07 L20 33 L15.59 36.07 L17.15 30.93 L12.87 27.68 L18.24 27.57 Z"
-        fill={accent}
-      />
-      <text
-        x="44"
-        y="44"
-        fill={ink}
-        fontFamily="var(--font-heading), ui-sans-serif, system-ui, sans-serif"
-        fontSize="36"
-        fontWeight="700"
-        letterSpacing="5"
-      >
-        RION
-      </text>
-      {/* Linha sob toda a palavra Orion (alinhada à esquerda, sob o "O") */}
-      <line x1="8" y1="56" x2="143" y2="56" stroke={accent} strokeWidth="1" opacity="0.85" />
-      {/* AGENCY centralizado exatamente sob Orion */}
-      <text
-        x="75"
-        y="72"
-        fill={sub}
-        textAnchor="middle"
-        fontFamily="var(--font-heading), ui-sans-serif, system-ui, sans-serif"
-        fontSize="11.5"
-        fontWeight="500"
-        letterSpacing="5"
-      >
-        AGENCY
-      </text>
-    </svg>
-  );
-}
+const VARIANT_FILTER: Record<Exclude<LogoVariant, "auto">, string | undefined> = {
+  dark: undefined,
+  light: "brightness(0) saturate(100%)",
+  gold: "brightness(0) saturate(100%) sepia(1) saturate(4) hue-rotate(5deg)"
+};
 
 export function OrionAgencyLogo({
   size = "md",
@@ -101,35 +52,40 @@ export function OrionAgencyLogo({
   const isDarkTheme = useAppDarkMode();
   const resolvedVariant: Exclude<LogoVariant, "auto"> =
     variant === "auto" ? (isDarkTheme ? "dark" : "light") : variant;
-  const width = WIDTH[size];
 
-  if (!showText) {
-    return (
-      <div className={cn("flex shrink-0 items-center justify-center", className)} aria-label="Orion Agency">
-        <svg width={36} height={36} viewBox="0 0 36 36" fill="none" aria-hidden>
-          <circle
-            cx="18"
-            cy="18"
-            r="13"
-            stroke={resolvedVariant === "dark" ? "#fff" : "#0a0a0a"}
-            strokeWidth="2.4"
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray="68 12"
-            transform="rotate(-30 18 18)"
-          />
-          <path
-            d="M18 9.5 L19.76 14.57 L25.13 14.68 L20.85 17.93 L22.41 23.07 L18 20 L13.59 23.07 L15.15 17.93 L10.87 14.68 L16.24 14.57 Z"
-            fill={resolvedVariant === "dark" ? ACCENT : "#d4880a"}
-          />
-        </svg>
-      </div>
-    );
-  }
+  const iconSize = ICON_SIZE[size];
+  const isSidebarWordmark = Boolean(className?.includes("orion-logo--sidebar") && !className.includes("sidebar-collapsed"));
+  const isSidebarIcon = Boolean(className?.includes("orion-logo--sidebar-collapsed"));
+  const useSidebarCrop = isSidebarWordmark || isSidebarIcon;
+
+  const imageStyle: CSSProperties = {
+    filter: VARIANT_FILTER[resolvedVariant],
+    ...(!useSidebarCrop && showText
+      ? { height: WORDMARK_HEIGHT[size], width: "auto", maxWidth: "100%" }
+      : {}),
+    ...(!useSidebarCrop && !showText ? { height: iconSize, width: "auto", maxWidth: "none" } : {})
+  };
 
   return (
-    <div className={cn("inline-flex shrink-0", className)} aria-label="Orion Agency">
-      <OrionWordmarkSvg variant={resolvedVariant} width={width} />
+    <div
+      className={cn(
+        "orion-logo",
+        `orion-logo--${size}`,
+        `orion-logo--${resolvedVariant}`,
+        !showText && "orion-logo--icon-only",
+        className
+      )}
+      style={!showText ? ({ "--orion-logo-icon-size": `${iconSize}px` } as CSSProperties) : undefined}
+      aria-label="Orion Agency"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={LOGO_SRC}
+        alt=""
+        className="orion-logo__image"
+        style={imageStyle}
+        decoding="async"
+      />
     </div>
   );
 }

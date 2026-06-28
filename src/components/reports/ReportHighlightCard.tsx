@@ -23,7 +23,7 @@ function DeltaBadge({
     goodWhen === "neutral" ? null : up === (goodWhen === "up");
   const color =
     goodWhen === "neutral"
-      ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]"
+      ? "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]"
       : positive
         ? "bg-[rgba(16,185,129,0.12)] text-[var(--success)]"
         : "bg-[rgba(239,68,68,0.12)] text-[var(--danger)]";
@@ -64,20 +64,22 @@ export function ReportHighlightCard({
   const sparkPoints = data.map((row) => Number(row[dataKey] ?? 0));
 
   return (
-    <div className="ui-card report-pdf-kpi report-pdf-block kpi-card-hover overflow-hidden p-5">
+    <div
+      className="campaign-creator-card report-pdf-kpi report-pdf-block flex min-w-0 flex-col overflow-hidden !p-3"
+    >
       <div className="flex items-start justify-between gap-2">
-        <div className="text-xs font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
+        <div className="truncate text-[9px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
           {label}
         </div>
         <DeltaBadge delta={delta} goodWhen={goodWhen} locale={locale} noPrevLabel={noPrevLabel} />
       </div>
-      <div className="font-heading mt-2 text-3xl font-bold tracking-tight text-[var(--text-main)]">
+      <div className="font-heading mt-1 truncate text-2xl font-bold tracking-tight text-[var(--text-main)]">
         {value}
       </div>
-      <div className="mt-0.5 text-[11px] text-[var(--text-dimmer)]">{vsLabel}</div>
-      <div className="relative mt-3 h-16 min-w-0 overflow-hidden">
+      <div className="truncate text-[9px] text-[var(--text-dimmer)]">{vsLabel}</div>
+      <div className="campaign-creator-sidebar-card-inset report-kpi-spark mt-3 w-full shrink-0 rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] p-1">
         {sparkPoints.length > 1 ? (
-          <MiniSparkline points={sparkPoints} color={color} height={64} fullWidth />
+          <MiniSparkline points={sparkPoints} color={color} height={56} fullWidth />
         ) : null}
       </div>
     </div>

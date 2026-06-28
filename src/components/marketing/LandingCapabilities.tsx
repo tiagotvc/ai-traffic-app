@@ -60,7 +60,7 @@ export function LandingCapabilities() {
                     {t(`${key}Title`)}
                   </h3>
                   <p className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">{t(`${key}Body`)}</p>
-                  <p className="mt-3 rounded-lg border border-[var(--border-color)] bg-[var(--surface-bg)] px-3 py-2 text-xs leading-relaxed text-[var(--amber-bright)]">
+                  <p className="mt-3 rounded-lg border border-[var(--border-color)] bg-[var(--creator-card-bg-inset)] px-3 py-2 text-xs leading-relaxed text-[var(--ui-accent)]">
                     {t(`${key}Example`)}
                   </p>
                 </article>

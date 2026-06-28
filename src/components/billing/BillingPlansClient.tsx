@@ -17,7 +17,9 @@ import {
 } from "@/lib/marketing/orion-plan-catalog";
 import { isBrBillingMode } from "@/lib/billing/currency";
 import { YEARLY_DISCOUNT_PERCENT } from "@/lib/billing/pricing";
+import { DsPageHeader } from "@/design-system";
 import { Link } from "@/i18n/navigation";
+import { CreditCard } from "lucide-react";
 
 export function BillingPlansClient({
   variant = "portal",
@@ -57,16 +59,14 @@ export function BillingPlansClient({
   }
 
   return (
-    <div className={`mx-auto max-w-6xl space-y-8 pb-4 ${isMarketing ? "space-y-10 px-0" : ""}`}>
-      {!isMarketing ? <BillingBackLink href="/billing" /> : null}
-
+    <div className={`w-full space-y-8 pb-4 ${isMarketing ? "space-y-10 px-0" : ""}`}>
       {!isMarketing ? (
-        <div className="text-center">
-          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-[var(--text-main)]">
-            {t("plansTitle")}
-          </h1>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-[var(--text-dim)]">{t("plansSubtitle")}</p>
-        </div>
+        <DsPageHeader
+          breadcrumbs={<BillingBackLink href="/settings?tab=plan" />}
+          title={t("plansTitle")}
+          subtitle={t("plansSubtitle")}
+          titleIcon={<CreditCard size={16} />}
+        />
       ) : null}
 
       <BillingCycleToggle cycle={cycle} onChange={setCycle} variant={variant} />
@@ -100,7 +100,7 @@ export function BillingPlansClient({
       >
         {isBr ? t("plansFootnoteBr") : t("plansFootnote")}{" "}
         {!isMarketing ? (
-          <Link href="/billing" className="ui-link">
+          <Link href="/settings?tab=plan" className="ui-link">
             {t("backToPortal")}
           </Link>
         ) : null}

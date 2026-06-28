@@ -21,7 +21,7 @@ export function LandingWorkSplit() {
         </MarketingReveal>
 
         <div className="mt-10 overflow-hidden rounded-2xl border border-[var(--border-color)]">
-          <div className="h-2 bg-gradient-to-r from-[var(--ui-accent)] via-[var(--amber-bright)] to-[var(--ui-accent)] bg-[length:200%_100%] animate-[marketing-gradient-slide_4s_ease-in-out_infinite]" />
+          <div className="h-2 bg-gradient-to-r from-[var(--ui-accent)] via-violet-400 to-[var(--ui-accent)] bg-[length:200%_100%] animate-[marketing-gradient-slide_4s_ease-in-out_infinite]" />
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -52,7 +52,7 @@ export function LandingWorkSplit() {
           <MarketingReveal delay={0.1}>
             <div className="marketing-card h-full">
               <div className="mb-4 flex items-center gap-2">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--surface-row-alt)] text-[var(--amber-bright)]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--surface-row-alt)] text-[var(--ui-accent)]">
                   <User size={18} />
                 </span>
                 <div>
@@ -65,7 +65,7 @@ export function LandingWorkSplit() {
               <ul className="space-y-2">
                 {YOU_ITEMS.map((key) => (
                   <li key={key} className="flex items-start gap-2 text-sm text-[var(--text-dim)]">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--amber-bright)]" />
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--text-dimmer)]" />
                     {t(key)}
                   </li>
                 ))}

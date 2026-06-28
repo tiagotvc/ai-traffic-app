@@ -26,7 +26,7 @@ export function BrainListCard({
   const hasBody = Boolean(children);
 
   return (
-    <div className="ui-card overflow-hidden">
+    <div className="campaign-creator-card campaign-creator-card--compact overflow-hidden p-0">
       <div
         className={`flex flex-wrap items-start justify-between gap-3 ${expanded ? "p-4" : "p-3"}`}
       >
@@ -70,13 +70,13 @@ export function BrainListCard({
         ) : null}
       </div>
       {expanded && children ? (
-        <div className="border-t border-[var(--border-color)] px-4 pb-4 pt-3">
+        <div className="border-t border-[var(--creator-card-border)] px-4 pb-4 pt-3">
           <CreatedAtMeta createdAt={createdAt} updatedAt={updatedAt} className="mb-2" />
           {children}
         </div>
       ) : null}
       {footer ? (
-        <div className="border-t border-[var(--border-color)] px-4 py-3">{footer}</div>
+        <div className="border-t border-[var(--creator-card-border)] px-4 py-3">{footer}</div>
       ) : null}
     </div>
   );

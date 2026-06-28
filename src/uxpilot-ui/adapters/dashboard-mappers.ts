@@ -10,8 +10,22 @@ import {
   formatMetricValue,
   type MetricKey
 } from "@/lib/dashboard-metrics";
-import { resolveHeroMetricKeys } from "@/lib/dashboard-layout-prefs";
-import { formatDayLabel, pctDelta } from "@/lib/dashboard-ranges";
+import { MAX_HERO_METRICS, resolveHeroMetricKeys } from "@/lib/dashboard-layout-prefs";
+import {
+  formatDayLabel,
+  MAX_DELTA_PCT,
+  prevPeriodHasBaseline,
+  resolveMetricDelta,
+  type MetricDeltaResult
+} from "@/lib/dashboard-ranges";
+import {
+  compareByRank,
+  DEFAULT_RANK_CONFIG,
+  meetsMinActivity,
+  rankSpecFor,
+  rankValue,
+  type RankConfig
+} from "@/lib/creative-ranking";
 import { formatBRL, formatRoas } from "@/lib/format";
 
 type Summary = Partial<Record<MetricKey, number>>;
@@ -46,24 +60,43 @@ const COST_METRICS = new Set<MetricKey>(["spend", "cpc", "cpm", "cpa", "cpmsg"])
 
 function deltaMeta(
   key: MetricKey,
-  delta: number | null
+  result: MetricDeltaResult,
+  newDeltaLabel: string
 ): { change: string; trend: "up" | "down" | "neutral" } {
-  if (delta === null) return { change: "—", trend: "neutral" };
-  const sign = delta >= 0 ? "+" : "";
+  if (result.kind === "none") return { change: "—", trend: "neutral" };
+  if (result.kind === "new") return { change: newDeltaLabel, trend: "up" };
+
+  const delta = result.value;
+  const capped = Math.abs(delta) >= MAX_DELTA_PCT;
   const rawTrend = delta > 0 ? "up" : delta < 0 ? "down" : "neutral";
+  const change = capped
+    ? delta >= 0
+      ? ">+999%"
+      : "<-999%"
+    : `${delta >= 0 ? "+" : ""}${Math.abs(delta).toFixed(1)}%`;
   if (COST_METRICS.has(key) && rawTrend !== "neutral") {
     return {
-      change: `${sign}${Math.abs(delta).toFixed(1)}%`,
+      change,
       trend: rawTrend === "up" ? "down" : "up"
     };
   }
-  return { change: `${sign}${delta.toFixed(1)}%`, trend: rawTrend };
+  return { change, trend: rawTrend };
 }
 
-function heroDelta(key: MetricKey, summary: Summary, prevSummary: Summary | null): number | null {
-  const prev = prevSummary?.[key];
-  if (prev == null || prev <= 0) return null;
-  return pctDelta(summary[key] ?? 0, prev);
+function heroDelta(key: MetricKey, summary: Summary, prevSummary: Summary | null): MetricDeltaResult {
+  if (!prevSummary || !prevPeriodHasBaseline(prevSummary)) return { kind: "none" };
+  const cur = Number(summary[key] ?? 0);
+  const rawPrev = prevSummary[key];
+  if (rawPrev == null || !Number.isFinite(Number(rawPrev))) return { kind: "none" };
+  const prev = Number(rawPrev);
+  return resolveMetricDelta(cur, prev, { allowNew: prev === 0 });
+}
+
+function normalizeSparkSeries(values: number[]): number[] {
+  const cleaned = values.map((v) => (Number.isFinite(v) ? v : 0));
+  if (cleaned.length >= 2) return cleaned;
+  if (cleaned.length === 1) return [cleaned[0], cleaned[0]];
+  return [0, 0];
 }
 
 export function toMetricPrismProps(args: {
@@ -75,14 +108,25 @@ export function toMetricPrismProps(args: {
   locale: string;
   metricLabel: (key: MetricKey) => string;
   vsLabel: string;
+  newDeltaLabel?: string;
 }): { primaryKPIs: KpiCard[]; secondaryMetrics: SecondaryMetric[] } {
-  const { summary, prevSummary, series, dominantPreset, heroMetrics, locale, metricLabel, vsLabel } = args;
-  const presetHero = presetMetricsFor(dominantPreset).slice(0, 3);
+  const {
+    summary,
+    prevSummary,
+    series,
+    dominantPreset,
+    heroMetrics,
+    locale,
+    metricLabel,
+    vsLabel,
+    newDeltaLabel = "Novo"
+  } = args;
+  const presetHero = presetMetricsFor(dominantPreset).slice(0, MAX_HERO_METRICS);
   const heroKeys = resolveHeroMetricKeys(heroMetrics ?? [], presetHero);
 
   const primaryKPIs: KpiCard[] = heroKeys.map((key) => {
     const delta = heroDelta(key, summary, prevSummary);
-    const { change, trend } = deltaMeta(key, delta);
+    const { change, trend } = deltaMeta(key, delta, newDeltaLabel);
     return {
       metricKey: key,
       label: metricLabel(key),
@@ -90,7 +134,7 @@ export function toMetricPrismProps(args: {
       change,
       trend,
       color: METRIC_BY_KEY[key].color,
-      sparkData: series.map((p) => p[key] ?? 0),
+      sparkData: normalizeSparkSeries(series.map((p) => p[key] ?? 0)),
       sparkLabels: series.map((p) => formatDayLabel(p.day, locale)),
       formatSparkValue: (v: number) => formatMetricValue(key, v, locale),
       subLabel: vsLabel
@@ -100,10 +144,10 @@ export function toMetricPrismProps(args: {
   const secondaryKeys = presetMetricsFor(dominantPreset)
     .concat(QUICK_METRICS)
     .filter((k, i, arr) => !heroKeys.includes(k) && arr.indexOf(k) === i)
-    .slice(0, 6);
+    .slice(0, 8);
   const secondaryMetrics: SecondaryMetric[] = secondaryKeys.map((key) => {
     const delta = heroDelta(key, summary, prevSummary);
-    const { change, trend } = deltaMeta(key, delta);
+    const { change, trend } = deltaMeta(key, delta, newDeltaLabel);
     return {
       key,
       label: metricLabel(key),
@@ -117,9 +161,12 @@ export function toMetricPrismProps(args: {
 }
 
 export function toChartData(series: SeriesPoint[], locale: string) {
-  return [...series]
-    .sort((a, b) => a.day.localeCompare(b.day))
-    .map((p) => ({ ...p, label: formatDayLabel(p.day, locale) }));
+  const sorted = [...series].sort((a, b) => a.day.localeCompare(b.day));
+  const mapped = sorted.map((p) => ({ ...p, label: formatDayLabel(p.day, locale) }));
+  if (mapped.length === 1) {
+    return [mapped[0], { ...mapped[0], label: mapped[0].label }];
+  }
+  return mapped;
 }
 
 const severityOrder: Record<VariationLite["severity"], number> = {
@@ -205,7 +252,7 @@ export function toAgencyHealth(args: {
   const alerts = clients.reduce((sum, c) => sum + (c.alertCount ?? 0), 0);
   const totalSpend = summary?.spend ?? clients.reduce((sum, c) => sum + (c.metrics?.spend ?? 0), 0);
   const spendDelta = heroDelta("spend", { spend: totalSpend }, prevSummary ? { spend: prevSummary.spend ?? 0 } : null);
-  const spendChange = deltaMeta("spend", spendDelta);
+  const spendChange = deltaMeta("spend", spendDelta, "Novo");
 
   const healthMetrics: HealthMetric[] = [
     { label: labels.activeClients, value: String(active), change: "—", color: "#10b981" },
@@ -306,4 +353,242 @@ export function toBrainShelfSuggestions(
       border: `${color}33`
     };
   });
+}
+
+export type DashboardFunnelStep = {
+  id: string;
+  label: string;
+  value: string;
+  numeric: number;
+  rateFromPrev: string | null;
+};
+
+export type DashboardCampaignStatusBucket = {
+  id: "active" | "paused" | "draft" | "other";
+  label: string;
+  count: number;
+  color: string;
+};
+
+export type DashboardTopCampaignRow = {
+  id: string;
+  name: string;
+  clientName: string;
+  spend: string;
+  roas: string;
+  status: string;
+};
+
+export type DashboardCampaignSnapshot = {
+  metaCampaignId: string;
+  campaignName: string;
+  clientName?: string;
+  preset?: string;
+  spend?: number;
+  roas?: number;
+  impressions?: number;
+  clicks?: number;
+  conversions?: number;
+  messages?: number;
+  ctr?: number;
+  cpc?: number;
+  cpm?: number;
+  cpa?: number | null;
+  cpmsg?: number;
+  status?: string;
+  isDraft?: boolean;
+};
+
+export type DashboardProfitCampaignRow = {
+  id: string;
+  name: string;
+  clientName: string;
+  profit: number;
+  profitLabel: string;
+  spendLabel: string;
+  roasLabel: string;
+};
+
+export type DashboardAdLibrarySegment = {
+  id: string;
+  label: string;
+  count: number;
+  sharePct: number;
+  color: string;
+};
+
+export type DashboardAdLibraryInsights = {
+  source: "live" | "sample" | "empty";
+  apiConfigured: boolean;
+  adsAnalyzed: number;
+  formats: DashboardAdLibrarySegment[];
+  ctas: DashboardAdLibrarySegment[];
+  error?: string | null;
+};
+
+function campaignMetrics(row: DashboardCampaignSnapshot): Partial<Record<MetricKey, number>> {
+  return {
+    spend: row.spend,
+    roas: row.roas,
+    impressions: row.impressions,
+    clicks: row.clicks,
+    conversions: row.conversions,
+    messages: row.messages,
+    ctr: row.ctr,
+    cpc: row.cpc,
+    cpm: row.cpm,
+    cpa: row.cpa ?? undefined,
+    cpmsg: row.cpmsg
+  };
+}
+
+/** Cross-preset score for agency-wide top campaigns (uses each campaign's preset rank spec). */
+function compareDashboardCampaigns(
+  a: DashboardCampaignSnapshot,
+  b: DashboardCampaignSnapshot,
+  config: RankConfig
+): number {
+  const specA = rankSpecFor(a.preset, config);
+  const specB = rankSpecFor(b.preset, config);
+  const va = rankValue(campaignMetrics(a), specA);
+  const vb = rankValue(campaignMetrics(b), specB);
+
+  const scoreA = specA.dir === "desc" ? va : va < Number.POSITIVE_INFINITY && va > 0 ? 1 / va : 0;
+  const scoreB = specB.dir === "desc" ? vb : vb < Number.POSITIVE_INFINITY && vb > 0 ? 1 / vb : 0;
+
+  if (scoreB !== scoreA) return scoreB - scoreA;
+
+  const tiebreak = compareByRank(campaignMetrics(a), campaignMetrics(b), specA);
+  if (tiebreak !== 0) return tiebreak;
+
+  return (b.spend ?? 0) - (a.spend ?? 0);
+}
+
+export function toDashboardFunnelSteps(args: {
+  summary: Summary;
+  locale: string;
+  labels: { impressions: string; clicks: string; pageViews: string; conversions: string };
+}): DashboardFunnelStep[] {
+  const { summary, locale, labels } = args;
+  const impressions = summary.impressions ?? 0;
+  const clicks = summary.clicks ?? 0;
+  const reach = summary.reach ?? 0;
+  const conversions = summary.conversions ?? 0;
+
+  const rate = (from: number, to: number) => {
+    if (from <= 0 || to <= 0) return null;
+    return formatMetricValue("ctr", (to / from) * 100, locale);
+  };
+
+  return [
+    {
+      id: "impressions",
+      label: labels.impressions,
+      value: formatMetricValue("impressions", impressions, locale),
+      numeric: impressions,
+      rateFromPrev: null
+    },
+    {
+      id: "clicks",
+      label: labels.clicks,
+      value: formatMetricValue("clicks", clicks, locale),
+      numeric: clicks,
+      rateFromPrev: rate(impressions, clicks)
+    },
+    {
+      id: "pageViews",
+      label: labels.pageViews,
+      value: reach > 0 ? formatMetricValue("reach", reach, locale) : "—",
+      numeric: reach,
+      rateFromPrev: rate(clicks, reach)
+    },
+    {
+      id: "conversions",
+      label: labels.conversions,
+      value: formatMetricValue("conversions", conversions, locale),
+      numeric: conversions,
+      rateFromPrev: rate(reach > 0 ? reach : clicks, conversions)
+    }
+  ];
+}
+
+export function toDashboardCampaignStatus(args: {
+  campaigns: DashboardCampaignSnapshot[];
+  labels: { active: string; paused: string; draft: string; other: string };
+}): DashboardCampaignStatusBucket[] {
+  const buckets = {
+    active: 0,
+    paused: 0,
+    draft: 0,
+    other: 0
+  };
+
+  for (const row of args.campaigns) {
+    if (row.isDraft) {
+      buckets.draft += 1;
+      continue;
+    }
+    const status = (row.status ?? "").toUpperCase();
+    if (status === "ACTIVE") buckets.active += 1;
+    else if (status === "PAUSED") buckets.paused += 1;
+    else buckets.other += 1;
+  }
+
+  return [
+    { id: "active", label: args.labels.active, count: buckets.active, color: "#10b981" },
+    { id: "paused", label: args.labels.paused, count: buckets.paused, color: "#f59e0b" },
+    { id: "draft", label: args.labels.draft, count: buckets.draft, color: "#94a3b8" },
+    { id: "other", label: args.labels.other, count: buckets.other, color: "#64748b" }
+  ];
+}
+
+export function toDashboardTopCampaigns(args: {
+  campaigns: DashboardCampaignSnapshot[];
+  locale: string;
+  limit?: number;
+  rankConfig?: RankConfig;
+}): DashboardTopCampaignRow[] {
+  const { campaigns, locale, limit = 5, rankConfig = DEFAULT_RANK_CONFIG } = args;
+  return [...campaigns]
+    .filter(
+      (row) =>
+        !row.isDraft &&
+        ((row.spend ?? 0) > 0 || meetsMinActivity(campaignMetrics(row), rankConfig))
+    )
+    .sort((a, b) => compareDashboardCampaigns(a, b, rankConfig))
+    .slice(0, limit)
+    .map((row) => ({
+      id: row.metaCampaignId,
+      name: row.campaignName,
+      clientName: row.clientName ?? "—",
+      spend: formatBRL(row.spend ?? 0, locale),
+      roas: formatRoas(row.roas ?? 0, locale),
+      status: row.status ?? "—"
+    }));
+}
+
+export function toDashboardProfitByCampaign(args: {
+  campaigns: DashboardCampaignSnapshot[];
+  locale: string;
+  limit?: number;
+}): DashboardProfitCampaignRow[] {
+  const { campaigns, locale, limit = 6 } = args;
+  return [...campaigns]
+    .filter((row) => !row.isDraft && (row.spend ?? 0) > 0)
+    .map((row) => {
+      const spend = row.spend ?? 0;
+      const roas = row.roas ?? 0;
+      const profit = spend * roas - spend;
+      return {
+        id: row.metaCampaignId,
+        name: row.campaignName,
+        clientName: row.clientName ?? "—",
+        profit,
+        profitLabel: formatBRL(profit, locale),
+        spendLabel: formatBRL(spend, locale),
+        roasLabel: formatRoas(roas, locale)
+      };
+    })
+    .sort((a, b) => b.profit - a.profit)
+    .slice(0, limit);
 }

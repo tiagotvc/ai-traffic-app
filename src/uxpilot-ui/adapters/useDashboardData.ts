@@ -17,11 +17,14 @@ import {
 } from "@/lib/dashboard-metrics";
 import {
   DEFAULT_DASHBOARD_LAYOUT,
+  DASHBOARD_CHART_METRICS_STORAGE_KEY,
+  normalizeChartMetrics,
   type DashboardLayoutPrefs
 } from "@/lib/dashboard-layout-prefs";
 import { buildQuery, resolveRanges } from "@/lib/dashboard-ranges";
 import { DEFAULT_REPORT_TZ } from "@/lib/report-period";
 import type { AgeBreakdownRow } from "@/lib/dashboard-age-breakdown";
+import type { DashboardAdLibraryInsights } from "@/uxpilot-ui/adapters/dashboard-mappers";
 
 type Summary = Partial<Record<MetricKey, number>>;
 type SeriesPoint = { day: string } & Partial<Record<MetricKey, number>>;
@@ -51,17 +54,37 @@ type ClientCard = {
   alertCount?: number;
 };
 
+type CampaignSnapshot = {
+  metaCampaignId: string;
+  campaignName: string;
+  clientName?: string;
+  preset?: string;
+  spend?: number;
+  roas?: number;
+  impressions?: number;
+  clicks?: number;
+  conversions?: number;
+  messages?: number;
+  ctr?: number;
+  cpc?: number;
+  cpm?: number;
+  cpa?: number | null;
+  cpmsg?: number;
+  status?: string;
+  isDraft?: boolean;
+};
+
 const EMPTY_PERIOD: PeriodState = { preset: "last30", since: "", until: "" };
-const CHART_METRICS_CACHE_KEY = "orion-highlights-chart-metrics";
 
 function readCachedChartMetrics(): MetricKey[] | null {
   try {
-    const raw = localStorage.getItem(CHART_METRICS_CACHE_KEY);
+    const raw =
+      localStorage.getItem(DASHBOARD_CHART_METRICS_STORAGE_KEY) ??
+      localStorage.getItem("orion-highlights-chart-metrics");
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return null;
-    const valid = parsed.filter((k): k is MetricKey => typeof k === "string" && k in METRIC_BY_KEY);
-    return valid.length ? valid.slice(0, MAX_CHART_METRICS) : null;
+    const normalized = normalizeChartMetrics(parsed);
+    return normalized.length ? normalized : null;
   } catch {
     return null;
   }
@@ -69,7 +92,7 @@ function readCachedChartMetrics(): MetricKey[] | null {
 
 function writeCachedChartMetrics(metrics: MetricKey[]) {
   try {
-    localStorage.setItem(CHART_METRICS_CACHE_KEY, JSON.stringify(metrics));
+    localStorage.setItem(DASHBOARD_CHART_METRICS_STORAGE_KEY, JSON.stringify(normalizeChartMetrics(metrics)));
   } catch {
     /* ignore */
   }
@@ -84,6 +107,35 @@ type AdAccountOpt = {
 
 function accountsKey(accounts: AdAccountOpt[]) {
   return accounts.map((a) => `${a.id}:${a.label}`).join("|");
+}
+
+function normalizeDashboardSummary(raw: unknown): Summary {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Summary = {};
+  for (const key of Object.keys(METRIC_BY_KEY) as MetricKey[]) {
+    const n = Number((raw as Record<string, unknown>)[key]);
+    if (Number.isFinite(n)) out[key] = n;
+  }
+  return out;
+}
+
+function extractDashboardSummary(json: Record<string, unknown> | null | undefined): Summary | null {
+  if (!json || json.ok === false) return null;
+  const normalized = normalizeDashboardSummary(json.summary);
+  return Object.keys(normalized).length ? normalized : null;
+}
+
+function resolveSummaryFromJson(json: Record<string, unknown>): Summary | null {
+  const normalized = extractDashboardSummary(json) ?? normalizeDashboardSummary(json.summary);
+  return Object.keys(normalized).length ? normalized : null;
+}
+
+function accountTimezone(accounts: AdAccountOpt[], accountFilter: string): string | undefined {
+  if (!accountFilter) return undefined;
+  const match = accounts.find(
+    (a) => a.id === accountFilter || a.metaAdAccountId === accountFilter
+  );
+  return match?.timezone || undefined;
 }
 
 export function useDashboardData() {
@@ -142,33 +194,34 @@ export function useDashboardData() {
   const [brainSummaryLoading, setBrainSummaryLoading] = useState(true);
   const [ageBreakdown, setAgeBreakdown] = useState<AgeBreakdownRow[]>([]);
   const [ageBreakdownLoading, setAgeBreakdownLoading] = useState(true);
+  const [campaignSnapshots, setCampaignSnapshots] = useState<CampaignSnapshot[]>([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
+  const [adLibraryInsights, setAdLibraryInsights] = useState<DashboardAdLibraryInsights | null>(null);
+  const [adLibraryLoading, setAdLibraryLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
 
   const selectedTz = useMemo(() => {
     if (!accountFilter) return undefined;
-    return adAccounts.find((a) => a.id === accountFilter)?.timezone || undefined;
+    return accountTimezone(adAccounts, accountFilter);
   }, [accountFilter, adAccounts]);
 
   const activeTz = selectedTz ?? DEFAULT_REPORT_TZ;
 
   const load = useCallback(async () => {
     const currentPeriod = periodRef.current;
-    const tz = accountFilter
-      ? adAccountsRef.current.find((a) => a.id === accountFilter)?.timezone || undefined
-      : undefined;
+    const tz = accountTimezone(adAccountsRef.current, accountFilter);
 
     setLoading(true);
     try {
       const { current, previous } = resolveRanges(currentPeriod, tz);
       const curQ = buildQuery(clientFilter, accountFilter, current);
+      const prevQ = previous ? buildQuery(clientFilter, accountFilter, previous) : null;
 
       const [sRes, tRes, pRes] = await Promise.all([
         fetch(`/api/dashboard/summary?${curQ}`),
         fetch(`/api/dashboard/timeseries?${curQ}`),
-        previous
-          ? fetch(`/api/dashboard/summary?${buildQuery(clientFilter, accountFilter, previous)}`)
-          : Promise.resolve<Response | null>(null)
+        prevQ ? fetch(`/api/dashboard/summary?${prevQ}`) : Promise.resolve(null)
       ]);
 
       const parseJson = async (res: Response) => {
@@ -182,13 +235,22 @@ export function useDashboardData() {
 
       const sJson = await parseJson(sRes);
       const tJson = await parseJson(tRes);
-      const pJson = pRes ? await parseJson(pRes) : null;
 
-      const nextSummary = (sJson.summary as Summary) ?? {};
+      let nextPrevSummary: Summary | null = null;
+      if (pRes) {
+        try {
+          const pJson = await parseJson(pRes);
+          nextPrevSummary = resolveSummaryFromJson(pJson);
+        } catch {
+          nextPrevSummary = null;
+        }
+      }
+
+      const nextSummary = resolveSummaryFromJson(sJson) ?? {};
       const nextAccounts = (sJson.adAccounts as AdAccountOpt[]) ?? [];
 
       setSummary(nextSummary);
-      setPrevSummary((pJson?.summary as Summary) ?? null);
+      setPrevSummary(nextPrevSummary);
       setSeries((tJson.series as SeriesPoint[]) ?? []);
       setAdAccounts(nextAccounts);
 
@@ -307,6 +369,84 @@ export function useDashboardData() {
       .finally(() => setAgeBreakdownLoading(false));
   }, [clientFilter, accountFilter, periodKey, selectedTz]);
 
+  const loadCampaignSnapshots = useCallback(() => {
+    setCampaignsLoading(true);
+    const params = new URLSearchParams(periodStateToQuery(periodRef.current));
+    params.set("limit", "200");
+    params.set("offset", "0");
+    if (clientFilter) params.set("clientId", clientFilter);
+
+    void fetch(`/api/campaigns/list?${params.toString()}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j.ok || !Array.isArray(j.rows)) {
+          setCampaignSnapshots([]);
+          return;
+        }
+        setCampaignSnapshots(
+          j.rows.map(
+            (row: {
+              metaCampaignId?: string;
+              campaignName?: string;
+              clientName?: string;
+              preset?: string;
+              spend?: number;
+              roas?: number;
+              impressions?: number;
+              clicks?: number;
+              conversions?: number;
+              messages?: number;
+              ctr?: number;
+              cpc?: number;
+              cpm?: number;
+              cpa?: number | null;
+              cpmsg?: number;
+              status?: string;
+              isDraft?: boolean;
+            }) => ({
+              metaCampaignId: String(row.metaCampaignId ?? row.campaignName ?? Math.random()),
+              campaignName: row.campaignName ?? "—",
+              clientName: row.clientName,
+              preset: row.preset ?? "default",
+              spend: row.spend,
+              roas: row.roas,
+              impressions: row.impressions,
+              clicks: row.clicks,
+              conversions: row.conversions,
+              messages: row.messages,
+              ctr: row.ctr,
+              cpc: row.cpc,
+              cpm: row.cpm,
+              cpa: row.cpa,
+              cpmsg: row.cpmsg,
+              status: row.status,
+              isDraft: Boolean(row.isDraft)
+            })
+          )
+        );
+      })
+      .catch(() => setCampaignSnapshots([]))
+      .finally(() => setCampaignsLoading(false));
+  }, [clientFilter, periodKey]);
+
+  const loadAdLibraryInsights = useCallback(() => {
+    setAdLibraryLoading(true);
+    const params = new URLSearchParams();
+    if (clientFilter) params.set("clientId", clientFilter);
+
+    void fetch(`/api/dashboard/ad-library-insights?${params.toString()}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) {
+          setAdLibraryInsights(j as DashboardAdLibraryInsights);
+        } else {
+          setAdLibraryInsights(null);
+        }
+      })
+      .catch(() => setAdLibraryInsights(null))
+      .finally(() => setAdLibraryLoading(false));
+  }, [clientFilter]);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -314,6 +454,14 @@ export function useDashboardData() {
   useEffect(() => {
     loadAgeBreakdown();
   }, [loadAgeBreakdown]);
+
+  useEffect(() => {
+    loadCampaignSnapshots();
+  }, [loadCampaignSnapshots]);
+
+  useEffect(() => {
+    loadAdLibraryInsights();
+  }, [loadAdLibraryInsights]);
 
   useEffect(() => {
     return loadClients();
@@ -330,7 +478,7 @@ export function useDashboardData() {
       .then((j) => {
         if (!mounted || !j.ok) return;
         if (Array.isArray(j.dashboardChartMetrics)) {
-          const metrics = j.dashboardChartMetrics as MetricKey[];
+          const metrics = normalizeChartMetrics(j.dashboardChartMetrics);
           setUserChartMetrics(metrics);
           writeCachedChartMetrics(metrics);
           if (!clientFilter) setChartMetrics(metrics);
@@ -369,7 +517,7 @@ export function useDashboardData() {
         const s = j.settings;
         if (s) {
           if (Array.isArray(s.defaultDashboardMetrics) && s.defaultDashboardMetrics.length) {
-            const metrics = s.defaultDashboardMetrics as MetricKey[];
+            const metrics = normalizeChartMetrics(s.defaultDashboardMetrics);
             setChartMetrics(metrics);
             writeCachedChartMetrics(metrics);
           }
@@ -388,10 +536,12 @@ export function useDashboardData() {
       loadClients();
       loadBrainLearnings();
       loadAgeBreakdown();
+      loadCampaignSnapshots();
+      loadAdLibraryInsights();
     };
     window.addEventListener("traffic-sync-done", onSync);
     return () => window.removeEventListener("traffic-sync-done", onSync);
-  }, [load, loadClients, loadBrainLearnings, loadAgeBreakdown]);
+  }, [load, loadClients, loadBrainLearnings, loadAgeBreakdown, loadCampaignSnapshots, loadAdLibraryInsights]);
 
   const persistChartMetrics = useCallback(
     (next: MetricKey[]) => {
@@ -512,6 +662,10 @@ export function useDashboardData() {
     brainSummaryLoading,
     ageBreakdown,
     ageBreakdownLoading,
+    campaignSnapshots,
+    campaignsLoading,
+    adLibraryInsights,
+    adLibraryLoading,
     chartMetrics,
     toggleChartMetric,
     dashboardLayout,
@@ -526,6 +680,7 @@ export function useDashboardData() {
     metricLabel,
     chartMetricLabels,
     vsLabel: periodContext.vsLabel,
+    deltaNewLabel: t("deltaNew"),
     chartSubtitle: periodContext.chartSubtitle,
     formatMetricValue: (key: MetricKey, value: number) => formatMetricValue(key, value, locale)
   };

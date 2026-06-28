@@ -3,52 +3,43 @@
 import { useState } from "react";
 import { Link, useUxLocation as useLocation } from "@/uxpilot-ui/adapters/navigation";
 import {
-  LayoutDashboard,
-  Brain,
-  Megaphone,
   BarChart3,
-  Settings,
+  Bell,
   ChevronLeft,
   ChevronRight,
+  Home,
+  Lightbulb,
+  Send,
+  Settings,
   Users,
-  Sun,
-  Moon,
-  Target,
-  Trophy,
-  ChevronRight as ChevronRightIcon,
-  Globe,
-  ChevronDown,
-  LifeBuoy,
-  ScrollText,
-  Info,
-  Shield,
-  Trash2,
+  UsersRound
 } from "lucide-react";
 import { cn } from "@/uxpilot-ui/lib/utils";
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
-import { useTheme } from "@/uxpilot-ui/hooks/useTheme";
 
-type Language = "PT-BR" | "EN" | "ES";
-const languages: Language[] = ["PT-BR", "EN", "ES"];
+function NavSendSquareIcon({ size = 18 }: { size?: number }) {
+  const inner = Math.max(10, size - 8);
+  return (
+    <span className="inline-flex shrink-0 items-center justify-center rounded-[5px] border border-current/45 p-[3px]">
+      <Send size={inner} strokeWidth={2} aria-hidden />
+    </span>
+  );
+}
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Destaques", path: "/dashboard", badge: null, betaBadge: false },
-  { icon: Users, label: "Clientes", path: "/clients", badge: null, betaBadge: false },
-  { icon: Megaphone, label: "Campanhas", path: "/campaigns", badge: null, betaBadge: false },
-  { icon: Target, label: "Públicos", path: "/audiences", badge: null, betaBadge: false },
-  { icon: Trophy, label: "Ranking de Criativos", path: "/creatives", badge: null, betaBadge: false },
-  { icon: Brain, label: "Agency Brain", path: "/agency-brain/learnings", badge: null, betaBadge: true },
-  { icon: BarChart3, label: "Relatórios", path: "/reports", badge: null, betaBadge: false },
-  { icon: Settings, label: "Automações", path: "/settings", badge: null, betaBadge: false },
+  { icon: Home, label: "Dashboard", path: "/dashboard", customIcon: false },
+  { icon: Users, label: "Clientes", path: "/clients", customIcon: false },
+  { icon: Send, label: "Campanhas", path: "/campaigns", customIcon: true },
+  { icon: UsersRound, label: "Públicos", path: "/audiences", customIcon: false },
+  { icon: Lightbulb, label: "Aprendizados", path: "/agency-brain/learnings", customIcon: false },
+  { icon: BarChart3, label: "Relatórios", path: "/reports", customIcon: false },
+  { icon: Bell, label: "Alertas", path: "/alerts", customIcon: false },
+  { icon: Settings, label: "Configurações", path: "/settings", customIcon: false }
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const { theme, toggleTheme } = useTheme();
-  const isLight = theme === "light";
-  const [language, setLanguage] = useState<Language>("PT-BR");
-  const [langOpen, setLangOpen] = useState(false);
 
   return (
     <aside
@@ -59,10 +50,9 @@ export default function Sidebar() {
       )}
       style={{
         background: "#0a0f14",
-        borderColor: "rgba(255,255,255,0.05)",
+        borderColor: "rgba(255,255,255,0.05)"
       }}
     >
-      {/* Logo */}
       <div
         className={cn(
           "flex items-center h-16 px-3 flex-shrink-0",
@@ -70,8 +60,13 @@ export default function Sidebar() {
         )}
         style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
       >
-        <div className={cn("flex items-center min-w-0", collapsed ? "justify-center" : "")}>
-          <OrionAgencyLogo size="sm" variant="dark" showText={!collapsed} />
+        <div className={cn("flex min-w-0 items-center", collapsed ? "justify-center" : "max-w-[calc(100%-2rem)]")}>
+          <OrionAgencyLogo
+            size="sm"
+            variant="dark"
+            showText={!collapsed}
+            className={collapsed ? undefined : "min-w-0 max-w-full"}
+          />
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -95,215 +90,59 @@ export default function Sidebar() {
         </button>
       )}
 
-      {/* Nav */}
-      <nav className="flex-1 py-4 overflow-y-auto overflow-x-hidden">
-        <ul className="space-y-0.5 px-2">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={cn(
-                    "flex items-center rounded-lg transition-all duration-200 group relative",
-                    collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
-                  )}
-                  style={isActive ? {
-                    background: "linear-gradient(135deg, rgba(245,166,35,0.15), rgba(245,166,35,0.05))",
-                    borderLeft: "2px solid #f5a623",
-                    color: "#f5a623",
-                  } : {
-                    color: "#94a3b8",
-                  }}
-                  onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)"; }}
-                  onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = ""; }}
-                >
-                  <div className="relative flex-shrink-0">
-                    <item.icon size={18} style={isActive ? { color: "#f5a623" } : {}} />
-                    {item.badge && collapsed && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full text-[9px] flex items-center justify-center font-bold"
-                        style={{ background: "#ef4444", color: "white" }}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                  {!collapsed && (
-                    <>
-                      <span className="font-body text-sm font-medium flex-1 whitespace-nowrap">{item.label}</span>
-                      {item.badge && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
-                          style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>
-                          {item.badge}
-                        </span>
-                      )}
-                      {item.betaBadge && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md tracking-wider"
-                          style={{ background: "rgba(124,58,237,0.25)", color: "#a78bfa", border: "1px solid rgba(124,58,237,0.4)" }}>
-                          BETA
-                        </span>
-                      )}
-                      {item.betaBadge && (
-                        <ChevronRightIcon size={12} style={{ color: "#64748b" }} />
-                      )}
-                    </>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* Support Section */}
-      <div className="px-2 py-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-        {!collapsed && (
-          <p className="text-[9px] font-semibold uppercase tracking-widest px-3 mb-1.5" style={{ color: "#64748b" }}>
-            Suporte
-          </p>
-        )}
-        {[
-          { icon: LifeBuoy, label: "Suporte", path: "/support" },
-          { icon: Info, label: "Sobre Nós", path: "/about" },
-          { icon: ScrollText, label: "Termos de Uso", path: "/terms" },
-          { icon: Shield, label: "Privacidade", path: "/privacy" },
-          { icon: Trash2, label: "Exclusão de dados", path: "/data-deletion" },
-        ].map((item) => {
-          const isActive = location.pathname === item.path;
+      <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden px-2 space-y-1">
+        {navItems.map((item) => {
+          const isActive =
+            location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+          const Icon = item.icon;
           return (
             <Link
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center rounded-lg transition-all duration-200 mb-0.5",
-                collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2"
+                "flex items-center rounded-xl transition-all duration-200 group relative",
+                collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
+                isActive ? "sidebar-item-active font-semibold" : "sidebar-item-idle font-medium"
               )}
-              style={isActive ? {
-                background: "linear-gradient(135deg, rgba(245,166,35,0.15), rgba(245,166,35,0.05))",
-                borderLeft: "2px solid #f5a623",
-                color: "#f5a623",
-              } : {
-                color: "#64748b",
-              }}
-              onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)"; }}
-              onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = ""; }}
             >
-              <item.icon size={15} style={isActive ? { color: "#f5a623" } : {}} className="flex-shrink-0" />
-              {!collapsed && (
-                <span className="font-body text-xs font-medium whitespace-nowrap">{item.label}</span>
+              {item.customIcon ? (
+                <NavSendSquareIcon />
+              ) : (
+                <Icon size={18} strokeWidth={1.75} className="shrink-0" />
               )}
+              {!collapsed ? (
+                <span className="font-body text-[13px] flex-1 whitespace-nowrap">{item.label}</span>
+              ) : null}
             </Link>
           );
         })}
-      </div>
+      </nav>
 
-      {/* Language Selector */}
-      <div className={cn("px-3 pb-1 relative", collapsed ? "flex justify-center" : "")}>
-        <button
-          onClick={() => setLangOpen(!langOpen)}
-          title="Idioma"
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-body font-medium transition-all border w-full",
-            collapsed ? "justify-center px-2" : "justify-between"
-          )}
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            borderColor: langOpen ? "rgba(245,166,35,0.5)" : "rgba(255,255,255,0.08)",
-            color: "#94a3b8",
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <Globe size={14} style={{ color: "#f5a623" }} />
-            {!collapsed && <span>{language}</span>}
-          </div>
-          {!collapsed && <ChevronDown size={11} style={{ color: "#64748b", transform: langOpen ? "rotate(180deg)" : "", transition: "transform 0.2s" }} />}
-        </button>
-
-        {langOpen && !collapsed && (
-          <div
-            className="absolute bottom-full left-3 right-3 mb-1 rounded-lg border overflow-hidden shadow-xl z-50"
-            style={{ background: "#0d1520", borderColor: "rgba(255,255,255,0.1)" }}
-          >
-            {languages.map((lang) => (
-              <button
-                key={lang}
-                onClick={() => { setLanguage(lang); setLangOpen(false); }}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-body transition-colors"
-                style={{
-                  color: language === lang ? "#f5a623" : "#94a3b8",
-                  background: language === lang ? "rgba(245,166,35,0.08)" : "transparent",
-                }}
-                onMouseEnter={e => { if (language !== lang) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
-                onMouseLeave={e => { if (language !== lang) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-              >
-                <span>{lang}</span>
-                {language === lang && <span style={{ color: "#f5a623", fontSize: "10px" }}>✓</span>}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {langOpen && collapsed && (
-          <div
-            className="absolute bottom-full left-full ml-2 w-20 rounded-lg border overflow-hidden shadow-xl z-50"
-            style={{ background: "#0d1520", borderColor: "rgba(255,255,255,0.1)" }}
-          >
-            {languages.map((lang) => (
-              <button
-                key={lang}
-                onClick={() => { setLanguage(lang); setLangOpen(false); }}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-body transition-colors"
-                style={{
-                  color: language === lang ? "#f5a623" : "#94a3b8",
-                  background: language === lang ? "rgba(245,166,35,0.08)" : "transparent",
-                }}
-              >
-                {lang}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Theme Toggle */}
-      <div className={cn("px-3 pb-2", collapsed ? "flex justify-center" : "")}>
-        <button
-          onClick={toggleTheme}
-          title={isLight ? "Modo Escuro" : "Modo Claro"}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-body font-medium transition-all border w-full",
-            collapsed ? "justify-center px-2" : ""
-          )}
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            borderColor: "rgba(255,255,255,0.08)",
-            color: "#94a3b8",
-          }}
-        >
-          {isLight ? <Moon size={14} style={{ color: "#f5a623" }} /> : <Sun size={14} style={{ color: "#f5a623" }} />}
-          {!collapsed && <span>{isLight ? "Modo Escuro" : "Modo Claro"}</span>}
-        </button>
-      </div>
-
-      {/* Bottom User */}
-      <div className={cn(
-        "p-3",
-        collapsed ? "flex justify-center" : ""
-      )}
+      <div
+        className={cn("p-3", collapsed ? "flex justify-center" : "")}
         style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
       >
-        <div className={cn("flex items-center", collapsed ? "" : "gap-2")}>
-          <img
-            src="https://storage.googleapis.com/uxpilot-auth.appspot.com/avatars/avatar-6.jpg"
-            alt="User"
-            className="w-8 h-8 rounded-full flex-shrink-0"
-            style={{ border: "1px solid rgba(255,255,255,0.1)" }}
-          />
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="text-xs font-medium truncate" style={{ color: "#f8fafc" }}>Ana Costa</p>
-              <p className="text-[10px] truncate" style={{ color: "#94a3b8" }}>Agency Lead</p>
-            </div>
+        <div
+          className={cn(
+            "flex items-center",
+            collapsed ? "" : "w-full gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-2.5 py-2"
           )}
+        >
+          <div
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+            style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
+          >
+            T
+          </div>
+          {!collapsed ? (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium truncate text-[#f8fafc]">Tiago Carvalho</p>
+                <p className="text-[11px] truncate text-[#94a3b8]">Admin</p>
+              </div>
+              <ChevronRight size={15} className="shrink-0 text-[#64748b]" />
+            </>
+          ) : null}
         </div>
       </div>
     </aside>

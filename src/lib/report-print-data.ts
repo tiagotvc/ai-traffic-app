@@ -155,6 +155,7 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       periodQuery: periodQueryFromParts({ preset, since, until }),
       adAccountId,
       brandName: tenant?.brandName ?? tenant?.name ?? null,
+      logoUrl: tenant?.logoUrl ?? null,
       creativeGroups
     };
   }
@@ -190,7 +191,8 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       selectedMetrics,
       periodQuery: periodQueryFromParts({ preset, since, until }),
       adAccountId,
-      brandName: tenant.brandName ?? tenant.name
+      brandName: tenant.brandName ?? tenant.name,
+      logoUrl: tenant.logoUrl ?? null
     };
   } catch {
     return { ok: false as const, error: "unauthorized" };

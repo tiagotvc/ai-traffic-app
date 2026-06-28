@@ -3,8 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import type { MetricKey } from "@/lib/dashboard-metrics";
-import { llmGenerateJson } from "@/lib/llm/generate-json";
-import { getAnthropicApiKey } from "@/lib/llm/keys";
+import { aiGenerateJson } from "@/lib/ai/generate";
 import type { ReportRecommendation } from "@/lib/report-narrative";
 import type { CampaignSpendRow, ReportSummary } from "@/lib/report-preview-types";
 
@@ -24,7 +23,7 @@ const ClaudeReportSchema = z.object({
 });
 
 export type ReportAiAnalysis = {
-  provider: "claude";
+  provider: string;
   executiveSummary: string;
   keyFindings: string[];
   recommendations: ReportRecommendation[];
@@ -63,12 +62,26 @@ export async function generateReportClaudeAnalysis(input: {
   goalLabel: string;
   campaigns: CampaignSpendRow[];
 }): Promise<ReportAiAnalysis | null> {
-  if (!getAnthropicApiKey()) return null;
-
   const isEn = input.locale === "en";
-  const topCampaigns = input.campaigns
+  // R2.9 — rankeia por eficiência (CPA) priorizando quem converte; sem conversão
+  // vai para o fim por gasto. Evita recomendações sobre campanhas irrelevantes.
+  const rankedCampaigns = [...input.campaigns]
+    .map((c) => ({ c, cpa: c.conversions > 0 ? c.spend / c.conversions : Infinity }))
+    .sort((a, b) => {
+      if (a.c.conversions > 0 && b.c.conversions === 0) return -1;
+      if (b.c.conversions > 0 && a.c.conversions === 0) return 1;
+      if (a.c.conversions > 0 && b.c.conversions > 0) return a.cpa - b.cpa;
+      return b.c.spend - a.c.spend;
+    })
+    .map((x) => x.c);
+  const topCampaigns = rankedCampaigns
     .slice(0, 5)
-    .map((c) => `- ${c.name}: R$ ${c.spend.toFixed(2)}, ${c.conversions} conv.`)
+    .map(
+      (c) =>
+        `- ${c.name}: R$ ${c.spend.toFixed(2)}, ${c.conversions} conv.${
+          c.conversions > 0 ? ` (CPA R$ ${(c.spend / c.conversions).toFixed(2)})` : ""
+        }`
+    )
     .join("\n");
 
   const prompt = isEn
@@ -112,19 +125,21 @@ Retorne JSON com:
 Seja direto e profissional. Não invente dados que não foram fornecidos.`;
 
   try {
-    const result = await llmGenerateJson({
-      provider: "claude",
+    // Roteia pelo AI router: tarefa "analysis" → Claude Sonnet (acertividade)
+    // quando habilitado, com fallback automático para Gemini.
+    const { data, meta } = await aiGenerateJson({
+      task: { kind: "analysis", complexity: "medium", label: "report.analysis" },
       prompt,
       schema: ClaudeReportSchema,
       temperature: 0.35
     });
 
     return {
-      provider: "claude",
-      executiveSummary: result.data.executiveSummary,
-      keyFindings: result.data.keyFindings,
-      recommendations: result.data.recommendations.map((r, i) => ({
-        id: `claude-${i}`,
+      provider: meta.provider,
+      executiveSummary: data.executiveSummary,
+      keyFindings: data.keyFindings,
+      recommendations: data.recommendations.map((r, i) => ({
+        id: `ai-${i}`,
         title: r.title,
         body: r.body,
         priority: r.priority

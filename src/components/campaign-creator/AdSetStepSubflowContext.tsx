@@ -14,14 +14,31 @@ import {
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { getActiveAdset, patchWizardNavigation, type CampaignDraftPayload } from "@/lib/campaign-draft";
 
-/** Ad set sub-sections. Saved-audience loading lives inside "compiler" (Persona + zone). */
-export const ADSET_SECTIONS = ["compiler", "advanced", "schedule"] as const;
+/** Ad set subflow tabs: setup, segmentation (Orion vs Meta), and schedule/placements. */
+export const ADSET_SECTIONS = ["setup", "segmentation", "schedule"] as const;
 export type AdSetSection = (typeof ADSET_SECTIONS)[number];
 
+/** Legacy persisted sections — coerced on restore. */
+export type LegacyAdSetSection = "compiler" | "meta_saved" | "advanced";
+
 function normalizeAdsetSection(raw: string | undefined): AdSetSection {
-  if (raw === "meta_saved") return "compiler";
-  if (raw && (ADSET_SECTIONS as readonly string[]).includes(raw)) return raw as AdSetSection;
-  return "compiler";
+  if (raw === "schedule") return "schedule";
+  if (raw === "segmentation") return "segmentation";
+  if (raw === "setup") return "setup";
+  // Legacy targeting sub-views map to segmentation tab.
+  if (raw === "compiler" || raw === "meta_saved" || raw === "advanced") {
+    return "segmentation";
+  }
+  return "setup";
+}
+
+function migrateVisitedThrough(section: string | undefined): number {
+  if (section === "schedule") return 2;
+  if (section === "segmentation") return 1;
+  if (section === "compiler" || section === "meta_saved" || section === "advanced") {
+    return 1;
+  }
+  return 0;
 }
 
 function validateAudience(payload: CampaignDraftPayload): string | null {
@@ -73,18 +90,11 @@ export function validateAdSetSection(
   payload: CampaignDraftPayload,
   section: AdSetSection
 ): string | null {
-  const adset = getActiveAdset(payload);
-  const mode = adset.targetingMode ?? "compiler";
-
   switch (section) {
-    case "compiler": {
-      const basicsErr = validateBasics(payload);
-      if (basicsErr) return basicsErr;
-      if (mode === "compiler" || mode === "meta_saved") return validateAudience(payload);
-      return null;
-    }
-    case "advanced":
-      return mode === "advanced" ? validateAudience(payload) : null;
+    case "setup":
+      return validateBasics(payload);
+    case "segmentation":
+      return validateAudience(payload);
     case "schedule":
       return null;
   }
@@ -107,11 +117,9 @@ const SubflowContext = createContext<SubflowContextValue | null>(null);
 
 export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) {
   const { activeNode, payload, updatePayload } = useCampaignDraft();
-  const savedSection = normalizeAdsetSection(payload.meta?.wizardNavigation?.adsetSection);
-  const [section, setSection] = useState<AdSetSection>(savedSection);
-  const [visitedThrough, setVisitedThrough] = useState(() =>
-    Math.max(0, ADSET_SECTIONS.indexOf(savedSection))
-  );
+  const savedSection = payload.meta?.wizardNavigation?.adsetSection;
+  const [section, setSection] = useState<AdSetSection>(() => normalizeAdsetSection(savedSection));
+  const [visitedThrough, setVisitedThrough] = useState(() => migrateVisitedThrough(savedSection));
   const prevActiveNode = useRef(activeNode);
 
   const persistSection = useCallback(
@@ -125,52 +133,20 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
     if (activeNode === "adset" && prevActiveNode.current !== "adset") {
       const restored = normalizeAdsetSection(payload.meta?.wizardNavigation?.adsetSection);
       setSection(restored);
-      setVisitedThrough(Math.max(0, ADSET_SECTIONS.indexOf(restored)));
+      setVisitedThrough(migrateVisitedThrough(payload.meta?.wizardNavigation?.adsetSection));
     }
     prevActiveNode.current = activeNode;
   }, [activeNode, payload.meta?.wizardNavigation?.adsetSection]);
 
   const sectionIndex = ADSET_SECTIONS.indexOf(section);
 
-  // Persona+Zone (compiler) and Advanced are mutually exclusive — the non-chosen
-  // method is skipped when navigating with Next/Back, so picking one jumps straight
-  // to Schedule instead of stopping on the other method.
-  const targetingMethod: AdSetSection =
-    getActiveAdset(payload).targetingMode === "advanced" ? "advanced" : "compiler";
-
-  const isSkippedSection = useCallback(
-    (s: AdSetSection) =>
-      (s === "compiler" && targetingMethod !== "compiler") ||
-      (s === "advanced" && targetingMethod !== "advanced"),
-    [targetingMethod]
-  );
-
-  const nextStopIndex = useCallback(
-    (from: number) => {
-      let i = from + 1;
-      while (i < ADSET_SECTIONS.length && isSkippedSection(ADSET_SECTIONS[i]!)) i++;
-      return i < ADSET_SECTIONS.length ? i : -1;
-    },
-    [isSkippedSection]
-  );
-
-  const prevStopIndex = useCallback(
-    (from: number) => {
-      let i = from - 1;
-      while (i >= 0 && isSkippedSection(ADSET_SECTIONS[i]!)) i--;
-      return i;
-    },
-    [isSkippedSection]
-  );
-
   const canGoTo = useCallback(
     (target: AdSetSection) => {
       if (activeNode !== "adset") return false;
-      // Targeting method (Persona+Zone vs Advanced) and Schedule are an either/or
-      // choice the user picks directly — allow free navigation between sections.
-      return (ADSET_SECTIONS as readonly string[]).includes(target);
+      const idx = ADSET_SECTIONS.indexOf(target);
+      return idx <= visitedThrough || idx === sectionIndex;
     },
-    [activeNode]
+    [activeNode, sectionIndex, visitedThrough]
   );
 
   const isSectionVisited = useCallback(
@@ -192,23 +168,21 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
   );
 
   const goNext = useCallback(() => {
-    const nextIdx = nextStopIndex(sectionIndex);
-    if (nextIdx < 0) return false;
-    const next = ADSET_SECTIONS[nextIdx]!;
-    setVisitedThrough((v) => Math.max(v, nextIdx));
+    if (sectionIndex >= ADSET_SECTIONS.length - 1) return false;
+    const next = ADSET_SECTIONS[sectionIndex + 1]!;
+    setVisitedThrough((v) => Math.max(v, sectionIndex + 1));
     setSection(next);
     persistSection(next);
     return true;
-  }, [sectionIndex, nextStopIndex, persistSection]);
+  }, [sectionIndex, persistSection]);
 
   const goPrev = useCallback(() => {
-    const prevIdx = prevStopIndex(sectionIndex);
-    if (prevIdx < 0) return false;
-    const prev = ADSET_SECTIONS[prevIdx]!;
+    if (sectionIndex <= 0) return false;
+    const prev = ADSET_SECTIONS[sectionIndex - 1]!;
     setSection(prev);
     persistSection(prev);
     return true;
-  }, [sectionIndex, prevStopIndex, persistSection]);
+  }, [sectionIndex, persistSection]);
 
   const validateCurrent = useCallback(
     () => validateAdSetSection(payload, section),
@@ -219,8 +193,8 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
     (): SubflowContextValue => ({
       section,
       sectionIndex,
-      isFirst: prevStopIndex(sectionIndex) < 0,
-      isLast: nextStopIndex(sectionIndex) < 0,
+      isFirst: sectionIndex === 0,
+      isLast: sectionIndex === ADSET_SECTIONS.length - 1,
       canGoTo,
       isSectionVisited,
       goTo,
@@ -231,8 +205,6 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
     [
       section,
       sectionIndex,
-      prevStopIndex,
-      nextStopIndex,
       canGoTo,
       isSectionVisited,
       goTo,

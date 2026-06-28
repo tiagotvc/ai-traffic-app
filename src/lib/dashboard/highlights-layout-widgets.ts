@@ -15,7 +15,16 @@ export const HIGHLIGHTS_SECONDARY_GROUP = "secondaryKpi";
 /** Grid rows a hero KPI card occupies — tall enough for icon + value + sparkline. */
 export const HERO_CARD_ROWS = 4;
 
-const FALLBACK_HERO: MetricKey[] = ["reach", "conversions", "cpmsg"];
+const FALLBACK_HERO: MetricKey[] = [
+  "spend",
+  "ctr",
+  "reach",
+  "conversions",
+  "clicks",
+  "cpc",
+  "roas",
+  "cpm"
+];
 const SECONDARY_COLS = 3;
 /** Max compact KPI pills in one horizontal row (6 × w=2 = 12 cols). */
 const SECONDARY_ROW_CAPACITY = 6;
@@ -37,7 +46,7 @@ const LEGACY_SECONDARY_CARD_W = 4;
 const LEGACY_SECONDARY_CARD_W_NARROW = 1;
 
 export function resolveHighlightsHeroKeys(heroMetrics?: MetricKey[]): MetricKey[] {
-  const fallback = presetMetricsFor(undefined).slice(0, 3) as MetricKey[];
+  const fallback = presetMetricsFor(undefined).slice(0, MAX_HERO_METRICS) as MetricKey[];
   const resolved = resolveHeroMetricKeys(heroMetrics ?? [], fallback);
   return resolved.length ? resolved : FALLBACK_HERO;
 }

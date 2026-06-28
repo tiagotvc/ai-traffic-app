@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Menu, X } from "lucide-react";
 
-import { TrafficAILogo } from "@/components/brand/TrafficAILogo";
+import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type AppLocale } from "@/i18n/routing";
 
@@ -24,7 +24,6 @@ const NAV = [
 
 export function MarketingShell({ children }: { children: React.ReactNode }) {
   const t = useTranslations("marketing");
-  const tCommon = useTranslations("common");
   const locale = useLocale() as AppLocale;
   const pathname = usePathname();
   const router = useRouter();
@@ -40,7 +39,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-[var(--border-color)] bg-[var(--surface-header)] backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="shrink-0">
-            <TrafficAILogo size="sm" productLabel={tCommon("product")} variant="dark" />
+            <OrionAgencyLogo size="sm" variant="dark" />
           </Link>
 
           <nav className="hidden items-center gap-6 md:flex">
@@ -65,7 +64,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
                   className="rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
                   style={{
                     background: locale === loc ? "var(--ui-accent-muted)" : "transparent",
-                    color: locale === loc ? "var(--amber-bright)" : "var(--text-dimmer)"
+                    color: locale === loc ? "var(--ui-accent)" : "var(--text-dimmer)"
                   }}
                 >
                   {LOCALE_LABELS[loc]}
@@ -129,7 +128,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-[var(--border-color)] bg-[var(--surface-bg)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
-            <TrafficAILogo size="sm" productLabel={tCommon("product")} variant="dark" />
+            <OrionAgencyLogo size="sm" variant="dark" />
             <p className="mt-2 max-w-sm text-sm text-[var(--text-dim)]">{t("footerTagline")}</p>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--text-dim)]">

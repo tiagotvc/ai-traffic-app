@@ -61,7 +61,7 @@ function CountUpStat({ valueKey }: { valueKey: (typeof STATS)[number] }) {
 
   return (
     <div ref={ref} className="marketing-card p-4 text-center">
-      <div className="font-heading text-2xl font-bold text-[var(--amber-bright)]">{shown}</div>
+      <div className="font-heading text-2xl font-bold text-[var(--ui-accent)]">{shown}</div>
       <div className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">{t(`${valueKey}Label`)}</div>
     </div>
   );

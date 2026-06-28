@@ -1,9 +1,11 @@
 "use client";
 
+import { ArrowLeft, ChevronRight, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { AdminUserDetailSkeleton } from "@/components/billing/BillingSkeletons";
+import { DsPageHeader } from "@/design-system";
 import {
   AddonStepperCard,
   AdminField,
@@ -84,16 +86,16 @@ function UsageBar({ used, max, label }: { used: number; max: number; label: stri
   const pct = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
   const over = used > max;
   return (
-    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)]/50 p-2.5">
+    <div className="campaign-creator-sidebar-card-inset rounded-lg border p-2.5">
       <div className="mb-2 flex justify-between text-xs">
         <span className="font-medium text-[var(--text-dim)]">{label}</span>
         <span className={over ? "font-bold text-red-600" : "tabular-nums text-[var(--text-dim)]"}>
           {used} / {max}
         </span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-200/70">
+      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--creator-card-bg)]">
         <div
-          className={`h-full rounded-full transition-all ${over ? "bg-red-500" : "bg-gradient-to-r from-violet-500 to-violet-600"}`}
+          className={`h-full rounded-full transition-all ${over ? "bg-red-500" : "bg-[var(--ui-accent)]"}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -179,9 +181,9 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
 
   if (!data) {
     return (
-      <div className="space-y-4 py-12 text-center">
+      <div className="campaign-creator-card campaign-creator-card--compact space-y-4 py-12 text-center">
         <p className="text-[var(--text-dim)]">{t("usersNotFound")}</p>
-        <Link href="/admin/users" className="text-sm font-semibold text-[var(--violet)]">
+        <Link href="/admin/users" className="ds-table-compact-action text-sm">
           {t("usersBack")}
         </Link>
       </div>
@@ -190,42 +192,34 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link
-            href="/admin/users"
-            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--violet)] hover:text-[var(--violet)]"
-          >
-            <span className="rotate-180">
-              <AdminIcon name="chevron" className="h-3.5 w-3.5" />
-            </span>
+      <DsPageHeader
+        breadcrumbs={
+          <Link href="/admin/users" className="ds-table-compact-action inline-flex items-center gap-1">
+            <ArrowLeft size={12} />
             {t("usersBack")}
           </Link>
-          <div className="mt-3 flex items-center gap-3">
-            <UserAvatar name={data.user.name} email={data.user.email} size="md" />
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-bold tracking-tight text-[var(--text-main)] sm:text-xl">
-                {data.user.name || data.user.email}
-              </h1>
-              <p className="truncate text-xs text-[var(--text-dim)]">{data.user.email}</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <PlanBadge
-                  slug={data.subscription.plan?.slug ?? "free"}
-                  name={data.subscription.plan?.name ?? "Free"}
-                />
-                <StatusBadge status={data.subscription.status} />
-              </div>
-            </div>
+        }
+        title={data.user.name || data.user.email}
+        subtitle={data.user.email}
+        titleIcon={<User size={16} />}
+        badge={
+          <div className="flex flex-wrap items-center gap-1.5">
+            <PlanBadge
+              slug={data.subscription.plan?.slug ?? "free"}
+              name={data.subscription.plan?.name ?? "Free"}
+            />
+            <StatusBadge status={data.subscription.status} />
           </div>
-        </div>
-      </div>
+        }
+        actions={<UserAvatar name={data.user.name} email={data.user.email} size="lg" />}
+      />
 
       {message ? (
         <div
-          className={`rounded-xl border px-4 py-3 text-sm ${
+          className={`campaign-creator-card campaign-creator-card--compact px-4 py-3 text-sm ${
             message.type === "ok"
-              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-500"
-              : "border-red-200 bg-red-500/15 text-red-500"
+              ? "border-emerald-500/25 text-emerald-600"
+              : "border-red-200 text-red-500"
           }`}
         >
           {message.text}
@@ -252,12 +246,12 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
               </AdminSelect>
             </AdminField>
             {data.user.facebookId ? (
-              <p className="rounded-lg bg-[var(--surface-thead)] px-3 py-2 text-xs text-[var(--text-dim)]">
+              <p className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-2 text-xs text-[var(--text-dim)]">
                 Facebook ID: <span className="font-mono">{data.user.facebookId}</span>
               </p>
             ) : null}
             {data.user.googleId ? (
-              <p className="rounded-lg bg-[var(--surface-thead)] px-3 py-2 text-xs text-[var(--text-dim)]">
+              <p className="campaign-creator-sidebar-card-inset rounded-lg border px-3 py-2 text-xs text-[var(--text-dim)]">
                 Google ID: <span className="font-mono">{data.user.googleId}</span>
               </p>
             ) : null}
@@ -459,27 +453,27 @@ export function AdminUserDetailClient({ userId }: { userId: string }) {
             accent="slate"
             className="lg:col-span-2"
           >
-            <ul className="divide-y divide-[var(--border-color)] rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/40">
+            <ul className="divide-y divide-[var(--creator-card-border)] overflow-hidden rounded-xl border border-[var(--creator-card-border)]">
               {data.members.map((m) => (
-                <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <li key={m.id} className="flex items-center justify-between gap-3 bg-[var(--creator-card-bg)] px-4 py-3">
                   <div className="flex items-center gap-3">
                     <UserAvatar name={m.name} email={m.email} size="sm" />
                     <div>
-                      <p className="font-medium text-[var(--text-main)]">{m.name || m.email}</p>
+                      <p className="text-sm font-medium text-[var(--text-main)]">{m.name || m.email}</p>
                       <p className="text-xs text-[var(--text-dim)]">{m.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-[var(--surface-card)] px-2.5 py-0.5 text-xs font-medium text-[var(--text-dim)] ring-1 ring-slate-200">
+                    <span className="ds-table-compact-badge ds-table-compact-badge--neutral">
                       {m.role}
                     </span>
                     {m.id !== userId ? (
                       <Link
                         href={`/admin/users/${m.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--violet)] hover:text-[var(--violet)]"
+                        className="ds-table-compact-action inline-flex items-center gap-0.5"
                       >
                         {t("usersManage")}
-                        <AdminIcon name="chevron" className="h-3.5 w-3.5" />
+                        <ChevronRight size={12} />
                       </Link>
                     ) : (
                       <span className="text-xs text-[var(--text-dimmer)]">atual</span>

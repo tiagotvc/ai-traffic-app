@@ -203,9 +203,10 @@ export function FilterSelectDropdown({
         disabled={disabled}
         onClick={() => !disabled && setOpen((o) => !o)}
         className={cn(
-          "flex w-full items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-all duration-200",
-          creatorField &&
-            "shadow-[0_1px_2px_rgba(0,0,0,0.03)] border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))]",
+          "flex w-full items-center gap-2 whitespace-nowrap rounded-lg border px-3 text-sm transition-all duration-200",
+          creatorField
+            ? "h-9 min-h-9 flex-nowrap items-center py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))]"
+            : "py-2",
           creatorField && open && "border-[var(--ui-accent)]",
           disabled && "cursor-not-allowed opacity-60",
           buttonClassName
@@ -232,7 +233,8 @@ export function FilterSelectDropdown({
         </span>
         <span
           className={cn(
-            "min-w-0 flex-1 truncate font-body text-sm max-w-[88px] sm:max-w-[140px]",
+            "min-w-0 flex-1 truncate font-body text-sm",
+            !creatorField && "max-w-[88px] sm:max-w-[140px]",
             valueClassName
           )}
         >

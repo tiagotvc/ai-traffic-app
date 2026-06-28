@@ -29,6 +29,7 @@ import { PieLegend } from "@/components/charts/PieLegend";
 import { PremiumChartTooltip } from "@/components/charts/PremiumChartTooltip";
 import { ChartContainer } from "@/components/ui/ChartContainer";
 import { cn } from "@/lib/cn";
+import { formatSparkAxisValue } from "@/lib/dashboard/metric-kpi-theme";
 import {
   PREMIUM_BAR_RADIUS,
   PREMIUM_CHART_MARGIN,
@@ -54,13 +55,157 @@ import {
   type SlotVisualConfig
 } from "@/lib/dashboard/slot-visual-config";
 import type { ChartStyle } from "@/lib/dashboard/widget-config";
-import { METRIC_BY_KEY, METRIC_CATALOG, type MetricKey } from "@/lib/dashboard-metrics";
+import { METRIC_BY_KEY, METRIC_CATALOG, MAX_CHART_METRICS, type MetricKey } from "@/lib/dashboard-metrics";
 import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
 
 type ChartPoint = { label: string } & Partial<Record<MetricKey, number>>;
 
+type MetricScaleGroup = "magnitude" | "percent" | "multiplier";
+
+const DUAL_AXIS_MAGNITUDE_RATIO = 8;
+
 function metricColor(key: MetricKey): string {
   return METRIC_BY_KEY[key]?.color ?? "#94a3b8";
+}
+
+function metricScaleGroup(key: MetricKey): MetricScaleGroup {
+  const format = METRIC_BY_KEY[key]?.format;
+  if (format === "percent") return "percent";
+  if (format === "multiplier" || format === "ratio") return "multiplier";
+  return "magnitude";
+}
+
+function metricMagnitude(data: ChartPoint[], key: MetricKey): number {
+  let max = 0;
+  for (const point of data) {
+    const v = Number(point[key]);
+    if (Number.isFinite(v)) max = Math.max(max, Math.abs(v));
+  }
+  return max;
+}
+
+/** Assign each active metric to left/right Y axis by unit group and scale. */
+function resolveAxisAssignment(
+  activeMetrics: MetricKey[],
+  data: ChartPoint[],
+  visual: SlotVisualConfig | undefined,
+  dualAxisAlways: boolean
+): { sides: Map<MetricKey, "left" | "right">; hasRightAxis: boolean } {
+  const sides = new Map<MetricKey, "left" | "right">();
+  const unassigned: MetricKey[] = [];
+
+  for (const key of activeMetrics) {
+    const explicit = visual?.yAxisSide?.[key];
+    if (explicit === "left" || explicit === "right") sides.set(key, explicit);
+    else unassigned.push(key);
+  }
+
+  const magnitude: MetricKey[] = [];
+  const percent: MetricKey[] = [];
+  const multiplier: MetricKey[] = [];
+
+  for (const key of unassigned) {
+    const group = metricScaleGroup(key);
+    if (group === "percent") percent.push(key);
+    else if (group === "multiplier") multiplier.push(key);
+    else magnitude.push(key);
+  }
+
+  // Never mix percent + multiplier on the same axis — they crush each other's scale.
+  let rightCandidates: MetricKey[] = [];
+  if (multiplier.length > 0) {
+    rightCandidates = multiplier;
+    magnitude.push(...percent);
+  } else if (percent.length > 0) {
+    rightCandidates = percent;
+  }
+
+  let leftCandidates = [...magnitude];
+
+  if (leftCandidates.length >= 2) {
+    const sorted = [...leftCandidates].sort(
+      (a, b) => metricMagnitude(data, b) - metricMagnitude(data, a)
+    );
+    const base = sorted[0];
+    const baseMag = metricMagnitude(data, base);
+    leftCandidates = [base];
+    for (let i = 1; i < sorted.length; i += 1) {
+      const key = sorted[i];
+      const mag = metricMagnitude(data, key);
+      if (baseMag > 0 && mag > 0) {
+        const ratio = mag > baseMag ? mag / baseMag : baseMag / mag;
+        if (ratio >= DUAL_AXIS_MAGNITUDE_RATIO) rightCandidates.push(key);
+        else leftCandidates.push(key);
+      } else {
+        leftCandidates.push(key);
+      }
+    }
+  }
+
+  for (const key of leftCandidates) sides.set(key, "left");
+  for (const key of rightCandidates) sides.set(key, "right");
+
+  if (dualAxisAlways && activeMetrics.length >= 2) {
+    const onRight = activeMetrics.filter((k) => sides.get(k) === "right").length;
+    if (onRight === 0) {
+      const movable = [...activeMetrics]
+        .reverse()
+        .find((k) => visual?.yAxisSide?.[k] !== "left");
+      if (movable) sides.set(movable, "right");
+    }
+  } else if (activeMetrics.length >= 2 && rightCandidates.length === 0 && leftCandidates.length >= 2) {
+    const baseKey = activeMetrics[0];
+    const baseMag = metricMagnitude(data, baseKey);
+    if (baseMag > 0) {
+      for (let i = 1; i < activeMetrics.length; i += 1) {
+        const key = activeMetrics[i];
+        if (sides.has(key)) continue;
+        const mag = metricMagnitude(data, key);
+        if (mag <= 0) continue;
+        const ratio = mag > baseMag ? mag / baseMag : baseMag / mag;
+        if (ratio >= DUAL_AXIS_MAGNITUDE_RATIO) sides.set(key, "right");
+      }
+    }
+  }
+
+  const hasRightAxis =
+    (dualAxisAlways && activeMetrics.length >= 2) ||
+    activeMetrics.some((k) => sides.get(k) === "right");
+
+  for (const key of activeMetrics) {
+    if (!sides.has(key)) sides.set(key, "left");
+  }
+
+  return { sides, hasRightAxis };
+}
+
+function yDomainPadding(dataMin: number, dataMax: number): [number, number] {
+  if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) return [0, 1];
+  if (dataMin === dataMax) {
+    const pad = dataMax === 0 ? 1 : Math.abs(dataMax) * 0.12 || 1;
+    const lo = dataMin >= 0 ? 0 : dataMin - pad;
+    return [lo, Math.max(dataMax + pad, pad)];
+  }
+  const span = dataMax - dataMin;
+  const topPad = span * 0.06;
+  const lo = dataMin >= 0 ? 0 : dataMin - span * 0.06;
+  return [lo, dataMax + topPad];
+}
+
+function metricDomain(data: ChartPoint[], keys: MetricKey[]): [number, number] {
+  if (keys.length === 0) return [0, 1];
+  let min = Infinity;
+  let max = -Infinity;
+  for (const point of data) {
+    for (const key of keys) {
+      const v = Number(point[key]);
+      if (!Number.isFinite(v)) continue;
+      min = Math.min(min, v);
+      max = Math.max(max, v);
+    }
+  }
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return [0, 1];
+  return yDomainPadding(min, max);
 }
 
 function CustomTooltip({
@@ -106,7 +251,8 @@ export function DashboardPerformanceChart({
   disableToggle = false,
   previewHeight,
   visual,
-  metricSummary
+  metricSummary,
+  dualAxisAlways = false
 }: {
   data: ChartPoint[];
   activeMetrics: MetricKey[];
@@ -125,6 +271,8 @@ export function DashboardPerformanceChart({
   previewHeight?: number;
   visual?: SlotVisualConfig;
   metricSummary?: Partial<Record<MetricKey, number>>;
+  /** Always render left + right Y axes (Destaques page). */
+  dualAxisAlways?: boolean;
 }) {
   const t = useTranslations("dashboard");
   const [animKey, setAnimKey] = useState(0);
@@ -132,6 +280,7 @@ export function DashboardPerformanceChart({
   const isCanvas = variant === "canvas";
   const isPreview = variant === "preview";
   const isEmbedded = variant === "embedded";
+  const isPage = variant === "page";
 
   const toggleKeys = useMemo(
     () => availableMetrics ?? (METRIC_CATALOG.map((m) => m.key) as MetricKey[]),
@@ -148,16 +297,16 @@ export function DashboardPerformanceChart({
     return (
       <div className={cn("flex w-full flex-col", !isCanvas && !isPreview && !isEmbedded && "h-full min-h-0")}>
         {!isCanvas && !isPreview && !isEmbedded ? (
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between">
             <div>
-              <div className="skeleton-shimmer mb-2 h-4 w-40 rounded" />
-              <div className="skeleton-shimmer h-3 w-24 rounded" />
+              <div className="skeleton-shimmer mb-1.5 h-3.5 w-36 rounded" />
+              <div className="skeleton-shimmer h-2.5 w-20 rounded" />
             </div>
           </div>
         ) : null}
         <div
-          className="skeleton-shimmer rounded-xl"
-          style={{ height: isEmbedded ? 120 : isCanvas ? 200 : 280 }}
+          className="skeleton-shimmer rounded-lg"
+          style={{ height: isEmbedded ? 120 : isCanvas ? 200 : previewHeight ?? 200 }}
         />
       </div>
     );
@@ -169,7 +318,7 @@ export function DashboardPerformanceChart({
       ? isMobile
         ? 200
         : 220
-      : previewHeight ?? 320;
+      : previewHeight ?? (isPage ? 250 : 200);
 
   return (
     <div
@@ -179,15 +328,15 @@ export function DashboardPerformanceChart({
       )}
     >
       {!isPreview && !isEmbedded ? (
-        <div className={cn("flex shrink-0 flex-wrap items-end justify-between gap-2", isCanvas ? "mb-2" : "mb-4")}>
+        <div className={cn("flex shrink-0 flex-wrap items-end justify-between gap-2", isCanvas ? "mb-1.5" : "mb-2")}>
           <div className="min-w-0">
             <h3
-              className={cn("font-heading font-semibold", isCanvas ? "text-sm" : "")}
+              className={cn("font-heading text-sm font-semibold", isCanvas ? "text-sm" : "")}
               style={{ color: "var(--text-main)" }}
             >
               {title ?? t("metricsChartTitle")}
             </h3>
-            <p className="text-[11px]" style={{ color: "var(--text-dimmer)" }}>
+            <p className="text-[10px]" style={{ color: "var(--text-dimmer)" }}>
               {subtitle ?? t("last30Days")}
             </p>
           </div>
@@ -195,18 +344,20 @@ export function DashboardPerformanceChart({
       ) : null}
 
       {!disableToggle ? (
-        <div className={cn("mb-2 flex shrink-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible", !isCanvas && !isPreview && !isEmbedded && "mb-3")}>
+        <div className={cn("mb-1.5 flex shrink-0 gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible", !isCanvas && !isPreview && !isEmbedded && "mb-2")}>
           {toggleKeys.map((key) => {
             const color = metricColor(key);
             const active = activeMetrics.includes(key);
+            const disabled = !active && activeMetrics.length >= MAX_CHART_METRICS;
             return (
               <button
                 key={key}
                 type="button"
+                disabled={disabled}
                 onClick={() => toggle(key)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition-all",
-                  active ? "" : "opacity-40 hover:opacity-70"
+                  "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-all",
+                  active ? "" : disabled ? "cursor-not-allowed opacity-25" : "opacity-40 hover:opacity-70"
                 )}
                 style={
                   active
@@ -258,7 +409,7 @@ export function DashboardPerformanceChart({
         </div>
       ) : null}
 
-      <PremiumChartFrame compact={isCanvas || isPreview || isEmbedded}>
+      <PremiumChartFrame compact={isCanvas || isPreview || isEmbedded || isPage}>
         {data.length >= 1 ? (
           <ChartContainer
             height={resolvedChartHeight}
@@ -276,6 +427,7 @@ export function DashboardPerformanceChart({
               visual={visual}
               metricSummary={metricSummary}
               compactAxis={isMobile}
+              dualAxisAlways={dualAxisAlways}
             />
           </ChartContainer>
         ) : (
@@ -305,7 +457,8 @@ function PerformanceChartBody({
   metricLabels,
   visual,
   metricSummary,
-  compactAxis = false
+  compactAxis = false,
+  dualAxisAlways = false
 }: {
   data: ChartPoint[];
   activeMetrics: MetricKey[];
@@ -317,45 +470,27 @@ function PerformanceChartBody({
   visual?: SlotVisualConfig;
   metricSummary?: Partial<Record<MetricKey, number>>;
   compactAxis?: boolean;
+  dualAxisAlways?: boolean;
 }) {
   const colorFor = (key: MetricKey) => resolveMetricColor(key, visual?.customColors);
   const lineWidth = strokeWeightToPx(visual?.lineStrokeWidth, 2.5);
   const barSize = barThicknessToSize(visual?.barThickness);
 
-  // Eixo Y duplo automático: quando há 2+ métricas com escalas muito diferentes,
-  // a 1ª fica no eixo esquerdo e as que destoarem por um fator grande vão pro direito.
-  // Assim uma métrica de magnitude alta (ex.: Alcance) não esmaga uma de magnitude
-  // baixa (ex.: Cliques), que ficaria colada no zero numa escala única.
-  const DUAL_AXIS_RATIO = 8;
-  const metricMagnitude = (key: MetricKey) => {
-    let max = 0;
-    for (const point of data) {
-      const v = Number(point[key]);
-      if (Number.isFinite(v)) max = Math.max(max, Math.abs(v));
-    }
-    return max;
-  };
-  const explicitRightAxis = activeMetrics.some((key) => visual?.yAxisSide?.[key] === "right");
-  const autoRightAxis = (() => {
-    if (explicitRightAxis || activeMetrics.length < 2) return new Set<MetricKey>();
-    const baseKey = activeMetrics[0];
-    const baseMag = metricMagnitude(baseKey);
-    if (baseMag <= 0) return new Set<MetricKey>();
-    const right = new Set<MetricKey>();
-    for (let i = 1; i < activeMetrics.length; i += 1) {
-      const key = activeMetrics[i];
-      const mag = metricMagnitude(key);
-      if (mag <= 0) continue;
-      const ratio = mag > baseMag ? mag / baseMag : baseMag / mag;
-      if (ratio >= DUAL_AXIS_RATIO) right.add(key);
-    }
-    return right;
-  })();
-  const axisSideFor = (key: MetricKey): "left" | "right" => {
-    if (visual?.yAxisSide?.[key] === "right") return "right";
-    return autoRightAxis.has(key) ? "right" : "left";
-  };
-  const hasRightAxis = explicitRightAxis || autoRightAxis.size > 0;
+  const { sides: axisSides, hasRightAxis } = resolveAxisAssignment(
+    activeMetrics,
+    data,
+    visual,
+    dualAxisAlways
+  );
+  const axisSideFor = (key: MetricKey): "left" | "right" => axisSides.get(key) ?? "left";
+
+  const leftAxisMetrics = activeMetrics.filter((k) => axisSideFor(k) === "left");
+  const rightAxisMetrics = activeMetrics.filter((k) => axisSideFor(k) === "right");
+  const leftDomain = metricDomain(data, leftAxisMetrics.length ? leftAxisMetrics : activeMetrics);
+  const rightDomain =
+    rightAxisMetrics.length > 0 ? metricDomain(data, rightAxisMetrics) : leftDomain;
+
+  const yAxisWidth = compactAxis ? 36 : dualAxisAlways ? 38 : 44;
 
   if (chartStyle === "pareto" || chartStyle === "bullet" || chartStyle === "boxplot") {
     const metric = activeMetrics[0] ?? "spend";
@@ -418,8 +553,16 @@ function PerformanceChartBody({
   }
 
   const axisProps = {
-    // bottom maior no desktop para os rótulos do eixo X não cortarem embaixo.
-    margin: compactAxis ? { top: 8, right: 8, left: -8, bottom: 0 } : { top: 8, right: 12, left: 0, bottom: 12 },
+    margin: compactAxis
+      ? { top: 6, right: hasRightAxis ? yAxisWidth + 4 : 8, left: 4, bottom: 0 }
+      : dualAxisAlways
+        ? { top: 4, right: hasRightAxis ? yAxisWidth + 6 : 8, left: 2, bottom: 0 }
+        : {
+            top: 8,
+            right: hasRightAxis ? yAxisWidth + 8 : 12,
+            left: 0,
+            bottom: hasRightAxis ? 4 : 12
+          },
     data
   };
   const tooltip = (
@@ -433,33 +576,49 @@ function PerformanceChartBody({
   const xAxis = (
     <XAxis
       dataKey="label"
-      tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 10 }}
+      tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 9 }}
       axisLine={false}
       tickLine={false}
-      interval={compactAxis ? "preserveStartEnd" : undefined}
+      interval={compactAxis ? "preserveStartEnd" : dualAxisAlways ? "preserveStartEnd" : undefined}
       angle={compactAxis ? -35 : 0}
       textAnchor={compactAxis ? "end" : "middle"}
-      height={compactAxis ? 48 : 36}
-      tickMargin={6}
+      height={compactAxis ? 40 : dualAxisAlways ? 22 : 36}
+      tickMargin={dualAxisAlways ? 2 : 4}
     />
   );
   const yAxis = (
     <YAxis
       yAxisId="left"
-      width={compactAxis ? 36 : 44}
-      tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 10 }}
+      width={yAxisWidth}
+      tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 9 }}
       axisLine={false}
       tickLine={false}
+      domain={leftDomain}
+      tickCount={dualAxisAlways ? 4 : undefined}
+      allowDataOverflow={false}
+      tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
     />
   );
   const rightYAxis = hasRightAxis ? (
     <YAxis
       yAxisId="right"
       orientation="right"
-      width={compactAxis ? 36 : 44}
-      tick={{ ...premiumAxisTick(visual?.textColor), fontSize: compactAxis ? 8 : 10 }}
+      width={yAxisWidth}
+      tick={{
+        ...premiumAxisTick(visual?.textColor),
+        fontSize: compactAxis ? 8 : 9,
+        fill: visual?.textColor ?? "var(--chart-tick-muted, var(--text-dimmer))"
+      }}
       axisLine={false}
       tickLine={false}
+      domain={rightDomain}
+      tickCount={dualAxisAlways ? 4 : undefined}
+      allowDataOverflow={false}
+      tickFormatter={(v: number) => {
+        const primaryRight = rightAxisMetrics[0];
+        if (primaryRight) return formatValue(primaryRight, Number(v));
+        return formatSparkAxisValue(Number(v));
+      }}
     />
   ) : null;
 

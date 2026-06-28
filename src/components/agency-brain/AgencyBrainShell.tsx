@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
-import { DsBadge } from "@/design-system";
+import { DsBadge, DsPageHeader } from "@/design-system";
 import { AgencyBrainAiProvider } from "@/components/agency-brain/AgencyBrainAiContext";
 import {
   AgencyBrainClientProvider,
@@ -14,6 +14,7 @@ import {
 import { AGENCY_BRAIN_MODULE_REGISTRY } from "@/lib/agency-brain/domain/modules";
 import type { AgencyBrainMvpModuleId } from "@/lib/agency-brain/domain/mvp";
 import { usePathname } from "@/i18n/navigation";
+import { Brain } from "lucide-react";
 
 const MVP_SHELL_MODULES: AgencyBrainMvpModuleId[] = [
   "hypotheses",
@@ -157,17 +158,13 @@ export function AgencyBrainShell({ children }: { children: React.ReactNode }) {
   return (
     <AgencyBrainAiProvider>
       <div className="space-y-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-heading font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">
-              {mvpModule ? t(`mvp_${mvpModule}_title`) : t("title")}
-            </h1>
-            <DsBadge tone="beta">{t("beta")}</DsBadge>
-          </div>
-          <p className="mt-1 text-sm text-[var(--text-dim)]">
-            {mvpModule ? t(`mvp_${mvpModule}_hint`) : t("subtitle")}
-          </p>
-        </div>
+        <DsPageHeader
+          className="mb-0"
+          title={mvpModule ? t(`mvp_${mvpModule}_title`) : t("title")}
+          subtitle={mvpModule ? t(`mvp_${mvpModule}_hint`) : t("subtitle")}
+          titleIcon={<Brain size={16} aria-hidden />}
+          badge={<DsBadge tone="beta">{t("beta")}</DsBadge>}
+        />
         {body}
       </div>
     </AgencyBrainAiProvider>

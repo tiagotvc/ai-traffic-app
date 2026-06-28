@@ -65,7 +65,7 @@ export function LoginMarketingSlider({
       >
         {/* 1 — Upgrade, não substituição */}
         <SlidePanel active={active} index={0}>
-          <SlideBadge label={t("slide1Badge")} accent="amber" />
+          <SlideBadge label={t("slide1Badge")} accent="violet" />
           <h2 className={cn(titleClass, "mt-3")}>{t("slide1Title")}</h2>
           <p className={subtitleClass}>{t("slide1Subtitle")}</p>
 
@@ -89,9 +89,8 @@ export function LoginMarketingSlider({
                     key={key}
                     className="rounded-lg px-2.5 py-1 text-xs font-semibold text-white"
                     style={{
-                      background:
-                        "linear-gradient(135deg, rgba(245,166,35,0.3), rgba(124,58,237,0.35))",
-                      border: "1px solid rgba(245,166,35,0.35)"
+                      background: "linear-gradient(135deg, rgba(124,58,237,0.35), rgba(99,102,241,0.3))",
+                      border: "1px solid rgba(124,58,237,0.4)"
                     }}
                   >
                     {t(key)}
@@ -101,7 +100,7 @@ export function LoginMarketingSlider({
             </div>
           </div>
 
-          <p className="mt-4 text-sm font-medium leading-relaxed text-amber-200/90">
+          <p className="mt-4 text-sm font-medium leading-relaxed text-violet-200/90">
             {t("slide1Closing")}
           </p>
         </SlidePanel>
@@ -139,7 +138,7 @@ export function LoginMarketingSlider({
 
         {/* 4 — Roadmap */}
         <SlidePanel active={active} index={3}>
-          <SlideBadge label={t("slide4Badge")} accent="amber" soon soonLabel={t("slide4Roadmap")} />
+          <SlideBadge label={t("slide4Badge")} accent="violet" soon soonLabel={t("slide4Roadmap")} />
           <h2 className={cn(titleClass, "mt-3")}>{t("slide4Title")}</h2>
           <p className={subtitleClass}>{t("slide4Subtitle")}</p>
           <FeatureGrid compact={compact} columns={compact ? 1 : 2}>
@@ -149,7 +148,7 @@ export function LoginMarketingSlider({
               </FeatureCard>
             ))}
           </FeatureGrid>
-          <p className="mt-4 rounded-xl border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-[13px] font-medium leading-relaxed text-amber-100/90">
+          <p className="mt-4 rounded-xl border border-violet-400/20 bg-violet-500/10 px-3 py-2 text-[13px] font-medium leading-relaxed text-violet-100/90">
             {t("slide4Closing")}
           </p>
         </SlidePanel>
@@ -163,7 +162,7 @@ export function LoginMarketingSlider({
             <LoginProductShowcase copy={showcaseCopy} compact animate={active === 4} />
           </div>
           <div className="mt-3 grid w-full max-w-[320px] grid-cols-2 gap-2">
-            <StatPill value={t("statValue")} label={t("statLabel")} accent="text-amber-300" />
+            <StatPill value={t("statValue")} label={t("statLabel")} accent="text-violet-300" />
             <StatPill value={t("stat2Value")} label={t("stat2Label")} accent="text-white" />
           </div>
           <p className="mt-3 max-w-[320px] text-center text-[11px] leading-relaxed text-violet-200/70">
@@ -185,7 +184,7 @@ export function LoginMarketingSlider({
               onClick={() => go(i)}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-300",
-                i === active ? "w-5 bg-amber-400" : "w-1.5 bg-white/25 hover:bg-white/40"
+                i === active ? "w-5 bg-violet-400" : "w-1.5 bg-white/25 hover:bg-white/40"
               )}
               aria-label={t("slideGoTo", { n: i + 1 })}
               aria-current={i === active ? "true" : undefined}
@@ -238,7 +237,7 @@ function FeatureCard({
           "flex shrink-0 items-center justify-center rounded-lg ring-1",
           icon === "check"
             ? "h-7 w-7 bg-emerald-500/20 text-emerald-300 ring-emerald-400/25"
-            : "h-7 w-7 bg-amber-500/15 text-amber-300 ring-amber-400/25"
+            : "h-7 w-7 bg-violet-500/15 text-violet-300 ring-violet-400/25"
         )}
       >
         {icon === "check" ? (
@@ -297,7 +296,7 @@ function SlideBadge({
         {label}
       </p>
       {soon && soonLabel ? (
-        <span className="rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
+        <span className="rounded-full border border-violet-400/30 bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold text-violet-200">
           {soonLabel}
         </span>
       ) : null}

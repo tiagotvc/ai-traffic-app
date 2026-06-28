@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import { AgencyBrainEmptyGuide } from "@/components/agency-brain/AgencyBrainEmptyGuide";
+import { AgencyBrainCreatorShell } from "@/components/agency-brain/AgencyBrainCreatorShell";
 import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
 import { AgencyLearningCard } from "@/components/agency-brain/AgencyLearningCard";
 import { CreativePatternsPanel } from "@/components/agency-brain/CreativePatternsPanel";
@@ -144,7 +145,7 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
   const onListSearchChange = scope === "agency" ? agency.setSearch : brain.setSearch;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <AgencyBrainCreatorShell className="flex h-full min-h-0 flex-col overflow-hidden !space-y-0">
       <div className="shrink-0 space-y-4">
         <LearningsHero
           showActions={showClientActions}
@@ -176,12 +177,16 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
         />
 
         {advancedOpen ? (
-          <div className="ui-brain-shelf p-2">
-            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+          <div className="campaign-creator-card campaign-creator-card--compact p-2">
+            <label className="campaign-creator-orion-section-label mb-1 block">
               {t("filterContentLabel")}
             </label>
             <select
-              className="ui-select mb-2 !py-1 text-xs"
+              className="ui-form-select-trigger mb-2 w-full !py-1 text-xs"
+              style={{
+                background: "var(--creator-card-bg-inset)",
+                borderColor: "var(--creator-card-border)"
+              }}
               value={contentFilter}
               onChange={(e) => {
                 const next = e.target.value as LearningContentFilterId;
@@ -299,7 +304,7 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
             <div className="brain-insights-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
               {brain.loading ? (
-                <div className="flex h-full min-h-[120px] items-center justify-center ui-card border-dashed bg-[var(--surface-card)]/60 text-sm text-[var(--text-dim)]">
+                <div className="campaign-creator-card flex h-full min-h-[120px] items-center justify-center border-dashed text-sm text-[var(--text-dim)]">
                   {t("loading")}
                 </div>
               ) : brain.learnings.length === 0 ? (
@@ -364,7 +369,7 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
             <div className="brain-insights-scroll min-h-0 flex-1 overflow-y-auto px-4 pt-8 sm:px-6">
               {agency.loading ? (
-                <div className="flex h-full min-h-[120px] items-center justify-center ui-card border-dashed bg-[var(--surface-card)]/60 text-sm text-[var(--text-dim)]">
+                <div className="campaign-creator-card flex h-full min-h-[120px] items-center justify-center border-dashed text-sm text-[var(--text-dim)]">
                   {t("loading")}
                 </div>
               ) : agency.items.length === 0 ? (
@@ -417,6 +422,6 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
       </div>
 
       <FeedbackSnackbar message={feedbackMessage} />
-    </div>
+    </AgencyBrainCreatorShell>
   );
 }

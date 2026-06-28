@@ -26,6 +26,7 @@ import {
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CreativeRankingCard, CreativeRankingCardsSkeleton } from "@/components/creatives/CreativeRankingCard";
+import { DsInfoBanner } from "@/design-system";
 import type { UxCreativeCard } from "@/uxpilot-ui/adapters/creatives-mappers";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -931,26 +932,28 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
           ) : null}
 
           {/* ── Info Banner ── */}
-          <div
-            className="flex items-start gap-3 px-4 py-3 rounded-xl mb-5 text-sm font-body"
-            style={{ background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)", color: "var(--text-dim)" }}
-          >
-            <span className="text-base flex-shrink-0">ℹ️</span>
-            <span>
-              Ranking calculado com base nos critérios configurados por tipo de campanha. Criativos com menos de{" "}
-              <strong style={{ color: "#f5a623" }}>100 impressões</strong> no período não entram na classificação. Clique em{" "}
-              <button onClick={(e) => { e.stopPropagation(); openCriteria(); }} className="font-semibold underline" style={{ color: "#f5a623", background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-                Critérios de ranqueamento
-              </button>{" "}
-              para personalizar as métricas.
-            </span>
-          </div>
+          <DsInfoBanner className="mb-4 text-xs">
+            Ranking calculado com base nos critérios configurados por tipo de campanha. Criativos com menos de{" "}
+            <strong className="text-[var(--ui-accent)]">100 impressões</strong> no período não entram na classificação.
+            Clique em{" "}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openCriteria();
+              }}
+              className="font-semibold text-[var(--ui-accent)] underline"
+            >
+              Critérios de ranqueamento
+            </button>{" "}
+            para personalizar as métricas.
+          </DsInfoBanner>
 
           {/* ── Cards Grid ── */}
           {isLive && live?.loading ? (
-            <CreativeRankingCardsSkeleton count={6} />
+            <CreativeRankingCardsSkeleton count={8} />
           ) : (
-          <div className="grid gap-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {isLive
               ? filteredLiveCreatives.map((card) => {
                   const canCompare =
@@ -989,11 +992,11 @@ export default function CreativesContent({ live }: { live?: CreativesLiveProps }
           )}
 
           {/* ── Footer ── */}
-          <div className="flex items-center justify-between mt-5">
-            <p className="text-xs font-body" style={{ color: "var(--text-dimmer)" }}>
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-[11px] text-[var(--text-dimmer)]">
               Exibindo {(isLive ? filteredLiveCreatives : filteredMockCreatives).length} de {sourceCreatives.length} criativos
             </p>
-            <p className="text-xs font-body" style={{ color: "var(--text-dimmer)" }}>
+            <p className="text-[11px] text-[var(--text-dimmer)]">
               ≡ Ordenado por: Score (maior — menor)
             </p>
           </div>

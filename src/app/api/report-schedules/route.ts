@@ -63,6 +63,18 @@ export async function GET() {
 export async function POST(req: Request) {
   const { tenant } = await getAppContext();
   const body = BodySchema.parse(await req.json().catch(() => ({})));
+
+  // Respeita o limite do plano (maxScheduledReports).
+  try {
+    const { assertLimit } = await import("@/lib/billing/entitlements");
+    await assertLimit(tenant.id, "maxScheduledReports");
+  } catch (err) {
+    const { billingErrorResponse } = await import("@/lib/billing/api-errors");
+    const res = billingErrorResponse(err);
+    if (res) return res;
+    throw err;
+  }
+
   const { reportSchedule: repo } = await repositories();
 
   let clientId: string | null = null;

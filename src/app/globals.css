@@ -94,6 +94,19 @@
   --ui-accent-btn-text: #ffffff;
   --ui-accent-btn-shadow: rgba(124, 58, 237, 0.24);
 
+  /* Button DS — global radius, border, padding (was rounded-xl 12px / rounded-lg 8px) */
+  --btn-radius: 0.375rem;
+  --btn-radius-sm: 0.3125rem;
+  --btn-radius-icon: 0.375rem;
+  --btn-radius-pill: 9999px;
+  --btn-border-width: 1px;
+  --btn-border-color: color-mix(in srgb, var(--border-color) 78%, transparent);
+  --btn-accent-border-color: color-mix(in srgb, var(--ui-accent-border) 68%, transparent);
+  --btn-padding-x: 0.875rem;
+  --btn-padding-y: 0.4375rem;
+  --btn-padding-x-sm: 0.75rem;
+  --btn-padding-y-sm: 0.3125rem;
+
   /* App page shell — aligned with Campaign Creator layout */
   --app-content-max-width: 1600px;
   --app-page-padding-x: 1rem;
@@ -445,7 +458,7 @@ h6,
     }
 
     [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__btn {
-      @apply rounded-lg;
+      border-radius: var(--btn-radius);
     }
 
     [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__btn--back {
@@ -478,7 +491,9 @@ h6,
     }
 
     [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__btn {
-      @apply h-11 min-h-[2.75rem] w-full rounded-xl px-4 text-sm;
+      @apply h-11 min-h-[2.75rem] w-full text-sm;
+      padding-inline: var(--btn-padding-x);
+      border-radius: var(--btn-radius);
     }
 
     [data-campaign-creator-shell] .ui-wizard-nav--footer .ui-wizard-nav__btn--back {
@@ -537,7 +552,7 @@ h6,
     }
 
     [data-campaign-creator-shell] .campaign-creator-sidebar-footer {
-      @apply shrink-0 border-t border-[var(--border-color)] bg-[var(--surface-bg)] pt-3;
+      @apply shrink-0 bg-[var(--surface-bg)] pt-3 pb-3;
     }
 
     [data-campaign-creator-shell] .ui-wizard-nav--sidebar {
@@ -550,7 +565,7 @@ h6,
     }
 
     [data-campaign-creator-shell] .ui-wizard-nav--sidebar .ui-wizard-nav__btn {
-      @apply rounded-lg;
+      border-radius: var(--btn-radius);
     }
 
     [data-campaign-creator-shell] .ui-wizard-nav--sidebar .ui-wizard-nav__btn--back {
@@ -741,7 +756,7 @@ h6,
   }
 
   .auth-premium-input {
-    @apply w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white shadow-sm transition-all duration-200 placeholder:text-violet-300/35 focus:border-amber-400/50 focus:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-amber-400/15;
+    @apply w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white shadow-sm transition-all duration-200 placeholder:text-violet-300/35 focus:border-[var(--ui-accent)] focus:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent-ring)];
   }
 
   .auth-premium-label {
@@ -749,7 +764,7 @@ h6,
   }
 
   .auth-premium-btn {
-    @apply inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-2.5 text-sm font-bold text-[#0f1419] shadow-lg shadow-amber-500/20 transition hover:brightness-105 disabled:opacity-60;
+    @apply ui-btn-accent inline-flex w-full items-center justify-center text-sm font-semibold disabled:opacity-60;
   }
 
   .auth-premium-tabs {
@@ -766,7 +781,7 @@ h6,
 
   .auth-premium-banner {
     @apply rounded-2xl border border-violet-400/20 p-3.5;
-    background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(245, 166, 35, 0.08) 100%);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.14) 0%, rgba(99, 102, 241, 0.08) 100%);
   }
 
   .auth-premium-alert-danger {
@@ -781,7 +796,9 @@ h6,
   /* CTA preenchido temático — âmbar (light) / roxo (dark). Preferir sobre ui-btn-primary. */
   .ui-btn-accent,
   .ui-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold shadow-lg transition disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 text-sm font-semibold shadow-lg transition disabled:opacity-50;
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    border-radius: var(--btn-radius);
     background: linear-gradient(135deg, var(--ui-accent-btn-from), var(--ui-accent-btn-to));
     color: var(--ui-accent-btn-text);
     box-shadow: 0 8px 20px -6px var(--ui-accent-btn-shadow);
@@ -794,18 +811,22 @@ h6,
 
   /* CTA outline temático — sync, ações secundárias com cor de marca */
   .ui-btn-accent-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border bg-transparent px-4 py-2 text-sm font-semibold shadow-none transition disabled:opacity-50;
-    border-color: var(--ui-accent-border);
+    @apply inline-flex items-center justify-center gap-2 bg-transparent text-sm font-semibold shadow-none transition disabled:opacity-50;
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    border-radius: var(--btn-radius);
+    border: var(--btn-border-width) solid var(--btn-accent-border-color);
     color: var(--ui-accent);
   }
 
   .ui-btn-accent-outline:hover:not(:disabled) {
     background: var(--ui-accent-hover);
-    border-color: var(--ui-accent-border-strong);
+    border-color: color-mix(in srgb, var(--ui-accent-border) 82%, transparent);
   }
 
   .ui-btn-brand {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50;
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    border-radius: var(--btn-radius);
     background: linear-gradient(135deg, var(--violet), var(--violet-bright));
   }
 
@@ -813,10 +834,23 @@ h6,
     filter: brightness(1.05);
   }
 
+  /* FAB / close / pause — intentionally circular icon buttons */
+  .ui-btn-icon-round {
+    border-radius: var(--btn-radius-pill);
+  }
+
   /* Ícone no mobile/tablet; ícone + texto no desktop (lg+) */
   .ui-btn-responsive {
-    @apply inline-flex shrink-0 items-center justify-center gap-0 rounded-xl font-heading text-sm font-semibold transition-all duration-200;
-    @apply h-9 w-9 p-0 lg:h-auto lg:w-auto lg:gap-2 lg:px-4 lg:py-2;
+    @apply inline-flex shrink-0 items-center justify-center gap-0 font-heading text-sm font-semibold transition-all duration-200;
+    @apply h-9 w-9 p-0 lg:h-auto lg:w-auto lg:gap-2;
+    border-radius: var(--btn-radius-icon);
+  }
+
+  @media (min-width: 1024px) {
+    .ui-btn-responsive {
+      padding: var(--btn-padding-y) var(--btn-padding-x);
+      border-radius: var(--btn-radius);
+    }
   }
 
   .ui-btn-responsive-label {
@@ -825,18 +859,20 @@ h6,
 
   /* Toggle mostrar/ocultar filtros — sem fundo; borda accent só quando aberto */
   .ui-btn-filter-toggle {
-    @apply inline-flex shrink-0 items-center justify-center border bg-transparent font-heading text-sm font-semibold shadow-none transition-all duration-200;
-    border-color: var(--border-color);
+    @apply inline-flex shrink-0 items-center justify-center bg-transparent font-heading text-sm font-semibold shadow-none transition-all duration-200;
+    padding: var(--btn-padding-y-sm) var(--btn-padding-x-sm);
+    border-radius: var(--btn-radius);
+    border: var(--btn-border-width) solid var(--btn-border-color);
     color: var(--text-dim);
   }
 
   .ui-btn-filter-toggle:hover:not(:disabled) {
-    border-color: var(--ui-accent-border);
+    border-color: color-mix(in srgb, var(--ui-accent-border) 75%, transparent);
     color: var(--ui-accent);
   }
 
   .ui-btn-filter-toggle--open {
-    border-color: var(--ui-accent-border);
+    border-color: color-mix(in srgb, var(--ui-accent-border) 82%, transparent);
     color: var(--ui-accent);
     background: transparent;
     box-shadow: none;
@@ -853,6 +889,12 @@ h6,
 
   .ui-filter-panel-field {
     @apply w-full min-w-0 xl:min-w-[11rem] xl:max-w-[15rem];
+  }
+
+  .ui-filter-panel-card {
+    @apply rounded-xl border;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
   }
 
   .ui-filter-panel-grid--campaign-creator {
@@ -1261,7 +1303,9 @@ h6,
   }
 
   .ds-table-compact-action {
-    @apply inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium transition-colors disabled:cursor-wait disabled:opacity-60;
+    @apply inline-flex items-center gap-1 text-xs font-medium transition-colors disabled:cursor-wait disabled:opacity-60;
+    padding: 0.25rem 0.375rem;
+    border-radius: var(--btn-radius-sm);
     color: var(--ui-accent);
   }
 
@@ -1412,50 +1456,55 @@ h6,
   }
 
   .ui-toolbar-icon-btn {
-    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all duration-200;
+    @apply flex h-9 w-9 shrink-0 items-center justify-center transition-all duration-200;
+    border-radius: var(--btn-radius-icon);
+    border: var(--btn-border-width) solid var(--btn-border-color);
     background: var(--surface-card);
-    border-color: var(--border-color);
     color: var(--text-dim);
   }
 
   .ui-toolbar-icon-btn:hover:not(:disabled) {
-    border-color: var(--ui-accent-border);
+    border-color: color-mix(in srgb, var(--ui-accent-border) 75%, transparent);
     color: var(--ui-accent);
   }
 
   .ui-toolbar-icon-btn--active {
     background: var(--ui-accent-muted);
-    border-color: var(--ui-accent-border);
+    border-color: color-mix(in srgb, var(--ui-accent-border) 82%, transparent);
     color: var(--ui-accent);
     @apply shadow-sm;
   }
 
   .ui-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium shadow-sm transition disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 text-sm font-medium shadow-sm transition disabled:opacity-50;
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    border-radius: var(--btn-radius);
+    border: var(--btn-border-width) solid var(--btn-border-color);
     background: var(--filter-btn-bg);
-    border-color: var(--border-color);
     color: var(--text-dim);
   }
 
   .ui-btn-secondary:hover:not(:disabled) {
-    border-color: var(--border-hover);
+    border-color: color-mix(in srgb, var(--border-hover) 78%, transparent);
     background: var(--surface-card);
   }
 
   .ui-btn-secondary-accent {
     @apply ui-btn-secondary;
-    border-color: var(--ui-accent-border);
+    border-color: var(--btn-accent-border-color);
     color: var(--ui-accent);
   }
 
   .ui-btn-secondary-accent:hover:not(:disabled) {
-    border-color: var(--ui-accent-border-strong);
+    border-color: color-mix(in srgb, var(--ui-accent-border) 82%, transparent);
     background: var(--ui-accent-muted);
     color: var(--ui-accent);
   }
 
   .ui-btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 text-sm font-medium transition disabled:opacity-50;
+    padding: var(--btn-padding-y-sm) var(--btn-padding-x-sm);
+    border-radius: var(--btn-radius);
     color: var(--text-dim);
   }
 
@@ -1465,19 +1514,24 @@ h6,
   }
 
   .ui-btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition disabled:opacity-50;
-    border-color: rgba(239, 68, 68, 0.25);
+    @apply inline-flex items-center justify-center gap-2 text-sm font-medium transition disabled:opacity-50;
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    border-radius: var(--btn-radius);
+    border: var(--btn-border-width) solid color-mix(in srgb, var(--danger) 22%, transparent);
     background: rgba(239, 68, 68, 0.06);
     color: var(--danger);
   }
 
   .ui-btn-danger:hover:not(:disabled) {
     background: rgba(239, 68, 68, 0.1);
+    border-color: color-mix(in srgb, var(--danger) 30%, transparent);
   }
 
   /* Login social Meta/Facebook — azul de marca como variante nomeada (não hex solto) */
   .ui-btn-meta {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 text-sm font-semibold text-white shadow-sm transition disabled:opacity-50;
+    padding: var(--btn-padding-y) var(--btn-padding-x);
+    border-radius: var(--btn-radius);
     background: #1877f2;
   }
 
@@ -1586,9 +1640,9 @@ h6,
   }
 
   .sidebar-item-active {
-    background: linear-gradient(135deg, var(--ui-accent-muted), transparent);
-    border-left: 2px solid var(--ui-accent);
-    color: var(--ui-accent) !important;
+    background: rgba(124, 58, 237, 0.22);
+    color: #e9d5ff !important;
+    font-weight: 600;
   }
 
   .sidebar-item-idle {
@@ -1596,8 +1650,8 @@ h6,
   }
 
   .sidebar-item-idle:hover {
-    background: rgba(255, 255, 255, 0.03);
-    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.04);
+    color: #f1f5f9;
   }
 
   .sidebar-sub-active {
@@ -1806,6 +1860,74 @@ h6,
     }
   }
 
+  @keyframes orion-loader-ring {
+    0%,
+    100% {
+      transform: scale(0.92);
+      opacity: 0.35;
+    }
+    50% {
+      transform: scale(1.06);
+      opacity: 0.85;
+    }
+  }
+
+  @keyframes orion-loader-shimmer {
+    0% {
+      transform: translateX(-120%);
+    }
+    100% {
+      transform: translateX(280%);
+    }
+  }
+
+  .orion-action-loading__backdrop {
+    background: rgba(10, 15, 20, 0.72);
+    backdrop-filter: blur(10px) saturate(120%);
+  }
+
+  .orion-action-loading__glow {
+    background:
+      radial-gradient(ellipse 55% 45% at 50% 42%, rgba(124, 58, 237, 0.14), transparent 70%),
+      radial-gradient(ellipse 40% 35% at 50% 58%, rgba(245, 166, 35, 0.06), transparent 65%);
+    pointer-events: none;
+  }
+
+  .orion-action-loading__panel {
+    border-color: rgba(124, 58, 237, 0.12);
+  }
+
+  .orion-action-loading__logo-wrap {
+    position: relative;
+  }
+
+  .orion-action-loading__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 1.25rem;
+    border: 1.5px solid rgba(124, 58, 237, 0.45);
+    animation: orion-loader-ring 2.4s ease-in-out infinite;
+  }
+
+  .orion-action-loading__ring--delayed {
+    inset: -6px;
+    border-color: rgba(167, 139, 250, 0.28);
+    animation-delay: 0.6s;
+  }
+
+  .orion-action-loading__logo {
+    animation: pulse-violet 2.4s ease-in-out infinite;
+  }
+
+  .orion-action-loading__shimmer-track {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .orion-action-loading__shimmer-bar {
+    background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.85), transparent);
+    animation: orion-loader-shimmer 1.6s ease-in-out infinite;
+  }
+
   @keyframes pulse-red {
     0%,
     100% {
@@ -1828,13 +1950,80 @@ h6,
   }
 
   .dashboard-panel {
-    background: var(--surface-card);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.05);
+    @apply rounded-xl border;
+    background: var(--creator-card-bg, var(--surface-card));
+    border-color: var(--creator-card-border, var(--border-color));
+    box-shadow: none;
   }
 
   [data-theme="dark"] .dashboard-panel {
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.22);
+    box-shadow: none;
+  }
+
+  /** Destaques / dashboard content cards — aligned with Campaign Creator surfaces. */
+  .dashboard-card {
+    @apply rounded-xl border;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
+  }
+
+  .dashboard-card--compact {
+    @apply p-3;
+  }
+
+  /** Hero KPI tile on Destaques (compact sparkline + inset chart frame). */
+  .dashboard-kpi-card {
+    @apply rounded-xl border px-3 py-3.5;
+    min-height: 120px;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
+    border-top-width: 1px;
+    border-top-color: var(--creator-card-border, var(--border-color));
+  }
+
+  .dashboard-kpi-card--light.kpi-card-hover:hover {
+    transform: translateY(-1px);
+    border-color: var(--ui-accent-border) !important;
+    border-top-color: var(--ui-accent-border) !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  }
+
+  .dashboard-kpi-card.kpi-card-hover:hover {
+    border-top-width: 1px;
+  }
+
+  .dashboard-kpi-card__spark {
+    @apply rounded-lg;
+    min-height: 48px;
+    height: 48px;
+    padding: 2px 0 0;
+    overflow: visible;
+  }
+
+  .dashboard-kpi-card__spark .recharts-wrapper,
+  .dashboard-kpi-card__spark .recharts-surface {
+    overflow: visible;
+  }
+
+  .dashboard-kpi-card--mini {
+    @apply px-3 py-2.5;
+    min-height: 44px;
+  }
+
+  .dashboard-kpi-card--notice {
+    @apply px-3 py-2;
+    min-height: 0;
+  }
+
+  /** Secondary metric chips on Destaques. */
+  .dashboard-metric-chip {
+    @apply rounded-lg border;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg-inset, var(--surface-bg));
+  }
+
+  .dashboard-metric-chip.kpi-card-hover:hover {
+    border-color: var(--ui-accent-border);
   }
 
   .animate-slide-in {
@@ -1994,8 +2183,13 @@ h6,
     background: color-mix(in srgb, var(--ui-accent) 55%, transparent);
   }
 
-  /* Campaign creator shell — elevated card surfaces (scoped to wizard layout) */
-  [data-campaign-creator-shell] {
+  /* Campaign creator + Reports + Dashboard — elevated card surfaces (scoped shells) */
+  [data-campaign-creator-shell],
+  [data-creator-modal-shell],
+  [data-agency-brain-shell],
+  [data-reports-shell],
+  [data-dashboard-shell],
+  [data-admin-shell] {
     --creator-card-bg: #ffffff;
     --creator-card-bg-inset: #eef2f6;
     --creator-card-border: rgba(15, 23, 42, 0.11);
@@ -2003,7 +2197,17 @@ h6,
 
   /* Light mode — elevated card surfaces; inactive stepper/choice cards use muted purple */
   :root:not([data-theme="dark"]) [data-campaign-creator-shell],
-  [data-theme="light"] [data-campaign-creator-shell] {
+  :root:not([data-theme="dark"]) [data-creator-modal-shell],
+  :root:not([data-theme="dark"]) [data-agency-brain-shell],
+  :root:not([data-theme="dark"]) [data-reports-shell],
+  :root:not([data-theme="dark"]) [data-dashboard-shell],
+  :root:not([data-theme="dark"]) [data-admin-shell],
+  [data-theme="light"] [data-campaign-creator-shell],
+  [data-theme="light"] [data-creator-modal-shell],
+  [data-theme="light"] [data-agency-brain-shell],
+  [data-theme="light"] [data-reports-shell],
+  [data-theme="light"] [data-dashboard-shell],
+  [data-theme="light"] [data-admin-shell] {
     --creator-card-bg: #ffffff;
     --creator-card-bg-inset: #e8edf3;
     --creator-card-border: rgba(15, 23, 42, 0.12);
@@ -2015,7 +2219,12 @@ h6,
   }
 
   /* Dark mode — violet accent (global); inactive stepper/choice cards use neutral bar tone */
-  [data-theme="dark"] [data-campaign-creator-shell] {
+  [data-theme="dark"] [data-campaign-creator-shell],
+  [data-theme="dark"] [data-creator-modal-shell],
+  [data-theme="dark"] [data-agency-brain-shell],
+  [data-theme="dark"] [data-reports-shell],
+  [data-theme="dark"] [data-dashboard-shell],
+  [data-theme="dark"] [data-admin-shell] {
     --creator-card-bg: #161922;
     --creator-card-bg-inset: #121820;
     --creator-card-border: rgba(255, 255, 255, 0.09);
@@ -2024,6 +2233,29 @@ h6,
     --creator-choice-inactive-border: var(--border-color);
     --creator-choice-inactive-text: var(--text-dimmer);
     --creator-choice-inactive-icon: var(--text-dimmer);
+  }
+
+  [data-reports-shell] .report-pdf-kpi {
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
+  }
+
+  [data-reports-shell] .report-pdf-chart-card {
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
+  }
+
+  [data-reports-shell] .report-kpi-spark {
+    @apply rounded-lg;
+    min-height: 56px;
+    height: 56px;
+    padding: 2px 0 0;
+    overflow: visible;
+  }
+
+  [data-reports-shell] .report-kpi-spark .recharts-wrapper,
+  [data-reports-shell] .report-kpi-spark .recharts-surface {
+    overflow: visible;
   }
 
   /* Campaign creator stepper — future steps use inactive bar tone (purple tint in light, neutral in dark) */
@@ -2211,7 +2443,9 @@ h6,
   }
 
   .campaign-creator-datetime-calendar__nav {
-    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors;
+    @apply flex h-8 w-8 shrink-0 items-center justify-center transition-colors;
+    border-radius: var(--btn-radius-icon);
+    border: var(--btn-border-width) solid var(--btn-border-color);
     border-color: var(--creator-card-border, var(--border-color));
     background: var(--creator-card-bg-inset, var(--surface-bg));
     color: var(--text-dim);
@@ -2427,11 +2661,14 @@ h6,
   }
 
   .campaign-creator-budget-choice-card--selected {
-    @apply border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] shadow-[0_0_0_1px_var(--ui-accent-border)];
+    @apply border-[var(--ui-accent)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-[var(--text-main)];
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--ui-accent) 38%, transparent),
+      0 0 18px -5px color-mix(in srgb, var(--ui-accent) 22%, transparent);
   }
 
   .campaign-creator-budget-choice-card--unselected {
-    @apply border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] hover:border-[var(--ui-accent-border)] hover:bg-[var(--ui-accent-hover)];
+    @apply border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg,var(--surface-card))] hover:border-[var(--ui-accent-border)] hover:bg-[color-mix(in_srgb,var(--ui-accent-muted)_28%,var(--creator-card-bg,var(--surface-card)))];
   }
 
   .campaign-creator-budget-choice-card__check {
@@ -2466,7 +2703,7 @@ h6,
   }
 
   .campaign-creator-budget-choice-card__icon--unselected {
-    @apply bg-[var(--creator-card-bg,var(--surface-card))] text-[var(--ui-accent)];
+    @apply bg-[var(--ui-accent-muted)] text-[var(--ui-accent)];
   }
 
   .campaign-creator-budget-choice-card__label {
@@ -3000,7 +3237,9 @@ h6,
   }
 
   .campaign-creator-budget-orion-tip__action {
-    @apply inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-xs font-heading font-semibold sm:w-auto;
+    @apply inline-flex w-full shrink-0 items-center justify-center gap-1 text-xs font-heading font-semibold sm:w-auto;
+    padding: var(--btn-padding-y-sm) var(--btn-padding-x-sm);
+    border-radius: var(--btn-radius);
   }
 
   .campaign-creator-choice-cards {
@@ -3650,8 +3889,37 @@ h6,
 
 /* Marketing LP — design system tokens (dark theme, matches app) */
 .marketing-ds-root {
-  background: var(--surface-bg);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124, 58, 237, 0.12), transparent 55%),
+    var(--surface-bg);
   color: var(--text-main);
+}
+
+.marketing-ds-root[data-theme="dark"] {
+  --creator-card-bg: #1d2630;
+  --creator-card-bg-inset: #141c26;
+  --creator-card-border: rgba(255, 255, 255, 0.1);
+}
+
+.marketing-ds-root .marketing-form-input {
+  @apply w-full rounded-xl border px-3 py-2 text-sm transition outline-none focus:ring-2;
+  border-color: var(--border-color);
+  background: var(--surface-card);
+  color: var(--text-main);
+}
+
+.marketing-ds-root .marketing-form-input:focus {
+  border-color: var(--ui-accent);
+  --tw-ring-color: var(--ui-accent-ring);
+}
+
+.marketing-ds-root .marketing-link-accent {
+  @apply font-medium transition;
+  color: var(--ui-accent);
+}
+
+.marketing-ds-root .marketing-link-accent:hover {
+  color: color-mix(in srgb, var(--ui-accent) 85%, white);
 }
 
 .marketing-ds-root .marketing-section {
@@ -3664,7 +3932,7 @@ h6,
 
 .marketing-ds-root .marketing-section-title {
   @apply font-heading text-xs font-semibold uppercase tracking-widest;
-  color: var(--amber-bright);
+  color: var(--ui-accent);
 }
 
 .marketing-ds-root .marketing-section-heading {
@@ -3742,5 +4010,84 @@ h6,
   .marketing-ds-root .marketing-float {
     animation: none;
   }
+}
+
+/* ─── Orion Agency logo (brand/white_logo.png) ─── */
+.orion-logo {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-width: 0;
+}
+
+.orion-logo--icon-only {
+  width: var(--orion-logo-icon-size, 36px);
+  height: var(--orion-logo-icon-size, 36px);
+  flex-shrink: 0;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+/*
+ * Sidebar logo crops — white_logo.png is 1536×1024 with large transparent padding.
+ * Opaque bounds (from asset analysis): wordmark 559×188 @ (504,409), icon 182×188 @ (504,409).
+ */
+.orion-logo--sidebar {
+  --orion-sidebar-mark-height: 2.125rem; /* 34px visible wordmark height (~15% smaller) */
+  --orion-wordmark-aspect: calc(559 / 188);
+  height: var(--orion-sidebar-mark-height);
+  width: calc(var(--orion-sidebar-mark-height) * var(--orion-wordmark-aspect));
+  overflow: hidden;
+  display: inline-flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: calc(100% - 2.25rem);
+}
+
+.orion-logo--sidebar .orion-logo__image {
+  --orion-sidebar-image-height: calc(var(--orion-sidebar-mark-height) / (188 / 1024));
+  height: var(--orion-sidebar-image-height);
+  width: auto;
+  max-width: none;
+  margin-top: calc(var(--orion-sidebar-image-height) * -409 / 1024);
+  margin-left: calc(var(--orion-sidebar-image-height) * -504 / 1024);
+}
+
+/* Collapsed sidebar — crop to purple icon only (182×188), no wordmark fragments. */
+.orion-logo--sidebar-collapsed.orion-logo--icon-only {
+  --orion-sidebar-icon-size: 2.125rem; /* 34px, proportional to expanded wordmark */
+  --orion-icon-aspect: calc(182 / 188);
+  width: calc(var(--orion-sidebar-icon-size) * var(--orion-icon-aspect));
+  height: var(--orion-sidebar-icon-size);
+  overflow: hidden;
+  position: relative;
+  justify-content: flex-start;
+}
+
+.orion-logo--sidebar-collapsed.orion-logo--icon-only .orion-logo__image {
+  --orion-sidebar-image-height: calc(var(--orion-sidebar-icon-size) / (188 / 1024));
+  position: absolute;
+  height: var(--orion-sidebar-image-height);
+  width: auto;
+  max-width: none;
+  top: calc(var(--orion-sidebar-image-height) * -409 / 1024);
+  left: calc(var(--orion-sidebar-image-height) * -504 / 1024);
+  object-fit: unset;
+  object-position: unset;
+}
+
+.orion-logo__image {
+  display: block;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.orion-logo--icon-only .orion-logo__image {
+  height: 100%;
+  width: auto;
+  max-width: none;
+  object-fit: cover;
+  object-position: left center;
 }
 

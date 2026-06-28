@@ -14,6 +14,7 @@ import {
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { DsModal } from "@/design-system/components/DsModal";
 import { useCreatorBrainInsight } from "@/hooks/useCreatorBrainInsight";
+import { resolveDraftClient } from "@/lib/campaign-draft-client";
 import type { CreatorBrainInsightPayload } from "@/lib/campaign-creator/creator-brain-insights";
 import {
   buildCreatorBrainRecommendations,
@@ -234,11 +235,13 @@ function CampaignsAnalyzedNote({
 export function CampaignCreatorBrainTips() {
   const t = useTranslations("campaignCreator");
   const locale = useLocale();
-  const { payload, activeNode } = useCampaignDraft();
+  const { payload, activeNode, clients } = useCampaignDraft();
+  const validClient = Boolean(resolveDraftClient(payload.clientSlug, clients));
   const { insight, loading, paused, togglePaused } = useCreatorBrainInsight({
     objective: payload.objective,
     activeNode,
-    clientSlug: payload.clientSlug
+    clientSlug: payload.clientSlug,
+    enabled: validClient
   });
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -516,7 +519,7 @@ export function CampaignCreatorBrainTips() {
               type="button"
               data-orion-brain-open
               onClick={() => setModalOpen(true)}
-              className="ui-btn-accent-outline mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-heading font-semibold"
+              className="ui-btn-accent-outline mt-3 inline-flex w-full items-center justify-center gap-1.5 px-3 py-2 text-xs font-heading font-semibold"
             >
               {t("brainViewRecommendations")}
               <ChevronRight size={14} strokeWidth={2.5} />

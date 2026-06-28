@@ -134,11 +134,12 @@ export function LearningFilters({
   );
 
   return (
-    <div className={embedded ? "space-y-1.5" : "shrink-0 space-y-1.5 ui-card p-2 shadow-sm"}>
+    <div className={embedded ? "space-y-1.5" : "campaign-creator-card campaign-creator-card--compact shrink-0 space-y-1.5"}>
       {!hidePrimaryRow ? (
       <div className="flex flex-wrap items-center gap-1.5">
         {clients && clients.length > 0 && onClientChange && !clientInExpanded ? (
           <FilterSelectDropdown
+            creatorField
             icon={<Building2 size={14} />}
             label={t("clientPickerLabel")}
             placeholder={t("clientPickerPlaceholder")}
@@ -148,12 +149,14 @@ export function LearningFilters({
           />
         ) : null}
         <FilterSearchInput
+          creatorField
           size="compact"
           value={search}
           onChange={onSearchChange}
           placeholder={t("searchPlaceholder")}
         />
         <FilterSelectDropdown
+          creatorField
           icon={<ArrowUpDown size={14} />}
           label={t("sortLabel")}
           placeholder={sortOptions[0]?.label ?? t("sortLabel")}
@@ -163,6 +166,7 @@ export function LearningFilters({
           options={sortOptions.map((opt) => ({ value: opt.value, label: opt.label }))}
         />
         <FilterSelectDropdown
+          creatorField
           icon={<ArrowDownUp size={14} />}
           label={t("sortLabel")}
           placeholder={t("sortDir.desc")}
@@ -204,9 +208,10 @@ export function LearningFilters({
       ) : null}
 
       {expanded ? (
-        <div className="animate-fade-in space-y-2 rounded-lg border border-[var(--border-color)] bg-[var(--surface-thead)] p-2">
+        <div className="animate-fade-in space-y-2 rounded-xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] p-2">
           {clients && clients.length > 0 && onClientChange && clientInExpanded ? (
             <FilterSelectDropdown
+              creatorField
               icon={<Building2 size={14} />}
               label={t("clientPickerLabel")}
               placeholder={t("clientPickerPlaceholder")}

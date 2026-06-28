@@ -16,6 +16,8 @@ type Props = {
   size?: "default" | "wide" | "compact";
   inputType?: "search" | "text";
   "aria-label"?: string;
+  /** Match campaign creator inset fields. */
+  creatorField?: boolean;
 };
 
 export function FilterSearchInput({
@@ -27,7 +29,8 @@ export function FilterSearchInput({
   className,
   size = "default",
   inputType = "search",
-  "aria-label": ariaLabel
+  "aria-label": ariaLabel,
+  creatorField = false
 }: Props) {
   return (
     <div
@@ -37,12 +40,17 @@ export function FilterSearchInput({
         size === "wide" && "min-w-[260px] flex-1 sm:min-w-[300px] lg:min-w-[20rem]",
         size === "compact" && "min-w-[8rem] sm:min-w-[10rem]",
         disabled && "cursor-not-allowed opacity-60",
+        creatorField && "border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)]",
         className
       )}
-      style={{
-        background: "var(--filter-btn-bg)",
-        borderColor: "var(--border-color)"
-      }}
+      style={
+        creatorField
+          ? undefined
+          : {
+              background: "var(--filter-btn-bg)",
+              borderColor: "var(--border-color)"
+            }
+      }
     >
       <Search size={14} className="shrink-0" style={{ color: "var(--ui-accent)" }} aria-hidden />
       {label ? (

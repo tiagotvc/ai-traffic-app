@@ -3,7 +3,7 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "reac
 import { cn } from "@/lib/cn";
 
 export const dsAccentOutlineClass =
-  "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--ui-accent-border-strong)] bg-transparent px-3.5 py-1.5 text-xs font-semibold text-[var(--ui-accent)] transition hover:bg-[var(--ui-accent-hover)] disabled:opacity-60";
+  "ui-btn-accent-outline inline-flex shrink-0 items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold disabled:opacity-60";
 
 type SharedProps = {
   children: ReactNode;

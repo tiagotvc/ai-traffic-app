@@ -61,13 +61,12 @@ export function LearningCard({
   return (
     <article
       className={[
-        "ui-card animate-slide-up overflow-hidden transition hover:shadow-md",
-        isSuggested
-          ? "border-amber-200/90 ring-1 ring-amber-100/80"
-          : isApproved
-            ? "border-emerald-200/70 ring-1 ring-emerald-100/60"
-            : "border-[var(--border-color)]"
-      ].join(" ")}
+        "campaign-creator-card animate-slide-up overflow-hidden transition",
+        isSuggested && "border-[var(--ui-accent-border)]",
+        isApproved && "border-emerald-300/70"
+      ]
+        .filter(Boolean)
+        .join(" ")}
       style={{ animationDelay: `${Math.min(index, 9) * 35}ms` }}
     >
       <div className="p-4 sm:p-5">
@@ -167,7 +166,7 @@ export function LearningCard({
           </div>
         ) : null}
 
-        <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--border-color)] pt-4">
+        <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--creator-card-border)] pt-4">
           {isSuggested ? (
             <>
               <button

@@ -10,6 +10,7 @@ import { BillingPortalClient } from "@/components/billing/BillingPortalClient";
 import { BillingPortalSkeleton } from "@/components/billing/BillingSkeletons";
 import { SettingsClient } from "@/components/SettingsClient";
 import { SettingsAiCreditsTab } from "@/components/settings/SettingsAiCreditsTab";
+import { AdvancedToolsPanel } from "@/components/settings/AdvancedToolsPanel";
 import { DsFlatPanel, DsPageHeader, DsTabBar, type DsTab } from "@/design-system";
 
 type TabId = "general" | "plan" | "aiCredits" | "integrations" | "team" | "data";
@@ -68,16 +69,19 @@ export function SettingsContentLive({
       return <SettingsAiCreditsTab />;
     }
     return (
-      <SettingsClient
-        locale={locale}
-        metaOAuthConfigured={metaOAuthConfigured}
-        metaOAuthError={metaOAuthError}
-        connectMetaSlot={connectMetaSlot}
-        embedded
-        bare
-        activeTab={id as SettingsClientTab}
-        onActiveTabChange={() => {}}
-      />
+      <>
+        <SettingsClient
+          locale={locale}
+          metaOAuthConfigured={metaOAuthConfigured}
+          metaOAuthError={metaOAuthError}
+          connectMetaSlot={connectMetaSlot}
+          embedded
+          bare
+          activeTab={id as SettingsClientTab}
+          onActiveTabChange={() => {}}
+        />
+        {id === "integrations" ? <AdvancedToolsPanel /> : null}
+      </>
     );
   }
 

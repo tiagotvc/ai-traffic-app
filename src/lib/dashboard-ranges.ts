@@ -4,8 +4,65 @@ import { addDaysIso, normalizeDayKey, startOfMonthIso, startOfQuarterIso, startO
 export type Range = { since: string; until: string };
 
 export function pctDelta(cur: number, prev: number): number | null {
-  if (!prev || prev <= 0) return null;
+  if (!Number.isFinite(prev) || !Number.isFinite(cur)) return null;
+  if (prev <= 0) return null;
   return ((cur - prev) / prev) * 100;
+}
+
+export const MAX_DELTA_PCT = 999.9;
+
+export type MetricDeltaResult =
+  | { kind: "pct"; value: number }
+  | { kind: "new" }
+  | { kind: "none" };
+
+type SummaryLike = Partial<Record<string, number>>;
+
+/** True when the previous period has enough activity to compare against. */
+export function prevPeriodHasBaseline(prev: SummaryLike | null | undefined): boolean {
+  if (!prev) return false;
+  return (
+    (prev.spend ?? 0) > 0 ||
+    (prev.impressions ?? 0) > 0 ||
+    (prev.clicks ?? 0) > 0
+  );
+}
+
+/** Percent change vs previous period with sane caps for tiny baselines. */
+export function formatDeltaPct(cur: number, prev: number | null | undefined): number | null {
+  if (prev == null || !Number.isFinite(prev)) return null;
+  if (cur <= 0 && prev <= 0) return 0;
+  if (prev <= 0) return null;
+
+  const absPrev = Math.abs(prev);
+  const absCur = Math.abs(cur);
+  const minBaseline = Math.max(absCur * 0.05, 1e-4);
+  if (absPrev < minBaseline) return null;
+
+  const delta = pctDelta(cur, prev);
+  if (delta === null) return null;
+  if (delta > MAX_DELTA_PCT) return MAX_DELTA_PCT;
+  if (delta < -MAX_DELTA_PCT) return -MAX_DELTA_PCT;
+  return delta;
+}
+
+/** Resolve period-over-period delta with explicit handling for zero baselines. */
+export function resolveMetricDelta(
+  cur: number,
+  prev: number | null | undefined,
+  opts?: { allowNew?: boolean }
+): MetricDeltaResult {
+  if (prev == null || !Number.isFinite(prev) || !Number.isFinite(cur)) {
+    return { kind: "none" };
+  }
+  if (prev <= 0 && cur <= 0) return { kind: "none" };
+  if (prev <= 0 && cur > 0) {
+    return opts?.allowNew === false ? { kind: "none" } : { kind: "new" };
+  }
+
+  const delta = formatDeltaPct(cur, prev);
+  if (delta !== null) return { kind: "pct", value: delta };
+  return { kind: "none" };
 }
 
 /** Rótulo de data do eixo: dia/mês (padrão BR), ou mês/dia em inglês. */

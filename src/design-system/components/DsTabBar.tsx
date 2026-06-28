@@ -84,10 +84,11 @@ export function DsTabBar<T extends string = string>({
             onClick={() => onChange(tab.value)}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
+              "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border px-3.5 py-1.5 text-sm font-medium transition",
+              "rounded-[var(--btn-radius)]",
               isActive
-                ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] text-[var(--ui-accent)] shadow-sm"
-                : "border-[var(--border-color)] text-[var(--text-dim)] hover:border-[var(--ui-accent-border)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-main)]"
+                ? "border-[color-mix(in_srgb,var(--ui-accent-border)_82%,transparent)] bg-[var(--ui-accent-muted)] text-[var(--ui-accent)] shadow-sm"
+                : "border-[var(--btn-border-color)] text-[var(--text-dim)] hover:border-[color-mix(in_srgb,var(--ui-accent-border)_75%,transparent)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-main)]"
             )}
           >
             {tab.icon ? <span className="shrink-0">{tab.icon}</span> : null}

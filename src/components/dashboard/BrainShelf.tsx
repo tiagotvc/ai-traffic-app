@@ -4,8 +4,12 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Sparkles, X } from "lucide-react";
 
+import { useAppDarkMode } from "@/hooks/useAppDarkMode";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
+import { metricKpiIconShell } from "@/lib/dashboard/metric-kpi-theme";
+
+const BRAIN_ACCENT = "#7c3aed";
 
 type Suggestion = {
   id: string;
@@ -40,6 +44,11 @@ export function BrainShelf({
   learningsCount?: number;
 }) {
   const t = useTranslations("dashboard");
+  const themeDark = useAppDarkMode();
+  const brainIconShell = metricKpiIconShell(BRAIN_ACCENT, themeDark);
+  const brainBadgeStyle = themeDark
+    ? { color: "#a78bfa", background: "rgba(124, 58, 237, 0.16)" }
+    : { color: "var(--ui-accent)", background: "rgba(124, 58, 237, 0.12)" };
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const visible = (suggestions ?? []).filter((s) => !dismissed.includes(s.id));
@@ -56,17 +65,12 @@ export function BrainShelf({
   const shellClass = cn(
     "w-full",
     !embedded && !isFeed && !isNotice && "ui-brain-shelf",
-    (isFeed || isNotice) && "rounded-xl border p-4",
-    (isFeed || isNotice) && !embedded && "shadow-sm"
+    isFeed && "dashboard-card dashboard-card--compact",
+    isNotice && "dashboard-kpi-card dashboard-kpi-card--notice dashboard-kpi-card--light kpi-card-hover animate-fade-up",
+    isFeed && !embedded && "shadow-none"
   );
 
-  const shellStyle = isFeed || isNotice
-    ? {
-        borderColor: "var(--border-color)",
-        background: "var(--surface-card)",
-        boxShadow: embedded ? undefined : "0 1px 8px rgba(0,0,0,0.05)"
-      }
-    : undefined;
+  const shellStyle = undefined;
 
   const subtitle =
     metaLine ??
@@ -86,51 +90,49 @@ export function BrainShelf({
         style={shellStyle}
       >
         {isLoading ? (
-          <div className="skeleton-shimmer h-12 w-full rounded-lg" />
+          <div className="skeleton-shimmer h-9 w-full rounded-lg" />
         ) : (
-          <div className="flex w-full flex-wrap items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex w-full items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                style={{ background: "var(--ui-accent-muted)" }}
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+                style={brainIconShell}
               >
-                <Sparkles size={14} style={{ color: "var(--ui-accent)" }} />
+                <Sparkles size={11} style={{ color: BRAIN_ACCENT }} />
               </div>
               {alertCount > 0 ? (
                 <span
-                  className="relative flex h-6 min-w-[24px] shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-bold tabular-nums"
-                  style={{ background: "var(--ui-accent-muted-strong)", color: "var(--ui-accent)" }}
+                  className="relative flex shrink-0 items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+                  style={brainBadgeStyle}
                   aria-label={t("brainAlertCount", { count: alertCount })}
                 >
                   <span
-                    className="absolute inset-0 animate-ping rounded-full"
-                    style={{ background: "var(--ui-accent-border)" }}
+                    className="absolute inset-0 animate-ping rounded-full opacity-40"
+                    style={{ background: BRAIN_ACCENT }}
                   />
                   <span className="relative">{alertCount}</span>
                 </span>
               ) : null}
               <div className="min-w-0">
-                <p className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+                <p className="truncate font-heading text-[13px] font-semibold leading-tight text-[var(--text-main)]">
                   {t("brainNoticeTitle")}
                 </p>
-                <p className="text-[11px]" style={{ color: "var(--text-dim)" }}>
+                <p className="truncate text-[10px] leading-tight text-[var(--text-dim)]">
                   {t("brainNoticeHint")}
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-0.5">
               <Link
                 href="/agency-brain/learnings"
-                className="text-[11px] font-medium transition-opacity hover:opacity-80"
-                style={{ color: "var(--ui-accent)" }}
+                className="rounded-md px-2 py-1 text-[11px] font-semibold text-[var(--ui-accent)] transition-colors hover:bg-[color-mix(in_srgb,var(--ui-accent-muted)_45%,transparent)]"
               >
                 {t("brainViewAll")}
               </Link>
               <button
                 type="button"
                 onClick={() => setNoticeDismissed(true)}
-                className="rounded-md p-1 transition-colors hover:bg-[var(--surface-bg)]"
-                style={{ color: "var(--text-dimmer)" }}
+                className="rounded-md p-1 text-[var(--text-dimmer)] opacity-50 transition-colors hover:bg-[var(--creator-card-bg-inset,var(--surface-bg))] hover:text-[var(--text-dim)] hover:opacity-100"
                 aria-label={t("cancel")}
               >
                 <X size={14} />

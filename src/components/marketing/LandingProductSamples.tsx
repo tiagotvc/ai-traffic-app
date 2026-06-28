@@ -20,15 +20,15 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-const CHART_POINTS = [
-  { d: "Seg", spend: 4200, roas: 3.1 },
-  { d: "Ter", spend: 5100, roas: 3.4 },
-  { d: "Qua", spend: 4800, roas: 3.8 },
-  { d: "Qui", spend: 6200, roas: 4.1 },
-  { d: "Sex", spend: 5900, roas: 4.2 },
-  { d: "Sáb", spend: 7100, roas: 4.0 },
-  { d: "Dom", spend: 6800, roas: 4.4 }
-];
+const CHART_VALUES = [
+  { spend: 4200, roas: 3.1 },
+  { spend: 5100, roas: 3.4 },
+  { spend: 4800, roas: 3.8 },
+  { spend: 6200, roas: 4.1 },
+  { spend: 5900, roas: 4.2 },
+  { spend: 7100, roas: 4.0 },
+  { spend: 6800, roas: 4.4 }
+] as const;
 
 export function LandingProductSamples() {
   const t = useTranslations("marketing");
@@ -64,7 +64,7 @@ export function LandingProductSamples() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-          <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-5 shadow-2xl shadow-black/25">
+          <div className="overflow-hidden rounded-xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg)] p-4 shadow-2xl shadow-black/25 ring-1 ring-[var(--ui-accent-border)]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={tab}
@@ -92,7 +92,7 @@ export function LandingProductSamples() {
             <ul className="mt-4 space-y-2">
               {(["Point1", "Point2", "Point3"] as const).map((suffix) => (
                 <li key={suffix} className="flex items-start gap-2 text-xs text-[var(--text-main)]">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--amber-bright)]" />
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ui-accent)]" />
                   {t(`sample${capitalize(tab)}${suffix}`)}
                 </li>
               ))}
@@ -110,49 +110,61 @@ function capitalize(s: string): string {
 
 function CreatorSample({ t }: { t: ReturnType<typeof useTranslations<"marketing">> }) {
   const steps = [
-    { label: t("sampleCreatorStep1"), active: true },
-    { label: t("sampleCreatorStep2"), active: true },
-    { label: t("sampleCreatorStep3"), active: false }
+    { label: t("sampleCreatorStep1"), active: true, current: true },
+    { label: t("sampleCreatorStep2"), active: true, current: false },
+    { label: t("sampleCreatorStep3"), active: false, current: false }
   ];
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold text-[var(--text-dim)]">{t("sampleCreatorHeader")}</p>
-      <div className="flex gap-2">
+      <p className="campaign-creator-orion-section-label">{t("sampleCreatorHeader")}</p>
+      <div className="flex gap-1.5">
         {steps.map((step, i) => (
           <div
             key={step.label}
             className={cn(
-              "flex-1 rounded-xl border px-2 py-2 text-center text-[10px] font-semibold",
-              step.active
+              "flex-1 rounded-lg border px-2 py-2 text-center text-[10px] font-semibold",
+              step.current
                 ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]"
-                : "border-[var(--border-color)] text-[var(--text-dimmer)]"
+                : step.active
+                  ? "border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] text-[var(--text-dim)]"
+                  : "border-[var(--creator-card-border)] text-[var(--text-dimmer)]"
             )}
           >
             {String(i + 1).padStart(2, "0")} · {step.label}
           </div>
         ))}
       </div>
-      <div className="space-y-2 rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-3">
-        <div className="h-2 w-24 rounded bg-[var(--ui-accent-muted)]" />
-        <div className="h-8 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)]" />
+      <section className="campaign-creator-card campaign-creator-card--compact">
+        <p className="text-[10px] font-semibold text-[var(--ui-accent)]">{t("sampleCreatorFieldObjective")}</p>
+        <div className="rounded-lg border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-2.5 py-2 text-[10px] text-[var(--text-main)]">
+          {t("sampleCreatorFieldPersona")}
+        </div>
         <div className="grid grid-cols-2 gap-2">
-          <div className="h-8 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)]" />
-          <div className="h-8 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)]" />
+          <div className="rounded-lg border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-2.5 py-2 text-[10px] text-[var(--text-dim)]">
+            {t("sampleCreatorFieldBudget")}
+          </div>
+          <div className="rounded-lg border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-2.5 py-2 text-[10px] font-medium text-[var(--ui-accent)]">
+            {t("sampleCreatorFieldChannel")}
+          </div>
         </div>
-        <div className="mt-2 inline-flex rounded-lg bg-[var(--ui-accent)] px-3 py-1.5 text-[10px] font-bold text-[var(--ui-accent-btn-text)]">
+        <button type="button" className="ui-btn-accent mt-1 inline-flex px-3 py-1.5 text-[10px] font-bold">
           {t("sampleCreatorCta")}
-        </div>
-      </div>
+        </button>
+      </section>
     </div>
   );
 }
 
 function DashboardSample({ t }: { t: ReturnType<typeof useTranslations<"marketing">> }) {
+  const chartPoints = CHART_VALUES.map((point, i) => ({
+    ...point,
+    d: t(`sampleChartDay${i + 1}` as "sampleChartDay1")
+  }));
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-semibold text-[var(--text-dim)]">{t("sampleDashboardClient")}</span>
-        <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-200">
+        <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-200 ring-1 ring-emerald-400/30">
           {t("sampleLiveBadge")}
         </span>
       </div>
@@ -162,31 +174,34 @@ function DashboardSample({ t }: { t: ReturnType<typeof useTranslations<"marketin
           { label: "CPA", value: "R$ 18", up: false },
           { label: "Spend", value: "R$ 6,8k", up: true }
         ].map((kpi) => (
-          <div key={kpi.label} className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-3">
-            <div className="text-[10px] uppercase tracking-wide text-[var(--text-dimmer)]">{kpi.label}</div>
-            <div className="mt-1 flex items-center gap-1 font-heading text-lg font-bold text-[var(--text-main)]">
+          <div key={kpi.label} className="dashboard-kpi-card dashboard-kpi-card--mini !min-h-0 !py-2">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">{kpi.label}</div>
+            <div className="mt-0.5 flex items-center gap-1 font-heading text-base font-bold text-[var(--text-main)]">
               {kpi.value}
-              {kpi.up ? <TrendingUp className="h-3.5 w-3.5 text-emerald-400" /> : null}
+              {kpi.up ? <TrendingUp className="h-3 w-3 text-emerald-400" /> : null}
             </div>
           </div>
         ))}
       </div>
-      <div className="mt-4 h-[180px] rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={CHART_POINTS}>
-            <XAxis dataKey="d" tick={{ fill: "var(--text-dimmer)", fontSize: 10 }} axisLine={false} tickLine={false} />
-            <YAxis hide />
-            <Tooltip
-              contentStyle={{
-                background: "var(--surface-card)",
-                border: "1px solid var(--border-color)",
-                borderRadius: 10,
-                fontSize: 11
-              }}
-            />
-            <Line type="monotone" dataKey="roas" stroke="var(--amber-bright)" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
+      <p className="campaign-creator-orion-section-label mb-2 mt-4">{t("sampleDashboardChartLabel")}</p>
+      <div className="dashboard-card dashboard-card--compact !p-2">
+        <div className="dashboard-kpi-card__spark h-[160px] !min-h-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartPoints}>
+              <XAxis dataKey="d" tick={{ fill: "var(--text-dimmer)", fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis hide />
+              <Tooltip
+                contentStyle={{
+                  background: "var(--creator-card-bg)",
+                  border: "1px solid var(--creator-card-border)",
+                  borderRadius: 10,
+                  fontSize: 11
+                }}
+              />
+              <Line type="monotone" dataKey="roas" stroke="var(--ui-accent)" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
@@ -194,19 +209,19 @@ function DashboardSample({ t }: { t: ReturnType<typeof useTranslations<"marketin
 
 function RankingSample({ t }: { t: ReturnType<typeof useTranslations<"marketing">> }) {
   const rows = [
-    { name: "Hook #1 — Dor + prova", score: "+340%", rank: 1 },
-    { name: "UGC 15s — depoimento", score: "+210%", rank: 2 },
-    { name: "Estático — oferta", score: "+85%", rank: 3 }
+    { name: t("sampleRankingRow1"), score: "+340%", rank: 1 },
+    { name: t("sampleRankingRow2"), score: "+210%", rank: 2 },
+    { name: t("sampleRankingRow3"), score: "+85%", rank: 3 }
   ];
   return (
     <div className="space-y-2">
-      <p className="mb-3 text-xs font-semibold text-[var(--text-dim)]">{t("sampleRankingHeader")}</p>
+      <p className="campaign-creator-orion-section-label mb-3">{t("sampleRankingHeader")}</p>
       {rows.map((row) => (
         <div
           key={row.rank}
-          className="flex items-center gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] px-3 py-2.5"
+          className="flex items-center gap-3 rounded-xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-3 py-2.5"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-xs font-black text-[var(--amber-bright)]">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-xs font-black text-[var(--ui-accent)]">
             #{row.rank}
           </span>
           <div className="min-w-0 flex-1">
@@ -222,42 +237,44 @@ function RankingSample({ t }: { t: ReturnType<typeof useTranslations<"marketing"
 
 function ReportSample({ t }: { t: ReturnType<typeof useTranslations<"marketing">> }) {
   return (
-    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-4">
-      <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+    <div className="campaign-creator-card">
+      <div className="flex items-center justify-between border-b border-[var(--creator-card-border)] pb-3">
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-[var(--text-dimmer)]">{t("sampleReportWeekly")}</p>
+          <p className="campaign-creator-orion-section-label">{t("sampleReportWeekly")}</p>
           <p className="font-heading text-sm font-bold text-[var(--text-main)]">{t("sampleReportTitleDoc")}</p>
         </div>
-        <FileText className="h-5 w-5 text-[var(--amber-bright)]" />
+        <FileText className="h-5 w-5 text-[var(--ui-accent)]" />
       </div>
       <div className="mt-3 space-y-2 text-xs text-[var(--text-dim)]">
         <p>• {t("sampleReportLine1")}</p>
         <p>• {t("sampleReportLine2")}</p>
         <p>• {t("sampleReportLine3")}</p>
       </div>
-      <div className="mt-4 inline-flex rounded-lg bg-[var(--ui-accent-muted)] px-3 py-1.5 text-[10px] font-semibold text-[var(--ui-accent)]">
+      <span className="ui-btn-accent-outline mt-4 inline-flex px-3 py-1.5 text-[10px] font-semibold">
         {t("sampleReportAutoSend")}
-      </div>
+      </span>
     </div>
   );
 }
 
 function BrainSample({ t }: { t: ReturnType<typeof useTranslations<"marketing">> }) {
   return (
-    <div className="space-y-3">
-      <p className="text-xs font-semibold text-[var(--text-dim)]">{t("sampleBrainHeader")}</p>
-      {[
-        { type: "suggestion", text: t("sampleBrainItem1") },
-        { type: "learning", text: t("sampleBrainItem2") },
-        { type: "hypothesis", text: t("sampleBrainItem3") }
-      ].map((item, i) => (
-        <div key={i} className="rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-3 py-2.5">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--amber-bright)]">
-            {t(`sampleBrainType_${item.type}`)}
-          </span>
-          <p className="mt-1 text-xs leading-relaxed text-[var(--text-main)]">{item.text}</p>
-        </div>
-      ))}
+    <div className="campaign-creator-sidebar-card !p-3">
+      <p className="font-heading text-xs font-semibold text-[var(--text-main)]">{t("sampleBrainHeader")}</p>
+      <div className="campaign-creator-sidebar-card-inset mt-3 space-y-2 !px-0 !py-0">
+        {[
+          { type: "suggestion", text: t("sampleBrainItem1") },
+          { type: "learning", text: t("sampleBrainItem2") },
+          { type: "hypothesis", text: t("sampleBrainItem3") }
+        ].map((item, i) => (
+          <div key={i} className="border-b border-[var(--creator-card-border)] px-3 py-2.5 last:border-0">
+            <span className="campaign-creator-orion-section-label text-[var(--ui-accent)]">
+              {t(`sampleBrainType_${item.type}`)}
+            </span>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--text-main)]">{item.text}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

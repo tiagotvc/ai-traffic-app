@@ -43,6 +43,7 @@ export function BrainListToolbar({
   const sortControls = (
     <>
       <FilterSelectDropdown
+        creatorField
         icon={<ArrowUpDown size={14} />}
         label={t("sortLabel")}
         placeholder={sortOptions[0]?.label ?? t("sortLabel")}
@@ -52,6 +53,7 @@ export function BrainListToolbar({
         options={sortOptions.map((opt) => ({ value: opt.value, label: opt.label }))}
       />
       <FilterSelectDropdown
+        creatorField
         icon={<ArrowDownUp size={14} />}
         label={t("sortLabel")}
         placeholder={t("sortDir.desc")}
@@ -68,7 +70,7 @@ export function BrainListToolbar({
 
   if (compact) {
     return (
-      <div className="ui-card shrink-0 space-y-2 p-2.5">
+      <div className="campaign-creator-card campaign-creator-card--compact shrink-0 space-y-2">
         {filters}
 
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -105,7 +107,7 @@ export function BrainListToolbar({
   }
 
   return (
-    <div className="ui-card space-y-3 p-4">
+    <div className="campaign-creator-card space-y-3">
       {filters}
 
       <div className="flex flex-wrap items-center justify-between gap-3">

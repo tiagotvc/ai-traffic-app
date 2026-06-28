@@ -76,7 +76,7 @@ function SidebarProgressCard({ onOpenSummary }: { onOpenSummary: () => void }) {
       <button
         type="button"
         onClick={onOpenSummary}
-        className="ui-btn-accent-outline mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-heading font-semibold"
+        className="ui-btn-accent-outline mt-3 inline-flex w-full items-center justify-center gap-1.5 px-3 py-2 text-xs font-heading font-semibold"
       >
         {t("sidebarContextCampaign")}
         <ChevronRight size={14} strokeWidth={2.5} />

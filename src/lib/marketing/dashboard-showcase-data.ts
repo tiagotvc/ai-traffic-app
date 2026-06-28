@@ -4,6 +4,9 @@ import type { KpiCard, SecondaryMetric } from "@/components/dashboard/MetricPris
 const SPARK_SPEND = [8200, 11200, 9800, 14100, 13200, 15800, 14586];
 const SPARK_CTR = [1.8, 2.1, 2.4, 2.9, 3.2, 3.8, 4.32];
 const SPARK_REACH = [180000, 195000, 210000, 225000, 238000, 232000, 229559];
+const SPARK_CONV = [120, 145, 132, 168, 190, 205, 2078];
+const SPARK_CLICKS = [8200, 9100, 9800, 10200, 10800, 11200, 11849];
+const SPARK_CPC = [1.45, 1.38, 1.32, 1.28, 1.25, 1.24, 1.23];
 
 type BuildOpts = {
   metricLabel: (key: MetricKey) => string;
@@ -80,16 +83,43 @@ export function buildMarketingDashboardShowcase(opts: BuildOpts): {
       SPARK_REACH,
       opts,
       (n) => fmtNumber(n, locale)
+    ),
+    kpi(
+      "conversions",
+      fmtNumber(2078, locale),
+      pct(35.5, locale),
+      "up",
+      SPARK_CONV,
+      opts,
+      (n) => fmtNumber(n, locale)
+    ),
+    kpi(
+      "clicks",
+      fmtNumber(11849, locale),
+      pct(138.7, locale),
+      "up",
+      SPARK_CLICKS,
+      opts,
+      (n) => fmtNumber(n, locale)
+    ),
+    kpi(
+      "cpc",
+      fmtCurrency(1.23, locale),
+      pct(14.4, locale),
+      "down",
+      SPARK_CPC,
+      opts,
+      (n) => fmtCurrency(n, locale)
     )
   ];
 
   const secondaryMetrics: SecondaryMetric[] = [
-    { key: "conversions", label: opts.metricLabel("conversions"), value: fmtNumber(2078, locale), change: pct(35.5, locale), trend: "up" },
-    { key: "clicks", label: opts.metricLabel("clicks"), value: fmtNumber(11849, locale), change: pct(138.7, locale), trend: "up" },
-    { key: "cpc", label: opts.metricLabel("cpc"), value: fmtCurrency(1.23, locale), change: pct(14.4, locale), trend: "down" },
     { key: "cpm", label: opts.metricLabel("cpm"), value: fmtCurrency(53.21, locale), change: pct(166.8, locale), trend: "down" },
+    { key: "roas", label: opts.metricLabel("roas"), value: fmtRatio(3.42, locale), change: pct(12.1, locale), trend: "up" },
+    { key: "messages", label: opts.metricLabel("messages"), value: fmtNumber(842, locale), change: pct(8.2, locale), trend: "up" },
     { key: "frequency", label: opts.metricLabel("frequency"), value: fmtRatio(1.19, locale), change: pct(1.1, locale), trend: "up" },
-    { key: "impressions", label: opts.metricLabel("impressions"), value: fmtNumber(274100, locale), change: pct(2.4, locale), trend: "up" }
+    { key: "impressions", label: opts.metricLabel("impressions"), value: fmtNumber(274100, locale), change: pct(2.4, locale), trend: "up" },
+    { key: "cpa", label: opts.metricLabel("cpa"), value: fmtCurrency(7.02, locale), change: pct(5.6, locale), trend: "down" }
   ];
 
   return { primaryKPIs, secondaryMetrics };

@@ -80,7 +80,7 @@ export function AdSetPersonaZonePanel({
             type="button"
             disabled={disabled}
             onClick={onRefineAudience}
-            className="ui-btn-accent-outline inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-lg px-3 py-2 text-xs font-semibold sm:self-center"
+            className="ui-btn-accent-outline inline-flex shrink-0 items-center justify-center gap-1.5 self-start px-3 py-2 text-xs font-semibold sm:self-center"
           >
             {t("refineAudienceButton")}
             {customAudienceCount > 0 ? (

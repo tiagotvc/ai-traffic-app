@@ -28,10 +28,10 @@ Envio **server-to-server** de eventos de conversão para o pixel do cliente
 **Critério de pronto (P0):** `POST /api/meta/capi/test {clientId, testEventCode}` → o evento aparece
 em **Events Manager → Test Events** com `event_id` (dedupe) e PII hasheada. ✅
 
-**Feito (P0.3/P0.4):** envio em produção (`/api/meta/capi`), **log de eventos** (`CapiEventLog`) e
-**status** (`/api/meta/capi/status`: enviados 24h, último erro). **Pendente:** UI/painel por cliente
-(toggle on/off + visualização do status) — back-end pronto, falta o componente; e o ingest público
-por-cliente (site do cliente → nosso endpoint com token), se quiserem expor para fora.
+**Feito (P0.3/P0.4):** envio em produção (`/api/meta/capi`), **log de eventos** (`CapiEventLog`),
+**status** (`/api/meta/capi/status`) e **UI** (Configurações → Integrações → Ferramentas avançadas:
+seletor de cliente, enviar evento de teste, status 24h + último erro). **Pendente (opcional):** ingest
+público por-cliente (site do cliente → nosso endpoint com token), se quiserem expor para fora.
 
 ## Atribuição — P2 (fundação)
 
@@ -49,6 +49,9 @@ Presets: `default` (= comportamento atual da Meta), `1d_view`, `1d_click`, `7d_c
 **Preview isolado (read-only)** — [`/api/meta/attribution/preview`](../../src/app/api/meta/attribution/preview/route.ts):
 busca insights **ao vivo** com a janela escolhida e devolve spend/conversões/CPA agregados, **sem
 gravar nada e sem tocar nos snapshots/ranking**. É o "e se eu usasse a janela X?".
+
+**UI**: Configurações → Integrações → Ferramentas avançadas — escolher/salvar a janela preferida e
+rodar o **Simular** por cliente ([`AdvancedToolsPanel`](../../src/components/settings/AdvancedToolsPanel.tsx)).
 
 > **Decisão de segurança (importante):** a conversão exibida em dashboards/ranking/relatórios vem do
 > **sync → snapshots** (`fetchAccountInsightsDaily` no `sync-meta`), que alimenta **também o ranking**.

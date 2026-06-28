@@ -19,7 +19,7 @@ export default async function PricingPage() {
     <div className="pb-16">
       <div className="px-4 py-12 sm:px-6">
         <div className="mx-auto max-w-6xl space-y-4 pb-4 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-amber-400/90">{t("pricingBadge")}</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[var(--ui-accent)]">{t("pricingBadge")}</p>
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
             {t("pricingTitle")}
           </h1>

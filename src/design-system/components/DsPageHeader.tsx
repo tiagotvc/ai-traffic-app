@@ -2,18 +2,22 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
+import { PageTitleBlock } from "./PageTitleBlock";
+
 export function DsPageHeader({
   title,
   subtitle,
   breadcrumbs,
   titleIcon,
+  badge,
   actions,
   className
 }: {
-  title: string;
-  subtitle?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
   breadcrumbs?: ReactNode;
   titleIcon?: ReactNode;
+  badge?: ReactNode;
   actions?: ReactNode;
   className?: string;
 }) {
@@ -28,19 +32,7 @@ export function DsPageHeader({
         {breadcrumbs ? (
           <div className="mb-1 text-xs font-medium text-[var(--text-dim)]">{breadcrumbs}</div>
         ) : null}
-        <div className="flex items-center gap-2">
-          {titleIcon ? (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
-              {titleIcon}
-            </div>
-          ) : null}
-          <h1 className="font-heading font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">
-            {title}
-          </h1>
-        </div>
-        {subtitle ? (
-          <p className="mt-1 text-sm text-[var(--text-dim)]">{subtitle}</p>
-        ) : null}
+        <PageTitleBlock title={title} subtitle={subtitle} titleIcon={titleIcon} badge={badge} />
       </div>
       {actions ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>

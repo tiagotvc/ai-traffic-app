@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Megaphone } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { Badge } from "@/components/ui/Badge";
 import { Link } from "@/i18n/navigation";
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 
 export function CampaignCreatorHeader() {
   const t = useTranslations("campaignCreator");
@@ -56,17 +58,20 @@ export function CampaignCreatorHeader() {
               </>
             )}
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="font-heading text-lg font-semibold text-[var(--text-main)]">
-              {addAdsetMode ? t("addAdsetTitle") : addAdMode ? t("addAdTitle") : t("title")}
-            </h1>
-            <Badge variant="warning">{t("draftStatus")}</Badge>
-            {saving ? (
-              <span className="text-[11px] text-[var(--text-dimmer)]">{t("saving")}</span>
-            ) : lastSavedAt ? (
-              <span className="text-[11px] text-[var(--text-dimmer)]">{t("saved")}</span>
-            ) : null}
-          </div>
+          <PageTitleBlock
+            title={addAdsetMode ? t("addAdsetTitle") : addAdMode ? t("addAdTitle") : t("title")}
+            titleIcon={<Megaphone size={16} aria-hidden />}
+            badge={
+              <>
+                <Badge variant="warning">{t("draftStatus")}</Badge>
+                {saving ? (
+                  <span className="text-[11px] text-[var(--text-dimmer)]">{t("saving")}</span>
+                ) : lastSavedAt ? (
+                  <span className="text-[11px] text-[var(--text-dimmer)]">{t("saved")}</span>
+                ) : null}
+              </>
+            }
+          />
         </div>
         <div className="flex items-center gap-1 rounded-xl border border-[var(--border-color)] p-0.5">
           <button

@@ -41,7 +41,7 @@ function SortableKpiSlot({
       {editMode ? (
         <button
           type="button"
-          className="absolute left-2 top-2 z-[2] flex h-7 w-7 cursor-grab items-center justify-center rounded-md border border-[var(--border-color)] bg-[var(--surface-card)] text-[var(--text-dim)] shadow-sm active:cursor-grabbing"
+          className="absolute left-2 top-2 z-[2] flex h-7 w-7 cursor-grab items-center justify-center rounded-md border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg,var(--surface-card))] text-[var(--text-dim)] shadow-sm active:cursor-grabbing"
           aria-label="Reordenar métrica"
           {...attributes}
           {...listeners}
@@ -49,7 +49,7 @@ function SortableKpiSlot({
           <GripVertical size={14} />
         </button>
       ) : null}
-      <div className={editMode ? "ring-2 ring-[rgba(245,166,35,0.35)] ring-offset-2 ring-offset-[var(--surface-bg)] rounded-xl" : ""}>
+      <div className={editMode ? "rounded-xl ring-2 ring-[var(--ui-accent-border)] ring-offset-2 ring-offset-[var(--creator-card-bg,var(--surface-bg))]" : ""}>
         {children}
       </div>
     </div>

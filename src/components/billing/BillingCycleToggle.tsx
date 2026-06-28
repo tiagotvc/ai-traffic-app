@@ -24,7 +24,7 @@ export function BillingCycleToggle({
           "inline-flex gap-1 rounded-full p-1",
           isMarketing
             ? "border border-white/[0.06] bg-[#060a10] shadow-[inset_0_2px_12px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.04)]"
-            : "rounded-2xl border border-[var(--border-color)] bg-slate-100/80 p-1.5 shadow-inner"
+            : "rounded-[var(--btn-radius)] border border-[var(--border-color)] bg-[var(--surface-bg)] p-1 shadow-inner"
         )}
         role="group"
       >
@@ -36,10 +36,10 @@ export function BillingCycleToggle({
             cycle === "monthly"
               ? isMarketing
                 ? "bg-gradient-to-b from-white/18 to-white/8 text-white shadow-[0_3px_14px_rgba(0,0,0,0.45),0_1px_0_rgba(255,255,255,0.14)] ring-1 ring-white/12"
-                : "rounded-xl bg-white text-[var(--text-main)] shadow-sm"
+                : "rounded-[var(--btn-radius)] bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm"
               : isMarketing
                 ? "text-violet-300/45 hover:text-violet-200/75"
-                : "rounded-xl text-[var(--text-dim)]"
+                : "rounded-[var(--btn-radius)] text-[var(--text-dim)]"
           )}
         >
           {t("monthly")}
@@ -52,10 +52,10 @@ export function BillingCycleToggle({
             cycle === "yearly"
               ? isMarketing
                 ? "bg-gradient-to-b from-white/18 to-white/8 text-white shadow-[0_3px_14px_rgba(0,0,0,0.45),0_1px_0_rgba(255,255,255,0.14)] ring-1 ring-white/12"
-                : "rounded-xl bg-white text-[var(--text-main)] shadow-sm"
+                : "rounded-[var(--btn-radius)] bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm"
               : isMarketing
                 ? "text-violet-300/45 hover:text-violet-200/75"
-                : "rounded-xl text-[var(--text-dim)]"
+                : "rounded-[var(--btn-radius)] text-[var(--text-dim)]"
           )}
         >
           {t("yearly")}

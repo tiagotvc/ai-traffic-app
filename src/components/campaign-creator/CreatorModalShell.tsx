@@ -211,7 +211,14 @@ export function CreatorModalShell({
 
   return (
     <UxModalPortal open={open} onClose={onClose}>
-      <UxWizardModalPanel size={widthClass[width]} className={cn("max-h-[min(920px,92vh)]", className)}>
+      <UxWizardModalPanel
+        data-creator-modal-shell
+        size={widthClass[width]}
+        className={cn(
+          "max-h-[min(920px,92vh)] border-[var(--creator-card-border,var(--border-color))] bg-[var(--surface-bg)]",
+          className
+        )}
+      >
         <CreatorModalHeader
           title={title}
           subtitle={subtitle}

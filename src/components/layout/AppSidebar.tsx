@@ -3,10 +3,10 @@
 import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Megaphone,
   BarChart3,
-  LayoutDashboard,
+  Home,
   LayoutGrid,
+  Megaphone,
   Target,
   Trophy,
   Users
@@ -89,19 +89,47 @@ export function AppSidebar({
   };
 
   const items: NavItem[] = [
-    { id: "highlights", href: "/dashboard", label: t("highlights"), icon: <LayoutDashboard size={18} className="shrink-0" /> },
-    { id: "views", href: "/dashboard/views", label: t("views"), icon: <LayoutGrid size={18} className="shrink-0" /> },
-    { id: "clients", href: "/clients", label: t("clients"), icon: <Users size={18} className="shrink-0" /> },
-    { id: "campaigns", href: "/campaigns", label: t("campaigns"), icon: <Megaphone size={18} className="shrink-0" />, gate: "campaigns" },
-    { id: "audiences", href: "/audiences", label: t("audiences"), icon: <Target size={18} className="shrink-0" />, gate: "audiences" },
-    { id: "creatives", href: "/creatives", label: t("creatives"), icon: <Trophy size={18} className="shrink-0" />, gate: "creatives" },
-    { id: "reports", href: "/reports", label: t("reports"), icon: <BarChart3 size={18} className="shrink-0" />, gate: "reports" }
+    {
+      id: "dashboard",
+      href: "/dashboard",
+      label: t("dashboard"),
+      icon: <Home size={18} strokeWidth={1.75} className="shrink-0" />
+    },
+    { id: "views", href: "/dashboard/views", label: t("views"), icon: <LayoutGrid size={18} strokeWidth={1.75} className="shrink-0" /> },
+    { id: "clients", href: "/clients", label: t("clients"), icon: <Users size={18} strokeWidth={1.75} className="shrink-0" /> },
+    {
+      id: "campaigns",
+      href: "/campaigns",
+      label: t("campaigns"),
+      icon: <Megaphone size={18} strokeWidth={1.75} className="shrink-0" />,
+      gate: "campaigns"
+    },
+    {
+      id: "audiences",
+      href: "/audiences",
+      label: t("audiences"),
+      icon: <Target size={18} strokeWidth={1.75} className="shrink-0" />,
+      gate: "audiences"
+    },
+    {
+      id: "creatives",
+      href: "/creatives",
+      label: t("creatives"),
+      icon: <Trophy size={18} strokeWidth={1.75} className="shrink-0" />,
+      gate: "creatives"
+    },
+    {
+      id: "reports",
+      href: "/reports",
+      label: t("reports"),
+      icon: <BarChart3 size={18} strokeWidth={1.75} className="shrink-0" />,
+      gate: "reports"
+    }
   ];
 
   function isActive(item: NavItem) {
     const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
-    if (item.id === "highlights")
-      return base === "/dashboard" || base === "/";
+    if (item.id === "dashboard") return base === "/dashboard" || base === "/";
     if (item.id === "views")
       return base === "/dashboard/views" || base.startsWith("/dashboard/apps/");
     if (item.id === "campaigns")
@@ -121,28 +149,32 @@ export function AppSidebar({
       } ${!isDrawer ? (effectiveCollapsed ? "w-16" : "w-60") : ""}`}
       style={{ background: "#0a0f14" }}
     >
-      {/* Logo + collapse (desktop sidebar only) */}
       {!isDrawer ? (
-      <div
-        className={`relative flex h-16 shrink-0 items-center border-b border-[var(--sidebar-border)] ${
-          effectiveCollapsed ? "justify-center px-2" : "justify-start pl-[22px] pr-3"
-        }`}
-      >
-        <SidebarLogoIcon collapsed={effectiveCollapsed} />
-        {!effectiveCollapsed ? (
-          <div className="absolute right-3">
-            <SidebarCollapseButton onClick={onToggleCollapse} title={t("collapseSidebar")} />
-          </div>
-        ) : null}
-      </div>
+        <div
+          className={`relative flex h-14 shrink-0 items-center border-b border-[var(--sidebar-border)] ${
+            effectiveCollapsed ? "justify-center px-2" : "px-3"
+          }`}
+        >
+          {!effectiveCollapsed ? (
+            <div className="flex min-w-0 flex-1 items-center pr-9">
+              <SidebarLogoIcon collapsed={false} />
+            </div>
+          ) : (
+            <SidebarLogoIcon collapsed />
+          )}
+          {!effectiveCollapsed ? (
+            <div className="absolute right-2 top-1/2 -translate-y-1/2">
+              <SidebarCollapseButton onClick={onToggleCollapse} title={t("collapseSidebar")} />
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       <SidebarCollapseFab collapsed={effectiveCollapsed && !isDrawer} onToggle={onToggleCollapse} />
 
-      {/* Nav — scroll interno só se muitos itens */}
       <nav
         className={`sidebar-nav min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${
-          effectiveCollapsed ? "space-y-1 px-2 py-2" : "space-y-0.5 px-3 py-2"
+          effectiveCollapsed ? "space-y-1 px-2 py-3" : "space-y-1 px-3 py-3"
         }`}
       >
         {items.map((item) => {
@@ -151,16 +183,14 @@ export function AppSidebar({
 
           if (gated) {
             return (
-              <Fragment key={item.id}>
-                <NavUpgradeLink
-                  label={item.label}
-                  collapsed={effectiveCollapsed}
-                  active={active}
-                  icon={item.icon}
-                  onNavigate={onNavigate}
-                />
-                {item.id === "creatives" ? null : null}
-              </Fragment>
+              <NavUpgradeLink
+                key={item.id}
+                label={item.label}
+                collapsed={effectiveCollapsed}
+                active={active}
+                icon={item.icon}
+                onNavigate={onNavigate}
+              />
             );
           }
 
@@ -187,9 +217,7 @@ export function AppSidebar({
                 </span>
               ) : null}
               {item.badge && !effectiveCollapsed ? (
-                <span
-                  className="min-w-[18px] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white"
-                >
+                <span className="min-w-[18px] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-bold text-white">
                   {item.badge > 99 ? "99+" : item.badge}
                 </span>
               ) : null}
@@ -201,29 +229,28 @@ export function AppSidebar({
             </>
           );
 
-          const navItem =
-            item.action ? (
-              <button
-                type="button"
-                onClick={() => {
-                  item.action?.();
-                  onNavigate?.();
-                }}
-                title={effectiveCollapsed ? item.label : undefined}
-                className={cls}
-              >
-                {inner}
-              </button>
-            ) : (
-              <Link
-                href={item.href!}
-                title={effectiveCollapsed ? item.label : undefined}
-                className={cls}
-                onClick={() => onNavigate?.()}
-              >
-                {inner}
-              </Link>
-            );
+          const navItem = item.action ? (
+            <button
+              type="button"
+              onClick={() => {
+                item.action?.();
+                onNavigate?.();
+              }}
+              title={effectiveCollapsed ? item.label : undefined}
+              className={cls}
+            >
+              {inner}
+            </button>
+          ) : (
+            <Link
+              href={item.href!}
+              title={effectiveCollapsed ? item.label : undefined}
+              className={cls}
+              onClick={() => onNavigate?.()}
+            >
+              {inner}
+            </Link>
+          );
 
           return (
             <Fragment key={item.id}>

@@ -1,9 +1,13 @@
 "use client";
 
+import { SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { DsButton, DsModal } from "@/design-system";
+import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { FilterTextField } from "@/components/FilterTextField";
+import { DsButton } from "@/design-system";
 import {
   RANKABLE_METRICS,
   RANKABLE_PRESETS,
@@ -69,90 +73,102 @@ export function RankingConfigModal({
       .finally(() => setSaving(false));
   }
 
+  const metricOptions = RANKABLE_METRICS.map((m) => ({
+    value: m,
+    label: tMetrics(METRIC_BY_KEY[m].label)
+  }));
+
+  const directionOptions = [
+    { value: "desc", label: t("dirHigher") },
+    { value: "asc", label: t("dirLower") }
+  ];
+
   return (
-    <DsModal
+    <CreatorModalShell
       open
       onClose={onClose}
       title={t("cfgTitle")}
       subtitle={t("cfgSubtitle")}
+      titleIcon={<SlidersHorizontal size={18} aria-hidden />}
       width="lg"
-      footer={
-        config ? (
-          <div className="flex w-full items-center justify-between gap-2">
+      hideFooter
+    >
+      {!config ? (
+        <div className="py-8 text-center text-sm text-[var(--text-dim)]">…</div>
+      ) : (
+        <>
+          <FilterTextField
+            creatorField
+            icon={<SlidersHorizontal size={14} />}
+            label={t("cfgMinImpr")}
+            value={String(config.minImpressions)}
+            onChange={(v) =>
+              setConfig((c) =>
+                c ? { ...c, minImpressions: Math.max(0, Number(v) || 0) } : c
+              )
+            }
+            placeholder="100"
+          />
+
+          <div className="mt-4 space-y-2">
+            <h3 className="campaign-creator-orion-section-label">{t("cfgMetric")}</h3>
+            {RANKABLE_PRESETS.map((preset) => {
+              const spec = config.specs[preset];
+              return (
+                <div
+                  key={preset}
+                  className="campaign-creator-sidebar-card-inset flex flex-wrap items-center gap-2 px-3 py-2.5"
+                >
+                  <span className="min-w-[96px] shrink-0 text-xs font-semibold text-[var(--text-main)]">
+                    {tPresets(preset)}
+                  </span>
+                  <FilterSelectDropdown
+                    creatorField
+                    icon={<TrendingUp size={14} />}
+                    label={t("cfgMetric")}
+                    placeholder={t("cfgMetric")}
+                    clearable={false}
+                    value={spec.metric}
+                    onChange={(v) => setSpec(preset, { metric: v })}
+                    options={metricOptions}
+                    className="min-w-[140px] flex-1"
+                  />
+                  <FilterSelectDropdown
+                    creatorField
+                    icon={<TrendingDown size={14} />}
+                    label={t("cfgDirection")}
+                    placeholder={t("cfgDirection")}
+                    clearable={false}
+                    value={spec.dir}
+                    onChange={(v) => setSpec(preset, { dir: v as "asc" | "desc" })}
+                    options={directionOptions}
+                    className="min-w-[140px] flex-1"
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <footer className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-color)] pt-3">
             <button
               type="button"
               onClick={() => defaults && setConfig(defaults)}
-              className="text-xs font-medium text-[var(--text-dim)] hover:text-[var(--text-main)]"
+              disabled={!defaults}
+              className="text-xs font-medium text-[var(--text-dim)] transition hover:text-[var(--text-main)] disabled:opacity-50"
             >
               {t("cfgReset")}
             </button>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <DsButton variant="secondary" size="sm" onClick={onClose}>
                 {t("cfgCancel")}
               </DsButton>
-              <DsButton variant="primary" size="sm" onClick={save} disabled={saving}>
+              <DsButton variant="accent" size="sm" onClick={save} disabled={saving}>
                 {t("cfgSave")}
               </DsButton>
             </div>
-          </div>
-        ) : undefined
-      }
-    >
-        {!config ? (
-          <div className="p-8 text-center text-sm text-[var(--text-dim)]">…</div>
-        ) : (
-          <>
-              <label className="block">
-                <span className="text-xs font-medium text-[var(--text-dim)]">{t("cfgMinImpr")}</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={config.minImpressions}
-                  onChange={(e) =>
-                    setConfig((c) =>
-                      c ? { ...c, minImpressions: Math.max(0, Number(e.target.value) || 0) } : c
-                    )
-                  }
-                  className="ui-input mt-1 w-32"
-                />
-              </label>
-
-              <div className="mt-4 space-y-2">
-                {RANKABLE_PRESETS.map((preset) => {
-                  const spec = config.specs[preset];
-                  return (
-                    <div
-                      key={preset}
-                      className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border-color)] p-2.5"
-                    >
-                      <span className="min-w-[110px] text-sm font-medium text-[var(--text-dim)]">
-                        {tPresets(preset)}
-                      </span>
-                      <select
-                        value={spec.metric}
-                        onChange={(e) => setSpec(preset, { metric: e.target.value })}
-                        className="ui-select !w-auto !py-1.5 text-sm"
-                      >
-                        {RANKABLE_METRICS.map((m) => (
-                          <option key={m} value={m}>
-                            {tMetrics(METRIC_BY_KEY[m].label)}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={spec.dir}
-                        onChange={(e) => setSpec(preset, { dir: e.target.value as "asc" | "desc" })}
-                        className="ui-select !w-auto !py-1.5 text-sm"
-                      >
-                        <option value="desc">{t("dirHigher")}</option>
-                        <option value="asc">{t("dirLower")}</option>
-                      </select>
-                    </div>
-                  );
-                })}
-              </div>
-          </>
-        )}
-    </DsModal>
+          </footer>
+        </>
+      )}
+    </CreatorModalShell>
   );
 }

@@ -1,10 +1,13 @@
 "use client";
 
+import { BarChart2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
+import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import type { CreativeItem } from "@/components/creatives/CreativeCardGrid";
+import { cn } from "@/lib/cn";
+import { METRIC_BY_KEY, formatMetricValue, type MetricKey } from "@/lib/dashboard-metrics";
 
 export function CreativeCompareModal({
   creative,
@@ -17,14 +20,6 @@ export function CreativeCompareModal({
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [cmpMode, setCmpMode] = useState<"campaign" | "adset">("campaign");
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const metrics = useMemo(() => {
     const keys = Object.keys(creative.metrics) as MetricKey[];
@@ -54,76 +49,68 @@ export function CreativeCompareModal({
   if (!canCompare) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onMouseDown={onClose}
+    <CreatorModalShell
+      open
+      onClose={onClose}
+      title={creative.name}
+      subtitle={t("comparePerf")}
+      titleIcon={<BarChart2 size={18} aria-hidden />}
+      width="xl"
+      hideFooter
+      contentClassName="!px-0 !py-0"
     >
-      <div
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-2xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between gap-2 border-b border-[var(--border-color)] px-5 py-3">
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-[var(--text-main)]">{creative.name}</div>
-            <div className="text-xs text-[var(--text-dimmer)]">{t("comparePerf")}</div>
-          </div>
+      <div className="flex gap-1 border-b border-[var(--border-color)] px-5 py-2">
+        {(["campaign", "adset"] as const).map((mode) => (
           <button
+            key={mode}
             type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-[var(--text-dimmer)] hover:bg-[var(--surface-bg)] hover:text-[var(--text-dim)]"
-            aria-label="close"
+            onClick={() => setCmpMode(mode)}
+            className={cn(
+              "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--chip-sm",
+              cmpMode === mode
+                ? "campaign-creator-budget-choice-card--selected"
+                : "campaign-creator-budget-choice-card--unselected"
+            )}
           >
-            ✕
-          </button>
-        </div>
-        <div className="flex gap-1 border-b border-[var(--border-color)] px-5 py-2">
-          {(["campaign", "adset"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setCmpMode(mode)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                cmpMode === mode
-                  ? "bg-[rgba(124,58,237,0.1)] text-[var(--violet)]"
-                  : "text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
-              }`}
-            >
+            <span className="campaign-creator-budget-choice-card__label">
               {mode === "campaign" ? t("cmpByCampaign") : t("cmpByAdset")}
-            </button>
-          ))}
-        </div>
-        <div className="overflow-auto">
-          <table className="w-full min-w-[520px] text-left text-sm">
-            <thead className="bg-[var(--surface-thead)] text-[11px] font-semibold uppercase text-[var(--text-dim)]">
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="overflow-auto">
+        <div className="ui-campaign-table-shell ui-campaign-table-shell--compact border-0 shadow-none">
+          <table className="ui-campaign-table ui-campaign-table--compact w-full min-w-[520px] text-left">
+            <thead>
               <tr>
-                <th className="px-4 py-2">
+                <th className="px-2.5 py-1.5 text-left">
                   {cmpMode === "adset" ? t("colAdset") : t("colCampaign")}
                 </th>
                 {metrics.map((m) => (
-                  <th key={m} className="px-3 py-2 text-right">
+                  <th key={m} className="px-2.5 py-1.5 text-right">
                     {tMetrics(METRIC_BY_KEY[m].label)}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border-color)]">
+            <tbody>
               {cmpRows.map((b, i) => (
-                <tr key={`${b.id}-${i}`} className="hover:bg-[var(--surface-bg)]/60">
-                  <td className="px-4 py-2.5">
-                    <div className="max-w-[260px] truncate text-[var(--text-main)]">{b.label}</div>
+                <tr key={`${b.id}-${i}`} className="hover:bg-[var(--row-hover)]">
+                  <td className="px-2.5 py-2">
+                    <div className="max-w-[260px] truncate text-xs text-[var(--text-main)]">{b.label}</div>
                     <div className="text-[10px] text-[var(--text-dimmer)]">{b.sub}</div>
                   </td>
                   {metrics.map((m) => (
-                    <td key={m} className="px-3 py-2.5 text-right tabular-nums text-[var(--text-dim)]">
+                    <td key={m} className="px-2.5 py-2 text-right tabular-nums text-xs text-[var(--text-dim)]">
                       {formatMetricValue(m, Number(b.metrics[m] ?? 0), locale)}
                     </td>
                   ))}
                 </tr>
               ))}
-              <tr className="bg-[rgba(124,58,237,0.06)]/40 font-semibold hover:bg-[var(--row-hover)]">
-                <td className="px-4 py-2.5 text-[var(--violet)]">{t("total")}</td>
+              <tr className="bg-[var(--ui-accent-muted)]/40 font-semibold">
+                <td className="px-2.5 py-2 text-xs text-[var(--ui-accent)]">{t("total")}</td>
                 {metrics.map((m) => (
-                  <td key={m} className="px-3 py-2.5 text-right tabular-nums text-[var(--violet)]">
+                  <td key={m} className="px-2.5 py-2 text-right tabular-nums text-xs text-[var(--ui-accent)]">
                     {formatMetricValue(m, Number(creative.metrics[m] ?? 0), locale)}
                   </td>
                 ))}
@@ -132,6 +119,6 @@ export function CreativeCompareModal({
           </table>
         </div>
       </div>
-    </div>
+    </CreatorModalShell>
   );
 }
