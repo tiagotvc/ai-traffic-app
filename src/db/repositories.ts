@@ -72,6 +72,7 @@ import type { VideoUploadPart } from "@/db/entities/VideoUploadPart";
 import type { ContactMessage } from "@/db/entities/ContactMessage";
 import type { McpToken } from "@/db/entities/McpToken";
 import type { CapiEventLog } from "@/db/entities/CapiEventLog";
+import type { ReportTemplate } from "@/db/entities/ReportTemplate";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -149,7 +150,8 @@ const ENTITY = {
   DashboardAddon: "DashboardAddon",
   ContactMessage: "ContactMessage",
   McpToken: "McpToken",
-  CapiEventLog: "CapiEventLog"
+  CapiEventLog: "CapiEventLog",
+  ReportTemplate: "ReportTemplate"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -262,6 +264,7 @@ export async function repositories() {
     dashboardAddon: repositoryFor<DashboardAddon>(ds, ENTITY.DashboardAddon),
     contactMessage: repositoryFor<ContactMessage>(ds, ENTITY.ContactMessage),
     mcpToken: repositoryFor<McpToken>(ds, ENTITY.McpToken),
-    capiEventLog: repositoryFor<CapiEventLog>(ds, ENTITY.CapiEventLog)
+    capiEventLog: repositoryFor<CapiEventLog>(ds, ENTITY.CapiEventLog),
+    reportTemplate: repositoryFor<ReportTemplate>(ds, ENTITY.ReportTemplate)
   };
 }

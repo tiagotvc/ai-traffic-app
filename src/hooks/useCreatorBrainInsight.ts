@@ -10,6 +10,7 @@ export function useCreatorBrainInsight(input: {
   objective: string;
   activeNode: string;
   clientSlug?: string | null;
+  enabled?: boolean;
 }) {
   const [insight, setInsight] = useState<CreatorBrainInsightPayload | null>(null);
   const [loading, setLoading] = useState(false);
@@ -25,6 +26,12 @@ export function useCreatorBrainInsight(input: {
   }, []);
 
   useEffect(() => {
+    if (input.enabled === false) {
+      setInsight(null);
+      setLoading(false);
+      return;
+    }
+
     if (paused) {
       setLoading(false);
       return;
@@ -62,7 +69,7 @@ export function useCreatorBrainInsight(input: {
     return () => {
       cancelled = true;
     };
-  }, [input.activeNode, input.clientSlug, input.objective, paused, refreshCredits]);
+  }, [input.activeNode, input.clientSlug, input.enabled, input.objective, paused, refreshCredits]);
 
   function togglePaused() {
     const next = !paused;

@@ -4,17 +4,14 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Calendar, Settings2, Sparkles } from "lucide-react";
 
-import { AgeBreakdownCard } from "@/components/dashboard/AgeBreakdownCard";
 import { BrainShelf } from "@/components/dashboard/BrainShelf";
 import { DashboardCustomizeModal } from "@/components/dashboard/DashboardCustomizeModal";
 import { DashboardInsightPanels } from "@/components/dashboard/DashboardInsightPanels";
-import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
 import { MetricPrism } from "@/components/dashboard/MetricPrism";
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { DsInfoBanner } from "@/design-system";
 import {
-  CHART_PANEL_MIN_HEIGHT,
   DASHBOARD_PAGE_CHART_HEIGHT,
   resolveVisibleSectionOrder,
   type DashboardSectionKey
@@ -24,7 +21,7 @@ import {
   toChartData,
   toDashboardCampaignStatus,
   toDashboardFunnelSteps,
-  toDashboardMetricSections,
+  toDashboardProfitByCampaign,
   toDashboardTopCampaigns,
   toMetricPrismProps
 } from "@/uxpilot-ui/adapters/dashboard-mappers";
@@ -56,7 +53,6 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
   const sectionOrder = resolveVisibleSectionOrder(data.dashboardLayout).filter(
     (key) => key !== "alerts" && key !== "agencyHealth"
   );
-  const chartMinHeight = CHART_PANEL_MIN_HEIGHT[data.dashboardLayout.chartSize];
   const chartPlotHeight = DASHBOARD_PAGE_CHART_HEIGHT[data.dashboardLayout.chartSize];
 
   const { primaryKPIs, secondaryMetrics } = toMetricPrismProps({
@@ -67,7 +63,8 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
     heroMetrics: data.dashboardLayout.heroMetrics,
     locale: data.locale,
     metricLabel: data.metricLabel,
-    vsLabel: data.vsLabel
+    vsLabel: data.vsLabel,
+    newDeltaLabel: data.deltaNewLabel
   });
 
   const chartData = toChartData(data.series, data.locale);
@@ -81,17 +78,6 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
   const insightPanels = useMemo(() => {
     const summary = data.summary ?? {};
     return {
-      metricSections: toDashboardMetricSections({
-        summary,
-        prevSummary: data.prevSummary,
-        locale: data.locale,
-        metricLabel: data.metricLabel,
-        sectionTitles: {
-          conversion: t("widgetSectionConversion"),
-          funnel: t("widgetSectionFunnel"),
-          closing: t("widgetSectionClosing")
-        }
-      }),
       funnelSteps: toDashboardFunnelSteps({
         summary,
         locale: data.locale,
@@ -114,16 +100,13 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
       topCampaigns: toDashboardTopCampaigns({
         campaigns: data.campaignSnapshots,
         locale: data.locale
+      }),
+      profitByCampaign: toDashboardProfitByCampaign({
+        campaigns: data.campaignSnapshots,
+        locale: data.locale
       })
     };
-  }, [
-    data.summary,
-    data.prevSummary,
-    data.locale,
-    data.metricLabel,
-    data.campaignSnapshots,
-    t
-  ]);
+  }, [data.summary, data.locale, data.campaignSnapshots, data.metricLabel, t]);
   const emptyStateItems = [
     t("emptyStateItem1"),
     t("emptyStateItem2"),
@@ -132,17 +115,11 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
     t("emptyStateItem5")
   ];
 
-  // Performance e Faixa etária dividem a mesma linha (lado a lado) quando ambos visíveis.
-  const performancePair = useMemo(() => {
-    const chartIdx = sectionOrder.indexOf("chart");
-    const ageIdx = sectionOrder.indexOf("ageBreakdown");
-    if (!sections.chart || !sections.ageBreakdown) return null;
-    if (chartIdx < 0 || ageIdx < 0) return null;
-    return chartIdx < ageIdx ? ("chart-first" as const) : ("age-first" as const);
-  }, [sectionOrder, sections.chart, sections.ageBreakdown]);
+  const renderedInsightKeys = new Set<DashboardSectionKey>(["chart", "ageBreakdown"]);
 
-  function renderSection(key: DashboardSectionKey, skipPerformance = false) {
+  function renderSection(key: DashboardSectionKey) {
     if (!sections[key] || data.isEmptyState) return null;
+    if (renderedInsightKeys.has(key)) return null;
 
     if (key === "brainShelf") {
       return (
@@ -177,60 +154,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
       );
     }
 
-    if (key === "chart" || key === "ageBreakdown") {
-      if (skipPerformance) return null;
-
-      const chartPanel = (
-        <div className="dashboard-card dashboard-card--compact" style={{ minHeight: chartMinHeight }}>
-          <DashboardPerformanceChart
-            data={chartData}
-            activeMetrics={pageChartMetrics}
-            onToggleMetric={data.toggleChartMetric}
-            formatValue={data.formatMetricValue}
-            metricLabels={data.chartMetricLabels}
-            metricSummary={data.summary ?? undefined}
-            isLoading={data.loading}
-            subtitle={data.chartSubtitle}
-            previewHeight={chartPlotHeight}
-            availableMetrics={PAGE_CHART_METRICS}
-            dualAxisAlways
-          />
-        </div>
-      );
-      const agePanel = (
-        <AgeBreakdownCard rows={data.ageBreakdown} isLoading={data.ageBreakdownLoading} />
-      );
-
-      if (performancePair) {
-        return (
-          <div key="performance" className="grid grid-cols-1 gap-[var(--app-section-gap)] xl:grid-cols-2">
-            {performancePair === "chart-first" ? (
-              <>
-                {chartPanel}
-                {agePanel}
-              </>
-            ) : (
-              <>
-                {agePanel}
-                {chartPanel}
-              </>
-            )}
-          </div>
-        );
-      }
-
-      if (key === "chart" && sections.chart) return <div key={key}>{chartPanel}</div>;
-      if (key === "ageBreakdown" && sections.ageBreakdown) return <div key={key}>{agePanel}</div>;
-      return null;
-    }
-
     return null;
-  }
-
-  const renderedPerformanceKeys = new Set<DashboardSectionKey>();
-  if (performancePair) {
-    renderedPerformanceKeys.add("chart");
-    renderedPerformanceKeys.add("ageBreakdown");
   }
 
   let metricsBlockRendered = false;
@@ -239,8 +163,10 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
   );
 
   return (
+    <div data-dashboard-shell className="contents">
     <AppPageShell as="main" className="flex-1 overflow-y-auto">
       <PageToolbar
+        filterCreatorFields
         icon={<Sparkles size={16} />}
         title={t("highlights")}
         subtitle={
@@ -306,17 +232,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
         ) : (
           <div className="tab-transition animate-fade-up flex flex-col gap-[var(--app-section-gap)]">
             {sectionOrder.map((key) => {
-              if (renderedPerformanceKeys.has(key)) {
-                if (performancePair === "chart-first" && key === "chart") {
-                  return renderSection(key, false);
-                }
-                if (performancePair === "age-first" && key === "ageBreakdown") {
-                  return renderSection(key, false);
-                }
-                return null;
-              }
-
-              const section = renderSection(key, false);
+              const section = renderSection(key);
               const isMetricsBlock = key === "heroKpis" || key === "secondaryMetrics";
               if (isMetricsBlock && key !== metricsAnchorKey) return null;
               if (isMetricsBlock && metricsBlockRendered) return null;
@@ -328,10 +244,28 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
                   <div key="metrics-and-insights" className="flex flex-col gap-[var(--app-section-gap)]">
                     {section}
                     <DashboardInsightPanels
-                      metricSections={insightPanels.metricSections}
                       funnelSteps={insightPanels.funnelSteps}
                       campaignStatus={insightPanels.campaignStatus}
                       topCampaigns={insightPanels.topCampaigns}
+                      profitByCampaign={insightPanels.profitByCampaign}
+                      adLibraryInsights={data.adLibraryInsights}
+                      adLibraryLoading={data.adLibraryLoading}
+                      showPerformance={sections.chart}
+                      showAgeBreakdown={sections.ageBreakdown}
+                      performanceChart={{
+                        data: chartData,
+                        activeMetrics: pageChartMetrics,
+                        onToggleMetric: data.toggleChartMetric,
+                        formatValue: data.formatMetricValue,
+                        metricLabels: data.chartMetricLabels,
+                        metricSummary: data.summary ?? undefined,
+                        isLoading: data.loading,
+                        subtitle: data.chartSubtitle,
+                        previewHeight: chartPlotHeight,
+                        availableMetrics: PAGE_CHART_METRICS
+                      }}
+                      ageBreakdown={data.ageBreakdown}
+                      ageBreakdownLoading={data.ageBreakdownLoading}
                       isLoading={data.loading || data.campaignsLoading}
                     />
                   </div>
@@ -357,5 +291,6 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
         />
       ) : null}
     </AppPageShell>
+    </div>
   );
 }

@@ -14,6 +14,7 @@ import {
 } from "@/lib/dashboard-query";
 import { pctDelta, type Range } from "@/lib/dashboard-ranges";
 import { generateReportClaudeAnalysis } from "@/lib/report-ai-analysis";
+import { isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 import { loadReportBreakdowns } from "@/lib/report-breakdown-data";
 import {
   generateReportNarrative,
@@ -282,6 +283,30 @@ export async function buildReportPreview(input: {
         : null
   }));
 
+  // v2 (com IA): análise e anomalias só quando o Relatório v2 está ligado.
+  const reportsV2Enabled = await isPlatformFeatureEnabled("reports.v2");
+
+  // R2.8 — anomalias: métricas-resultado com desvio relevante vs período anterior.
+  const ANOMALY_THRESHOLD = 25;
+  const NEUTRAL_KEYS = new Set<MetricKey>(["spend", "impressions", "reach", "frequency"]);
+  const BAD_IF_UP = new Set<MetricKey>(["cpa", "cpc", "cpm", "cpmsg"]);
+  const anomalies = reportsV2Enabled
+    ? comparisonBars
+        .filter(
+          (b) =>
+            !NEUTRAL_KEYS.has(b.key) && b.delta != null && Math.abs(b.delta) >= ANOMALY_THRESHOLD
+        )
+        .map((b) => {
+          const up = (b.delta as number) > 0;
+          const bad = BAD_IF_UP.has(b.key) ? up : !up;
+          return {
+            key: b.key,
+            delta: b.delta as number,
+            direction: (bad ? "bad" : "good") as "good" | "bad"
+          };
+        })
+    : [];
+
   const currentLabel = formatRangeLabel(input.current, input.locale);
   const previousLabel = formatRangeLabel(input.previous, input.locale);
 
@@ -312,7 +337,7 @@ export async function buildReportPreview(input: {
       : [];
 
   let aiAnalysis = null;
-  if (input.reportType === "complete") {
+  if (input.reportType === "complete" && reportsV2Enabled) {
     aiAnalysis = await generateReportClaudeAnalysis({
       locale: input.locale,
       clientName: client.name,
@@ -370,6 +395,7 @@ export async function buildReportPreview(input: {
     previousSeries,
     campaigns,
     comparisonBars,
+    anomalies,
     narrative: finalNarrative,
     recommendations: finalRecommendations,
     aiAnalysis,
@@ -382,4 +408,85 @@ export function defaultMetricsForClient(dominantPreset: string, goalMetric: Metr
   if (!base.includes(goalMetric)) base.push(goalMetric);
   const presetExtras = presetMetricsFor(dominantPreset).filter((k) => !base.includes(k)).slice(0, 1);
   return [...base, ...presetExtras];
+}
+
+/* ----------------------------- R3 — Consolidado de agência ----------------------------- */
+
+export type AgencyConsolidatedRow = {
+  clientId: string;
+  clientSlug: string;
+  name: string;
+  summary: ReportSummary;
+  previousSummary: ReportSummary;
+};
+
+export type AgencyConsolidated = {
+  rows: AgencyConsolidatedRow[];
+  totals: ReportSummary;
+  previousTotals: ReportSummary;
+  period: { current: Range; previous: Range; currentLabel: string; previousLabel: string };
+};
+
+/**
+ * Relatório consolidado da carteira (todos os clientes do tenant numa visão).
+ * Reusa o mesmo escopo/totais do relatório por cliente — só leitura de snapshots,
+ * **sem tocar em ranking/criação**. Gate de flag fica no endpoint (reports.v2).
+ */
+export async function buildAgencyConsolidated(
+  tenantId: string,
+  current: Range,
+  previous: Range,
+  locale = "pt-BR"
+): Promise<AgencyConsolidated> {
+  const { client: clientRepo } = await repositories();
+  const clients = await clientRepo.find({ where: { tenantId }, order: { name: "ASC" } });
+
+  const rows: AgencyConsolidatedRow[] = [];
+  const acc = { spend: 0, impressions: 0, clicks: 0, conversions: 0, reach: 0, messages: 0, roas: 0 };
+  const prevAcc = { ...acc };
+  const RAW_KEYS = ["spend", "impressions", "clicks", "conversions", "reach", "messages"] as const;
+
+  for (const c of clients) {
+    const slug = slugify(c.name);
+    const { accountIds } = await resolveDashboardScope(tenantId, slug, null);
+    if (!accountIds.length) continue;
+    const [cur, prev] = await Promise.all([
+      loadMetricTotals(accountIds, undefined, {
+        since: current.since,
+        until: current.until,
+        allTime: false
+      }),
+      loadMetricTotals(accountIds, undefined, {
+        since: previous.since,
+        until: previous.until,
+        allTime: false
+      })
+    ]);
+    rows.push({
+      clientId: c.id,
+      clientSlug: slug,
+      name: c.name,
+      summary: buildSummary(cur),
+      previousSummary: buildSummary(prev)
+    });
+    for (const k of RAW_KEYS) {
+      acc[k] += cur[k] ?? 0;
+      prevAcc[k] += prev[k] ?? 0;
+    }
+  }
+
+  // Ordena por investimento (maior primeiro).
+  rows.sort((a, b) => (b.summary.spend ?? 0) - (a.summary.spend ?? 0));
+
+  return {
+    rows,
+    totals: buildSummary(acc),
+    previousTotals: buildSummary(prevAcc),
+    period: {
+      current,
+      previous,
+      currentLabel: formatRangeLabel(current, locale),
+      previousLabel: formatRangeLabel(previous, locale)
+    }
+  };
 }

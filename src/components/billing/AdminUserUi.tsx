@@ -205,27 +205,27 @@ export function AdminSection({
   children: ReactNode;
   className?: string;
 }) {
-  const accents = {
-    violet: "border-[rgba(124,58,237,0.15)] from-violet-500/10 to-transparent text-[var(--violet)]",
-    amber: "border-amber-200/80 from-amber-50/90 via-white to-orange-50/50 text-amber-600",
-    slate: "border-[var(--border-color)] from-[var(--surface-bg)] to-transparent text-[var(--text-dim)]",
-    emerald: "border-emerald-500/25 from-emerald-500/10 to-transparent text-emerald-600"
+  const iconTones = {
+    violet: "text-[var(--ui-accent)]",
+    amber: "text-[var(--amber)]",
+    slate: "text-[var(--text-dim)]",
+    emerald: "text-emerald-600"
   };
 
   return (
-    <section
-      className={`overflow-hidden rounded-xl border bg-gradient-to-br shadow-sm ${accents[accent]} ${className}`}
-    >
-      <div className="flex items-start gap-2.5 border-b border-inherit bg-[var(--surface-card)] px-4 py-3 backdrop-blur-sm">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-card)] shadow-sm ring-1 ring-black/5">
-          <AdminIcon name={icon} className="h-4 w-4" />
+    <section className={`campaign-creator-card campaign-creator-card--compact ${className}`}>
+      <div className="mb-4 flex items-start gap-2.5 border-b border-[var(--creator-card-border)] pb-3">
+        <span className="ui-toolbar-icon-shell shrink-0">
+          <span className={iconTones[accent]}>
+            <AdminIcon name={icon} className="h-4 w-4" />
+          </span>
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-[var(--text-main)]">{title}</h2>
-          {subtitle ? <p className="mt-0.5 text-[11px] text-[var(--text-dim)]">{subtitle}</p> : null}
+          <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{title}</h2>
+          {subtitle ? <p className="mt-0.5 text-xs text-[var(--text-dim)]">{subtitle}</p> : null}
         </div>
       </div>
-      <div className="bg-[var(--surface-card)] p-4">{children}</div>
+      {children}
     </section>
   );
 }
@@ -243,7 +243,7 @@ export function AdminField({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-xs font-semibold text-[var(--text-dim)]">{label}</span>
+      <span className="campaign-creator-orion-section-label">{label}</span>
       <div className="relative">
         {icon ? (
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dimmer)]">
@@ -258,7 +258,7 @@ export function AdminField({
 }
 
 const fieldBase =
-  "w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/50 text-sm text-[var(--text-main)] shadow-sm transition placeholder:text-[var(--text-dimmer)] hover:border-slate-300 focus:border-violet-400 focus:bg-[var(--surface-card)] focus:outline-none focus:ring-2 focus:ring-violet-100";
+  "w-full rounded-lg border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] text-sm text-[var(--text-main)] transition placeholder:text-[var(--text-dimmer)] hover:border-[color-mix(in_srgb,var(--ui-accent)_24%,var(--creator-card-border))] focus:border-[var(--ui-accent)] focus:bg-[var(--creator-card-bg)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ui-accent)_18%,transparent)]";
 
 export function AdminInput({
   icon,
@@ -410,7 +410,7 @@ export function AddonStepperCard({
 
   return (
     <div
-      className={`rounded-xl border border-[var(--border-color)]/80 bg-gradient-to-br p-3 shadow-sm ${meta.gradient}`}
+      className={`campaign-creator-sidebar-card-inset rounded-xl border p-3 ${meta.gradient}`}
     >
       <div className="flex items-start gap-2.5">
         <span
@@ -457,22 +457,25 @@ export function AddonStepperCard({
 }
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {
-  const style = STATUS_BADGE[status] ?? STATUS_BADGE.active;
+  const toneMap: Record<string, "success" | "accent" | "neutral"> = {
+    active: "success",
+    trialing: "accent",
+    past_due: "neutral",
+    suspended: "neutral",
+    canceled: "neutral"
+  };
+  const tone = toneMap[status] ?? "neutral";
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${style.className}`}
-    >
-      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`} />
+    <span className={`ds-table-compact-badge ds-table-compact-badge--${tone}`}>
       {label ?? status}
     </span>
   );
 }
 
 export function PlanBadge({ slug, name, label }: { slug: string; name: string; label?: string }) {
+  const tone = slug === "agency" ? "accent" : slug === "free" ? "neutral" : "accent";
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${planBadgeClass(slug)}`}
-    >
+    <span className={`ds-table-compact-badge ds-table-compact-badge--${tone}`}>
       {label ?? name}
     </span>
   );

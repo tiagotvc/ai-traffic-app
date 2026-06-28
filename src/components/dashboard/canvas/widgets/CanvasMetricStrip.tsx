@@ -1,6 +1,16 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
+import { MetricKpiIcon } from "@/components/dashboard/MetricKpiIcon";
+import { useAppDarkMode } from "@/hooks/useAppDarkMode";
 import { cn } from "@/lib/cn";
+import {
+  metricKpiCardShell,
+  metricKpiIconShell,
+  metricKpiTrendColors
+} from "@/lib/dashboard/metric-kpi-theme";
+import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import {
   FONT_FAMILY_CSS,
   FONT_SIZE_CSS,
@@ -13,23 +23,35 @@ export type CanvasMetricItem = {
   change: string;
   trend: "up" | "down" | "neutral";
   color?: string;
+  metricKey?: MetricKey;
 };
+
+function resolveDeltaChangeLabel(change: string, tDash: (key: "deltaNew") => string): string {
+  if (change === "dashboard.deltaNew" || change === "deltaNew") {
+    return tDash("deltaNew");
+  }
+  return change;
+}
 
 function TrendBadge({
   change,
-  trend
+  trend,
+  dark = false
 }: {
   change: string;
   trend: "up" | "down" | "neutral";
+  dark?: boolean;
 }) {
+  const tDash = useTranslations("dashboard");
   const isUp = trend === "up";
   const isNeutral = trend === "neutral";
-  const color = isNeutral ? "#94a3b8" : isUp ? "#10b981" : "#ef4444";
+  const { color, background } = metricKpiTrendColors(trend, dark);
+  const displayChange = resolveDeltaChangeLabel(change, tDash);
 
   return (
     <span
-      className="flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
-      style={{ background: `${color}15`, color }}
+      className="flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+      style={{ background, color }}
     >
       {!isNeutral ? (
         <svg className="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -40,7 +62,7 @@ function TrendBadge({
           )}
         </svg>
       ) : null}
-      {change}
+      {displayChange}
     </span>
   );
 }
@@ -54,6 +76,10 @@ function CompactMetricCard({
   visual?: SlotVisualConfig;
   fillCell?: boolean;
 }) {
+  const themeDark = useAppDarkMode();
+  const color = item.color ?? (item.metricKey ? METRIC_BY_KEY[item.metricKey].color : "#64748b");
+  const shell = metricKpiCardShell(color, themeDark);
+  const iconShell = metricKpiIconShell(color, themeDark);
   const fontFamily = visual?.fontFamily ? FONT_FAMILY_CSS[visual.fontFamily] : undefined;
   const fontSize = visual?.fontSize ? FONT_SIZE_CSS[visual.fontSize].value : undefined;
   const textColor = visual?.textColor;
@@ -62,21 +88,26 @@ function CompactMetricCard({
   return (
     <div
       className={cn(
-        "dashboard-metric-chip kpi-card-hover flex min-w-0 items-center gap-1.5 px-2.5 py-1.5",
+        "dashboard-kpi-card dashboard-kpi-card--mini kpi-card-hover flex min-w-0 flex-row items-center gap-2",
+        !themeDark && "dashboard-kpi-card--light",
         fillCell && "h-full w-full"
       )}
+      style={shell}
     >
-      {item.color ? (
-        <span className="h-1 w-1 shrink-0 rounded-full" style={{ background: item.color }} />
-      ) : null}
+      <div
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+        style={iconShell}
+      >
+        <MetricKpiIcon metricKey={item.metricKey} color={color} size={10} />
+      </div>
       <span
-        className="shrink-0 text-[10px] font-medium uppercase tracking-wide"
+        className="min-w-0 shrink truncate text-[9px] font-semibold uppercase tracking-wide"
         style={{ color: textColor ?? "var(--text-dimmer)", fontFamily, fontSize }}
       >
         {item.label}
       </span>
       <span
-        className="min-w-0 flex-1 truncate text-xs font-semibold tabular-nums"
+        className="ml-auto min-w-0 truncate font-heading text-sm font-bold leading-none tabular-nums tracking-tight"
         title={item.value}
         style={{
           color: accentColor ?? textColor ?? "var(--text-main)",
@@ -85,7 +116,7 @@ function CompactMetricCard({
       >
         {item.value}
       </span>
-      <TrendBadge change={item.change} trend={item.trend} />
+      <TrendBadge change={item.change} trend={item.trend} dark={themeDark} />
     </div>
   );
 }
@@ -105,9 +136,17 @@ export function CanvasMetricStrip({
 }) {
   if (isLoading) {
     return (
-      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+      <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-          <div key={i} className="skeleton-shimmer h-8 rounded-lg" />
+          <div
+            key={i}
+            className="dashboard-kpi-card dashboard-kpi-card--mini flex flex-row items-center gap-2 p-1.5"
+          >
+            <div className="skeleton-shimmer h-5 w-5 shrink-0 rounded-md" />
+            <div className="skeleton-shimmer h-2 w-12 shrink rounded" />
+            <div className="skeleton-shimmer ml-auto h-4 w-14 shrink-0 rounded" />
+            <div className="skeleton-shimmer h-4 w-10 shrink-0 rounded-full" />
+          </div>
         ))}
       </div>
     );
@@ -116,7 +155,6 @@ export function CanvasMetricStrip({
   if (!items.length) return null;
 
   const cols = Math.min(Math.max(items.length, 1), 8);
-  // Até 8 por linha no desktop; quebra progressivamente em telas menores.
   const colClass =
     cols === 1
       ? "grid-cols-1"
@@ -137,8 +175,8 @@ export function CanvasMetricStrip({
   return (
     <div
       className={cn(
-        "grid w-full",
-        cellFill ? "dashboard-metric-strip--cell h-full grid-cols-1 grid-rows-1 gap-0" : "auto-rows-min gap-3",
+        "grid w-full gap-2.5",
+        cellFill ? "dashboard-metric-strip--cell h-full grid-cols-1 grid-rows-1 gap-0" : "auto-rows-min",
         !cellFill && colClass
       )}
     >

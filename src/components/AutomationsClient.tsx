@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/KpiCard";
+import { Zap } from "lucide-react";
 
 type Rule = {
   id: string;
@@ -165,6 +166,7 @@ export function AutomationsClient() {
         title={t("title")}
         subtitle={t("subtitle")}
         breadcrumbs={t("breadcrumb")}
+        titleIcon={<Zap size={16} aria-hidden />}
         actions={
           <button type="button" className="ui-btn-primary" onClick={() => setShowForm(true)}>
             {t("newRule")}

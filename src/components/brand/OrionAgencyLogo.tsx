@@ -5,24 +5,28 @@ import type { ComponentProps, CSSProperties } from "react";
 import { useAppDarkMode } from "@/hooks/useAppDarkMode";
 import { cn } from "@/lib/cn";
 
-const LOGO_SRC = "/white_logo.png";
+import whiteLogo from "../../../public/brand/white_logo.png";
+
+const LOGO_SRC = whiteLogo.src;
 
 type LogoSize = "sm" | "md" | "lg" | "xl";
 /** `dark` = white logo (dark backgrounds). `light` = dark logo (light backgrounds). `auto` = follows data-theme. */
 type LogoVariant = "dark" | "light" | "gold" | "auto";
 
-const FULL_WIDTH: Record<LogoSize, number> = {
-  sm: 140,
-  md: 120,
-  lg: 168,
-  xl: 200
+/** Full wordmark height — PNG already includes "orion AGENCY" text. */
+const WORDMARK_HEIGHT: Record<LogoSize, number> = {
+  sm: 36,
+  md: 44,
+  lg: 52,
+  xl: 60
 };
 
-const COMPACT_HEIGHT: Record<LogoSize, number> = {
-  sm: 28,
-  md: 34,
-  lg: 42,
-  xl: 52
+/** Collapsed sidebar / icon-only slot (crops to the purple mark on the left). */
+const ICON_SIZE: Record<LogoSize, number> = {
+  sm: 36,
+  md: 44,
+  lg: 52,
+  xl: 60
 };
 
 const VARIANT_FILTER: Record<Exclude<LogoVariant, "auto">, string | undefined> = {
@@ -49,11 +53,17 @@ export function OrionAgencyLogo({
   const resolvedVariant: Exclude<LogoVariant, "auto"> =
     variant === "auto" ? (isDarkTheme ? "dark" : "light") : variant;
 
+  const iconSize = ICON_SIZE[size];
+  const isSidebarWordmark = Boolean(className?.includes("orion-logo--sidebar") && !className.includes("sidebar-collapsed"));
+  const isSidebarIcon = Boolean(className?.includes("orion-logo--sidebar-collapsed"));
+  const useSidebarCrop = isSidebarWordmark || isSidebarIcon;
+
   const imageStyle: CSSProperties = {
     filter: VARIANT_FILTER[resolvedVariant],
-    ...(showText
-      ? { width: FULL_WIDTH[size], height: "auto" }
-      : { height: COMPACT_HEIGHT[size], width: "auto" })
+    ...(!useSidebarCrop && showText
+      ? { height: WORDMARK_HEIGHT[size], width: "auto", maxWidth: "100%" }
+      : {}),
+    ...(!useSidebarCrop && !showText ? { height: iconSize, width: "auto", maxWidth: "none" } : {})
   };
 
   return (
@@ -65,11 +75,13 @@ export function OrionAgencyLogo({
         !showText && "orion-logo--icon-only",
         className
       )}
+      style={!showText ? ({ "--orion-logo-icon-size": `${iconSize}px` } as CSSProperties) : undefined}
+      aria-label="Orion Agency"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={LOGO_SRC}
-        alt="Orion Agency"
+        alt=""
         className="orion-logo__image"
         style={imageStyle}
         decoding="async"

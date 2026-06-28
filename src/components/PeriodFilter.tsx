@@ -41,7 +41,8 @@ export function PeriodFilter({
   variant = "default",
   disabled = false,
   disabledHint,
-  className
+  className,
+  creatorField = false
 }: {
   value: PeriodState;
   onChange: (next: PeriodState) => void;
@@ -49,6 +50,8 @@ export function PeriodFilter({
   disabled?: boolean;
   disabledHint?: string;
   className?: string;
+  /** Match campaign creator inset fields (FilterSelectDropdown). */
+  creatorField?: boolean;
 }) {
   const t = useTranslations("period");
   const locale = useLocale();
@@ -230,14 +233,22 @@ export function PeriodFilter({
         onClick={() => !disabled && setOpen((o) => !o)}
         title={disabled ? disabledHint : undefined}
         className={cn(
-          "flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-all duration-200",
+          "flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 text-sm transition-all duration-200",
+          creatorField
+            ? "h-9 min-h-9 flex-nowrap items-center py-1.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))]"
+            : "py-2",
+          creatorField && open && "border-[var(--ui-accent)]",
           className ? "w-auto min-w-[220px]" : "w-full",
           disabled && "cursor-not-allowed opacity-45"
         )}
         style={{
           color: "var(--text-main)",
-          background: "var(--filter-btn-bg)",
-          borderColor: open ? "var(--ui-accent)" : "var(--border-color)"
+          ...(!creatorField
+            ? {
+                background: "var(--filter-btn-bg)",
+                borderColor: open ? "var(--ui-accent)" : "var(--border-color)"
+              }
+            : {})
         }}
         aria-expanded={open}
       >

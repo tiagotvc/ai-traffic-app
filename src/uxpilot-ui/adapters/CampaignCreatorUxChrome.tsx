@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { AlertCircle, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Megaphone,
+  X
+} from "lucide-react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { useAdSetStepSubflowOptional } from "@/components/campaign-creator/AdSetStepSubflowContext";
@@ -21,6 +29,7 @@ import {
   type CreatorNode
 } from "@/lib/campaign-draft";
 import { resolveCreatorBackNav } from "@/lib/creator-wizard-nav";
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 import { UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 
 const NODE_ORDER: CreatorNode[] = ["campaign", "adset", "ad", "review"];
@@ -191,14 +200,13 @@ function CampaignCreatorTitleBlock({
   draftLabel: string;
 }) {
   return (
-    <div className="min-w-0 flex-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <h1
-          className="font-heading text-base font-bold leading-tight lg:text-xl"
-          style={{ color: "var(--text-main)" }}
-        >
-          {title}
-        </h1>
+    <PageTitleBlock
+      className="flex-1"
+      title={title}
+      subtitle={subtitle}
+      subtitleClassName="truncate"
+      titleIcon={<Megaphone size={16} aria-hidden />}
+      badge={
         <span
           className="rounded-full px-2.5 py-0.5 font-heading text-[11px] font-semibold lg:text-xs"
           style={{
@@ -209,14 +217,8 @@ function CampaignCreatorTitleBlock({
         >
           {draftLabel}
         </span>
-      </div>
-      <p
-        className="mt-1 truncate font-body text-xs leading-snug lg:text-sm"
-        style={{ color: "var(--text-dim)" }}
-      >
-        {subtitle}
-      </p>
-    </div>
+      }
+    />
   );
 }
 

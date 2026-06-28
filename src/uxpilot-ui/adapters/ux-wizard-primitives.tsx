@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
@@ -156,15 +156,17 @@ export function WizardFormSection({
 export function UxWizardModalPanel({
   children,
   className,
-  size = "lg"
+  size = "lg",
+  ...rest
 }: {
   children: ReactNode;
   className?: string;
   size?: "md" | "lg" | "xl";
-}) {
+} & HTMLAttributes<HTMLDivElement>) {
   const maxW = size === "xl" ? "max-w-4xl" : size === "lg" ? "max-w-3xl" : "max-w-2xl";
   return (
     <div
+      {...rest}
       className={cn(
         "flex w-full flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] shadow-2xl",
         maxW,

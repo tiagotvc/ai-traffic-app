@@ -176,7 +176,15 @@ export async function loadMetricTotals(
       messages: string;
       roasAvg: string | null;
     }>();
-    return parseTotalsRow(row ?? {});
+    const totals = parseTotalsRow(row ?? {});
+    if (useAccount && totals.spend <= 0 && totals.impressions <= 0 && totals.clicks <= 0) {
+      const campRow = await buildQb(false).getRawOne();
+      const campTotals = parseTotalsRow(campRow ?? {});
+      if (campTotals.spend > 0 || campTotals.impressions > 0 || campTotals.clicks > 0) {
+        return campTotals;
+      }
+    }
+    return totals;
   }
 
   const row = await buildQb(true).getRawOne();

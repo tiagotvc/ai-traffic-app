@@ -15,7 +15,16 @@ export const HIGHLIGHTS_SECONDARY_GROUP = "secondaryKpi";
 /** Grid rows a hero KPI card occupies — tall enough for icon + value + sparkline. */
 export const HERO_CARD_ROWS = 4;
 
-const FALLBACK_HERO: MetricKey[] = ["spend", "ctr", "reach", "conversions", "clicks", "cpc"];
+const FALLBACK_HERO: MetricKey[] = [
+  "spend",
+  "ctr",
+  "reach",
+  "conversions",
+  "clicks",
+  "cpc",
+  "roas",
+  "cpm"
+];
 const SECONDARY_COLS = 3;
 /** Max compact KPI pills in one horizontal row (6 × w=2 = 12 cols). */
 const SECONDARY_ROW_CAPACITY = 6;

@@ -65,7 +65,7 @@ export function ReportHighlightCard({
 
   return (
     <div
-      className="campaign-creator-sidebar-card report-pdf-kpi report-pdf-block flex min-w-0 flex-col overflow-hidden !p-2.5"
+      className="campaign-creator-card report-pdf-kpi report-pdf-block flex min-w-0 flex-col overflow-hidden !p-3"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="truncate text-[9px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
@@ -77,7 +77,7 @@ export function ReportHighlightCard({
         {value}
       </div>
       <div className="truncate text-[9px] text-[var(--text-dimmer)]">{vsLabel}</div>
-      <div className="campaign-creator-sidebar-card-inset report-kpi-spark mt-auto w-full shrink-0">
+      <div className="campaign-creator-sidebar-card-inset report-kpi-spark mt-3 w-full shrink-0 rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] p-1">
         {sparkPoints.length > 1 ? (
           <MiniSparkline points={sparkPoints} color={color} height={56} fullWidth />
         ) : null}

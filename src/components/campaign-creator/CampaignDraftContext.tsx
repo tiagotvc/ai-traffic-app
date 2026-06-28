@@ -26,6 +26,7 @@ import {
   patchWizardNavigation
 } from "@/lib/campaign-draft";
 import { draftFallbackName, relocalizeDraftDefaultNames } from "@/lib/campaign-draft-i18n";
+import { resolveDraftClient } from "@/lib/campaign-draft-client";
 import { inferWizardActiveNode } from "@/lib/creator-wizard-nav";
 
 type ClientOption = { id: string; slug: string; name: string };
@@ -322,7 +323,9 @@ export function CampaignDraftProvider({
     if (isInheritedCampaignDraft(payloadRef.current)) return;
     const p = payloadRef.current;
     const name = draftNameRef.current || p.campaign.name || draftFallbackName(locale);
-    const clientId = clients.find((c) => c.slug === p.clientSlug || c.id === p.clientSlug)?.id ?? null;
+    const resolved = resolveDraftClient(p.clientSlug, clients);
+    const clientId = resolved?.id ?? null;
+    const payloadToSave = resolved ? { ...p, clientSlug: resolved.id } : { ...p, clientSlug: "" };
     setSaving(true);
     setSaveError(null);
     try {
@@ -330,7 +333,7 @@ export function CampaignDraftProvider({
         const res = await fetch(`/api/campaign-templates/${encodeURIComponent(draftIdRef.current)}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name, payload: p, clientId })
+          body: JSON.stringify({ name, payload: payloadToSave, clientId })
         });
         const j = await res.json();
         if (!j.ok) throw new Error(j.error ?? "saveFailed");
@@ -338,7 +341,7 @@ export function CampaignDraftProvider({
         const res = await fetch("/api/campaign-templates", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name, payload: p, clientId })
+          body: JSON.stringify({ name, payload: payloadToSave, clientId })
         });
         const j = (await res.json()) as { ok?: boolean; template?: { id: string }; error?: string };
         if (!j.ok || !j.template) throw new Error(j.error ?? "saveFailed");
@@ -381,6 +384,22 @@ export function CampaignDraftProvider({
     },
     [scheduleSave]
   );
+
+  useEffect(() => {
+    if (clientsLoading) return;
+    const current = payloadRef.current.clientSlug;
+    if (!current) return;
+    const resolved = resolveDraftClient(current, clients);
+    if (resolved) {
+      if (current !== resolved.id) {
+        updatePayload({ clientSlug: resolved.id });
+      }
+      return;
+    }
+    if (clients.length) {
+      updatePayload({ clientSlug: "", adAccountId: "" });
+    }
+  }, [clients, clientsLoading, updatePayload]);
 
   const showMobileValidationToast = useCallback(
     (variant: MobileValidationToast["variant"], message: string) => {

@@ -12,17 +12,17 @@ export async function MarketingTerms() {
     <LegalPageRenderer
       content={content}
       footer={
-        <p className="text-center text-sm text-violet-200/65">
+        <p className="text-center text-sm text-[var(--text-dim)]">
           {locale === "en" ? "See also" : "Consulte também"}{" "}
-          <Link href="/privacy" className="font-medium text-amber-400 hover:text-amber-300">
+          <Link href="/privacy" className="marketing-link-accent">
             {locale === "en" ? "Privacy Policy" : "Política de Privacidade"}
           </Link>
           {" · "}
-          <Link href="/data-deletion" className="font-medium text-amber-400 hover:text-amber-300">
+          <Link href="/data-deletion" className="marketing-link-accent">
             {locale === "en" ? "Data Deletion" : "Exclusão de Dados"}
           </Link>
           {" · "}
-          <a href={`mailto:${LEGAL_CONTACT.privacyEmail}`} className="font-medium text-amber-400 hover:text-amber-300">
+          <a href={`mailto:${LEGAL_CONTACT.privacyEmail}`} className="marketing-link-accent">
             {LEGAL_CONTACT.privacyEmail}
           </a>
         </p>

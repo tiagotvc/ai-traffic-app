@@ -15,6 +15,7 @@ import { BillingPortalSkeleton } from "@/components/billing/BillingSkeletons";
 import { CompactPageHeader } from "@/components/layout/CompactPageHeader";
 import { PageTabs } from "@/components/layout/PageTabs";
 import { SettingsClient, parseSettingsTab, type SettingsTab } from "@/components/SettingsClient";
+import { Settings as SettingsIcon } from "lucide-react";
 
 export type ProfileTab = PortalTab | SettingsTab;
 
@@ -93,6 +94,7 @@ function ProfileClientInner({
       <CompactPageHeader
         title={tNav("profile")}
         subtitle={tSettings("profileSubtitle")}
+        titleIcon={<SettingsIcon size={16} aria-hidden />}
         actions={
           isBillingTab(activeTab) ? (
             <Link

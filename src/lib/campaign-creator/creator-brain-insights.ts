@@ -14,6 +14,7 @@ import { fetchCampaigns } from "@/lib/meta-graph";
 import {
   fetchMetaAdLibrary,
   isMetaAdLibraryConfigured,
+  resolveMetaAdLibraryProvider,
   resolveObjectiveSearchTerms,
   resolveSearchTerms
 } from "@/lib/meta-ad-library";
@@ -70,7 +71,7 @@ export type CreatorBrainInsightPayload = {
   /** Alias for UI — ads returned from Meta Ad Library API. */
   metaAdsConsultedCount?: number;
   metaCompetitorsScanned?: number;
-  /** Whether META_AD_LIBRARY_ACCESS_TOKEN (or system token) is configured. */
+  /** Whether SearchAPI or Meta Graph Ad Library token is configured. */
   metaAdLibraryConfigured?: boolean;
   /** Synced Meta campaigns in period (client), before objective filter. */
   clientSyncedCampaignCount?: number;
@@ -440,7 +441,9 @@ async function resolveMetaCompetitorResearch(input: {
   objective: CampaignObjectiveKey;
 }): Promise<MetaCompetitorResearchResult> {
   if (!isMetaAdLibraryConfigured()) {
-    console.warn("[creator-brain/meta_competitor_search] skipped — META_AD_LIBRARY_ACCESS_TOKEN not configured");
+    console.warn(
+      "[creator-brain/meta_competitor_search] skipped — SEARCHAPI_API_KEY or META_AD_LIBRARY_ACCESS_TOKEN not configured"
+    );
     return { adsCount: 0, competitorsScanned: 0, status: "skipped", detail: "api_not_configured" };
   }
 
@@ -458,18 +461,19 @@ async function resolveMetaCompetitorResearch(input: {
     }
 
     const adsCount = fetchResult.ads.length;
+    const provider = resolveMetaAdLibraryProvider();
     if (fetchResult.apiError) {
       console.warn(
         "[creator-brain/meta_competitor_search]",
         "agency_objective_search",
         fetchResult.apiError,
-        { adsCount, objective: input.objective, searchTerms: searchTerms.slice(0, 3) }
+        { provider, adsCount, objective: input.objective, searchTerms: searchTerms.slice(0, 3) }
       );
     } else {
       console.info(
         "[creator-brain/meta_competitor_search]",
         "agency_objective_search",
-        { adsCount, objective: input.objective, searchTerms: searchTerms.slice(0, 3) }
+        { provider, adsCount, objective: input.objective, searchTerms: searchTerms.slice(0, 3) }
       );
     }
 
@@ -508,18 +512,19 @@ async function resolveMetaCompetitorResearch(input: {
     : competitors.filter((c) => c.pageId).length || competitors.length;
   const adsCount = fetchResult.ads.length;
 
+  const provider = resolveMetaAdLibraryProvider();
   if (fetchResult.apiError) {
     console.warn(
       "[creator-brain/meta_competitor_search]",
       input.clientId,
       fetchResult.apiError,
-      { adsCount, nicheOnly, competitors: competitors.length }
+      { provider, adsCount, nicheOnly, competitors: competitors.length }
     );
   } else {
     console.info(
       "[creator-brain/meta_competitor_search]",
       input.clientId,
-      { adsCount, nicheOnly, competitors: competitors.length, searchTerms: searchTerms.slice(0, 3) }
+      { provider, adsCount, nicheOnly, competitors: competitors.length, searchTerms: searchTerms.slice(0, 3) }
     );
   }
 

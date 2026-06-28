@@ -1,9 +1,11 @@
 "use client";
 
+import { ChevronRight, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { AdminUsersListSkeleton } from "@/components/billing/BillingSkeletons";
+import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { DsPageHeader } from "@/design-system";
 import {
   ADMIN_USERS_ROW_GRID,
@@ -73,7 +75,7 @@ function formatDate(iso: string) {
 }
 
 const HDR =
-  "flex min-h-[28px] items-center text-left text-[11px] font-semibold uppercase tracking-wider text-[var(--text-dimmer)] whitespace-nowrap";
+  "flex min-h-[28px] items-center text-left text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)] whitespace-nowrap";
 
 const CELL = "flex min-h-[28px] items-center";
 
@@ -88,14 +90,13 @@ function RoleBadge({
 }) {
   if (role === "admin") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-        <AdminIcon name="shield" className="h-3 w-3" />
+      <span className="ds-table-compact-badge ds-table-compact-badge--accent">
         {adminLabel}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center rounded-full bg-[var(--surface-bg)] px-2.5 py-1 text-xs font-medium text-[var(--text-dim)]">
+    <span className="ds-table-compact-badge ds-table-compact-badge--neutral">
       {userLabel}
     </span>
   );
@@ -148,36 +149,39 @@ export function AdminUsersClient() {
         <DsPageHeader
           title={t("usersTitle")}
           subtitle={t("usersSubtitle")}
+          titleIcon={<Users size={16} />}
           actions={
-            <div className="rounded-xl border border-[rgba(124,58,237,0.15)] bg-gradient-to-br from-violet-50 to-white px-3 py-2 shadow-sm">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--violet)]">
-                {t("usersTotal", { count: total })}
-              </p>
-            </div>
+            <span className="ds-table-compact-badge ds-table-compact-badge--accent">
+              {t("usersTotal", { count: total })}
+            </span>
           }
         />
 
-        <form onSubmit={onSearch} className="relative max-w-xl">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dimmer)]">
-            <AdminIcon name="search" className="h-3.5 w-3.5" />
-          </span>
-          <input
-            type="search"
+        <form onSubmit={onSearch} className="flex max-w-xl flex-wrap items-center gap-2">
+          <FilterSearchInput
+            creatorField
+            size="wide"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={setQ}
             placeholder={t("usersSearchPlaceholder")}
-            className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] py-2 pl-9 pr-24 text-xs text-[var(--text-main)] shadow-sm transition placeholder:text-[var(--text-dimmer)] focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+            aria-label={t("usersSearchPlaceholder")}
           />
-          <button
-            type="submit"
-            className="absolute right-1 top-1/2 -translate-y-1/2 ui-btn-primary text-xs"
-          >
+          <button type="submit" className="ui-btn-primary shrink-0 text-xs">
             {t("usersSearchBtn")}
           </button>
         </form>
 
-        <div className="w-full pb-2">
-          <div className={`${ADMIN_USERS_ROW_GRID} mb-3`}>
+        <div className="ui-campaign-table-shell ui-campaign-table-shell--compact w-full pb-2">
+          <div className="ui-campaign-table-shell__header">
+            <div className="ui-campaign-table-shell__title">
+              <span className="ui-campaign-table-shell__icon">
+                <Users size={15} strokeWidth={2} />
+              </span>
+              <span>{t("usersTitle")}</span>
+            </div>
+          </div>
+
+          <div className={`${ADMIN_USERS_ROW_GRID} border-b border-[var(--creator-card-border)] px-3 py-2`}>
             <span className={HDR}>{t("usersColUser")}</span>
             <span className={HDR}>{t("usersColPlan")}</span>
             <span className={HDR}>{t("usersColStatus")}</span>
@@ -186,15 +190,15 @@ export function AdminUsersClient() {
             <span className={`${HDR} justify-end`} aria-hidden />
           </div>
 
-          <div className="space-y-2.5">
+          <div className="divide-y divide-[var(--creator-card-border)]">
             {users.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--surface-card)] px-4 py-12 text-center">
-                <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-bg)] text-[var(--text-dimmer)]">
-                  <AdminIcon name="user" className="h-5 w-5" />
+              <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+                <span className="ui-toolbar-icon-shell mb-3">
+                  <AdminIcon name="user" className="h-5 w-5 text-[var(--text-dimmer)]" />
                 </span>
-                <p className="font-medium text-[var(--text-dim)]">{t("usersEmpty")}</p>
+                <p className="text-sm font-medium text-[var(--text-dim)]">{t("usersEmpty")}</p>
                 {search ? (
-                  <p className="mt-1 text-sm text-[var(--text-dimmer)]">
+                  <p className="mt-1 text-xs text-[var(--text-dimmer)]">
                     {t("usersSearchPlaceholder")}: “{search}”
                   </p>
                 ) : null}
@@ -203,13 +207,13 @@ export function AdminUsersClient() {
               users.map((u) => (
                 <article
                   key={u.id}
-                  className={`group ${ADMIN_USERS_ROW_GRID} rounded-xl border border-[var(--border-color)]/90 bg-[var(--surface-card)] py-2.5 shadow-sm transition hover:border-slate-300 hover:shadow-md`}
+                  className={`group ${ADMIN_USERS_ROW_GRID} px-3 py-2 transition hover:bg-[color-mix(in_srgb,var(--ui-accent)_4%,transparent)]`}
                 >
-                  <div className={`${CELL} min-w-0 gap-3.5`}>
+                  <div className={`${CELL} min-w-0 gap-3`}>
                     <UserAvatar name={u.name} email={u.email} />
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-[var(--text-main)]">{u.name || "—"}</p>
-                      <p className="mt-0.5 truncate text-xs text-[var(--text-dim)]">{u.email}</p>
+                      <p className="truncate text-xs font-semibold text-[var(--text-main)]">{u.name || "—"}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-[var(--text-dim)]">{u.email}</p>
                     </div>
                   </div>
 
@@ -240,10 +244,10 @@ export function AdminUsersClient() {
                   <div className={`${CELL} justify-end`}>
                     <Link
                       href={`/admin/users/${u.id}`}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[rgba(124,58,237,0.2)] bg-[rgba(124,58,237,0.06)] px-2.5 py-1.5 text-[11px] font-semibold text-violet-700 shadow-sm transition group-hover:border-violet-300 group-hover:bg-[rgba(124,58,237,0.1)]"
+                      className="ds-table-compact-action inline-flex items-center gap-0.5"
                     >
                       {t("usersManage")}
-                      <AdminIcon name="chevron" className="h-3.5 w-3.5" />
+                      <ChevronRight size={12} />
                     </Link>
                   </div>
                 </article>
@@ -253,7 +257,7 @@ export function AdminUsersClient() {
         </div>
       </div>
 
-      <footer className="sticky bottom-0 z-10 -mx-6 mt-6 border-t border-[var(--border-color)]/80 bg-[var(--surface-bg)]/90 px-6 py-3 backdrop-blur-md lg:-mx-8 lg:px-8">
+      <footer className="sticky bottom-0 z-10 -mx-6 mt-6 border-t border-[var(--creator-card-border)] bg-[color-mix(in_srgb,var(--creator-card-bg)_92%,transparent)] px-6 py-3 backdrop-blur-md lg:-mx-8 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-dim)]">
           <span>{t("usersTotal", { count: total })}</span>
           <div className="flex items-center gap-1.5">
@@ -261,7 +265,7 @@ export function AdminUsersClient() {
               type="button"
               disabled={page <= 1 || loading}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-2.5 py-1.5 font-medium text-[var(--text-dim)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="ui-btn-secondary px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("usersPrev")}
             </button>
@@ -272,7 +276,7 @@ export function AdminUsersClient() {
               type="button"
               disabled={page >= totalPages || loading}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-2.5 py-1.5 font-medium text-[var(--text-dim)] shadow-sm transition hover:bg-[var(--surface-thead)] disabled:cursor-not-allowed disabled:opacity-40"
+              className="ui-btn-secondary px-2.5 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40"
             >
               {t("usersNext")}
             </button>

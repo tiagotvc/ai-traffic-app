@@ -2,12 +2,26 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { Check, ChevronRight, Search, X } from "lucide-react";
+import {
+  Building2,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Facebook,
+  Search,
+  Tag,
+  X
+} from "lucide-react";
 import { useMemo } from "react";
 
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { FilterTextField } from "@/components/FilterTextField";
+import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard";
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
-import { UxFormCard, UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
+import { UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 import { useCreateClientWizard } from "@/uxpilot-ui/adapters/useCreateClientWizard";
 
 const META_ERROR_MESSAGES: Record<string, string> = {
@@ -60,418 +74,419 @@ export function ClientsCreateContentLive() {
   }
 
   return (
-    <div
-      className="-mx-4 -my-5 flex min-h-[calc(100vh-5rem)] flex-col overflow-hidden md:-mx-6"
-      style={{ background: "var(--surface-bg)" }}
-    >
-      <header className="px-4 pt-6 sm:px-6 sm:pt-8">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
-            {tW("pageTitle")}
-          </h1>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <header className="campaign-creator-header shrink-0 px-4 pb-3 pt-3 lg:pl-8 lg:pr-4 lg:pb-4 lg:pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <PageTitleBlock
+            className="flex-1"
+            title={tW("pageTitle")}
+            subtitle={tW("pageSubtitle")}
+            titleIcon={<Building2 size={16} aria-hidden />}
+          />
           <button
             type="button"
             onClick={() => router.push("/clients")}
             aria-label={tW("cancel")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-80"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-80 lg:h-8 lg:w-8"
           >
-            <X size={22} strokeWidth={2} style={{ color: "var(--ui-accent)" }} />
+            <X size={20} strokeWidth={2} className="text-[var(--text-dim)]" />
           </button>
         </div>
-        <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-          {tW("pageSubtitle")}
-        </p>
       </header>
 
       {metaErrorMessage ? (
-        <div className="mx-4 mt-4 rounded-xl border px-4 py-3 text-sm sm:mx-6" style={{ borderColor: "rgba(239,68,68,0.3)", color: "#ef4444" }}>
-          {metaErrorMessage}
-        </div>
+        <div className="mx-4 mb-2 ui-alert-danger px-4 py-3 text-sm lg:mx-8">{metaErrorMessage}</div>
       ) : null}
 
-      <div className="px-4 py-6 sm:px-6 sm:py-8">
-        <UxHorizontalStepper
-          steps={steps.map((s) => ({
-            ...s,
-            disabled:
-              s.number === 2
-                ? !w.canContinueStep1
-                : s.number === 3
-                  ? !w.canContinueStep2
-                  : s.number === 4
-                    ? !w.canContinueStep3
-                    : false
-          }))}
-          current={w.step}
-          onStepClick={goToStep}
-        />
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-        <div className="mx-auto max-w-xl space-y-5 px-4 pb-6 sm:px-6 sm:pb-8">
-          {w.step === 1 ? (
-            <div className="animate-fade-up space-y-4">
-              <div>
-                <h2 className="font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                  {tW("title")}
-                </h2>
-                <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                  {tW("titleHint")}
-                </p>
-              </div>
-              {w.metaAdsConnected === false ? (
-                <div className="ui-alert-warning text-sm">
-                  <p>{tW("metaAdsRequiredHint")}</p>
-                  <Link href="/settings?tab=integrations" className="ui-link mt-1 inline-block text-xs font-semibold underline">
-                    {tW("goConnectMetaAds")}
-                  </Link>
-                </div>
-              ) : null}
-              {w.inventoryEmpty ? (
-                <div
-                  className="rounded-xl border px-4 py-3 text-sm"
-                  style={{
-                    borderColor: "var(--ui-accent-border)",
-                    background: "var(--ui-accent-muted)",
-                    color: "var(--text-dim)"
-                  }}
-                >
-                  {tW("emptyInventory")}{" "}
-                  <Link
-                    href="/settings/meta-assets"
-                    className="font-semibold underline"
-                    style={{ color: "var(--ui-accent)" }}
-                  >
-                    {tW("goMetaAssets")}
-                  </Link>
-                </div>
-              ) : null}
-              <UxFormCard>
-                <label className="font-body text-sm font-medium" style={{ color: "var(--text-main)" }}>
-                  {tW("clientName")}
-                </label>
-                <input
-                  value={w.name}
-                  onChange={(e) => w.setName(e.target.value)}
-                  placeholder={tW("namePlaceholder")}
-                  autoFocus
-                  className="ui-input mt-2 w-full"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && w.canContinueStep1) w.setStep(2);
-                  }}
-                />
-              </UxFormCard>
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr] gap-x-8 overflow-x-visible overflow-y-hidden px-4 lg:pl-8 lg:pr-4">
+        <div className="campaign-creator-stepper-row col-start-1 row-start-1 flex shrink-0 items-center gap-3 border-b border-[var(--border-color)] py-2 lg:gap-4 lg:py-1.5">
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <div className="campaign-creator-stepper w-full lg:max-w-3xl">
+              <UxHorizontalStepper
+                size="mini"
+                steps={steps.map((s) => ({
+                  ...s,
+                  disabled:
+                    s.number === 2
+                      ? !w.canContinueStep1
+                      : s.number === 3
+                        ? !w.canContinueStep2
+                        : s.number === 4
+                          ? !w.canContinueStep3
+                          : false
+                }))}
+                current={w.step}
+                onStepClick={goToStep}
+              />
             </div>
-          ) : null}
+          </div>
+        </div>
 
-          {w.step === 2 ? (
-            <div className="animate-fade-up space-y-4">
-              <div>
-                <h2 className="font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                  {tW("pickBm")}
-                </h2>
-                <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                  {tW("pickBmHint")}
-                </p>
-              </div>
-              <UxFormCard>
-                <div className="relative mb-3">
-                  <Search
-                    size={14}
-                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                    style={{ color: "var(--text-dimmer)" }}
-                  />
-                  <input
-                    value={w.bmSearch}
-                    onChange={(e) => w.setBmSearch(e.target.value)}
-                    placeholder={tW("bmSearchPlaceholder")}
-                    className="ui-input w-full py-2.5 pl-9 pr-3"
-                  />
-                </div>
-                <div
-                  className="overflow-y-auto rounded-xl border"
-                  style={{ maxHeight: 320, borderColor: "var(--border-color)", background: "var(--surface-bg)" }}
-                >
-                  {w.filteredBusinesses.length === 0 ? (
-                    <p className="px-4 py-8 text-center font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                      {tW("noAvailableAccounts")}
-                    </p>
-                  ) : (
-                    w.filteredBusinesses.map((bm, i) => (
-                      <button
-                        key={bm.metaBusinessId}
-                        type="button"
-                        onClick={() => w.selectBusiness(bm.metaBusinessId)}
-                        className="flex w-full items-center justify-between px-4 py-3 text-left font-body text-sm transition-all"
-                        style={{
-                          borderBottom:
-                            i < w.filteredBusinesses.length - 1 ? "1px solid var(--border-color)" : "none",
-                          background:
-                            w.selectedBm === bm.metaBusinessId ? "var(--ui-accent-muted)" : "transparent"
-                        }}
+        <main className="campaign-creator-main-scroll relative col-start-1 row-start-2 flex min-h-0 min-w-0 w-full flex-col overflow-y-auto py-3">
+          <div className="campaign-creator-main-scroll__inner mx-auto w-full max-w-xl pb-6">
+            <div className="campaign-creator-section-stack">
+              {w.step === 1 ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      {tW("title")}
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">{tW("titleHint")}</p>
+                  </div>
+
+                  {w.metaAdsConnected === false ? (
+                    <div className="ui-alert-warning text-sm">
+                      <p>{tW("metaAdsRequiredHint")}</p>
+                      <Link
+                        href="/settings?tab=integrations"
+                        className="ui-link mt-1 inline-block text-xs font-semibold underline"
                       >
-                        <span className="font-medium" style={{ color: "var(--text-main)" }}>
-                          {bm.name}
-                        </span>
-                        <span className="text-xs" style={{ color: "var(--text-dimmer)" }}>
-                          {tW("bmCountsAccountsOnly", { accounts: bm.adAccountCount })}
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </UxFormCard>
-            </div>
-          ) : null}
-
-          {w.step === 3 ? (
-            <div className="animate-fade-up space-y-4">
-              <div>
-                <h2 className="font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                  {tW("chooseAccounts")}
-                </h2>
-                <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                  {tW("chooseAccountsHint")}
-                  {w.selectedBmName ? (
-                    <span className="mt-1 block text-xs" style={{ color: "var(--ui-accent)" }}>
-                      BM: {w.selectedBmName}
-                    </span>
+                        {tW("goConnectMetaAds")}
+                      </Link>
+                    </div>
                   ) : null}
-                </p>
-              </div>
-              <UxFormCard>
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <span
-                    className="rounded px-2 py-0.5 font-heading text-xs font-semibold"
-                    style={{
-                      background: "var(--ui-accent-muted)",
-                      color: "var(--ui-accent)",
-                      border: "1px solid var(--ui-accent-border)"
-                    }}
-                  >
-                    {w.selected.size} selecionada(s)
-                  </span>
-                  <span className="font-body text-xs uppercase tracking-wider" style={{ color: "var(--text-dimmer)" }}>
-                    {tW("spentLast30d")}
-                  </span>
-                </div>
-                <div className="relative mb-3">
-                  <Search
-                    size={14}
-                    className="absolute left-3 top-1/2 -translate-y-1/2"
-                    style={{ color: "var(--text-dimmer)" }}
-                  />
-                  <input
-                    value={w.accountSearch}
-                    onChange={(e) => w.setAccountSearch(e.target.value)}
-                    placeholder={tW("searchAccounts")}
-                    className="ui-input w-full py-2.5 pl-9 pr-3"
-                  />
-                </div>
-                <div
-                  className="overflow-y-auto rounded-xl border"
-                  style={{ maxHeight: 360, borderColor: "var(--border-color)", background: "var(--surface-bg)" }}
-                >
-                  {w.loadingAccounts ? (
-                    <p className="px-4 py-8 text-center font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                      {tW("loadingAccounts")}
-                    </p>
-                  ) : w.filteredAccounts.length === 0 ? (
-                    <p className="px-4 py-8 text-center font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                      {tW("noAvailableAccounts")}
-                    </p>
-                  ) : (
-                    w.filteredAccounts.map((acc) => {
-                      const checked = w.selected.has(acc.metaAdAccountId);
-                      return (
-                        <label
-                          key={acc.metaAdAccountId}
-                          className="flex cursor-pointer items-center gap-3 border-b px-4 py-3 last:border-b-0"
-                          style={{
-                            borderColor: "var(--border-color)",
-                            background: checked ? "var(--ui-accent-muted)" : "transparent"
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => w.toggleAccount(acc.metaAdAccountId)}
-                            className="h-4 w-4 rounded accent-[var(--ui-accent)]"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div
-                              className="truncate font-body text-sm font-medium"
-                              style={{ color: "var(--text-main)" }}
-                            >
-                              {acc.label}
-                            </div>
-                            <div className="truncate font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-                              ID: {acc.metaAdAccountId}
-                            </div>
-                          </div>
-                          <div className="shrink-0 font-body text-sm font-semibold" style={{ color: "var(--text-dim)" }}>
-                            {w.formatSpend(acc.spendLast30d)}
-                          </div>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-              </UxFormCard>
-              {w.error ? (
-                <div
-                  className="rounded-xl border px-4 py-3 text-sm"
-                  style={{ borderColor: "rgba(239,68,68,0.3)", color: "#ef4444" }}
-                >
-                  {w.error}
+
+                  {w.inventoryEmpty ? (
+                    <div className="campaign-creator-copy-card campaign-creator-copy-card--lead text-sm">
+                      <div className="campaign-creator-copy-card__content">
+                        <span className="text-[var(--text-dim)]">
+                          {tW("emptyInventory")}{" "}
+                          <Link href="/settings/meta-assets" className="font-semibold text-[var(--ui-accent)] underline">
+                            {tW("goMetaAssets")}
+                          </Link>
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <section className="campaign-creator-card">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (w.canContinueStep1) w.setStep(2);
+                      }}
+                    >
+                      <FilterTextField
+                        creatorField
+                        icon={<Tag size={13} />}
+                        label={tW("clientName")}
+                        placeholder={tW("namePlaceholder")}
+                        value={w.name}
+                        onChange={w.setName}
+                      />
+                    </form>
+                  </section>
                 </div>
               ) : null}
-            </div>
-          ) : null}
 
-          {w.step === 4 ? (
-            <div className="animate-fade-up space-y-4">
-              <div>
-                <h2 className="font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                  {tW("stepPageTitle")}
-                </h2>
-                <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                  {tW("stepPageHint")}
-                </p>
-              </div>
-              <UxFormCard>
-                {w.loadingWizardAssets ? (
-                  <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                    {tW("loadingWizardAssets")}
-                  </p>
-                ) : (
-                  <>
-                    <label className="font-body text-sm font-medium" style={{ color: "var(--text-main)" }}>
-                      {tW("selectPageRequired")} *
-                    </label>
-                    {w.wizardPages.length === 0 ? (
-                      <div className="ui-alert-warning mt-2 text-xs">
-                        {tW("noPagesWizard")}{" "}
-                        <Link href="/settings/meta-assets" className="ui-link font-semibold">
-                          {tW("goMetaAssets")}
-                        </Link>
-                      </div>
-                    ) : (
-                      <select
-                        value={w.selectedPageId}
-                        onChange={(e) => w.setSelectedPageId(e.target.value)}
-                        className="ui-input mt-2 w-full"
-                      >
-                        <option value="">{tW("selectPagePlaceholder")}</option>
-                        {w.wizardPages.map((p) => (
-                          <option key={p.metaPageId} value={p.metaPageId}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+              {w.step === 2 ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      {tW("pickBm")}
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">{tW("pickBmHint")}</p>
+                  </div>
 
-                    <div className="mt-4">
-                      <div className="font-body text-sm font-medium" style={{ color: "var(--text-main)" }}>
-                        {tW("selectPixelsOptional")}
-                      </div>
-                      <p className="mt-1 text-xs" style={{ color: "var(--text-dim)" }}>
-                        {tW("selectPixelsHint")}
-                      </p>
-                      {w.wizardPixels.length === 0 ? (
-                        <p className="mt-2 text-xs" style={{ color: "var(--text-dimmer)" }}>
-                          {tW("noPixelsWizard")}
+                  <section className="campaign-creator-card space-y-3">
+                    <FilterTextField
+                      creatorField
+                      icon={<Search size={13} />}
+                      label={tW("stepBm")}
+                      placeholder={tW("bmSearchPlaceholder")}
+                      value={w.bmSearch}
+                      onChange={w.setBmSearch}
+                    />
+
+                    <div className="campaign-creator-sidebar-card-inset max-h-80 space-y-2 overflow-y-auto p-2">
+                      {w.filteredBusinesses.length === 0 ? (
+                        <p className="px-2 py-8 text-center text-sm text-[var(--text-dim)]">
+                          {tW("noAvailableAccounts")}
                         </p>
                       ) : (
-                        <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-xl border border-[var(--border-color)] p-2">
-                          {w.wizardPixels.map((px) => (
-                            <label
-                              key={px.id}
-                              className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs"
+                        w.filteredBusinesses.map((bm) => {
+                          const selected = w.selectedBm === bm.metaBusinessId;
+                          return (
+                            <button
+                              key={bm.metaBusinessId}
+                              type="button"
+                              onClick={() => w.selectBusiness(bm.metaBusinessId)}
+                              className={cn(
+                                "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row w-full",
+                                selected
+                                  ? "campaign-creator-budget-choice-card--selected"
+                                  : "campaign-creator-budget-choice-card--unselected"
+                              )}
                             >
-                              <input
-                                type="checkbox"
-                                checked={w.selectedPixelIds.has(px.id)}
-                                onChange={() => w.togglePixel(px.id)}
-                                className="accent-[var(--ui-accent)]"
-                              />
-                              <span>
-                                {px.name}{" "}
-                                <span className="text-[var(--text-dimmer)]">({px.id})</span>
+                              <ChoiceCardCheck selected={selected} />
+                              <span
+                                className={cn(
+                                  "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline",
+                                  selected
+                                    ? "campaign-creator-budget-choice-card__icon--selected"
+                                    : "campaign-creator-budget-choice-card__icon--unselected"
+                                )}
+                                aria-hidden
+                              >
+                                <Building2 size={18} strokeWidth={1.75} />
                               </span>
-                            </label>
-                          ))}
-                        </div>
+                              <span className="campaign-creator-budget-choice-card__content">
+                                <span className="campaign-creator-budget-choice-card__title-row">
+                                  <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
+                                    {bm.name}
+                                  </span>
+                                </span>
+                                <span className="campaign-creator-budget-choice-card__description">
+                                  {tW("bmCountsAccountsOnly", { accounts: bm.adAccountCount })}
+                                </span>
+                              </span>
+                            </button>
+                          );
+                        })
                       )}
                     </div>
-                  </>
-                )}
-              </UxFormCard>
-              {w.error ? (
-                <div
-                  className="rounded-xl border px-4 py-3 text-sm"
-                  style={{ borderColor: "rgba(239,68,68,0.3)", color: "#ef4444" }}
-                >
-                  {w.error}
+                  </section>
+                </div>
+              ) : null}
+
+              {w.step === 3 ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      {tW("chooseAccounts")}
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">
+                      {tW("chooseAccountsHint")}
+                      {w.selectedBmName ? (
+                        <span className="mt-1 block text-[var(--ui-accent)]">BM: {w.selectedBmName}</span>
+                      ) : null}
+                    </p>
+                  </div>
+
+                  <section className="campaign-creator-card space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded-full border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-2.5 py-0.5 font-heading text-[11px] font-semibold text-[var(--ui-accent)]">
+                        {tW("selectedCount", { count: w.selected.size })}
+                      </span>
+                      <span className="campaign-creator-orion-section-label">{tW("spentLast30d")}</span>
+                    </div>
+
+                    <FilterTextField
+                      creatorField
+                      icon={<Search size={13} />}
+                      label={tW("stepAccounts")}
+                      placeholder={tW("searchAccounts")}
+                      value={w.accountSearch}
+                      onChange={w.setAccountSearch}
+                    />
+
+                    <div className="campaign-creator-sidebar-card-inset max-h-[22.5rem] overflow-y-auto">
+                      {w.loadingAccounts ? (
+                        <p className="px-4 py-8 text-center text-sm text-[var(--text-dim)]">
+                          {tW("loadingAccounts")}
+                        </p>
+                      ) : w.filteredAccounts.length === 0 ? (
+                        <p className="px-4 py-8 text-center text-sm text-[var(--text-dim)]">
+                          {tW("noAvailableAccounts")}
+                        </p>
+                      ) : (
+                        <ul>
+                          {w.filteredAccounts.map((acc) => {
+                            const checked = w.selected.has(acc.metaAdAccountId);
+                            return (
+                              <li key={acc.metaAdAccountId} className="border-b border-[var(--creator-card-border,var(--border-color))] last:border-b-0">
+                                <label
+                                  className={cn(
+                                    "flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors",
+                                    checked && "bg-[var(--ui-accent-muted)]"
+                                  )}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => w.toggleAccount(acc.metaAdAccountId)}
+                                    className="h-4 w-4 rounded accent-[var(--ui-accent)]"
+                                  />
+                                  <span
+                                    className={cn(
+                                      "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                                      checked
+                                        ? "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]"
+                                        : "bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-[var(--text-dim)]"
+                                    )}
+                                    aria-hidden
+                                  >
+                                    <CreditCard size={14} />
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate text-sm font-medium text-[var(--text-main)]">
+                                      {acc.label}
+                                    </div>
+                                    <div className="truncate text-xs text-[var(--text-dimmer)]">
+                                      ID: {acc.metaAdAccountId}
+                                    </div>
+                                  </div>
+                                  <div className="shrink-0 text-sm font-semibold text-[var(--text-dim)]">
+                                    {w.formatSpend(acc.spendLast30d)}
+                                  </div>
+                                </label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </section>
+
+                  {w.error ? (
+                    <div className="ui-alert-danger px-4 py-3 text-sm">{w.error}</div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {w.step === 4 ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      {tW("stepPageTitle")}
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">{tW("stepPageHint")}</p>
+                  </div>
+
+                  <section className="campaign-creator-card space-y-4">
+                    {w.loadingWizardAssets ? (
+                      <p className="text-sm text-[var(--text-dim)]">{tW("loadingWizardAssets")}</p>
+                    ) : (
+                      <>
+                        {w.wizardPages.length === 0 ? (
+                          <div className="ui-alert-warning text-xs">
+                            {tW("noPagesWizard")}{" "}
+                            <Link href="/settings/meta-assets" className="ui-link font-semibold">
+                              {tW("goMetaAssets")}
+                            </Link>
+                          </div>
+                        ) : (
+                          <FilterSelectDropdown
+                            creatorField
+                            icon={<Facebook size={14} />}
+                            label={tW("selectPageRequired")}
+                            placeholder={tW("selectPagePlaceholder")}
+                            value={w.selectedPageId}
+                            onChange={w.setSelectedPageId}
+                            clearable={false}
+                            options={w.wizardPages.map((p) => ({
+                              value: p.metaPageId,
+                              label: p.name
+                            }))}
+                          />
+                        )}
+
+                        <div className="space-y-2">
+                          <div>
+                            <h3 className="campaign-creator-section-title">{tW("selectPixelsOptional")}</h3>
+                            <p className="mt-1 text-xs text-[var(--text-dim)]">{tW("selectPixelsHint")}</p>
+                          </div>
+                          {w.wizardPixels.length === 0 ? (
+                            <p className="text-xs text-[var(--text-dimmer)]">{tW("noPixelsWizard")}</p>
+                          ) : (
+                            <div className="campaign-creator-sidebar-card-inset max-h-40 space-y-1 overflow-y-auto p-2">
+                              {w.wizardPixels.map((px) => {
+                                const checked = w.selectedPixelIds.has(px.id);
+                                return (
+                                  <label
+                                    key={px.id}
+                                    className={cn(
+                                      "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors",
+                                      checked && "bg-[var(--ui-accent-muted)]"
+                                    )}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => w.togglePixel(px.id)}
+                                      className="accent-[var(--ui-accent)]"
+                                    />
+                                    <span className="text-[var(--text-main)]">
+                                      {px.name}{" "}
+                                      <span className="text-[var(--text-dimmer)]">({px.id})</span>
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </section>
+
+                  {w.error ? (
+                    <div className="ui-alert-danger px-4 py-3 text-sm">{w.error}</div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
-          ) : null}
-        </div>
+          </div>
+        </main>
       </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2 px-4 py-4 sm:px-6">
-        <button
-          type="button"
-          onClick={goBack}
-          className="ui-btn-secondary px-4 py-2 text-sm font-heading font-semibold"
-        >
-          {tW("back")}
-        </button>
-        {w.step === 1 ? (
-          <button
-            type="button"
-            disabled={!w.canContinueStep1}
-            onClick={() => w.setStep(2)}
-            className="ui-btn-accent inline-flex items-center gap-1.5 px-5 py-2 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {tW("next")}
-            <ChevronRight size={16} strokeWidth={2.5} />
-          </button>
-        ) : w.step === 2 ? (
-          <button
-            type="button"
-            disabled={!w.canContinueStep2}
-            onClick={() => w.setStep(3)}
-            className="ui-btn-accent inline-flex items-center gap-1.5 px-5 py-2 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {tW("next")}
-            <ChevronRight size={16} strokeWidth={2.5} />
-          </button>
-        ) : w.step === 3 ? (
-          <button
-            type="button"
-            disabled={!w.canContinueStep3}
-            onClick={() => w.setStep(4)}
-            className="ui-btn-accent inline-flex items-center gap-1.5 px-5 py-2 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {tW("next")}
-            <ChevronRight size={16} strokeWidth={2.5} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled={w.isPending || !w.canCreate}
-            onClick={() => w.create(onCreated, () => {})}
-            className={cn(
-              "ui-btn-accent inline-flex items-center gap-2 px-5 py-2 text-sm font-heading font-semibold",
-              "disabled:cursor-not-allowed disabled:opacity-50"
-            )}
-          >
-            <Check size={14} />
-            {w.isPending ? tW("creating") : tW("create")}
-          </button>
-        )}
+      <div className="campaign-creator-footer-outer shrink-0">
+        <div className="campaign-creator-footer-band">
+          <div className="ui-wizard-nav--footer">
+            <div className="ui-wizard-nav__actions">
+              <button
+                type="button"
+                onClick={goBack}
+                className="ui-wizard-nav__btn ui-wizard-nav__btn--back ui-btn-secondary inline-flex h-9 items-center justify-center gap-1 px-3.5 text-sm font-heading font-medium"
+              >
+                <ChevronLeft size={16} strokeWidth={2.5} />
+                {tW("back")}
+              </button>
+
+              {w.step === 1 ? (
+                <button
+                  type="button"
+                  disabled={!w.canContinueStep1}
+                  onClick={() => w.setStep(2)}
+                  className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {tW("next")}
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+              ) : w.step === 2 ? (
+                <button
+                  type="button"
+                  disabled={!w.canContinueStep2}
+                  onClick={() => w.setStep(3)}
+                  className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {tW("next")}
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+              ) : w.step === 3 ? (
+                <button
+                  type="button"
+                  disabled={!w.canContinueStep3}
+                  onClick={() => w.setStep(4)}
+                  className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {tW("next")}
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={w.isPending || !w.canCreate}
+                  onClick={() => w.create(onCreated, () => {})}
+                  className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-2 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Check size={14} />
+                  {w.isPending ? tW("creating") : tW("create")}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -4,10 +4,20 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
 
 import { AiCampaignWizardClient } from "@/components/campaign-creator/AiCampaignWizardClient";
+import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
 import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCreatorClient";
+import { useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 
+function shouldShowModePicker(mode: string | null, fromCampaign: string | null) {
+  if (mode === "ai" || mode === "add-ad" || mode === "add-adset" || mode === "manual") {
+    return false;
+  }
+  return !fromCampaign;
+}
+
 function NewCampaignContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const client = searchParams.get("client") ?? undefined;
   const mode = searchParams.get("mode");
@@ -31,6 +41,16 @@ function NewCampaignContent() {
         : undefined,
     [mode, fromCampaign, client]
   );
+
+  if (shouldShowModePicker(mode, fromCampaign)) {
+    return (
+      <CampaignCreationModePicker
+        open
+        onClose={() => router.push("/campaigns")}
+        clientSlug={client}
+      />
+    );
+  }
 
   if (mode === "ai") {
     return <AiCampaignWizardClient initialClientSlug={client} />;

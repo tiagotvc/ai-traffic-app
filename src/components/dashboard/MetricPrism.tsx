@@ -1,8 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { SparklineChart } from "@/components/dashboard/SparklineChart";
 import { MetricKpiIcon } from "@/components/dashboard/MetricKpiIcon";
-import { CanvasMetricStrip, type CanvasMetricItem } from "@/components/dashboard/canvas/widgets/CanvasMetricStrip";
 import { useAppDarkMode } from "@/hooks/useAppDarkMode";
 import { cn } from "@/lib/cn";
 import {
@@ -34,6 +35,13 @@ export type SecondaryMetric = {
   trend: "up" | "down" | "neutral";
 };
 
+function resolveDeltaChangeLabel(change: string, tDash: (key: "deltaNew") => string): string {
+  if (change === "dashboard.deltaNew" || change === "deltaNew") {
+    return tDash("deltaNew");
+  }
+  return change;
+}
+
 function TrendBadge({
   change,
   trend,
@@ -45,9 +53,11 @@ function TrendBadge({
   small?: boolean;
   dark?: boolean;
 }) {
+  const tDash = useTranslations("dashboard");
   const isUp = trend === "up";
   const isNeutral = trend === "neutral";
   const { color, background } = metricKpiTrendColors(trend, dark);
+  const displayChange = resolveDeltaChangeLabel(change, tDash);
 
   return (
     <span
@@ -66,13 +76,18 @@ function TrendBadge({
           )}
         </svg>
       ) : null}
-      {change}
+      {displayChange}
     </span>
   );
 }
 
-/** Responsive hero KPI grid: 2 cols mobile → 3 tablet → 5 desktop. */
-const HERO_KPI_GRID_CLASS = "grid w-full grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5";
+/** Responsive hero KPI grid: 2 cols mobile → 3 tablet → max 4 desktop. */
+const HERO_KPI_GRID_CLASS =
+  "grid w-full grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4";
+
+/** Compact secondary KPI grid — inline mini cards without sparkline. */
+const SECONDARY_KPI_GRID_CLASS =
+  "grid w-full grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4";
 
 function KpiCardTile({
   kpi,
@@ -104,10 +119,10 @@ function KpiCardTile({
       <div className="mb-1 flex items-start justify-between gap-1.5">
         <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <div
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
             style={iconShell}
           >
-            <MetricKpiIcon metricKey={kpi.metricKey} color={kpi.color} size={12} />
+            <MetricKpiIcon metricKey={kpi.metricKey} color={kpi.color} size={11} />
           </div>
           <span
             className="truncate text-[9px] font-semibold uppercase tracking-wide"
@@ -120,7 +135,7 @@ function KpiCardTile({
       </div>
 
       <div
-        className="truncate font-heading text-base font-bold leading-tight tabular-nums tracking-tight"
+        className="truncate font-heading text-[15px] font-bold leading-tight tabular-nums tracking-tight"
         style={{
           color: dark ? "var(--text-main)" : "var(--text-main)",
           fontFamily: "var(--font-heading)"
@@ -130,7 +145,7 @@ function KpiCardTile({
       </div>
 
       <p
-        className="mb-1 truncate text-[9px]"
+        className="mb-1 truncate text-[8px] leading-snug"
         style={{ color: dark ? "#64748b" : "var(--text-dimmer)" }}
       >
         {kpi.subLabel}
@@ -153,6 +168,100 @@ function KpiCardTile({
   );
 }
 
+function SecondaryMetricKpiCard({
+  metric,
+  index,
+  forceDark
+}: {
+  metric: SecondaryMetric;
+  index: number;
+  forceDark?: boolean;
+}) {
+  const themeDark = useAppDarkMode();
+  const dark = forceDark ?? themeDark;
+  const color = metric.key ? METRIC_BY_KEY[metric.key].color : "#64748b";
+  const shell = metricKpiCardShell(color, dark);
+  const iconShell = metricKpiIconShell(color, dark);
+
+  return (
+    <div
+      className={cn(
+        "dashboard-kpi-card dashboard-kpi-card--mini kpi-card-hover animate-fade-up flex min-w-0 flex-row items-center gap-2",
+        !dark && "dashboard-kpi-card--light"
+      )}
+      style={{
+        ...shell,
+        animationDelay: `${index * 40}ms`,
+        animationFillMode: "both"
+      }}
+    >
+      <div
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+        style={iconShell}
+      >
+        <MetricKpiIcon metricKey={metric.key} color={color} size={10} />
+      </div>
+      <span
+        className="min-w-0 shrink truncate text-[9px] font-semibold uppercase tracking-wide"
+        style={{ color: dark ? "#94a3b8" : "var(--text-dimmer)" }}
+      >
+        {metric.label}
+      </span>
+      <span
+        className="ml-auto min-w-0 truncate font-heading text-sm font-bold leading-none tabular-nums tracking-tight"
+        style={{
+          color: dark ? "var(--text-main)" : "var(--text-main)",
+          fontFamily: "var(--font-heading)"
+        }}
+      >
+        {metric.value}
+      </span>
+      <TrendBadge change={metric.change} trend={metric.trend} small dark={dark} />
+    </div>
+  );
+}
+
+function SecondaryKpiGrid({
+  metrics,
+  isLoading,
+  forceDark
+}: {
+  metrics: SecondaryMetric[];
+  isLoading?: boolean;
+  forceDark?: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className={SECONDARY_KPI_GRID_CLASS}>
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <div
+            key={i}
+            className="dashboard-kpi-card dashboard-kpi-card--mini flex flex-row items-center gap-2 p-1.5"
+          >
+            <div className="skeleton-shimmer h-5 w-5 shrink-0 rounded-md" />
+            <div className="skeleton-shimmer h-2 w-12 shrink rounded" />
+            <div className="skeleton-shimmer ml-auto h-4 w-14 shrink-0 rounded" />
+            <div className="skeleton-shimmer h-4 w-10 shrink-0 rounded-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className={SECONDARY_KPI_GRID_CLASS}>
+      {metrics.map((metric, index) => (
+        <SecondaryMetricKpiCard
+          key={metric.key ?? metric.label}
+          metric={metric}
+          index={index}
+          forceDark={forceDark}
+        />
+      ))}
+    </div>
+  );
+}
+
 function PrimaryKpiGrid({
   primaryKPIs,
   isLoading,
@@ -165,11 +274,14 @@ function PrimaryKpiGrid({
   if (isLoading) {
     return (
       <div className={HERO_KPI_GRID_CLASS}>
-        {[1, 2, 3, 4, 5].map((i) => (
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
           <div key={i} className="dashboard-kpi-card">
-            <div className="mb-1.5 flex items-center gap-1.5">
-              <div className="skeleton-shimmer h-6 w-6 rounded-md" />
-              <div className="skeleton-shimmer h-2.5 w-14 rounded" />
+            <div className="mb-1.5 flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="skeleton-shimmer h-6 w-6 rounded-md" />
+                <div className="skeleton-shimmer h-2.5 w-14 rounded" />
+              </div>
+              <div className="skeleton-shimmer h-4 w-12 rounded-full" />
             </div>
             <div className="skeleton-shimmer mb-1 h-5 w-20 rounded" />
             <div className="skeleton-shimmer mb-1.5 h-2 w-16 rounded" />
@@ -241,11 +353,7 @@ export function MetricPrism({
     return (
       <div className="space-y-4">
         <PrimaryKpiGrid primaryKPIs={[]} isLoading forceDark={forceDark} />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div key={i} className="skeleton-shimmer h-8 rounded-lg" />
-          ))}
-        </div>
+        <SecondaryKpiGrid metrics={[]} isLoading forceDark={forceDark} />
       </div>
     );
   }
@@ -261,17 +369,7 @@ export function MetricPrism({
               {secondaryTitle}
             </p>
           ) : null}
-          <CanvasMetricStrip
-            items={secondaryMetrics.map(
-              (m): CanvasMetricItem => ({
-                label: m.label,
-                value: m.value,
-                change: m.change,
-                trend: m.trend,
-                color: m.key ? METRIC_BY_KEY[m.key]?.color : undefined
-              })
-            )}
-          />
+          <SecondaryKpiGrid metrics={secondaryMetrics} forceDark={forceDark} />
         </div>
       ) : null}
     </div>

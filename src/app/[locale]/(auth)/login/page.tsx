@@ -39,7 +39,7 @@ export default async function LoginPage({
         <div className="auth-premium-grid" />
         <div
           className="auth-premium-glow -right-16 top-0 h-72 w-72"
-          style={{ background: "radial-gradient(circle, rgba(245,166,35,0.12) 0%, transparent 65%)" }}
+          style={{ background: "radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 65%)" }}
         />
         <div className="auth-premium-glow -bottom-24 left-0 h-64 w-64 bg-violet-500/15" />
 
@@ -67,7 +67,7 @@ export default async function LoginPage({
             href="/terms"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-violet-200/70 underline-offset-2 transition hover:text-amber-300 hover:underline"
+            className="font-medium text-[var(--text-dim)] underline-offset-2 transition hover:text-[var(--ui-accent)] hover:underline"
           >
             {tNav("terms")}
           </Link>
@@ -76,7 +76,7 @@ export default async function LoginPage({
             href="/privacy"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-violet-200/70 underline-offset-2 transition hover:text-amber-300 hover:underline"
+            className="font-medium text-[var(--text-dim)] underline-offset-2 transition hover:text-[var(--ui-accent)] hover:underline"
           >
             {tNav("privacy")}
           </Link>
@@ -85,7 +85,7 @@ export default async function LoginPage({
             href="/data-deletion"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-violet-200/70 underline-offset-2 transition hover:text-amber-300 hover:underline"
+            className="font-medium text-[var(--text-dim)] underline-offset-2 transition hover:text-[var(--ui-accent)] hover:underline"
           >
             {tNav("dataDeletion")}
           </Link>

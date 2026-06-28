@@ -18,6 +18,19 @@ export function resolveMetaAdsConsultedCount(insight: CreatorBrainInsightPayload
   return insight.metaAdsConsultedCount ?? insight.metaCompetitorAdCount ?? 0;
 }
 
+export function resolveMetaResearchStep(
+  insight: CreatorBrainInsightPayload
+): CreatorBrainResearchStep | undefined {
+  return resolveResearchSteps(insight).find((s) => s.step === "meta_competitor_search");
+}
+
+/** True when Meta Ad Library HTTP was invoked (not skipped / legacy cache). */
+export function wasMetaResearchAttempted(step: CreatorBrainResearchStep | undefined): boolean {
+  if (!step) return false;
+  if (step.detail === "api_not_configured" || step.detail === "legacy_cache") return false;
+  return step.status === "done" || step.status === "fallback";
+}
+
 export type ConsultationCounts = {
   clientSynced: number;
   agencySynced: number;

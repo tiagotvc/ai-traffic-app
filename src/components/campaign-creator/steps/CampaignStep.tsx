@@ -56,6 +56,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { OrionBrainCardFeedback } from "@/components/campaign-creator/OrionBrainResearchFeedback";
 import { useCreatorBrainInsight } from "@/hooks/useCreatorBrainInsight";
+import { resolveDraftClient } from "@/lib/campaign-draft-client";
 import { openOrionBrainBenchmark } from "@/lib/campaign-creator/orion-brain-bridge";
 
 
@@ -375,10 +376,12 @@ export function CampaignStep() {
 
   const { accounts, accountsLoading, accountsError } = useCampaignStepEffects();
 
+  const validClient = Boolean(resolveDraftClient(payload.clientSlug, clients));
   const { insight: brainInsight, loading: brainLoading, paused: brainPaused } = useCreatorBrainInsight({
     objective: payload.objective,
     activeNode,
-    clientSlug: payload.clientSlug
+    clientSlug: payload.clientSlug,
+    enabled: validClient
   });
 
   const [copyModalOpen, setCopyModalOpen] = useState(false);

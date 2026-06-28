@@ -186,10 +186,10 @@ export function SidebarCollapseFab({
 
 export function SidebarLogoIcon({ collapsed = false }: { collapsed?: boolean }) {
   if (collapsed) {
-    return <OrionAgencyLogo showText={false} variant="dark" />;
+    return <OrionAgencyLogo size="md" showText={false} variant="dark" className="orion-logo--sidebar-collapsed" />;
   }
 
-  return <OrionAgencyLogo size="sm" variant="dark" />;
+  return <OrionAgencyLogo size="md" showText variant="dark" className="orion-logo--sidebar" />;
 }
 
 export function SidebarCollapseButton({ onClick, title }: { onClick: () => void; title: string }) {

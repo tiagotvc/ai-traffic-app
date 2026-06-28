@@ -25,7 +25,8 @@ export function GlobalScopeFilters({
   layout = "grid",
   showClient = true,
   showAccount = true,
-  showPeriod = true
+  showPeriod = true,
+  creatorField = false
 }: {
   clientFilter: string;
   setClientFilter: (v: string) => void;
@@ -43,6 +44,8 @@ export function GlobalScopeFilters({
   showClient?: boolean;
   showAccount?: boolean;
   showPeriod?: boolean;
+  /** Match Campaign Creator inset fields (FilterSelectDropdown / PeriodFilter). */
+  creatorField?: boolean;
 }) {
   const t = useTranslations("dashboard");
 
@@ -51,12 +54,15 @@ export function GlobalScopeFilters({
     : undefined;
 
   const fieldClass = layout === "flat" ? "ui-filter-panel-field" : undefined;
+  const clientFieldClass = cn(fieldClass, creatorField && "ui-filter-panel-field--client");
+  const accountFieldClass = cn(fieldClass, creatorField && "ui-filter-panel-field--ad-account");
 
   const content = (
     <>
       {showClient ? (
         <FilterSelectDropdown
-          className={fieldClass}
+          className={clientFieldClass}
+          creatorField={creatorField}
           icon={<Building2 size={13} />}
           label={t("filterClient")}
           placeholder={t("filterAllClients")}
@@ -67,7 +73,8 @@ export function GlobalScopeFilters({
       ) : null}
       {showAccount ? (
         <FilterSelectDropdown
-          className={fieldClass}
+          className={accountFieldClass}
+          creatorField={creatorField}
           icon={<BarChart2 size={13} />}
           label={t("filterAccount")}
           placeholder={t("filterAllAccounts")}
@@ -82,6 +89,7 @@ export function GlobalScopeFilters({
           <PeriodFilter
             value={period}
             onChange={setPeriod}
+            creatorField={creatorField}
             variant={compact ? "commandStrip" : "modal"}
             disabled={periodFilterDisabled}
             disabledHint={periodFilterDisabledHint}

@@ -1,7 +1,9 @@
 "use client";
 
+import { ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AdminCreatorShell } from "@/components/admin/AdminCreatorShell";
 import { PageTabs } from "@/components/layout/PageTabs";
 import {
   PLATFORM_ADMIN_LINKS,
@@ -9,10 +11,11 @@ import {
   resolvePlatformAdminTab,
   type PlatformAdminTabId
 } from "@/components/layout/admin-nav-links";
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 import { usePathname, useRouter } from "@/i18n/navigation";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
-  const t = useTranslations("billingAdmin");
+  const tNav = useTranslations("nav");
   const pathname = usePathname();
   const router = useRouter();
   const active = resolvePlatformAdminTab(pathname);
@@ -28,9 +31,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="w-full space-y-4">
-      <PageTabs tabs={tabs} active={active} onChange={selectTab} accent="brand" />
+    <AdminCreatorShell>
+      <PageTitleBlock
+        title={tNav("menuAdministrative")}
+        titleIcon={<ShieldCheck size={16} />}
+      />
+
+      <PageTabs tabs={tabs} active={active} onChange={selectTab} accent="brand" className="mb-1" />
+
       {children}
-    </div>
+    </AdminCreatorShell>
   );
 }

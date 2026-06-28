@@ -60,7 +60,8 @@ export function AnalyzeBlockWidget({
     heroMetrics: [primary],
     locale: data.locale,
     metricLabel: data.metricLabel,
-    vsLabel: data.vsLabel
+    vsLabel: data.vsLabel,
+    newDeltaLabel: data.deltaNewLabel
   });
   const kpi = primaryKPIs[0];
 

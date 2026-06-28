@@ -64,7 +64,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
                   className="rounded-md px-2.5 py-1 text-[11px] font-semibold transition"
                   style={{
                     background: locale === loc ? "var(--ui-accent-muted)" : "transparent",
-                    color: locale === loc ? "var(--amber-bright)" : "var(--text-dimmer)"
+                    color: locale === loc ? "var(--ui-accent)" : "var(--text-dimmer)"
                   }}
                 >
                   {LOCALE_LABELS[loc]}

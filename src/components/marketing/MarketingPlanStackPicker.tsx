@@ -60,7 +60,7 @@ export function MarketingPlanStackPicker({
             )}
           >
             {isPopular ? (
-              <span className="absolute -top-2.5 left-4 rounded-full bg-amber-400 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0f1419] shadow-md">
+              <span className="absolute -top-2.5 left-4 rounded-full bg-[var(--ui-accent)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--ui-accent-btn-text)] shadow-md">
                 {tBilling("mostPopular")}
               </span>
             ) : null}

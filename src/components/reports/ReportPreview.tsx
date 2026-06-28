@@ -77,6 +77,8 @@ export function ReportPreview({
   adAccountId,
   initialCreativeGroups,
   initialBreakdownLayout,
+  brandName,
+  logoUrl,
   variant = "preview"
 }: {
   data: ReportPreviewPayload;
@@ -90,6 +92,8 @@ export function ReportPreview({
   adAccountId?: string;
   initialCreativeGroups?: ReportCreativeGroup[];
   initialBreakdownLayout?: ReportBreakdownLayoutItem[];
+  brandName?: string;
+  logoUrl?: string;
   variant?: "preview" | "print";
 }) {
   const t = useTranslations("reports");
@@ -163,6 +167,19 @@ export function ReportPreview({
     <div id={rootId} className={`${rootClass} overflow-visible`}>
       <div className={`report-pdf-header flex flex-wrap items-start justify-between gap-3 border-b border-[var(--creator-card-border,var(--border-color))] pb-4 ${isPrint ? "report-print-avoid-break" : ""}`}>
         <div>
+          {logoUrl || brandName ? (
+            <div className="mb-2 flex items-center gap-2">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt={brandName ?? ""} className="h-7 w-auto object-contain" />
+              ) : null}
+              {brandName ? (
+                <span className="font-heading text-sm font-semibold text-[var(--text-main)]">
+                  {brandName}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="text-xs font-medium text-[var(--text-dim)]">
             {isPrint ? t("printTitle") : t("previewTitle")}
           </div>
@@ -186,6 +203,29 @@ export function ReportPreview({
           </Badge>
         </div>
       </div>
+
+      {data.anomalies.length ? (
+        <div className={`flex flex-wrap gap-2 ${isPrint ? "report-print-avoid-break" : ""}`}>
+          {data.anomalies.map((a) => {
+            const up = a.delta > 0;
+            const good = a.direction === "good";
+            return (
+              <span
+                key={a.key}
+                className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium"
+                style={{
+                  borderColor: good ? "rgba(16,185,129,0.35)" : "rgba(239,68,68,0.35)",
+                  background: good ? "rgba(16,185,129,0.10)" : "rgba(239,68,68,0.10)",
+                  color: good ? "#10b981" : "#ef4444"
+                }}
+              >
+                {up ? "▲" : "▼"} {tMetrics(METRIC_BY_KEY[a.key].label)} {up ? "+" : ""}
+                {Math.round(a.delta)}%
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
 
       <section className={`${sectionClass}`}>
         {!isPrint && onKpiEditModeChange ? (

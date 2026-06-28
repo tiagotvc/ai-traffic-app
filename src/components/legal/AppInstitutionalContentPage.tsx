@@ -33,9 +33,7 @@ export function AppInstitutionalContentPage({
 
 export function AppInstitutionalCard({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-5 sm:p-6">
-      {children}
-    </div>
+    <div className="campaign-creator-card sm:p-5">{children}</div>
   );
 }
 

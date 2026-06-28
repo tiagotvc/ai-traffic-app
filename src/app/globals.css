@@ -756,7 +756,7 @@ h6,
   }
 
   .auth-premium-input {
-    @apply w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white shadow-sm transition-all duration-200 placeholder:text-violet-300/35 focus:border-amber-400/50 focus:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-amber-400/15;
+    @apply w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white shadow-sm transition-all duration-200 placeholder:text-violet-300/35 focus:border-[var(--ui-accent)] focus:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-[var(--ui-accent-ring)];
   }
 
   .auth-premium-label {
@@ -764,9 +764,7 @@ h6,
   }
 
   .auth-premium-btn {
-    @apply inline-flex w-full items-center justify-center bg-gradient-to-r from-amber-400 to-amber-500 text-sm font-bold text-[#0f1419] shadow-lg shadow-amber-500/20 transition hover:brightness-105 disabled:opacity-60;
-    padding: calc(var(--btn-padding-y) + 0.0625rem) var(--btn-padding-x);
-    border-radius: var(--btn-radius);
+    @apply ui-btn-accent inline-flex w-full items-center justify-center text-sm font-semibold disabled:opacity-60;
   }
 
   .auth-premium-tabs {
@@ -783,7 +781,7 @@ h6,
 
   .auth-premium-banner {
     @apply rounded-2xl border border-violet-400/20 p-3.5;
-    background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(245, 166, 35, 0.08) 100%);
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.14) 0%, rgba(99, 102, 241, 0.08) 100%);
   }
 
   .auth-premium-alert-danger {
@@ -891,6 +889,12 @@ h6,
 
   .ui-filter-panel-field {
     @apply w-full min-w-0 xl:min-w-[11rem] xl:max-w-[15rem];
+  }
+
+  .ui-filter-panel-card {
+    @apply rounded-xl border;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
   }
 
   .ui-filter-panel-grid--campaign-creator {
@@ -1969,7 +1973,8 @@ h6,
 
   /** Hero KPI tile on Destaques (compact sparkline + inset chart frame). */
   .dashboard-kpi-card {
-    @apply rounded-xl border p-2.5;
+    @apply rounded-xl border px-3 py-3.5;
+    min-height: 120px;
     border-color: var(--creator-card-border, var(--border-color));
     background: var(--creator-card-bg, var(--surface-card));
     border-top-width: 1px;
@@ -1989,8 +1994,8 @@ h6,
 
   .dashboard-kpi-card__spark {
     @apply rounded-lg;
-    min-height: 56px;
-    height: 56px;
+    min-height: 48px;
+    height: 48px;
     padding: 2px 0 0;
     overflow: visible;
   }
@@ -1998,6 +2003,16 @@ h6,
   .dashboard-kpi-card__spark .recharts-wrapper,
   .dashboard-kpi-card__spark .recharts-surface {
     overflow: visible;
+  }
+
+  .dashboard-kpi-card--mini {
+    @apply px-3 py-2.5;
+    min-height: 44px;
+  }
+
+  .dashboard-kpi-card--notice {
+    @apply px-3 py-2;
+    min-height: 0;
   }
 
   /** Secondary metric chips on Destaques. */
@@ -2168,9 +2183,13 @@ h6,
     background: color-mix(in srgb, var(--ui-accent) 55%, transparent);
   }
 
-  /* Campaign creator + Reports — elevated card surfaces (scoped shells) */
+  /* Campaign creator + Reports + Dashboard — elevated card surfaces (scoped shells) */
   [data-campaign-creator-shell],
-  [data-reports-shell] {
+  [data-creator-modal-shell],
+  [data-agency-brain-shell],
+  [data-reports-shell],
+  [data-dashboard-shell],
+  [data-admin-shell] {
     --creator-card-bg: #ffffff;
     --creator-card-bg-inset: #eef2f6;
     --creator-card-border: rgba(15, 23, 42, 0.11);
@@ -2178,9 +2197,17 @@ h6,
 
   /* Light mode — elevated card surfaces; inactive stepper/choice cards use muted purple */
   :root:not([data-theme="dark"]) [data-campaign-creator-shell],
+  :root:not([data-theme="dark"]) [data-creator-modal-shell],
+  :root:not([data-theme="dark"]) [data-agency-brain-shell],
   :root:not([data-theme="dark"]) [data-reports-shell],
+  :root:not([data-theme="dark"]) [data-dashboard-shell],
+  :root:not([data-theme="dark"]) [data-admin-shell],
   [data-theme="light"] [data-campaign-creator-shell],
-  [data-theme="light"] [data-reports-shell] {
+  [data-theme="light"] [data-creator-modal-shell],
+  [data-theme="light"] [data-agency-brain-shell],
+  [data-theme="light"] [data-reports-shell],
+  [data-theme="light"] [data-dashboard-shell],
+  [data-theme="light"] [data-admin-shell] {
     --creator-card-bg: #ffffff;
     --creator-card-bg-inset: #e8edf3;
     --creator-card-border: rgba(15, 23, 42, 0.12);
@@ -2193,7 +2220,11 @@ h6,
 
   /* Dark mode — violet accent (global); inactive stepper/choice cards use neutral bar tone */
   [data-theme="dark"] [data-campaign-creator-shell],
-  [data-theme="dark"] [data-reports-shell] {
+  [data-theme="dark"] [data-creator-modal-shell],
+  [data-theme="dark"] [data-agency-brain-shell],
+  [data-theme="dark"] [data-reports-shell],
+  [data-theme="dark"] [data-dashboard-shell],
+  [data-theme="dark"] [data-admin-shell] {
     --creator-card-bg: #161922;
     --creator-card-bg-inset: #121820;
     --creator-card-border: rgba(255, 255, 255, 0.09);
@@ -2202,6 +2233,16 @@ h6,
     --creator-choice-inactive-border: var(--border-color);
     --creator-choice-inactive-text: var(--text-dimmer);
     --creator-choice-inactive-icon: var(--text-dimmer);
+  }
+
+  [data-reports-shell] .report-pdf-kpi {
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
+  }
+
+  [data-reports-shell] .report-pdf-chart-card {
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg, var(--surface-card));
   }
 
   [data-reports-shell] .report-kpi-spark {
@@ -2620,11 +2661,14 @@ h6,
   }
 
   .campaign-creator-budget-choice-card--selected {
-    @apply border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] shadow-[0_0_0_1px_var(--ui-accent-border)];
+    @apply border-[var(--ui-accent)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-[var(--text-main)];
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--ui-accent) 38%, transparent),
+      0 0 18px -5px color-mix(in srgb, var(--ui-accent) 22%, transparent);
   }
 
   .campaign-creator-budget-choice-card--unselected {
-    @apply border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] hover:border-[var(--ui-accent-border)] hover:bg-[var(--ui-accent-hover)];
+    @apply border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg,var(--surface-card))] hover:border-[var(--ui-accent-border)] hover:bg-[color-mix(in_srgb,var(--ui-accent-muted)_28%,var(--creator-card-bg,var(--surface-card)))];
   }
 
   .campaign-creator-budget-choice-card__check {
@@ -2659,7 +2703,7 @@ h6,
   }
 
   .campaign-creator-budget-choice-card__icon--unselected {
-    @apply bg-[var(--creator-card-bg,var(--surface-card))] text-[var(--ui-accent)];
+    @apply bg-[var(--ui-accent-muted)] text-[var(--ui-accent)];
   }
 
   .campaign-creator-budget-choice-card__label {
@@ -3851,6 +3895,33 @@ h6,
   color: var(--text-main);
 }
 
+.marketing-ds-root[data-theme="dark"] {
+  --creator-card-bg: #1d2630;
+  --creator-card-bg-inset: #141c26;
+  --creator-card-border: rgba(255, 255, 255, 0.1);
+}
+
+.marketing-ds-root .marketing-form-input {
+  @apply w-full rounded-xl border px-3 py-2 text-sm transition outline-none focus:ring-2;
+  border-color: var(--border-color);
+  background: var(--surface-card);
+  color: var(--text-main);
+}
+
+.marketing-ds-root .marketing-form-input:focus {
+  border-color: var(--ui-accent);
+  --tw-ring-color: var(--ui-accent-ring);
+}
+
+.marketing-ds-root .marketing-link-accent {
+  @apply font-medium transition;
+  color: var(--ui-accent);
+}
+
+.marketing-ds-root .marketing-link-accent:hover {
+  color: color-mix(in srgb, var(--ui-accent) 85%, white);
+}
+
 .marketing-ds-root .marketing-section {
   @apply border-b border-[var(--border-color)] px-4 py-16 sm:px-6 sm:py-20;
 }
@@ -3941,20 +4012,82 @@ h6,
   }
 }
 
-/* ─── Orion Agency logo (white_logo.png) ─── */
+/* ─── Orion Agency logo (brand/white_logo.png) ─── */
 .orion-logo {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
+  min-width: 0;
 }
 
 .orion-logo--icon-only {
-  justify-content: center;
+  width: var(--orion-logo-icon-size, 36px);
+  height: var(--orion-logo-icon-size, 36px);
+  flex-shrink: 0;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+/*
+ * Sidebar logo crops — white_logo.png is 1536×1024 with large transparent padding.
+ * Opaque bounds (from asset analysis): wordmark 559×188 @ (504,409), icon 182×188 @ (504,409).
+ */
+.orion-logo--sidebar {
+  --orion-sidebar-mark-height: 2.125rem; /* 34px visible wordmark height (~15% smaller) */
+  --orion-wordmark-aspect: calc(559 / 188);
+  height: var(--orion-sidebar-mark-height);
+  width: calc(var(--orion-sidebar-mark-height) * var(--orion-wordmark-aspect));
+  overflow: hidden;
+  display: inline-flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: calc(100% - 2.25rem);
+}
+
+.orion-logo--sidebar .orion-logo__image {
+  --orion-sidebar-image-height: calc(var(--orion-sidebar-mark-height) / (188 / 1024));
+  height: var(--orion-sidebar-image-height);
+  width: auto;
+  max-width: none;
+  margin-top: calc(var(--orion-sidebar-image-height) * -409 / 1024);
+  margin-left: calc(var(--orion-sidebar-image-height) * -504 / 1024);
+}
+
+/* Collapsed sidebar — crop to purple icon only (182×188), no wordmark fragments. */
+.orion-logo--sidebar-collapsed.orion-logo--icon-only {
+  --orion-sidebar-icon-size: 2.125rem; /* 34px, proportional to expanded wordmark */
+  --orion-icon-aspect: calc(182 / 188);
+  width: calc(var(--orion-sidebar-icon-size) * var(--orion-icon-aspect));
+  height: var(--orion-sidebar-icon-size);
+  overflow: hidden;
+  position: relative;
+  justify-content: flex-start;
+}
+
+.orion-logo--sidebar-collapsed.orion-logo--icon-only .orion-logo__image {
+  --orion-sidebar-image-height: calc(var(--orion-sidebar-icon-size) / (188 / 1024));
+  position: absolute;
+  height: var(--orion-sidebar-image-height);
+  width: auto;
+  max-width: none;
+  top: calc(var(--orion-sidebar-image-height) * -409 / 1024);
+  left: calc(var(--orion-sidebar-image-height) * -504 / 1024);
+  object-fit: unset;
+  object-position: unset;
 }
 
 .orion-logo__image {
   display: block;
   max-width: 100%;
   object-fit: contain;
+}
+
+.orion-logo--icon-only .orion-logo__image {
+  height: 100%;
+  width: auto;
+  max-width: none;
+  object-fit: cover;
+  object-position: left center;
 }
 

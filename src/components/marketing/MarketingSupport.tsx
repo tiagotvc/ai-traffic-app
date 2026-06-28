@@ -49,14 +49,14 @@ export function MarketingSupport() {
           email={LEGAL_CONTACT.supportEmail}
           note={`${locale === "en" ? LEGAL_CONTACT.supportResponseEn : LEGAL_CONTACT.supportResponse} ${locale === "en" ? LEGAL_CONTACT.supportHoursEn : LEGAL_CONTACT.supportHours}`}
         />
-        <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-300">
+        <article className="marketing-card p-5">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
             <MapPin className="h-5 w-5" />
           </span>
-          <h3 className="mt-3 font-heading text-sm font-semibold text-white">{t("supportLocationTitle")}</h3>
-          <p className="mt-2 text-sm text-violet-200/70">{LEGAL_CONTACT.companyLocation}</p>
-          <p className="mt-3 text-xs text-violet-200/50">
-            <Link href="/data-deletion" className="font-medium text-amber-400 hover:text-amber-300">
+          <h3 className="mt-3 font-heading text-sm font-semibold text-[var(--text-main)]">{t("supportLocationTitle")}</h3>
+          <p className="mt-2 text-sm text-[var(--text-dim)]">{LEGAL_CONTACT.companyLocation}</p>
+          <p className="mt-3 text-xs text-[var(--text-dimmer)]">
+            <Link href="/data-deletion" className="marketing-link-accent">
               {t("supportDataDeletionLink")}
             </Link>
           </p>
@@ -65,27 +65,27 @@ export function MarketingSupport() {
 
       <MarketingContentCard>
         <MarketingContentSection title={t("supportFormTitle")}>
-          <p className="mb-4 text-sm text-violet-200/70">{t("supportFormHint")}</p>
+          <p className="mb-4 text-sm text-[var(--text-dim)]">{t("supportFormHint")}</p>
           <form onSubmit={submitForm} className="grid gap-3 sm:grid-cols-2">
             <Field label={t("supportFormName")} value={form.name} onChange={(v) => setForm((s) => ({ ...s, name: v }))} required />
             <Field label={t("supportFormEmail")} type="email" value={form.email} onChange={(v) => setForm((s) => ({ ...s, email: v }))} required />
             <Field label={t("supportFormCompany")} value={form.company} onChange={(v) => setForm((s) => ({ ...s, company: v }))} className="sm:col-span-2" />
             <Field label={t("supportFormSubject")} value={form.subject} onChange={(v) => setForm((s) => ({ ...s, subject: v }))} className="sm:col-span-2" required />
             <label className="sm:col-span-2 block">
-              <span className="mb-1 block text-xs font-medium text-violet-200/80">{t("supportFormMessage")}</span>
+              <span className="mb-1 block text-xs font-medium text-[var(--text-dim)]">{t("supportFormMessage")}</span>
               <textarea
                 required
                 rows={4}
                 value={form.message}
                 onChange={(e) => setForm((s) => ({ ...s, message: e.target.value }))}
-                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none ring-amber-400/30 focus:ring-2"
+                className="marketing-form-input"
               />
             </label>
             <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
               <button
                 type="submit"
                 disabled={status === "sending"}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-5 py-2.5 text-sm font-bold text-[#0f1419] shadow-lg shadow-amber-500/20 disabled:opacity-60"
+                className="ui-btn-accent inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
               >
                 <Send className="h-4 w-4" />
                 {status === "sending" ? t("supportFormSending") : t("supportFormSubmit")}
@@ -107,17 +107,17 @@ export function MarketingSupport() {
             {faqs.map((faq, index) => {
               const open = openFaq === index;
               return (
-                <div key={faq.question} className="overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                <div key={faq.question} className="marketing-card overflow-hidden p-0">
                   <button
                     type="button"
                     onClick={() => setOpenFaq(open ? null : index)}
                     className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
                   >
-                    <span className="text-sm font-medium text-white">{faq.question}</span>
-                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-violet-300/70 transition", open && "rotate-180")} />
+                    <span className="text-sm font-medium text-[var(--text-main)]">{faq.question}</span>
+                    <ChevronDown className={cn("h-4 w-4 shrink-0 text-[var(--text-dim)] transition", open && "rotate-180")} />
                   </button>
                   {open ? (
-                    <div className="border-t border-white/10 px-4 py-3 text-sm leading-relaxed text-violet-200/75">{faq.answer}</div>
+                    <div className="border-t border-[var(--border-color)] px-4 py-3 text-sm leading-relaxed text-[var(--text-dim)]">{faq.answer}</div>
                   ) : null}
                 </div>
               );
@@ -126,7 +126,7 @@ export function MarketingSupport() {
         </MarketingContentSection>
       </MarketingContentCard>
 
-      <p className="text-center text-sm text-violet-200/65">{t("supportClosing")}</p>
+      <p className="text-center text-sm text-[var(--text-dim)]">{t("supportClosing")}</p>
     </MarketingContentPage>
   );
 }
@@ -151,19 +151,19 @@ function ContactCard({
   linkLabel?: string;
 }) {
   return (
-    <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+    <article className="marketing-card p-5">
       <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-xl", iconClass)}>
         <Icon className="h-5 w-5" />
       </span>
-      <h3 className="mt-3 font-heading text-sm font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm text-violet-200/70">{body}</p>
-      <a href={`mailto:${email}`} className="mt-3 inline-block text-sm font-semibold text-amber-400 hover:text-amber-300">
+      <h3 className="mt-3 font-heading text-sm font-semibold text-[var(--text-main)]">{title}</h3>
+      <p className="mt-2 text-sm text-[var(--text-dim)]">{body}</p>
+      <a href={`mailto:${email}`} className="marketing-link-accent mt-3 inline-block text-sm font-semibold">
         {email}
       </a>
-      {note ? <p className="mt-2 text-xs text-violet-200/50">{note}</p> : null}
+      {note ? <p className="mt-2 text-xs text-[var(--text-dimmer)]">{note}</p> : null}
       {linkHref && linkLabel ? (
         <p className="mt-2">
-          <Link href={linkHref} className="text-xs font-medium text-amber-400 hover:text-amber-300">
+          <Link href={linkHref} className="marketing-link-accent text-xs font-medium">
             {linkLabel}
           </Link>
         </p>
@@ -189,13 +189,13 @@ function Field({
 }) {
   return (
     <label className={className}>
-      <span className="mb-1 block text-xs font-medium text-violet-200/80">{label}</span>
+      <span className="mb-1 block text-xs font-medium text-[var(--text-dim)]">{label}</span>
       <input
         type={type}
         required={required}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none ring-amber-400/30 focus:ring-2"
+        className="marketing-form-input"
       />
     </label>
   );

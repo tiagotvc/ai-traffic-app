@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { ConfidencePill } from "@/components/agency-brain/insights/ConfidencePill";
 import { EvidenceSourcesRow } from "@/components/agency-brain/insights/EvidenceSources";
+import { DsAccentOutlineButton } from "@/design-system";
 import type { ImpactLevel, InsightLearning } from "@/lib/agency-brain/insights/types";
 import { cn } from "@/lib/cn";
 
@@ -49,54 +50,30 @@ export function LearningFeedCard({
 
   return (
     <div
-      className="animate-fade-up cursor-pointer overflow-hidden rounded-xl border transition-all duration-200"
-      style={{
-        background: "var(--surface-card)",
-        borderColor: expanded ? "#FACC15" : "var(--border-color)",
-        boxShadow: expanded ? "0 0 0 1px rgba(250,204,21,0.25), 0 8px 24px rgba(0,0,0,0.12)" : "none"
-      }}
+      className={cn(
+        "campaign-creator-card campaign-creator-card--compact animate-fade-up cursor-pointer overflow-hidden p-0 transition-all duration-200",
+        expanded && "border-[var(--ui-accent-border)] shadow-[0_0_0_1px_var(--ui-accent-border),0_8px_24px_rgba(0,0,0,0.08)]"
+      )}
       onClick={handleToggle}
-      onMouseEnter={(e) => {
-        if (!expanded) {
-          e.currentTarget.style.borderColor = "rgba(250,204,21,0.4)";
-          e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!expanded) {
-          e.currentTarget.style.borderColor = "var(--border-color)";
-          e.currentTarget.style.boxShadow = "none";
-        }
-      }}
     >
       <div
         className="h-0.5 w-full"
         style={{
           background: expanded
-            ? "linear-gradient(90deg,#FACC15,#f5a623)"
+            ? "linear-gradient(90deg, var(--ui-accent), color-mix(in srgb, var(--ui-accent) 40%, transparent))"
             : `linear-gradient(90deg, ${imp.color}66, transparent 70%)`
         }}
       />
 
-      <div className="px-5 py-4">
+      <div className="px-4 py-3.5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <div className="mb-2.5 flex flex-wrap items-center gap-2">
-              <span
-                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest"
-                style={{
-                  background: "rgba(124,58,237,0.10)",
-                  color: "#7c3aed",
-                  borderColor: "rgba(124,58,237,0.22)"
-                }}
-              >
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="ds-table-compact-badge ds-table-compact-badge--accent">
                 {t("badgeLearning")}
               </span>
               {isSuggested ? (
-                <span
-                  className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase"
-                  style={{ color: "#d97706", background: "rgba(217,119,6,0.10)", borderColor: "rgba(217,119,6,0.25)" }}
-                >
+                <span className="ds-table-compact-badge ds-table-compact-badge--neutral">
                   {t("badgeSuggested")}
                 </span>
               ) : (
@@ -115,38 +92,31 @@ export function LearningFeedCard({
               </span>
             </div>
 
-            <h2
-              className="mb-1.5 text-sm font-semibold leading-snug"
-              style={{ color: "var(--text-main)", fontFamily: "var(--font-heading)" }}
-            >
+            <h2 className="mb-1.5 font-heading text-sm font-semibold leading-snug text-[var(--text-main)]">
               {learning.title}
             </h2>
-            <p className="text-sm leading-relaxed" style={{ color: "var(--text-dim)" }}>
-              {learning.description}
-            </p>
+            <p className="text-sm leading-relaxed text-[var(--text-dim)]">{learning.description}</p>
           </div>
 
           <svg
-            className={cn("mt-0.5 h-4 w-4 shrink-0 transition-transform duration-200", expanded && "rotate-90")}
+            className={cn(
+              "mt-0.5 h-4 w-4 shrink-0 transition-transform duration-200",
+              expanded && "rotate-90 text-[var(--ui-accent)]"
+            )}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
-            style={{ color: expanded ? "#FACC15" : "var(--text-dimmer)" }}
+            style={{ color: expanded ? undefined : "var(--text-dimmer)" }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </div>
 
-        <div className="mt-3.5 flex flex-wrap items-center gap-4">
+        <div className="mt-3 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs" style={{ color: "var(--text-dimmer)" }}>
-              {t("confidenceLabel")}
-            </span>
-            <span
-              className="text-xs font-bold"
-              style={{ color: "var(--text-main)", fontFamily: "var(--font-heading)" }}
-            >
+            <span className="text-xs text-[var(--text-dimmer)]">{t("confidenceLabel")}</span>
+            <span className="font-heading text-xs font-bold text-[var(--text-main)]">
               {learning.confidenceScore}%
             </span>
             <ConfidencePill score={learning.confidenceScore} variant="bar" />
@@ -157,12 +127,7 @@ export function LearningFeedCard({
               {learning.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded-full border px-2 py-0.5 text-[11px]"
-                  style={{
-                    background: "rgba(250,204,21,0.07)",
-                    color: "var(--ui-accent)",
-                    borderColor: "rgba(250,204,21,0.18)"
-                  }}
+                  className="rounded-full border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-2 py-0.5 text-[11px] text-[var(--ui-accent)]"
                 >
                   {tag}
                 </span>
@@ -171,10 +136,7 @@ export function LearningFeedCard({
           ) : null}
         </div>
 
-        <p
-          className="mt-3 border-t pt-3 text-xs leading-relaxed"
-          style={{ color: "var(--text-dimmer)", borderColor: "var(--border-color)" }}
-        >
+        <p className="mt-3 border-t border-[var(--creator-card-border)] pt-3 text-xs leading-relaxed text-[var(--text-dimmer)]">
           {learning.evidenceSummary}
         </p>
 
@@ -187,23 +149,12 @@ export function LearningFeedCard({
 
       {expanded ? (
         <div
-          className="flex items-center gap-2.5 border-t px-5 py-3.5"
-          style={{ borderColor: "rgba(250,204,21,0.2)", background: "rgba(250,204,21,0.04)" }}
+          className="flex items-center gap-2 border-t border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-4 py-3"
           onClick={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
-            onClick={() => onTimeline?.()}
-            className="flex items-center gap-1.5 rounded-lg border px-4 py-2 text-xs font-semibold transition-all hover:brightness-110"
-            style={{
-              background: "var(--surface-bg)",
-              borderColor: "#f5a623",
-              color: "#f5a623",
-              fontFamily: "var(--font-heading)"
-            }}
-          >
+          <DsAccentOutlineButton onClick={() => onTimeline?.()} className="px-3 py-1.5">
             {t("viewTimeline")}
-          </button>
+          </DsAccentOutlineButton>
 
           {isSuggested ? (
             <>
@@ -211,7 +162,7 @@ export function LearningFeedCard({
                 type="button"
                 disabled={busy}
                 onClick={() => onApprove?.(learning)}
-                className="ui-btn-primary px-4 py-2 text-xs disabled:opacity-60"
+                className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
               >
                 {t("approveLearning")}
               </button>
@@ -219,7 +170,7 @@ export function LearningFeedCard({
                 type="button"
                 disabled={busy}
                 onClick={() => onReject?.(learning)}
-                className="ui-btn-secondary px-4 py-2 text-xs disabled:opacity-60"
+                className="ui-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
               >
                 {t("dismissLearning")}
               </button>
@@ -229,7 +180,7 @@ export function LearningFeedCard({
               type="button"
               disabled={busy}
               onClick={() => onGenerateHypothesis?.(learning)}
-              className="ui-btn-brand px-4 py-2 text-xs disabled:opacity-60"
+              className="ui-btn-accent px-3 py-1.5 text-xs disabled:opacity-60"
             >
               {t("generateHypothesis")}
             </button>

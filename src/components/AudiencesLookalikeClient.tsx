@@ -364,8 +364,8 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
       />
       {useUxChrome ? (
         <PageToolbar
-          eyebrow="Públicos"
-          icon={<Users size={16} style={{ color: "var(--ui-accent)" }} />}
+          eyebrow={t("breadcrumbList")}
+          icon={<Users size={16} aria-hidden />}
           title={t("title")}
           subtitle={t("subtitle")}
           search={

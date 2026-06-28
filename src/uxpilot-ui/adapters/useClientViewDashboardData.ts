@@ -12,6 +12,7 @@ import type { PeriodState } from "@/components/PeriodFilter";
 export function useClientViewDashboardData() {
   const locale = useLocale();
   const tMetrics = useTranslations("metrics");
+  const tDash = useTranslations("dashboard");
 
   const metricLabel = useMemo(
     () => (key: MetricKey) => tMetrics(key),
@@ -36,6 +37,8 @@ export function useClientViewDashboardData() {
     ageBreakdownLoading: false,
     campaignSnapshots: [],
     campaignsLoading: false,
+    adLibraryInsights: null,
+    adLibraryLoading: false,
     chartMetrics: DEFAULT_DASHBOARD_CHART_METRICS,
     toggleChartMetric: () => {},
     dashboardLayout: DEFAULT_DASHBOARD_LAYOUT,
@@ -50,6 +53,7 @@ export function useClientViewDashboardData() {
     metricLabel,
     chartMetricLabels: {} as Record<MetricKey, string>,
     vsLabel: "",
+    deltaNewLabel: tDash("deltaNew"),
     chartSubtitle: "",
     formatMetricValue: (key: MetricKey, value: number) => formatMetricValue(key, value, locale)
   };

@@ -72,7 +72,7 @@ export function LoginProductShowcase({
                 animationDelay: animate ? `${i * 80}ms` : undefined,
                 background:
                   i === 5
-                    ? "linear-gradient(180deg, #f5a623, #d4880a)"
+                    ? "linear-gradient(180deg, var(--ui-accent), color-mix(in srgb, var(--ui-accent) 70%, #4338ca))"
                     : "linear-gradient(180deg, rgba(124,58,237,0.9), rgba(79,70,229,0.7))"
               }}
             />
@@ -88,13 +88,13 @@ export function LoginProductShowcase({
               <div className="truncate text-[10px] font-semibold text-white">{copy.brain}</div>
               <div className="truncate text-[9px] text-violet-200/75">{copy.brainHint}</div>
             </div>
-            <Sparkles className="h-3 w-3 shrink-0 text-amber-300" />
+            <Sparkles className="h-3 w-3 shrink-0 text-[var(--ui-accent)]" />
           </div>
 
           {!compact ? (
-            <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-2.5 py-1.5">
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-2.5 py-1.5">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[9px] font-medium text-amber-200/80">{copy.creative}</div>
+                <div className="truncate text-[9px] font-medium text-[var(--text-dim)]">{copy.creative}</div>
                 <div className="truncate text-[10px] font-semibold text-white">{copy.creativeExample}</div>
               </div>
               <span className="shrink-0 rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-violet-100">

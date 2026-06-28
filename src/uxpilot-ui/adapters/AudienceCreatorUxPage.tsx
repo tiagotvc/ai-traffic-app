@@ -1,25 +1,39 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import type { LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   Activity,
   AlertCircle,
-  ArrowLeft,
+  Building2,
   Check,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Facebook,
   Globe,
   Instagram,
+  MapPin,
   Sparkles,
+  Tag,
   UserCheck,
-  Users
+  Users,
+  X
 } from "lucide-react";
 
 import { TosBanner } from "@/components/audiences/create/TosBanner";
 import type { AudienceCreateContext, AudienceOptions } from "@/components/audiences/create/types";
+import {
+  ChoiceCardCheck,
+  MultiSelectChoiceCard
+} from "@/components/campaign-creator/BudgetChoiceCard";
+import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
+import { FilterTextField } from "@/components/FilterTextField";
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/cn";
+import { UxHorizontalStepper, UxScoreItem } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 
 type AudienceStepKey = "type" | "details" | "rules" | "review";
 type AudienceTypeChoice = "custom" | "lookalike" | "saved" | "";
@@ -43,82 +57,93 @@ type Props = {
   onBack: () => void;
 };
 
-function AudienceStepItem({
-  stepNum,
+function AudienceChoiceRow({
+  selected,
   label,
-  sublabel,
-  active,
-  completed,
-  onClick
+  description,
+  icon: Icon,
+  onSelect
 }: {
-  stepNum: number;
+  selected: boolean;
   label: string;
-  sublabel: string;
-  active: boolean;
-  completed: boolean;
-  onClick: () => void;
+  description?: string;
+  icon?: LucideIcon;
+  onSelect: () => void;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="relative flex w-full items-start gap-3 px-1 py-3 text-left transition-all"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row w-full",
+        selected
+          ? "campaign-creator-budget-choice-card--selected"
+          : "campaign-creator-budget-choice-card--unselected"
+      )}
     >
-      <div
-        className="z-10 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-all"
-        style={{
-          background: completed ? "rgba(245,166,35,0.12)" : active ? "#f5a623" : "var(--surface-bg)",
-          border: completed ? "2px solid #f5a623" : active ? "2px solid #f5a623" : "2px solid var(--border-color)",
-          boxShadow: active ? "0 0 0 4px rgba(245,166,35,0.12)" : "none"
-        }}
-      >
-        {completed ? (
-          <Check size={13} style={{ color: "#f5a623" }} strokeWidth={2.5} />
-        ) : (
-          <span style={{ color: active ? "#0f1419" : "var(--text-dimmer)", fontSize: 11, fontWeight: 700 }}>
-            {stepNum}
-          </span>
-        )}
-      </div>
-      <div className="min-w-0 flex-1 pt-1.5">
-        <p
-          className="truncate font-heading text-sm font-semibold leading-tight"
-          style={{ color: active ? "var(--amber)" : completed ? "var(--text-main)" : "var(--text-dim)" }}
+      <ChoiceCardCheck selected={selected} />
+      {Icon ? (
+        <span
+          className={cn(
+            "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline",
+            selected
+              ? "campaign-creator-budget-choice-card__icon--selected"
+              : "campaign-creator-budget-choice-card__icon--unselected"
+          )}
+          aria-hidden
         >
-          {label}
-        </p>
-        <p className="mt-0.5 truncate font-body text-[11px]" style={{ color: "var(--text-dimmer)" }}>
-          {sublabel}
-        </p>
-      </div>
+          <Icon size={18} strokeWidth={1.75} />
+        </span>
+      ) : null}
+      <span className="campaign-creator-budget-choice-card__content">
+        <span className="campaign-creator-budget-choice-card__title-row">
+          <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
+            {label}
+          </span>
+        </span>
+        {description ? (
+          <span className="campaign-creator-budget-choice-card__description">{description}</span>
+        ) : null}
+      </span>
     </button>
-  );
-}
-
-function AudienceFormCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="rounded-2xl p-5"
-      style={{
-        background: "var(--surface-card)",
-        border: "1px solid var(--border-color)",
-        boxShadow: "0 1px 6px rgba(0,0,0,0.05)"
-      }}
-    >
-      {children}
-    </div>
   );
 }
 
 function AudienceReviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <span className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-        {label}
-      </span>
-      <span className="text-right font-body text-xs font-semibold" style={{ color: "var(--text-main)" }}>
-        {value}
-      </span>
+    <div className="flex items-start justify-between gap-4 border-b border-[color-mix(in_srgb,var(--border-color)_60%,transparent)] py-2.5 last:border-b-0">
+      <span className="campaign-creator-review-summary-row__label">{label}</span>
+      <span className="text-right text-sm font-medium text-[var(--text-main)]">{value}</span>
+    </div>
+  );
+}
+
+function CreatorNumberField({
+  label,
+  value,
+  onChange,
+  min,
+  max
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="font-body text-xs text-[var(--text-dim)]">{label}</label>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-9 w-full rounded-lg border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-3 font-body text-sm text-[var(--text-main)] outline-none transition-all focus:border-[var(--ui-accent)]"
+      />
     </div>
   );
 }
@@ -129,7 +154,6 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
   const [step, setStep] = useState<AudienceStepKey>("type");
   const [typeChoice, setTypeChoice] = useState<AudienceTypeChoice>("");
   const [audienceName, setAudienceName] = useState("");
-  const [clientOpen, setClientOpen] = useState(false);
   const [source, setSource] = useState("instagram");
   const [window_, setWindow_] = useState("30");
   const [country, setCountry] = useState("BR");
@@ -171,6 +195,22 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
       setSeedAudienceId(seedAudiences[0]?.id ?? "");
     }
   }, [seedAudiences, seedAudienceId]);
+
+  useEffect(() => {
+    const shell = document.querySelector<HTMLElement>("[data-campaign-creator-shell]")?.closest("main");
+    if (!shell) return;
+    const prevOverflow = shell.style.overflow;
+    const prevDisplay = shell.style.display;
+    const prevFlexDirection = shell.style.flexDirection;
+    shell.style.overflow = "hidden";
+    shell.style.display = "flex";
+    shell.style.flexDirection = "column";
+    return () => {
+      shell.style.overflow = prevOverflow;
+      shell.style.display = prevDisplay;
+      shell.style.flexDirection = prevFlexDirection;
+    };
+  }, []);
 
   const typeLabel =
     typeChoice === "custom"
@@ -354,468 +394,287 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
     window_
   ]);
 
-  const amberBtn = (enabled: boolean) => ({
-    background: enabled ? "linear-gradient(135deg, #f5a623, #e8920d)" : "rgba(245,166,35,0.3)",
-    color: enabled ? "#0f1419" : "rgba(15,20,25,0.4)",
-    boxShadow: enabled ? "0 4px 14px rgba(245,166,35,0.3)" : "none",
-    cursor: enabled ? ("pointer" as const) : ("not-allowed" as const)
-  });
+  const stepperSteps = AUDIENCE_STEPS.map((s, i) => ({
+    number: i + 1,
+    label: s.label,
+    disabled: currentIdx < i
+  }));
+
+  const tipText =
+    typeChoice === "lookalike"
+      ? "Públicos lookalike de 1% são mais precisos. Combine com exclusões para evitar duplicação."
+      : typeChoice === "custom"
+        ? "Janelas de 30–60 dias tendem a equilibrar tamanho e relevância para a maioria dos objetivos."
+        : typeChoice === "saved"
+          ? "Interesses muito amplos podem reduzir a eficiência. Prefira 3–5 interesses específicos."
+          : "Escolha o tipo de público para ver dicas personalizadas.";
+
+  const scoreCircumference = 2 * Math.PI * 32;
+  const scoreOffset = scoreCircumference - (score / 100) * scoreCircumference;
 
   return (
     <div
-      className="-mx-4 flex min-h-[calc(100vh-5rem)] flex-col overflow-hidden md:-mx-6"
+      data-campaign-creator-shell
+      className="app-shell-breakout flex min-h-0 flex-1 flex-col overflow-hidden"
       style={{ background: "var(--surface-bg)" }}
     >
-      <header
-        className="sticky top-0 z-20 flex w-full shrink-0 items-center gap-3 border-b px-6 py-3"
-        style={{
-          background: "var(--surface-card)",
-          borderColor: "var(--border-color)",
-          boxShadow: "0 1px 0 var(--border-color)"
-        }}
-      >
-        <div className="min-w-0 flex-1">
-          <p className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-            <Link href="/audiences" className="hover:underline" style={{ color: "var(--text-dimmer)" }}>
-              Públicos
-            </Link>
-            {" › "}
-            <span style={{ color: "var(--text-dim)" }}>Criar novo público</span>
-          </p>
-          <div className="mt-0.5 flex items-center gap-2">
-            <h1 className="font-heading text-xl font-bold" style={{ color: "var(--text-main)" }}>
-              Criador de públicos
-            </h1>
-            <span
-              className="rounded px-2 py-0.5 font-heading text-xs font-semibold"
-              style={{
-                background: "rgba(245,166,35,0.15)",
-                color: "var(--amber)",
-                border: "1px solid rgba(245,166,35,0.3)"
-              }}
-            >
-              Rascunho
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-2 rounded-lg border px-4 py-1.5 font-heading text-sm font-semibold transition-all hover:opacity-80"
-          style={{
-            borderColor: "var(--border-hover)",
-            color: "var(--text-main)",
-            background: "var(--surface-card)"
-          }}
-        >
-          <ArrowLeft size={14} /> Voltar
-        </button>
-      </header>
-
-      <div className="flex min-h-0 flex-1 overflow-hidden" style={{ background: "var(--surface-bg)" }}>
-        {/* LEFT */}
-        <div
-          className="hidden w-56 shrink-0 overflow-y-auto border-r px-4 py-6 lg:block"
-          style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
-        >
-          <p
-            className="mb-5 px-1 font-heading text-[10px] font-bold tracking-widest"
-            style={{ color: "var(--text-dimmer)" }}
-          >
-            ETAPAS
-          </p>
-          <div className="relative flex flex-col gap-0">
-            <div
-              className="absolute bottom-8 left-[18px] top-8 w-px"
-              style={{ background: "var(--border-color)" }}
-            />
-            {AUDIENCE_STEPS.map((s, i) => (
-              <AudienceStepItem
-                key={s.id}
-                stepNum={i + 1}
-                label={s.label}
-                sublabel={s.sublabel}
-                active={step === s.id}
-                completed={STEP_ORDER.indexOf(step) > i}
-                onClick={() => {
-                  if (STEP_ORDER.indexOf(step) >= i) setStep(s.id);
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="mt-8 px-1">
-            <p
-              className="mb-2 font-heading text-[10px] font-bold tracking-widest"
-              style={{ color: "var(--text-dimmer)" }}
-            >
-              CLIENTE
-            </p>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setClientOpen(!clientOpen)}
-                className="flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left font-body text-xs transition-all"
+      <header className="campaign-creator-header shrink-0 px-4 pb-3 pt-3 lg:pl-8 lg:pr-4 lg:pb-4 lg:pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <PageTitleBlock
+            className="flex-1"
+            title="Criador de públicos"
+            subtitle={
+              <>
+                <Link href="/audiences" className="hover:underline">
+                  Públicos
+                </Link>
+                {" › Criar novo público"}
+              </>
+            }
+            titleIcon={<Users size={16} aria-hidden />}
+            badge={
+              <span
+                className="rounded-full px-2.5 py-0.5 font-heading text-[11px] font-semibold lg:text-xs"
                 style={{
-                  background: "var(--surface-bg)",
-                  borderColor: clientOpen ? "#f5a623" : "var(--border-color)",
-                  color: "var(--text-main)"
+                  background: "var(--ui-accent-muted)",
+                  color: "var(--ui-accent)",
+                  border: "1px solid var(--ui-accent-border)"
                 }}
               >
-                <span className="truncate">{selectedClient?.name ?? t("selectClientFirst")}</span>
-                <ChevronDown size={12} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
-              </button>
-              {clientOpen ? (
-                <div
-                  className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border shadow-xl"
-                  style={{ background: "var(--dropdown-bg)", borderColor: "var(--border-color)" }}
-                >
-                  {clients.map((c) => (
-                    <button
-                      key={c.slug}
-                      type="button"
-                      onClick={() => {
-                        onClientChange(c.slug);
-                        setClientOpen(false);
-                      }}
-                      className="w-full px-3 py-2 text-left font-body text-xs transition-colors"
-                      style={{ color: c.slug === clientSlug ? "var(--amber)" : "var(--text-dim)" }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "var(--row-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "";
-                      }}
-                    >
-                      {c.name}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+                Rascunho
+              </span>
+            }
+          />
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Voltar"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-80 lg:h-8 lg:w-8"
+          >
+            <X size={20} strokeWidth={2} className="text-[var(--text-dim)]" />
+          </button>
+        </div>
+      </header>
+
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr] gap-x-8 overflow-x-visible overflow-y-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="campaign-creator-stepper-row col-start-1 row-start-1 flex shrink-0 items-center gap-3 border-b border-[var(--border-color)] py-2 lg:gap-4 lg:py-1.5">
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <div className="campaign-creator-stepper w-full lg:max-w-3xl">
+              <UxHorizontalStepper
+                size="mini"
+                steps={stepperSteps}
+                current={currentIdx + 1}
+                onStepClick={(n) => {
+                  if (currentIdx >= n - 1) setStep(STEP_ORDER[n - 1]!);
+                }}
+              />
             </div>
           </div>
         </div>
 
-        {/* CENTER */}
-        <div className="min-w-0 flex-1 overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
-          <div className="mx-auto max-w-2xl space-y-5 px-8 py-7">
-            <TosBanner
-              clientSlug={ctx.clientSlug}
-              adAccountId={ctx.adAccountId}
-              onBlocked={setTosBlocked}
-            />
+        <main className="campaign-creator-main-scroll relative col-start-1 row-start-2 flex min-h-0 min-w-0 w-full flex-col overflow-y-auto py-3">
+          <div className="campaign-creator-main-scroll__inner mx-auto w-full max-w-xl pb-6">
+            <div className="campaign-creator-section-stack">
+              <TosBanner
+                clientSlug={ctx.clientSlug}
+                adAccountId={ctx.adAccountId}
+                onBlocked={setTosBlocked}
+              />
 
-            {step === "type" ? (
-              <div className="animate-fade-up space-y-5">
-                <div>
-                  <h2 className="mb-1 font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                    Tipo de Público
-                  </h2>
-                  <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                    Selecione a categoria do público que deseja criar.
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  {[
-                    {
-                      id: "custom" as AudienceTypeChoice,
-                      label: "Público Personalizado",
-                      desc: "Baseado em interações com seu perfil, site, app ou lista de clientes.",
-                      icon: Users,
-                      color: "#818cf8"
-                    },
-                    {
-                      id: "lookalike" as AudienceTypeChoice,
-                      label: "Público Semelhante (Lookalike)",
-                      desc: "Encontre pessoas com perfil parecido ao de seus melhores clientes.",
-                      icon: Copy,
-                      color: "#10b981"
-                    },
-                    {
-                      id: "saved" as AudienceTypeChoice,
-                      label: "Público Salvo",
-                      desc: "Segmentação manual por interesses, dados demográficos e comportamentos.",
-                      icon: Globe,
-                      color: "#f59e0b"
-                    }
-                  ].map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setTypeChoice(opt.id)}
-                      className="flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all"
-                      style={{
-                        borderColor: typeChoice === opt.id ? opt.color : "var(--border-color)",
-                        background: typeChoice === opt.id ? `${opt.color}10` : "var(--surface-card)",
-                        boxShadow: typeChoice === opt.id ? `0 0 0 2px ${opt.color}30` : "none"
-                      }}
-                    >
-                      <div
-                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-                        style={{ background: `${opt.color}18`, border: `1px solid ${opt.color}25` }}
-                      >
-                        <opt.icon size={18} style={{ color: opt.color }} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-heading text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                          {opt.label}
-                        </p>
-                        <p className="mt-0.5 font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                          {opt.desc}
-                        </p>
-                      </div>
-                      <div
-                        className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
-                        style={{
-                          borderColor: typeChoice === opt.id ? opt.color : "var(--border-hover)",
-                          background: typeChoice === opt.id ? opt.color : "transparent"
-                        }}
-                      >
-                        {typeChoice === opt.id ? <div className="h-2 w-2 rounded-full bg-white" /> : null}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                <div
-                  className="flex items-start gap-3 rounded-xl px-4 py-3"
-                  style={{ background: "rgba(245,166,35,0.07)", border: "1px solid rgba(245,166,35,0.2)" }}
-                >
-                  <AlertCircle size={15} className="mt-0.5 flex-shrink-0" style={{ color: "#f5a623" }} />
-                  <p className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                    O tipo escolhido define quais configurações estarão disponíveis nas próximas etapas. Você
-                    poderá ajustar os detalhes antes de finalizar.
-                  </p>
-                </div>
-                <div className="flex justify-end pt-2">
-                  <button
-                    type="button"
-                    disabled={!canNext}
-                    onClick={goNext}
-                    className="rounded-xl px-7 py-2.5 font-heading text-sm font-bold transition-all hover:brightness-110 active:scale-95"
-                    style={amberBtn(canNext)}
-                  >
-                    Próximo: Detalhes →
-                  </button>
-                </div>
-              </div>
-            ) : null}
-
-            {step === "details" ? (
-              <div className="animate-fade-up space-y-5">
-                <div>
-                  <h2 className="mb-1 font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                    Detalhes do Público
-                  </h2>
-                  <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                    Dê um nome e configure as opções básicas do público.
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="font-body text-sm font-medium" style={{ color: "var(--text-main)" }}>
-                    Nome do público <span style={{ color: "#f5a623" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: [ENVOLV] [IG] Seguidores 30D"
-                    value={audienceName}
-                    onChange={(e) => setAudienceName(e.target.value)}
-                    className="w-full rounded-xl border px-4 py-3 font-body text-sm outline-none transition-all"
-                    style={{
-                      background: "var(--surface-card)",
-                      borderColor: "var(--border-color)",
-                      color: "var(--text-main)",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = "#f5a623";
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border-color)";
-                    }}
-                  />
-                </div>
-                <AudienceFormCard>
-                  <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                    País / Região
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {["BR", "PT", "US", "ES", "AR", "MX"].map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCountry(c)}
-                        className="rounded-xl border px-4 py-2 font-heading text-sm font-semibold transition-all"
-                        style={{
-                          borderColor: country === c ? "#f5a623" : "var(--border-color)",
-                          background: country === c ? "rgba(245,166,35,0.12)" : "var(--surface-bg)",
-                          color: country === c ? "#f5a623" : "var(--text-dim)"
-                        }}
-                      >
-                        {c}
-                      </button>
-                    ))}
+              {step === "type" ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      Tipo de Público
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">
+                      Selecione a categoria do público que deseja criar.
+                    </p>
                   </div>
-                </AudienceFormCard>
-                {typeChoice === "custom" ? (
-                  <AudienceFormCard>
-                    <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Fonte de dados
-                    </p>
-                    <div className="flex gap-2">
-                      {[
-                        { v: "instagram", label: "Instagram", Icon: Instagram, color: "#f472b6" },
-                        { v: "facebook", label: "Facebook", Icon: Facebook, color: "#818cf8" },
-                        { v: "site", label: "Site (Pixel)", Icon: Globe, color: "#10b981" }
-                      ].map((s) => (
-                        <button
-                          key={s.v}
-                          type="button"
-                          onClick={() => setSource(s.v)}
-                          className="flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 font-body text-xs transition-all"
-                          style={{
-                            borderColor: source === s.v ? s.color : "var(--border-color)",
-                            background: source === s.v ? `${s.color}12` : "var(--surface-bg)",
-                            color: source === s.v ? s.color : "var(--text-dim)"
-                          }}
-                        >
-                          <s.Icon size={13} /> {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  </AudienceFormCard>
-                ) : null}
-                {typeChoice === "lookalike" ? (
-                  <AudienceFormCard>
-                    <p className="mb-1 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Porcentagem de similaridade
-                    </p>
-                    <div className="mt-3 flex gap-2">
-                      {["1", "2", "3", "5", "10"].map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setLookalikePct(p)}
-                          className="flex-1 rounded-xl border py-2.5 font-heading text-sm font-bold transition-all"
-                          style={{
-                            borderColor: lookalikePct === p ? "#10b981" : "var(--border-color)",
-                            background: lookalikePct === p ? "rgba(16,185,129,0.12)" : "var(--surface-bg)",
-                            color: lookalikePct === p ? "#10b981" : "var(--text-dim)"
-                          }}
-                        >
-                          {p}%
-                        </button>
-                      ))}
-                    </div>
-                  </AudienceFormCard>
-                ) : null}
-                {typeChoice === "saved" ? (
-                  <AudienceFormCard>
-                    <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Faixa etária
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                          Idade mínima
-                        </label>
-                        <input
-                          type="number"
-                          min={13}
-                          max={65}
-                          value={ageMin}
-                          onChange={(e) => setAgeMin(e.target.value)}
-                          className="w-full rounded-xl border px-3 py-2 font-body text-sm outline-none"
-                          style={{
-                            background: "var(--surface-bg)",
-                            borderColor: "var(--border-color)",
-                            color: "var(--text-main)"
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                          Idade máxima
-                        </label>
-                        <input
-                          type="number"
-                          min={13}
-                          max={65}
-                          value={ageMax}
-                          onChange={(e) => setAgeMax(e.target.value)}
-                          className="w-full rounded-xl border px-3 py-2 font-body text-sm outline-none"
-                          style={{
-                            background: "var(--surface-bg)",
-                            borderColor: "var(--border-color)",
-                            color: "var(--text-main)"
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <p className="mb-2 mt-4 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Gêneros
-                    </p>
-                    <div className="flex gap-2">
-                      {["Masculino", "Feminino", "Todos"].map((g) => (
-                        <button
-                          key={g}
-                          type="button"
-                          onClick={() => toggleGender(g)}
-                          className="flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2 font-body text-xs transition-all"
-                          style={{
-                            borderColor: genders.includes(g) ? "#f5a623" : "var(--border-color)",
-                            background: genders.includes(g) ? "rgba(245,166,35,0.1)" : "var(--surface-bg)",
-                            color: genders.includes(g) ? "#f5a623" : "var(--text-dim)"
-                          }}
-                        >
-                          {g}
-                        </button>
-                      ))}
-                    </div>
-                  </AudienceFormCard>
-                ) : null}
-                <div className="flex justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={goPrev}
-                    className="flex items-center gap-2 rounded-xl border px-5 py-2.5 font-heading text-sm font-semibold transition-all hover:opacity-80"
-                    style={{
-                      border: "1px solid var(--border-color)",
-                      color: "var(--text-dim)",
-                      background: "var(--surface-card)"
-                    }}
-                  >
-                    <ArrowLeft size={14} /> Voltar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canNext}
-                    onClick={goNext}
-                    className="rounded-xl px-7 py-2.5 font-heading text-sm font-bold transition-all hover:brightness-110 active:scale-95"
-                    style={amberBtn(canNext)}
-                  >
-                    Próximo: Regras →
-                  </button>
-                </div>
-              </div>
-            ) : null}
 
-            {step === "rules" ? (
-              <div className="animate-fade-up space-y-5">
-                <div>
-                  <h2 className="mb-1 font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                    Regras do Público
-                  </h2>
-                  <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                    Defina as ações e comportamentos que qualificam uma pessoa para este público.
-                  </p>
+                  <section className="campaign-creator-card space-y-2">
+                    {[
+                      {
+                        id: "custom" as AudienceTypeChoice,
+                        label: "Público Personalizado",
+                        desc: "Baseado em interações com seu perfil, site, app ou lista de clientes.",
+                        icon: Users
+                      },
+                      {
+                        id: "lookalike" as AudienceTypeChoice,
+                        label: "Público Semelhante (Lookalike)",
+                        desc: "Encontre pessoas com perfil parecido ao de seus melhores clientes.",
+                        icon: Copy
+                      },
+                      {
+                        id: "saved" as AudienceTypeChoice,
+                        label: "Público Salvo",
+                        desc: "Segmentação manual por interesses, dados demográficos e comportamentos.",
+                        icon: Globe
+                      }
+                    ].map((opt) => (
+                      <AudienceChoiceRow
+                        key={opt.id}
+                        selected={typeChoice === opt.id}
+                        label={opt.label}
+                        description={opt.desc}
+                        icon={opt.icon}
+                        onSelect={() => setTypeChoice(opt.id)}
+                      />
+                    ))}
+                  </section>
+
+                  <div className="ui-alert-warning flex items-start gap-3 text-xs">
+                    <AlertCircle size={15} className="mt-0.5 shrink-0" aria-hidden />
+                    <p>
+                      O tipo escolhido define quais configurações estarão disponíveis nas próximas etapas.
+                      Você poderá ajustar os detalhes antes de finalizar.
+                    </p>
+                  </div>
                 </div>
-                {typeChoice === "custom" ? (
-                  <>
-                    <AudienceFormCard>
-                      <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                        Ação de engajamento
-                      </p>
-                      <div className="space-y-2">
+              ) : null}
+
+              {step === "details" ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      Detalhes do Público
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">
+                      Dê um nome e configure as opções básicas do público.
+                    </p>
+                  </div>
+
+                  <section className="campaign-creator-card">
+                    <FilterTextField
+                      creatorField
+                      icon={<Tag size={13} />}
+                      label="Nome do público"
+                      placeholder="Ex: [ENVOLV] [IG] Seguidores 30D"
+                      value={audienceName}
+                      onChange={setAudienceName}
+                    />
+                  </section>
+
+                  <section className="campaign-creator-card space-y-3">
+                    <h3 className="campaign-creator-section-title">País / Região</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {["BR", "PT", "US", "ES", "AR", "MX"].map((c) => (
+                        <MultiSelectChoiceCard
+                          key={c}
+                          selected={country === c}
+                          label={c}
+                          onToggle={() => setCountry(c)}
+                          size="sm"
+                        />
+                      ))}
+                    </div>
+                  </section>
+
+                  {typeChoice === "custom" ? (
+                    <section className="campaign-creator-card space-y-3">
+                      <h3 className="campaign-creator-section-title">Fonte de dados</h3>
+                      <div className="flex flex-wrap gap-2">
+                        <MultiSelectChoiceCard
+                          selected={source === "instagram"}
+                          label="Instagram"
+                          icon={Instagram}
+                          iconInline
+                          onToggle={() => setSource("instagram")}
+                          size="sm"
+                        />
+                        <MultiSelectChoiceCard
+                          selected={source === "facebook"}
+                          label="Facebook"
+                          icon={Facebook}
+                          iconInline
+                          onToggle={() => setSource("facebook")}
+                          size="sm"
+                        />
+                        <MultiSelectChoiceCard
+                          selected={source === "site"}
+                          label="Site (Pixel)"
+                          icon={Globe}
+                          iconInline
+                          onToggle={() => setSource("site")}
+                          size="sm"
+                        />
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {typeChoice === "lookalike" ? (
+                    <section className="campaign-creator-card space-y-3">
+                      <h3 className="campaign-creator-section-title">Porcentagem de similaridade</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {["1", "2", "3", "5", "10"].map((p) => (
+                          <MultiSelectChoiceCard
+                            key={p}
+                            selected={lookalikePct === p}
+                            label={`${p}%`}
+                            onToggle={() => setLookalikePct(p)}
+                            size="sm"
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {typeChoice === "saved" ? (
+                    <section className="campaign-creator-card space-y-4">
+                      <div>
+                        <h3 className="campaign-creator-section-title">Faixa etária</h3>
+                        <div className="mt-3 grid grid-cols-2 gap-3">
+                          <CreatorNumberField
+                            label="Idade mínima"
+                            value={ageMin}
+                            onChange={setAgeMin}
+                            min={13}
+                            max={65}
+                          />
+                          <CreatorNumberField
+                            label="Idade máxima"
+                            value={ageMax}
+                            onChange={setAgeMax}
+                            min={13}
+                            max={65}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="campaign-creator-section-title">Gêneros</h3>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {["Masculino", "Feminino", "Todos"].map((g) => (
+                            <MultiSelectChoiceCard
+                              key={g}
+                              selected={genders.includes(g)}
+                              label={g}
+                              onToggle={() => toggleGender(g)}
+                              size="sm"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </section>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {step === "rules" ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      Regras do Público
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">
+                      Defina as ações e comportamentos que qualificam uma pessoa para este público.
+                    </p>
+                  </div>
+
+                  {typeChoice === "custom" ? (
+                    <>
+                      <section className="campaign-creator-card space-y-2">
+                        <h3 className="campaign-creator-section-title">Ação de engajamento</h3>
                         {[
                           { v: "INSTAGRAM_PROFILE_FOLLOW", label: "Seguiu o perfil do Instagram" },
                           { v: "INSTAGRAM_PROFILE_ENGAGE", label: "Interagiu com o perfil do Instagram" },
@@ -823,391 +682,337 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                           { v: "PURCHASE", label: "Realizou uma compra (Pixel)" },
                           { v: "LEAD", label: "Enviou um formulário de lead" }
                         ].map((opt) => (
-                          <button
+                          <AudienceChoiceRow
                             key={opt.v}
-                            type="button"
-                            onClick={() => setRuleAction(opt.v)}
-                            className="flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all"
-                            style={{
-                              borderColor: ruleAction === opt.v ? "#f5a623" : "var(--border-color)",
-                              background: ruleAction === opt.v ? "rgba(245,166,35,0.07)" : "var(--surface-bg)"
-                            }}
-                          >
-                            <div
-                              className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
-                              style={{
-                                borderColor: ruleAction === opt.v ? "#f5a623" : "var(--border-hover)",
-                                background: ruleAction === opt.v ? "#f5a623" : "transparent"
-                              }}
-                            >
-                              {ruleAction === opt.v ? (
-                                <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                              ) : null}
-                            </div>
-                            <span className="font-body text-sm" style={{ color: "var(--text-main)" }}>
-                              {opt.label}
-                            </span>
-                          </button>
+                            selected={ruleAction === opt.v}
+                            label={opt.label}
+                            onSelect={() => setRuleAction(opt.v)}
+                          />
                         ))}
-                      </div>
-                    </AudienceFormCard>
-                    <AudienceFormCard>
-                      <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                        Janela de tempo
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {["7", "14", "30", "60", "90", "180"].map((d) => (
-                          <button
-                            key={d}
-                            type="button"
-                            onClick={() => setWindow_(d)}
-                            className="min-w-[48px] flex-1 rounded-xl border py-2.5 font-heading text-sm font-bold transition-all"
-                            style={{
-                              borderColor: window_ === d ? "#7c3aed" : "var(--border-color)",
-                              background: window_ === d ? "rgba(124,58,237,0.12)" : "var(--surface-bg)",
-                              color: window_ === d ? "#a78bfa" : "var(--text-dim)"
-                            }}
-                          >
-                            {d}D
-                          </button>
-                        ))}
-                      </div>
-                    </AudienceFormCard>
-                  </>
-                ) : null}
-                {typeChoice === "lookalike" ? (
-                  <AudienceFormCard>
-                    <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Público-semente (fonte do lookalike)
-                    </p>
-                    <div className="space-y-2">
+                      </section>
+
+                      <section className="campaign-creator-card space-y-3">
+                        <h3 className="campaign-creator-section-title">Janela de tempo</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {["7", "14", "30", "60", "90", "180"].map((d) => (
+                            <MultiSelectChoiceCard
+                              key={d}
+                              selected={window_ === d}
+                              label={`${d}D`}
+                              onToggle={() => setWindow_(d)}
+                              size="sm"
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    </>
+                  ) : null}
+
+                  {typeChoice === "lookalike" ? (
+                    <section className="campaign-creator-card space-y-2">
+                      <h3 className="campaign-creator-section-title">
+                        Público-semente (fonte do lookalike)
+                      </h3>
                       {seedAudiences.length ? (
                         seedAudiences.map((aud) => (
-                          <button
+                          <AudienceChoiceRow
                             key={aud.id}
-                            type="button"
-                            onClick={() => setSeedAudienceId(aud.id)}
-                            className="flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all"
-                            style={{
-                              borderColor: seedAudienceId === aud.id ? "#10b981" : "var(--border-color)",
-                              background:
-                                seedAudienceId === aud.id ? "rgba(16,185,129,0.07)" : "var(--surface-bg)"
-                            }}
-                          >
-                            <div
-                              className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
-                              style={{
-                                borderColor: seedAudienceId === aud.id ? "#10b981" : "var(--border-hover)",
-                                background: seedAudienceId === aud.id ? "#10b981" : "transparent"
-                              }}
-                            >
-                              {seedAudienceId === aud.id ? (
-                                <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                              ) : null}
-                            </div>
-                            <span className="truncate font-body text-sm" style={{ color: "var(--text-main)" }}>
-                              {aud.name}
-                            </span>
-                          </button>
+                            selected={seedAudienceId === aud.id}
+                            label={aud.name}
+                            onSelect={() => setSeedAudienceId(aud.id)}
+                          />
                         ))
                       ) : (
-                        <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                          {t("noAudiences")}
-                        </p>
+                        <p className="text-sm text-[var(--text-dim)]">{t("noAudiences")}</p>
                       )}
-                    </div>
-                  </AudienceFormCard>
-                ) : null}
-                {typeChoice === "saved" ? (
-                  <AudienceFormCard>
-                    <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Interesses e comportamentos
-                    </p>
-                    <input
-                      type="text"
-                      placeholder="Ex: Marketing digital, Empreendedorismo, Saúde..."
-                      value={interests}
-                      onChange={(e) => setInterests(e.target.value)}
-                      className="w-full rounded-xl border px-4 py-3 font-body text-sm outline-none transition-all"
-                      style={{
-                        background: "var(--surface-bg)",
-                        borderColor: "var(--border-color)",
-                        color: "var(--text-main)"
-                      }}
-                    />
-                  </AudienceFormCard>
-                ) : null}
-                <div
-                  className="flex items-start gap-3 rounded-xl px-4 py-3"
-                  style={{ background: "rgba(124,58,237,0.07)", border: "1px solid rgba(124,58,237,0.2)" }}
-                >
-                  <Sparkles size={15} className="mt-0.5 flex-shrink-0" style={{ color: "#a78bfa" }} />
-                  <p className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                    Após criar o público, ele será enviado à Meta para processamento. Pode levar até{" "}
-                    <strong style={{ color: "#a78bfa" }}>30 minutos</strong> até estar disponível para veiculação.
-                  </p>
-                </div>
-                <div className="flex justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={goPrev}
-                    className="flex items-center gap-2 rounded-xl border px-5 py-2.5 font-heading text-sm font-semibold transition-all hover:opacity-80"
-                    style={{
-                      border: "1px solid var(--border-color)",
-                      color: "var(--text-dim)",
-                      background: "var(--surface-card)"
-                    }}
-                  >
-                    <ArrowLeft size={14} /> Voltar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goNext}
-                    className="rounded-xl px-7 py-2.5 font-heading text-sm font-bold transition-all hover:brightness-110 active:scale-95"
-                    style={amberBtn(true)}
-                  >
-                    Revisar →
-                  </button>
-                </div>
-              </div>
-            ) : null}
+                    </section>
+                  ) : null}
 
-            {step === "review" ? (
-              <div className="animate-fade-up space-y-5">
-                <div>
-                  <h2 className="mb-1 font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                    Revisão
-                  </h2>
-                  <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                    Confirme todas as configurações antes de criar o público.
-                  </p>
-                </div>
-                <AudienceFormCard>
-                  <div className="mb-5 flex items-center gap-3">
-                    <div
-                      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-                      style={{ background: "rgba(124,58,237,0.12)", border: "1px solid rgba(124,58,237,0.25)" }}
-                    >
-                      <UserCheck size={18} style={{ color: "#a78bfa" }} />
-                    </div>
-                    <div>
-                      <p className="font-heading text-sm font-bold" style={{ color: "var(--text-main)" }}>
-                        {audienceName || "—"}
-                      </p>
-                      <p className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-                        Resumo do público a ser criado
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <AudienceReviewRow label="Tipo" value={typeLabel} />
-                    <AudienceReviewRow label="Nome" value={audienceName || "—"} />
-                    <AudienceReviewRow label="Cliente" value={selectedClient?.name ?? "—"} />
-                    <AudienceReviewRow label="País" value={country} />
-                    {typeChoice === "custom" ? (
-                      <>
-                        <AudienceReviewRow label="Fonte" value={source} />
-                        <AudienceReviewRow label="Ação" value={ruleAction} />
-                        <AudienceReviewRow label="Janela" value={`${window_} dias`} />
-                      </>
-                    ) : null}
-                    {typeChoice === "lookalike" ? (
-                      <>
-                        <AudienceReviewRow label="Similaridade" value={`${lookalikePct}%`} />
-                        <AudienceReviewRow label="Público-semente" value={selectedSeed?.name ?? "—"} />
-                      </>
-                    ) : null}
-                    {typeChoice === "saved" ? (
-                      <>
-                        <AudienceReviewRow label="Faixa etária" value={`${ageMin} – ${ageMax} anos`} />
-                        <AudienceReviewRow label="Gêneros" value={genders.join(", ") || "—"} />
-                        {interests ? <AudienceReviewRow label="Interesses" value={interests} /> : null}
-                      </>
-                    ) : null}
-                  </div>
-                </AudienceFormCard>
-                <div
-                  className="flex items-start gap-3 rounded-xl px-4 py-3"
-                  style={{ background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.2)" }}
-                >
-                  <Check size={15} className="mt-0.5 flex-shrink-0" style={{ color: "#10b981" }} />
-                  <p className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                    Tudo pronto! Ao confirmar, o público será criado e sincronizado com a conta de anúncios de{" "}
-                    <strong style={{ color: "var(--text-main)" }}>{selectedClient?.name ?? "—"}</strong> na Meta.
-                  </p>
-                </div>
-                <div className="flex justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={goPrev}
-                    className="flex items-center gap-2 rounded-xl border px-5 py-2.5 font-heading text-sm font-semibold transition-all hover:opacity-80"
-                    style={{
-                      border: "1px solid var(--border-color)",
-                      color: "var(--text-dim)",
-                      background: "var(--surface-card)"
-                    }}
-                  >
-                    <ArrowLeft size={14} /> Voltar
-                  </button>
-                  <button
-                    type="button"
-                    disabled={pending || tosBlocked}
-                    onClick={handleCreate}
-                    className="rounded-xl px-7 py-2.5 font-heading text-sm font-bold transition-all hover:brightness-110 active:scale-95 disabled:opacity-60"
-                    style={{
-                      background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-                      color: "#fff",
-                      boxShadow: "0 4px 14px rgba(124,58,237,0.35)"
-                    }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <UserCheck size={15} />
-                      {pending ? t("creating") : "Criar público"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
+                  {typeChoice === "saved" ? (
+                    <section className="campaign-creator-card">
+                      <h3 className="campaign-creator-section-title mb-3">
+                        Interesses e comportamentos
+                      </h3>
+                      <FilterTextField
+                        creatorField
+                        icon={<Activity size={13} />}
+                        label="Interesses"
+                        placeholder="Ex: Marketing digital, Empreendedorismo, Saúde..."
+                        value={interests}
+                        onChange={setInterests}
+                      />
+                    </section>
+                  ) : null}
 
-        {/* RIGHT */}
-        <div
-          className="hidden w-64 shrink-0 space-y-5 overflow-y-auto border-l px-4 py-5 xl:block"
-          style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
-        >
-          <div>
-            <p className="mb-3 font-heading text-sm font-bold" style={{ color: "var(--text-main)" }}>
-              Completude
-            </p>
-            <div className="mb-3 flex items-center gap-3">
-              <div className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center">
-                <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
-                  <circle cx="28" cy="28" r="22" fill="none" stroke="var(--border-color)" strokeWidth="4" />
-                  <circle
-                    cx="28"
-                    cy="28"
-                    r="22"
-                    fill="none"
-                    stroke="#f5a623"
-                    strokeWidth="4"
-                    strokeDasharray={2 * Math.PI * 22}
-                    strokeDashoffset={2 * Math.PI * 22 - (score / 100) * 2 * Math.PI * 22}
-                    strokeLinecap="round"
-                    style={{ transition: "stroke-dashoffset 0.5s ease" }}
-                  />
-                </svg>
-                <span className="absolute font-heading text-sm font-bold" style={{ color: "var(--amber)" }}>
-                  {score}
-                </span>
-              </div>
-              <p className="font-body text-xs leading-relaxed" style={{ color: "var(--text-dim)" }}>
-                Preencha todos os campos para maximizar a qualidade do público.
-              </p>
-            </div>
-            <div className="space-y-2">
-              {scoreItems.map((item) => (
-                <div key={item.label} className="flex items-center gap-2.5">
                   <div
-                    className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full transition-all"
+                    className="flex items-start gap-3 rounded-xl border px-4 py-3 text-xs"
                     style={{
-                      background: item.done ? "rgba(16,185,129,0.12)" : "var(--surface-bg)",
-                      border: `1.5px solid ${item.done ? "#10b981" : "var(--border-hover)"}`
+                      background: "var(--ui-accent-hover)",
+                      borderColor: "var(--ui-accent-border)",
+                      color: "var(--text-dim)"
                     }}
                   >
-                    {item.done ? <Check size={9} style={{ color: "#10b981" }} strokeWidth={3} /> : null}
+                    <Sparkles size={15} className="mt-0.5 shrink-0 text-[var(--ui-accent)]" aria-hidden />
+                    <p>
+                      Após criar o público, ele será enviado à Meta para processamento. Pode levar até{" "}
+                      <strong className="text-[var(--ui-accent)]">30 minutos</strong> até estar disponível
+                      para veiculação.
+                    </p>
                   </div>
-                  <span
-                    className="font-body text-xs"
-                    style={{ color: item.done ? "var(--text-main)" : "var(--text-dimmer)" }}
-                  >
-                    {item.label}
+                </div>
+              ) : null}
+
+              {step === "review" ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      Revisão
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">
+                      Confirme todas as configurações antes de criar o público.
+                    </p>
+                  </div>
+
+                  <section className="campaign-creator-card">
+                    <div className="mb-4 flex items-center gap-3">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+                        <UserCheck size={18} strokeWidth={1.75} />
+                      </span>
+                      <div>
+                        <p className="font-heading text-sm font-bold text-[var(--text-main)]">
+                          {audienceName || "—"}
+                        </p>
+                        <p className="text-xs text-[var(--text-dimmer)]">Resumo do público a ser criado</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <AudienceReviewRow label="Tipo" value={typeLabel} />
+                      <AudienceReviewRow label="Nome" value={audienceName || "—"} />
+                      <AudienceReviewRow label="Cliente" value={selectedClient?.name ?? "—"} />
+                      <AudienceReviewRow label="País" value={country} />
+                      {typeChoice === "custom" ? (
+                        <>
+                          <AudienceReviewRow label="Fonte" value={source} />
+                          <AudienceReviewRow label="Ação" value={ruleAction} />
+                          <AudienceReviewRow label="Janela" value={`${window_} dias`} />
+                        </>
+                      ) : null}
+                      {typeChoice === "lookalike" ? (
+                        <>
+                          <AudienceReviewRow label="Similaridade" value={`${lookalikePct}%`} />
+                          <AudienceReviewRow label="Público-semente" value={selectedSeed?.name ?? "—"} />
+                        </>
+                      ) : null}
+                      {typeChoice === "saved" ? (
+                        <>
+                          <AudienceReviewRow label="Faixa etária" value={`${ageMin} – ${ageMax} anos`} />
+                          <AudienceReviewRow label="Gêneros" value={genders.join(", ") || "—"} />
+                          {interests ? <AudienceReviewRow label="Interesses" value={interests} /> : null}
+                        </>
+                      ) : null}
+                    </div>
+                  </section>
+
+                  <div className="ui-alert-success flex items-start gap-3 text-xs">
+                    <Check size={15} className="mt-0.5 shrink-0" aria-hidden />
+                    <p>
+                      Tudo pronto! Ao confirmar, o público será criado e sincronizado com a conta de
+                      anúncios de <strong>{selectedClient?.name ?? "—"}</strong> na Meta.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </main>
+
+        <aside className="campaign-creator-sidebar hidden min-h-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:flex lg:flex-col lg:overflow-hidden">
+          <div className="campaign-creator-sidebar__scroll min-h-0 flex-1 overflow-y-auto">
+            <div className="campaign-creator-sidebar__inner space-y-3 py-1">
+              <div className="campaign-creator-sidebar-card">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">Completude</h3>
+                  <span className="rounded-full bg-[var(--ui-accent-muted)] px-2 py-0.5 font-heading text-[11px] font-semibold text-[var(--ui-accent)]">
+                    {Math.round(((currentIdx + 1) / STEP_ORDER.length) * 100)}%
                   </span>
                 </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ height: 1, background: "var(--border-color)" }} />
-          <div>
-            <p className="mb-3 font-heading text-sm font-bold" style={{ color: "var(--text-main)" }}>
-              Prévia do público
-            </p>
-            <div
-              className="overflow-hidden rounded-2xl"
-              style={{ border: "1px solid var(--border-color)", background: "var(--surface-bg)" }}
-            >
-              <div
-                className="flex h-24 items-center justify-center"
-                style={{
-                  background: "linear-gradient(135deg, #f0eeff 0%, #ede9fe 50%, #ddd6fe 100%)"
-                }}
-              >
-                <div className="px-3 text-center">
-                  <div
-                    className="mx-auto mb-1 flex h-10 w-10 items-center justify-center rounded-xl"
-                    style={{ background: "rgba(124,58,237,0.15)" }}
-                  >
-                    <Users size={20} style={{ color: "#7c3aed" }} />
+                <div className="mt-3 flex items-center gap-4">
+                  <div className="relative h-[4.5rem] w-[4.5rem] shrink-0">
+                    <svg className="h-[4.5rem] w-[4.5rem] -rotate-90" viewBox="0 0 72 72" aria-hidden>
+                      <circle
+                        cx="36"
+                        cy="36"
+                        r="32"
+                        fill="none"
+                        stroke="var(--border-color)"
+                        strokeWidth="5"
+                      />
+                      <circle
+                        cx="36"
+                        cy="36"
+                        r="32"
+                        fill="none"
+                        stroke="var(--ui-accent)"
+                        strokeWidth="5"
+                        strokeDasharray={scoreCircumference}
+                        strokeDashoffset={scoreOffset}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center font-heading text-lg font-bold text-[var(--ui-accent)]">
+                      {score}
+                    </span>
                   </div>
-                  <p className="font-body text-[10px]" style={{ color: "#6d28d9" }}>
-                    {typeChoice ? typeLabel : "Selecione um tipo"}
+                  <p className="text-xs leading-relaxed text-[var(--text-dim)]">
+                    Preencha todos os campos para maximizar a qualidade do público.
                   </p>
                 </div>
+                <div className="mt-3 space-y-2">
+                  {scoreItems.map((item) => (
+                    <UxScoreItem key={item.label} label={item.label} done={item.done} />
+                  ))}
+                </div>
               </div>
-              <div className="p-3" style={{ borderTop: "1px solid var(--border-color)" }}>
-                <p className="truncate font-heading text-xs font-bold" style={{ color: "var(--text-main)" }}>
-                  {audienceName || "Nome do público"}
-                </p>
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  {country ? (
-                    <span
-                      className="rounded px-1.5 py-0.5 font-body text-[10px]"
-                      style={{ background: "rgba(245,166,35,0.12)", color: "#f5a623" }}
+
+              <div className="campaign-creator-sidebar-card space-y-3">
+                <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">Cliente</h3>
+                <FilterSelectDropdown
+                  creatorField
+                  icon={<Building2 size={14} />}
+                  label={t("selectClient")}
+                  placeholder={t("selectClientFirst")}
+                  value={clientSlug}
+                  onChange={onClientChange}
+                  clearable={false}
+                  options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+                />
+              </div>
+
+              <div className="campaign-creator-sidebar-card">
+                <h3 className="mb-3 font-heading text-sm font-semibold text-[var(--text-main)]">
+                  Prévia do público
+                </h3>
+                <div className="campaign-creator-sidebar-card-inset overflow-hidden">
+                  <div
+                    className="flex h-20 items-center justify-center"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, color-mix(in srgb, var(--ui-accent) 8%, transparent), color-mix(in srgb, var(--ui-accent) 16%, transparent))"
+                    }}
+                  >
+                    <div className="px-3 text-center">
+                      <span className="mx-auto mb-1 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+                        <Users size={18} strokeWidth={1.75} />
+                      </span>
+                      <p className="text-[10px] text-[var(--ui-accent)]">
+                        {typeChoice ? typeLabel : "Selecione um tipo"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="border-t border-[var(--creator-card-border,var(--border-color))] p-3">
+                    <p className="truncate font-heading text-xs font-bold text-[var(--text-main)]">
+                      {audienceName || "Nome do público"}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {country ? (
+                        <span className="campaign-creator-review-badge campaign-creator-review-badge--accent">
+                          <MapPin size={10} className="mr-0.5 inline" aria-hidden />
+                          {country}
+                        </span>
+                      ) : null}
+                      {typeChoice === "custom" ? (
+                        <span className="campaign-creator-review-badge campaign-creator-review-badge--neutral">
+                          {window_}D
+                        </span>
+                      ) : null}
+                      {typeChoice === "lookalike" ? (
+                        <span className="campaign-creator-review-badge campaign-creator-review-badge--success">
+                          {lookalikePct}%
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="campaign-creator-sidebar-card">
+                <p className="campaign-creator-orion-section-label mb-2">Dica</p>
+                <p className="text-xs leading-relaxed text-[var(--text-dim)]">{tipText}</p>
+              </div>
+
+              <div className="hidden lg:block">
+                <div className="ui-wizard-nav--sidebar">
+                  <div className="ui-wizard-nav__actions">
+                    <button
+                      type="button"
+                      onClick={goPrev}
+                      className="ui-wizard-nav__btn ui-wizard-nav__btn--back ui-btn-secondary inline-flex h-9 items-center justify-center gap-1 px-3.5 text-sm font-heading font-medium"
                     >
-                      {country}
-                    </span>
-                  ) : null}
-                  {typeChoice === "custom" ? (
-                    <span
-                      className="rounded px-1.5 py-0.5 font-body text-[10px]"
-                      style={{ background: "rgba(79,70,229,0.12)", color: "#818cf8" }}
-                    >
-                      {window_}D
-                    </span>
-                  ) : null}
-                  {typeChoice === "lookalike" ? (
-                    <span
-                      className="rounded px-1.5 py-0.5 font-body text-[10px]"
-                      style={{ background: "rgba(16,185,129,0.12)", color: "#10b981" }}
-                    >
-                      {lookalikePct}%
-                    </span>
-                  ) : null}
+                      <ChevronLeft size={16} strokeWidth={2.5} />
+                      Voltar
+                    </button>
+                    {step !== "review" ? (
+                      <button
+                        type="button"
+                        disabled={!canNext}
+                        onClick={goNext}
+                        className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Próximo
+                        <ChevronRight size={16} strokeWidth={2.5} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={pending || tosBlocked}
+                        onClick={handleCreate}
+                        className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-2 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <UserCheck size={14} />
+                        {pending ? t("creating") : "Criar público"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <div style={{ height: 1, background: "var(--border-color)" }} />
-          <div>
-            <p
-              className="mb-3 font-heading text-[10px] font-semibold tracking-widest"
-              style={{ color: "var(--text-dimmer)" }}
-            >
-              DICA
-            </p>
-            <div
-              className="rounded-xl p-3"
-              style={{ background: "rgba(124,58,237,0.07)", border: "1px solid rgba(124,58,237,0.18)" }}
-            >
-              <p className="font-body text-xs leading-relaxed" style={{ color: "var(--text-dim)" }}>
-                {typeChoice === "lookalike"
-                  ? "Públicos lookalike de 1% são mais precisos. Combine com exclusões para evitar duplicação."
-                  : typeChoice === "custom"
-                    ? "Janelas de 30–60 dias tendem a equilibrar tamanho e relevância para a maioria dos objetivos."
-                    : typeChoice === "saved"
-                      ? "Interesses muito amplos podem reduzir a eficiência. Prefira 3–5 interesses específicos."
-                      : "Escolha o tipo de público para ver dicas personalizadas."}
-              </p>
+        </aside>
+      </div>
+
+      <div className="campaign-creator-footer-outer shrink-0 lg:hidden">
+        <div className="campaign-creator-footer-band">
+          <div className="ui-wizard-nav--footer">
+            <div className="ui-wizard-nav__actions">
+              <button
+                type="button"
+                onClick={goPrev}
+                className="ui-wizard-nav__btn ui-wizard-nav__btn--back ui-btn-secondary inline-flex h-9 items-center justify-center gap-1 px-3.5 text-sm font-heading font-medium"
+              >
+                <ChevronLeft size={16} strokeWidth={2.5} />
+                Voltar
+              </button>
+              {step !== "review" ? (
+                <button
+                  type="button"
+                  disabled={!canNext}
+                  onClick={goNext}
+                  className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Próximo
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={pending || tosBlocked}
+                  onClick={handleCreate}
+                  className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-2 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <UserCheck size={14} />
+                  {pending ? t("creating") : "Criar público"}
+                </button>
+              )}
             </div>
           </div>
         </div>

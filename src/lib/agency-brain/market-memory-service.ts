@@ -70,7 +70,7 @@ export async function scanMarketForClient(
     console.warn(
       "[agency-brain/market_scan]",
       client.id,
-      "META_AD_LIBRARY_ACCESS_TOKEN not configured — scan limited to niche static insights"
+      "SEARCHAPI_API_KEY or META_AD_LIBRARY_ACCESS_TOKEN not configured — scan limited to niche static insights"
     );
   }
 

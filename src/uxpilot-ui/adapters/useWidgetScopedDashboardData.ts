@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
 import { useClientViewOptional } from "@/components/dashboard/canvas/ClientViewContext";
 import { useAppCanvasScope } from "@/components/dashboard/canvas/AppCanvasScopeContext";
-import type { MetricKey } from "@/lib/dashboard-metrics";
+import { METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
 import { periodStateFromWidgetPreset } from "@/lib/dashboard/widget-period";
 import type { ExtendedPeriodPreset } from "@/lib/dashboard/extended-period";
 import { buildQuery, resolveRanges } from "@/lib/dashboard-ranges";
@@ -16,6 +16,27 @@ import type { useDashboardData } from "@/uxpilot-ui/adapters/useDashboardData";
 type DashboardData = ReturnType<typeof useDashboardData>;
 type Summary = Partial<Record<MetricKey, number>>;
 type SeriesPoint = { day: string } & Partial<Record<MetricKey, number>>;
+
+function normalizeDashboardSummary(raw: unknown): Summary {
+  if (!raw || typeof raw !== "object") return {};
+  const out: Summary = {};
+  for (const key of Object.keys(METRIC_BY_KEY) as MetricKey[]) {
+    const n = Number((raw as Record<string, unknown>)[key]);
+    if (Number.isFinite(n)) out[key] = n;
+  }
+  return out;
+}
+
+function extractDashboardSummary(json: Record<string, unknown> | null | undefined): Summary | null {
+  if (!json || json.ok === false) return null;
+  const normalized = normalizeDashboardSummary(json.summary);
+  return Object.keys(normalized).length ? normalized : null;
+}
+
+function resolveSummaryFromJson(json: Record<string, unknown>): Summary | null {
+  const normalized = extractDashboardSummary(json) ?? normalizeDashboardSummary(json.summary);
+  return Object.keys(normalized).length ? normalized : null;
+}
 
 export function useWidgetScopedDashboardData(
   base: DashboardData,
@@ -65,17 +86,16 @@ export function useWidgetScopedDashboardData(
       try {
         const { current, previous } = resolveRanges(period, tz);
         const curQ = buildQuery(clientFilter, accountFilter, current);
+        const prevQ = previous ? buildQuery(clientFilter, accountFilter, previous) : null;
         const viewSuffix = clientView?.viewToken
           ? `${curQ ? "&" : ""}viewToken=${encodeURIComponent(clientView.viewToken)}`
           : "";
         const [sRes, tRes, pRes] = await Promise.all([
           fetch(`/api/dashboard/summary?${curQ}${viewSuffix}`),
           fetch(`/api/dashboard/timeseries?${curQ}${viewSuffix}`),
-          previous
-            ? fetch(
-                `/api/dashboard/summary?${buildQuery(clientFilter, accountFilter, previous)}${viewSuffix}`
-              )
-            : Promise.resolve<Response | null>(null)
+          prevQ
+            ? fetch(`/api/dashboard/summary?${prevQ}${viewSuffix}`)
+            : Promise.resolve(null)
         ]);
 
         const parseJson = async (res: Response) => {
@@ -85,12 +105,21 @@ export function useWidgetScopedDashboardData(
 
         const sJson = await parseJson(sRes);
         const tJson = await parseJson(tRes);
-        const pJson = pRes ? await parseJson(pRes) : null;
+
+        let nextPrevSummary: Summary | null = null;
+        if (pRes) {
+          try {
+            const pJson = await parseJson(pRes);
+            nextPrevSummary = resolveSummaryFromJson(pJson);
+          } catch {
+            nextPrevSummary = null;
+          }
+        }
 
         if (cancelled) return;
         setOverride({
-          summary: (sJson.summary as Summary) ?? {},
-          prevSummary: (pJson?.summary as Summary) ?? null,
+          summary: resolveSummaryFromJson(sJson),
+          prevSummary: nextPrevSummary,
           series: (tJson.series as SeriesPoint[]) ?? [],
           loading: false
         });

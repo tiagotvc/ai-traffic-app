@@ -37,7 +37,8 @@ export function SingleMetricWidget({
       heroMetrics: [metricKey],
       locale: data.locale,
       metricLabel: data.metricLabel,
-      vsLabel: data.vsLabel
+      vsLabel: data.vsLabel,
+      newDeltaLabel: data.deltaNewLabel
     });
     const kpi = primaryKPIs[0];
     if (!kpi && !data.loading) return null;
@@ -81,7 +82,8 @@ export function SingleMetricWidget({
             value: data.formatMetricValue(metricKey, value),
             change: deltaMeta.change,
             trend: deltaMeta.trend,
-            color: meta.color
+            color: meta.color,
+            metricKey
           }
         ]}
         visual={visual}

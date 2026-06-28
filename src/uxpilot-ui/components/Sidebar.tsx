@@ -60,8 +60,13 @@ export default function Sidebar() {
         )}
         style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
       >
-        <div className={cn("flex items-center min-w-0", collapsed ? "justify-center" : "")}>
-          <OrionAgencyLogo size="sm" variant="dark" showText={!collapsed} />
+        <div className={cn("flex min-w-0 items-center", collapsed ? "justify-center" : "max-w-[calc(100%-2rem)]")}>
+          <OrionAgencyLogo
+            size="sm"
+            variant="dark"
+            showText={!collapsed}
+            className={collapsed ? undefined : "min-w-0 max-w-full"}
+          />
         </div>
         <button
           onClick={() => setCollapsed(!collapsed)}

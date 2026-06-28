@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { creativePreviewUrlCandidates, shouldUseCoverPreview } from "@/lib/creative-preview-url";
 import { formatMetricValue, METRIC_BY_KEY, type MetricKey } from "@/lib/dashboard-metrics";
+import { cn } from "@/lib/cn";
 
 function getScoreColor(score: number) {
   if (score >= 80) return "#10b981";
@@ -114,26 +115,27 @@ export function CreativeRankingCard({
   const rankColors = ["#f5a623", "#94a3b8", "#cd7c2f"];
   const displayMetrics = isReport ? metricKeys.slice(0, 3) : metricKeys.slice(0, 6);
   const displayLabel = isReport ? creativeName?.trim() || title : title;
-  const mediaHeight = isReport ? "report-creative-media" : "h-40";
+  const mediaHeight = isReport ? "report-creative-media" : "h-28";
 
   return (
     <div
-      className={`min-w-0 transition-all ${
+      className={cn(
+        "min-w-0 transition-all",
         isReport
           ? "report-creative-card flex h-full flex-col overflow-hidden rounded-lg"
-          : "overflow-hidden rounded-xl hover:-translate-y-0.5"
-      }`}
-      style={{
-        background: "var(--surface-card)",
-        border: isFirst ? "1.5px solid var(--ui-accent-border-strong)" : "1px solid var(--border-color)",
-        boxShadow: isFirst
-          ? isReport
-            ? "none"
-            : "0 4px 24px var(--ui-accent-glow)"
-          : isReport
-            ? "none"
-            : "0 1px 6px rgba(0,0,0,0.06)"
-      }}
+          : cn(
+              "campaign-creator-card campaign-creator-card--compact overflow-hidden !space-y-0 !p-0 hover:-translate-y-px",
+              isFirst && "ring-1 ring-[var(--ui-accent-border)]"
+            )
+      )}
+      style={
+        isReport
+          ? undefined
+          : {
+              borderColor: isFirst ? "var(--ui-accent-border)" : undefined,
+              boxShadow: isFirst ? "0 2px 12px var(--ui-accent-glow)" : undefined
+            }
+      }
     >
       <div
         className={`relative overflow-hidden ${mediaHeight} ${
@@ -171,8 +173,8 @@ export function CreativeRankingCard({
           />
         ) : null}
         <div
-          className={`absolute z-[2] flex items-center justify-center rounded-full font-bold shadow-md ${
-            isReport ? "left-1.5 top-1.5 h-5 w-5 text-[9px]" : "left-3 top-3 h-8 w-8 text-xs shadow-lg"
+          className={`absolute z-[2] flex items-center justify-center rounded-full font-bold shadow-sm ${
+            isReport ? "left-1.5 top-1.5 h-5 w-5 text-[9px]" : "left-2 top-2 h-6 w-6 text-[10px]"
           }`}
           style={{
             background: isTop3 ? rankColors[rank - 1] : "rgba(15,20,25,0.7)",
@@ -180,32 +182,32 @@ export function CreativeRankingCard({
             border: "1.5px solid rgba(255,255,255,0.35)"
           }}
         >
-          {isFirst ? <Star size={isReport ? 9 : 13} fill="#fff" color="#fff" /> : `#${rank}`}
+          {isFirst ? <Star size={isReport ? 9 : 11} fill="#fff" color="#fff" /> : `#${rank}`}
         </div>
         {!isReport ? (
           <>
             <div
-              className="absolute right-3 top-3 z-[2] flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold"
+              className="absolute right-2 top-2 z-[2] flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
               style={{ background: "rgba(0,0,0,0.6)", color: "#fff", backdropFilter: "blur(4px)" }}
             >
-              {creativeType === "Video" && <Video size={11} />}
-              {creativeType === "Imagem" && <Image size={11} />}
-              {creativeType === "Carrossel" && <LayoutGrid size={11} />}
+              {creativeType === "Video" && <Video size={10} />}
+              {creativeType === "Imagem" && <Image size={10} />}
+              {creativeType === "Carrossel" && <LayoutGrid size={10} />}
               {creativeType}
             </div>
             <div
-              className="absolute bottom-3 right-3 z-[2] flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+              className="absolute bottom-2 right-2 z-[2] flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
               style={{
                 background: statusLabel === "Ativo" ? "rgba(16,185,129,0.85)" : "rgba(239,68,68,0.85)",
                 color: "#fff"
               }}
             >
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-white" />
+              <span className="inline-block h-1 w-1 rounded-full bg-white" />
               {statusLabel}
             </div>
             {campaignType ? (
               <div
-                className="absolute bottom-3 left-3 z-[2] rounded-full px-2.5 py-1 text-xs font-medium"
+                className="absolute bottom-2 left-2 z-[2] max-w-[calc(100%-4rem)] truncate rounded-full px-2 py-0.5 text-[10px] font-medium"
                 style={{ background: "var(--ui-accent)", color: "var(--ui-accent-btn-text)" }}
               >
                 {campaignType}
@@ -215,11 +217,11 @@ export function CreativeRankingCard({
         ) : null}
       </div>
 
-      <div className={`border-b border-[var(--border-color)] ${isReport ? "px-2.5 py-2" : "px-4 py-3"}`}>
+      <div className={`border-b border-[var(--creator-card-border,var(--border-color))] ${isReport ? "px-2.5 py-2" : "px-2.5 py-2"}`}>
         <div className={isReport ? "flex items-start justify-between gap-2" : undefined}>
           <p
             className={`min-w-0 font-semibold leading-snug text-[var(--text-main)] ${
-              isReport ? "line-clamp-2 break-words text-[11px]" : "mb-1 line-clamp-1 text-sm"
+              isReport ? "line-clamp-2 break-words text-[11px]" : "line-clamp-1 text-xs"
             }`}
             title={displayLabel}
           >
@@ -235,53 +237,53 @@ export function CreativeRankingCard({
           ) : null}
         </div>
         {!isReport ? (
-          <p className="text-xs text-[var(--text-dimmer)]">Usado em {campaignsUsed} campanha(s)</p>
+          <p className="mt-0.5 text-[10px] text-[var(--text-dimmer)]">Usado em {campaignsUsed} campanha(s)</p>
         ) : null}
       </div>
 
       {!isReport ? (
-        <div className="border-b border-[var(--border-color)] px-4 py-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">Score</span>
-            <div className="flex items-center gap-2">
+        <div className="border-b border-[var(--creator-card-border,var(--border-color))] px-2.5 py-2">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">Score</span>
+            <div className="flex items-center gap-1.5">
               <span
-                className="rounded-full px-2 py-0.5 text-xs font-medium"
+                className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
                 style={{ background: `${scoreColor}18`, color: scoreColor }}
               >
                 {scoreLabel}
               </span>
-              <span className="text-base font-bold" style={{ color: scoreColor }}>
+              <span className="text-sm font-bold" style={{ color: scoreColor }}>
                 {score}
               </span>
             </div>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-bg)]">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--creator-card-bg-inset,var(--surface-bg))]">
             <div className="h-full rounded-full" style={{ width: `${score}%`, background: scoreColor }} />
           </div>
         </div>
       ) : null}
 
       <div
-        className={`grid gap-1.5 ${isReport ? "grid-cols-3 px-2.5 py-2" : "grid-cols-2 gap-2 px-4 py-3"}`}
+        className={`grid gap-1 ${isReport ? "grid-cols-3 px-2.5 py-2" : "grid-cols-2 gap-1 px-2.5 py-2"}`}
       >
         {displayMetrics[0] ? (
           <div
-            className={`flex items-center justify-between rounded-lg ${
-              isReport ? "col-span-3 px-2 py-1" : "col-span-2 px-3 py-2"
+            className={`flex items-center justify-between rounded-md ${
+              isReport ? "col-span-3 px-2 py-1" : "col-span-2 px-2 py-1.5"
             }`}
             style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.18)" }}
           >
             <div className="flex min-w-0 items-center gap-1">
-              {!isReport ? <TrendingUp size={13} style={{ color: "#10b981" }} /> : null}
+              {!isReport ? <TrendingUp size={11} style={{ color: "#10b981" }} /> : null}
               <span
                 className={`truncate font-semibold uppercase tracking-wide text-[#10b981] ${
-                  isReport ? "text-[9px]" : "text-xs"
+                  isReport ? "text-[9px]" : "text-[10px]"
                 }`}
               >
                 {tMetrics(METRIC_BY_KEY[displayMetrics[0]].label).toUpperCase()}
               </span>
             </div>
-            <span className={`shrink-0 font-bold text-[#10b981] ${isReport ? "text-[11px]" : "text-sm"}`}>
+            <span className={`shrink-0 font-bold text-[#10b981] ${isReport ? "text-[11px]" : "text-xs"}`}>
               {formatMetricValue(displayMetrics[0], Number(metrics[displayMetrics[0]] ?? 0), locale)}
             </span>
           </div>
@@ -289,18 +291,18 @@ export function CreativeRankingCard({
         {displayMetrics.slice(1).map((key) => (
           <div
             key={key}
-            className={`rounded-lg bg-[var(--surface-bg)] ${isReport ? "px-1.5 py-1 text-center" : "px-3 py-2"}`}
+            className={`rounded-md bg-[var(--creator-card-bg-inset,var(--surface-bg))] ${isReport ? "px-1.5 py-1 text-center" : "px-2 py-1.5"}`}
           >
             <p
               className={`mb-0.5 truncate font-semibold uppercase tracking-wide text-[var(--text-dimmer)] ${
-                isReport ? "text-[7px]" : "text-[10px]"
+                isReport ? "text-[7px]" : "text-[9px]"
               }`}
             >
               {tMetrics(METRIC_BY_KEY[key].label)}
             </p>
             <p
               className={`truncate font-bold ${
-                isReport ? "text-[10px]" : "text-sm"
+                isReport ? "text-[10px]" : "text-xs"
               } ${key === primaryMetric ? "text-[var(--ui-accent)]" : "text-[var(--text-main)]"}`}
             >
               {formatMetricValue(key, Number(metrics[key] ?? 0), locale)}
@@ -309,13 +311,13 @@ export function CreativeRankingCard({
         ))}
         {!isReport && displayMetrics[5] ? (
           <div
-            className="col-span-2 flex items-center justify-between rounded-lg px-3 py-2"
+            className="col-span-2 flex items-center justify-between rounded-md px-2 py-1.5"
             style={{ background: "var(--ui-accent-muted)", border: "1px solid var(--ui-accent-border)" }}
           >
-            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-accent)]">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--ui-accent)]">
               {tMetrics(METRIC_BY_KEY[displayMetrics[5]].label)}
             </span>
-            <span className="text-sm font-bold text-[var(--ui-accent)]">
+            <span className="text-xs font-bold text-[var(--ui-accent)]">
               {formatMetricValue(displayMetrics[5], Number(metrics[displayMetrics[5]] ?? 0), locale)}
             </span>
           </div>
@@ -323,28 +325,22 @@ export function CreativeRankingCard({
       </div>
 
       {!isReport ? (
-      <div className="flex items-center gap-2 px-4 pb-4">
+      <div className="flex items-center gap-1.5 px-2.5 pb-2.5 pt-0.5">
         <button
           type="button"
           onClick={onPreview}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-all"
-          style={{
-            background: "var(--ui-accent-muted)",
-            color: "var(--ui-accent)",
-            border: "1px solid var(--ui-accent-border)"
-          }}
+          className="ui-btn-accent-outline flex flex-1 items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-semibold"
         >
-          <Eye size={13} />
+          <Eye size={12} />
           Ver Detalhes
         </button>
         {onCompare ? (
           <button
             type="button"
             onClick={onCompare}
-            className="flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold text-[var(--text-dim)]"
-            style={{ borderColor: "var(--border-color)", background: "var(--surface-bg)" }}
+            className="ui-btn-secondary inline-flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-semibold"
           >
-            <BarChart2 size={13} />
+            <BarChart2 size={12} />
             Comparar
           </button>
         ) : null}
@@ -357,24 +353,29 @@ export function CreativeRankingCard({
 export function CreativeRankingCardSkeleton({ compact = false }: { compact?: boolean }) {
   return (
     <div
-      className="overflow-hidden rounded-lg border"
-      style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
+      className={cn(
+        "overflow-hidden",
+        compact
+          ? "rounded-lg border"
+          : "campaign-creator-card campaign-creator-card--compact !space-y-0 !p-0"
+      )}
+      style={compact ? { borderColor: "var(--border-color)", background: "var(--surface-card)" } : undefined}
     >
-      <div className={`skeleton-shimmer w-full ${compact ? "report-creative-media min-h-[220px]" : "h-40"}`} />
+      <div className={`skeleton-shimmer w-full ${compact ? "report-creative-media min-h-[220px]" : "h-28"}`} />
       <div
-        className={`space-y-2 border-b border-[var(--border-color)] ${compact ? "px-2.5 py-2" : "px-4 py-3"}`}
+        className={`space-y-1.5 border-b border-[var(--creator-card-border,var(--border-color))] ${compact ? "px-2.5 py-2" : "px-2.5 py-2"}`}
       >
-        <div className={`skeleton-shimmer rounded ${compact ? "h-3 w-full" : "h-4 w-3/4"}`} />
-        {!compact ? <div className="skeleton-shimmer h-3 w-1/2 rounded" /> : null}
+        <div className={`skeleton-shimmer rounded ${compact ? "h-3 w-full" : "h-3 w-3/4"}`} />
+        {!compact ? <div className="skeleton-shimmer h-2.5 w-1/2 rounded" /> : null}
       </div>
-      <div className={`grid grid-cols-2 gap-2 ${compact ? "px-2.5 py-2" : "px-4 py-3"}`}>
-        <div className={`skeleton-shimmer col-span-2 rounded-lg ${compact ? "h-7" : "h-10"}`} />
-        <div className={`skeleton-shimmer rounded-lg ${compact ? "h-7" : "h-10"}`} />
-        <div className={`skeleton-shimmer rounded-lg ${compact ? "h-7" : "h-10"}`} />
+      <div className={`grid grid-cols-2 gap-1 ${compact ? "px-2.5 py-2" : "px-2.5 py-2"}`}>
+        <div className={`skeleton-shimmer col-span-2 rounded-md ${compact ? "h-7" : "h-8"}`} />
+        <div className={`skeleton-shimmer rounded-md ${compact ? "h-7" : "h-8"}`} />
+        <div className={`skeleton-shimmer rounded-md ${compact ? "h-7" : "h-8"}`} />
       </div>
       {!compact ? (
-        <div className="px-4 pb-4">
-          <div className="skeleton-shimmer h-9 w-full rounded-lg" />
+        <div className="px-2.5 pb-2.5">
+          <div className="skeleton-shimmer h-8 w-full rounded-md" />
         </div>
       ) : null}
     </div>
@@ -390,8 +391,11 @@ export function CreativeRankingCardsSkeleton({
 }) {
   return (
     <div
-      className={compact ? "grid grid-cols-1 gap-4 p-3 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-4 p-4"}
-      style={compact ? undefined : { gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}
+      className={
+        compact
+          ? "grid grid-cols-1 gap-4 p-3 sm:grid-cols-2 lg:grid-cols-3"
+          : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      }
     >
       {Array.from({ length: count }).map((_, i) => (
         <CreativeRankingCardSkeleton key={i} compact={compact} />

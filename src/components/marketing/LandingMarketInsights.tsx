@@ -21,7 +21,7 @@ import { STACK_BENCHMARK_TOOLS } from "@/lib/marketing/stack-benchmarks";
 const MARKET_PIE = [
   { key: "pieReports", pct: 32, fill: "#7c3aed" },
   { key: "pieBi", pct: 24, fill: "#6366f1" },
-  { key: "pieAutomation", pct: 18, fill: "#f5a623" },
+  { key: "pieAutomation", pct: 18, fill: "#a78bfa" },
   { key: "pieAi", pct: 16, fill: "#10b981" },
   { key: "pieOther", pct: 10, fill: "#64748b" }
 ] as const;
@@ -60,35 +60,28 @@ export function LandingMarketInsights() {
   ] as const;
 
   return (
-    <section id="market" className="border-b border-white/5 bg-[#0a0f14] px-4 py-16 sm:px-6 sm:py-20">
+    <section id="market" className="marketing-section marketing-section-alt">
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 text-center">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-amber-400/90">
-            {t("marketBadge")}
-          </p>
-          <h2 className="font-heading text-2xl font-bold text-white sm:text-3xl">{t("marketTitle")}</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-violet-200/70">
-            {t("marketSubtitle")}
-          </p>
+          <p className="marketing-section-title">{t("marketBadge")}</p>
+          <h2 className="marketing-section-heading">{t("marketTitle")}</h2>
+          <p className="marketing-section-sub mx-auto max-w-2xl">{t("marketSubtitle")}</p>
         </div>
 
         <div className="mb-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map(({ icon: Icon, valueKey, labelKey }) => (
-            <div
-              key={valueKey}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-violet-400/25"
-            >
-              <Icon className="mb-3 h-5 w-5 text-amber-400/90" />
-              <p className="font-heading text-2xl font-bold text-white">{t(valueKey)}</p>
-              <p className="mt-1 text-xs leading-relaxed text-violet-200/65">{t(labelKey)}</p>
+            <div key={valueKey} className="marketing-card transition hover:border-[var(--ui-accent-border)]">
+              <Icon className="mb-3 h-5 w-5 text-[var(--ui-accent)]" />
+              <p className="font-heading text-2xl font-bold text-[var(--text-main)]">{t(valueKey)}</p>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--text-dim)]">{t(labelKey)}</p>
             </div>
           ))}
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-            <h3 className="font-heading text-sm font-semibold text-white">{t("marketChartToolsTitle")}</h3>
-            <p className="mt-1 text-xs text-violet-200/60">{t("marketChartToolsSub")}</p>
+          <div className="marketing-card">
+            <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("marketChartToolsTitle")}</h3>
+            <p className="mt-1 text-xs text-[var(--text-dim)]">{t("marketChartToolsSub")}</p>
             <div className="mt-4 h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={toolCostData} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
@@ -124,9 +117,9 @@ export function LandingMarketInsights() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-            <h3 className="font-heading text-sm font-semibold text-white">{t("marketChartBudgetTitle")}</h3>
-            <p className="mt-1 text-xs text-violet-200/60">{t("marketChartBudgetSub")}</p>
+          <div className="marketing-card">
+            <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("marketChartBudgetTitle")}</h3>
+            <p className="mt-1 text-xs text-[var(--text-dim)]">{t("marketChartBudgetSub")}</p>
             <div className="mt-2 flex flex-col items-center sm:flex-row sm:gap-4">
               <div className="h-[220px] w-full sm:w-[55%]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -160,11 +153,11 @@ export function LandingMarketInsights() {
               <ul className="w-full space-y-2 sm:w-[45%]">
                 {pieData.map((item) => (
                   <li key={item.name} className="flex items-center justify-between gap-2 text-xs">
-                    <span className="flex items-center gap-2 text-violet-200/80">
+                    <span className="flex items-center gap-2 text-[var(--text-dim)]">
                       <span className="h-2 w-2 rounded-full" style={{ background: item.fill }} />
                       {item.name}
                     </span>
-                    <span className="font-semibold text-white">{item.value}%</span>
+                    <span className="font-semibold text-[var(--text-main)]">{item.value}%</span>
                   </li>
                 ))}
               </ul>
@@ -172,7 +165,7 @@ export function LandingMarketInsights() {
           </div>
         </div>
 
-        <p className="mt-6 text-center text-[10px] leading-relaxed text-violet-400/45">{t("marketSourcesNote")}</p>
+        <p className="mt-6 text-center text-[10px] leading-relaxed text-[var(--text-dimmer)]">{t("marketSourcesNote")}</p>
       </div>
     </section>
   );

@@ -82,14 +82,17 @@ export function AgeBreakdownCard({
 
   return (
     <section
-      className={embedded ? "h-full min-h-0 w-full" : "dashboard-card dashboard-card--compact"}
+      className={
+        embedded
+          ? "h-full min-h-0 w-full"
+          : "campaign-creator-card campaign-creator-card--compact flex h-full min-h-0 flex-col"
+      }
       aria-labelledby="age-breakdown-title"
     >
-      <div className="mb-2">
+      <div className="mb-2 shrink-0">
         <h3
           id="age-breakdown-title"
-          className="font-heading text-sm font-semibold"
-          style={{ color: "var(--text-main)" }}
+          className="campaign-creator-orion-section-label"
         >
           {t("ageBreakdownTitle")}
         </h3>

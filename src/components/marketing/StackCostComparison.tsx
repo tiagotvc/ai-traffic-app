@@ -116,7 +116,7 @@ export function StackCostComparison({ className }: { className?: string }) {
 
     return [
       { name: stackLabel, value: stackValue / 100, fill: "rgba(248,113,113,0.75)" },
-      { name: orionLabel, value: orionValue / 100, fill: "var(--amber-bright)" }
+      { name: orionLabel, value: orionValue / 100, fill: "var(--ui-accent)" }
     ];
   }, [selectedPlan, orionPricing, cycle, stackMonthlyCents, orionDisplayCents, t]);
 
@@ -164,7 +164,7 @@ export function StackCostComparison({ className }: { className?: string }) {
                     <div>
                       <span className="text-sm text-[var(--text-main)]">{t(tool.labelKey)}</span>
                       <p className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
-                        <span className="font-medium text-[var(--amber-bright)]">{t("stackMapsToLabel")}</span>{" "}
+                        <span className="font-medium text-[var(--ui-accent)]">{t("stackMapsToLabel")}</span>{" "}
                         {t(tool.mapsToKey)}
                       </p>
                       <a
@@ -197,7 +197,7 @@ export function StackCostComparison({ className }: { className?: string }) {
 
           <div className="space-y-4">
             <div className="relative overflow-hidden rounded-2xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-6 shadow-xl">
-              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--amber-bright)]">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[var(--ui-accent)]">
                 {t("orionLabel")}
               </p>
               <h3 className="mt-2 font-heading text-xl font-bold text-[var(--text-main)]">
@@ -216,7 +216,7 @@ export function StackCostComparison({ className }: { className?: string }) {
                     {formatMoney(orionPricing.listCents, currency)}
                   </span>
                 ) : null}
-                <span className="font-heading text-4xl font-bold text-[var(--amber-bright)]">
+                <span className="font-heading text-4xl font-bold text-[var(--ui-accent)]">
                   {orionPricing ? formatMoney(orionPricing.finalCents, currency) : "—"}
                 </span>
                 <span className="text-sm text-[var(--text-dim)]">
@@ -326,7 +326,7 @@ export function StackCostComparison({ className }: { className?: string }) {
                       }}
                     />
                     <Bar dataKey="stack" fill="rgba(248,113,113,0.55)" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="orion" fill="var(--amber-bright)" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="orion" fill="var(--ui-accent)" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

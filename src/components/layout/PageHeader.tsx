@@ -1,14 +1,20 @@
 import type { ReactNode } from "react";
 
+import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
+
 export function PageHeader({
   title,
   subtitle,
   breadcrumbs,
+  titleIcon,
+  badge,
   actions
 }: {
   title: string;
   subtitle?: string;
   breadcrumbs?: ReactNode;
+  titleIcon?: ReactNode;
+  badge?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
@@ -17,10 +23,7 @@ export function PageHeader({
         {breadcrumbs ? (
           <div className="mb-1 text-xs font-medium text-[var(--text-dim)]">{breadcrumbs}</div>
         ) : null}
-        <h1 className="font-heading font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">
-          {title}
-        </h1>
-        {subtitle ? <p className="mt-1 text-sm text-[var(--text-dim)]">{subtitle}</p> : null}
+        <PageTitleBlock title={title} subtitle={subtitle} titleIcon={titleIcon} badge={badge} />
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>

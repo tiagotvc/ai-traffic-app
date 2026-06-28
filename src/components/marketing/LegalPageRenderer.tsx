@@ -40,7 +40,7 @@ export function LegalPageRenderer({
 }) {
   return (
     <MarketingContentPage badge={content.badge} title={content.title} subtitle={content.subtitle}>
-      {content.intro ? <p className="text-center text-sm text-violet-200/65">{content.intro}</p> : null}
+      {content.intro ? <p className="text-center text-sm text-[var(--text-dim)]">{content.intro}</p> : null}
 
       <div className="space-y-4">
         {content.sections.map((section) => (
@@ -53,7 +53,7 @@ export function LegalPageRenderer({
       </div>
 
       {content.footerNote ? (
-        <p className="text-center text-sm text-violet-200/65">{content.footerNote}</p>
+        <p className="text-center text-sm text-[var(--text-dim)]">{content.footerNote}</p>
       ) : null}
       {footer}
     </MarketingContentPage>

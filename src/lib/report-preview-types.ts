@@ -5,7 +5,7 @@ import type { ReportBreakdownSection } from "@/lib/report-breakdown-data";
 import type { ReportRecommendation } from "@/lib/report-narrative";
 
 export type ReportAiAnalysis = {
-  provider: "claude";
+  provider: string;
   executiveSummary: string;
   keyFindings: string[];
   recommendations: ReportRecommendation[];
@@ -49,6 +49,7 @@ export type ReportPreviewPayload = {
   previousSeries: Array<{ day: string } & ReportSummary>;
   campaigns: CampaignSpendRow[];
   comparisonBars: Array<{ key: MetricKey; current: number; previous: number; delta: number | null }>;
+  anomalies: Array<{ key: MetricKey; delta: number; direction: "good" | "bad" }>;
   narrative: string;
   recommendations: ReportRecommendation[];
   aiAnalysis?: ReportAiAnalysis | null;

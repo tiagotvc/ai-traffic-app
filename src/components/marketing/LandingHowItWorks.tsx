@@ -38,7 +38,7 @@ export function LandingHowItWorks() {
                 <Icon className="mx-auto mb-3 h-5 w-5 text-[var(--ui-accent)]" />
                 <h3 className="font-heading text-base font-semibold text-[var(--text-main)]">{t(`${key}Title`)}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">{t(`${key}Body`)}</p>
-                <p className="mt-3 text-xs font-medium text-[var(--amber-bright)]">{t(`${key}Hint`)}</p>
+                <p className="mt-3 text-xs font-medium text-[var(--ui-accent)]">{t(`${key}Hint`)}</p>
               </div>
             </MarketingStaggerItem>
           ))}

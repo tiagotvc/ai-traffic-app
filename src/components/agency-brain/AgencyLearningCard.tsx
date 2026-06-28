@@ -30,7 +30,7 @@ export function AgencyLearningCard({
 
   return (
     <article
-      className={`animate-slide-up overflow-hidden rounded-xl border border-[var(--border-color)] border-l-4 ${visual.border} ${visual.bg} shadow-sm transition hover:border-sky-300 hover:shadow-md hover:shadow-sky-100/50`}
+      className={`campaign-creator-card campaign-creator-card--compact animate-slide-up overflow-hidden border-l-4 ${visual.border} p-0 transition hover:border-[var(--ui-accent-border)]`}
       style={{ animationDelay: `${Math.min(index, 9) * 35}ms` }}
     >
       <div className="flex items-start gap-2 p-2.5 sm:p-3">

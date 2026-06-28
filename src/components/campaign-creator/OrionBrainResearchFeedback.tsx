@@ -14,8 +14,10 @@ import {
   resolveConsultationCounts,
   resolveConsultedCampaignsCount,
   resolveMetaAdsConsultedCount,
+  resolveMetaResearchStep,
   resolveSyncedCampaignsCount,
-  shouldShowBenchmarkFallbackMessage
+  shouldShowBenchmarkFallbackMessage,
+  wasMetaResearchAttempted
 } from "@/lib/campaign-creator/orion-brain-utils";
 
 type CampaignCreatorT = ReturnType<typeof useTranslations<"campaignCreator">>;
@@ -106,13 +108,16 @@ export function OrionBrainResearchChecklist({
 
 function OrionBrainConsultedCampaignsBadge({
   campaignCount,
-  metaAdsCount
+  metaAdsCount,
+  metaStep
 }: {
   campaignCount: number;
   metaAdsCount: number;
+  metaStep?: CreatorBrainResearchStep;
 }) {
   const t = useTranslations("campaignCreator");
-  if (campaignCount <= 0 && metaAdsCount <= 0) return null;
+  const metaAttempted = wasMetaResearchAttempted(metaStep);
+  if (campaignCount <= 0 && metaAdsCount <= 0 && !metaAttempted) return null;
 
   return (
     <div className="flex flex-col gap-1">
@@ -126,6 +131,16 @@ function OrionBrainConsultedCampaignsBadge({
         <div className="campaign-creator-orion-sample-badge">
           <CheckCircle2 size={12} strokeWidth={2.25} className="shrink-0" aria-hidden />
           <span>{t("brainConsultedMetaAdsBadge", { count: metaAdsCount })}</span>
+        </div>
+      ) : metaAttempted && metaStep?.detail === "api_error" ? (
+        <div className="campaign-creator-orion-sample-badge text-amber-700 dark:text-amber-400">
+          <CheckCircle2 size={12} strokeWidth={2.25} className="shrink-0" aria-hidden />
+          <span>{t("brainMetaApiErrorBadge")}</span>
+        </div>
+      ) : metaAttempted ? (
+        <div className="campaign-creator-orion-sample-badge text-[var(--text-dim)]">
+          <CheckCircle2 size={12} strokeWidth={2.25} className="shrink-0" aria-hidden />
+          <span>{t("brainMetaNoAdsBadge")}</span>
         </div>
       ) : null}
     </div>
@@ -196,18 +211,25 @@ export function OrionBrainCardFeedback({
   const t = useTranslations("campaignCreator");
   const campaignCount = resolveSyncedCampaignsCount(insight);
   const metaAdsCount = resolveMetaAdsConsultedCount(insight);
+  const metaStep = resolveMetaResearchStep(insight);
+  const metaAttempted = wasMetaResearchAttempted(metaStep);
   const consultedCount = resolveConsultedCampaignsCount(insight);
   const benchmarkOnly = isBenchmarkOnly(insight);
   const showFallbackMessage = shouldShowBenchmarkFallbackMessage(insight);
+  const showBadges = showSampleBadge && (consultedCount > 0 || metaAttempted);
 
-  if (consultedCount === 0 && !showFallbackMessage && !showSampleBadge) {
+  if (consultedCount === 0 && !metaAttempted && !showFallbackMessage && !showSampleBadge) {
     return null;
   }
 
   return (
     <div className={`space-y-2 ${className}`.trim()}>
-      {showSampleBadge && consultedCount > 0 ? (
-        <OrionBrainConsultedCampaignsBadge campaignCount={campaignCount} metaAdsCount={metaAdsCount} />
+      {showBadges ? (
+        <OrionBrainConsultedCampaignsBadge
+          campaignCount={campaignCount}
+          metaAdsCount={metaAdsCount}
+          metaStep={metaStep}
+        />
       ) : null}
 
       {!compact && showFallbackMessage ? (

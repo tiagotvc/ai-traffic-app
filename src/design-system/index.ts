@@ -15,6 +15,7 @@ export { DsFlatSection, type DsFlatSectionTone } from "./components/DsFlatSectio
 export { DsFormActions, DsFormField } from "./components/DsFormField";
 export { DsInfoBanner } from "./components/DsInfoBanner";
 export { DsPageHeader } from "./components/DsPageHeader";
+export { PageTitleBlock } from "./components/PageTitleBlock";
 export { DsSectionHeader } from "./components/DsSectionHeader";
 export { DsTableHeadCell, DsTableRow, DsTableShell } from "./components/DsTableShell";
 export { DsTrendBadge } from "./components/DsTrendBadge";

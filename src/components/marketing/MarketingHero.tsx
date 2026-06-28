@@ -63,7 +63,7 @@ export function MarketingHero() {
             transition={{ ...motionProps.transition, delay: 0.05 }}
           >
             {t("heroTitlePrefix")}
-            <span className="bg-gradient-to-r from-[var(--ui-accent)] to-[var(--amber-bright)] bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-[var(--ui-accent)] to-violet-300 bg-clip-text text-transparent">
               {t("heroTitleHighlight")}
             </span>
             {t("heroTitleSuffix")}
@@ -94,7 +94,7 @@ export function MarketingHero() {
             {HERO_POINTS.map((key) => (
               <MarketingStaggerItem key={key}>
                 <div className="marketing-card marketing-card-muted p-4">
-                  <span className="font-heading text-xs font-bold text-[var(--amber-bright)]">
+                  <span className="font-heading text-xs font-bold text-[var(--ui-accent)]">
                     {String(HERO_POINTS.indexOf(key) + 1).padStart(2, "0")}
                   </span>
                   <p className="mt-2 text-sm leading-snug text-[var(--text-main)]">{t(key)}</p>

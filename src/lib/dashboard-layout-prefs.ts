@@ -76,29 +76,44 @@ export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutPrefs = {
   chartSize: "default"
 };
 
-export const MAX_HERO_METRICS = 5;
+export const MAX_HERO_METRICS = 8;
 
-/** Default hero row when user prefs are empty (Destaques v2 — 5 compact KPI cards). */
+/** Default hero row when user prefs are empty (Destaques v2 — up to 8 compact KPI cards, 4+4 grid). */
 export const DEFAULT_DASHBOARD_HERO_METRICS: MetricKey[] = [
   "spend",
   "ctr",
   "reach",
   "conversions",
-  "clicks"
+  "clicks",
+  "cpc",
+  "roas",
+  "cpm"
 ];
 
 export const CHART_PANEL_MIN_HEIGHT: Record<ChartPanelSize, number> = {
-  compact: 160,
-  default: 180,
-  tall: 220
+  compact: 260,
+  default: 300,
+  tall: 340
 };
 
 /** Default chart plot height for Destaques page variant (px). */
 export const DASHBOARD_PAGE_CHART_HEIGHT: Record<ChartPanelSize, number> = {
-  compact: 130,
-  default: 148,
-  tall: 168
+  compact: 210,
+  default: 250,
+  tall: 290
 };
+
+/** localStorage key for selected Performance chart metrics (Destaques). */
+export const DASHBOARD_CHART_METRICS_STORAGE_KEY = "orion-highlights-chart-metrics";
+
+export function normalizeChartMetrics(raw: unknown, fallback: MetricKey[] = DEFAULT_DASHBOARD_CHART_METRICS): MetricKey[] {
+  if (!Array.isArray(raw)) return [...fallback];
+  const valid = raw.filter(
+    (k): k is MetricKey => typeof k === "string" && k in METRIC_BY_KEY
+  );
+  const unique = [...new Set(valid)];
+  return unique.length ? unique.slice(0, 3) : [...fallback];
+}
 
 export function normalizeSectionOrder(raw: unknown): DashboardSectionKey[] {
   if (!Array.isArray(raw)) return [...DEFAULT_DASHBOARD_SECTION_ORDER];

@@ -55,12 +55,12 @@ import {
   type SlotVisualConfig
 } from "@/lib/dashboard/slot-visual-config";
 import type { ChartStyle } from "@/lib/dashboard/widget-config";
-import { METRIC_BY_KEY, METRIC_CATALOG, type MetricKey } from "@/lib/dashboard-metrics";
+import { METRIC_BY_KEY, METRIC_CATALOG, MAX_CHART_METRICS, type MetricKey } from "@/lib/dashboard-metrics";
 import { useIsMobile } from "@/uxpilot-ui/hooks/use-mobile";
 
 type ChartPoint = { label: string } & Partial<Record<MetricKey, number>>;
 
-type MetricScaleGroup = "magnitude" | "normalized";
+type MetricScaleGroup = "magnitude" | "percent" | "multiplier";
 
 const DUAL_AXIS_MAGNITUDE_RATIO = 8;
 
@@ -70,9 +70,8 @@ function metricColor(key: MetricKey): string {
 
 function metricScaleGroup(key: MetricKey): MetricScaleGroup {
   const format = METRIC_BY_KEY[key]?.format;
-  if (format === "percent" || format === "ratio" || format === "multiplier") {
-    return "normalized";
-  }
+  if (format === "percent") return "percent";
+  if (format === "multiplier" || format === "ratio") return "multiplier";
   return "magnitude";
 }
 
@@ -101,12 +100,27 @@ function resolveAxisAssignment(
     else unassigned.push(key);
   }
 
-  let leftCandidates: MetricKey[] = [];
-  let rightCandidates: MetricKey[] = [];
+  const magnitude: MetricKey[] = [];
+  const percent: MetricKey[] = [];
+  const multiplier: MetricKey[] = [];
+
   for (const key of unassigned) {
-    if (metricScaleGroup(key) === "normalized") rightCandidates.push(key);
-    else leftCandidates.push(key);
+    const group = metricScaleGroup(key);
+    if (group === "percent") percent.push(key);
+    else if (group === "multiplier") multiplier.push(key);
+    else magnitude.push(key);
   }
+
+  // Never mix percent + multiplier on the same axis — they crush each other's scale.
+  let rightCandidates: MetricKey[] = [];
+  if (multiplier.length > 0) {
+    rightCandidates = multiplier;
+    magnitude.push(...percent);
+  } else if (percent.length > 0) {
+    rightCandidates = percent;
+  }
+
+  let leftCandidates = [...magnitude];
 
   if (leftCandidates.length >= 2) {
     const sorted = [...leftCandidates].sort(
@@ -266,6 +280,7 @@ export function DashboardPerformanceChart({
   const isCanvas = variant === "canvas";
   const isPreview = variant === "preview";
   const isEmbedded = variant === "embedded";
+  const isPage = variant === "page";
 
   const toggleKeys = useMemo(
     () => availableMetrics ?? (METRIC_CATALOG.map((m) => m.key) as MetricKey[]),
@@ -303,7 +318,7 @@ export function DashboardPerformanceChart({
       ? isMobile
         ? 200
         : 220
-      : previewHeight ?? 200;
+      : previewHeight ?? (isPage ? 250 : 200);
 
   return (
     <div
@@ -333,14 +348,16 @@ export function DashboardPerformanceChart({
           {toggleKeys.map((key) => {
             const color = metricColor(key);
             const active = activeMetrics.includes(key);
+            const disabled = !active && activeMetrics.length >= MAX_CHART_METRICS;
             return (
               <button
                 key={key}
                 type="button"
+                disabled={disabled}
                 onClick={() => toggle(key)}
                 className={cn(
                   "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium transition-all",
-                  active ? "" : "opacity-40 hover:opacity-70"
+                  active ? "" : disabled ? "cursor-not-allowed opacity-25" : "opacity-40 hover:opacity-70"
                 )}
                 style={
                   active
@@ -392,7 +409,7 @@ export function DashboardPerformanceChart({
         </div>
       ) : null}
 
-      <PremiumChartFrame compact={isCanvas || isPreview || isEmbedded}>
+      <PremiumChartFrame compact={isCanvas || isPreview || isEmbedded || isPage}>
         {data.length >= 1 ? (
           <ChartContainer
             height={resolvedChartHeight}
@@ -597,7 +614,11 @@ function PerformanceChartBody({
       domain={rightDomain}
       tickCount={dualAxisAlways ? 4 : undefined}
       allowDataOverflow={false}
-      tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
+      tickFormatter={(v: number) => {
+        const primaryRight = rightAxisMetrics[0];
+        if (primaryRight) return formatValue(primaryRight, Number(v));
+        return formatSparkAxisValue(Number(v));
+      }}
     />
   ) : null;
 

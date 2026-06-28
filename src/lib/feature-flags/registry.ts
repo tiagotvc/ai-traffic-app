@@ -71,6 +71,23 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
     ]
   },
   {
+    id: "reports",
+    label: "Relatórios",
+    description: "Geração de relatórios (clássico e com IA).",
+    children: [
+      {
+        id: "reports.v1",
+        label: "Relatório v1 (clássico, sem IA)",
+        description: "Fluxo manual: KPIs, gráficos, breakdowns e export — sem IA."
+      },
+      {
+        id: "reports.v2",
+        label: "Relatório v2 (com IA)",
+        description: "Gerar por IA, análise/insights por IA e destaques de anomalia."
+      }
+    ]
+  },
+  {
     id: "ai",
     label: "Inteligência Artificial",
     description: "Provedores e roteamento de IA (Gemini + Claude).",

@@ -50,7 +50,7 @@ export function ZonesLibraryClient() {
 
   return (
     <div className="space-y-5">
-      <DsPageHeader title={t("zonesLibraryTitle")} subtitle={t("zonesLibrarySubtitle")} />
+      <DsPageHeader title={t("zonesLibraryTitle")} subtitle={t("zonesLibrarySubtitle")} titleIcon={<MapPin size={16} aria-hidden />} />
       <p className="text-xs font-medium" style={{ color: "var(--ui-accent)" }}>
         {t("zonesLibraryBadge")}
       </p>

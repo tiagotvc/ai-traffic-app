@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Building2 } from "lucide-react";
 
 import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
+import { AgencyBrainCreatorShell } from "@/components/agency-brain/AgencyBrainCreatorShell";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { BrainFeedHero } from "@/components/agency-brain/insights/BrainFeedHero";
@@ -178,13 +179,12 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
   }, [items, page]);
 
   return (
-    <div className="space-y-5">
+    <AgencyBrainCreatorShell>
       <BrainFeedHero variant={variant} />
 
-      {/* Filtro de cliente + busca. As pills (Aprendizados/Hipóteses/Logs) foram removidas:
-          a navegação entre módulos já existe no sidebar. */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <FilterSelectDropdown
+          creatorField
           icon={<Building2 size={14} />}
           label={t("clientLabel")}
           placeholder={t("clientLabel")}
@@ -195,6 +195,7 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
         />
 
         <FilterSearchInput
+          creatorField
           size="wide"
           value={search}
           onChange={setSearch}
@@ -207,9 +208,9 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
       </div>
 
       {variant === "learnings" ? (
-        <div className="ui-alert-learnings mb-5">
+        <div className="campaign-creator-card campaign-creator-card--compact flex items-start gap-2.5 !space-y-0">
           <svg
-            className="ui-alert-learnings__icon"
+            className="mt-0.5 h-4 w-4 shrink-0 text-[var(--ui-accent)]"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -222,7 +223,7 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span>{t("learningsInfoBanner")}</span>
+          <span className="text-sm text-[var(--text-dim)]">{t("learningsInfoBanner")}</span>
         </div>
       ) : null}
 
@@ -264,11 +265,8 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
         ) : null}
 
         {!insights.loading && totalPages > 1 ? (
-          <div
-            className="flex items-center justify-between rounded-xl border px-4 py-3"
-            style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
-          >
-            <p className="text-xs" style={{ color: "var(--text-dimmer)" }}>
+          <div className="campaign-creator-card campaign-creator-card--compact flex items-center justify-between !space-y-0">
+            <p className="text-xs text-[var(--text-dimmer)]">
               {items.length}{" "}
               {variant === "learnings" ? t("learningsCountLabel") : t("hypothesesCountLabel")}
             </p>
@@ -277,20 +275,18 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
                 type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-lg border px-3 py-1 text-xs disabled:opacity-40"
-                style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                className="ui-btn-secondary px-3 py-1 text-xs disabled:opacity-40"
               >
                 {t("paginationPrev")}
               </button>
-              <span className="text-xs" style={{ color: "var(--text-dim)" }}>
+              <span className="text-xs text-[var(--text-dim)]">
                 {page} / {totalPages}
               </span>
               <button
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-lg border px-3 py-1 text-xs disabled:opacity-40"
-                style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+                className="ui-btn-secondary px-3 py-1 text-xs disabled:opacity-40"
               >
                 {t("paginationNext")}
               </button>
@@ -309,7 +305,7 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
           }}
         />
       ) : null}
-    </div>
+    </AgencyBrainCreatorShell>
   );
 }
 

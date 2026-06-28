@@ -12,7 +12,7 @@ export async function LoginMarketingPanel() {
       <div className="auth-premium-grid" />
       <div
         className="auth-premium-glow -right-24 -top-24 h-96 w-96"
-        style={{ background: "radial-gradient(circle, rgba(245,166,35,0.15) 0%, transparent 65%)" }}
+        style={{ background: "radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 65%)" }}
       />
       <div className="auth-premium-glow -bottom-32 left-0 h-80 w-80 bg-violet-500/15" />
 

@@ -55,6 +55,8 @@ export default async function ReportPrintPage({
           adAccountId={bundle.adAccountId ?? undefined}
           initialCreativeGroups={bundle.creativeGroups}
           initialBreakdownLayout={breakdownLayout.length ? breakdownLayout : undefined}
+          brandName={bundle.brandName ?? undefined}
+          logoUrl={bundle.logoUrl ?? undefined}
           variant="print"
         />
       </ReportPrintReady>

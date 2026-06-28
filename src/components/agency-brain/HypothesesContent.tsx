@@ -9,10 +9,12 @@ import { BrainListCard } from "@/components/agency-brain/BrainListCard";
 import { BrainListToolbar } from "@/components/agency-brain/BrainListToolbar";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { AgencyBrainEmptyGuide } from "@/components/agency-brain/AgencyBrainEmptyGuide";
+import { AgencyBrainCreatorShell } from "@/components/agency-brain/AgencyBrainCreatorShell";
 import { AgencyBrainModuleIntro } from "@/components/agency-brain/AgencyBrainModuleIntro";
 import { FeedbackBanner, type FeedbackMessage } from "@/components/agency-brain/FeedbackBanner";
 import { parseAiAnalysisResponse } from "@/components/agency-brain/handleAiAnalysisResponse";
 import { Badge } from "@/components/ui/Badge";
+import { DsAccentOutlineButton } from "@/design-system";
 import { formatConfidenceBadge } from "@/lib/agency-brain/confidence-score";
 import type { HypothesisDto } from "@/lib/agency-brain/domain/schemas";
 import type { LearningCategory } from "@/lib/agency-brain/types";
@@ -214,21 +216,19 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
   ];
 
   return (
-    <div className="space-y-4">
+    <AgencyBrainCreatorShell>
       <AgencyBrainModuleIntro moduleId="hypotheses" compact />
 
       <div className="flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          className="ui-btn-secondary text-sm"
+        <DsAccentOutlineButton
           onClick={() => void handleDetectRules()}
           disabled={detecting || aiAnalyzing}
         >
           {detecting ? t("hypothesesDetecting") : t("hypothesesDetectRules")}
-        </button>
+        </DsAccentOutlineButton>
         <button
           type="button"
-          className="ui-btn-primary text-sm"
+          className="ui-btn-accent text-sm"
           onClick={() => void handleAiSuggest()}
           disabled={detecting || aiAnalyzing || aiDisabled}
           title={aiDisabled ? t("aiLimit") : undefined}
@@ -253,6 +253,7 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
         filters={
           <div className="flex flex-wrap gap-2">
             <FilterSelectDropdown
+              creatorField
               icon={<ListFilter size={14} />}
               label={tCampaigns("filterStatus")}
               placeholder={t("filterAllStatus")}
@@ -266,6 +267,7 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
               )}
             />
             <FilterSelectDropdown
+              creatorField
               icon={<Target size={14} />}
               label={t("marketPatternSource")}
               placeholder={t("filterAllSource")}
@@ -277,6 +279,7 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
               }))}
             />
             <FilterSelectDropdown
+              creatorField
               icon={<Tag size={14} />}
               label={t("fieldCategory")}
               placeholder={t("filterAllCategories")}
@@ -292,7 +295,7 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
       />
 
       {loading ? (
-        <div className="ui-card p-8 text-center text-sm text-[var(--text-dim)]">{t("loading")}</div>
+        <div className="campaign-creator-card p-8 text-center text-sm text-[var(--text-dim)]">{t("loading")}</div>
       ) : items.length === 0 ? (
         <AgencyBrainEmptyGuide
           title={t("mvp_hypotheses_emptyTitle")}
@@ -380,6 +383,6 @@ export function HypothesesContent({ clientId }: { clientId: string }) {
           })}
         </div>
       )}
-    </div>
+    </AgencyBrainCreatorShell>
   );
 }
