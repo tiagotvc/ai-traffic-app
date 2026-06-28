@@ -9,7 +9,8 @@ import {
   WEBSITE_PIXEL_EVENTS,
   fetchAdAccountApps,
   fetchEngagementLeadForms,
-  fetchEngagementVideoOptions
+  fetchEngagementVideoOptions,
+  sanitizeMetaEventName
 } from "@/lib/meta-audience-create";
 import {
   fetchAdAccountPixels,
@@ -63,7 +64,12 @@ export async function GET(req: Request) {
     ...customConversions.map((c) => ({
       id: `custom:${c.id}`,
       labelKey: c.name ?? c.id,
-      metaEvent: c.custom_event_type ?? c.name ?? c.id,
+      // Prefer the standard event token; never fall back to the display name
+      // (spaces/accents/length break Meta's event_name rule → error #2654).
+      metaEvent:
+        c.custom_event_type && c.custom_event_type !== "OTHER"
+          ? c.custom_event_type
+          : sanitizeMetaEventName(c.name ?? c.id),
       isCustom: true
     }))
   ];

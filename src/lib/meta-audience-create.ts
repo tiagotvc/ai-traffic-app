@@ -208,6 +208,22 @@ function retentionSeconds(days: number): number {
   return Math.round(days * 86400);
 }
 
+/**
+ * Coerces a value into a Meta-valid Custom Audience event name: at most 49
+ * characters, only `[A-Za-z0-9_]`. Standard tokens (`PageView`, `Purchase`)
+ * pass through unchanged; display names with spaces/accents/hyphens are
+ * normalized so Meta doesn't reject them with error #2654.
+ */
+export function sanitizeMetaEventName(raw: string): string {
+  const cleaned = (raw || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip accents
+    .replace(/[^A-Za-z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return (cleaned || "Other").slice(0, 49);
+}
+
 export function buildWebsiteAudienceRule(input: {
   pixelId: string;
   eventName: string;
@@ -226,7 +242,7 @@ export function buildWebsiteAudienceRule(input: {
   const rule: Record<string, unknown> = {
     event_sources: [{ id: input.pixelId, type: "pixel" }],
     retention_seconds: retentionSeconds(input.retentionDays),
-    event: { event_name: input.eventName }
+    event: { event_name: sanitizeMetaEventName(input.eventName) }
   };
 
   if (filters.length) {
