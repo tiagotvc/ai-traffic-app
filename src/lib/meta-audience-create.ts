@@ -217,7 +217,13 @@ export function buildWebsiteAudienceRule(input: {
   retentionDays: number;
   urlContains?: string;
 }): Record<string, unknown> {
-  const filters: Array<Record<string, unknown>> = [];
+  // Flexible-spec rule: the event lives in a `filter` (field "event", operator
+  // "eq") — the same shape engagement audiences use. The legacy
+  // `event: { event_name }` form is rejected by current API versions with
+  // "Invalid rule JSON format" (#100 / 1713098).
+  const filters: Array<Record<string, unknown>> = [
+    { field: "event", operator: "eq", value: sanitizeMetaEventName(input.eventName) }
+  ];
   if (input.urlContains?.trim()) {
     filters.push({
       field: "url",
@@ -226,20 +232,16 @@ export function buildWebsiteAudienceRule(input: {
     });
   }
 
-  const rule: Record<string, unknown> = {
-    event_sources: [{ id: input.pixelId, type: "pixel" }],
-    retention_seconds: retentionSeconds(input.retentionDays),
-    event: { event_name: sanitizeMetaEventName(input.eventName) }
-  };
-
-  if (filters.length) {
-    rule.filter = { operator: "and", filters };
-  }
-
   return {
     inclusions: {
       operator: "or",
-      rules: [rule]
+      rules: [
+        {
+          event_sources: [{ id: input.pixelId, type: "pixel" }],
+          retention_seconds: retentionSeconds(input.retentionDays),
+          filter: { operator: "and", filters }
+        }
+      ]
     }
   };
 }

@@ -2,6 +2,8 @@
 
 > Rota(s): `/[locale]/audiences` — arquivo [src/app/[locale]/(app)/audiences/page.tsx](../../src/app/[locale]/(app)/audiences/page.tsx)
 > Fonte de verdade desta feature. Atualize este doc a cada incremento/decremento.
+>
+> 📎 **Regras da Meta (formato, restrições `#2654`, fixes):** ver [meta-custom-audience-rules.md](./meta-custom-audience-rules.md).
 
 ## Visão geral
 
@@ -63,7 +65,7 @@ Fluxo: `page.tsx` → `AudiencesView` (envolve em `UxPageMain`) → `AudiencesLo
 ### `AudienceCreatorUxPage` (wizard ativo) — [src/uxpilot-ui/adapters/AudienceCreatorUxPage.tsx](../../src/uxpilot-ui/adapters/AudienceCreatorUxPage.tsx)
 - **Props:** `{ ctx: AudienceCreateContext; clients: {slug,name}[]; clientSlug; onClientChange; onBack }`.
 - **Comportamento:** wizard de 4 etapas (`type` → `details` → `rules` → `review`) com 3 tipos de público:
-  - **custom**: fonte `instagram`/`facebook`/`site` → `POST /api/meta/audiences/engagement` (IG/FB) ou `POST /api/meta/audiences/website` (Pixel). Carrega ativos via `/api/meta/audience-creation/options`.
+  - **custom**: fonte `instagram`/`facebook`/`site` → `POST /api/meta/audiences/engagement` (IG/FB) ou `POST /api/meta/audiences/website` (Pixel). Carrega ativos via `/api/meta/audience-creation/options`. A lista de **ações do passo "Regras" é dinâmica por fonte** (site → eventos de Pixel; IG/FB → ações de engajamento), derivada do catálogo de `options` — ver [meta-custom-audience-rules.md §6](./meta-custom-audience-rules.md). ⚠️ **Instagram não é criável via API** (subtipo `IG_BUSINESS` bloqueado pela Meta) — ver §5 do mesmo doc.
   - **lookalike**: escolhe público-semente + percentual (1/2/3/5/10%) + país → `POST /api/clients/{slug}/lookalike/batch`.
   - **saved**: faixa etária, gêneros, país (interesses são apenas exibidos) → `POST /api/meta/saved-audiences`.
   - Mostra `TosBanner` (bloqueia o botão "Criar" se o ToS de públicos não estiver aceito), painel lateral de "Completude" (score) e prévia. Em sucesso chama `ctx.onRefresh()` e volta à lista.
@@ -123,7 +125,8 @@ Audiences é **gated por plano**. Ver [src/lib/billing/nav-permissions.ts](../..
 
 ## Pendências / observações
 
-- **Textos hardcoded** no wizard `AudienceCreatorUxPage` (labels de etapas, países, ações, dicas) — migrar para o namespace `audiences`.
+- ⚠️ **Instagram (engajamento) não é criável via Marketing API** — o subtipo `IG_BUSINESS` só pode ser criado pelo Gerenciador de Anúncios/Audience Manager. A fonte "Instagram" no wizard tende a falhar com `#2654` (mensagem enganosa "Invalid Event Name"). Decisão pendente: remover a fonte "Instagram" do wizard ou exibir aviso de "criar no Gerenciador". Detalhes em [meta-custom-audience-rules.md §5](./meta-custom-audience-rules.md).
+- **Textos hardcoded** no wizard `AudienceCreatorUxPage` (labels de etapas, países, ações, dicas) — migrar para o namespace `audiences`. (O refactor de design-system reverteu parte da migração i18n deste componente.)
 - **Componentes legados** em `src/components/audiences/create/` (wizards, `CreateAudienceHub`, `AiAudienceWizard`, `ReadOnlyPanels`) não são usados pela rota atual — avaliar remoção ou reuso. O removido `AiWidgetBuilderModal`/wizards antigos sugerem migração em andamento para o `AudienceCreatorUxPage`.
 - No wizard saved, o campo **"Interesses"** é coletado mas não enviado ao endpoint (`targeting` envia apenas geo/idade/gênero).
 - Criação de **custom (engagement/website)** usa o primeiro ativo disponível (`options?.pages?.[0]`, `pixels?.[0]`, etc.) — não há seleção explícita de página/Pixel/conta IG na UI do `AudienceCreatorUxPage`.
@@ -132,3 +135,10 @@ Audiences é **gated por plano**. Ver [src/lib/billing/nav-permissions.ts](../..
 
 ## Histórico de mudanças relevantes
 - 2026-06-24: Criação da documentação.
+- 2026-06-28: Correções no fluxo de criação de públicos da Meta (ver [meta-custom-audience-rules.md](./meta-custom-audience-rules.md)):
+  - Removido `subtype` na criação de site/engajamento (descontinuado na API v3+; erro `#2654`/`1870053`). Mantido só para `VIDEO`.
+  - Adicionado `sanitizeMetaEventName` (≤49 chars, `[A-Za-z0-9_]`) nos builders de regra e na rota de opções — corrige `#2654`/`1713151` com conversões personalizadas.
+  - Removidos tokens inexistentes do catálogo: `page_liked` e `ig_user_followed_business`.
+  - `AudienceCreatorUxPage`: ações do passo "Regras" agora **dinâmicas por fonte** (antes era lista fixa); `handleCreate` envia o evento real selecionado (removido `eventMap` lossy).
+  - Documentada a limitação: **públicos de engajamento de Instagram não são criáveis via API**.
+  - Regra de **site (Pixel)** migrada do formato legado `event: { event_name }` para o flexible spec (`filter`/`field:"event"`/`operator:"eq"`) — corrige `#100`/`1713098` "Invalid rule JSON format".
