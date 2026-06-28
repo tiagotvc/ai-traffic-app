@@ -217,7 +217,13 @@ export function buildWebsiteAudienceRule(input: {
   retentionDays: number;
   urlContains?: string;
 }): Record<string, unknown> {
-  const filters: Array<Record<string, unknown>> = [];
+  // Flexible-spec rule: the event lives in a `filter` (field "event", operator
+  // "eq") — the same shape engagement audiences use. The legacy
+  // `event: { event_name }` form is rejected by current API versions with
+  // "Invalid rule JSON format" (#100 / 1713098).
+  const filters: Array<Record<string, unknown>> = [
+    { field: "event", operator: "eq", value: sanitizeMetaEventName(input.eventName) }
+  ];
   if (input.urlContains?.trim()) {
     filters.push({
       field: "url",
@@ -226,20 +232,16 @@ export function buildWebsiteAudienceRule(input: {
     });
   }
 
-  const rule: Record<string, unknown> = {
-    event_sources: [{ id: input.pixelId, type: "pixel" }],
-    retention_seconds: retentionSeconds(input.retentionDays),
-    event: { event_name: sanitizeMetaEventName(input.eventName) }
-  };
-
-  if (filters.length) {
-    rule.filter = { operator: "and", filters };
-  }
-
   return {
     inclusions: {
       operator: "or",
-      rules: [rule]
+      rules: [
+        {
+          event_sources: [{ id: input.pixelId, type: "pixel" }],
+          retention_seconds: retentionSeconds(input.retentionDays),
+          filter: { operator: "and", filters }
+        }
+      ]
     }
   };
 }
@@ -325,9 +327,10 @@ export async function createWebsiteCustomAudience(
   const days = Math.min(Math.max(1, input.retentionDays), WEBSITE_MAX_RETENTION_DAYS);
   const rule = buildWebsiteAudienceRule({ ...input, retentionDays: days });
 
+  // `subtype` is no longer supported when creating website/engagement custom
+  // audiences (Marketing API v3+). The audience type is inferred from `rule`.
   return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, {
     name: input.name,
-    subtype: "WEBSITE",
     retention_days: String(days),
     rule: JSON.stringify(rule)
   });
@@ -354,14 +357,17 @@ export async function createEngagementCustomAudience(
       : Math.min(Math.max(1, input.retentionDays), maxDays);
 
   const rule = buildEngagementAudienceRule({ ...input, retentionDays: days });
-  const subtype = input.sourceType === "video" ? "VIDEO" : "ENGAGEMENT";
 
-  return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, {
+  // VIDEO engagement audiences still require `subtype`; all other engagement
+  // types infer it from `rule` (subtype was removed in Marketing API v3+).
+  const params: Record<string, string> = {
     name: input.name,
-    subtype,
     rule: JSON.stringify(rule),
     prefill: "1"
-  });
+  };
+  if (input.sourceType === "video") params.subtype = "VIDEO";
+
+  return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, params);
 }
 
 export async function createCombinedCustomAudience(

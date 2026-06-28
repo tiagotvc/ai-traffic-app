@@ -114,6 +114,14 @@ function AudienceChoiceRow({
   );
 }
 
+function ruleActionIcon(source: string, metaEvent: string): LucideIcon {
+  const event = metaEvent.toUpperCase();
+  if (event.includes("LEAD")) return Tag;
+  if (source === "instagram") return Instagram;
+  if (source === "facebook") return Facebook;
+  return Activity;
+}
+
 function AudienceReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-[color-mix(in_srgb,var(--border-color)_60%,transparent)] py-2.5 last:border-b-0">
@@ -166,7 +174,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
   const [ageMax, setAgeMax] = useState("65");
   const [genders, setGenders] = useState<string[]>(["Masculino", "Feminino"]);
   const [interests, setInterests] = useState("");
-  const [ruleAction, setRuleAction] = useState("INSTAGRAM_PROFILE_FOLLOW");
+  const [ruleAction, setRuleAction] = useState("");
   const [seedAudienceId, setSeedAudienceId] = useState("");
   const [options, setOptions] = useState<AudienceOptions | null>(null);
   const [tosBlocked, setTosBlocked] = useState(false);
@@ -199,6 +207,36 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
       setSeedAudienceId(seedAudiences[0]?.id ?? "");
     }
   }, [seedAudiences, seedAudienceId]);
+
+  // Rule actions are specific to the selected source: pixel/site events vs.
+  // Instagram engagement vs. Facebook Page engagement. The catalogs come from
+  // the audience-creation options endpoint, so the list always matches Meta.
+  const ruleActionOptions = useMemo(() => {
+    if (source === "site") {
+      return (options?.websiteEvents ?? []).map((e) => ({
+        value: e.metaEvent,
+        label: e.isCustom ? e.labelKey : t(e.labelKey as "websiteEvent.pageView")
+      }));
+    }
+    const sourceKey = source === "instagram" ? "ig_business" : "page";
+    return (options?.engagementActions?.[sourceKey] ?? []).map((a) => ({
+      value: a.metaEvent,
+      label: t(a.labelKey as "engagementAction.pageEngaged")
+    }));
+  }, [source, options, t]);
+
+  // Keep the selected action valid when the source changes or options load.
+  useEffect(() => {
+    if (!ruleActionOptions.length) return;
+    if (!ruleActionOptions.some((o) => o.value === ruleAction)) {
+      setRuleAction(ruleActionOptions[0]!.value);
+    }
+  }, [ruleActionOptions, ruleAction]);
+
+  const ruleActionLabel =
+    ruleActionOptions.find((o) => o.value === ruleAction)?.label ?? ruleAction;
+
+  const sourceLabel = source === "site" ? "Site (Pixel)" : source === "instagram" ? "Instagram" : "Facebook";
 
   useEffect(() => {
     if (bareShell) return;
@@ -271,11 +309,6 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               ctx.onError(t("noPixels"));
               return;
             }
-            const eventMap: Record<string, string> = {
-              PURCHASE: "Purchase",
-              LEAD: "Lead",
-              PAGE_ENGAGED: "PageView"
-            };
             const res = await fetch("/api/meta/audiences/website", {
               method: "POST",
               headers: { "content-type": "application/json" },
@@ -284,7 +317,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 adAccountId: ctx.adAccountId,
                 name: audienceName.trim(),
                 pixelId,
-                eventName: eventMap[ruleAction] ?? "PageView",
+                eventName: ruleAction || "PageView",
                 retentionDays: Math.min(parseInt(window_, 10) || 30, 180)
               })
             });
@@ -296,11 +329,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
           } else {
             const sourceType = source === "instagram" ? "ig_business" : "page";
             const eventName =
-              source === "instagram"
-                ? ruleAction === "INSTAGRAM_PROFILE_FOLLOW"
-                  ? "ig_user_followed_business"
-                  : "ig_business_profile_engaged"
-                : "page_engaged";
+              ruleAction || (sourceType === "ig_business" ? "ig_business_profile_engaged" : "page_engaged");
             const list =
               sourceType === "ig_business" ? options?.instagramAccounts : options?.pages;
             const sourceId = list?.[0]?.id;
@@ -677,37 +706,23 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
 
                   {typeChoice === "custom" ? (
                     <>
-                      <section className="campaign-creator-card space-y-3">
-                        <h3 className="campaign-creator-section-title">Ação de engajamento</h3>
-                        <div className="campaign-creator-choice-cards campaign-creator-choice-cards--2">
-                          {[
-                            { v: "INSTAGRAM_PROFILE_FOLLOW", label: "Seguiu o perfil do Instagram", icon: Instagram },
-                            { v: "INSTAGRAM_PROFILE_ENGAGE", label: "Interagiu com o perfil do Instagram", icon: Instagram },
-                            { v: "PAGE_ENGAGED", label: "Interagiu com a Página do Facebook", icon: Facebook },
-                            { v: "PURCHASE", label: "Realizou uma compra (Pixel)", icon: Activity },
-                            { v: "LEAD", label: "Enviou um formulário de lead", icon: Tag }
-                          ].map((opt) => (
-                            <button
-                              key={opt.v}
-                              type="button"
-                              onClick={() => setRuleAction(opt.v)}
-                              className={cn(
-                                "campaign-creator-budget-choice-card w-full text-left",
-                                ruleAction === opt.v
-                                  ? "campaign-creator-budget-choice-card--selected"
-                                  : "campaign-creator-budget-choice-card--unselected"
-                              )}
-                            >
-                              <ChoiceCardCheck selected={ruleAction === opt.v} />
-                              <span className="campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline">
-                                <opt.icon size={18} strokeWidth={1.75} />
-                              </span>
-                              <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
-                                {opt.label}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
+                      <section className="campaign-creator-card space-y-2">
+                        <h3 className="campaign-creator-section-title">
+                          Ação de engajamento · {sourceLabel}
+                        </h3>
+                        {ruleActionOptions.length ? (
+                          ruleActionOptions.map((opt) => (
+                            <AudienceChoiceRow
+                              key={opt.value}
+                              selected={ruleAction === opt.value}
+                              label={opt.label}
+                              icon={ruleActionIcon(source, opt.value)}
+                              onSelect={() => setRuleAction(opt.value)}
+                            />
+                          ))
+                        ) : (
+                          <p className="text-sm text-[var(--text-dim)]">{t("loadingOptions")}</p>
+                        )}
                       </section>
 
                       <section className="campaign-creator-card space-y-3">
@@ -811,8 +826,8 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                       <AudienceReviewRow label="País" value={country} />
                       {typeChoice === "custom" ? (
                         <>
-                          <AudienceReviewRow label="Fonte" value={source} />
-                          <AudienceReviewRow label="Ação" value={ruleAction} />
+                          <AudienceReviewRow label="Fonte" value={sourceLabel} />
+                          <AudienceReviewRow label="Ação" value={ruleActionLabel} />
                           <AudienceReviewRow label="Janela" value={`${window_} dias`} />
                         </>
                       ) : null}
