@@ -139,7 +139,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
   const [ageMax, setAgeMax] = useState("65");
   const [genders, setGenders] = useState<string[]>(["Masculino", "Feminino"]);
   const [interests, setInterests] = useState("");
-  const [ruleAction, setRuleAction] = useState("INSTAGRAM_PROFILE_FOLLOW");
+  const [ruleAction, setRuleAction] = useState("");
   const [seedAudienceId, setSeedAudienceId] = useState("");
   const [options, setOptions] = useState<AudienceOptions | null>(null);
   const [tosBlocked, setTosBlocked] = useState(false);
@@ -172,6 +172,37 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
       setSeedAudienceId(seedAudiences[0]?.id ?? "");
     }
   }, [seedAudiences, seedAudienceId]);
+
+  // Rule actions are specific to the selected source: pixel/site events vs.
+  // Instagram engagement vs. Facebook Page engagement. The catalogs come from
+  // the audience-creation options endpoint, so the list always matches Meta.
+  const ruleActionOptions = useMemo(() => {
+    if (source === "site") {
+      return (options?.websiteEvents ?? []).map((e) => ({
+        value: e.metaEvent,
+        label: e.isCustom ? e.labelKey : t(e.labelKey as "websiteEvent.pageView")
+      }));
+    }
+    const sourceKey = source === "instagram" ? "ig_business" : "page";
+    return (options?.engagementActions?.[sourceKey] ?? []).map((a) => ({
+      value: a.metaEvent,
+      label: t(a.labelKey as "engagementAction.pageEngaged")
+    }));
+  }, [source, options, t]);
+
+  // Keep the selected action valid when the source changes or options load.
+  useEffect(() => {
+    if (!ruleActionOptions.length) return;
+    if (!ruleActionOptions.some((o) => o.value === ruleAction)) {
+      setRuleAction(ruleActionOptions[0]!.value);
+    }
+  }, [ruleActionOptions, ruleAction]);
+
+  const ruleActionLabel =
+    ruleActionOptions.find((o) => o.value === ruleAction)?.label ?? ruleAction;
+
+  const sourceLabel =
+    source === "site" ? ta("sourceSitePixel") : source === "instagram" ? "Instagram" : "Facebook";
 
   const typeLabel =
     typeChoice === "custom"
@@ -221,11 +252,6 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               ctx.onError(t("noPixels"));
               return;
             }
-            const eventMap: Record<string, string> = {
-              PURCHASE: "Purchase",
-              LEAD: "Lead",
-              PAGE_ENGAGED: "PageView"
-            };
             const res = await fetch("/api/meta/audiences/website", {
               method: "POST",
               headers: { "content-type": "application/json" },
@@ -234,7 +260,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 adAccountId: ctx.adAccountId,
                 name: audienceName.trim(),
                 pixelId,
-                eventName: eventMap[ruleAction] ?? "PageView",
+                eventName: ruleAction || "PageView",
                 retentionDays: Math.min(parseInt(window_, 10) || 30, 180)
               })
             });
@@ -245,12 +271,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
             }
           } else {
             const sourceType = source === "instagram" ? "ig_business" : "page";
-            const eventName =
-              source === "instagram"
-                ? ruleAction === "INSTAGRAM_PROFILE_FOLLOW"
-                  ? "ig_user_followed_business"
-                  : "ig_business_profile_engaged"
-                : "page_engaged";
+            const eventName = ruleAction || (sourceType === "ig_business" ? "ig_business_profile_engaged" : "page_engaged");
             const list =
               sourceType === "ig_business" ? options?.instagramAccounts : options?.pages;
             const sourceId = list?.[0]?.id;
@@ -816,44 +837,47 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 {typeChoice === "custom" ? (
                   <>
                     <AudienceFormCard>
-                      <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+                      <p className="mb-1 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
                         {ta("engagementAction")}
                       </p>
-                      <div className="space-y-2">
-                        {[
-                          { v: "INSTAGRAM_PROFILE_FOLLOW", label: ta("actionIgFollow") },
-                          { v: "INSTAGRAM_PROFILE_ENGAGE", label: ta("actionIgEngage") },
-                          { v: "PAGE_ENGAGED", label: ta("actionPageEngaged") },
-                          { v: "PURCHASE", label: ta("actionPurchase") },
-                          { v: "LEAD", label: ta("actionLead") }
-                        ].map((opt) => (
-                          <button
-                            key={opt.v}
-                            type="button"
-                            onClick={() => setRuleAction(opt.v)}
-                            className="flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all"
-                            style={{
-                              borderColor: ruleAction === opt.v ? "#f5a623" : "var(--border-color)",
-                              background: ruleAction === opt.v ? "rgba(245,166,35,0.07)" : "var(--surface-bg)"
-                            }}
-                          >
-                            <div
-                              className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
+                      <p className="mb-3 font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
+                        {ta("engagementActionFor", { source: sourceLabel })}
+                      </p>
+                      {!ruleActionOptions.length ? (
+                        <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
+                          {t("loadingOptions")}
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {ruleActionOptions.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setRuleAction(opt.value)}
+                              className="flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all"
                               style={{
-                                borderColor: ruleAction === opt.v ? "#f5a623" : "var(--border-hover)",
-                                background: ruleAction === opt.v ? "#f5a623" : "transparent"
+                                borderColor: ruleAction === opt.value ? "#f5a623" : "var(--border-color)",
+                                background: ruleAction === opt.value ? "rgba(245,166,35,0.07)" : "var(--surface-bg)"
                               }}
                             >
-                              {ruleAction === opt.v ? (
-                                <div className="h-1.5 w-1.5 rounded-full bg-white" />
-                              ) : null}
-                            </div>
-                            <span className="font-body text-sm" style={{ color: "var(--text-main)" }}>
-                              {opt.label}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
+                              <div
+                                className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all"
+                                style={{
+                                  borderColor: ruleAction === opt.value ? "#f5a623" : "var(--border-hover)",
+                                  background: ruleAction === opt.value ? "#f5a623" : "transparent"
+                                }}
+                              >
+                                {ruleAction === opt.value ? (
+                                  <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                                ) : null}
+                              </div>
+                              <span className="font-body text-sm" style={{ color: "var(--text-main)" }}>
+                                {opt.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </AudienceFormCard>
                     <AudienceFormCard>
                       <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
@@ -1013,8 +1037,8 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                     <AudienceReviewRow label={ta("reviewCountry")} value={country} />
                     {typeChoice === "custom" ? (
                       <>
-                        <AudienceReviewRow label={ta("reviewSource")} value={source} />
-                        <AudienceReviewRow label={ta("reviewAction")} value={ruleAction} />
+                        <AudienceReviewRow label={ta("reviewSource")} value={sourceLabel} />
+                        <AudienceReviewRow label={ta("reviewAction")} value={ruleActionLabel} />
                         <AudienceReviewRow label={ta("reviewWindow")} value={ta("daysValue", { count: parseInt(window_, 10) || 0 })} />
                       </>
                     ) : null}

@@ -5758,6 +5758,7 @@
     "audienceRules": "Audience Rules",
     "audienceRulesDesc": "Define the actions and behaviors that qualify a person for this audience.",
     "engagementAction": "Engagement action",
+    "engagementActionFor": "Actions available for {source}",
     "actionIgFollow": "Followed the Instagram profile",
     "actionIgEngage": "Engaged with the Instagram profile",
     "actionPageEngaged": "Engaged with the Facebook Page",

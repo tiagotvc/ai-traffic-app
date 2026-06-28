@@ -55,13 +55,6 @@ export const ENGAGEMENT_ACTIONS: Record<EngagementSourceType, EngagementActionDe
   page: [
     { id: "page_engaged", labelKey: "engagementAction.pageEngaged", metaEvent: "page_engaged", maxRetentionDays: 730 },
     { id: "page_visited", labelKey: "engagementAction.pageVisited", metaEvent: "page_visited", maxRetentionDays: 730 },
-    {
-      id: "page_liked",
-      labelKey: "engagementAction.pageLiked",
-      metaEvent: "page_liked",
-      maxRetentionDays: 0,
-      fixedRetentionSeconds: 0
-    },
     { id: "page_messaged", labelKey: "engagementAction.pageMessaged", metaEvent: "page_messaged", maxRetentionDays: 730 },
     { id: "page_cta_clicked", labelKey: "engagementAction.pageCtaClicked", metaEvent: "page_cta_clicked", maxRetentionDays: 730 },
     { id: "page_or_post_save", labelKey: "engagementAction.pageOrPostSave", metaEvent: "page_or_post_save", maxRetentionDays: 730 },
@@ -89,12 +82,6 @@ export const ENGAGEMENT_ACTIONS: Record<EngagementSourceType, EngagementActionDe
       id: "ig_business_profile_visit",
       labelKey: "engagementAction.igProfileVisit",
       metaEvent: "ig_business_profile_visit",
-      maxRetentionDays: 365
-    },
-    {
-      id: "ig_user_followed_business",
-      labelKey: "engagementAction.igFollowed",
-      metaEvent: "ig_user_followed_business",
       maxRetentionDays: 365
     },
     {

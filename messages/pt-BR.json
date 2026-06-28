@@ -5760,6 +5760,7 @@
     "audienceRules": "Regras do Público",
     "audienceRulesDesc": "Defina as ações e comportamentos que qualificam uma pessoa para este público.",
     "engagementAction": "Ação de engajamento",
+    "engagementActionFor": "Ações disponíveis para {source}",
     "actionIgFollow": "Seguiu o perfil do Instagram",
     "actionIgEngage": "Interagiu com o perfil do Instagram",
     "actionPageEngaged": "Interagiu com a Página do Facebook",
