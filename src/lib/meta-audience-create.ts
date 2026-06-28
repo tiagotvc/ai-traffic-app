@@ -325,9 +325,10 @@ export async function createWebsiteCustomAudience(
   const days = Math.min(Math.max(1, input.retentionDays), WEBSITE_MAX_RETENTION_DAYS);
   const rule = buildWebsiteAudienceRule({ ...input, retentionDays: days });
 
+  // `subtype` is no longer supported when creating website/engagement custom
+  // audiences (Marketing API v3+). The audience type is inferred from `rule`.
   return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, {
     name: input.name,
-    subtype: "WEBSITE",
     retention_days: String(days),
     rule: JSON.stringify(rule)
   });
@@ -354,14 +355,17 @@ export async function createEngagementCustomAudience(
       : Math.min(Math.max(1, input.retentionDays), maxDays);
 
   const rule = buildEngagementAudienceRule({ ...input, retentionDays: days });
-  const subtype = input.sourceType === "video" ? "VIDEO" : "ENGAGEMENT";
 
-  return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, {
+  // VIDEO engagement audiences still require `subtype`; all other engagement
+  // types infer it from `rule` (subtype was removed in Marketing API v3+).
+  const params: Record<string, string> = {
     name: input.name,
-    subtype,
     rule: JSON.stringify(rule),
     prefill: "1"
-  });
+  };
+  if (input.sourceType === "video") params.subtype = "VIDEO";
+
+  return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, params);
 }
 
 export async function createCombinedCustomAudience(
