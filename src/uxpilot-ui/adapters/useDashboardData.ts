@@ -51,6 +51,16 @@ type ClientCard = {
   alertCount?: number;
 };
 
+type CampaignSnapshot = {
+  metaCampaignId: string;
+  campaignName: string;
+  clientName?: string;
+  spend?: number;
+  roas?: number;
+  status?: string;
+  isDraft?: boolean;
+};
+
 const EMPTY_PERIOD: PeriodState = { preset: "last30", since: "", until: "" };
 const CHART_METRICS_CACHE_KEY = "orion-highlights-chart-metrics";
 
@@ -142,6 +152,8 @@ export function useDashboardData() {
   const [brainSummaryLoading, setBrainSummaryLoading] = useState(true);
   const [ageBreakdown, setAgeBreakdown] = useState<AgeBreakdownRow[]>([]);
   const [ageBreakdownLoading, setAgeBreakdownLoading] = useState(true);
+  const [campaignSnapshots, setCampaignSnapshots] = useState<CampaignSnapshot[]>([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [note, setNote] = useState<string | null>(null);
 
@@ -307,6 +319,46 @@ export function useDashboardData() {
       .finally(() => setAgeBreakdownLoading(false));
   }, [clientFilter, accountFilter, periodKey, selectedTz]);
 
+  const loadCampaignSnapshots = useCallback(() => {
+    setCampaignsLoading(true);
+    const params = new URLSearchParams(periodStateToQuery(periodRef.current));
+    params.set("limit", "200");
+    params.set("offset", "0");
+    if (clientFilter) params.set("clientId", clientFilter);
+
+    void fetch(`/api/campaigns/list?${params.toString()}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j.ok || !Array.isArray(j.rows)) {
+          setCampaignSnapshots([]);
+          return;
+        }
+        setCampaignSnapshots(
+          j.rows.map(
+            (row: {
+              metaCampaignId?: string;
+              campaignName?: string;
+              clientName?: string;
+              spend?: number;
+              roas?: number;
+              status?: string;
+              isDraft?: boolean;
+            }) => ({
+              metaCampaignId: String(row.metaCampaignId ?? row.campaignName ?? Math.random()),
+              campaignName: row.campaignName ?? "—",
+              clientName: row.clientName,
+              spend: row.spend,
+              roas: row.roas,
+              status: row.status,
+              isDraft: Boolean(row.isDraft)
+            })
+          )
+        );
+      })
+      .catch(() => setCampaignSnapshots([]))
+      .finally(() => setCampaignsLoading(false));
+  }, [clientFilter, periodKey]);
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -314,6 +366,10 @@ export function useDashboardData() {
   useEffect(() => {
     loadAgeBreakdown();
   }, [loadAgeBreakdown]);
+
+  useEffect(() => {
+    loadCampaignSnapshots();
+  }, [loadCampaignSnapshots]);
 
   useEffect(() => {
     return loadClients();
@@ -388,10 +444,11 @@ export function useDashboardData() {
       loadClients();
       loadBrainLearnings();
       loadAgeBreakdown();
+      loadCampaignSnapshots();
     };
     window.addEventListener("traffic-sync-done", onSync);
     return () => window.removeEventListener("traffic-sync-done", onSync);
-  }, [load, loadClients, loadBrainLearnings, loadAgeBreakdown]);
+  }, [load, loadClients, loadBrainLearnings, loadAgeBreakdown, loadCampaignSnapshots]);
 
   const persistChartMetrics = useCallback(
     (next: MetricKey[]) => {
@@ -512,6 +569,8 @@ export function useDashboardData() {
     brainSummaryLoading,
     ageBreakdown,
     ageBreakdownLoading,
+    campaignSnapshots,
+    campaignsLoading,
     chartMetrics,
     toggleChartMetric,
     dashboardLayout,

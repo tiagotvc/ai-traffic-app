@@ -488,7 +488,7 @@ export function BillingPortalClient({
                 {t("updatePaymentMethod")}
               </button>
             ) : null}
-            <Link href="/billing/plans" className="ui-btn-primary text-xs">
+            <Link href="/billing/plans" className="ui-btn-accent text-xs">
               {t("viewPlans")}
             </Link>
           </>

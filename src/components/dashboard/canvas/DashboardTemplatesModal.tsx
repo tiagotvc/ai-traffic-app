@@ -244,7 +244,7 @@ export function DashboardTemplatesModal({
           <button
             type="button"
             onClick={onClose}
-            className="ui-btn-ghost rounded-lg border px-4 py-2 text-sm"
+            className="ui-btn-ghost border px-4 py-2 text-sm"
             style={{ borderColor: "var(--border-color)" }}
           >
             {t("close")}

@@ -1,54 +1,48 @@
 "use client";
 
+import { BarChart2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
-import { DsSelectablePills } from "@/design-system";
-import {
-  METRIC_CATALOG,
-  type MetricKey
-} from "@/lib/dashboard-metrics";
+import { ReportMetricsModal } from "@/components/reports/ReportMetricsModal";
+import type { MetricKey } from "@/lib/dashboard-metrics";
 
 export function ReportMetricPicker({
   selected,
-  onChange,
-  compact = false
+  onChange
 }: {
   selected: MetricKey[];
   onChange: (next: MetricKey[]) => void;
-  compact?: boolean;
 }) {
   const t = useTranslations("reports");
-  const tMetrics = useTranslations("metrics");
-
-  const options = METRIC_CATALOG.map((m) => ({
-    value: m.key,
-    label: tMetrics(m.label)
-  }));
-
-  if (compact) {
-    return (
-      <DsSelectablePills
-        options={options}
-        selected={selected}
-        onChange={onChange}
-        minSelected={1}
-      />
-    );
-  }
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-xs font-medium text-[var(--text-dim)]">{t("metricsLabel")}</div>
-        <button
-          type="button"
-          onClick={() => onChange(["spend", "clicks", "cpm", "ctr", "conversions"])}
-          className="ui-link text-[11px]"
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="ui-btn-secondary inline-flex items-center gap-1.5 text-xs"
+      >
+        <BarChart2 size={14} aria-hidden />
+        {t("selectMetrics")}
+        <span
+          className="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold"
+          style={{
+            background: "var(--ui-accent-muted)",
+            color: "var(--ui-accent)"
+          }}
         >
-          {t("metricsReset")}
-        </button>
-      </div>
-      <DsSelectablePills options={options} selected={selected} onChange={onChange} minSelected={1} />
-    </div>
+          {selected.length}
+        </span>
+      </button>
+
+      <ReportMetricsModal
+        open={open}
+        selected={selected}
+        onClose={() => setOpen(false)}
+        onApply={onChange}
+      />
+    </>
   );
 }

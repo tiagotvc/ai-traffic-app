@@ -56,17 +56,11 @@ export function BrainShelf({
   const shellClass = cn(
     "w-full",
     !embedded && !isFeed && !isNotice && "ui-brain-shelf",
-    (isFeed || isNotice) && "rounded-xl border p-4",
-    (isFeed || isNotice) && !embedded && "shadow-sm"
+    (isFeed || isNotice) && "dashboard-card dashboard-card--compact",
+    (isFeed || isNotice) && !embedded && "shadow-none"
   );
 
-  const shellStyle = isFeed || isNotice
-    ? {
-        borderColor: "var(--border-color)",
-        background: "var(--surface-card)",
-        boxShadow: embedded ? undefined : "0 1px 8px rgba(0,0,0,0.05)"
-      }
-    : undefined;
+  const shellStyle = undefined;
 
   const subtitle =
     metaLine ??

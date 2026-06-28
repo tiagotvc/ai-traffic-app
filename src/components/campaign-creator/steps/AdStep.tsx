@@ -440,7 +440,7 @@ export function AdStep() {
               type="button"
               onClick={() => setImportOpen(true)}
               disabled={clientRequired || !payload.adAccountId}
-              className="campaign-creator-copy-card__action ui-btn-secondary inline-flex shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-xs font-heading font-medium disabled:cursor-not-allowed disabled:opacity-50"
+              className="campaign-creator-copy-card__action ui-btn-secondary inline-flex shrink-0 items-center justify-center gap-1 px-3 py-1.5 text-xs font-heading font-medium disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t("importAdConfig")}
               <ChevronRight size={14} strokeWidth={2.25} />
@@ -779,7 +779,7 @@ export function AdStep() {
               type="button"
               onClick={() => setCreativeOpen(true)}
               disabled={clientRequired || !payload.adAccountId}
-              className="ui-btn-secondary inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
+              className="ui-btn-secondary inline-flex items-center justify-center px-3 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t("creativeOpenModal")}
             </button>
@@ -1015,14 +1015,14 @@ export function AdStep() {
               <button
                 type="button"
                 onClick={() => addAd("same_text")}
-                className="ui-btn-accent-outline inline-flex flex-1 items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold"
+                className="ui-btn-accent-outline inline-flex flex-1 items-center justify-center px-3 py-2 text-xs font-semibold"
               >
                 {t("presetSameText")}
               </button>
               <button
                 type="button"
                 onClick={() => addAd("same_image")}
-                className="ui-btn-accent-outline inline-flex flex-1 items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold"
+                className="ui-btn-accent-outline inline-flex flex-1 items-center justify-center px-3 py-2 text-xs font-semibold"
               >
                 {t("presetSameImage")}
               </button>

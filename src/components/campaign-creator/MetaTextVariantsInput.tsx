@@ -103,7 +103,7 @@ export function MetaTextVariantsInput({
         type="button"
         onClick={addRow}
         disabled={disabled || atMax}
-        className="ui-btn-secondary inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
+        className="ui-btn-secondary inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
         title={atMax ? undefined : addLabel}
       >
         {addLabel}

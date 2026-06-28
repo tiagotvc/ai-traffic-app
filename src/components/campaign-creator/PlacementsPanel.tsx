@@ -146,7 +146,7 @@ export function PlacementsPanel({ value, onChange, disabled }: Props) {
               type="button"
               disabled={disabled}
               onClick={() => setModalOpen(true)}
-              className="ui-btn-accent-outline inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold sm:w-auto sm:self-start"
+              className="ui-btn-accent-outline inline-flex w-full items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold sm:w-auto sm:self-start"
             >
               {manualConfigured ? t("editPlacements") : t("selectPlacements")}
               <ChevronRight size={14} strokeWidth={2.5} />

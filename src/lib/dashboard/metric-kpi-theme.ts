@@ -1,19 +1,16 @@
-export function metricKpiCardShell(color: string, dark: boolean) {
+export function metricKpiCardShell(_color: string, dark: boolean) {
   if (dark) {
     return {
-      background: `linear-gradient(155deg, ${color}16 0%, rgba(15, 23, 42, 0.78) 42%, rgba(8, 12, 24, 0.92) 100%)`,
-      border: `1px solid ${color}55`,
-      borderTop: `3px solid ${color}`,
-      boxShadow: `0 0 0 1px ${color}20, 0 10px 36px ${color}1a, inset 0 1px 0 ${color}22`,
-      backdropFilter: "blur(14px)"
+      background: "rgba(15, 23, 42, 0.82)",
+      border: "1px solid rgba(148, 163, 184, 0.18)",
+      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.2)"
     } as const;
   }
 
   return {
-    background: "var(--surface-card)",
-    border: "1px solid var(--border-color)",
-    borderTop: `3px solid ${color}`,
-    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.05), 0 6px 18px rgba(15, 23, 42, 0.04)"
+    background: "var(--creator-card-bg, var(--surface-card))",
+    border: "1px solid var(--creator-card-border, var(--border-color))",
+    boxShadow: "none"
   } as const;
 }
 
@@ -33,17 +30,17 @@ export function metricKpiIconShell(color: string, dark: boolean) {
   } as const;
 }
 
-export function metricKpiChartFrame(color: string, dark: boolean) {
+export function metricKpiChartFrame(_color: string, dark: boolean) {
   if (dark) {
     return {
-      background: "rgba(15, 23, 42, 0.35)",
-      border: `1px solid ${color}18`
+      background: "rgba(15, 23, 42, 0.45)",
+      border: "1px solid rgba(148, 163, 184, 0.12)"
     } as const;
   }
 
   return {
-    background: "rgba(248, 250, 252, 0.95)",
-    border: "1px solid rgba(226, 232, 240, 0.9)"
+    background: "var(--creator-card-bg-inset, var(--surface-bg))",
+    border: "1px solid var(--creator-card-border, var(--border-color))"
   } as const;
 }
 

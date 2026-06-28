@@ -72,10 +72,13 @@ plano/add-on no billing (ex.: limite de tokens/requisições). Hoje o gate é s�
 2. Sem token → 401. Flag OFF → 404.
 3. Token de outro tenant nunca vê clientes que não são dele.
 
+## UI
+Criar/revogar tokens fica em **Configurações → Integrações → Ferramentas avançadas**
+([`AdvancedToolsPanel`](../../src/components/settings/AdvancedToolsPanel.tsx)). O token aparece
+**uma vez** com botão de copiar.
+
 ## Pendências
-- **P1.4** — escrita via MCP (`brain.mcp.write`): expor ações (pausar/escalar) com confirmação,
-  reusando `action-suggestions` / `automation-engine`.
-- UI em Configurações para criar/revogar tokens (hoje só via API).
+- (P1.4 escrita via MCP — ✅ feito: `propose_action` cria proposta pendente.)
 
 ## Histórico
 - 2026-06-27: Servidor MCP read-only criado (tools + resources espelhando o Brain), tokens por

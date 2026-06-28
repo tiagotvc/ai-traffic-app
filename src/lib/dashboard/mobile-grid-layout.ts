@@ -21,7 +21,7 @@ function mobileWidgetHeight(widget: WidgetInstanceDto): number {
   }
   if (widget.widgetType === "metrics.heroKpis") {
     const heroMetrics = widget.config.heroMetrics as unknown[] | undefined;
-    const kpiCount = Math.min(Math.max(heroMetrics?.length ?? 3, 1), 3);
+    const kpiCount = Math.min(Math.max(heroMetrics?.length ?? 6, 1), 6);
     return Math.max(base, kpiCount * 4 + 2, 6);
   }
   if (widget.widgetType === "metrics.card" || widget.widgetType.startsWith("metric.single.")) {

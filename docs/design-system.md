@@ -46,7 +46,20 @@ Cores light/dark são configuráveis em **Admin → Temas / DS** (`/admin/platfo
 - `.ui-panel-header` — barra sticky com blur
 - `.ui-brain-shelf` — container Agency Brain
 
-### Botões (tokens `--ui-accent-btn-*` e `--ui-accent-border`)
+### Botões (tokens `--ui-accent-btn-*`, `--ui-accent-border`, `--btn-*`)
+
+| Token | Valor | Uso |
+|-------|-------|-----|
+| `--btn-radius` | `0.375rem` (6px) | CTAs, secundários, outline, ghost, filter toggle |
+| `--btn-radius-sm` | `0.3125rem` (5px) | Ações compactas em tabela |
+| `--btn-radius-icon` | `0.375rem` (6px) | Botões de ícone quadrados (toolbar, modal close) |
+| `--btn-radius-pill` | `9999px` | FAB, pause, close circular (`.ui-btn-icon-round`) |
+| `--btn-border-width` | `1px` | Bordas de botões outline/secondary |
+| `--btn-border-color` | mix suave de `--border-color` | Bordas neutras mais discretas |
+| `--btn-accent-border-color` | mix suave de `--ui-accent-border` | Outline accent |
+| `--btn-padding-x` / `--btn-padding-y` | `0.875rem` / `0.4375rem` | Padding padrão (antes `px-4 py-2`) |
+
+**Antes:** `rounded-xl` (12px) na maioria dos `.ui-btn-*`; `rounded-lg` (8px) no creator; pills em abas.
 
 | Classe | Uso | Light | Dark |
 |--------|-----|-------|------|
@@ -56,8 +69,9 @@ Cores light/dark são configuráveis em **Admin → Temas / DS** (`/admin/platfo
 | `.ui-btn-filter-toggle--open` | Ocultar filtros (painel aberto) | Borda accent | Borda accent |
 | `.ui-btn-secondary` | Neutro sem cor de marca | — | — |
 | `.ui-btn-brand` | IA / Agency Brain (violeta fixo) | — | — |
+| `.ui-btn-icon-round` | FAB / ícone circular intencional | — | — |
 
-**Responsivo:** `.ui-btn-responsive` + `.ui-btn-responsive-label` — ícone no mobile/tablet; ícone + texto no desktop (lg+).
+**Responsivo:** `.ui-btn-responsive` + `.ui-btn-responsive-label` — ícone no mobile/tablet; ícone + texto no desktop (lg+). Mobile usa `--btn-radius-icon`; desktop `--btn-radius`.
 
 **Componentes:** `IconActionButton` (accent), `FilterToggleButton`, `MetaSyncButton` (outline), `DsButton` (`variant="accent" | "accentOutline"`).
 

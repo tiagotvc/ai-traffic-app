@@ -2,10 +2,11 @@
 
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { Building2, Cog, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { Building2, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { IconLabelLink } from "@/components/ui/IconLabelButton";
+import { OrionActionLoadingOverlay } from "@/components/ui/OrionActionLoadingOverlay";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { DsButton, DsInfoBanner, DsModal } from "@/design-system";
@@ -102,7 +103,7 @@ export function ClientsContentLive() {
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/clients/new"
-              className="ui-btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-heading text-sm font-semibold"
+              className="ui-btn-primary inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-semibold"
             >
               <Plus size={16} />
               Novo cliente
@@ -120,7 +121,7 @@ export function ClientsContentLive() {
                     })
                     .catch(() => {});
                 }}
-                className="ui-btn-secondary rounded-xl px-5 py-2.5 font-heading text-sm font-semibold"
+                className="ui-btn-secondary px-5 py-2.5 font-heading text-sm font-semibold"
               >
                 Carregar dados demo
               </button>
@@ -250,24 +251,14 @@ export function ClientsContentLive() {
         </p>
       </DsModal>
 
-      {/* Overlay de carregamento (mesma animação da criação de campanha) */}
-      {deleting ? (
-        <div
-          className="pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center"
-          role="alertdialog"
-          aria-modal="true"
-          aria-busy="true"
-        >
-          <div className="absolute inset-0 bg-[#05080c]/85 backdrop-blur-lg" aria-hidden />
-          <div className="ui-card relative z-10 mx-4 w-full max-w-sm px-8 py-10 text-center shadow-2xl">
-            <div className="mx-auto mb-6 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-[var(--surface-thead)]">
-              <Cog size={38} className="animate-spin text-[var(--ui-accent)]" strokeWidth={1.6} aria-hidden />
-            </div>
-            <h2 className="font-heading text-lg text-[var(--text-main)]">Excluindo cliente…</h2>
-            <p className="mt-2 text-sm text-[var(--text-dim)]">Aguarde um instante.</p>
-          </div>
-        </div>
-      ) : null}
+      {/* Overlay de carregamento */}
+      <OrionActionLoadingOverlay
+        open={deleting}
+        title={t("deleteLoadingTitle")}
+        message={t("deleteLoadingMessage")}
+        subtitle={tCommon("pleaseWait")}
+        ariaLabelledBy="client-delete-loading-title"
+      />
     </>
   );
 }

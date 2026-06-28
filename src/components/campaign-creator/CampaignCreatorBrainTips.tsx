@@ -516,7 +516,7 @@ export function CampaignCreatorBrainTips() {
               type="button"
               data-orion-brain-open
               onClick={() => setModalOpen(true)}
-              className="ui-btn-accent-outline mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-heading font-semibold"
+              className="ui-btn-accent-outline mt-3 inline-flex w-full items-center justify-center gap-1.5 px-3 py-2 text-xs font-heading font-semibold"
             >
               {t("brainViewRecommendations")}
               <ChevronRight size={14} strokeWidth={2.5} />

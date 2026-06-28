@@ -85,7 +85,7 @@ export function DsModal({
               type="button"
               onClick={onClose}
               aria-label="Fechar"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-dimmer)] transition-colors hover:bg-[var(--row-hover)] hover:text-[var(--text-main)]"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--btn-radius-icon)] text-[var(--text-dimmer)] transition-colors hover:bg-[var(--row-hover)] hover:text-[var(--text-main)]"
             >
               <X size={16} />
             </button>

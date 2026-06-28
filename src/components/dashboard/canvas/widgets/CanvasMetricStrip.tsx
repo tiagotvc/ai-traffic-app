@@ -62,25 +62,21 @@ function CompactMetricCard({
   return (
     <div
       className={cn(
-        "kpi-card-hover flex min-w-0 items-center gap-2 rounded-xl border bg-[var(--surface-card)] px-3 py-2",
+        "dashboard-metric-chip kpi-card-hover flex min-w-0 items-center gap-1.5 px-2.5 py-1.5",
         fillCell && "h-full w-full"
       )}
-      style={{
-        borderColor: "var(--border-color)",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
-      }}
     >
       {item.color ? (
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: item.color }} />
+        <span className="h-1 w-1 shrink-0 rounded-full" style={{ background: item.color }} />
       ) : null}
       <span
-        className="shrink-0 text-xs font-medium"
+        className="shrink-0 text-[10px] font-medium uppercase tracking-wide"
         style={{ color: textColor ?? "var(--text-dimmer)", fontFamily, fontSize }}
       >
         {item.label}
       </span>
       <span
-        className="min-w-0 flex-1 truncate text-sm font-semibold tabular-nums"
+        className="min-w-0 flex-1 truncate text-xs font-semibold tabular-nums"
         title={item.value}
         style={{
           color: accentColor ?? textColor ?? "var(--text-main)",
@@ -109,9 +105,9 @@ export function CanvasMetricStrip({
 }) {
   if (isLoading) {
     return (
-      <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="skeleton-shimmer h-9 rounded-lg" />
+      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <div key={i} className="skeleton-shimmer h-8 rounded-lg" />
         ))}
       </div>
     );
@@ -119,8 +115,8 @@ export function CanvasMetricStrip({
 
   if (!items.length) return null;
 
-  const cols = Math.min(Math.max(items.length, 1), 6);
-  // Até 6 por linha no desktop; quebra progressivamente em telas menores.
+  const cols = Math.min(Math.max(items.length, 1), 8);
+  // Até 8 por linha no desktop; quebra progressivamente em telas menores.
   const colClass =
     cols === 1
       ? "grid-cols-1"
@@ -132,13 +128,17 @@ export function CanvasMetricStrip({
             ? "grid-cols-2 sm:grid-cols-4"
             : cols === 5
               ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
-              : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6";
+              : cols === 6
+                ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6"
+                : cols === 7
+                  ? "grid-cols-2 sm:grid-cols-4 lg:grid-cols-7"
+                  : "grid-cols-2 sm:grid-cols-4 lg:grid-cols-8";
 
   return (
     <div
       className={cn(
         "grid w-full",
-        cellFill ? "dashboard-metric-strip--cell h-full grid-cols-1 grid-rows-1 gap-0" : "auto-rows-min gap-2.5",
+        cellFill ? "dashboard-metric-strip--cell h-full grid-cols-1 grid-rows-1 gap-0" : "auto-rows-min gap-3",
         !cellFill && colClass
       )}
     >

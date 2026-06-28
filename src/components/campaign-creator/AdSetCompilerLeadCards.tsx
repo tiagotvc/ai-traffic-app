@@ -51,7 +51,7 @@ export function AdSetCompilerLeadCards({
           type="button"
           disabled={disabled}
           onClick={onOpenSavedAudience}
-          className="campaign-creator-copy-card__action ui-btn-secondary inline-flex shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-xs font-heading font-medium disabled:cursor-not-allowed disabled:opacity-50"
+          className="campaign-creator-copy-card__action ui-btn-secondary inline-flex shrink-0 items-center justify-center gap-1 px-3 py-1.5 text-xs font-heading font-medium disabled:cursor-not-allowed disabled:opacity-50"
         >
           {audienceLoaded ? t("loadSavedAudienceEditButton") : t("loadSavedAudienceSelectButton")}
           <ChevronRight size={14} strokeWidth={2.25} />
@@ -79,7 +79,7 @@ export function AdSetCompilerLeadCards({
           type="button"
           disabled={disabled}
           onClick={onOpenConfiguration}
-          className="campaign-creator-copy-card__action ui-btn-secondary inline-flex shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-1.5 text-xs font-heading font-medium disabled:cursor-not-allowed disabled:opacity-50"
+          className="campaign-creator-copy-card__action ui-btn-secondary inline-flex shrink-0 items-center justify-center gap-1 px-3 py-1.5 text-xs font-heading font-medium disabled:cursor-not-allowed disabled:opacity-50"
         >
           {t("adsetConfigurationSelectButton")}
           <ChevronRight size={14} strokeWidth={2.25} />

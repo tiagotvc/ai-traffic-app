@@ -318,7 +318,7 @@ export function AdvancedTargetingPanel({
                 type="button"
                 disabled={clientRequired}
                 onClick={onRefineAudience}
-                className="ui-btn-accent-outline inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-lg px-3 py-2 text-xs font-semibold sm:self-center"
+                className="ui-btn-accent-outline inline-flex shrink-0 items-center justify-center gap-1.5 self-start px-3 py-2 text-xs font-semibold sm:self-center"
               >
                 {t("addAudiencesButton")} +
                 {includedAudienceCount + excludedAudienceCount > 0 ? (
@@ -467,7 +467,7 @@ export function AdvancedTargetingPanel({
                     detailedGroups: [...targeting.detailedGroups, { items: [] }]
                   })
                 }
-                className="ui-btn-accent-outline shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-semibold"
+                className="ui-btn-accent-outline shrink-0 px-2.5 py-1 text-[11px] font-semibold"
               >
                 {t("detailedTargetingAddGroup")}
               </button>

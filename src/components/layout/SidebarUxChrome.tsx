@@ -536,30 +536,35 @@ export function SidebarUserBlock({
   return (
     <div
       ref={rootRef}
-      className={`relative shrink-0 ${collapsed ? "flex justify-center p-3" : "p-3"}`}
+      className={`relative shrink-0 ${collapsed ? "flex justify-center p-3" : "p-3 pt-2"}`}
       style={{ borderTop: "1px solid var(--sidebar-border)" }}
     >
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
-        className={`flex items-center text-left transition-opacity hover:opacity-90 ${collapsed ? "" : "w-full gap-2"}`}
+        className={`flex items-center text-left transition-all hover:opacity-95 ${
+          collapsed
+            ? ""
+            : "w-full gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.04] px-2.5 py-2"
+        }`}
         title={userName}
       >
         <div
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-body text-xs font-semibold text-white"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-body text-xs font-semibold text-white"
           style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
         >
           {initial}
         </div>
         {!collapsed ? (
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-body text-xs font-medium" style={{ color: "#f8fafc" }}>
-              {userName}
-            </p>
-            <p className="truncate font-body text-[10px]" style={{ color: "#94a3b8" }}>
-              {subtitle}
-            </p>
-          </div>
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-body text-[13px] font-medium text-[#f8fafc]">{userName}</p>
+              <p className="truncate font-body text-[11px] text-[#94a3b8]">
+                {isPlatformAdmin ? tNav("userRoleAdmin") : subtitle}
+              </p>
+            </div>
+            <ChevronRight size={15} className="shrink-0 text-[#64748b]" aria-hidden />
+          </>
         ) : null}
       </button>
 

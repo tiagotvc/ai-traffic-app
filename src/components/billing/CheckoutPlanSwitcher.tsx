@@ -17,26 +17,26 @@ type TierStyle = {
 
 const TIER_STYLES: Record<string, TierStyle> = {
   basic: {
-    card: "border-[var(--border-color)] bg-white hover:border-[var(--amber)]/40 hover:shadow-md",
-    active: "border-violet-500 bg-[rgba(124,58,237,0.06)] shadow-md ring-2 ring-violet-200/80",
-    badge: "bg-[var(--amber)] text-[#0f1419]",
-    accent: "text-[var(--violet)]",
+    card: "border-[var(--border-color)] bg-[var(--surface-card)] hover:border-[var(--ui-accent-border)] hover:shadow-md",
+    active: "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] shadow-md ring-2 ring-[var(--ui-accent-ring)]",
+    badge: "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]",
+    accent: "text-[var(--ui-accent)]",
     muted: "text-[var(--text-dim)]",
     title: "text-[var(--text-main)]"
   },
   advanced: {
-    card: "border-[rgba(124,58,237,0.2)] bg-gradient-to-b from-violet-50 to-white hover:border-violet-300 hover:shadow-md",
-    active: "border-violet-500 bg-gradient-to-b from-violet-50 to-white shadow-lg ring-2 ring-violet-200/80",
-    badge: "bg-[var(--amber)] text-[#0f1419]",
-    accent: "text-violet-700",
+    card: "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] hover:border-[var(--ui-accent-border-strong)] hover:shadow-md",
+    active: "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] shadow-lg ring-2 ring-[var(--ui-accent-ring)]",
+    badge: "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]",
+    accent: "text-[var(--ui-accent)]",
     muted: "text-[var(--text-dim)]",
     title: "text-[var(--text-main)]"
   },
   agency: {
-    card: "border-slate-600 bg-gradient-to-b from-slate-800 to-slate-900 hover:border-amber-500/50 hover:shadow-lg",
-    active: "border-amber-400 bg-gradient-to-b from-slate-900 to-slate-800 shadow-lg ring-2 ring-amber-400/50",
-    badge: "bg-gradient-to-r from-amber-400 to-amber-500 text-[var(--text-main)]",
-    accent: "text-amber-400",
+    card: "border-slate-600 bg-gradient-to-b from-slate-800 to-slate-900 hover:border-[var(--ui-accent-border)] hover:shadow-lg",
+    active: "border-[var(--ui-accent)] bg-gradient-to-b from-slate-900 to-slate-800 shadow-lg ring-2 ring-[var(--ui-accent-ring)]",
+    badge: "bg-[var(--ui-accent)] text-[var(--ui-accent-btn-text)]",
+    accent: "text-[var(--ui-accent)]",
     muted: "text-[var(--text-dimmer)]",
     title: "text-white"
   }
@@ -112,7 +112,7 @@ export function CheckoutPlanSwitcher({
                 type="button"
                 disabled={loading}
                 onClick={() => onSelect(p.id)}
-                className={`flex h-full w-full flex-col rounded-xl border-2 px-3 py-4 text-left transition-all ${
+                className={`flex h-full w-full flex-col rounded-[var(--btn-radius)] border-2 px-3 py-4 text-left transition-all ${
                   badgeLabel ? "pt-5" : "pt-4"
                 } ${active ? styles.active : styles.card} ${
                   active ? "scale-[1.02]" : "scale-[0.98] opacity-90 hover:scale-100 hover:opacity-100"

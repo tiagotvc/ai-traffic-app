@@ -113,7 +113,7 @@ export function GeoRadiusMapPicker({
           <button
             type="button"
             onClick={onOpenMarkedAreas}
-            className="ui-btn-secondary inline-flex w-full items-center justify-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium"
+            className="ui-btn-secondary inline-flex w-full items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-medium"
           >
             {t("markedAreasViewEditButton", { count: mapPins.length })}
             <ChevronRight size={13} strokeWidth={2.25} />
@@ -160,7 +160,7 @@ export function GeoRadiusMapPicker({
           <button
             type="button"
             onClick={onOpenMarkedAreas}
-            className="ui-btn-secondary inline-flex w-full items-center justify-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-medium"
+            className="ui-btn-secondary inline-flex w-full items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-medium"
           >
             {t("markedAreasViewEditButton", { count: mapPins.length })}
             <ChevronRight size={13} strokeWidth={2.25} />

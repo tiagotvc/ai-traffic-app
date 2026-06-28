@@ -48,7 +48,7 @@ export function ReportPrintReady({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div data-report-print-ready={ready ? "true" : "false"} className="report-print-shell">
+    <div data-report-print-ready={ready ? "true" : "false"} data-reports-shell className="report-print-shell">
       {children}
     </div>
   );

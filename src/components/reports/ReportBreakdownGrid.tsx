@@ -132,7 +132,7 @@ export function ReportBreakdownGrid({
       ref={containerRef}
       className={cn(
         "report-breakdown-grid relative w-full overflow-visible",
-        editMode && "report-breakdown-grid--edit rounded-xl border border-dashed border-[rgba(245,166,35,0.45)] p-2"
+        editMode && "report-breakdown-grid--edit rounded-xl border border-dashed border-[var(--ui-accent-border)] p-2"
       )}
     >
       {mounted ? (
@@ -162,11 +162,11 @@ export function ReportBreakdownGrid({
               key={item.id}
               className={cn(
                 "report-breakdown-grid-item overflow-visible",
-                editMode && "ring-1 ring-[rgba(245,166,35,0.35)]"
+                editMode && "ring-1 ring-[var(--ui-accent-border)]"
               )}
             >
               {editMode ? (
-                <div className="report-breakdown-drag-handle flex h-6 cursor-grab items-center justify-center rounded-t-lg border-b border-[var(--border-color)] bg-[var(--surface-bg)] text-[10px] font-medium text-[var(--text-dim)] active:cursor-grabbing">
+                <div className="report-breakdown-drag-handle flex h-6 cursor-grab items-center justify-center rounded-t-lg border-b border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-[10px] font-medium text-[var(--text-dim)] active:cursor-grabbing">
                   ⠿
                 </div>
               ) : null}

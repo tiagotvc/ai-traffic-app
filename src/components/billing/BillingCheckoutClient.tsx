@@ -307,7 +307,7 @@ export function BillingCheckoutClient() {
 
   if (!plan) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4">
+      <div className="w-full space-y-4">
         <BillingBackLink href="/billing/plans" />
         <p className="text-sm text-[var(--text-dim)]">
           {t("planNotFound")}{" "}
@@ -350,18 +350,18 @@ export function BillingCheckoutClient() {
   const pixDiscount = cycle === "yearly" ? "15%" : "5%";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="w-full space-y-6">
       <DsPageHeader
         breadcrumbs={<BillingBackLink href="/billing/plans" />}
         title={t("checkoutTitle")}
         subtitle={t("checkoutSubtitle")}
         actions={
-          <div className="inline-flex rounded-2xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-1.5 shadow-inner">
+          <div className="inline-flex rounded-[var(--btn-radius)] border border-[var(--border-color)] bg-[var(--surface-bg)] p-1 shadow-inner">
             <button
               type="button"
               onClick={() => setCycle("monthly")}
-              className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${
-                cycle === "monthly" ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
+              className={`rounded-[var(--btn-radius)] px-5 py-2 text-sm font-bold transition ${
+                cycle === "monthly" ? "bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
               }`}
             >
               {t("monthly")}
@@ -369,12 +369,12 @@ export function BillingCheckoutClient() {
             <button
               type="button"
               onClick={() => setCycle("yearly")}
-              className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${
-                cycle === "yearly" ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-dim)]"
+              className={`inline-flex items-center rounded-[var(--btn-radius)] px-5 py-2 text-sm font-bold transition ${
+                cycle === "yearly" ? "bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
               }`}
             >
               {t("yearly")}
-              <span className="ml-2 inline-flex rounded-md bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black text-white">
+              <span className="ml-2 inline-flex rounded-[var(--btn-radius-sm)] bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black text-white">
                 -10%
               </span>
             </button>
@@ -383,14 +383,14 @@ export function BillingCheckoutClient() {
       />
 
       {showRegionToggle ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border-color)] bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-4 shadow-sm">
           <span className="text-sm font-semibold text-[var(--text-dim)]">{t("paymentRegionLabel")}</span>
-          <div className="inline-flex rounded-xl border border-[var(--border-color)] bg-slate-100 p-1">
+          <div className="inline-flex rounded-[var(--btn-radius)] border border-[var(--border-color)] bg-[var(--surface-bg)] p-1">
             <button
               type="button"
               onClick={() => setPaymentRegion("br")}
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                paymentRegion === "br" ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
+              className={`rounded-[var(--btn-radius)] px-4 py-2 text-sm font-semibold transition ${
+                paymentRegion === "br" ? "bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
               }`}
             >
               {t("regionBr")}
@@ -398,8 +398,8 @@ export function BillingCheckoutClient() {
             <button
               type="button"
               onClick={() => setPaymentRegion("intl")}
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                paymentRegion === "intl" ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
+              className={`rounded-[var(--btn-radius)] px-4 py-2 text-sm font-semibold transition ${
+                paymentRegion === "intl" ? "bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
               }`}
             >
               {t("regionIntl")}
@@ -433,7 +433,7 @@ export function BillingCheckoutClient() {
 
         <form onSubmit={submit} className="space-y-5 lg:col-span-3">
           {!isIntl ? (
-          <div className="rounded-2xl border border-dashed border-[rgba(124,58,237,0.2)] bg-[rgba(124,58,237,0.06)]/40 p-5">
+          <div className="rounded-xl border border-dashed border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-5">
             <FieldLabel>{t("couponLabel")}</FieldLabel>
             <div className="flex flex-wrap gap-2">
               <input
@@ -447,7 +447,7 @@ export function BillingCheckoutClient() {
                 <button
                   type="button"
                   onClick={clearCoupon}
-                  className="rounded-xl border border-[var(--border-color)] bg-white px-4 py-2 text-sm font-semibold text-[var(--text-dim)]"
+                  className="ui-btn-secondary text-sm"
                 >
                   {t("couponRemove")}
                 </button>
@@ -483,10 +483,10 @@ export function BillingCheckoutClient() {
                 <button
                   type="button"
                   onClick={() => setBillingType("PIX")}
-                  className={`rounded-xl border-2 p-4 text-left transition ${
+                  className={`rounded-[var(--btn-radius)] border-2 p-4 text-left transition ${
                     billingType === "PIX"
-                      ? "border-[var(--amber)] bg-amber-50 ring-2 ring-amber-200"
-                      : "border-[var(--border-color)] hover:border-[var(--amber)]/40"
+                      ? "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] ring-2 ring-[var(--ui-accent-ring)]"
+                      : "border-[var(--border-color)] hover:border-[var(--ui-accent-border)]"
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -503,10 +503,10 @@ export function BillingCheckoutClient() {
                 <button
                   type="button"
                   onClick={() => setBillingType("CREDIT_CARD")}
-                  className={`rounded-xl border-2 p-4 text-left transition ${
+                  className={`rounded-[var(--btn-radius)] border-2 p-4 text-left transition ${
                     billingType === "CREDIT_CARD"
-                      ? "border-[var(--amber)] bg-amber-50 ring-2 ring-amber-200"
-                      : "border-[var(--border-color)] hover:border-[var(--amber)]/40"
+                      ? "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] ring-2 ring-[var(--ui-accent-ring)]"
+                      : "border-[var(--border-color)] hover:border-[var(--ui-accent-border)]"
                   }`}
                 >
                   <span className="font-bold text-[var(--text-main)]">{t("creditCard")}</span>
@@ -546,10 +546,10 @@ export function BillingCheckoutClient() {
                       return (
                         <label
                           key={n}
-                          className={`flex cursor-pointer items-center justify-between rounded-lg border px-3 py-2.5 transition ${
+                          className={`flex cursor-pointer items-center justify-between rounded-[var(--btn-radius)] border px-3 py-2.5 transition ${
                             installmentCount === n
-                              ? "border-[var(--amber)] bg-white ring-2 ring-amber-100"
-                              : "border-[var(--border-color)] bg-white hover:border-[var(--amber)]/40"
+                              ? "border-[var(--ui-accent)] bg-[var(--surface-card)] ring-2 ring-[var(--ui-accent-ring)]"
+                              : "border-[var(--border-color)] bg-[var(--surface-card)] hover:border-[var(--ui-accent-border)]"
                           }`}
                         >
                           <span className="flex items-center gap-2">
@@ -558,7 +558,7 @@ export function BillingCheckoutClient() {
                               name="installments"
                               checked={installmentCount === n}
                               onChange={() => setInstallmentCount(n)}
-                              className="text-[var(--violet)]"
+                              className="text-[var(--ui-accent)]"
                             />
                             <span className="text-sm font-semibold text-[var(--text-main)]">
                               {t("installmentOption", { count: n })}

@@ -677,6 +677,18 @@ Related layout: `campaign-creator-section`, `campaign-creator-section-stack`, `c
 
 ## 8. Buttons & pills
 
+### Button tokens (global)
+
+All creator buttons inherit from `globals.css` `:root` tokens — **do not** add `rounded-lg` / `rounded-xl` on `ui-btn-*` classes.
+
+| Token | Value | Notes |
+|-------|-------|-------|
+| `--btn-radius` | `0.375rem` (6px) | Standard CTAs (was `rounded-xl` 12px / `rounded-lg` 8px) |
+| `--btn-radius-icon` | `0.375rem` | Square icon buttons |
+| `--btn-radius-pill` | `9999px` | FAB only (`.ui-btn-icon-round`) |
+| `--btn-border-color` | soft mix | Lighter neutral borders |
+| `--btn-accent-border-color` | soft mix | Lighter accent outline |
+
 ### ui-btn-accent-outline
 
 **File:** `src/app/globals.css`
@@ -693,10 +705,10 @@ Related layout: `campaign-creator-section`, `campaign-creator-section-stack`, `c
 }
 ```
 
-**Creator usage:** Often combined with `rounded-lg px-3 py-2 text-xs font-heading font-semibold w-full`.
+**Creator usage:** Combine with size utilities only — radius/padding come from `.ui-btn-accent-outline`.
 
 ```tsx
-<button type="button" className="ui-btn-accent-outline mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-heading font-semibold">
+<button type="button" className="ui-btn-accent-outline mt-3 inline-flex w-full items-center justify-center gap-1.5 px-3 py-2 text-xs font-heading font-semibold">
   {t("brainViewRecommendations")}
   <ChevronRight size={14} />
 </button>
@@ -819,6 +831,25 @@ Inline status pills and row actions (no full-size buttons).
 ```
 
 **Primary usage:** `src/components/CampaignsHubClient.tsx` — drafts section + preset-group tables.
+
+### Dashboard Destaques cards (`/dashboard`)
+
+Compact card surfaces for the highlights dashboard — same creator borders/backgrounds, no colored top accents.
+
+| Class | Use |
+|-------|-----|
+| `dashboard-card` | Chart panels, brain notice, empty-state blocks |
+| `dashboard-card--compact` | `p-3` padding modifier |
+| `dashboard-kpi-card` | Hero KPI tiles with sparkline |
+| `dashboard-kpi-card__spark` | Inset mini-chart frame inside KPI |
+| `dashboard-metric-chip` | Secondary metric strip cells |
+| `dashboard-panel` | Canvas widget shell (shared styling) |
+
+**File:** `src/app/globals.css` (block after `.dashboard-panel`).
+
+**Live usage:** `DashboardContentLive`, `MetricPrism`, `CanvasMetricStrip`, `AgeBreakdownCard`, `BrainShelf` (`variant="notice"`).
+
+See [dashboard-destaques/README.md](./dashboard-destaques/README.md) for section layout.
 
 ---
 

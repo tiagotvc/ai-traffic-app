@@ -457,7 +457,7 @@ export default function CampaignsContent({ live }: { live?: CampaignsLiveProps }
                     : undefined
                 }
                 className={cn(
-                  "ui-btn-filter-toggle flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-body",
+                  "ui-btn-filter-toggle flex items-center gap-1.5 px-3 py-2 text-xs font-body",
                   filtersOpen && "ui-btn-filter-toggle--open"
                 )}
               >

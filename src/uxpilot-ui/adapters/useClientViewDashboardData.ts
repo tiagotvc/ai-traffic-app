@@ -34,6 +34,8 @@ export function useClientViewDashboardData() {
     brainSummaryLoading: false,
     ageBreakdown: [],
     ageBreakdownLoading: false,
+    campaignSnapshots: [],
+    campaignsLoading: false,
     chartMetrics: DEFAULT_DASHBOARD_CHART_METRICS,
     toggleChartMetric: () => {},
     dashboardLayout: DEFAULT_DASHBOARD_LAYOUT,

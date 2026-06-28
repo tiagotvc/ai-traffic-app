@@ -22,9 +22,9 @@ export function BillingBackLink({ href = "/billing/plans", label }: { href?: str
   return (
     <Link
       href={href}
-      className="group inline-flex items-center gap-2.5 text-sm font-medium text-[var(--text-dim)] transition hover:text-[var(--violet)]"
+      className="group inline-flex items-center gap-2.5 text-sm font-medium text-[var(--text-dim)] transition hover:text-[var(--ui-accent)]"
     >
-      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-color)] bg-[var(--surface-card)] shadow-sm transition group-hover:border-[var(--amber)]/40 group-hover:bg-[rgba(124,58,237,0.06)] group-hover:text-[var(--violet)]">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border-color)] bg-[var(--surface-card)] shadow-sm transition group-hover:border-[var(--ui-accent-border)] group-hover:bg-[var(--ui-accent-hover)] group-hover:text-[var(--ui-accent)]">
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
@@ -326,11 +326,9 @@ export function BillingCtaLink({
         href={href}
         className={
           className ??
-          `mt-6 block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
-            featured
-              ? "bg-gradient-to-r from-amber-400 to-amber-500 text-[#0f1419] shadow-lg shadow-amber-500/25 hover:brightness-105"
-              : "border border-white/20 bg-white/10 text-white hover:bg-white/15"
-          }`
+          (featured
+            ? "ui-btn-accent mt-6 block w-full text-center text-sm font-semibold"
+            : "mt-6 block w-full rounded-[var(--btn-radius)] border border-white/20 bg-white/10 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/15")
         }
       >
         {slug === "free" ? t("startFreeTrial") : t("subscribe")}
@@ -341,8 +339,8 @@ export function BillingCtaLink({
   if (slug === "free") {
     return (
       <Link
-        href="/billing"
-        className={className ?? "mt-6 block w-full rounded-xl border border-[var(--border-color)] py-3 text-center text-sm font-semibold text-[var(--text-dim)] transition hover:bg-[var(--surface-thead)]"}
+        href="/settings?tab=plan"
+        className={className ?? "ui-btn-secondary mt-6 block w-full text-center text-sm font-semibold"}
       >
         {t("startFreeTrial")}
       </Link>
@@ -353,11 +351,9 @@ export function BillingCtaLink({
       href={`/billing/checkout?plan=${planId}`}
       className={
         className ??
-        `mt-6 block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
-          featured
-            ? "bg-[var(--amber)] text-[#0f1419] shadow-lg shadow-amber-600/25 hover:brightness-105"
-            : "border border-amber-200 bg-amber-50 text-[var(--amber)] hover:bg-amber-100"
-        }`
+        (featured
+          ? "ui-btn-accent mt-6 block w-full text-center text-sm font-semibold"
+          : "ui-btn-accent-outline mt-6 block w-full text-center text-sm font-semibold")
       }
     >
       {t("subscribe")}
@@ -388,22 +384,23 @@ function planTier(slug: string): PlanTier {
 }
 
 const TIER_STYLES: Record<PlanTier, string> = {
-  free: "border-[var(--border-color)]/80 bg-[var(--surface-card)] shadow-sm hover:border-slate-300 hover:shadow-md",
-  standard: "border-[var(--border-color)]/80 bg-[var(--surface-card)] shadow-sm hover:border-[var(--amber)]/40 hover:shadow-md",
+  free: "border-[var(--border-color)]/80 bg-[var(--surface-card)] shadow-sm hover:border-[var(--border-color)] hover:shadow-md",
+  standard:
+    "border-[var(--border-color)]/80 bg-[var(--surface-card)] shadow-sm hover:border-[var(--ui-accent-border)] hover:shadow-md",
   popular:
-    "border-violet-300 bg-gradient-to-b from-violet-500/10 to-transparent shadow-lg shadow-violet-100/60 ring-1 ring-violet-200 lg:scale-[1.02]",
+    "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] shadow-lg shadow-[var(--ui-accent-glow)] ring-1 ring-[var(--ui-accent-ring)] lg:scale-[1.02]",
   premium:
-    "border-slate-800/20 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl shadow-slate-900/30 ring-1 ring-amber-400/40 lg:scale-[1.05] lg:-mt-2 lg:mb-2"
+    "border-slate-800/20 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl shadow-slate-900/30 ring-1 ring-[var(--ui-accent-border)] lg:scale-[1.05] lg:-mt-2 lg:mb-2"
 };
 
 const MARKETING_TIER_STYLES: Record<PlanTier, string> = {
   free: "border-white/10 bg-gradient-to-b from-slate-900/90 to-slate-950/95 text-white shadow-lg backdrop-blur-sm hover:border-white/20",
   standard:
-    "border-white/15 bg-gradient-to-b from-slate-900/90 to-indigo-950/90 text-white shadow-lg backdrop-blur-sm hover:border-amber-400/30",
+    "border-white/15 bg-gradient-to-b from-slate-900/90 to-indigo-950/90 text-white shadow-lg backdrop-blur-sm hover:border-[var(--ui-accent-border)]",
   popular:
-    "border-violet-400/45 bg-gradient-to-b from-violet-950/95 via-indigo-950/90 to-slate-950/95 text-white shadow-xl shadow-violet-900/30 ring-1 ring-violet-400/35 lg:scale-[1.03] lg:-mt-1",
+    "border-[var(--ui-accent-border-strong)] bg-gradient-to-b from-violet-950/95 via-indigo-950/90 to-slate-950/95 text-white shadow-xl shadow-[var(--ui-accent-glow)] ring-1 ring-[var(--ui-accent-ring)] lg:scale-[1.03] lg:-mt-1",
   premium:
-    "border-amber-400/50 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl shadow-amber-900/20 ring-1 ring-amber-400/40 lg:scale-[1.05] lg:-mt-2 lg:mb-2"
+    "border-[var(--ui-accent-border-strong)] bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl shadow-[var(--ui-accent-glow-strong)] ring-1 ring-[var(--ui-accent-border)] lg:scale-[1.05] lg:-mt-2 lg:mb-2"
 };
 
 export function PlanCard({
@@ -432,12 +429,12 @@ export function PlanCard({
   return (
     <div className={`relative flex flex-col rounded-2xl border p-6 transition ${cardStyle}`}>
       {isPopular && !isPremium ? (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--amber)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#0f1419] shadow-md">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--ui-accent)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ui-accent-btn-text)] shadow-md">
           {t("mostPopular")}
         </span>
       ) : null}
       {isPremium ? (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 px-3 py-0.5 text-[11px] font-black uppercase tracking-wide text-[var(--text-main)] shadow-md">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--ui-accent)] px-3 py-0.5 text-[11px] font-black uppercase tracking-wide text-[var(--ui-accent-btn-text)] shadow-md">
           {t("planPremium")}
         </span>
       ) : null}
@@ -466,7 +463,7 @@ export function PlanCard({
           variant={variant}
           className={
             isPremium
-              ? "mt-6 block w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-3.5 text-center text-sm font-extrabold text-[var(--text-main)] shadow-lg transition hover:from-amber-300 hover:to-amber-400"
+              ? "ui-btn-accent mt-6 block w-full py-3.5 text-center text-sm font-extrabold"
               : undefined
           }
         />
@@ -517,10 +514,10 @@ export function ContactPlanCard({ variant = "marketing" }: { variant?: "portal" 
       <div className="mt-auto">
         <Link
           href="/legal/support"
-          className={`mt-6 block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
+          className={`mt-6 block w-full py-3 text-center text-sm font-semibold transition ${
             isMarketing
-              ? "border border-white/20 bg-white/10 text-white hover:bg-white/15"
-              : "border border-[var(--border-color)] text-[var(--text-dim)] hover:bg-[var(--surface-bg)]"
+              ? "rounded-[var(--btn-radius)] border border-white/20 bg-white/10 text-white hover:bg-white/15"
+              : "ui-btn-secondary"
           }`}
         >
           {t("planPersonalizedCta")}
@@ -546,9 +543,9 @@ export function CheckoutPlanSummary({
   const t = useTranslations("billingPage");
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[rgba(124,58,237,0.15)] bg-gradient-to-br from-violet-500/10 via-transparent to-transparent shadow-sm">
-      <div className="border-b border-amber-100/80 bg-[var(--amber)]/5 px-5 py-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--violet)]">{t("yourPlan")}</p>
+    <div className="overflow-hidden rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] shadow-sm">
+      <div className="border-b border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-5 py-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ui-accent)]">{t("yourPlan")}</p>
         <h2 className="mt-1 text-xl font-bold text-[var(--text-main)]">{plan.name}</h2>
 
         {pricing.discountPercent > 0 ? (
@@ -568,7 +565,7 @@ export function CheckoutPlanSummary({
         </p>
 
         {pricing.installmentCount >= 2 && pricing.installmentValueCents ? (
-          <p className="mt-1 text-sm text-violet-700">
+          <p className="mt-1 text-sm text-[var(--ui-accent)]">
             {t("installmentSummary", {
               count: pricing.installmentCount,
               value: formatMoney(pricing.installmentValueCents, currency)

@@ -76,12 +76,28 @@ export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutPrefs = {
   chartSize: "default"
 };
 
-export const MAX_HERO_METRICS = 3;
+export const MAX_HERO_METRICS = 5;
+
+/** Default hero row when user prefs are empty (Destaques v2 — 5 compact KPI cards). */
+export const DEFAULT_DASHBOARD_HERO_METRICS: MetricKey[] = [
+  "spend",
+  "ctr",
+  "reach",
+  "conversions",
+  "clicks"
+];
 
 export const CHART_PANEL_MIN_HEIGHT: Record<ChartPanelSize, number> = {
-  compact: 300,
-  default: 380,
-  tall: 480
+  compact: 160,
+  default: 180,
+  tall: 220
+};
+
+/** Default chart plot height for Destaques page variant (px). */
+export const DASHBOARD_PAGE_CHART_HEIGHT: Record<ChartPanelSize, number> = {
+  compact: 130,
+  default: 148,
+  tall: 168
 };
 
 export function normalizeSectionOrder(raw: unknown): DashboardSectionKey[] {
@@ -150,7 +166,14 @@ export function resolveHeroMetricKeys(
   presetHeroMetrics: MetricKey[]
 ): MetricKey[] {
   if (userHeroMetrics.length > 0) return userHeroMetrics.slice(0, MAX_HERO_METRICS);
-  return presetHeroMetrics.slice(0, MAX_HERO_METRICS);
+  const fromPreset = presetHeroMetrics.slice(0, MAX_HERO_METRICS);
+  if (fromPreset.length >= MAX_HERO_METRICS) return fromPreset;
+  const padded = [...fromPreset];
+  for (const key of DEFAULT_DASHBOARD_HERO_METRICS) {
+    if (padded.length >= MAX_HERO_METRICS) break;
+    if (!padded.includes(key)) padded.push(key);
+  }
+  return padded.slice(0, MAX_HERO_METRICS);
 }
 
 export function resolveVisibleSectionOrder(layout: DashboardLayoutPrefs): DashboardSectionKey[] {

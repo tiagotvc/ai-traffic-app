@@ -15,6 +15,8 @@ type Props<T extends string = string> = {
   minSelected?: number;
   className?: string;
   size?: "sm" | "md";
+  /** Use Campaign Creator chip surfaces instead of dashboard metric chips. */
+  surface?: "dashboard" | "creator";
 };
 
 export function DsSelectablePills<T extends string = string>({
@@ -23,7 +25,8 @@ export function DsSelectablePills<T extends string = string>({
   onChange,
   minSelected = 1,
   className,
-  size = "sm"
+  size = "sm",
+  surface = "dashboard"
 }: Props<T>) {
   function toggle(value: T) {
     if (selected.includes(value)) {
@@ -36,8 +39,10 @@ export function DsSelectablePills<T extends string = string>({
 
   const pillClass =
     size === "md"
-      ? "rounded-full px-3 py-1.5 text-xs font-medium transition"
-      : "rounded-full px-2.5 py-1 text-[11px] font-medium transition";
+      ? "rounded-lg px-3 py-1.5 text-xs font-medium transition border"
+      : surface === "creator"
+        ? "rounded-lg border px-2.5 py-1 text-[11px] font-medium transition"
+        : "dashboard-metric-chip rounded-lg px-2.5 py-1 text-[11px] font-medium transition border";
 
   return (
     <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
@@ -48,20 +53,12 @@ export function DsSelectablePills<T extends string = string>({
             key={opt.value}
             type="button"
             onClick={() => toggle(opt.value)}
-            className={pillClass}
-            style={
+            className={cn(
+              pillClass,
               on
-                ? {
-                    background: "rgba(245,166,35,0.12)",
-                    color: "var(--amber)",
-                    border: "1px solid rgba(245,166,35,0.35)"
-                  }
-                : {
-                    background: "var(--surface-bg)",
-                    color: "var(--text-dim)",
-                    border: "1px solid transparent"
-                  }
-            }
+                ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]"
+                : "border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-[var(--text-dim)] hover:border-[var(--ui-accent-border)]"
+            )}
           >
             {opt.label}
           </button>

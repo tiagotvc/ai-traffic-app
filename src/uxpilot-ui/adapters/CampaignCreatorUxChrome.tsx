@@ -439,7 +439,7 @@ export function CampaignCreatorUxNav({
             disabled={!backEnabled}
             onClick={backEnabled ? goPrev : undefined}
             aria-disabled={!backEnabled}
-            className="ui-wizard-nav__btn ui-wizard-nav__btn--back ui-btn-secondary inline-flex h-9 items-center justify-center gap-1 rounded-lg px-3.5 text-sm font-heading font-medium disabled:cursor-not-allowed disabled:opacity-40"
+            className="ui-wizard-nav__btn ui-wizard-nav__btn--back ui-btn-secondary inline-flex h-9 items-center justify-center gap-1 px-3.5 text-sm font-heading font-medium disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ChevronLeft size={16} strokeWidth={2.5} />
             {t("back")}
@@ -451,7 +451,7 @@ export function CampaignCreatorUxNav({
           <button
             type="button"
             onClick={goNext}
-            className={`ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 rounded-lg px-4 text-sm font-heading font-semibold${footerNav || stepperNav || sidebarNav ? "" : " ml-auto"}`}
+            className={`ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold${footerNav || stepperNav || sidebarNav ? "" : " ml-auto"}`}
           >
             {t("next")}
             <ChevronRight size={16} strokeWidth={2.5} />
@@ -461,7 +461,7 @@ export function CampaignCreatorUxNav({
             type="button"
             disabled={publishing}
             onClick={onPublish}
-            className={`ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 rounded-lg px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50${footerNav || stepperNav || sidebarNav ? "" : " ml-auto"}`}
+            className={`ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50${footerNav || stepperNav || sidebarNav ? "" : " ml-auto"}`}
           >
             {publishing ? tCommon("sending") : addAdMode ? t("publishAd") : t("publish")}
           </button>

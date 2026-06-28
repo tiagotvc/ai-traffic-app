@@ -18,7 +18,7 @@ import {
   type ReportBreakdownLayoutItem
 } from "@/lib/report-breakdown-layout";
 
-const BAR_COLORS = ["#f5a623", "#7c3aed", "#10b981", "#6366f1", "#ec4899", "#0ea5e9", "#94a3b8"];
+const BAR_COLORS = ["#7c3aed", "#6366f1", "#10b981", "#ec4899", "#0ea5e9", "#8b5cf6", "#94a3b8"];
 
 const GRID_STROKE = "var(--border-color)";
 const TICK = { fill: "var(--text-dimmer)", fontSize: 9 };
@@ -70,7 +70,7 @@ function BreakdownCard({
 
   return (
     <div
-      className={`report-breakdown-card ui-card overflow-visible p-3 ${
+      className={`report-breakdown-card campaign-creator-card campaign-creator-card--compact overflow-visible ${
         isFullWidth ? "report-breakdown-card--full" : ""
       }`}
     >
@@ -118,14 +118,14 @@ function BreakdownCard({
         </ChartContainer>
       </div>
 
-      <div className="report-breakdown-table-wrap mt-2 overflow-visible rounded-xl border border-[var(--border-color)]">
+      <div className="report-breakdown-table-wrap mt-2 overflow-visible rounded-xl border border-[var(--creator-card-border,var(--border-color))]">
         <table
           className={`report-breakdown-table w-full text-left text-[10px] ${
             isPrint ? "report-print-table" : ""
           }`}
         >
           <thead>
-            <tr className="border-b border-[var(--border-color)] bg-[var(--surface-bg)]">
+            <tr className="border-b border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))]">
               <th className="px-2 py-1 font-semibold text-[var(--text-dim)]">{t("breakdownColSegment")}</th>
               <th className="px-2 py-1 text-right font-semibold text-[var(--text-dim)]">{t("spend")}</th>
               <th className="px-2 py-1 text-right font-semibold text-[var(--text-dim)]">{t("colShare")}</th>
@@ -137,7 +137,7 @@ function BreakdownCard({
           </thead>
           <tbody>
             {section.rows.map((row) => (
-              <tr key={row.value} className="border-b border-[var(--border-color)] last:border-b-0">
+              <tr key={row.value} className="border-b border-[var(--creator-card-border,var(--border-color))] last:border-b-0">
                 <td className="break-words px-2 py-1 font-medium text-[var(--text-main)]">{row.label}</td>
                 <td className="whitespace-nowrap px-2 py-1 text-right text-[var(--text-main)]">
                   {formatBRL(row.spend, locale)}
@@ -259,8 +259,7 @@ export function ReportAudienceBreakdown({
             <button
               type="button"
               onClick={handleFitToContent}
-              className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
-              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+              className="ui-btn-secondary inline-flex items-center gap-2 text-xs"
             >
               <Maximize2 size={14} />
               {t("breakdownFitToContent")}
@@ -268,8 +267,7 @@ export function ReportAudienceBreakdown({
             <button
               type="button"
               onClick={toggleEditMode}
-              className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
-              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+              className="ui-btn-secondary inline-flex items-center gap-2 text-xs"
             >
               <Settings2 size={14} />
               {layoutEditMode ? t("breakdownLayoutCustomizeDone") : t("breakdownLayoutCustomize")}

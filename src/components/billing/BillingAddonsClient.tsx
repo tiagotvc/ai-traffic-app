@@ -50,8 +50,8 @@ export function BillingAddonsClient() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <BillingBackLink href="/billing" />
+    <div className="w-full space-y-8">
+      <BillingBackLink href="/settings?tab=plan" />
 
       <div>
         <h1 className="font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">{t("addonsPageTitle")}</h1>
@@ -79,7 +79,7 @@ export function BillingAddonsClient() {
             className={`group relative overflow-hidden rounded-2xl border p-5 text-left transition hover:shadow-lg disabled:opacity-60 ${
               selected === addon.key
                 ? "border-violet-400 ring-2 ring-violet-400/30"
-                : "border-[var(--border-color)] bg-[var(--surface-card)] hover:border-[var(--amber)]/40"
+                : "border-[var(--border-color)] bg-[var(--surface-card)] hover:border-[var(--ui-accent-border)]"
             }`}
           >
             <div className={`mb-4 inline-flex rounded-lg bg-gradient-to-r ${addon.color} px-2.5 py-1 text-xs font-bold text-white`}>
