@@ -285,7 +285,7 @@ export function buildEngagementAudienceRule(input: {
           retention_seconds: retention,
           filter: {
             operator: "and",
-            filters: [{ field: "event", operator: "eq", value: input.eventName }]
+            filters: [{ field: "event", operator: "eq", value: sanitizeMetaEventName(input.eventName) }]
           }
         }
       ]
