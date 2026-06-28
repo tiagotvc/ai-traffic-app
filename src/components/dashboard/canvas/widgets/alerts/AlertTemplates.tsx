@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
 import type { AlertCardPayload, AlertDisplaySize, AlertVisualConfig } from "@/lib/dashboard/alert-widget-config";
@@ -172,6 +174,7 @@ export function AlertBrainInsightTemplate({ data, visual, layout, displaySize }:
 }
 
 export function AlertBrainProgressTemplate({ data, visual, layout, displaySize }: TemplateProps) {
+  const tf = useTranslations("appFeedback");
   const tokens = useAlertTheme(visual);
   const pct = data.progressPercent ?? 0;
   const minimal = displaySize === "minimal";
@@ -200,7 +203,7 @@ export function AlertBrainProgressTemplate({ data, visual, layout, displaySize }
           {!minimal ? (
             <div className="mt-1">
               <div className="mb-1 flex justify-between text-[10px]" style={{ color: tokens.textDim }}>
-                <span>Fase de aprendizado</span>
+                <span>{tf("learningPhase")}</span>
                 <span>{pct}%</span>
               </div>
               <div

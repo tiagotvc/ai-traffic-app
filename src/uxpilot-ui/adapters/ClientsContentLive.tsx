@@ -13,6 +13,7 @@ import { toUxClientCards, type UxClientCard } from "@/uxpilot-ui/adapters/client
 import { useClientsData } from "@/uxpilot-ui/adapters/useClientsData";
 
 function StatusPill({ status, alertCount }: { status: "healthy" | "warning"; alertCount: number }) {
+  const tc = useTranslations("clientsHub");
   const healthy = status === "healthy";
   return (
     <span
@@ -23,13 +24,14 @@ function StatusPill({ status, alertCount }: { status: "healthy" | "warning"; ale
         border: `1px solid ${healthy ? "rgba(16,185,129,0.25)" : "rgba(245,166,35,0.25)"}`
       }}
     >
-      {healthy ? "Saudável" : `${alertCount} alerta${alertCount === 1 ? "" : "s"}`}
+      {healthy ? tc("statusHealthy") : tc("alertCount", { count: alertCount })}
     </span>
   );
 }
 
 export function ClientsContentLive() {
   const t = useTranslations("clientsHub");
+  const tc = useTranslations("clientsHub");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const data = useClientsData();
@@ -56,13 +58,13 @@ export function ClientsContentLive() {
       <PageToolbar
         icon={<Building2 size={16} />}
         title={t("title")}
-        subtitle={`${cards.length} ${cards.length === 1 ? "cliente" : "clientes"}`}
+        subtitle={tc("clientCount", { count: cards.length })}
         showGlobalFilters={false}
         showSync={false}
         search={{
           value: data.search,
           onChange: data.setSearch,
-          placeholder: "Buscar clientes..."
+          placeholder: tc("searchClients")
         }}
         actions={
           <IconLabelLink
@@ -94,7 +96,7 @@ export function ClientsContentLive() {
           style={{ background: "var(--surface-card)", borderColor: "var(--border-color)" }}
         >
           <h3 className="font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-            Cadastre seu primeiro cliente
+            {tc("emptyStateTitle")}
           </h3>
           <p className="mt-2 font-body text-sm" style={{ color: "var(--text-dim)" }}>
             {t("subtitle")}
@@ -105,7 +107,7 @@ export function ClientsContentLive() {
               className="ui-btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-heading text-sm font-semibold"
             >
               <Plus size={16} />
-              Novo cliente
+              {tc("newClient")}
             </Link>
             {process.env.NEXT_PUBLIC_DEMO_MODE === "true" ? (
               <button
@@ -122,7 +124,7 @@ export function ClientsContentLive() {
                 }}
                 className="ui-btn-secondary rounded-xl px-5 py-2.5 font-heading text-sm font-semibold"
               >
-                Carregar dados demo
+                {tc("loadDemoData")}
               </button>
             ) : null}
           </div>
@@ -212,7 +214,7 @@ export function ClientsContentLive() {
 
                   <div className="flex items-center justify-between">
                     <span className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                      {client.accounts} {client.accounts === 1 ? "conta conectada" : "contas conectadas"}
+                      {tc("accountsConnected", { count: client.accounts })}
                     </span>
                     {client.status === "healthy" ? (
                       <TrendingUp size={12} style={{ color: "#10b981" }} />
@@ -263,8 +265,8 @@ export function ClientsContentLive() {
             <div className="mx-auto mb-6 flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-2xl bg-[var(--surface-thead)]">
               <Cog size={38} className="animate-spin text-[var(--ui-accent)]" strokeWidth={1.6} aria-hidden />
             </div>
-            <h2 className="font-heading text-lg text-[var(--text-main)]">Excluindo cliente…</h2>
-            <p className="mt-2 text-sm text-[var(--text-dim)]">Aguarde um instante.</p>
+            <h2 className="font-heading text-lg text-[var(--text-main)]">{tc("deletingClient")}</h2>
+            <p className="mt-2 text-sm text-[var(--text-dim)]">{tc("pleaseWait")}</p>
           </div>
         </div>
       ) : null}

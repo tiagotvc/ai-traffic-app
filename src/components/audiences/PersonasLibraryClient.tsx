@@ -27,6 +27,7 @@ type Props = {
 
 export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId: adAccountIdProp }: Props) {
   const t = useTranslations("audiences");
+  const tm = useTranslations("audiencesMisc");
   const [personas, setPersonas] = useState<PersonaSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,16 +73,16 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
       .then((r) => r.json())
       .then((j: { ok?: boolean; personas?: PersonaSummary[]; error?: string }) => {
         if (!j.ok) {
-          setError(j.error ?? "Erro ao carregar personas");
+          setError(j.error ?? tm("errorLoadingPersonas"));
           setPersonas([]);
           return;
         }
         setPersonas(j.personas ?? []);
         setError(null);
       })
-      .catch(() => setError("Erro ao carregar personas"))
+      .catch(() => setError(tm("errorLoadingPersonas")))
       .finally(() => setLoading(false));
-  }, []);
+  }, [tm]);
 
   useEffect(() => {
     load();

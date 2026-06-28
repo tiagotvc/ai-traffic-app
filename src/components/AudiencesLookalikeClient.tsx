@@ -43,6 +43,7 @@ function kindBadge(kind: string) {
 }
 
 function AudienceListInfoBanner() {
+  const tm = useTranslations("audiencesMisc");
   return (
     <div
       className="mb-5 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm font-body"
@@ -54,9 +55,11 @@ function AudienceListInfoBanner() {
     >
       <Info size={16} className="mt-0.5 shrink-0" style={{ color: "var(--ui-accent)" }} />
       <span>
-        Públicos sincronizados diretamente da Meta. Criativos com menos de{" "}
-        <strong style={{ color: "var(--ui-accent)" }}>100 impressões</strong> no período não entram na classificação.
-        Mantenha seus públicos organizados para facilitar o uso em novas campanhas.
+        {tm.rich("listInfoBanner", {
+          strong: (chunks) => (
+            <strong style={{ color: "var(--ui-accent)" }}>{chunks}</strong>
+          )
+        })}
       </span>
     </div>
   );
@@ -64,6 +67,7 @@ function AudienceListInfoBanner() {
 
 export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?: boolean } = {}) {
   const t = useTranslations("audiences");
+  const tm = useTranslations("audiencesMisc");
   const strip = useCommandStripOptional();
   const [isPending, startTransition] = useTransition();
 
@@ -145,7 +149,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
       const res = await fetch("/api/audiences/hub");
       const j = await res.json();
       if (!res.ok || !j.ok) {
-        setError(formatMetaGraphErrorMessage(j.error ?? "Erro ao carregar"));
+        setError(formatMetaGraphErrorMessage(j.error ?? tm("errorLoading")));
         return;
       }
       setMetaConnected(!!j.metaConnected);
@@ -154,11 +158,11 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
       setTemplateGroups(j.templateGroups ?? []);
       setClientSlug((prev) => prev || j.clients?.[0]?.slug || "");
     } catch {
-      setError("Erro ao carregar públicos");
+      setError(tm("errorLoadingAudiences"));
     } finally {
       setHubLoading(false);
     }
-  }, []);
+  }, [tm]);
 
   const loadAudiences = useCallback(
     async (refresh = false) => {
@@ -178,19 +182,19 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         const res = await fetch(`/api/audiences/hub?${qs}`);
         const j = await res.json();
         if (!res.ok || !j.ok) {
-          setError(formatMetaGraphErrorMessage(j.error ?? "Erro ao carregar públicos da Meta"));
+          setError(formatMetaGraphErrorMessage(j.error ?? tm("errorLoadingMetaAudiences")));
           setAudiences([]);
           return;
         }
         setAudiences(j.savedAudiences ?? []);
       } catch {
-        setError("Erro ao carregar públicos da Meta");
+        setError(tm("errorLoadingMetaAudiences"));
         setAudiences([]);
       } finally {
         setAudiencesLoading(false);
       }
     },
-    [clientSlug, adAccountId, metaConnected]
+    [clientSlug, adAccountId, metaConnected, tm]
   );
 
   useEffect(() => {
@@ -364,7 +368,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
       />
       {useUxChrome ? (
         <PageToolbar
-          eyebrow="Públicos"
+          eyebrow={tm("audiences")}
           icon={<Users size={16} style={{ color: "var(--ui-accent)" }} />}
           title={t("title")}
           subtitle={t("subtitle")}
@@ -693,7 +697,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                       style={{ borderColor: "var(--border-color)" }}
                     >
                       <p className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-                        {filteredAudiences.length} público{filteredAudiences.length === 1 ? "" : "s"}
+                        {tm("audienceCount", { count: filteredAudiences.length })}
                       </p>
                       <div className="flex items-center gap-2">
                         <button
@@ -703,7 +707,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                           className="rounded-lg border px-3 py-1 font-body text-xs disabled:opacity-40"
                           style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
                         >
-                          Anterior
+                          {tm("previous")}
                         </button>
                         <span className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
                           {page} / {totalPages}
@@ -715,7 +719,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
                           className="rounded-lg border px-3 py-1 font-body text-xs disabled:opacity-40"
                           style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
                         >
-                          Próxima
+                          {tm("next")}
                         </button>
                       </div>
                     </div>

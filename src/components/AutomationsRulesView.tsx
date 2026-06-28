@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { Bell, PauseCircle, Plus, Trash2, TrendingDown, TrendingUp, Wallet, Zap } from "lucide-react";
 
 import { PageToolbar } from "@/components/layout/PageToolbar";
@@ -24,11 +25,13 @@ const TONE_STYLES: Record<string, { bg: string; color: string }> = {
   sky: { bg: "rgba(14,165,233,0.1)", color: "#0ea5e9" }
 };
 
-const STEPS = [
-  { n: "1", title: "Escolha um gatilho", desc: "Uma condição como CPL acima da meta ou gasto sem conversão." },
-  { n: "2", title: "Defina a ação", desc: "Pausar a campanha ou só receber um alerta." },
-  { n: "3", title: "Ative e relaxe", desc: "A regra é avaliada a cada sincronização e age sozinha." }
-];
+function buildSteps(tf: ReturnType<typeof useTranslations>) {
+  return [
+    { n: "1", title: tf("stepChooseTriggerTitle"), desc: tf("stepChooseTriggerDesc") },
+    { n: "2", title: tf("stepDefineActionTitle"), desc: tf("stepDefineActionDesc") },
+    { n: "3", title: tf("stepActivateTitle"), desc: tf("stepActivateDesc") }
+  ];
+}
 
 type Metric = "cpl" | "spend" | "conversions" | "roas";
 type Op = "gt" | "gte" | "lt";
@@ -55,70 +58,72 @@ type Template = {
   form?: RuleForm;
 };
 
-const TEMPLATES: Template[] = [
-  {
-    iconKey: "pause",
-    title: "Pausar campanha com CPL alto",
-    desc: "Pausa a campanha quando o custo por lead passa da meta.",
-    ifText: "CPL > R$ 50 e gasto > R$ 30",
-    thenText: "Pausar campanha",
-    tone: "rose",
-    form: { name: "Pausar campanha com CPL alto", metric: "cpl", op: "gt", value: 50, minSpend: 30, action: "pause_campaign" }
-  },
-  {
-    iconKey: "banknotes",
-    title: "Cortar gasto sem retorno",
-    desc: "Pausa quando a campanha gasta demais e não entrega.",
-    ifText: "Gasto > R$ 100",
-    thenText: "Pausar campanha",
-    tone: "accent",
-    form: { name: "Cortar gasto sem retorno", metric: "spend", op: "gt", value: 100, minSpend: 50, action: "pause_campaign" }
-  },
-  {
-    iconKey: "bell",
-    title: "Alerta de CPL alto",
-    desc: "Te avisa assim que o custo por lead passa do limite.",
-    ifText: "CPL > R$ 40",
-    thenText: "Enviar alerta",
-    tone: "violet",
-    form: { name: "Alerta de CPL alto", metric: "cpl", op: "gt", value: 40, minSpend: 0, action: "alert_only" }
-  },
-  {
-    iconKey: "trendDown",
-    title: "Alerta de poucas conversões",
-    desc: "Avisa quando a campanha converte abaixo do esperado.",
-    ifText: "Conversões < 3 e gasto > R$ 50",
-    thenText: "Enviar alerta",
-    tone: "sky",
-    form: { name: "Alerta de poucas conversões", metric: "conversions", op: "lt", value: 3, minSpend: 50, action: "alert_only" }
-  },
-  {
-    iconKey: "trendUp",
-    title: "Escalar vencedores",
-    desc: "Aumenta o orçamento das campanhas com bom ROAS.",
-    ifText: "ROAS > 3,0",
-    thenText: "+10% de orçamento",
-    tone: "emerald",
-    form: {
-      name: "Escalar vencedores",
-      metric: "roas",
-      op: "gt",
-      value: 3,
-      minSpend: 100,
-      action: "adjust_budget_percent",
-      budgetPercent: 10
+function buildTemplates(tf: ReturnType<typeof useTranslations>): Template[] {
+  return [
+    {
+      iconKey: "pause",
+      title: tf("tplPauseHighCplTitle"),
+      desc: tf("tplPauseHighCplDesc"),
+      ifText: tf("tplPauseHighCplIf"),
+      thenText: tf("actionPauseCampaign"),
+      tone: "rose",
+      form: { name: "Pausar campanha com CPL alto", metric: "cpl", op: "gt", value: 50, minSpend: 30, action: "pause_campaign" }
+    },
+    {
+      iconKey: "banknotes",
+      title: tf("tplCutSpendTitle"),
+      desc: tf("tplCutSpendDesc"),
+      ifText: tf("tplCutSpendIf"),
+      thenText: tf("actionPauseCampaign"),
+      tone: "accent",
+      form: { name: "Cortar gasto sem retorno", metric: "spend", op: "gt", value: 100, minSpend: 50, action: "pause_campaign" }
+    },
+    {
+      iconKey: "bell",
+      title: tf("tplHighCplAlertTitle"),
+      desc: tf("tplHighCplAlertDesc"),
+      ifText: tf("tplHighCplAlertIf"),
+      thenText: tf("actionSendAlert"),
+      tone: "violet",
+      form: { name: "Alerta de CPL alto", metric: "cpl", op: "gt", value: 40, minSpend: 0, action: "alert_only" }
+    },
+    {
+      iconKey: "trendDown",
+      title: tf("tplLowConversionsTitle"),
+      desc: tf("tplLowConversionsDesc"),
+      ifText: tf("tplLowConversionsIf"),
+      thenText: tf("actionSendAlert"),
+      tone: "sky",
+      form: { name: "Alerta de poucas conversões", metric: "conversions", op: "lt", value: 3, minSpend: 50, action: "alert_only" }
+    },
+    {
+      iconKey: "trendUp",
+      title: tf("tplScaleWinnersTitle"),
+      desc: tf("tplScaleWinnersDesc"),
+      ifText: tf("tplScaleWinnersIf"),
+      thenText: tf("tplScaleWinnersThen"),
+      tone: "emerald",
+      form: {
+        name: "Escalar vencedores",
+        metric: "roas",
+        op: "gt",
+        value: 3,
+        minSpend: 100,
+        action: "adjust_budget_percent",
+        budgetPercent: 10
+      }
+    },
+    {
+      iconKey: "clock",
+      title: tf("tplPauseOffHoursTitle"),
+      desc: tf("tplPauseOffHoursDesc"),
+      ifText: tf("tplPauseOffHoursIf"),
+      thenText: tf("tplPauseOffHoursThen"),
+      tone: "sky",
+      soon: true
     }
-  },
-  {
-    iconKey: "clock",
-    title: "Pausar fora do horário",
-    desc: "Desliga as campanhas fora do horário comercial.",
-    ifText: "Fora de 08h–20h",
-    thenText: "Pausar / Reativar",
-    tone: "sky",
-    soon: true
-  }
-];
+  ];
+}
 
 type Rule = {
   id: string;
@@ -130,14 +135,16 @@ type Rule = {
   lastExecutionAt?: string | null;
 };
 
-const METRIC_LABEL: Record<string, string> = {
-  cpl: "CPL",
-  cpa: "CPA",
-  ctr: "CTR",
-  spend: "Gasto",
-  conversions: "Conversões",
-  roas: "ROAS"
-};
+function buildMetricLabel(tf: ReturnType<typeof useTranslations>): Record<string, string> {
+  return {
+    cpl: "CPL",
+    cpa: "CPA",
+    ctr: "CTR",
+    spend: tf("metricSpend"),
+    conversions: tf("metricConversions"),
+    roas: "ROAS"
+  };
+}
 
 function formatLastRun(iso?: string | null) {
   if (!iso) return null;
@@ -149,17 +156,18 @@ function formatLastRun(iso?: string | null) {
 }
 const OP_LABEL: Record<string, string> = { gt: ">", gte: "≥", lt: "<" };
 
-function actionLabel(type?: string) {
-  if (type === "pause_campaign") return "Pausar campanha";
-  if (type === "alert_only") return "Enviar alerta";
-  if (type === "adjust_budget_percent") return "Ajustar orçamento %";
+function actionLabel(type: string | undefined, tf: ReturnType<typeof useTranslations>) {
+  if (type === "pause_campaign") return tf("actionPauseCampaign");
+  if (type === "alert_only") return tf("actionSendAlert");
+  if (type === "adjust_budget_percent") return tf("actionAdjustBudget");
   return type ?? "—";
 }
 
-function conditionText(c: Rule["condition"]) {
-  const metric = METRIC_LABEL[c.metric ?? ""] ?? (c.metric ?? "—");
+function conditionText(c: Rule["condition"], tf: ReturnType<typeof useTranslations>) {
+  const metricLabel = buildMetricLabel(tf);
+  const metric = metricLabel[c.metric ?? ""] ?? (c.metric ?? "—");
   const op = OP_LABEL[c.op ?? ""] ?? c.op ?? "";
-  const extra = c.minSpend ? ` · gasto > R$ ${c.minSpend}` : "";
+  const extra = c.minSpend ? ` · ${tf("spendGreaterThan", { value: c.minSpend })}` : "";
   return `${metric} ${op} ${c.value ?? "—"}${extra}`;
 }
 
@@ -173,12 +181,16 @@ const EMPTY_FORM: RuleForm = {
 };
 
 export function AutomationsRulesView() {
+  const tf = useTranslations("appFeedback");
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<RuleForm>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const steps = useMemo(() => buildSteps(tf), [tf]);
+  const templates = useMemo(() => buildTemplates(tf), [tf]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -228,7 +240,7 @@ export function AutomationsRulesView() {
         })
       });
       if (!res.ok) {
-        setError("Não foi possível salvar a regra.");
+        setError(tf("ruleSaveError"));
         return;
       }
       setModalOpen(false);
@@ -248,7 +260,7 @@ export function AutomationsRulesView() {
   }
 
   function remove(rule: Rule) {
-    if (!confirm(`Excluir a regra "${rule.name}"?`)) return;
+    if (!confirm(tf("confirmDeleteRule", { name: rule.name }))) return;
     startTransition(async () => {
       await fetch(`/api/automation/rules/${rule.id}`, { method: "DELETE" });
       load();
@@ -268,14 +280,14 @@ export function AutomationsRulesView() {
     <AppPageShell as="main" gap="loose" className="flex-1 overflow-y-auto">
       <PageToolbar
         icon={<Zap size={16} />}
-        title="Automações"
-        subtitle="Crie regras se-então para pausar, alertar ou escalar campanhas conforme a performance."
+        title={tf("automations")}
+        subtitle={tf("automationsSubtitle")}
         showGlobalFilters={false}
         showSync={false}
         actions={
           <button type="button" onClick={openCreate} className="ui-btn-accent ui-btn-responsive font-heading font-bold">
             <Plus size={15} />
-            <span className="ui-btn-responsive-label">Criar regra</span>
+            <span className="ui-btn-responsive-label">{tf("createRule")}</span>
           </button>
         }
       />
@@ -290,17 +302,17 @@ export function AutomationsRulesView() {
               <Zap size={20} />
             </span>
             <h2 className="mt-3 font-heading text-xl font-bold sm:text-2xl" style={{ color: "var(--text-main)" }}>
-              Piloto automático para campanhas
+              {tf("autopilotTitle")}
             </h2>
             <p className="mt-1 font-body text-sm" style={{ color: "var(--text-dim)" }}>
-              Pausar o que não funciona e receber alertas quando algo sai do trilho.
+              {tf("autopilotSubtitle")}
             </p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {STEPS.map((s) => (
+        {steps.map((s) => (
           <div key={s.n} className="flex items-start gap-3 rounded-xl border p-4" style={cardStyle}>
             <div className="ui-toolbar-icon-shell h-8 w-8 shrink-0 rounded-full text-sm font-bold">
               {s.n}
@@ -320,14 +332,14 @@ export function AutomationsRulesView() {
       <div>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-heading text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-            Modelos de regra
+            {tf("ruleTemplates")}
           </h3>
           <span className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-            Comece a partir de um modelo pronto
+            {tf("startFromTemplate")}
           </span>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {TEMPLATES.map((tpl) => {
+          {templates.map((tpl) => {
             const IconCmp = TEMPLATE_ICONS[tpl.iconKey];
             const tone = TONE_STYLES[tpl.tone] ?? TONE_STYLES.violet;
             return (
@@ -347,7 +359,7 @@ export function AutomationsRulesView() {
                       className="rounded-full px-2 py-0.5 font-body text-[10px]"
                       style={{ background: "var(--surface-bg)", color: "var(--text-dim)" }}
                     >
-                      Em breve
+                      {tf("comingSoon")}
                     </span>
                   ) : null}
                 </div>
@@ -359,7 +371,7 @@ export function AutomationsRulesView() {
                     className="rounded-md px-2 py-1 font-medium"
                     style={{ background: "var(--surface-bg)", color: "var(--text-dim)" }}
                   >
-                    SE {tpl.ifText}
+                    {tf("ifPrefix")} {tpl.ifText}
                   </span>
                   <span style={{ color: "var(--text-dimmer)" }}>→</span>
                   <span
@@ -376,7 +388,7 @@ export function AutomationsRulesView() {
                   className="mt-auto rounded-lg border px-3 py-2 font-heading text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ borderColor: "var(--border-color)", color: "var(--text-dim)", background: "var(--surface-bg)" }}
                 >
-                  {tpl.soon ? "Em breve" : "Usar modelo"}
+                  {tpl.soon ? tf("comingSoon") : tf("useTemplate")}
                 </button>
               </div>
             );
@@ -394,15 +406,15 @@ export function AutomationsRulesView() {
             >
               <Plus size={20} />
             </span>
-            <span className="font-heading text-sm font-semibold">Criar regra personalizada</span>
-            <span className="font-body text-xs">Monte sua própria condição e ação</span>
+            <span className="font-heading text-sm font-semibold">{tf("createCustomRule")}</span>
+            <span className="font-body text-xs">{tf("createCustomRuleHint")}</span>
           </button>
         </div>
       </div>
 
       <div>
         <h3 className="mb-3 font-heading text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-          Suas regras {rules.length ? `(${rules.length})` : ""}
+          {tf("yourRules")} {rules.length ? `(${rules.length})` : ""}
         </h3>
         {rules.length === 0 ? (
           <div className="rounded-xl border p-8 text-center" style={cardStyle}>
@@ -413,10 +425,10 @@ export function AutomationsRulesView() {
               <Bell size={24} />
             </span>
             <div className="mt-3 font-heading text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-              Nenhuma regra ainda
+              {tf("noRulesYet")}
             </div>
             <p className="mt-1 font-body text-xs" style={{ color: "var(--text-dim)" }}>
-              Use um modelo acima ou crie a sua. As regras são avaliadas a cada sincronização.
+              {tf("noRulesYetHint")}
             </p>
           </div>
         ) : (
@@ -439,7 +451,7 @@ export function AutomationsRulesView() {
                         color: rule.enabled ? "#10b981" : "var(--text-dim)"
                       }}
                     >
-                      {rule.enabled ? "Ativa" : "Pausada"}
+                      {rule.enabled ? tf("statusActive") : tf("statusPaused")}
                     </span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5 font-body text-[11px]">
@@ -447,23 +459,25 @@ export function AutomationsRulesView() {
                       className="rounded-md px-2 py-1 font-medium"
                       style={{ background: "var(--surface-bg)", color: "var(--text-dim)" }}
                     >
-                      SE {conditionText(rule.condition)}
+                      {tf("ifPrefix")} {conditionText(rule.condition, tf)}
                     </span>
                     <span style={{ color: "var(--text-dimmer)" }}>→</span>
                     <span
                       className="rounded-md px-2 py-1 font-medium"
                       style={{ background: "rgba(124,58,237,0.08)", color: "#a78bfa" }}
                     >
-                      {actionLabel(rule.action.type)}
+                      {actionLabel(rule.action.type, tf)}
                     </span>
                   </div>
                   {/* Logs de execução (derivados dos Alertas gerados pelo motor) */}
                   <p className="mt-1.5 font-body text-[11px]" style={{ color: "var(--text-dimmer)" }}>
                     {rule.executionCount && rule.executionCount > 0
-                      ? `${rule.executionCount} execução(ões)${
-                          formatLastRun(rule.lastExecutionAt) ? ` · última ${formatLastRun(rule.lastExecutionAt)}` : ""
+                      ? `${tf("executionCount", { count: rule.executionCount })}${
+                          formatLastRun(rule.lastExecutionAt)
+                            ? ` · ${tf("lastExecution", { date: formatLastRun(rule.lastExecutionAt) ?? "" })}`
+                            : ""
                         }`
-                      : "Ainda não disparou"}
+                      : tf("notTriggeredYet")}
                   </p>
                 </div>
                 <label className="flex cursor-pointer items-center gap-2 font-body text-xs" style={{ color: "var(--text-dim)" }}>
@@ -474,14 +488,14 @@ export function AutomationsRulesView() {
                     onChange={() => toggle(rule)}
                     className="accent-[var(--ui-accent)]"
                   />
-                  Ativa
+                  {tf("statusActive")}
                 </label>
                 <button
                   type="button"
                   onClick={() => remove(rule)}
                   className="rounded-lg p-1.5 transition hover:bg-[rgba(239,68,68,0.08)]"
                   style={{ color: "var(--text-dimmer)" }}
-                  title="Excluir"
+                  title={tf("delete")}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -503,7 +517,7 @@ export function AutomationsRulesView() {
           >
             <div className="flex items-center justify-between">
               <h2 className="font-heading text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                Nova regra
+                {tf("newRule")}
               </h2>
               <button
                 type="button"
@@ -518,19 +532,19 @@ export function AutomationsRulesView() {
             <div className="mt-4 space-y-3">
               <label className="block">
                 <span className="font-body text-xs font-medium" style={{ color: "var(--text-dim)" }}>
-                  Nome
+                  {tf("fieldName")}
                 </span>
                 <input
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="Ex.: Pausar CPL alto"
+                  placeholder={tf("fieldNamePlaceholder")}
                   className="ui-input mt-1 w-full"
                 />
               </label>
 
               <div>
                 <span className="font-body text-xs font-medium" style={{ color: "var(--text-dim)" }}>
-                  Condição (SE)
+                  {tf("conditionIf")}
                 </span>
                 <div className="mt-1 grid grid-cols-3 gap-2">
                   <select
@@ -539,8 +553,8 @@ export function AutomationsRulesView() {
                     className="ui-input"
                   >
                     <option value="cpl">CPL</option>
-                    <option value="spend">Gasto</option>
-                    <option value="conversions">Conversões</option>
+                    <option value="spend">{tf("metricSpend")}</option>
+                    <option value="conversions">{tf("metricConversions")}</option>
                     <option value="roas">ROAS</option>
                   </select>
                   <select
@@ -563,7 +577,7 @@ export function AutomationsRulesView() {
 
               <label className="block">
                 <span className="font-body text-xs font-medium" style={{ color: "var(--text-dim)" }}>
-                  Gasto mínimo (R$) — opcional
+                  {tf("minSpendOptional")}
                 </span>
                 <input
                   type="number"
@@ -576,23 +590,23 @@ export function AutomationsRulesView() {
 
               <label className="block">
                 <span className="font-body text-xs font-medium" style={{ color: "var(--text-dim)" }}>
-                  Ação (ENTÃO)
+                  {tf("actionThen")}
                 </span>
                 <select
                   value={form.action}
                   onChange={(e) => setForm((f) => ({ ...f, action: e.target.value as ActionType }))}
                   className="ui-input mt-1 w-full"
                 >
-                  <option value="pause_campaign">Pausar campanha</option>
-                  <option value="alert_only">Enviar alerta</option>
-                  <option value="adjust_budget_percent">Ajustar orçamento (%)</option>
+                  <option value="pause_campaign">{tf("actionPauseCampaign")}</option>
+                  <option value="alert_only">{tf("actionSendAlert")}</option>
+                  <option value="adjust_budget_percent">{tf("actionAdjustBudgetParen")}</option>
                 </select>
               </label>
 
               {form.action === "adjust_budget_percent" ? (
                 <label className="block">
                   <span className="font-body text-xs font-medium" style={{ color: "var(--text-dim)" }}>
-                    Aumento de orçamento (%)
+                    {tf("budgetIncreasePercent")}
                   </span>
                   <input
                     type="number"
@@ -617,7 +631,7 @@ export function AutomationsRulesView() {
                 className="rounded-lg border px-4 py-2 font-heading text-sm font-semibold"
                 style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
               >
-                Cancelar
+                {tf("cancel")}
               </button>
               <button
                 type="button"
@@ -625,7 +639,7 @@ export function AutomationsRulesView() {
                 onClick={save}
                 className="ui-btn-accent px-4 py-2 font-heading text-sm font-bold disabled:opacity-60"
               >
-                Salvar regra
+                {tf("saveRule")}
               </button>
             </div>
           </div>

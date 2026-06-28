@@ -42,6 +42,7 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
   ref
 ) {
   const t = useTranslations("audiences");
+  const tm = useTranslations("audiencesMisc");
   const [prompt, setPrompt] = useState("");
   const [defaultRadiusKm, setDefaultRadiusKm] = useState(3);
   const [provider, setProvider] = useState<"gemini" | "claude">("gemini");
@@ -84,7 +85,7 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
       });
       const j = await res.json();
       if (!j.ok) {
-        setError(j.error ?? "Erro na IA");
+        setError(j.error ?? tm("errorAi"));
         return;
       }
       setPreview(j.preview);
@@ -103,7 +104,7 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
       });
       const j = await res.json();
       if (!j.ok) {
-        setError(j.error ?? "Erro no geocoding");
+        setError(j.error ?? tm("errorGeocoding"));
         return;
       }
       setGeoRules(j.result.geoRules);
@@ -120,7 +121,7 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phase: "save",
-          name: resolvedName || preview?.zoneName || "Nova Zona",
+          name: resolvedName || preview?.zoneName || tm("newZoneDefaultName"),
           description: preview?.summary,
           geoRules,
           sourcePrompt: prompt
@@ -128,7 +129,7 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
       });
       const j = await res.json();
       if (!j.ok) {
-        setError(j.error ?? "Erro ao salvar");
+        setError(j.error ?? tm("errorSaving"));
         return;
       }
       onSaved();

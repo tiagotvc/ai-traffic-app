@@ -10,14 +10,14 @@ import { cn } from "@/lib/cn";
 import { UxFormCard, UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 import { useCreateClientWizard } from "@/uxpilot-ui/adapters/useCreateClientWizard";
 
-const META_ERROR_MESSAGES: Record<string, string> = {
-  access_denied: "Conexão Meta cancelada. Tente novamente.",
-  invalid_state: "Sessão OAuth expirada. Conecte novamente.",
-  oauth_failed: "Falha ao conectar Meta. Tente novamente."
-};
-
 export function ClientsCreateContentLive() {
   const tW = useTranslations("clientsHub.createWizard");
+  const tc = useTranslations("clientsHub");
+  const META_ERROR_MESSAGES: Record<string, string> = {
+    access_denied: tc("metaAccessDenied"),
+    invalid_state: tc("metaInvalidState"),
+    oauth_failed: tc("metaOAuthFailed")
+  };
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,6 +28,7 @@ export function ClientsCreateContentLive() {
   const metaErrorMessage = useMemo(() => {
     if (!metaError) return null;
     return META_ERROR_MESSAGES[metaError] ?? tW("metaOAuthFailed");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metaError, tW]);
 
   const steps = [
@@ -249,7 +250,7 @@ export function ClientsCreateContentLive() {
                       border: "1px solid var(--ui-accent-border)"
                     }}
                   >
-                    {w.selected.size} selecionada(s)
+                    {tc("selectedCount", { count: w.selected.size })}
                   </span>
                   <span className="font-body text-xs uppercase tracking-wider" style={{ color: "var(--text-dimmer)" }}>
                     {tW("spentLast30d")}

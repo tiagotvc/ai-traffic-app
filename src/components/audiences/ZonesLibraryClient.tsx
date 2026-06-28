@@ -20,6 +20,7 @@ export type ZoneSummary = {
 
 export function ZonesLibraryClient() {
   const t = useTranslations("audiences");
+  const tm = useTranslations("audiencesMisc");
   const [zones, setZones] = useState<ZoneSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,16 +34,16 @@ export function ZonesLibraryClient() {
       .then((r) => r.json())
       .then((j: { ok?: boolean; zones?: ZoneSummary[]; error?: string }) => {
         if (!j.ok) {
-          setError(j.error ?? "Erro ao carregar zonas");
+          setError(j.error ?? tm("errorLoadingZones"));
           setZones([]);
           return;
         }
         setZones(j.zones ?? []);
         setError(null);
       })
-      .catch(() => setError("Erro ao carregar zonas"))
+      .catch(() => setError(tm("errorLoadingZones")))
       .finally(() => setLoading(false));
-  }, []);
+  }, [tm]);
 
   useEffect(() => {
     load();

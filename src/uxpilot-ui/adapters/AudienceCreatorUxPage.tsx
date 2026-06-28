@@ -24,11 +24,11 @@ import { Link } from "@/i18n/navigation";
 type AudienceStepKey = "type" | "details" | "rules" | "review";
 type AudienceTypeChoice = "custom" | "lookalike" | "saved" | "";
 
-const AUDIENCE_STEPS: { id: AudienceStepKey; label: string; sublabel: string }[] = [
-  { id: "type", label: "Tipo de Público", sublabel: "Selecione a categoria" },
-  { id: "details", label: "Detalhes", sublabel: "Nome e configurações" },
-  { id: "rules", label: "Regras", sublabel: "Fonte e segmentação" },
-  { id: "review", label: "Revisão", sublabel: "Confirmar e criar" }
+const AUDIENCE_STEPS: { id: AudienceStepKey; labelKey: string; sublabelKey: string }[] = [
+  { id: "type", labelKey: "stepTypeLabel", sublabelKey: "stepTypeSublabel" },
+  { id: "details", labelKey: "stepDetailsLabel", sublabelKey: "stepDetailsSublabel" },
+  { id: "rules", labelKey: "stepRulesLabel", sublabelKey: "stepRulesSublabel" },
+  { id: "review", labelKey: "stepReviewLabel", sublabelKey: "stepReviewSublabel" }
 ];
 
 const STEP_ORDER: AudienceStepKey[] = ["type", "details", "rules", "review"];
@@ -125,6 +125,7 @@ function AudienceReviewRow({ label, value }: { label: string; value: string }) {
 
 export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange, onBack }: Props) {
   const t = useTranslations("audiences");
+  const ta = useTranslations("audienceCreator");
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState<AudienceStepKey>("type");
   const [typeChoice, setTypeChoice] = useState<AudienceTypeChoice>("");
@@ -174,11 +175,11 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
 
   const typeLabel =
     typeChoice === "custom"
-      ? "Personalizado"
+      ? ta("typePersonalizado")
       : typeChoice === "lookalike"
-        ? "Lookalike"
+        ? ta("typeLookalike")
         : typeChoice === "saved"
-          ? "Salvo"
+          ? ta("typeSalvo")
           : "—";
 
   const canNext =
@@ -201,10 +202,10 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
     setGenders((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
 
   const scoreItems = [
-    { label: "Tipo de público", done: typeChoice !== "" },
-    { label: "Nome do público", done: audienceName.trim() !== "" },
-    { label: "País / Região", done: country !== "" },
-    { label: "Fonte / Regras", done: step === "rules" || step === "review" }
+    { label: ta("scoreAudienceType"), done: typeChoice !== "" },
+    { label: ta("scoreAudienceName"), done: audienceName.trim() !== "" },
+    { label: ta("scoreCountryRegion"), done: country !== "" },
+    { label: ta("scoreSourceRules"), done: step === "rules" || step === "review" }
   ];
   const score = Math.round((scoreItems.filter((s) => s.done).length / scoreItems.length) * 100);
 
@@ -377,14 +378,14 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
         <div className="min-w-0 flex-1">
           <p className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
             <Link href="/audiences" className="hover:underline" style={{ color: "var(--text-dimmer)" }}>
-              Públicos
+              {ta("breadcrumbAudiences")}
             </Link>
             {" › "}
-            <span style={{ color: "var(--text-dim)" }}>Criar novo público</span>
+            <span style={{ color: "var(--text-dim)" }}>{ta("breadcrumbCreateNew")}</span>
           </p>
           <div className="mt-0.5 flex items-center gap-2">
             <h1 className="font-heading text-xl font-bold" style={{ color: "var(--text-main)" }}>
-              Criador de públicos
+              {ta("pageTitle")}
             </h1>
             <span
               className="rounded px-2 py-0.5 font-heading text-xs font-semibold"
@@ -394,7 +395,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 border: "1px solid rgba(245,166,35,0.3)"
               }}
             >
-              Rascunho
+              {ta("draftBadge")}
             </span>
           </div>
         </div>
@@ -408,7 +409,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
             background: "var(--surface-card)"
           }}
         >
-          <ArrowLeft size={14} /> Voltar
+          <ArrowLeft size={14} /> {ta("back")}
         </button>
       </header>
 
@@ -422,7 +423,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
             className="mb-5 px-1 font-heading text-[10px] font-bold tracking-widest"
             style={{ color: "var(--text-dimmer)" }}
           >
-            ETAPAS
+            {ta("stepsLabel")}
           </p>
           <div className="relative flex flex-col gap-0">
             <div
@@ -433,8 +434,8 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               <AudienceStepItem
                 key={s.id}
                 stepNum={i + 1}
-                label={s.label}
-                sublabel={s.sublabel}
+                label={ta(s.labelKey)}
+                sublabel={ta(s.sublabelKey)}
                 active={step === s.id}
                 completed={STEP_ORDER.indexOf(step) > i}
                 onClick={() => {
@@ -449,7 +450,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               className="mb-2 font-heading text-[10px] font-bold tracking-widest"
               style={{ color: "var(--text-dimmer)" }}
             >
-              CLIENTE
+              {ta("clientLabel")}
             </p>
             <div className="relative">
               <button
@@ -509,32 +510,32 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               <div className="animate-fade-up space-y-5">
                 <div>
                   <h2 className="mb-1 font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                    Tipo de Público
+                    {ta("audienceType")}
                   </h2>
                   <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                    Selecione a categoria do público que deseja criar.
+                    {ta("selectCategory")}
                   </p>
                 </div>
                 <div className="space-y-3">
                   {[
                     {
                       id: "custom" as AudienceTypeChoice,
-                      label: "Público Personalizado",
-                      desc: "Baseado em interações com seu perfil, site, app ou lista de clientes.",
+                      label: ta("customAudience"),
+                      desc: ta("customAudienceDesc"),
                       icon: Users,
                       color: "#818cf8"
                     },
                     {
                       id: "lookalike" as AudienceTypeChoice,
-                      label: "Público Semelhante (Lookalike)",
-                      desc: "Encontre pessoas com perfil parecido ao de seus melhores clientes.",
+                      label: ta("lookalike"),
+                      desc: ta("lookalikeDesc"),
                       icon: Copy,
                       color: "#10b981"
                     },
                     {
                       id: "saved" as AudienceTypeChoice,
-                      label: "Público Salvo",
-                      desc: "Segmentação manual por interesses, dados demográficos e comportamentos.",
+                      label: ta("savedAudience"),
+                      desc: ta("savedAudienceDesc"),
                       icon: Globe,
                       color: "#f59e0b"
                     }
@@ -582,8 +583,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 >
                   <AlertCircle size={15} className="mt-0.5 flex-shrink-0" style={{ color: "#f5a623" }} />
                   <p className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                    O tipo escolhido define quais configurações estarão disponíveis nas próximas etapas. Você
-                    poderá ajustar os detalhes antes de finalizar.
+                    {ta("typeHint")}
                   </p>
                 </div>
                 <div className="flex justify-end pt-2">
@@ -594,7 +594,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                     className="rounded-xl px-7 py-2.5 font-heading text-sm font-bold transition-all hover:brightness-110 active:scale-95"
                     style={amberBtn(canNext)}
                   >
-                    Próximo: Detalhes →
+                    {ta("nextDetails")}
                   </button>
                 </div>
               </div>
@@ -604,19 +604,19 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               <div className="animate-fade-up space-y-5">
                 <div>
                   <h2 className="mb-1 font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                    Detalhes do Público
+                    {ta("audienceDetails")}
                   </h2>
                   <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                    Dê um nome e configure as opções básicas do público.
+                    {ta("audienceDetailsDesc")}
                   </p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-body text-sm font-medium" style={{ color: "var(--text-main)" }}>
-                    Nome do público <span style={{ color: "#f5a623" }}>*</span>
+                    {ta("audienceName")} <span style={{ color: "#f5a623" }}>*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: [ENVOLV] [IG] Seguidores 30D"
+                    placeholder={ta("audienceNamePlaceholder")}
                     value={audienceName}
                     onChange={(e) => setAudienceName(e.target.value)}
                     className="w-full rounded-xl border px-4 py-3 font-body text-sm outline-none transition-all"
@@ -636,7 +636,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 </div>
                 <AudienceFormCard>
                   <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                    País / Região
+                    {ta("countryRegion")}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {["BR", "PT", "US", "ES", "AR", "MX"].map((c) => (
@@ -659,13 +659,13 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 {typeChoice === "custom" ? (
                   <AudienceFormCard>
                     <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Fonte de dados
+                      {ta("dataSource")}
                     </p>
                     <div className="flex gap-2">
                       {[
                         { v: "instagram", label: "Instagram", Icon: Instagram, color: "#f472b6" },
                         { v: "facebook", label: "Facebook", Icon: Facebook, color: "#818cf8" },
-                        { v: "site", label: "Site (Pixel)", Icon: Globe, color: "#10b981" }
+                        { v: "site", label: ta("sourceSitePixel"), Icon: Globe, color: "#10b981" }
                       ].map((s) => (
                         <button
                           key={s.v}
@@ -687,7 +687,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 {typeChoice === "lookalike" ? (
                   <AudienceFormCard>
                     <p className="mb-1 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Porcentagem de similaridade
+                      {ta("similarityPercentage")}
                     </p>
                     <div className="mt-3 flex gap-2">
                       {["1", "2", "3", "5", "10"].map((p) => (
@@ -711,12 +711,12 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 {typeChoice === "saved" ? (
                   <AudienceFormCard>
                     <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Faixa etária
+                      {ta("ageRange")}
                     </p>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <label className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                          Idade mínima
+                          {ta("minAge")}
                         </label>
                         <input
                           type="number"
@@ -734,7 +734,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                       </div>
                       <div className="space-y-1.5">
                         <label className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                          Idade máxima
+                          {ta("maxAge")}
                         </label>
                         <input
                           type="number"
@@ -752,22 +752,26 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                       </div>
                     </div>
                     <p className="mb-2 mt-4 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Gêneros
+                      {ta("genders")}
                     </p>
                     <div className="flex gap-2">
-                      {["Masculino", "Feminino", "Todos"].map((g) => (
+                      {[
+                        { v: "Masculino", label: ta("genderMale") },
+                        { v: "Feminino", label: ta("genderFemale") },
+                        { v: "Todos", label: ta("genderAll") }
+                      ].map((g) => (
                         <button
-                          key={g}
+                          key={g.v}
                           type="button"
-                          onClick={() => toggleGender(g)}
+                          onClick={() => toggleGender(g.v)}
                           className="flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2 font-body text-xs transition-all"
                           style={{
-                            borderColor: genders.includes(g) ? "#f5a623" : "var(--border-color)",
-                            background: genders.includes(g) ? "rgba(245,166,35,0.1)" : "var(--surface-bg)",
-                            color: genders.includes(g) ? "#f5a623" : "var(--text-dim)"
+                            borderColor: genders.includes(g.v) ? "#f5a623" : "var(--border-color)",
+                            background: genders.includes(g.v) ? "rgba(245,166,35,0.1)" : "var(--surface-bg)",
+                            color: genders.includes(g.v) ? "#f5a623" : "var(--text-dim)"
                           }}
                         >
-                          {g}
+                          {g.label}
                         </button>
                       ))}
                     </div>
@@ -784,7 +788,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                       background: "var(--surface-card)"
                     }}
                   >
-                    <ArrowLeft size={14} /> Voltar
+                    <ArrowLeft size={14} /> {ta("back")}
                   </button>
                   <button
                     type="button"
@@ -793,7 +797,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                     className="rounded-xl px-7 py-2.5 font-heading text-sm font-bold transition-all hover:brightness-110 active:scale-95"
                     style={amberBtn(canNext)}
                   >
-                    Próximo: Regras →
+                    {ta("nextRules")}
                   </button>
                 </div>
               </div>
@@ -803,25 +807,25 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               <div className="animate-fade-up space-y-5">
                 <div>
                   <h2 className="mb-1 font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                    Regras do Público
+                    {ta("audienceRules")}
                   </h2>
                   <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                    Defina as ações e comportamentos que qualificam uma pessoa para este público.
+                    {ta("audienceRulesDesc")}
                   </p>
                 </div>
                 {typeChoice === "custom" ? (
                   <>
                     <AudienceFormCard>
                       <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                        Ação de engajamento
+                        {ta("engagementAction")}
                       </p>
                       <div className="space-y-2">
                         {[
-                          { v: "INSTAGRAM_PROFILE_FOLLOW", label: "Seguiu o perfil do Instagram" },
-                          { v: "INSTAGRAM_PROFILE_ENGAGE", label: "Interagiu com o perfil do Instagram" },
-                          { v: "PAGE_ENGAGED", label: "Interagiu com a Página do Facebook" },
-                          { v: "PURCHASE", label: "Realizou uma compra (Pixel)" },
-                          { v: "LEAD", label: "Enviou um formulário de lead" }
+                          { v: "INSTAGRAM_PROFILE_FOLLOW", label: ta("actionIgFollow") },
+                          { v: "INSTAGRAM_PROFILE_ENGAGE", label: ta("actionIgEngage") },
+                          { v: "PAGE_ENGAGED", label: ta("actionPageEngaged") },
+                          { v: "PURCHASE", label: ta("actionPurchase") },
+                          { v: "LEAD", label: ta("actionLead") }
                         ].map((opt) => (
                           <button
                             key={opt.v}
@@ -853,7 +857,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                     </AudienceFormCard>
                     <AudienceFormCard>
                       <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                        Janela de tempo
+                        {ta("timeWindow")}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {["7", "14", "30", "60", "90", "180"].map((d) => (
@@ -878,7 +882,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 {typeChoice === "lookalike" ? (
                   <AudienceFormCard>
                     <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Público-semente (fonte do lookalike)
+                      {ta("seedAudience")}
                     </p>
                     <div className="space-y-2">
                       {seedAudiences.length ? (
@@ -921,11 +925,11 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 {typeChoice === "saved" ? (
                   <AudienceFormCard>
                     <p className="mb-3 font-body text-sm font-semibold" style={{ color: "var(--text-main)" }}>
-                      Interesses e comportamentos
+                      {ta("interestsBehaviors")}
                     </p>
                     <input
                       type="text"
-                      placeholder="Ex: Marketing digital, Empreendedorismo, Saúde..."
+                      placeholder={ta("interestsPlaceholder")}
                       value={interests}
                       onChange={(e) => setInterests(e.target.value)}
                       className="w-full rounded-xl border px-4 py-3 font-body text-sm outline-none transition-all"
@@ -943,8 +947,11 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 >
                   <Sparkles size={15} className="mt-0.5 flex-shrink-0" style={{ color: "#a78bfa" }} />
                   <p className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                    Após criar o público, ele será enviado à Meta para processamento. Pode levar até{" "}
-                    <strong style={{ color: "#a78bfa" }}>30 minutos</strong> até estar disponível para veiculação.
+                    {ta.rich("processingHint", {
+                      strong: (chunks) => (
+                        <strong style={{ color: "#a78bfa" }}>{chunks}</strong>
+                      )
+                    })}
                   </p>
                 </div>
                 <div className="flex justify-between pt-2">
@@ -958,7 +965,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                       background: "var(--surface-card)"
                     }}
                   >
-                    <ArrowLeft size={14} /> Voltar
+                    <ArrowLeft size={14} /> {ta("back")}
                   </button>
                   <button
                     type="button"
@@ -966,7 +973,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                     className="rounded-xl px-7 py-2.5 font-heading text-sm font-bold transition-all hover:brightness-110 active:scale-95"
                     style={amberBtn(true)}
                   >
-                    Revisar →
+                    {ta("reviewNext")}
                   </button>
                 </div>
               </div>
@@ -976,10 +983,10 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               <div className="animate-fade-up space-y-5">
                 <div>
                   <h2 className="mb-1 font-heading text-lg font-bold" style={{ color: "var(--text-main)" }}>
-                    Revisão
+                    {ta("review")}
                   </h2>
                   <p className="font-body text-sm" style={{ color: "var(--text-dim)" }}>
-                    Confirme todas as configurações antes de criar o público.
+                    {ta("reviewDesc")}
                   </p>
                 </div>
                 <AudienceFormCard>
@@ -995,33 +1002,33 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                         {audienceName || "—"}
                       </p>
                       <p className="font-body text-xs" style={{ color: "var(--text-dimmer)" }}>
-                        Resumo do público a ser criado
+                        {ta("audienceSummary")}
                       </p>
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <AudienceReviewRow label="Tipo" value={typeLabel} />
-                    <AudienceReviewRow label="Nome" value={audienceName || "—"} />
-                    <AudienceReviewRow label="Cliente" value={selectedClient?.name ?? "—"} />
-                    <AudienceReviewRow label="País" value={country} />
+                    <AudienceReviewRow label={ta("reviewType")} value={typeLabel} />
+                    <AudienceReviewRow label={ta("reviewName")} value={audienceName || "—"} />
+                    <AudienceReviewRow label={ta("reviewClient")} value={selectedClient?.name ?? "—"} />
+                    <AudienceReviewRow label={ta("reviewCountry")} value={country} />
                     {typeChoice === "custom" ? (
                       <>
-                        <AudienceReviewRow label="Fonte" value={source} />
-                        <AudienceReviewRow label="Ação" value={ruleAction} />
-                        <AudienceReviewRow label="Janela" value={`${window_} dias`} />
+                        <AudienceReviewRow label={ta("reviewSource")} value={source} />
+                        <AudienceReviewRow label={ta("reviewAction")} value={ruleAction} />
+                        <AudienceReviewRow label={ta("reviewWindow")} value={ta("daysValue", { count: parseInt(window_, 10) || 0 })} />
                       </>
                     ) : null}
                     {typeChoice === "lookalike" ? (
                       <>
-                        <AudienceReviewRow label="Similaridade" value={`${lookalikePct}%`} />
-                        <AudienceReviewRow label="Público-semente" value={selectedSeed?.name ?? "—"} />
+                        <AudienceReviewRow label={ta("reviewSimilarity")} value={`${lookalikePct}%`} />
+                        <AudienceReviewRow label={ta("reviewSeedAudience")} value={selectedSeed?.name ?? "—"} />
                       </>
                     ) : null}
                     {typeChoice === "saved" ? (
                       <>
-                        <AudienceReviewRow label="Faixa etária" value={`${ageMin} – ${ageMax} anos`} />
-                        <AudienceReviewRow label="Gêneros" value={genders.join(", ") || "—"} />
-                        {interests ? <AudienceReviewRow label="Interesses" value={interests} /> : null}
+                        <AudienceReviewRow label={ta("reviewAgeRange")} value={ta("ageRangeValue", { min: ageMin, max: ageMax })} />
+                        <AudienceReviewRow label={ta("reviewGenders")} value={genders.join(", ") || "—"} />
+                        {interests ? <AudienceReviewRow label={ta("reviewInterests")} value={interests} /> : null}
                       </>
                     ) : null}
                   </div>
@@ -1032,8 +1039,12 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 >
                   <Check size={15} className="mt-0.5 flex-shrink-0" style={{ color: "#10b981" }} />
                   <p className="font-body text-xs" style={{ color: "var(--text-dim)" }}>
-                    Tudo pronto! Ao confirmar, o público será criado e sincronizado com a conta de anúncios de{" "}
-                    <strong style={{ color: "var(--text-main)" }}>{selectedClient?.name ?? "—"}</strong> na Meta.
+                    {ta.rich("readyHint", {
+                      client: selectedClient?.name ?? "—",
+                      strong: (chunks) => (
+                        <strong style={{ color: "var(--text-main)" }}>{chunks}</strong>
+                      )
+                    })}
                   </p>
                 </div>
                 <div className="flex justify-between pt-2">
@@ -1047,7 +1058,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                       background: "var(--surface-card)"
                     }}
                   >
-                    <ArrowLeft size={14} /> Voltar
+                    <ArrowLeft size={14} /> {ta("back")}
                   </button>
                   <button
                     type="button"
@@ -1062,7 +1073,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                   >
                     <span className="flex items-center gap-2">
                       <UserCheck size={15} />
-                      {pending ? t("creating") : "Criar público"}
+                      {pending ? t("creating") : ta("createAudience")}
                     </span>
                   </button>
                 </div>
@@ -1078,7 +1089,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
         >
           <div>
             <p className="mb-3 font-heading text-sm font-bold" style={{ color: "var(--text-main)" }}>
-              Completude
+              {ta("completeness")}
             </p>
             <div className="mb-3 flex items-center gap-3">
               <div className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center">
@@ -1102,7 +1113,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 </span>
               </div>
               <p className="font-body text-xs leading-relaxed" style={{ color: "var(--text-dim)" }}>
-                Preencha todos os campos para maximizar a qualidade do público.
+                {ta("completenessHint")}
               </p>
             </div>
             <div className="space-y-2">
@@ -1130,7 +1141,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
           <div style={{ height: 1, background: "var(--border-color)" }} />
           <div>
             <p className="mb-3 font-heading text-sm font-bold" style={{ color: "var(--text-main)" }}>
-              Prévia do público
+              {ta("audiencePreview")}
             </p>
             <div
               className="overflow-hidden rounded-2xl"
@@ -1150,13 +1161,13 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                     <Users size={20} style={{ color: "#7c3aed" }} />
                   </div>
                   <p className="font-body text-[10px]" style={{ color: "#6d28d9" }}>
-                    {typeChoice ? typeLabel : "Selecione um tipo"}
+                    {typeChoice ? typeLabel : ta("selectTypePreview")}
                   </p>
                 </div>
               </div>
               <div className="p-3" style={{ borderTop: "1px solid var(--border-color)" }}>
                 <p className="truncate font-heading text-xs font-bold" style={{ color: "var(--text-main)" }}>
-                  {audienceName || "Nome do público"}
+                  {audienceName || ta("audienceNamePreview")}
                 </p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   {country ? (
@@ -1193,7 +1204,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               className="mb-3 font-heading text-[10px] font-semibold tracking-widest"
               style={{ color: "var(--text-dimmer)" }}
             >
-              DICA
+              {ta("tipLabel")}
             </p>
             <div
               className="rounded-xl p-3"
@@ -1201,12 +1212,12 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
             >
               <p className="font-body text-xs leading-relaxed" style={{ color: "var(--text-dim)" }}>
                 {typeChoice === "lookalike"
-                  ? "Públicos lookalike de 1% são mais precisos. Combine com exclusões para evitar duplicação."
+                  ? ta("tipLookalike")
                   : typeChoice === "custom"
-                    ? "Janelas de 30–60 dias tendem a equilibrar tamanho e relevância para a maioria dos objetivos."
+                    ? ta("tipCustom")
                     : typeChoice === "saved"
-                      ? "Interesses muito amplos podem reduzir a eficiência. Prefira 3–5 interesses específicos."
-                      : "Escolha o tipo de público para ver dicas personalizadas."}
+                      ? ta("tipSaved")
+                      : ta("tipDefault")}
               </p>
             </div>
           </div>
