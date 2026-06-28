@@ -17,25 +17,29 @@ type Props = {
   onBack: () => void;
 };
 
-function summarizeTargeting(targeting: Record<string, unknown>): string[] {
+function summarizeTargeting(
+  targeting: Record<string, unknown>,
+  tm: ReturnType<typeof useTranslations>
+): string[] {
   const lines: string[] = [];
   const geo = targeting.geo_locations as { countries?: string[]; cities?: Array<{ name: string }> } | undefined;
-  if (geo?.countries?.length) lines.push(`Países: ${geo.countries.join(", ")}`);
-  if (geo?.cities?.length) lines.push(`Cidades: ${geo.cities.map((c) => c.name).join(", ")}`);
+  if (geo?.countries?.length) lines.push(tm("targetingCountries", { values: geo.countries.join(", ") }));
+  if (geo?.cities?.length) lines.push(tm("targetingCities", { values: geo.cities.map((c) => c.name).join(", ") }));
   if (targeting.age_min || targeting.age_max) {
-    lines.push(`Idade: ${targeting.age_min ?? 18}–${targeting.age_max ?? 65}`);
+    lines.push(tm("targetingAge", { min: (targeting.age_min as number) ?? 18, max: (targeting.age_max as number) ?? 65 }));
   }
   const genders = targeting.genders as number[] | undefined;
-  if (genders?.length === 1) lines.push(genders[0] === 1 ? "Homens" : "Mulheres");
+  if (genders?.length === 1) lines.push(genders[0] === 1 ? tm("genderMen") : tm("genderWomen"));
   const flex = targeting.flexible_spec as Array<Record<string, unknown>> | undefined;
-  if (flex?.length) lines.push(`${flex.length} grupo(s) de interesses/comportamentos`);
+  if (flex?.length) lines.push(tm("targetingInterestGroups", { count: flex.length }));
   const custom = targeting.custom_audiences as Array<{ id: string; name?: string }> | undefined;
-  if (custom?.length) lines.push(`${custom.length} público(s) personalizado(s) incluído(s)`);
-  return lines.length ? lines : ["Targeting copiado do modelo"];
+  if (custom?.length) lines.push(tm("targetingCustomAudiences", { count: custom.length }));
+  return lines.length ? lines : [tm("targetingCopiedFromTemplate")];
 }
 
 function SavedAudienceCopySection({ ctx, onBack }: Props) {
   const t = useTranslations("audiences");
+  const tm = useTranslations("audiencesMisc");
   const [pending, startTransition] = useTransition();
   const [items, setItems] = useState<SavedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +73,7 @@ function SavedAudienceCopySection({ ctx, onBack }: Props) {
         body: JSON.stringify({
           clientId: ctx.clientSlug,
           adAccountId: ctx.adAccountId,
-          name: name.trim() || `${selected?.name ?? "Público"} (cópia)`,
+          name: name.trim() || tm("copyName", { name: selected?.name ?? tm("audienceFallback") }),
           templateAudienceId: templateId
         })
       });
@@ -108,7 +112,7 @@ function SavedAudienceCopySection({ ctx, onBack }: Props) {
         <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-bg)] p-3">
           <p className="text-xs font-semibold text-[var(--text-dim)]">{t("targetingPreview")}</p>
           <ul className="mt-2 space-y-1 text-xs text-[var(--text-dim)]">
-            {summarizeTargeting(selected.targeting).map((line) => (
+            {summarizeTargeting(selected.targeting, tm).map((line) => (
               <li key={line}>• {line}</li>
             ))}
           </ul>
@@ -120,7 +124,7 @@ function SavedAudienceCopySection({ ctx, onBack }: Props) {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={selected ? `${selected.name} (cópia)` : ""}
+          placeholder={selected ? tm("copyName", { name: selected.name }) : ""}
           className="ui-input mt-1 w-full text-sm"
         />
       </div>

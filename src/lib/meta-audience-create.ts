@@ -55,13 +55,6 @@ export const ENGAGEMENT_ACTIONS: Record<EngagementSourceType, EngagementActionDe
   page: [
     { id: "page_engaged", labelKey: "engagementAction.pageEngaged", metaEvent: "page_engaged", maxRetentionDays: 730 },
     { id: "page_visited", labelKey: "engagementAction.pageVisited", metaEvent: "page_visited", maxRetentionDays: 730 },
-    {
-      id: "page_liked",
-      labelKey: "engagementAction.pageLiked",
-      metaEvent: "page_liked",
-      maxRetentionDays: 0,
-      fixedRetentionSeconds: 0
-    },
     { id: "page_messaged", labelKey: "engagementAction.pageMessaged", metaEvent: "page_messaged", maxRetentionDays: 730 },
     { id: "page_cta_clicked", labelKey: "engagementAction.pageCtaClicked", metaEvent: "page_cta_clicked", maxRetentionDays: 730 },
     { id: "page_or_post_save", labelKey: "engagementAction.pageOrPostSave", metaEvent: "page_or_post_save", maxRetentionDays: 730 },
@@ -89,12 +82,6 @@ export const ENGAGEMENT_ACTIONS: Record<EngagementSourceType, EngagementActionDe
       id: "ig_business_profile_visit",
       labelKey: "engagementAction.igProfileVisit",
       metaEvent: "ig_business_profile_visit",
-      maxRetentionDays: 365
-    },
-    {
-      id: "ig_user_followed_business",
-      labelKey: "engagementAction.igFollowed",
-      metaEvent: "ig_user_followed_business",
       maxRetentionDays: 365
     },
     {
@@ -208,6 +195,22 @@ function retentionSeconds(days: number): number {
   return Math.round(days * 86400);
 }
 
+/**
+ * Coerces a value into a Meta-valid Custom Audience event name: at most 49
+ * characters, only `[A-Za-z0-9_]`. Standard tokens (`PageView`, `Purchase`)
+ * pass through unchanged; display names with spaces/accents/hyphens are
+ * normalized so Meta doesn't reject them with error #2654.
+ */
+export function sanitizeMetaEventName(raw: string): string {
+  const cleaned = (raw || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip accents
+    .replace(/[^A-Za-z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return (cleaned || "Other").slice(0, 49);
+}
+
 export function buildWebsiteAudienceRule(input: {
   pixelId: string;
   eventName: string;
@@ -226,7 +229,7 @@ export function buildWebsiteAudienceRule(input: {
   const rule: Record<string, unknown> = {
     event_sources: [{ id: input.pixelId, type: "pixel" }],
     retention_seconds: retentionSeconds(input.retentionDays),
-    event: { event_name: input.eventName }
+    event: { event_name: sanitizeMetaEventName(input.eventName) }
   };
 
   if (filters.length) {
@@ -269,7 +272,7 @@ export function buildEngagementAudienceRule(input: {
           retention_seconds: retention,
           filter: {
             operator: "and",
-            filters: [{ field: "event", operator: "eq", value: input.eventName }]
+            filters: [{ field: "event", operator: "eq", value: sanitizeMetaEventName(input.eventName) }]
           }
         }
       ]

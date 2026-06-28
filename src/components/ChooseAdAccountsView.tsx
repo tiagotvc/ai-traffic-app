@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Link, useRouter } from "@/i18n/navigation";
 
@@ -47,13 +48,14 @@ const MOCK_ACCOUNTS: Account[] = [
 const MOCK_LINKED = new Set(["act_1001"]);
 
 function Steps({ step }: { step: "bm" | "accounts" }) {
+  const t = useTranslations("chooseAdAccounts");
   return (
     <div className="flex items-center gap-2 text-xs font-medium">
       <span className="flex items-center gap-1.5 text-[var(--violet)]">
         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[rgba(124,58,237,0.1)]">
           <Icon d={ICONS.check} className="h-3 w-3" />
         </span>
-        Conectar
+        {t("stepConnect")}
       </span>
       <span className="h-px w-5 bg-slate-200" />
       <span className={`flex items-center gap-1.5 ${step === "accounts" ? "text-[var(--violet)]" : "text-[var(--text-main)]"}`}>
@@ -64,7 +66,7 @@ function Steps({ step }: { step: "bm" | "accounts" }) {
         >
           {step === "accounts" ? <Icon d={ICONS.check} className="h-3 w-3" /> : "2"}
         </span>
-        Business
+        {t("stepBusiness")}
       </span>
       <span className="h-px w-5 bg-slate-200" />
       <span className={`flex items-center gap-1.5 ${step === "accounts" ? "text-[var(--text-main)]" : "text-[var(--text-dimmer)]"}`}>
@@ -75,13 +77,15 @@ function Steps({ step }: { step: "bm" | "accounts" }) {
         >
           3
         </span>
-        Contas
+        {t("stepAccounts")}
       </span>
     </div>
   );
 }
 
 export function ChooseAdAccountsView() {
+  const t = useTranslations("chooseAdAccounts");
+  const locale = useLocale();
   const router = useRouter();
   const [step, setStep] = useState<"bm" | "accounts">("bm");
 
@@ -198,7 +202,7 @@ export function ChooseAdAccountsView() {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || !j.ok) {
-        setError("Não foi possível importar as contas. Tente novamente.");
+        setError(t("importError"));
         return;
       }
       const noPerm = (j.needsPermission ?? []) as Array<{ id: string; label: string }>;
@@ -216,7 +220,11 @@ export function ChooseAdAccountsView() {
   }
   function fmtSpend(v: number | null) {
     if (v == null) return null;
-    return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+    return v.toLocaleString(locale === "en" ? "en-US" : "pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      maximumFractionDigits: 0
+    });
   }
 
   return (
@@ -226,17 +234,15 @@ export function ChooseAdAccountsView() {
       {step === "bm" ? (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-[var(--text-main)]">Escolha o Business Manager</h1>
-            <p className="mt-1 text-sm text-[var(--text-dim)]">
-              Selecione o gerenciador de negócios. Depois você escolhe as contas de anúncio dele.
-            </p>
+            <h1 className="text-2xl font-bold text-[var(--text-main)]">{t("bmTitle")}</h1>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">{t("bmHint")}</p>
           </div>
 
           <div className="ui-card divide-y divide-[var(--border-color)] overflow-hidden">
             {bmLoading ? (
-              <p className="p-8 text-center text-sm text-[var(--text-dim)]">Carregando…</p>
+              <p className="p-8 text-center text-sm text-[var(--text-dim)]">{t("loading")}</p>
             ) : businesses.length === 0 ? (
-              <p className="p-8 text-center text-sm text-[var(--text-dim)]">Nenhum Business Manager encontrado.</p>
+              <p className="p-8 text-center text-sm text-[var(--text-dim)]">{t("bmEmpty")}</p>
             ) : (
               businesses.map((b) => (
                 <button
@@ -251,7 +257,7 @@ export function ChooseAdAccountsView() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-[var(--text-main)]">{b.name}</span>
                     <span className="block text-[11px] text-[var(--text-dimmer)]">
-                      {b.adAccountCount > 0 ? `${b.adAccountCount} conta(s)` : "ver contas"}
+                      {b.adAccountCount > 0 ? t("bmAccountsCount", { count: b.adAccountCount }) : t("bmViewAccounts")}
                     </span>
                   </span>
                   <span className="text-[var(--text-dimmer)]">
@@ -264,7 +270,7 @@ export function ChooseAdAccountsView() {
 
           <div className="flex justify-start">
             <Link href="/dashboard" className="text-sm font-medium text-[var(--text-dim)] hover:text-[var(--text-dim)]">
-              Pular por enquanto
+              {t("skipForNow")}
             </Link>
           </div>
         </>
@@ -276,22 +282,19 @@ export function ChooseAdAccountsView() {
               onClick={backToBm}
               className="mb-2 text-sm ui-link"
             >
-              ← Trocar Business Manager
+              {t("changeBm")}
             </button>
-            <h1 className="text-2xl font-bold text-[var(--text-main)]">Contas de {bm?.name}</h1>
-            <p className="mt-1 text-sm text-[var(--text-dim)]">
-              Selecione as contas desta BM para trazer ao painel. Cada conta nova vira um cliente.
-              As já vinculadas vêm marcadas — desmarcar não remove nada.
-            </p>
+            <h1 className="text-2xl font-bold text-[var(--text-main)]">{t("accountsTitle", { name: bm?.name ?? "" })}</h1>
+            <p className="mt-1 text-sm text-[var(--text-dim)]">{t("accountsHint")}</p>
           </div>
 
           <div className="ui-card overflow-hidden">
             <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border-color)] px-4 py-3">
               <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--text-dim)]">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4 accent-violet-600" />
-                Selecionar todas
+                {t("selectAll")}
               </label>
-              <span className="text-xs text-[var(--text-dimmer)]">{selected.size} selecionadas</span>
+              <span className="text-xs text-[var(--text-dimmer)]">{t("selectedCount", { count: selected.size })}</span>
               <div className="relative ml-auto">
                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-dimmer)]">
                   <Icon d={ICONS.search} className="h-4 w-4" />
@@ -299,7 +302,7 @@ export function ChooseAdAccountsView() {
                 <input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Buscar conta…"
+                  placeholder={t("searchAccount")}
                   className="ui-input !w-56 !py-1.5 pl-8 text-sm"
                 />
               </div>
@@ -307,9 +310,9 @@ export function ChooseAdAccountsView() {
 
             <div className="max-h-[52vh] divide-y divide-[var(--border-color)] overflow-y-auto">
               {accLoading ? (
-                <p className="p-8 text-center text-sm text-[var(--text-dim)]">Carregando contas…</p>
+                <p className="p-8 text-center text-sm text-[var(--text-dim)]">{t("loadingAccounts")}</p>
               ) : filtered.length === 0 ? (
-                <p className="p-8 text-center text-sm text-[var(--text-dim)]">Nenhuma conta nesta BM.</p>
+                <p className="p-8 text-center text-sm text-[var(--text-dim)]">{t("noAccountsInBm")}</p>
               ) : (
                 filtered.map((a) => {
                   const isSel = selected.has(a.metaAdAccountId);
@@ -340,7 +343,7 @@ export function ChooseAdAccountsView() {
                           <span className="truncate text-sm font-medium text-[var(--text-main)]">{a.label}</span>
                           {isLinked ? (
                             <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
-                              Vinculada
+                              {t("linked")}
                             </span>
                           ) : null}
                         </span>
@@ -349,7 +352,7 @@ export function ChooseAdAccountsView() {
                       {spend ? (
                         <span className="shrink-0 text-right text-[11px] text-[var(--text-dimmer)]">
                           <span className="block font-medium text-[var(--text-dim)]">{spend}</span>
-                          30 dias
+                          {t("days30")}
                         </span>
                       ) : null}
                     </label>
@@ -363,12 +366,8 @@ export function ChooseAdAccountsView() {
 
           {permWarn.length ? (
             <div className="ui-alert-warning px-4 py-3 text-sm text-amber-800">
-              <p className="font-medium">Contas importadas, mas sem permissão na Meta</p>
-              <p className="mt-0.5 text-xs">
-                Estas contas foram vinculadas, porém o acesso (ads_read/ads_management) ainda não foi
-                concedido ao app — os dados delas não vão aparecer até reconectar a Meta liberando o
-                acesso a elas:
-              </p>
+              <p className="font-medium">{t("permWarnTitle")}</p>
+              <p className="mt-0.5 text-xs">{t("permWarnBody")}</p>
               <ul className="mt-1.5 list-disc pl-5 text-xs font-medium">
                 {permWarn.map((p) => (
                   <li key={p.id}>{p.label}</li>
@@ -379,21 +378,21 @@ export function ChooseAdAccountsView() {
                 onClick={() => router.push("/dashboard")}
                 className="mt-2 text-xs ui-link"
               >
-                Entendi, ir para o painel →
+                {t("gotItDashboard")}
               </button>
             </div>
           ) : null}
 
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={backToBm} className="text-sm font-medium text-[var(--text-dim)] hover:text-[var(--text-dim)]">
-              Voltar
+              {t("back")}
             </button>
             <button type="button" onClick={continuar} disabled={isPending} className="ui-btn-primary disabled:opacity-60">
               {isPending
-                ? "Importando…"
+                ? t("importing")
                 : toImport.length
-                  ? `Importar ${toImport.length} ${toImport.length === 1 ? "conta" : "contas"}`
-                  : "Continuar"}
+                  ? t("importCount", { count: toImport.length })
+                  : t("continue")}
             </button>
           </div>
         </>

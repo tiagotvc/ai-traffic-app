@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAppDarkMode } from "@/hooks/useAppDarkMode";
@@ -26,6 +27,7 @@ export function AlertCardWidget({
   widgetWidth?: number;
   widgetHeight?: number;
 }) {
+  const tf = useTranslations("appFeedback");
   const parsed = parseAlertWidgetConfig(config);
   const appDark = useAppDarkMode();
   const visual = useMemo(
@@ -66,9 +68,9 @@ export function AlertCardWidget({
   }
 
   const payload = data ?? {
-    categoryLabel: "Alerta",
-    headline: "Sem dados",
-    description: "Não foi possível carregar este alerta.",
+    categoryLabel: tf("alert"),
+    headline: tf("noData"),
+    description: tf("alertLoadError"),
     badgeTone: "info" as const
   };
 
@@ -98,6 +100,7 @@ export function AlertCardPreview({
   config: AlertWidgetConfig | Record<string, unknown>;
   previewSize?: "minimal" | "compact" | "full";
 }) {
+  const tf = useTranslations("appFeedback");
   const parsed = parseAlertWidgetConfig(config as Record<string, unknown>);
   const appDark = useAppDarkMode();
   const visual = useMemo(
@@ -105,21 +108,21 @@ export function AlertCardPreview({
     [parsed.visual, appDark]
   );
   const mock: AlertCardPayload = {
-    categoryLabel: "Alerta de aprendizado",
-    headline: "Públicos lookalike 1% entregam 37% mais conversões",
-    description: "Insight detectado pelo Brain com base nos últimos 14 dias.",
-    badgeLabel: "Impacto alto",
+    categoryLabel: tf("learningAlert"),
+    headline: tf("mockHeadlineLookalike"),
+    description: tf("mockDescriptionBrainInsight"),
+    badgeLabel: tf("highImpact"),
     badgeTone: "critical",
-    confidenceLabel: "Confiança: 92%",
+    confidenceLabel: tf("confidenceLabel", { percent: 92 }),
     deltaLabel: "+37%",
     deltaTrend: "up",
     metricValue: "2,38",
     metricLabel: "ROAS",
-    thresholdLabel: "Meta 3,50",
+    thresholdLabel: tf("targetLabel", { value: "3,50" }),
     series: Array.from({ length: 10 }, (_, i) => ({ date: `${i + 1}`, value: 30 + i * 3 })),
     comparisonSeries: Array.from({ length: 10 }, (_, i) => ({ date: `${i + 1}`, value: 25 + i * 2 })),
     progressPercent: 62,
-    progressHint: "Estimativa: 3 dias",
+    progressHint: tf("estimateDays", { days: 3 }),
     status: "monitoring"
   };
   const layout = resolveAlertLayout(parsed.visual, previewSize === "full" ? 8 : previewSize === "compact" ? 5 : 3, previewSize === "full" ? 4 : previewSize === "compact" ? 3 : 2);

@@ -30,20 +30,25 @@ type SyncStatusPayload = {
   metaConnection?: MetaConnectionPayload;
 };
 
-function formatRelative(iso: string | null, locale: string) {
+function formatRelative(
+  iso: string | null,
+  locale: string,
+  tf: ReturnType<typeof useTranslations>
+) {
   if (!iso) return "—";
   const d = new Date(iso);
   const diff = Date.now() - d.getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return locale.startsWith("pt") ? "agora" : "just now";
-  if (mins < 60) return locale.startsWith("pt") ? `há ${mins} min` : `${mins}m ago`;
+  if (mins < 1) return tf("justNow");
+  if (mins < 60) return tf("minsAgo", { mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 48) return locale.startsWith("pt") ? `há ${hrs}h` : `${hrs}h ago`;
+  if (hrs < 48) return tf("hrsAgo", { hrs });
   return d.toLocaleString(locale);
 }
 
 export function SyncStatusBanner({ clientId }: { clientId?: string }) {
   const t = useTranslations("sync");
+  const tf = useTranslations("appFeedback");
   const locale = useLocale();
   const [data, setData] = useState<SyncStatusPayload | null>(null);
 
@@ -81,7 +86,8 @@ export function SyncStatusBanner({ clientId }: { clientId?: string }) {
 
   const label = formatRelative(
     latestAccount?.lastSyncedAt ?? data.lastRun?.finishedAt ?? data.lastManualSyncAt,
-    locale
+    locale,
+    tf
   );
 
   const err = data.lastRun?.lastError;
