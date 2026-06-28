@@ -55,6 +55,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
   const [accounts, setAccounts] = useState<PublishAdAccount[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [assets, setAssets] = useState<PublishAsset[]>([]);
+  const [assetsLoading, setAssetsLoading] = useState(false);
   const [pages, setPages] = useState<PublishPage[]>([]);
   const [instagramAccounts, setInstagramAccounts] = useState<PublishIgAccount[]>([]);
   const [whatsappNumbers, setWhatsappNumbers] = useState<PublishWhatsappNumber[]>([]);
@@ -113,6 +114,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
         setCustomConversions([]);
         setAudiences([]);
         setAssetsError(null);
+        setAssetsLoading(false);
         return;
       }
 
@@ -123,11 +125,13 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
         setAssets([]);
         setPages([]);
         setAssetsError("account_not_linked");
+        setAssetsLoading(false);
         return;
       }
 
       const seq = ++assetsLoadSeq.current;
       setAssetsError(null);
+      setAssetsLoading(true);
 
       void loadAudiences(accountId, seq);
       const qs = `?clientId=${encodeURIComponent(slug)}&adAccountId=${encodeURIComponent(accountId)}`;
@@ -171,6 +175,8 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
           setAssets([]);
           setPages([]);
         }
+      } finally {
+        if (seq === assetsLoadSeq.current) setAssetsLoading(false);
       }
     },
     [loadAudiences]
@@ -247,6 +253,7 @@ export function usePublishAssets(clientSlug: string, adAccountId: string) {
     accounts,
     accountsLoading,
     assets,
+    assetsLoading,
     pages,
     instagramAccounts,
     whatsappNumbers,

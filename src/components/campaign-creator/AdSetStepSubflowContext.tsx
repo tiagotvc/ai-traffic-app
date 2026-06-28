@@ -132,13 +132,45 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
 
   const sectionIndex = ADSET_SECTIONS.indexOf(section);
 
+  // Persona+Zone (compiler) and Advanced are mutually exclusive — the non-chosen
+  // method is skipped when navigating with Next/Back, so picking one jumps straight
+  // to Schedule instead of stopping on the other method.
+  const targetingMethod: AdSetSection =
+    getActiveAdset(payload).targetingMode === "advanced" ? "advanced" : "compiler";
+
+  const isSkippedSection = useCallback(
+    (s: AdSetSection) =>
+      (s === "compiler" && targetingMethod !== "compiler") ||
+      (s === "advanced" && targetingMethod !== "advanced"),
+    [targetingMethod]
+  );
+
+  const nextStopIndex = useCallback(
+    (from: number) => {
+      let i = from + 1;
+      while (i < ADSET_SECTIONS.length && isSkippedSection(ADSET_SECTIONS[i]!)) i++;
+      return i < ADSET_SECTIONS.length ? i : -1;
+    },
+    [isSkippedSection]
+  );
+
+  const prevStopIndex = useCallback(
+    (from: number) => {
+      let i = from - 1;
+      while (i >= 0 && isSkippedSection(ADSET_SECTIONS[i]!)) i--;
+      return i;
+    },
+    [isSkippedSection]
+  );
+
   const canGoTo = useCallback(
     (target: AdSetSection) => {
       if (activeNode !== "adset") return false;
-      const idx = ADSET_SECTIONS.indexOf(target);
-      return idx <= visitedThrough || idx === sectionIndex;
+      // Targeting method (Persona+Zone vs Advanced) and Schedule are an either/or
+      // choice the user picks directly — allow free navigation between sections.
+      return (ADSET_SECTIONS as readonly string[]).includes(target);
     },
-    [activeNode, sectionIndex, visitedThrough]
+    [activeNode]
   );
 
   const isSectionVisited = useCallback(
@@ -152,6 +184,7 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
   const goTo = useCallback(
     (target: AdSetSection) => {
       if (!canGoTo(target)) return;
+      setVisitedThrough((v) => Math.max(v, ADSET_SECTIONS.indexOf(target)));
       setSection(target);
       persistSection(target);
     },
@@ -159,21 +192,23 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
   );
 
   const goNext = useCallback(() => {
-    if (sectionIndex >= ADSET_SECTIONS.length - 1) return false;
-    const next = ADSET_SECTIONS[sectionIndex + 1]!;
-    setVisitedThrough((v) => Math.max(v, sectionIndex + 1));
+    const nextIdx = nextStopIndex(sectionIndex);
+    if (nextIdx < 0) return false;
+    const next = ADSET_SECTIONS[nextIdx]!;
+    setVisitedThrough((v) => Math.max(v, nextIdx));
     setSection(next);
     persistSection(next);
     return true;
-  }, [sectionIndex, persistSection]);
+  }, [sectionIndex, nextStopIndex, persistSection]);
 
   const goPrev = useCallback(() => {
-    if (sectionIndex <= 0) return false;
-    const prev = ADSET_SECTIONS[sectionIndex - 1]!;
+    const prevIdx = prevStopIndex(sectionIndex);
+    if (prevIdx < 0) return false;
+    const prev = ADSET_SECTIONS[prevIdx]!;
     setSection(prev);
     persistSection(prev);
     return true;
-  }, [sectionIndex, persistSection]);
+  }, [sectionIndex, prevStopIndex, persistSection]);
 
   const validateCurrent = useCallback(
     () => validateAdSetSection(payload, section),
@@ -184,8 +219,8 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
     (): SubflowContextValue => ({
       section,
       sectionIndex,
-      isFirst: sectionIndex === 0,
-      isLast: sectionIndex === ADSET_SECTIONS.length - 1,
+      isFirst: prevStopIndex(sectionIndex) < 0,
+      isLast: nextStopIndex(sectionIndex) < 0,
       canGoTo,
       isSectionVisited,
       goTo,
@@ -193,7 +228,18 @@ export function AdSetStepSubflowProvider({ children }: { children: ReactNode }) 
       goPrev,
       validateCurrent
     }),
-    [section, sectionIndex, canGoTo, isSectionVisited, goTo, goNext, goPrev, validateCurrent]
+    [
+      section,
+      sectionIndex,
+      prevStopIndex,
+      nextStopIndex,
+      canGoTo,
+      isSectionVisited,
+      goTo,
+      goNext,
+      goPrev,
+      validateCurrent
+    ]
   );
 
   return <SubflowContext.Provider value={value}>{children}</SubflowContext.Provider>;

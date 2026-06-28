@@ -360,8 +360,6 @@ export function applyImportedToAd(
   mode: "copy" | "media" | "all"
 ): AdDraftItem {
   const next = { ...ad };
-  const shouldReuseCreative =
-    (mode === "all" || mode === "media") && Boolean(imported.metaCreativeId?.trim());
 
   if (mode === "copy" || mode === "all") {
     if (imported.titles?.length) {
@@ -400,11 +398,16 @@ export function applyImportedToAd(
     if (imported.destinationType) next.destinationType = imported.destinationType;
     if (imported.leadFormId !== undefined) next.leadFormId = imported.leadFormId;
   }
-  if (shouldReuseCreative) {
-    next.metaCreativeId = imported.metaCreativeId!.trim();
-    next.reuseMetaCreative = true;
-    if (imported.sourceMetaAdId) next.sourceMetaAdId = imported.sourceMetaAdId;
+  // Do NOT reuse the source Meta creative: a creative built for the source campaign's
+  // objective is rejected by Meta when attached to a campaign with a different objective
+  // ("the ad's creative is incompatible with the objective"). The media and copy are
+  // already imported above, so publishing builds a fresh creative compatible with the
+  // current objective. Keep the source ad id only for provenance/tracking.
+  if ((mode === "all" || mode === "media") && imported.sourceMetaAdId) {
+    next.sourceMetaAdId = imported.sourceMetaAdId;
   }
+  next.metaCreativeId = null;
+  next.reuseMetaCreative = false;
   return next;
 }
 

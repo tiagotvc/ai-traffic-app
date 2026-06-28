@@ -15,7 +15,9 @@ export type FormSelectOption = {
 };
 
 const MENU_MAX_HEIGHT = 240;
-const MENU_Z_INDEX = 100;
+// Above the modal overlay (z-[200] in UxModalPortal) so the dropdown opened from
+// inside a modal floats over the panel instead of behind it.
+const MENU_Z_INDEX = 300;
 
 type Props = {
   value: string;

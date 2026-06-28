@@ -8,6 +8,7 @@ import { mapLimit } from "@/lib/concurrency";
 import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
 import { compileAdsetTargetingInput } from "@/lib/targeting-compiler-server";
 import { pickInstagramActorId } from "@/lib/meta-instagram";
+import { resolveCtaForObjective } from "@/lib/meta-cta";
 import { applyConversionEventToPromoted } from "@/lib/meta-promoted-object";
 import { fetchInstagramAccountsForAdAccount, metaPost } from "@/lib/meta-graph";
 import { pruneInvalidTargetingIds } from "@/lib/meta-targeting-prune";
@@ -392,19 +393,17 @@ async function createAdForAdset(args: {
     };
     const resolvedLink = composeAdLinkUrl(baseLink, ad.utm, ad.urlParams, utmCtx);
 
-    const resolvedCta =
+    const resolvedCta = resolveCtaForObjective(
+      objective,
       ad.callToAction.trim() ||
-      (ad.destinationType === "whatsapp"
-        ? "WHATSAPP_MESSAGE"
-        : objective === "leads" && ad.destinationType === "instant_form"
-          ? "SIGN_UP"
-          : cta);
+        (ad.destinationType === "whatsapp"
+          ? "WHATSAPP_MESSAGE"
+          : objective === "leads" && ad.destinationType === "instant_form"
+            ? "SIGN_UP"
+            : cta)
+    );
 
-    const assetFeedSpec = buildMetaAssetFeedSpec({
-      ad,
-      resolvedLink,
-      resolvedCta
-    });
+    const assetFeedSpec = buildMetaAssetFeedSpec({ ad, resolvedLink, resolvedCta });
 
     const instagramId = pickInstagramActorId(
       [ad.instagramActorId, settings?.instagramActorId],
@@ -415,11 +414,27 @@ async function createAdForAdset(args: {
     const welcome = buildPageWelcomeMessage(ad);
     if (welcome) objectStory.page_welcome_message = welcome;
 
-    const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
-      name: `${campaignName} — ${adName} Creative`,
-      object_story_spec: JSON.stringify(objectStory),
-      asset_feed_spec: JSON.stringify(assetFeedSpec)
-    });
+    const createCreative = (story: Record<string, unknown>) =>
+      metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
+        name: `${campaignName} — ${adName} Creative`,
+        object_story_spec: JSON.stringify(story),
+        asset_feed_spec: JSON.stringify(assetFeedSpec)
+      });
+
+    let creative: { id: string };
+    try {
+      creative = await createCreative(objectStory);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Meta sometimes rejects an instagram_actor_id that isn't valid for the chosen
+      // page. Don't block publishing — retry with the page identity only.
+      if (instagramId && /instagram_actor_id/i.test(msg)) {
+        const { instagram_actor_id: _omitInstagram, ...storyWithoutInstagram } = objectStory;
+        creative = await createCreative(storyWithoutInstagram);
+      } else {
+        throw err;
+      }
+    }
     creativeId = creative.id;
   }
 

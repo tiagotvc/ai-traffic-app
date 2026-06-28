@@ -624,6 +624,21 @@ export function CampaignStep() {
 
             <div className="campaign-creator-objective-fields-row">
 
+              <FilterTextField
+                className="ui-filter-panel-field"
+                icon={<Tag size={13} />}
+                label={t("campaignName")}
+                placeholder={t("campaignNamePlaceholder")}
+                selectOnFocus
+                value={payload.campaign.name}
+                onChange={(name) =>
+                  updatePayload((p) => ({
+                    ...p,
+                    campaign: { ...p.campaign, name }
+                  }))
+                }
+              />
+
               <FilterSelectDropdown
 
                 className="ui-filter-panel-field ui-filter-panel-field--buying-type"
@@ -707,32 +722,6 @@ export function CampaignStep() {
                 disabled={!payload.clientSlug || accountsLoading}
 
                 clearable={false}
-
-              />
-
-              <FilterTextField
-
-                className="ui-filter-panel-field"
-
-                icon={<Tag size={13} />}
-
-                label={t("campaignName")}
-
-                placeholder={t("campaignName")}
-
-                value={payload.campaign.name}
-
-                onChange={(name) =>
-
-                  updatePayload((p) => ({
-
-                    ...p,
-
-                    campaign: { ...p.campaign, name }
-
-                  }))
-
-                }
 
               />
 

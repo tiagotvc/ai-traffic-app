@@ -7,7 +7,11 @@ import { useTranslations } from "next-intl";
 import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { DsButton } from "@/design-system";
 import type { PublishAsset } from "@/hooks/usePublishAssets";
-import { MAX_CREATIVE_VIDEO_BYTES, VIDEO_UPLOAD_CHUNK_BYTES } from "@/lib/creative-upload-limits";
+import {
+  MAX_CREATIVE_IMAGE_BYTES,
+  MAX_CREATIVE_VIDEO_BYTES,
+  VIDEO_UPLOAD_CHUNK_BYTES
+} from "@/lib/creative-upload-limits";
 import { cn } from "@/lib/cn";
 
 type ApiJson = {
@@ -35,7 +39,12 @@ async function readApiJson(res: Response): Promise<ApiJson> {
 }
 
 function uploadErrorMessage(t: ReturnType<typeof useTranslations>, key: string) {
-  if (key === "uploadFailed" || key === "uploadRequestTooLarge" || key === "videoTooLarge") {
+  if (
+    key === "uploadFailed" ||
+    key === "uploadRequestTooLarge" ||
+    key === "videoTooLarge" ||
+    key === "imageTooLarge"
+  ) {
     return t(key);
   }
   return key;
@@ -86,29 +95,55 @@ export function CreativePickerModal({
 
   async function handleImageUpload(file: File) {
     if (!clientSlug || !adAccountId) return;
+    if (file.size > MAX_CREATIVE_IMAGE_BYTES) {
+      setError(t("imageTooLarge"));
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
-      const reader = new FileReader();
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const res = await fetch("/api/creative-assets", {
+      const totalChunks = Math.max(1, Math.ceil(file.size / VIDEO_UPLOAD_CHUNK_BYTES));
+
+      const initRes = await fetch("/api/creative-assets/image/init", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           clientId: clientSlug,
           adAccountId,
-          imageUrl: dataUrl,
-          label: file.name
+          label: file.name,
+          fileName: file.name,
+          totalSize: file.size,
+          totalChunks
         })
       });
-      const j = await readApiJson(res);
-      if (!res.ok || !j.ok || !j.hash) throw new Error(j.error ?? "uploadFailed");
+      const init = await readApiJson(initRes);
+      if (!initRes.ok || !init.ok || !init.uploadId) {
+        throw new Error(init.error ?? "uploadFailed");
+      }
+
+      for (let partIndex = 0; partIndex < totalChunks; partIndex++) {
+        const start = partIndex * VIDEO_UPLOAD_CHUNK_BYTES;
+        const chunk = file.slice(start, start + VIDEO_UPLOAD_CHUNK_BYTES);
+        const form = new FormData();
+        form.append("uploadId", init.uploadId);
+        form.append("partIndex", String(partIndex));
+        form.append("chunk", chunk, file.name);
+
+        const partRes = await fetch("/api/creative-assets/image/part", { method: "POST", body: form });
+        const part = await readApiJson(partRes);
+        if (!partRes.ok || !part.ok) throw new Error(part.error ?? "uploadFailed");
+      }
+
+      const commitRes = await fetch("/api/creative-assets/image/commit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ uploadId: init.uploadId })
+      });
+      const j = await readApiJson(commitRes);
+      if (!commitRes.ok || !j.ok || !j.hash) throw new Error(j.error ?? "uploadFailed");
+      const previewUrl = URL.createObjectURL(file);
       setLocalAssets((prev) => [
-        { id: j.hash!, label: file.name, url: dataUrl, kind: "image" },
+        { id: j.hash!, label: j.label ?? file.name, url: previewUrl, kind: "image" },
         ...prev
       ]);
       onChange([...selectedIds, j.hash!]);

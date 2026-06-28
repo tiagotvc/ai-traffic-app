@@ -12,6 +12,8 @@ type Props = {
   readOnly?: boolean;
   className?: string;
   inputClassName?: string;
+  /** Select all text on focus so the first keystroke replaces the current value. */
+  selectOnFocus?: boolean;
   "aria-label"?: string;
 };
 
@@ -25,6 +27,7 @@ export function FilterTextField({
   readOnly = false,
   className,
   inputClassName,
+  selectOnFocus = false,
   "aria-label": ariaLabel
 }: Props) {
   return (
@@ -52,6 +55,7 @@ export function FilterTextField({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={selectOnFocus ? (e) => e.target.select() : undefined}
         placeholder={placeholder}
         disabled={disabled}
         readOnly={readOnly}

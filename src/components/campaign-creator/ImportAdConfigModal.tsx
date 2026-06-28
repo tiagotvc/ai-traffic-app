@@ -283,8 +283,18 @@ export function ImportAdConfigModal({
       </div>
 
       <div className="min-h-[240px] flex-1 overflow-y-auto p-3">
-        {loading && items.length === 0 ? (
-          <p className="p-4 text-center text-xs text-[var(--text-dim)]">{t("importAdLoading")}</p>
+        {loading ? (
+          <div
+            className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-xs font-medium text-[var(--text-dim)]"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <span
+              className="h-7 w-7 animate-spin rounded-full border-2 border-[var(--ui-accent)] border-t-transparent"
+              aria-hidden
+            />
+            {t("importAdLoading")}
+          </div>
         ) : items.length === 0 ? (
           <p className="p-4 text-center text-xs text-[var(--text-dim)]">{emptyMessage}</p>
         ) : (
@@ -313,12 +323,13 @@ export function ImportAdConfigModal({
                   <li key={item.id}>
                     <button
                       type="button"
+                      disabled={loading}
                       onClick={() => {
                         if (step === "campaigns") pickCampaign(item);
                         else if (step === "adsets") pickAdset(item);
                         else toggleAdSelection(item.id);
                       }}
-                      className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left text-sm transition ${
+                      className={`flex w-full items-center gap-3 rounded-xl border p-2.5 text-left text-sm transition disabled:cursor-not-allowed ${
                         isAdStep && isSelected
                           ? "border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)]"
                           : "border-[var(--border-color)] hover:bg-[var(--surface-bg)]"

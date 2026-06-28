@@ -453,26 +453,30 @@ export async function fetchUserPages(accessToken: string): Promise<MetaFacebookP
   return fetchGraphPaged<MetaFacebookPage>("/me/accounts?fields=id,name&limit=100", accessToken);
 }
 
-/** Páginas que a conta de anúncios pode promover (live Graph API). */
+/**
+ * Páginas que a conta de anúncios pode promover (live Graph API).
+ *
+ * Usa apenas a edge `promote_pages`, que é a válida no nó `act_<id>`. A antiga
+ * `assigned_pages` não existe nesse nó (só em Business/System User) e sempre
+ * retornava o erro `(#100) nonexisting field`. Páginas atribuídas via Business
+ * já chegam pelo inventário local em `resolvePagesForAdAccount`.
+ */
 export async function fetchPagesForAdAccount(
   accessToken: string,
   adAccountId: string
 ): Promise<MetaFacebookPage[]> {
   const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
-  for (const edge of ["assigned_pages", "promote_pages"] as const) {
-    try {
-      const rows = await fetchGraphPaged<MetaFacebookPage>(
-        `/${encodeURIComponent(act)}/${edge}?fields=id,name&limit=100`,
-        accessToken
-      );
-      if (rows.length) return rows;
-    } catch (err) {
-      if (process.env.NODE_ENV === "development") {
-        console.warn(`[meta-graph] ${edge} for ${act}:`, err);
-      }
+  try {
+    return await fetchGraphPaged<MetaFacebookPage>(
+      `/${encodeURIComponent(act)}/promote_pages?fields=id,name&limit=100`,
+      accessToken
+    );
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[meta-graph] promote_pages for ${act}:`, err);
     }
+    return [];
   }
-  return [];
 }
 
 /** Instagram vinculado às páginas (fallback quando instagram_accounts da conta vem vazio). */
@@ -879,6 +883,32 @@ export async function uploadAdImage(
     url: imageUrl,
     name
   });
+}
+
+/**
+ * Upload an image to the ad account library from raw bytes (multipart), instead of
+ * passing a remote `url`. Required when the source is a local file assembled from
+ * chunked parts — Meta cannot fetch `data:` URLs.
+ */
+export async function uploadAdImageBytes(
+  accessToken: string,
+  adAccountId: string,
+  file: Buffer,
+  fileName: string,
+  name: string
+): Promise<{ images: Record<string, { hash: string }> }> {
+  const act = adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+  const form = new FormData();
+  form.append("access_token", accessToken);
+  form.append("name", name);
+  form.append(fileName, new Blob([new Uint8Array(file)]), fileName);
+
+  const url = `${GRAPH_BASE}/${encodeURIComponent(act)}/adimages`;
+  const { data } = await metaFetchWithRateLimit<{ images: Record<string, { hash: string }> }>(url, {
+    method: "POST",
+    body: form
+  });
+  return data;
 }
 
 export async function uploadAdVideo(

@@ -30,6 +30,7 @@ import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfi
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
 import { MessageTemplateEditor } from "@/components/campaign-creator/MessageTemplateEditor";
+import { WhatsappNumbersModal } from "@/components/campaign-creator/WhatsappNumbersModal";
 import { MetaDynamicParamInput } from "@/components/campaign-creator/MetaDynamicParamInput";
 import { creatorDynamicParamInputClass, UtmBuilder } from "@/components/campaign-creator/UtmBuilder";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
@@ -43,6 +44,7 @@ import { MetaTextVariantsInput } from "@/components/campaign-creator/MetaTextVar
 import { adsetsWithReuseCreativeCompatibility, getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
+import { allowedCtasForObjective, type MetaCtaValue } from "@/lib/meta-cta";
 import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
 import { cn } from "@/lib/cn";
 
@@ -101,10 +103,8 @@ export function AdStep() {
   const tAds = useTranslations("ads");
   const locale = useLocale();
   const { payload, updatePayload, addAdMode } = useCampaignDraft();
-  const { assets, pages, instagramAccounts, pixels, whatsappNumbers, loadAssets, assetsError } = usePublishAssets(
-    payload.clientSlug,
-    payload.adAccountId
-  );
+  const { assets, assetsLoading, pages, instagramAccounts, pixels, whatsappNumbers, loadAssets, assetsError } =
+    usePublishAssets(payload.clientSlug, payload.adAccountId);
   const { publishReady, linkUrl: defaultLink, defaultPageId } = useClientPublishDefaults(
     payload.clientSlug,
     locale
@@ -119,6 +119,7 @@ export function AdStep() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [identityUnlocked, setIdentityUnlocked] = useState(false);
   const [whatsappManualEntry, setWhatsappManualEntry] = useState(false);
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
   const { section: activeView, canGoTo, isSectionVisited, goTo } = useAdStepSubflow();
   const topRef = useRef<HTMLDivElement>(null);
 
@@ -195,16 +196,29 @@ export function AdStep() {
     [pageWhatsappOptions]
   );
 
-  const callToActionOptions = useMemo(
-    () => [
-      { value: "LEARN_MORE", label: t("ctaLearnMore") },
-      { value: "SIGN_UP", label: t("ctaSignUp") },
-      { value: "SHOP_NOW", label: t("ctaShopNow") },
-      { value: "CONTACT_US", label: t("ctaContactUs") },
-      { value: "WHATSAPP_MESSAGE", label: t("ctaWhatsapp") }
-    ],
-    [t]
-  );
+  const callToActionOptions = useMemo(() => {
+    const labels: Record<string, string> = {
+      LEARN_MORE: t("ctaLearnMore"),
+      SIGN_UP: t("ctaSignUp"),
+      SHOP_NOW: t("ctaShopNow"),
+      CONTACT_US: t("ctaContactUs"),
+      WHATSAPP_MESSAGE: t("ctaWhatsapp")
+    };
+    return allowedCtasForObjective(payload.objective).map((value) => ({
+      value,
+      label: labels[value] ?? value
+    }));
+  }, [t, payload.objective]);
+
+  // Keep the CTA valid for the campaign objective — reset to the objective's default
+  // when the current one isn't allowed (e.g. SHOP_NOW on a Leads campaign).
+  useEffect(() => {
+    const allowed = allowedCtasForObjective(payload.objective);
+    if (ad.callToAction && !allowed.includes(ad.callToAction as MetaCtaValue)) {
+      patchAd({ callToAction: allowed[0] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payload.objective, ad.callToAction, ad.id]);
 
   function patchAd(patch: Partial<AdDraftItem>) {
     updatePayload((p) => ({
@@ -554,12 +568,20 @@ export function AdStep() {
                     options={pageOptions}
                     disabled={clientRequired}
                     clearable={false}
-                    emptyMessage={!pages.length && payload.adAccountId ? pageEmptyMessage : undefined}
+                    emptyMessage={
+                      !pages.length && payload.adAccountId
+                        ? assetsLoading
+                          ? t("identityPagesLoading")
+                          : pageEmptyMessage
+                        : undefined
+                    }
                     emptyActionLabel={
-                      !pages.length && payload.adAccountId ? t("identityRecheck") : undefined
+                      !pages.length && payload.adAccountId && !assetsLoading
+                        ? t("identityRecheck")
+                        : undefined
                     }
                     onEmptyAction={
-                      !pages.length && payload.adAccountId
+                      !pages.length && payload.adAccountId && !assetsLoading
                         ? () => void loadAssets(payload.adAccountId)
                         : undefined
                     }
@@ -910,10 +932,23 @@ export function AdStep() {
                     disabled={clientRequired}
                     clearable={false}
                   />
-                ) : (
+                ) : !whatsappManualEntry ? (
                   <p className="text-xs text-amber-700">{t("destWhatsappEmpty")}</p>
-                )}
-                {pageWhatsappOptions.length > 0 ? (
+                ) : null}
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={clientRequired || !payload.adAccountId}
+                    onClick={() => setWhatsappModalOpen(true)}
+                    className="ui-btn-secondary-accent inline-flex items-center gap-2 px-3 py-1.5 text-xs disabled:opacity-50"
+                  >
+                    {t("destWhatsappPickLinked")}
+                    {whatsappNumbers.length > 0 ? (
+                      <span className="rounded-full bg-[var(--ui-accent-muted)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ui-accent)]">
+                        {whatsappNumbers.length}
+                      </span>
+                    ) : null}
+                  </button>
                   <button
                     type="button"
                     className="text-[11px] text-[var(--violet)] hover:underline"
@@ -921,7 +956,7 @@ export function AdStep() {
                   >
                     {t("destWhatsappManualFallback")}
                   </button>
-                ) : null}
+                </div>
                 {whatsappManualEntry || pageWhatsappOptions.length === 0 ? (
                   <FilterTextField
                     className={creatorFilterFieldClass}
@@ -1058,6 +1093,19 @@ export function AdStep() {
         defaultAdsetId={payload.meta?.targetMetaAdsetId}
         onImport={handleImport}
         onImportMany={handleImportMany}
+      />
+
+      <WhatsappNumbersModal
+        open={whatsappModalOpen}
+        onClose={() => setWhatsappModalOpen(false)}
+        numbers={whatsappNumbers}
+        pages={pages}
+        loading={assetsLoading}
+        selectedUrl={ad.linkUrl}
+        onSelect={(waMeUrl) => {
+          setWhatsappManualEntry(false);
+          patchAd({ linkUrl: waMeUrl, callToAction: "WHATSAPP_MESSAGE" });
+        }}
       />
 
       <CreatorAiModalShell

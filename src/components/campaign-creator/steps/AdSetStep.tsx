@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { CalendarDays, SlidersHorizontal, Users } from "lucide-react";
 
 import { AdSetCompilerLeadCards } from "@/components/campaign-creator/AdSetCompilerLeadCards";
-import { AdSetConfigurationModal } from "@/components/campaign-creator/AdSetConfigurationModal";
+import { AdSetConfigurationPanel } from "@/components/campaign-creator/AdSetConfigurationPanel";
 import { AdSetPersonaZonePanel } from "@/components/campaign-creator/AdSetPersonaZonePanel";
 import { AdvancedTargetingPanel } from "@/components/campaign-creator/AdvancedTargetingPanel";
 import { CustomAudiencesModal } from "@/components/campaign-creator/CustomAudiencesModal";
@@ -18,6 +18,7 @@ import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCr
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { useAdSetStepSubflow, type AdSetSection } from "@/components/campaign-creator/AdSetStepSubflowContext";
 import { FormField } from "@/components/ui/FormField";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { type FormSelectOption } from "@/components/ui/FormSelect";
 import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, type ImportedAdConfig } from "@/lib/campaign-ad-import";
@@ -50,6 +51,22 @@ export function AdSetStep() {
   const adset = getActiveAdset(payload);
   const targeting = adset.targeting;
   const clientRequired = !payload.clientSlug;
+
+  // Mutual exclusivity: Persona+Zone (compiler) and Advanced segmentation cannot be
+  // used together. Whichever method has data "locks" the other.
+  const targetingMethod: "compiler" | "advanced" =
+    adset.targetingMode === "advanced" ? "advanced" : "compiler";
+  const compilerHasData = !!(adset.personaId || adset.zoneId);
+  const advancedHasData =
+    targeting.locations.length > 0 ||
+    targeting.interests.length > 0 ||
+    targeting.detailedGroups.length > 0 ||
+    targeting.locales.length > 0 ||
+    targeting.gender !== "all" ||
+    targeting.ageMin !== 18 ||
+    targeting.ageMax !== 65;
+  const compilerLocked = targetingMethod === "advanced" && advancedHasData;
+  const advancedLocked = targetingMethod === "compiler" && compilerHasData;
   const dynamicCreativeLockedByReuse = payload.ads.some(
     (ad) =>
       usesReusedMetaCreative(ad) &&
@@ -60,7 +77,7 @@ export function AdSetStep() {
   const [importOpen, setImportOpen] = useState(false);
   const [customAudiencesOpen, setCustomAudiencesOpen] = useState(false);
   const [savedAudienceModalOpen, setSavedAudienceModalOpen] = useState(false);
-  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [pendingMethodSwitch, setPendingMethodSwitch] = useState<"compiler" | "advanced" | null>(null);
   const { section: activeView, canGoTo, isSectionVisited, goTo } = useAdSetStepSubflow();
   const [commercialLocation, setCommercialLocation] = useState<{
     address: string | null;
@@ -224,10 +241,8 @@ export function AdSetStep() {
       <div className="campaign-creator-budget-body space-y-3">
         <AdSetCompilerLeadCards
           appliedAudienceName={adset.metaSavedAudienceName ?? null}
-          adsetName={adset.name}
           disabled={clientRequired}
           onOpenSavedAudience={() => setSavedAudienceModalOpen(true)}
-          onOpenConfiguration={() => setConfigModalOpen(true)}
         />
 
         <AdSetPersonaZonePanel
@@ -330,10 +345,48 @@ export function AdSetStep() {
     }
   }
 
+  function applyMethodSwitch(method: "compiler" | "advanced") {
+    if (method === "advanced") {
+      patchAdset({ targetingMode: "advanced", personaId: null, zoneId: null });
+    } else {
+      patchAdset({
+        targetingMode: "compiler",
+        targeting: {
+          ...targeting,
+          locations: [],
+          ageMin: 18,
+          ageMax: 65,
+          gender: "all",
+          interests: [],
+          locales: [],
+          detailedGroups: [],
+          advantageAudience: false
+        }
+      });
+    }
+    goTo(method);
+  }
+
   function selectView(view: AdSetView) {
-    goTo(view);
-    if (view === "compiler") patchAdset({ targetingMode: "compiler" });
-    else if (view === "advanced") patchAdset({ targetingMode: "advanced" });
+    // Schedule is not a targeting method — free navigation.
+    if (view === "schedule") {
+      goTo("schedule");
+      return;
+    }
+
+    // Same method already active — just navigate to it.
+    if (view === targetingMethod) {
+      goTo(view);
+      return;
+    }
+
+    // Switching method: confirm first if the other one already has data.
+    const otherHasData = view === "advanced" ? compilerHasData : advancedHasData;
+    if (otherHasData) {
+      setPendingMethodSwitch(view);
+      return;
+    }
+    applyMethodSwitch(view);
   }
 
   function selectAdset(id: string) {
@@ -392,7 +445,8 @@ export function AdSetStep() {
 
   return (
     <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
-      <div className="campaign-creator-step-sticky-header space-y-3">
+      <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pb-2">
+        <div className="space-y-3">
         {!payload.clientSlug ? (
           <p className="ui-alert-warning px-3 py-2 text-xs">{t("selectClientFirst")}</p>
         ) : null}
@@ -438,28 +492,63 @@ export function AdSetStep() {
           <p className="mt-1 hidden text-xs text-[var(--text-dim)] sm:block">{t("adsetStepHint")}</p>
         </div>
 
+        <AdSetConfigurationPanel
+          layout="stacked"
+          payload={payload}
+          adset={adset}
+          clientRequired={clientRequired}
+          addAdsetMode={addAdsetMode}
+          dynamicCreativeLockedByReuse={dynamicCreativeLockedByReuse}
+          conversionLocationOptions={conversionLocationOptions}
+          pixelOptions={pixelOptions}
+          conversionEventOptions={conversionEventOptions}
+          onPatchAdset={patchAdset}
+          onImport={() => setImportOpen(true)}
+        />
+
+        <div className="rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] px-3 py-2.5">
+          <p className="text-xs font-semibold text-[var(--ui-accent)]">{t("targetingMethodNoticeTitle")}</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-dim)]">
+            {t("targetingMethodNoticeBody")}
+          </p>
+        </div>
+
         <div className="campaign-creator-choice-cards campaign-creator-choice-cards--3">
           <DsChoiceCard
             layout="inline"
             title={t("targetingMode_compiler")}
-            description={t("targetingMode_compiler_hint")}
+            description={
+              compilerLocked ? t("targetingMethodLockedByAdvanced") : t("targetingMode_compiler_hint")
+            }
             icon={<Users size={16} />}
             accent={activeView === "compiler"}
-            muted={!isSectionVisited("compiler") && activeView !== "compiler"}
-            visited={isSectionVisited("compiler") && activeView !== "compiler"}
+            muted={compilerLocked || (!isSectionVisited("compiler") && activeView !== "compiler")}
+            visited={!compilerLocked && isSectionVisited("compiler") && activeView !== "compiler"}
             onClick={() => selectView("compiler")}
-            className={!canGoTo("compiler") ? "pointer-events-none" : undefined}
+            className={cn(
+              !canGoTo("compiler") && "pointer-events-none",
+              targetingMethod === "compiler"
+                ? activeView !== "compiler" && "[&_span]:font-bold"
+                : "ds-choice-card--hatched"
+            )}
           />
           <DsChoiceCard
             layout="inline"
             title={t("targetingMode_advanced")}
-            description={t("targetingMode_advanced_hint")}
+            description={
+              advancedLocked ? t("targetingMethodLockedByCompiler") : t("targetingMode_advanced_hint")
+            }
             icon={<SlidersHorizontal size={16} />}
             accent={activeView === "advanced"}
-            muted={!isSectionVisited("advanced") && activeView !== "advanced"}
-            visited={isSectionVisited("advanced") && activeView !== "advanced"}
+            muted={advancedLocked || (!isSectionVisited("advanced") && activeView !== "advanced")}
+            visited={!advancedLocked && isSectionVisited("advanced") && activeView !== "advanced"}
             onClick={() => selectView("advanced")}
-            className={!canGoTo("advanced") ? "pointer-events-none" : undefined}
+            className={cn(
+              !canGoTo("advanced") && "pointer-events-none",
+              targetingMethod === "advanced"
+                ? activeView !== "advanced" && "[&_span]:font-bold"
+                : "ds-choice-card--hatched"
+            )}
           />
           <DsChoiceCard
             layout="inline"
@@ -473,10 +562,7 @@ export function AdSetStep() {
             className={!canGoTo("schedule") ? "pointer-events-none" : undefined}
           />
         </div>
-      </div>
 
-      <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pt-5 pb-2">
-        <div className="space-y-3">
         {activeView === "compiler" ? compilerTargetingSections() : null}
 
         {activeView === "advanced" ? (
@@ -582,24 +668,6 @@ export function AdSetStep() {
         onApply={handleApplySavedAudience}
       />
 
-      <AdSetConfigurationModal
-        open={configModalOpen}
-        onClose={() => setConfigModalOpen(false)}
-        payload={payload}
-        adset={adset}
-        clientRequired={clientRequired}
-        addAdsetMode={addAdsetMode}
-        dynamicCreativeLockedByReuse={dynamicCreativeLockedByReuse}
-        conversionLocationOptions={conversionLocationOptions}
-        pixelOptions={pixelOptions}
-        conversionEventOptions={conversionEventOptions}
-        onPatchAdset={patchAdset}
-        onImport={() => {
-          setConfigModalOpen(false);
-          setImportOpen(true);
-        }}
-      />
-
       <CustomAudiencesModal
         open={customAudiencesOpen}
         onClose={() => setCustomAudiencesOpen(false)}
@@ -611,6 +679,24 @@ export function AdSetStep() {
         onChangeInclude={(customAudienceIds) => patchTargeting({ customAudienceIds })}
         onChangeExclude={(excludedAudienceIds) => patchTargeting({ excludedAudienceIds })}
         disabled={clientRequired}
+      />
+
+      <ConfirmDialog
+        open={pendingMethodSwitch !== null}
+        title={t("targetingSwitchTitle")}
+        description={
+          pendingMethodSwitch === "advanced"
+            ? t("targetingSwitchConfirmToAdvanced")
+            : t("targetingSwitchConfirmToCompiler")
+        }
+        confirmLabel={t("targetingSwitchConfirmCta")}
+        cancelLabel={t("modalCancel")}
+        variant="danger"
+        onConfirm={() => {
+          if (pendingMethodSwitch) applyMethodSwitch(pendingMethodSwitch);
+          setPendingMethodSwitch(null);
+        }}
+        onCancel={() => setPendingMethodSwitch(null)}
       />
     </div>
   );
