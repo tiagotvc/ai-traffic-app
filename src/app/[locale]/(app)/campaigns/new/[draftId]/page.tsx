@@ -4,6 +4,7 @@ import { Suspense, use } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCreatorClient";
+import { RouteLoadingScreen } from "@/components/ui/RouteLoadingScreen";
 
 function DraftContent({ draftId }: { draftId: string }) {
   const searchParams = useSearchParams();
@@ -24,7 +25,7 @@ function DraftContent({ draftId }: { draftId: string }) {
 export default function CampaignDraftPage({ params }: { params: Promise<{ draftId: string }> }) {
   const { draftId } = use(params);
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-[var(--text-dim)]">Carregando…</div>}>
+    <Suspense fallback={<RouteLoadingScreen />}>
       <DraftContent draftId={draftId} />
     </Suspense>
   );

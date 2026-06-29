@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { OrionTrafficLoadingOverlay } from "@/components/ui/OrionTrafficLoadingOverlay";
+import { routeLoadingKey } from "@/lib/loading-copy";
 
 /** Tempo máximo de exibição (failsafe contra overlay preso). */
 const SAFETY_MS = 12000;
@@ -12,23 +13,28 @@ const SAFETY_MS = 12000;
 /** Evento para acionar o overlay imperativamente (ex.: antes de um `router.push` programático). */
 export const NAV_LOADING_EVENT = "orion:navigation-loading";
 
-/** Dispara o overlay de carregamento de rota antes de uma navegação programática. */
-export function triggerNavigationLoading() {
+/**
+ * Dispara o overlay de carregamento de rota antes de uma navegação programática.
+ * Passe o caminho de destino para o overlay mostrar o feedback contextual correto.
+ */
+export function triggerNavigationLoading(path?: string) {
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(NAV_LOADING_EVENT));
+    window.dispatchEvent(new CustomEvent(NAV_LOADING_EVENT, { detail: { path } }));
   }
 }
 
 /**
  * Mostra o overlay de carregamento em TODA navegação interna (cliques em links/menus e
  * `router.push`), inclusive rotas já cacheadas pelo Router Cache que o `loading.tsx` não cobre.
- * Aparece no início da navegação e some quando a rota (pathname/query) muda.
+ * Aparece no início da navegação (com feedback contextual da tela de destino) e some quando a rota
+ * (pathname/query) muda.
  */
 export function NavigationLoadingOverlay() {
-  const t = useTranslations("common");
+  const t = useTranslations("loading");
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [targetPath, setTargetPath] = useState(pathname);
 
   const routeKey = `${pathname}?${searchParams.toString()}`;
   const prevKey = useRef(routeKey);
@@ -51,7 +57,8 @@ export function NavigationLoadingOverlay() {
   }, [routeKey]);
 
   useEffect(() => {
-    const start = () => {
+    const begin = (path?: string) => {
+      setTargetPath(path ?? window.location.pathname);
       clearSafety();
       setLoading(true);
       safetyTimer.current = window.setTimeout(() => setLoading(false), SAFETY_MS);
@@ -79,12 +86,18 @@ export function NavigationLoadingOverlay() {
       }
       if (url.origin !== window.location.origin) return; // externo
       if (samePlace(url)) return; // mesma rota → sem transição
-      start();
+      begin(url.pathname);
+    };
+
+    const onPopState = () => begin(window.location.pathname);
+    const onTrigger = (e: Event) => {
+      const path = (e as CustomEvent<{ path?: string }>).detail?.path;
+      begin(path);
     };
 
     document.addEventListener("click", onClick, true);
-    window.addEventListener("popstate", start);
-    window.addEventListener(NAV_LOADING_EVENT, start);
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener(NAV_LOADING_EVENT, onTrigger);
 
     // Navegações programáticas (router.push) → patch do history.
     // Só dispara quando o PATHNAME muda (ignora atualização só de query, ex.: troca de aba).
@@ -98,7 +111,7 @@ export function NavigationLoadingOverlay() {
         if (next != null) {
           const url = new URL(String(next), window.location.href);
           if (url.origin === window.location.origin && url.pathname !== window.location.pathname) {
-            start();
+            begin(url.pathname);
           }
         }
       } catch {
@@ -109,12 +122,19 @@ export function NavigationLoadingOverlay() {
 
     return () => {
       document.removeEventListener("click", onClick, true);
-      window.removeEventListener("popstate", start);
-      window.removeEventListener(NAV_LOADING_EVENT, start);
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener(NAV_LOADING_EVENT, onTrigger);
       history.pushState = origPush;
       clearSafety();
     };
   }, []);
 
-  return <OrionTrafficLoadingOverlay open={loading} minimal title={t("loading")} />;
+  const key = routeLoadingKey(targetPath);
+  return (
+    <OrionTrafficLoadingOverlay
+      open={loading}
+      title={t(`${key}Title`)}
+      message={t(`${key}Message`)}
+    />
+  );
 }

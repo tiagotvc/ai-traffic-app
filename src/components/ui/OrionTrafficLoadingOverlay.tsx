@@ -40,8 +40,6 @@ const TRAFFIC_LANES = [
   { delay: "0.7s", duration: "1.9s" }
 ] as const;
 
-const TRAFFIC_BARS = [0, 0.12, 0.24, 0.36, 0.48, 0.6, 0.72] as const;
-
 /** Overlay fullscreen com blur, logo Orion e animação de tráfego (fluxo de dados / impressões). */
 export function OrionTrafficLoadingOverlay({
   open,
@@ -144,7 +142,7 @@ export function OrionTrafficLoadingOverlay({
             <div className="orion-action-loading__logo-wrap relative flex min-h-[5.5rem] w-full items-center justify-center">
               <span className="orion-action-loading__ring" aria-hidden />
               <span className="orion-action-loading__ring orion-action-loading__ring--delayed" aria-hidden />
-              <div className="orion-action-loading__logo relative z-10 flex items-center justify-center rounded-2xl bg-white/[0.06] px-6 py-5 shadow-lg shadow-black/20">
+              <div className="orion-action-loading__logo relative z-10 flex items-center justify-center rounded-2xl px-6 py-5">
                 <OrionAgencyLogo size="xl" variant="dark" className="orion-logo--sidebar orion-logo--overlay" />
               </div>
             </div>
@@ -173,20 +171,6 @@ export function OrionTrafficLoadingOverlay({
             ) : null}
 
             {subtitle ? <p className="mt-2 text-xs text-white/45">{subtitle}</p> : null}
-
-            <div className="orion-traffic-loading__bars mt-6 flex items-end justify-center gap-1" aria-hidden>
-              {TRAFFIC_BARS.map((delay) => (
-                <span
-                  key={delay}
-                  className="orion-traffic-loading__bar"
-                  style={{ animationDelay: `${delay}s` }}
-                />
-              ))}
-            </div>
-
-            <div className="orion-action-loading__shimmer-track orion-traffic-loading__track mx-auto mt-5 h-1 w-44 overflow-hidden rounded-full">
-              <div className="orion-action-loading__shimmer-bar h-full w-1/2 rounded-full" />
-            </div>
           </>
         )}
       </div>

@@ -48,10 +48,11 @@ export function CampaignCreationModePicker({ open, onClose, onStarted, clientSlu
 
   function handleCreate() {
     if (!selected) return;
+    const href = buildHref(selected, clientSlug);
     commitCreationMode(selected);
     onStarted?.();
-    triggerNavigationLoading();
-    router.push(buildHref(selected, clientSlug));
+    triggerNavigationLoading(href);
+    router.push(href);
   }
 
   return (

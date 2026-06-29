@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { CampaignManagerClient } from "@/components/CampaignManagerClient";
 import { NewCampaignView } from "@/uxpilot-ui/adapters/NewCampaignView";
+import { RouteLoadingScreen } from "@/components/ui/RouteLoadingScreen";
 
 export default async function CampaignOverviewPage({
   params,
@@ -14,7 +15,7 @@ export default async function CampaignOverviewPage({
 
   if (metaCampaignId === "new") {
     return (
-      <Suspense fallback={<div className="p-6 text-sm text-[var(--text-dim)]">Carregando…</div>}>
+      <Suspense fallback={<RouteLoadingScreen />}>
         <NewCampaignView />
       </Suspense>
     );
