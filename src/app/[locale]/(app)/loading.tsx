@@ -1,5 +1,5 @@
-import { AppPageSkeleton } from "@/components/layout/AppPageSkeleton";
+import { RouteLoadingScreen } from "@/components/ui/RouteLoadingScreen";
 
 export default function AppLoading() {
-  return <AppPageSkeleton />;
+  return <RouteLoadingScreen />;
 }

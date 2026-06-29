@@ -12,24 +12,23 @@ const pt: LegalPageContent = {
       title: "1. Introdução",
       paragraphs: [
         "Esta Política de Privacidade explica quais informações coletamos, como as utilizamos, com quem podemos compartilhá-las e quais direitos você possui em relação aos seus dados.",
-        "Para solicitar exclusão de dados ou revogar integrações, consulte também nossas Instruções de Exclusão de Dados em /legal/data-deletion (ou /data-deletion na versão pública)."
+        "Para solicitar exclusão de dados ou revogar integrações, consulte também nossas Instruções de Exclusão de Dados em /data-deletion."
       ]
     },
     {
       title: "2. Quem somos",
       paragraphs: [
-        `O Orion Agency é uma plataforma especializada em análise, monitoramento, automação e geração de insights para campanhas de marketing digital, operada a partir de ${LEGAL_CONTACT.companyLocation}.`,
-        "Nossos serviços podem incluir:"
+        `O Orion Agency é uma plataforma de gestão e análise de campanhas de marketing digital na Meta (Facebook e Instagram), operada a partir de ${LEGAL_CONTACT.companyLocation}.`,
+        "Nossos serviços incluem:"
       ],
       bullets: [
-        "Análise de campanhas publicitárias",
-        "Monitoramento de métricas",
-        "Geração de relatórios",
-        "Recomendações por inteligência artificial",
-        "Gestão de contas de anúncios",
-        "Centralização de dados de múltiplas plataformas",
-        "Alertas e aprendizados automatizados",
-        "Recursos de automação e otimização de campanhas"
+        "Criação e gestão de campanhas, conjuntos de anúncios e anúncios na Meta",
+        "Análise e monitoramento de métricas de campanhas",
+        "Criação de públicos e personas",
+        "Geração de relatórios e dashboards",
+        "Recomendações, aprendizados e insights por inteligência artificial",
+        "Recursos de automação e otimização (Agency Brain e cientistas de pesquisa)",
+        "Envio server-side de eventos de conversão para a Meta (Conversions API)"
       ]
     },
     {
@@ -41,7 +40,7 @@ const pt: LegalPageContent = {
         "Titular: pessoa física a quem os dados se referem",
         "Controlador: responsável pelas decisões referentes ao tratamento dos dados",
         "Operador: quem realiza o tratamento em nome do controlador",
-        "Plataformas Parceiras: serviços integrados ao Orion Agency, como Meta Ads, Google Ads e outras ferramentas de marketing autorizadas pelo usuário"
+        "Plataformas Parceiras: serviços integrados ao Orion Agency e autorizados por você, como a Meta"
       ]
     },
     {
@@ -54,7 +53,7 @@ const pt: LegalPageContent = {
       bullets: [
         "Nome completo",
         "E-mail",
-        "Senha (armazenada de forma criptografada)",
+        "Senha (armazenada de forma criptografada) — ou, no login social, nome e e-mail do perfil fornecidos pela Meta ou Google",
         "Nome da empresa ou workspace",
         "Informações de cobrança e identificadores de assinatura",
         "Dados fiscais, quando aplicável ao plano contratado",
@@ -66,48 +65,33 @@ const pt: LegalPageContent = {
       paragraphs: ["Podemos coletar:"],
       bullets: [
         "Endereço IP",
-        "Navegador utilizado",
-        "Sistema operacional",
-        "Dispositivo utilizado",
+        "Navegador, sistema operacional e dispositivo",
         "Idioma e fuso horário",
-        "Data e hora de acesso",
-        "Logs de utilização",
-        "Páginas acessadas",
-        "Eventos dentro da plataforma"
+        "Data e hora de acesso e logs de utilização",
+        "Páginas acessadas e eventos dentro da plataforma"
       ]
     },
     {
-      title: "4.3 Dados provenientes de integrações — Meta Ads",
+      title: "4.3 Dados provenientes da integração com a Meta",
       paragraphs: [
-        "Quando você conecta sua conta Meta, acessamos apenas as informações autorizadas por você durante o OAuth. Podemos acessar:"
+        "Quando você conecta sua conta Meta, acessamos apenas as informações autorizadas por você durante o login/OAuth, por meio das APIs oficiais da Meta. Podemos acessar:"
       ],
       bullets: [
-        "Contas de anúncios",
+        "Contas de anúncios e Business Manager",
         "Campanhas, conjuntos de anúncios e anúncios",
         "Públicos e audiências",
-        "Conversões, gastos, alcance, cliques, CTR, CPC, CPA, ROAS",
-        "Métricas e metadados disponibilizados pela Meta",
-        "Tokens OAuth, escopos concedidos e identificadores da conta Meta"
+        "Páginas do Facebook e contas do Instagram associadas",
+        "Ativos do WhatsApp Business, quando você os conecta",
+        "Pixels e eventos de conversão",
+        "Métricas (gastos, alcance, impressões, cliques, CTR, CPC, CPA, ROAS) e metadados disponibilizados pela Meta",
+        "Tokens de acesso (OAuth), escopos concedidos e identificadores da conta Meta"
       ]
     },
     {
-      title: "4.3 Dados provenientes de integrações — Google",
+      title: "4.4 Dados de conversão (Conversions API)",
       paragraphs: [
-        "Quando você conecta recursos Google (como login ou Google Ads), podemos acessar dados autorizados por você, incluindo:"
-      ],
-      bullets: [
-        "Identificadores de conta Google",
-        "Campanhas, grupos de anúncios e criativos",
-        "Conversões, impressões, cliques, CTR, CPC, CPA e ROAS",
-        "Palavras-chave e métricas disponibilizadas pela Google",
-        "Tokens OAuth e escopos concedidos"
-      ]
-    },
-    {
-      title: "4.3 Outras integrações",
-      paragraphs: [
-        "Futuramente poderemos integrar TikTok Ads, LinkedIn Ads, Pinterest Ads, Google Analytics, GA4, Search Console, Shopify, WooCommerce e outras plataformas autorizadas pelo usuário.",
-        "Quando novas integrações forem disponibilizadas, esta Política poderá ser atualizada para refletir os dados acessados."
+        "Se você habilitar a Conversions API (CAPI), processamos eventos de conversão para envio server-side à Meta. Quando esses eventos incluem identificadores do cliente (como e-mail ou telefone), eles são convertidos em hash criptográfico (SHA-256) antes do envio, conforme exigido pela Meta — utilizados apenas para correspondência de eventos.",
+        "Não armazenamos esses identificadores em texto claro, e a deduplicação é feita por identificador de evento (event_id)."
       ]
     },
     {
@@ -116,30 +100,44 @@ const pt: LegalPageContent = {
       bullets: [
         "Fornecer acesso à plataforma e identificar usuários",
         "Gerenciar assinaturas e processar pagamentos",
-        "Sincronizar, exibir e analisar métricas de campanhas",
+        "Criar, sincronizar, exibir e analisar campanhas e métricas",
         "Gerar relatórios, dashboards, alertas e recomendações",
-        "Operar recursos de automação e Agency Brain",
+        "Operar recursos de automação, Agency Brain e cientistas de pesquisa",
+        "Enviar eventos de conversão à Meta quando habilitado por você",
         "Detectar fraudes e monitorar segurança",
-        "Melhorar nossos serviços e experiência do produto",
-        "Cumprir obrigações legais",
-        "Atender solicitações de suporte"
+        "Melhorar nossos serviços e atender solicitações de suporte",
+        "Cumprir obrigações legais"
       ]
     },
     {
       title: "6. Inteligência artificial",
       paragraphs: [
-        "O Orion Agency utiliza modelos de inteligência artificial (como Google Gemini e outros provedores configurados na infraestrutura) para gerar aprendizados, sugestões, recomendações, insights, alertas e análises automáticas.",
-        "Os resultados produzidos possuem caráter exclusivamente informativo. O usuário reconhece que:"
+        "O Orion Agency utiliza modelos de inteligência artificial — Google Gemini e Anthropic Claude — para gerar aprendizados, sugestões, recomendações, insights, textos e análises automáticas.",
+        "Os resultados possuem caráter exclusivamente informativo. O usuário reconhece que:"
       ],
       bullets: [
         "Recomendações não constituem consultoria profissional",
         "Não há garantia de resultados financeiros ou aumento de vendas",
         "Decisões finais permanecem sob responsabilidade do usuário",
-        "Não enviamos tokens de acesso Meta/Google aos modelos de IA — o contexto é montado no servidor com dados já sincronizados"
+        "Não enviamos tokens de acesso da Meta aos modelos de IA — o contexto é montado no servidor com dados já sincronizados"
       ]
     },
     {
-      title: "7. Bases legais da LGPD",
+      title: "7. Pesquisa de mercado",
+      paragraphs: [
+        "Para análise de concorrentes e tendências, podemos consultar fontes públicas (como a Biblioteca de Anúncios da Meta e resultados de busca) usando apenas termos de nicho — sem dados pessoais.",
+        "Esses dados são públicos e usados apenas para gerar insights de mercado."
+      ]
+    },
+    {
+      title: "8. Entrega por WhatsApp",
+      paragraphs: [
+        "Caso você habilite o envio de relatórios por WhatsApp, utilizamos a WhatsApp Business Cloud API (Meta) para enviar mensagens aos destinatários que você configurar.",
+        "Você é responsável por possuir base legal e o consentimento dos destinatários para esse envio."
+      ]
+    },
+    {
+      title: "9. Bases legais da LGPD",
       paragraphs: ["Tratamos dados pessoais com fundamento nas seguintes bases legais:"],
       bullets: [
         "Execução de contrato — quando necessário para fornecer os serviços contratados",
@@ -150,18 +148,19 @@ const pt: LegalPageContent = {
       ]
     },
     {
-      title: "8. Compartilhamento de dados",
+      title: "10. Compartilhamento de dados",
       paragraphs: ["Não vendemos dados pessoais. Podemos compartilhar informações com:"],
       bullets: [
-        "Infraestrutura: Vercel, Supabase (PostgreSQL), Cloudflare e provedores de nuvem associados",
-        "Inteligência artificial: Google Gemini e outros provedores de IA utilizados pela plataforma",
+        "Infraestrutura: Vercel, Supabase (PostgreSQL) e Cloudflare",
+        "Inteligência artificial: Google (Gemini) e Anthropic (Claude)",
+        "Plataforma de anúncios: Meta (APIs de anúncios, Conversions API e WhatsApp Business)",
         "Processamento de pagamentos: Asaas (Brasil) e Stripe (internacional)",
-        "Comunicação: Resend, SendGrid e serviços de e-mail transacional",
+        "Comunicação: provedores de e-mail transacional",
         "Autoridades — quando exigido por lei ou decisão judicial"
       ]
     },
     {
-      title: "9. Transferência internacional de dados",
+      title: "11. Transferência internacional de dados",
       paragraphs: [
         "Alguns de nossos fornecedores estão localizados fora do Brasil.",
         "Ao utilizar o Orion Agency, você reconhece que determinadas informações podem ser processadas em servidores localizados em outros países.",
@@ -169,33 +168,30 @@ const pt: LegalPageContent = {
       ]
     },
     {
-      title: "10. Retenção dos dados",
+      title: "12. Retenção e exclusão dos dados",
       paragraphs: [
         "Os dados poderão ser mantidos enquanto a conta permanecer ativa, durante a vigência do contrato, pelo prazo necessário ao cumprimento de obrigações legais ou para exercício regular de direitos.",
         "Após esse período, os dados poderão ser excluídos, anonimizados ou agregados para fins estatísticos.",
-        "Para solicitar exclusão, envie e-mail para " +
-          LEGAL_CONTACT.privacyEmail +
-          " ou siga as instruções em /data-deletion, incluindo revogação do app na Meta."
+        `Para solicitar exclusão, envie e-mail para ${LEGAL_CONTACT.supportEmail} ou siga as instruções em /data-deletion. Você também pode revogar o acesso do app diretamente na Meta.`
       ]
     },
     {
-      title: "11. Segurança da informação",
+      title: "13. Segurança da informação",
       paragraphs: ["Adotamos medidas técnicas e organizacionais para proteger informações, incluindo:"],
       bullets: [
         "HTTPS/TLS",
         "Criptografia de senhas e dados sensíveis",
+        "Hash (SHA-256) de identificadores enviados à Conversions API",
         "Controle de acesso por workspace",
-        "Logs de auditoria",
-        "Backups periódicos",
-        "Monitoramento de segurança",
-        "Proteção contra acessos não autorizados"
+        "Logs de auditoria e backups periódicos",
+        "Monitoramento e proteção contra acessos não autorizados"
       ],
       tail: [
         "Apesar de nossos esforços, nenhum sistema é totalmente imune a riscos. Notificaremos incidentes relevantes conforme exigido pela LGPD."
       ]
     },
     {
-      title: "12. Cookies",
+      title: "14. Cookies",
       paragraphs: ["Utilizamos cookies e tecnologias similares para:"],
       bullets: [
         "Essenciais — necessários para autenticação, sessão e funcionamento da plataforma",
@@ -207,10 +203,10 @@ const pt: LegalPageContent = {
       ]
     },
     {
-      title: "13. Seus direitos",
+      title: "15. Seus direitos",
       paragraphs: [
         "Nos termos da LGPD, você pode solicitar confirmação do tratamento, acesso, correção, anonimização, bloqueio, eliminação, portabilidade, revogação do consentimento e informações sobre compartilhamento.",
-        `Envie pedidos para ${LEGAL_CONTACT.privacyEmail}. Responderemos em prazo razoável.`,
+        `Envie pedidos para ${LEGAL_CONTACT.supportEmail}. Responderemos em prazo razoável.`,
         "Também poderá apresentar reclamação à Autoridade Nacional de Proteção de Dados (ANPD)."
       ],
       bullets: [
@@ -223,50 +219,38 @@ const pt: LegalPageContent = {
       ]
     },
     {
-      title: "14. Integrações com Google",
+      title: "16. Integrações com a Meta",
       paragraphs: [
-        "Ao utilizar recursos integrados ao Google, o usuário também está sujeito às políticas da Google.",
-        "Recomendamos a leitura dos seguintes documentos:",
-        "Política de Privacidade do Google: https://policies.google.com/privacy",
-        "Como o Google utiliza dados de parceiros: https://policies.google.com/technologies/partner-sites",
-        "Gerenciamento de permissões da Conta Google: https://myaccount.google.com/permissions"
+        "Ao utilizar as integrações com a Meta (Facebook, Instagram, Anúncios, Conversions API e WhatsApp Business), você também está sujeito às políticas da Meta.",
+        "Solicitamos apenas as permissões necessárias para operar as funcionalidades autorizadas por você. Não vendemos dados de usuários ou de campanhas, nem usamos os dados da Meta para finalidades não descritas nesta Política.",
+        "Você pode desconectar a Meta a qualquer momento em Configurações → Integrações, ou revogar o app em https://www.facebook.com/settings?tab=applications. A revogação interrompe novos acessos e você pode solicitar a exclusão dos dados já sincronizados.",
+        "Recomendamos a leitura da Política de Privacidade da Meta (https://www.facebook.com/privacy/policy/) e dos Termos da Plataforma para Desenvolvedores (https://developers.facebook.com/terms/)."
       ]
     },
     {
-      title: "15. Integrações com Meta",
+      title: "17. Subprocessadores",
       paragraphs: [
-        "Ao utilizar integrações com Meta Ads e demais produtos Meta, o usuário também está sujeito às políticas da Meta.",
-        "Solicitamos apenas permissões necessárias para operar funcionalidades autorizadas por você. Não vendemos dados de usuários ou de campanhas.",
-        "Você pode desconectar a Meta em Configurações → Integrações ou revogar o app em https://www.facebook.com/settings?tab=applications",
-        "Recomendamos a leitura dos seguintes documentos:",
-        "Política de Privacidade da Meta: https://www.facebook.com/privacy/policy/",
-        "Termos da Plataforma Meta para Desenvolvedores: https://developers.facebook.com/terms/"
-      ]
-    },
-    {
-      title: "16. Subprocessadores",
-      paragraphs: [
-        "O Orion Agency poderá utilizar subprocessadores para operação dos serviços. Exemplos incluem:"
+        "O Orion Agency utiliza subprocessadores para operação dos serviços. Atualmente incluem:"
       ],
       bullets: [
-        "Vercel, Supabase, Cloudflare",
-        "Google (Gemini e APIs Google Ads)",
-        "Meta (APIs de anúncios)",
-        "Asaas e Stripe",
-        "Resend e SendGrid"
+        "Vercel, Supabase e Cloudflare (infraestrutura e hospedagem)",
+        "Google (Gemini) e Anthropic (Claude) — inteligência artificial",
+        "Meta (APIs de anúncios, Conversions API e WhatsApp Business)",
+        "Asaas e Stripe (pagamentos)",
+        "Provedores de e-mail transacional"
       ],
       tail: ["A lista poderá ser atualizada periodicamente conforme a evolução da infraestrutura."]
     },
     {
-      title: "17. Alterações nesta Política",
+      title: "18. Alterações nesta Política",
       paragraphs: [
-        "Esta Política poderá ser modificada a qualquer momento para refletir mudanças legais, novos recursos, novas integrações ou melhorias operacionais.",
+        "Esta Política poderá ser modificada a qualquer momento para refletir mudanças legais, novos recursos ou melhorias operacionais.",
         "A versão mais recente estará sempre disponível nesta página, com a data de atualização indicada no topo.",
         "O uso continuado após alterações constitui ciência das novas condições."
       ]
     },
     {
-      title: "18. Contato",
+      title: "19. Contato",
       paragraphs: [
         "Dúvidas relacionadas à privacidade, proteção de dados ou exercício de direitos poderão ser encaminhadas pelo canal oficial do Orion Agency:",
         `Contato: ${LEGAL_CONTACT.supportEmail}`,
@@ -288,24 +272,23 @@ const en: LegalPageContent = {
       title: "1. Introduction",
       paragraphs: [
         "This Privacy Policy explains what information we collect, how we use it, who we may share it with, and your rights regarding your data.",
-        "To request data deletion or revoke integrations, see our Data Deletion Instructions at /legal/data-deletion (or /data-deletion on the public site)."
+        "To request data deletion or revoke integrations, see our Data Deletion Instructions at /data-deletion."
       ]
     },
     {
       title: "2. Who we are",
       paragraphs: [
-        `Orion Agency is a platform specialized in analysis, monitoring, automation, and insights for digital marketing campaigns, operated from ${LEGAL_CONTACT.companyLocation}.`,
-        "Our services may include:"
+        `Orion Agency is a platform for managing and analyzing digital marketing campaigns on Meta (Facebook and Instagram), operated from ${LEGAL_CONTACT.companyLocation}.`,
+        "Our services include:"
       ],
       bullets: [
-        "Advertising campaign analysis",
-        "Metrics monitoring",
-        "Report generation",
-        "AI-powered recommendations",
-        "Ad account management",
-        "Centralization of data from multiple platforms",
-        "Automated alerts and learnings",
-        "Campaign automation and optimization features"
+        "Creating and managing campaigns, ad sets, and ads on Meta",
+        "Analyzing and monitoring campaign metrics",
+        "Building audiences and personas",
+        "Generating reports and dashboards",
+        "AI-powered learnings, suggestions, and insights",
+        "Automation and optimization features (Agency Brain and research scientists)",
+        "Server-side conversion events to Meta (Conversions API)"
       ]
     },
     {
@@ -317,7 +300,7 @@ const en: LegalPageContent = {
         "Data Subject: the natural person to whom the data refers",
         "Controller: entity responsible for processing decisions",
         "Processor: entity that processes data on behalf of the controller",
-        "Partner Platforms: services integrated with Orion Agency, such as Meta Ads, Google Ads, and other marketing tools authorized by you"
+        "Partner Platforms: services integrated with Orion Agency and authorized by you, such as Meta"
       ]
     },
     {
@@ -330,7 +313,7 @@ const en: LegalPageContent = {
       bullets: [
         "Full name",
         "Email address",
-        "Password (stored encrypted)",
+        "Password (stored encrypted) — or, with social login, the profile name and email provided by Meta or Google",
         "Company or workspace name",
         "Billing information and subscription identifiers",
         "Tax information, when applicable to your plan",
@@ -342,48 +325,33 @@ const en: LegalPageContent = {
       paragraphs: ["We may collect:"],
       bullets: [
         "IP address",
-        "Browser used",
-        "Operating system",
-        "Device used",
+        "Browser, operating system, and device",
         "Language and time zone",
-        "Access date and time",
-        "Usage logs",
-        "Pages visited",
-        "In-platform events"
+        "Access date and time and usage logs",
+        "Pages visited and in-platform events"
       ]
     },
     {
-      title: "4.3 Integration data — Meta Ads",
+      title: "4.3 Data from the Meta integration",
       paragraphs: [
-        "When you connect your Meta account, we access only information you authorize during OAuth. We may access:"
+        "When you connect your Meta account, we access only the information you authorize during login/OAuth, through Meta's official APIs. We may access:"
       ],
       bullets: [
-        "Ad accounts",
+        "Ad accounts and Business Manager",
         "Campaigns, ad sets, and ads",
         "Audiences",
-        "Conversions, spend, reach, clicks, CTR, CPC, CPA, ROAS",
-        "Metrics and metadata provided by Meta",
-        "OAuth tokens, granted scopes, and Meta account identifiers"
+        "Associated Facebook Pages and Instagram accounts",
+        "WhatsApp Business assets, when you connect them",
+        "Pixels and conversion events",
+        "Metrics (spend, reach, impressions, clicks, CTR, CPC, CPA, ROAS) and metadata provided by Meta",
+        "Access tokens (OAuth), granted scopes, and Meta account identifiers"
       ]
     },
     {
-      title: "4.3 Integration data — Google",
+      title: "4.4 Conversion data (Conversions API)",
       paragraphs: [
-        "When you connect Google features (such as login or Google Ads), we may access data you authorize, including:"
-      ],
-      bullets: [
-        "Google account identifiers",
-        "Campaigns, ad groups, and creatives",
-        "Conversions, impressions, clicks, CTR, CPC, CPA, and ROAS",
-        "Keywords and metrics provided by Google",
-        "OAuth tokens and granted scopes"
-      ]
-    },
-    {
-      title: "4.3 Other integrations",
-      paragraphs: [
-        "We may integrate TikTok Ads, LinkedIn Ads, Pinterest Ads, Google Analytics, GA4, Search Console, Shopify, WooCommerce, and other user-authorized platforms in the future.",
-        "When new integrations become available, this Policy may be updated to reflect the data accessed."
+        "If you enable the Conversions API (CAPI), we process conversion events for server-side delivery to Meta. When these events include customer identifiers (such as email or phone), they are cryptographically hashed (SHA-256) before sending, as required by Meta — used only for event matching.",
+        "We do not store these identifiers in plain text, and deduplication is performed via an event identifier (event_id)."
       ]
     },
     {
@@ -392,30 +360,44 @@ const en: LegalPageContent = {
       bullets: [
         "Provide platform access and identify users",
         "Manage subscriptions and process payments",
-        "Sync, display, and analyze campaign metrics",
+        "Create, sync, display, and analyze campaigns and metrics",
         "Generate reports, dashboards, alerts, and recommendations",
-        "Operate automation features and Agency Brain",
+        "Operate automation, Agency Brain, and research scientists",
+        "Send conversion events to Meta when you enable it",
         "Detect fraud and monitor security",
-        "Improve our services and product experience",
-        "Comply with legal obligations",
-        "Handle support requests"
+        "Improve our services and handle support requests",
+        "Comply with legal obligations"
       ]
     },
     {
       title: "6. Artificial intelligence",
       paragraphs: [
-        "Orion Agency uses AI models (such as Google Gemini and other providers configured in our infrastructure) to generate learnings, suggestions, recommendations, insights, alerts, and automated analyses.",
+        "Orion Agency uses AI models — Google Gemini and Anthropic Claude — to generate learnings, suggestions, recommendations, insights, copy, and automated analyses.",
         "Results are for informational purposes only. You acknowledge that:"
       ],
       bullets: [
         "Recommendations do not constitute professional consulting",
         "There is no guarantee of financial results or sales growth",
         "Final decisions remain your responsibility",
-        "We do not send Meta/Google access tokens to AI models — context is built on the server from synced data"
+        "We do not send Meta access tokens to AI models — context is built on the server from synced data"
       ]
     },
     {
-      title: "7. LGPD legal bases",
+      title: "7. Market research",
+      paragraphs: [
+        "For competitor and trend analysis, we may query public sources (such as the Meta Ad Library and search results) using only niche-related search terms — no personal data.",
+        "This data is public and used only to generate market insights."
+      ]
+    },
+    {
+      title: "8. WhatsApp delivery",
+      paragraphs: [
+        "If you enable report delivery via WhatsApp, we use the WhatsApp Business Cloud API (Meta) to send messages to recipients you configure.",
+        "You are responsible for having a legal basis and the recipients' consent for such delivery."
+      ]
+    },
+    {
+      title: "9. LGPD legal bases",
       paragraphs: ["We process personal data based on the following legal grounds:"],
       bullets: [
         "Contract performance — when necessary to provide contracted services",
@@ -426,18 +408,19 @@ const en: LegalPageContent = {
       ]
     },
     {
-      title: "8. Data sharing",
+      title: "10. Data sharing",
       paragraphs: ["We do not sell personal data. We may share information with:"],
       bullets: [
-        "Infrastructure: Vercel, Supabase (PostgreSQL), Cloudflare, and associated cloud providers",
-        "Artificial intelligence: Google Gemini and other AI providers used by the platform",
+        "Infrastructure: Vercel, Supabase (PostgreSQL), and Cloudflare",
+        "Artificial intelligence: Google (Gemini) and Anthropic (Claude)",
+        "Advertising platform: Meta (ads APIs, Conversions API, and WhatsApp Business)",
         "Payment processing: Asaas (Brazil) and Stripe (international)",
-        "Communication: Resend, SendGrid, and transactional email services",
+        "Communication: transactional email providers",
         "Authorities — when required by law or court order"
       ]
     },
     {
-      title: "9. International data transfers",
+      title: "11. International data transfers",
       paragraphs: [
         "Some of our providers are located outside Brazil.",
         "By using Orion Agency, you acknowledge that certain information may be processed on servers in other countries.",
@@ -445,33 +428,30 @@ const en: LegalPageContent = {
       ]
     },
     {
-      title: "10. Data retention",
+      title: "12. Data retention and deletion",
       paragraphs: [
         "Data may be retained while your account is active, during the contract term, as required to comply with legal obligations, or for the regular exercise of rights.",
         "After that period, data may be deleted, anonymized, or aggregated for statistical purposes.",
-        "To request deletion, email " +
-          LEGAL_CONTACT.privacyEmail +
-          " or follow the instructions at /data-deletion, including revoking the app on Meta."
+        `To request deletion, email ${LEGAL_CONTACT.supportEmail} or follow the instructions at /data-deletion. You can also revoke the app's access directly on Meta.`
       ]
     },
     {
-      title: "11. Information security",
+      title: "13. Information security",
       paragraphs: ["We adopt technical and organizational measures to protect information, including:"],
       bullets: [
         "HTTPS/TLS",
         "Encryption of passwords and sensitive data",
+        "Hashing (SHA-256) of identifiers sent to the Conversions API",
         "Workspace access controls",
-        "Audit logs",
-        "Periodic backups",
-        "Security monitoring",
-        "Protection against unauthorized access"
+        "Audit logs and periodic backups",
+        "Monitoring and protection against unauthorized access"
       ],
       tail: [
         "Despite our efforts, no system is completely risk-free. We will notify relevant incidents as required by LGPD."
       ]
     },
     {
-      title: "12. Cookies",
+      title: "14. Cookies",
       paragraphs: ["We use cookies and similar technologies for:"],
       bullets: [
         "Essential — required for authentication, session, and platform operation",
@@ -481,10 +461,10 @@ const en: LegalPageContent = {
       tail: ["You can manage preferences in your browser. Disabling essential cookies may prevent platform use."]
     },
     {
-      title: "13. Your rights",
+      title: "15. Your rights",
       paragraphs: [
         "Under LGPD, you may request confirmation of processing, access, correction, anonymization, blocking, deletion, portability, consent withdrawal, and information about sharing.",
-        `Send requests to ${LEGAL_CONTACT.privacyEmail}. We will respond within a reasonable time.`,
+        `Send requests to ${LEGAL_CONTACT.supportEmail}. We will respond within a reasonable time.`,
         "You may also file a complaint with Brazil's National Data Protection Authority (ANPD)."
       ],
       bullets: [
@@ -497,48 +477,36 @@ const en: LegalPageContent = {
       ]
     },
     {
-      title: "14. Google integrations",
+      title: "16. Meta integrations",
       paragraphs: [
-        "When using Google-integrated features, you are also subject to Google's policies.",
-        "We recommend reading the following documents:",
-        "Google Privacy Policy: https://policies.google.com/privacy",
-        "How Google uses partner data: https://policies.google.com/technologies/partner-sites",
-        "Google Account permissions: https://myaccount.google.com/permissions"
+        "When using Meta integrations (Facebook, Instagram, Ads, Conversions API, and WhatsApp Business), you are also subject to Meta's policies.",
+        "We request only the permissions needed to operate the features you authorize. We do not sell user or campaign data, nor use Meta data for purposes not described in this Policy.",
+        "You can disconnect Meta at any time in Settings → Integrations, or revoke the app at https://www.facebook.com/settings?tab=applications. Revoking stops new access, and you may request deletion of already-synced data.",
+        "We recommend reading Meta's Privacy Policy (https://www.facebook.com/privacy/policy/) and the Platform Terms for Developers (https://developers.facebook.com/terms/)."
       ]
     },
     {
-      title: "15. Meta integrations",
-      paragraphs: [
-        "When using Meta Ads and other Meta product integrations, you are also subject to Meta's policies.",
-        "We request only permissions needed to operate features you authorize. We do not sell user or campaign data.",
-        "You can disconnect Meta in Settings → Integrations or revoke the app at https://www.facebook.com/settings?tab=applications",
-        "We recommend reading the following documents:",
-        "Meta Privacy Policy: https://www.facebook.com/privacy/policy/",
-        "Meta Platform Terms for Developers: https://developers.facebook.com/terms/"
-      ]
-    },
-    {
-      title: "16. Subprocessors",
-      paragraphs: ["Orion Agency may use subprocessors to operate the services. Examples include:"],
+      title: "17. Subprocessors",
+      paragraphs: ["Orion Agency uses subprocessors to operate the services. They currently include:"],
       bullets: [
-        "Vercel, Supabase, Cloudflare",
-        "Google (Gemini and Google Ads APIs)",
-        "Meta (ads APIs)",
-        "Asaas and Stripe",
-        "Resend and SendGrid"
+        "Vercel, Supabase, and Cloudflare (infrastructure and hosting)",
+        "Google (Gemini) and Anthropic (Claude) — artificial intelligence",
+        "Meta (ads APIs, Conversions API, and WhatsApp Business)",
+        "Asaas and Stripe (payments)",
+        "Transactional email providers"
       ],
       tail: ["This list may be updated periodically as infrastructure evolves."]
     },
     {
-      title: "17. Changes to this Policy",
+      title: "18. Changes to this Policy",
       paragraphs: [
-        "This Policy may be modified at any time to reflect legal changes, new features, new integrations, or operational improvements.",
+        "This Policy may be modified at any time to reflect legal changes, new features, or operational improvements.",
         "The latest version will always be available on this page, with the update date shown at the top.",
         "Continued use after changes constitutes acknowledgment of the new conditions."
       ]
     },
     {
-      title: "18. Contact",
+      title: "19. Contact",
       paragraphs: [
         "Questions about privacy, data protection, or exercising your rights may be sent through Orion Agency's official channel:",
         `Contact: ${LEGAL_CONTACT.supportEmail}`,

@@ -16,15 +16,25 @@ function isAuthSessionCookie(name: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const { user } = await getAppContext();
-  const { notificationState: repo } = await repositories();
+  // Best-effort: registra o logout e chama signOut, mas NUNCA bloqueia a limpeza
+  // dos cookies — assim o usuário sempre consegue sair, mesmo se a sessão já
+  // estiver inválida ou algo aqui falhar.
+  try {
+    const { user } = await getAppContext();
+    const { notificationState: repo } = await repositories();
+    let state = await repo.findOne({ where: { userId: user.id } });
+    if (!state) state = repo.create({ userId: user.id });
+    state.lastLogoutAt = new Date();
+    await repo.save(state);
+  } catch {
+    /* segue limpando os cookies */
+  }
 
-  let state = await repo.findOne({ where: { userId: user.id } });
-  if (!state) state = repo.create({ userId: user.id });
-  state.lastLogoutAt = new Date();
-  await repo.save(state);
-
-  await signOut({ redirect: false });
+  try {
+    await signOut({ redirect: false });
+  } catch {
+    /* segue limpando os cookies */
+  }
 
   const res = NextResponse.json({ ok: true });
   for (const cookie of req.cookies.getAll()) {

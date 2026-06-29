@@ -44,7 +44,9 @@ export default auth((req) => {
     return NextResponse.redirect(login);
   }
 
-  if (isLoggedIn && (pathWithoutLocale === "/" || pathWithoutLocale === "/login")) {
+  // A landing ("/") é pública e acessível mesmo logado (sem auto-redirect).
+  // Só a página de login manda o usuário logado pro app.
+  if (isLoggedIn && pathWithoutLocale === "/login") {
     const switchAccount = req.nextUrl.searchParams.get("switch") === "1";
     if (!switchAccount) {
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, req.nextUrl.origin));

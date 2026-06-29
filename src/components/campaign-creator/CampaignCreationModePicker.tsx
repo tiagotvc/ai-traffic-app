@@ -12,6 +12,7 @@ import {
 import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { useRouter } from "@/i18n/navigation";
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
+import { triggerNavigationLoading } from "@/components/ui/NavigationLoadingOverlay";
 import { commitCreationMode } from "@/lib/campaign-creator/creation-flow-session";
 import { cn } from "@/lib/cn";
 
@@ -49,6 +50,7 @@ export function CampaignCreationModePicker({ open, onClose, onStarted, clientSlu
     if (!selected) return;
     commitCreationMode(selected);
     onStarted?.();
+    triggerNavigationLoading();
     router.push(buildHref(selected, clientSlug));
   }
 

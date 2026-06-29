@@ -15,7 +15,24 @@ type Props = {
   messageKey?: string;
   ariaLabelledBy?: string;
   className?: string;
+  /** Só a cena do logo — sem título, mensagem, barras e barra de progresso (ex.: transição de rota). */
+  minimal?: boolean;
 };
+
+/** Lock de scroll do body com contagem de referência — seguro com múltiplos overlays. */
+let bodyLockCount = 0;
+let bodyPrevOverflow = "";
+function lockBodyScroll() {
+  if (bodyLockCount === 0) {
+    bodyPrevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+  }
+  bodyLockCount += 1;
+}
+function unlockBodyScroll() {
+  bodyLockCount = Math.max(0, bodyLockCount - 1);
+  if (bodyLockCount === 0) document.body.style.overflow = bodyPrevOverflow;
+}
 
 const TRAFFIC_LANES = [
   { delay: "0s", duration: "2.1s" },
@@ -33,7 +50,8 @@ export function OrionTrafficLoadingOverlay({
   subtitle,
   messageKey,
   ariaLabelledBy = "orion-traffic-loading-title",
-  className
+  className,
+  minimal = false
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [messageVisible, setMessageVisible] = useState(true);
@@ -45,11 +63,8 @@ export function OrionTrafficLoadingOverlay({
 
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    lockBodyScroll();
+    return () => unlockBodyScroll();
   }, [open]);
 
   useEffect(() => {
@@ -75,15 +90,27 @@ export function OrionTrafficLoadingOverlay({
       aria-modal="true"
       aria-live="polite"
       aria-busy="true"
-      aria-labelledby={ariaLabelledBy}
+      aria-label={minimal ? title : undefined}
+      aria-labelledby={minimal ? undefined : ariaLabelledBy}
     >
       <div className="orion-action-loading__backdrop absolute inset-0" aria-hidden />
       <div className="orion-action-loading__glow absolute inset-0" aria-hidden />
       <div className="orion-traffic-loading__grid absolute inset-0 opacity-[0.35]" aria-hidden />
 
       <div className="relative z-10 mx-4 flex w-full max-w-md flex-col items-center px-2 py-8 text-center">
-        <div className="orion-traffic-loading__scene relative mb-6 flex w-full max-w-[17.5rem] items-center justify-center">
-          <div className="orion-traffic-loading__lanes absolute inset-x-0 top-1/2 -translate-y-1/2" aria-hidden>
+        <div
+          className={cn(
+            "orion-traffic-loading__scene relative flex w-full items-center justify-center",
+            minimal ? "max-w-[22rem]" : "mb-6 max-w-[17.5rem]"
+          )}
+        >
+          <div
+            className={cn(
+              "orion-traffic-loading__lanes absolute inset-x-0 top-1/2 -translate-y-1/2",
+              minimal && "orion-traffic-loading__lanes--bold"
+            )}
+            aria-hidden
+          >
             {TRAFFIC_LANES.map((lane, i) => (
               <div key={i} className="orion-traffic-loading__lane">
                 <span
@@ -101,45 +128,67 @@ export function OrionTrafficLoadingOverlay({
             ))}
           </div>
 
-          <div className="orion-action-loading__logo-wrap relative flex min-h-[5.5rem] w-full items-center justify-center">
-            <span className="orion-action-loading__ring" aria-hidden />
-            <span className="orion-action-loading__ring orion-action-loading__ring--delayed" aria-hidden />
-            <div className="orion-action-loading__logo relative z-10 flex items-center justify-center rounded-2xl bg-[var(--surface-thead)] px-5 py-4 shadow-lg shadow-black/20">
-              <OrionAgencyLogo size="xl" variant="dark" />
+          {minimal ? (
+            <div className="relative z-10 flex w-full items-center justify-center">
+              <div className="relative inline-flex items-center justify-center px-6 py-5">
+                <span className="orion-action-loading__ring" aria-hidden />
+                <span className="orion-action-loading__ring orion-action-loading__ring--delayed" aria-hidden />
+                <OrionAgencyLogo
+                  size="xl"
+                  variant="dark"
+                  className="orion-logo--sidebar orion-logo--overlay-lg"
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="orion-action-loading__logo-wrap relative flex min-h-[5.5rem] w-full items-center justify-center">
+              <span className="orion-action-loading__ring" aria-hidden />
+              <span className="orion-action-loading__ring orion-action-loading__ring--delayed" aria-hidden />
+              <div className="orion-action-loading__logo relative z-10 flex items-center justify-center rounded-2xl bg-white/[0.06] px-6 py-5 shadow-lg shadow-black/20">
+                <OrionAgencyLogo size="xl" variant="dark" className="orion-logo--sidebar orion-logo--overlay" />
+              </div>
+            </div>
+          )}
         </div>
 
-        <h2 id={ariaLabelledBy} className="font-heading text-lg font-semibold text-[var(--text-main)]">
-          {title}
-        </h2>
-
-        {displayMessage ? (
-          <p
-            className={cn(
-              "mt-3 min-h-[1.5rem] max-w-sm text-sm leading-relaxed text-[var(--text-dim)] transition-opacity duration-200",
-              messageVisible ? "opacity-100" : "opacity-0"
-            )}
-          >
-            {displayMessage}
+        {minimal ? (
+          <p className="orion-traffic-loading__hint mt-7 text-[11px] font-semibold uppercase tracking-[0.32em]">
+            loading
           </p>
-        ) : null}
+        ) : (
+          <>
+            <h2 id={ariaLabelledBy} className="font-heading text-lg font-semibold text-white">
+              {title}
+            </h2>
 
-        {subtitle ? <p className="mt-2 text-xs text-[var(--text-dimmer)]">{subtitle}</p> : null}
+            {displayMessage ? (
+              <p
+                className={cn(
+                  "mt-3 min-h-[1.5rem] max-w-sm text-sm leading-relaxed text-white/70 transition-opacity duration-200",
+                  messageVisible ? "opacity-100" : "opacity-0"
+                )}
+              >
+                {displayMessage}
+              </p>
+            ) : null}
 
-        <div className="orion-traffic-loading__bars mt-6 flex items-end justify-center gap-1" aria-hidden>
-          {TRAFFIC_BARS.map((delay) => (
-            <span
-              key={delay}
-              className="orion-traffic-loading__bar"
-              style={{ animationDelay: `${delay}s` }}
-            />
-          ))}
-        </div>
+            {subtitle ? <p className="mt-2 text-xs text-white/45">{subtitle}</p> : null}
 
-        <div className="orion-action-loading__shimmer-track orion-traffic-loading__track mx-auto mt-5 h-1 w-44 overflow-hidden rounded-full">
-          <div className="orion-action-loading__shimmer-bar h-full w-1/2 rounded-full" />
-        </div>
+            <div className="orion-traffic-loading__bars mt-6 flex items-end justify-center gap-1" aria-hidden>
+              {TRAFFIC_BARS.map((delay) => (
+                <span
+                  key={delay}
+                  className="orion-traffic-loading__bar"
+                  style={{ animationDelay: `${delay}s` }}
+                />
+              ))}
+            </div>
+
+            <div className="orion-action-loading__shimmer-track orion-traffic-loading__track mx-auto mt-5 h-1 w-44 overflow-hidden rounded-full">
+              <div className="orion-action-loading__shimmer-bar h-full w-1/2 rounded-full" />
+            </div>
+          </>
+        )}
       </div>
     </div>,
     document.body

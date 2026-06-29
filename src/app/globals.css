@@ -2129,6 +2129,41 @@ h6,
     opacity: 0.9;
   }
 
+  /* Modo minimal (transição de rota) — efeito de linha mais visível e espaçado. */
+  .orion-traffic-loading__lanes--bold {
+    gap: 1.5rem;
+    opacity: 1;
+  }
+  .orion-traffic-loading__lanes--bold .orion-traffic-loading__lane {
+    height: 3px;
+  }
+
+  /* Texto "loading" do overlay minimal — luz passando (shimmer) que se move pelas letras. */
+  .orion-traffic-loading__hint {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.28) 0%,
+      rgba(255, 255, 255, 0.28) 35%,
+      rgba(255, 255, 255, 0.95) 50%,
+      rgba(255, 255, 255, 0.28) 65%,
+      rgba(255, 255, 255, 0.28) 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: orion-traffic-hint-shimmer 1.8s linear infinite;
+  }
+  @keyframes orion-traffic-hint-shimmer {
+    0% {
+      background-position: 120% 0;
+    }
+    100% {
+      background-position: -120% 0;
+    }
+  }
+
   .orion-traffic-loading__lane {
     position: relative;
     height: 2px;
@@ -4434,6 +4469,18 @@ h6,
 .orion-logo--login {
   --orion-sidebar-mark-height: 2.75rem; /* 44px de wordmark visível */
   max-width: 100%; /* hero centralizado: sem o recuo de 2.25rem da sidebar */
+}
+
+/* Overlay de carregamento — wordmark grande e centralizado (crop limpo da sidebar). */
+.orion-logo--overlay {
+  --orion-sidebar-mark-height: 3.25rem; /* 52px de wordmark visível */
+  max-width: 100%;
+}
+
+/* Overlay minimal (transição de rota) — logo maior, sem card. */
+.orion-logo--overlay-lg {
+  --orion-sidebar-mark-height: 4rem; /* 64px de wordmark visível */
+  max-width: 100%;
 }
 
 /* Collapsed sidebar — crop to purple icon only (182×188), no wordmark fragments. */

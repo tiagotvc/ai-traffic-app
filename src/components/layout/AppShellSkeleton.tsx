@@ -8,6 +8,7 @@ import { PublishPanelHost } from "@/components/publish/PublishPanelHost";
 import { PublishPanelProvider } from "@/components/publish/PublishPanelContext";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
+import { NavigationLoadingOverlay } from "@/components/ui/NavigationLoadingOverlay";
 import { CommandStripProvider } from "@/components/layout/CommandStripContext";
 import { BillingGateModal } from "@/components/billing/BillingGateModal";
 import { FirstConnectionGate } from "@/components/onboarding/FirstConnectionGate";
@@ -303,6 +304,9 @@ function AppShellSkeletonInner({
   return (
     <UxThemeProvider>
     <ThemeConfigApplier />
+    <Suspense fallback={null}>
+      <NavigationLoadingOverlay />
+    </Suspense>
     <PublishPanelProvider>
       <CommandStripProvider>
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--surface-bg)] lg:flex-row">

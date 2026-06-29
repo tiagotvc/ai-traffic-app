@@ -7,24 +7,50 @@ import {
 } from "@/components/marketing/MarketingContentPage";
 import type { LegalPageContent, LegalSection } from "@/lib/marketing/legal-content/types";
 
+const URL_RE = /(https?:\/\/[^\s]+)/g;
+
+/** Transforma URLs no texto em links clicáveis (externos). */
+function linkify(text: string): ReactNode {
+  const parts = text.split(URL_RE);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) => {
+    if (!/^https?:\/\//.test(part)) return <span key={i}>{part}</span>;
+    const trailing = part.match(/[.,;:)\]]+$/)?.[0] ?? "";
+    const url = trailing ? part.slice(0, -trailing.length) : part;
+    return (
+      <span key={i}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="break-all text-[var(--ui-accent)] underline underline-offset-2 hover:opacity-80"
+        >
+          {url}
+        </a>
+        {trailing}
+      </span>
+    );
+  });
+}
+
 function SectionBody({ section }: { section: LegalSection }) {
   return (
     <>
       {section.paragraphs.map((paragraph, index) => (
         <p key={index} className={index > 0 ? "mt-3" : undefined}>
-          {paragraph}
+          {linkify(paragraph)}
         </p>
       ))}
       {section.bullets?.length ? (
         <ul className="mt-3 list-disc space-y-1.5 pl-5">
           {section.bullets.map((item) => (
-            <li key={item}>{item}</li>
+            <li key={item}>{linkify(item)}</li>
           ))}
         </ul>
       ) : null}
       {section.tail?.map((paragraph, index) => (
         <p key={`tail-${index}`} className="mt-3">
-          {paragraph}
+          {linkify(paragraph)}
         </p>
       ))}
     </>

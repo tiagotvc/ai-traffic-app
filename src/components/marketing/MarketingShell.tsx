@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X } from "lucide-react";
 
+import { BackToTopButton } from "@/components/ui/BackToTopButton";
+import { CookieConsentBanner } from "@/components/marketing/CookieConsentBanner";
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type AppLocale } from "@/i18n/routing";
@@ -20,6 +22,12 @@ const NAV = [
   { href: "/#pricing", key: "navPricing" as const },
   { href: "/about", key: "navAbout" as const },
   { href: "/support", key: "navSupport" as const }
+];
+
+const POLICIES = [
+  { href: "/terms", key: "navTerms" as const },
+  { href: "/privacy", key: "navPrivacy" as const },
+  { href: "/data-deletion", key: "navDataDeletion" as const }
 ];
 
 export function MarketingShell({ children }: { children: React.ReactNode }) {
@@ -39,7 +47,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-[var(--border-color)] bg-[var(--surface-header)] backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="shrink-0">
-            <OrionAgencyLogo size="sm" variant="dark" />
+            <OrionAgencyLogo size="sm" variant="dark" className="orion-logo--sidebar orion-logo--login" />
           </Link>
 
           <nav className="hidden items-center gap-6 md:flex">
@@ -52,6 +60,28 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
                 {t(item.key)}
               </Link>
             ))}
+            <div className="group relative">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-sm font-medium text-[var(--text-dim)] transition hover:text-[var(--text-main)]"
+              >
+                {t("navPolicies")}
+                <ChevronDown size={14} className="transition group-hover:rotate-180" />
+              </button>
+              <div className="absolute left-0 top-full hidden min-w-44 pt-2 group-hover:block">
+                <div className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] p-1 shadow-xl">
+                  {POLICIES.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="block rounded-md px-3 py-2 text-sm font-medium text-[var(--text-dim)] transition hover:bg-[var(--surface-bg)] hover:text-[var(--text-main)]"
+                    >
+                      {t(item.key)}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
           </nav>
 
           <div className="hidden items-center gap-2 sm:flex">
@@ -102,6 +132,19 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
                   {t(item.key)}
                 </Link>
               ))}
+              <p className="px-3 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-dimmer)]">
+                {t("navPolicies")}
+              </p>
+              {POLICIES.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--text-dim)] hover:bg-[var(--surface-card)]"
+                >
+                  {t(item.key)}
+                </Link>
+              ))}
             </nav>
             <div className="mt-4 flex gap-2">
               <Link
@@ -128,7 +171,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-[var(--border-color)] bg-[var(--surface-bg)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div>
-            <OrionAgencyLogo size="sm" variant="dark" />
+            <OrionAgencyLogo size="sm" variant="dark" className="orion-logo--sidebar orion-logo--login" />
             <p className="mt-2 max-w-sm text-sm text-[var(--text-dim)]">{t("footerTagline")}</p>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--text-dim)]">
@@ -156,6 +199,9 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
           {t("footerCopyright", { year: new Date().getFullYear() })}
         </div>
       </footer>
+
+      <BackToTopButton label={t("legalBackToTop", { defaultMessage: "Voltar ao topo" })} />
+      <CookieConsentBanner />
     </div>
   );
 }

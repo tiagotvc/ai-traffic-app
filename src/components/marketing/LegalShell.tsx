@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 
+import { BackToTopButton } from "@/components/ui/BackToTopButton";
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type AppLocale } from "@/i18n/routing";
@@ -32,8 +33,24 @@ export function LegalShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-[var(--border-color)] bg-[var(--surface-header)] backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="shrink-0">
-            <OrionAgencyLogo size="sm" variant="dark" />
+            <OrionAgencyLogo size="sm" variant="dark" className="orion-logo--sidebar orion-logo--login" />
           </Link>
+
+          <nav className="hidden items-center gap-5 md:flex">
+            {LEGAL_LINKS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={
+                  pathname === item.href
+                    ? "text-sm font-medium text-[var(--ui-accent)]"
+                    : "text-sm font-medium text-[var(--text-dim)] transition hover:text-[var(--text-main)]"
+                }
+              >
+                {t(item.key)}
+              </Link>
+            ))}
+          </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex rounded-lg border border-[var(--border-color)] p-0.5">
@@ -67,7 +84,7 @@ export function LegalShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-[var(--border-color)] bg-[var(--surface-bg)]">
         <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-10 sm:flex-row sm:items-start sm:justify-between sm:px-6">
           <div>
-            <OrionAgencyLogo size="sm" variant="dark" />
+            <OrionAgencyLogo size="sm" variant="dark" className="orion-logo--sidebar orion-logo--login" />
             <p className="mt-2 max-w-xs text-sm text-[var(--text-dim)]">{t("legalFooterTagline")}</p>
             <Link href="/" className="marketing-link-accent mt-3 inline-block text-sm">
               {t("legalBackToSite")}
@@ -96,6 +113,8 @@ export function LegalShell({ children }: { children: React.ReactNode }) {
           {t("footerCopyright", { year: new Date().getFullYear() })}
         </div>
       </footer>
+
+      <BackToTopButton label={t("legalBackToTop", { defaultMessage: "Voltar ao topo" })} />
     </div>
   );
 }
