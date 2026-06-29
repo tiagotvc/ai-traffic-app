@@ -8,6 +8,8 @@ export const planLimitsSchema = z.object({
   maxAutomationRules: z.number().int().min(0),
   maxAiRequestsPerMonth: z.number().int().min(0),
   maxScheduledReports: z.number().int().min(0),
+  allowCopilot: z.boolean(),
+  maxScientists: z.number().int().min(0),
   allowAutoSync: z.boolean(),
   allowLiveMeta: z.boolean(),
   allowCreativeMemoryAi: z.boolean(),

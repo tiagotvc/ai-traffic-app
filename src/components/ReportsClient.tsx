@@ -49,7 +49,12 @@ export function ReportsClient() {
 
   const clientSlug = strip?.clientFilter ?? "";
   const adAccountId = strip?.accountFilter ?? "";
-  const period: PeriodState = strip?.period ?? { preset: "last30", since: "", until: "" };
+  // Estável por VALOR — sem isso, o fallback `?? {…}` criava um objeto novo a cada
+  // render, recriando loadConsolidated/loadPreview e disparando o effect em loop.
+  const period: PeriodState = useMemo(
+    () => strip?.period ?? { preset: "last30", since: "", until: "" },
+    [strip?.period?.preset, strip?.period?.since, strip?.period?.until]
+  );
 
   const [reportType, setReportType] = useState<"simple" | "complete">("simple");
   const [selectedMetrics, setSelectedMetrics] = useState<MetricKey[]>(DEFAULT_REPORT_METRICS);

@@ -47,7 +47,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-[var(--border-color)] bg-[var(--surface-header)] backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href="/" className="shrink-0">
-            <OrionAgencyLogo size="sm" variant="dark" className="orion-logo--sidebar orion-logo--login" />
+            <OrionAgencyLogo size="sm" variant="dark" className="orion-logo--sidebar orion-logo--nav" />
           </Link>
 
           <nav className="hidden items-center gap-6 md:flex">

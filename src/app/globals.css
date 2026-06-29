@@ -4483,6 +4483,12 @@ h6,
   max-width: 100%;
 }
 
+/* Header de nav (landing/marketing) — wordmark compacto, sem o recuo da sidebar. */
+.orion-logo--nav {
+  --orion-sidebar-mark-height: 2rem; /* 32px de wordmark visível */
+  max-width: 100%;
+}
+
 /* Collapsed sidebar — crop to purple icon only (182×188), no wordmark fragments. */
 .orion-logo--sidebar-collapsed.orion-logo--icon-only {
   --orion-sidebar-icon-size: 1.875rem; /* 30px, proportional to expanded wordmark */

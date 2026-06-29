@@ -213,6 +213,7 @@ export async function getEntitlements(
 }
 
 const BOOLEAN_LIMIT_KEYS = [
+  "allowCopilot",
   "allowAutoSync",
   "allowLiveMeta",
   "allowCreativeMemoryAi",
@@ -249,6 +250,7 @@ const LIMIT_CHECKS: Record<NumericPlanLimitKey, (u: TenantUsage) => number> = {
   maxAutomationRules: (u) => u.automationRules,
   maxAiRequestsPerMonth: (u) => u.aiRequestsThisMonth,
   maxScheduledReports: (u) => u.scheduledReports,
+  maxScientists: () => 0,
   maxDashboards: () => 0,
   maxDashboardWidgets: () => 0
 };

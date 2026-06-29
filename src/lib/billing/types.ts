@@ -30,6 +30,10 @@ export type PlanLimits = {
   maxAutomationRules: number;
   maxAiRequestsPerMonth: number;
   maxScheduledReports: number;
+  /** Brain Copilot — card de pipeline dos cientistas nos criadores (campanha/persona/zona). */
+  allowCopilot: boolean;
+  /** Quantos cientistas o Copilot pode rodar (0 = Copilot indisponível). */
+  maxScientists: number;
   allowAutoSync: boolean;
   allowLiveMeta: boolean;
   allowCreativeMemoryAi: boolean;
@@ -73,6 +77,8 @@ export const FREE_LIMITS: PlanLimits = {
   maxAutomationRules: 0,
   maxAiRequestsPerMonth: 10,
   maxScheduledReports: 0,
+  allowCopilot: false,
+  maxScientists: 0,
   allowAutoSync: false,
   allowLiveMeta: false,
   allowCreativeMemoryAi: true,
@@ -105,6 +111,8 @@ export const BASIC_LIMITS: PlanLimits = {
   maxAutomationRules: 3,
   maxAiRequestsPerMonth: 30,
   maxScheduledReports: 1,
+  allowCopilot: false,
+  maxScientists: 0,
   allowAutoSync: true,
   allowLiveMeta: false,
   allowCreativeMemoryAi: true,
@@ -137,6 +145,8 @@ export const ADVANCED_LIMITS: PlanLimits = {
   maxAutomationRules: 10,
   maxAiRequestsPerMonth: 100,
   maxScheduledReports: 5,
+  allowCopilot: true,
+  maxScientists: 2,
   allowAutoSync: true,
   allowLiveMeta: true,
   allowCreativeMemoryAi: true,
@@ -169,6 +179,8 @@ export const AGENCY_LIMITS: PlanLimits = {
   maxAutomationRules: 50,
   maxAiRequestsPerMonth: 500,
   maxScheduledReports: 20,
+  allowCopilot: true,
+  maxScientists: 5,
   allowAutoSync: true,
   allowLiveMeta: true,
   allowCreativeMemoryAi: true,

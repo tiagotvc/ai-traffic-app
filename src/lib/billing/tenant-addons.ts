@@ -27,6 +27,8 @@ export function mergePlanLimitsWithAddons(base: PlanLimits, bonuses: TenantAddon
     maxAutomationRules: base.maxAutomationRules + bonuses.extraAutomationRules,
     maxAiRequestsPerMonth: base.maxAiRequestsPerMonth + bonuses.extraAiRequestsPerMonth,
     maxScheduledReports: base.maxScheduledReports + bonuses.extraScheduledReports,
+    allowCopilot: base.allowCopilot,
+    maxScientists: base.maxScientists,
     allowAutoSync: base.allowAutoSync,
     allowLiveMeta: base.allowLiveMeta,
     allowCreativeMemoryAi: base.allowCreativeMemoryAi,

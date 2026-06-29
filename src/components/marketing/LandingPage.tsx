@@ -3,11 +3,12 @@ import { getTranslations } from "next-intl/server";
 import { BillingPlansClient } from "@/components/billing/BillingPlansClient";
 import { LandingCapabilities } from "@/components/marketing/LandingCapabilities";
 import { LandingCta } from "@/components/marketing/LandingMission";
+import { LandingDashboardSection } from "@/components/marketing/LandingDashboardSection";
+import { LandingDifferentiators } from "@/components/marketing/LandingDifferentiators";
 import { LandingFaq } from "@/components/marketing/LandingFaq";
 import { LandingHowItWorks } from "@/components/marketing/LandingHowItWorks";
 import { LandingLegalStrip } from "@/components/marketing/LandingLegalStrip";
 import { LandingProblem } from "@/components/marketing/LandingProblem";
-import { LandingProductSamples } from "@/components/marketing/LandingProductSamples";
 import { LandingProof } from "@/components/marketing/LandingProof";
 import { LandingStickyCta } from "@/components/marketing/LandingStickyCta";
 import { LandingWorkSplit } from "@/components/marketing/LandingWorkSplit";
@@ -23,13 +24,15 @@ export async function LandingPage() {
     <>
       <MarketingHero />
 
+      <LandingDashboardSection />
+
       <LandingProblem />
+
+      <LandingDifferentiators />
 
       <LandingWorkSplit />
 
       <LandingHowItWorks />
-
-      <LandingProductSamples />
 
       <LandingCapabilities />
 
