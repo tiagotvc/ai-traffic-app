@@ -93,9 +93,7 @@ export function AgencyBrainNavGroup({
   const parentActive = isAgencyBrainActive(base);
 
   const featureOn = (id: string) =>
-    !permissionsReady
-      ? false
-      : isPlatformAdmin || platformFeatures?.[id] === true;
+    !permissionsReady ? false : platformFeatures?.[id] === true;
 
   const features = resolveAgencyBrainFeatures(agencyBrainFeatures);
   const allowed = !permissionsReady || features.allowCreativeMemoryAi;
@@ -118,10 +116,7 @@ export function AgencyBrainNavGroup({
 
   // Plataforma desligou o módulo Brain → esconde por completo (não mostra "locked/upgrade").
   if (
-    !isModuleEnabledInShell(platformFeatures, "brain", {
-      ready: permissionsReady,
-      isPlatformAdmin
-    })
+    !isModuleEnabledInShell(platformFeatures, "brain", { ready: permissionsReady })
   ) {
     return null;
   }

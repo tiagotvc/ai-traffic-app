@@ -12,16 +12,16 @@
 - **Default = `global`** (comportamento anterior: tudo ligado). Legado `{ id: false }` migra para `off` na leitura.
 - **Kill-switch acima do plano:** `visível/usável = rollout(usuário) E permissãoDoPlano`.
 - Sub-funcionalidades **herdam** o rollout do módulo salvo override explícito.
-- **Platform admin** sempre passa nos flags (QA) — vê tudo no produto.
+- **Platform admin** respeita rollout: `off` esconde para todos; `admin_only` mostra só para admins.
 
 ## Modos de rollout
 
 | Modo | Comportamento |
 |---|---|
-| `off` | Desligado para todos (cascateia nos filhos). |
+| `off` | Desligado para todos, **incluindo platform admins** (cascateia nos filhos). |
 | `admin_only` | Só platform admins (`platformRole === admin`). |
 | `global` | Todos os usuários (ainda respeita plano/billing). |
-| `specific_users` | Allowlist de `userId` (+ platform admins). |
+| `specific_users` | Apenas usuários na allowlist (`allowedUserIds`). |
 
 Persistência em `platform_settings` (chave `platform_feature_flags`):
 
@@ -53,10 +53,9 @@ Ausência de chave = herdar pai / `global` na raiz. `mode: global` no PATCH **re
 
 Uma feature está **habilitada** para um usuário se:
 
-1. É **platform admin** → sempre `true` (bypass QA), **ou**
-2. Nenhum ancestral tem `mode: off` explícito, **e**
-3. O rollout efetivo (herança root → id) permite o usuário, **e**
-4. Todos os `dependsOn` estão habilitados.
+1. Nenhum ancestral tem `mode: off` explícito, **e**
+2. O rollout efetivo (herança root → id) permite o usuário (`admin_only` → só admins; `specific_users` → só allowlist), **e**
+3. Todos os `dependsOn` estão habilitados.
 
 O mask em [`entitlements.ts`](../src/lib/billing/entitlements.ts) (`PLATFORM_MASKED_LIMITS`) aplica o rollout sobre limites de plano.
 
@@ -97,10 +96,9 @@ await assertFeatureEnabled("visions.canvas");
 
 | Cenário | Como |
 |---|---|
-| Admin only | Modo `admin_only` → login como admin da plataforma. |
-| Usuário específico | Modo `specific_users` + picker; login com esse usuário. |
-| Global / off | Login como usuário comum; verificar sidebar e API. |
-| Plano | Rollout `global` + plano sem limite → upsell/locked (billing). |
+| Admin only | Modo `admin_only` → login como admin da plataforma vê; usuário comum não. |
+| Usuário específico | Modo `specific_users` + picker; só usuários listados. |
+| Global / off | `off` esconde para todos (incl. admin); `global` + plano sem limite → upsell/locked (billing). |
 
 ## Migração de dados legados
 

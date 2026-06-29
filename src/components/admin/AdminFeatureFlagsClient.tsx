@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  AlertCircle,
   BarChart3,
   Brain,
+  CheckCircle2,
   Coins,
   Flag,
   FlaskConical,
@@ -19,6 +21,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
   type ReactNode
@@ -105,6 +108,28 @@ function rolloutLabelKey(mode: FeatureRolloutMode): string {
   return `featureFlagsRollout_${mode}`;
 }
 
+type StatusToast = {
+  variant: "error" | "success";
+  message: string;
+  key: number;
+};
+
+function ModulesStatusToast({ toast }: { toast: StatusToast }) {
+  const alertClass = toast.variant === "error" ? "ui-alert-danger" : "ui-alert-success";
+  const Icon = toast.variant === "error" ? AlertCircle : CheckCircle2;
+
+  return (
+    <div className="campaign-creator-status-toast" role="alert" aria-live="assertive">
+      <p
+        className={`campaign-creator-status-toast__inner campaign-creator-status-toast__inner--solid ${alertClass}`}
+      >
+        <Icon size={18} strokeWidth={2.25} className="shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 text-left leading-snug">{toast.message}</span>
+      </p>
+    </div>
+  );
+}
+
 export function AdminFeatureFlagsClient() {
   const t = useTranslations("billingAdmin");
   const router = useRouter();
@@ -114,7 +139,8 @@ export function AdminFeatureFlagsClient() {
   const [featureFlags, setFeatureFlags] = useState<AiCreditsFeatureFlags | null>(null);
   const [weights, setWeights] = useState<AiCreditWeights | null>(null);
   const [platformFeatures, setPlatformFeatures] = useState<FeatureFlagConfigMap>({});
-  const [message, setMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<StatusToast | null>(null);
+  const toastKey = useRef(0);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
 
@@ -197,6 +223,18 @@ export function AdminFeatureFlagsClient() {
     void load();
   }, [load]);
 
+  const pushToast = useCallback((variant: StatusToast["variant"], message: string) => {
+    toastKey.current += 1;
+    setToast({ variant, message, key: toastKey.current });
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const delayMs = toast.variant === "error" ? 5000 : 3500;
+    const timer = window.setTimeout(() => setToast(null), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
   const setRollout = (id: string, entry: FeatureFlagEntry | null) => {
     setPlatformFeatures((prev) => {
       const updated = { ...prev };
@@ -209,7 +247,7 @@ export function AdminFeatureFlagsClient() {
   const save = () => {
     if (!featureFlags || !weights) return;
     startTransition(async () => {
-      setMessage(null);
+      setToast(null);
       const res = await fetch("/api/admin/platform/feature-flags", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -220,10 +258,10 @@ export function AdminFeatureFlagsClient() {
         setFeatureFlags(json.featureFlags);
         setWeights(json.weights);
         setPlatformFeatures(json.platformFeatures ?? {});
-        setMessage(t("modulesSaved"));
+        pushToast("success", t("modulesSaved"));
         window.dispatchEvent(new Event("traffic:entitlements-changed"));
       } else {
-        setMessage(json.error ?? t("saveError"));
+        pushToast("error", json.error ?? t("saveError"));
       }
     });
   };
@@ -338,28 +376,17 @@ export function AdminFeatureFlagsClient() {
     );
   };
 
-  const saveButton = (
-    <button type="button" className="ui-btn-accent shrink-0" disabled={isPending} onClick={save}>
-      {isPending ? t("saving") : t("saveModule")}
-    </button>
-  );
 
   const renderModulePanel = () => {
     if (!activeModuleNode) return null;
 
     return (
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-[var(--border-color)] pb-4">
+        <div className="sticky top-0 z-10 shrink-0 border-b border-[var(--border-color)] bg-[var(--creator-card-bg)] pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">
-                  {activeModuleNode.label}
-                </h2>
-                {saveButton}
-              </div>
               {activeModuleNode.description ? (
-                <p className="mt-0.5 text-xs text-[var(--text-dim)]">{activeModuleNode.description}</p>
+                <p className="text-xs text-[var(--text-dim)]">{activeModuleNode.description}</p>
               ) : null}
               <p className="mt-2 text-[11px] text-[var(--text-dimmer)]">{t("modulesHint")}</p>
             </div>
@@ -387,21 +414,16 @@ export function AdminFeatureFlagsClient() {
 
   const renderAiCreditsPanel = () => (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-[var(--border-color)] pb-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-2.5">
-            <span className="ui-toolbar-icon-shell shrink-0 text-[var(--ui-accent)]">
-              <Sparkles size={14} />
-            </span>
-            <div>
-              <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">
-                {t("featureFlagsNavAiCredits")}
-              </h2>
-              <p className="mt-0.5 text-xs text-[var(--text-dim)]">{t("featureFlagsMasterHint")}</p>
-            </div>
-          </div>
-          {saveButton}
+      <div className="sticky top-0 z-10 shrink-0 border-b border-[var(--border-color)] bg-[var(--creator-card-bg)] pb-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="ui-toolbar-icon-shell shrink-0 text-[var(--ui-accent)]">
+            <Sparkles size={14} />
+          </span>
+          <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">
+            {t("featureFlagsNavAiCredits")}
+          </h2>
         </div>
+        <p className="mt-2 text-xs text-[var(--text-dim)]">{t("featureFlagsMasterHint")}</p>
       </div>
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pt-4">
@@ -473,21 +495,23 @@ export function AdminFeatureFlagsClient() {
 
   return (
     <div className="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden">
-      <div className="shrink-0 space-y-4">
+      {toast ? <ModulesStatusToast key={toast.key} toast={toast} /> : null}
+
+      <div className="sticky top-0 z-20 shrink-0 border-b border-[var(--border-color)] bg-[var(--surface-bg)] pb-4 pt-1">
         <DsPageHeader
           title={pageMeta.title}
           subtitle={pageMeta.subtitle}
           titleIcon={<PageIcon size={16} />}
+          actions={
+            <button type="button" className="ui-btn-accent shrink-0" disabled={isPending} onClick={save}>
+              {isPending ? t("saving") : t("saveModule")}
+            </button>
+          }
+          className="mb-0"
         />
-
-        {message ? (
-          <div className="campaign-creator-card campaign-creator-card--compact px-3 py-2 text-sm">
-            {message}
-          </div>
-        ) : null}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden lg:flex-row lg:gap-8">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden pt-4 lg:flex-row lg:gap-8">
         <aside className="w-full shrink-0 lg:w-52 xl:w-56">
           <SettingsSectionNav
             items={navItems}

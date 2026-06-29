@@ -65,10 +65,7 @@ export function ReportsNavGroup({
   const parentActive = isReportsActive(base);
 
   if (
-    !isModuleEnabledInShell(platformFeatures, "reports", {
-      ready: planLimitsReady,
-      isPlatformAdmin
-    })
+    !isModuleEnabledInShell(platformFeatures, "reports", { ready: planLimitsReady })
   ) {
     return null;
   }

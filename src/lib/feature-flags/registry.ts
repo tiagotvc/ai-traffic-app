@@ -390,10 +390,7 @@ function rolloutAllowsUser(entry: FeatureFlagEntry, ctx: FeatureFlagContext): bo
     case "global":
       return true;
     case "specific_users":
-      return (
-        ctx.isPlatformAdmin ||
-        (!!ctx.userId && (entry.allowedUserIds?.includes(ctx.userId) ?? false))
-      );
+      return !!ctx.userId && (entry.allowedUserIds?.includes(ctx.userId) ?? false);
     default:
       return true;
   }
@@ -411,7 +408,6 @@ export function isFeatureEnabledForUser(
   ctx: FeatureFlagContext,
   seen: Set<string> = new Set()
 ): boolean {
-  if (ctx.isPlatformAdmin) return true;
   if (seen.has(id)) return true;
   seen.add(id);
 

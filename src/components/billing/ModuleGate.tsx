@@ -6,12 +6,11 @@ import type { PlatformModuleId } from "@/lib/feature-flags/modules";
 
 export async function requireModuleEnabled(moduleId: PlatformModuleId, locale: string) {
   const { user, platformAdmin } = await getAppContext();
-  if (platformAdmin) return;
 
   const flags = await getPlatformFeatureFlags();
   const enabled = isFeatureEnabledForUser(flags, moduleId, {
     userId: user.id,
-    isPlatformAdmin: false
+    isPlatformAdmin: platformAdmin
   });
   if (!enabled) {
     redirect({ href: "/dashboard", locale });

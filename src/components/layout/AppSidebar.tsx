@@ -88,10 +88,7 @@ export function AppSidebar({
     allowAgencyBrainChat: false
   };
 
-  const shellModuleOpts = {
-    ready: planLimitsReady,
-    isPlatformAdmin
-  };
+  const shellModuleOpts = { ready: planLimitsReady };
   const moduleOn = (id: string) =>
     isModuleEnabledInShell(platformFeatures, id, shellModuleOpts);
 

@@ -39,19 +39,17 @@ export function resolveModuleForPath(pathWithoutLocale: string): PlatformModuleI
 
 type ShellModuleOpts = {
   ready: boolean;
-  isPlatformAdmin?: boolean;
 };
 
 /**
  * Client-side: whether a module is enabled for the current user in the app shell.
- * Uses the resolved boolean map from `/api/me/entitlements`.
+ * Uses the resolved boolean map from `/api/me/entitlements` (rollout already applied).
  */
 export function isModuleEnabledInShell(
   platformFeatures: ResolvedFeatureMap | undefined,
   moduleId: string,
   opts: ShellModuleOpts
 ): boolean {
-  if (opts.isPlatformAdmin) return true;
   if (!opts.ready) return false;
   return platformFeatures?.[moduleId] === true;
 }

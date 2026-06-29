@@ -66,10 +66,7 @@ export function AudiencesNavGroup({
   const parentActive = isAudiencesActive(base);
 
   if (
-    !isModuleEnabledInShell(platformFeatures, "audiences", {
-      ready: planLimitsReady,
-      isPlatformAdmin
-    })
+    !isModuleEnabledInShell(platformFeatures, "audiences", { ready: planLimitsReady })
   ) {
     return null;
   }
