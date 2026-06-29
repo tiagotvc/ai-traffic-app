@@ -9,12 +9,19 @@ import { CampaignCreatorClient } from "@/components/campaign-creator/CampaignCre
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { useRouter } from "@/i18n/navigation";
 import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
+import {
+  clearCommittedCreationMode,
+  commitCreationMode,
+  readCommittedCreationMode
+} from "@/lib/campaign-creator/creation-flow-session";
 
 function shouldShowModePicker(mode: string | null, fromCampaign: string | null) {
   if (mode === "ai" || mode === "add-ad" || mode === "add-adset" || mode === "manual") {
     return false;
   }
-  return !fromCampaign;
+  if (fromCampaign) return false;
+  if (readCommittedCreationMode()) return false;
+  return true;
 }
 
 function NewCampaignContent() {
@@ -22,17 +29,16 @@ function NewCampaignContent() {
   const searchParams = useSearchParams();
   const aiGenerateEnabled = usePlatformFeature("campaigns.ai-generate");
   const client = searchParams.get("client") ?? undefined;
-  const mode = searchParams.get("mode");
+  const modeParam = searchParams.get("mode");
   const fromCampaign = searchParams.get("fromCampaign");
   const adset = searchParams.get("adset");
+  const mode = modeParam ?? readCommittedCreationMode();
 
   useEffect(() => {
-    if (mode === "ai" && !aiGenerateEnabled) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("mode", "manual");
-      router.replace(`/campaigns/new?${params.toString()}`);
+    if (modeParam === "ai" || modeParam === "manual" || modeParam === "add-ad" || modeParam === "add-adset") {
+      commitCreationMode(modeParam);
     }
-  }, [mode, aiGenerateEnabled, router, searchParams]);
+  }, [modeParam]);
 
   useCommandStripPage({ hideFilters: true, hideSync: true });
 
@@ -56,7 +62,10 @@ function NewCampaignContent() {
     return (
       <CampaignCreationModePicker
         open
-        onClose={() => router.push("/campaigns")}
+        onClose={() => {
+          clearCommittedCreationMode();
+          router.push("/campaigns");
+        }}
         clientSlug={client}
       />
     );

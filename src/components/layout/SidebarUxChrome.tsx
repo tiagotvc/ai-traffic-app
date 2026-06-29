@@ -19,7 +19,8 @@ import {
   Sparkles,
   Sun,
   Trash2,
-  User
+  User,
+  X
 } from "lucide-react";
 
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
@@ -353,22 +354,39 @@ export function SidebarUserBlock({
 
   const menuPanel = (
     <>
-      {/* Header — avatar + nome/email */}
-      <Link href="/settings" onClick={closeAndNavigate} className="flex items-center gap-3 px-3 pt-3">
-        <span
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-heading text-sm font-bold text-white"
-          style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
+      {/* Header — avatar + nome/email. No mobile, X fecha (volta pro drawer); no desktop, seta. */}
+      <div className="flex items-center gap-3 px-3 pt-3">
+        <Link
+          href="/settings"
+          onClick={closeAndNavigate}
+          className="flex min-w-0 flex-1 items-center gap-3"
         >
-          {initial}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-body text-sm font-semibold text-[#f8fafc]">{userName}</p>
-          {userEmail ? (
-            <p className="truncate font-body text-[11px] text-[#94a3b8]">{userEmail}</p>
-          ) : null}
-        </div>
-        <ChevronRight size={15} className="shrink-0 text-[#64748b]" />
-      </Link>
+          <span
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-heading text-sm font-bold text-white"
+            style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
+          >
+            {initial}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-body text-sm font-semibold text-[#f8fafc]">{userName}</p>
+            {userEmail ? (
+              <p className="truncate font-body text-[11px] text-[#94a3b8]">{userEmail}</p>
+            ) : null}
+          </div>
+        </Link>
+        {mobileFullScreen ? (
+          <button
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            aria-label={tNav("closeMenu", { defaultMessage: "Fechar" })}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#94a3b8] hover:bg-white/10 hover:text-white"
+          >
+            <X size={20} />
+          </button>
+        ) : (
+          <ChevronRight size={15} className="shrink-0 text-[#64748b]" />
+        )}
+      </div>
       {isPlatformAdmin ? (
         <div className="px-3 pt-1.5">
           <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "rgba(124,58,237,0.18)", color: "#a78bfa" }}>
@@ -575,17 +593,7 @@ export function SidebarUserBlock({
 
       {menuOpen ? (
         mobileFullScreen ? (
-          <div className="fixed inset-0 z-[70] flex flex-col bg-[#0a0f14]">
-            <div className="flex shrink-0 items-center justify-end border-b border-white/10 px-4 py-3">
-              <button
-                type="button"
-                onClick={() => setMenuOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-[#94a3b8] hover:bg-white/10 hover:text-white"
-                aria-label={tNav("closeMenu", { defaultMessage: "Voltar" })}
-              >
-                <ChevronLeft size={18} />
-              </button>
-            </div>
+          <div className="fixed inset-0 z-[70] flex flex-col bg-[#0a0f14] pt-[env(safe-area-inset-top)]">
             <div className="min-h-0 flex-1 overflow-y-auto">{menuPanel}</div>
             {signOutFooter}
           </div>

@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 
 import type { PersonaCreatorSectionKey } from "@/components/audiences/create/persona-creator-steps";
 import { usePersonaCreatorScoreOptional } from "@/components/audiences/create/PersonaCreatorScoreContext";
+import { ResearchPipelineCard } from "@/components/labs/ResearchPipelineCard";
+import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { CampaignCreatorScoreBar } from "@/components/campaign-creator/CampaignCreatorScoreBar";
 import { DsModal } from "@/design-system/components/DsModal";
 import {
@@ -164,6 +166,9 @@ export function PersonaCreatorBrainTips({
   const paused = insightsCtx?.paused ?? false;
   const insightsResult = insightsCtx?.insightsResult ?? null;
   const insightsLoading = insightsCtx?.insightsLoading ?? false;
+  const clientSlug = insightsCtx?.clientSlug ?? null;
+  const brainEnabled = usePlatformFeature("audiences.brain");
+  const researchEnabled = usePlatformFeature("audiences.brain.research");
   const [modalOpen, setModalOpen] = useState(false);
 
   const checklist = useMemo(() => buildPersonaDraftScoreChecklist(scoreInput), [scoreInput]);
@@ -215,6 +220,8 @@ export function PersonaCreatorBrainTips({
     !checklist.finish &&
       (manualMode ? tAud("personaManualName") : tAud("personaStepPreview"))
   ].filter(Boolean) as string[];
+
+  if (!brainEnabled) return null;
 
   return (
     <>
@@ -341,29 +348,20 @@ export function PersonaCreatorBrainTips({
                         · {r.title}
                       </p>
                     ))}
-                    {insightsResult.competitor?.findings?.length ? (
-                      <div className="mt-2 border-t border-[var(--creator-card-border,var(--border-color))] pt-2">
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-sky-500">
-                          Concorrentes · {insightsResult.competitor.adsAnalyzed} anúncios
-                          {insightsResult.competitor.confidence != null
-                            ? ` · confiança ${insightsResult.competitor.confidence}%`
-                            : ""}
-                        </p>
-                        {insightsResult.competitor.summary ? (
-                          <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-main)]">
-                            {insightsResult.competitor.summary}
-                          </p>
-                        ) : null}
-                        {insightsResult.competitor.findings.slice(0, 3).map((f, i) => (
-                          <p key={i} className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
-                            · {f.title}
-                          </p>
-                        ))}
-                      </div>
-                    ) : null}
                   </>
                 ) : null}
                 </div>
+              </div>
+            ) : null}
+
+            {clientSlug && researchEnabled ? (
+              <div className="mt-3">
+                <ResearchPipelineCard
+                  scope="persona"
+                  signature={clientSlug}
+                  title="Pesquisa Orion"
+                  requestBody={{ clientSlug, persistHypotheses: true }}
+                />
               </div>
             ) : null}
 

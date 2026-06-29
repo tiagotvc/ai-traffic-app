@@ -28,6 +28,7 @@ import {
 import { draftFallbackName, relocalizeDraftDefaultNames } from "@/lib/campaign-draft-i18n";
 import { resolveDraftClient } from "@/lib/campaign-draft-client";
 import { inferWizardActiveNode } from "@/lib/creator-wizard-nav";
+import { useRouter } from "@/i18n/navigation";
 
 type ClientOption = { id: string; slug: string; name: string };
 
@@ -86,6 +87,7 @@ export function CampaignDraftProvider({
   initialActiveNode?: CreatorNode;
 }) {
   const locale = useLocale();
+  const router = useRouter();
   const t = useTranslations("campaignCreator");
   const prevLocaleRef = useRef(locale);
   const [draftId, setDraftId] = useState<string | null>(initialDraftId ?? null);
@@ -349,8 +351,11 @@ export function CampaignDraftProvider({
         draftIdRef.current = j.template.id;
         if (typeof window !== "undefined") {
           const path = window.location.pathname;
-          if (path.endsWith("/campaigns/new") && !path.includes(j.template.id)) {
-            window.history.replaceState(null, "", path.replace(/\/campaigns\/new\/?$/, `/campaigns/new/${j.template.id}`));
+          if (/\/campaigns\/new\/?$/.test(path) && !path.includes(j.template.id)) {
+            const search = window.location.search;
+            // Atualiza a URL com o draftId SEM remontar a página (router.replace
+            // remontava o segmento → resetava os campos e reabria a modal de criação).
+            window.history.replaceState(null, "", `${path.replace(/\/$/, "")}/${j.template.id}${search}`);
           }
         }
       }
@@ -361,7 +366,7 @@ export function CampaignDraftProvider({
     } finally {
       setSaving(false);
     }
-  }, [clients, locale]);
+  }, [clients, locale, router]);
 
   const scheduleSave = useCallback(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);

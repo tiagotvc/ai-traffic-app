@@ -45,10 +45,42 @@ hipóteses do Testing em `ClientHypothesis`** (status SUGGESTED, com `dedupeKey`
   cientista entrando ("analisando…" → ✓ N achados / — pulado), com **chime suave (WebAudio)** no início,
   e ao final o dossiê. Feed no [`ResearchDossierCard`](../../src/components/labs/ResearchDossierCard.tsx) (prop `steps`).
 
+## ✅ Card reutilizável + escopos + migração de todos os criadores
+- **`ResearchPipelineCard`** ([component](../../src/components/labs/ResearchPipelineCard.tsx)): streaming + feed
+  ao vivo + chime, reusado por todos os criadores variando `scope`.
+- **Escopos** (`runFullResearch(input, emit, scope)`): `campaign` (marketing+geo), `persona` (marketing),
+  `zone` (geo) — todos + Testing. Endpoint SSE aceita `scope`.
+- **Reach (zona)**: [`geo-reach.ts`](../../src/lib/labs/geo-reach.ts) calcula o alcance e o stream emite
+  evento `reach` → mostrado no dossiê.
+- **Criadores migrados:**
+  - Campanha → `CampaignCreatorResearchCard` (scope campaign).
+  - Zona → `ZoneCreatorBrainTips` usa o card (scope zone, com reach). Substituiu o fetch antigo de geo.
+  - Persona → `PersonaCreatorBrainTips` usa o card (scope persona, via `clientSlug` no contexto). O bloco
+    de concorrentes saiu do endpoint `personas/insights` (que ficou só com a comparação persona-específica:
+    coerência/estimativa/segmentos).
+
+## ✅ Performance Scientist (v1 — readout)
+[`performance-scientist.ts`](../../src/lib/labs/performance-scientist.ts) + flag `scientists.performance` +
+endpoint [`/api/labs/performance`](../../src/app/api/labs/performance/route.ts). Lê a performance REAL
+(`loadClientSignals`, que já roda no sync) e gera um **readout executivo por IA**: itens com `action`
+∈ scale | pause | swap_creative | adjust_audience | keep, cada um com justificativa (números do sinal) +
+confiança. **Read-only** — não altera learnings/hipóteses (o `runAgencyBrainPipeline` no sync e a
+confirmação manual (`confirmHypothesis`) seguem donos disso, por design).
+
+> Importante: o loop sinais→learnings/hipóteses/ações **já roda automático no sync**
+> (`runAgencyBrainPipeline` em `sync-meta`/`sync-queue`). O Performance Scientist **não duplica** isso —
+> ele é a camada de síntese executiva por cima, e ainda **falta uma UI** para exibi-lo.
+
+### ✅ Surfacing na UI
+[`PerformanceReadoutCard`](../../src/components/agency-brain/PerformanceReadoutCard.tsx) no topo do Agency
+Brain (escopo cliente, em [AgencyBrainContent](../../src/components/agency-brain/AgencyBrainContent.tsx)):
+busca `/api/labs/performance` e mostra os itens de ação (Escalar/Pausar/Trocar criativo/Ajustar
+público/Manter) com badge colorida + confiança. Some quando a flag está off ou não há sinais. Read-only.
+
 ## Próximos passos
-1. Migrar os cards atuais (persona/zona) para o dossiê unificado.
-2. Performance Scientist (fecha o loop pós-campanha → ClientLearning/DNA; move hipóteses p/ CONFIRMED).
-3. Pesos de crédito dos cientistas no `ai_credit_weights`.
+1. (Opcional, com aprovação) vincular hipóteses abertas à evidência de performance (sem auto-confirmar).
+2. Pesos de crédito dos cientistas no `ai_credit_weights`.
+3. Aposentar o endpoint `zones/insights` (não mais usado pela UI).
 
 ## Histórico
 - 2026-06-29: fundação (tipos + registry + runner + endpoint + card). Aditivo — não altera os cards atuais.

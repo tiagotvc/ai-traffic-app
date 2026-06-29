@@ -475,10 +475,16 @@ export function ClientsCreateContentLive() {
           </div>
         </main>
 
-        <ClientCreateSidebar w={w} tW={tW} />
+        <ClientCreateSidebar
+          w={w}
+          tW={tW}
+          goBack={goBack}
+          onNext={goNext}
+          onCreate={handleCreate}
+        />
       </div>
 
-      <div className="campaign-creator-footer-outer shrink-0">
+      <div className="campaign-creator-footer-outer shrink-0 lg:hidden">
         <div className="campaign-creator-footer-band">
           <ClientCreateWizardNav
             w={w}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronRight } from "lucide-react";
+import { CheckCircle2, ChevronRight } from "lucide-react";
 
 import { CampaignCreatorBrainTips } from "@/components/campaign-creator/CampaignCreatorBrainTips";
 import { CampaignCreatorResearchCard } from "@/components/campaign-creator/CampaignCreatorResearchCard";
@@ -13,12 +13,46 @@ import {
   CampaignCreatorUxNav,
   computeWizardProgressPercent
 } from "@/uxpilot-ui/adapters/CampaignCreatorUxChrome";
-import { computeDraftScore } from "@/lib/campaign-draft";
+import {
+  buildCampaignDraftChecklist,
+  computeDraftScore,
+  type CampaignDraftCheckKey
+} from "@/lib/campaign-draft";
 
 function scoreBandLabel(score: number, t: ReturnType<typeof useTranslations<"campaignCreator">>) {
   if (score >= 80) return t("scoreBandGreat");
   if (score >= 55) return t("scoreBandGood");
   return t("scoreBandFair");
+}
+
+const CHECK_LABEL_KEY: Record<CampaignDraftCheckKey, string> = {
+  campaign: "checklistCampaign",
+  adset: "checklistAdset",
+  ad: "checklistAd",
+  media: "checklistMedia",
+  titles: "checklistTitles"
+};
+
+function ScoreChecklistItem({ label, complete }: { label: string; complete: boolean }) {
+  return (
+    <div
+      className={
+        complete
+          ? "campaign-creator-summary-checklist-item campaign-creator-summary-checklist-item--complete"
+          : "campaign-creator-summary-checklist-item campaign-creator-summary-checklist-item--incomplete"
+      }
+    >
+      <CheckCircle2
+        size={14}
+        className={
+          complete
+            ? "campaign-creator-summary-checklist-item__icon--complete shrink-0"
+            : "campaign-creator-summary-checklist-item__icon--incomplete shrink-0"
+        }
+      />
+      <span className="min-w-0 truncate">{label}</span>
+    </div>
+  );
 }
 
 function SidebarProgressCard({ onOpenSummary }: { onOpenSummary: () => void }) {
@@ -27,6 +61,7 @@ function SidebarProgressCard({ onOpenSummary }: { onOpenSummary: () => void }) {
   const stepPercent = computeWizardProgressPercent({ addAdMode, activeNode });
   const score = computeDraftScore(payload);
   const scoreBand = scoreBandLabel(score, t);
+  const checklist = useMemo(() => buildCampaignDraftChecklist(payload), [payload]);
   const circumference = 2 * Math.PI * 32;
   const offset = circumference - (score / 100) * circumference;
 
@@ -74,6 +109,17 @@ function SidebarProgressCard({ onOpenSummary }: { onOpenSummary: () => void }) {
       <div className="mt-3">
         <CampaignCreatorScoreBar value={score} />
       </div>
+
+      <div className="mt-3 space-y-1.5">
+        {checklist.map((item) => (
+          <ScoreChecklistItem
+            key={item.key}
+            label={t(CHECK_LABEL_KEY[item.key] as Parameters<typeof t>[0])}
+            complete={item.complete}
+          />
+        ))}
+      </div>
+
       <button
         type="button"
         onClick={onOpenSummary}

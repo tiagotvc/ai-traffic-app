@@ -1,14 +1,71 @@
 import "server-only";
 
+import type { CreatorNode } from "@/lib/campaign-draft";
+import {
+  COMPETITOR_UPFRONT_SCIENTIST,
+  getCampaignWizardPipelineConfig
+} from "@/lib/campaign-creator/campaign-pipeline-steps";
+import {
+  draftResearchCacheKey,
+  getDraftResearchSection,
+  getDraftResearchSections,
+  setDraftResearchSection
+} from "@/lib/campaign-creator/creator-brain-draft-cache";
+
 import { runScientistSkill } from "../skills";
 import type { ScientistSkillFinding, ScientistSkillInput } from "../skills/types";
-import { getPipeline } from "./registry";
+import { getPipeline, type PipelineStep } from "./registry";
 import type {
   PipelineEvent,
   ResearchDossier,
+  ResearchScope,
   ResearchSection,
   ResearchSuggestion
 } from "./types";
+
+export type FullResearchOptions = {
+  wizardStep?: CreatorNode;
+  draftId?: string | null;
+  clientId?: string | null;
+};
+
+/** Cientistas-base por escopo (o Testing é sempre acrescentado depois). */
+function baseStepsForScope(scope: ResearchScope, options?: FullResearchOptions): PipelineStep[] {
+  const marketing = getPipeline("marketing")?.steps ?? [];
+  const geo = getPipeline("geo")?.steps ?? [];
+  if (scope === "persona") return marketing;
+  if (scope === "zone") return geo;
+  if (scope === "campaign" && options?.wizardStep) {
+    const { scientistIds } = getCampaignWizardPipelineConfig(options.wizardStep);
+    const all = [...marketing, ...geo];
+    return all.filter((step) => scientistIds.includes(step.scientistId));
+  }
+  return [...marketing, ...geo]; // campaign / full
+}
+
+function shouldRunTesting(scope: ResearchScope, options?: FullResearchOptions): boolean {
+  if (scope === "full") return true;
+  if (scope === "campaign" && options?.wizardStep) {
+    return getCampaignWizardPipelineConfig(options.wizardStep).runTesting;
+  }
+  return scope !== "zone";
+}
+
+function dossierLabel(scope: ResearchScope, options?: FullResearchOptions): string {
+  if (scope === "campaign" && options?.wizardStep) {
+    const cfg = getCampaignWizardPipelineConfig(options.wizardStep);
+    return cfg.labelKey;
+  }
+  if (scope === "persona") return "Pesquisa de Marketing";
+  if (scope === "zone") return "Pesquisa Geográfica";
+  return "Pesquisa completa";
+}
+
+function mergeSectionsUnique(sections: ResearchSection[]): ResearchSection[] {
+  const map = new Map<string, ResearchSection>();
+  for (const s of sections) map.set(s.scientistId, s);
+  return [...map.values()];
+}
 
 /** Tipos de finding que viram "sugestão acionável" no consolidado. */
 const ACTIONABLE = new Set([
@@ -99,21 +156,60 @@ export async function runResearchPipeline(
  */
 export async function runFullResearch(
   input: ScientistSkillInput,
-  emit: (e: PipelineEvent) => void = () => {}
+  emit: (e: PipelineEvent) => void = () => {},
+  scope: ResearchScope = "full",
+  options?: FullResearchOptions
 ): Promise<ResearchDossier> {
   emit({ phase: "start" });
 
-  const baseSteps = [...(getPipeline("marketing")?.steps ?? []), ...(getPipeline("geo")?.steps ?? [])];
+  const baseSteps = baseStepsForScope(scope, options);
   const sections: ResearchSection[] = [];
   const skipped: string[] = [];
+  const draftId = options?.draftId ?? null;
+  const clientId = options?.clientId ?? null;
+
+  if (draftId && clientId) {
+    const cached = await getDraftResearchSections(draftId, clientId);
+    for (const section of cached) {
+      if (baseSteps.some((s) => s.scientistId === section.scientistId)) continue;
+      sections.push(section);
+    }
+  }
 
   await Promise.all(
     baseSteps.map(async (step) => {
+      const cacheKey =
+        draftId && clientId
+          ? draftResearchCacheKey(draftId, clientId, step.scientistId)
+          : null;
+
+      if (
+        cacheKey &&
+        step.scientistId === COMPETITOR_UPFRONT_SCIENTIST &&
+        options?.wizardStep &&
+        options.wizardStep !== "campaign"
+      ) {
+        const cached = await getDraftResearchSection(cacheKey);
+        if (cached) {
+          sections.push(cached);
+          emit({ phase: "scientist_start", scientistId: step.scientistId, label: step.label, icon: step.icon });
+          emit({
+            phase: "scientist_done",
+            scientistId: step.scientistId,
+            label: step.label,
+            icon: step.icon,
+            ran: true,
+            findings: cached.findings.length
+          });
+          return;
+        }
+      }
+
       emit({ phase: "scientist_start", scientistId: step.scientistId, label: step.label, icon: step.icon });
       const res = await runScientistSkill(step.scientistId, input);
       const ran = res.ran && res.findings.length > 0;
       if (ran) {
-        sections.push({
+        const section: ResearchSection = {
           scientistId: step.scientistId,
           label: step.label,
           icon: step.icon,
@@ -121,7 +217,11 @@ export async function runFullResearch(
           confidence: res.confidence,
           findings: res.findings as ScientistSkillFinding[],
           sources: res.sources
-        });
+        };
+        sections.push(section);
+        if (cacheKey && step.scientistId === COMPETITOR_UPFRONT_SCIENTIST) {
+          await setDraftResearchSection(cacheKey, section);
+        }
       } else {
         skipped.push(step.scientistId);
       }
@@ -136,39 +236,45 @@ export async function runFullResearch(
     })
   );
 
-  // Testing Scientist consome os achados anteriores (simulação).
-  emit({ phase: "scientist_start", scientistId: "testing", label: "Testes", icon: "Beaker" });
-  const priorFindings = sections.map((s) => ({ label: s.label, findings: s.findings }));
-  const testing = await runScientistSkill("testing", { ...input, priorFindings });
-  const testingRan = testing.ran && testing.findings.length > 0;
-  if (testingRan) {
-    sections.push({
+  const mergedSections = mergeSectionsUnique(sections);
+
+  if (shouldRunTesting(scope, options)) {
+    emit({ phase: "scientist_start", scientistId: "testing", label: "Testes", icon: "Beaker" });
+    const priorSections =
+      draftId && clientId ? mergeSectionsUnique([...mergedSections, ...(await getDraftResearchSections(draftId, clientId))]) : mergedSections;
+    const priorFindings = priorSections.map((s) => ({ label: s.label, findings: s.findings }));
+    const testing = await runScientistSkill("testing", { ...input, priorFindings });
+    const testingRan = testing.ran && testing.findings.length > 0;
+    if (testingRan) {
+      mergedSections.push({
+        scientistId: "testing",
+        label: "Testes",
+        icon: "Beaker",
+        summary: testing.summary,
+        confidence: testing.confidence,
+        findings: testing.findings as ScientistSkillFinding[],
+        sources: testing.sources
+      });
+    } else {
+      skipped.push("testing");
+    }
+    emit({
+      phase: "scientist_done",
       scientistId: "testing",
       label: "Testes",
       icon: "Beaker",
-      summary: testing.summary,
-      confidence: testing.confidence,
-      findings: testing.findings as ScientistSkillFinding[],
-      sources: testing.sources
+      ran: testingRan,
+      findings: testing.findings.length
     });
-  } else {
-    skipped.push("testing");
   }
-  emit({
-    phase: "scientist_done",
-    scientistId: "testing",
-    label: "Testes",
-    icon: "Beaker",
-    ran: testingRan,
-    findings: testing.findings.length
-  });
 
+  const label = dossierLabel(scope, options);
   const dossier: ResearchDossier = {
-    pipelineId: "full",
-    label: "Pesquisa completa",
-    sections,
-    suggestions: buildSuggestions(sections),
-    confidence: avgConfidence(sections),
+    pipelineId: scope === "campaign" && options?.wizardStep ? `campaign:${options.wizardStep}` : scope,
+    label,
+    sections: mergedSections,
+    suggestions: buildSuggestions(mergedSections),
+    confidence: avgConfidence(mergedSections),
     skipped
   };
   emit({ phase: "done", dossier });

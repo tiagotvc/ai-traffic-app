@@ -197,6 +197,7 @@ export function CampaignsListClient() {
       <CampaignCreationModePicker
         open={creationPickerOpen}
         onClose={() => setCreationPickerOpen(false)}
+        onStarted={() => setCreationPickerOpen(false)}
       />
     </div>
   );

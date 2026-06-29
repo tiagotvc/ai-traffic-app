@@ -16,8 +16,9 @@ import {
   Users,
   type LucideIcon
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import type { ResearchDossier } from "@/lib/labs/pipelines/types";
+import type { ResearchDossier, ResearchSection } from "@/lib/labs/pipelines/types";
 
 const ICONS: Record<string, LucideIcon> = {
   FlaskConical,
@@ -54,7 +55,34 @@ const TYPE_COLOR: Record<string, string> = {
   guardrail: "#ef4444"
 };
 
-function StepRow({ step }: { step: LiveStep }) {
+const SOURCE_LABEL_KEYS: Record<string, string> = {
+  meta_ad_library: "researchSourceMetaAdLibrary",
+  google_serp: "researchSourceGoogleSerp",
+  google_trends: "researchSourceGoogleTrends",
+  youtube: "researchSourceYoutube",
+  google_maps: "researchSourceGoogleMaps",
+  simulation: "researchSourceSimulation",
+  agency_brain: "researchSourceAgencyBrain"
+};
+
+function fmtReach(n: number | null): string {
+  if (n == null) return "—";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
+  return String(n);
+}
+
+function StepRow({
+  step,
+  analyzingLabel,
+  findingsLabel,
+  okLabel
+}: {
+  step: LiveStep;
+  analyzingLabel: string;
+  findingsLabel: (count: number) => string;
+  okLabel: string;
+}) {
   const Icon = step.icon ? (ICONS[step.icon] ?? FlaskConical) : FlaskConical;
   return (
     <div className="flex items-center gap-2 text-[11px]">
@@ -65,12 +93,12 @@ function StepRow({ step }: { step: LiveStep }) {
       <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-[var(--text-dim)]">
         {step.status === "running" ? (
           <>
-            <Loader2 size={11} className="animate-spin" aria-hidden /> analisando…
+            <Loader2 size={11} className="animate-spin" aria-hidden /> {analyzingLabel}
           </>
         ) : step.status === "done" ? (
           <>
             <Check size={11} className="text-emerald-500" aria-hidden />
-            {step.findings ? `${step.findings} achados` : "ok"}
+            {step.findings ? findingsLabel(step.findings) : okLabel}
           </>
         ) : (
           <Minus size={11} aria-hidden />
@@ -80,26 +108,93 @@ function StepRow({ step }: { step: LiveStep }) {
   );
 }
 
+function SectionDetail({
+  section,
+  t
+}: {
+  section: ResearchSection;
+  t: ReturnType<typeof useTranslations<"campaignCreator">>;
+}) {
+  const Icon = section.icon ? (ICONS[section.icon] ?? FlaskConical) : FlaskConical;
+  const sourceLabels = section.sources
+    .map((s) => {
+      const key = SOURCE_LABEL_KEYS[s];
+      return key ? t(key as Parameters<typeof t>[0]) : s;
+    })
+    .filter(Boolean);
+
+  return (
+    <div>
+      <p className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-sky-500">
+        <Icon size={11} aria-hidden /> {section.label}
+        {section.confidence != null ? ` · ${section.confidence}%` : ""}
+      </p>
+      {section.summary ? (
+        <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-main)]">{section.summary}</p>
+      ) : null}
+      {sourceLabels.length ? (
+        <p className="mt-1 text-[10px] text-[var(--text-dimmer)]">
+          {t("researchWhatWeSearched")}: {sourceLabels.join(" · ")}
+        </p>
+      ) : null}
+      {section.findings.length ? (
+        <div className="mt-1.5">
+          <p className="text-[10px] font-medium text-[var(--text-dimmer)]">{t("researchWhatWeFound")}</p>
+          {section.findings.slice(0, 6).map((f, i) => (
+            <p
+              key={i}
+              className="mt-1 flex items-start gap-1.5 text-[11px] leading-snug text-[var(--text-dim)]"
+            >
+              <span
+                className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: TYPE_COLOR[f.type] ?? "#94a3b8" }}
+              />
+              <span>
+                <span className="font-medium text-[var(--text-main)]">{f.title}</span>
+                {f.body ? ` — ${f.body}` : ""}
+              </span>
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Card do "resumo" do Orion Brain: feed ao vivo da pipeline (cientistas entrando)
- * + dossiê consolidado (seções + sugestões). Presentational — quem usa busca/streama.
+ * + dossiê consolidado (seções + sugestões). Shell estável — nunca some entre fases.
  */
 export function ResearchDossierCard({
   dossier,
   loading,
   steps,
-  title = "Orion Brain"
+  title = "Orion Brain",
+  dossierLabelKey,
+  forceVisible = false
 }: {
   dossier: ResearchDossier | null;
   loading?: boolean;
   steps?: LiveStep[];
   title?: string;
+  dossierLabelKey?: string;
+  /** Mantém o shell visível mesmo sem conteúdo ainda (primeiro load) */
+  forceVisible?: boolean;
 }) {
+  const t = useTranslations("campaignCreator");
   const [expanded, setExpanded] = useState(false);
 
-  if (!dossier && !loading && !steps?.length) return null;
+  const hasSteps = (steps?.length ?? 0) > 0;
+  const hasRunningStep = steps?.some((s) => s.status === "running") ?? false;
+  const hasDossierContent =
+    Boolean(dossier?.sections.length) || Boolean(dossier?.suggestions.length);
 
-  const showFeed = !dossier && (loading || (steps?.length ?? 0) > 0);
+  if (!forceVisible && !loading && !hasSteps && !hasDossierContent) return null;
+
+  const showLiveFeed = loading || hasRunningStep;
+  const dossierPhaseLabel = dossierLabelKey
+    ? t(dossierLabelKey as Parameters<typeof t>[0])
+    : dossier?.label ?? "";
 
   return (
     <div className="overflow-hidden rounded-lg border border-[var(--creator-card-border,var(--border-color))]">
@@ -107,33 +202,45 @@ export function ResearchDossierCard({
         <Brain size={14} className={`text-white ${loading ? "animate-pulse" : ""}`} aria-hidden />
         <span className="text-[11px] font-semibold text-white">
           {title}
-          {dossier ? ` · ${dossier.label}` : showFeed ? " · laboratório" : ""}
+          {hasDossierContent && dossierPhaseLabel
+            ? ` · ${dossierPhaseLabel}`
+            : showLiveFeed
+              ? ` · ${t("researchLabSubtitle")}`
+              : ""}
         </span>
         {loading ? (
           <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-medium text-white/90">
             <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white" />
-            ao vivo
+            {t("researchLabLive")}
           </span>
         ) : dossier?.confidence != null ? (
           <span className="ml-auto text-[10px] font-semibold text-white/90">
-            confiança {dossier.confidence}%
+            {t("researchConfidence", { value: dossier.confidence })}
           </span>
         ) : null}
       </div>
 
-      {showFeed ? (
-        <div className="space-y-1.5 px-3 py-2.5">
+      {showLiveFeed ? (
+        <div className="space-y-1.5 border-b border-[var(--creator-card-border,var(--border-color))] px-3 py-2.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-500">
-            🧪 Laboratório iniciado
+            {t("researchLabStarted")}
           </p>
           {(steps ?? []).map((s) => (
-            <StepRow key={s.scientistId} step={s} />
+            <StepRow
+              key={s.scientistId}
+              step={s}
+              analyzingLabel={t("researchAnalyzing")}
+              findingsLabel={(count) => t("researchFindingsCount", { count })}
+              okLabel={t("researchStepOk")}
+            />
           ))}
-          {!steps?.length ? (
-            <p className="text-[11px] text-[var(--text-dim)]">Acionando os cientistas…</p>
+          {!hasSteps ? (
+            <p className="text-[11px] text-[var(--text-dim)]">{t("researchLabWarming")}</p>
           ) : null}
         </div>
-      ) : dossier ? (
+      ) : null}
+
+      {hasDossierContent && dossier ? (
         <div className="px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-1.5">
             {dossier.sections.map((s) => {
@@ -151,49 +258,41 @@ export function ResearchDossierCard({
             })}
           </div>
 
+          {dossier.reach && (dossier.reach.lower != null || dossier.reach.upper != null) ? (
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[11px] text-[var(--text-dim)]">{t("researchEstimatedReach")}</span>
+              <span className="text-xs font-semibold text-[var(--text-main)]">
+                {fmtReach(dossier.reach.lower)}–{fmtReach(dossier.reach.upper)}
+              </span>
+            </div>
+          ) : null}
+
           {dossier.suggestions.length ? (
             <div className="mt-2.5">
               <p className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-amber-500">
-                <Lightbulb size={11} aria-hidden /> Sugestões
+                <Lightbulb size={11} aria-hidden /> {t("researchSuggestionsTitle")}
               </p>
               {dossier.suggestions.slice(0, expanded ? 6 : 3).map((sug, i) => (
-                <p key={i} className="mt-1 text-[11px] leading-snug text-[var(--text-main)]">
-                  · {sug.title}
-                </p>
+                <div key={i} className="mt-1.5">
+                  <p className="text-[11px] font-semibold leading-snug text-[var(--text-main)]">
+                    {sug.title}
+                  </p>
+                  {sug.body ? (
+                    <p className="mt-0.5 text-[11px] leading-snug text-[var(--text-dim)]">{sug.body}</p>
+                  ) : null}
+                </div>
               ))}
             </div>
           ) : null}
 
           {expanded ? (
             <div className="mt-3 space-y-2.5 border-t border-[var(--creator-card-border,var(--border-color))] pt-2.5">
-              {dossier.sections.map((s) => {
-                const Icon = s.icon ? (ICONS[s.icon] ?? FlaskConical) : FlaskConical;
-                return (
-                  <div key={s.scientistId}>
-                    <p className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-sky-500">
-                      <Icon size={11} aria-hidden /> {s.label}
-                      {s.confidence != null ? ` · ${s.confidence}%` : ""}
-                    </p>
-                    {s.summary ? (
-                      <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-main)]">
-                        {s.summary}
-                      </p>
-                    ) : null}
-                    {s.findings.slice(0, 4).map((f, i) => (
-                      <p
-                        key={i}
-                        className="mt-1 flex items-start gap-1.5 text-[11px] leading-snug text-[var(--text-dim)]"
-                      >
-                        <span
-                          className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full"
-                          style={{ background: TYPE_COLOR[f.type] ?? "#94a3b8" }}
-                        />
-                        {f.title}
-                      </p>
-                    ))}
-                  </div>
-                );
-              })}
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                {t("researchMethodologyTitle")}
+              </p>
+              {dossier.sections.map((s) => (
+                <SectionDetail key={s.scientistId} section={s} t={t} />
+              ))}
             </div>
           ) : null}
 
@@ -205,15 +304,19 @@ export function ResearchDossierCard({
             >
               {expanded ? (
                 <>
-                  <ChevronUp size={12} /> Recolher
+                  <ChevronUp size={12} /> {t("researchCollapse")}
                 </>
               ) : (
                 <>
-                  <ChevronDown size={12} /> Ver pesquisa completa
+                  <ChevronDown size={12} /> {t("researchViewFull")}
                 </>
               )}
             </button>
           ) : null}
+        </div>
+      ) : loading && !showLiveFeed ? (
+        <div className="px-3 py-2.5">
+          <p className="text-[11px] text-[var(--text-dim)]">{t("researchLabWarming")}</p>
         </div>
       ) : null}
     </div>

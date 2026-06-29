@@ -4425,6 +4425,17 @@ h6,
   margin-left: calc(var(--orion-sidebar-image-height) * -504 / 1024);
 }
 
+/* Mobile top bar — mesmo crop limpo da sidebar, porém maior (PNG tem padding interno). */
+.orion-logo--mobile-header {
+  --orion-sidebar-mark-height: 2rem; /* 32px de wordmark visível (vs 30px da sidebar) */
+}
+
+/* Login mobile — wordmark de marca, maior e centralizado (crop limpo da sidebar). */
+.orion-logo--login {
+  --orion-sidebar-mark-height: 2.75rem; /* 44px de wordmark visível */
+  max-width: 100%; /* hero centralizado: sem o recuo de 2.25rem da sidebar */
+}
+
 /* Collapsed sidebar — crop to purple icon only (182×188), no wordmark fragments. */
 .orion-logo--sidebar-collapsed.orion-logo--icon-only {
   --orion-sidebar-icon-size: 1.875rem; /* 30px, proportional to expanded wordmark */

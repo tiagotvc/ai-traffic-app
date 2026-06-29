@@ -8,7 +8,6 @@ import { getAppContext, getClientBySlugOrId, getMetaAccessTokenForAdAccount } fr
 import { extractPersonaTargetingItems } from "@/lib/audience-targeting-shared";
 import { assertFeatureEnabled, FeatureDisabledError, isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 import { fetchDeliveryEstimate, validateTargetingIdList } from "@/lib/meta-graph";
-import { runScientistSkill } from "@/lib/labs/skills";
 
 const FLAG = "audiences.personaInsights";
 
@@ -206,25 +205,12 @@ export async function POST(req: Request) {
     provider = "rules";
   }
 
-  // 5) Marketing Scientist — pesquisa concorrentes na Meta Ad Library (skill, gated por flag).
-  const niche = (body.narrative ?? "").slice(0, 200).trim() || null;
-  const competitorRun = await runScientistSkill("competitor", { niche, marketCountry: "BR" }).catch(
-    () => null
-  );
-  const competitor =
-    competitorRun?.ran && competitorRun.findings.length
-      ? {
-          adsAnalyzed: competitorRun.itemsAnalyzed ?? 0,
-          summary: competitorRun.summary ?? null,
-          confidence: competitorRun.confidence ?? null,
-          findings: competitorRun.findings.slice(0, 4).map((f) => ({ title: f.title, body: f.body }))
-        }
-      : null;
+  // Pesquisa de concorrentes/tendências/testes migrou para a pipeline unificada
+  // (ResearchPipelineCard, escopo persona) — aqui ficam só os insights da própria persona.
 
   return NextResponse.json({
     ok: true,
     estimate,
-    competitor,
     segments: { total: items.length, invalid: invalidSegments },
     demographics: {
       bestAge,

@@ -909,14 +909,23 @@ export function validateAdStep(d: CampaignDraftPayload): string | null {
   return null;
 }
 
-export function computeDraftScore(d: CampaignDraftPayload): number {
-  const checks = [
-    !validateCampaignStep(d),
-    !validateAdSetStep(d),
-    !validateAdStep(d),
-    d.ads.some(adHasMedia),
-    d.ads.some((a) => a.titles.filter((x) => x.trim()).length >= 2)
+export type CampaignDraftCheckKey = "campaign" | "adset" | "ad" | "media" | "titles";
+
+/** Checklist de etapas (✓/pendente) para o card de pontuação — mesmas regras do score. */
+export function buildCampaignDraftChecklist(
+  d: CampaignDraftPayload
+): { key: CampaignDraftCheckKey; complete: boolean }[] {
+  return [
+    { key: "campaign", complete: !validateCampaignStep(d) },
+    { key: "adset", complete: !validateAdSetStep(d) },
+    { key: "ad", complete: !validateAdStep(d) },
+    { key: "media", complete: d.ads.some(adHasMedia) },
+    { key: "titles", complete: d.ads.some((a) => a.titles.filter((x) => x.trim()).length >= 2) }
   ];
+}
+
+export function computeDraftScore(d: CampaignDraftPayload): number {
+  const checks = buildCampaignDraftChecklist(d).map((c) => c.complete);
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
 }
 

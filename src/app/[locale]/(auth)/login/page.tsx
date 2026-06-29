@@ -45,8 +45,12 @@ export default async function LoginPage({
 
         <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto">
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-8 sm:px-10 lg:py-8">
-            <div className="mb-6 lg:hidden">
-              <OrionAgencyLogo size="md" variant="dark" />
+            <div className="mb-6 flex w-full justify-center lg:hidden">
+              <OrionAgencyLogo
+                size="md"
+                variant="dark"
+                className="orion-logo--sidebar orion-logo--login"
+              />
             </div>
             <LoginForm
               locale={locale}

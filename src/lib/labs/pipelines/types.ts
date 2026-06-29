@@ -30,6 +30,8 @@ export type ResearchDossier = {
   confidence?: number;
   /** Cientistas que não rodaram (sem dado/flag off) — para transparência. */
   skipped: string[];
+  /** Alcance estimado (Meta delivery estimate) — preenchido em escopo de zona. */
+  reach?: { lower: number | null; upper: number | null } | null;
 };
 
 /** Eventos de progresso em tempo real da pipeline (SSE). */
@@ -44,4 +46,7 @@ export type PipelineEvent =
       ran: boolean;
       findings: number;
     }
+  | { phase: "reach"; reach: { lower: number | null; upper: number | null } }
   | { phase: "done"; dossier: ResearchDossier };
+
+export type ResearchScope = "campaign" | "persona" | "zone" | "full";

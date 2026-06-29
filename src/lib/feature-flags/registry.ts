@@ -77,6 +77,12 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
             description:
               "Consulta anúncios de concorrentes via Meta Ad Library ao montar o insight (consome créditos).",
             dependsOn: ["campaigns.brain.insights"]
+          },
+          {
+            id: "campaigns.brain.research",
+            label: "Card de cientistas (Pesquisa Orion)",
+            description:
+              "Card de pesquisa dos cientistas no criador de campanha (feed ao vivo + dossiê). Desligue para ocultar só esse card."
           }
         ]
       },
@@ -114,6 +120,20 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         label: "Persona — editor de segmentos Meta",
         description:
           "Mostra a edição de segmentos Meta (interesses/comportamentos/demográficos) dentro do criador de persona. Desligue para concentrar segmentos no Criador de Públicos Meta."
+      },
+      {
+        id: "audiences.brain",
+        label: "Orion Brain nos criadores (persona/zona)",
+        description:
+          "Card Orion Brain (dicas/insights) nos criadores de persona e zona. Desligue para ocultar o card todo.",
+        children: [
+          {
+            id: "audiences.brain.research",
+            label: "Card de cientistas (Pesquisa Orion)",
+            description:
+              "Pesquisa dos cientistas (feed ao vivo + dossiê) dentro do Orion Brain de persona/zona. Desligue para ocultar só os cientistas."
+          }
+        ]
       }
     ]
   },
@@ -234,6 +254,12 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         label: "Testing Scientist (simulação)",
         description:
           "Simulação interna (não A/B na Meta): consome os dossiês dos outros cientistas + nicho/região e prevê hipótese, o que testar primeiro, vencedor provável, métrica e critério de parada. Só IA, zero searchapi."
+      },
+      {
+        id: "scientists.performance",
+        label: "Performance Scientist (pós-campanha)",
+        description:
+          "Lê a performance real das campanhas e gera um readout executivo por IA (escalar/pausar/trocar criativo/ajustar público). Read-only — não altera learnings/hipóteses."
       },
       {
         id: "scientists.consumer",

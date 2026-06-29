@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAiCredits } from "@/hooks/useAiCredits";
 import type { CreatorBrainInsightPayload } from "@/lib/campaign-creator/creator-brain-insights";
@@ -14,7 +14,9 @@ export function useCreatorBrainInsight(input: {
 }) {
   const [insight, setInsight] = useState<CreatorBrainInsightPayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
   const [paused, setPaused] = useState(false);
+  const hadInsightRef = useRef(false);
   const { refresh: refreshCredits } = useAiCredits();
 
   useEffect(() => {
@@ -29,16 +31,21 @@ export function useCreatorBrainInsight(input: {
     if (input.enabled === false) {
       setInsight(null);
       setLoading(false);
+      setInitialLoading(false);
+      hadInsightRef.current = false;
       return;
     }
 
     if (paused) {
       setLoading(false);
+      setInitialLoading(false);
       return;
     }
 
     let cancelled = false;
+    const isFirstLoad = !hadInsightRef.current;
     setLoading(true);
+    if (isFirstLoad) setInitialLoading(true);
 
     const params = new URLSearchParams({
       objective: input.objective,
@@ -54,16 +61,20 @@ export function useCreatorBrainInsight(input: {
         if (next && typeof j.creditCost === "number") {
           next.creditCost = j.creditCost;
         }
+        if (next) hadInsightRef.current = true;
         setInsight(next);
         if (j.ok && next) {
           void refreshCredits();
         }
       })
       .catch(() => {
-        if (!cancelled) setInsight(null);
+        if (!cancelled && !hadInsightRef.current) setInsight(null);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setInitialLoading(false);
+        }
       });
 
     return () => {
@@ -81,5 +92,5 @@ export function useCreatorBrainInsight(input: {
     }
   }
 
-  return { insight, loading, paused, togglePaused };
+  return { insight, loading, initialLoading, paused, togglePaused };
 }

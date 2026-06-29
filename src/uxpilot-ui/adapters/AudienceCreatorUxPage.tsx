@@ -253,17 +253,26 @@ export function AudienceCreatorUxPage({ ctx, onBack, bareShell }: Props) {
 
   useEffect(() => {
     if (typeChoice !== "custom") return;
+    // Guarda contra corrida: só a resposta da requisição mais recente vale.
+    // (Pixel/website é mais lento; sem isso, uma resposta antiga sobrescrevia a boa
+    // e a lista de ações sumia, travando em "Carregando opções da Meta".)
+    let active = true;
+    const controller = new AbortController();
     const qs = new URLSearchParams({
       clientId: ctx.clientSlug,
       adAccountId: ctx.adAccountId,
       type: source === "site" ? "website" : "engagement"
     });
-    fetch(`/api/meta/audience-creation/options?${qs}`)
+    fetch(`/api/meta/audience-creation/options?${qs}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((j) => {
-        if (j.ok) setOptions(j as AudienceOptions);
+        if (active && j.ok) setOptions(j as AudienceOptions);
       })
       .catch(() => {});
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [ctx.clientSlug, ctx.adAccountId, typeChoice, source]);
 
   useEffect(() => {
@@ -774,15 +783,17 @@ export function AudienceCreatorUxPage({ ctx, onBack, bareShell }: Props) {
                           {tAc("engagementActionFor", { source: sourceLabel })}
                         </h3>
                         {ruleActionOptions.length ? (
-                          ruleActionOptions.map((opt) => (
-                            <AudienceChoiceRow
-                              key={opt.value}
-                              selected={ruleAction === opt.value}
-                              label={opt.label}
-                              icon={ruleActionIcon(source, opt.value)}
-                              onSelect={() => setRuleAction(opt.value)}
-                            />
-                          ))
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            {ruleActionOptions.map((opt) => (
+                              <AudienceChoiceRow
+                                key={opt.value}
+                                selected={ruleAction === opt.value}
+                                label={opt.label}
+                                icon={ruleActionIcon(source, opt.value)}
+                                onSelect={() => setRuleAction(opt.value)}
+                              />
+                            ))}
+                          </div>
                         ) : (
                           <p className="text-sm text-[var(--text-dim)]">{t("loadingOptions")}</p>
                         )}

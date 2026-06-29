@@ -105,7 +105,7 @@ export function OrionTrafficLoadingOverlay({
             <span className="orion-action-loading__ring" aria-hidden />
             <span className="orion-action-loading__ring orion-action-loading__ring--delayed" aria-hidden />
             <div className="orion-action-loading__logo relative z-10 flex items-center justify-center rounded-2xl bg-[var(--surface-thead)] px-5 py-4 shadow-lg shadow-black/20">
-              <OrionAgencyLogo size="md" variant="dark" />
+              <OrionAgencyLogo size="xl" variant="dark" />
             </div>
           </div>
         </div>

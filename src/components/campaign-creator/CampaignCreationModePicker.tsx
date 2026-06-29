@@ -12,6 +12,7 @@ import {
 import { CreatorModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { useRouter } from "@/i18n/navigation";
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
+import { commitCreationMode } from "@/lib/campaign-creator/creation-flow-session";
 import { cn } from "@/lib/cn";
 
 type CreationMode = "manual" | "ai";
@@ -19,6 +20,8 @@ type CreationMode = "manual" | "ai";
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** Called when the user confirms a mode (before navigation). Use to close overlay hosts. */
+  onStarted?: () => void;
   clientSlug?: string;
 };
 
@@ -30,7 +33,7 @@ function buildHref(mode: CreationMode, clientSlug?: string) {
   return `/campaigns/new${qs ? `?${qs}` : ""}`;
 }
 
-export function CampaignCreationModePicker({ open, onClose, clientSlug }: Props) {
+export function CampaignCreationModePicker({ open, onClose, onStarted, clientSlug }: Props) {
   const t = useTranslations("campaignCreator.ai");
   const tc = useTranslations("campaignCreator");
   const router = useRouter();
@@ -44,8 +47,9 @@ export function CampaignCreationModePicker({ open, onClose, clientSlug }: Props)
 
   function handleCreate() {
     if (!selected) return;
+    commitCreationMode(selected);
+    onStarted?.();
     router.push(buildHref(selected, clientSlug));
-    onClose();
   }
 
   return (

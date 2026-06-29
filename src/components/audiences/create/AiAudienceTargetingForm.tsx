@@ -254,6 +254,12 @@ function AiAudienceTargetingForm({
   const setInsightsLoading = personaCreatorScore?.setInsightsLoading;
   const brainPaused = personaCreatorScore?.paused ?? false;
 
+  // Leva o cliente da persona ao contexto (alimenta a pipeline de pesquisa unificada).
+  const setClientSlugCtx = personaCreatorScore?.setClientSlug;
+  useEffect(() => {
+    if (isPersonaLibrary) setClientSlugCtx?.(clientSlug || null);
+  }, [isPersonaLibrary, clientSlug, setClientSlugCtx]);
+
   useEffect(() => {
     if (!setInsightsResult || !setInsightsLoading) return;
     if (

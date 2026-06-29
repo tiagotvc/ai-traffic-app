@@ -46,6 +46,9 @@ type PersonaCreatorScoreContextValue = {
   setInsightsResult: (result: PersonaInsightsResult | null) => void;
   insightsLoading: boolean;
   setInsightsLoading: (loading: boolean) => void;
+  /** Cliente da persona — alimenta a pipeline de pesquisa (escopo persona). */
+  clientSlug: string | null;
+  setClientSlug: (slug: string | null) => void;
 };
 
 const PersonaCreatorScoreContext = createContext<PersonaCreatorScoreContextValue | null>(null);
@@ -62,6 +65,7 @@ export function PersonaCreatorScoreProvider({ children }: { children: ReactNode 
   const [paused, setPausedState] = useState(false);
   const [insightsResult, setInsightsResult] = useState<PersonaInsightsResult | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
+  const [clientSlug, setClientSlug] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -95,9 +99,11 @@ export function PersonaCreatorScoreProvider({ children }: { children: ReactNode 
       insightsResult,
       setInsightsResult,
       insightsLoading,
-      setInsightsLoading
+      setInsightsLoading,
+      clientSlug,
+      setClientSlug
     }),
-    [scoreInput, score, setScoreInput, paused, setPaused, insightsResult, insightsLoading]
+    [scoreInput, score, setScoreInput, paused, setPaused, insightsResult, insightsLoading, clientSlug]
   );
 
   return (

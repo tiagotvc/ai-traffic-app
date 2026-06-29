@@ -131,29 +131,61 @@ function formatRecommendationParams(
   return params;
 }
 
+function recommendationCategory(rec: CreatorBrainRecommendation): string {
+  const k = rec.key;
+  if (k.includes("Budget")) return "budget";
+  if (k.includes("Agency") || k.includes("Client") || k.includes("Benchmark") || k.includes("Sync") || k.includes("Select") || k.includes("Confidence") || k.includes("Meta") || k.includes("Competitor") || k.includes("Label")) return "data";
+  if (k.includes("Awareness") || k.includes("Traffic") || k.includes("Engagement") || k.includes("Leads") || k.includes("Sales") || k.includes("App")) return "objective";
+  if (k.includes("Define") || k.includes("Creative") || k.includes("Review")) return "step";
+  return "action";
+}
+
+const CATEGORY_TITLE_KEY: Record<string, string> = {
+  budget: "brainRecCategoryBudget",
+  data: "brainRecCategoryData",
+  objective: "brainRecCategoryObjective",
+  step: "brainRecCategoryStep",
+  action: "brainRecCategoryAction"
+};
+
 function RecommendationsList({
   recommendations,
   t,
   locale,
-  compact
+  compact,
+  showHeadings
 }: {
   recommendations: CreatorBrainRecommendation[];
   t: ReturnType<typeof useTranslations<"campaignCreator">>;
   locale: string;
   compact?: boolean;
+  showHeadings?: boolean;
 }) {
   if (!recommendations.length) return null;
 
+  let lastCategory: string | null = null;
+
   return (
-    <ul className={compact ? "mt-2 space-y-1.5" : "mt-2 list-disc space-y-2 pl-4"}>
-      {recommendations.map((rec) => (
-        <li
-          key={rec.key}
-          className={`leading-relaxed text-[var(--text-main)] ${compact ? "text-[11px]" : "text-xs"}`}
-        >
-          {t(rec.key as Parameters<typeof t>[0], formatRecommendationParams(rec, locale))}
-        </li>
-      ))}
+    <ul className={compact ? "mt-2 space-y-2" : "mt-2 space-y-3"}>
+      {recommendations.map((rec) => {
+        const category = recommendationCategory(rec);
+        const showCategory = showHeadings && category !== lastCategory;
+        lastCategory = category;
+        return (
+          <li key={rec.key}>
+            {showCategory ? (
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                {t(CATEGORY_TITLE_KEY[category] as Parameters<typeof t>[0])}
+              </p>
+            ) : null}
+            <p
+              className={`leading-relaxed text-[var(--text-main)] ${compact ? "text-[11px]" : "text-xs"}`}
+            >
+              {t(rec.key as Parameters<typeof t>[0], formatRecommendationParams(rec, locale))}
+            </p>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -239,7 +271,7 @@ export function CampaignCreatorBrainTips() {
   const brainSidebarEnabled = usePlatformFeature("campaigns.brain.sidebar");
   const { payload, activeNode, clients } = useCampaignDraft();
   const validClient = Boolean(resolveDraftClient(payload.clientSlug, clients));
-  const { insight, loading, paused, togglePaused } = useCreatorBrainInsight({
+  const { insight, loading, initialLoading, paused, togglePaused } = useCreatorBrainInsight({
     objective: payload.objective,
     activeNode,
     clientSlug: payload.clientSlug,
@@ -431,7 +463,12 @@ export function CampaignCreatorBrainTips() {
             {t("brainModalRecommendations")}
           </h3>
           {recommendations.length ? (
-            <RecommendationsList recommendations={recommendations} t={t} locale={locale} />
+            <RecommendationsList
+              recommendations={recommendations}
+              t={t}
+              locale={locale}
+              showHeadings
+            />
           ) : (
             <p className="mt-2 text-xs leading-relaxed text-[var(--text-main)]">
               {hasData ? renderInsightText() : renderGuidanceText()}
@@ -475,10 +512,13 @@ export function CampaignCreatorBrainTips() {
 
         {paused ? (
           <p className="mt-3 text-xs leading-relaxed text-[var(--text-dim)]">{t("brainPausedHint")}</p>
-        ) : loading ? (
+        ) : initialLoading && !insight ? (
           <p className="mt-3 text-xs leading-relaxed text-[var(--text-dim)]">{t("brainLoading")}</p>
         ) : hasData && insight ? (
           <>
+            {loading ? (
+              <p className="mt-2 text-[10px] text-[var(--text-dimmer)]">{t("brainRefreshing")}</p>
+            ) : null}
             <div className="mt-3">
               <OrionBrainCardFeedback insight={insight} compact />
             </div>
@@ -531,6 +571,11 @@ export function CampaignCreatorBrainTips() {
           </>
         ) : (
           <>
+            {loading && !insight ? (
+              <p className="mt-3 text-xs leading-relaxed text-[var(--text-dim)]">{t("brainLoading")}</p>
+            ) : loading ? (
+              <p className="mt-2 text-[10px] text-[var(--text-dimmer)]">{t("brainRefreshing")}</p>
+            ) : null}
             {insight ? (
               <div className="mt-3">
                 <OrionBrainCardFeedback insight={insight} compact />

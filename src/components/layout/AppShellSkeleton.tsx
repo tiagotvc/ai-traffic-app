@@ -320,7 +320,11 @@ function AppShellSkeletonInner({
             </svg>
           </button>
           <div className="flex min-w-0 flex-1 items-center">
-            <OrionAgencyLogo size="sm" variant="auto" />
+            <OrionAgencyLogo
+              size="lg"
+              variant="auto"
+              className="orion-logo--sidebar orion-logo--mobile-header"
+            />
           </div>
         </header>
         ) : null}
@@ -329,7 +333,11 @@ function AppShellSkeletonInner({
         {!hideMobileAppHeader && mobileMenuOpen ? (
           <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0f14] lg:hidden print:hidden" role="dialog" aria-modal="true">
             <div className="flex shrink-0 items-center justify-between border-b border-[var(--sidebar-border)] px-4 py-3">
-              <OrionAgencyLogo size="sm" variant="dark" />
+              <OrionAgencyLogo
+                size="lg"
+                variant="dark"
+                className="orion-logo--sidebar orion-logo--mobile-header"
+              />
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}

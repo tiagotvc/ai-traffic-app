@@ -87,10 +87,16 @@ export function ClientCreateWizardNav({
 
 export function ClientCreateSidebar({
   w,
-  tW
+  tW,
+  goBack,
+  onNext,
+  onCreate
 }: {
   w: Wizard;
   tW: (key: string, values?: Record<string, string | number>) => string;
+  goBack: () => void;
+  onNext: () => void;
+  onCreate: () => void;
 }) {
   const scoreCircumference = 2 * Math.PI * 32;
   const scoreOffset = scoreCircumference - (w.score / 100) * scoreCircumference;
@@ -194,6 +200,19 @@ export function ClientCreateSidebar({
             </div>
           </div>
         </div>
+      </div>
+      <div className="campaign-creator-sidebar-footer shrink-0">
+        <ClientCreateWizardNav
+          w={w}
+          tBack={tW("back")}
+          tNext={tW("next")}
+          tCreate={tW("create")}
+          tCreating={tW("creating")}
+          goBack={goBack}
+          onNext={onNext}
+          onCreate={onCreate}
+          className="ui-wizard-nav--sidebar"
+        />
       </div>
     </aside>
   );

@@ -21,6 +21,7 @@ import { LearningFilters } from "@/components/agency-brain/LearningFilters";
 import { LearningFormModal } from "@/components/agency-brain/LearningFormModal";
 import { LearningPagination } from "@/components/agency-brain/LearningPagination";
 import { MarketLearningsPanel } from "@/components/agency-brain/MarketLearningsPanel";
+import { PerformanceReadoutCard } from "@/components/agency-brain/PerformanceReadoutCard";
 import { useAgencyBrain } from "@/components/agency-brain/useAgencyBrain";
 import { useAgencyLearnings } from "@/components/agency-brain/useAgencyLearnings";
 import { useMarketLearnings } from "@/components/agency-brain/useMarketLearnings";
@@ -160,6 +161,8 @@ export function AgencyBrainContent({ clientId }: { clientId: string }) {
             setModalOpen(true);
           }}
         />
+
+        {scope === "client" ? <PerformanceReadoutCard clientId={clientId} /> : null}
 
         <LearningsFilterBar
           scope={scope}

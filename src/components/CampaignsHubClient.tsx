@@ -1550,6 +1550,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       <CampaignCreationModePicker
         open={creationPickerOpen}
         onClose={() => setCreationPickerOpen(false)}
+        onStarted={() => setCreationPickerOpen(false)}
         clientSlug={clientFilter || undefined}
       />
       <CampaignExportModal
