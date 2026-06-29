@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { AgencyBrainShell } from "@/components/agency-brain/AgencyBrainShell";
+import { ModuleGate } from "@/components/billing/ModuleGate";
 import { PlanNavGate } from "@/components/billing/PlanNavGate";
 
 export default async function AgencyBrainLayout({
@@ -12,10 +13,12 @@ export default async function AgencyBrainLayout({
 }) {
   const { locale } = await params;
   return (
-    <PlanNavGate navId="agencyBrain" locale={locale}>
-      <Suspense fallback={<div className="p-8 text-sm text-[var(--text-dim)]">…</div>}>
-        <AgencyBrainShell>{children}</AgencyBrainShell>
-      </Suspense>
-    </PlanNavGate>
+    <ModuleGate moduleId="brain" locale={locale}>
+      <PlanNavGate navId="agencyBrain" locale={locale}>
+        <Suspense fallback={<div className="p-8 text-sm text-[var(--text-dim)]">…</div>}>
+          <AgencyBrainShell>{children}</AgencyBrainShell>
+        </Suspense>
+      </PlanNavGate>
+    </ModuleGate>
   );
 }

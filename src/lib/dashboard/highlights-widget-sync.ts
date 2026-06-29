@@ -17,7 +17,7 @@ const WIDGET_SECTION: Record<string, DashboardSectionKey> = {
   "clients.health": "agencyHealth"
 };
 
-const SECTION_WIDGET_TYPES: Record<DashboardSectionKey, string> = {
+const SECTION_WIDGET_TYPES: Partial<Record<DashboardSectionKey, string>> = {
   brainShelf: "brain.learnings",
   heroKpis: "metrics.card",
   secondaryMetrics: "metrics.card",
@@ -71,6 +71,7 @@ export function highlightsCanvasNeedsReseed(
       continue;
     }
     const widgetType = SECTION_WIDGET_TYPES[section];
+    if (!widgetType) continue;
     if (!widgets.some((w) => w.widgetType === widgetType)) return true;
   }
   return widgets.length === 0;

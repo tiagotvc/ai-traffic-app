@@ -1327,6 +1327,25 @@ h6,
     background: var(--ui-accent-muted);
   }
 
+  .ds-table-compact-action--outline {
+    @apply gap-1 border px-2 py-1 text-[10px] leading-tight;
+    border-color: var(--creator-card-border, var(--border-color));
+    background: var(--creator-card-bg-inset, var(--surface-bg));
+    color: var(--text-dim);
+  }
+
+  .ds-table-compact-action--outline:hover:not(:disabled) {
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+    background: var(--ui-accent-muted);
+  }
+
+  .ds-table-compact-action--outline-active {
+    border-color: var(--ui-accent-border);
+    color: var(--ui-accent);
+    background: var(--ui-accent-muted);
+  }
+
   .ds-table-compact-action--danger {
     color: var(--danger);
   }
@@ -2045,6 +2064,132 @@ h6,
     animation: orion-loader-shimmer 1.6s ease-in-out infinite;
   }
 
+  /* ── Orion traffic loading overlay (fullscreen blur + data-flow lanes) ── */
+  @keyframes orion-traffic-flow {
+    0% {
+      left: -8%;
+      opacity: 0;
+      transform: scale(0.65);
+    }
+    12% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    88% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    100% {
+      left: 108%;
+      opacity: 0;
+      transform: scale(0.65);
+    }
+  }
+
+  @keyframes orion-traffic-bar {
+    0%,
+    100% {
+      height: 22%;
+      opacity: 0.45;
+    }
+    50% {
+      height: 100%;
+      opacity: 1;
+    }
+  }
+
+  @keyframes orion-traffic-grid-drift {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(24px);
+    }
+  }
+
+  .orion-traffic-loading__grid {
+    background-image:
+      linear-gradient(rgba(124, 58, 237, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124, 58, 237, 0.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse 70% 55% at 50% 45%, black 15%, transparent 72%);
+    animation: orion-traffic-grid-drift 8s linear infinite;
+    pointer-events: none;
+  }
+
+  .orion-traffic-loading__scene {
+    min-height: 7.5rem;
+  }
+
+  .orion-traffic-loading__lanes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 0 0.5rem;
+    opacity: 0.9;
+  }
+
+  .orion-traffic-loading__lane {
+    position: relative;
+    height: 2px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(124, 58, 237, 0.15) 20%,
+      rgba(167, 139, 250, 0.35) 50%,
+      rgba(124, 58, 237, 0.15) 80%,
+      transparent 100%
+    );
+  }
+
+  .orion-traffic-loading__pulse {
+    position: absolute;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    margin-top: -3.5px;
+    border-radius: 999px;
+    animation: orion-traffic-flow 2.2s linear infinite;
+  }
+
+  .orion-traffic-loading__pulse--a {
+    background: var(--ui-accent);
+    box-shadow:
+      0 0 10px color-mix(in srgb, var(--ui-accent) 70%, transparent),
+      0 0 20px color-mix(in srgb, var(--ui-accent) 35%, transparent);
+  }
+
+  .orion-traffic-loading__pulse--b {
+    width: 5px;
+    height: 5px;
+    margin-top: -2.5px;
+    background: rgba(245, 166, 35, 0.95);
+    box-shadow: 0 0 8px rgba(245, 166, 35, 0.55);
+  }
+
+  .orion-traffic-loading__bars {
+    height: 2rem;
+  }
+
+  .orion-traffic-loading__bar {
+    display: block;
+    width: 5px;
+    height: 40%;
+    border-radius: 3px 3px 1px 1px;
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--ui-accent) 85%, transparent),
+      rgba(167, 139, 250, 0.55)
+    );
+    animation: orion-traffic-bar 1.35s ease-in-out infinite;
+  }
+
+  .orion-traffic-loading__track {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
   @keyframes pulse-red {
     0%,
     100% {
@@ -2090,8 +2235,8 @@ h6,
 
   /** Hero KPI tile on Destaques (compact sparkline + inset chart frame). */
   .dashboard-kpi-card {
-    @apply rounded-xl border px-3 py-3.5;
-    min-height: 120px;
+    @apply rounded-xl border px-3 py-4;
+    min-height: 132px;
     border-color: var(--creator-card-border, var(--border-color));
     background: var(--creator-card-bg, var(--surface-card));
     border-top-width: 1px;
@@ -2111,9 +2256,9 @@ h6,
 
   .dashboard-kpi-card__spark {
     @apply rounded-lg;
-    min-height: 48px;
-    height: 48px;
-    padding: 2px 0 0;
+    min-height: 56px;
+    height: 56px;
+    padding: 4px 2px 0;
     overflow: visible;
   }
 
@@ -2137,7 +2282,7 @@ h6,
   }
 
   .dashboard-kpi-card--hero {
-    min-height: 120px;
+    min-height: 132px;
   }
 
   /** Secondary metric chips on Destaques. */
@@ -2755,8 +2900,94 @@ h6,
     @apply flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-center;
   }
 
+  .campaign-creator-budget-choice-card--template-tile {
+    @apply relative flex min-h-[7.25rem] flex-col items-start gap-2.5 rounded-xl border p-3.5 pr-9 text-left;
+  }
+
+  .campaign-creator-budget-choice-card--template-tile .campaign-creator-budget-choice-card__content {
+    @apply mt-0 w-full flex-none gap-1;
+  }
+
+  .campaign-creator-budget-choice-card--template-tile .campaign-creator-budget-choice-card__label {
+    @apply text-xs leading-snug;
+  }
+
+  .campaign-creator-budget-choice-card--template-tile .campaign-creator-budget-choice-card__description {
+    @apply line-clamp-2 text-[11px] leading-relaxed;
+  }
+
+  /* Cards quadrados de escolha de modo (manual / IA) */
+  .campaign-creator-budget-choice-card--mode-tile {
+    @apply relative flex aspect-square min-h-[10.5rem] w-full flex-col items-center justify-center gap-2.5 rounded-xl border p-4 text-center;
+  }
+
+  .campaign-creator-budget-choice-card__icon--mode-tile {
+    @apply mx-auto h-9 w-9 shrink-0;
+  }
+
+  .campaign-creator-budget-choice-card__content--mode-tile {
+    @apply flex w-full flex-none flex-col items-center justify-center gap-1 text-center;
+  }
+
+  .campaign-creator-budget-choice-card--mode-tile .campaign-creator-budget-choice-card__label {
+    @apply w-full text-center text-sm;
+  }
+
+  .campaign-creator-budget-choice-card--mode-tile .campaign-creator-budget-choice-card__description {
+    @apply line-clamp-3 w-full text-center text-[11px] leading-relaxed;
+  }
+
+  .creation-mode-choice-card-wrap--with-credits .campaign-creator-budget-choice-card--mode-tile {
+    @apply pt-5;
+  }
+
+  .creation-mode-credit-float {
+    @apply pointer-events-none absolute -top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 shadow-md;
+    border-color: var(--ui-accent-border);
+    background: var(--surface-card, var(--creator-card-bg, var(--surface-bg)));
+  }
+
+  .creation-mode-credit-float__cost {
+    @apply font-heading text-xs font-bold tracking-tight text-[var(--ui-accent)];
+  }
+
+  .creation-mode-credit-float__dot {
+    @apply text-[10px] font-bold text-[var(--text-dimmer)];
+  }
+
+  .creation-mode-credit-float__balance {
+    @apply text-[10px] font-semibold tabular-nums text-[var(--text-main)];
+  }
+
+  .creation-mode-choice-grid {
+    @apply grid items-stretch gap-3 pt-2;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  @media (min-width: 640px) {
+    .creation-mode-choice-grid:has(> :nth-child(2):last-child) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .creation-mode-choice-grid:has(> :nth-child(3)) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
   .campaign-creator-budget-choice-card--row {
     @apply flex min-h-[5.25rem] w-full flex-1 items-start gap-2.5 rounded-lg border px-3 py-3.5 pr-8 text-left;
+  }
+
+  .campaign-creator-budget-choice-card--row-lg {
+    @apply min-h-[5.75rem] gap-3 px-3.5 py-4 pr-9;
+  }
+
+  .campaign-creator-budget-choice-card--row-lg .campaign-creator-budget-choice-card__label--inline {
+    @apply text-sm;
+  }
+
+  .campaign-creator-budget-choice-card--row-lg .campaign-creator-budget-choice-card__description {
+    @apply text-xs leading-relaxed;
   }
 
   .campaign-creator-budget-choice-card--chip {

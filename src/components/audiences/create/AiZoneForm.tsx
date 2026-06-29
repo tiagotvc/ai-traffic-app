@@ -33,6 +33,11 @@ export type AiZoneFormActionState = {
   promptReady: boolean;
   hasPreview: boolean;
   hasGeoRules: boolean;
+  /** Para o Geo Scientist (Orion Brain). */
+  briefing?: string;
+  region?: string;
+  places?: string[];
+  geoLocations?: { label?: string; latitude: number; longitude: number; radius: number }[];
 };
 
 export type AiZoneFormHandle = {
@@ -181,6 +186,12 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
     save
   }));
 
+  const previewPlaces = preview?.places ?? [];
+  const placeLabels = previewPlaces.map((p) => p.label);
+  const previewRegion = previewPlaces.find((p) => p.city || p.state)
+    ? [previewPlaces[0]?.city, previewPlaces[0]?.state].filter(Boolean).join(" - ")
+    : undefined;
+
   useEffect(() => {
     onActionStateChange?.({
       canSave,
@@ -188,8 +199,20 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
       pending,
       promptReady,
       hasPreview,
-      hasGeoRules
+      hasGeoRules,
+      briefing: prompt.trim() || undefined,
+      region: previewRegion,
+      places: placeLabels.length ? placeLabels : undefined,
+      geoLocations: geoRules?.customLocations?.length
+        ? geoRules.customLocations.map((l) => ({
+            label: l.label,
+            latitude: l.latitude,
+            longitude: l.longitude,
+            radius: l.radius
+          }))
+        : undefined
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSave, prompt, preview, geoRules, pending, promptReady, hasPreview, hasGeoRules, onActionStateChange]);
 
   return (
@@ -206,7 +229,7 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
       {show("prompt") || show("radius") ? (
         <section className="campaign-creator-card space-y-4">
           {compactLayout && show("prompt") && show("radius") ? (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_8.5rem] lg:items-start">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(13rem,17.5rem)] lg:items-start lg:gap-6">
               <CreatorAiPromptField
                 icon={<MapPin size={14} />}
                 label={t("zonePromptLabel")}
@@ -221,7 +244,7 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
                 rows={4}
                 maxLength={200}
               />
-              <div className="space-y-1 lg:pt-8">
+              <div className="space-y-1.5 lg:pt-9">
                 <FilterTextField
                   creatorField
                   icon={<Hash size={13} />}
@@ -238,7 +261,7 @@ export const AiZoneForm = forwardRef<AiZoneFormHandle, Props>(function AiZoneFor
                   }}
                   suffix={<span className="text-[10px] text-[var(--text-dimmer)]">km</span>}
                 />
-                <p className="text-[10px] leading-snug text-[var(--text-dimmer)]">{t("zoneRadiusHint")}</p>
+                <p className="text-[10px] leading-relaxed text-[var(--text-dimmer)]">{t("zoneRadiusHint")}</p>
               </div>
             </div>
           ) : (

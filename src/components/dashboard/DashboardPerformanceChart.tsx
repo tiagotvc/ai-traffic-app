@@ -10,6 +10,7 @@ import {
   CartesianGrid,
   Cell,
   ComposedChart,
+  Legend,
   Line,
   LineChart,
   Pie,
@@ -65,6 +66,20 @@ type MetricScaleGroup = "magnitude" | "percent" | "multiplier";
 type AxisSide = "left" | "right" | "tertiary";
 
 const DUAL_AXIS_MAGNITUDE_RATIO = 8;
+
+/** Visual do gráfico de linha no estilo relatório (grid tracejado, legenda, tooltip simples). */
+const REPORT_LINE_GRID_STROKE = "var(--border-color)";
+const REPORT_LINE_TICK = { fill: "var(--text-dimmer)", fontSize: 10 };
+const REPORT_LINE_AXIS = { axisLine: false as const, tickLine: false as const };
+const REPORT_LINE_TOOLTIP_STYLE = {
+  background: "var(--surface-card)",
+  border: "1px solid var(--border-color)",
+  borderRadius: 10,
+  fontSize: 11,
+  color: "var(--text-main)"
+};
+
+type LineVisual = "report" | "premium";
 
 function metricColor(key: MetricKey): string {
   return METRIC_BY_KEY[key]?.color ?? "#94a3b8";
@@ -300,7 +315,8 @@ export function DashboardPerformanceChart({
   visual,
   metricSummary,
   dualAxisAlways = false,
-  fillHeight = false
+  fillHeight = false,
+  lineVisual = "premium"
 }: {
   data: ChartPoint[];
   activeMetrics: MetricKey[];
@@ -323,6 +339,8 @@ export function DashboardPerformanceChart({
   dualAxisAlways?: boolean;
   /** Stretch chart plot to fill remaining card height (Destaques page). */
   fillHeight?: boolean;
+  /** Estilo de linha: relatório (limpo) vs premium (área/gradiente). */
+  lineVisual?: LineVisual;
 }) {
   const t = useTranslations("dashboard");
   const [animKey, setAnimKey] = useState(0);
@@ -384,8 +402,7 @@ export function DashboardPerformanceChart({
         <div className={cn("flex shrink-0 flex-wrap items-end justify-between gap-2", isCanvas ? "mb-1.5" : "mb-2")}>
           <div className="min-w-0">
             <h3
-              className={cn("font-heading text-sm font-semibold", isCanvas ? "text-sm" : "")}
-              style={{ color: "var(--text-main)" }}
+              className="font-heading text-sm font-semibold text-[var(--text-main)]"
             >
               {title ?? t("metricsChartTitle")}
             </h3>
@@ -481,6 +498,7 @@ export function DashboardPerformanceChart({
               metricSummary={metricSummary}
               compactAxis={isMobile}
               dualAxisAlways={dualAxisAlways}
+              lineVisual={lineVisual}
             />
           </ChartContainer>
         ) : (
@@ -565,7 +583,8 @@ function PerformanceChartBody({
   visual,
   metricSummary,
   compactAxis = false,
-  dualAxisAlways = false
+  dualAxisAlways = false,
+  lineVisual = "premium"
 }: {
   data: ChartPoint[];
   activeMetrics: MetricKey[];
@@ -578,6 +597,7 @@ function PerformanceChartBody({
   metricSummary?: Partial<Record<MetricKey, number>>;
   compactAxis?: boolean;
   dualAxisAlways?: boolean;
+  lineVisual?: LineVisual;
 }) {
   const colorFor = (key: MetricKey) => resolveMetricColor(key, visual?.customColors);
   const lineWidth = strokeWeightToPx(visual?.lineStrokeWidth, 2.5);
@@ -954,6 +974,114 @@ function PerformanceChartBody({
   }
 
   if (chartStyle === "line") {
+    if (lineVisual === "report") {
+      const reportLeftYAxisWidth = 44;
+      const reportRightYAxisWidth = 32;
+      const reportRightMargin = hasTertiaryAxis
+        ? reportRightYAxisWidth * 2
+        : hasRightAxis
+          ? reportRightYAxisWidth
+          : 0;
+      const reportAxisProps = {
+        margin: { top: 8, right: reportRightMargin, left: 0, bottom: 0 },
+        data
+      };
+      const reportGrid = (
+        <CartesianGrid strokeDasharray="3 3" stroke={REPORT_LINE_GRID_STROKE} />
+      );
+      const reportXAxis = (
+        <XAxis
+          dataKey="label"
+          tick={REPORT_LINE_TICK}
+          {...REPORT_LINE_AXIS}
+          interval="preserveStartEnd"
+          height={28}
+          tickMargin={4}
+        />
+      );
+      const reportLeftYAxis = (
+        <YAxis
+          yAxisId="left"
+          width={reportLeftYAxisWidth}
+          tick={REPORT_LINE_TICK}
+          {...REPORT_LINE_AXIS}
+          domain={leftDomain}
+          tickCount={dualAxisAlways ? 5 : undefined}
+          allowDataOverflow={false}
+          tickFormatter={(v: number) => formatSparkAxisValue(Number(v))}
+        />
+      );
+      const reportRightYAxis = hasRightAxis ? (
+        <YAxis
+          yAxisId="right"
+          orientation="right"
+          width={reportRightYAxisWidth}
+          tick={{ ...REPORT_LINE_TICK, textAnchor: "start" as const }}
+          {...REPORT_LINE_AXIS}
+          domain={rightDomain}
+          tickCount={dualAxisAlways ? 5 : undefined}
+          allowDataOverflow={false}
+          tickFormatter={(v: number) => {
+            const primaryRight = rightAxisMetrics[0];
+            if (primaryRight) return formatValue(primaryRight, Number(v));
+            return formatSparkAxisValue(Number(v));
+          }}
+        />
+      ) : null;
+      const reportTertiaryYAxis = hasTertiaryAxis ? (
+        <YAxis
+          yAxisId="tertiary"
+          orientation="right"
+          width={reportRightYAxisWidth}
+          tick={{ ...REPORT_LINE_TICK, textAnchor: "start" as const }}
+          {...REPORT_LINE_AXIS}
+          domain={tertiaryDomain}
+          tickCount={dualAxisAlways ? 5 : undefined}
+          allowDataOverflow={false}
+          tickFormatter={(v: number) => {
+            const primaryTertiary = tertiaryAxisMetrics[0];
+            if (primaryTertiary) return formatValue(primaryTertiary, Number(v));
+            return formatSparkAxisValue(Number(v));
+          }}
+        />
+      ) : null;
+      const reportTooltip = (
+        <Tooltip
+          contentStyle={REPORT_LINE_TOOLTIP_STYLE}
+          formatter={(value, _name, item) => {
+            const key = String((item as { dataKey?: string })?.dataKey ?? "") as MetricKey;
+            return [formatValue(key, Number(value)), metricLabels[key] ?? key];
+          }}
+        />
+      );
+
+      return (
+        <LineChart {...reportAxisProps}>
+          {reportGrid}
+          {reportXAxis}
+          {reportLeftYAxis}
+          {reportRightYAxis}
+          {reportTertiaryYAxis}
+          {reportTooltip}
+          <Legend
+            wrapperStyle={{ fontSize: 11, color: "var(--text-dim)", paddingLeft: 0, paddingRight: 0 }}
+          />
+          {activeMetrics.map((key) => (
+            <Line
+              key={key}
+              yAxisId={axisSideFor(key)}
+              type="monotone"
+              dataKey={key}
+              name={metricLabels[key] ?? key}
+              stroke={colorFor(key)}
+              strokeWidth={2}
+              dot={false}
+            />
+          ))}
+        </LineChart>
+      );
+    }
+
     return (
       <LineChart {...axisProps}>
         {grid}

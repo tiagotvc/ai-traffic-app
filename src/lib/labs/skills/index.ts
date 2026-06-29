@@ -3,13 +3,17 @@ import "server-only";
 import { isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 
 import { competitorSkill } from "./competitor-skill";
+import { geoSkill } from "./geo-skill";
+import { testingSkill } from "./testing-skill";
 import type { ScientistSkill, ScientistSkillInput, ScientistSkillResult } from "./types";
 
 export type { ScientistSkill, ScientistSkillInput, ScientistSkillResult } from "./types";
 
 /** Registro de skills de cientista (a "fábrica"). Adicionar novos cientistas aqui. */
 const SKILLS: Record<string, ScientistSkill> = {
-  competitor: competitorSkill
+  competitor: competitorSkill,
+  geo: geoSkill,
+  testing: testingSkill
 };
 
 /** Executa uma skill de cientista respeitando a flag de plataforma. */

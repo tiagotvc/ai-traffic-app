@@ -14,6 +14,8 @@ import {
   isReportsBuildActive,
   isReportsScheduleActive
 } from "@/lib/reports/nav";
+import type { ResolvedFeatureMap } from "@/lib/feature-flags/types";
+import { isModuleEnabledInShell } from "@/lib/feature-flags/modules";
 import { isNavItemAllowed } from "@/lib/billing/nav-permissions";
 import type { PlanLimits } from "@/lib/billing/types";
 import { FREE_LIMITS } from "@/lib/billing/types";
@@ -42,6 +44,8 @@ type Props = {
   collapsed: boolean;
   planLimits?: PlanLimits;
   planLimitsReady?: boolean;
+  platformFeatures?: ResolvedFeatureMap;
+  isPlatformAdmin?: boolean;
   pathname: string;
   onNavigate?: () => void;
 };
@@ -50,6 +54,8 @@ export function ReportsNavGroup({
   collapsed,
   planLimits = FREE_LIMITS,
   planLimitsReady = true,
+  platformFeatures,
+  isPlatformAdmin = false,
   pathname,
   onNavigate
 }: Props) {
@@ -57,6 +63,16 @@ export function ReportsNavGroup({
   const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
   const inReports = base.startsWith("/reports");
   const parentActive = isReportsActive(base);
+
+  if (
+    !isModuleEnabledInShell(platformFeatures, "reports", {
+      ready: planLimitsReady,
+      isPlatformAdmin
+    })
+  ) {
+    return null;
+  }
+
   const allowed = !planLimitsReady || isNavItemAllowed("reports", planLimits);
 
   const [expanded, setExpanded] = useState(inReports);

@@ -5,16 +5,13 @@ import type { LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   Activity,
-  AlertCircle,
-  Building2,
-  Check,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Copy,
   Facebook,
   Globe,
   Instagram,
-  MapPin,
   Sparkles,
   Tag,
   UserCheck,
@@ -23,28 +20,24 @@ import {
 } from "lucide-react";
 
 import { TosBanner } from "@/components/audiences/create/TosBanner";
+import { AudienceCreatorBrainTips } from "@/components/audiences/create/AudienceCreatorBrainTips";
+import { AudienceCreatorSidebarProgressCard } from "@/components/audiences/create/AudienceCreatorSidebarProgressCard";
+import { AudienceCreatorSummaryModal } from "@/components/audiences/create/AudienceCreatorSummaryModal";
 import type { AudienceCreateContext, AudienceOptions } from "@/components/audiences/create/types";
-import { AudienceCreationInsightsPanel } from "@/components/audiences/create/AudienceCreationInsightsPanel";
 import {
   ChoiceCardCheck,
   MultiSelectChoiceCard
 } from "@/components/campaign-creator/BudgetChoiceCard";
-import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
-import { DsChoiceCard } from "@/design-system";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
+import { OrionTrafficLoadingOverlay } from "@/components/ui/OrionTrafficLoadingOverlay";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/cn";
-import { UxHorizontalStepper, UxScoreItem } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
+import { UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 
 type AudienceStepKey = "setup" | "rules" | "review";
 type AudienceTypeChoice = "custom" | "lookalike" | "saved" | "";
-
-const AUDIENCE_STEPS: { id: AudienceStepKey; label: string }[] = [
-  { id: "setup", label: "Tipo e detalhes" },
-  { id: "rules", label: "Regras" },
-  { id: "review", label: "Revisão" }
-];
+type GenderKey = "male" | "female" | "all";
 
 const STEP_ORDER: AudienceStepKey[] = ["setup", "rules", "review"];
 
@@ -56,7 +49,6 @@ type Props = {
   clientSlug: string;
   onClientChange: (slug: string) => void;
   onBack: () => void;
-  /** Parent layout already provides campaign-creator-shell wrapper. */
   bareShell?: boolean;
 };
 
@@ -80,7 +72,7 @@ function AudienceChoiceRow({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row w-full",
+        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row campaign-creator-budget-choice-card--row-lg w-full",
         selected
           ? "campaign-creator-budget-choice-card--selected"
           : "campaign-creator-budget-choice-card--unselected"
@@ -97,7 +89,7 @@ function AudienceChoiceRow({
           )}
           aria-hidden
         >
-          <Icon size={18} strokeWidth={1.75} />
+          <Icon size={20} strokeWidth={1.75} />
         </span>
       ) : null}
       <span className="campaign-creator-budget-choice-card__content">
@@ -124,9 +116,79 @@ function ruleActionIcon(source: string, metaEvent: string): LucideIcon {
 
 function AudienceReviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-[color-mix(in_srgb,var(--border-color)_60%,transparent)] py-2.5 last:border-b-0">
-      <span className="campaign-creator-review-summary-row__label">{label}</span>
-      <span className="text-right text-sm font-medium text-[var(--text-main)]">{value}</span>
+    <div className="campaign-creator-review-overview-row">
+      <div className="min-w-0 flex-1">
+        <p className="campaign-creator-review-summary-row__label">{label}</p>
+        <div className="campaign-creator-review-summary-row__value">{value}</div>
+      </div>
+    </div>
+  );
+}
+
+function AudienceWizardNav({
+  onBack,
+  onNext,
+  onCreate,
+  showNext,
+  showCreate,
+  nextDisabled,
+  createDisabled,
+  createPending,
+  backLabel,
+  nextLabel,
+  createLabel,
+  creatingLabel,
+  placement
+}: {
+  onBack: () => void;
+  onNext: () => void;
+  onCreate: () => void;
+  showNext: boolean;
+  showCreate: boolean;
+  nextDisabled: boolean;
+  createDisabled: boolean;
+  createPending: boolean;
+  backLabel: string;
+  nextLabel: string;
+  createLabel: string;
+  creatingLabel: string;
+  placement: "sidebar" | "footer";
+}) {
+  const wrapperClass = placement === "sidebar" ? "ui-wizard-nav--sidebar" : "ui-wizard-nav--footer";
+
+  return (
+    <div className={wrapperClass}>
+      <div className="ui-wizard-nav__actions">
+        <button
+          type="button"
+          onClick={onBack}
+          className="ui-wizard-nav__btn ui-wizard-nav__btn--back ui-btn-secondary inline-flex h-9 items-center justify-center gap-1 px-3.5 text-sm font-heading font-medium"
+        >
+          <ChevronLeft size={16} strokeWidth={2.5} />
+          {backLabel}
+        </button>
+        {showNext ? (
+          <button
+            type="button"
+            disabled={nextDisabled}
+            onClick={onNext}
+            className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {nextLabel}
+            <ChevronRight size={16} strokeWidth={2.5} />
+          </button>
+        ) : showCreate ? (
+          <button
+            type="button"
+            disabled={createDisabled || createPending}
+            onClick={onCreate}
+            className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-2 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <UserCheck size={14} />
+            {createPending ? creatingLabel : createLabel}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -159,10 +221,13 @@ function CreatorNumberField({
   );
 }
 
-export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange, onBack, bareShell }: Props) {
+export function AudienceCreatorUxPage({ ctx, onBack, bareShell }: Props) {
   const t = useTranslations("audiences");
+  const tAc = useTranslations("audienceCreator");
+  const tCc = useTranslations("campaignCreator");
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState<AudienceStepKey>("setup");
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [nameTouched, setNameTouched] = useState(false);
   const [typeChoice, setTypeChoice] = useState<AudienceTypeChoice>("");
   const [audienceName, setAudienceName] = useState("");
@@ -172,7 +237,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
   const [lookalikePct, setLookalikePct] = useState("1");
   const [ageMin, setAgeMin] = useState("18");
   const [ageMax, setAgeMax] = useState("65");
-  const [genders, setGenders] = useState<string[]>(["Masculino", "Feminino"]);
+  const [genders, setGenders] = useState<GenderKey[]>(["male", "female"]);
   const [interests, setInterests] = useState("");
   const [ruleAction, setRuleAction] = useState("");
   const [seedAudienceId, setSeedAudienceId] = useState("");
@@ -180,7 +245,6 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
   const [tosBlocked, setTosBlocked] = useState(false);
 
   const currentIdx = STEP_ORDER.indexOf(step);
-  const selectedClient = clients.find((c) => c.slug === clientSlug);
 
   const seedAudiences = useMemo(
     () => ctx.audiences.filter((a) => !(a.subtype ?? "").toUpperCase().includes("LOOKALIKE")),
@@ -257,12 +321,22 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
 
   const typeLabel =
     typeChoice === "custom"
-      ? "Personalizado"
+      ? tAc("typePersonalizado")
       : typeChoice === "lookalike"
-        ? "Lookalike"
+        ? tAc("typeLookalike")
         : typeChoice === "saved"
-          ? "Salvo"
+          ? tAc("typeSalvo")
           : "—";
+
+  const genderOptions: { key: GenderKey; label: string }[] = [
+    { key: "male", label: tAc("genderMale") },
+    { key: "female", label: tAc("genderFemale") },
+    { key: "all", label: tAc("genderAll") }
+  ];
+
+  const gendersReviewLabel = genders
+    .map((g) => genderOptions.find((o) => o.key === g)?.label ?? g)
+    .join(", ");
 
   const canNext =
     step === "setup"
@@ -286,16 +360,17 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
     setStep(STEP_ORDER[currentIdx - 1]!);
   };
 
-  const toggleGender = (g: string) =>
+  const toggleGender = (g: GenderKey) =>
     setGenders((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
 
   const scoreItems = [
-    { label: "Tipo de público", done: typeChoice !== "" },
-    { label: "Nome do público", done: audienceName.trim() !== "" },
-    { label: "País / Região", done: country !== "" },
-    { label: "Fonte / Regras", done: step === "rules" || step === "review" }
+    { labelKey: "scoreAudienceType" as const, done: typeChoice !== "" },
+    { labelKey: "scoreAudienceName" as const, done: audienceName.trim() !== "" },
+    { labelKey: "scoreCountryRegion" as const, done: country !== "" },
+    { labelKey: "scoreSourceRules" as const, done: step === "rules" || step === "review" }
   ];
   const score = Math.round((scoreItems.filter((s) => s.done).length / scoreItems.length) * 100);
+  const stepPercent = Math.round(((currentIdx + 1) / STEP_ORDER.length) * 100);
 
   const selectedSeed = seedAudiences.find((a) => a.id === seedAudienceId);
 
@@ -390,8 +465,8 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
             age_min: parseInt(ageMin, 10) || 18,
             age_max: parseInt(ageMax, 10) || 65
           };
-          if (genders.length === 1 && genders.includes("Masculino")) targeting.genders = [1];
-          else if (genders.length === 1 && genders.includes("Feminino")) targeting.genders = [2];
+          if (genders.length === 1 && genders.includes("male")) targeting.genders = [1];
+          else if (genders.length === 1 && genders.includes("female")) targeting.genders = [2];
           const res = await fetch("/api/meta/saved-audiences", {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -434,23 +509,11 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
     window_
   ]);
 
-  const stepperSteps = AUDIENCE_STEPS.map((s, i) => ({
-    number: i + 1,
-    label: s.label,
-    disabled: currentIdx < i
-  }));
-
-  const tipText =
-    typeChoice === "lookalike"
-      ? "Públicos lookalike de 1% são mais precisos. Combine com exclusões para evitar duplicação."
-      : typeChoice === "custom"
-        ? "Janelas de 30–60 dias tendem a equilibrar tamanho e relevância para a maioria dos objetivos."
-        : typeChoice === "saved"
-          ? "Interesses muito amplos podem reduzir a eficiência. Prefira 3–5 interesses específicos."
-          : "Escolha o tipo de público para ver dicas personalizadas.";
-
-  const scoreCircumference = 2 * Math.PI * 32;
-  const scoreOffset = scoreCircumference - (score / 100) * scoreCircumference;
+  const stepperSteps = [
+    { number: 1, label: tAc("macroStepSetup"), disabled: currentIdx < 0 },
+    { number: 2, label: tAc("macroStepRules"), disabled: currentIdx < 1 },
+    { number: 3, label: tAc("macroStepReview"), disabled: currentIdx < 2 }
+  ];
 
   const shellClass = bareShell
     ? "flex min-h-0 flex-1 flex-col overflow-hidden"
@@ -462,17 +525,25 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
       className={shellClass}
       style={{ background: "var(--surface-bg)" }}
     >
+      <OrionTrafficLoadingOverlay
+        open={pending}
+        title={tAc("createAudience")}
+        message={t("creating")}
+        ariaLabelledBy="audience-create-loading-title"
+      />
+
       <header className="campaign-creator-header shrink-0 px-4 pb-3 pt-3 lg:pl-8 lg:pr-4 lg:pb-4 lg:pt-4">
         <div className="flex items-start justify-between gap-3">
           <PageTitleBlock
             className="flex-1"
-            title="Criador de públicos"
+            title={tAc("pageTitle")}
             subtitle={
               <>
-                <Link href="/audiences" className="hover:underline">
-                  Públicos
+                <Link href="/audiences/meta" className="hover:underline">
+                  {tAc("breadcrumbAudiences")}
                 </Link>
-                {" › Criar novo público"}
+                {" › "}
+                {tAc("breadcrumbCreateNew")}
               </>
             }
             titleIcon={<Users size={16} aria-hidden />}
@@ -485,14 +556,14 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                   border: "1px solid var(--ui-accent-border)"
                 }}
               >
-                Rascunho
+                {tAc("draftBadge")}
               </span>
             }
           />
           <button
             type="button"
             onClick={onBack}
-            aria-label="Voltar"
+            aria-label={tCc("close")}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-80 lg:h-8 lg:w-8"
           >
             <X size={20} strokeWidth={2} className="text-[var(--text-dim)]" />
@@ -502,8 +573,8 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
 
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr] gap-x-8 overflow-x-visible overflow-y-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="campaign-creator-stepper-row col-start-1 row-start-1 flex shrink-0 items-center gap-3 border-b border-[var(--border-color)] py-2 lg:gap-4 lg:py-1.5">
-          <div className="min-w-0 flex-1 overflow-x-auto">
-            <div className="campaign-creator-stepper w-full lg:max-w-3xl">
+          <div className="min-w-0 flex-1 overflow-x-auto px-4">
+            <div className="campaign-creator-stepper w-full max-w-full lg:w-fit">
               <UxHorizontalStepper
                 size="mini"
                 steps={stepperSteps}
@@ -516,9 +587,12 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
           </div>
         </div>
 
-        <main className="campaign-creator-main-scroll relative col-start-1 row-start-2 flex min-h-0 min-w-0 w-full flex-col overflow-y-auto py-3">
-          <div className="campaign-creator-main-scroll__inner mx-auto w-full max-w-xl pb-6">
-            <div className="campaign-creator-section-stack">
+        <main className="relative col-start-1 row-start-2 flex min-h-0 min-w-0 w-full flex-col overflow-x-visible overflow-y-hidden py-3">
+          <div className="campaign-creator-main-scroll flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-x-visible overflow-y-auto lg:overflow-y-hidden">
+            <div className="campaign-creator-main-scroll__inner flex min-h-0 min-w-0 w-full flex-1 flex-col">
+              <div className="campaign-creator-step-panel flex min-h-0 min-w-0 w-full flex-1 flex-col">
+                <div className="campaign-creator-step-scroll min-h-0 flex-1 overflow-y-auto pb-2 pt-0">
+                  <div className="campaign-creator-section-stack space-y-4">
               <TosBanner
                 clientSlug={ctx.clientSlug}
                 adAccountId={ctx.adAccountId}
@@ -529,44 +603,41 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 <div className="animate-fade-up space-y-4">
                   <div>
                     <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
-                      Tipo e detalhes do público
+                      {tAc("setupTitle")}
                     </h2>
-                    <p className="mt-1 text-xs text-[var(--text-dim)]">
-                      Escolha o tipo, dê um nome e configure as opções básicas.
-                    </p>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">{tAc("setupDesc")}</p>
                   </div>
 
                   <section className="campaign-creator-card">
-                    <h3 className="campaign-creator-section-title mb-3">Tipo de público</h3>
-                    <div className="campaign-creator-choice-cards campaign-creator-choice-cards--3">
+                    <h3 className="campaign-creator-section-title mb-3">{tAc("audienceType")}</h3>
+                    <div className="space-y-2">
                       {[
                         {
                           id: "custom" as AudienceTypeChoice,
-                          label: "Público Personalizado",
-                          desc: "Interações com perfil, site ou lista de clientes.",
+                          label: tAc("customAudience"),
+                          desc: tAc("customAudienceDesc"),
                           icon: Users
                         },
                         {
                           id: "lookalike" as AudienceTypeChoice,
-                          label: "Lookalike",
-                          desc: "Pessoas parecidas com seus melhores clientes.",
+                          label: tAc("lookalike"),
+                          desc: tAc("lookalikeDesc"),
                           icon: Copy
                         },
                         {
                           id: "saved" as AudienceTypeChoice,
-                          label: "Público Salvo",
-                          desc: "Interesses, demografia e comportamentos.",
+                          label: tAc("savedAudience"),
+                          desc: tAc("savedAudienceDesc"),
                           icon: Globe
                         }
                       ].map((opt) => (
-                        <DsChoiceCard
+                        <AudienceChoiceRow
                           key={opt.id}
-                          layout="inline"
-                          title={opt.label}
+                          selected={typeChoice === opt.id}
+                          label={opt.label}
                           description={opt.desc}
-                          icon={<opt.icon size={18} />}
-                          accent={typeChoice === opt.id}
-                          onClick={() => setTypeChoice(opt.id)}
+                          icon={opt.icon}
+                          onSelect={() => setTypeChoice(opt.id)}
                         />
                       ))}
                     </div>
@@ -576,8 +647,8 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                     <FilterTextField
                       creatorField
                       icon={<Tag size={13} />}
-                      label="Nome do público"
-                      placeholder="Ex: [ENVOLV] [IG] Seguidores 30D"
+                      label={tAc("audienceName")}
+                      placeholder={tAc("audienceNamePlaceholder")}
                       value={audienceName}
                       onChange={(v) => {
                         setAudienceName(v);
@@ -585,20 +656,19 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                       }}
                     />
                     {nameTouched && !audienceName.trim() ? (
-                      <p className="mt-2 text-xs text-red-600">Informe um nome para continuar.</p>
+                      <p className="mt-2 text-xs text-red-600">{tAc("nameRequired")}</p>
                     ) : null}
                   </section>
 
                   <section className="campaign-creator-card space-y-3">
-                    <h3 className="campaign-creator-section-title">País / Região</h3>
-                    <div className="flex flex-wrap gap-2">
+                    <h3 className="campaign-creator-section-title">{tAc("countryRegion")}</h3>
+                    <div className="flex flex-wrap gap-2.5">
                       {["BR", "PT", "US", "ES", "AR", "MX"].map((c) => (
                         <MultiSelectChoiceCard
                           key={c}
                           selected={country === c}
                           label={c}
                           onToggle={() => setCountry(c)}
-                          size="sm"
                         />
                       ))}
                     </div>
@@ -606,15 +676,14 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
 
                   {typeChoice === "custom" ? (
                     <section className="campaign-creator-card space-y-3">
-                      <h3 className="campaign-creator-section-title">Fonte de dados</h3>
-                      <div className="flex flex-wrap gap-2">
+                      <h3 className="campaign-creator-section-title">{tAc("dataSource")}</h3>
+                      <div className="flex flex-wrap gap-2.5">
                         <MultiSelectChoiceCard
                           selected={source === "instagram"}
                           label="Instagram"
                           icon={Instagram}
                           iconInline
                           onToggle={() => setSource("instagram")}
-                          size="sm"
                         />
                         <MultiSelectChoiceCard
                           selected={source === "facebook"}
@@ -622,15 +691,13 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                           icon={Facebook}
                           iconInline
                           onToggle={() => setSource("facebook")}
-                          size="sm"
                         />
                         <MultiSelectChoiceCard
                           selected={source === "site"}
-                          label="Site (Pixel)"
+                          label={tAc("sourceSitePixel")}
                           icon={Globe}
                           iconInline
                           onToggle={() => setSource("site")}
-                          size="sm"
                         />
                       </div>
                     </section>
@@ -638,15 +705,14 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
 
                   {typeChoice === "lookalike" ? (
                     <section className="campaign-creator-card space-y-3">
-                      <h3 className="campaign-creator-section-title">Porcentagem de similaridade</h3>
-                      <div className="flex flex-wrap gap-2">
+                      <h3 className="campaign-creator-section-title">{tAc("similarityPercentage")}</h3>
+                      <div className="flex flex-wrap gap-2.5">
                         {["1", "2", "3", "5", "10"].map((p) => (
                           <MultiSelectChoiceCard
                             key={p}
                             selected={lookalikePct === p}
                             label={`${p}%`}
                             onToggle={() => setLookalikePct(p)}
-                            size="sm"
                           />
                         ))}
                       </div>
@@ -656,17 +722,17 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                   {typeChoice === "saved" ? (
                     <section className="campaign-creator-card space-y-4">
                       <div>
-                        <h3 className="campaign-creator-section-title">Faixa etária</h3>
+                        <h3 className="campaign-creator-section-title">{tAc("ageRange")}</h3>
                         <div className="mt-3 grid grid-cols-2 gap-3">
                           <CreatorNumberField
-                            label="Idade mínima"
+                            label={tAc("minAge")}
                             value={ageMin}
                             onChange={setAgeMin}
                             min={13}
                             max={65}
                           />
                           <CreatorNumberField
-                            label="Idade máxima"
+                            label={tAc("maxAge")}
                             value={ageMax}
                             onChange={setAgeMax}
                             min={13}
@@ -675,15 +741,14 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                         </div>
                       </div>
                       <div>
-                        <h3 className="campaign-creator-section-title">Gêneros</h3>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {["Masculino", "Feminino", "Todos"].map((g) => (
+                        <h3 className="campaign-creator-section-title">{tAc("genders")}</h3>
+                        <div className="mt-3 flex flex-wrap gap-2.5">
+                          {genderOptions.map((g) => (
                             <MultiSelectChoiceCard
-                              key={g}
-                              selected={genders.includes(g)}
-                              label={g}
-                              onToggle={() => toggleGender(g)}
-                              size="sm"
+                              key={g.key}
+                              selected={genders.includes(g.key)}
+                              label={g.label}
+                              onToggle={() => toggleGender(g.key)}
                             />
                           ))}
                         </div>
@@ -697,18 +762,16 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                 <div className="animate-fade-up space-y-4">
                   <div>
                     <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
-                      Regras do Público
+                      {tAc("audienceRules")}
                     </h2>
-                    <p className="mt-1 text-xs text-[var(--text-dim)]">
-                      Defina as ações e comportamentos que qualificam uma pessoa para este público.
-                    </p>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">{tAc("audienceRulesDesc")}</p>
                   </div>
 
                   {typeChoice === "custom" ? (
                     <>
                       <section className="campaign-creator-card space-y-2">
                         <h3 className="campaign-creator-section-title">
-                          Ação de engajamento · {sourceLabel}
+                          {tAc("engagementActionFor", { source: sourceLabel })}
                         </h3>
                         {ruleActionOptions.length ? (
                           ruleActionOptions.map((opt) => (
@@ -726,15 +789,14 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                       </section>
 
                       <section className="campaign-creator-card space-y-3">
-                        <h3 className="campaign-creator-section-title">Janela de tempo</h3>
-                        <div className="flex flex-wrap gap-2">
+                        <h3 className="campaign-creator-section-title">{tAc("timeWindow")}</h3>
+                        <div className="flex flex-wrap gap-2.5">
                           {["7", "14", "30", "60", "90", "180"].map((d) => (
                             <MultiSelectChoiceCard
                               key={d}
                               selected={window_ === d}
                               label={`${d}D`}
                               onToggle={() => setWindow_(d)}
-                              size="sm"
                             />
                           ))}
                         </div>
@@ -744,9 +806,7 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
 
                   {typeChoice === "lookalike" ? (
                     <section className="campaign-creator-card space-y-2">
-                      <h3 className="campaign-creator-section-title">
-                        Público-semente (fonte do lookalike)
-                      </h3>
+                      <h3 className="campaign-creator-section-title">{tAc("seedAudience")}</h3>
                       {seedAudiences.length ? (
                         seedAudiences.map((aud) => (
                           <AudienceChoiceRow
@@ -764,14 +824,12 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
 
                   {typeChoice === "saved" ? (
                     <section className="campaign-creator-card">
-                      <h3 className="campaign-creator-section-title mb-3">
-                        Interesses e comportamentos
-                      </h3>
+                      <h3 className="campaign-creator-section-title mb-3">{tAc("interestsBehaviors")}</h3>
                       <FilterTextField
                         creatorField
                         icon={<Activity size={13} />}
-                        label="Interesses"
-                        placeholder="Ex: Marketing digital, Empreendedorismo, Saúde..."
+                        label={tAc("interestsBehaviors")}
+                        placeholder={tAc("interestsPlaceholder")}
                         value={interests}
                         onChange={setInterests}
                       />
@@ -788,9 +846,11 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
                   >
                     <Sparkles size={15} className="mt-0.5 shrink-0 text-[var(--ui-accent)]" aria-hidden />
                     <p>
-                      Após criar o público, ele será enviado à Meta para processamento. Pode levar até{" "}
-                      <strong className="text-[var(--ui-accent)]">30 minutos</strong> até estar disponível
-                      para veiculação.
+                      {tAc.rich("processingHint", {
+                        emphasis: (chunks) => (
+                          <strong className="font-semibold text-[var(--ui-accent)]">{chunks}</strong>
+                        )
+                      })}
                     </p>
                   </div>
                 </div>
@@ -799,269 +859,144 @@ export function AudienceCreatorUxPage({ ctx, clients, clientSlug, onClientChange
               {step === "review" ? (
                 <div className="animate-fade-up space-y-4">
                   <div>
-                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
-                      Revisão
-                    </h2>
-                    <p className="mt-1 text-xs text-[var(--text-dim)]">
-                      Confirme todas as configurações antes de criar o público.
-                    </p>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">{tAc("review")}</h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">{tAc("reviewDesc")}</p>
                   </div>
 
                   <section className="campaign-creator-card">
-                    <div className="mb-4 flex items-center gap-3">
-                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
-                        <UserCheck size={18} strokeWidth={1.75} />
-                      </span>
-                      <div>
-                        <p className="font-heading text-sm font-bold text-[var(--text-main)]">
-                          {audienceName || "—"}
-                        </p>
-                        <p className="text-xs text-[var(--text-dimmer)]">Resumo do público a ser criado</p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <AudienceReviewRow label="Tipo" value={typeLabel} />
-                      <AudienceReviewRow label="Nome" value={audienceName || "—"} />
-                      <AudienceReviewRow label="Cliente" value={selectedClient?.name ?? "—"} />
-                      <AudienceReviewRow label="País" value={country} />
+                    <h3 className="campaign-creator-orion-section-label mb-3">{tAc("audienceSummary")}</h3>
+                    <div className="campaign-creator-sidebar-card-inset campaign-creator-summary-section-card space-y-1 p-1">
+                      <AudienceReviewRow label={tAc("reviewType")} value={typeLabel} />
+                      <AudienceReviewRow label={tAc("reviewName")} value={audienceName || "—"} />
+                      <AudienceReviewRow label={tAc("reviewClient")} value={ctx.clientName} />
+                      <AudienceReviewRow label={tAc("reviewCountry")} value={country} />
                       {typeChoice === "custom" ? (
                         <>
-                          <AudienceReviewRow label="Fonte" value={sourceLabel} />
-                          <AudienceReviewRow label="Ação" value={ruleActionLabel} />
-                          <AudienceReviewRow label="Janela" value={`${window_} dias`} />
+                          <AudienceReviewRow label={tAc("reviewSource")} value={sourceLabel} />
+                          <AudienceReviewRow label={tAc("reviewAction")} value={ruleActionLabel} />
+                          <AudienceReviewRow
+                            label={tAc("reviewWindow")}
+                            value={tAc("daysValue", { count: parseInt(window_, 10) || 0 })}
+                          />
                         </>
                       ) : null}
                       {typeChoice === "lookalike" ? (
                         <>
-                          <AudienceReviewRow label="Similaridade" value={`${lookalikePct}%`} />
-                          <AudienceReviewRow label="Público-semente" value={selectedSeed?.name ?? "—"} />
+                          <AudienceReviewRow label={tAc("reviewSimilarity")} value={`${lookalikePct}%`} />
+                          <AudienceReviewRow label={tAc("reviewSeedAudience")} value={selectedSeed?.name ?? "—"} />
                         </>
                       ) : null}
                       {typeChoice === "saved" ? (
                         <>
-                          <AudienceReviewRow label="Faixa etária" value={`${ageMin} – ${ageMax} anos`} />
-                          <AudienceReviewRow label="Gêneros" value={genders.join(", ") || "—"} />
-                          {interests ? <AudienceReviewRow label="Interesses" value={interests} /> : null}
+                          <AudienceReviewRow
+                            label={tAc("reviewAgeRange")}
+                            value={tAc("ageRangeValue", { min: ageMin, max: ageMax })}
+                          />
+                          <AudienceReviewRow label={tAc("reviewGenders")} value={gendersReviewLabel || "—"} />
+                          {interests ? (
+                            <AudienceReviewRow label={tAc("reviewInterests")} value={interests} />
+                          ) : null}
                         </>
                       ) : null}
                     </div>
                   </section>
 
                   <div className="ui-alert-success flex items-start gap-3 text-xs">
-                    <Check size={15} className="mt-0.5 shrink-0" aria-hidden />
+                    <CheckCircle2 size={15} className="mt-0.5 shrink-0" aria-hidden />
                     <p>
-                      Tudo pronto! Ao confirmar, o público será criado e sincronizado com a conta de
-                      anúncios de <strong>{selectedClient?.name ?? "—"}</strong> na Meta.
+                      {tAc.rich("readyHint", {
+                        client: ctx.clientName,
+                        emphasis: (chunks) => (
+                          <strong className="font-semibold text-[var(--text-main)]">{chunks}</strong>
+                        )
+                      })}
                     </p>
                   </div>
                 </div>
               ) : null}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </main>
 
         <aside className="campaign-creator-sidebar hidden min-h-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:flex lg:flex-col lg:overflow-hidden">
-          <div className="campaign-creator-sidebar__scroll min-h-0 flex-1 overflow-y-auto">
-            <div className="campaign-creator-sidebar__inner space-y-3 py-1">
-              <div className="campaign-creator-sidebar-card">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">Completude</h3>
-                  <span className="rounded-full bg-[var(--ui-accent-muted)] px-2 py-0.5 font-heading text-[11px] font-semibold text-[var(--ui-accent)]">
-                    {Math.round(((currentIdx + 1) / STEP_ORDER.length) * 100)}%
-                  </span>
-                </div>
-                <div className="mt-3 flex items-center gap-4">
-                  <div className="relative h-[4.5rem] w-[4.5rem] shrink-0">
-                    <svg className="h-[4.5rem] w-[4.5rem] -rotate-90" viewBox="0 0 72 72" aria-hidden>
-                      <circle
-                        cx="36"
-                        cy="36"
-                        r="32"
-                        fill="none"
-                        stroke="var(--border-color)"
-                        strokeWidth="5"
-                      />
-                      <circle
-                        cx="36"
-                        cy="36"
-                        r="32"
-                        fill="none"
-                        stroke="var(--ui-accent)"
-                        strokeWidth="5"
-                        strokeDasharray={scoreCircumference}
-                        strokeDashoffset={scoreOffset}
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                    <span className="absolute inset-0 flex items-center justify-center font-heading text-lg font-bold text-[var(--ui-accent)]">
-                      {score}
-                    </span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-[var(--text-dim)]">
-                    Preencha todos os campos para maximizar a qualidade do público.
-                  </p>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {scoreItems.map((item) => (
-                    <UxScoreItem key={item.label} label={item.label} done={item.done} />
-                  ))}
-                </div>
-              </div>
-
-              <div className="campaign-creator-sidebar-card space-y-3">
-                <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">Cliente</h3>
-                <FilterSelectDropdown
-                  creatorField
-                  icon={<Building2 size={14} />}
-                  label={t("selectClient")}
-                  placeholder={t("selectClientFirst")}
-                  value={clientSlug}
-                  onChange={onClientChange}
-                  clearable={false}
-                  options={clients.map((c) => ({ value: c.slug, label: c.name }))}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="campaign-creator-sidebar__scroll min-h-0 flex-1 overflow-y-auto">
+              <div className="campaign-creator-sidebar__inner space-y-3 py-1">
+                <AudienceCreatorSidebarProgressCard
+                  score={score}
+                  scoreItems={scoreItems}
+                  stepPercent={stepPercent}
+                  onOpenSummary={() => setSummaryOpen(true)}
                 />
-              </div>
 
-              <div className="campaign-creator-sidebar-card">
-                <h3 className="mb-3 font-heading text-sm font-semibold text-[var(--text-main)]">
-                  Prévia do público
-                </h3>
-                <div className="campaign-creator-sidebar-card-inset overflow-hidden">
-                  <div
-                    className="flex h-20 items-center justify-center"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, color-mix(in srgb, var(--ui-accent) 8%, transparent), color-mix(in srgb, var(--ui-accent) 16%, transparent))"
-                    }}
-                  >
-                    <div className="px-3 text-center">
-                      <span className="mx-auto mb-1 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
-                        <Users size={18} strokeWidth={1.75} />
-                      </span>
-                      <p className="text-[10px] text-[var(--ui-accent)]">
-                        {typeChoice ? typeLabel : "Selecione um tipo"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="border-t border-[var(--creator-card-border,var(--border-color))] p-3">
-                    <p className="truncate font-heading text-xs font-bold text-[var(--text-main)]">
-                      {audienceName || "Nome do público"}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      {country ? (
-                        <span className="campaign-creator-review-badge campaign-creator-review-badge--accent">
-                          <MapPin size={10} className="mr-0.5 inline" aria-hidden />
-                          {country}
-                        </span>
-                      ) : null}
-                      {typeChoice === "custom" ? (
-                        <span className="campaign-creator-review-badge campaign-creator-review-badge--neutral">
-                          {window_}D
-                        </span>
-                      ) : null}
-                      {typeChoice === "lookalike" ? (
-                        <span className="campaign-creator-review-badge campaign-creator-review-badge--success">
-                          {lookalikePct}%
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="campaign-creator-sidebar-card">
-                <p className="campaign-creator-orion-section-label mb-2">Orion Brain</p>
-                <AudienceCreationInsightsPanel
-                  ageMin={parseInt(ageMin, 10) || 18}
-                  ageMax={parseInt(ageMax, 10) || 65}
-                  gender={
-                    genders.length === 1 && genders.includes("Masculino")
-                      ? "male"
-                      : genders.length === 1 && genders.includes("Feminino")
-                        ? "female"
-                        : "all"
-                  }
-                  layout="stack"
-                  showAiInsignia
+                <AudienceCreatorBrainTips
+                  step={step}
+                  typeChoice={typeChoice}
+                  score={score}
+                  scoreItems={scoreItems}
                 />
-                <p className="mt-3 text-xs leading-relaxed text-[var(--text-dim)]">{tipText}</p>
-              </div>
-
-              <div className="hidden lg:block">
-                <div className="ui-wizard-nav--sidebar">
-                  <div className="ui-wizard-nav__actions">
-                    <button
-                      type="button"
-                      onClick={goPrev}
-                      className="ui-wizard-nav__btn ui-wizard-nav__btn--back ui-btn-secondary inline-flex h-9 items-center justify-center gap-1 px-3.5 text-sm font-heading font-medium"
-                    >
-                      <ChevronLeft size={16} strokeWidth={2.5} />
-                      Voltar
-                    </button>
-                    {step !== "review" ? (
-                      <button
-                        type="button"
-                        disabled={!canNext}
-                        onClick={goNext}
-                        className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Próximo
-                        <ChevronRight size={16} strokeWidth={2.5} />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={pending || tosBlocked}
-                        onClick={handleCreate}
-                        className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-2 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <UserCheck size={14} />
-                        {pending ? t("creating") : "Criar público"}
-                      </button>
-                    )}
-                  </div>
-                </div>
               </div>
             </div>
+            <div className="campaign-creator-sidebar-footer shrink-0">
+              <AudienceWizardNav
+                placement="sidebar"
+                onBack={goPrev}
+                onNext={goNext}
+                onCreate={handleCreate}
+                showNext={step !== "review"}
+                showCreate={step === "review"}
+                nextDisabled={!canNext}
+                createDisabled={tosBlocked}
+                createPending={pending}
+                backLabel={tCc("back")}
+                nextLabel={tCc("next")}
+                createLabel={tAc("createAudience")}
+                creatingLabel={t("creating")}
+              />
+            </div>
           </div>
+          <AudienceCreatorSummaryModal
+            open={summaryOpen}
+            onClose={() => setSummaryOpen(false)}
+            score={score}
+            audienceName={audienceName}
+            typeLabel={typeLabel}
+            clientName={ctx.clientName}
+            country={country}
+            typeChoice={typeChoice}
+            sourceLabel={sourceLabel}
+            ruleActionLabel={ruleActionLabel}
+            windowDays={window_}
+            lookalikePct={lookalikePct}
+            seedName={selectedSeed?.name}
+            ageMin={ageMin}
+            ageMax={ageMax}
+            genders={gendersReviewLabel}
+            interests={interests}
+          />
         </aside>
       </div>
 
       <div className="campaign-creator-footer-outer shrink-0 lg:hidden">
         <div className="campaign-creator-footer-band">
-          <div className="ui-wizard-nav--footer">
-            <div className="ui-wizard-nav__actions">
-              <button
-                type="button"
-                onClick={goPrev}
-                className="ui-wizard-nav__btn ui-wizard-nav__btn--back ui-btn-secondary inline-flex h-9 items-center justify-center gap-1 px-3.5 text-sm font-heading font-medium"
-              >
-                <ChevronLeft size={16} strokeWidth={2.5} />
-                Voltar
-              </button>
-              {step !== "review" ? (
-                <button
-                  type="button"
-                  disabled={!canNext}
-                  onClick={goNext}
-                  className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-1 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Próximo
-                  <ChevronRight size={16} strokeWidth={2.5} />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={pending || tosBlocked}
-                  onClick={handleCreate}
-                  className="ui-wizard-nav__btn ui-wizard-nav__btn--next ui-btn-accent inline-flex h-9 items-center justify-center gap-2 px-4 text-sm font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <UserCheck size={14} />
-                  {pending ? t("creating") : "Criar público"}
-                </button>
-              )}
-            </div>
-          </div>
+          <AudienceWizardNav
+            placement="footer"
+            onBack={goPrev}
+            onNext={goNext}
+            onCreate={handleCreate}
+            showNext={step !== "review"}
+            showCreate={step === "review"}
+            nextDisabled={!canNext}
+            createDisabled={tosBlocked}
+            createPending={pending}
+            backLabel={tCc("back")}
+            nextLabel={tCc("next")}
+            createLabel={tAc("createAudience")}
+            creatingLabel={t("creating")}
+          />
         </div>
       </div>
     </div>

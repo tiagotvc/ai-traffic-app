@@ -17,27 +17,18 @@ export function metricKpiCardShell(_color: string, dark: boolean) {
 export function metricKpiIconShell(color: string, dark: boolean) {
   if (dark) {
     return {
-      background: `${color}20`,
-      border: `1px solid ${color}55`,
-      boxShadow: `0 0 16px ${color}45`
+      background: `${color}14`,
+      border: `1px solid ${color}30`
     } as const;
   }
 
   return {
-    background: `${color}14`,
-    border: `1px solid ${color}22`,
-    boxShadow: "none"
+    background: `${color}10`,
+    border: `1px solid ${color}20`
   } as const;
 }
 
-export function metricKpiChartFrame(_color: string, dark: boolean) {
-  if (dark) {
-    return {
-      background: "rgba(15, 23, 42, 0.45)",
-      border: "1px solid rgba(148, 163, 184, 0.12)"
-    } as const;
-  }
-
+export function metricKpiChartFrame(_color: string, _dark: boolean) {
   return {
     background: "var(--creator-card-bg-inset, var(--surface-bg))",
     border: "1px solid var(--creator-card-border, var(--border-color))"

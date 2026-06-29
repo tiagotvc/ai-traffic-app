@@ -9,9 +9,8 @@ export default async function DashboardAppPage({
   params: Promise<{ appId: string }>;
 }) {
   const { appId } = await params;
-  const { entitlements, platformAdmin } = await getAppContext();
-  const initialAllowCanvas =
-    platformAdmin || !!entitlements.limits.allowDashboardCanvas;
+  const { entitlements } = await getAppContext();
+  const initialAllowCanvas = !!entitlements.limits.allowDashboardCanvas;
 
   return (
     <Suspense fallback={<DashboardGridSkeleton />}>

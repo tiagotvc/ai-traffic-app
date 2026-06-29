@@ -39,9 +39,14 @@ export function formatDeltaPct(cur: number, prev: number | null | undefined): nu
 
   const delta = pctDelta(cur, prev);
   if (delta === null) return null;
-  if (delta > MAX_DELTA_PCT) return MAX_DELTA_PCT;
-  if (delta < -MAX_DELTA_PCT) return -MAX_DELTA_PCT;
   return delta;
+}
+
+/** Signed percent label for KPI badges (e.g. +11.0%, -18.4%). */
+export function formatDeltaChangeLabel(delta: number): string {
+  if (!Number.isFinite(delta) || delta === 0) return "0%";
+  const sign = delta > 0 ? "+" : "-";
+  return `${sign}${Math.abs(delta).toFixed(1)}%`;
 }
 
 /** Resolve period-over-period delta with explicit handling for zero baselines. */
@@ -56,7 +61,8 @@ export function resolveMetricDelta(
   if (prev <= 0 && cur <= 0) return { kind: "none" };
   if (prev <= 0 && cur > 0) {
     if (opts?.allowNew !== false) return { kind: "new" };
-    return { kind: "pct", value: MAX_DELTA_PCT };
+    const delta = pctDelta(cur, prev > 0 ? prev : 1);
+    return delta !== null ? { kind: "pct", value: delta } : { kind: "none" };
   }
 
   const delta = formatDeltaPct(cur, prev);

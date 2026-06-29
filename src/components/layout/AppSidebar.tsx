@@ -1,6 +1,5 @@
 "use client";
 
-import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import {
   Home,
@@ -21,7 +20,8 @@ import {
   SidebarLogoIcon
 } from "@/components/layout/SidebarUxChrome";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
-import type { FeatureFlagMap } from "@/lib/feature-flags/types";
+import type { ResolvedFeatureMap } from "@/lib/feature-flags/types";
+import { isModuleEnabledInShell } from "@/lib/feature-flags/modules";
 import { isNavItemAllowed, type GatedNavId } from "@/lib/billing/nav-permissions";
 import type { PlanLimits } from "@/lib/billing/types";
 import { FREE_LIMITS } from "@/lib/billing/types";
@@ -64,7 +64,7 @@ export function AppSidebar({
   subscriptionStatus?: string;
   allowCreativeMemoryAi?: boolean;
   agencyBrainFeatures?: AgencyBrainFeatureFlags;
-  platformFeatures?: FeatureFlagMap;
+  platformFeatures?: ResolvedFeatureMap;
   planLimits?: PlanLimits;
   planLimitsReady?: boolean;
   isPlatformAdmin?: boolean;
@@ -88,6 +88,13 @@ export function AppSidebar({
     allowAgencyBrainChat: false
   };
 
+  const shellModuleOpts = {
+    ready: planLimitsReady,
+    isPlatformAdmin
+  };
+  const moduleOn = (id: string) =>
+    isModuleEnabledInShell(platformFeatures, id, shellModuleOpts);
+
   const items: NavItem[] = [
     {
       id: "dashboard",
@@ -95,23 +102,56 @@ export function AppSidebar({
       label: t("dashboard"),
       icon: <Home size={18} strokeWidth={1.75} className="shrink-0" />
     },
-    { id: "views", href: "/dashboard/views", label: t("views"), icon: <LayoutGrid size={18} strokeWidth={1.75} className="shrink-0" /> },
+    ...(moduleOn("visions")
+      ? [
+          {
+            id: "views",
+            href: "/dashboard/views",
+            label: t("views"),
+            icon: <LayoutGrid size={18} strokeWidth={1.75} className="shrink-0" />
+          } satisfies NavItem
+        ]
+      : []),
     { id: "clients", href: "/clients", label: t("clients"), icon: <Users size={18} strokeWidth={1.75} className="shrink-0" /> },
-    {
-      id: "campaigns",
-      href: "/campaigns",
-      label: t("campaigns"),
-      icon: <Megaphone size={18} strokeWidth={1.75} className="shrink-0" />,
-      gate: "campaigns"
-    },
+    ...(moduleOn("campaigns")
+      ? [
+          {
+            id: "campaigns",
+            href: "/campaigns",
+            label: t("campaigns"),
+            icon: <Megaphone size={18} strokeWidth={1.75} className="shrink-0" />,
+            gate: "campaigns" as const
+          } satisfies NavItem
+        ]
+      : []),
     {
       id: "creatives",
       href: "/creatives",
       label: t("creatives"),
       icon: <Trophy size={18} strokeWidth={1.75} className="shrink-0" />,
       gate: "creatives"
-    },
+    }
+  ];
 
+  type SidebarEntry =
+    | { kind: "item"; item: NavItem }
+    | { kind: "audiences" }
+    | { kind: "brain" }
+    | { kind: "reports" };
+
+  const entries: SidebarEntry[] = [
+    { kind: "item", item: items[0]! },
+    ...(items.some((i) => i.id === "views")
+      ? [{ kind: "item" as const, item: items.find((i) => i.id === "views")! }]
+      : []),
+    { kind: "item", item: items.find((i) => i.id === "clients")! },
+    ...(items.some((i) => i.id === "campaigns")
+      ? [{ kind: "item" as const, item: items.find((i) => i.id === "campaigns")! }]
+      : []),
+    ...(moduleOn("audiences") ? [{ kind: "audiences" as const }] : []),
+    { kind: "item", item: items.find((i) => i.id === "creatives")! },
+    ...(moduleOn("brain") ? [{ kind: "brain" as const }] : []),
+    ...(moduleOn("reports") ? [{ kind: "reports" as const }] : [])
   ];
 
   function isActive(item: NavItem) {
@@ -164,7 +204,51 @@ export function AppSidebar({
           effectiveCollapsed ? "space-y-1 px-2 py-3" : "space-y-1 px-3 py-3"
         }`}
       >
-        {items.map((item) => {
+        {entries.map((entry) => {
+          if (entry.kind === "audiences") {
+            return (
+              <AudiencesNavGroup
+                key="audiences"
+                collapsed={effectiveCollapsed}
+                planLimits={planLimits}
+                planLimitsReady={planLimitsReady}
+                platformFeatures={platformFeatures}
+                isPlatformAdmin={isPlatformAdmin}
+                pathname={pathname}
+                onNavigate={onNavigate}
+              />
+            );
+          }
+          if (entry.kind === "brain") {
+            return (
+              <AgencyBrainNavGroup
+                key="brain"
+                collapsed={effectiveCollapsed}
+                agencyBrainFeatures={brainFeatures}
+                platformFeatures={platformFeatures}
+                isPlatformAdmin={isPlatformAdmin}
+                pathname={pathname}
+                permissionsReady={planLimitsReady}
+                onNavigate={onNavigate}
+              />
+            );
+          }
+          if (entry.kind === "reports") {
+            return (
+              <ReportsNavGroup
+                key="reports"
+                collapsed={effectiveCollapsed}
+                planLimits={planLimits}
+                planLimitsReady={planLimitsReady}
+                platformFeatures={platformFeatures}
+                isPlatformAdmin={isPlatformAdmin}
+                pathname={pathname}
+                onNavigate={onNavigate}
+              />
+            );
+          }
+
+          const item = entry.item;
           const active = isActive(item);
           const gated = planLimitsReady && item.gate && !isNavItemAllowed(item.gate, planLimits);
 
@@ -216,20 +300,26 @@ export function AppSidebar({
             </>
           );
 
-          const navItem = item.action ? (
-            <button
-              type="button"
-              onClick={() => {
-                item.action?.();
-                onNavigate?.();
-              }}
-              title={effectiveCollapsed ? item.label : undefined}
-              className={cls}
-            >
-              {inner}
-            </button>
-          ) : (
+          if (item.action) {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  item.action?.();
+                  onNavigate?.();
+                }}
+                title={effectiveCollapsed ? item.label : undefined}
+                className={cls}
+              >
+                {inner}
+              </button>
+            );
+          }
+
+          return (
             <Link
+              key={item.id}
               href={item.href!}
               title={effectiveCollapsed ? item.label : undefined}
               className={cls}
@@ -237,40 +327,6 @@ export function AppSidebar({
             >
               {inner}
             </Link>
-          );
-
-          return (
-            <Fragment key={item.id}>
-              {navItem}
-              {item.id === "campaigns" ? (
-                <AudiencesNavGroup
-                  collapsed={effectiveCollapsed}
-                  planLimits={planLimits}
-                  planLimitsReady={planLimitsReady}
-                  pathname={pathname}
-                  onNavigate={onNavigate}
-                />
-              ) : null}
-              {item.id === "creatives" ? (
-                <AgencyBrainNavGroup
-                  collapsed={effectiveCollapsed}
-                  agencyBrainFeatures={brainFeatures}
-                  platformFeatures={platformFeatures}
-                  pathname={pathname}
-                  permissionsReady={planLimitsReady}
-                  onNavigate={onNavigate}
-                />
-              ) : null}
-              {item.id === "creatives" ? (
-                <ReportsNavGroup
-                  collapsed={effectiveCollapsed}
-                  planLimits={planLimits}
-                  planLimitsReady={planLimitsReady}
-                  pathname={pathname}
-                  onNavigate={onNavigate}
-                />
-              ) : null}
-            </Fragment>
           );
         })}
       </nav>

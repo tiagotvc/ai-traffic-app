@@ -12,12 +12,12 @@ import type { CampaignObjectiveKey, CreatorNode } from "@/lib/campaign-draft";
 import { mapLimit } from "@/lib/concurrency";
 import { fetchCampaigns } from "@/lib/meta-graph";
 import {
-  fetchMetaAdLibrary,
   isMetaAdLibraryConfigured,
   resolveMetaAdLibraryProvider,
   resolveObjectiveSearchTerms,
   resolveSearchTerms
 } from "@/lib/meta-ad-library";
+import { fetchAdLibraryCached } from "@/lib/labs/cached-ad-library";
 import { attachRecommendationsToInsight } from "@/lib/campaign-creator/creator-brain-recommendations";
 import { isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 import { rollingDaysEndingYesterday } from "@/lib/report-period";
@@ -450,11 +450,12 @@ async function resolveMetaCompetitorResearch(input: {
 
   if (!input.clientId) {
     const searchTerms = resolveObjectiveSearchTerms(input.objective);
-    const fetchResult = await fetchMetaAdLibrary({
+    const fetchResult = await fetchAdLibraryCached({
       competitors: [],
       searchTerms,
       marketCountry: "BR",
-      maxAdsPerQuery: 15
+      maxAdsPerQuery: 15,
+      cacheNiche: `obj:${input.objective}`
     });
 
     if (!fetchResult.apiConfigured) {
@@ -497,11 +498,12 @@ async function resolveMetaCompetitorResearch(input: {
   const nicheOnly = competitors.length === 0;
   const searchTerms = resolveSearchTerms(client.niche);
 
-  const fetchResult = await fetchMetaAdLibrary({
+  const fetchResult = await fetchAdLibraryCached({
     competitors: competitors.map((c) => ({ name: c.name, pageId: c.pageId })),
     searchTerms,
     marketCountry: client.marketCountry,
-    maxAdsPerQuery: 15
+    maxAdsPerQuery: 15,
+    cacheNiche: client.niche ?? ""
   });
 
   if (!fetchResult.apiConfigured) {

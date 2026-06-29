@@ -14,7 +14,8 @@ export type FilterSelectOption = {
 };
 
 const MENU_MAX_HEIGHT = 320;
-const MENU_Z_INDEX = 100;
+// Above UxModalPortal (z-[200]) — same as FormSelect.
+const MENU_Z_INDEX = 300;
 
 type Props = {
   icon: React.ReactNode;

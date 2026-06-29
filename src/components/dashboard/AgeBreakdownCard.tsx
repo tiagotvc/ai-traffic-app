@@ -85,14 +85,14 @@ export function AgeBreakdownCard({
       className={
         embedded
           ? "h-full min-h-0 w-full"
-          : "campaign-creator-card campaign-creator-card--compact flex h-full min-h-0 flex-col"
+          : "campaign-creator-card campaign-creator-card--compact flex h-full min-h-0 w-full flex-col"
       }
       aria-labelledby="age-breakdown-title"
     >
       <div className="mb-2 shrink-0">
         <h3
           id="age-breakdown-title"
-          className="campaign-creator-orion-section-label"
+          className="font-heading text-sm font-semibold text-[var(--text-main)]"
         >
           {t("ageBreakdownTitle")}
         </h3>
@@ -159,7 +159,7 @@ export function AgeBreakdownCard({
           <div className="min-w-0 overflow-x-auto">
             <table className="w-full text-left text-[10px]">
               <thead>
-                <tr className="text-[var(--text-dimmer)]">
+                <tr className="text-[var(--text-main)]">
                   <th className="pb-1.5 pr-2 font-semibold uppercase tracking-wide">{t("ageBreakdownColSegment")}</th>
                   <th className="pb-1.5 pr-2 text-right font-semibold uppercase tracking-wide">{t("ageBreakdownColSpend")}</th>
                   <th className="pb-1.5 pr-2 text-right font-semibold uppercase tracking-wide">{t("ageBreakdownColShare")}</th>

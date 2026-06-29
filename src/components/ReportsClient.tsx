@@ -17,7 +17,7 @@ import {
 } from "@/components/reports/ReportsConsolidatedPreview";
 import { ReportsViewModal } from "@/components/reports/ReportsViewModal";
 import type { ReportTemplateConfig } from "@/components/reports/ReportsTemplatesControl";
-import { CardsRowSkeleton, ChartCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { OrionTrafficLoadingOverlay } from "@/components/ui/OrionTrafficLoadingOverlay";
 import { DEFAULT_REPORT_METRICS, type ReportPreviewPayload } from "@/lib/report-preview-types";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import { METRIC_BY_KEY } from "@/lib/dashboard-metrics";
@@ -66,6 +66,7 @@ export function ReportsClient() {
   const [aiBusy, setAiBusy] = useState(false);
   const [pendingAiGenerate, setPendingAiGenerate] = useState(false);
   const hasGeneratedRef = useRef(false);
+  const skipFilterReloadRef = useRef(false);
 
   const [reportsFlags, setReportsFlags] = useState<{
     v1: boolean;
@@ -111,77 +112,103 @@ export function ReportsClient() {
     strip.setClientFilter(strip.clientOptions[0].slug);
   }, [strip]);
 
-  const loadConsolidated = useCallback(async () => {
-    setPreviewLoading(true);
-    setPreviewError(null);
-    setMessage(null);
-    setPreview(null);
-    try {
-      const res = await fetch(`/api/reports/consolidated?${periodQuery}&locale=${locale}`);
-      const j = await res.json();
-      if (!j?.ok) {
-        setConsolidated(null);
-        setPreviewError(t("previewFailed"));
-        return;
-      }
-      setConsolidated(j as ConsolidatedData);
-      setPreviewMode("consolidated");
-      hasGeneratedRef.current = true;
-    } catch {
-      setConsolidated(null);
-      setPreviewError(t("previewFailed"));
-    } finally {
-      setPreviewLoading(false);
-    }
-  }, [periodQuery, locale, t]);
-
-  const loadPreview = useCallback(async () => {
-    if (!selectedClient) {
-      setPreviewError(t("selectClientRequired"));
-      return;
-    }
-    setPreviewLoading(true);
-    setPreviewError(null);
-    setMessage(null);
-    setConsolidated(null);
-    clearReportPdfCaptureState();
-
-    const goalMetricGuess = selectedMetrics.includes("messages") ? "messages" : "conversions";
-    const goalLabel = tMetrics(METRIC_BY_KEY[goalMetricGuess].label);
-
-    const qs = new URLSearchParams(periodQuery);
-    qs.set("clientId", selectedClient.slug);
-    qs.set("type", reportType);
-    qs.set("locale", locale);
-    qs.set("goalLabel", goalLabel);
-    if (adAccountId) qs.set("adAccountId", adAccountId);
-
-    try {
-      const res = await fetch(`/api/reports/preview?${qs}`);
-      const json = (await res.json()) as ReportPreviewPayload & { ok?: boolean; error?: string };
-      if (!res.ok || !json.ok) {
-        setPreview(null);
-        setPreviewError(json.error ?? t("previewFailed"));
-        return;
-      }
-      setPreview(json);
-      setPreviewMode("single");
-      hasGeneratedRef.current = true;
-      if (json.client.goalMetric && !selectedMetrics.includes(json.client.goalMetric)) {
-        setSelectedMetrics((cur) =>
-          cur.includes(json.client.goalMetric) ? cur : [...cur, json.client.goalMetric]
-        );
-      }
-    } catch {
+  const loadConsolidated = useCallback(
+    async (periodOverride?: PeriodState) => {
+      setPreviewLoading(true);
+      setPreviewError(null);
+      setMessage(null);
       setPreview(null);
-      setPreviewError(t("previewFailed"));
-    } finally {
-      setPreviewLoading(false);
-    }
-  }, [selectedClient, periodQuery, reportType, locale, t, tMetrics, selectedMetrics, adAccountId]);
+      setConsolidated(null);
+      setPreviewMode(null);
+
+      const periodForQuery = periodOverride ?? period;
+      const qs = periodStateToQuery(periodForQuery);
+      qs.set("locale", locale);
+
+      try {
+        const res = await fetch(`/api/reports/consolidated?${qs}`);
+        const j = await res.json();
+        if (!j?.ok) {
+          setPreviewError(t("previewFailed"));
+          return;
+        }
+        setConsolidated(j as ConsolidatedData);
+        setPreviewMode("consolidated");
+        hasGeneratedRef.current = true;
+      } catch {
+        setPreviewError(t("previewFailed"));
+      } finally {
+        setPreviewLoading(false);
+      }
+    },
+    [period, locale, t]
+  );
+
+  const loadPreview = useCallback(
+    async (overrides?: {
+      reportType?: "simple" | "complete";
+      metrics?: MetricKey[];
+      periodPreset?: string | null;
+    }) => {
+      if (!selectedClient) {
+        setPreviewError(t("selectClientRequired"));
+        return;
+      }
+
+      const effectiveReportType = overrides?.reportType ?? reportType;
+      const effectiveMetrics = overrides?.metrics ?? selectedMetrics;
+      const periodForQuery: PeriodState = overrides?.periodPreset
+        ? { preset: overrides.periodPreset as PeriodState["preset"], since: "", until: "" }
+        : period;
+
+      setPreviewLoading(true);
+      setPreviewError(null);
+      setMessage(null);
+      setConsolidated(null);
+      setPreview(null);
+      setPreviewMode(null);
+      clearReportPdfCaptureState();
+
+      const goalMetricGuess = effectiveMetrics.includes("messages") ? "messages" : "conversions";
+      const goalLabel = tMetrics(METRIC_BY_KEY[goalMetricGuess].label);
+
+      const qs = periodStateToQuery(periodForQuery);
+      qs.set("clientId", selectedClient.slug);
+      qs.set("type", effectiveReportType);
+      qs.set("locale", locale);
+      qs.set("goalLabel", goalLabel);
+      if (adAccountId) qs.set("adAccountId", adAccountId);
+
+      try {
+        const res = await fetch(`/api/reports/preview?${qs}`);
+        const json = (await res.json()) as ReportPreviewPayload & { ok?: boolean; error?: string };
+        if (!res.ok || !json.ok) {
+          setPreviewError(json.error ?? t("previewFailed"));
+          return;
+        }
+        setPreview(json);
+        setPreviewMode("single");
+        hasGeneratedRef.current = true;
+        if (json.client.goalMetric && !effectiveMetrics.includes(json.client.goalMetric)) {
+          setSelectedMetrics((cur) =>
+            cur.includes(json.client.goalMetric) ? cur : [...cur, json.client.goalMetric]
+          );
+        }
+      } catch {
+        setPreviewError(t("previewFailed"));
+      } finally {
+        setPreviewLoading(false);
+      }
+    },
+    [selectedClient, period, reportType, locale, t, tMetrics, selectedMetrics, adAccountId]
+  );
 
   useEffect(() => {
     if (!hasGeneratedRef.current) return;
+    if (skipFilterReloadRef.current) {
+      skipFilterReloadRef.current = false;
+      return;
+    }
     if (previewMode === "consolidated") {
       void loadConsolidated();
       return;
@@ -252,6 +279,7 @@ export function ReportsClient() {
   useEffect(() => {
     if (!pendingAiGenerate || !selectedClient) return;
     setPendingAiGenerate(false);
+    skipFilterReloadRef.current = true;
     void loadPreview();
   }, [pendingAiGenerate, selectedClient, loadPreview]);
 
@@ -300,15 +328,23 @@ export function ReportsClient() {
     metrics?: string[];
     periodPreset?: string | null;
   }) {
+    skipFilterReloadRef.current = true;
+
+    const nextMetrics = config.metrics?.length
+      ? (config.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[])
+      : undefined;
+
     if (config.kind === "consolidated") {
-      void loadConsolidated();
+      const nextPeriod: PeriodState | undefined = config.periodPreset
+        ? { preset: config.periodPreset as PeriodState["preset"], since: "", until: "" }
+        : undefined;
+      if (nextPeriod && strip) strip.setPeriod(nextPeriod);
+      void loadConsolidated(nextPeriod);
       return;
     }
+
     if (config.reportType) setReportType(config.reportType);
-    if (config.metrics?.length) {
-      const valid = config.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[];
-      if (valid.length) setSelectedMetrics(valid);
-    }
+    if (nextMetrics?.length) setSelectedMetrics(nextMetrics);
     if (config.periodPreset && strip) {
       strip.setPeriod({
         preset: config.periodPreset as PeriodState["preset"],
@@ -316,7 +352,12 @@ export function ReportsClient() {
         until: ""
       });
     }
-    void loadPreview();
+
+    void loadPreview({
+      reportType: config.reportType,
+      metrics: nextMetrics,
+      periodPreset: config.periodPreset
+    });
   }
 
   function openPrintView() {
@@ -348,6 +389,12 @@ export function ReportsClient() {
 
   return (
     <div className="space-y-6" data-reports-shell>
+      <OrionTrafficLoadingOverlay
+        open={previewLoading}
+        title={t("previewLoadingTitle")}
+        message={t("previewLoadingMessage")}
+      />
+
       <DsPageHeader
         breadcrumbs={t("breadcrumbBuild")}
         title={t("tabReport")}
@@ -409,13 +456,7 @@ export function ReportsClient() {
       {message ? <p className="text-xs text-[var(--text-dim)]">{message}</p> : null}
 
       <div className="min-w-0">
-        {previewLoading && !hasPreview ? (
-          <div className="space-y-4">
-            <Skeleton className="h-8 w-64" />
-            <CardsRowSkeleton />
-            <ChartCardSkeleton />
-          </div>
-        ) : hasPreview ? (
+        {!previewLoading && hasPreview ? (
           <div className="campaign-creator-card !p-4 sm:!p-6">
             <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
               <button
@@ -467,7 +508,7 @@ export function ReportsClient() {
               />
             ) : null}
           </div>
-        ) : (
+        ) : !previewLoading ? (
           <div className="campaign-creator-card flex min-h-[420px] flex-col items-center justify-center !p-8 text-center">
             <div
               className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)]"
@@ -480,7 +521,7 @@ export function ReportsClient() {
             </h2>
             <p className="mt-2 max-w-md text-sm text-[var(--text-dim)]">{t("emptyPreviewHint")}</p>
           </div>
-        )}
+        ) : null}
       </div>
 
       <ReportsViewModal

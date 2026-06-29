@@ -13,8 +13,8 @@ import type { Entitlements, PlanLimitKey, PlanLimits, TenantUsage } from "./type
 import { PLATFORM_ADMIN_LIMITS } from "./types";
 import { isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
 import { getPlatformFeatureFlags } from "@/lib/feature-flags/service";
-import { isFeatureEnabled } from "@/lib/feature-flags/registry";
-import type { FeatureFlagMap } from "@/lib/feature-flags/types";
+import { isFeatureEnabledForUser } from "@/lib/feature-flags/registry";
+import type { FeatureFlagConfigMap, FeatureFlagContext } from "@/lib/feature-flags/types";
 import { sumTenantCreditsUsed } from "@/lib/ai-credits/usage-service";
 
 export class PlanLimitError extends Error {
@@ -151,17 +151,25 @@ const PLATFORM_MASKED_LIMITS: Partial<Record<PlanLimitKey, string>> = {
   allowAgencyBrainExperiments: "brain.labs",
   allowAgencyBrainActionPlans: "brain.action-plans",
   allowAgencyBrainChat: "brain.chat",
-  allowNavAutomations: "brain.automations"
+  allowNavAutomations: "brain.automations",
+  allowDashboardCanvas: "visions.canvas",
+  allowDashboardResize: "visions.resize",
+  allowDashboardAiBuilder: "visions.ai-builder",
+  allowDashboardSharing: "visions.sharing"
 };
 
 /**
  * Aplica os feature flags de plataforma sobre os limites do plano: se a feature está
- * desligada globalmente, o limite vira `false` (kill-switch). É o "E" entre plano e plataforma.
+ * desligada para o usuário, o limite vira `false` (kill-switch). É o "E" entre plano e plataforma.
  */
-function maskLimitsWithPlatformFlags(limits: PlanLimits, flags: FeatureFlagMap): PlanLimits {
+function maskLimitsWithPlatformFlags(
+  limits: PlanLimits,
+  flags: FeatureFlagConfigMap,
+  ctx: FeatureFlagContext
+): PlanLimits {
   let masked: PlanLimits | null = null;
   for (const [key, featureId] of Object.entries(PLATFORM_MASKED_LIMITS)) {
-    if (!isFeatureEnabled(flags, featureId as string)) {
+    if (!isFeatureEnabledForUser(flags, featureId as string, ctx)) {
       masked = masked ?? { ...limits };
       (masked as Record<string, unknown>)[key] = false;
     }
@@ -171,14 +179,18 @@ function maskLimitsWithPlatformFlags(limits: PlanLimits, flags: FeatureFlagMap):
 
 export async function getEntitlements(
   tenantId: string,
-  options?: { platformAdmin?: boolean }
+  options?: { platformAdmin?: boolean; userId?: string }
 ): Promise<Entitlements> {
   const { subscription: sub, plan: p } = await getTenantSubscription(tenantId);
   const baseLimits = resolveLimits(p);
   const bonuses = await getTenantAddonBonuses(tenantId);
   const mergedLimits = mergePlanLimitsWithAddons(baseLimits, bonuses);
   const platformFlags = await getPlatformFeatureFlags();
-  const limits = maskLimitsWithPlatformFlags(mergedLimits, platformFlags);
+  const flagCtx: FeatureFlagContext = {
+    userId: options?.userId ?? "",
+    isPlatformAdmin: !!options?.platformAdmin
+  };
+  const limits = maskLimitsWithPlatformFlags(mergedLimits, platformFlags, flagCtx);
   const usage = await getTenantUsage(tenantId);
   const isPaid = p?.slug !== "free" && sub.status === "active";
   const canWrite = sub.status === "active" || sub.status === "trialing" || p?.slug === "free";
@@ -252,8 +264,8 @@ export async function assertSubscriptionWritable(tenantId: string) {
 }
 
 export async function assertLimit(tenantId: string, key: PlanLimitKey) {
-  const { platformAdmin } = await getAppShellContext();
-  const ent = await getEntitlements(tenantId, { platformAdmin });
+  const { platformAdmin, user } = await getAppShellContext();
+  const ent = await getEntitlements(tenantId, { platformAdmin, userId: user.id });
   if ((BOOLEAN_LIMIT_KEYS as readonly string[]).includes(key)) {
     if (!ent.limits[key as (typeof BOOLEAN_LIMIT_KEYS)[number]]) {
       throw new PlanLimitError(key, `Recurso não incluído no plano ${ent.planName}`);

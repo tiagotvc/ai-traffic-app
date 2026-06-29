@@ -6,6 +6,7 @@ import {
   Coins,
   Flag,
   FlaskConical,
+  LayoutGrid,
   Megaphone,
   Radio,
   Sparkles,
@@ -23,18 +24,26 @@ import {
   type ReactNode
 } from "react";
 
+import { FeatureFlagUserPicker } from "@/components/admin/FeatureFlagUserPicker";
 import {
   SettingsSectionNav,
   type SettingsNavItem
 } from "@/components/settings/SettingsSectionNav";
-import { DsPageHeader, DsSwitch } from "@/design-system";
+import { DsPageHeader } from "@/design-system";
 import type { AiCreditWeights, AiCreditsFeatureFlags } from "@/lib/ai-credits/types";
 import {
   FEATURE_REGISTRY,
-  featureAncestors,
-  isFeatureEnabled
+  getEffectiveRollout,
+  getStoredEntry,
+  isAncestorHardOff,
+  isFeatureEnabledForUser
 } from "@/lib/feature-flags/registry";
-import type { FeatureFlagMap, FeatureNode } from "@/lib/feature-flags/types";
+import type {
+  FeatureFlagConfigMap,
+  FeatureFlagEntry,
+  FeatureNode,
+  FeatureRolloutMode
+} from "@/lib/feature-flags/types";
 
 const FLAG_KEYS: (keyof AiCreditsFeatureFlags)[] = [
   "creditsV2Enabled",
@@ -56,10 +65,18 @@ const WEIGHT_KEYS: (keyof AiCreditWeights)[] = [
   "generic"
 ];
 
+const ROLLOUT_MODES: FeatureRolloutMode[] = [
+  "off",
+  "admin_only",
+  "global",
+  "specific_users"
+];
+
 type PlatformModuleId = (typeof FEATURE_REGISTRY)[number]["id"];
 type ModuleId = PlatformModuleId | "aiCredits";
 
 const MODULE_ICONS: Record<ModuleId, LucideIcon> = {
+  visions: LayoutGrid,
   campaigns: Megaphone,
   audiences: Users,
   brain: Brain,
@@ -81,7 +98,11 @@ const VALID_MODULES: ModuleId[] = [
 
 function parseModule(raw: string | null): ModuleId {
   if (raw && VALID_MODULES.includes(raw as ModuleId)) return raw as ModuleId;
-  return FEATURE_REGISTRY[0]?.id ?? "campaigns";
+  return FEATURE_REGISTRY[0]?.id ?? "visions";
+}
+
+function rolloutLabelKey(mode: FeatureRolloutMode): string {
+  return `featureFlagsRollout_${mode}`;
 }
 
 export function AdminFeatureFlagsClient() {
@@ -92,7 +113,7 @@ export function AdminFeatureFlagsClient() {
   const [activeModule, setActiveModule] = useState<ModuleId>(initialModule);
   const [featureFlags, setFeatureFlags] = useState<AiCreditsFeatureFlags | null>(null);
   const [weights, setWeights] = useState<AiCreditWeights | null>(null);
-  const [platformFeatures, setPlatformFeatures] = useState<FeatureFlagMap>({});
+  const [platformFeatures, setPlatformFeatures] = useState<FeatureFlagConfigMap>({});
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -139,20 +160,20 @@ export function AdminFeatureFlagsClient() {
     if (activeModule === "aiCredits") {
       return {
         title: t("featureFlagsNavAiCredits"),
-        subtitle: t("featureFlagsSubtitle"),
+        subtitle: t("modulesSubtitle"),
         icon: moduleIcon("aiCredits")
       };
     }
     if (activeModuleNode) {
       return {
         title: activeModuleNode.label,
-        subtitle: activeModuleNode.description ?? t("featureFlagsModulesHint"),
+        subtitle: activeModuleNode.description ?? t("modulesHint"),
         icon: moduleIcon(activeModuleNode.id as ModuleId)
       };
     }
     return {
-      title: t("featureFlagsTitle"),
-      subtitle: t("featureFlagsSubtitle"),
+      title: t("modulesTitle"),
+      subtitle: t("modulesSubtitle"),
       icon: Flag
     };
   }, [activeModule, activeModuleNode, t]);
@@ -176,11 +197,11 @@ export function AdminFeatureFlagsClient() {
     void load();
   }, [load]);
 
-  const toggleFeature = (id: string, next: boolean) => {
+  const setRollout = (id: string, entry: FeatureFlagEntry | null) => {
     setPlatformFeatures((prev) => {
       const updated = { ...prev };
-      if (next) delete updated[id];
-      else updated[id] = false;
+      if (!entry || entry.mode === "global") delete updated[id];
+      else updated[id] = entry;
       return updated;
     });
   };
@@ -199,32 +220,104 @@ export function AdminFeatureFlagsClient() {
         setFeatureFlags(json.featureFlags);
         setWeights(json.weights);
         setPlatformFeatures(json.platformFeatures ?? {});
-        setMessage(t("featureFlagsSaved"));
+        setMessage(t("modulesSaved"));
+        window.dispatchEvent(new Event("traffic:entitlements-changed"));
       } else {
         setMessage(json.error ?? t("saveError"));
       }
     });
   };
 
+  const renderRolloutSelector = (
+    id: string,
+    opts?: { showInherit?: boolean; disabled?: boolean }
+  ): ReactNode => {
+    const stored = getStoredEntry(platformFeatures, id);
+    const effective = getEffectiveRollout(platformFeatures, id);
+    const activeMode = stored?.mode ?? (opts?.showInherit ? "inherit" : effective.mode);
+    const disabled = opts?.disabled ?? false;
+
+    return (
+      <div className="shrink-0 space-y-2">
+        <div
+          className="flex flex-wrap justify-end gap-1"
+          role="radiogroup"
+          aria-label={t("featureFlagsRolloutLabel")}
+        >
+          {opts?.showInherit ? (
+            <button
+              type="button"
+              className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                stored == null
+                  ? "bg-[var(--ui-accent)] text-white"
+                  : "border border-[var(--creator-card-border)] text-[var(--text-dim)]"
+              }`}
+              disabled={disabled}
+              onClick={() => setRollout(id, null)}
+            >
+              {t("featureFlagsRollout_inherit")}
+            </button>
+          ) : null}
+          {ROLLOUT_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              role="radio"
+              aria-checked={activeMode === mode}
+              className={`rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                activeMode === mode
+                  ? "bg-[var(--ui-accent)] text-white"
+                  : "border border-[var(--creator-card-border)] text-[var(--text-dim)]"
+              }`}
+              disabled={disabled}
+              onClick={() =>
+                setRollout(id, {
+                  mode,
+                  allowedUserIds:
+                    mode === "specific_users"
+                      ? stored?.allowedUserIds ?? effective.allowedUserIds ?? []
+                      : undefined
+                })
+              }
+            >
+              {t(rolloutLabelKey(mode))}
+            </button>
+          ))}
+        </div>
+        {stored?.mode === "specific_users" ? (
+          <FeatureFlagUserPicker
+            selectedIds={stored.allowedUserIds ?? []}
+            disabled={disabled}
+            onChange={(ids) => setRollout(id, { mode: "specific_users", allowedUserIds: ids })}
+          />
+        ) : null}
+        {stored == null && effective.mode !== "global" ? (
+          <p className="text-right text-[10px] text-[var(--text-dimmer)]">
+            {t("featureFlagsRolloutEffective", { mode: t(rolloutLabelKey(effective.mode)) })}
+          </p>
+        ) : null}
+      </div>
+    );
+  };
+
   const renderFeatureNode = (node: FeatureNode, depth: number): ReactNode => {
-    const own = platformFeatures[node.id] !== false;
-    const parentOff = featureAncestors(node.id).some(
-      (a) => !isFeatureEnabled(platformFeatures, a)
-    );
+    const disabled = isAncestorHardOff(platformFeatures, node.id);
     const dependsUnmet = (node.dependsOn ?? []).some(
-      (dep) => !isFeatureEnabled(platformFeatures, dep)
+      (dep) =>
+        !isFeatureEnabledForUser(platformFeatures, dep, { userId: "", isPlatformAdmin: true })
     );
-    const disabled = parentOff || dependsUnmet;
+    const controlsDisabled = disabled || dependsUnmet;
+
     return (
       <div key={node.id}>
         <div
-          className="flex items-start justify-between gap-3 border-b border-[var(--border-color)] py-2.5 last:border-0"
-          style={{ paddingLeft: depth * 20 }}
+          className="flex flex-col gap-3 border-b border-[var(--border-color)] py-3 last:border-0 sm:flex-row sm:items-start sm:justify-between"
+          style={{ paddingLeft: depth * 16 }}
         >
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p
               className={`text-sm font-medium ${
-                disabled ? "text-[var(--text-dimmer)]" : "text-[var(--text-main)]"
+                controlsDisabled ? "text-[var(--text-dimmer)]" : "text-[var(--text-main)]"
               }`}
             >
               {node.label}
@@ -234,131 +327,142 @@ export function AdminFeatureFlagsClient() {
             ) : null}
             {dependsUnmet ? (
               <p className="mt-0.5 text-[11px] text-[var(--text-dimmer)]">
-                Requer: {(node.dependsOn ?? []).join(", ")}
+                {t("featureFlagsRequires", { deps: (node.dependsOn ?? []).join(", ") })}
               </p>
             ) : null}
           </div>
-          <DsSwitch
-            checked={own}
-            disabled={disabled}
-            ariaLabel={node.label}
-            onChange={() => toggleFeature(node.id, !own)}
-          />
+          {renderRolloutSelector(node.id, { showInherit: true, disabled: controlsDisabled })}
         </div>
         {node.children?.map((child) => renderFeatureNode(child, depth + 1))}
       </div>
     );
   };
 
+  const saveButton = (
+    <button type="button" className="ui-btn-accent shrink-0" disabled={isPending} onClick={save}>
+      {isPending ? t("saving") : t("saveModule")}
+    </button>
+  );
+
   const renderModulePanel = () => {
     if (!activeModuleNode) return null;
 
-    const moduleEnabled = isFeatureEnabled(platformFeatures, activeModuleNode.id);
-
     return (
-      <section className="campaign-creator-card campaign-creator-card--compact">
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">
-              {activeModuleNode.label}
-            </h2>
-            {activeModuleNode.description ? (
-              <p className="mt-0.5 text-xs text-[var(--text-dim)]">{activeModuleNode.description}</p>
-            ) : null}
-            <p className="mt-2 text-[11px] text-[var(--text-dimmer)]">
-              {t("featureFlagsModulesHint")}
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
-              {t("featureFlagsModuleMaster")}
-            </span>
-            <DsSwitch
-              checked={moduleEnabled}
-              ariaLabel={activeModuleNode.label}
-              onChange={() => toggleFeature(activeModuleNode.id, !moduleEnabled)}
-            />
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b border-[var(--border-color)] pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">
+                  {activeModuleNode.label}
+                </h2>
+                {saveButton}
+              </div>
+              {activeModuleNode.description ? (
+                <p className="mt-0.5 text-xs text-[var(--text-dim)]">{activeModuleNode.description}</p>
+              ) : null}
+              <p className="mt-2 text-[11px] text-[var(--text-dimmer)]">{t("modulesHint")}</p>
+            </div>
+            <div className="shrink-0 space-y-1">
+              <span className="block text-right text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                {t("featureFlagsModuleMaster")}
+              </span>
+              {renderRolloutSelector(activeModuleNode.id)}
+            </div>
           </div>
         </div>
 
-        {activeModuleNode.children?.length ? (
-          <div className="divide-y divide-[var(--creator-card-border)] rounded-lg border border-[var(--creator-card-border)] px-3">
-            {activeModuleNode.children.map((child) => renderFeatureNode(child, 0))}
-          </div>
-        ) : (
-          <p className="text-xs text-[var(--text-dim)]">{t("featureFlagsModuleEmpty")}</p>
-        )}
+        <div className="min-h-0 flex-1 overflow-y-auto pt-4">
+          {activeModuleNode.children?.length ? (
+            <div className="divide-y divide-[var(--creator-card-border)] rounded-lg border border-[var(--creator-card-border)] px-3">
+              {activeModuleNode.children.map((child) => renderFeatureNode(child, 0))}
+            </div>
+          ) : (
+            <p className="text-xs text-[var(--text-dim)]">{t("featureFlagsModuleEmpty")}</p>
+          )}
+        </div>
       </section>
     );
   };
 
   const renderAiCreditsPanel = () => (
-    <div className="space-y-6">
-      <section className="campaign-creator-card campaign-creator-card--compact">
-        <div className="mb-4 flex items-start gap-2.5">
-          <span className="ui-toolbar-icon-shell shrink-0 text-[var(--ui-accent)]">
-            <Sparkles size={14} />
-          </span>
-          <div>
-            <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">
-              {t("featureFlagsSection")}
-            </h2>
-            <p className="mt-0.5 text-xs text-[var(--text-dim)]">{t("featureFlagsMasterHint")}</p>
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-[var(--border-color)] pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <span className="ui-toolbar-icon-shell shrink-0 text-[var(--ui-accent)]">
+              <Sparkles size={14} />
+            </span>
+            <div>
+              <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">
+                {t("featureFlagsNavAiCredits")}
+              </h2>
+              <p className="mt-0.5 text-xs text-[var(--text-dim)]">{t("featureFlagsMasterHint")}</p>
+            </div>
+          </div>
+          {saveButton}
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto pt-4">
+        <div className="campaign-creator-card campaign-creator-card--compact">
+          <h3 className="mb-4 font-heading text-sm font-semibold text-[var(--text-main)]">
+            {t("featureFlagsSection")}
+          </h3>
+          <div className="space-y-3">
+            {FLAG_KEYS.map((key) => (
+              <label key={key} className="flex items-start gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1 accent-[var(--ui-accent)]"
+                  checked={featureFlags?.[key] ?? false}
+                  disabled={key !== "creditsV2Enabled" && !featureFlags?.creditsV2Enabled}
+                  onChange={(e) =>
+                    setFeatureFlags((prev) =>
+                      prev ? { ...prev, [key]: e.target.checked } : prev
+                    )
+                  }
+                />
+                <span>
+                  <span className="font-medium">{t(`featureFlag_${key}`)}</span>
+                  <span className="mt-0.5 block text-[var(--text-dim)]">
+                    {t(`featureFlag_${key}_hint`)}
+                  </span>
+                </span>
+              </label>
+            ))}
           </div>
         </div>
-        <div className="space-y-3">
-          {FLAG_KEYS.map((key) => (
-            <label key={key} className="flex items-start gap-3 text-sm">
-              <input
-                type="checkbox"
-                className="mt-1 accent-[var(--ui-accent)]"
-                checked={featureFlags?.[key] ?? false}
-                disabled={key !== "creditsV2Enabled" && !featureFlags?.creditsV2Enabled}
-                onChange={(e) =>
-                  setFeatureFlags((prev) =>
-                    prev ? { ...prev, [key]: e.target.checked } : prev
-                  )
-                }
-              />
-              <span>
-                <span className="font-medium">{t(`featureFlag_${key}`)}</span>
-                <span className="mt-0.5 block text-[var(--text-dim)]">
-                  {t(`featureFlag_${key}_hint`)}
-                </span>
-              </span>
-            </label>
-          ))}
-        </div>
-      </section>
 
-      <section className="campaign-creator-card campaign-creator-card--compact">
-        <h2 className="campaign-creator-orion-section-label mb-1">{t("creditWeightsSection")}</h2>
-        <p className="mb-4 text-xs text-[var(--text-dim)]">{t("creditWeightsHint")}</p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {WEIGHT_KEYS.map((key) => (
-            <label key={key} className="block text-sm">
-              <span className="campaign-creator-orion-section-label">
-                {t(`creditWeight_${key}`)}
-              </span>
-              <input
-                type="number"
-                min={0}
-                className="ui-input mt-1.5 w-full border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)]"
-                value={weights?.[key] ?? 1}
-                disabled={!featureFlags?.creditsV2Enabled}
-                onChange={(e) =>
-                  setWeights((prev) =>
-                    prev
-                      ? { ...prev, [key]: Math.max(0, Number(e.target.value) || 0) }
-                      : prev
-                  )
-                }
-              />
-            </label>
-          ))}
+        <div className="campaign-creator-card campaign-creator-card--compact">
+          <h2 className="campaign-creator-orion-section-label mb-1">{t("creditWeightsSection")}</h2>
+          <p className="mb-4 text-xs text-[var(--text-dim)]">{t("creditWeightsHint")}</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {WEIGHT_KEYS.map((key) => (
+              <label key={key} className="block text-sm">
+                <span className="campaign-creator-orion-section-label">
+                  {t(`creditWeight_${key}`)}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  className="ui-input mt-1.5 w-full border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)]"
+                  value={weights?.[key] ?? 1}
+                  disabled={!featureFlags?.creditsV2Enabled}
+                  onChange={(e) =>
+                    setWeights((prev) =>
+                      prev
+                        ? { ...prev, [key]: Math.max(0, Number(e.target.value) || 0) }
+                        : prev
+                    )
+                  }
+                />
+              </label>
+            ))}
+          </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   );
 
   if (loading) {
@@ -368,37 +472,35 @@ export function AdminFeatureFlagsClient() {
   const PageIcon = pageMeta.icon;
 
   return (
-    <div className="space-y-6">
-      <DsPageHeader
-        title={pageMeta.title}
-        subtitle={pageMeta.subtitle}
-        titleIcon={<PageIcon size={16} />}
-      />
+    <div className="flex max-h-[calc(100dvh-10rem)] min-h-0 flex-col overflow-hidden">
+      <div className="shrink-0 space-y-4">
+        <DsPageHeader
+          title={pageMeta.title}
+          subtitle={pageMeta.subtitle}
+          titleIcon={<PageIcon size={16} />}
+        />
 
-      {message ? (
-        <div className="campaign-creator-card campaign-creator-card--compact px-3 py-2 text-sm">
-          {message}
-        </div>
-      ) : null}
+        {message ? (
+          <div className="campaign-creator-card campaign-creator-card--compact px-3 py-2 text-sm">
+            {message}
+          </div>
+        ) : null}
+      </div>
 
-      <div className="settings-layout flex flex-col gap-6 lg:flex-row lg:gap-8">
-        <aside className="settings-layout__nav w-full shrink-0 lg:w-52 xl:w-56">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden lg:flex-row lg:gap-8">
+        <aside className="w-full shrink-0 lg:w-52 xl:w-56">
           <SettingsSectionNav
             items={navItems}
             active={activeModule}
             onChange={selectModule}
-            ariaLabel={t("featureFlagsNavAria")}
+            ariaLabel={t("modulesNavAria")}
           />
         </aside>
 
-        <div className="settings-layout__content min-w-0 flex-1">
-          <div key={activeModule} className="tab-transition animate-fade-up space-y-6">
-            {activeModule === "aiCredits" ? renderAiCreditsPanel() : renderModulePanel()}
-
-            <div className="flex justify-end">
-              <button type="button" className="ui-btn-accent" disabled={isPending} onClick={save}>
-                {isPending ? t("saving") : t("savePlan")}
-              </button>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div key={activeModule} className="tab-transition animate-fade-up flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="campaign-creator-card campaign-creator-card--compact flex min-h-0 flex-1 flex-col overflow-hidden">
+              {activeModule === "aiCredits" ? renderAiCreditsPanel() : renderModulePanel()}
             </div>
           </div>
         </div>

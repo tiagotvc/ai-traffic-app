@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, MapPin, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -97,6 +98,8 @@ export function ZoneCreatorUxPage() {
   const t = useTranslations("audiences");
   const tCc = useTranslations("campaignCreator");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isManual = searchParams.get("mode") === "manual";
   const formRef = useRef<AiZoneFormHandle>(null);
   const [zoneSection, setZoneSection] = useState<ZoneCreatorSectionKey>("brief");
   const [maxReachedIdx, setMaxReachedIdx] = useState(0);
@@ -263,6 +266,7 @@ export function ZoneCreatorUxPage() {
                         ref={formRef}
                         embedded
                         shellMode
+                        compactLayout={isManual}
                         zoneSection={zoneSection}
                         onClose={() => router.push("/audiences/zones")}
                         onSaved={() => {
@@ -289,7 +293,13 @@ export function ZoneCreatorUxPage() {
                   hasPreview={actionState.hasPreview}
                   hasGeoRules={actionState.hasGeoRules}
                 />
-                <ZoneCreatorBrainTips zoneSection={zoneSection} />
+                <ZoneCreatorBrainTips
+                  zoneSection={zoneSection}
+                  briefing={actionState.briefing}
+                  region={actionState.region}
+                  places={actionState.places}
+                  geoLocations={actionState.geoLocations}
+                />
               </div>
             </div>
             <div className="campaign-creator-sidebar-footer shrink-0">

@@ -9,6 +9,7 @@ import { PageFilterBar } from "@/components/layout/PageFilterBar";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
 import { FilterToggleButton } from "@/components/ui/FilterToggleButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
+import { PageToolbarFiltersProvider } from "@/components/layout/PageToolbarFiltersContext";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
 import { cn } from "@/lib/cn";
 
@@ -57,68 +58,66 @@ export function PageToolbar({
   const canFilter = hasGlobalFilters || hasPageFilters;
 
   return (
-    <div className={cn("mb-5", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {eyebrow ? (
-            <p className="mb-1 font-body text-xs text-[var(--text-dim)]">{eyebrow}</p>
-          ) : null}
-          <PageTitleBlock
-            title={title}
-            subtitle={subtitle}
-            titleIcon={icon}
-          />
+    <PageToolbarFiltersProvider filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen}>
+      <div className={cn("mb-5", className)}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {eyebrow ? (
+              <p className="mb-1 font-body text-xs text-[var(--text-dim)]">{eyebrow}</p>
+            ) : null}
+            <PageTitleBlock title={title} subtitle={subtitle} titleIcon={icon} />
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+            {search ? (
+              <FilterSearchInput
+                size="wide"
+                className="h-9 max-w-[240px] sm:max-w-[300px]"
+                value={search.value}
+                onChange={search.onChange}
+                placeholder={search.placeholder}
+              />
+            ) : null}
+
+            {canFilter ? (
+              <FilterToggleButton
+                open={filtersOpen}
+                showLabel={t("showFilters")}
+                hideLabel={t("hideFilters")}
+                onClick={() => setFiltersOpen((v) => !v)}
+              />
+            ) : null}
+
+            {actions}
+
+            {showSync ? <MetaSyncButton clientFilter={strip?.clientFilter} /> : null}
+          </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-          {search ? (
-            <FilterSearchInput
-              size="wide"
-              className="h-9 max-w-[240px] sm:max-w-[300px]"
-              value={search.value}
-              onChange={search.onChange}
-              placeholder={search.placeholder}
-            />
-          ) : null}
-
-          {canFilter ? (
-            <FilterToggleButton
-              open={filtersOpen}
-              showLabel={t("showFilters")}
-              hideLabel={t("hideFilters")}
-              onClick={() => setFiltersOpen((v) => !v)}
-            />
-          ) : null}
-
-          {actions}
-
-          {showSync ? <MetaSyncButton clientFilter={strip?.clientFilter} /> : null}
-        </div>
+        {filtersOpen && canFilter ? (
+          <PageFilterBar>
+            {hasGlobalFilters ? (
+              <GlobalScopeFilters
+                layout="flat"
+                creatorField={filterCreatorFields}
+                clientFilter={strip!.clientFilter}
+                setClientFilter={strip!.setClientFilter}
+                accountFilter={strip!.accountFilter}
+                setAccountFilter={strip!.setAccountFilter}
+                period={strip!.period}
+                setPeriod={strip!.setPeriod}
+                clientOptions={strip!.clientOptions}
+                adAccounts={strip!.adAccounts}
+                periodFilterDisabled={periodFilterDisabled}
+                periodFilterDisabledHint={periodFilterDisabledHint}
+                showAccount={showAccountFilter}
+                compact
+              />
+            ) : null}
+            {pageFilters}
+          </PageFilterBar>
+        ) : null}
       </div>
-
-      {filtersOpen && canFilter ? (
-        <PageFilterBar>
-          {hasGlobalFilters ? (
-            <GlobalScopeFilters
-              layout="flat"
-              creatorField={filterCreatorFields}
-              clientFilter={strip!.clientFilter}
-              setClientFilter={strip!.setClientFilter}
-              accountFilter={strip!.accountFilter}
-              setAccountFilter={strip!.setAccountFilter}
-              period={strip!.period}
-              setPeriod={strip!.setPeriod}
-              clientOptions={strip!.clientOptions}
-              adAccounts={strip!.adAccounts}
-              periodFilterDisabled={periodFilterDisabled}
-              periodFilterDisabledHint={periodFilterDisabledHint}
-              showAccount={showAccountFilter}
-              compact
-            />
-          ) : null}
-          {pageFilters}
-        </PageFilterBar>
-      ) : null}
-    </div>
+    </PageToolbarFiltersProvider>
   );
 }

@@ -16,7 +16,7 @@ import { UxThemeProvider } from "@/uxpilot-ui/adapters/ThemeProvider";
 import { ThemeConfigApplier } from "@/components/theme/ThemeConfigApplier";
 import { cn } from "@/lib/cn";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
-import type { FeatureFlagMap } from "@/lib/feature-flags/types";
+import type { ResolvedFeatureMap } from "@/lib/feature-flags/types";
 import type { PlanLimits } from "@/lib/billing/types";
 import { FREE_LIMITS } from "@/lib/billing/types";
 
@@ -30,7 +30,7 @@ type CachedEntitlements = {
   subscriptionStatus: string;
   limits: PlanLimits;
   isPlatformAdmin?: boolean;
-  platformFeatures?: FeatureFlagMap;
+  platformFeatures?: ResolvedFeatureMap;
 };
 
 function readEntitlementsCache(): CachedEntitlements | null {
@@ -155,7 +155,7 @@ function AppShellSkeletonInner({
   const [allowCreativeMemoryAi, setAllowCreativeMemoryAi] = useState(true);
   const [agencyBrainFeatures, setAgencyBrainFeatures] =
     useState<AgencyBrainFeatureFlags>(DEFAULT_BRAIN_FEATURES);
-  const [platformFeatures, setPlatformFeatures] = useState<FeatureFlagMap>({});
+  const [platformFeatures, setPlatformFeatures] = useState<ResolvedFeatureMap>({});
   const [planLimits, setPlanLimits] = useState<PlanLimits>(FREE_LIMITS);
   const [planLimitsReady, setPlanLimitsReady] = useState(false);
   const [platformAdmin, setPlatformAdmin] = useState(isPlatformAdmin);
@@ -225,7 +225,7 @@ function AppShellSkeletonInner({
           subscriptionStatus: e.status ?? "active",
           limits,
           isPlatformAdmin: j.isPlatformAdmin != null ? !!j.isPlatformAdmin : undefined,
-          platformFeatures: (j.platformFeatures as FeatureFlagMap | undefined) ?? {}
+          platformFeatures: (j.platformFeatures as ResolvedFeatureMap | undefined) ?? {}
         };
         applyEntitlements(cached);
         writeEntitlementsCache(cached);

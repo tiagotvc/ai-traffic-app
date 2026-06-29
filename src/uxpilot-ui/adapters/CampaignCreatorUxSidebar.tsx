@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ChevronRight } from "lucide-react";
 
 import { CampaignCreatorBrainTips } from "@/components/campaign-creator/CampaignCreatorBrainTips";
+import { CampaignCreatorResearchCard } from "@/components/campaign-creator/CampaignCreatorResearchCard";
 import { CampaignCreatorScoreBar } from "@/components/campaign-creator/CampaignCreatorScoreBar";
 import { CampaignCreatorSummaryModal } from "@/components/campaign-creator/CampaignCreatorSummaryModal";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
@@ -100,6 +101,7 @@ export function CampaignCreatorUxSidebar({
         <div className="campaign-creator-sidebar__inner space-y-3 py-1">
           <SidebarProgressCard onOpenSummary={() => setSummaryOpen(true)} />
           <CampaignCreatorBrainTips />
+          <CampaignCreatorResearchCard />
         </div>
       </div>
       <div className="campaign-creator-sidebar-footer shrink-0">

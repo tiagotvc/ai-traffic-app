@@ -2,6 +2,7 @@
 
 import {
   BarChart2,
+  Bookmark,
   FileText,
   LayoutList,
   PenLine,
@@ -13,11 +14,15 @@ import { useEffect, useState } from "react";
 
 import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard";
 import {
+  CreationModeChoiceCard,
+  CreationModeChoiceGrid,
+  creationModeModalMaxWidthClass
+} from "@/components/campaign-creator/CreationModeChoiceCard";
+import {
   CreatorAiModalShell,
   CreatorModalShell
 } from "@/components/campaign-creator/CreatorModalShell";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
-import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import type { ReportTemplateConfig } from "@/components/reports/ReportsTemplatesControl";
 import { REPORT_AI_CREDITS } from "@/components/reports/ReportsAiGenerateTrigger";
 import { useAiCredits } from "@/hooks/useAiCredits";
@@ -51,69 +56,20 @@ type Props = {
   currentConfig: ReportTemplateConfig;
 };
 
-function ModeChoiceCard({
+function TemplateChoiceCard({
   selected,
-  label,
+  title,
   description,
   icon: Icon,
   onSelect,
   badge
 }: {
   selected: boolean;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-  onSelect: () => void;
-  badge?: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={cn(
-        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row h-full min-h-[9.5rem]",
-        selected
-          ? "campaign-creator-budget-choice-card--selected"
-          : "campaign-creator-budget-choice-card--unselected"
-      )}
-    >
-      <ChoiceCardCheck selected={selected} />
-      <span
-        className={cn(
-          "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline",
-          selected
-            ? "campaign-creator-budget-choice-card__icon--selected"
-            : "campaign-creator-budget-choice-card__icon--unselected"
-        )}
-        aria-hidden
-      >
-        <Icon size={18} strokeWidth={1.75} />
-      </span>
-      <span className="campaign-creator-budget-choice-card__content">
-        <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
-          {label}
-          {badge ? <span className="ml-2 inline-flex align-middle">{badge}</span> : null}
-        </span>
-        <span className="campaign-creator-budget-choice-card__description">{description}</span>
-      </span>
-    </button>
-  );
-}
-
-function TemplateChoiceCard({
-  selected,
-  title,
-  description,
-  icon: Icon,
-  onSelect
-}: {
-  selected: boolean;
   title: string;
   description: string;
   icon: LucideIcon;
   onSelect: () => void;
+  badge?: string;
 }) {
   return (
     <button
@@ -122,7 +78,7 @@ function TemplateChoiceCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "campaign-creator-budget-choice-card h-full min-h-[8.5rem] text-left",
+        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--template-tile",
         selected
           ? "campaign-creator-budget-choice-card--selected"
           : "campaign-creator-budget-choice-card--unselected"
@@ -138,10 +94,13 @@ function TemplateChoiceCard({
         )}
         aria-hidden
       >
-        <Icon size={18} strokeWidth={1.75} />
+        <Icon size={16} strokeWidth={1.75} />
       </span>
       <span className="campaign-creator-budget-choice-card__content">
-        <span className="campaign-creator-budget-choice-card__label">{title}</span>
+        <span className="campaign-creator-budget-choice-card__title-row">
+          <span className="campaign-creator-budget-choice-card__label">{title}</span>
+          {badge ? <span className="campaign-creator-budget-choice-card__badge">{badge}</span> : null}
+        </span>
         <span className="campaign-creator-budget-choice-card__description">{description}</span>
       </span>
     </button>
@@ -192,6 +151,12 @@ export function ReportsViewModal({
       })
       .catch(() => {});
   }, [open, step, reportsV2]);
+
+  useEffect(() => {
+    if (open && step === "standard" && selectedTemplate === null) {
+      setSelectedTemplate("performance");
+    }
+  }, [open, step, selectedTemplate]);
 
   const selectedBuiltin = BUILTIN_REPORT_TEMPLATES.find((x) => x.id === selectedTemplate);
   const selectedSaved = savedTemplates.find((x) => x.id === selectedTemplate);
@@ -325,29 +290,46 @@ export function ReportsViewModal({
         subtitle={t("viewModalStandardSubtitle")}
         titleIcon={<FileText size={15} strokeWidth={2.25} />}
         width="xl"
-        onCancel={() => setStep("mode")}
-        cancelLabel={t("viewModalBack")}
-        onPrimary={handleStandardApply}
-        primaryLabel={t("viewModalGenerate")}
-        primaryDisabled={!selectedTemplate}
-        showPrimaryCheck={false}
+        hideFooter
+        footer={
+          <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-[var(--border-color)] px-5 py-3">
+            <DsButton variant="secondary" size="md" onClick={() => setStep("mode")}>
+              {t("viewModalBack")}
+            </DsButton>
+            <DsButton
+              variant="accent"
+              size="md"
+              onClick={handleStandardApply}
+              disabled={!selectedTemplate}
+              className="inline-flex items-center gap-1.5"
+            >
+              <Sparkles size={14} strokeWidth={2.25} aria-hidden />
+              {t("viewModalGenerate")}
+            </DsButton>
+          </footer>
+        }
       >
-        <div className="space-y-5">
+        <div className="space-y-4">
           {!isConsolidated ? (
-            <FilterSelectDropdown
-              className="min-w-0 w-full max-w-xs"
-              creatorField
-              icon={<BarChart2 size={14} />}
-              label={t("reportTypeLabel")}
-              placeholder={t("typeSimple")}
-              clearable={false}
-              options={[
-                { value: "simple", label: t("typeSimple") },
-                { value: "complete", label: t("typeComplete") }
-              ]}
-              value={reportType}
-              onChange={(v) => setReportType((v || "simple") as "simple" | "complete")}
-            />
+            <div className="campaign-creator-card campaign-creator-card--compact space-y-2 px-3 py-2.5">
+              <FilterSelectDropdown
+                className="min-w-0 w-full max-w-sm"
+                creatorField
+                icon={<BarChart2 size={14} />}
+                label={t("reportTypeLabel")}
+                placeholder={t("typeSimple")}
+                clearable={false}
+                options={[
+                  { value: "simple", label: t("typeSimple") },
+                  { value: "complete", label: t("typeComplete") }
+                ]}
+                value={reportType}
+                onChange={(v) => setReportType((v || "simple") as "simple" | "complete")}
+              />
+              <p className="text-[11px] leading-relaxed text-[var(--text-dim)]">
+                {reportType === "complete" ? t("typeCompleteHint") : t("typeSimpleHint")}
+              </p>
+            </div>
           ) : null}
 
           <div
@@ -372,7 +354,11 @@ export function ReportsViewModal({
                   title={title}
                   description={description}
                   icon={Icon}
-                  onSelect={() => setSelectedTemplate(tpl.id)}
+                  badge={tpl.id === "performance" ? t("templateMostUsed") : undefined}
+                  onSelect={() => {
+                    setSelectedTemplate(tpl.id);
+                    if (tpl.reportType) setReportType(tpl.reportType);
+                  }}
                 />
               );
             })}
@@ -392,23 +378,33 @@ export function ReportsViewModal({
           </div>
 
           {reportsV2 ? (
-            <div className="rounded-lg border border-[var(--border-color)] p-3">
-              <p className="text-xs font-medium text-[var(--text-main)]">{t("templateSaveSection")}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="campaign-creator-card campaign-creator-card--compact space-y-3 p-3.5">
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+                  <Bookmark size={15} strokeWidth={2.25} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-[var(--text-main)]">{t("templateSaveSection")}</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-dim)]">
+                    {t("templateSaveSectionHint")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <input
                   value={saveName}
                   onChange={(e) => setSaveName(e.target.value)}
                   placeholder={t("templateNamePlaceholder")}
                   className="ui-input min-w-0 flex-1 text-sm"
                 />
-                <DsButton
-                  variant="secondary"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={() => void saveTemplate()}
                   disabled={saveBusy || !saveName.trim()}
+                  className="ui-btn-accent-outline shrink-0 px-4 py-2 text-xs font-heading font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {t("templateSave")}
-                </DsButton>
+                </button>
               </div>
             </div>
           ) : null}
@@ -416,6 +412,8 @@ export function ReportsViewModal({
       </CreatorModalShell>
     );
   }
+
+  const modeOptionCount = reportsV2 ? 2 : 1;
 
   return (
     <CreatorModalShell
@@ -425,7 +423,7 @@ export function ReportsViewModal({
       subtitle={t("viewModalSubtitle")}
       titleIcon={<FileText size={15} strokeWidth={2.25} />}
       width="md"
-      className="max-w-xl"
+      className={creationModeModalMaxWidthClass(modeOptionCount)}
       contentClassName="pb-4"
       onCancel={handleClose}
       cancelLabel={tCommon("cancel")}
@@ -434,12 +432,8 @@ export function ReportsViewModal({
       primaryDisabled={mode === null}
       showPrimaryCheck={false}
     >
-      <div
-        className="grid items-stretch gap-4 sm:grid-cols-2"
-        role="radiogroup"
-        aria-label={t("viewModalTitle")}
-      >
-        <ModeChoiceCard
+      <CreationModeChoiceGrid ariaLabel={t("viewModalTitle")}>
+        <CreationModeChoiceCard
           selected={mode === "standard"}
           label={t("viewModalStandard")}
           description={t("viewModalStandardHint")}
@@ -447,22 +441,16 @@ export function ReportsViewModal({
           onSelect={() => setMode("standard")}
         />
         {reportsV2 ? (
-          <ModeChoiceCard
+          <CreationModeChoiceCard
             selected={mode === "ai"}
             label={t("viewModalAi")}
             description={t("viewModalAiHint")}
             icon={Sparkles}
             onSelect={() => setMode("ai")}
-            badge={
-              <AiCreditCostHint
-                kind={REPORT_AI_CREDITS.kind}
-                calls={REPORT_AI_CREDITS.calls}
-                variant="pill"
-              />
-            }
+            aiCredits={REPORT_AI_CREDITS}
           />
         ) : null}
-      </div>
+      </CreationModeChoiceGrid>
     </CreatorModalShell>
   );
 }

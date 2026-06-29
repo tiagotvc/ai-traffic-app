@@ -1,4 +1,9 @@
 import {
+  DEFAULT_DASHBOARD_SECTION_ROW_LAYOUTS,
+  normalizeSectionRowLayouts,
+  type DashboardSectionRowLayouts
+} from "@/lib/dashboard-section-rows";
+import {
   DEFAULT_DASHBOARD_CHART_METRICS,
   METRIC_BY_KEY,
   type MetricKey
@@ -11,7 +16,12 @@ export type DashboardSectionKey =
   | "chart"
   | "alerts"
   | "ageBreakdown"
-  | "agencyHealth";
+  | "agencyHealth"
+  | "funnel"
+  | "campaignObjectives"
+  | "topCampaigns"
+  | "profitByCampaign"
+  | "adLibrary";
 
 export type DashboardSections = Record<DashboardSectionKey, boolean>;
 
@@ -26,6 +36,8 @@ export type DashboardLayoutPrefs = {
   /** Custom section order; missing keys append defaults at the end. */
   sectionOrder: DashboardSectionKey[];
   chartSize: ChartPanelSize;
+  /** Side-by-side vs stacked when paired sections are adjacent. */
+  sectionRowLayouts: DashboardSectionRowLayouts;
 };
 
 export const DASHBOARD_SECTION_KEYS: DashboardSectionKey[] = [
@@ -35,7 +47,12 @@ export const DASHBOARD_SECTION_KEYS: DashboardSectionKey[] = [
   "chart",
   "alerts",
   "ageBreakdown",
-  "agencyHealth"
+  "agencyHealth",
+  "funnel",
+  "campaignObjectives",
+  "topCampaigns",
+  "profitByCampaign",
+  "adLibrary"
 ];
 
 /**
@@ -48,7 +65,12 @@ export const DASHBOARD_AVAILABLE_SECTION_KEYS: DashboardSectionKey[] = [
   "heroKpis",
   "secondaryMetrics",
   "chart",
-  "ageBreakdown"
+  "ageBreakdown",
+  "funnel",
+  "campaignObjectives",
+  "topCampaigns",
+  "profitByCampaign",
+  "adLibrary"
 ];
 
 export const DEFAULT_DASHBOARD_SECTION_ORDER: DashboardSectionKey[] = [
@@ -56,8 +78,13 @@ export const DEFAULT_DASHBOARD_SECTION_ORDER: DashboardSectionKey[] = [
   "heroKpis",
   "secondaryMetrics",
   "chart",
-  "alerts",
   "ageBreakdown",
+  "funnel",
+  "campaignObjectives",
+  "topCampaigns",
+  "profitByCampaign",
+  "adLibrary",
+  "alerts",
   "agencyHealth"
 ];
 
@@ -68,7 +95,12 @@ export const DEFAULT_DASHBOARD_SECTIONS: DashboardSections = {
   chart: true,
   alerts: true,
   ageBreakdown: true,
-  agencyHealth: true
+  agencyHealth: true,
+  funnel: true,
+  campaignObjectives: true,
+  topCampaigns: true,
+  profitByCampaign: true,
+  adLibrary: true
 };
 
 export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutPrefs = {
@@ -76,7 +108,8 @@ export const DEFAULT_DASHBOARD_LAYOUT: DashboardLayoutPrefs = {
   heroMetrics: [],
   periodMetrics: [],
   sectionOrder: [...DEFAULT_DASHBOARD_SECTION_ORDER],
-  chartSize: "default"
+  chartSize: "default",
+  sectionRowLayouts: { ...DEFAULT_DASHBOARD_SECTION_ROW_LAYOUTS }
 };
 
 export const MAX_HERO_METRICS = 10;
@@ -183,7 +216,8 @@ export function normalizeDashboardLayout(raw: unknown): DashboardLayoutPrefs {
       heroMetrics: [],
       periodMetrics: [],
       sectionOrder: [...DEFAULT_DASHBOARD_SECTION_ORDER],
-      chartSize: "default"
+      chartSize: "default",
+      sectionRowLayouts: { ...DEFAULT_DASHBOARD_SECTION_ROW_LAYOUTS }
     };
   }
 
@@ -203,7 +237,8 @@ export function normalizeDashboardLayout(raw: unknown): DashboardLayoutPrefs {
     heroMetrics: normalizeDashboardHeroMetrics(obj.heroMetrics),
     periodMetrics: normalizePeriodMetrics(obj.periodMetrics),
     sectionOrder: normalizeSectionOrder(obj.sectionOrder),
-    chartSize: normalizeChartPanelSize(obj.chartSize)
+    chartSize: normalizeChartPanelSize(obj.chartSize),
+    sectionRowLayouts: normalizeSectionRowLayouts(obj.sectionRowLayouts)
   };
 }
 

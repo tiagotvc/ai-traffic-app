@@ -1,127 +1,123 @@
-# Feature Flags de plataforma (hierárquico)
+# Feature Flags de plataforma (hierárquico + rollout)
 
-> Sistema de liga/desliga de **funcionalidades para toda a plataforma**, controlado pelo admin
-> (independe do plano). Hierárquico: **Módulo → Funcionalidade → sub-funcionalidade**. Hoje só o
-> módulo **Brain** está aplicado no produto; o sistema já está pronto para outros módulos.
+> Sistema de controle de **funcionalidades para toda a plataforma**, com modos de rollout
+> por módulo e sub-funcionalidade. Controlado pelo admin (independe do plano).
 >
 > **Fonte de verdade desta feature. Atualize este doc a cada incremento.**
 
 ## TL;DR
 
-- O admin liga/desliga features na aba **Configurações → Feature Flags → "Módulos & Funcionalidades"**.
-- **Default = ON.** Só persistimos overrides `false` (quando o admin desliga algo).
-- **Kill-switch acima do plano:** `visível/usável = flagDePlataforma(ON) E permissãoDoPlano`.
-  Desligar um pai **cascateia** nos filhos; `dependsOn` cobre interdependências.
-- Quando uma feature do Brain é desligada: **some do sidebar** (para todos), a **API é bloqueada** e
-  a **página/recurso fica indisponível** — sem impacto nas outras features.
+- Admin → **Configurações → Feature Flags IA** → módulo na sidebar esquerda → rollout na direita.
+- **Quatro modos de rollout:** `off` | `admin_only` | `global` | `specific_users`.
+- **Default = `global`** (comportamento anterior: tudo ligado). Legado `{ id: false }` migra para `off` na leitura.
+- **Kill-switch acima do plano:** `visível/usável = rollout(usuário) E permissãoDoPlano`.
+- Sub-funcionalidades **herdam** o rollout do módulo salvo override explícito.
+- **Platform admin** sempre passa nos flags (QA) — vê tudo no produto.
 
-## Não confundir com…
+## Modos de rollout
 
-- **Plano/billing (`PlanLimits`):** o que cada plano inclui (upsell). Continua existindo.
-- **AI-credits flags** (`creditsV2Enabled`, pesos): seção separada na mesma aba, sistema próprio.
+| Modo | Comportamento |
+|---|---|
+| `off` | Desligado para todos (cascateia nos filhos). |
+| `admin_only` | Só platform admins (`platformRole === admin`). |
+| `global` | Todos os usuários (ainda respeita plano/billing). |
+| `specific_users` | Allowlist de `userId` (+ platform admins). |
 
-## Módulos registrados (2026-06-27)
+Persistência em `platform_settings` (chave `platform_feature_flags`):
 
-Além de **Brain**, **Campanhas** e **Públicos**, o registry agora tem:
+```json
+{
+  "visions": { "mode": "admin_only" },
+  "campaigns.ai-generate": {
+    "mode": "specific_users",
+    "allowedUserIds": ["uuid-1", "uuid-2"]
+  }
+}
+```
 
-- **`ai`** — Inteligência Artificial: `ai.router` (roteador Gemini+Claude — OFF = só Gemini),
-  `ai.gemini`, `ai.claude`. Aplicado em [`src/lib/ai/generate.ts`](../src/lib/ai/generate.ts)
-  via `isPlatformFeatureEnabled`. Ver [ai-router](./ai-router/README.md).
-- **`brain.mcp`** — servidor MCP sobre o Brain. ✅ **Implementado (read-only)** — ver
-  [mcp](./mcp/README.md). (+ `brain.mcp.write` — escrita, **pendente** P1.4.)
-- **`reports`** — módulo de Relatórios:
-  - `reports.v1` (clássico, sem IA) e `reports.v2` (IA: gerar por IA, análise/insights, anomalias,
-    consolidado e templates). Desligáveis independentemente.
-  - `reports.v3` (entrega ao cliente) + canais `reports.v3.emailPdf` / `reports.v3.emailLink` /
-    `reports.v3.whatsapp` — **cada canal liga/desliga separado**; o usuário só escolhe entre os
-    habilitados. Gate de servidor em `report-delivery.ts` (skip se canal off) + `buildReportPreview`
-    (IA/anomalias só com v2) + `/api/reports/ai-config` (exige v2). UI lê `/api/reports/flags`.
-    Ver [relatórios](./relatorios/plano-melhorias-relatorios-dashboard.md).
-- **`meta`** — `meta.capi` (Conversions API ✅ engine+teste) e `meta.attribution` (janelas ✅ fundação).
-  Ver [meta-conversions](./meta-conversions/README.md). (P0.3/P0.4 e wiring de insights pendentes.)
-- **`brain.mcp.write`** — escrita via MCP. ✅ **Implementado** (`propose_action` → proposta pendente).
+Ausência de chave = herdar pai / `global` na raiz. `mode: global` no PATCH **remove** o override.
 
 ## Arquitetura
 
 | Peça | Arquivo | Papel |
 |---|---|---|
-| Registry (árvore) | [`src/lib/feature-flags/registry.ts`](../src/lib/feature-flags/registry.ts) | Define módulos/features (ids hierárquicos por ponto) + resolvedor puro `isFeatureEnabled`. |
-| Tipos | [`src/lib/feature-flags/types.ts`](../src/lib/feature-flags/types.ts) | `FeatureNode`, `FeatureFlagMap`. |
-| Service (server) | [`src/lib/feature-flags/service.ts`](../src/lib/feature-flags/service.ts) | Lê/grava overrides em `platform_settings` (cache Redis 60s) + `assertFeatureEnabled`. |
-| Storage | entity `PlatformSetting` (chave `platform_feature_flags`) | JSON `{ [featureId]: false }` (só overrides OFF). |
-| Admin API | [`src/app/api/admin/platform/feature-flags/route.ts`](../src/app/api/admin/platform/feature-flags/route.ts) | GET/PATCH `platformFeatures` + devolve a árvore. |
-| Admin UI | [`src/components/admin/AdminFeatureFlagsClient.tsx`](../src/components/admin/AdminFeatureFlagsClient.tsx) | Seção "Módulos & Funcionalidades" (árvore de `DsSwitch`). |
+| Registry (árvore) | [`src/lib/feature-flags/registry.ts`](../src/lib/feature-flags/registry.ts) | Módulos/features + `isFeatureEnabledForUser`, `resolveAllFeaturesForUser`. |
+| Tipos | [`src/lib/feature-flags/types.ts`](../src/lib/feature-flags/types.ts) | `FeatureRolloutMode`, `FeatureFlagEntry`, `FeatureFlagConfigMap`, `ResolvedFeatureMap`. |
+| Service (server) | [`src/lib/feature-flags/service.ts`](../src/lib/feature-flags/service.ts) | CRUD em `platform_settings` (Redis 60s) + `isPlatformFeatureEnabled` / `assertFeatureEnabled`. |
+| Admin API | [`src/app/api/admin/platform/feature-flags/route.ts`](../src/app/api/admin/platform/feature-flags/route.ts) | GET/PATCH config cru + registry. |
+| Entitlements | [`src/app/api/me/entitlements/route.ts`](../src/app/api/me/entitlements/route.ts) | Devolve `platformFeatures` **resolvido** por usuário (booleans). |
+| Admin UI | [`src/components/admin/AdminFeatureFlagsClient.tsx`](../src/components/admin/AdminFeatureFlagsClient.tsx) | Seletor de rollout + user picker. |
+| User picker | [`src/components/admin/FeatureFlagUserPicker.tsx`](../src/components/admin/FeatureFlagUserPicker.tsx) | Busca `/api/admin/users`. |
 
-### Resolução (`isFeatureEnabled`)
+### Resolução (`isFeatureEnabledForUser`)
 
-Uma feature está **habilitada** só se:
-1. o próprio id **não** está `false`, **e**
-2. **todos os ancestrais** (derivados do id por pontos, ex.: `brain.chat` → `brain`) estão habilitados, **e**
-3. todos os `dependsOn` estão habilitados.
+Uma feature está **habilitada** para um usuário se:
 
-Default ON: ausência de override = habilitado. Função **pura** (roda no client e no server).
+1. É **platform admin** → sempre `true` (bypass QA), **ou**
+2. Nenhum ancestral tem `mode: off` explícito, **e**
+3. O rollout efetivo (herança root → id) permite o usuário, **e**
+4. Todos os `dependsOn` estão habilitados.
 
-## Aplicação no produto (módulo Brain)
+O mask em [`entitlements.ts`](../src/lib/billing/entitlements.ts) (`PLATFORM_MASKED_LIMITS`) aplica o rollout sobre limites de plano.
 
-O ponto de integração é **único e no servidor**: em
-[`getEntitlements`](../src/lib/billing/entitlements.ts) os flags de plataforma **mascaram** os
-limites do plano (mapa `PLATFORM_MASKED_LIMITS`). Ou seja, `brain.chat` OFF → `allowAgencyBrainChat`
-vira `false` no `Entitlements`. Com isso, **tudo** que já lê os limites passa a respeitar o flag
-automaticamente, sem editar rota por rota:
+## Módulos registrados
 
-- **APIs do Brain** — `assertLimit("allowAgencyBrainX")` nas rotas (hypotheses, dna, chat, timeline,
-  experiments, action-plans) passa a bloquear.
-- **Páginas do Brain** — o `PlanNavGate navId="agencyBrain"` no
-  [layout](../src/app/[locale]/(app)/agency-brain/layout.tsx) bloqueia o módulo quando `brain` OFF.
-- **Sidebar (estado funcional)** — `limitsToBrainFeatures(limits)` já reflete o mask.
-
-Para **esconder** (em vez de mostrar "locked/upgrade"), os flags crus de plataforma também são
-enviados ao shell (`/api/me/entitlements` → `AppShellSkeleton` → `AppSidebar`) e o
-[`AgencyBrainNavGroup`](../src/components/layout/AgencyBrainNavGroup.tsx):
-- esconde o **grupo inteiro** se `brain` OFF (não mostra upsell);
-- esconde **itens** (Aprendizados, Hipóteses, Automações) cujo `brain.<item>` está OFF.
-
-Mapa limite-do-plano → feature id (em `entitlements.ts`):
-`allowCreativeMemoryAi`→`brain`, `allowAgencyBrainHypotheses`→`brain.hypotheses`,
-`allowAgencyBrainDna`→`brain.dna`, `allowAgencyBrainTimeline`→`brain.timeline`,
-`allowAgencyBrainExperiments`→`brain.labs`, `allowAgencyBrainActionPlans`→`brain.action-plans`,
-`allowAgencyBrainChat`→`brain.chat`, `allowNavAutomations`→`brain.automations`.
-
-> **Platform admin** bypassa o kill-switch (vê tudo) porque `applyPlatformAdminEntitlements`
-> sobrescreve os limites — útil para QA. Se quiser esconder também do admin, remover esse bypass.
+- **`visions`** — Visões (galeria + canvas). Sub: `visions.canvas`, `visions.sharing`, `visions.ai-builder`, `visions.resize`. Mapeados para `allowDashboardCanvas`, `allowDashboardSharing`, etc. Sidebar e páginas `/dashboard/views`, `/dashboard/apps/*`.
+- **`campaigns`** — Criador Meta + sub-flags IA/Brain.
+- **`audiences`** — Públicos / personas.
+- **`brain`** — Agency Brain (+ MCP).
+- **`reports`** — v1/v2/v3 + canais de entrega.
+- **`scientists`** — Cientistas Labs.
+- **`ai`** — Roteador Gemini/Claude.
+- **`meta`** — CAPI + atribuição.
 
 ## Como adicionar uma nova feature/módulo
 
-1. Acrescentar o nó em [`registry.ts`](../src/lib/feature-flags/registry.ts) (id hierárquico + label).
-2. **Aplicar no produto** (escolha os pontos que fizerem sentido):
-   - se houver um `PlanLimit` equivalente, adicionar o par em `PLATFORM_MASKED_LIMITS`
-     (`entitlements.ts`) — pega API + página + sidebar de uma vez;
-   - para esconder no sidebar, usar `isFeatureEnabled(platformFeatures, id)` no componente de nav;
-   - para bloquear uma API sem limite de plano correspondente, usar `assertFeatureEnabled(id)`.
-3. Documentar aqui.
+**Obrigatório** para qualquer módulo novo no produto:
+
+1. **Registrar** o nó em [`registry.ts`](../src/lib/feature-flags/registry.ts) (`id` hierárquico + label).
+2. **Mapear plano** (se houver `PlanLimit`): adicionar par em `PLATFORM_MASKED_LIMITS` em `entitlements.ts`.
+3. **Sidebar:** usar `platformFeatures?.<id> !== false` (mapa resolvido do shell) ou `usePlatformFeature("<id>")`.
+4. **Páginas server:** confiar em `getEntitlements` com `userId` (mask já aplicado) ou `assertFeatureEnabled("<id>")` nas APIs.
+5. **APIs:** `await assertFeatureEnabled("modulo.sub")` — usa contexto da requisição automaticamente.
+6. **Documentar** aqui.
+
+### Gate UI vs API
+
+```typescript
+// Client (sidebar, componentes)
+const on = usePlatformFeature("visions");
+
+// Server (API route)
+import { assertFeatureEnabled } from "@/lib/feature-flags/service";
+await assertFeatureEnabled("visions.canvas");
+```
+
+### Testar rollout
+
+| Cenário | Como |
+|---|---|
+| Admin only | Modo `admin_only` → login como admin da plataforma. |
+| Usuário específico | Modo `specific_users` + picker; login com esse usuário. |
+| Global / off | Login como usuário comum; verificar sidebar e API. |
+| Plano | Rollout `global` + plano sem limite → upsell/locked (billing). |
+
+## Migração de dados legados
+
+Não há migration SQL: valor JSON em `platform_settings`. Na leitura, `false` → `{ mode: "off" }`, `true` → `{ mode: "global" }`. Comportamento existente preservado (só `false` explícitos desligavam globalmente).
 
 ## Propagação / cache
 
-Overrides ficam em Redis (60s) e o `entitlements` também (60s). Uma mudança no admin leva **até ~60s**
-para refletir para todos (não é tempo real). Aceitável para flags de plataforma.
+Config cru: Redis 60s (`platform:feature_flags`). Entitlements por usuário: Redis 60s (`entitlements:{tenantId}:{userId}`). Mudanças no admin levam até ~60s para refletir.
 
 ## Verificação
 
-- Admin → "Módulos & Funcionalidades" → desligar `Brain → Chat` e salvar; recarregar e confirmar
-  persistência.
-- Desligar `brain.hypotheses` → item "Hipóteses" some do sidebar; API de hypotheses bloqueia.
-- Desligar o módulo `brain` → grupo Agency Brain some do sidebar e `/agency-brain/*` fica indisponível.
-- Religar → tudo volta (respeitando o plano). Desligar uma feature **não** afeta as outras.
-
-## Limitações conhecidas (follow-ups)
-
-- **Gate por sub-rota:** páginas internas (ex.: `/agency-brain/hypotheses`) só têm gate de
-  **módulo** (PlanNavGate). Com a feature OFF, a API bloqueia os dados e o item some do menu, mas o
-  *shell* da página ainda carrega via URL direta. Para bloqueio total por sub-rota, adicionar um
-  `PlatformFeatureGate featureId="brain.<x>"` nessas páginas.
-- **Outros módulos** (Dashboard, Campanhas…) ainda não aplicados — só o registry está pronto.
+- Admin → Visões → `admin_only` → salvar → usuário comum não vê item no sidebar.
+- Admin → Visões → `specific_users` + usuário beta → só esse usuário (+ admin) vê Visões.
+- Campanhas → sub-flag `campaigns.ai-generate` → `off` → API `/api/campaign-creator/ai-generate` retorna `feature_disabled`.
+- `npx tsc --noEmit` sem erros.
 
 ## Histórico
 
-- 2026-06-26: Sistema criado (registry + service + admin UI/API) e aplicado ao módulo **Brain**
-  (mask em `getEntitlements` + esconder no sidebar). MCP confirmado como inexistente (roadmap).
+- 2026-06-29: Rollout modes (`off` / `admin_only` / `global` / `specific_users`), módulo **Visões**, admin UI com seletor + user picker, entitlements por usuário.
+- 2026-06-26: Sistema criado (registry + service + admin UI/API) e aplicado ao módulo **Brain**.

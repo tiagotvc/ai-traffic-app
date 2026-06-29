@@ -215,6 +215,8 @@ export async function POST(req: Request) {
     competitorRun?.ran && competitorRun.findings.length
       ? {
           adsAnalyzed: competitorRun.itemsAnalyzed ?? 0,
+          summary: competitorRun.summary ?? null,
+          confidence: competitorRun.confidence ?? null,
           findings: competitorRun.findings.slice(0, 4).map((f) => ({ title: f.title, body: f.body }))
         }
       : null;

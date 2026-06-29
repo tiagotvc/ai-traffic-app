@@ -2,33 +2,32 @@
 
 import { useEffect, useState } from "react";
 
-import { isFeatureEnabled } from "@/lib/feature-flags/registry";
-import type { FeatureFlagMap } from "@/lib/feature-flags/types";
+import type { ResolvedFeatureMap } from "@/lib/feature-flags/types";
 
 const ENTITLEMENTS_CACHE_KEY = "traffic-ai-shell-entitlements";
 
-function readCachedPlatformFeatures(): FeatureFlagMap {
+function readCachedPlatformFeatures(): ResolvedFeatureMap {
   try {
     const raw = sessionStorage.getItem(ENTITLEMENTS_CACHE_KEY);
     if (!raw) return {};
-    return (JSON.parse(raw) as { platformFeatures?: FeatureFlagMap }).platformFeatures ?? {};
+    return (JSON.parse(raw) as { platformFeatures?: ResolvedFeatureMap }).platformFeatures ?? {};
   } catch {
     return {};
   }
 }
 
-/** Resolves a platform feature flag (default ON unless admin disabled). */
+/** Resolves a platform feature flag for the current user (from entitlements cache). */
 export function usePlatformFeature(featureId: string): boolean {
-  const [flags, setFlags] = useState<FeatureFlagMap>(() => readCachedPlatformFeatures());
+  const [flags, setFlags] = useState<ResolvedFeatureMap>(() => readCachedPlatformFeatures());
 
   useEffect(() => {
     void fetch("/api/me/entitlements")
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
-        if (j?.platformFeatures) setFlags(j.platformFeatures as FeatureFlagMap);
+        if (j?.platformFeatures) setFlags(j.platformFeatures as ResolvedFeatureMap);
       })
       .catch(() => {});
   }, []);
 
-  return isFeatureEnabled(flags, featureId);
+  return flags[featureId] !== false;
 }

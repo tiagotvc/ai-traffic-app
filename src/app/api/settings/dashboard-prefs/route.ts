@@ -47,7 +47,14 @@ const LayoutSchema = z.object({
       "seção inválida"
     )
     .optional(),
-  chartSize: z.enum(["compact", "default", "tall"]).optional()
+  chartSize: z.enum(["compact", "default", "tall"]).optional(),
+  sectionRowLayouts: z
+    .object({
+      chartAge: z.enum(["sideBySide", "stacked"]).optional(),
+      funnelObjectives: z.enum(["sideBySide", "stacked"]).optional(),
+      profitAdLibrary: z.enum(["sideBySide", "stacked"]).optional()
+    })
+    .optional()
 });
 
 const PatchSchema = z

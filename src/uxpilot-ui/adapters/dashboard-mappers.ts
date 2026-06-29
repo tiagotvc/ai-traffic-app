@@ -17,7 +17,7 @@ import {
 } from "@/lib/dashboard-layout-prefs";
 import {
   formatDayLabel,
-  MAX_DELTA_PCT,
+  formatDeltaChangeLabel,
   prevPeriodHasBaseline,
   resolveMetricDelta,
   type MetricDeltaResult
@@ -71,13 +71,8 @@ function deltaMeta(
   if (result.kind === "new") return { change: newDeltaLabel, trend: "up" };
 
   const delta = result.value;
-  const capped = Math.abs(delta) >= MAX_DELTA_PCT;
+  const change = formatDeltaChangeLabel(delta);
   const rawTrend = delta > 0 ? "up" : delta < 0 ? "down" : "neutral";
-  const change = capped
-    ? delta >= 0
-      ? ">+999%"
-      : "<-999%"
-    : `${delta >= 0 ? "+" : ""}${Math.abs(delta).toFixed(1)}%`;
   if (COST_METRICS.has(key) && rawTrend !== "neutral") {
     return {
       change,

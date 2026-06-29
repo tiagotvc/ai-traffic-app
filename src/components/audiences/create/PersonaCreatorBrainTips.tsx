@@ -345,8 +345,16 @@ export function PersonaCreatorBrainTips({
                       <div className="mt-2 border-t border-[var(--creator-card-border,var(--border-color))] pt-2">
                         <p className="text-[10px] font-medium uppercase tracking-wide text-sky-500">
                           Concorrentes · {insightsResult.competitor.adsAnalyzed} anúncios
+                          {insightsResult.competitor.confidence != null
+                            ? ` · confiança ${insightsResult.competitor.confidence}%`
+                            : ""}
                         </p>
-                        {insightsResult.competitor.findings.slice(0, 2).map((f, i) => (
+                        {insightsResult.competitor.summary ? (
+                          <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-main)]">
+                            {insightsResult.competitor.summary}
+                          </p>
+                        ) : null}
+                        {insightsResult.competitor.findings.slice(0, 3).map((f, i) => (
                           <p key={i} className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
                             · {f.title}
                           </p>

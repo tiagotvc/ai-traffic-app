@@ -1,4 +1,11 @@
-import type { FeatureFlagMap, FeatureNode } from "./types";
+import type {
+  FeatureFlagConfigMap,
+  FeatureFlagContext,
+  FeatureFlagEntry,
+  FeatureNode,
+  FeatureRolloutMode,
+  ResolvedFeatureMap
+} from "./types";
 
 /**
  * Registry declarativo das feature flags de plataforma (admin, vale para todos).
@@ -10,6 +17,33 @@ import type { FeatureFlagMap, FeatureNode } from "./types";
  * gates de página e APIs).
  */
 export const FEATURE_REGISTRY: FeatureNode[] = [
+  {
+    id: "visions",
+    label: "Visões",
+    description: "Dashboards editáveis (galeria e canvas de widgets).",
+    children: [
+      {
+        id: "visions.canvas",
+        label: "Canvas / galeria",
+        description: "Criar, editar e abrir visões no builder de canvas."
+      },
+      {
+        id: "visions.sharing",
+        label: "Compartilhamento",
+        description: "Publicar visão e gerar link compartilhável."
+      },
+      {
+        id: "visions.ai-builder",
+        label: "Builder IA",
+        description: "Criação de widgets por IA no canvas."
+      },
+      {
+        id: "visions.resize",
+        label: "Redimensionar widgets",
+        description: "Redimensionar e reposicionar widgets no grid."
+      }
+    ]
+  },
   {
     id: "campaigns",
     label: "Campanhas",
@@ -165,7 +199,41 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         id: "scientists.competitor",
         label: "Marketing Scientist (concorrentes)",
         description:
-          "Pesquisa concorrentes (Meta Ad Library, TikTok, landing pages) — hooks, ofertas e padrões de mercado. Alimenta a comparação automática da persona."
+          "Pesquisa concorrentes (Meta Ad Library) — hooks, ofertas e padrões de mercado. Alimenta a comparação automática da persona. Cache por nicho + teto mensal de searchapi.",
+        children: [
+          {
+            id: "scientists.competitor.google",
+            label: "Fonte: Google SERP (perguntas do público)",
+            description: "Dúvidas reais e buscas relacionadas (dores/objeções). Consome 1 searchapi por nicho."
+          },
+          {
+            id: "scientists.competitor.trends",
+            label: "Fonte: Google Trends (buscas em alta)",
+            description: "Ângulos emergentes/momentum do nicho. Consome 1 searchapi por nicho."
+          },
+          {
+            id: "scientists.competitor.youtube",
+            label: "Fonte: YouTube (concorrentes em vídeo)",
+            description: "Principais vídeos/canais do nicho. Consome 1 searchapi por nicho."
+          },
+          {
+            id: "scientists.competitor.maps",
+            label: "Fonte: Google Maps (players locais)",
+            description: "Concorrentes locais + reputação (★/avaliações). Consome 1 searchapi por nicho."
+          }
+        ]
+      },
+      {
+        id: "scientists.geo",
+        label: "Geo Scientist (zonas)",
+        description:
+          "Valida bairros/cidades de uma zona vs o briefing geográfico (encaixe, fora-do-critério, sugestões)."
+      },
+      {
+        id: "scientists.testing",
+        label: "Testing Scientist (simulação)",
+        description:
+          "Simulação interna (não A/B na Meta): consome os dossiês dos outros cientistas + nicho/região e prevê hipótese, o que testar primeiro, vencedor provável, métrica e critério de parada. Só IA, zero searchapi."
       },
       {
         id: "scientists.consumer",
@@ -258,24 +326,145 @@ export function featureAncestors(id: string): string[] {
   return out;
 }
 
+/** Normaliza entrada legada (boolean) ou objeto para `FeatureFlagEntry | null`. */
+export function normalizeFlagEntry(raw: unknown): FeatureFlagEntry | null {
+  if (raw === false) return { mode: "off" };
+  if (raw === true) return { mode: "global" };
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const mode = o.mode as FeatureRolloutMode | undefined;
+  if (
+    mode !== "off" &&
+    mode !== "admin_only" &&
+    mode !== "global" &&
+    mode !== "specific_users"
+  ) {
+    return null;
+  }
+  const allowedUserIds = Array.isArray(o.allowedUserIds)
+    ? o.allowedUserIds.filter((x): x is string => typeof x === "string")
+    : undefined;
+  return { mode, allowedUserIds };
+}
+
+/** Entrada explícita armazenada para um id (sem herança). */
+export function getStoredEntry(
+  flags: FeatureFlagConfigMap,
+  id: string
+): FeatureFlagEntry | null {
+  return normalizeFlagEntry(flags[id]);
+}
+
 /**
- * Resolve se uma feature está habilitada (efetivo), considerando:
- * - default ON (só `false` explícito desliga);
- * - cascata: o próprio nó e TODOS os ancestrais precisam estar ON;
- * - interdependência: todos os `dependsOn` precisam estar habilitados.
- * Função pura (sem I/O) — pode rodar no client e no server.
+ * Modo efetivo após herança ao longo do caminho root → id.
+ * Default na raiz = `global`.
+ */
+export function getEffectiveRollout(
+  flags: FeatureFlagConfigMap,
+  id: string
+): FeatureFlagEntry {
+  const path = [...featureAncestors(id), id];
+  let effective: FeatureFlagEntry = { mode: "global" };
+  for (const nodeId of path) {
+    const stored = getStoredEntry(flags, nodeId);
+    if (stored) effective = { ...stored, allowedUserIds: stored.allowedUserIds?.slice() };
+  }
+  return effective;
+}
+
+/** Qualquer ancestral com modo `off` explícito desliga toda a subárvore. */
+export function isAncestorHardOff(flags: FeatureFlagConfigMap, id: string): boolean {
+  for (const anc of featureAncestors(id)) {
+    const stored = getStoredEntry(flags, anc);
+    if (stored?.mode === "off") return true;
+  }
+  return false;
+}
+
+function rolloutAllowsUser(entry: FeatureFlagEntry, ctx: FeatureFlagContext): boolean {
+  switch (entry.mode) {
+    case "off":
+      return false;
+    case "admin_only":
+      return ctx.isPlatformAdmin;
+    case "global":
+      return true;
+    case "specific_users":
+      return (
+        ctx.isPlatformAdmin ||
+        (!!ctx.userId && (entry.allowedUserIds?.includes(ctx.userId) ?? false))
+      );
+    default:
+      return true;
+  }
+}
+
+/**
+ * Resolve se uma feature está habilitada para um usuário, considerando:
+ * - cascata `off` em ancestrais;
+ * - herança de rollout ao longo do caminho;
+ * - interdependência (`dependsOn`).
+ */
+export function isFeatureEnabledForUser(
+  flags: FeatureFlagConfigMap,
+  id: string,
+  ctx: FeatureFlagContext,
+  seen: Set<string> = new Set()
+): boolean {
+  if (ctx.isPlatformAdmin) return true;
+  if (seen.has(id)) return true;
+  seen.add(id);
+
+  if (isAncestorHardOff(flags, id)) return false;
+
+  const effective = getEffectiveRollout(flags, id);
+  if (!rolloutAllowsUser(effective, ctx)) return false;
+
+  const node = findFeatureNode(id);
+  if (node?.dependsOn) {
+    for (const dep of node.dependsOn) {
+      if (!isFeatureEnabledForUser(flags, dep, ctx, seen)) return false;
+    }
+  }
+  return true;
+}
+
+/** Resolve todas as features do registry para um usuário (mapa booleano). */
+export function resolveAllFeaturesForUser(
+  flags: FeatureFlagConfigMap,
+  ctx: FeatureFlagContext
+): ResolvedFeatureMap {
+  const out: ResolvedFeatureMap = {};
+  for (const node of flattenFeatureNodes()) {
+    out[node.id] = isFeatureEnabledForUser(flags, node.id, ctx);
+  }
+  return out;
+}
+
+/**
+ * Compat: mapa já resolvido (booleans) ou config cru (admin).
+ * Para mapas resolvidos (`platformFeatures` do `/api/me/entitlements`), basta `flags[id] !== false`.
  */
 export function isFeatureEnabled(
-  flags: FeatureFlagMap,
+  flags: FeatureFlagConfigMap | ResolvedFeatureMap,
   id: string,
   seen: Set<string> = new Set()
 ): boolean {
-  if (seen.has(id)) return true; // proteção contra ciclo em dependsOn
+  const raw = flags[id];
+  if (typeof raw === "boolean") return raw;
+  if (seen.has(id)) return true;
   seen.add(id);
 
-  for (const nodeId of [...featureAncestors(id), id]) {
-    if (flags[nodeId] === false) return false;
+  for (const nodeId of featureAncestors(id)) {
+    const anc = flags[nodeId];
+    if (anc === false) return false;
+    if (typeof anc === "boolean" && !anc) return false;
+    const entry = normalizeFlagEntry(anc);
+    if (entry?.mode === "off") return false;
   }
+
+  const entry = normalizeFlagEntry(raw);
+  if (entry?.mode === "off") return false;
 
   const node = findFeatureNode(id);
   if (node?.dependsOn) {

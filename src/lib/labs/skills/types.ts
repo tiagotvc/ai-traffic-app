@@ -19,12 +19,24 @@ export type ScientistSkillResult = {
   itemsAnalyzed?: number;
   findings: ScientistSkillFinding[];
   sources: string[];
+  /** Resumo executivo (síntese por IA). */
+  summary?: string;
+  /** Confiança 0–100 dos achados. */
+  confidence?: number;
 };
 
 export type ScientistSkillInput = {
   niche?: string | null;
   competitors?: { name: string; pageId?: string }[];
   marketCountry?: string | null;
+  /** Geo Scientist: briefing geográfico, lugares sugeridos e região. */
+  briefing?: string | null;
+  places?: string[];
+  region?: string | null;
+  /** Pins geocodificados (lat/lng/raio) para análise geométrica (sobreposição). */
+  geoLocations?: { label?: string; latitude: number; longitude: number; radius: number }[];
+  /** Testing Scientist: achados consolidados dos outros cientistas (marketing/geo/trend). */
+  priorFindings?: { label: string; findings: ScientistSkillFinding[] }[];
 };
 
 export type ScientistSkill = {

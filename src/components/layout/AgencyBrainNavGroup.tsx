@@ -13,8 +13,8 @@ import {
   resolveAgencyBrainFeatures,
   type AgencyBrainFeatureFlags
 } from "@/lib/agency-brain/domain/modules";
-import { isFeatureEnabled } from "@/lib/feature-flags/registry";
-import type { FeatureFlagMap } from "@/lib/feature-flags/types";
+import type { ResolvedFeatureMap } from "@/lib/feature-flags/types";
+import { isModuleEnabledInShell } from "@/lib/feature-flags/modules";
 
 const STORAGE_KEY = "agency-brain-nav-expanded";
 
@@ -34,7 +34,7 @@ type Props = {
   collapsed: boolean;
   agencyBrainFeatures: AgencyBrainFeatureFlags;
   /** Feature flags de plataforma (kill-switch). Ausente = tudo habilitado. */
-  platformFeatures?: FeatureFlagMap;
+  platformFeatures?: ResolvedFeatureMap;
   pathname: string;
   permissionsReady?: boolean;
   isPlatformAdmin?: boolean;
@@ -84,6 +84,7 @@ export function AgencyBrainNavGroup({
   platformFeatures,
   pathname,
   permissionsReady = true,
+  isPlatformAdmin = false,
   onNavigate
 }: Props) {
   const t = useTranslations("nav");
@@ -91,8 +92,10 @@ export function AgencyBrainNavGroup({
   const inAgencyBrain = base.startsWith("/agency-brain");
   const parentActive = isAgencyBrainActive(base);
 
-  // Kill-switch de plataforma: ausente = habilitado (default ON).
-  const featureOn = (id: string) => !platformFeatures || isFeatureEnabled(platformFeatures, id);
+  const featureOn = (id: string) =>
+    !permissionsReady
+      ? false
+      : isPlatformAdmin || platformFeatures?.[id] === true;
 
   const features = resolveAgencyBrainFeatures(agencyBrainFeatures);
   const allowed = !permissionsReady || features.allowCreativeMemoryAi;
@@ -114,7 +117,14 @@ export function AgencyBrainNavGroup({
   }
 
   // Plataforma desligou o módulo Brain → esconde por completo (não mostra "locked/upgrade").
-  if (permissionsReady && !featureOn("brain")) return null;
+  if (
+    !isModuleEnabledInShell(platformFeatures, "brain", {
+      ready: permissionsReady,
+      isPlatformAdmin
+    })
+  ) {
+    return null;
+  }
 
   if (!allowed) {
     return <AgencyBrainNavLocked collapsed={collapsed} onNavigate={onNavigate} />;

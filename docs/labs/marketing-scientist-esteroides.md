@@ -15,7 +15,15 @@ adiciona uma camada de inteligência **rastreável** (evidência) e com **confia
 
 ## Esteroides priorizados (do maior retorno/menor esforço pro mais transformador)
 
-### Fase 1 — já temos as peças 🥇
+### Fase 1 — ✅ IMPLEMENTADA (memória deferida)
+Em [`competitor-skill.ts`](../../src/lib/labs/skills/competitor-skill.ts): **Winner DNA** (rankeia por
+`daysRunning`, vencedores ≥60 dias com peso na síntese + finding próprio) + **Saturação** (formato
+dominante) + **Síntese por IA** (`aiGenerateJson` sobre os vencedores → hooks/ofertas/ângulos/gaps +
+`summary` + `confidence`, com fallback por regras). O card Orion Brain mostra resumo + confiança +
+achados. **Memória (`MarketMemory`) deferida** — precisa de tenant/clientId (a skill é por nicho);
+fica como próximo passo.
+
+### Fase 1 — detalhe (já temos as peças) 🥇
 1. **Síntese por IA (não só regras)** — rodar o **AI router** (`aiGenerateJson`) sobre os anúncios
    coletados → findings estruturados (hooks, ofertas, ângulos), **score de confiança** e um bloco
    **"fazer × evitar"**. Hoje `extractMarketPatterns` é heurístico; a IA eleva a qualidade. _(Temos
@@ -26,14 +34,26 @@ adiciona uma camada de inteligência **rastreável** (evidência) e com **confia
 3. **Saturação + Gap de oportunidade** — sobre os anúncios coletados (sem fonte nova): contar quantos
    usam o mesmo hook/formato → **saturado = risco**; o que **poucos** fazem → **gap = oportunidade**.
    (Espelha `saturation.md` + `opportunity-gap.md`.)
-4. **Memória de mercado (cache + composição)** — usar a entidade **`MarketMemory`** (já existe:
-   `getValidMarketMemory`/`saveSynthesisToMemory`) pra **cachear por nicho** → reduz custo/latência e
-   **fica melhor com o tempo**. (Espelha `06-memory-system.md`/`graph-rag.md`.)
+4. **✅ Memória de mercado (cache "dados primeiro")** — IMPLEMENTADO em
+   [`market-research-cache.ts`](../../src/lib/labs/market-research-cache.ts). O resultado (anúncios +
+   síntese) é cacheado por **nicho+país** (não por usuário) no Redis (fallback in-memory): **1 chamada
+   ao searchapi por nicho serve TODOS os usuários** durante o TTL (7 dias, configurável). Entrar no
+   criador com nicho já pesquisado = **0 chamadas + 0 custo de IA**. Há um **teto mensal**
+   (`SEARCHAPI_MONTHLY_BUDGET`, default 90) que protege o limite do plano free.
 
-### Fase 2 — mais fontes (a conta searchapi já suporta) 🥈
-5. **Multi-fonte: Google Ads + TikTok** — a searchapi.io (mesma conta) tem engines `google_ads`,
-   `tiktok_ads`, `linkedin_ads`. Adicionar providers irmãos do `searchapi-provider.ts` → o Marketing
-   Scientist cruza **Meta + Google + TikTok** num só dossiê. (Fontes em `agents/sources/`.)
+### Fase 2 — ✅ MULTI-FONTE IMPLEMENTADO 🥈
+5. **Multi-fonte** — [`searchapi-sources.ts`](../../src/lib/labs/searchapi-sources.ts), cada uma atrás de
+   sub-flag `scientists.competitor.{google,trends,youtube,maps}` e contando no teto mensal:
+   - ✅ **Google SERP** → perguntas reais do público (dores/objeções) + buscas relacionadas.
+   - ✅ **Google Trends** → buscas em alta (ângulos emergentes).
+   - ✅ **YouTube** → concorrentes em vídeo.
+   - ✅ **Google Maps** → players locais + reputação (★/avaliações).
+   - ❌ `tiktok`/`google_ads`/`tiktok_ads` **não existem** no REST (só no conector MCP, que não roda no
+     servidor).
+   Os achados entram no mesmo dossiê cacheado por nicho.
+6. **✅ Cache compartilhado entre telas** — [`cached-ad-library.ts`](../../src/lib/labs/cached-ad-library.ts):
+   o **criador de campanha** (`creator-brain-insights`) e o cientista usam o mesmo fetch cacheado por
+   nicho+país → "1 chamada por nicho" vale em **qualquer tela**, com o teto mensal global.
 6. **Enriquecer com landing pages** — seguir a URL de destino dos anúncios → extrair **preço,
    garantia, bônus, urgência, prova social** (`sources/landing-pages.md`). Junta "ad" + "oferta".
 

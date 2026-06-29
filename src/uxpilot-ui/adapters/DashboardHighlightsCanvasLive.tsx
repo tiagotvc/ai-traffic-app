@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Calendar } from "lucide-react";
 
+import { ActiveScopeFilterBadges } from "@/components/layout/ActiveScopeFilterBadges";
 import { DashboardCustomizeModal } from "@/components/dashboard/DashboardCustomizeModal";
 import { DashboardCanvas } from "@/components/dashboard/canvas/DashboardCanvas";
 import {
@@ -89,17 +89,7 @@ export function DashboardHighlightsCanvasLive() {
           !data.isEmptyState ? (
             <>
               <span>{t("highlightsSubtitle")}</span>
-              <span
-                className="ml-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-                style={{
-                  borderColor: "var(--chart-frame-border)",
-                  background: "var(--chart-frame-bg)",
-                  color: "var(--text-dim)"
-                }}
-              >
-                <Calendar size={10} />
-                {data.periodLabel}
-              </span>
+              <ActiveScopeFilterBadges periodLabel={data.periodLabel} />
             </>
           ) : (
             t("highlightsSubtitle")

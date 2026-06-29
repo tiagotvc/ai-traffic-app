@@ -14,6 +14,13 @@ import {
 } from "@/lib/feature-flags/service";
 import { FEATURE_REGISTRY } from "@/lib/feature-flags/registry";
 
+const rolloutModeSchema = z.enum(["off", "admin_only", "global", "specific_users"]);
+
+const featureEntrySchema = z.object({
+  mode: rolloutModeSchema,
+  allowedUserIds: z.array(z.string().uuid()).optional()
+});
+
 const patchSchema = z.object({
   featureFlags: z
     .object({
@@ -25,7 +32,7 @@ const patchSchema = z.object({
     .optional(),
   weights: z.record(z.string(), z.number().int().min(0)).optional(),
   /** Overrides do sistema genérico de Módulos & Funcionalidades. */
-  platformFeatures: z.record(z.string(), z.boolean()).optional()
+  platformFeatures: z.record(z.string(), featureEntrySchema).optional()
 });
 
 export async function GET() {

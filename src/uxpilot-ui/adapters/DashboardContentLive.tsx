@@ -1,13 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactElement, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Calendar, Settings2, Sparkles } from "lucide-react";
+import { Settings2, Sparkles } from "lucide-react";
 
 import { BrainShelf } from "@/components/dashboard/BrainShelf";
+import { AgeBreakdownCard } from "@/components/dashboard/AgeBreakdownCard";
 import { DashboardCustomizeModal } from "@/components/dashboard/DashboardCustomizeModal";
-import { DashboardInsightPanels } from "@/components/dashboard/DashboardInsightPanels";
+import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
+import {
+  AdLibraryInsightsPanel,
+  CampaignObjectivesPanel,
+  ProfitByCampaignPanel,
+  TopCampaignsRow,
+  VirtualFunnelPanel
+} from "@/components/dashboard/DashboardInsightPanels";
 import { MetricPrism } from "@/components/dashboard/MetricPrism";
+import { ActiveScopeFilterBadges } from "@/components/layout/ActiveScopeFilterBadges";
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { DsInfoBanner } from "@/design-system";
@@ -16,6 +25,7 @@ import {
   resolveVisibleSectionOrder,
   type DashboardSectionKey
 } from "@/lib/dashboard-layout-prefs";
+import { buildDashboardSectionGroups } from "@/lib/dashboard-section-rows";
 import ConnectAccountCard from "@/uxpilot-ui/components/ConnectAccountCard";
 import {
   toChartData,
@@ -133,11 +143,8 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
     t("emptyStateItem5")
   ];
 
-  const renderedInsightKeys = new Set<DashboardSectionKey>(["chart", "ageBreakdown"]);
-
   function renderSection(key: DashboardSectionKey) {
     if (!sections[key] || data.isEmptyState) return null;
-    if (renderedInsightKeys.has(key)) return null;
 
     if (key === "brainShelf") {
       return (
@@ -172,6 +179,86 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
       );
     }
 
+    if (key === "chart") {
+      return (
+        <div
+          key={key}
+          className="campaign-creator-card campaign-creator-card--compact flex min-h-[400px] min-w-0 w-full flex-col"
+        >
+          <DashboardPerformanceChart
+            data={chartData}
+            activeMetrics={pageChartMetrics}
+            onToggleMetric={(metricKey) =>
+              data.toggleChartMetric(metricKey, { scope: PAGE_CHART_METRICS })
+            }
+            formatValue={data.formatMetricValue}
+            metricLabels={data.chartMetricLabels}
+            metricSummary={data.summary ?? undefined}
+            isLoading={data.loading}
+            subtitle={data.chartSubtitle}
+            previewHeight={chartPlotHeight}
+            availableMetrics={PAGE_CHART_METRICS}
+            title={t("metricsChartTitle")}
+            variant="page"
+            chartStyle="line"
+            lineVisual="report"
+            dualAxisAlways
+            fillHeight
+          />
+        </div>
+      );
+    }
+
+    if (key === "ageBreakdown") {
+      return (
+        <div key={key} className="flex min-h-[400px] min-w-0 w-full">
+          <AgeBreakdownCard
+            rows={data.ageBreakdown ?? []}
+            isLoading={data.ageBreakdownLoading}
+            embedded={false}
+          />
+        </div>
+      );
+    }
+
+    if (key === "funnel") {
+      return <VirtualFunnelPanel key={key} steps={insightPanels.funnelSteps} />;
+    }
+
+    if (key === "campaignObjectives") {
+      return (
+        <CampaignObjectivesPanel
+          key={key}
+          buckets={insightPanels.campaignStatus}
+          objectiveBuckets={insightPanels.campaignObjectives}
+        />
+      );
+    }
+
+    if (key === "topCampaigns") {
+      return (
+        <TopCampaignsRow
+          key={key}
+          byRank={insightPanels.topCampaigns}
+          bySpend={insightPanels.topCampaignsBySpend}
+        />
+      );
+    }
+
+    if (key === "profitByCampaign") {
+      return <ProfitByCampaignPanel key={key} rows={insightPanels.profitByCampaign} />;
+    }
+
+    if (key === "adLibrary") {
+      return (
+        <AdLibraryInsightsPanel
+          key={key}
+          insights={data.adLibraryInsights}
+          isLoading={data.adLibraryLoading}
+        />
+      );
+    }
+
     return null;
   }
 
@@ -179,6 +266,56 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
   const metricsAnchorKey = sectionOrder.find(
     (key) => key === "heroKpis" || key === "secondaryMetrics"
   );
+
+  const rowLayouts = data.dashboardLayout.sectionRowLayouts;
+
+  function flushSectionGroups(pendingKeys: DashboardSectionKey[], rendered: ReactNode[]) {
+    if (pendingKeys.length === 0) return;
+    const groups = buildDashboardSectionGroups(pendingKeys, rowLayouts);
+    for (const group of groups) {
+      if (group.type === "single") {
+        const section = renderSection(group.key);
+        if (section) rendered.push(section);
+        continue;
+      }
+      const children = group.keys
+        .map((key) => ({ key, node: renderSection(key) }))
+        .filter((item): item is { key: DashboardSectionKey; node: ReactElement } => item.node != null);
+      if (children.length === 0) continue;
+      rendered.push(
+        <div
+          key={group.rowId}
+          className="flex w-full min-w-0 flex-col gap-[var(--app-section-gap)] lg:flex-row lg:items-stretch"
+        >
+          {children.map(({ key, node }) => (
+            <div key={key} className="flex min-w-0 w-full flex-1 basis-0">
+              {node}
+            </div>
+          ))}
+        </div>
+      );
+    }
+  }
+
+  const dashboardSections: ReactNode[] = [];
+  let pendingSectionKeys: DashboardSectionKey[] = [];
+
+  for (const key of sectionOrder) {
+    const isMetricsBlock = key === "heroKpis" || key === "secondaryMetrics";
+    if (isMetricsBlock) {
+      if (key !== metricsAnchorKey || metricsBlockRendered) continue;
+      flushSectionGroups(pendingSectionKeys, dashboardSections);
+      pendingSectionKeys = [];
+      const section = renderSection(key);
+      metricsBlockRendered = true;
+      if (section) dashboardSections.push(<div key="metrics">{section}</div>);
+      continue;
+    }
+
+    if (!sections[key] || data.isEmptyState) continue;
+    pendingSectionKeys.push(key);
+  }
+  flushSectionGroups(pendingSectionKeys, dashboardSections);
 
   return (
     <div data-dashboard-shell className="contents">
@@ -191,17 +328,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
           <>
             <span>{t("highlightsSubtitle")}</span>
             {!data.isEmptyState ? (
-              <span
-                className="ml-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-                style={{
-                  borderColor: "var(--chart-frame-border)",
-                  background: "var(--chart-frame-bg)",
-                  color: "var(--text-dim)"
-                }}
-              >
-                <Calendar size={10} />
-                {data.periodLabel}
-              </span>
+              <ActiveScopeFilterBadges periodLabel={data.periodLabel} />
             ) : null}
           </>
         }
@@ -249,52 +376,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
           </div>
         ) : (
           <div className="tab-transition animate-fade-up flex flex-col gap-[var(--app-section-gap)]">
-            {sectionOrder.map((key) => {
-              const section = renderSection(key);
-              const isMetricsBlock = key === "heroKpis" || key === "secondaryMetrics";
-              if (isMetricsBlock && key !== metricsAnchorKey) return null;
-              if (isMetricsBlock && metricsBlockRendered) return null;
-
-              if (isMetricsBlock && key === metricsAnchorKey) {
-                metricsBlockRendered = true;
-                if (!section) return null;
-                return (
-                  <div key="metrics-and-insights" className="flex flex-col gap-[var(--app-section-gap)]">
-                    {section}
-                    <DashboardInsightPanels
-                      funnelSteps={insightPanels.funnelSteps}
-                      campaignStatus={insightPanels.campaignStatus}
-                      campaignObjectives={insightPanels.campaignObjectives}
-                      topCampaigns={insightPanels.topCampaigns}
-                      topCampaignsBySpend={insightPanels.topCampaignsBySpend}
-                      profitByCampaign={insightPanels.profitByCampaign}
-                      adLibraryInsights={data.adLibraryInsights}
-                      adLibraryLoading={data.adLibraryLoading}
-                      showPerformance={sections.chart}
-                      showAgeBreakdown={sections.ageBreakdown}
-                      performanceChart={{
-                        data: chartData,
-                        activeMetrics: pageChartMetrics,
-                        onToggleMetric: (key) =>
-                          data.toggleChartMetric(key, { scope: PAGE_CHART_METRICS }),
-                        formatValue: data.formatMetricValue,
-                        metricLabels: data.chartMetricLabels,
-                        metricSummary: data.summary ?? undefined,
-                        isLoading: data.loading,
-                        subtitle: data.chartSubtitle,
-                        previewHeight: chartPlotHeight,
-                        availableMetrics: PAGE_CHART_METRICS
-                      }}
-                      ageBreakdown={data.ageBreakdown}
-                      ageBreakdownLoading={data.ageBreakdownLoading}
-                      isLoading={data.loading || data.campaignsLoading}
-                    />
-                  </div>
-                );
-              }
-
-              return section;
-            })}
+            {dashboardSections}
           </div>
         )}
       </div>

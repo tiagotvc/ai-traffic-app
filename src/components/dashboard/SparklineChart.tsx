@@ -21,7 +21,7 @@ interface Props {
   labels?: string[];
   color: string;
   formatValue?: (value: number) => string;
-  variant?: "default" | "premium" | "creator";
+  variant?: "default" | "premium" | "creator" | "report";
   dark?: boolean;
 }
 
@@ -92,13 +92,77 @@ export function SparklineChart({
         ]
       : chartData;
 
+const REPORT_SPARK_HEIGHT = 56;
+
   if (plotData.length < 2) {
     return (
       <div
-        className="flex h-full min-h-[48px] items-center justify-center rounded text-[10px]"
+        className="flex h-full min-h-[56px] items-center justify-center rounded text-[10px]"
         style={{ color: "var(--text-dimmer)" }}
       >
         —
+      </div>
+    );
+  }
+
+  if (variant === "report") {
+    const yDomain = sparkYDomain(plotData.map((p) => p.v));
+    const gradientStops = [
+      { offset: "0%", stopColor: color, stopOpacity: 0.18 },
+      { offset: "100%", stopColor: color, stopOpacity: 0.02 }
+    ];
+
+    return (
+      <div className="dashboard-kpi-card__spark-inner h-full min-h-[56px] w-full">
+        <ResponsiveContainer width="100%" height={REPORT_SPARK_HEIGHT}>
+          <AreaChart
+            data={plotData}
+            margin={{ top: 6, right: 4, left: 0, bottom: 0 }}
+          >
+            <defs>
+              <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+                {gradientStops.map((stop) => (
+                  <stop
+                    key={stop.offset}
+                    offset={stop.offset}
+                    stopColor={stop.stopColor}
+                    stopOpacity={stop.stopOpacity}
+                  />
+                ))}
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="var(--border-color)"
+              vertical={false}
+            />
+            <YAxis hide domain={yDomain} />
+            <Tooltip
+              {...premiumRechartsTooltipProps}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const point = payload[0].payload as { v: number; label: string };
+                const display = formatValue?.(Number(point.v)) ?? String(point.v);
+                return (
+                  <PremiumChartTooltip title={point.label || undefined}>
+                    <p className="font-semibold">{display}</p>
+                  </PremiumChartTooltip>
+                );
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="v"
+              stroke={color}
+              fill={`url(#${fillId})`}
+              strokeWidth={2.25}
+              dot={false}
+              activeDot={{ r: 4, fill: color, stroke: "var(--chart-active-dot-ring)", strokeWidth: 1.5 }}
+              animationDuration={500}
+              animationEasing="ease-out"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     );
   }
