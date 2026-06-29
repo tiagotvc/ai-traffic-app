@@ -23,7 +23,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   const tabs = PLATFORM_ADMIN_LINKS.map((link) => ({
     key: link.id,
-    label: tNav(link.labelKey)
+    label: t(link.labelKey)
   }));
 
   function selectTab(tabId: PlatformAdminTabId) {

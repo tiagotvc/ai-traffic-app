@@ -21,6 +21,7 @@ export type PersonaInsightsResult = {
   estimate: { usersLowerBound: number | null; usersUpperBound: number | null };
   segments: { total: number; invalid: { id: string; name: string }[] };
   demographics: { bestAge: string | null };
+  competitor?: { adsAnalyzed: number; findings: { title: string; body: string }[] } | null;
   ai: {
     coherenceScore: number;
     summary: string;

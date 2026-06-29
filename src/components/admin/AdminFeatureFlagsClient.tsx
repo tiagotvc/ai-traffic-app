@@ -5,6 +5,7 @@ import {
   Brain,
   Coins,
   Flag,
+  FlaskConical,
   Megaphone,
   Radio,
   Sparkles,
@@ -63,10 +64,15 @@ const MODULE_ICONS: Record<ModuleId, LucideIcon> = {
   audiences: Users,
   brain: Brain,
   reports: BarChart3,
+  scientists: FlaskConical,
   ai: Sparkles,
   meta: Radio,
   aiCredits: Coins
 };
+
+function moduleIcon(id: ModuleId): LucideIcon {
+  return MODULE_ICONS[id] ?? Flag;
+}
 
 const VALID_MODULES: ModuleId[] = [
   ...FEATURE_REGISTRY.map((node) => node.id),
@@ -110,7 +116,7 @@ export function AdminFeatureFlagsClient() {
       value: node.id as ModuleId,
       label: node.label,
       description: node.description ?? "",
-      icon: MODULE_ICONS[node.id]
+      icon: moduleIcon(node.id as ModuleId)
     }));
 
     return [
@@ -119,7 +125,7 @@ export function AdminFeatureFlagsClient() {
         value: "aiCredits",
         label: t("featureFlagsNavAiCredits"),
         description: t("featureFlagsNavAiCreditsDesc"),
-        icon: MODULE_ICONS.aiCredits
+        icon: moduleIcon("aiCredits")
       }
     ];
   }, [t]);
@@ -134,14 +140,14 @@ export function AdminFeatureFlagsClient() {
       return {
         title: t("featureFlagsNavAiCredits"),
         subtitle: t("featureFlagsSubtitle"),
-        icon: MODULE_ICONS.aiCredits
+        icon: moduleIcon("aiCredits")
       };
     }
     if (activeModuleNode) {
       return {
         title: activeModuleNode.label,
         subtitle: activeModuleNode.description ?? t("featureFlagsModulesHint"),
-        icon: MODULE_ICONS[activeModuleNode.id]
+        icon: moduleIcon(activeModuleNode.id as ModuleId)
       };
     }
     return {

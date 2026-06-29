@@ -8,6 +8,7 @@ import { getAppContext, getClientBySlugOrId, getMetaAccessTokenForAdAccount } fr
 import { extractPersonaTargetingItems } from "@/lib/audience-targeting-shared";
 import { assertFeatureEnabled, FeatureDisabledError, isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 import { fetchDeliveryEstimate, validateTargetingIdList } from "@/lib/meta-graph";
+import { runScientistSkill } from "@/lib/labs/skills";
 
 const FLAG = "audiences.personaInsights";
 
@@ -152,9 +153,76 @@ export async function POST(req: Request) {
     ai = null;
   }
 
+  // Fallback por regras quando a IA está indisponível (sem chave/erro) — garante
+  // que o card sempre mostre algo útil em vez de ficar vazio.
+  if (!ai) {
+    const recs: z.infer<typeof AiSchema>["recommendations"] = [];
+    let scoreVal = 75;
+    const ageMinV = body.ageMin ?? 18;
+    const ageMaxV = body.ageMax ?? 65;
+    if (ageMaxV - ageMinV > 35) {
+      scoreVal -= 15;
+      recs.push({
+        title: "Faixa etária ampla",
+        body: `${ageMinV}–${ageMaxV} é largo; teste segmentar por idade para reduzir CPA.`,
+        severity: "medium"
+      });
+    }
+    if ((body.gender ?? "all") === "all") {
+      recs.push({
+        title: "Gênero 'Todos'",
+        body: "Valide se há diferença de performance por gênero antes de manter ambos.",
+        severity: "low"
+      });
+    }
+    if (invalidSegments.length) {
+      scoreVal -= 20;
+      recs.push({
+        title: "Segmentos inválidos",
+        body: `${invalidSegments.length} segmento(s) descontinuado(s) na Meta — substitua.`,
+        severity: "high"
+      });
+    }
+    if (!items.length) {
+      recs.push({
+        title: "Sem segmentos ainda",
+        body: "Defina interesses/comportamentos no Criador de Públicos para refinar o alcance.",
+        severity: "low"
+      });
+    }
+    if (bestAge) {
+      recs.push({
+        title: `Melhor idade real: ${bestAge}`,
+        body: "Os dados do cliente convertem melhor nessa faixa — considere alinhar a persona.",
+        severity: "medium"
+      });
+    }
+    ai = {
+      coherenceScore: Math.max(0, Math.min(100, scoreVal)),
+      summary:
+        "Análise rápida por regras (IA indisponível no momento). Baseada em faixa etária, gênero e segmentos da persona.",
+      recommendations: recs.slice(0, 4)
+    };
+    provider = "rules";
+  }
+
+  // 5) Marketing Scientist — pesquisa concorrentes na Meta Ad Library (skill, gated por flag).
+  const niche = (body.narrative ?? "").slice(0, 200).trim() || null;
+  const competitorRun = await runScientistSkill("competitor", { niche, marketCountry: "BR" }).catch(
+    () => null
+  );
+  const competitor =
+    competitorRun?.ran && competitorRun.findings.length
+      ? {
+          adsAnalyzed: competitorRun.itemsAnalyzed ?? 0,
+          findings: competitorRun.findings.slice(0, 4).map((f) => ({ title: f.title, body: f.body }))
+        }
+      : null;
+
   return NextResponse.json({
     ok: true,
     estimate,
+    competitor,
     segments: { total: items.length, invalid: invalidSegments },
     demographics: {
       bestAge,

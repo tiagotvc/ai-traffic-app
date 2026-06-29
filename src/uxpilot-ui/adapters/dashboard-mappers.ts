@@ -516,6 +516,7 @@ export function toDashboardFunnelSteps(args: {
     return formatMetricValue("ctr", (to / from) * 100, locale);
   };
 
+  // Meta funnel order: impressions → reach → clicks → conversions (each step narrows).
   return [
     {
       id: "impressions",
@@ -525,25 +526,25 @@ export function toDashboardFunnelSteps(args: {
       rateFromPrev: null
     },
     {
+      id: "reach",
+      label: labels.pageViews,
+      value: reach > 0 ? formatMetricValue("reach", reach, locale) : "—",
+      numeric: reach,
+      rateFromPrev: rate(impressions, reach)
+    },
+    {
       id: "clicks",
       label: labels.clicks,
       value: formatMetricValue("clicks", clicks, locale),
       numeric: clicks,
-      rateFromPrev: rate(impressions, clicks)
-    },
-    {
-      id: "pageViews",
-      label: labels.pageViews,
-      value: reach > 0 ? formatMetricValue("reach", reach, locale) : "—",
-      numeric: reach,
-      rateFromPrev: rate(clicks, reach)
+      rateFromPrev: rate(reach > 0 ? reach : impressions, clicks)
     },
     {
       id: "conversions",
       label: labels.conversions,
       value: formatMetricValue("conversions", conversions, locale),
       numeric: conversions,
-      rateFromPrev: rate(reach > 0 ? reach : clicks, conversions)
+      rateFromPrev: rate(clicks, conversions)
     }
   ];
 }

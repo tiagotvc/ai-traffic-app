@@ -87,7 +87,9 @@ function CreatorAiProviderCard({
         name={name}
         value={value}
         checked={checked}
-        onChange={onChange}
+        onChange={() => {
+          if (!disabled) onChange();
+        }}
         disabled={disabled}
         className="peer sr-only"
       />

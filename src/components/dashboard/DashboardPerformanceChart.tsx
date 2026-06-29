@@ -199,12 +199,29 @@ function resolveAxisAssignment(
     }
   }
 
-  const hasRightAxis = activeMetrics.some((k) => sides.get(k) === "right");
-  const hasTertiaryAxis = activeMetrics.some((k) => sides.get(k) === "tertiary");
-
   for (const key of activeMetrics) {
     if (!sides.has(key)) sides.set(key, "left");
   }
+
+  if (dualAxisAlways) {
+    for (const key of activeMetrics) {
+      if (sides.get(key) === "tertiary") sides.set(key, "right");
+    }
+    const onLeft = activeMetrics.filter((k) => sides.get(k) === "left");
+    if (onLeft.length > 1) {
+      const sorted = [...onLeft].sort(
+        (a, b) => metricMagnitude(data, b) - metricMagnitude(data, a)
+      );
+      for (let i = 1; i < sorted.length; i += 1) {
+        sides.set(sorted[i]!, "right");
+      }
+    }
+  }
+
+  const hasRightAxis = activeMetrics.some((k) => sides.get(k) === "right");
+  const hasTertiaryAxis = dualAxisAlways
+    ? false
+    : activeMetrics.some((k) => sides.get(k) === "tertiary");
 
   return { sides, hasRightAxis, hasTertiaryAxis };
 }

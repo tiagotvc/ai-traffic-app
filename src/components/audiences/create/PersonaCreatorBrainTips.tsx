@@ -300,11 +300,11 @@ export function PersonaCreatorBrainTips({
                     className={`text-white ${insightsLoading ? "animate-pulse" : ""}`}
                     aria-hidden
                   />
-                  <span className="text-[11px] font-semibold text-white">{tAud("msName")}</span>
+                  <span className="text-[11px] font-semibold text-white">Marketing Scientist</span>
                   {insightsLoading ? (
                     <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-medium text-white/90">
                       <span className="h-1.5 w-1.5 animate-ping rounded-full bg-white" />
-                      {tAud("msResearching")}
+                      Pesquisando o mercado…
                     </span>
                   ) : null}
                 </div>
@@ -314,12 +314,17 @@ export function PersonaCreatorBrainTips({
                 ) : insightsResult ? (
                   <>
                     {insightsResult.ai ? (
-                      <div className="mt-1 flex items-center justify-between">
+                      <div className="flex items-center justify-between">
                         <span className="text-[11px] text-[var(--text-dim)]">{tAud("piScore")}</span>
                         <span className="text-xs font-semibold text-[var(--text-main)]">
                           {insightsResult.ai.coherenceScore}/100
                         </span>
                       </div>
+                    ) : null}
+                    {insightsResult.ai?.summary ? (
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-main)]">
+                        {insightsResult.ai.summary}
+                      </p>
                     ) : null}
                     {insightsResult.demographics?.bestAge ? (
                       <p className="mt-1 text-[11px] text-[var(--text-dim)]">
@@ -336,6 +341,18 @@ export function PersonaCreatorBrainTips({
                         · {r.title}
                       </p>
                     ))}
+                    {insightsResult.competitor?.findings?.length ? (
+                      <div className="mt-2 border-t border-[var(--creator-card-border,var(--border-color))] pt-2">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-sky-500">
+                          Concorrentes · {insightsResult.competitor.adsAnalyzed} anúncios
+                        </p>
+                        {insightsResult.competitor.findings.slice(0, 2).map((f, i) => (
+                          <p key={i} className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
+                            · {f.title}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
                   </>
                 ) : null}
                 </div>

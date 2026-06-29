@@ -31,7 +31,10 @@ export function ZonePicker({ value, disabled, variant = "default", hideTitle, on
   const [zoneFormState, setZoneFormState] = useState<AiZoneFormActionState>({
     canSave: false,
     canClear: false,
-    pending: false
+    pending: false,
+    promptReady: false,
+    hasPreview: false,
+    hasGeoRules: false
   });
 
   useEffect(() => {

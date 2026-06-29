@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { MapPin, Plus, Sparkles } from "lucide-react";
+import { MapPin, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { ZoneCreateModeSheet } from "@/components/audiences/ZoneCreateModeSheet";
 import { ZoneDetailPanel } from "@/components/audiences/ZoneDetailPanel";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
-import { DsButton } from "@/design-system";
+import { DsInfoBanner } from "@/design-system";
 import { useRouter } from "@/i18n/navigation";
 
 export type ZoneSummary = {
@@ -25,6 +26,7 @@ export function ZonesLibraryClient() {
   const [zones, setZones] = useState<ZoneSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateMode, setShowCreateMode] = useState(false);
   const [selectedZone, setSelectedZone] = useState<ZoneSummary | null>(null);
   const [, startTransition] = useTransition();
 
@@ -50,7 +52,7 @@ export function ZonesLibraryClient() {
   }, [load]);
 
   return (
-    <div className="space-y-5">
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageTitleBlock
           title={t("zonesLibraryTitle")}
@@ -69,29 +71,28 @@ export function ZonesLibraryClient() {
             </span>
           }
         />
-        <DsButton
-          variant="accent"
-          size="sm"
-          className="inline-flex items-center gap-2"
-          onClick={() => router.push("/audiences/zones/create")}
+        <button
+          type="button"
+          className="ui-btn-accent inline-flex items-center gap-2 px-5 py-2.5 font-heading text-sm font-semibold"
+          onClick={() => setShowCreateMode(true)}
         >
           <Plus size={16} />
           {t("newZone")}
-        </DsButton>
+        </button>
       </div>
+
+      <DsInfoBanner className="px-4 py-2.5 text-sm">{t("zonesLibraryAureumAlert")}</DsInfoBanner>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       {loading ? (
-        <p className="text-sm text-[var(--text-dim)]">{t("loadingZones")}</p>
+        <div className="dashboard-kpi-card flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center !min-h-0">
+          <p className="text-sm text-[var(--text-dim)]">{t("loadingZones")}</p>
+        </div>
       ) : zones.length === 0 ? (
-        <div className="campaign-creator-card flex flex-col items-center gap-3 p-10 text-center">
-          <MapPin size={32} className="text-[var(--text-dimmer)]" />
+        <div className="dashboard-kpi-card flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center !min-h-0">
+          <MapPin size={32} className="text-[var(--text-dimmer)]" aria-hidden />
           <p className="text-sm text-[var(--text-dim)]">{t("noZonesYet")}</p>
-          <DsButton variant="brand" size="sm" className="inline-flex items-center gap-2" onClick={() => router.push("/audiences/zones/create")}>
-            <Sparkles size={16} />
-            {t("createFirstZone")}
-          </DsButton>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -124,6 +125,13 @@ export function ZonesLibraryClient() {
           })}
         </div>
       )}
+
+      <ZoneCreateModeSheet
+        open={showCreateMode}
+        onClose={() => setShowCreateMode(false)}
+        onSelectManual={() => router.push("/audiences/zones/create?mode=manual")}
+        onSelectAi={() => router.push("/audiences/zones/create?mode=ai")}
+      />
 
       {selectedZone ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

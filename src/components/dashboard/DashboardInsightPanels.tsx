@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Bar, BarChart, Cell, Pie, PieChart, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, Cell, Tooltip, XAxis, YAxis } from "recharts";
 
 import { AgeBreakdownCard } from "@/components/dashboard/AgeBreakdownCard";
 import { DashboardPerformanceChart } from "@/components/dashboard/DashboardPerformanceChart";
@@ -30,20 +30,12 @@ function MarketingFunnelVisual({
   steps: DashboardFunnelStep[];
   rateLabel: (rate: string) => string;
 }) {
-  const max = Math.max(...steps.map((s) => s.numeric), 1);
-  const stageCount = Math.max(steps.length, 1);
-  const taperStart = 100;
-  const taperEnd = 42;
+  const base = Math.max(steps[0]?.numeric ?? 0, 1);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col justify-between gap-1.5 py-0.5">
       {steps.map((step, index) => {
-        const taperPct =
-          stageCount <= 1
-            ? taperStart
-            : taperStart - (index / (stageCount - 1)) * (taperStart - taperEnd);
-        const valueRatio = step.numeric / max;
-        const widthPct = Math.max(taperPct * (0.55 + valueRatio * 0.45), taperEnd * 0.65);
+        const widthPct = Math.max(38, Math.min(100, (step.numeric / base) * 100));
         const color = FUNNEL_PALETTE[index % FUNNEL_PALETTE.length];
 
         return (
@@ -136,6 +128,11 @@ function VirtualFunnelPanel({ steps }: { steps: DashboardFunnelStep[] }) {
   );
 }
 
+function distributionLabelWidth(labels: string[]): number {
+  const longest = labels.reduce((max, label) => Math.max(max, label.length), 0);
+  return Math.min(128, Math.max(72, longest * 6.5));
+}
+
 function CampaignStatusDistributionChart({
   buckets,
   total
@@ -148,24 +145,22 @@ function CampaignStatusDistributionChart({
     ...bucket,
     pct: total > 0 ? Math.round((bucket.count / total) * 100) : 0
   }));
+  const yAxisWidth = distributionLabelWidth(chartRows.map((row) => row.label));
 
   return (
     <div className="min-h-0 flex-1">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
-        {t("widgetCampaignStatusDistribution")}
-      </p>
-      <ChartContainer height={Math.max(140, chartRows.length * 36 + 12)} className="w-full min-w-0">
+      <ChartContainer height={Math.max(120, chartRows.length * 34 + 8)} className="w-full min-w-0">
         <PremiumChartFrame compact>
           <BarChart
             data={chartRows}
             layout="vertical"
-            margin={{ top: 2, right: 8, left: 0, bottom: 2 }}
+            margin={{ top: 2, right: 12, left: 4, bottom: 2 }}
           >
             <XAxis type="number" domain={[0, 100]} hide />
             <YAxis
               type="category"
               dataKey="label"
-              width={68}
+              width={yAxisWidth}
               tick={{ ...premiumAxisTick(), fontSize: 10 }}
               axisLine={false}
               tickLine={false}
@@ -212,62 +207,39 @@ function CampaignStatusPanel({
 }) {
   const t = useTranslations("dashboard");
   const total = buckets.reduce((sum, b) => sum + b.count, 0);
-  const pieData = buckets.filter((b) => b.count > 0);
   const objectiveTotal = objectiveBuckets.reduce((sum, b) => sum + b.count, 0);
 
   return (
-    <div className="flex h-full min-h-[300px] flex-col gap-4">
-      <PanelShell title={t("widgetCampaignStatusTitle")} className="min-h-0 flex-1">
+    <div className="flex h-full min-h-[320px] flex-col gap-4">
+      <PanelShell title={t("widgetCampaignStatusTitle")} className="flex min-h-0 flex-1 flex-col">
         {total === 0 ? (
           <EmptyPanelNote>{t("widgetCampaignStatusEmpty")}</EmptyPanelNote>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-            <div className="grid shrink-0 grid-cols-1 gap-4 sm:grid-cols-[minmax(0,140px)_1fr] sm:items-start">
-              {pieData.length > 0 ? (
-                <ChartContainer height={128} className="mx-auto w-full max-w-[140px] sm:mx-0">
-                  <PremiumChartFrame compact>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="count"
-                        nameKey="label"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius="48%"
-                        outerRadius="88%"
-                        paddingAngle={2}
-                        stroke="none"
-                      >
-                        {pieData.map((bucket) => (
-                          <Cell key={bucket.id} fill={bucket.color} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </PremiumChartFrame>
-                </ChartContainer>
-              ) : null}
-              <div className="grid min-w-0 grid-cols-2 gap-2">
-                {buckets.map((bucket) => (
-                  <div
-                    key={bucket.id}
-                    className="rounded-lg border px-2.5 py-2"
-                    style={{
-                      borderColor: "var(--creator-card-border, var(--border-color))",
-                      background: "var(--creator-card-bg-inset, var(--surface-bg))"
-                    }}
-                  >
-                    <div className="mb-1 flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full" style={{ background: bucket.color }} />
-                      <span className="text-[10px] font-medium text-[var(--text-dim)]">{bucket.label}</span>
-                    </div>
-                    <p className="font-heading text-lg font-bold tabular-nums text-[var(--text-main)]">
-                      {bucket.count}
-                    </p>
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-4">
+              {buckets.map((bucket) => (
+                <div
+                  key={bucket.id}
+                  className="rounded-lg border px-2.5 py-2"
+                  style={{
+                    borderColor: "var(--creator-card-border, var(--border-color))",
+                    background: "var(--creator-card-bg-inset, var(--surface-bg))"
+                  }}
+                >
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ background: bucket.color }} />
+                    <span className="text-[10px] font-medium text-[var(--text-dim)]">{bucket.label}</span>
                   </div>
-                ))}
-              </div>
+                  <p className="font-heading text-lg font-bold tabular-nums text-[var(--text-main)]">
+                    {bucket.count}
+                  </p>
+                </div>
+              ))}
             </div>
-            <div className="min-h-0 shrink-0 border-t border-[var(--creator-card-border,var(--border-color))] pt-3">
+            <div className="min-h-0 flex-1 border-t border-[var(--creator-card-border,var(--border-color))] pt-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                {t("widgetCampaignStatusDistribution")}
+              </p>
               <CampaignStatusDistributionChart buckets={buckets} total={total} />
             </div>
           </div>
@@ -277,7 +249,7 @@ function CampaignStatusPanel({
       <PanelShell
         title={t("widgetCampaignObjectiveTitle")}
         subtitle={t("widgetCampaignObjectiveSubtitle")}
-        className="min-h-0 shrink-0"
+        className="shrink-0"
       >
         {objectiveTotal === 0 ? (
           <EmptyPanelNote>{t("widgetCampaignObjectiveEmpty")}</EmptyPanelNote>
