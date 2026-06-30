@@ -12,6 +12,7 @@ import {
 
 import { AdSetCompilerLeadCards } from "@/components/campaign-creator/AdSetCompilerLeadCards";
 import { AdSetConfigurationPanel } from "@/components/campaign-creator/AdSetConfigurationPanel";
+import { adsetRequiresPixel, conversionLocationsForObjective } from "@/lib/meta-campaign-rules";
 import { AdSetPersonaZonePanel } from "@/components/campaign-creator/AdSetPersonaZonePanel";
 import { AdvancedTargetingPanel } from "@/components/campaign-creator/AdvancedTargetingPanel";
 import { CustomAudiencesModal } from "@/components/campaign-creator/CustomAudiencesModal";
@@ -97,7 +98,7 @@ export function AdSetStep() {
   const t = useTranslations("campaignCreator");
   const locale = useLocale();
   const { payload, updatePayload, addAdsetMode } = useCampaignDraft();
-  const { audiences, audiencesLoading, pixels, customConversions } = usePublishAssets(
+  const { audiences, audiencesLoading, pixels, customConversions, assetsLoading } = usePublishAssets(
     payload.clientSlug,
     payload.adAccountId
   );
@@ -143,22 +144,44 @@ export function AdSetStep() {
     [targeting.locations]
   );
 
-  const conversionLocationOptions = useMemo(
-    (): FormSelectOption[] => [
+  const conversionLocationOptions = useMemo((): FormSelectOption[] => {
+    const allowed = conversionLocationsForObjective(payload.objective);
+    const all: FormSelectOption[] = [
       { value: "website_and_form", label: t("convWebsiteAndForm") },
       { value: "website", label: t("convWebsite") },
       { value: "instant_form", label: t("convInstantForm") },
       { value: "messaging", label: t("convMessaging") },
       { value: "calls", label: t("convCalls") },
       { value: "app", label: t("convApp") }
-    ],
-    [t]
-  );
+    ];
+    return all.filter((o) => allowed.includes(o.value as (typeof allowed)[number]));
+  }, [t, payload.objective]);
+
+  // Keep the conversion location valid for the objective (e.g. switching to App
+  // resets a leftover "website" to "app") — Meta rejects mismatched locations.
+  useEffect(() => {
+    const allowed = conversionLocationsForObjective(payload.objective);
+    if (!allowed.includes(adset.conversionLocation)) {
+      patchAdset({ conversionLocation: allowed[0]! });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payload.objective, adset.conversionLocation]);
 
   const pixelOptions = useMemo(
     (): FormSelectOption[] => pixels.map((p) => ({ value: p.id, label: p.name })),
     [pixels]
   );
+
+  // When the objective needs a conversion pixel, auto-select the first available
+  // one as soon as assets finish loading — so a slow pixel load never leaves the
+  // ad set without a tracking source (Meta rejects conversions ads without it).
+  const needsConversionPixel = adsetRequiresPixel(payload.objective, adset.conversionLocation);
+
+  useEffect(() => {
+    if (!needsConversionPixel || adset.pixelId || pixels.length === 0) return;
+    patchAdset({ pixelId: pixels[0]!.id });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsConversionPixel, adset.pixelId, pixels]);
 
   const conversionEventOptions = useMemo((): FormSelectOption[] => {
     const std = customConversions
@@ -625,6 +648,7 @@ export function AdSetStep() {
               dynamicCreativeLockedByReuse={dynamicCreativeLockedByReuse}
               conversionLocationOptions={conversionLocationOptions}
               pixelOptions={pixelOptions}
+              pixelsLoading={assetsLoading}
               conversionEventOptions={conversionEventOptions}
               onPatchAdset={patchAdset}
               onImport={() => setImportOpen(true)}

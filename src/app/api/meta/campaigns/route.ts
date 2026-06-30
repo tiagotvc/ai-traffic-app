@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId, getMetaAccessTokenForAdAccount } from "@/lib/app-context";
-import { CampaignDraftPayloadSchema } from "@/lib/campaign-draft";
+import { CampaignDraftPayloadSchema, adUsesExistingPost } from "@/lib/campaign-draft";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
 import { resolveAdPublishConfig, PublishConfigError } from "@/lib/client-publish-config";
 import { createCampaignFromDraft, createFullMetaCampaign } from "@/lib/meta-campaign";
@@ -112,7 +112,10 @@ export async function POST(req: Request) {
         client,
         pageId: primaryAd.pageId,
         linkUrl: primaryAd.linkUrl,
-        destinationType: primaryAd.destinationType
+        // The ad's own page + URL (from the campaign creator) are authoritative;
+        // a client-level default is never required. For an existing post the URL
+        // is optional (the post carries its own), so don't force the website rule.
+        destinationType: adUsesExistingPost(primaryAd) ? undefined : primaryAd.destinationType
       });
     } catch (err) {
       if (err instanceof PublishConfigError) {

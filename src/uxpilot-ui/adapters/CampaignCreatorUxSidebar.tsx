@@ -33,7 +33,15 @@ const CHECK_LABEL_KEY: Record<CampaignDraftCheckKey, string> = {
   titles: "checklistTitles"
 };
 
-function ScoreChecklistItem({ label, complete }: { label: string; complete: boolean }) {
+function ScoreChecklistItem({
+  label,
+  complete,
+  reason
+}: {
+  label: string;
+  complete: boolean;
+  reason?: string;
+}) {
   return (
     <div
       className={
@@ -41,6 +49,7 @@ function ScoreChecklistItem({ label, complete }: { label: string; complete: bool
           ? "campaign-creator-summary-checklist-item campaign-creator-summary-checklist-item--complete"
           : "campaign-creator-summary-checklist-item campaign-creator-summary-checklist-item--incomplete"
       }
+      style={!complete && reason ? { alignItems: "flex-start" } : undefined}
     >
       <CheckCircle2
         size={14}
@@ -50,7 +59,14 @@ function ScoreChecklistItem({ label, complete }: { label: string; complete: bool
             : "campaign-creator-summary-checklist-item__icon--incomplete shrink-0"
         }
       />
-      <span className="min-w-0 truncate">{label}</span>
+      <span className="min-w-0">
+        <span className="block truncate">{label}</span>
+        {!complete && reason ? (
+          <span className="mt-0.5 block whitespace-normal text-[10px] font-normal leading-snug text-[var(--text-dim)]">
+            {reason}
+          </span>
+        ) : null}
+      </span>
     </div>
   );
 }
@@ -111,13 +127,19 @@ function SidebarProgressCard({ onOpenSummary }: { onOpenSummary: () => void }) {
       </div>
 
       <div className="mt-3 space-y-1.5">
-        {checklist.map((item) => (
-          <ScoreChecklistItem
-            key={item.key}
-            label={t(CHECK_LABEL_KEY[item.key] as Parameters<typeof t>[0])}
-            complete={item.complete}
-          />
-        ))}
+        {checklist.map((item) => {
+          const reasonKey = item.reason as Parameters<typeof t>[0] | undefined;
+          const reason =
+            !item.complete && reasonKey && t.has(reasonKey) ? t(reasonKey) : undefined;
+          return (
+            <ScoreChecklistItem
+              key={item.key}
+              label={t(CHECK_LABEL_KEY[item.key] as Parameters<typeof t>[0])}
+              complete={item.complete}
+              reason={reason}
+            />
+          );
+        })}
       </div>
 
       <button

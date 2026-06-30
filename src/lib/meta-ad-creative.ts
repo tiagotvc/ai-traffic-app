@@ -42,8 +42,11 @@ export function buildMetaAssetFeedSpec(args: {
   ad: AdDraftItem;
   resolvedLink: string;
   resolvedCta: string;
+  /** Omit the off-site website link + CTA (objectives like engagement reject a
+   * WEBSITE destination — keeping them triggers Meta error #100). */
+  omitLink?: boolean;
 }): Record<string, unknown> {
-  const { ad, resolvedLink, resolvedCta } = args;
+  const { ad, resolvedLink, resolvedCta, omitLink } = args;
   const adFormat = resolveMetaAdFormat(ad);
   if (!adFormat) {
     throw new MetaCreativeValidationError(
@@ -60,10 +63,13 @@ export function buildMetaAssetFeedSpec(args: {
     bodies: ad.bodies
       .filter((t) => t.trim())
       .slice(0, META_AD_COPY_LIMITS.bodies)
-      .map((text) => ({ text: text.trim() })),
-    link_urls: [{ website_url: resolvedLink }],
-    call_to_action_types: [resolvedCta]
+      .map((text) => ({ text: text.trim() }))
   };
+
+  if (!omitLink) {
+    spec.link_urls = [{ website_url: resolvedLink }];
+    spec.call_to_action_types = [resolvedCta];
+  }
 
   if (adFormat === "SINGLE_VIDEO") {
     spec.videos = ad.videoIds.map((video_id) => ({ video_id }));

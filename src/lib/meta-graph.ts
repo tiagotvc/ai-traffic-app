@@ -205,12 +205,20 @@ export async function probeAdAccountAccess(
 export async function metaPost<T>(path: string, accessToken: string, body: Record<string, string>): Promise<T> {
   const url = new URL(`${GRAPH_BASE}${path}`);
   url.searchParams.set("access_token", accessToken);
-  const { data } = await metaFetchWithRateLimit<T>(url.toString(), {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams(body).toString()
-  });
-  return data;
+  try {
+    const { data } = await metaFetchWithRateLimit<T>(url.toString(), {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(body).toString()
+    });
+    return data;
+  } catch (err) {
+    // Surface which Meta POST failed (dev only) — invaluable for publish debugging.
+    if (process.env.NODE_ENV === "development") {
+      console.error(`[metaPost FAIL] POST ${path}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    throw err;
+  }
 }
 
 export async function fetchMyBusinesses(accessToken: string): Promise<MetaAdAccount[]> {
@@ -476,6 +484,151 @@ export async function fetchPagesForAdAccount(
       console.warn(`[meta-graph] promote_pages for ${act}:`, err);
     }
     return [];
+  }
+}
+
+export type MetaPagePost = {
+  id: string;
+  message?: string;
+  picture?: string | null;
+  permalinkUrl?: string;
+  createdTime?: string;
+};
+
+/**
+ * Posts já publicados de uma Página, utilizáveis como criativo de anúncio via
+ * `object_story_id`. Funciona em Development Mode (post público existente, não um
+ * "dark post" criado pelo app). O `id` retornado já vem como `"{pageId}_{postId}"`,
+ * que é exatamente o `object_story_id` aceito em `/adcreatives`.
+ *
+ * Ler `published_posts` exige um Page access token; obtemos um a partir do user
+ * token via `/{pageId}?fields=access_token` (escopos pages_show_list/
+ * pages_read_engagement) com fallback para o próprio user token.
+ */
+export async function fetchPagePostsForAds(
+  accessToken: string,
+  pageId: string
+): Promise<MetaPagePost[]> {
+  if (!pageId.trim()) return [];
+
+  let token = accessToken;
+  try {
+    const tokenRes = await metaFetch<{ access_token?: string }>(
+      `/${encodeURIComponent(pageId)}?fields=access_token`,
+      accessToken
+    );
+    if (tokenRes.access_token) token = tokenRes.access_token;
+  } catch {
+    /* fallback para o user token */
+  }
+
+  try {
+    const rows = await fetchGraphPaged<{
+      id: string;
+      message?: string;
+      full_picture?: string;
+      permalink_url?: string;
+      created_time?: string;
+    }>(
+      `/${encodeURIComponent(pageId)}/published_posts?fields=${encodeURIComponent(
+        "id,message,full_picture,permalink_url,created_time"
+      )}&limit=50`,
+      token,
+      50
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      message: r.message?.trim() || undefined,
+      picture: r.full_picture ?? null,
+      permalinkUrl: r.permalink_url,
+      createdTime: r.created_time
+    }));
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[meta-graph] published_posts for ${pageId}:`, err);
+    }
+    // Surface the real Meta error (e.g. missing pages_read_user_content) instead
+    // of silently returning an empty list that reads as "no posts".
+    throw err;
+  }
+}
+
+export type MetaInstagramPost = {
+  id: string;
+  caption?: string;
+  picture?: string | null;
+  permalinkUrl?: string;
+  mediaType?: string;
+  timestamp?: string;
+};
+
+/**
+ * Mídias já publicadas de uma conta Instagram, utilizáveis como criativo de
+ * anúncio via `source_instagram_media_id`. O `id` retornado é o IG Media ID
+ * (o mesmo aceito em `/adcreatives`). Funciona em Development Mode.
+ */
+export async function fetchInstagramPostsForAds(
+  accessToken: string,
+  igUserId: string
+): Promise<MetaInstagramPost[]> {
+  if (!igUserId.trim()) return [];
+  try {
+    const rows = await fetchGraphPaged<{
+      id: string;
+      caption?: string;
+      media_type?: string;
+      media_url?: string;
+      thumbnail_url?: string;
+      permalink?: string;
+      timestamp?: string;
+    }>(
+      `/${encodeURIComponent(igUserId)}/media?fields=${encodeURIComponent(
+        "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp"
+      )}&limit=50`,
+      accessToken,
+      50
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      caption: r.caption?.trim() || undefined,
+      // Videos expose a thumbnail; images use the media_url.
+      picture: r.thumbnail_url ?? r.media_url ?? null,
+      permalinkUrl: r.permalink,
+      mediaType: r.media_type,
+      timestamp: r.timestamp
+    }));
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn(`[meta-graph] instagram media for ${igUserId}:`, err);
+    }
+    // Surface the real Meta error (e.g. missing instagram_basic) instead of an
+    // empty list that reads as "no posts".
+    throw err;
+  }
+}
+
+/**
+ * Conta Instagram **Business** conectada à Página — o campo documentado para ler
+ * mídias via `/{ig}/media` (Instagram Graph API). É diferente de
+ * `connected_instagram_account`, que pode ser uma conta pessoal/de anúncios não
+ * legível por `/media` (gera `(#10) Application does not have permission`).
+ */
+export async function fetchInstagramBusinessAccountForPage(
+  accessToken: string,
+  pageId: string
+): Promise<MetaInstagramAccount | null> {
+  if (!pageId.trim()) return null;
+  try {
+    const data = await metaFetch<{
+      instagram_business_account?: { id?: string; username?: string };
+    }>(
+      `/${encodeURIComponent(pageId)}?fields=${encodeURIComponent("instagram_business_account{id,username}")}`,
+      accessToken
+    );
+    const ig = data.instagram_business_account;
+    return ig?.id ? { id: ig.id, username: ig.username } : null;
+  } catch {
+    return null;
   }
 }
 
