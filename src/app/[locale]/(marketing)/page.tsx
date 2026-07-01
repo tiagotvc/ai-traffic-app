@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { LandingPage } from "@/components/marketing/LandingPage";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://orionagency.com.br";
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.orionagency.io";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("marketing");
