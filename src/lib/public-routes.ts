@@ -19,6 +19,7 @@ export function isPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/webhooks/") ||
     pathname.startsWith("/api/billing/plans") ||
     pathname.startsWith("/api/billing/config") ||
-    pathname.startsWith("/api/meta/data-deletion")
+    pathname.startsWith("/api/meta/data-deletion") ||
+    pathname.startsWith("/api/track/")
   );
 }

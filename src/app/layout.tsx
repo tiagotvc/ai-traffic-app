@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Script from "next/script";
 import { DM_Sans, Space_Grotesk } from "next/font/google";
 
+import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script id="theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>
+        <AnalyticsProvider />
         {children}
       </body>
     </html>
