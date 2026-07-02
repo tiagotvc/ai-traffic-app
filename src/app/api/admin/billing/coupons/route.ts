@@ -21,7 +21,7 @@ const createSchema = z.object({
   validFrom: z.string().datetime().nullable().optional(),
   validUntil: z.string().datetime().nullable().optional(),
   allowedPlanSlugs: z.array(z.string()).nullable().optional(),
-  minChargeCents: z.number().int().min(100).optional(),
+  minChargeCents: z.number().int().min(500).optional(),
   description: z.string().nullable().optional()
 });
 
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       validFrom: body.validFrom ? new Date(body.validFrom) : null,
       validUntil: body.validUntil ? new Date(body.validUntil) : null,
       allowedPlanSlugs: body.allowedPlanSlugs ?? null,
-      minChargeCents: body.minChargeCents ?? 100,
+      minChargeCents: body.minChargeCents ?? 500,
       description: body.description ?? null,
       usedCount: 0
     })

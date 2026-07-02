@@ -8,8 +8,9 @@ import type { DiscountCoupon } from "@/db/entities/DiscountCoupon";
 import type { Plan } from "@/db/entities/Plan";
 import type { PricingBreakdown } from "./pricing";
 
-/** Asaas não exige mínimo fixo; usamos R$ 1,00 como piso seguro para testes. */
-export const MIN_CHECKOUT_CENTS = 100;
+/** Piso da plataforma: a Asaas recusa cobrança com valor final abaixo de R$ 5,00
+ * ("valor da cobrança menos o desconto" < mínimo) — nenhum cupom pode furar esse piso. */
+export const MIN_CHECKOUT_CENTS = 500;
 
 export type CouponValidationResult = {
   ok: true;
@@ -74,7 +75,8 @@ export async function validateCouponForCheckout(input: {
   const pct = Math.min(100, Math.max(0, coupon.percentOff));
   const couponCents = Math.round((input.pricing.finalCents * pct) / 100);
   let finalCents = input.pricing.finalCents - couponCents;
-  const floor = coupon.minChargeCents ?? MIN_CHECKOUT_CENTS;
+  // Cupons antigos podem ter minChargeCents abaixo do piso — o piso da plataforma prevalece.
+  const floor = Math.max(coupon.minChargeCents ?? 0, MIN_CHECKOUT_CENTS);
   if (finalCents < floor) {
     finalCents = floor;
   }

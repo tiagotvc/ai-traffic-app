@@ -11,7 +11,7 @@ const patchSchema = z.object({
   validFrom: z.string().datetime().nullable().optional(),
   validUntil: z.string().datetime().nullable().optional(),
   allowedPlanSlugs: z.array(z.string()).nullable().optional(),
-  minChargeCents: z.number().int().min(100).optional(),
+  minChargeCents: z.number().int().min(500).optional(),
   description: z.string().nullable().optional()
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Calendar, Check, Clock, CreditCard, Hash, IdCard, KeyRound, LockKeyhole, Mail, MapPin, Phone, Shield, Sparkles, Star, Ticket, User, Users, X } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, Check, Clock, CreditCard, Hash, IdCard, KeyRound, LockKeyhole, Mail, MapPin, Phone, Shield, Sparkles, Star, Ticket, User, Users, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -191,6 +191,8 @@ export function BillingCheckoutClient() {
   // Funnel "checkout" step — fire once per plan when the checkout is ready
   // (GA4 begin_checkout + Meta InitiateCheckout).
   const beginCheckoutFiredFor = useRef<string | null>(null);
+  // Alvo do clique no passo "Plano" do stepper: rola até a grade de planos (sempre visível acima).
+  const planSectionRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!plan || !displayPricing) return;
     if (beginCheckoutFiredFor.current === plan.id) return;
@@ -554,7 +556,7 @@ export function BillingCheckoutClient() {
                 }).finalCents;
 
               return (
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div ref={planSectionRef} className="grid scroll-mt-6 gap-3 sm:grid-cols-3">
                   {tierPlans.map((p, i) => {
                     const isSelected = p.id === planId;
                     const isRecommended = i === 1;
@@ -679,14 +681,21 @@ export function BillingCheckoutClient() {
           <UxHorizontalStepper
             size="compact"
             steps={[
-              { number: 1, label: t("checkoutStepPlan"), disabled: true },
-              { number: 2, label: t("checkoutStepData"), disabled: true },
-              { number: 3, label: t("checkoutStepPayment"), disabled: true },
+              // Passos já alcançáveis são clicáveis: "Plano" rola até a grade de planos,
+              // "Dados" volta do pagamento, "Pagamento" avança validando o formulário de dados.
+              { number: 1, label: t("checkoutStepPlan") },
+              { number: 2, label: t("checkoutStepData"), disabled: checkoutStep === 2 },
+              { number: 3, label: t("checkoutStepPayment"), disabled: checkoutStep === 3 },
               { number: 4, label: t("checkoutStepDone"), disabled: true }
             ]}
             current={checkoutStep}
             onStepClick={(step) => {
+              if (step === 1) {
+                planSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                return;
+              }
               if (step === 2) setCheckoutStep(2);
+              if (step === 3 && checkoutStep === 2) advanceToPayment();
             }}
           />
         </div>
@@ -1068,10 +1077,11 @@ export function BillingCheckoutClient() {
               <DsButton
                 type="button"
                 variant="ghost"
-                size="sm"
-                className="mx-auto text-white/50"
+                size="md"
+                className="mx-auto text-white/60 transition-colors hover:text-white"
                 onClick={() => setCheckoutStep(2)}
               >
+                <ArrowLeft size={15} aria-hidden />
                 {t("checkoutBackToData")}
               </DsButton>
               </>

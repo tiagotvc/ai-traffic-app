@@ -27,7 +27,7 @@ export function AdminCouponsClient() {
   const [code, setCode] = useState("");
   const [percentOff, setPercentOff] = useState("99");
   const [maxUses, setMaxUses] = useState("");
-  const [minCharge, setMinCharge] = useState("1");
+  const [minCharge, setMinCharge] = useState("5");
 
   const reload = useCallback(() => {
     setLoading(true);
