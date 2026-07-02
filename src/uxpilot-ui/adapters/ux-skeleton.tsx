@@ -68,15 +68,9 @@ export function UxAutomationsPageSkeleton() {
   return (
     <main className="flex-1 space-y-4 px-4 py-5 md:px-6">
       <UxPageHeaderSkeleton width="w-52" />
-      <UxCardSkeleton className="h-36" />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <UxCardSkeleton key={i} className="h-24" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <UxCardSkeleton key={i} className="h-44" />
+      <div className="space-y-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <UxCardSkeleton key={i} className="h-20" />
         ))}
       </div>
     </main>

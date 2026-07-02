@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
+import { billingErrorResponse } from "@/lib/billing/api-errors";
 import { classifyAudienceAiError } from "@/lib/audience-api-helpers";
 import { finalizeFlexibleSpecTargeting } from "@/lib/meta-targeting-prune";
 import { enrichTargetingWithMetaNames } from "@/lib/meta-segment-replacement";
@@ -70,6 +71,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, persona, removedSegments });
   } catch (e) {
+    const billingRes = billingErrorResponse(e);
+    if (billingRes) return billingRes;
     const classified = classifyAudienceAiError(e, "gemini");
     return NextResponse.json(
       { ok: false, error: classified.message, errorCode: classified.code },

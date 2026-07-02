@@ -4,7 +4,7 @@ import { CreditCard } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { AdminPlansSkeleton } from "@/components/billing/BillingSkeletons";
-import { DsPageHeader } from "@/design-system";
+import { DsBadge, DsInfoBanner, DsPageHeader, DsSwitch } from "@/design-system";
 import { adminPlanRowStyle } from "@/lib/billing/admin-plan-styles";
 import { resolveLimits } from "@/lib/billing/resolve-limits";
 import { FREE_LIMITS, type ExternalPrices, type PlanLimits } from "@/lib/billing/types";
@@ -35,6 +35,19 @@ type PlanDraft = {
   isActive: boolean;
   limits: PlanLimits;
 };
+
+const COMMERCIAL_PLAN_SLUGS = [
+  "basic",
+  "basic-plus",
+  "advanced",
+  "advanced-pro",
+  "agency",
+  "agency-pro"
+] as const;
+
+const COMMERCIAL_PLAN_ORDER = new Map<string, number>(
+  COMMERCIAL_PLAN_SLUGS.map((slug, index) => [slug, index])
+);
 
 function centsToInput(cents: number): string {
   if (cents === 0) return "0";
@@ -78,15 +91,15 @@ function LimitField({
 }) {
   if (type === "checkbox") {
     return (
-      <label className="flex items-center gap-2 text-sm text-[var(--text-main)]">
-        <input
-          type="checkbox"
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border-color)] px-3 py-2">
+        <span className="text-sm text-[var(--text-main)]">{label}</span>
+        <DsSwitch
           checked={Boolean(value)}
-          onChange={(e) => onChange(e.target.checked)}
-          className="rounded border-slate-300"
+          onChange={() => onChange(!Boolean(value))}
+          size="sm"
+          ariaLabel={label}
         />
-        {label}
-      </label>
+      </div>
     );
   }
   return (
@@ -180,12 +193,11 @@ function PlanEditor({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`text-base font-bold ${style.title}`}>{plan.name}</span>
+              <DsBadge tone={plan.slug.endsWith("-plus") || plan.slug.endsWith("-pro") ? "info" : "neutral"} size="xs">
+                {plan.slug.endsWith("-plus") || plan.slug.endsWith("-pro") ? "Plus" : "Base"}
+              </DsBadge>
               {!draft.isActive ? (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${style.inactiveBadge}`}
-                >
-                  {t("inactive")}
-                </span>
+                <DsBadge tone="warning" size="xs">{t("inactive")}</DsBadge>
               ) : null}
             </div>
             {!open && plan.description ? (
@@ -246,15 +258,14 @@ function PlanEditor({
                 className="ui-input w-full"
               />
             </label>
-            <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-main)] sm:col-span-2">
-              <input
-                type="checkbox"
+            <div className="flex items-center gap-3 text-sm font-medium text-[var(--text-main)] sm:col-span-2">
+              <DsSwitch
                 checked={draft.isActive}
-                onChange={(e) => setDraft((d) => ({ ...d, isActive: e.target.checked }))}
-                className="rounded border-slate-300"
+                onChange={() => setDraft((d) => ({ ...d, isActive: !d.isActive }))}
+                ariaLabel={t("fieldActive")}
               />
               {t("fieldActive")}
-            </label>
+            </div>
           </div>
 
           <div>
@@ -344,6 +355,14 @@ function PlanEditor({
                 onChange={(v) => setLimit("maxAutomationRules", v as number)}
               />
               <LimitField
+                label={t("limitAutomationTier")}
+                value={draft.limits.automationTier}
+                onChange={(v) => {
+                  const clamped = Math.min(4, Math.max(1, Math.round(v as number))) as 1 | 2 | 3 | 4;
+                  setLimit("automationTier", clamped);
+                }}
+              />
+              <LimitField
                 label={t("limitAi")}
                 value={draft.limits.maxAiRequestsPerMonth}
                 onChange={(v) => setLimit("maxAiRequestsPerMonth", v as number)}
@@ -352,6 +371,17 @@ function PlanEditor({
                 label={t("limitReports")}
                 value={draft.limits.maxScheduledReports}
                 onChange={(v) => setLimit("maxScheduledReports", v as number)}
+              />
+              <LimitField
+                label={t("limitCopilot")}
+                value={draft.limits.allowCopilot}
+                onChange={(v) => setLimit("allowCopilot", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitMaxScientists")}
+                value={draft.limits.maxScientists}
+                onChange={(v) => setLimit("maxScientists", v as number)}
               />
               <LimitField
                 label={t("limitAutoSync")}
@@ -423,6 +453,12 @@ function PlanEditor({
                 label={t("limitCreativeMemoryAi")}
                 value={draft.limits.allowCreativeMemoryAi}
                 onChange={(v) => setLimit("allowCreativeMemoryAi", v as boolean)}
+                type="checkbox"
+              />
+              <LimitField
+                label={t("limitCommander")}
+                value={draft.limits.allowCommander}
+                onChange={(v) => setLimit("allowCommander", v as boolean)}
                 type="checkbox"
               />
               <LimitField
@@ -626,6 +662,14 @@ export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] 
     return <AdminPlansSkeleton />;
   }
 
+  const commercialPlans = plans
+    .filter((plan) => COMMERCIAL_PLAN_ORDER.has(plan.slug))
+    .sort(
+      (a, b) =>
+        (COMMERCIAL_PLAN_ORDER.get(a.slug) ?? Number.MAX_SAFE_INTEGER) -
+        (COMMERCIAL_PLAN_ORDER.get(b.slug) ?? Number.MAX_SAFE_INTEGER)
+    );
+
   return (
     <div className="w-full space-y-4">
       <DsPageHeader
@@ -643,15 +687,13 @@ export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] 
         </div>
       ) : null}
 
-      <CreatePlanForm
-        onCreated={(plan) => {
-          setPlans((prev) => [...prev, plan].sort((a, b) => a.sortOrder - b.sortOrder));
-        }}
-      />
+      <DsInfoBanner className="px-4 py-3 text-sm">
+        Catálogo consolidado: Individual, Advanced e Agency — cada família com sua variante Plus.
+      </DsInfoBanner>
 
       {loading ? (
         <div className="space-y-4 opacity-60">
-          {plans.map((plan) => (
+          {commercialPlans.map((plan) => (
             <PlanEditor
               key={plan.id}
               plan={plan}
@@ -661,7 +703,7 @@ export function AdminPlansClient({ initialPlans }: { initialPlans?: AdminPlan[] 
         </div>
       ) : (
         <div className="space-y-4">
-          {plans.map((plan) => (
+          {commercialPlans.map((plan) => (
             <PlanEditor
               key={plan.id}
               plan={plan}

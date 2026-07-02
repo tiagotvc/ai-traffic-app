@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { repositories } from "@/db/repositories";
+import { resolveLimits } from "@/lib/billing/resolve-limits";
 import { getAvailableProviders } from "@/lib/billing/providers";
 
 export async function GET() {
@@ -20,7 +21,7 @@ export async function GET() {
       priceYearlyCents: p.priceYearlyCents,
       trialDays: p.trialDays,
       currency: p.currency,
-      limits: p.limits,
+      limits: resolveLimits(p),
       externalPrices: p.externalPrices
     })),
     providers: getAvailableProviders()

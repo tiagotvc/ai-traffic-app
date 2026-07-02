@@ -15,6 +15,8 @@ import {
   CampaignCreatorUxStepperRow
 } from "@/uxpilot-ui/adapters/CampaignCreatorUxChrome";
 import { CampaignCreatorUxSidebar } from "@/uxpilot-ui/adapters/CampaignCreatorUxSidebar";
+import { OrionCommanderCompactCard } from "@/components/campaign-creator/commander/OrionCommanderMobile";
+import { useCommanderAccess } from "@/hooks/useCommanderAccess";
 import {
   CampaignDraftProvider,
   useCampaignDraft
@@ -44,6 +46,7 @@ const STEP_ORDER: CreatorNode[] = ["campaign", "adset", "ad", "review"];
 function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "uxpilot" }) {
   const t = useTranslations("campaignCreator");
   const router = useRouter();
+  const { commander } = useCommanderAccess();
   const {
     activeNode,
     payload,
@@ -501,7 +504,7 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
           <CampaignCreatorUxHeader />
           <CampaignCreatorUxStatusToast />
           <div
-            className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr] gap-x-8 overflow-x-visible overflow-y-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]"
+            className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr] gap-x-8 overflow-x-visible overflow-y-hidden px-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_22rem]"
           >
             <CampaignCreatorUxStepperRow />
 
@@ -526,8 +529,9 @@ function CampaignCreatorInner({ variant = "uxpilot" }: { variant?: "legacy" | "u
             </aside>
           </div>
 
-          <div className="campaign-creator-footer-outer shrink-0 lg:hidden">
+          <div className="campaign-creator-footer-outer relative z-[60] shrink-0 lg:hidden">
             <div className="campaign-creator-footer-band">
+              {commander ? <OrionCommanderCompactCard /> : null}
               <CampaignCreatorUxNav
                 onPublish={handlePublish}
                 publishing={publishing}

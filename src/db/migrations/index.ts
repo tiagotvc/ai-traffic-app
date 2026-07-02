@@ -59,6 +59,12 @@ import { TenantAttributionWindow_1735832400000 } from "./0054-TenantAttributionW
 import { CapiEventLogs_1735832500000 } from "./0055-CapiEventLogs";
 import { ReportTemplates_1735832600000 } from "./0056-ReportTemplates";
 import { ReportScheduleParams_1735832700000 } from "./0057-ReportScheduleParams";
+import { PixAutomaticAuthorizations_1735832800000 } from "./0058-PixAutomaticAuthorizations";
+import { IndividualPlusPlan_1735832900000 } from "./0059-IndividualPlusPlan";
+import { AutomationExecutionModes_1735833000000 } from "./0060-AutomationExecutionModes";
+import { CommanderPlanAccess_1735833100000 } from "./0061-CommanderPlanAccess";
+import { CanonicalPlanFamilies_1735833200000 } from "./0062-CanonicalPlanFamilies";
+import { CouponRedemptionUniqueConstraint_1735833300000 } from "./0063-CouponRedemptionUniqueConstraint";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -122,5 +128,11 @@ export const appMigrations = [
   TenantAttributionWindow_1735832400000,
   CapiEventLogs_1735832500000,
   ReportTemplates_1735832600000,
-  ReportScheduleParams_1735832700000
+  ReportScheduleParams_1735832700000,
+  PixAutomaticAuthorizations_1735832800000,
+  IndividualPlusPlan_1735832900000,
+  AutomationExecutionModes_1735833000000,
+  CommanderPlanAccess_1735833100000,
+  CanonicalPlanFamilies_1735833200000,
+  CouponRedemptionUniqueConstraint_1735833300000
 ];

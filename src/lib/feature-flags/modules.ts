@@ -7,7 +7,6 @@ export type PlatformModuleId =
   | "audiences"
   | "brain"
   | "reports"
-  | "scientists"
   | "ai"
   | "meta";
 
@@ -18,7 +17,6 @@ export const MODULE_ROUTE_PREFIXES: Record<PlatformModuleId, string[]> = {
   audiences: ["/audiences"],
   brain: ["/agency-brain", "/automations"],
   reports: ["/reports"],
-  scientists: ["/agency-brain/labs"],
   ai: [],
   meta: []
 };

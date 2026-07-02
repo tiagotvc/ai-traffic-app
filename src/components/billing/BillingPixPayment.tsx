@@ -3,8 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "@/i18n/navigation";
-import { BillingBackLink, type PlanCardData } from "@/components/billing/PlanLimitsCard";
+import type { PlanCardData } from "@/components/billing/PlanLimitsCard";
+import { DsButton } from "@/design-system";
 import { formatMoney, type PricingBreakdown } from "@/lib/billing/pricing";
 
 type PixPaymentProps = {
@@ -18,21 +18,13 @@ type PixPaymentProps = {
   locale: string;
 };
 
-function PixIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M13.2 11.4 10.8 9l7.6-7.6a2.2 2.2 0 0 0-3.1-3.1L7.7 5.9 5.3 3.5A2.2 2.2 0 0 0 2.2 6.6l2.4 2.4-2.4 2.4a2.2 2.2 0 1 0 3.1 3.1l2.4-2.4 2.4 2.4a2.2 2.2 0 0 0 3.1-3.1Zm-1.5 1.5 2.4-2.4 2.4 2.4-2.4 2.4-2.4-2.4ZM3.5 17.3l2.4-2.4 2.4 2.4-2.4 2.4-2.4-2.4Zm14.6-2.4 2.4 2.4 2.4-2.4-2.4-2.4-2.4 2.4Zm-7.1 7.1 2.4-2.4 2.4 2.4a2.2 2.2 0 0 1-3.1 3.1l-2.4-2.4-2.4 2.4a2.2 2.2 0 0 1-3.1-3.1l2.4-2.4-2.4-2.4a2.2 2.2 0 1 1 3.1-3.1l2.4 2.4 2.4-2.4a2.2 2.2 0 0 1 3.1 3.1l-2.4 2.4Z" />
-    </svg>
-  );
-}
-
 function StepBadge({ n, label }: { n: number; label: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-700">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-400/25 bg-emerald-400/10 text-xs font-bold text-emerald-400">
         {n}
       </span>
-      <p className="pt-0.5 text-sm leading-snug text-[var(--text-dim)]">{label}</p>
+      <p className="pt-0.5 text-sm leading-snug text-white/60">{label}</p>
     </div>
   );
 }
@@ -91,52 +83,51 @@ export function BillingPixPayment({
   const period = cycle === "yearly" ? t("perYear") : t("perMonth");
 
   return (
-    <div className="mx-auto max-w-md space-y-5">
-      <BillingBackLink href="/billing" />
-
-      <div className="overflow-hidden rounded-2xl border border-[var(--border-color)]/80 bg-white shadow-lg shadow-slate-200/50">
-        <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 px-6 py-5 text-white">
+    <div
+      data-theme="dark"
+      data-campaign-creator-shell
+      className="mx-auto w-full max-w-xl py-4 text-[var(--text-main)]"
+    >
+      <div className="overflow-hidden rounded-2xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg)] shadow-xl">
+        <div className="border-b border-[var(--creator-card-border)] bg-[var(--creator-card-bg)] px-6 py-5 text-white">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-              <PixIcon className="h-6 w-6" />
-            </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-emerald-50/90">PIX</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400">PIX</p>
               <h1 className="text-xl font-bold">{t("pixTitle")}</h1>
             </div>
           </div>
-          <p className="mt-3 text-sm leading-relaxed text-emerald-50/95">{t("pixHint")}</p>
+          <p className="mt-3 text-sm leading-relaxed text-white/55">{t("pixHint")}</p>
         </div>
 
         <div className="space-y-5 px-6 py-5">
-          <div className="flex items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/80 px-4 py-3">
+          <div className="flex items-center justify-between rounded-xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-4 py-3">
             <div>
-              <p className="text-xs font-medium text-[var(--text-dim)]">{plan.name}</p>
-              <p className="font-heading text-2xl font-bold tracking-tight text-[var(--text-main)]">
+              <p className="text-xs font-medium text-white/45">{plan.name}</p>
+              <p className="font-heading text-2xl font-bold tracking-tight text-white">
                 {formatMoney(pricing.finalCents, currency)}
-                <span className="ml-1 text-sm font-normal text-[var(--text-dim)]">{period}</span>
+                <span className="ml-1 text-sm font-normal text-white/40">{period}</span>
               </p>
             </div>
             {pricing.discountPercent > 0 ? (
-              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
+              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-xs font-bold text-emerald-400">
                 -{pricing.discountPercent}%
               </span>
             ) : null}
           </div>
 
           {paid ? (
-            <div className="flex flex-col items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-8 text-center">
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-emerald-400/25 bg-emerald-400/10 py-8 text-center">
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-2xl text-white">
                 ✓
               </span>
-              <p className="text-lg font-semibold text-emerald-800">{t("pixPaidTitle")}</p>
-              <p className="text-sm text-emerald-700">{t("pixPaidHint")}</p>
+              <p className="text-lg font-semibold text-emerald-300">{t("pixPaidTitle")}</p>
+              <p className="text-sm text-emerald-300/70">{t("pixPaidHint")}</p>
             </div>
           ) : (
             <>
               {pixQrCode ? (
                 <div className="flex flex-col items-center">
-                  <div className="rounded-2xl border-2 border-dashed border-emerald-200 bg-white p-4 shadow-inner">
+                  <div className="rounded-2xl border border-emerald-400/30 bg-white p-4 shadow-[0_12px_32px_rgba(0,0,0,0.2)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`data:image/png;base64,${pixQrCode}`}
@@ -144,41 +135,33 @@ export function BillingPixPayment({
                       className="h-52 w-52"
                     />
                   </div>
-                  <p className="mt-3 text-center text-xs text-[var(--text-dim)]">{t("pixScanHint")}</p>
+                  <p className="mt-3 text-center text-xs text-white/45">{t("pixScanHint")}</p>
                 </div>
               ) : null}
 
               {pixCopyPaste ? (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/45">
                     {t("pixCopyLabel")}
                   </p>
-                  <div className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)] p-3">
-                    <p className="break-all font-mono text-[11px] leading-relaxed text-[var(--text-dim)]">
+                  <div className="max-h-24 overflow-y-auto rounded-xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] p-3 ds-scroll">
+                    <p className="break-all font-mono text-[11px] leading-relaxed text-white/55">
                       {pixCopyPaste}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={copyCode}
-                    className={`w-full rounded-xl py-3 text-sm font-semibold transition ${
-                      copied
-                        ? "bg-emerald-600 text-white"
-                        : "bg-[var(--amber)] text-[#0f1419] hover:brightness-105"
-                    }`}
-                  >
+                  <DsButton type="button" onClick={copyCode} variant="accent" size="lg" className="w-full">
                     {copied ? t("pixCopied") : t("pixCopy")}
-                  </button>
+                  </DsButton>
                 </div>
               ) : null}
 
-              <div className="space-y-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)]/50 p-4">
+              <div className="space-y-3 rounded-xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] p-4">
                 <StepBadge n={1} label={t("pixStep1")} />
                 <StepBadge n={2} label={t("pixStep2")} />
                 <StepBadge n={3} label={t("pixStep3")} />
               </div>
 
-              <div className="flex items-center justify-center gap-2 text-sm text-[var(--text-dim)]">
+              <div className="flex items-center justify-center gap-2 text-sm text-white/45">
                 <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                 {t("pixWaiting")}
               </div>
@@ -186,20 +169,6 @@ export function BillingPixPayment({
           )}
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-[var(--border-color)] bg-[var(--surface-thead)]/50 px-6 py-4 sm:flex-row">
-          <Link
-            href={`/billing/invoices/${invoiceId}`}
-            className="flex-1 rounded-xl border border-[var(--border-color)] bg-white py-2.5 text-center text-sm font-semibold text-[var(--text-dim)] transition hover:bg-[var(--surface-thead)]"
-          >
-            {t("viewInvoice")}
-          </Link>
-          <Link
-            href="/billing"
-            className="flex-1 rounded-xl py-2.5 text-center text-sm font-semibold text-[var(--violet)] transition hover:bg-[rgba(124,58,237,0.06)]"
-          >
-            {t("backToPortal")}
-          </Link>
-        </div>
       </div>
     </div>
   );

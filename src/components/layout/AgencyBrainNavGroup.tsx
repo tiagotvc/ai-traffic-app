@@ -140,11 +140,17 @@ export function AgencyBrainNavGroup({
 
   return (
     <div className="space-y-0.5">
-      <div className="flex items-start gap-0.5">
+      <div
+        className={`flex items-start ${
+          parentActive ? "rounded-xl bg-[rgba(124,58,237,0.22)]" : "gap-0.5"
+        }`}
+      >
         <Link
           href={AGENCY_BRAIN_MVP_NAV.route}
           onClick={() => onNavigate?.()}
-          className={`${sidebarItemClasses(parentActive)} min-w-0 flex-1 !pr-1`}
+          className={`${sidebarItemClasses(parentActive)} min-w-0 flex-1 !pr-1 ${
+            parentActive ? "!bg-transparent" : ""
+          }`}
         >
           <BrainNavIcon />
           <span className="min-w-0 flex-1 whitespace-normal text-left leading-snug">
@@ -154,7 +160,11 @@ export function AgencyBrainNavGroup({
         <button
           type="button"
           onClick={toggleExpanded}
-          className="mt-1 shrink-0 rounded-lg p-1.5 text-[#94a3b8] transition hover:bg-white/5 hover:text-[#f8fafc]"
+          className={`mt-1 shrink-0 rounded-lg p-1.5 transition ${
+            parentActive
+              ? "text-[#e9d5ff] hover:bg-white/10"
+              : "text-[#94a3b8] hover:bg-white/5 hover:text-[#f8fafc]"
+          }`}
           aria-expanded={expanded}
           aria-label={expanded ? t("collapseSidebar") : t("expandSidebar")}
         >

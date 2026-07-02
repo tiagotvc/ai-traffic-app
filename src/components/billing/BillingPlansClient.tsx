@@ -40,7 +40,6 @@ export function BillingPlansClient({
   const [plans, setPlans] = useState<PlanCardData[]>([]);
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
-  void compact;
   void layout;
 
   useEffect(() => {
@@ -66,7 +65,7 @@ export function BillingPlansClient({
   }
 
   return (
-    <div className={`w-full space-y-8 pb-4 ${isMarketing ? "space-y-10 px-0" : ""}`}>
+    <div className={`w-full pb-4 ${isMarketing ? (compact ? "space-y-5 px-0" : "space-y-10 px-0") : "space-y-8"}`}>
       {!isMarketing ? (
         <DsPageHeader
           breadcrumbs={<BillingBackLink href="/settings?tab=plan" />}
@@ -79,7 +78,7 @@ export function BillingPlansClient({
       <BillingCycleToggle cycle={cycle} onChange={setCycle} variant={variant} />
 
       {isMarketing && cycle === "yearly" ? (
-        <p className="text-center text-sm text-emerald-300/90">
+        <p className="text-center text-sm text-[var(--success)]">
           {tMarketing("pricingYearlyBanner", { percent: YEARLY_DISCOUNT_PERCENT })}
         </p>
       ) : null}
@@ -97,13 +96,14 @@ export function BillingPlansClient({
               cycle={cycle}
               featured={p.slug === "advanced"}
               variant={variant}
+              compact={compact}
             />
           ))}
         </div>
       </div>
 
       <p
-        className={`text-center text-xs ${isMarketing ? "text-violet-200/50" : "text-[var(--text-dimmer)]"}`}
+        className="text-center text-xs text-[var(--text-dimmer)]"
       >
         {isBr ? t("plansFootnoteBr") : t("plansFootnote")}{" "}
         {!isMarketing ? (

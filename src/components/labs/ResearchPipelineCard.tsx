@@ -71,7 +71,7 @@ export function ResearchPipelineCard({
   signature,
   shellSignature,
   requestBody,
-  title = "Pesquisa Orion",
+  title = "Commander",
   dossierLabelKey
 }: {
   scope: ResearchScope;

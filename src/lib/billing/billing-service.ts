@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "crypto";
 import { repositories } from "@/db/repositories";
 import type { BillingCycle, PaymentProvider } from "./types";
 import { getBillingProvider } from "./providers";
@@ -9,6 +10,8 @@ import { localDatePlusDays } from "./dates";
 import { validateCouponForCheckout } from "./coupons";
 import { createStripeCheckoutSession } from "@/lib/stripe/checkout";
 import { getAppBaseUrl } from "@/lib/app-url";
+import { createAsaasPixAutomaticAuthorization } from "@/lib/asaas/pix-automatic";
+import { addFrequency } from "@/lib/asaas/pix-automatic-billing";
 
 export async function getOrCreateBillingCustomer(
   tenantId: string,
@@ -131,7 +134,11 @@ export async function startStripeCheckout(input: {
     successUrl,
     cancelUrl,
     metadata,
-    idempotencyKey: `checkout:${input.tenantId}:${plan.id}:${input.cycle}`
+    // Janela de 5min: protege contra duplo-clique real sem travar o usuário indefinidamente se a
+    // 1ª tentativa falhar (confirmado testando: sem essa janela, um erro qualquer na 1ª tentativa
+    // trava novas tentativas com os mesmos parâmetros por até 24h — o tempo de retenção da chave
+    // de idempotência na Stripe).
+    idempotencyKey: `checkout:${input.tenantId}:${plan.id}:${input.cycle}:${Math.floor(Date.now() / 300_000)}`
   });
 
   if (!session.url) throw new Error("Stripe checkout URL missing");
@@ -169,7 +176,7 @@ export async function startCheckout(input: {
   userId?: string;
   planId: string;
   cycle: BillingCycle;
-  billingType?: "PIX" | "CREDIT_CARD";
+  billingType?: "PIX" | "CREDIT_CARD" | "PIX_AUTOMATIC";
   installmentCount?: number;
   couponCode?: string;
   customer: {
@@ -199,7 +206,8 @@ export async function startCheckout(input: {
     listCents: planListCents(plan, input.cycle, currency),
     cycle: input.cycle,
     provider: "asaas",
-    billingType,
+    // Pix Automático tem o mesmo desconto de PIX pra fins de precificação.
+    billingType: billingType === "PIX_AUTOMATIC" ? "PIX" : billingType,
     installmentCount: input.installmentCount
   });
 
@@ -268,6 +276,61 @@ export async function startCheckout(input: {
         paymentId: sub.paymentId,
         invoiceUrl: undefined
       };
+    }
+  } else if (billingType === "PIX_AUTOMATIC") {
+    const { subscription: subRepoForPixAuto } = await repositories();
+    const subForPixAuto = await subRepoForPixAuto.findOne({ where: { tenantId: input.tenantId } });
+    if (!subForPixAuto) throw new Error("Subscription record not found");
+
+    const frequency = input.cycle === "yearly" ? "ANNUALLY" : "MONTHLY";
+    const startDate = new Date().toISOString().slice(0, 10);
+    // contractId precisa ser único por TENTATIVA na Asaas (confirmado testando contra o sandbox
+    // real: reusar o mesmo contractId numa 2ª tentativa é rejeitado com "Já existe uma autorização
+    // para o contrato informado") — não pode ser derivado de algo estável como subscription.id.
+    const contractId = randomUUID().replace(/-/g, "").slice(0, 35);
+
+    const auth = await createAsaasPixAutomaticAuthorization({
+      customerId,
+      contractId,
+      frequency,
+      startDate,
+      valueCents: amountCents,
+      description
+    });
+
+    const { pixAutomaticAuthorization: pixAuthRepo } = await repositories();
+    await pixAuthRepo.save(
+      pixAuthRepo.create({
+        tenantId: input.tenantId,
+        subscriptionId: subForPixAuto.id,
+        asaasAuthorizationId: auth.id,
+        asaasCustomerId: customerId,
+        status: "pending",
+        frequency,
+        valueCents: amountCents,
+        startDate,
+        // A 1ª cobrança é o QR imediato desta autorização — o motor recorrente só cria a partir
+        // do 2º ciclo.
+        nextChargeDueDate: addFrequency(startDate, frequency)
+      })
+    );
+
+    // Formato confirmado contra o sandbox real (2026-07-01): payload/encodedImage no nível raiz,
+    // expirationDate dentro de immediateQrCode. O pagamento imediato não existe como Payment
+    // separado — não há fallback via /payments porque não há nada lá pra buscar.
+    result = {
+      subscriptionId: auth.id,
+      paymentId: auth.immediateQrCode?.conciliationIdentifier,
+      pixQrCode: auth.encodedImage,
+      pixCopyPaste: auth.payload,
+      pixExpiresAt: auth.immediateQrCode?.expirationDate,
+      invoiceUrl: undefined
+    };
+
+    if (!result.pixQrCode) {
+      console.error(
+        `[billing] pix automático: QR ausente na resposta da autorização (auth.id=${auth.id}, status=${auth.status}) — requer investigação`
+      );
     }
   } else {
     result = await provider.createCheckout({

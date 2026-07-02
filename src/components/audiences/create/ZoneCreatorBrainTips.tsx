@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import type { ZoneCreatorSectionKey } from "@/components/audiences/create/zone-creator-steps";
 import { ResearchPipelineCard } from "@/components/labs/ResearchPipelineCard";
+import { useCommanderScientistsAccess } from "@/hooks/useCommanderScientistsAccess";
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 
 const TIP_KEYS: Record<ZoneCreatorSectionKey, string> = {
@@ -32,7 +33,7 @@ export function ZoneCreatorBrainTips({
 }) {
   const t = useTranslations("audiences");
   const brainEnabled = usePlatformFeature("audiences.brain");
-  const researchEnabled = usePlatformFeature("audiences.brain.research");
+  const researchEnabled = useCommanderScientistsAccess("campaigns.commander.scientists.audiences");
 
   const hasInput = Boolean((places && places.length) || (geoLocations && geoLocations.length));
   const signature = hasInput
@@ -45,7 +46,7 @@ export function ZoneCreatorBrainTips({
     <div className="campaign-creator-sidebar-card">
       <p className="campaign-creator-orion-section-label mb-2 inline-flex items-center gap-1.5">
         <Brain size={12} className="text-[var(--ui-accent)]" aria-hidden />
-        Orion Brain
+        Commander
       </p>
       <p className="text-xs leading-relaxed text-[var(--text-dim)]">{t(TIP_KEYS[zoneSection])}</p>
 
@@ -54,7 +55,7 @@ export function ZoneCreatorBrainTips({
           <ResearchPipelineCard
             scope="zone"
             signature={signature}
-            title="Pesquisa Orion"
+            title="Commander"
             requestBody={{ region, briefing, places, geoLocations }}
           />
         </div>

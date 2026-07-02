@@ -651,7 +651,7 @@ export async function generateAudienceTargetingSuggestion(args: {
   customAudiences?: Array<{ id: string; name?: string; subtype?: string }>;
 }): Promise<AudienceTargetingSuggestion> {
   const brief = AudienceTargetingBriefSchema.parse(args.brief);
-  const persona = AudiencePersonaPreviewSchema.parse(args.persona);
+  const persona = AudiencePersonaPreviewPayloadSchema.parse(args.persona);
 
   const rejectedIds = new Set([
     ...brief.rejectedSegmentIds,
@@ -915,7 +915,7 @@ export async function generateAdditionalAudienceSegments(args: {
   personaOnly?: boolean;
 }): Promise<AudienceTargetingSuggestion> {
   const brief = AudienceTargetingBriefSchema.parse(args.brief);
-  const persona = AudiencePersonaPreviewSchema.parse(args.persona);
+  const persona = AudiencePersonaPreviewPayloadSchema.parse(args.persona);
   const keepItems = args.keepItems;
   const keepIds = new Set(keepItems.map((i) => i.id));
   const counts = countSegmentsByType(keepItems);

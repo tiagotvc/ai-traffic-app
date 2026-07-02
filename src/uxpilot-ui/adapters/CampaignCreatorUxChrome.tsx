@@ -422,6 +422,11 @@ export function CampaignCreatorUxNav({
   const footerNav = placement === "footer";
   const stepperNav = placement === "stepper";
   const sidebarNav = placement === "sidebar";
+  const progress = computeWizardStepNumber({
+    addAdMode,
+    activeNode,
+    campaignSection: activeNode === "campaign" ? campaignSubflow?.section : undefined
+  });
 
   return (
     <div className={wrapperClass}>
@@ -449,6 +454,14 @@ export function CampaignCreatorUxNav({
         ) : (
           <span className="ui-wizard-nav__btn-spacer" aria-hidden />
         )}
+        {footerNav || sidebarNav ? (
+          <span
+            className="ui-wizard-nav__progress shrink-0 text-xs font-semibold text-[var(--text-dim)]"
+            aria-label={`Etapa ${progress.current} de ${progress.total}`}
+          >
+            {progress.current}/{progress.total}
+          </span>
+        ) : null}
         {activeNode !== "review" ? (
           <button
             type="button"
@@ -476,7 +489,7 @@ export function CampaignCreatorUxNav({
 /** Linha do stepper — navegação desktop fica no rodapé fixo da sidebar. */
 export function CampaignCreatorUxStepperRow() {
   return (
-    <div className="campaign-creator-stepper-row col-start-1 row-start-1 flex shrink-0 items-center gap-3 border-b border-[var(--border-color)] py-2 lg:gap-4 lg:py-1.5">
+    <div className="campaign-creator-stepper-row col-start-1 row-start-1 hidden shrink-0 items-center gap-3 border-b border-[var(--border-color)] py-2 lg:flex lg:gap-4 lg:py-1.5">
       <div className="min-w-0 flex-1 overflow-x-auto">
         <CampaignCreatorUxStepper />
       </div>

@@ -1,9 +1,9 @@
 "use client";
 
-import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { FormSelect } from "@/components/ui/FormSelect";
+import { DsCheckerCard } from "@/design-system";
 import type { BuyingType, CampaignObjectiveKey } from "@/lib/campaign-draft";
 import { CAMPAIGN_OBJECTIVES, objectivesForBuyingType } from "@/lib/campaign-draft";
 
@@ -119,19 +119,12 @@ export function ObjectiveSelector({
         {CAMPAIGN_OBJECTIVES.filter((obj) => availableObjectives.includes(obj)).map((obj) => {
           const selected = objective === obj;
           return (
-            <button
+            <DsCheckerCard
               key={obj}
-              type="button"
-              onClick={() => onObjectiveChange(obj)}
-              className={`campaign-creator-objective-card group ${
-                compact ? "campaign-creator-objective-card--compact" : ""
-              } ${selected ? "campaign-creator-objective-card--selected" : ""}`}
-            >
-              <span className="campaign-creator-objective-card__check" aria-hidden>
-                {selected ? <Check size={12} strokeWidth={3} /> : null}
-              </span>
-
-              <span className="campaign-creator-objective-card__icon">
+              selected={selected}
+              onSelect={() => onObjectiveChange(obj)}
+              compact={compact}
+              icon={
                 <svg
                   className={compact ? "h-5 w-5" : "h-4 w-4"}
                   fill="none"
@@ -141,27 +134,10 @@ export function ObjectiveSelector({
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d={OBJECTIVE_ICONS[obj]} />
                 </svg>
-              </span>
-
-              <p
-                className={
-                  compact
-                    ? "mt-1.5 line-clamp-2 text-center font-heading text-xs font-semibold leading-tight text-[var(--text-main)]"
-                    : "mt-3 font-heading text-sm font-semibold text-[var(--text-main)]"
-                }
-              >
-                {t(`objective_${obj}`)}
-              </p>
-              {compact ? (
-                <p className="mt-1 hidden line-clamp-2 px-0.5 text-center text-[10px] leading-snug text-[var(--text-dim)] md:block">
-                  {t(`objective_${obj}_hint`)}
-                </p>
-              ) : (
-                <p className="mt-1.5 pr-6 text-[11px] leading-relaxed text-[var(--text-dim)]">
-                  {t(`objective_${obj}_hint`)}
-                </p>
-              )}
-            </button>
+              }
+              title={t(`objective_${obj}`)}
+              description={t(`objective_${obj}_hint`)}
+            />
           );
         })}
       </div>

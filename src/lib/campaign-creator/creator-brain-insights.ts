@@ -670,7 +670,7 @@ export async function buildCreatorBrainInsight(input: {
   const windowDays = input.windowDays ?? 30;
   const metric = primaryMetricForObjective(input.objective);
   const benchmark = OBJECTIVE_BENCHMARKS[input.objective];
-  const metaResearchEnabled = await isPlatformFeatureEnabled("campaigns.brain.meta-research");
+  const metaResearchEnabled = await isPlatformFeatureEnabled("campaigns.commander.scientists.competitor");
 
   const [clientRows, tenantRows, tenantObjectiveMap, presetMap, metaCompetitor] = await Promise.all([
     input.clientId

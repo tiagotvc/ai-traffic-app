@@ -28,6 +28,7 @@ export function mergePlanLimitsWithAddons(base: PlanLimits, bonuses: TenantAddon
     maxAiRequestsPerMonth: base.maxAiRequestsPerMonth + bonuses.extraAiRequestsPerMonth,
     maxScheduledReports: base.maxScheduledReports + bonuses.extraScheduledReports,
     allowCopilot: base.allowCopilot,
+    allowCommander: base.allowCommander,
     maxScientists: base.maxScientists,
     allowAutoSync: base.allowAutoSync,
     allowLiveMeta: base.allowLiveMeta,
@@ -51,7 +52,10 @@ export function mergePlanLimitsWithAddons(base: PlanLimits, bonuses: TenantAddon
     allowDashboardAiWidgets: base.allowDashboardAiWidgets,
     allowDashboardAiBuilder: base.allowDashboardAiBuilder,
     allowDashboardSharing: base.allowDashboardSharing,
-    allowWhiteLabel: base.allowWhiteLabel
+    allowWhiteLabel: base.allowWhiteLabel,
+    maxAudiencePersonas: base.maxAudiencePersonas,
+    allowRankingConfig: base.allowRankingConfig,
+    automationTier: base.automationTier
   };
 }
 

@@ -19,7 +19,7 @@ import { MetricPrism } from "@/components/dashboard/MetricPrism";
 import { ActiveScopeFilterBadges } from "@/components/layout/ActiveScopeFilterBadges";
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { AppPageShell } from "@/components/layout/AppPageShell";
-import { DsInfoBanner } from "@/design-system";
+import { DsCard, DsInfoBanner } from "@/design-system";
 import {
   DASHBOARD_PAGE_CHART_HEIGHT,
   resolveVisibleSectionOrder,
@@ -355,7 +355,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
         {!data.loading && data.isEmptyState ? (
           <div className="grid grid-cols-1 gap-[var(--app-section-gap)] md:grid-cols-2">
             <ConnectAccountCard />
-            <div className="dashboard-card dashboard-card--compact flex flex-col gap-3">
+            <DsCard padding="lg" className="flex flex-col gap-3">
               <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">
                 {t("emptyStateTitle")}
               </h3>
@@ -372,7 +372,7 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
                   </span>
                 </div>
               ))}
-            </div>
+            </DsCard>
           </div>
         ) : (
           <div className="tab-transition animate-fade-up flex flex-col gap-[var(--app-section-gap)]">

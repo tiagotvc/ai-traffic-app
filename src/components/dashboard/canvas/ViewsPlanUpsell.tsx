@@ -27,7 +27,7 @@ export function ViewsPlanUpsell() {
           {t("viewsUpsellHint")}
         </p>
         <Link
-          href="/pricing"
+          href="/#pricing"
           className="mt-6 inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white"
           style={{ background: "#4f46e5" }}
         >

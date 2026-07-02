@@ -5,7 +5,7 @@ import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 import { runPerformanceReadout } from "@/lib/labs/performance-scientist";
 
-const FLAG = "scientists.performance";
+const FLAG = "campaigns.commander.scientists.performance";
 
 /** GET → estado da flag. */
 export async function GET() {

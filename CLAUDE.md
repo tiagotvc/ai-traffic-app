@@ -18,11 +18,11 @@ When uncertain between multiple approaches, choose the one that produces less ou
 
 # Golden Rule
 
-Always prefix commands with rtk.
+Always prefix commands with `rtk`.
 
 Examples:
 
-bash
+```bash
 # ❌ Wrong
 git diff
 git status
@@ -32,17 +32,17 @@ grep -R "Campaign"
 rtk git diff
 rtk git status
 rtk grep "Campaign"
-
+```
 
 Command chains must also use RTK:
 
-bash
+```bash
 # ❌ Wrong
 git add . && git commit -m "msg" && git push
 
 # ✅ Correct
 rtk git add . && rtk git commit -m "msg" && rtk git push
-
+```
 
 ---
 
@@ -58,17 +58,17 @@ When investigating code:
 
 Prefer:
 
-bash
+```bash
 rtk grep "CampaignService"
 rtk read src/services/campaign-service.ts
-
+```
 
 Avoid:
 
-bash
+```bash
 grep -R "CampaignService" .
 cat entire-project-file.ts
-
+```
 
 ---
 
@@ -76,13 +76,13 @@ cat entire-project-file.ts
 
 Before reading files larger than 300 lines:
 
-1. Use rtk grep
-2. Use rtk read
+1. Use `rtk grep`
+2. Use `rtk read`
 3. Read only relevant sections
 
 Never read:
 
-text
+```text
 node_modules
 .next
 dist
@@ -93,7 +93,7 @@ package-lock.json
 yarn.lock
 generated files
 large logs
-
+```
 
 unless explicitly requested.
 
@@ -101,7 +101,7 @@ unless explicitly requested.
 
 # Build & Compile (80-90% savings)
 
-bash
+```bash
 rtk cargo build
 rtk cargo check
 rtk cargo clippy
@@ -109,19 +109,19 @@ rtk tsc
 rtk lint
 rtk prettier --check
 rtk next build
-
+```
 
 Rules:
 
 - Run TypeScript checks before full builds.
-- Prefer rtk tsc over rtk next build when possible.
+- Prefer `rtk tsc` over `rtk next build` when possible.
 - Avoid rebuilding entire applications after small changes.
 
 ---
 
 # Test (60-99% savings)
 
-bash
+```bash
 rtk cargo test
 rtk go test
 rtk jest
@@ -131,7 +131,7 @@ rtk pytest
 rtk rake test
 rtk rspec
 rtk test <cmd>
-
+```
 
 Rules:
 
@@ -140,21 +140,21 @@ Rules:
 
 Prefer:
 
-bash
+```bash
 rtk vitest campaign.test.ts
-
+```
 
 over:
 
-bash
+```bash
 rtk vitest
-
+```
 
 ---
 
 # Git (59-80% savings)
 
-bash
+```bash
 rtk git status
 rtk git log
 rtk git diff
@@ -167,7 +167,7 @@ rtk git branch
 rtk git fetch
 rtk git stash
 rtk git worktree
-
+```
 
 Rules:
 
@@ -178,26 +178,26 @@ Rules:
 
 # GitHub (26-87% savings)
 
-bash
+```bash
 rtk gh pr view <num>
 rtk gh pr checks
 rtk gh run list
 rtk gh issue list
 rtk gh api
-
+```
 
 ---
 
 # JavaScript / TypeScript (70-90% savings)
 
-bash
+```bash
 rtk pnpm list
 rtk pnpm outdated
 rtk pnpm install
 rtk npm run <script>
 rtk npx <cmd>
 rtk prisma
-
+```
 
 Rules:
 
@@ -208,12 +208,12 @@ Rules:
 
 # Files & Search (60-75% savings)
 
-bash
+```bash
 rtk ls <path>
 rtk read <file>
 rtk grep <pattern>
 rtk find <pattern>
-
+```
 
 Rules:
 
@@ -222,21 +222,21 @@ Rules:
 
 Prefer:
 
-bash
+```bash
 rtk grep "createCampaign"
-
+```
 
 before:
 
-bash
+```bash
 rtk read src/services/campaign-service.ts
-
+```
 
 ---
 
 # Analysis & Debug (70-90% savings)
 
-bash
+```bash
 rtk err <cmd>
 rtk log <file>
 rtk json <file>
@@ -244,34 +244,34 @@ rtk deps
 rtk env
 rtk summary <cmd>
 rtk diff
-
+```
 
 Rules:
 
-- Use rtk err for failing commands.
-- Use rtk log for logs.
-- Use rtk summary for large outputs.
+- Use `rtk err` for failing commands.
+- Use `rtk log` for logs.
+- Use `rtk summary` for large outputs.
 
 ---
 
 # Infrastructure (85% savings)
 
-bash
+```bash
 rtk docker ps
 rtk docker images
 rtk docker logs <container>
 rtk kubectl get
 rtk kubectl logs
-
+```
 
 ---
 
 # Network (65-70% savings)
 
-bash
+```bash
 rtk curl <url>
 rtk wget <url>
-
+```
 
 ---
 
@@ -289,31 +289,31 @@ Technology stack:
 
 Preferred workflow:
 
-bash
+```bash
 rtk grep
 rtk read
 rtk git diff
 rtk tsc
 rtk lint
-
+```
 
 Only run:
 
-bash
+```bash
 rtk next build
-
+```
 
 when TypeScript and lint are already passing.
 
 Avoid:
 
-bash
+```bash
 grep -R
 git diff
 cat large-file
 next build
 npm install
-
+```
 
 when RTK alternatives exist.
 
@@ -344,14 +344,14 @@ Always prefer the smallest amount of information necessary to complete the task.
 
 # Meta Commands
 
-bash
+```bash
 rtk gain
 rtk gain --history
 rtk discover
 rtk proxy <cmd>
 rtk init
 rtk init --global
-
+```
 
 ---
 

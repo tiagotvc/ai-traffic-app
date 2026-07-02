@@ -7,14 +7,16 @@ export const ORION_OFFICIAL_BRL_CENTS: Record<
   { name: string; monthlyCents: number; yearlyListCents: number }
 > = {
   basic: { name: "Individual", monthlyCents: 4990, yearlyListCents: 59880 },
+  "basic-plus": { name: "Individual Plus", monthlyCents: 7990, yearlyListCents: 95880 },
   advanced: { name: "Advanced", monthlyCents: 10990, yearlyListCents: 131880 },
-  "advanced-pro": { name: "Advanced Pro", monthlyCents: 15990, yearlyListCents: 191880 },
+  "advanced-pro": { name: "Advanced Plus", monthlyCents: 15990, yearlyListCents: 191880 },
   agency: { name: "Agency", monthlyCents: 25990, yearlyListCents: 311880 },
-  "agency-pro": { name: "Agency Pro", monthlyCents: 49990, yearlyListCents: 599880 }
+  "agency-pro": { name: "Agency Plus", monthlyCents: 49990, yearlyListCents: 599880 }
 };
 
 export const MARKETING_PAID_PLAN_SLUGS = [
   "basic",
+  "basic-plus",
   "advanced",
   "advanced-pro",
   "agency",
@@ -49,6 +51,17 @@ const PLAN_LIMITS_FALLBACK: Record<string, Partial<PlanLimits>> = {
     maxScheduledReports: 2,
     allowAutoSync: true,
     allowLiveMeta: false
+  },
+  "basic-plus": {
+    maxClients: 7,
+    maxAdAccounts: 12,
+    maxMembers: 1,
+    maxAutomationRules: 7,
+    maxAiRequestsPerMonth: 70,
+    maxScheduledReports: 7,
+    maxAudiencePersonas: 5,
+    allowAutoSync: true,
+    allowLiveMeta: true
   },
   advanced: {
     maxClients: 10,

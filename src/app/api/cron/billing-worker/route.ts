@@ -24,3 +24,6 @@ export async function POST(req: Request) {
   const suspended = await suspendOverdueSubscriptions();
   return NextResponse.json({ ok: true, jobs, expired, suspended });
 }
+
+/** Vercel Cron invokes via GET; keep POST for manual/internal triggering. */
+export const GET = POST;

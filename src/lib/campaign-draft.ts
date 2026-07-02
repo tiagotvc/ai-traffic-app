@@ -262,6 +262,10 @@ export const CampaignDraftPayloadV2Schema = z.object({
         )
         .optional(),
       wizardGenerated: z.boolean().optional(),
+      /** Provedor de IA usado na geração assistida (Copilot). */
+      aiProvider: z.enum(["gemini", "claude"]).optional(),
+      /** Modelo de IA usado (granularidade fina é refinada na Fase 3). */
+      aiModelUsed: z.string().optional(),
       /** Persisted wizard position so reload restores step + sub-sections. */
       wizardNavigation: z
         .object({

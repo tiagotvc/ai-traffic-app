@@ -4,20 +4,59 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { getAppContext } from "@/lib/app-context";
 
+const MetricEnum = z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas"]);
+const OpEnum = z.enum(["gt", "lt", "gte"]);
+const ConditionItem = z.object({
+  metric: MetricEnum,
+  op: OpEnum,
+  value: z.number()
+});
+const ConditionGroupItem = z.array(ConditionItem).min(1).max(5);
+const ScheduleSchema = z.object({
+  startHour: z.number().int().min(0).max(23),
+  endHour: z.number().int().min(0).max(23)
+});
+
 const BodySchema = z.object({
   name: z.string().min(1),
   clientId: z.string().uuid().nullable().optional(),
   enabled: z.boolean().optional(),
-  condition: z.object({
-    metric: z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas"]),
-    op: z.enum(["gt", "lt", "gte"]),
-    value: z.number(),
-    minSpend: z.number().optional()
-  }),
-  action: z.object({
-    type: z.enum(["pause_campaign", "alert_only", "adjust_budget_percent"]),
-    budgetPercent: z.number().min(1).max(50).optional()
-  })
+  // Aceita a forma nova (groups: E dentro do grupo, OU entre grupos), a intermediária
+  // (match + conditions[]) e a legada (metric/op/value no topo), além da janela de horário.
+  condition: z
+    .object({
+      groups: z.array(ConditionGroupItem).min(1).max(4).optional(),
+      match: z.enum(["all", "any"]).optional(),
+      conditions: z.array(ConditionItem).min(1).max(5).optional(),
+      metric: MetricEnum.optional(),
+      op: OpEnum.optional(),
+      value: z.number().optional(),
+      minSpend: z.number().optional(),
+      schedule: ScheduleSchema.optional()
+    })
+    .refine(
+      (c) => (c.groups?.length ?? 0) > 0 || (c.conditions?.length ?? 0) > 0 || c.metric != null || c.schedule != null,
+      { message: "Informe ao menos uma condição." }
+    ),
+  action: z
+    .object({
+      type: z.enum([
+        "pause_campaign",
+        "alert_only",
+        "adjust_budget_percent",
+        "schedule_toggle",
+        "reactivate_campaign",
+        "notify_email",
+        "scale_gradual"
+      ]),
+      budgetPercent: z.number().min(1).max(50).optional(),
+      steps: z.number().int().min(2).max(10).optional(),
+      recipientEmail: z.string().email().optional()
+    })
+    .refine((a) => a.type !== "notify_email" || !!a.recipientEmail, {
+      message: "Informe o e-mail de destino."
+    }),
+  executionMode: z.enum(["alert", "approval", "auto"]).optional()
 });
 
 export async function GET() {
@@ -60,7 +99,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { tenant } = await getAppContext();
+  const { tenant, entitlements } = await getAppContext();
   const body = BodySchema.parse(await req.json().catch(() => ({})));
 
   try {
@@ -75,6 +114,12 @@ export async function POST(req: Request) {
 
   const { automationRule: repo } = await repositories();
 
+  // `alert`/`approval` exigem automationTier >= 2 — abaixo disso a regra sempre nasce `auto`.
+  const executionMode =
+    body.executionMode && body.executionMode !== "auto" && entitlements.limits.automationTier < 2
+      ? "auto"
+      : (body.executionMode ?? "auto");
+
   const rule = await repo.save(
     repo.create({
       tenantId: tenant.id,
@@ -82,7 +127,8 @@ export async function POST(req: Request) {
       name: body.name,
       enabled: body.enabled ?? true,
       condition: body.condition,
-      action: body.action
+      action: body.action,
+      executionMode
     })
   );
 

@@ -263,19 +263,141 @@ export async function processPaymentOverdue(payload: Record<string, unknown>) {
   }
 }
 
-export async function processSubscriptionCanceled(payload: Record<string, unknown>) {
-  const tenantId = payload.tenantId as string;
-  if (!tenantId) return;
+/** Compartilhado entre subscription_canceled (Asaas/Stripe) e pix_auth_cancelled — mesma regra:
+ * se já é um cancelamento gracioso nosso (cancelAtPeriodEnd), não derruba agora, quem faz isso na
+ * hora certa é processExpiredSubscriptionPeriods (cron billing-worker). Senão, é cancelamento fora
+ * de banda (ex: deletado direto no painel do provedor) — downgrade imediato. */
+async function downgradeOrDeferCancellation(tenantId: string, logPrefix: string): Promise<void> {
   const { subscription: subRepo, plan: planRepo } = await repositories();
   const sub = await subRepo.findOne({ where: { tenantId } });
   if (!sub) return;
 
+  const now = new Date();
+  const gracefulCancelInProgress =
+    sub.cancelAtPeriodEnd && sub.currentPeriodEnd != null && sub.currentPeriodEnd > now;
+
+  if (gracefulCancelInProgress) {
+    console.log(
+      `[billing-jobs] ${logPrefix}: renovação já em cancelamento gracioso, mantendo acesso até ${sub.currentPeriodEnd?.toISOString()} tenantId=${tenantId}`
+    );
+    return;
+  }
+
   const freePlan = await planRepo.findOne({ where: { slug: "free" } });
   if (freePlan) sub.planId = freePlan.id;
   sub.status = "canceled";
-  sub.canceledAt = new Date();
+  sub.canceledAt = now;
   sub.externalSubscriptionId = null;
   await subRepo.save(sub);
+  console.log(`[billing-jobs] ${logPrefix}: downgrade imediato aplicado tenantId=${tenantId}`);
+}
+
+export async function processSubscriptionCanceled(payload: Record<string, unknown>) {
+  const tenantId = payload.tenantId as string;
+  if (!tenantId) return;
+  await downgradeOrDeferCancellation(tenantId, "subscription_canceled");
+}
+
+/** PAYMENT_REFUNDED / PAYMENT_PARTIALLY_REFUNDED (Asaas) e charge.refunded / refund.created (Stripe). */
+export async function processPaymentRefunded(payload: Record<string, unknown>) {
+  const invoiceId = payload.invoiceId as string | undefined;
+  const partial = Boolean(payload.partial);
+  if (!invoiceId) {
+    console.warn(`[billing-jobs] payment_refunded sem invoiceId resolvido, payload=${JSON.stringify(payload)}`);
+    return;
+  }
+  const { invoice: invRepo } = await repositories();
+  const inv = await invRepo.findOne({ where: { id: invoiceId } });
+  if (!inv) return;
+  inv.status = partial ? "partially_refunded" : "refunded";
+  await invRepo.save(inv);
+  // Decisão de negócio (suspender ou não a assinatura) fica para revisão manual — só registramos
+  // o estado da fatura e deixamos bem visível no log/aba de eventos do billing.
+  console.warn(
+    `[billing-jobs] REEMBOLSO registrado invoiceId=${invoiceId} tenantId=${inv.tenantId} partial=${partial} — revisar assinatura manualmente`
+  );
+}
+
+/** PAYMENT_CHARGEBACK_REQUESTED (Asaas) e charge.dispute.created (Stripe). */
+export async function processPaymentChargeback(payload: Record<string, unknown>) {
+  const invoiceId = payload.invoiceId as string | undefined;
+  if (!invoiceId) {
+    console.warn(`[billing-jobs] payment_chargeback sem invoiceId resolvido, payload=${JSON.stringify(payload)}`);
+    return;
+  }
+  const { invoice: invRepo } = await repositories();
+  const inv = await invRepo.findOne({ where: { id: invoiceId } });
+  if (!inv) return;
+  inv.status = "chargeback";
+  await invRepo.save(inv);
+  console.warn(
+    `[billing-jobs] CHARGEBACK registrado invoiceId=${invoiceId} tenantId=${inv.tenantId} — revisar assinatura manualmente`
+  );
+}
+
+/** SUBSCRIPTION_INACTIVATED (Asaas) — o próprio provedor decidiu inativar, não é iniciativa nossa. */
+export async function processSubscriptionInactivated(payload: Record<string, unknown>) {
+  const tenantId = payload.tenantId as string;
+  if (!tenantId) return;
+  const { subscription: subRepo } = await repositories();
+  const sub = await subRepo.findOne({ where: { tenantId } });
+  if (!sub || sub.status === "canceled") return;
+  sub.status = "suspended";
+  await subRepo.save(sub);
+  console.warn(`[billing-jobs] subscription_inactivated: suspenso pelo provedor tenantId=${tenantId}`);
+}
+
+/** customer.subscription.updated (Stripe) — hoje só reagimos à mudança de cancel_at_period_end. */
+export async function processSubscriptionUpdated(payload: Record<string, unknown>) {
+  const tenantId = payload.tenantId as string;
+  if (!tenantId) return;
+  const cancelAtPeriodEnd = payload.cancelAtPeriodEnd as boolean | undefined;
+  if (cancelAtPeriodEnd === undefined) return;
+
+  const { subscription: subRepo } = await repositories();
+  const sub = await subRepo.findOne({ where: { tenantId } });
+  if (!sub) return;
+
+  if (sub.cancelAtPeriodEnd === cancelAtPeriodEnd) return;
+
+  sub.cancelAtPeriodEnd = cancelAtPeriodEnd;
+  await subRepo.save(sub);
+  console.log(
+    `[billing-jobs] subscription_updated: cancelAtPeriodEnd=${cancelAtPeriodEnd} aplicado fora do app (ex: Stripe customer portal) tenantId=${tenantId}`
+  );
+}
+
+/** INVOICE_AUTHORIZED (nota fiscal, Asaas) — a autorização pode terminar de forma assíncrona; este
+ * webhook é o sinal definitivo, complementando o try/catch em emitNotaFiscal. */
+export async function processNfAuthorized(payload: Record<string, unknown>) {
+  const invoiceId = payload.invoiceId as string | undefined;
+  if (!invoiceId) {
+    console.warn(`[billing-jobs] nf_authorized sem invoiceId resolvido, payload=${JSON.stringify(payload)}`);
+    return;
+  }
+  const { invoice: invRepo } = await repositories();
+  const inv = await invRepo.findOne({ where: { id: invoiceId } });
+  if (!inv) return;
+  inv.nfStatus = "issued";
+  if (payload.nfeNumber) inv.nfNumber = payload.nfeNumber as string;
+  if (payload.nfePdfUrl) inv.nfPdfUrl = payload.nfePdfUrl as string;
+  inv.nfIssuedAt = new Date();
+  await invRepo.save(inv);
+}
+
+/** INVOICE_ERROR (nota fiscal, Asaas). */
+export async function processNfError(payload: Record<string, unknown>) {
+  const invoiceId = payload.invoiceId as string | undefined;
+  if (!invoiceId) {
+    console.warn(`[billing-jobs] nf_error sem invoiceId resolvido, payload=${JSON.stringify(payload)}`);
+    return;
+  }
+  const { invoice: invRepo } = await repositories();
+  const inv = await invRepo.findOne({ where: { id: invoiceId } });
+  if (!inv) return;
+  inv.nfStatus = "error";
+  await invRepo.save(inv);
+  console.error(`[billing-jobs] NF com erro invoiceId=${invoiceId} tenantId=${inv.tenantId}`);
 }
 
 export async function emitNotaFiscal(payload: Record<string, unknown>) {
@@ -408,4 +530,95 @@ export async function ensureFreeSubscription(tenantId: string): Promise<Subscrip
     currentPeriodEnd: addDays(new Date(), freePlan.trialDays || 7)
   });
   return subRepo.save(sub);
+}
+
+/** PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED — só marca a autorização como ativa. A
+ * ativação da assinatura em si acontece pelo fluxo normal de PAYMENT_RECEIVED do 1º pagamento
+ * (a mesma chamada que cria a autorização já gera essa cobrança imediata) — ver
+ * src/app/api/billing/checkout/route.ts, que pré-cria o Invoice com planId pra esse pagamento
+ * ser reconhecido corretamente quando o webhook chegar. */
+export async function processPixAuthActivated(payload: Record<string, unknown>) {
+  const authorizationId = payload.authorizationId as string | undefined;
+  if (!authorizationId) return;
+  const { pixAutomaticAuthorization: pixAuthRepo } = await repositories();
+  const auth = await pixAuthRepo.findOne({ where: { id: authorizationId } });
+  if (!auth) return;
+  auth.status = "active";
+  await pixAuthRepo.save(auth);
+  console.log(`[billing-jobs] pix_auth_activated id=${authorizationId} tenantId=${auth.tenantId}`);
+}
+
+/** PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED — cliente ou banco cancelou a autorização de
+ * recorrência. Aplica a mesma regra de cancelamento gracioso vs. imediato da assinatura. */
+export async function processPixAuthCancelled(payload: Record<string, unknown>) {
+  const authorizationId = payload.authorizationId as string | undefined;
+  const tenantId = payload.tenantId as string | undefined;
+  if (!authorizationId || !tenantId) return;
+  const { pixAutomaticAuthorization: pixAuthRepo } = await repositories();
+  const auth = await pixAuthRepo.findOne({ where: { id: authorizationId } });
+  if (auth) {
+    auth.status = "cancelled";
+    await pixAuthRepo.save(auth);
+  }
+  await downgradeOrDeferCancellation(tenantId, "pix_auth_cancelled");
+}
+
+/** PIX_AUTOMATIC_RECURRING_AUTHORIZATION_EXPIRED — autorização expirou (limite de validade do
+ * Bacen ou revogada passivamente pelo banco do cliente) sem que o motor recorrente tenha causado
+ * isso. Cliente precisa reautorizar; tratamos como atraso (mesma carência de payment_overdue). */
+export async function processPixAuthExpired(payload: Record<string, unknown>) {
+  const authorizationId = payload.authorizationId as string | undefined;
+  const tenantId = payload.tenantId as string | undefined;
+  if (!authorizationId || !tenantId) return;
+  const { pixAutomaticAuthorization: pixAuthRepo } = await repositories();
+  const auth = await pixAuthRepo.findOne({ where: { id: authorizationId } });
+  if (auth) {
+    auth.status = "expired";
+    await pixAuthRepo.save(auth);
+  }
+  console.warn(
+    `[billing-jobs] pix_auth_expired id=${authorizationId} tenantId=${tenantId} — cliente precisa reautorizar`
+  );
+  await processPaymentOverdue({ tenantId });
+}
+
+/** PIX_AUTOMATIC_RECURRING_AUTHORIZATION_REFUSED — a autorização nunca chegou a ativar (recusada
+ * já na primeira tentativa). A assinatura não foi ativada por essa autorização, então não mexemos
+ * no status dela — só registramos para revisão manual. */
+export async function processPixAuthRefused(payload: Record<string, unknown>) {
+  const authorizationId = payload.authorizationId as string | undefined;
+  if (!authorizationId) return;
+  const { pixAutomaticAuthorization: pixAuthRepo } = await repositories();
+  const auth = await pixAuthRepo.findOne({ where: { id: authorizationId } });
+  if (!auth) return;
+  auth.status = "refused";
+  await pixAuthRepo.save(auth);
+  console.warn(
+    `[billing-jobs] pix_auth_refused id=${authorizationId} tenantId=${auth.tenantId} — revisar manualmente`
+  );
+}
+
+/** charge.dispute.closed (Stripe) — resolução de uma disputa aberta por charge.dispute.created.
+ * "won": revertemos o status de chargeback pro que a fatura tinha antes (paid). "lost"/outros:
+ * mantemos chargeback, só confirmamos no log que foi finalizado (não fica mais "em aberto"). */
+export async function processDisputeClosed(payload: Record<string, unknown>) {
+  const invoiceId = payload.invoiceId as string | undefined;
+  const disputeStatus = payload.disputeStatus as string | undefined;
+  if (!invoiceId) {
+    console.warn(`[billing-jobs] payment_dispute_closed sem invoiceId resolvido, payload=${JSON.stringify(payload)}`);
+    return;
+  }
+  const { invoice: invRepo } = await repositories();
+  const inv = await invRepo.findOne({ where: { id: invoiceId } });
+  if (!inv) return;
+
+  if (disputeStatus === "won") {
+    inv.status = "paid";
+    await invRepo.save(inv);
+    console.log(`[billing-jobs] disputa GANHA, fatura revertida pra paid invoiceId=${invoiceId} tenantId=${inv.tenantId}`);
+  } else {
+    console.warn(
+      `[billing-jobs] disputa finalizada (${disputeStatus ?? "desconhecido"}) invoiceId=${invoiceId} tenantId=${inv.tenantId} — chargeback mantido`
+    );
+  }
 }

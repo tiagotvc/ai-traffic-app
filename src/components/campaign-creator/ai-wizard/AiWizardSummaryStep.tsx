@@ -12,6 +12,7 @@ import {
 } from "@/components/campaign-creator/ZoneGeoReviewPanel";
 import { FormField } from "@/components/ui/FormField";
 import type { AiCampaignWizardState } from "@/lib/campaign-creator/ai-campaign-wizard-types";
+import type { LlmProviderId } from "@/lib/llm/types";
 import {
   audienceLabelFromWizardInput,
   buildOrionAiCampaignNames,
@@ -24,7 +25,7 @@ type PreparePhase = "regions_preview" | "regions_geocode";
 
 type PreparePayload = AiCampaignWizardState & {
   locale: string;
-  provider: "claude";
+  provider: LlmProviderId;
 };
 
 type Props = {
@@ -145,7 +146,7 @@ export function AiWizardSummaryStep({
     }
     setPreparingMap(true);
     try {
-      let payload = { ...state, locale, provider: "claude" as const };
+      let payload: PreparePayload = { ...state, locale, provider: "claude" as LlmProviderId };
       payload = await callPreparePhase("regions_preview", payload);
       payload = await callPreparePhase("regions_geocode", payload);
       onChange({

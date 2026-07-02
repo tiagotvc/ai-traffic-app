@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { auth } from "@/auth";
 import { getAppContext } from "@/lib/app-context";
 import { getOrCreateBillingCustomer } from "@/lib/billing/billing-service";
+import { resolveOrCreateAnonymousTenant } from "@/lib/billing/anonymous-checkout";
 import { tokenizeAsaasCreditCard } from "@/lib/billing/providers/asaas-provider";
 import { isWorkspaceAdmin } from "@/lib/workspace-members";
 
@@ -35,13 +37,41 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { tenant, user } = await getAppContext();
-    if (!(await isWorkspaceAdmin(tenant.id, user.id))) {
-      return NextResponse.json({ ok: false, error: "Admin required" }, { status: 403 });
+    const body = bodySchema.parse(await req.json());
+
+    const session = await auth();
+    // Mesmo critério do /api/billing/checkout: só reaproveita a sessão atual quando o e-mail
+    // do formulário bate com o da conta logada — senão é checkout público pra outra conta.
+    const sessionMatchesFormEmail =
+      !!session?.user?.email &&
+      session.user.email.toLowerCase().trim() === body.customer.email.toLowerCase().trim();
+
+    let tenantId: string;
+
+    if (sessionMatchesFormEmail) {
+      const { tenant, user } = await getAppContext();
+      if (!(await isWorkspaceAdmin(tenant.id, user.id))) {
+        return NextResponse.json({ ok: false, error: "Admin required" }, { status: 403 });
+      }
+      tenantId = tenant.id;
+    } else {
+      // Checkout público (cartão): mesma resolução de conta anônima do /api/billing/checkout —
+      // se essa chamada rodar antes, a sessão criada aqui já vale pra chamada seguinte.
+      const resolved = await resolveOrCreateAnonymousTenant(body.customer.name, body.customer.email);
+      if (resolved.conflict) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "ACCOUNT_EXISTS",
+            message: "Já existe uma conta com esse e-mail. Faça login para continuar."
+          },
+          { status: 409 }
+        );
+      }
+      tenantId = resolved.tenantId;
     }
 
-    const body = bodySchema.parse(await req.json());
-    const billingCustomer = await getOrCreateBillingCustomer(tenant.id, body.customer);
+    const billingCustomer = await getOrCreateBillingCustomer(tenantId, body.customer);
     const remoteIp = clientIp(req);
 
     const tok = await tokenizeAsaasCreditCard({

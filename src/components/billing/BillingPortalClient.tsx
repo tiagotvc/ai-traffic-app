@@ -224,6 +224,13 @@ export function BillingPortalClient({
     reload();
   }
 
+  async function reactivateSub() {
+    const res = await fetch("/api/billing/subscription/reactivate", { method: "POST" });
+    const j = await res.json();
+    setMessage(j.ok ? t("reactivateSuccess") : j.message ?? j.error ?? t("reactivateError"));
+    reload();
+  }
+
   async function requestRefund() {
     if (!refundInvoiceId || refundReason.length < 5) return;
     const res = await fetch("/api/billing/refunds", {
@@ -324,9 +331,23 @@ export function BillingPortalClient({
           <p className="flex items-start gap-1.5 text-xs leading-relaxed text-[var(--text-dimmer)]">
             <Info size={14} className="mt-0.5 shrink-0 opacity-70" />
             {canManageBilling && isPaidPlan ? (
-              <button type="button" onClick={cancelSub} className="ui-link text-left">
-                {sub?.cancelAtPeriodEnd ? t("cancelPending") : t("cancelSubscription")}
-              </button>
+              sub?.cancelAtPeriodEnd ? (
+                <span className="text-left">
+                  {t("cancelPending")}
+                  {sub?.paymentProvider === "stripe" ? (
+                    <>
+                      {" · "}
+                      <button type="button" onClick={reactivateSub} className="ui-link">
+                        {t("reactivateSubscription")}
+                      </button>
+                    </>
+                  ) : null}
+                </span>
+              ) : (
+                <button type="button" onClick={cancelSub} className="ui-link text-left">
+                  {t("cancelSubscription")}
+                </button>
+              )
             ) : (
               t("cancelContactAdmin")
             )}

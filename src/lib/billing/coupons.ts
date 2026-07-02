@@ -1,5 +1,8 @@
 import "server-only";
 
+import { randomUUID } from "crypto";
+
+import { getDataSource } from "@/db/data-source";
 import { repositories } from "@/db/repositories";
 import type { DiscountCoupon } from "@/db/entities/DiscountCoupon";
 import type { Plan } from "@/db/entities/Plan";
@@ -32,7 +35,10 @@ export async function findCouponByCode(code: string) {
 
 export async function validateCouponForCheckout(input: {
   code: string;
-  tenantId: string;
+  /** Ausente = preview anônimo (checkout público, conta ainda não existe) — pula a checagem de
+   * "já usado nesta conta"; a validação final roda de novo com o tenantId real na hora de fechar o
+   * pedido (startCheckout), então isso não abre brecha pra reuso indevido do cupom. */
+  tenantId?: string;
   plan: Plan;
   pricing: PricingBreakdown;
 }): Promise<CouponValidationResult> {
@@ -55,12 +61,14 @@ export async function validateCouponForCheckout(input: {
     return { ok: false, error: "Cupom não válido para este plano" };
   }
 
-  const { couponRedemption: redemptionRepo } = await repositories();
-  const alreadyUsed = await redemptionRepo.findOne({
-    where: { couponId: coupon.id, tenantId: input.tenantId }
-  });
-  if (alreadyUsed) {
-    return { ok: false, error: "Cupom já utilizado nesta conta" };
+  if (input.tenantId) {
+    const { couponRedemption: redemptionRepo } = await repositories();
+    const alreadyUsed = await redemptionRepo.findOne({
+      where: { couponId: coupon.id, tenantId: input.tenantId }
+    });
+    if (alreadyUsed) {
+      return { ok: false, error: "Cupom já utilizado nesta conta" };
+    }
   }
 
   const pct = Math.min(100, Math.max(0, coupon.percentOff));
@@ -92,6 +100,12 @@ export async function validateCouponForCheckout(input: {
   };
 }
 
+/**
+ * Registra o resgate e incrementa usedCount atomicamente numa transação. O UNIQUE em
+ * coupon_redemptions("couponId","tenantId") torna o insert idempotente (retry de webhook ou
+ * corrida concorrente cai no ON CONFLICT DO NOTHING) e fecha a brecha em que dois checkouts
+ * concorrentes passavam na validação de maxUses antes de qualquer um dos dois ter pago.
+ */
 export async function recordCouponRedemption(input: {
   couponId: string;
   tenantId: string;
@@ -100,18 +114,46 @@ export async function recordCouponRedemption(input: {
   discountCents: number;
   finalAmountCents: number;
 }) {
-  const { discountCoupon: couponRepo, couponRedemption: redemptionRepo } = await repositories();
+  const ds = await getDataSource();
 
-  await redemptionRepo.save(
-    redemptionRepo.create({
-      couponId: input.couponId,
-      tenantId: input.tenantId,
-      userId: input.userId ?? null,
-      invoiceId: input.invoiceId,
-      discountCents: input.discountCents,
-      finalAmountCents: input.finalAmountCents
-    })
-  );
+  await ds.transaction(async (manager) => {
+    const inserted = await manager.query(
+      `INSERT INTO coupon_redemptions
+         (id, "couponId", "tenantId", "userId", "invoiceId", "discountCents", "finalAmountCents")
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT ("couponId", "tenantId") DO NOTHING
+       RETURNING id`,
+      [
+        randomUUID(),
+        input.couponId,
+        input.tenantId,
+        input.userId ?? null,
+        input.invoiceId,
+        input.discountCents,
+        input.finalAmountCents
+      ]
+    );
 
-  await couponRepo.increment({ id: input.couponId }, "usedCount", 1);
+    if (inserted.length === 0) {
+      // já resgatado por este tenant (retry de webhook ou corrida concorrente) — idempotente
+      return;
+    }
+
+    const incremented = await manager.query(
+      `UPDATE discount_coupons
+       SET "usedCount" = "usedCount" + 1, "updatedAt" = now()
+       WHERE id = $1 AND ("maxUses" IS NULL OR "usedCount" < "maxUses")
+       RETURNING "usedCount"`,
+      [input.couponId]
+    );
+
+    if (incremented.length === 0) {
+      // Pagamento já foi confirmado, não dá pra estornar por aqui — só alerta pro admin
+      // desativar o cupom manualmente.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[coupons] cupom ${input.couponId} excedeu maxUses no resgate (tenant ${input.tenantId})`
+      );
+    }
+  });
 }

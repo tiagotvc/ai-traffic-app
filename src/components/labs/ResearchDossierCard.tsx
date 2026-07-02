@@ -169,7 +169,7 @@ export function ResearchDossierCard({
   dossier,
   loading,
   steps,
-  title = "Orion Brain",
+  title = "Commander",
   dossierLabelKey,
   forceVisible = false
 }: {

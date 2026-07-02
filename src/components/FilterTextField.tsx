@@ -23,6 +23,8 @@ type Props = {
   /** Match campaign creator inset fields (FilterSelectDropdown in wizard steps). */
   creatorField?: boolean;
   type?: "text" | "password" | "email" | "url" | "number";
+  autoComplete?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   min?: number;
   max?: number;
   "aria-label"?: string;
@@ -45,6 +47,8 @@ export function FilterTextField({
   suffix,
   creatorField = false,
   type = "text",
+  autoComplete,
+  inputMode,
   min,
   max,
   "aria-label": ariaLabel
@@ -98,6 +102,8 @@ export function FilterTextField({
       </span>
       <input
         type={type}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={selectOnFocus ? (e) => e.target.select() : undefined}

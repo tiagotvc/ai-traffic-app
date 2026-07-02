@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 
 import { BillingPlansClient } from "@/components/billing/BillingPlansClient";
+import { BillingAtmosphere } from "@/components/billing/BillingAtmosphere";
+import { PlanComparisonTable } from "@/components/billing/PlanComparisonTable";
 import { LandingCapabilities } from "@/components/marketing/LandingCapabilities";
 import { LandingCta } from "@/components/marketing/LandingMission";
 import { LandingDashboardSection } from "@/components/marketing/LandingDashboardSection";
@@ -54,19 +56,29 @@ export async function LandingPage() {
         </div>
       </section>
 
-      <section id="pricing" className="marketing-section">
-        <div className="mx-auto max-w-6xl space-y-8">
+      <section id="pricing" className="marketing-section relative isolate overflow-hidden !py-16">
+        <BillingAtmosphere />
+        <div className="relative mx-auto max-w-6xl space-y-6">
           <MarketingReveal className="text-center">
             <p className="marketing-section-title">{t("pricingBadge")}</p>
-            <h2 className="marketing-section-heading">{t("pricingTitle")}</h2>
+            <h2 className="font-heading text-2xl font-bold tracking-tight text-[var(--text-main)] sm:text-3xl">
+              {t("pricingTitle")}
+            </h2>
             <p className="marketing-section-sub mx-auto max-w-xl">{t("pricingSubtitle")}</p>
           </MarketingReveal>
-          <BillingPlansClient variant="marketing" layout="slider" />
-          <p className="text-center">
-            <Link href="/pricing" className="text-sm font-semibold text-[var(--ui-accent)] hover:underline">
-              {t("viewAllPlans")} →
-            </Link>
-          </p>
+          <BillingPlansClient variant="marketing" compact />
+          <details className="group rounded-2xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg)]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-heading text-sm font-semibold text-[var(--text-main)]">
+              {t("pricingComparisonTitle")}
+              <span className="text-lg text-[var(--ui-accent)] transition group-open:rotate-45" aria-hidden>
+                +
+              </span>
+            </summary>
+            <div className="border-t border-[var(--creator-card-border)] p-4 sm:p-6">
+              <p className="mb-6 text-sm text-[var(--text-dim)]">{t("pricingComparisonSubtitle")}</p>
+              <PlanComparisonTable />
+            </div>
+          </details>
         </div>
       </section>
 

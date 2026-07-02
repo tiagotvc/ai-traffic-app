@@ -22,13 +22,13 @@ export function FacebookLoginHandoffForm({
     <div className="w-full max-w-[420px]">
       <Link
         href="/login"
-        className="inline-flex items-center gap-1 text-sm font-medium text-violet-200/70 transition hover:text-violet-300"
+        className="hidden"
       >
         <span aria-hidden>←</span>
         {t("facebookHandoffBack")}
       </Link>
 
-      <h1 className="mt-6 font-heading text-2xl font-bold tracking-tight text-white sm:text-[1.75rem]">
+      <h1 className="font-heading text-2xl font-bold tracking-tight text-white sm:text-[1.75rem]">
         {t("facebookHandoffPageTitle")}
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-violet-200/75">{t("facebookHandoffPageSubtitle")}</p>
@@ -43,7 +43,7 @@ export function FacebookLoginHandoffForm({
         <button
           type="submit"
           disabled={pending}
-          className="ui-btn-meta w-full"
+          className="ui-btn-meta min-h-12 w-full px-5 py-3 text-base"
         >
           <FacebookBrandIcon className="h-5 w-5 text-white" />
           {pending ? t("metaOAuth.redirecting") : t("facebookHandoffContinue")}
@@ -51,6 +51,13 @@ export function FacebookLoginHandoffForm({
       </form>
 
       <p className="mt-4 text-center text-[11px] text-violet-300/45">{t("facebookHandoffSecure")}</p>
+      <Link
+        href="/login"
+        className="mt-5 flex items-center justify-center gap-1.5 text-sm font-medium text-violet-200/70 transition hover:text-violet-300"
+      >
+        <span aria-hidden>←</span>
+        {t("facebookHandoffBack")}
+      </Link>
     </div>
   );
 }

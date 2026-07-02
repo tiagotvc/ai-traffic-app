@@ -45,7 +45,7 @@ export async function LandingCta() {
           <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent px-8 py-3 text-sm font-semibold">
             {t("startFree")}
           </Link>
-          <Link href="/pricing" className="ui-btn-secondary px-8 py-3 text-sm font-semibold">
+          <Link href="/#pricing" className="ui-btn-secondary px-8 py-3 text-sm font-semibold">
             {t("viewPricing")}
           </Link>
         </div>

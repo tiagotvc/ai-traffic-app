@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { assertCommanderScientistsAccess } from "@/lib/billing/entitlements";
+import { billingErrorResponse } from "@/lib/billing/api-errors";
 import { estimateGeoReach } from "@/lib/labs/geo-reach";
 import { persistTestingHypotheses } from "@/lib/labs/persist-hypotheses";
-import { runFullResearch } from "@/lib/labs/pipelines/runner";
+import { runFullResearch, type FullResearchOptions } from "@/lib/labs/pipelines/runner";
 import type { PipelineEvent } from "@/lib/labs/pipelines/types";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +42,18 @@ const BodySchema = z.object({
  */
 export async function POST(req: Request) {
   const { tenant, metaAccessToken } = await getAppContext(); // exige sessão
+
+  // Gate do Copilot antes de abrir o stream (resposta JSON 402 se indisponível).
+  let maxScientists: number;
+  try {
+    const ent = await assertCommanderScientistsAccess(tenant.id);
+    maxScientists = ent.limits.maxScientists;
+  } catch (err) {
+    const res = billingErrorResponse(err);
+    if (res) return res;
+    throw err;
+  }
+
   const body = BodySchema.parse(await req.json().catch(() => ({})));
   const scope = body.scope ?? "full";
   const client = body.clientSlug ? await getClientBySlugOrId(tenant.id, body.clientSlug) : null;
@@ -65,18 +79,16 @@ export async function POST(req: Request) {
         }
       };
       try {
-        const dossier = await runFullResearch(
-          input,
-          send,
-          scope,
+        const options: FullResearchOptions =
           scope === "campaign"
             ? {
                 wizardStep: body.activeNode ?? "campaign",
                 draftId: body.draftId ?? null,
-                clientId: client?.id ?? null
+                clientId: client?.id ?? null,
+                maxScientists
               }
-            : undefined
-        );
+            : { maxScientists };
+        const dossier = await runFullResearch(input, send, scope, options);
         if (scope === "zone" && (body.geoLocations?.length ?? 0) > 0) {
           const reach = await estimateGeoReach(tenant.id, metaAccessToken, body.geoLocations!);
           if (reach) send({ phase: "reach", reach });

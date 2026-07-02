@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import type { PersonaCreatorSectionKey } from "@/components/audiences/create/persona-creator-steps";
 import { usePersonaCreatorScoreOptional } from "@/components/audiences/create/PersonaCreatorScoreContext";
 import { ResearchPipelineCard } from "@/components/labs/ResearchPipelineCard";
+import { useCommanderScientistsAccess } from "@/hooks/useCommanderScientistsAccess";
 import { usePlatformFeature } from "@/hooks/usePlatformFeature";
 import { CampaignCreatorScoreBar } from "@/components/campaign-creator/CampaignCreatorScoreBar";
 import { DsModal } from "@/design-system/components/DsModal";
@@ -168,7 +169,7 @@ export function PersonaCreatorBrainTips({
   const insightsLoading = insightsCtx?.insightsLoading ?? false;
   const clientSlug = insightsCtx?.clientSlug ?? null;
   const brainEnabled = usePlatformFeature("audiences.brain");
-  const researchEnabled = usePlatformFeature("audiences.brain.research");
+  const researchEnabled = useCommanderScientistsAccess("campaigns.commander.scientists.audiences");
   const [modalOpen, setModalOpen] = useState(false);
 
   const checklist = useMemo(() => buildPersonaDraftScoreChecklist(scoreInput), [scoreInput]);
@@ -359,7 +360,7 @@ export function PersonaCreatorBrainTips({
                 <ResearchPipelineCard
                   scope="persona"
                   signature={clientSlug}
-                  title="Pesquisa Orion"
+                  title="Commander"
                   requestBody={{ clientSlug, persistHypotheses: true }}
                 />
               </div>

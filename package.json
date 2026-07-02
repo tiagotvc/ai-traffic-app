@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3008",
+    "dev:https": "next dev -p 3008 --experimental-https",
     "prebuild": "node scripts/clean-stale-next-types.mjs && node scripts/migrate-vercel.mjs",
     "build": "next build",
     "vercel-build": "node scripts/migrate-vercel.mjs && next build",

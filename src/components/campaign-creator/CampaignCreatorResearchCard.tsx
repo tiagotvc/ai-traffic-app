@@ -2,7 +2,7 @@
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { ResearchPipelineCard } from "@/components/labs/ResearchPipelineCard";
-import { usePlatformFeature } from "@/hooks/usePlatformFeature";
+import { useCommanderScientistsAccess } from "@/hooks/useCommanderScientistsAccess";
 import { resolveDraftClient } from "@/lib/campaign-draft-client";
 import {
   campaignPipelineRunSignature,
@@ -14,7 +14,7 @@ import {
  * Pipeline step-aware: roda só os cientistas do passo atual; concorrentes ficam em cache.
  */
 export function CampaignCreatorResearchCard() {
-  const researchEnabled = usePlatformFeature("campaigns.brain.research");
+  const researchEnabled = useCommanderScientistsAccess("campaigns.commander.scientists.campaigns");
   const { payload, clients, activeNode, draftId } = useCampaignDraft();
   const client = resolveDraftClient(payload.clientSlug, clients);
   const shellSignature = client ? `${client.id}|${payload.objective}` : null;
@@ -37,7 +37,7 @@ export function CampaignCreatorResearchCard() {
         scope="campaign"
         signature={runSignature}
         shellSignature={shellSignature}
-        title="Pesquisa Orion"
+        title="Commander"
         dossierLabelKey={pipelineConfig.labelKey}
         requestBody={{
           clientSlug: payload.clientSlug,

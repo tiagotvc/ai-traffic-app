@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { auth } from "@/auth";
 import { getAppContext } from "@/lib/app-context";
 import { startCheckout, startStripeCheckout } from "@/lib/billing/billing-service";
+import { resolveOrCreateAnonymousTenant } from "@/lib/billing/anonymous-checkout";
 import { resolveCheckoutProvider } from "@/lib/billing/providers";
 import { isWorkspaceAdmin } from "@/lib/workspace-members";
 
@@ -30,7 +32,7 @@ const bodySchema = z.object({
   provider: z.enum(["asaas", "stripe"]).optional(),
   paymentRegion: z.enum(["br", "intl"]).optional(),
   locale: z.string().optional(),
-  billingType: z.enum(["PIX", "CREDIT_CARD"]).optional(),
+  billingType: z.enum(["PIX", "CREDIT_CARD", "PIX_AUTOMATIC"]).optional(),
   installmentCount: z.number().int().min(1).max(12).optional(),
   couponCode: z.string().optional(),
   creditCardToken: z.string().optional(),
@@ -39,20 +41,57 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { tenant, user } = await getAppContext();
-    const admin = await isWorkspaceAdmin(tenant.id, user.id);
-    if (!admin) {
-      return NextResponse.json({ ok: false, error: "Admin required" }, { status: 403 });
+    const body = bodySchema.parse(await req.json());
+
+    const session = await auth();
+    // Só reaproveita a sessão atual quando o e-mail do formulário é o mesmo da conta logada
+    // (fluxo de upgrade in-app, ex.: /settings?tab=plan). E-mail diferente = checkout público
+    // pra outra conta — mesmo com uma sessão (possivelmente de outra pessoa/teste) aberta no
+    // navegador, não pode travar exigindo admin de um tenant que não tem nada a ver com a compra.
+    const sessionMatchesFormEmail =
+      !!session?.user?.email &&
+      session.user.email.toLowerCase().trim() === body.customer.email.toLowerCase().trim();
+
+    let tenantId: string;
+    let userId: string;
+
+    if (sessionMatchesFormEmail) {
+      const { tenant, user } = await getAppContext();
+      const admin = await isWorkspaceAdmin(tenant.id, user.id);
+      if (!admin) {
+        return NextResponse.json({ ok: false, error: "Admin required" }, { status: 403 });
+      }
+      tenantId = tenant.id;
+      userId = user.id;
+    } else {
+      // Checkout público: cria conta+tenant na hora a partir do nome/e-mail do formulário
+      // (sem tela de login separada). Se já existir uma conta de verdade com esse e-mail,
+      // devolve ACCOUNT_EXISTS pro client pedir login em vez de criar por cima.
+      const resolved = await resolveOrCreateAnonymousTenant(
+        body.customer.name,
+        body.customer.email
+      );
+      if (resolved.conflict) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "ACCOUNT_EXISTS",
+            message: "Já existe uma conta com esse e-mail. Faça login para continuar."
+          },
+          { status: 409 }
+        );
+      }
+      tenantId = resolved.tenantId;
+      userId = resolved.userId;
     }
 
-    const body = bodySchema.parse(await req.json());
     const locale = body.locale ?? "pt-BR";
     const provider =
       body.provider ?? resolveCheckoutProvider(locale, body.paymentRegion ?? null);
 
     if (provider === "stripe") {
       const result = await startStripeCheckout({
-        tenantId: tenant.id,
+        tenantId,
         planId: body.planId,
         cycle: body.cycle,
         locale,
@@ -82,8 +121,8 @@ export async function POST(req: Request) {
     }
 
     const result = await startCheckout({
-      tenantId: tenant.id,
-      userId: user.id,
+      tenantId,
+      userId,
       planId: body.planId,
       couponCode: body.couponCode,
       cycle: body.cycle,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { auth } from "@/auth";
 import { getAppContext } from "@/lib/app-context";
 import { validateCouponForCheckout } from "@/lib/billing/coupons";
 import { planListCents, resolvePlanMonthlyCents } from "@/lib/billing/currency";
@@ -17,7 +18,10 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { tenant } = await getAppContext();
+    const session = await auth();
+    // Checkout público: preview de cupom antes da conta existir não checa "já usado" (ver
+    // validateCouponForCheckout) — a validação final roda de novo no submit com o tenantId real.
+    const tenantId = session?.user?.email ? (await getAppContext()).tenant.id : undefined;
     const body = bodySchema.parse(await req.json());
     const { plan: planRepo } = await repositories();
     const plan = await planRepo.findOne({ where: { id: body.planId, isActive: true } });
@@ -37,7 +41,7 @@ export async function POST(req: Request) {
 
     const result = await validateCouponForCheckout({
       code: body.code,
-      tenantId: tenant.id,
+      tenantId,
       plan,
       pricing
     });

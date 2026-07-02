@@ -33,3 +33,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, staleCanceled: canceled });
 }
+
+/** Vercel Cron invokes via GET; keep POST for manual/internal triggering. */
+export const GET = POST;

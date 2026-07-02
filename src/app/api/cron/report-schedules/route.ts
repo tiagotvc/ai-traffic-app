@@ -4,6 +4,8 @@ import { LessThanOrEqual } from "typeorm";
 import { repositories } from "@/db/repositories";
 import { deliverScheduledReport } from "@/lib/report-delivery";
 
+export const maxDuration = 120;
+
 function authCron(req: Request) {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) return false;
@@ -71,3 +73,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, processed: processed.length, ids: processed });
 }
+
+/** Vercel Cron invokes via GET; keep POST for manual/internal triggering. */
+export const GET = POST;
