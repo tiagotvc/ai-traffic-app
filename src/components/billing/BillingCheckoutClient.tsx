@@ -24,6 +24,7 @@ import {
 } from "@/lib/billing/currency";
 import { calculateCheckoutPricing, formatMoney } from "@/lib/billing/pricing";
 import { MARKETING_FEATURE_ROWS, PLUS_PAIRS, PLUS_SLUGS } from "@/lib/billing/plan-comparison";
+import { isValidEmail, isValidPhone } from "@/lib/br-validation";
 import { DsButton, DsCheckerCard, DsSegmentedControl } from "@/design-system";
 
 import type { PaymentProvider } from "@/lib/billing/types";
@@ -242,11 +243,24 @@ export function BillingCheckoutClient() {
   }
 
   function advanceToPayment() {
-    const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email);
-    const brDataIsValid = isIntl || Boolean(customer.cpfCnpj.trim() && customer.phone.trim());
-    if (!customer.name.trim() || !emailIsValid || !brDataIsValid) {
+    if (!customer.name.trim()) {
       setDataStepError(t("checkoutRequiredFields"));
       return;
+    }
+    if (!isValidEmail(customer.email)) {
+      setDataStepError(t("checkoutInvalidEmail"));
+      return;
+    }
+    if (!isIntl) {
+      // Documento sem validação de dígitos: o checkout atende estrangeiro (passaporte etc.).
+      if (!customer.cpfCnpj.trim()) {
+        setDataStepError(t("checkoutRequiredFields"));
+        return;
+      }
+      if (!isValidPhone(customer.phone)) {
+        setDataStepError(t("checkoutInvalidPhone"));
+        return;
+      }
     }
     setDataStepError(null);
     setCheckoutStep(3);

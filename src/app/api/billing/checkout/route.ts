@@ -9,6 +9,7 @@ import {
   resolveOrCreateAnonymousTenant
 } from "@/lib/billing/anonymous-checkout";
 import { resolveCheckoutProvider } from "@/lib/billing/providers";
+import { isValidPhone } from "@/lib/br-validation";
 
 function clientIp(req: Request): string | undefined {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -19,8 +20,12 @@ function clientIp(req: Request): string | undefined {
 const customerSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
+  // Documento livre (o checkout atende estrangeiro — passaporte etc.), sem validação de dígitos.
   cpfCnpj: z.string().optional(),
-  phone: z.string().optional(),
+  phone: z
+    .string()
+    .optional()
+    .refine((v) => !v || isValidPhone(v), "Telefone inválido"),
   postalCode: z.string().optional(),
   address: z.string().optional(),
   addressNumber: z.string().optional(),

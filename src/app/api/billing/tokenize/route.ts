@@ -18,7 +18,8 @@ const bodySchema = z.object({
   customer: z.object({
     name: z.string().min(2),
     email: z.string().email(),
-    cpfCnpj: z.string().min(11),
+    // Documento livre (aceita passaporte de estrangeiro) — a Asaas valida o que precisar.
+    cpfCnpj: z.string().min(5),
     phone: z.string().optional(),
     postalCode: z.string().min(8),
     address: z.string().optional(),

@@ -4,6 +4,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Autofill do Chrome/Edge: mata o fundo cinza-azulado que o navegador pinta em campos
+   preenchidos pela memória do navegador (autofill/colar sugestão). O background nativo do
+   autofill não é sobrescrevível direto — o truque padrão é atrasar a transição de
+   background-color "pra sempre", mantendo o fundo original do input. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: currentColor;
+  caret-color: currentColor;
+  transition:
+    background-color 9999999s ease-in-out 0s,
+    color 9999999s ease-in-out 0s;
+}
+
 /* ─── Orion Agency Design System (UX Pilot v1) ─── */
 :root {
   /* Sidebar — always dark */
