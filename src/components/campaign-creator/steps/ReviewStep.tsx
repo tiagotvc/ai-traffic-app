@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { CommanderReviewChecklist } from "@/components/campaign-creator/commander/CommanderReviewChecklist";
 import { ZoneGeoReviewPanel } from "@/components/campaign-creator/ZoneGeoReviewPanel";
 import { countPublishEntities, getActiveAdset, resolveAdTargetAdsets } from "@/lib/campaign-draft";
 import type { PlacementConfig } from "@/lib/campaign-placements";
@@ -304,6 +305,8 @@ export function ReviewStep() {
         <h3 className="campaign-creator-budget-header__title">{t("reviewSummaryTitle")}</h3>
         <p className="campaign-creator-budget-header__subtitle">{t("reviewHint")}</p>
       </header>
+
+      <CommanderReviewChecklist />
 
       <section className="space-y-2">
         <OrionSectionLabel>{t("reviewSummarySection")}</OrionSectionLabel>

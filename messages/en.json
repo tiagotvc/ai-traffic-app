@@ -5779,6 +5779,7 @@
     "paymentDetails": "Payment details",
     "yourPlan": "Your plan",
     "checkoutError": "Could not start payment.",
+    "checkoutUnavailable": "Checkout is temporarily unavailable. Please try again in a few minutes.",
     "checkoutAccountExists": "An account with this email already exists.",
     "paymentRegionLabel": "Payment region",
     "regionBr": "Brazil (PIX / card / invoice)",

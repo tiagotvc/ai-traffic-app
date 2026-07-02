@@ -44,12 +44,15 @@ export function MetaOAuthHandoffCard({
         {isPremium ? (
           <div className="flex items-center justify-center py-1">
             <div className="relative flex items-center">
-              <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] shadow-lg">
-                <TrafficAILogo size="sm" showText={false} variant="dark" />
+              <div className="relative z-10 flex h-12 w-12 items-center justify-center">
+                <TrafficAILogo
+                  size="sm"
+                  showText={false}
+                  variant="dark"
+                  className="orion-logo--sidebar-collapsed"
+                />
               </div>
-              <div className="relative z-20 -ml-4 flex h-14 w-14 items-center justify-center rounded-xl border border-blue-400/40 bg-[#1877F2]/20 shadow-xl ring-2 ring-blue-400/35">
-                <MetaBrandMark className="h-7 w-7" />
-              </div>
+              <MetaBrandMark className="relative z-20 -ml-2 h-10 w-10 drop-shadow-[0_8px_18px_rgba(24,119,242,0.3)]" />
             </div>
           </div>
         ) : (

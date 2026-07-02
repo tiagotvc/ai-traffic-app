@@ -4,10 +4,15 @@ import { Loader2, Send, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import { DsButton, DsInput } from "@/design-system";
+import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { useCommanderAccess } from "@/hooks/useCommanderAccess";
+import { useCommanderMemory } from "@/hooks/useCommanderMemory";
 
 import {
+  CommanderAdvanceWarning,
   CommanderConfidenceBadge,
   CommanderInsightsSummary,
+  CommanderMemorySummary,
   CommanderNextActionCard,
   CommanderPipeline
 } from "./CommanderParts";
@@ -16,6 +21,12 @@ import { useCommanderState } from "./useCommanderState";
 
 export function OrionCommanderPanel() {
   const { state, analyzing, researchMode, activeScientists } = useCommanderState("desktop");
+  const { payload, setActiveNode } = useCampaignDraft();
+  const { memory } = useCommanderAccess();
+  const { campaigns: memoryCampaigns, loading: memoryLoading } = useCommanderMemory(
+    payload.clientSlug,
+    memory
+  );
   const [question, setQuestion] = useState("");
   const { ask, asking, answer, error: askError, canAsk } = useAskCommander(state.insights);
   const completedSteps = state.pipeline.filter((step) => step.status === "done").length;
@@ -105,9 +116,17 @@ export function OrionCommanderPanel() {
         <CommanderPipeline steps={state.pipeline} />
       </div>
 
+      <CommanderAdvanceWarning state={state} onNavigate={setActiveNode} className="mt-3" />
+
       {state.insights.length > 0 ? (
         <div className="mt-5">
           <CommanderInsightsSummary insights={state.insights} />
+        </div>
+      ) : null}
+
+      {memory ? (
+        <div className="mt-3">
+          <CommanderMemorySummary campaigns={memoryCampaigns} loading={memoryLoading} />
         </div>
       ) : null}
 

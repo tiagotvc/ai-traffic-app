@@ -55,15 +55,16 @@ insights + próxima ação na sidebar. **Ainda não é conversacional** — o ch
    liga o form (loading, erro, resposta inline; desabilitado sem cliente selecionado). O stub
    `commanderService.askCommander()` foi removido. Isso também **liga parcialmente o gap #2**:
    a flag `.memory` agora tem um consumidor real (o contexto do chat).
-2. **`campaigns.commander.memory` parcialmente ligada.** Desde 2026-07-02 a flag decide se o
-   **chat** recebe a memória (métricas de 7 dias) no contexto — checada server-side na rota
-   `ask`. Ainda falta: exibir benchmarks/histórico **no painel** (fora do chat) — o
-   `commanderMemory` devolvido por `/api/campaign-creator/flags` e o `memory` do
-   `useCommanderAccess` continuam sem consumidor na UI.
-3. **Insights locais viraram código morto.** `useCommanderState` descarta `localState.insights`
-   nos dois ramos (sem Scientists → `insights: []`; com Scientists → só `researchInsights`).
-   Os 4 insights que o `CommanderService` calcula (orçamento, criativo, persona, benchmark)
-   nunca aparecem. Ou volta a exibi-los no modo sem Scientists, ou remove do serviço.
+2. ✅ **`campaigns.commander.memory` ligada no painel — RESOLVIDO (2026-07-02).** Nova rota
+   [`GET /api/commander/memory`](../../src/app/api/commander/memory/route.ts) (mesmo gate
+   composto do `flags`/`ask`) devolve as top-5 campanhas reais dos últimos 7 dias; hook
+   [`useCommanderMemory`](../../src/hooks/useCommanderMemory.ts) + componente
+   `CommanderMemorySummary` (em `CommanderParts.tsx`) exibem no painel desktop e no nível
+   expandido do dock mobile, só quando `useCommanderAccess().memory` é true.
+3. ✅ **Insights locais reativados — RESOLVIDO (2026-07-02).** `useCommanderState` agora usa
+   `localState.insights` no ramo sem Scientists em vez de zerar. Os 4 insights do
+   `CommanderService` (orçamento, criativo, persona, benchmark) voltaram a aparecer quando
+   não há Scientists rodando.
 
 ### 🟠 P1 — duplicações que vão apodrecer
 4. **`allowCopilot` + `allowCommander` coexistem** com semânticas sobrepostas (Scientists vs
@@ -72,10 +73,11 @@ insights + próxima ação na sidebar. **Ainda não é conversacional** — o ch
    `resolveLimits`) ou documentar a distinção de vez.
 5. **Hooks quase idênticos**: `useCopilotAccess` e `useCommanderScientistsAccess` são o mesmo
    código com nome diferente. Matar um.
-6. **Gate por slug hardcoded**: `canUseCommander` barra `["free","basic","basic-plus"]` por
-   string — conhecimento de plano em código, redundante com `allowCommander` (que a migration
-   já define por plano). Quando nascer um plano novo, a lista mente. Confiar no limit e
-   remover a lista (mantendo o kill-switch).
+6. ✅ **Gate por slug hardcoded — RESOLVIDO (2026-07-02).** `canUseCommander` removeu a lista
+   `["free","basic","basic-plus"]`; o gate agora é só env + flag de plataforma + admin +
+   `allowCommander` (verificado que `resolveLimits` sempre resolve `allowCommander` pra
+   `false` por padrão — fail-closed, nunca fail-open). `useCopilotAccess` (re-export
+   duplicado de `useCommanderScientistsAccess`) também foi removido.
 7. **Dois mecanismos de tier**: Commander usa boolean (`allowCommander`), o Engine usa numérico
    (`automationTier` 1–4). Para o ecossistema inteiro (v1–v4 por plano), o padrão numérico +
    fallback seguro no runtime é o que escala — considerar `commanderTier` na Fase 2.
@@ -104,7 +106,7 @@ insights + próxima ação na sidebar. **Ainda não é conversacional** — o ch
 |---|---|---|
 | Labs → Commander (dossiê ao vivo) | ✅ funciona | `useCommanderState` + `/api/labs/pipeline/stream` |
 | Labs → Brain (hipóteses) | ✅ funciona | testing-skill persiste `ClientHypothesis` (SUGGESTED) |
-| Brain → Commander (memória/benchmarks) | 🟡 parcial | memória entra no contexto do chat; falta no painel (gap #2) |
+| Brain → Commander (memória/benchmarks) | ✅ funciona | memória no contexto do chat + `CommanderMemorySummary` no painel/dock |
 | Commander ↔ usuário (chat) | ✅ funciona (2026-07-02) | `/api/commander/ask` + `useAskCommander` |
 | Brain → Engine (regras sugeridas) | 🔴 não existe | Fase 2 do Engine ([doc](../orion-engine/README.md)) |
 | Commander → Engine (criar regra por conversa) | 🔴 não existe | depende do chat (#1) — o payload de regra já é estruturado, alvo perfeito de tool-use |
@@ -127,6 +129,15 @@ Engine não decide o que vale a pena; Labs não toca campanha real.
    `bigquery-service.ts`, e a memória do Commander passa a consultar BQ pra agregados longos.
 
 ## Histórico
+- 2026-07-02 (c): **Fase A fechada + parte da Fase B** (gaps #2, #3, #6): memória do Brain
+  agora aparece no painel/dock (`GET /api/commander/memory` + `useCommanderMemory` +
+  `CommanderMemorySummary`), insights locais voltaram a aparecer sem Scientists (gap #3),
+  gate de plano deixou de depender de lista de slug hardcoded — só `allowCommander`
+  (gap #6), e `useCopilotAccess` (hook duplicado) foi removido. Também novo: aviso
+  não-bloqueante "não recomendamos avançar ainda" no painel/dock (baseado em
+  `state.status === "warning"`, sem tocar `goNext`/navegação) e checklist inteligente na
+  etapa de revisão (`CommanderReviewChecklist`, estritamente local/síncrono — sem abrir um
+  segundo stream SSE de Scientists).
 - 2026-07-02 (b): **Chat real entregue** (gap #1): `POST /api/commander/ask` (gate composto +
   créditos `kind: "chat"`) → `askCommander()` com contexto rascunho + Scientists + memória do
   Brain (gateada por `.memory`), Claude→Gemini. Painel ligado via `useAskCommander` (loading/

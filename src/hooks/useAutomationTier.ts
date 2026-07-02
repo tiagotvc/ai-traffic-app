@@ -18,7 +18,7 @@ function readCachedTier(): number {
 /**
  * Tier do Orion Engine (`PlanLimits.automationTier`, 1–4) do tenant atual — gateia
  * simulação/backtest e modos de execução (alerta/aprovação) no stepper de regras (tier >= 2).
- * Mesmo padrão de cache de `useCopilotAccess`.
+ * Mesmo padrão de cache de `useCommanderScientistsAccess`.
  */
 export function useAutomationTier(): number {
   const [tier, setTier] = useState<number>(() => readCachedTier());

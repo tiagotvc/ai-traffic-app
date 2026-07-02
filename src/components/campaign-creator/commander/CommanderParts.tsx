@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Circle,
   Database,
+  History,
   Lightbulb,
   LoaderCircle,
   Sparkles
@@ -14,7 +15,22 @@ import {
 import { useState } from "react";
 
 import { DsModal } from "@/design-system";
+import type { CommanderMemoryCampaign } from "@/hooks/useCommanderMemory";
+import type { CreatorNode } from "@/lib/campaign-draft";
 import type { CommanderInsight, CommanderPipelineStep, CommanderState } from "@/lib/commander/types";
+
+/**
+ * Mapa insight → step do wizard, pro botão "Corrigir agora" navegar direto.
+ * Hoje só existe um insight tipo "warning" (id "budget", campo vive no CampaignStep).
+ * Se surgir um segundo insight tipo warning, adicionar aqui.
+ */
+const INSIGHT_NODE_MAP: Record<string, CreatorNode> = {
+  budget: "campaign"
+};
+
+function formatCurrencyBRL(value: number): string {
+  return `R$ ${value.toFixed(2)}`;
+}
 
 export function CommanderConfidenceBadge({ value }: { value: number | null }) {
   return (
@@ -225,6 +241,126 @@ function CommanderInsightCard({ insight }: { insight: CommanderInsight }) {
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+export function CommanderMemorySummary({
+  campaigns,
+  loading
+}: {
+  campaigns: CommanderMemoryCampaign[];
+  loading: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-3 text-left transition-all hover:-translate-y-px hover:border-[var(--ui-accent-border)] hover:shadow-sm"
+      >
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 w-0.5 bg-gradient-to-b from-[var(--ui-accent)] to-[var(--amber-bright)] opacity-70"
+        />
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+          <History size={15} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-semibold text-[var(--text-main)]">Memória do Brain</span>
+          </span>
+          <span className="mt-1 block text-[10px] text-[var(--text-dim)]">
+            {loading
+              ? "Consultando histórico…"
+              : campaigns.length
+                ? `${campaigns.length} campanha(s) nos últimos 7 dias`
+                : "Sem métricas sincronizadas no período"}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-[var(--ui-accent)]">
+          Ver
+          <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </button>
+
+      <DsModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Memória do Brain"
+        subtitle="Campanhas reais dos últimos 7 dias"
+        titleIcon={<History size={15} />}
+        width="md"
+      >
+        {campaigns.length ? (
+          <div className="overflow-hidden rounded-xl border border-[var(--border-color)] px-3">
+            {campaigns.map((campaign) => (
+              <div key={campaign.campaignName} className="border-b border-[var(--border-color)] py-2.5 last:border-b-0">
+                <p className="text-[11px] font-semibold leading-snug text-[var(--text-main)]">
+                  {campaign.campaignName}
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[var(--text-dim)]">
+                  <span>Gasto: {formatCurrencyBRL(campaign.spend)}</span>
+                  <span>{campaign.conversions} conv.</span>
+                  <span>CTR {campaign.ctr.toFixed(2)}%</span>
+                  <span>CPA {campaign.cpa != null ? formatCurrencyBRL(campaign.cpa) : "—"}</span>
+                  <span>ROAS {campaign.roas.toFixed(2)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="px-1 py-2 text-[11px] leading-relaxed text-[var(--text-dim)]">
+            Sem métricas sincronizadas no período.
+          </p>
+        )}
+      </DsModal>
+    </>
+  );
+}
+
+/**
+ * Aviso puramente informativo — nunca bloqueia navegação. Aparece quando o Commander
+ * marca a campanha como "warning" (algo importante faltando). "Corrigir agora" só
+ * navega pro step relevante via setActiveNode; o botão Próximo do wizard continua
+ * funcionando normalmente independente deste aviso estar visível ou não.
+ */
+export function CommanderAdvanceWarning({
+  state,
+  onNavigate,
+  className = ""
+}: {
+  state: CommanderState;
+  onNavigate: (node: CreatorNode) => void;
+  className?: string;
+}) {
+  if (state.status !== "warning") return null;
+  const warning = state.insights.find((insight) => insight.type === "warning");
+  if (!warning) return null;
+  const targetNode = INSIGHT_NODE_MAP[warning.id];
+
+  return (
+    <div className={`rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 ${className}`}>
+      <div className="flex gap-2">
+        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-[var(--amber-bright)]" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-[var(--amber)]">Não recomendamos avançar ainda</p>
+          <p className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
+            Motivo: {warning.description}
+          </p>
+          {targetNode ? (
+            <button
+              type="button"
+              onClick={() => onNavigate(targetNode)}
+              className="mt-2 text-[11px] font-semibold text-[var(--amber-bright)] hover:underline"
+            >
+              Corrigir agora
+            </button>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }

@@ -2,10 +2,16 @@ import { describe, expect, it } from "vitest";
 import { canUseCommander } from "./access";
 
 describe("canUseCommander", () => {
-  it.each(["free", "basic", "basic-plus"])("mantém o resumo antigo no plano %s", (planSlug) => {
+  it.each(["free", "basic", "basic-plus"])("mantém o resumo antigo no plano %s sem allowCommander", (planSlug) => {
     expect(canUseCommander({
-      planSlug, allowCommander: true, platformEnabled: true, environmentEnabled: true
+      planSlug, allowCommander: false, platformEnabled: true, environmentEnabled: true
     })).toBe(false);
+  });
+
+  it("libera qualquer plano cujo limit allowCommander esteja true (gate 100% pelo limit)", () => {
+    expect(canUseCommander({
+      planSlug: "free", allowCommander: true, platformEnabled: true, environmentEnabled: true
+    })).toBe(true);
   });
 
   it("libera planos elegíveis quando plano e flags permitem", () => {

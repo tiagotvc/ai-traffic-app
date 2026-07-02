@@ -5783,6 +5783,7 @@
     "paymentDetails": "Dados de pagamento",
     "yourPlan": "Seu plano",
     "checkoutError": "Não foi possível iniciar o pagamento.",
+    "checkoutUnavailable": "O checkout está temporariamente indisponível. Tente novamente em alguns minutos.",
     "checkoutAccountExists": "Já existe uma conta com esse e-mail.",
     "paymentRegionLabel": "Região de pagamento",
     "regionBr": "Brasil (PIX / cartão / NF)",

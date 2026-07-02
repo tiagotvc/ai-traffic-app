@@ -173,8 +173,8 @@ export function useCommanderState(surface: "desktop" | "mobile" = "desktop") {
         status: localAnalyzing ? "analyzing" : localState.status,
         confidence: null,
         activeScientist: undefined,
-        insights: [],
-        insightsCount: 0,
+        insights: localState.insights,
+        insightsCount: localState.insights.length,
         pipeline: [
           { ...localState.pipeline[0]!, status: "done" },
           {

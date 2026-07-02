@@ -143,6 +143,7 @@ export function BillingCheckoutClient() {
         setPlans((j.plans as PlanCardData[]) ?? []);
         setProviders((j.providers as PaymentProvider[]) ?? []);
       })
+      .catch(() => {})
       .finally(() => setInitialLoading(false));
   }, []);
 
@@ -376,8 +377,17 @@ export function BillingCheckoutClient() {
     }
   }
 
-  if (initialLoading || !paymentRegion) {
+  if (initialLoading) {
     return <BillingPortalSkeleton />;
+  }
+
+  if (!paymentRegion) {
+    return (
+      <div className="w-full space-y-4">
+        <BillingBackLink href="/billing/plans" />
+        <p className="text-sm text-[var(--text-dim)]">{t("checkoutUnavailable")}</p>
+      </div>
+    );
   }
 
   if (!plan) {
