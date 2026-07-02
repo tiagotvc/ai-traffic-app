@@ -4,7 +4,10 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { getAppContext } from "@/lib/app-context";
 import { startCheckout, startStripeCheckout } from "@/lib/billing/billing-service";
-import { resolveOrCreateAnonymousTenant } from "@/lib/billing/anonymous-checkout";
+import {
+  establishAnonymousSession,
+  resolveOrCreateAnonymousTenant
+} from "@/lib/billing/anonymous-checkout";
 import { resolveCheckoutProvider } from "@/lib/billing/providers";
 
 function clientIp(req: Request): string | undefined {
@@ -53,6 +56,9 @@ export async function POST(req: Request) {
 
     let tenantId: string;
     let userId: string;
+    // Conta pendente do checkout público: a sessão só é estabelecida DEPOIS do provedor aceitar
+    // a cobrança — se o pagamento falhar, o comprador não fica logado nem com conta utilizável.
+    let pendingAnonymousUserId: string | null = null;
 
     if (sessionMatchesFormEmail) {
       // tenantId/userId vêm da sessão autenticada (não do input do usuário), então não há
@@ -81,6 +87,7 @@ export async function POST(req: Request) {
       }
       tenantId = resolved.tenantId;
       userId = resolved.userId;
+      pendingAnonymousUserId = resolved.userId;
     }
 
     const locale = body.locale ?? "pt-BR";
@@ -95,6 +102,7 @@ export async function POST(req: Request) {
         locale,
         customer: { name: body.customer.name, email: body.customer.email }
       });
+      if (pendingAnonymousUserId) await establishAnonymousSession(pendingAnonymousUserId);
       return NextResponse.json({
         ok: true,
         provider: "stripe",
@@ -130,6 +138,10 @@ export async function POST(req: Request) {
       creditCardToken: body.creditCardToken,
       remoteIp: clientIp(req)
     });
+
+    // Só chega aqui se o provedor aceitou a cobrança (cartão aprovado / QR PIX emitido) —
+    // startCheckout lança em caso de recusa e cai no catch sem estabelecer sessão.
+    if (pendingAnonymousUserId) await establishAnonymousSession(pendingAnonymousUserId);
 
     return NextResponse.json({ ok: true, provider: "asaas", ...result });
   } catch (err) {

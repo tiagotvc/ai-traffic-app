@@ -55,8 +55,9 @@ export async function POST(req: Request) {
       }
       tenantId = tenant.id;
     } else {
-      // Checkout público (cartão): mesma resolução de conta anônima do /api/billing/checkout —
-      // se essa chamada rodar antes, a sessão criada aqui já vale pra chamada seguinte.
+      // Checkout público (cartão): mesma resolução de conta anônima do /api/billing/checkout.
+      // A conta fica pendente (sem senha/sessão); a chamada seguinte ao /api/billing/checkout
+      // reutiliza essa mesma conta pelo e-mail e só estabelece sessão se o pagamento passar.
       const resolved = await resolveOrCreateAnonymousTenant(body.customer.name, body.customer.email);
       if (resolved.conflict) {
         return NextResponse.json(

@@ -2651,14 +2651,17 @@ h6,
 
   /* Mesmas regras acima, mas pro caso de data-theme="dark" e o shell estarem no MESMO elemento
      (ex.: BillingCheckoutClient/BillingPixPayment, que forçam dark local independente do tema
-     do site) — o combinador descendente acima não casa quando é um único elemento. */
-  [data-theme="dark"][data-campaign-creator-shell],
-  [data-theme="dark"][data-creator-modal-shell],
-  [data-theme="dark"][data-agency-brain-shell],
-  [data-theme="dark"][data-reports-shell],
-  [data-theme="dark"][data-dashboard-shell],
-  [data-theme="dark"][data-admin-shell],
-  [data-theme="dark"][data-audiences-shell] {
+     do site) — o combinador descendente acima não casa quando é um único elemento.
+     O prefixo :root é necessário pra empatar (0,3,0) com a regra light
+     ":root:not([data-theme=dark]) [shell]" acima — sem ele, visitante com o site em light
+     (ou deslogado, sem data-theme no html) via os cards brancos com texto branco. */
+  :root [data-theme="dark"][data-campaign-creator-shell],
+  :root [data-theme="dark"][data-creator-modal-shell],
+  :root [data-theme="dark"][data-agency-brain-shell],
+  :root [data-theme="dark"][data-reports-shell],
+  :root [data-theme="dark"][data-dashboard-shell],
+  :root [data-theme="dark"][data-admin-shell],
+  :root [data-theme="dark"][data-audiences-shell] {
     --creator-card-bg: #161922;
     --creator-card-bg-inset: #121820;
     --creator-card-border: rgba(255, 255, 255, 0.09);
