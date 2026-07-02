@@ -3,6 +3,8 @@ import "server-only";
 import { z } from "zod";
 
 import { getClientCampaignMetrics } from "@/lib/agency-brain/metrics-input";
+import { simulateRule } from "@/lib/automation/simulate";
+import type { CommanderRuleProposal } from "@/lib/commander/types";
 import { llmGenerateJson } from "@/lib/llm/generate-json";
 import { getApiKeyForProvider } from "@/lib/llm/keys";
 import type { LlmGenerateMeta, LlmProviderId } from "@/lib/llm/types";
@@ -20,12 +22,40 @@ export type AskDraftSummary = {
 
 export type AskInsightSummary = { title: string; description: string; source: string };
 
-const AnswerSchema = z.object({
-  /** Resposta em pt-BR, direta, máx. ~3 parágrafos curtos. */
-  answer: z.string().min(1).max(2000)
+// Mesmo vocabulário do motor (`POST /api/automation/rules`). `schedule_toggle` fica de
+// fora (não simulável) e `notify_email` também (o modelo não conhece o e-mail de destino).
+const ProposalConditionItem = z.object({
+  metric: z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas"]),
+  op: z.enum(["gt", "lt", "gte"]),
+  value: z.number()
 });
 
-export type AskCommanderResult = LlmGenerateMeta & { answer: string };
+const RuleProposalSchema = z.object({
+  name: z.string().min(1).max(120),
+  /** E dentro do grupo, OU entre grupos (DNF — igual ao motor). */
+  groups: z.array(z.array(ProposalConditionItem).min(1).max(5)).min(1).max(4),
+  minSpend: z.number().min(0).nullable(),
+  actionType: z.enum([
+    "pause_campaign",
+    "alert_only",
+    "adjust_budget_percent",
+    "reactivate_campaign",
+    "scale_gradual"
+  ]),
+  budgetPercent: z.number().min(1).max(50).nullable()
+});
+
+const AnswerSchema = z.object({
+  /** Resposta em pt-BR, direta, máx. ~3 parágrafos curtos. */
+  answer: z.string().min(1).max(2000),
+  /** Só quando o usuário pediu explicitamente uma regra/automação. */
+  ruleProposal: RuleProposalSchema.nullable()
+});
+
+export type AskCommanderResult = LlmGenerateMeta & {
+  answer: string;
+  ruleProposal: CommanderRuleProposal | null;
+};
 
 function formatBudget(value?: number): string {
   return value && value > 0 ? `R$ ${value.toFixed(2)}/dia` : "não definido";
@@ -47,10 +77,19 @@ export async function askCommander(input: {
   memoryEnabled: boolean;
 }): Promise<AskCommanderResult> {
   const lines: string[] = [
-    "Você é o Orion Commander — o copiloto estratégico de tráfego pago da plataforma Orion.",
+    "Você é o Orion Commander — o comando estratégico de tráfego pago da plataforma Orion.",
     "Responda em português do Brasil, direto e acionável, no máximo 3 parágrafos curtos.",
     "Use APENAS o contexto abaixo. Se faltar informação, diga o que falta e como obter.",
     "Nunca invente métricas ou resultados.",
+    "",
+    "Se — e somente se — o usuário pedir para criar uma regra/automação (ex.: 'crie uma regra",
+    "que pause campanhas com CPA acima de 50'), preencha `ruleProposal` traduzindo o pedido:",
+    "métricas: cpl, cpa, ctr (em %), spend (R$ na janela de 7 dias), conversions, roas;",
+    "operadores: gt, lt, gte; `groups` = listas de condições em E, combinadas em OU;",
+    "`minSpend` = gasto mínimo em R$ para avaliar a campanha (use null se não citado);",
+    "ações: pause_campaign, alert_only, adjust_budget_percent (+budgetPercent), reactivate_campaign,",
+    "scale_gradual (+budgetPercent). No `answer`, explique a regra proposta em 1 parágrafo e avise",
+    "que ela será criada em modo de aprovação. Caso contrário, retorne ruleProposal = null.",
     "",
     `Cliente: ${input.clientName}`,
     "",
@@ -109,10 +148,62 @@ export async function askCommander(input: {
         schema: AnswerSchema,
         temperature: 0.4
       });
-      return { ...meta, answer: data.answer };
+      const ruleProposal = data.ruleProposal
+        ? await buildRuleProposal(input.tenantId, input.clientId, data.ruleProposal)
+        : null;
+      return { ...meta, answer: data.answer, ruleProposal };
     } catch (err) {
       lastError = err;
     }
   }
   throw lastError;
+}
+
+/**
+ * Aresta Commander→Engine: transforma a saída do LLM no artefato "proposta de regra"
+ * (payload do `POST /api/automation/rules`) com a simulação de 30 dias anexada — a
+ * proposta nunca viaja sem evidência. Quem cria a regra é o usuário, via botão no painel.
+ */
+async function buildRuleProposal(
+  tenantId: string,
+  clientId: string,
+  raw: z.infer<typeof RuleProposalSchema>
+): Promise<CommanderRuleProposal> {
+  const needsPercent = raw.actionType === "adjust_budget_percent" || raw.actionType === "scale_gradual";
+  const condition = {
+    groups: raw.groups,
+    ...(raw.minSpend != null && raw.minSpend > 0 ? { minSpend: raw.minSpend } : {})
+  };
+  const action = {
+    type: raw.actionType,
+    ...(needsPercent ? { budgetPercent: raw.budgetPercent ?? 10 } : {})
+  };
+
+  let simulation: CommanderRuleProposal["simulation"] = null;
+  try {
+    const result = await simulateRule(tenantId, { condition, action, clientId, days: 30 });
+    simulation = result.supported
+      ? {
+          supported: true,
+          days: result.days,
+          campaignsTriggered: result.totals.campaignsTriggered,
+          alertDays: result.totals.alertDays,
+          avoidedSpend: result.totals.avoidedSpend,
+          dailyBudgetIncrease: result.totals.dailyBudgetIncrease
+        }
+      : { supported: false, days: 0, campaignsTriggered: 0, alertDays: 0, avoidedSpend: 0, dailyBudgetIncrease: 0 };
+  } catch {
+    /* simulação é best-effort — a proposta continua válida sem ela */
+  }
+
+  return {
+    name: raw.name,
+    clientId,
+    condition,
+    action,
+    // Escada de confiança: proposta vinda de conversa nasce pedindo aprovação; só
+    // alerta puro pode nascer `auto`.
+    executionMode: raw.actionType === "alert_only" ? "auto" : "approval",
+    simulation
+  };
 }

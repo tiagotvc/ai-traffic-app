@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Bell, Check, Clock, Plus, Trash2, X, Zap } from "lucide-react";
+import { Bell, Check, ChevronDown, ChevronUp, Clock, History, Plus, Trash2, X, Zap } from "lucide-react";
 
 import { useRouter } from "@/i18n/navigation";
 
@@ -29,6 +29,14 @@ type Rule = {
   lastExecutionAt?: string | null;
 };
 
+type RuleExecution = {
+  id: string;
+  createdAt: string;
+  title: string;
+  description: string;
+  severity: "critical" | "warning";
+};
+
 type PendingAction = {
   id: string;
   metaCampaignId: string;
@@ -47,6 +55,8 @@ export function AutomationsRulesView() {
   const [isPending, startTransition] = useTransition();
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
+  const [executionsByRule, setExecutionsByRule] = useState<Record<string, RuleExecution[] | "loading">>({});
 
   const load = useCallback(() => {
     setLoading(true);
@@ -88,6 +98,25 @@ export function AutomationsRulesView() {
 
   function openCreate() {
     setModalOpen(true);
+  }
+
+  function toggleExecutions(rule: Rule) {
+    if (expandedRuleId === rule.id) {
+      setExpandedRuleId(null);
+      return;
+    }
+    setExpandedRuleId(rule.id);
+    if (executionsByRule[rule.id]) return;
+    setExecutionsByRule((prev) => ({ ...prev, [rule.id]: "loading" }));
+    fetch(`/api/automation/rules/${rule.id}/executions`)
+      .then((r) => r.json())
+      .then((j) =>
+        setExecutionsByRule((prev) => ({
+          ...prev,
+          [rule.id]: (j.executions ?? []) as RuleExecution[]
+        }))
+      )
+      .catch(() => setExecutionsByRule((prev) => ({ ...prev, [rule.id]: [] })));
   }
 
   function toggle(rule: Rule) {
@@ -205,10 +234,8 @@ export function AutomationsRulesView() {
           ) : (
             <div className="ui-campaign-table-shell ui-campaign-table-shell--compact overflow-hidden">
               {rules.map((rule) => (
-                <div
-                  key={rule.id}
-                  className="flex flex-wrap items-center gap-3 border-b border-[var(--creator-card-border)] p-4 last:border-0"
-                >
+                <div key={rule.id} className="border-b border-[var(--creator-card-border)] last:border-0">
+                <div className="flex flex-wrap items-center gap-3 p-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-heading text-sm font-semibold text-[var(--text-main)]">
@@ -233,15 +260,28 @@ export function AutomationsRulesView() {
                         {actionLabel(rule.action.type)}
                       </span>
                     </div>
-                    <p className="mt-1.5 font-body text-[11px] text-[var(--text-dimmer)]">
-                      {rule.executionCount && rule.executionCount > 0
-                        ? `${rule.executionCount} execução(ões)${
-                            formatLastRun(rule.lastExecutionAt)
-                              ? ` · última ${formatLastRun(rule.lastExecutionAt)}`
-                              : ""
-                          }`
-                        : "Ainda não disparou"}
-                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 font-body text-[11px] text-[var(--text-dimmer)]">
+                      <span>
+                        {rule.executionCount && rule.executionCount > 0
+                          ? `${rule.executionCount} execução(ões)${
+                              formatLastRun(rule.lastExecutionAt)
+                                ? ` · última ${formatLastRun(rule.lastExecutionAt)}`
+                                : ""
+                            }`
+                          : "Ainda não disparou"}
+                      </span>
+                      {rule.executionCount && rule.executionCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleExecutions(rule)}
+                          className="inline-flex items-center gap-1 font-medium text-[var(--ui-accent)] hover:underline"
+                        >
+                          <History size={12} />
+                          {expandedRuleId === rule.id ? "Ocultar execuções" : "Ver execuções"}
+                          {expandedRuleId === rule.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   <label className="flex cursor-pointer items-center gap-2 font-body text-xs text-[var(--text-dim)]">
                     <input
@@ -261,6 +301,41 @@ export function AutomationsRulesView() {
                   >
                     <Trash2 size={16} />
                   </button>
+                </div>
+                {expandedRuleId === rule.id ? (
+                  <div className="border-t border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-4 py-3">
+                    {executionsByRule[rule.id] === "loading" || !executionsByRule[rule.id] ? (
+                      <p className="font-body text-[11px] text-[var(--text-dimmer)]">Carregando execuções…</p>
+                    ) : (executionsByRule[rule.id] as RuleExecution[]).length === 0 ? (
+                      <p className="font-body text-[11px] text-[var(--text-dimmer)]">
+                        Nenhuma execução registrada.
+                      </p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {(executionsByRule[rule.id] as RuleExecution[]).map((exec) => (
+                          <li key={exec.id} className="flex items-start gap-2">
+                            <span
+                              className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${
+                                exec.severity === "critical" ? "bg-red-500" : "bg-amber-500"
+                              }`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-body text-[11px] text-[var(--text-dim)]">{exec.description}</p>
+                              <p className="mt-0.5 font-body text-[10px] text-[var(--text-dimmer)]">
+                                {new Date(exec.createdAt).toLocaleString("pt-BR", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })}
+                              </p>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
                 </div>
               ))}
             </div>

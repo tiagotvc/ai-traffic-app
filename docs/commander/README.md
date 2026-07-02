@@ -12,8 +12,10 @@
 ## Estado atual (auditoria 2026-07-02)
 
 O Commander de hoje é um **centro de comando contextual no criador de campanha**: valida o
-rascunho localmente, orquestra os Scientists (Labs) em tempo real via SSE e exibe pipeline +
-insights + próxima ação na sidebar. **Ainda não é conversacional** — o chat é casca (ver gaps).
+rascunho localmente, orquestra os Scientists (Labs) em tempo real via SSE, exibe pipeline +
+insights + próxima ação na sidebar, **conversa de verdade** (chat com contexto de rascunho +
+Scientists + memória do Brain) e **cria regras do Engine por conversa** (proposta com
+simulação anexada, aprovada com 1 clique).
 
 ### O que existe (por camada)
 
@@ -67,10 +69,11 @@ insights + próxima ação na sidebar. **Ainda não é conversacional** — o ch
    não há Scientists rodando.
 
 ### 🟠 P1 — duplicações que vão apodrecer
-4. **`allowCopilot` + `allowCommander` coexistem** com semânticas sobrepostas (Scientists vs
-   shell do Commander). O comentário no hook já admite: "nome legado no contrato persistido".
-   Decidir: renomear `allowCopilot → allowCommanderScientists` (com resolve tolerante no
-   `resolveLimits`) ou documentar a distinção de vez.
+4. ✅ **`allowCopilot` + `allowCommander` — DECIDIDO (2026-07-02): documentar, não renomear.**
+   Renomear uma chave persistida no JSONB de `plans` (com resolve tolerante + migration) é
+   churn com risco real e ganho estético. A distinção oficial: `allowCommander` = shell do
+   Commander (chat/painel); `allowCopilot` = capacidade Scientists (nome legado no contrato
+   persistido, documentado em `entitlements.ts` §`assertCommanderScientistsAccess`).
 5. **Hooks quase idênticos**: `useCopilotAccess` e `useCommanderScientistsAccess` são o mesmo
    código com nome diferente. Matar um.
 6. ✅ **Gate por slug hardcoded — RESOLVIDO (2026-07-02).** `canUseCommander` removeu a lista
@@ -87,9 +90,12 @@ insights + próxima ação na sidebar. **Ainda não é conversacional** — o ch
    verdade**; BigQuery só entra como export analítico read-only quando houver dor real de
    agregação/escala — e aí pluga primeiro na camada de memória (`metrics-input.ts` /
    `bigquery-service.ts`), não substitui o operacional.
-9. **Naming em transição**: docs/copilot ainda diz "Copilot", a tabela de comparação diz
-   "Commander — Scientists", o painel diz "Copiloto estratégico". Padronizar cópia: **Commander**
-   é o produto; **Scientists** é a capacidade de pesquisa dele.
+9. ✅ **Naming em transição — RESOLVIDO (2026-07-02).** Toda a cópia visível ao usuário agora
+   diz **Commander**: painel ("Comando estratégico…"), badge do chat do Brain em modo agente
+   (`chatAgentBadge`), landing (`diff2Body`) — em pt-BR e en. "Copilot" sobrevive apenas em
+   nomes internos (chaves i18n `limitCopilot`/`checkoutFeatureCopilot`, limit `allowCopilot`),
+   que não aparecem na UI. Padrão: **Commander** é o produto; **Scientists** é a capacidade
+   de pesquisa dele.
 
 ## Acoplamento do ecossistema — estado das arestas
 
@@ -108,9 +114,9 @@ insights + próxima ação na sidebar. **Ainda não é conversacional** — o ch
 | Labs → Brain (hipóteses) | ✅ funciona | testing-skill persiste `ClientHypothesis` (SUGGESTED) |
 | Brain → Commander (memória/benchmarks) | ✅ funciona | memória no contexto do chat + `CommanderMemorySummary` no painel/dock |
 | Commander ↔ usuário (chat) | ✅ funciona (2026-07-02) | `/api/commander/ask` + `useAskCommander` |
-| Brain → Engine (regras sugeridas) | 🔴 não existe | Fase 2 do Engine ([doc](../orion-engine/README.md)) |
-| Commander → Engine (criar regra por conversa) | 🔴 não existe | depende do chat (#1) — o payload de regra já é estruturado, alvo perfeito de tool-use |
-| Engine → Brain (execuções viram aprendizado) | 🔴 não existe | Alerts de `source="automation"` já são a matéria-prima |
+| Brain → Engine (regras sugeridas) | 🔴 não existe | Fase 2 do Engine ([doc](../orion-engine/README.md)) — última aresta aberta |
+| Commander → Engine (criar regra por conversa) | ✅ funciona (2026-07-02) | `askCommander()` devolve `ruleProposal` (payload do `POST /api/automation/rules` + simulação de 30 dias anexada); `CommanderRuleProposalCard` no painel cria a regra em modo aprovação com 1 clique |
+| Engine → Brain (execuções viram aprendizado) | ✅ funciona (2026-07-02) | `automationExecutionsToLearningDrafts()` no brain-pipeline: regra disparando ≥2× na mesma campanha na janela vira `ClientLearning` SUGGESTED (dedupe por regra+campanha) |
 
 **Regra de ouro (do doc do Engine, agora com nomes atualizados):** módulos se comunicam por
 **artefatos** (dossiê, aprendizado, proposta de regra, log de execução), nunca por chamadas
@@ -119,16 +125,27 @@ Engine não decide o que vale a pena; Labs não toca campanha real.
 
 ## Roadmap sugerido
 
-1. **Fase A — fechar o que foi prometido** (gaps 1–3): rota `ask` com LLM + contexto, ligar
-   `.memory` no painel (benchmarks reais via `metrics-input`), reexibir/remover insights locais.
-2. **Fase B — limpar duplicações** (gaps 4–7): um hook, um limit, gate sem slug hardcoded.
-3. **Fase C — fechar o loop do ecossistema**: Commander→Engine ("crie uma regra que…" vira
-   payload de `POST /api/automation/rules` com simulação anexada) e Engine→Brain (digest de
-   execuções vira aprendizado). Aí o ciclo Labs→Brain→Commander→Engine→Brain fecha.
+1. ✅ **Fase A — fechar o que foi prometido** (gaps 1–3) — entregue 2026-07-02.
+2. ✅ **Fase B — limpar duplicações** (gaps 4–7): hooks unificados e gate sem slug (2026-07-02);
+   `allowCopilot` fica como nome legado documentado (gap #4); `commanderTier` numérico (gap #7)
+   adiado para quando o ecossistema versionar por plano (v1–v4).
+3. ✅ **Fase C — fechar o loop do ecossistema** — entregue 2026-07-02 (d): Commander→Engine
+   (proposta de regra por conversa com simulação anexada) e Engine→Brain (execuções recorrentes
+   viram aprendizado). O ciclo Labs→Brain→Commander→Engine→Brain fecha; a única aresta que
+   falta é **Brain→Engine (regras sugeridas)** — Fase 2 do Engine.
 4. **BigQuery**: só na dor. Quando entrar: job de export (Postgres→BQ), implementação real do
    `bigquery-service.ts`, e a memória do Commander passa a consultar BQ pra agregados longos.
 
 ## Histórico
+- 2026-07-02 (d): **Fase C fechada** — aresta Commander→Engine: `askCommander()` agora devolve
+  `ruleProposal` estruturada (schema zod no `llmGenerateJson`, mesmas métricas/ações do motor,
+  sem `schedule_toggle`/`notify_email`) com simulação de 30 dias anexada via `simulateRule`;
+  regra nasce `approval` (só `alert_only` nasce `auto`) e o usuário cria com 1 clique no
+  `CommanderRuleProposalCard`. Aresta Engine→Brain: `automation-learnings-service.ts` no
+  brain-pipeline converte disparos recorrentes (≥2× mesma regra+campanha na janela) em
+  `ClientLearning` sugerido com dedupe. Também: gap #4 decidido (documentar, não renomear),
+  gap #9 fechado (cópia 100% Commander) e aba "Execuções" na lista de regras
+  (`GET /api/automation/rules/[ruleId]/executions` + painel expansível).
 - 2026-07-02 (c): **Fase A fechada + parte da Fase B** (gaps #2, #3, #6): memória do Brain
   agora aparece no painel/dock (`GET /api/commander/memory` + `useCommanderMemory` +
   `CommanderMemorySummary`), insights locais voltaram a aparecer sem Scientists (gap #3),

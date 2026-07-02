@@ -6,6 +6,7 @@ import { loadClientSignals, type ClientSignalsContext } from "@/lib/agency-brain
 import { runLearningSuggestionsForClient } from "@/lib/agency-brain/learning-suggestion-service";
 import { runHypothesisSuggestionsForClient } from "@/lib/agency-brain/hypothesis-service";
 import { runActionSuggestionsForClient } from "@/lib/action-suggestions/action-suggestion-generator";
+import { automationExecutionsToLearningDrafts } from "@/lib/agency-brain/automation-learnings-service";
 import {
   adsetComparisonsToSignals,
   detectAdsetAudienceChanges
@@ -108,5 +109,20 @@ export async function runAgencyBrainPipeline(tenantId: string, clientId?: string
     await runHypothesisSuggestionsForClient(tenantId, c.id, ctx);
     await runLearningSuggestionsForClient(tenantId, c.id, ctx);
     await runActionSuggestionsForClient(tenantId, c.id, slugify(c.name), ctx);
+
+    // Aresta Engine→Brain: o log de execução das automações vira aprendizado sugerido
+    // (dedupe pelo próprio createSuggestedLearning; best-effort como o resto do pipeline).
+    try {
+      const automationDrafts = await automationExecutionsToLearningDrafts(
+        tenantId,
+        c.id,
+        ctx.windowDays
+      );
+      for (const draft of automationDrafts) {
+        await createSuggestedLearning(tenantId, c.id, draft);
+      }
+    } catch {
+      // aprendizados de automação são opcionais no pipeline
+    }
   }
 }

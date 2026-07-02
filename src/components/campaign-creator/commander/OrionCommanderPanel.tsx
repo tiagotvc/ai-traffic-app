@@ -14,7 +14,8 @@ import {
   CommanderInsightsSummary,
   CommanderMemorySummary,
   CommanderNextActionCard,
-  CommanderPipeline
+  CommanderPipeline,
+  CommanderRuleProposalCard
 } from "./CommanderParts";
 import { useAskCommander } from "./useAskCommander";
 import { useCommanderState } from "./useCommanderState";
@@ -28,7 +29,18 @@ export function OrionCommanderPanel() {
     memory
   );
   const [question, setQuestion] = useState("");
-  const { ask, asking, answer, error: askError, canAsk } = useAskCommander(state.insights);
+  const {
+    ask,
+    asking,
+    answer,
+    error: askError,
+    canAsk,
+    proposal,
+    createRule,
+    creatingRule,
+    ruleCreated,
+    ruleError
+  } = useAskCommander(state.insights);
   const completedSteps = state.pipeline.filter((step) => step.status === "done").length;
 
   return (
@@ -56,7 +68,7 @@ export function OrionCommanderPanel() {
       <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-dim)]">
         {analyzing
           ? "Recalculando a estratégia com suas alterações…"
-          : "Copiloto estratégico da sua campanha, em tempo real."}
+          : "Comando estratégico da sua campanha, em tempo real."}
       </p>
 
       <form
@@ -97,6 +109,16 @@ export function OrionCommanderPanel() {
         >
           {askError ?? answer}
         </div>
+      ) : null}
+
+      {proposal && !askError ? (
+        <CommanderRuleProposalCard
+          proposal={proposal}
+          onCreate={() => void createRule()}
+          creating={creatingRule}
+          created={ruleCreated}
+          error={ruleError}
+        />
       ) : null}
 
       <div className="mt-5">

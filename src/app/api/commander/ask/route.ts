@@ -105,6 +105,9 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       answer: result.answer,
+      // Aresta Commander→Engine: proposta de regra (payload do POST /api/automation/rules)
+      // com simulação anexada. O client decide criar (human-in-the-loop).
+      ruleProposal: result.ruleProposal,
       provider: result.provider,
       modelUsed: result.modelUsed,
       memoryUsed: memoryFlag

@@ -108,15 +108,19 @@ Fecha o "nível 1 + 2" da visão com os diferenciais de confiança:
 - [x] **Modos de execução por regra** (entregue 2026-07-01): `alert`/`approval`/`auto` +
       `AutomationPendingAction` + fila de aprovação na lista, gateado por `automationTier >= 2`.
 - [x] Ações **reativar campanha**, **notificar por e-mail** e **escalar gradual** (2026-07-01).
-- [ ] Aba "Execuções" na regra (os `Alert`s de `source="automation"` já têm o histórico).
+- [x] Aba "Execuções" na regra (2026-07-02): `GET /api/automation/rules/[ruleId]/executions`
+      + painel expansível na lista, lendo os `Alert`s com `automationRuleId`.
+
+**✅ Fase 1 concluída em 2026-07-02.**
 
 ### Fase 2 — Playbooks + IA (1–2 meses)
 
 - [ ] **Playbooks** (nível 3): coleção nomeada de regras ativável em bloco. Modelagem leve:
       entidade `Playbook` + `playbookId` nas regras — sem motor novo.
-- [ ] **Criação por linguagem natural** (paridade com Optmyzr Sidekick): texto → IA →
-      payload de regra pré-preenchendo o stepper. Reusa os orchestrators de IA existentes;
-      o payload estruturado (`condition`/`action`) já é o alvo perfeito para tool-use.
+- [x] **Criação por linguagem natural** (2026-07-02, via chat do Commander — melhor que a
+      paridade com Optmyzr Sidekick): "crie uma regra que…" no chat vira `ruleProposal`
+      estruturada com **simulação de 30 dias anexada**, criada em modo aprovação com 1 clique
+      (`CommanderRuleProposalCard`). Detalhe no [doc do Commander](../commander/README.md).
 - [ ] **Regras sugeridas pelo Brain**: o brain-pipeline já roda a cada sync; propor regras
       a partir de padrões detectados, com simulação anexada ("teria economizado R$ X").
 
@@ -191,6 +195,12 @@ dois módulos "conversando" síncrono é sinal de fronteira errada.
 
 ## Histórico
 
+- 2026-07-02: **Fase 1 concluída** (aba "Execuções" na lista de regras) e duas arestas do
+  ecossistema fechadas: **Commander→Engine** (regra por conversa com simulação anexada — a
+  criação por linguagem natural da Fase 2 saiu antecipada) e **Engine→Brain** (disparos
+  recorrentes viram `ClientLearning` sugerido no brain-pipeline). Falta só **Brain→Engine**
+  (regras sugeridas) para fechar o ciclo completo. Detalhes no
+  [doc do Commander](../commander/README.md).
 - 2026-07-01: Documento criado. Pesquisa competitiva (Madgicx, Bïrch, Optmyzr, Marin)
   verificada com fontes. Protótipo de simulação/backtest entregue (§5). Fix de escopo
   cross-tenant no motor (§6.3).

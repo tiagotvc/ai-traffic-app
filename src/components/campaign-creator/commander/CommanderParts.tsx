@@ -10,14 +10,21 @@ import {
   History,
   Lightbulb,
   LoaderCircle,
-  Sparkles
+  Sparkles,
+  Zap
 } from "lucide-react";
 import { useState } from "react";
 
 import { DsModal } from "@/design-system";
 import type { CommanderMemoryCampaign } from "@/hooks/useCommanderMemory";
+import { actionLabel, conditionText } from "@/lib/automation/rule-templates";
 import type { CreatorNode } from "@/lib/campaign-draft";
-import type { CommanderInsight, CommanderPipelineStep, CommanderState } from "@/lib/commander/types";
+import type {
+  CommanderInsight,
+  CommanderPipelineStep,
+  CommanderRuleProposal,
+  CommanderState
+} from "@/lib/commander/types";
 
 /**
  * Mapa insight → step do wizard, pro botão "Corrigir agora" navegar direto.
@@ -377,6 +384,80 @@ export function CommanderNextActionCard({ state }: { state: CommanderState }) {
             {state.nextAction.description}
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Card da proposta de regra vinda do chat (aresta Commander→Engine): mostra o SE/ENTÃO,
+ * a simulação de 30 dias anexada e o botão que efetiva o `POST /api/automation/rules`.
+ * A regra nasce em modo de aprovação — o Commander propõe, o usuário decide.
+ */
+export function CommanderRuleProposalCard({
+  proposal,
+  onCreate,
+  creating,
+  created,
+  error
+}: {
+  proposal: CommanderRuleProposal;
+  onCreate: () => void;
+  creating: boolean;
+  created: boolean;
+  error: string | null;
+}) {
+  const sim = proposal.simulation;
+  const simText = !sim
+    ? null
+    : !sim.supported
+      ? "Simulação indisponível para esta regra."
+      : sim.campaignsTriggered === 0
+        ? `Nos últimos ${sim.days} dias, nenhuma campanha teria disparado esta regra.`
+        : [
+            `Nos últimos ${sim.days} dias teria disparado em ${sim.campaignsTriggered} campanha(s)`,
+            sim.avoidedSpend > 0 ? `evitando ${formatCurrencyBRL(sim.avoidedSpend)} de gasto` : null,
+            sim.dailyBudgetIncrease > 0
+              ? `+${formatCurrencyBRL(sim.dailyBudgetIncrease)}/dia de orçamento`
+              : null
+          ]
+            .filter(Boolean)
+            .join(", ") + ".";
+
+  return (
+    <div className="mt-2.5 rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--ui-accent)]">
+        <Zap size={12} />
+        Proposta de regra
+      </div>
+      <p className="mt-1.5 font-heading text-xs font-semibold text-[var(--text-main)]">{proposal.name}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-dim)]">
+        SE {conditionText(proposal.condition)} → {actionLabel(proposal.action.type)}
+      </p>
+      {simText ? (
+        <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-dimmer)]">
+          <History size={11} className="mr-1 inline-block" />
+          {simText}
+        </p>
+      ) : null}
+      {error ? <p className="mt-1.5 text-[11px] text-red-400">{error}</p> : null}
+      <div className="mt-2.5 flex items-center gap-2">
+        {created ? (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
+            <Check size={13} strokeWidth={2.5} />
+            Regra criada — aguardando na fila de aprovação em Automações.
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onCreate}
+            disabled={creating}
+            className="ui-btn-accent inline-flex h-7 items-center justify-center gap-1.5 px-3 font-heading text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {creating ? <LoaderCircle size={12} className="animate-spin" /> : <Zap size={12} />}
+            {proposal.executionMode === "auto" ? "Criar regra" : "Criar regra (com aprovação)"}
+          </button>
+        )}
       </div>
     </div>
   );

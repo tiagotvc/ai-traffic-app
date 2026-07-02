@@ -4,17 +4,23 @@ import { useState } from "react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { adHasMedia, getActiveAd, getActiveAdset } from "@/lib/campaign-draft";
-import type { CommanderInsight } from "@/lib/commander/types";
+import type { CommanderInsight, CommanderRuleProposal } from "@/lib/commander/types";
 
 /**
  * Chat do Commander: monta o resumo compacto do rascunho + top insights da sessão e
  * pergunta ao `/api/commander/ask`. Uma resposta por vez (a última substitui a anterior).
+ * Quando a resposta traz uma proposta de regra (aresta Commander→Engine), expõe
+ * `proposal` + `createRule` para o usuário aprovar a criação no painel.
  */
 export function useAskCommander(insights: CommanderInsight[]) {
   const { payload, activeNode } = useCampaignDraft();
   const [asking, setAsking] = useState(false);
   const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [proposal, setProposal] = useState<CommanderRuleProposal | null>(null);
+  const [creatingRule, setCreatingRule] = useState(false);
+  const [ruleCreated, setRuleCreated] = useState(false);
+  const [ruleError, setRuleError] = useState<string | null>(null);
 
   const canAsk = Boolean(payload.clientSlug);
 
@@ -49,13 +55,16 @@ export function useAskCommander(insights: CommanderInsight[]) {
         })
       });
       const data = (await res.json().catch(() => null)) as
-        | { ok?: boolean; answer?: string; error?: string }
+        | { ok?: boolean; answer?: string; error?: string; ruleProposal?: CommanderRuleProposal | null }
         | null;
       if (!res.ok || !data?.ok || !data.answer) {
         setError(data?.error ?? "Não foi possível responder agora.");
         return;
       }
       setAnswer(data.answer);
+      setProposal(data.ruleProposal ?? null);
+      setRuleCreated(false);
+      setRuleError(null);
     } catch {
       setError("Não foi possível responder agora.");
     } finally {
@@ -63,5 +72,34 @@ export function useAskCommander(insights: CommanderInsight[]) {
     }
   };
 
-  return { ask, asking, answer, error, canAsk };
+  const createRule = async () => {
+    if (!proposal || creatingRule || ruleCreated) return;
+    setCreatingRule(true);
+    setRuleError(null);
+    try {
+      const res = await fetch("/api/automation/rules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: proposal.name,
+          clientId: proposal.clientId,
+          condition: proposal.condition,
+          action: proposal.action,
+          executionMode: proposal.executionMode
+        })
+      });
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!res.ok || !data?.ok) {
+        setRuleError(data?.error ?? "Não foi possível criar a regra.");
+        return;
+      }
+      setRuleCreated(true);
+    } catch {
+      setRuleError("Não foi possível criar a regra.");
+    } finally {
+      setCreatingRule(false);
+    }
+  };
+
+  return { ask, asking, answer, error, canAsk, proposal, createRule, creatingRule, ruleCreated, ruleError };
 }
