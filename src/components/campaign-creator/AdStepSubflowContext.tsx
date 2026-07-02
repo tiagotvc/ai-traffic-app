@@ -13,8 +13,11 @@ import {
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import {
+  adExistingPostRef,
+  adUsesExistingPost,
   getActiveAd,
   getActiveAdset,
+  objectiveAllowsExistingPost,
   patchWizardNavigation,
   usesReusedMetaCreative,
   type CampaignDraftPayload
@@ -52,6 +55,12 @@ export function validateAdSection(
       if (!ad.name.trim()) return "adNameRequired";
       return null;
     case "creative":
+      if (adUsesExistingPost(ad)) {
+        // The post carries its own media/copy — only the reference is required.
+        if (!adExistingPostRef(ad)) return "existingPostRequired";
+        if (!objectiveAllowsExistingPost(payload.objective)) return "existingPostObjectiveIncompatible";
+        return null;
+      }
       if (usesReusedMetaCreative(ad)) {
         if (!ad.metaCreativeId?.trim()) return "metaCreativeRequired";
       } else {
@@ -60,6 +69,8 @@ export function validateAdSection(
       }
       return null;
     case "destination":
+      // Existing-post creatives keep the post's own link, CTA and copy.
+      if (adUsesExistingPost(ad)) return null;
       if (payload.objective === "leads" && ad.destinationType === "instant_form") {
         if (!ad.leadFormId) return "leadFormRequired";
       } else if (ad.destinationType === "whatsapp" || ad.destinationType === "instant_form") {

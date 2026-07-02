@@ -139,6 +139,9 @@ export async function buildDraftPatchFromMetaCampaign(
         metaCreativeId: creativeData?.creative?.id ?? null,
         sourceMetaAdId: firstAd?.id ?? null,
         reuseMetaCreative: Boolean(creativeData?.creative?.id),
+        creativeSource: "new",
+        existingPostId: null,
+        existingIgMediaId: null,
         targetAdsetIds: ["__all__"],
         tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
       }

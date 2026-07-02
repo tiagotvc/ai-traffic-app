@@ -27,6 +27,7 @@ export function isPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/billing/coupons/validate") ||
     pathname.startsWith("/api/billing/installment-simulate") ||
     pathname.startsWith("/api/meta/data-deletion") ||
+    pathname.startsWith("/api/track/") ||
     // Rotas de cron não têm sessão de usuário (Vercel Cron não manda cookie) — autenticam via
     // CRON_SECRET dentro da própria rota. Sem essa exceção, o middleware bloqueia com 401 antes
     // de a rota sequer checar o secret.

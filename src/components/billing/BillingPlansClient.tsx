@@ -20,6 +20,7 @@ import { YEARLY_DISCOUNT_PERCENT } from "@/lib/billing/pricing";
 import { DsPageHeader } from "@/design-system";
 import { Link } from "@/i18n/navigation";
 import { CreditCard } from "lucide-react";
+import { trackEvent, trackMetaEvent } from "@/lib/analytics";
 
 export function BillingPlansClient({
   variant = "portal",
@@ -50,6 +51,12 @@ export function BillingPlansClient({
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Viewed the pricing table — funnel "interest" step (GA4 + Meta ViewContent).
+  useEffect(() => {
+    trackEvent("view_pricing", { surface: variant });
+    void trackMetaEvent("ViewContent", { customData: { content_name: `pricing_${variant}` } });
+  }, [variant]);
 
   const displayPlans = isMarketing ? resolveMarketingVitrinePlans(plans) : plans;
 

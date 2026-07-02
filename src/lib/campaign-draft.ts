@@ -3,6 +3,7 @@ import { z } from "zod";
 import { coercePlacements, defaultPlacements, defaultScheduleStartLocal, type PlacementConfig } from "@/lib/campaign-placements";
 import { defaultUtm, type UtmFields } from "@/lib/campaign-utm";
 import { validateAdCreativeForMeta } from "@/lib/meta-ad-creative";
+import { adsetRequiresPixel } from "@/lib/meta-campaign-rules";
 import { normalizeMessageTemplateDraft } from "@/lib/meta-welcome-message";
 import { normalizeMetaRadiusKm } from "@/lib/zone-geo-shared";
 
@@ -17,6 +18,18 @@ export const CAMPAIGN_OBJECTIVES = [
 
 export type CampaignObjectiveKey = (typeof CAMPAIGN_OBJECTIVES)[number];
 
+/**
+ * Objectives an existing-post creative (object_story_id) can be promoted under.
+ * The post's creative/CTA can't be changed, so conversion objectives
+ * (traffic/leads/app/sales) are rejected by Meta as "creative incompatible with
+ * the objective". Only engagement/awareness are safe.
+ */
+const EXISTING_POST_OBJECTIVES = new Set<CampaignObjectiveKey>(["engagement", "awareness"]);
+
+export function objectiveAllowsExistingPost(objective: CampaignObjectiveKey): boolean {
+  return EXISTING_POST_OBJECTIVES.has(objective);
+}
+
 /** Suggested pixel event when the user has not picked one yet (empty = neutral). */
 export function defaultConversionEventForObjective(objective: CampaignObjectiveKey): string {
   if (objective === "leads") return "std:LEAD";
@@ -28,6 +41,7 @@ export function defaultConversionLocationForObjective(
   objective: CampaignObjectiveKey
 ): ConversionLocation {
   if (objective === "leads") return "website_and_form";
+  if (objective === "app") return "app";
   if (objective === "sales") return "website";
   return "website";
 }
@@ -160,6 +174,14 @@ export const AdDraftItemSchema = z.object({
   metaCreativeId: z.string().nullable().default(null),
   sourceMetaAdId: z.string().nullable().default(null),
   reuseMetaCreative: z.boolean().default(false),
+  /** "new" builds a creative from media (object_story_spec); "existing_post" promotes an
+   * already-published Facebook page post via object_story_id; "existing_ig_post" promotes an
+   * existing Instagram post via source_instagram_media_id (all work in Development Mode). */
+  creativeSource: z.enum(["new", "existing_post", "existing_ig_post"]).default("new"),
+  /** "{pageId}_{postId}" used as object_story_id when creativeSource is "existing_post". */
+  existingPostId: z.string().nullable().default(null),
+  /** Instagram media id used as source_instagram_media_id when creativeSource is "existing_ig_post". */
+  existingIgMediaId: z.string().nullable().default(null),
   targetAdsetIds: z.array(z.string()).default(["__all__"]),
   tracking: z.object({
     websiteEvents: z.boolean().default(false),
@@ -348,6 +370,9 @@ export function defaultAdItem(locale: string, name?: string): AdDraftItem {
     metaCreativeId: null,
     sourceMetaAdId: null,
     reuseMetaCreative: false,
+    creativeSource: "new",
+    existingPostId: null,
+    existingIgMediaId: null,
     targetAdsetIds: ["__all__"],
     tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
   };
@@ -603,10 +628,14 @@ export function effectiveAdsetDynamicCreative(
   adset: AdSetDraftItem
 ): boolean {
   if (!adset.dynamicCreative) return false;
-  const hasReusedCreative = d.ads.some(
-    (ad) => usesReusedMetaCreative(ad) && resolveAdTargetAdsets(d, ad).some((s) => s.id === adset.id)
+  // Reused and existing-post creatives are single/static — incompatible with a
+  // Dynamic Creative ad set (Meta 1885702 / "Only Dynamic Creative ad can be created").
+  const hasSingleCreativeAd = d.ads.some(
+    (ad) =>
+      (usesReusedMetaCreative(ad) || adUsesExistingPost(ad)) &&
+      resolveAdTargetAdsets(d, ad).some((s) => s.id === adset.id)
   );
-  return !hasReusedCreative;
+  return !hasSingleCreativeAd;
 }
 
 export function adsForAdset(d: CampaignDraftPayload, adsetId: string): AdDraftItem[] {
@@ -834,11 +863,10 @@ export function validateAdSetStep(d: CampaignDraftPayload): string | null {
     } else if (!hasManualGeo && !t.customAudienceIds.length) {
       return "audienceRequired";
     }
-    if (
-      (adset.conversionLocation === "website" || adset.conversionLocation === "website_and_form") &&
-      (d.objective === "leads" || d.objective === "sales") &&
-      !adset.pixelId
-    ) {
+    // A conversions setup needs a pixel before publish (Meta: "conversions
+    // objective but no conversion tracking source"). Derived from the same rules
+    // module the API mapping uses, so validation and publish never disagree.
+    if (adsetRequiresPixel(d.objective, adset.conversionLocation) && !adset.pixelId) {
       return "pixelRequired";
     }
     if (
@@ -888,10 +916,29 @@ export function adHasMedia(ad: AdDraftItem): boolean {
   return ad.format === "video" ? ad.videoIds.length > 0 : ad.imageHashes.length > 0;
 }
 
+/** True when the ad promotes an existing Facebook or Instagram post (not a new creative). */
+export function adUsesExistingPost(ad: AdDraftItem): boolean {
+  return ad.creativeSource === "existing_post" || ad.creativeSource === "existing_ig_post";
+}
+
+/** The selected existing-post reference (FB object_story_id or IG media id), trimmed. */
+export function adExistingPostRef(ad: AdDraftItem): string {
+  const ref = ad.creativeSource === "existing_ig_post" ? ad.existingIgMediaId : ad.existingPostId;
+  return ref?.trim() ?? "";
+}
+
 export function validateAdStep(d: CampaignDraftPayload): string | null {
   for (const ad of d.ads) {
     if (!ad.name.trim()) return "adNameRequired";
     if (!ad.pageId.trim()) return "pageRequired";
+    if (adUsesExistingPost(ad)) {
+      // The post carries its own media, copy, link and CTA — only the reference is required.
+      if (!adExistingPostRef(ad)) return "existingPostRequired";
+      // An existing post's creative/CTA can't be changed, so it's only compatible
+      // with non-conversion objectives (Meta: "creative is incompatible with the objective").
+      if (!objectiveAllowsExistingPost(d.objective)) return "existingPostObjectiveIncompatible";
+      continue;
+    }
     if (usesReusedMetaCreative(ad)) {
       if (!ad.metaCreativeId?.trim()) return "metaCreativeRequired";
     } else {
@@ -918,13 +965,23 @@ export type CampaignDraftCheckKey = "campaign" | "adset" | "ad" | "media" | "tit
 /** Checklist de etapas (✓/pendente) para o card de pontuação — mesmas regras do score. */
 export function buildCampaignDraftChecklist(
   d: CampaignDraftPayload
-): { key: CampaignDraftCheckKey; complete: boolean }[] {
+): { key: CampaignDraftCheckKey; complete: boolean; reason?: string }[] {
+  const campaignErr = validateCampaignStep(d);
+  const adsetErr = validateAdSetStep(d);
+  const adErr = validateAdStep(d);
+  // Existing-post ads carry their own media and copy, so they satisfy the
+  // media/titles checks without anything in the draft.
+  const adSatisfiesPost = (a: AdDraftItem) => adUsesExistingPost(a) && !!adExistingPostRef(a);
+  const hasMedia = d.ads.some((a) => adSatisfiesPost(a) || adHasMedia(a));
+  const hasTitles = d.ads.some(
+    (a) => adSatisfiesPost(a) || a.titles.filter((x) => x.trim()).length >= 2
+  );
   return [
-    { key: "campaign", complete: !validateCampaignStep(d) },
-    { key: "adset", complete: !validateAdSetStep(d) },
-    { key: "ad", complete: !validateAdStep(d) },
-    { key: "media", complete: d.ads.some(adHasMedia) },
-    { key: "titles", complete: d.ads.some((a) => a.titles.filter((x) => x.trim()).length >= 2) }
+    { key: "campaign", complete: !campaignErr, reason: campaignErr ?? undefined },
+    { key: "adset", complete: !adsetErr, reason: adsetErr ?? undefined },
+    { key: "ad", complete: !adErr, reason: adErr ?? undefined },
+    { key: "media", complete: hasMedia, reason: hasMedia ? undefined : "mediaRequired" },
+    { key: "titles", complete: hasTitles, reason: hasTitles ? undefined : "titlesMinRequired" }
   ];
 }
 

@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { Sparkles, User, Users } from "lucide-react";
 import { Link } from "@/i18n/navigation";
+import { trackEvent, trackMetaEvent } from "@/lib/analytics";
 import {
   planListCents,
   resolveBillingCurrency,
@@ -359,6 +360,15 @@ export function BillingCtaLink({
 }) {
   const t = useTranslations("billingPage");
 
+  // Funnel "intention" step: selected a paid plan (GA4 select_plan + Meta AddToCart).
+  const fireSelectPlan = () => {
+    if (slug === "free") return;
+    trackEvent("select_plan", { plan_id: planId, plan_slug: slug, surface: variant });
+    void trackMetaEvent("AddToCart", {
+      customData: { content_type: "product", content_ids: [planId], content_name: slug }
+    });
+  };
+
   if (variant === "marketing") {
     // Plano pago: checkout é público agora — cria conta na hora, sem passar pelo /login. Free
     // continua indo pro login/dashboard (sem etapa de pagamento pra criar a conta ali).
@@ -369,6 +379,7 @@ export function BillingCtaLink({
     return (
       <Link
         href={href}
+        onClick={fireSelectPlan}
         className={
           className ??
           (featured
@@ -394,6 +405,7 @@ export function BillingCtaLink({
   return (
     <Link
       href={`/billing/checkout?plan=${planId}`}
+      onClick={fireSelectPlan}
       className={
         className ??
         (featured

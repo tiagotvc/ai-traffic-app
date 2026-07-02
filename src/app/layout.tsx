@@ -1,8 +1,33 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
 import { DM_Sans, Space_Grotesk } from "next/font/google";
 
+import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
+import { SITE_URL } from "@/lib/seo";
 import "./globals.css";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: "Orion Agency",
+  description: "Plataforma premium para agências de performance e gestão Meta Ads",
+  applicationName: "Orion Agency",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }]
+  },
+  manifest: "/manifest.webmanifest",
+  openGraph: {
+    siteName: "Orion Agency",
+    type: "website"
+  },
+  twitter: {
+    card: "summary_large_image"
+  },
+  robots: {
+    index: true,
+    follow: true
+  }
+};
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -30,6 +55,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Script id="theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>
+        <AnalyticsProvider />
         {children}
       </body>
     </html>

@@ -3,7 +3,8 @@
 import { Building2, Calendar, Check, Clock, CreditCard, Hash, IdCard, KeyRound, LockKeyhole, Mail, MapPin, Phone, Shield, Sparkles, Star, Ticket, User, Users, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { trackEvent, trackMetaEvent } from "@/lib/analytics";
 import { Link } from "@/i18n/navigation";
 import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
 import { UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
@@ -187,6 +188,26 @@ export function BillingCheckoutClient() {
 
   const displayPricing = appliedCoupon?.pricing ?? pricing;
 
+  // Funnel "checkout" step — fire once per plan when the checkout is ready
+  // (GA4 begin_checkout + Meta InitiateCheckout).
+  const beginCheckoutFiredFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!plan || !displayPricing) return;
+    if (beginCheckoutFiredFor.current === plan.id) return;
+    beginCheckoutFiredFor.current = plan.id;
+    const value = Number((displayPricing.finalCents / 100).toFixed(2));
+    trackEvent("begin_checkout", {
+      plan_id: plan.id,
+      plan_name: plan.name,
+      value,
+      currency,
+      billing_cycle: cycle
+    });
+    void trackMetaEvent("InitiateCheckout", {
+      customData: { value, currency, content_name: plan.name, content_ids: [plan.id] }
+    });
+  }, [plan, displayPricing, currency, cycle]);
+
   useEffect(() => {
     if (isIntl) {
       setAppliedCoupon(null);
@@ -282,6 +303,21 @@ export function BillingCheckoutClient() {
     setLoading(true);
     setError(null);
     setAccountExists(false);
+
+    // Funnel "payment info" step (GA4 add_payment_info + Meta AddPaymentInfo).
+    const value = Number((displayPricing.finalCents / 100).toFixed(2));
+    trackEvent("add_payment_info", {
+      plan_id: plan.id,
+      value,
+      currency,
+      payment_method: isIntl ? "stripe" : billingType,
+      billing_cycle: cycle
+    });
+    void trackMetaEvent("AddPaymentInfo", {
+      customData: { value, currency, content_name: plan.name },
+      userData: { email: customer.email || undefined, phone: customer.phone || undefined }
+    });
+
     try {
       if (isIntl) {
         const res = await fetch("/api/billing/checkout", {

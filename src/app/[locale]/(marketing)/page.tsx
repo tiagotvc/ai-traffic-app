@@ -2,10 +2,14 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { LandingPage } from "@/components/marketing/LandingPage";
+import { buildAlternates, SITE_URL } from "@/lib/seo";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://orionagency.com.br";
-
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
   const t = await getTranslations("marketing");
   const title = t("metaTitle");
   const description = t("metaDescription");
@@ -27,9 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description
     },
-    alternates: {
-      canonical: "/"
-    }
+    alternates: buildAlternates(locale, "")
   };
 }
 

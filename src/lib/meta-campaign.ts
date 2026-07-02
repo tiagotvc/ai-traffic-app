@@ -1,6 +1,6 @@
 import type { ClientMetaSettings } from "@/db/entities/ClientMetaSettings";
 import type { AdDraftItem, AdSetDraftItem, CampaignDraftPayload } from "@/lib/campaign-draft";
-import { defaultConversionEventForObjective, draftTargetingToApi, adsForAdset, resolveAdTargetAdsets, usesReusedMetaCreative } from "@/lib/campaign-draft";
+import { adUsesExistingPost, defaultConversionEventForObjective, draftTargetingToApi, adsForAdset, resolveAdTargetAdsets, usesReusedMetaCreative, validatePublishDraft } from "@/lib/campaign-draft";
 import { defaultPlacements, placementsToMetaTargeting } from "@/lib/campaign-placements";
 import { composeAdLinkUrl, defaultUtm, type UtmTokenContext } from "@/lib/campaign-utm";
 import { buildMetaAssetFeedSpec } from "@/lib/meta-ad-creative";
@@ -9,6 +9,7 @@ import { buildTargetingFromSettings } from "@/lib/client-meta-settings";
 import { compileAdsetTargetingInput } from "@/lib/targeting-compiler-server";
 import { pickInstagramActorId } from "@/lib/meta-instagram";
 import { resolveCtaForObjective } from "@/lib/meta-cta";
+import { deriveAdsetMetaConfig, objectiveAllowsWebsiteDestination } from "@/lib/meta-campaign-rules";
 import { applyConversionEventToPromoted } from "@/lib/meta-promoted-object";
 import { fetchInstagramAccountsForAdAccount, metaPost } from "@/lib/meta-graph";
 import { pruneInvalidTargetingIds } from "@/lib/meta-targeting-prune";
@@ -32,14 +33,6 @@ const OBJECTIVE_MAP: Record<CampaignObjectiveKey, string> = {
   sales: "OUTCOME_SALES"
 };
 
-const OPTIMIZATION_MAP: Record<CampaignObjectiveKey, string> = {
-  awareness: "REACH",
-  traffic: "LINK_CLICKS",
-  engagement: "POST_ENGAGEMENT",
-  leads: "LEAD_GENERATION",
-  sales: "OFFSITE_CONVERSIONS",
-  app: "APP_INSTALLS"
-};
 
 export type LegacyObjectiveKey = "leads" | "sales" | "traffic";
 
@@ -141,8 +134,12 @@ function applyAdsetPublishFields(
   adset: AdSetDraftItem,
   adsInAdset: AdDraftItem[]
 ) {
-  const hasReusedCreative = adsInAdset.some(usesReusedMetaCreative);
-  adsetBody.is_dynamic_creative = adset.dynamicCreative && !hasReusedCreative ? "true" : "false";
+  // Reused creatives and existing-post creatives (object_story_id) are single,
+  // non-dynamic creatives — they can't live in a Dynamic Creative ad set.
+  const hasSingleCreativeAd = adsInAdset.some(
+    (ad) => usesReusedMetaCreative(ad) || adUsesExistingPost(ad)
+  );
+  adsetBody.is_dynamic_creative = adset.dynamicCreative && !hasSingleCreativeAd ? "true" : "false";
 }
 
 function applyAuctionBidStrategy(
@@ -279,25 +276,20 @@ function resolveOptimizationGoal(
   objective: CampaignObjectiveKey,
   adset: AdSetDraftItem
 ): string {
-  if (adset.conversionLocation === "messaging") return "CONVERSATIONS";
-  if (adset.conversionLocation === "calls") return "QUALITY_CALL";
-  if (adset.conversionLocation === "app") return "APP_INSTALLS";
-  if (objective === "sales") return "OFFSITE_CONVERSIONS";
-  if (adset.conversionLocation === "website" && adset.pixelId) return "OFFSITE_CONVERSIONS";
-  return OPTIMIZATION_MAP[objective] ?? "LEAD_GENERATION";
+  return deriveAdsetMetaConfig(objective, adset.conversionLocation, !!adset.pixelId).optimizationGoal;
 }
 
-function resolveDestinationType(adset: AdSetDraftItem): string | null {
+function resolveDestinationType(
+  adset: AdSetDraftItem,
+  objective: CampaignObjectiveKey
+): string | null {
   if (adset.conversionLocation === "messaging") {
     if (adset.messagingChannels.includes("whatsapp")) return "WHATSAPP";
     if (adset.messagingChannels.includes("messenger")) return "MESSENGER";
     if (adset.messagingChannels.includes("instagram")) return "INSTAGRAM_DIRECT";
     return "MESSAGING_APPS";
   }
-  if (adset.conversionLocation === "calls") return "PHONE_CALL";
-  if (adset.conversionLocation === "instant_form") return "ON_AD";
-  if (adset.conversionLocation === "website") return "WEBSITE";
-  return null;
+  return deriveAdsetMetaConfig(objective, adset.conversionLocation, !!adset.pixelId).destinationType;
 }
 
 function buildPromotedObject(
@@ -329,6 +321,12 @@ function buildPromotedObject(
       applyConversionEventToPromoted(promoted, adset.conversionEvent, "LEAD");
     }
     return promoted;
+  }
+
+  // Engagement/awareness ad sets must not carry a conversion pixel/event, even
+  // if a website conversionLocation/pixel lingers from a previous objective.
+  if (objective === "engagement" || objective === "awareness") {
+    return null;
   }
 
   const pixelId = adset.pixelId ?? ad.pixelId ?? settings?.metaPixelId ?? null;
@@ -378,7 +376,34 @@ async function createAdForAdset(args: {
   let creativeId: string;
   let reusedCreative = false;
 
-  if (reuseId) {
+  if (ad.creativeSource === "existing_ig_post" && ad.existingIgMediaId?.trim()) {
+    // Promote an existing Instagram post: object_id (Page) + instagram_user_id +
+    // source_instagram_media_id. No app-created post, so it works in Development
+    // Mode. (instagram_actor_id was removed by Meta in favor of instagram_user_id.)
+    const igUserId = pickInstagramActorId(
+      [ad.instagramActorId, settings?.instagramActorId],
+      allowedInstagramActorIds
+    );
+    if (!igUserId) {
+      throw new Error("Nenhuma conta de Instagram conectada para promover este post.");
+    }
+    const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
+      name: `${campaignName} — ${adName} Creative`,
+      object_id: pageId,
+      instagram_user_id: igUserId,
+      source_instagram_media_id: ad.existingIgMediaId.trim()
+    });
+    creativeId = creative.id;
+  } else if (ad.creativeSource === "existing_post" && ad.existingPostId?.trim()) {
+    // Promote an already-published page post via object_story_id. No
+    // object_story_spec/asset_feed_spec means no app-created "dark post", so this
+    // works while the Meta app is in Development Mode.
+    const creative = await metaPost<{ id: string }>(`/${actId}/adcreatives`, token, {
+      name: `${campaignName} — ${adName} Creative`,
+      object_story_id: ad.existingPostId.trim()
+    });
+    creativeId = creative.id;
+  } else if (reuseId) {
     creativeId = reuseId;
     reusedCreative = true;
   } else {
@@ -403,7 +428,12 @@ async function createAdForAdset(args: {
             : cta)
     );
 
-    const assetFeedSpec = buildMetaAssetFeedSpec({ ad, resolvedLink, resolvedCta });
+    // Engagement (and any objective that forbids a WEBSITE destination) must not
+    // carry an off-site link/CTA on a website-destination ad, or Meta rejects the
+    // creative as incompatible (#100). WhatsApp/messaging destinations keep theirs.
+    const omitLink =
+      ad.destinationType === "website" && !objectiveAllowsWebsiteDestination(objective);
+    const assetFeedSpec = buildMetaAssetFeedSpec({ ad, resolvedLink, resolvedCta, omitLink });
 
     const instagramId = pickInstagramActorId(
       [ad.instagramActorId, settings?.instagramActorId],
@@ -555,7 +585,7 @@ export async function publishAdsetToCampaign(input: {
     });
   }
 
-  const destinationType = resolveDestinationType(input.adset);
+  const destinationType = resolveDestinationType(input.adset, objective);
   if (destinationType) adsetBody.destination_type = destinationType;
   if (!isCbo) adsetBody.daily_budget = String(dailyBudgetMinor);
 
@@ -597,6 +627,16 @@ export async function publishAdsetToCampaign(input: {
 
 export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promise<PublishDraftV2Result> {
   const { draft } = input;
+  // Authoritative server-side guard — the final boundary before Meta. The app
+  // must never send Meta a combination it rejects (e.g. an existing post on a
+  // conversions objective, a conversions ad set without a pixel). This mirrors
+  // the wizard validation so a stale/bypassed client can't push an invalid draft.
+  const complianceError = validatePublishDraft(draft);
+  if (complianceError) {
+    throw new Error(
+      `Esta configuração não é permitida pela Meta para o objetivo selecionado (${complianceError}). Ajuste no criador antes de publicar.`
+    );
+  }
   const actId = normalizeAdAccountId(input.adAccountId);
   const token = input.accessToken;
   const objective = draft.objective;
@@ -688,7 +728,7 @@ export async function publishDraftV2(input: CreateCampaignFromDraftInput): Promi
       buyingType: buyingType === "RESERVED" ? "RESERVED" : "AUCTION"
     });
 
-    const destinationType = resolveDestinationType(adset);
+    const destinationType = resolveDestinationType(adset, objective);
     if (destinationType) adsetBody.destination_type = destinationType;
 
     if (!isCbo) adsetBody.daily_budget = String(dailyBudgetMinor);
@@ -874,6 +914,9 @@ export async function createFullMetaCampaign(
         metaCreativeId: null,
         sourceMetaAdId: null,
         reuseMetaCreative: false,
+        creativeSource: "new",
+        existingPostId: null,
+        existingIgMediaId: null,
         utm: defaultUtm(),
         targetAdsetIds: ["__all__"],
         tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }

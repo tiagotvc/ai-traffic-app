@@ -10,6 +10,7 @@ import type { FormSelectOption } from "@/components/ui/FormSelect";
 import { DsAccentOutlineButton } from "@/design-system";
 import { META_ADSET_NAME_MAX_LENGTH } from "@/lib/adset-display-summary";
 import type { AdSetDraftItem, CampaignDraftPayload } from "@/lib/campaign-draft";
+import { adsetUsesPixel } from "@/lib/meta-campaign-rules";
 import { cn } from "@/lib/cn";
 
 const creatorFilterFieldClass =
@@ -25,6 +26,7 @@ type Props = {
   dynamicCreativeLockedByReuse: boolean;
   conversionLocationOptions: FormSelectOption[];
   pixelOptions: FormSelectOption[];
+  pixelsLoading?: boolean;
   conversionEventOptions: FormSelectOption[];
   layout?: "default" | "stacked";
   onPatchAdset: (patch: Partial<AdSetDraftItem>) => void;
@@ -39,6 +41,7 @@ export function AdSetConfigurationPanel({
   dynamicCreativeLockedByReuse,
   conversionLocationOptions,
   pixelOptions,
+  pixelsLoading = false,
   conversionEventOptions,
   layout = "default",
   onPatchAdset,
@@ -68,10 +71,10 @@ export function AdSetConfigurationPanel({
   }, [payload.objective, t]);
 
   const isStacked = layout === "stacked";
-  const showPixelEvent =
-    adset.conversionLocation === "website" ||
-    adset.conversionLocation === "website_and_form" ||
-    payload.objective === "sales";
+  // Pixel + conversion event only matter when the ad set optimizes for a website
+  // conversion. Engagement/awareness/messaging/calls don't use them — hide the
+  // fields so nobody waits on a pixel load that's irrelevant.
+  const showPixelEvent = adsetUsesPixel(payload.objective, adset.conversionLocation);
 
   const fieldsBlock = (
     <div className={isStacked ? "space-y-3" : "space-y-4"}>
@@ -113,11 +116,11 @@ export function AdSetConfigurationPanel({
                   creatorField
                   icon={<Target size={13} />}
                   label={tAds("pixel")}
-                  placeholder={tAds("pixelNone")}
+                  placeholder={pixelsLoading ? t("pixelLoading") : tAds("pixelNone")}
                   value={adset.pixelId ?? ""}
                   onChange={(v) => onPatchAdset({ pixelId: v || null })}
                   options={pixelOptions}
-                  disabled={clientRequired}
+                  disabled={clientRequired || pixelsLoading}
                 />
               </div>
               <div className={adsetFieldWrapperClass}>
@@ -140,7 +143,9 @@ export function AdSetConfigurationPanel({
         </div>
 
         {showPixelEvent && pixelOptions.length === 0 ? (
-          <p className="text-[11px] text-[var(--text-dim)]">{t("pixelEmptyHint")}</p>
+          <p className="text-[11px] text-[var(--text-dim)]">
+            {pixelsLoading ? t("pixelLoading") : t("pixelEmptyHint")}
+          </p>
         ) : null}
 
         {payload.objective === "leads" || payload.objective === "sales" ? (

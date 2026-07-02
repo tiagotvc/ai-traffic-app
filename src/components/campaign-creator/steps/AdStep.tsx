@@ -26,6 +26,7 @@ import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard"
 import { CreatorAiModalShell } from "@/components/campaign-creator/CreatorModalShell";
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { CreativePickerModal } from "@/components/campaign-creator/CreativePickerModal";
+import { ExistingPostCard } from "@/components/campaign-creator/ExistingPostPickerModal";
 import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfigModal";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
@@ -42,7 +43,7 @@ import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
 import { META_AD_COPY_LIMITS } from "@/lib/meta-ad-creative";
 import { MetaTextVariantsInput } from "@/components/campaign-creator/MetaTextVariantsInput";
-import { adsetsWithReuseCreativeCompatibility, getActiveAd, getActiveAdset, defaultAdItem, newDraftId } from "@/lib/campaign-draft";
+import { adsetsWithReuseCreativeCompatibility, adUsesExistingPost, getActiveAd, getActiveAdset, defaultAdItem, newDraftId, objectiveAllowsExistingPost } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
 import { allowedCtasForObjective, type MetaCtaValue } from "@/lib/meta-cta";
@@ -128,11 +129,25 @@ export function AdStep() {
 
   const ad = getActiveAd(payload);
   const adset = getActiveAdset(payload);
+  // Existing-post creatives (object_story_id) are only promotable under
+  // engagement/awareness objectives — gate the option at the source.
+  const existingPostAllowed = objectiveAllowsExistingPost(payload.objective);
+
+  // If the objective changes to one that can't promote an existing post, fall
+  // back to a new creative so the draft never holds an invalid combination.
+  useEffect(() => {
+    if (!existingPostAllowed && adUsesExistingPost(ad)) {
+      patchAd({ creativeSource: "new" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingPostAllowed, ad.creativeSource]);
   const inheritedLocked = !!payload.meta?.inheritedContextLocked && !identityUnlocked;
+  // The welcome message only applies when the ad actually routes to a
+  // conversation (messaging conversion location or a WhatsApp destination).
+  // The CTA label alone (WHATSAPP_MESSAGE is allowed on leads/sales too) must
+  // not trigger it, otherwise a website lead ad shows an irrelevant template.
   const showMessagingTemplate =
-    adset.conversionLocation === "messaging" ||
-    ad.destinationType === "whatsapp" ||
-    ad.callToAction === "WHATSAPP_MESSAGE";
+    adset.conversionLocation === "messaging" || ad.destinationType === "whatsapp";
   const clientRequired = !payload.clientSlug;
   const creatorFilterFieldClass =
     "ui-filter-panel-field campaign-creator-budget-daily-input !border-[var(--creator-card-border,var(--border-color))] !bg-[var(--creator-card-bg-inset,var(--surface-bg))]";
@@ -661,6 +676,75 @@ export function AdStep() {
       {activeView === "creative" ? (
         <div className="campaign-creator-section-stack space-y-3">
           <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
+            <h4 className="campaign-creator-section-title">{t("creativeSourceTitle")}</h4>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("creativeSourceTitle")}>
+              {(
+                [
+                  { value: "new", label: t("creativeSourceNew"), gated: false },
+                  { value: "existing_post", label: t("creativeSourceFacebook"), gated: true },
+                  { value: "existing_ig_post", label: t("creativeSourceInstagram"), gated: true }
+                ] as const
+              ).map((opt) => {
+                const blocked = opt.gated && !existingPostAllowed;
+                const selected = ad.creativeSource === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={blocked}
+                    title={blocked ? t("creativeSourceExistingLocked") : undefined}
+                    onClick={() => !blocked && patchAd({ creativeSource: opt.value })}
+                    className={cn(
+                      "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--chip-sm",
+                      selected
+                        ? "campaign-creator-budget-choice-card--selected"
+                        : "campaign-creator-budget-choice-card--unselected",
+                      blocked && "cursor-not-allowed opacity-50"
+                    )}
+                  >
+                    <ChoiceCardCheck selected={selected} compact />
+                    <span className="campaign-creator-budget-choice-card__label">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {!existingPostAllowed ? (
+              <p className="text-[11px] text-[var(--text-dim)]">{t("creativeSourceExistingLocked")}</p>
+            ) : null}
+          </section>
+
+          {adUsesExistingPost(ad) ? (
+            <>
+              {!objectiveAllowsExistingPost(payload.objective) ? (
+                <div className="ui-alert-warning text-xs">{t("existingPostObjectiveIncompatible")}</div>
+              ) : null}
+              {ad.creativeSource === "existing_ig_post" ? (
+                <ExistingPostCard
+                  platform="instagram"
+                  clientId={payload.clientSlug}
+                  adAccountId={payload.adAccountId}
+                  pageId={ad.pageId}
+                  selectedPostId={ad.existingIgMediaId}
+                  onSelect={(id) => patchAd({ existingIgMediaId: id })}
+                  disabled={clientRequired}
+                />
+              ) : (
+                <ExistingPostCard
+                  platform="facebook"
+                  clientId={payload.clientSlug}
+                  adAccountId={payload.adAccountId}
+                  pageId={ad.pageId}
+                  selectedPostId={ad.existingPostId}
+                  onSelect={(postId) => patchAd({ existingPostId: postId })}
+                  disabled={clientRequired}
+                />
+              )}
+            </>
+          ) : (
+            <>
+          <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
             <div
               className={cn(
                 "grid gap-1 rounded-lg border p-1",
@@ -843,6 +927,8 @@ export function AdStep() {
               </div>
             ) : null}
           </section>
+            </>
+          )}
         </div>
       ) : null}
 
