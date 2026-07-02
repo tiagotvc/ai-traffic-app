@@ -80,9 +80,47 @@ await trackMetaEvent("Lead", {
 ```
 
 Eventos Meta suportados (`MetaEventName`): `Lead`, `CompleteRegistration`, `Contact`,
-`ViewContent`, `InitiateCheckout`, `Subscribe`, `StartTrial`.
+`ViewContent`, `AddToCart`, `InitiateCheckout`, `AddPaymentInfo`, `Purchase`, `Subscribe`,
+`StartTrial`.
 
 `page_view` é **automático** a cada navegação — não precisa chamar.
+
+## Funil instrumentado (onde cada evento dispara)
+
+| Etapa | Evento GA4 | Evento Meta | Onde no código |
+|---|---|---|---|
+| Ver planos | `view_pricing` | `ViewContent` | [`BillingPlansClient.tsx`](../../src/components/billing/BillingPlansClient.tsx) (LP + app) |
+| Selecionar plano | `select_plan` | `AddToCart` | [`PlanLimitsCard.tsx`](../../src/components/billing/PlanLimitsCard.tsx) → `BillingCtaLink` |
+| Iniciar checkout | `begin_checkout` | `InitiateCheckout` | [`BillingCheckoutClient.tsx`](../../src/components/billing/BillingCheckoutClient.tsx) (ao carregar o plano) |
+| Dados de pgto. | `add_payment_info` | `AddPaymentInfo` | `BillingCheckoutClient.tsx` (no submit) |
+| **Compra confirmada** | `purchase` | `Purchase` | **server-side** — ver abaixo |
+| Cadastro | `sign_up` | `CompleteRegistration` | `?signup=1` → [`ConversionBeacon.tsx`](../../src/components/analytics/ConversionBeacon.tsx) |
+| Conectar conta de anúncios | `connect_ad_account` | — | `?metaConnected=1` → `ConversionBeacon.tsx` |
+
+### `purchase` é server-side (e agnóstico de gateway)
+
+A venda **não** é disparada pelo navegador: PIX é pago depois no app do banco, cartão
+processa de forma assíncrona e **renovações** de assinatura acontecem sem navegador algum.
+A fonte da verdade é o webhook do gateway → [`processPaymentReceived`](../../src/lib/billing/event-handlers.ts),
+ponto **único por onde Asaas e Stripe passam**. De lá, [`trackServerPurchase`](../../src/lib/server-analytics.ts)
+envia:
+
+- **Meta Conversions API** → `Purchase` (com `event_id = purchase_<invoiceId>`, dedup contra retries).
+- **GA4 Measurement Protocol** → `purchase` (`transaction_id`, `value`, `currency`, `new_customer`).
+
+Variáveis: `GA4_MEASUREMENT_ID`, `GA4_API_SECRET` (além de `META_PIXEL_ID`/`META_CAPI_ACCESS_TOKEN`).
+Sem elas, o purchase server-side vira **no-op** silencioso.
+
+> Melhoria futura: capturar os cookies `_fbp`/`_fbc`/`_ga` no checkout e persistir na
+> assinatura para melhorar o *match* de atribuição da venda confirmada.
+
+## No painel do GTM — tags a criar para o funil
+
+Além das tags base (GA4 config, Pixel base, `page_view`, `meta_event`), crie **Custom Event
+triggers** e tags GA4 para: `view_pricing`, `select_plan`, `begin_checkout`,
+`add_payment_info`, `sign_up`, `connect_ad_account`. O Meta já é coberto pela tag genérica
+`meta_event` (que lê `meta_event_name`/`meta_event_id`). Marque como **Key Events** no GA4:
+`purchase`, `sign_up`, `connect_ad_account`, `begin_checkout`.
 
 ## Testes
 

@@ -24,7 +24,10 @@ export type MetaEventName =
   | "CompleteRegistration"
   | "Contact"
   | "ViewContent"
+  | "AddToCart"
   | "InitiateCheckout"
+  | "AddPaymentInfo"
+  | "Purchase"
   | "Subscribe"
   | "StartTrial";
 

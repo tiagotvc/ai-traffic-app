@@ -2,6 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { trackEvent, trackMetaEvent } from "@/lib/analytics";
 import {
   planListCents,
   resolveBillingCurrency,
@@ -318,12 +319,22 @@ export function BillingCtaLink({
 }) {
   const t = useTranslations("billingPage");
 
+  // Funnel "intention" step: selected a paid plan (GA4 select_plan + Meta AddToCart).
+  const fireSelectPlan = () => {
+    if (slug === "free") return;
+    trackEvent("select_plan", { plan_id: planId, plan_slug: slug, surface: variant });
+    void trackMetaEvent("AddToCart", {
+      customData: { content_type: "product", content_ids: [planId], content_name: slug }
+    });
+  };
+
   if (variant === "marketing") {
     const callbackUrl = slug === "free" ? "/dashboard" : `/billing/checkout?plan=${planId}`;
     const href = `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
     return (
       <Link
         href={href}
+        onClick={fireSelectPlan}
         className={
           className ??
           (featured
@@ -349,6 +360,7 @@ export function BillingCtaLink({
   return (
     <Link
       href={`/billing/checkout?plan=${planId}`}
+      onClick={fireSelectPlan}
       className={
         className ??
         (featured

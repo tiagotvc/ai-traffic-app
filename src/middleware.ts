@@ -17,12 +17,20 @@ function sessionHasEmail(auth: { user?: { email?: string | null } } | null) {
 
 const STATIC_PUBLIC_FILE = /\.(?:png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|mp4|webm|pdf)$/i;
 
+// SEO/metadata routes must be reachable by crawlers without auth or a locale prefix.
+const SEO_METADATA_FILES = new Set(["/robots.txt", "/sitemap.xml", "/manifest.webmanifest"]);
+
 export default auth((req) => {
   const isLoggedIn = sessionHasEmail(req.auth);
   const path = req.nextUrl.pathname;
 
   // Public folder assets must bypass auth + locale middleware or <img src="/…"> 404s.
   if (path.startsWith("/brand/") || STATIC_PUBLIC_FILE.test(path)) {
+    return NextResponse.next();
+  }
+
+  // robots.txt / sitemap.xml / manifest must be served raw to crawlers.
+  if (SEO_METADATA_FILES.has(path)) {
     return NextResponse.next();
   }
 

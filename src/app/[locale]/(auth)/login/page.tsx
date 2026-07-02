@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { auth } from "@/auth";
@@ -8,6 +9,10 @@ import { StripOAuthHash } from "@/components/StripOAuthHash";
 import { Link } from "@/i18n/navigation";
 import { isGoogleOAuthConfigured } from "@/lib/google-env";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: true }
+};
 
 export default async function LoginPage({
   params,

@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { COOKIE_CONSENT_EVENT, getCookieConsent } from "@/lib/cookie-consent";
 import { trackPageView } from "@/lib/analytics";
+import { ConversionBeacon } from "@/components/analytics/ConversionBeacon";
 
 const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID;
 
@@ -53,6 +54,7 @@ export function AnalyticsProvider() {
       <Suspense fallback={null}>
         <PageViewTracker enabled={consented} />
       </Suspense>
+      <ConversionBeacon />
     </>
   );
 }

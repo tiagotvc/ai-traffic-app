@@ -21,7 +21,10 @@ export async function generateMetadata({
   }
   const messages = (await import(`../../../messages/${locale}.json`)).default;
   return {
-    title: messages.meta.title,
+    title: {
+      default: messages.meta.title,
+      template: `%s · ${messages.meta.title}`
+    },
     description: messages.meta.description
   };
 }

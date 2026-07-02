@@ -3,6 +3,7 @@ import "server-only";
 import { repositories } from "@/db/repositories";
 import type { Subscription } from "@/db/entities/Subscription";
 import { emitAsaasNotaFiscal, authorizeAsaasNotaFiscal } from "@/lib/asaas/nota-fiscal";
+import { trackServerPurchase } from "@/lib/server-analytics";
 import { enqueueBillingJob } from "./jobs";
 import { recordCouponRedemption } from "./coupons";
 
@@ -124,6 +125,12 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
 
   const { invoice: invRepo, billingCustomer: custRepo } = await repositories();
 
+  // Captured across branches so we can fire the confirmed `purchase` conversion once,
+  // after the subscription is activated (see trackServerPurchase below).
+  let purchaseValueCents: number | undefined;
+  let purchaseCurrency: string | undefined;
+  let purchaseTxnId: string | undefined;
+
   if (invoiceId) {
     const inv = await invRepo.findOne({ where: { id: invoiceId } });
     if (inv) {
@@ -138,6 +145,10 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
       if (typeof payload.taxCents === "number") inv.taxCents = payload.taxCents;
       if (provider === "asaas") inv.nfStatus = "pending";
       await invRepo.save(inv);
+
+      purchaseValueCents = inv.amountCents;
+      purchaseCurrency = inv.currency;
+      purchaseTxnId = inv.id;
 
       if (inv.couponId && inv.couponDiscountCents) {
         const { couponRedemption: redemptionRepo } = await repositories();
@@ -169,22 +180,38 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
       }
     }
   } else if (paymentId && tenantId && planId) {
+    const currency =
+      (payload.currency as string)?.toUpperCase() ?? (provider === "stripe" ? "USD" : "BRL");
     await invRepo.save(
       invRepo.create({
         tenantId,
         provider,
         externalPaymentId: paymentId,
         amountCents: amountCents ?? 0,
-        currency: (payload.currency as string)?.toUpperCase() ?? (provider === "stripe" ? "USD" : "BRL"),
+        currency,
         status: "paid",
         paidAt: new Date(),
         nfStatus: provider === "asaas" ? "pending" : "not_applicable",
         description: "Assinatura Orion Agency"
       })
     );
+
+    purchaseValueCents = amountCents;
+    purchaseCurrency = currency;
+    purchaseTxnId = paymentId;
   }
 
   if (tenantId && planId) {
+    // New customer vs renewal/upgrade — read BEFORE activation flips the status.
+    const { subscription: subRepo, plan: planRepo } = await repositories();
+    const existing = await subRepo.findOne({ where: { tenantId } });
+    const isNewCustomer = !(
+      existing &&
+      existing.status === "active" &&
+      existing.currentPeriodEnd &&
+      existing.currentPeriodEnd > new Date()
+    );
+
     await activateProSubscription(
       tenantId,
       planId,
@@ -193,6 +220,23 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
       externalSubscriptionId,
       billingCycle
     );
+
+    // Confirmed sale → server-side conversion (Meta CAPI + GA4). Best-effort; never
+    // blocks billing. Gateway-agnostic: both Asaas and Stripe reach this point.
+    if (purchaseValueCents && purchaseValueCents > 0 && purchaseTxnId) {
+      const plan = await planRepo.findOne({ where: { id: planId } });
+      await trackServerPurchase({
+        transactionId: purchaseTxnId,
+        valueCents: purchaseValueCents,
+        currency: purchaseCurrency ?? (provider === "stripe" ? "USD" : "BRL"),
+        planId,
+        planName: plan?.name ?? undefined,
+        billingCycle,
+        provider,
+        isNewCustomer,
+        tenantId
+      });
+    }
   }
 }
 

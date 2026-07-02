@@ -56,11 +56,17 @@ export async function registerWithCredentials(
     return { error: "INVALID_INPUT" };
   }
 
+  // Marker so the client fires `sign_up` / Meta CompleteRegistration once on landing
+  // (see [[src/components/analytics/ConversionBeacon.tsx]]).
+  const signupRedirect = callbackUrl.includes("?")
+    ? `${callbackUrl}&signup=1`
+    : `${callbackUrl}?signup=1`;
+
   try {
     await signIn("credentials", {
       email,
       password,
-      redirectTo: callbackUrl
+      redirectTo: signupRedirect
     });
   } catch (err) {
     if (err instanceof AuthError) {
