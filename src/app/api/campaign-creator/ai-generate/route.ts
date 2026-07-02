@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
+import { assertCopilotAccess } from "@/lib/billing/entitlements";
 import {
   generateAiCampaignDraft,
   saveAiCampaignTemplate
@@ -26,6 +27,7 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  let usedProvider: LlmProviderId = "gemini";
   try {
     await assertFeatureEnabled("campaigns.ai-generate");
 
@@ -35,8 +37,10 @@ export async function POST(req: Request) {
     }
 
     const body = BodySchema.parse(await req.json().catch(() => ({})));
+    usedProvider = body.provider as LlmProviderId;
 
     try {
+      await assertCopilotAccess(tenant.id);
       await assertCreativeMemoryAiAccess(tenant.id);
     } catch (err) {
       const res = billingErrorResponse(err);
@@ -129,7 +133,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Recurso desabilitado" }, { status: 403 });
     }
     console.error("[campaign-creator ai-generate]", err);
-    const classified = classifyLlmError(err, "gemini");
+    const classified = classifyLlmError(err, usedProvider);
     return NextResponse.json(
       { ok: false, error: classified.message || "Erro ao gerar campanha com IA" },
       { status: 500 }

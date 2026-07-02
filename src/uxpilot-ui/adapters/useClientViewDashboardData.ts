@@ -21,6 +21,8 @@ export function useClientViewDashboardData() {
 
   return {
     loading: false,
+    metaConnectionLoading: false,
+    metaConnected: true,
     note: null,
     summary: null,
     prevSummary: null,

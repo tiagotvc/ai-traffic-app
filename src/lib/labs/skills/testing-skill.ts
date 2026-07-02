@@ -30,7 +30,7 @@ const TestingSchema = z.object({
 
 export const testingSkill: ScientistSkill = {
   id: "testing",
-  flagId: "scientists.testing",
+  flagId: "campaigns.commander.scientists.testing",
   canRun: (input) =>
     Boolean(input.priorFindings?.length || input.niche?.trim() || input.briefing?.trim()),
   run: async (input): Promise<ScientistSkillResult> => {

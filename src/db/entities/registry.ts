@@ -41,6 +41,7 @@ import { MessageTemplate } from "./MessageTemplate";
 import { VideoUploadSession } from "./VideoUploadSession";
 import { VideoUploadPart } from "./VideoUploadPart";
 import { AutomationRule } from "./AutomationRule";
+import { AutomationPendingAction } from "./AutomationPendingAction";
 import { ReportSchedule } from "./ReportSchedule";
 import { UserClient } from "./UserClient";
 import { TenantMember } from "./TenantMember";
@@ -49,6 +50,7 @@ import { Plan } from "./Plan";
 import { Subscription } from "./Subscription";
 import { BillingCustomer } from "./BillingCustomer";
 import { Invoice } from "./Invoice";
+import { PixAutomaticAuthorization } from "./PixAutomaticAuthorization";
 import { BillingEvent } from "./BillingEvent";
 import { BillingJob } from "./BillingJob";
 import { RefundRequest } from "./RefundRequest";
@@ -119,6 +121,7 @@ export {
   VideoUploadSession,
   VideoUploadPart,
   AutomationRule,
+  AutomationPendingAction,
   ReportSchedule,
   UserClient,
   TenantMember,
@@ -127,6 +130,7 @@ export {
   Subscription,
   BillingCustomer,
   Invoice,
+  PixAutomaticAuthorization,
   BillingEvent,
   BillingJob,
   RefundRequest,
@@ -219,6 +223,7 @@ stabilizeTypeOrmEntityNames([
   { ctor: VideoUploadSession, name: "VideoUploadSession" },
   { ctor: VideoUploadPart, name: "VideoUploadPart" },
   { ctor: AutomationRule, name: "AutomationRule" },
+  { ctor: AutomationPendingAction, name: "AutomationPendingAction" },
   { ctor: ReportSchedule, name: "ReportSchedule" },
   { ctor: UserClient, name: "UserClient" },
   { ctor: TenantMember, name: "TenantMember" },
@@ -227,6 +232,7 @@ stabilizeTypeOrmEntityNames([
   { ctor: Subscription, name: "Subscription" },
   { ctor: BillingCustomer, name: "BillingCustomer" },
   { ctor: Invoice, name: "Invoice" },
+  { ctor: PixAutomaticAuthorization, name: "PixAutomaticAuthorization" },
   { ctor: BillingEvent, name: "BillingEvent" },
   { ctor: BillingJob, name: "BillingJob" },
   { ctor: RefundRequest, name: "RefundRequest" },
@@ -297,6 +303,7 @@ export const typeOrmEntities = [
   VideoUploadSession,
   VideoUploadPart,
   AutomationRule,
+  AutomationPendingAction,
   ReportSchedule,
   UserClient,
   TenantMember,
@@ -305,6 +312,7 @@ export const typeOrmEntities = [
   Subscription,
   BillingCustomer,
   Invoice,
+  PixAutomaticAuthorization,
   BillingEvent,
   BillingJob,
   RefundRequest,

@@ -7,7 +7,7 @@ import { runScientistSkill } from "@/lib/labs/skills";
 import { listMetaAdAccountOptions } from "@/lib/meta-ad-accounts";
 import { fetchDeliveryEstimate } from "@/lib/meta-graph";
 
-const FLAG = "scientists.geo";
+const FLAG = "campaigns.commander.scientists.geo";
 
 /** GET → estado da flag (UI decide se mostra o Geo Scientist). */
 export async function GET() {

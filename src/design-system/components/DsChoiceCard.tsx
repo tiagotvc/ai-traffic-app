@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CircleCheck } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 import { Link } from "@/i18n/navigation";
@@ -22,6 +23,8 @@ type DsChoiceCardProps = {
   compact?: boolean;
   /** `inline` = ícone à esquerda, título compacto numa linha (wizard). `stack` = ícone acima (modais). */
   layout?: DsChoiceCardLayout;
+  /** Exibe o checker canônico no canto direito quando o card está selecionado. */
+  selectionIndicator?: boolean;
 };
 
 function isInlineLayout(compact?: boolean, layout?: DsChoiceCardLayout): boolean {
@@ -65,7 +68,8 @@ function ChoiceCardContent({
   muted,
   visited,
   compact,
-  layout
+  layout,
+  selectionIndicator
 }: Omit<DsChoiceCardProps, "href" | "onClick" | "className">) {
   const inline = isInlineLayout(compact, layout);
   const selected = !!accent;
@@ -121,6 +125,9 @@ function ChoiceCardContent({
             </span>
           ) : null}
         </span>
+        {selectionIndicator && selected ? (
+          <CircleCheck size={17} className="ml-auto shrink-0 text-[var(--success)]" aria-hidden />
+        ) : null}
       </>
     );
   }
@@ -186,7 +193,8 @@ export function DsChoiceCard({
   onClick,
   className,
   compact,
-  layout = "stack"
+  layout = "stack",
+  selectionIndicator = false
 }: DsChoiceCardProps) {
   const inline = isInlineLayout(compact, layout);
   const cardClasses = cn(
@@ -207,6 +215,7 @@ export function DsChoiceCard({
           visited={visited}
           compact={compact}
           layout={layout}
+          selectionIndicator={selectionIndicator}
         />
       </Link>
     );
@@ -222,7 +231,8 @@ export function DsChoiceCard({
         muted={muted}
         visited={visited}
         compact={compact}
-        layout={layout}
+      layout={layout}
+      selectionIndicator={selectionIndicator}
       />
     </button>
   );

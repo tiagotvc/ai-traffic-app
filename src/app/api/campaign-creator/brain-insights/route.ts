@@ -18,7 +18,7 @@ const QuerySchema = z.object({
 
 export async function GET(req: Request) {
   try {
-    await assertFeatureEnabled("campaigns.brain");
+    await assertFeatureEnabled("campaigns.commander.memory");
 
     const { tenant, user, metaAccessToken } = await getAppContext();
     if (!user) {
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
             insightVariant: insight.insightVariant ?? null,
             creditsCharged: creditCost
           },
-          justification: `Orion Brain (criador): insight ${parsed.data.objective} (${creditCost} crédito(s))`,
+          justification: `Commander: insight ${parsed.data.objective} (${creditCost} crédito(s))`,
           status: "APPLIED",
           creditsCharged: creditCost
         })

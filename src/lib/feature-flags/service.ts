@@ -7,7 +7,10 @@ import { redisGetJson, redisSetJson } from "@/lib/redis-cache";
 import {
   featureIdSet,
   isFeatureEnabledForUser,
-  normalizeFlagEntry
+  migrateLegacyFlagIds,
+  normalizeFlagEntry,
+  resolveFlagAlias,
+  validFlagIdSet
 } from "./registry";
 import type {
   FeatureFlagConfigMap,
@@ -49,14 +52,15 @@ function sanitizeEntry(raw: unknown): FeatureFlagEntry | null {
 
 function sanitize(raw: unknown): FeatureFlagConfigMap {
   if (!raw || typeof raw !== "object") return {};
-  const valid = featureIdSet();
+  const valid = validFlagIdSet();
   const out: FeatureFlagConfigMap = {};
   for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
     if (!valid.has(id)) continue;
     const entry = sanitizeEntry(v);
     if (entry) out[id] = entry;
   }
-  return out;
+  // Migra ids legados de Scientists/Copilot para a árvore canônica do Commander.
+  return migrateLegacyFlagIds(out);
 }
 
 async function readSetting(): Promise<unknown> {
@@ -97,7 +101,8 @@ export async function updatePlatformFeatureFlags(
   const merged: FeatureFlagConfigMap = { ...current };
   const valid = featureIdSet();
 
-  for (const [id, v] of Object.entries(patch)) {
+  for (const [rawId, v] of Object.entries(patch)) {
+    const id = resolveFlagAlias(rawId); // aceita ids legados, grava no canônico
     if (!valid.has(id)) continue;
     const entry = sanitizeEntry(v);
     if (!entry) continue;

@@ -9,6 +9,7 @@ export const planLimitsSchema = z.object({
   maxAiRequestsPerMonth: z.number().int().min(0),
   maxScheduledReports: z.number().int().min(0),
   allowCopilot: z.boolean(),
+  allowCommander: z.boolean(),
   maxScientists: z.number().int().min(0),
   allowAutoSync: z.boolean(),
   allowLiveMeta: z.boolean(),
@@ -37,5 +38,8 @@ export const planLimitsSchema = z.object({
   ]),
   allowDashboardAiBuilder: z.boolean(),
   allowDashboardSharing: z.boolean(),
-  allowWhiteLabel: z.boolean()
+  allowWhiteLabel: z.boolean(),
+  maxAudiencePersonas: z.number().int(),
+  allowRankingConfig: z.boolean(),
+  automationTier: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { Sparkles, User, Users } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import {
   planListCents,
@@ -16,6 +17,7 @@ import {
   YEARLY_PIX_DISCOUNT_PERCENT,
   type PricingBreakdown
 } from "@/lib/billing/pricing";
+import { MARKETING_FEATURE_ROWS } from "@/lib/billing/plan-comparison";
 
 export function BillingBackLink({ href = "/billing/plans", label }: { href?: string; label?: string }) {
   const t = useTranslations("billingPage");
@@ -177,15 +179,52 @@ export function PlanLimitsCard({
   limits,
   usage,
   compact = false,
-  variant = "portal"
+  variant = "portal",
+  planSlug
 }: {
   limits: PlanLimits;
   usage?: TenantUsage;
   compact?: boolean;
   variant?: "portal" | "marketing";
+  planSlug?: string;
 }) {
   const t = useTranslations("billingPage");
   const isMarketing = variant === "marketing";
+
+  if (isMarketing && planSlug) {
+    const highlightKeys = compact
+      ? ["clients", "adAccounts", "aiCredits", "copilot"]
+      : [
+          "clients",
+          "adAccounts",
+          "campaignCreator",
+          "audienceCreator",
+          "aiCredits",
+          "copilot",
+          "reports"
+        ];
+    const highlights = MARKETING_FEATURE_ROWS.filter((row) => highlightKeys.includes(row.key));
+
+    return (
+      <ul className={`${compact ? "space-y-2 text-xs" : "space-y-2.5 text-sm"}`}>
+        {highlights.map((row) => {
+          const value = row.values[planSlug];
+          const available = value !== false;
+          return (
+            <li key={row.key} className="flex items-start justify-between gap-3">
+              <span className="flex min-w-0 items-start gap-2 text-[var(--text-dim)]">
+                {available ? <CheckIcon /> : <CrossIcon />}
+                <span>{row.label}</span>
+              </span>
+              <span className="shrink-0 font-semibold text-[var(--text-main)]">
+                {typeof value === "boolean" ? (value ? t("included") : "—") : value}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
 
   const rows: Array<{ key: keyof PlanLimits; label: string; usageVal?: number }> = [
     { key: "maxClients", label: t("limitClients"), usageVal: usage?.clients },
@@ -205,13 +244,13 @@ export function PlanLimitsCard({
         return (
           <li key={key} className="flex items-start justify-between gap-3">
             <span
-              className={`flex items-center gap-2 ${isMarketing ? "text-violet-200/80" : "text-[var(--text-dim)]"}`}
+              className="flex items-center gap-2 text-[var(--text-dim)]"
             >
               <CheckIcon />
               {label}
             </span>
             <span
-              className={`shrink-0 font-semibold ${isMarketing ? "text-white" : "text-[var(--text-main)]"}`}
+              className="shrink-0 font-semibold text-[var(--text-main)]"
             >
               {usageVal != null ? `${usageVal}/${max}` : max}
             </span>
@@ -220,23 +259,23 @@ export function PlanLimitsCard({
       })}
       <li className="flex items-center justify-between gap-3">
         <span
-          className={`flex items-center gap-2 ${isMarketing ? "text-violet-200/80" : "text-[var(--text-dim)]"}`}
+          className="flex items-center gap-2 text-[var(--text-dim)]"
         >
           {limits.allowAutoSync ? <CheckIcon /> : <CrossIcon />}
           {t("limitAutoSync")}
         </span>
-        <span className={`text-xs font-medium ${isMarketing ? "text-violet-300/70" : "text-[var(--text-dim)]"}`}>
+        <span className="text-xs font-medium text-[var(--text-dim)]">
           {limits.allowAutoSync ? t("included") : "—"}
         </span>
       </li>
       <li className="flex items-center justify-between gap-3">
         <span
-          className={`flex items-center gap-2 ${isMarketing ? "text-violet-200/80" : "text-[var(--text-dim)]"}`}
+          className="flex items-center gap-2 text-[var(--text-dim)]"
         >
           {limits.allowLiveMeta ? <CheckIcon /> : <CrossIcon />}
           {t("limitLiveMeta")}
         </span>
-        <span className={`text-xs font-medium ${isMarketing ? "text-violet-300/70" : "text-[var(--text-dim)]"}`}>
+        <span className="text-xs font-medium text-[var(--text-dim)]">
           {limits.allowLiveMeta ? t("included") : "—"}
         </span>
       </li>
@@ -248,7 +287,8 @@ export function PlanPrice({
   plan,
   cycle,
   trialDays = 0,
-  variant = "portal"
+  variant = "portal",
+  compact = false
 }: {
   plan: {
     priceMonthlyCents: number;
@@ -258,19 +298,20 @@ export function PlanPrice({
   cycle: "monthly" | "yearly";
   trialDays?: number;
   variant?: "portal" | "marketing";
+  compact?: boolean;
 }) {
   const t = useTranslations("billingPage");
   const locale = useLocale();
   const currency = resolveBillingCurrency(locale);
   const isMarketing = variant === "marketing";
-  const textMain = isMarketing ? "text-white" : "text-[var(--text-main)]";
-  const textDim = isMarketing ? "text-violet-200/70" : "text-[var(--text-dim)]";
-  const textDimmer = isMarketing ? "text-violet-300/50" : "text-[var(--text-dimmer)]";
+  const textMain = "text-[var(--text-main)]";
+  const textDim = "text-[var(--text-dim)]";
+  const textDimmer = "text-[var(--text-dimmer)]";
 
   if (trialDays > 0) {
     return (
       <div>
-        <span className={`text-3xl font-bold tracking-tight ${textMain}`}>
+        <span className={`${compact ? "text-2xl" : "text-3xl"} font-bold tracking-tight ${textMain}`}>
           {t("freeTrialDays", { days: trialDays })}
         </span>
         <p className={`mt-1 text-sm ${textDim}`}>{t("freeTrialHint")}</p>
@@ -294,7 +335,7 @@ export function PlanPrice({
         <p className={`text-sm line-through ${textDimmer}`}>{formatMoney(pricing.listCents, currency)}</p>
       ) : null}
       <div className="flex flex-wrap items-baseline gap-2">
-        <span className={`text-4xl font-bold tracking-tight ${textMain}`}>
+        <span className={`${compact ? "text-3xl" : "text-4xl"} font-bold tracking-tight ${textMain}`}>
           {formatMoney(pricing.finalCents, currency)}
         </span>
         <span className={`text-sm font-medium ${textDim}`}>{period}</span>
@@ -319,8 +360,12 @@ export function BillingCtaLink({
   const t = useTranslations("billingPage");
 
   if (variant === "marketing") {
-    const callbackUrl = slug === "free" ? "/dashboard" : `/billing/checkout?plan=${planId}`;
-    const href = `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+    // Plano pago: checkout é público agora — cria conta na hora, sem passar pelo /login. Free
+    // continua indo pro login/dashboard (sem etapa de pagamento pra criar a conta ali).
+    const href =
+      slug === "free"
+        ? `/login?callbackUrl=${encodeURIComponent("/dashboard")}`
+        : `/billing/checkout?plan=${planId}`;
     return (
       <Link
         href={href}
@@ -394,25 +439,27 @@ const TIER_STYLES: Record<PlanTier, string> = {
 };
 
 const MARKETING_TIER_STYLES: Record<PlanTier, string> = {
-  free: "border-white/10 bg-gradient-to-b from-slate-900/90 to-slate-950/95 text-white shadow-lg backdrop-blur-sm hover:border-white/20",
+  free: "border-[var(--creator-card-border)] bg-[var(--creator-card-bg)] text-[var(--text-main)] shadow-sm hover:border-[var(--border-hover)]",
   standard:
-    "border-white/15 bg-gradient-to-b from-slate-900/90 to-indigo-950/90 text-white shadow-lg backdrop-blur-sm hover:border-[var(--ui-accent-border)]",
+    "border-[var(--creator-card-border)] bg-[var(--creator-card-bg)] text-[var(--text-main)] shadow-sm hover:border-[var(--ui-accent-border)]",
   popular:
-    "border-[var(--ui-accent-border-strong)] bg-gradient-to-b from-violet-950/95 via-indigo-950/90 to-slate-950/95 text-white shadow-xl shadow-[var(--ui-accent-glow)] ring-1 ring-[var(--ui-accent-ring)] lg:scale-[1.03] lg:-mt-1",
+    "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] text-[var(--text-main)] shadow-[0_0_0_1px_var(--ui-accent-border)]",
   premium:
-    "border-[var(--ui-accent-border-strong)] bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl shadow-[var(--ui-accent-glow-strong)] ring-1 ring-[var(--ui-accent-border)] lg:scale-[1.05] lg:-mt-2 lg:mb-2"
+    "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] text-[var(--text-main)] shadow-[0_0_0_1px_var(--ui-accent-border)]"
 };
 
 export function PlanCard({
   plan,
   cycle,
   featured = false,
-  variant = "portal"
+  variant = "portal",
+  compact = false
 }: {
   plan: PlanCardData;
   cycle: "monthly" | "yearly";
   featured?: boolean;
   variant?: "portal" | "marketing";
+  compact?: boolean;
 }) {
   const t = useTranslations("billingPage");
   const tier = planTier(plan.slug);
@@ -421,13 +468,18 @@ export function PlanCard({
   const isFree = tier === "free";
   const isMarketing = variant === "marketing";
   const cardStyle = isMarketing ? MARKETING_TIER_STYLES[tier] : TIER_STYLES[tier];
-  const titleClass = isMarketing || isPremium ? "text-white" : "text-[var(--text-main)]";
+  const titleClass = "text-[var(--text-main)]";
   const descClass =
-    isMarketing || isPremium ? "text-violet-200/75" : "text-[var(--text-dim)]";
-  const dividerClass = isMarketing || isPremium ? "border-white/10" : "border-[var(--border-color)]";
+    isMarketing || isPremium ? "text-[var(--text-dim)]" : "text-[var(--text-dim)]";
+  const dividerClass = "border-[var(--creator-card-border,var(--border-color))]";
+  const MarketingIcon = plan.slug.startsWith("agency")
+    ? Users
+    : plan.slug.startsWith("advanced")
+      ? Sparkles
+      : User;
 
   return (
-    <div className={`relative flex flex-col rounded-2xl border p-6 transition ${cardStyle}`}>
+    <div className={`relative flex flex-col rounded-xl border transition ${compact ? "p-4" : "p-5"} ${cardStyle}`}>
       {isPopular && !isPremium ? (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--ui-accent)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ui-accent-btn-text)] shadow-md">
           {t("mostPopular")}
@@ -439,20 +491,25 @@ export function PlanCard({
         </span>
       ) : null}
 
-      <div className="mb-4">
-        <h2 className={`text-lg font-bold ${titleClass}`}>{plan.name}</h2>
+      <div className={compact ? "mb-3" : "mb-4"}>
+        {isMarketing ? (
+          <span className={`${compact ? "mb-2 h-8 w-8" : "mb-3 h-9 w-9"} flex items-center justify-center rounded-full bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]`}>
+            <MarketingIcon size={16} aria-hidden />
+          </span>
+        ) : null}
+        <h2 className={`${compact ? "text-base" : "text-lg"} font-bold ${titleClass}`}>{plan.name}</h2>
         {plan.description ? (
-          <p className={`mt-1 text-sm leading-relaxed ${descClass}`}>{plan.description}</p>
+          <p className={`mt-1 ${compact ? "line-clamp-1 text-xs" : "text-sm leading-relaxed"} ${descClass}`}>{plan.description}</p>
         ) : null}
       </div>
 
       <div>
-        <PlanPrice plan={plan} cycle={cycle} trialDays={plan.trialDays} variant={variant} />
+        <PlanPrice plan={plan} cycle={cycle} trialDays={plan.trialDays} variant={variant} compact={compact} />
         <PlanDiscountBadges cycle={cycle} isFree={isFree} dark={isMarketing || isPremium} />
       </div>
 
-      <div className={`my-6 border-t pt-5 ${dividerClass}`}>
-        <PlanLimitsCard limits={plan.limits} compact variant={variant} />
+      <div className={`${compact ? "my-4 pt-4" : "my-6 pt-5"} border-t ${dividerClass}`}>
+        <PlanLimitsCard limits={plan.limits} compact variant={variant} planSlug={plan.slug} />
       </div>
 
       <div className="mt-auto">
@@ -462,9 +519,11 @@ export function PlanCard({
           featured={isPopular || isPremium}
           variant={variant}
           className={
-            isPremium
-              ? "ui-btn-accent mt-6 block w-full py-3.5 text-center text-sm font-extrabold"
-              : undefined
+            isMarketing
+              ? `${isPopular || isPremium ? "ui-btn-accent" : "ui-btn-accent-outline"} ${compact ? "mt-4 py-2.5" : "mt-6 py-3"} block w-full text-center text-sm font-bold`
+              : isPremium
+                ? "ui-btn-accent mt-6 block w-full py-3.5 text-center text-sm font-extrabold"
+                : undefined
           }
         />
       </div>
@@ -478,9 +537,9 @@ export function ContactPlanCard({ variant = "marketing" }: { variant?: "portal" 
   const isMarketing = variant === "marketing";
   const cardStyle = isMarketing ? MARKETING_TIER_STYLES.standard : TIER_STYLES.standard;
   const titleClass = isMarketing ? "text-white" : "text-[var(--text-main)]";
-  const descClass = isMarketing ? "text-violet-200/75" : "text-[var(--text-dim)]";
+  const descClass = "text-[var(--text-dim)]";
   const dividerClass = isMarketing ? "border-white/10" : "border-[var(--border-color)]";
-  const perkClass = isMarketing ? "text-violet-200/80" : "text-[var(--text-dim)]";
+  const perkClass = "text-[var(--text-dim)]";
   const perks = [
     t("planPersonalizedPerk1"),
     t("planPersonalizedPerk2"),

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAppContext, getClientBySlugOrId, getMetaAccessTokenForAdAccount } from "@/lib/app-context";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
+import { assertCopilotAccess } from "@/lib/billing/entitlements";
 import { validateClientAdAccount } from "@/lib/audience-api-helpers";
 import {
   assertWizardProviderConfigured,
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
     );
 
     try {
+      await assertCopilotAccess(tenant.id);
       await assertCreativeMemoryAiAccess(tenant.id);
     } catch (err) {
       const res = billingErrorResponse(err);

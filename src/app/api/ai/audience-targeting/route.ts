@@ -11,6 +11,8 @@ import {
   AudiencePersonaPreviewPayloadSchema
 } from "@/lib/audience-targeting-ai";
 import { validateClientAdAccount, classifyAudienceAiError, fetchCustomAudiencesOptional } from "@/lib/audience-api-helpers";
+import { billingErrorResponse } from "@/lib/billing/api-errors";
+import { assertCopilotAccess } from "@/lib/billing/entitlements";
 import { assertCreativeMemoryAiAccess } from "@/lib/creative-memory/ai-usage";
 import { classifyLlmError } from "@/lib/llm/generate-json";
 import { getApiKeyForProvider, getLlmProvidersStatus } from "@/lib/llm/keys";
@@ -75,6 +77,15 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const { tenant, metaAccessToken } = await getAppContext();
+
+  // Gate do Copilot (persona/zona são geração assistida do Copilot).
+  try {
+    await assertCopilotAccess(tenant.id);
+  } catch (err) {
+    const res = billingErrorResponse(err);
+    if (res) return res;
+    throw err;
+  }
 
   const body = PostBodySchema.parse(await req.json().catch(() => ({})));
 

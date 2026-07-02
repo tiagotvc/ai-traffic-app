@@ -82,7 +82,7 @@ export async function LoginMarketingPanel() {
           </div>
 
           <Link
-            href="/pricing"
+            href="/#pricing"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-7 inline-flex items-center gap-1.5 rounded-xl border border-violet-400/40 bg-violet-500/10 px-4 py-2 text-sm font-semibold text-violet-50 transition hover:bg-violet-500/20"

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { repositories } from "@/db/repositories";
+import { assertLimit } from "@/lib/billing/entitlements";
 import type { PersonaGender, UserPersona } from "@/db/entities/UserPersona";
 import type { UserZone, ZoneGeoRules } from "@/db/entities/UserZone";
 
@@ -37,6 +38,7 @@ export async function createUserPersona(args: {
   targeting: Record<string, unknown>;
   sourcePrompt?: string | null;
 }): Promise<UserPersona> {
+  await assertLimit(args.tenantId, "maxAudiencePersonas");
   const { userPersona } = await repositories();
   const row = userPersona.create({
     tenantId: args.tenantId,

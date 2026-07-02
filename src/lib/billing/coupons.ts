@@ -32,7 +32,10 @@ export async function findCouponByCode(code: string) {
 
 export async function validateCouponForCheckout(input: {
   code: string;
-  tenantId: string;
+  /** Ausente = preview anônimo (checkout público, conta ainda não existe) — pula a checagem de
+   * "já usado nesta conta"; a validação final roda de novo com o tenantId real na hora de fechar o
+   * pedido (startCheckout), então isso não abre brecha pra reuso indevido do cupom. */
+  tenantId?: string;
   plan: Plan;
   pricing: PricingBreakdown;
 }): Promise<CouponValidationResult> {
@@ -55,12 +58,14 @@ export async function validateCouponForCheckout(input: {
     return { ok: false, error: "Cupom não válido para este plano" };
   }
 
-  const { couponRedemption: redemptionRepo } = await repositories();
-  const alreadyUsed = await redemptionRepo.findOne({
-    where: { couponId: coupon.id, tenantId: input.tenantId }
-  });
-  if (alreadyUsed) {
-    return { ok: false, error: "Cupom já utilizado nesta conta" };
+  if (input.tenantId) {
+    const { couponRedemption: redemptionRepo } = await repositories();
+    const alreadyUsed = await redemptionRepo.findOne({
+      where: { couponId: coupon.id, tenantId: input.tenantId }
+    });
+    if (alreadyUsed) {
+      return { ok: false, error: "Cupom já utilizado nesta conta" };
+    }
   }
 
   const pct = Math.min(100, Math.max(0, coupon.percentOff));

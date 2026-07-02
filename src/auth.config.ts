@@ -46,7 +46,9 @@ if (isMetaOAuthConfigured()) {
  */
 export const authConfig = {
   trustHost: true,
-  session: { strategy: "jwt" },
+  // Keep authenticated browser sessions bounded to one day. NextAuth uses this
+  // value for both the JWT expiry and the session cookie lifetime.
+  session: { strategy: "jwt", maxAge: 24 * 60 * 60 },
   providers,
   secret: getAuthSecret(),
   pages: {
@@ -85,24 +87,6 @@ export const authConfig = {
         if (p.name) token.name = p.name;
         if (p.picture) token.picture = p.picture;
         delete token.userId;
-      } else if (account?.provider === "facebook" && profile && typeof profile === "object") {
-        // Legado: sessões antigas com provider facebook + scopes de ads
-        const p = profile as FacebookProfile;
-        const newProfileId = p.id;
-        if (newProfileId) {
-          token.metaProfileId = newProfileId;
-          token.name = p.name ?? token.name;
-          token.email = p.email ?? metaEmailFromProfileId(newProfileId);
-          token.metaAccessToken = account.access_token;
-          token.metaExpiresAt = account.expires_at;
-          token.metaTokenType = account.token_type;
-          token.metaScopes = (account.scope as string | undefined) ?? undefined;
-        }
-      } else if (account) {
-        token.metaAccessToken = account.access_token;
-        token.metaExpiresAt = account.expires_at;
-        token.metaTokenType = account.token_type;
-        token.metaScopes = (account.scope as string | undefined) ?? undefined;
       }
 
       if (user?.email) token.email = user.email;
@@ -119,10 +103,6 @@ export const authConfig = {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (session as any).meta = {
-        accessToken: token.metaAccessToken,
-        expiresAt: token.metaExpiresAt,
-        tokenType: token.metaTokenType,
-        scopes: token.metaScopes,
         profileId: token.metaProfileId
       };
 

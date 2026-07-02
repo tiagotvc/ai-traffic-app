@@ -158,7 +158,8 @@ Responda JSON: { "suggestions": [...] }`;
 
 function applySavedTargetingSuggestion(
   draft: CampaignDraftPayload,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  provider: LlmProviderId
 ): CampaignDraftPayload {
   const targeting = payload.targeting as Record<string, unknown> | undefined;
   if (!targeting) return draft;
@@ -178,7 +179,7 @@ function applySavedTargetingSuggestion(
     excludeCustomAudienceIds: (
       (targeting.excluded_custom_audiences as Array<{ id: string }> | undefined) ?? []
     ).map((a) => a.id),
-    provider: "gemini" as const,
+    provider,
     modelUsed: ""
   };
 
@@ -397,7 +398,7 @@ export async function generateAiCampaignDraft(args: {
     const combined = suggestions.find((s) => s.type === "combined");
 
     if (savedTargeting) {
-      draft = applySavedTargetingSuggestion(draft, savedTargeting.payload);
+      draft = applySavedTargetingSuggestion(draft, savedTargeting.payload, provider);
       audienceApplied = true;
     } else if (combined) {
       const includeIds = (combined.payload.includeAudienceIds as string[] | undefined) ?? [];

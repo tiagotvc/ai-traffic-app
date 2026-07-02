@@ -389,7 +389,9 @@ export async function generateAiCampaignFromWizard(args: {
     aiGeneratedAt: new Date().toISOString(),
     aiStrategy: "new_audience_test",
     aiRationale: rationale,
-    wizardGenerated: true
+    wizardGenerated: true,
+    aiProvider: provider,
+    aiModelUsed: provider
   };
 
   const draftName = orionNames.draftName;

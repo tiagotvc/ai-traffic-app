@@ -32,6 +32,7 @@ export function RankingConfigModal({
   const [config, setConfig] = useState<RankConfig | null>(null);
   const [defaults, setDefaults] = useState<RankConfig | null>(null);
   const [saving, setSaving] = useState(false);
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/creatives/ranking-config")
@@ -62,6 +63,7 @@ export function RankingConfigModal({
   function save() {
     if (!config) return;
     setSaving(true);
+    setBlockedReason(null);
     fetch("/api/creatives/ranking-config", {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -72,6 +74,8 @@ export function RankingConfigModal({
         if (j.ok) {
           onSaved();
           onClose();
+        } else if (j.code === "PLAN_LIMIT") {
+          setBlockedReason(j.error || t("cfgPlanLimit"));
         }
       })
       .finally(() => setSaving(false));
@@ -109,6 +113,20 @@ export function RankingConfigModal({
         <div className="py-8 text-center text-sm text-[var(--text-dim)]">…</div>
       ) : (
         <div className="space-y-4">
+          {blockedReason ? (
+            <DsInfoBanner
+              className="text-xs leading-relaxed ui-alert-danger"
+              icon={<AlertTriangle size={16} aria-hidden />}
+              role="note"
+              actions={
+                <a href="/billing/checkout" className="text-xs font-semibold underline underline-offset-2">
+                  {t("cfgUpgrade")}
+                </a>
+              }
+            >
+              {blockedReason}
+            </DsInfoBanner>
+          ) : null}
           <DsInfoBanner className="text-xs leading-relaxed">{t("cfgHelpIntro")}</DsInfoBanner>
 
           <div className="rounded-xl border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-3 py-3">

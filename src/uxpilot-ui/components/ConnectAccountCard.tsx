@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useLocale } from "next-intl";
 import { Facebook, Plus, ArrowRight, CheckCircle2 } from "lucide-react";
 
+import { DsButton, DsCard } from "@/design-system";
 import { useRouter } from "@/i18n/navigation";
 
 const steps = [
@@ -37,13 +38,7 @@ export default function ConnectAccountCard() {
   }
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden animate-fade-up"
-      style={{
-        background: "var(--surface-card)",
-        border: "1px solid rgba(79,70,229,0.3)",
-      }}
-    >
+    <DsCard padding="none" className="overflow-hidden animate-fade-up">
       {/* Top Banner */}
       <div
         className="px-6 py-5 flex items-center gap-4"
@@ -60,7 +55,7 @@ export default function ConnectAccountCard() {
             Conecte sua conta Meta
           </h3>
           <p className="text-sm font-body" style={{ color: "var(--text-dim)" }}>
-            Configure o AI Traffic App em 4 passos simples
+            Configure a Orion Agency em 4 passos simples
           </p>
         </div>
       </div>
@@ -94,15 +89,16 @@ export default function ConnectAccountCard() {
         </div>
 
         {/* CTA */}
-        <a
-          href={metaOAuthHref}
-          className="w-full py-3 rounded-xl font-heading font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:brightness-110 active:scale-95"
-          style={{ background: "linear-gradient(135deg, #4f46e5, #7c3aed)", color: "#fff" }}
+        <DsButton
+          variant="meta"
+          size="lg"
+          className="w-full justify-center"
+          onClick={() => window.location.assign(metaOAuthHref)}
         >
           <Plus size={16} />
           Conectar Meta Ads
           <ArrowRight size={16} />
-        </a>
+        </DsButton>
 
         {demoModeEnabled ? (
           <button
@@ -116,6 +112,6 @@ export default function ConnectAccountCard() {
           </button>
         ) : null}
       </div>
-    </div>
+    </DsCard>
   );
 }

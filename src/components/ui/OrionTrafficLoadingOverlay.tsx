@@ -17,7 +17,28 @@ type Props = {
   className?: string;
   /** Só a cena do logo — sem título, mensagem, barras e barra de progresso (ex.: transição de rota). */
   minimal?: boolean;
+  /** "traffic" (padrão, faixas horizontais) ou "constellation" (raios verticais maiores, evocando
+   * a constelação de Órion — usado na transição de entrada do checkout). */
+  variant?: "traffic" | "constellation";
 };
+
+const CONSTELLATION_BOLTS = [
+  { x: "8%", delay: "0s", duration: "1.6s", scale: 1 },
+  { x: "22%", delay: "0.55s", duration: "1.9s", scale: 0.75 },
+  { x: "37%", delay: "0.2s", duration: "1.5s", scale: 1.15 },
+  { x: "50%", delay: "0.8s", duration: "1.7s", scale: 0.9 },
+  { x: "63%", delay: "0.4s", duration: "2s", scale: 1 },
+  { x: "78%", delay: "0.65s", duration: "1.6s", scale: 0.8 },
+  { x: "92%", delay: "0.1s", duration: "1.85s", scale: 1.1 }
+] as const;
+
+const CONSTELLATION_STARS = [
+  { x: "18%", y: "20%", delay: "0.2s" },
+  { x: "45%", y: "12%", delay: "0.9s" },
+  { x: "68%", y: "28%", delay: "0.5s" },
+  { x: "85%", y: "15%", delay: "1.2s" },
+  { x: "30%", y: "40%", delay: "0.7s" }
+] as const;
 
 /** Lock de scroll do body com contagem de referência — seguro com múltiplos overlays. */
 let bodyLockCount = 0;
@@ -49,7 +70,8 @@ export function OrionTrafficLoadingOverlay({
   messageKey,
   ariaLabelledBy = "orion-traffic-loading-title",
   className,
-  minimal = false
+  minimal = false,
+  variant = "traffic"
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [messageVisible, setMessageVisible] = useState(true);
@@ -95,6 +117,31 @@ export function OrionTrafficLoadingOverlay({
       <div className="orion-action-loading__glow absolute inset-0" aria-hidden />
       <div className="orion-traffic-loading__grid absolute inset-0 opacity-[0.35]" aria-hidden />
 
+      {variant === "constellation" ? (
+        <div className="orion-constellation__field absolute inset-0 overflow-hidden" aria-hidden>
+          {CONSTELLATION_BOLTS.map((bolt, i) => (
+            <span
+              key={i}
+              className="orion-constellation__bolt"
+              style={{
+                left: bolt.x,
+                animationDelay: bolt.delay,
+                animationDuration: bolt.duration,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ["--bolt-scale" as any]: bolt.scale
+              }}
+            />
+          ))}
+          {CONSTELLATION_STARS.map((star, i) => (
+            <span
+              key={i}
+              className="orion-constellation__star"
+              style={{ left: star.x, top: star.y, animationDelay: star.delay }}
+            />
+          ))}
+        </div>
+      ) : null}
+
       <div className="relative z-10 mx-4 flex w-full max-w-md flex-col items-center px-2 py-8 text-center">
         <div
           className={cn(
@@ -102,29 +149,31 @@ export function OrionTrafficLoadingOverlay({
             minimal ? "max-w-[22rem]" : "mb-6 max-w-[17.5rem]"
           )}
         >
-          <div
-            className={cn(
-              "orion-traffic-loading__lanes absolute inset-x-0 top-1/2 -translate-y-1/2",
-              minimal && "orion-traffic-loading__lanes--bold"
-            )}
-            aria-hidden
-          >
-            {TRAFFIC_LANES.map((lane, i) => (
-              <div key={i} className="orion-traffic-loading__lane">
-                <span
-                  className="orion-traffic-loading__pulse orion-traffic-loading__pulse--a"
-                  style={{ animationDelay: lane.delay, animationDuration: lane.duration }}
-                />
-                <span
-                  className="orion-traffic-loading__pulse orion-traffic-loading__pulse--b"
-                  style={{
-                    animationDelay: `calc(${lane.delay} + 0.55s)`,
-                    animationDuration: lane.duration
-                  }}
-                />
-              </div>
-            ))}
-          </div>
+          {variant === "traffic" ? (
+            <div
+              className={cn(
+                "orion-traffic-loading__lanes absolute inset-x-0 top-1/2 -translate-y-1/2",
+                minimal && "orion-traffic-loading__lanes--bold"
+              )}
+              aria-hidden
+            >
+              {TRAFFIC_LANES.map((lane, i) => (
+                <div key={i} className="orion-traffic-loading__lane">
+                  <span
+                    className="orion-traffic-loading__pulse orion-traffic-loading__pulse--a"
+                    style={{ animationDelay: lane.delay, animationDuration: lane.duration }}
+                  />
+                  <span
+                    className="orion-traffic-loading__pulse orion-traffic-loading__pulse--b"
+                    style={{
+                      animationDelay: `calc(${lane.delay} + 0.55s)`,
+                      animationDuration: lane.duration
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           {minimal ? (
             <div className="relative z-10 flex w-full items-center justify-center">

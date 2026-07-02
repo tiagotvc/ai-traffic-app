@@ -1,15 +1,20 @@
 "use client";
 
+import { Building2, Calendar, Check, Clock, CreditCard, Hash, IdCard, KeyRound, LockKeyhole, Mail, MapPin, Phone, Shield, Sparkles, Star, Ticket, User, Users, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@/i18n/navigation";
-import { DsPageHeader } from "@/design-system";
-import { BillingCheckoutSummary } from "@/components/billing/BillingCheckoutSummary";
+import { OrionAgencyLogo } from "@/components/brand/OrionAgencyLogo";
+import { UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
 import { BillingCardProcessing } from "@/components/billing/BillingCardProcessing";
+import { BillingAtmosphere } from "@/components/billing/BillingAtmosphere";
+import { useCheckoutCloseInterceptor } from "@/components/billing/CheckoutFullScreenShell";
 import { BillingBackLink, type PlanCardData } from "@/components/billing/PlanLimitsCard";
 import { BillingPixPayment } from "@/components/billing/BillingPixPayment";
 import { BillingPortalSkeleton, CheckoutSummarySkeleton } from "@/components/billing/BillingSkeletons";
+import { PaymentBrandMarks } from "@/components/billing/PaymentBrandMarks";
+import { FilterTextField } from "@/components/FilterTextField";
 import type { PricingBreakdown } from "@/lib/billing/pricing";
 import {
   planListCents,
@@ -17,15 +22,43 @@ import {
   resolvePlanMonthlyCents
 } from "@/lib/billing/currency";
 import { calculateCheckoutPricing, formatMoney } from "@/lib/billing/pricing";
+import { MARKETING_FEATURE_ROWS, PLUS_PAIRS, PLUS_SLUGS } from "@/lib/billing/plan-comparison";
+import { DsButton, DsCheckerCard, DsSegmentedControl } from "@/design-system";
 
 import type { PaymentProvider } from "@/lib/billing/types";
 
 const INSTALLMENT_OPTIONS = [2, 3, 6, 12] as const;
 
+/** Os 3 planos base (sem a variante Plus) — usados pelo toggle Normal/Plus do checkout. */
+const BASE_TIER_SLUGS = Object.keys(PLUS_PAIRS);
+const REVERSE_PLUS_PAIRS: Record<string, string> = Object.fromEntries(
+  Object.entries(PLUS_PAIRS).map(([base, plus]) => [plus, base])
+);
+const CHECKOUT_FEATURE_KEYS = ["clients", "adAccounts", "aiCredits", "creativeRanking", "brain", "copilot", "reports"];
+const CHECKOUT_FEATURE_LABELS: Record<string, string> = {
+  clients: "checkoutFeatureClients",
+  adAccounts: "checkoutFeatureAdAccounts",
+  aiCredits: "checkoutFeatureAiCredits",
+  creativeRanking: "checkoutFeatureRanking",
+  brain: "checkoutFeatureBrain",
+  copilot: "checkoutFeatureCopilot",
+  reports: "checkoutFeatureReports"
+};
+
+/** Ícone + descrição curta de cada um dos 3 cards de plano, na mesma ordem de BASE_TIER_SLUGS. */
+const TIER_META: Array<{ icon: typeof User; descKey: string }> = [
+  { icon: User, descKey: "checkoutIndividualDescription" },
+  { icon: Sparkles, descKey: "checkoutAdvancedDescription" },
+  { icon: Users, descKey: "checkoutAgencyDescription" }
+];
+const TIER_NAMES = ["Individual", "Advanced", "Agency"] as const;
+
 type PaymentRegion = "br" | "intl";
 
-function defaultPaymentRegion(locale: string, providers: PaymentProvider[]): PaymentRegion {
-  if (locale.startsWith("pt") && providers.includes("asaas")) return "br";
+function defaultPaymentRegion(providers: PaymentProvider[]): PaymentRegion {
+  // O provedor é detalhe de infraestrutura: sempre priorize o checkout completo
+  // (cartão/PIX/boleto) quando ele estiver disponível, independentemente do idioma.
+  if (providers.includes("asaas")) return "br";
   if (providers.includes("stripe")) return "intl";
   return "br";
 }
@@ -38,12 +71,9 @@ type InstallmentSimRow = {
   totalCents: number;
 };
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="mb-1.5 block text-xs font-semibold text-[var(--text-dim)]">{children}</span>;
-}
-
 export function BillingCheckoutClient() {
   const t = useTranslations("billingPage");
+  const setCloseInterceptor = useCheckoutCloseInterceptor();
   const locale = useLocale();
   const router = useRouter();
   const params = useSearchParams();
@@ -63,12 +93,15 @@ export function BillingCheckoutClient() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
-  const [billingType, setBillingType] = useState<"PIX" | "CREDIT_CARD">("PIX");
+  const [billingType, setBillingType] = useState<"PIX" | "CREDIT_CARD" | "PIX_AUTOMATIC">("CREDIT_CARD");
   const [payInInstallments, setPayInInstallments] = useState(false);
   const [installmentCount, setInstallmentCount] = useState<number>(6);
   const [installmentOptions, setInstallmentOptions] = useState<InstallmentSimRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [checkoutStep, setCheckoutStep] = useState<2 | 3>(2);
+  const [dataStepError, setDataStepError] = useState<string | null>(null);
+  const [accountExists, setAccountExists] = useState(false);
   const [pixData, setPixData] = useState<{
     invoiceId: string;
     pixQrCode?: string;
@@ -95,6 +128,13 @@ export function BillingCheckoutClient() {
     expiryYear: "",
     ccv: ""
   });
+  const [company, setCompany] = useState("");
+
+  useEffect(() => {
+    if (!pixData) return;
+    setCloseInterceptor(() => setPixData(null));
+    return () => setCloseInterceptor(null);
+  }, [pixData, setCloseInterceptor]);
 
   useEffect(() => {
     fetch("/api/billing/plans")
@@ -108,7 +148,7 @@ export function BillingCheckoutClient() {
 
   useEffect(() => {
     if (!providers.length || paymentRegion) return;
-    setPaymentRegion(defaultPaymentRegion(locale, providers));
+    setPaymentRegion(defaultPaymentRegion(providers));
   }, [providers, locale, paymentRegion]);
 
   useEffect(() => {
@@ -127,9 +167,6 @@ export function BillingCheckoutClient() {
   const checkoutProvider: PaymentProvider =
     paymentRegion === "intl" ? "stripe" : "asaas";
   const isIntl = checkoutProvider === "stripe";
-  const showRegionToggle =
-    providers.includes("asaas") && providers.includes("stripe");
-
   const currency = resolveBillingCurrency(locale, checkoutProvider);
 
   const effectiveInstallments =
@@ -142,7 +179,7 @@ export function BillingCheckoutClient() {
       listCents: planListCents(plan, cycle, currency),
       cycle,
       provider: checkoutProvider,
-      billingType,
+      billingType: billingType === "PIX_AUTOMATIC" ? "PIX" : billingType,
       installmentCount: effectiveInstallments
     });
   }, [plan, cycle, billingType, effectiveInstallments, currency, checkoutProvider]);
@@ -178,6 +215,28 @@ export function BillingCheckoutClient() {
     if (id === planId) return;
     setSummaryLoading(true);
     router.replace(`/billing/checkout?plan=${id}`, { scroll: false });
+  }
+
+  function advanceToPayment() {
+    const emailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email);
+    const brDataIsValid = isIntl || Boolean(customer.cpfCnpj.trim() && customer.phone.trim());
+    if (!customer.name.trim() || !emailIsValid || !brDataIsValid) {
+      setDataStepError(t("checkoutRequiredFields"));
+      return;
+    }
+    setDataStepError(null);
+    setCheckoutStep(3);
+  }
+
+  // Toggle Normal/Plus: troca a variante do plano selecionado mantendo o mesmo "tier" (ex.:
+  // advanced -> advanced-pro), sem mexer nos 3 planos base já escolhidos por quem chegou aqui.
+  const tierVariant: "base" | "plus" = plan && PLUS_SLUGS.has(plan.slug) ? "plus" : "base";
+  function setTierVariant(next: "base" | "plus") {
+    if (!plan || next === tierVariant) return;
+    const baseSlug = tierVariant === "plus" ? (REVERSE_PLUS_PAIRS[plan.slug] ?? plan.slug) : plan.slug;
+    const targetSlug = next === "plus" ? (PLUS_PAIRS[baseSlug] ?? baseSlug) : baseSlug;
+    const target = plans.find((p) => p.slug === targetSlug);
+    if (target) changePlan(target.id);
   }
 
   async function applyCoupon() {
@@ -221,6 +280,7 @@ export function BillingCheckoutClient() {
     if (!plan || !displayPricing || !paymentRegion) return;
     setLoading(true);
     setError(null);
+    setAccountExists(false);
     try {
       if (isIntl) {
         const res = await fetch("/api/billing/checkout", {
@@ -236,7 +296,12 @@ export function BillingCheckoutClient() {
         });
         const j = await res.json();
         if (!j.ok) {
-          setError(j.error ?? t("checkoutError"));
+          if (j.error === "ACCOUNT_EXISTS") {
+            setAccountExists(true);
+            setError(t("checkoutAccountExists"));
+          } else {
+            setError(t("checkoutError"));
+          }
           return;
         }
         if (j.checkoutUrl) {
@@ -257,7 +322,12 @@ export function BillingCheckoutClient() {
         });
         const tokJ = await tokRes.json();
         if (!tokJ.ok) {
-          setError(tokJ.error ?? t("checkoutError"));
+          if (tokJ.error === "ACCOUNT_EXISTS") {
+            setAccountExists(true);
+            setError(t("checkoutAccountExists"));
+          } else {
+            setError(t("checkoutError"));
+          }
           return;
         }
         creditCardToken = tokJ.creditCardToken;
@@ -280,7 +350,12 @@ export function BillingCheckoutClient() {
       });
       const j = await res.json();
       if (!j.ok) {
-        setError(j.error ?? t("checkoutError"));
+        if (j.error === "ACCOUNT_EXISTS") {
+          setAccountExists(true);
+          setError(t("checkoutAccountExists"));
+        } else {
+          setError(t("checkoutError"));
+        }
         return;
       }
       if (j.pixQrCode || j.pixCopyPaste) {
@@ -349,429 +424,615 @@ export function BillingCheckoutClient() {
 
   const pixDiscount = cycle === "yearly" ? "15%" : "5%";
 
+  const dLabel = "mb-1.5 block text-xs font-semibold text-white/55";
+
   return (
-    <div className="w-full space-y-6">
-      <DsPageHeader
-        breadcrumbs={<BillingBackLink href="/billing/plans" />}
-        title={t("checkoutTitle")}
-        subtitle={t("checkoutSubtitle")}
-        actions={
-          <div className="inline-flex rounded-[var(--btn-radius)] border border-[var(--border-color)] bg-[var(--surface-bg)] p-1 shadow-inner">
-            <button
-              type="button"
-              onClick={() => setCycle("monthly")}
-              className={`rounded-[var(--btn-radius)] px-5 py-2 text-sm font-bold transition ${
-                cycle === "monthly" ? "bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
-              }`}
-            >
-              {t("monthly")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCycle("yearly")}
-              className={`inline-flex items-center rounded-[var(--btn-radius)] px-5 py-2 text-sm font-bold transition ${
-                cycle === "yearly" ? "bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
-              }`}
-            >
-              {t("yearly")}
-              <span className="ml-2 inline-flex rounded-[var(--btn-radius-sm)] bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black text-white">
-                -10%
+    <div data-theme="dark" data-campaign-creator-shell className="relative mx-auto w-full max-w-[1360px] text-[var(--text-main)]">
+      {/* Fundo estrelado full-bleed, atrás das duas colunas */}
+      <BillingAtmosphere fixed />
+
+      <div className="grid gap-10">
+        {/* Coluna esquerda: marca + seleção de plano (sempre visível) */}
+        <div className="space-y-5 py-1">
+          <OrionAgencyLogo size="xl" variant="dark" className="checkout-orion-logo" />
+
+          <div>
+            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-[var(--ui-accent)] bg-[var(--ui-accent)] px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-[var(--ui-accent-btn-text)] shadow-[0_0_22px_var(--ui-accent-glow-strong)]">
+              <Star size={14} className="fill-current" aria-hidden />
+              {t("checkoutTrialBadge")}
+            </span>
+
+            <h1 className="max-w-xl font-heading text-3xl font-bold leading-[1.08] text-white sm:text-4xl">
+              {t("checkoutHeroTitle")}{" "}
+              <span className="text-[var(--ui-accent)]">{t("checkoutHeroAccent")}</span>
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/50">
+              {t("checkoutHeroSubtitle")}
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-white/45">
+              <span className="flex items-center gap-1.5">
+                <Check size={13} className="text-emerald-500" aria-hidden />
+                {t("checkoutNoCommitment")}
               </span>
-            </button>
+              <span className="flex items-center gap-1.5">
+                <Clock size={13} className="text-[var(--ui-accent)]" aria-hidden />
+                {t("checkoutCancelAnytime")}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Shield size={13} className="text-[var(--ui-accent)]" aria-hidden />
+                {t("checkoutSecureEnvironment")}
+              </span>
+            </div>
           </div>
-        }
-      />
 
-      {showRegionToggle ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-4 shadow-sm">
-          <span className="text-sm font-semibold text-[var(--text-dim)]">{t("paymentRegionLabel")}</span>
-          <div className="inline-flex rounded-[var(--btn-radius)] border border-[var(--border-color)] bg-[var(--surface-bg)] p-1">
-            <button
-              type="button"
-              onClick={() => setPaymentRegion("br")}
-              className={`rounded-[var(--btn-radius)] px-4 py-2 text-sm font-semibold transition ${
-                paymentRegion === "br" ? "bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
-              }`}
-            >
-              {t("regionBr")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentRegion("intl")}
-              className={`rounded-[var(--btn-radius)] px-4 py-2 text-sm font-semibold transition ${
-                paymentRegion === "intl" ? "bg-[var(--surface-card)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
-              }`}
-            >
-              {t("regionIntl")}
-            </button>
-          </div>
-          {isIntl ? (
-            <p className="text-xs text-[var(--text-dim)]">{t("stripeRedirectHint")}</p>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="grid gap-8 lg:grid-cols-5 lg:items-start">
-        <div className="lg:col-span-2 lg:sticky lg:top-6">
-          {displayPricing ? (
-            <BillingCheckoutSummary
-              plan={plan}
-              plans={plans}
-              cycle={cycle}
-              pricing={displayPricing}
-              currency={currency}
-              billingType={billingType}
-              installmentSim={selectedInstallmentSim}
-              onPlanChange={changePlan}
-              planSwitcherLoading={summaryLoading}
-              paymentProvider={checkoutProvider}
+          <div className="mb-12 flex flex-wrap items-center justify-center gap-x-10 gap-y-5">
+            <DsSegmentedControl
+              ariaLabel="Ciclo de cobrança"
+              value={cycle}
+              onChange={setCycle}
+              className="p-1.5 [&_button]:relative [&_button]:overflow-visible [&_button]:px-5 [&_button]:py-2.5 [&_button]:text-sm"
+              options={[
+                { value: "monthly", label: t("monthly") },
+                { value: "yearly", label: t("yearly"), badge: "-10%" }
+              ]}
             />
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-semibold text-white/55">{t("checkoutChoosePlanLabel")}</span>
+              <DsSegmentedControl
+                ariaLabel={t("checkoutPlanVariant")}
+                value={tierVariant}
+                onChange={setTierVariant}
+                className="p-1.5 [&_button]:px-5 [&_button]:py-2.5 [&_button]:text-sm"
+                options={[{ value: "base", label: t("checkoutNormal") }, { value: "plus", label: "Plus" }]}
+              />
+            </div>
+          </div>
+
+          {plans.length ? (
+            (() => {
+              const tierSlugs = BASE_TIER_SLUGS.map((slug) =>
+                tierVariant === "plus" ? (PLUS_PAIRS[slug] ?? slug) : slug
+              );
+              const tierPlans = tierSlugs
+                .map((slug) => plans.find((p) => p.slug === slug))
+                .filter((p): p is PlanCardData => Boolean(p));
+
+              const priceFor = (p: PlanCardData) =>
+                calculateCheckoutPricing({
+                  priceMonthlyCents: resolvePlanMonthlyCents(p, currency),
+                  listCents: planListCents(p, cycle, currency),
+                  cycle,
+                  provider: checkoutProvider,
+                  billingType: billingType === "PIX_AUTOMATIC" ? "PIX" : billingType
+                }).finalCents;
+
+              return (
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {tierPlans.map((p, i) => {
+                    const isSelected = p.id === planId;
+                    const isRecommended = i === 1;
+                    const meta = TIER_META[i];
+                    const Icon = meta?.icon ?? Sparkles;
+                    return (
+                      <div
+                        key={p.id}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={isSelected}
+                        onClick={() => changePlan(p.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            changePlan(p.id);
+                          }
+                        }}
+                        className={`relative flex min-h-[460px] cursor-pointer flex-col gap-4 rounded-xl border p-6 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] ${
+                          isSelected
+                            ? "border-[var(--ui-accent)] bg-[linear-gradient(135deg,rgba(124,58,237,0.22),rgba(124,58,237,0.08)),var(--creator-card-bg)] shadow-[0_0_0_1px_var(--ui-accent-border)]"
+                            : isRecommended
+                              ? "border-[var(--ui-accent-border)] bg-[var(--creator-card-bg)]"
+                              : "border-[var(--creator-card-border)] bg-[var(--creator-card-bg)]"
+                        }`}
+                      >
+                        {tierVariant === "plus" ? (
+                          <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 shadow-md">
+                            <Star size={12} className="fill-black text-black" aria-hidden />
+                          </span>
+                        ) : null}
+                        {isRecommended ? (
+                          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[var(--ui-accent)] px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.06em] text-[var(--ui-accent-btn-text)] shadow-[0_6px_18px_var(--ui-accent-glow)]">
+                            {t("mostPopular")}
+                          </span>
+                        ) : null}
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+                          <Icon size={19} aria-hidden />
+                        </span>
+                        <div>
+                          <p className="text-base font-bold text-white">
+                            {tierVariant === "plus" ? `${TIER_NAMES[i]} Plus` : p.name}
+                          </p>
+                          <p className="mt-1 text-xs leading-relaxed text-white/50">{meta ? t(meta.descKey) : null}</p>
+                        </div>
+                        <p>
+                          <span className="text-2xl font-black text-white">
+                            {formatMoney(priceFor(p), currency)}
+                          </span>
+                          <span className="ml-1 text-xs font-medium text-white/45">
+                            /{t(cycle === "yearly" ? "yearly" : "monthly")}
+                          </span>
+                        </p>
+                        <ul className="space-y-2.5 border-t border-white/10 pt-4">
+                          {MARKETING_FEATURE_ROWS.filter((row) => CHECKOUT_FEATURE_KEYS.includes(row.key)).map((row) => {
+                            const value = row.values[p.slug];
+                            const available = value !== false;
+                            const featureColor =
+                              row.key === "brain"
+                                ? "text-[var(--ui-accent)]"
+                                : row.key === "copilot"
+                                  ? "text-sky-400"
+                                  : "text-emerald-400";
+                            let displayValue: string | number =
+                              typeof value === "boolean" ? (value ? t("included") : t("notIncluded")) : (value ?? "—");
+                            if (value === "Ilimitado") {
+                              displayValue = locale.startsWith("pt") ? "Ilimitado" : "Unlimited";
+                            } else if (typeof value === "string" && /scientists|cientistas/i.test(value)) {
+                              displayValue = t("checkoutScientists", { count: Number.parseInt(value, 10) });
+                            }
+                            return (
+                              <li key={row.key} className="flex items-center justify-between gap-3 text-xs text-white/65">
+                                <span className="flex min-w-0 items-center gap-1.5">
+                                  {available ? (
+                                    <Check size={13} className={`shrink-0 ${featureColor}`} aria-hidden />
+                                  ) : (
+                                    <X size={13} className="shrink-0 text-[var(--danger)]" aria-hidden />
+                                  )}
+                                  <span className={available && (row.key === "brain" || row.key === "copilot") ? featureColor : undefined}>
+                                    {t(CHECKOUT_FEATURE_LABELS[row.key])}
+                                  </span>
+                                </span>
+                                <span className={available ? "shrink-0 font-semibold text-white/80" : "shrink-0 text-white/30"}>
+                                  {displayValue}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        <DsButton
+                          onClick={() => changePlan(p.id)}
+                          variant={isSelected || isRecommended ? "accent" : "accentOutline"}
+                          size="lg"
+                          className="mt-auto w-full"
+                        >
+                          {t("choosePlan")}
+                        </DsButton>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
           ) : (
             <CheckoutSummarySkeleton />
           )}
+
+          <Link
+            href="/#pricing"
+            target="_blank"
+            className="block text-xs font-medium text-white/40 underline-offset-2 hover:text-white/60 hover:underline"
+          >
+            {t("checkoutFullComparison")}
+          </Link>
+
         </div>
 
-        <form onSubmit={submit} className="space-y-5 lg:col-span-3">
-          {!isIntl ? (
-          <div className="rounded-xl border border-dashed border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-5">
-            <FieldLabel>{t("couponLabel")}</FieldLabel>
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={couponInput}
-                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                placeholder={t("couponPlaceholder")}
-                className="ui-input min-w-[140px] flex-1 uppercase"
-                disabled={Boolean(appliedCoupon)}
-              />
-              {appliedCoupon ? (
-                <button
-                  type="button"
-                  onClick={clearCoupon}
-                  className="ui-btn-secondary text-sm"
-                >
-                  {t("couponRemove")}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={applyCoupon}
-                  disabled={couponLoading || !couponInput.trim()}
-                  className="ui-btn-primary disabled:opacity-60"
-                >
-                  {couponLoading ? t("processing") : t("couponApply")}
-                </button>
-              )}
-            </div>
-            {couponError ? <p className="mt-2 text-xs text-red-600">{couponError}</p> : null}
-            {appliedCoupon ? (
-              <p className="mt-2 text-xs font-semibold text-emerald-700">
-                {t("couponApplied", { code: appliedCoupon.code, percent: appliedCoupon.pricing.couponPercent ?? 0 })}
-              </p>
-            ) : null}
-          </div>
-          ) : null}
+        {/* Card flutuante (direita): stepper + dados/pagamento */}
+        <div className="rounded-2xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg)] p-5 shadow-xl sm:p-7">
+        {/* Stepper — mesmo componente do resto do produto (UxHorizontalStepper) */}
+        <div className="mb-6">
+          <UxHorizontalStepper
+            size="compact"
+            steps={[
+              { number: 1, label: t("checkoutStepPlan"), disabled: true },
+              { number: 2, label: t("checkoutStepData"), disabled: true },
+              { number: 3, label: t("checkoutStepPayment"), disabled: true },
+              { number: 4, label: t("checkoutStepDone"), disabled: true }
+            ]}
+            current={checkoutStep}
+            onStepClick={(step) => {
+              if (step === 2) setCheckoutStep(2);
+            }}
+          />
+        </div>
 
-          {!isIntl ? (
-          <div className="ui-card p-6">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
-              {t("paymentDetails")}
-            </h3>
-
-            <div className="mt-5">
-              <FieldLabel>{t("checkoutPaymentMethod")}</FieldLabel>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setBillingType("PIX")}
-                  className={`rounded-[var(--btn-radius)] border-2 p-4 text-left transition ${
-                    billingType === "PIX"
-                      ? "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] ring-2 ring-[var(--ui-accent-ring)]"
-                      : "border-[var(--border-color)] hover:border-[var(--ui-accent-border)]"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="rounded bg-teal-600 px-1.5 py-0.5 text-[9px] font-black tracking-widest text-white">
-                      PIX
+        <form onSubmit={submit} className="flex flex-1 flex-col">
+          <div className="flex-1 space-y-5">
+            {checkoutStep === 2 ? (
+              <>
+                <div>
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+                      <User size={14} aria-hidden />
                     </span>
-                    <span className="font-bold text-[var(--text-main)]">PIX</span>
-                  </span>
-                  <p className="mt-1 text-xs text-[var(--text-dim)]">{t("monthlyPixHint", { percent: 5 })}</p>
-                  <span className="mt-2 inline-block rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                    -{pixDiscount}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBillingType("CREDIT_CARD")}
-                  className={`rounded-[var(--btn-radius)] border-2 p-4 text-left transition ${
-                    billingType === "CREDIT_CARD"
-                      ? "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)] ring-2 ring-[var(--ui-accent-ring)]"
-                      : "border-[var(--border-color)] hover:border-[var(--ui-accent-border)]"
-                  }`}
-                >
-                  <span className="font-bold text-[var(--text-main)]">{t("creditCard")}</span>
-                  <p className="mt-1 text-xs text-[var(--text-dim)]">{t("checkoutCardHint")}</p>
-                </button>
-              </div>
-            </div>
-
-            {cycle === "yearly" && billingType === "CREDIT_CARD" ? (
-              <div className="mt-5 space-y-3 rounded-xl border border-[var(--border-color)] bg-[var(--surface-thead)] p-4">
-                <FieldLabel>{t("installmentMode")}</FieldLabel>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPayInInstallments(false)}
-                    className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
-                      !payInInstallments ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
-                    }`}
-                  >
-                    {t("payInFull")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPayInInstallments(true)}
-                    className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
-                      payInInstallments ? "bg-white text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)]"
-                    }`}
-                  >
-                    {t("payInstallments")}
-                  </button>
+                    <h2 className="text-base font-bold text-white">{t("checkoutAccountData")}</h2>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FilterTextField
+                        creatorField
+                        icon={<User size={13} />}
+                        label={t("name")}
+                        value={customer.name}
+                        onChange={(value) => setCustomer((p) => ({ ...p, name: value }))}
+                        placeholder={t("checkoutNamePlaceholder")}
+                    />
+                    <FilterTextField
+                        creatorField
+                        icon={<Mail size={13} />}
+                        label={t("email")}
+                        type="email"
+                        value={customer.email}
+                        onChange={(value) => setCustomer((p) => ({ ...p, email: value }))}
+                        placeholder="seu@email.com"
+                    />
+                    <div className="sm:col-span-2">
+                      <FilterTextField
+                        creatorField
+                        icon={<Building2 size={13} />}
+                        label={t("checkoutCompanyOptional")}
+                        value={company}
+                        onChange={setCompany}
+                        placeholder={t("checkoutCompanyPlaceholder")}
+                      />
+                    </div>
+                    {!isIntl ? (
+                      <FilterTextField
+                          creatorField
+                          icon={<IdCard size={13} />}
+                          label={t("cpfCnpj")}
+                          value={customer.cpfCnpj}
+                          onChange={(value) => setCustomer((p) => ({ ...p, cpfCnpj: value }))}
+                      />
+                    ) : null}
+                    {!isIntl ? (
+                      <FilterTextField
+                          creatorField
+                          icon={<Phone size={13} />}
+                          label={t("phone")}
+                          value={customer.phone}
+                          onChange={(value) => setCustomer((p) => ({ ...p, phone: value }))}
+                      />
+                    ) : null}
+                  </div>
                 </div>
-                {payInInstallments ? (
-                  <div className="space-y-2">
-                    {INSTALLMENT_OPTIONS.map((n) => {
-                      const sim = installmentOptions.find((o) => o.installmentCount === n);
-                      const parcel = sim?.paymentValueCents ?? Math.round((pricing?.finalCents ?? 0) / n);
-                      return (
-                        <label
-                          key={n}
-                          className={`flex cursor-pointer items-center justify-between rounded-[var(--btn-radius)] border px-3 py-2.5 transition ${
-                            installmentCount === n
-                              ? "border-[var(--ui-accent)] bg-[var(--surface-card)] ring-2 ring-[var(--ui-accent-ring)]"
-                              : "border-[var(--border-color)] bg-[var(--surface-card)] hover:border-[var(--ui-accent-border)]"
+
+                <div className="space-y-3">
+                  {dataStepError ? <p className="text-sm text-red-300">{dataStepError}</p> : null}
+                  <DsButton type="button" variant="accent" size="lg" className="w-full" onClick={advanceToPayment}>
+                    {t("checkoutContinuePayment")}
+                  </DsButton>
+                </div>
+              </>
+            ) : null}
+
+            {checkoutStep === 3 ? (
+              <>
+              {!isIntl ? (
+                <div className="rounded-xl border border-dashed border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-4">
+                <div className="flex flex-wrap gap-2">
+                  <FilterTextField
+                    creatorField
+                    icon={<Ticket size={13} />}
+                    label={t("couponLabel")}
+                    value={couponInput}
+                    onChange={(value) => setCouponInput(value.toUpperCase())}
+                    placeholder={t("couponPlaceholder")}
+                    disabled={Boolean(appliedCoupon)}
+                    className="h-12 min-h-12"
+                    inputClassName="uppercase"
+                    suffix={
+                      appliedCoupon ? (
+                        <DsButton type="button" onClick={clearCoupon} variant="secondary" size="md">
+                          {t("couponRemove")}
+                        </DsButton>
+                      ) : (
+                        <DsButton
+                          type="button"
+                          onClick={applyCoupon}
+                          disabled={couponLoading || !couponInput.trim()}
+                          variant="accent"
+                          size="md"
+                        >
+                          {couponLoading ? t("processing") : t("couponApply")}
+                        </DsButton>
+                      )
+                    }
+                  />
+                  </div>
+                  {couponError ? <p className="mt-2 text-xs text-red-400">{couponError}</p> : null}
+                  {appliedCoupon ? (
+                    <p className="mt-2 text-xs font-semibold text-emerald-400">
+                      {t("couponApplied", { code: appliedCoupon.code, percent: appliedCoupon.pricing.couponPercent ?? 0 })}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {!isIntl ? (
+                <div>
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+                      <CreditCard size={14} aria-hidden />
+                    </span>
+                    <div>
+                      <h2 className="text-base font-bold text-white">{t("paymentDetails")}</h2>
+                      <p className="text-xs text-white/45">{t("checkoutPaymentMethodHint")}</p>
+                    </div>
+                  </div>
+                  <div className="grid w-full gap-3 sm:grid-cols-3" role="radiogroup" aria-label={t("paymentDetails")}>
+                    {(
+                      [
+                        { type: "CREDIT_CARD" as const, label: t("creditCard"), discount: false },
+                        { type: "PIX" as const, label: "PIX", discount: true },
+                        { type: "PIX_AUTOMATIC" as const, label: t("pixAutomatic"), discount: true }
+                      ]
+                    ).map(({ type, label, discount }) => (
+                      <div key={type} className="relative">
+                        {discount ? (
+                          <span className="pointer-events-none absolute -top-2.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-500 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white shadow-sm">
+                            {t("checkoutSave", { discount: pixDiscount })}
+                          </span>
+                        ) : null}
+                        <DsCheckerCard
+                          title={label}
+                          icon={
+                            type === "CREDIT_CARD" ? (
+                              <CreditCard size={16} aria-hidden />
+                            ) : (
+                              <span className="rounded bg-teal-600 px-1.5 py-0.5 text-[9px] font-black tracking-widest text-white">
+                                PIX
+                              </span>
+                            )
+                          }
+                          selected={billingType === type}
+                          onSelect={() => setBillingType(type)}
+                          inline
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {cycle === "yearly" && billingType === "CREDIT_CARD" ? (
+                    <div className="mt-4 space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                      <span className={dLabel}>{t("installmentMode")}</span>
+                      <div className="flex gap-2">
+                        <DsButton
+                          type="button"
+                          onClick={() => setPayInInstallments(false)}
+                          variant={!payInInstallments ? "accent" : "ghost"}
+                          className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
+                            !payInInstallments ? "text-white" : "text-white/50"
                           }`}
                         >
-                          <span className="flex items-center gap-2">
-                            <input
-                              type="radio"
-                              name="installments"
-                              checked={installmentCount === n}
-                              onChange={() => setInstallmentCount(n)}
-                              className="text-[var(--ui-accent)]"
-                            />
-                            <span className="text-sm font-semibold text-[var(--text-main)]">
-                              {t("installmentOption", { count: n })}
-                            </span>
-                          </span>
-                          <span className="text-right text-xs text-[var(--text-dim)]">
-                            <span className="block font-bold text-[var(--text-main)]">
-                              {formatMoney(parcel, currency)} × {n}
-                            </span>
-                            {sim && sim.feeValueCents > 0 ? (
-                              <span className="text-[var(--text-dim)]">
-                                {t("installmentFeeShort", { value: formatMoney(sim.feeValueCents, currency) })}
-                              </span>
-                            ) : null}
-                          </span>
-                        </label>
-                      );
-                    })}
+                          {t("payInFull")}
+                        </DsButton>
+                        <DsButton
+                          type="button"
+                          onClick={() => setPayInInstallments(true)}
+                          variant={payInInstallments ? "accent" : "ghost"}
+                          className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
+                            payInInstallments ? "text-white" : "text-white/50"
+                          }`}
+                        >
+                          {t("payInstallments")}
+                        </DsButton>
+                      </div>
+                      {payInInstallments ? (
+                        <div className="space-y-2">
+                          {INSTALLMENT_OPTIONS.map((n) => {
+                            const sim = installmentOptions.find((o) => o.installmentCount === n);
+                            const parcel = sim?.paymentValueCents ?? Math.round((pricing?.finalCents ?? 0) / n);
+                            return (
+                              <label
+                                key={n}
+                                className={`flex cursor-pointer items-center justify-between rounded-xl border px-3 py-2.5 transition ${
+                                  installmentCount === n
+                                    ? "border-[var(--ui-accent)] bg-[var(--ui-accent-muted)]"
+                                    : "border-white/10 bg-white/[0.02]"
+                                }`}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <input
+                                    type="radio"
+                                    name="installments"
+                                    checked={installmentCount === n}
+                                    onChange={() => setInstallmentCount(n)}
+                                  />
+                                  <span className="text-sm font-semibold text-white">
+                                    {t("installmentOption", { count: n })}
+                                  </span>
+                                </span>
+                                <span className="text-right text-xs text-white/50">
+                                  <span className="block font-bold text-white">
+                                    {formatMoney(parcel, currency)} × {n}
+                                  </span>
+                                  {sim && sim.feeValueCents > 0 ? (
+                                    <span>{t("installmentFeeShort", { value: formatMoney(sim.feeValueCents, currency) })}</span>
+                                  ) : null}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {billingType === "CREDIT_CARD" && !isIntl ? (
+                <div className="flex flex-col gap-4">
+                  <div className="order-3 grid gap-4 border-t border-white/10 pt-4 sm:grid-cols-2">
+                    <FilterTextField
+                        creatorField
+                        icon={<MapPin size={13} />}
+                        label={t("postalCode")}
+                        value={customer.postalCode}
+                        onChange={(value) => setCustomer((p) => ({ ...p, postalCode: value }))}
+                        placeholder="00000-000"
+                    />
+                    <FilterTextField
+                        creatorField
+                        icon={<Hash size={13} />}
+                        label={t("addressNumber")}
+                        value={customer.addressNumber}
+                        onChange={(value) => setCustomer((p) => ({ ...p, addressNumber: value }))}
+                    />
+                    <div className="sm:col-span-2">
+                      <FilterTextField
+                        creatorField
+                        icon={<MapPin size={13} />}
+                        label={t("address")}
+                        value={customer.address}
+                        onChange={(value) => setCustomer((p) => ({ ...p, address: value }))}
+                      />
+                    </div>
+                    <FilterTextField
+                        creatorField
+                        icon={<Building2 size={13} />}
+                        label={t("city")}
+                        value={customer.city}
+                        onChange={(value) => setCustomer((p) => ({ ...p, city: value }))}
+                    />
+                    <FilterTextField
+                        creatorField
+                        icon={<MapPin size={13} />}
+                        label={t("state")}
+                        value={customer.state}
+                        onChange={(value) => setCustomer((p) => ({ ...p, state: value }))}
+                        maxLength={2}
+                        placeholder="SP"
+                    />
                   </div>
-                ) : null}
-              </div>
+
+                  <div className="order-1">
+                    <div className="mb-2 flex items-center justify-end">
+                      <PaymentBrandMarks />
+                    </div>
+                    <div className="grid gap-3 min-[480px]:grid-cols-2">
+                      <FilterTextField
+                        creatorField
+                        icon={<CreditCard size={13} />}
+                        label={t("cardNumber")}
+                        autoComplete="cc-number"
+                        inputMode="numeric"
+                        value={card.number}
+                        onChange={(value) => setCard((p) => ({ ...p, number: value }))}
+                        placeholder="1234 5678 9012 3456"
+                      />
+                      <FilterTextField
+                          creatorField
+                          icon={<User size={13} />}
+                          label={t("cardHolder")}
+                          autoComplete="cc-name"
+                          value={card.holderName}
+                          onChange={(value) => setCard((p) => ({ ...p, holderName: value }))}
+                          placeholder={t("checkoutCardHolderPlaceholder")}
+                      />
+                    </div>
+                  </div>
+                  <div className="order-2 grid gap-3 min-[480px]:grid-cols-2">
+                    <FilterTextField
+                        creatorField
+                        icon={<Calendar size={13} />}
+                        label={t("checkoutExpiry")}
+                        autoComplete="cc-exp"
+                        value={`${card.expiryMonth}${card.expiryYear ? `/${card.expiryYear}` : ""}`}
+                        onChange={(value) => {
+                          const [month = "", year = ""] = value.replace(/\s/g, "").split("/");
+                          setCard((p) => ({ ...p, expiryMonth: month.slice(0, 2), expiryYear: year.slice(0, 4) }));
+                        }}
+                        maxLength={7}
+                        placeholder="MM/AAAA"
+                    />
+                    <FilterTextField
+                        creatorField
+                        icon={<KeyRound size={13} />}
+                        label="CVC"
+                        autoComplete="cc-csc"
+                        inputMode="numeric"
+                        value={card.ccv}
+                        onChange={(value) => setCard((p) => ({ ...p, ccv: value }))}
+                        maxLength={4}
+                        placeholder="123"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {isIntl ? (
+                <p className="text-xs text-white/45">
+                  {t("checkoutHostedPaymentHint")}
+                </p>
+              ) : null}
+
+              {displayPricing ? (
+                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <div>
+                    <p className="text-xs text-white/45">{t("checkoutOrderSummary")}</p>
+                    <p className="text-sm font-bold text-white">{plan?.name}</p>
+                  </div>
+                  <p className="text-lg font-black text-white">
+                    {formatMoney(selectedInstallmentSim?.totalCents ?? displayPricing.finalCents, currency)}
+                    <span className="ml-1 text-[10px] font-medium text-white/40">
+                      /{t(cycle === "yearly" ? "yearly" : "monthly")}
+                    </span>
+                  </p>
+                </div>
+              ) : null}
+
+              {error ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {error}
+                  {accountExists ? (
+                    <Link
+                      href={`/login?callbackUrl=${encodeURIComponent(`/billing/checkout?plan=${planId}`)}`}
+                      className="ml-1 font-semibold text-[var(--ui-accent)] underline underline-offset-2"
+                    >
+                      Fazer login
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <DsButton
+                type="submit"
+                disabled={loading}
+                variant="accent"
+                size="lg"
+                className="w-full"
+              >
+                <LockKeyhole size={15} aria-hidden />
+                {loading
+                  ? t("processing")
+                  : t("startFreeTrial")}
+              </DsButton>
+              <p className="text-center text-[11px] text-white/35">
+                {t("checkoutLegalHint")}
+              </p>
+              <DsButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mx-auto text-white/50"
+                onClick={() => setCheckoutStep(2)}
+              >
+                {t("checkoutBackToData")}
+              </DsButton>
+              </>
             ) : null}
-          </div>
-          ) : null}
-
-          <div className="ui-card p-6">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
-              {t("checkoutBillingInfo")}
-            </h3>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="block sm:col-span-2">
-                <FieldLabel>{t("name")}</FieldLabel>
-                <input
-                  required
-                  value={customer.name}
-                  onChange={(e) => setCustomer((p) => ({ ...p, name: e.target.value }))}
-                  className="ui-input w-full"
-                />
-              </label>
-              <label className="block sm:col-span-2">
-                <FieldLabel>{t("email")}</FieldLabel>
-                <input
-                  required
-                  type="email"
-                  value={customer.email}
-                  onChange={(e) => setCustomer((p) => ({ ...p, email: e.target.value }))}
-                  className="ui-input w-full"
-                />
-              </label>
-              {!isIntl ? (
-              <label className="block">
-                <FieldLabel>{t("cpfCnpj")}</FieldLabel>
-                <input
-                  required
-                  value={customer.cpfCnpj}
-                  onChange={(e) => setCustomer((p) => ({ ...p, cpfCnpj: e.target.value }))}
-                  className="ui-input w-full"
-                />
-              </label>
-              ) : null}
-              {!isIntl ? (
-              <label className="block">
-                <FieldLabel>{t("phone")}</FieldLabel>
-                <input
-                  required={billingType === "CREDIT_CARD"}
-                  value={customer.phone}
-                  onChange={(e) => setCustomer((p) => ({ ...p, phone: e.target.value }))}
-                  className="ui-input w-full"
-                />
-              </label>
-              ) : null}
             </div>
-          </div>
-
-          {billingType === "CREDIT_CARD" && !isIntl ? (
-            <>
-              <div className="ui-card p-6">
-                <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
-                  {t("checkoutAddress")}
-                </h3>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <label className="block">
-                    <FieldLabel>{t("postalCode")}</FieldLabel>
-                    <input
-                      required
-                      value={customer.postalCode}
-                      onChange={(e) => setCustomer((p) => ({ ...p, postalCode: e.target.value }))}
-                      className="ui-input w-full"
-                      placeholder="00000-000"
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>{t("addressNumber")}</FieldLabel>
-                    <input
-                      required
-                      value={customer.addressNumber}
-                      onChange={(e) => setCustomer((p) => ({ ...p, addressNumber: e.target.value }))}
-                      className="ui-input w-full"
-                    />
-                  </label>
-                  <label className="block sm:col-span-2">
-                    <FieldLabel>{t("address")}</FieldLabel>
-                    <input
-                      value={customer.address}
-                      onChange={(e) => setCustomer((p) => ({ ...p, address: e.target.value }))}
-                      className="ui-input w-full"
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>{t("city")}</FieldLabel>
-                    <input
-                      value={customer.city}
-                      onChange={(e) => setCustomer((p) => ({ ...p, city: e.target.value }))}
-                      className="ui-input w-full"
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>{t("state")}</FieldLabel>
-                    <input
-                      value={customer.state}
-                      onChange={(e) => setCustomer((p) => ({ ...p, state: e.target.value }))}
-                      className="ui-input w-full"
-                      maxLength={2}
-                      placeholder="SP"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <div className="ui-card p-6">
-                <h3 className="text-sm font-bold uppercase tracking-wide text-[var(--text-dim)]">
-                  {t("creditCard")}
-                </h3>
-                <p className="mt-1 text-xs text-[var(--text-dim)]">{t("checkoutCardSecureHint")}</p>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <label className="block sm:col-span-2">
-                    <FieldLabel>{t("cardHolder")}</FieldLabel>
-                    <input
-                      required
-                      autoComplete="cc-name"
-                      value={card.holderName}
-                      onChange={(e) => setCard((p) => ({ ...p, holderName: e.target.value }))}
-                      className="ui-input w-full"
-                    />
-                  </label>
-                  <label className="block sm:col-span-2">
-                    <FieldLabel>{t("cardNumber")}</FieldLabel>
-                    <input
-                      required
-                      autoComplete="cc-number"
-                      inputMode="numeric"
-                      value={card.number}
-                      onChange={(e) => setCard((p) => ({ ...p, number: e.target.value }))}
-                      className="ui-input w-full"
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>MM</FieldLabel>
-                    <input
-                      required
-                      autoComplete="cc-exp-month"
-                      value={card.expiryMonth}
-                      onChange={(e) => setCard((p) => ({ ...p, expiryMonth: e.target.value }))}
-                      className="ui-input w-full"
-                      maxLength={2}
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>AAAA</FieldLabel>
-                    <input
-                      required
-                      autoComplete="cc-exp-year"
-                      value={card.expiryYear}
-                      onChange={(e) => setCard((p) => ({ ...p, expiryYear: e.target.value }))}
-                      className="ui-input w-full"
-                      maxLength={4}
-                    />
-                  </label>
-                  <label className="block">
-                    <FieldLabel>CVV</FieldLabel>
-                    <input
-                      required
-                      autoComplete="cc-csc"
-                      inputMode="numeric"
-                      value={card.ccv}
-                      onChange={(e) => setCard((p) => ({ ...p, ccv: e.target.value }))}
-                      className="ui-input w-full"
-                      maxLength={4}
-                    />
-                  </label>
-                </div>
-              </div>
-            </>
-          ) : null}
-
-          {error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="ui-btn-primary w-full py-4 text-base font-bold disabled:opacity-60"
-          >
-            {loading
-              ? t("processing")
-              : isIntl
-                ? t("continueOnStripe")
-                : `${t("payNow")} · ${displayPricing ? formatMoney(selectedInstallmentSim?.totalCents ?? displayPricing.finalCents, currency) : ""}`}
-          </button>
         </form>
+      </div>
       </div>
     </div>
   );

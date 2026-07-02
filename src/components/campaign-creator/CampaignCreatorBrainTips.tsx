@@ -268,7 +268,7 @@ function CampaignsAnalyzedNote({
 export function CampaignCreatorBrainTips() {
   const t = useTranslations("campaignCreator");
   const locale = useLocale();
-  const brainSidebarEnabled = usePlatformFeature("campaigns.brain.sidebar");
+  const brainSidebarEnabled = usePlatformFeature("campaigns.commander.memory");
   const { payload, activeNode, clients } = useCampaignDraft();
   const validClient = Boolean(resolveDraftClient(payload.clientSlug, clients));
   const { insight, loading, initialLoading, paused, togglePaused } = useCreatorBrainInsight({

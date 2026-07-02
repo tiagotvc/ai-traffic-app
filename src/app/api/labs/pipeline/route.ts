@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { assertCommanderScientistsAccess } from "@/lib/billing/entitlements";
+import { billingErrorResponse } from "@/lib/billing/api-errors";
 import { persistTestingHypotheses } from "@/lib/labs/persist-hypotheses";
 import { runResearchPipeline, runResearchWithTesting } from "@/lib/labs/pipelines/runner";
 
@@ -35,6 +37,18 @@ const BodySchema = z.object({
 /** Roda uma pipeline de pesquisa e devolve o dossiê consolidado (read-only). */
 export async function POST(req: Request) {
   const { tenant } = await getAppContext(); // exige sessão
+
+  // Gate do Copilot (plano allowCopilot E flag de plataforma). Lê os slots por execução.
+  let maxScientists: number;
+  try {
+    const ent = await assertCommanderScientistsAccess(tenant.id);
+    maxScientists = ent.limits.maxScientists;
+  } catch (err) {
+    const res = billingErrorResponse(err);
+    if (res) return res;
+    throw err;
+  }
+
   const body = BodySchema.parse(await req.json().catch(() => ({})));
 
   // Resolve o cliente (preenche nicho/país a partir do cadastro).
@@ -53,8 +67,8 @@ export async function POST(req: Request) {
   // "full" = dossiê completo (marketing + geo + Testing Scientist).
   const dossier =
     body.pipelineId === "full"
-      ? await runResearchWithTesting(input)
-      : await runResearchPipeline(body.pipelineId, input);
+      ? await runResearchWithTesting(input, maxScientists)
+      : await runResearchPipeline(body.pipelineId, input, maxScientists);
 
   if (!dossier) {
     return NextResponse.json({ ok: false, reason: "unknown_pipeline" }, { status: 400 });

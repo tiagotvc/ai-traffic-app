@@ -15,6 +15,8 @@ export type InvoiceStatus =
   | "paid"
   | "overdue"
   | "refunded"
+  | "partially_refunded"
+  | "chargeback"
   | "canceled";
 
 export type NfStatus = "pending" | "issued" | "error" | "not_applicable";
@@ -30,9 +32,11 @@ export type PlanLimits = {
   maxAutomationRules: number;
   maxAiRequestsPerMonth: number;
   maxScheduledReports: number;
-  /** Brain Copilot — card de pipeline dos cientistas nos criadores (campanha/persona/zona). */
+  /** Commander — acesso aos Scientists nos criadores (nome persistido legado). */
   allowCopilot: boolean;
-  /** Quantos cientistas o Copilot pode rodar (0 = Copilot indisponível). */
+  /** Orion Commander no Campaign Creator. */
+  allowCommander: boolean;
+  /** Quantos Scientists o Commander pode executar por rodada. */
   maxScientists: number;
   allowAutoSync: boolean;
   allowLiveMeta: boolean;
@@ -60,6 +64,18 @@ export type PlanLimits = {
   allowDashboardSharing: boolean;
   /** Custom brand name and logo in exports, reports and workspace chrome */
   allowWhiteLabel: boolean;
+  /** Criador de Públicos Inteligente — quantos públicos/personas por IA o tenant pode gerar. -1 = ilimitado. */
+  maxAudiencePersonas: number;
+  /** Ranking de Criativos — configuração de ranking (src/app/api/creatives/ranking-config). */
+  allowRankingConfig: boolean;
+  /**
+   * Orion Engine (Automações) — tier de funcionalidades, independente de `allowNavAutomations`
+   * (que só liga/desliga o módulo). 1 = motor base (regras/templates/ações, paridade de mercado).
+   * 2 = + simulação/backtest + modos de execução (alertar/aprovar/automático). 3 = + playbooks +
+   * criação por IA. 4 = + agentes especialistas. Cada tier soma sobre o anterior; rebaixar o tier
+   * nunca quebra regras existentes — o motor força `executionMode: "auto"` quando o tier não cobre.
+   */
+  automationTier: 1 | 2 | 3 | 4;
 };
 
 export type ExternalPrices = {
@@ -78,6 +94,7 @@ export const FREE_LIMITS: PlanLimits = {
   maxAiRequestsPerMonth: 10,
   maxScheduledReports: 0,
   allowCopilot: false,
+  allowCommander: false,
   maxScientists: 0,
   allowAutoSync: false,
   allowLiveMeta: false,
@@ -101,7 +118,10 @@ export const FREE_LIMITS: PlanLimits = {
   allowDashboardAiWidgets: false,
   allowDashboardAiBuilder: false,
   allowDashboardSharing: false,
-  allowWhiteLabel: false
+  allowWhiteLabel: false,
+  maxAudiencePersonas: 2,
+  allowRankingConfig: false,
+  automationTier: 1
 };
 
 export const BASIC_LIMITS: PlanLimits = {
@@ -112,6 +132,7 @@ export const BASIC_LIMITS: PlanLimits = {
   maxAiRequestsPerMonth: 30,
   maxScheduledReports: 1,
   allowCopilot: false,
+  allowCommander: false,
   maxScientists: 0,
   allowAutoSync: true,
   allowLiveMeta: false,
@@ -135,7 +156,10 @@ export const BASIC_LIMITS: PlanLimits = {
   allowDashboardAiWidgets: false,
   allowDashboardAiBuilder: false,
   allowDashboardSharing: false,
-  allowWhiteLabel: false
+  allowWhiteLabel: false,
+  maxAudiencePersonas: 5,
+  allowRankingConfig: false,
+  automationTier: 1
 };
 
 export const ADVANCED_LIMITS: PlanLimits = {
@@ -146,6 +170,7 @@ export const ADVANCED_LIMITS: PlanLimits = {
   maxAiRequestsPerMonth: 100,
   maxScheduledReports: 5,
   allowCopilot: true,
+  allowCommander: true,
   maxScientists: 2,
   allowAutoSync: true,
   allowLiveMeta: true,
@@ -169,7 +194,10 @@ export const ADVANCED_LIMITS: PlanLimits = {
   allowDashboardAiWidgets: "basic",
   allowDashboardAiBuilder: false,
   allowDashboardSharing: false,
-  allowWhiteLabel: true
+  allowWhiteLabel: true,
+  maxAudiencePersonas: -1,
+  allowRankingConfig: true,
+  automationTier: 2
 };
 
 export const AGENCY_LIMITS: PlanLimits = {
@@ -180,6 +208,7 @@ export const AGENCY_LIMITS: PlanLimits = {
   maxAiRequestsPerMonth: 500,
   maxScheduledReports: 20,
   allowCopilot: true,
+  allowCommander: true,
   maxScientists: 5,
   allowAutoSync: true,
   allowLiveMeta: true,
@@ -203,7 +232,10 @@ export const AGENCY_LIMITS: PlanLimits = {
   allowDashboardAiWidgets: "premium",
   allowDashboardAiBuilder: false,
   allowDashboardSharing: true,
-  allowWhiteLabel: true
+  allowWhiteLabel: true,
+  maxAudiencePersonas: -1,
+  allowRankingConfig: true,
+  automationTier: 3
 };
 
 export const MASTER_LIMITS: PlanLimits = {
@@ -211,7 +243,8 @@ export const MASTER_LIMITS: PlanLimits = {
   maxDashboards: -1,
   maxDashboardWidgets: -1,
   allowDashboardAiWidgets: "advanced",
-  allowDashboardAiBuilder: true
+  allowDashboardAiBuilder: true,
+  automationTier: 4
 };
 
 /** Full privileges for platform admins (bypasses tenant plan). */
@@ -222,7 +255,8 @@ export const PLATFORM_ADMIN_LIMITS: PlanLimits = {
   maxMembers: -1,
   maxAutomationRules: -1,
   maxAiRequestsPerMonth: -1,
-  maxScheduledReports: -1
+  maxScheduledReports: -1,
+  maxAudiencePersonas: -1
 };
 
 /** @deprecated use ADVANCED_LIMITS */
@@ -237,6 +271,7 @@ export type TenantUsage = {
   automationRules: number;
   aiRequestsThisMonth: number;
   scheduledReports: number;
+  audiencePersonas: number;
 };
 
 export type Entitlements = {

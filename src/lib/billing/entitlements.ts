@@ -10,7 +10,6 @@ import { ensureFreeSubscription } from "./event-handlers";
 import { getTenantAddonBonuses, mergePlanLimitsWithAddons } from "./tenant-addons";
 import { resolveLimits } from "./resolve-limits";
 import type { Entitlements, PlanLimitKey, PlanLimits, TenantUsage } from "./types";
-import { PLATFORM_ADMIN_LIMITS } from "./types";
 import { isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
 import { getPlatformFeatureFlags } from "@/lib/feature-flags/service";
 import { isFeatureEnabledForUser } from "@/lib/feature-flags/registry";
@@ -87,7 +86,8 @@ export async function getTenantUsage(tenantId: string): Promise<TenantUsage> {
     tenantMember,
     automationRule,
     aiRecommendation,
-    reportSchedule
+    reportSchedule,
+    userPersona
   } = await repositories();
 
   const clients = await client.find({ where: { tenantId } });
@@ -105,6 +105,7 @@ export async function getTenantUsage(tenantId: string): Promise<TenantUsage> {
   const members = await tenantMember.count({ where: { tenantId } });
   const automationRules = await automationRule.count({ where: { tenantId } });
   const scheduledReports = await reportSchedule.count({ where: { tenantId } });
+  const audiencePersonas = await userPersona.count({ where: { tenantId } });
 
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -128,22 +129,22 @@ export async function getTenantUsage(tenantId: string): Promise<TenantUsage> {
     members: Math.max(members, 1),
     automationRules,
     aiRequestsThisMonth,
-    scheduledReports
+    scheduledReports,
+    audiencePersonas
   };
 }
 
 export { resolveLimits };
 
-export function applyPlatformAdminEntitlements(entitlements: Entitlements): Entitlements {
-  return {
-    ...entitlements,
-    canWrite: true,
-    limits: { ...PLATFORM_ADMIN_LIMITS }
-  };
-}
-
-/** Limite de plano → id de feature flag de plataforma (kill-switch acima do plano). */
+/**
+ * Limite de plano → id de feature flag de plataforma.
+ * - usuário normal: a flag é kill-switch acima do plano (`plano E flag`);
+ * - platform admin: a flag **decide sozinha** (concede ignorando o plano se `admin_only`/`global`).
+ * Capacidades sem flag mapeada não têm bypass de admin — vêm direto do plano.
+ */
 const PLATFORM_MASKED_LIMITS: Partial<Record<PlanLimitKey, string>> = {
+  allowCopilot: "campaigns.commander.scientists",
+  allowCommander: "campaigns.commander",
   allowCreativeMemoryAi: "brain",
   allowAgencyBrainHypotheses: "brain.hypotheses",
   allowAgencyBrainDna: "brain.dna",
@@ -159,8 +160,10 @@ const PLATFORM_MASKED_LIMITS: Partial<Record<PlanLimitKey, string>> = {
 };
 
 /**
- * Aplica os feature flags de plataforma sobre os limites do plano: se a feature está
- * desligada para o usuário, o limite vira `false` (kill-switch). É o "E" entre plano e plataforma.
+ * Cruza os feature flags de plataforma com os limites do plano:
+ * - usuário normal → `plano E flag` (kill-switch: a flag só pode desligar o que o plano libera);
+ * - platform admin → **a flag decide** (concede ignorando o plano; `off` bloqueia).
+ * Substitui o antigo bypass hardcoded de admin (`applyPlatformAdminEntitlements`).
  */
 function maskLimitsWithPlatformFlags(
   limits: PlanLimits,
@@ -169,9 +172,12 @@ function maskLimitsWithPlatformFlags(
 ): PlanLimits {
   let masked: PlanLimits | null = null;
   for (const [key, featureId] of Object.entries(PLATFORM_MASKED_LIMITS)) {
-    if (!isFeatureEnabledForUser(flags, featureId as string, ctx)) {
+    const enabled = isFeatureEnabledForUser(flags, featureId as string, ctx);
+    const planValue = (limits as Record<string, unknown>)[key];
+    const next = ctx.isPlatformAdmin ? enabled : Boolean(planValue) && enabled;
+    if (next !== planValue) {
       masked = masked ?? { ...limits };
-      (masked as Record<string, unknown>)[key] = false;
+      (masked as Record<string, unknown>)[key] = next;
     }
   }
   return masked ?? limits;
@@ -205,15 +211,12 @@ export async function getEntitlements(
     canWrite: canWrite && sub.status !== "suspended"
   };
 
-  if (options?.platformAdmin) {
-    return applyPlatformAdminEntitlements(entitlements);
-  }
-
   return entitlements;
 }
 
 const BOOLEAN_LIMIT_KEYS = [
   "allowCopilot",
+  "allowCommander",
   "allowAutoSync",
   "allowLiveMeta",
   "allowCreativeMemoryAi",
@@ -233,14 +236,23 @@ const BOOLEAN_LIMIT_KEYS = [
   "allowDashboardResize",
   "allowDashboardAiBuilder",
   "allowDashboardSharing",
-  "allowWhiteLabel"
+  "allowWhiteLabel",
+  "allowRankingConfig"
 ] as const;
 
-const TIER_LIMIT_KEYS = ["allowDashboardAiWidgets"] as const;
+const TIER_LIMIT_KEYS = ["allowDashboardAiWidgets", "automationTier"] as const;
+
+/**
+ * Limites numéricos que são **capacidade** (lidos por quem consome — ex.: `maxScientists`
+ * capa a pipeline no runner), não cota de uso. Não entram em `LIMIT_CHECKS`/`assertLimit`.
+ */
+const CAPACITY_LIMIT_KEYS = ["maxScientists"] as const;
 
 type NumericPlanLimitKey = Exclude<
   PlanLimitKey,
-  (typeof BOOLEAN_LIMIT_KEYS)[number] | (typeof TIER_LIMIT_KEYS)[number]
+  | (typeof BOOLEAN_LIMIT_KEYS)[number]
+  | (typeof TIER_LIMIT_KEYS)[number]
+  | (typeof CAPACITY_LIMIT_KEYS)[number]
 >;
 
 const LIMIT_CHECKS: Record<NumericPlanLimitKey, (u: TenantUsage) => number> = {
@@ -250,7 +262,7 @@ const LIMIT_CHECKS: Record<NumericPlanLimitKey, (u: TenantUsage) => number> = {
   maxAutomationRules: (u) => u.automationRules,
   maxAiRequestsPerMonth: (u) => u.aiRequestsThisMonth,
   maxScheduledReports: (u) => u.scheduledReports,
-  maxScientists: () => 0,
+  maxAudiencePersonas: (u) => u.audiencePersonas,
   maxDashboards: () => 0,
   maxDashboardWidgets: () => 0
 };
@@ -280,6 +292,10 @@ export async function assertLimit(tenantId: string, key: PlanLimitKey) {
     }
     return ent;
   }
+  // Capacidades (ex.: maxScientists) não são cota de uso — são lidas por quem consome.
+  if ((CAPACITY_LIMIT_KEYS as readonly string[]).includes(key)) {
+    return ent;
+  }
   const numericKey = key as NumericPlanLimitKey;
   const max = ent.limits[numericKey];
   if (typeof max !== "number" || max < 0) return ent;
@@ -293,6 +309,17 @@ export async function assertLimit(tenantId: string, key: PlanLimitKey) {
 export async function assertFeature(tenantId: string, key: "allowAutoSync" | "allowLiveMeta") {
   return assertLimit(tenantId, key);
 }
+
+/**
+ * Gate dos Scientists orquestrados pelo Commander. `allowCopilot` permanece como nome legado
+ * no contrato persistido de planos; semanticamente representa acesso aos Scientists.
+ */
+export async function assertCommanderScientistsAccess(tenantId: string): Promise<Entitlements> {
+  return assertLimit(tenantId, "allowCopilot");
+}
+
+/** @deprecated Use `assertCommanderScientistsAccess`. */
+export const assertCopilotAccess = assertCommanderScientistsAccess;
 
 export function subscriptionToJson(sub: Subscription, plan: Plan | null) {
   return {

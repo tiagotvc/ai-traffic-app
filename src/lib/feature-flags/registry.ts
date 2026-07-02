@@ -50,41 +50,102 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
     description: "Criador e gestão de campanhas Meta.",
     children: [
       {
+        id: "campaigns.commander",
+        label: "Orion Commander",
+        description:
+          "Centro de comando contextual no criador. Desligado restaura o resumo e score anteriores.",
+        children: [
+          {
+            id: "campaigns.commander.memory",
+            label: "Memória e benchmarks",
+            description: "Consulta histórico real da agência, campanhas sincronizadas e benchmarks no Commander."
+          },
+          {
+            id: "campaigns.commander.scientists",
+            label: "Scientists",
+            description: "Capacidades de pesquisa real que o Commander pode selecionar e orquestrar.",
+            children: [
+              {
+                id: "campaigns.commander.scientists.campaigns",
+                label: "Ativar no criador de campanha",
+                description: "Permite ao Commander executar Scientists durante a criação de campanhas."
+              },
+              {
+                id: "campaigns.commander.scientists.audiences",
+                label: "Ativar nos criadores de público",
+                description: "Permite ao Commander executar Scientists nos fluxos de persona e zona."
+              },
+              {
+                id: "campaigns.commander.scientists.competitor",
+                label: "Marketing Scientist (concorrentes)",
+                description: "Pesquisa Meta Ad Library, hooks, ofertas e padrões de mercado.",
+                children: [
+                  {
+                    id: "campaigns.commander.scientists.competitor.google",
+                    label: "Fonte: Google SERP",
+                    description: "Perguntas, dúvidas e buscas relacionadas do público."
+                  },
+                  {
+                    id: "campaigns.commander.scientists.competitor.trends",
+                    label: "Fonte: Google Trends",
+                    description: "Tendências e momentum de busca do nicho."
+                  },
+                  {
+                    id: "campaigns.commander.scientists.competitor.youtube",
+                    label: "Fonte: YouTube",
+                    description: "Vídeos e canais relevantes dos concorrentes."
+                  },
+                  {
+                    id: "campaigns.commander.scientists.competitor.maps",
+                    label: "Fonte: Google Maps",
+                    description: "Players locais, reputação e avaliações."
+                  }
+                ]
+              },
+              {
+                id: "campaigns.commander.scientists.geo",
+                label: "Geo Scientist",
+                description: "Valida regiões, lugares, raios e aderência ao briefing geográfico."
+              },
+              {
+                id: "campaigns.commander.scientists.testing",
+                label: "Testing Scientist",
+                description: "Modelagem preditiva baseada nos achados reais dos outros Scientists."
+              },
+              {
+                id: "campaigns.commander.scientists.performance",
+                label: "Performance Scientist",
+                description: "Analisa performance real e recomenda ações de otimização."
+              },
+              {
+                id: "campaigns.commander.scientists.consumer",
+                label: "Consumer Scientist",
+                description: "Pesquisa comportamento e motivações do público-alvo."
+              },
+              {
+                id: "campaigns.commander.scientists.trend",
+                label: "Trend Scientist",
+                description: "Detecta tendências e momentum de mercado."
+              },
+              {
+                id: "campaigns.commander.scientists.hypothesis",
+                label: "Hypothesis Scientist",
+                description: "Gera hipóteses testáveis a partir dos achados."
+              },
+              {
+                id: "campaigns.commander.scientists.confidence",
+                label: "Confidence Scientist",
+                description: "Valida a confiança dos achados."
+              }
+            ]
+          }
+        ]
+      },
+      {
         id: "campaigns.meta-app-development-notice",
         label: "Aviso app Meta em desenvolvimento",
         description:
           "Opção de reutilizar criativo importado no passo Anúncio (evita erro 1885183 com app em desenvolvimento)."
-      },
-      {
-        id: "campaigns.brain",
-        label: "Orion Brain no criador",
-        description:
-          "Insights, benchmarks e recomendações da memória da agência durante a criação de campanha.",
-        children: [
-          {
-            id: "campaigns.brain.sidebar",
-            label: "Dicas na sidebar",
-            description: "Card Orion Brain na barra lateral do criador (dicas, modal e recomendações)."
-          },
-          {
-            id: "campaigns.brain.insights",
-            label: "Insights no passo Campanha",
-            description: "Benchmark e feedback inline no passo de orçamento/campanha."
-          },
-          {
-            id: "campaigns.brain.meta-research",
-            label: "Pesquisa Meta Ad Library",
-            description:
-              "Consulta anúncios de concorrentes via Meta Ad Library ao montar o insight (consome créditos).",
-            dependsOn: ["campaigns.brain.insights"]
-          },
-          {
-            id: "campaigns.brain.research",
-            label: "Card de cientistas (Pesquisa Orion)",
-            description:
-              "Card de pesquisa dos cientistas no criador de campanha (feed ao vivo + dossiê). Desligue para ocultar só esse card."
-          }
-        ]
       },
       {
         id: "campaigns.ai-generate",
@@ -123,17 +184,9 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
       },
       {
         id: "audiences.brain",
-        label: "Orion Brain nos criadores (persona/zona)",
+        label: "Commander nos criadores de público",
         description:
-          "Card Orion Brain (dicas/insights) nos criadores de persona e zona. Desligue para ocultar o card todo.",
-        children: [
-          {
-            id: "audiences.brain.research",
-            label: "Card de cientistas (Pesquisa Orion)",
-            description:
-              "Pesquisa dos cientistas (feed ao vivo + dossiê) dentro do Orion Brain de persona/zona. Desligue para ocultar só os cientistas."
-          }
-        ]
+          "Insights e recomendações do Commander nos criadores de persona e zona."
       }
     ]
   },
@@ -211,79 +264,6 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
     ]
   },
   {
-    id: "scientists",
-    label: "Cientistas (Labs)",
-    description: "Agentes de pesquisa (cientistas). Ative/desative cada um individualmente (beta).",
-    children: [
-      {
-        id: "scientists.competitor",
-        label: "Marketing Scientist (concorrentes)",
-        description:
-          "Pesquisa concorrentes (Meta Ad Library) — hooks, ofertas e padrões de mercado. Alimenta a comparação automática da persona. Cache por nicho + teto mensal de searchapi.",
-        children: [
-          {
-            id: "scientists.competitor.google",
-            label: "Fonte: Google SERP (perguntas do público)",
-            description: "Dúvidas reais e buscas relacionadas (dores/objeções). Consome 1 searchapi por nicho."
-          },
-          {
-            id: "scientists.competitor.trends",
-            label: "Fonte: Google Trends (buscas em alta)",
-            description: "Ângulos emergentes/momentum do nicho. Consome 1 searchapi por nicho."
-          },
-          {
-            id: "scientists.competitor.youtube",
-            label: "Fonte: YouTube (concorrentes em vídeo)",
-            description: "Principais vídeos/canais do nicho. Consome 1 searchapi por nicho."
-          },
-          {
-            id: "scientists.competitor.maps",
-            label: "Fonte: Google Maps (players locais)",
-            description: "Concorrentes locais + reputação (★/avaliações). Consome 1 searchapi por nicho."
-          }
-        ]
-      },
-      {
-        id: "scientists.geo",
-        label: "Geo Scientist (zonas)",
-        description:
-          "Valida bairros/cidades de uma zona vs o briefing geográfico (encaixe, fora-do-critério, sugestões)."
-      },
-      {
-        id: "scientists.testing",
-        label: "Testing Scientist (simulação)",
-        description:
-          "Simulação interna (não A/B na Meta): consome os dossiês dos outros cientistas + nicho/região e prevê hipótese, o que testar primeiro, vencedor provável, métrica e critério de parada. Só IA, zero searchapi."
-      },
-      {
-        id: "scientists.performance",
-        label: "Performance Scientist (pós-campanha)",
-        description:
-          "Lê a performance real das campanhas e gera um readout executivo por IA (escalar/pausar/trocar criativo/ajustar público). Read-only — não altera learnings/hipóteses."
-      },
-      {
-        id: "scientists.consumer",
-        label: "Consumer Scientist",
-        description: "Pesquisa o comportamento e as motivações do público-alvo."
-      },
-      {
-        id: "scientists.trend",
-        label: "Trend Scientist",
-        description: "Detecta tendências e momentum de mercado."
-      },
-      {
-        id: "scientists.hypothesis",
-        label: "Hypothesis Scientist",
-        description: "Gera hipóteses testáveis a partir dos achados."
-      },
-      {
-        id: "scientists.confidence",
-        label: "Confidence Scientist",
-        description: "Valida estatisticamente a confiança dos achados."
-      }
-    ]
-  },
-  {
     id: "ai",
     label: "Inteligência Artificial",
     description: "Provedores e roteamento de IA (Gemini + Claude).",
@@ -335,6 +315,77 @@ export function flattenFeatureNodes(nodes: FeatureNode[] = FEATURE_REGISTRY): Fe
 /** Conjunto de ids válidos do registry. */
 export function featureIdSet(): Set<string> {
   return new Set(flattenFeatureNodes().map((n) => n.id));
+}
+
+/**
+ * Mapa de ids legados → id canônico atual. Usado para migrar overrides salvos sem migration
+ * de banco: na leitura dos flags, um override em `scientists.testing` é remapeado para
+ * A árvore do Commander substituiu os ids legados `copilot.*`, `scientists.*` e `*.brain.research`.
+ */
+export const FEATURE_ALIASES: Record<string, string> = {
+  copilot: "campaigns.commander.scientists",
+  "copilot.campaigns": "campaigns.commander.scientists.campaigns",
+  "copilot.audiences": "campaigns.commander.scientists.audiences",
+  "copilot.research": "campaigns.commander.scientists",
+  "copilot.research.competitor": "campaigns.commander.scientists.competitor",
+  "copilot.research.competitor.google": "campaigns.commander.scientists.competitor.google",
+  "copilot.research.competitor.trends": "campaigns.commander.scientists.competitor.trends",
+  "copilot.research.competitor.youtube": "campaigns.commander.scientists.competitor.youtube",
+  "copilot.research.competitor.maps": "campaigns.commander.scientists.competitor.maps",
+  "copilot.research.geo": "campaigns.commander.scientists.geo",
+  "copilot.research.testing": "campaigns.commander.scientists.testing",
+  "copilot.research.performance": "campaigns.commander.scientists.performance",
+  "copilot.research.consumer": "campaigns.commander.scientists.consumer",
+  "copilot.research.trend": "campaigns.commander.scientists.trend",
+  "copilot.research.hypothesis": "campaigns.commander.scientists.hypothesis",
+  "copilot.research.confidence": "campaigns.commander.scientists.confidence",
+  scientists: "campaigns.commander.scientists",
+  "scientists.competitor": "campaigns.commander.scientists.competitor",
+  "scientists.competitor.google": "campaigns.commander.scientists.competitor.google",
+  "scientists.competitor.trends": "campaigns.commander.scientists.competitor.trends",
+  "scientists.competitor.youtube": "campaigns.commander.scientists.competitor.youtube",
+  "scientists.competitor.maps": "campaigns.commander.scientists.competitor.maps",
+  "scientists.geo": "campaigns.commander.scientists.geo",
+  "scientists.testing": "campaigns.commander.scientists.testing",
+  "scientists.performance": "campaigns.commander.scientists.performance",
+  "scientists.consumer": "campaigns.commander.scientists.consumer",
+  "scientists.trend": "campaigns.commander.scientists.trend",
+  "scientists.hypothesis": "campaigns.commander.scientists.hypothesis",
+  "scientists.confidence": "campaigns.commander.scientists.confidence",
+  "campaigns.brain": "campaigns.commander.memory",
+  "campaigns.brain.sidebar": "campaigns.commander.memory",
+  "campaigns.brain.insights": "campaigns.commander.memory",
+  "campaigns.brain.meta-research": "campaigns.commander.scientists.competitor",
+  "campaigns.brain.research": "campaigns.commander.scientists.campaigns",
+  "audiences.brain.research": "campaigns.commander.scientists.audiences"
+};
+
+/** Resolve um id legado para o id canônico atual (ou devolve o próprio id). */
+export function resolveFlagAlias(id: string): string {
+  return FEATURE_ALIASES[id] ?? id;
+}
+
+/** Ids aceitos na leitura/escrita de overrides: registry atual ∪ ids legados (aliases). */
+export function validFlagIdSet(): Set<string> {
+  const set = featureIdSet();
+  for (const legacy of Object.keys(FEATURE_ALIASES)) set.add(legacy);
+  return set;
+}
+
+/**
+ * Remapeia chaves legadas de um mapa de overrides para os ids canônicos. O id canônico
+ * vence se ambos (legado e canônico) estiverem presentes.
+ */
+export function migrateLegacyFlagIds(flags: FeatureFlagConfigMap): FeatureFlagConfigMap {
+  let migrated: FeatureFlagConfigMap | null = null;
+  for (const [id, value] of Object.entries(flags)) {
+    const canonical = resolveFlagAlias(id);
+    if (canonical === id) continue;
+    migrated = migrated ?? { ...flags };
+    if (!(canonical in flags)) migrated[canonical] = value;
+    delete migrated[id];
+  }
+  return migrated ?? flags;
 }
 
 /** Busca um nó pelo id. */

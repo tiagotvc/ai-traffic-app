@@ -4,6 +4,7 @@ import type { AiRecommendation } from "@/db/entities/AiRecommendation";
 import type { Alert } from "@/db/entities/Alert";
 import type { AuditLog } from "@/db/entities/AuditLog";
 import type { AutomationRule } from "@/db/entities/AutomationRule";
+import type { AutomationPendingAction } from "@/db/entities/AutomationPendingAction";
 import type { CampaignGoal } from "@/db/entities/CampaignGoal";
 import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
 import type { AdMetricSnapshot } from "@/db/entities/AdMetricSnapshot";
@@ -44,6 +45,7 @@ import type { Plan } from "@/db/entities/Plan";
 import type { Subscription } from "@/db/entities/Subscription";
 import type { BillingCustomer } from "@/db/entities/BillingCustomer";
 import type { Invoice } from "@/db/entities/Invoice";
+import type { PixAutomaticAuthorization } from "@/db/entities/PixAutomaticAuthorization";
 import type { BillingEvent } from "@/db/entities/BillingEvent";
 import type { BillingJob } from "@/db/entities/BillingJob";
 import type { RefundRequest } from "@/db/entities/RefundRequest";
@@ -117,6 +119,7 @@ const ENTITY = {
   VideoUploadSession: "VideoUploadSession",
   VideoUploadPart: "VideoUploadPart",
   AutomationRule: "AutomationRule",
+  AutomationPendingAction: "AutomationPendingAction",
   ReportSchedule: "ReportSchedule",
   UserClient: "UserClient",
   TenantMember: "TenantMember",
@@ -125,6 +128,7 @@ const ENTITY = {
   Subscription: "Subscription",
   BillingCustomer: "BillingCustomer",
   Invoice: "Invoice",
+  PixAutomaticAuthorization: "PixAutomaticAuthorization",
   BillingEvent: "BillingEvent",
   BillingJob: "BillingJob",
   RefundRequest: "RefundRequest",
@@ -222,6 +226,10 @@ export async function repositories() {
     videoUploadSession: repositoryFor<VideoUploadSession>(ds, ENTITY.VideoUploadSession),
     videoUploadPart: repositoryFor<VideoUploadPart>(ds, ENTITY.VideoUploadPart),
     automationRule: repositoryFor<AutomationRule>(ds, ENTITY.AutomationRule),
+    automationPendingAction: repositoryFor<AutomationPendingAction>(
+      ds,
+      ENTITY.AutomationPendingAction
+    ),
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),
     tenantMember: repositoryFor<TenantMember>(ds, ENTITY.TenantMember),
@@ -230,6 +238,10 @@ export async function repositories() {
     subscription: repositoryFor<Subscription>(ds, ENTITY.Subscription),
     billingCustomer: repositoryFor<BillingCustomer>(ds, ENTITY.BillingCustomer),
     invoice: repositoryFor<Invoice>(ds, ENTITY.Invoice),
+    pixAutomaticAuthorization: repositoryFor<PixAutomaticAuthorization>(
+      ds,
+      ENTITY.PixAutomaticAuthorization
+    ),
     billingEvent: repositoryFor<BillingEvent>(ds, ENTITY.BillingEvent),
     billingJob: repositoryFor<BillingJob>(ds, ENTITY.BillingJob),
     refundRequest: repositoryFor<RefundRequest>(ds, ENTITY.RefundRequest),

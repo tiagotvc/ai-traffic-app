@@ -20,4 +20,13 @@ export class AutomationRule extends AppBaseEntity {
 
   @Column({ type: "jsonb" })
   action!: Record<string, unknown>;
+
+  /**
+   * Modo de execução das ações destrutivas (pausar/ajustar orçamento/reativar): `alert` (só
+   * avisa, nunca age), `approval` (cria `AutomationPendingAction`, aguarda aprovação humana),
+   * `auto` (executa direto — comportamento histórico). Gateado por plano (`PlanLimits.automationTier
+   * >= 2`) no motor — abaixo disso o motor força `auto` mesmo que a coluna diga outra coisa.
+   */
+  @Column({ type: "text", default: "auto" })
+  executionMode!: "alert" | "approval" | "auto";
 }

@@ -10,6 +10,7 @@ export function resolveLimits(plan: PlanLimitsSource): PlanLimits {
   return {
     ...FREE_LIMITS,
     ...raw,
+    allowCommander: raw.allowCommander ?? false,
     allowCreativeMemoryAi: raw.allowCreativeMemoryAi ?? true,
     allowAgencyBrainHypotheses: raw.allowAgencyBrainHypotheses ?? true,
     allowAgencyBrainDna: raw.allowAgencyBrainDna ?? true,
@@ -30,6 +31,9 @@ export function resolveLimits(plan: PlanLimitsSource): PlanLimits {
     allowDashboardAiWidgets: raw.allowDashboardAiWidgets ?? false,
     allowDashboardAiBuilder: raw.allowDashboardAiBuilder ?? false,
     allowDashboardSharing: raw.allowDashboardSharing ?? false,
-    allowWhiteLabel: raw.allowWhiteLabel ?? false
+    allowWhiteLabel: raw.allowWhiteLabel ?? false,
+    maxAudiencePersonas: raw.maxAudiencePersonas ?? -1,
+    allowRankingConfig: raw.allowRankingConfig ?? true,
+    automationTier: raw.automationTier ?? 1
   };
 }

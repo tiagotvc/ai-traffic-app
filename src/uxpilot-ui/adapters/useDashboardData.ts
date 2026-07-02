@@ -199,6 +199,8 @@ export function useDashboardData() {
   const [adLibraryInsights, setAdLibraryInsights] = useState<DashboardAdLibraryInsights | null>(null);
   const [adLibraryLoading, setAdLibraryLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [metaConnectionLoading, setMetaConnectionLoading] = useState(true);
+  const [metaConnected, setMetaConnected] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
   const selectedTz = useMemo(() => {
@@ -452,6 +454,24 @@ export function useDashboardData() {
   }, [load]);
 
   useEffect(() => {
+    let mounted = true;
+    void fetch("/api/settings/meta")
+      .then((r) => r.json())
+      .then((j) => {
+        if (mounted) setMetaConnected(Boolean(j.ok && j.workspaceConnected));
+      })
+      .catch(() => {
+        if (mounted) setMetaConnected(false);
+      })
+      .finally(() => {
+        if (mounted) setMetaConnectionLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     loadAgeBreakdown();
   }, [loadAgeBreakdown]);
 
@@ -620,8 +640,8 @@ export function useDashboardData() {
 
   const isEmptyState =
     !loading &&
-    (summary?.spend ?? 0) === 0 &&
-    adAccounts.length === 0;
+    !metaConnectionLoading &&
+    !metaConnected;
 
   const lastEmptyStateRef = useRef<boolean | null>(null);
   useEffect(() => {
@@ -654,6 +674,8 @@ export function useDashboardData() {
 
   return {
     loading,
+    metaConnectionLoading,
+    metaConnected,
     note,
     summary,
     prevSummary,

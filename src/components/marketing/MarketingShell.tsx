@@ -175,7 +175,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
             <p className="mt-2 max-w-sm text-sm text-[var(--text-dim)]">{t("footerTagline")}</p>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--text-dim)]">
-            <Link href="/pricing" className="hover:text-[var(--text-main)]">
+            <Link href="/#pricing" className="hover:text-[var(--text-main)]">
               {t("navPricing")}
             </Link>
             <Link href="/about" className="hover:text-[var(--text-main)]">

@@ -27,6 +27,8 @@ Organizadas pelas **abas do sidebar** do app.
 | Relatórios | [`relatorios/`](./relatorios/README.md) | Relatórios simples/completos, agendamentos e exportação em PDF. |
 | Cérebro da agência (Beta) | [`cerebro-da-agencia/`](./cerebro-da-agencia/README.md) | Grupo: Aprendizados, Hipóteses, Automações + módulos estendidos. |
 | Automações | [`automacoes/`](./automacoes/README.md) | Regras se-então que monitoram e otimizam campanhas (motor no sync). |
+| Orion Engine (visão) | [`orion-engine/`](./orion-engine/README.md) | Visão estratégica das Automações → Engine: análise competitiva, MVP vs longo prazo, fronteiras entre módulos. |
+| Orion Commander | [`commander/`](./commander/README.md) | A interface de IA do ecossistema (Brain=memória, Engine=executor, Labs=cientistas, Commander=fala com o usuário): auditoria do que existe, gaps e roadmap de acoplamento. |
 
 ### Documentação transversal
 
@@ -40,10 +42,12 @@ Organizadas pelas **abas do sidebar** do app.
 | Pagamentos & Billing | [`pagamentos/`](./pagamentos/README.md) | Auditoria de Stripe/Asaas, webhooks, ciclo de vida da assinatura, segurança e gaps. |
 | Landing, Planos, Addons e Login | [`landing-e-planos/`](./landing-e-planos/README.md) | URL da landing, análise vs. Reportei, recomendação de planos/preços, addons e painel de login. |
 | **Inteligência competitiva** | [`concorrentes/`](./concorrentes/README.md) | Análise de concorrentes + cruzamento conosco + estratégia. Inclui **VT Group "Traffic AI"** (modelo vitalício) e por que ele é insustentável. |
+| **Orion Copilot** | [`copilot/`](./copilot/README.md) | Camada de IA que pesquisa (pipeline de cientistas) e gera/assiste criação (campanha/persona/zona). Feature standalone gateável (`allowCopilot`/`maxScientists`). Modelo, bugs e roadmap. |
 | **Roteador de IA (Gemini+Claude)** | [`ai-router/`](./ai-router/README.md) | Camada única que decide qual modelo usar por tarefa (economia × acertividade), com fallback cross-provider. Flags `ai.*`. |
 | **Servidor MCP (Agency Brain)** | [`mcp/`](./mcp/README.md) | Expõe o Brain via MCP (read + escrita/propostas) para ferramentas de IA externas. Tokens por tenant; flags `brain.mcp(.write)`. |
 | **Meta — CAPI & Atribuição** | [`meta-conversions/`](./meta-conversions/README.md) | Conversions API (server-side + hash PII + dedupe + teste) e janelas de atribuição. Flags `meta.capi`/`meta.attribution`. |
 | **Feature Flags (plataforma)** | [`feature-flags.md`](./feature-flags.md) | Liga/desliga hierárquico de módulos/funcionalidades (admin), incl. `ai.*`, `brain.mcp`, `meta.*`. |
+| **Infraestrutura & Vercel** | [`infraestrutura-vercel/`](./infraestrutura-vercel/README.md) | Auditoria de caching, cron (gap crítico: sem `vercel.json`), runtime/`maxDuration`, pool de DB serverless e segurança de auth. |
 
 ## Convenções
 

@@ -40,7 +40,9 @@ export default auth((req) => {
 
   if (!isLoggedIn && !isPublic) {
     const login = new URL(`/${locale}/login`, req.nextUrl.origin);
-    login.searchParams.set("callbackUrl", path);
+    // Preserva a query string (ex.: ?plan=X) — sem isso, o usuário volta pro checkout depois do
+    // login sem o plano selecionado.
+    login.searchParams.set("callbackUrl", path + req.nextUrl.search);
     return NextResponse.redirect(login);
   }
 

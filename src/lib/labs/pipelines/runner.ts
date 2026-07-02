@@ -27,7 +27,20 @@ export type FullResearchOptions = {
   wizardStep?: CreatorNode;
   draftId?: string | null;
   clientId?: string | null;
+  /**
+   * Slots de cientistas por execução (capacidade do plano, `maxScientists`). Corta a lista de
+   * cientistas que rodam por run, na ordem de prioridade do escopo (o Testing conta como slot).
+   * `null`/ausente/`<= 0` = sem corte (o acesso já é barrado pelo gate de Copilot).
+   */
+  maxScientists?: number | null;
 };
+
+/** Aplica o cap de slots a uma lista de steps (capacidade `maxScientists`). */
+function capSteps<T>(steps: T[], maxScientists?: number | null): T[] {
+  return typeof maxScientists === "number" && maxScientists > 0
+    ? steps.slice(0, maxScientists)
+    : steps;
+}
 
 /** Cientistas-base por escopo (o Testing é sempre acrescentado depois). */
 function baseStepsForScope(scope: ResearchScope, options?: FullResearchOptions): PipelineStep[] {
@@ -112,13 +125,15 @@ function avgConfidence(sections: ResearchSection[]): number | undefined {
  */
 export async function runResearchPipeline(
   pipelineId: string,
-  input: ScientistSkillInput
+  input: ScientistSkillInput,
+  maxScientists?: number | null
 ): Promise<ResearchDossier | null> {
   const def = getPipeline(pipelineId);
   if (!def) return null;
 
+  const steps = capSteps(def.steps, maxScientists);
   const results = await Promise.all(
-    def.steps.map(async (step) => ({ step, res: await runScientistSkill(step.scientistId, input) }))
+    steps.map(async (step) => ({ step, res: await runScientistSkill(step.scientistId, input) }))
   );
 
   const sections: ResearchSection[] = [];
@@ -162,7 +177,8 @@ export async function runFullResearch(
 ): Promise<ResearchDossier> {
   emit({ phase: "start" });
 
-  const baseSteps = baseStepsForScope(scope, options);
+  const maxScientists = options?.maxScientists ?? null;
+  const baseSteps = capSteps(baseStepsForScope(scope, options), maxScientists);
   const sections: ResearchSection[] = [];
   const skipped: string[] = [];
   const draftId = options?.draftId ?? null;
@@ -238,7 +254,9 @@ export async function runFullResearch(
 
   const mergedSections = mergeSectionsUnique(sections);
 
-  if (shouldRunTesting(scope, options)) {
+  const slotCap = typeof maxScientists === "number" && maxScientists > 0 ? maxScientists : Infinity;
+  const testingHasSlot = baseSteps.length < slotCap;
+  if (testingHasSlot && shouldRunTesting(scope, options)) {
     emit({ phase: "scientist_start", scientistId: "testing", label: "Testes", icon: "Beaker" });
     const priorSections =
       draftId && clientId ? mergeSectionsUnique([...mergedSections, ...(await getDraftResearchSections(draftId, clientId))]) : mergedSections;
@@ -282,6 +300,9 @@ export async function runFullResearch(
 }
 
 /** Versão sem streaming (usada pelo endpoint não-SSE). */
-export async function runResearchWithTesting(input: ScientistSkillInput): Promise<ResearchDossier> {
-  return runFullResearch(input);
+export async function runResearchWithTesting(
+  input: ScientistSkillInput,
+  maxScientists?: number | null
+): Promise<ResearchDossier> {
+  return runFullResearch(input, undefined, "full", { maxScientists });
 }

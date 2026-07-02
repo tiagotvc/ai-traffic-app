@@ -7,7 +7,7 @@ export async function GET() {
   const [personaInsights, personaTargetingBuilder, marketingScientist] = await Promise.all([
     isPlatformFeatureEnabled("audiences.personaInsights"),
     isPlatformFeatureEnabled("audiences.personaTargetingBuilder"),
-    isPlatformFeatureEnabled("scientists.competitor")
+    isPlatformFeatureEnabled("campaigns.commander.scientists.competitor")
   ]);
   return NextResponse.json({
     ok: true,

@@ -29,6 +29,8 @@ export async function createAsaasPayment(input: {
   creditCardToken?: string;
   installmentCount?: number;
   remoteIp?: string;
+  /** Vincula a cobrança a uma autorização de Pix Automático ACTIVE (ver pix-automatic.ts). */
+  pixAutomaticAuthorizationId?: string;
 }) {
   const body: Record<string, unknown> = {
     customer: input.customerId,
@@ -36,7 +38,8 @@ export async function createAsaasPayment(input: {
     dueDate: input.dueDate,
     description: input.description,
     creditCardToken: input.creditCardToken,
-    remoteIp: input.remoteIp
+    remoteIp: input.remoteIp,
+    pixAutomaticAuthorizationId: input.pixAutomaticAuthorizationId
   };
 
   const installments = input.installmentCount ?? 1;
