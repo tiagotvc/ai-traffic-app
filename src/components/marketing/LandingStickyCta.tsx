@@ -20,7 +20,7 @@ export function LandingStickyCta() {
 
   return (
     <div className="marketing-sticky-cta">
-      <Link href="/login?callbackUrl=/dashboard" className="marketing-cta-glow flex w-full py-2.5 text-center text-sm">
+      <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent block w-full py-2.5 text-center text-sm font-semibold">
         {t("startFree")}
       </Link>
     </div>

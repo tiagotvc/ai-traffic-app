@@ -3,7 +3,6 @@ import { getTranslations } from "next-intl/server";
 import { BillingPlansClient } from "@/components/billing/BillingPlansClient";
 import { BillingAtmosphere } from "@/components/billing/BillingAtmosphere";
 import { PlanComparisonTable } from "@/components/billing/PlanComparisonTable";
-import { LandingAddons } from "@/components/marketing/LandingAddons";
 import { LandingCapabilities } from "@/components/marketing/LandingCapabilities";
 import { LandingCta } from "@/components/marketing/LandingMission";
 import { LandingDashboardSection } from "@/components/marketing/LandingDashboardSection";
@@ -68,7 +67,6 @@ export async function LandingPage() {
             <p className="marketing-section-sub mx-auto max-w-xl">{t("pricingSubtitle")}</p>
           </MarketingReveal>
           <BillingPlansClient variant="marketing" compact />
-          <LandingAddons />
           <details className="group rounded-2xl border border-[var(--creator-card-border)] bg-[var(--creator-card-bg)]">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-heading text-sm font-semibold text-[var(--text-main)]">
               {t("pricingComparisonTitle")}
