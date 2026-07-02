@@ -6,7 +6,6 @@ import { getAppContext } from "@/lib/app-context";
 import { startCheckout, startStripeCheckout } from "@/lib/billing/billing-service";
 import { resolveOrCreateAnonymousTenant } from "@/lib/billing/anonymous-checkout";
 import { resolveCheckoutProvider } from "@/lib/billing/providers";
-import { isWorkspaceAdmin } from "@/lib/workspace-members";
 
 function clientIp(req: Request): string | undefined {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -56,11 +55,10 @@ export async function POST(req: Request) {
     let userId: string;
 
     if (sessionMatchesFormEmail) {
+      // tenantId/userId vêm da sessão autenticada (não do input do usuário), então não há
+      // risco de impersonation aqui — qualquer membro pode fazer upgrade/pagar pelo próprio
+      // workspace. Exigir role "admin" bloqueava o próprio fluxo de upgrade in-app descrito acima.
       const { tenant, user } = await getAppContext();
-      const admin = await isWorkspaceAdmin(tenant.id, user.id);
-      if (!admin) {
-        return NextResponse.json({ ok: false, error: "Admin required" }, { status: 403 });
-      }
       tenantId = tenant.id;
       userId = user.id;
     } else {

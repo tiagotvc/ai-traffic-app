@@ -2649,6 +2649,26 @@ h6,
     --creator-choice-inactive-icon: var(--text-dimmer);
   }
 
+  /* Mesmas regras acima, mas pro caso de data-theme="dark" e o shell estarem no MESMO elemento
+     (ex.: BillingCheckoutClient/BillingPixPayment, que forçam dark local independente do tema
+     do site) — o combinador descendente acima não casa quando é um único elemento. */
+  [data-theme="dark"][data-campaign-creator-shell],
+  [data-theme="dark"][data-creator-modal-shell],
+  [data-theme="dark"][data-agency-brain-shell],
+  [data-theme="dark"][data-reports-shell],
+  [data-theme="dark"][data-dashboard-shell],
+  [data-theme="dark"][data-admin-shell],
+  [data-theme="dark"][data-audiences-shell] {
+    --creator-card-bg: #161922;
+    --creator-card-bg-inset: #121820;
+    --creator-card-border: rgba(255, 255, 255, 0.09);
+    --creator-step-future-border: var(--border-color);
+    --creator-step-future-text: var(--text-dimmer);
+    --creator-choice-inactive-border: var(--border-color);
+    --creator-choice-inactive-text: var(--text-dimmer);
+    --creator-choice-inactive-icon: var(--text-dimmer);
+  }
+
   [data-reports-shell] .report-pdf-kpi {
     border-color: var(--creator-card-border, var(--border-color));
     background: var(--creator-card-bg, var(--surface-card));
