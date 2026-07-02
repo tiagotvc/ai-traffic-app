@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
+import { LandingSystemShowcase } from "@/components/marketing/LandingSystemShowcase";
 import { MarketingReveal } from "@/components/marketing/motion/MarketingReveal";
 
 const DASH_POINTS = ["dashSectionPoint1", "dashSectionPoint2", "dashSectionPoint3"] as const;
@@ -34,14 +35,7 @@ export async function LandingDashboardSection() {
         </MarketingReveal>
 
         <MarketingReveal delay={0.15} className="mt-10">
-          <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-2 shadow-2xl shadow-black/40 ring-1 ring-[var(--ui-accent-border)] sm:p-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/examples/dashboard.png"
-              alt={t("heroDashboardAlt")}
-              className="block w-full rounded-xl"
-            />
-          </div>
+          <LandingSystemShowcase />
         </MarketingReveal>
       </div>
     </section>

@@ -75,7 +75,7 @@ export function MarketingHero() {
           {...motionProps}
           transition={{ ...motionProps.transition, delay: 0.15 }}
         >
-          <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent px-7 py-3.5 text-sm font-semibold">
+          <Link href="/login?callbackUrl=/dashboard" className="marketing-cta-glow px-8 py-3.5 text-sm">
             {t("startFree")}
           </Link>
           <Link href="#product" className="ui-btn-secondary px-7 py-3.5 text-sm font-semibold">

@@ -42,7 +42,7 @@ export async function LandingCta() {
         <h2 className="font-heading text-2xl font-bold text-[var(--text-main)] sm:text-3xl">{t("ctaTitle")}</h2>
         <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-[var(--text-dim)]">{t("ctaSubtitle")}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent px-8 py-3 text-sm font-semibold">
+          <Link href="/login?callbackUrl=/dashboard" className="marketing-cta-glow px-8 py-3 text-sm">
             {t("startFree")}
           </Link>
           <Link href="/#pricing" className="ui-btn-secondary px-8 py-3 text-sm font-semibold">
