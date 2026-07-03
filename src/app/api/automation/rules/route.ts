@@ -57,8 +57,22 @@ const BodySchema = z.object({
     .refine((a) => a.type !== "notify_email" || !!a.recipientEmail, {
       message: "Informe o e-mail de destino."
     }),
-  executionMode: z.enum(["alert", "approval", "auto"]).optional()
-});
+  executionMode: z.enum(["alert", "approval", "auto"]).optional(),
+  /** Nível 4: escopo da avaliação/ação. Default `campaign` (comportamento histórico). */
+  level: z.enum(["campaign", "adset", "ad"]).optional()
+}).refine(
+  (body) => {
+    const level = body.level ?? "campaign";
+    if (level === "campaign") return true;
+    if (body.condition.schedule) return false; // gatilho de horário é só por campanha
+    const type = body.action.type;
+    if (level === "adset") {
+      return !["reactivate_campaign", "scale_gradual", "schedule_toggle"].includes(type);
+    }
+    return ["pause_campaign", "alert_only", "notify_email", "create_hypothesis"].includes(type);
+  },
+  { message: "Ação não suportada para este escopo." }
+);
 
 export async function GET() {
   const { tenant } = await getAppContext();
@@ -129,7 +143,8 @@ export async function POST(req: Request) {
       enabled: body.enabled ?? true,
       condition: body.condition,
       action: body.action,
-      executionMode
+      executionMode,
+      level: body.level ?? "campaign"
     })
   );
 

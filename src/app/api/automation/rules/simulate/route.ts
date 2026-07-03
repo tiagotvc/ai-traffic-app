@@ -34,12 +34,14 @@ const BodySchema = z.object({
       "schedule_toggle",
       "reactivate_campaign",
       "notify_email",
-      "scale_gradual"
+      "scale_gradual",
+      "create_hypothesis"
     ]),
     budgetPercent: z.number().min(1).max(50).optional(),
     steps: z.number().int().min(2).max(10).optional(),
     recipientEmail: z.string().email().optional()
-  })
+  }),
+  level: z.enum(["campaign", "adset", "ad"]).optional()
 });
 
 /**
@@ -58,6 +60,7 @@ export async function POST(req: Request) {
     condition: body.condition,
     action: body.action,
     clientId: body.clientId ?? null,
+    level: body.level ?? "campaign",
     days: body.days
   });
 

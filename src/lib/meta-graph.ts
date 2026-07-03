@@ -2051,6 +2051,14 @@ export async function updateCampaignDailyBudget(
   });
 }
 
+export async function fetchAdSet(
+  accessToken: string,
+  adSetId: string
+): Promise<{ id: string; name?: string; status?: string; daily_budget?: string }> {
+  const fields = ["id", "name", "status", "daily_budget"].join(",");
+  return metaFetch(`/${encodeURIComponent(adSetId)}?fields=${encodeURIComponent(fields)}`, accessToken);
+}
+
 export async function updateAdSetDailyBudget(
   accessToken: string,
   adSetId: string,

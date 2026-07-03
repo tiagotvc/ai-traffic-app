@@ -15,6 +15,38 @@ export type ActionType =
   /** Regra→Laboratory: não toca a campanha — publica uma hipótese para investigar. */
   | "create_hypothesis";
 
+/** Escopo da regra (Nível 4): em que entidade a condição é avaliada e a ação aplicada. */
+export type RuleLevel = "campaign" | "adset" | "ad";
+
+export const LEVEL_OPTIONS: Array<{ value: RuleLevel; label: string; description: string }> = [
+  { value: "campaign", label: "Campanhas", description: "Avalia e age em campanhas (padrão)." },
+  { value: "adset", label: "Conjuntos de anúncio", description: "Avalia e age em cada conjunto." },
+  { value: "ad", label: "Anúncios", description: "Avalia e age em cada anúncio individual." }
+];
+
+export const LEVEL_LABEL: Record<RuleLevel, string> = {
+  campaign: "Campanhas",
+  adset: "Conjuntos",
+  ad: "Anúncios"
+};
+
+/**
+ * Ações válidas por escopo: anúncio não tem orçamento (sem ajuste/escala) e reativação
+ * automática só é segura no nível campanha (nos demais, reativaria pausas manuais).
+ */
+export function actionOptionsForLevel(level: RuleLevel | undefined) {
+  const l = level ?? "campaign";
+  if (l === "campaign") return ACTION_OPTIONS;
+  if (l === "adset") {
+    return ACTION_OPTIONS.filter(
+      (o) => !["reactivate_campaign", "scale_gradual"].includes(o.value)
+    );
+  }
+  return ACTION_OPTIONS.filter((o) =>
+    ["pause_campaign", "alert_only", "notify_email", "create_hypothesis"].includes(o.value)
+  );
+}
+
 /** Uma condição métrica isolada (sem o gate de gasto mínimo, que é global da regra). */
 export type Condition = { metric: Metric; op: Op; value: number };
 
@@ -55,6 +87,8 @@ export type RuleForm = {
   schedule: Schedule;
   /** Escopo da regra: `null`/ausente = todos os clientes; senão o id (uuid) do cliente. */
   clientId?: string | null;
+  /** Nível de avaliação/ação: campanha (default), conjunto ou anúncio. */
+  level?: RuleLevel;
 };
 
 export type RuleTone = "rose" | "emerald" | "accent" | "violet" | "sky";
@@ -323,7 +357,8 @@ export const EMPTY_RULE_FORM: RuleForm = {
   minSpend: 30,
   action: "pause_campaign",
   executionMode: "auto",
-  schedule: { startHour: 8, endHour: 20 }
+  schedule: { startHour: 8, endHour: 20 },
+  level: "campaign"
 };
 
 export const EXECUTION_MODE_OPTIONS: Array<{ value: ExecutionMode; label: string; description: string }> = [
@@ -493,6 +528,7 @@ export function ruleFormToPayload(form: RuleForm) {
     name,
     clientId,
     executionMode,
+    level: form.level ?? "campaign",
     condition: {
       groups: (groups.length ? groups : EMPTY_RULE_FORM.groups).map((g) =>
         g.map((c) => ({

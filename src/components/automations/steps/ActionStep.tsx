@@ -4,7 +4,12 @@ import { Bell, Clock, Layers, Mail, TrendingUp } from "lucide-react";
 
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
-import { ACTION_OPTIONS, type ActionType, type RuleForm } from "@/lib/automation/rule-templates";
+import {
+  actionOptionsForLevel,
+  LEVEL_LABEL,
+  type ActionType,
+  type RuleForm
+} from "@/lib/automation/rule-templates";
 
 type Props = {
   form: RuleForm;
@@ -39,12 +44,12 @@ export function ActionStep({ form, update }: Props) {
       <FilterSelectDropdown
         creatorField
         icon={<Bell size={14} />}
-        label="Ação (ENTÃO)"
+        label={`Ação (ENTÃO) — em ${LEVEL_LABEL[form.level ?? "campaign"].toLowerCase()}`}
         placeholder="Ação"
         clearable={false}
         value={form.action}
         onChange={(v) => update({ action: v as ActionType })}
-        options={ACTION_OPTIONS}
+        options={actionOptionsForLevel(form.level)}
       />
 
       {form.action === "adjust_budget_percent" ? (

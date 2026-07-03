@@ -53,6 +53,7 @@ export function AutomationRuleSimulationCard({ form }: { form: RuleForm }) {
   const [error, setError] = useState<string | null>(null);
 
   const isSchedule = form.kind === "schedule";
+  const isScoped = (form.level ?? "campaign") !== "campaign";
 
   const simulate = async () => {
     setLoading(true);
@@ -90,9 +91,11 @@ export function AutomationRuleSimulationCard({ form }: { form: RuleForm }) {
         </span>
       </div>
 
-      {isSchedule ? (
+      {isSchedule || isScoped ? (
         <p className="font-body text-[11px] text-[var(--text-dimmer)]">
-          A simulação usa métricas diárias e ainda não cobre regras de horário.
+          {isSchedule
+            ? "A simulação usa métricas diárias e ainda não cobre regras de horário."
+            : "A simulação ainda não cobre regras por conjunto/anúncio — a regra funciona normalmente; só o backtest fica de fora por enquanto."}
         </p>
       ) : (
         <>

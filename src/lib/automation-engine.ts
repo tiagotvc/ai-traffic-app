@@ -3,8 +3,9 @@ import "server-only";
 import { Between, In, Like } from "typeorm";
 
 import { repositories } from "@/db/repositories";
+import type { AutomationRule } from "@/db/entities/AutomationRule";
 import type { MetaCampaign } from "@/lib/meta-graph";
-import { fetchCampaign, fetchCampaigns } from "@/lib/meta-graph";
+import { fetchAdSet, fetchCampaign, fetchCampaigns } from "@/lib/meta-graph";
 import { num } from "@/lib/goal-types";
 import { normalizeConditionGroups } from "@/lib/automation/rule-templates";
 import { getEntitlements } from "@/lib/billing/entitlements";
@@ -293,6 +294,29 @@ export async function runAutomationEngine(
     if (rule.clientId) {
       const settings = await settingsRepo.findOne({ where: { clientId: rule.clientId } });
       if (!settings?.automationEnabled) continue;
+    }
+
+    // Nível 4: regras com escopo de conjunto/anúncio avaliam AdMetricSnapshot e agem na
+    // entidade correspondente — caminho próprio, sem tocar o fluxo histórico de campanha.
+    if ((rule.level ?? "campaign") !== "campaign") {
+      try {
+        await evaluateScopedRule({
+          tenantId,
+          metaAccessToken,
+          rule,
+          groups,
+          action,
+          minSpend: cond.minSpend,
+          accountIds,
+          fallbackClientId: rule.clientId ?? accounts[0]?.clientId ?? null,
+          automationTier,
+          since,
+          today
+        });
+      } catch {
+        // best-effort por regra — não derruba o motor
+      }
+      continue;
     }
 
     const rows = await campRepo.find({
@@ -755,6 +779,368 @@ export async function runAutomationEngine(
         } catch {
           // skip
         }
+      }
+    }
+  }
+}
+
+
+/**
+ * Nível 4 do motor: avaliação com escopo de conjunto (`adset`) ou anúncio (`ad`).
+ * Agrega `AdMetricSnapshot` na mesma janela móvel de 7 dias e avalia a MESMA forma DNF
+ * do caminho de campanha; as ações pausam/ajustam a entidade do escopo. Nos `Alert`s e
+ * na fila, `metaCampaignId` carrega o id da ENTIDADE do escopo (é a chave de dedupe
+ * diário e de estado) — a campanha-mãe vai na descrição.
+ */
+async function evaluateScopedRule(args: {
+  tenantId: string;
+  metaAccessToken: string | undefined;
+  rule: AutomationRule;
+  groups: Array<Array<{ metric?: string; op?: string; value?: number }>>;
+  action: { type?: string; budgetPercent?: number; recipientEmail?: string };
+  minSpend?: number;
+  accountIds: string[];
+  fallbackClientId: string | null;
+  automationTier: number;
+  since: string;
+  today: string;
+}): Promise<void> {
+  const {
+    tenantId,
+    metaAccessToken,
+    rule,
+    groups,
+    action,
+    accountIds,
+    fallbackClientId,
+    automationTier,
+    since,
+    today
+  } = args;
+  const level = rule.level as "adset" | "ad";
+  const { adMetricSnapshot: adRepo, alert: alertRepo } = await repositories();
+
+  const rows = await adRepo.find({
+    where: { adAccountId: In(accountIds), day: Between(since, today) }
+  });
+  if (!rows.length) return;
+
+  type Agg = {
+    spend: number;
+    conversions: number;
+    impressions: number;
+    clicks: number;
+    cplSum: number;
+    cplN: number;
+    roasSum: number;
+    roasN: number;
+    name: string | null;
+    metaCampaignId: string;
+  };
+  const byTarget = new Map<string, Agg>();
+  for (const r of rows) {
+    const targetId = level === "adset" ? r.metaAdsetId : r.metaAdId;
+    if (!targetId) continue;
+    const agg = byTarget.get(targetId) ?? {
+      spend: 0,
+      conversions: 0,
+      impressions: 0,
+      clicks: 0,
+      cplSum: 0,
+      cplN: 0,
+      roasSum: 0,
+      roasN: 0,
+      name: null,
+      metaCampaignId: r.metaCampaignId
+    };
+    agg.spend += num(r.spend);
+    agg.conversions += num(r.conversions);
+    agg.impressions += num(r.impressions);
+    agg.clicks += num(r.clicks);
+    const leads = num(r.leads);
+    if (leads > 0) {
+      agg.cplSum += num(r.spend) / leads;
+      agg.cplN += 1;
+    }
+    const roas = num(r.roas);
+    if (roas > 0) {
+      agg.roasSum += roas;
+      agg.roasN += 1;
+    }
+    agg.name = (level === "adset" ? r.adsetName : r.adName) ?? agg.name;
+    byTarget.set(targetId, agg);
+  }
+
+  const mode = effectiveExecutionMode(rule.executionMode, automationTier);
+  const levelLabel = level === "adset" ? "conjunto" : "anúncio";
+
+  for (const [targetId, agg] of byTarget) {
+    const metricValues: Record<string, number> = {
+      cpl: agg.cplN ? agg.cplSum / agg.cplN : 0,
+      cpa: agg.conversions > 0 ? agg.spend / agg.conversions : 0,
+      ctr: agg.impressions > 0 ? (agg.clicks / agg.impressions) * 100 : 0,
+      spend: agg.spend,
+      conversions: agg.conversions,
+      roas: agg.roasN ? agg.roasSum / agg.roasN : 0
+    };
+    if (args.minSpend && agg.spend < args.minSpend) continue;
+
+    const evalClause = (c: { metric?: string; op?: string; value?: number }) => {
+      const metricVal = metricValues[c.metric ?? ""] ?? 0;
+      const threshold = c.value ?? 0;
+      return c.op === "gt"
+        ? metricVal > threshold
+        : c.op === "lt"
+          ? metricVal < threshold
+          : metricVal >= threshold;
+    };
+    if (!groups.some((g) => g.every(evalClause))) continue;
+
+    const condDescription = groups
+      .map((g) => {
+        const text = g
+          .map((c) => `${c.metric}=${(metricValues[c.metric ?? ""] ?? 0).toFixed(2)} (limite ${c.value ?? 0})`)
+          .join(" e ");
+        return g.length > 1 && groups.length > 1 ? `(${text})` : text;
+      })
+      .join(" ou ");
+    const targetName = agg.name ?? targetId;
+    const description = `${targetName} (${levelLabel} da campanha ${agg.metaCampaignId}) — ${condDescription}`;
+    const clientId = fallbackClientId;
+
+    if (action.type === "alert_only") {
+      try {
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "warning",
+            source: "automation",
+            automationRuleId: rule.id,
+            title: `Automação: ${rule.name}`,
+            description,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+      } catch {
+        // dedup diário
+      }
+      continue;
+    }
+
+    if (action.type === "notify_email") {
+      try {
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "warning",
+            source: "automation",
+            automationRuleId: rule.id,
+            title: `Automação: ${rule.name}`,
+            description,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+        if (action.recipientEmail) {
+          await executeAction({
+            tenantId,
+            clientId,
+            source: "rule",
+            automationRuleId: rule.id,
+            metaCampaignId: targetId,
+            campaignName: targetName,
+            actionType: "notify_email",
+            payload: { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}`, level },
+            description: `${description}\n\nRegra: ${rule.name}`
+          });
+        }
+      } catch {
+        // dedup diário
+      }
+      continue;
+    }
+
+    if (action.type === "create_hypothesis") {
+      try {
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "warning",
+            source: "automation",
+            automationRuleId: rule.id,
+            title: `Automação: hipótese criada (${rule.name})`,
+            description,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+        if (clientId) {
+          const { createHypothesisFromDraft } = await import(
+            "@/lib/agency-brain/hypothesis-service"
+          );
+          const hypothesis = await createHypothesisFromDraft(
+            tenantId,
+            clientId,
+            {
+              title: `Investigar ${levelLabel}: ${targetName}`,
+              description:
+                `A regra "${rule.name}" disparou no ${levelLabel} (${condDescription}). ` +
+                `Investigue a causa — fadiga de criativo, público saturado ou oferta.`,
+              category: "GENERAL",
+              confidenceScore: 55,
+              metaCampaignId: agg.metaCampaignId,
+              metricSnapshot: metricValues,
+              evidence: { ruleId: rule.id, reason: condDescription, level, targetId },
+              dedupeKey: `automation_hypothesis:${rule.id}:${targetId}`,
+              tags: ["automation", "engine", level]
+            },
+            "RULE"
+          );
+          const { recordExternalExecution } = await import("@/lib/engine/executor");
+          await recordExternalExecution({
+            tenantId,
+            clientId,
+            source: "rule",
+            automationRuleId: rule.id,
+            metaCampaignId: targetId,
+            campaignName: targetName,
+            actionType: "create_hypothesis",
+            payload: { level },
+            description,
+            ok: true,
+            result: hypothesis ? { hypothesisId: hypothesis.id } : { deduped: true }
+          });
+        }
+      } catch {
+        // dedup diário / falha pontual
+      }
+      continue;
+    }
+
+    if (action.type === "pause_campaign" && metaAccessToken) {
+      try {
+        if (mode === "auto") {
+          const exec = await executeAction(
+            {
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId: targetId,
+              campaignName: targetName,
+              actionType: "pause_campaign",
+              payload: { level },
+              description
+            },
+            metaAccessToken
+          );
+          if (!exec.ok) continue;
+        }
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "critical",
+            source: "automation",
+            automationRuleId: rule.id,
+            title:
+              mode === "auto"
+                ? `Automação: ${levelLabel} pausado (${rule.name})`
+                : `Automação: pausaria o ${levelLabel} (${rule.name})`,
+            description,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+        if (mode === "approval") {
+          await enqueueApproval({
+            tenantId,
+            clientId,
+            source: "rule",
+            automationRuleId: rule.id,
+            metaCampaignId: targetId,
+            campaignName: targetName,
+            actionType: "pause_campaign",
+            payload: { level },
+            description
+          });
+        }
+      } catch {
+        // skip
+      }
+      continue;
+    }
+
+    if (action.type === "adjust_budget_percent" && level === "adset" && metaAccessToken) {
+      const pct = action.budgetPercent ?? 10;
+      try {
+        const adset = await fetchAdSet(metaAccessToken, targetId);
+        const currentMinor = Number(adset.daily_budget ?? 0);
+        if (!currentMinor) continue;
+        const next = Math.round(currentMinor * (1 + pct / 100));
+        const budgetDescription = `${targetName} — +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`;
+        if (mode === "auto") {
+          const exec = await executeAction(
+            {
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId: targetId,
+              campaignName: targetName,
+              actionType: "adjust_budget_percent",
+              payload: { budgetPercent: pct, level },
+              description: budgetDescription
+            },
+            metaAccessToken
+          );
+          if (!exec.ok) continue;
+        }
+        await alertRepo.save(
+          alertRepo.create({
+            tenantId,
+            clientId,
+            type: "OTHER",
+            severity: "warning",
+            source: "automation",
+            automationRuleId: rule.id,
+            title:
+              mode === "auto"
+                ? `Automação: orçamento do conjunto ajustado (${rule.name})`
+                : `Automação: ajustaria o orçamento do conjunto (${rule.name})`,
+            description: budgetDescription,
+            metaCampaignId: targetId,
+            dismissed: false,
+            dedupDay: today
+          })
+        );
+        if (mode === "approval") {
+          await enqueueApproval({
+            tenantId,
+            clientId,
+            source: "rule",
+            automationRuleId: rule.id,
+            metaCampaignId: targetId,
+            campaignName: targetName,
+            actionType: "adjust_budget_percent",
+            payload: { budgetPercent: pct, level },
+            description: budgetDescription
+          });
+        }
+      } catch {
+        // skip
       }
     }
   }

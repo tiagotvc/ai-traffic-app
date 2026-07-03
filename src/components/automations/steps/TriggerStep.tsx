@@ -6,6 +6,8 @@ import { cn } from "@/lib/cn";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
 import {
+  actionOptionsForLevel,
+  LEVEL_OPTIONS,
   METRIC_OPTIONS,
   OP_OPTIONS,
   type Condition,
@@ -13,7 +15,8 @@ import {
   type Metric,
   type Op,
   type RuleForm,
-  type RuleKind
+  type RuleKind,
+  type RuleLevel
 } from "@/lib/automation/rule-templates";
 
 type Props = {
@@ -112,6 +115,43 @@ export function TriggerStep({ form, update }: Props) {
             );
           })}
         </div>
+        {form.kind === "metric" ? (
+          <div
+            className="inline-flex rounded-lg border border-[var(--border-color)] p-1"
+            role="radiogroup"
+            aria-label="Aplicar em"
+          >
+            {LEVEL_OPTIONS.map((opt) => {
+              const selected = (form.level ?? "campaign") === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  title={opt.description}
+                  onClick={() => {
+                    const level = opt.value as RuleLevel;
+                    const allowed = actionOptionsForLevel(level).map((o) => o.value);
+                    update({
+                      level,
+                      // ação atual pode não existir no novo escopo — cai para pausar
+                      ...(allowed.includes(form.action) ? {} : { action: "pause_campaign" })
+                    });
+                  }}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-heading text-xs font-semibold transition-colors",
+                    selected
+                      ? "bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]"
+                      : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
         {form.kind === "metric" && canAddCondition ? (
           <button
             type="button"

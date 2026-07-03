@@ -28,6 +28,8 @@ export type SimulateRuleInput = {
   };
   action: { type: string; budgetPercent?: number };
   clientId?: string | null;
+  /** Escopo da regra — o backtest só cobre `campaign` por enquanto. */
+  level?: string | null;
   /** Dias de histórico a simular (janela de replay). */
   days?: number;
 };
@@ -46,7 +48,7 @@ export type SimulatedCampaign = {
 };
 
 export type SimulateRuleResult =
-  | { supported: false; reason: "schedule" | "plan" }
+  | { supported: false; reason: "schedule" | "plan" | "level" }
   | {
       supported: true;
       days: number;
@@ -77,6 +79,7 @@ export async function simulateRule(
 ): Promise<SimulateRuleResult> {
   // Regras de agenda dependem de dados por hora, que os snapshots diários não têm.
   if (input.condition.schedule) return { supported: false, reason: "schedule" };
+  if (input.level && input.level !== "campaign") return { supported: false, reason: "level" };
 
   const groups = normalizeConditionGroups(input.condition);
   if (!groups.length) {

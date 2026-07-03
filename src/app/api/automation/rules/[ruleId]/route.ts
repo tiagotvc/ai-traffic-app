@@ -48,7 +48,8 @@ const PatchSchema = z.object({
       message: "Informe o e-mail de destino."
     })
     .optional(),
-  executionMode: z.enum(["alert", "approval", "auto"]).optional()
+  executionMode: z.enum(["alert", "approval", "auto"]).optional(),
+  level: z.enum(["campaign", "adset", "ad"]).optional()
 });
 
 export async function PATCH(
@@ -64,6 +65,7 @@ export async function PATCH(
   const body = PatchSchema.parse(await req.json().catch(() => ({})));
   if (body.name != null) rule.name = body.name;
   if (body.enabled != null) rule.enabled = body.enabled;
+  if (body.level != null) rule.level = body.level;
   if (body.condition) rule.condition = body.condition;
   if (body.action) rule.action = body.action;
   if (body.executionMode != null) {

@@ -67,6 +67,7 @@ import { CanonicalPlanFamilies_1735833200000 } from "./0062-CanonicalPlanFamilie
 import { CouponRedemptionUniqueConstraint_1735833300000 } from "./0063-CouponRedemptionUniqueConstraint";
 import { EngineExecutionsOutbox_1735833400000 } from "./0064-EngineExecutionsOutbox";
 import { LaboratoryExperimentLinks_1735833500000 } from "./0065-LaboratoryExperimentLinks";
+import { AutomationRuleLevel_1735833600000 } from "./0066-AutomationRuleLevel";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [

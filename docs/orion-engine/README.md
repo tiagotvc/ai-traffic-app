@@ -200,7 +200,7 @@ dois módulos "conversando" síncrono é sinal de fronteira errada.
 | 1 — Regra simples (SE CPA>50 → pausar) | ✅ | `AutomationRule` + motor |
 | 2 — Condições compostas (E) | ✅ | `conditions[]` / grupos |
 | 3 — Agrupamentos ((A e B) ou (C e D)) | ✅ | `groups` DNF (4 grupos × 5 cláusulas) |
-| 4 — Escopo | 🟡 | Conta inteira e por cliente ✅; campanha é a unidade de avaliação; **conjuntos/anúncios ❌** (exige avaliar `AdMetricSnapshot` — próxima fronteira) |
+| 4 — Escopo | ✅ (2026-07-03) | Conta inteira, por cliente E por nível: `AutomationRule.level` (`campaign`/`adset`/`ad`, migration 0066). Escopo adset/ad avalia `AdMetricSnapshot` agregado (mesma DNF/janela) e age na entidade (`pauseAdSet`/`pauseAd`/`updateAdSetDailyBudget`). Ações restritas por nível (anúncio sem orçamento; reativação só em campanha); seletor "Aplicar em" no stepper; fila de aprovação funciona por nível (`payload.level` no executor). Backtest ainda é campaign-only (honesto no card). |
 | 5 — Histórico com motivo | ✅ | Aba "Execuções" na regra + página global `/automations/executions` (motivo = "cpa=62.00 (limite 50)") + `engine_executions` |
 | Templates | ✅ | 11 templates; **template inteligente** `smart-cut-waste` usa o CPA alvo do cliente (3× meta, sem conversão) |
 | Regra aciona IA | ✅ (2026-07-03) | Ação **`create_hypothesis`**: não toca a campanha — publica `ClientHypothesis` SUGGESTED no Laboratory com dedupe |

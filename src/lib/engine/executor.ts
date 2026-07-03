@@ -8,9 +8,15 @@ import type {
 } from "@/db/entities/EngineExecution";
 import { emitDomainEvent } from "@/lib/events/domain-events";
 import {
+  activateAd,
+  activateAdSet,
   activateCampaign,
+  fetchAdSet,
   fetchCampaign,
+  pauseAd,
+  pauseAdSet,
   pauseCampaign,
+  updateAdSetDailyBudget,
   updateCampaignDailyBudget
 } from "@/lib/meta-graph";
 
@@ -54,29 +60,50 @@ async function performEngineAction(
   input: Pick<EngineActionInput, "actionType" | "metaCampaignId" | "payload" | "description">
 ): Promise<Record<string, unknown>> {
   const payload = input.payload ?? {};
+  // Nível 4: `payload.level` define a entidade-alvo (`metaCampaignId` carrega o id dela).
+  const level = payload.level === "adset" || payload.level === "ad" ? payload.level : "campaign";
 
   switch (input.actionType) {
     case "pause_campaign": {
       if (!metaAccessToken || !input.metaCampaignId) throw new Error("Meta não conectada");
-      await pauseCampaign(metaAccessToken, input.metaCampaignId);
-      return { detail: "Campanha pausada na Meta" };
+      if (level === "adset") await pauseAdSet(metaAccessToken, input.metaCampaignId);
+      else if (level === "ad") await pauseAd(metaAccessToken, input.metaCampaignId);
+      else await pauseCampaign(metaAccessToken, input.metaCampaignId);
+      return {
+        detail:
+          level === "adset"
+            ? "Conjunto pausado na Meta"
+            : level === "ad"
+              ? "Anúncio pausado na Meta"
+              : "Campanha pausada na Meta"
+      };
     }
     case "reactivate_campaign": {
       if (!metaAccessToken || !input.metaCampaignId) throw new Error("Meta não conectada");
-      await activateCampaign(metaAccessToken, input.metaCampaignId);
-      return { detail: "Campanha reativada na Meta" };
+      if (level === "adset") await activateAdSet(metaAccessToken, input.metaCampaignId);
+      else if (level === "ad") await activateAd(metaAccessToken, input.metaCampaignId);
+      else await activateCampaign(metaAccessToken, input.metaCampaignId);
+      return { detail: "Entidade reativada na Meta" };
     }
     case "adjust_budget_percent":
     case "scale_gradual_step":
     case "scale_budget": {
       if (!metaAccessToken || !input.metaCampaignId) throw new Error("Meta não conectada");
+      if (level === "ad") throw new Error("Anúncio não tem orçamento próprio");
       const pct = Number(payload.budgetPercent) || 10;
-      const campaign = await fetchCampaign(metaAccessToken, input.metaCampaignId);
-      const currentMinor = Number(campaign.daily_budget ?? 0);
-      if (!currentMinor) throw new Error("Orçamento diário não disponível na campanha");
+      const entity =
+        level === "adset"
+          ? await fetchAdSet(metaAccessToken, input.metaCampaignId)
+          : await fetchCampaign(metaAccessToken, input.metaCampaignId);
+      const currentMinor = Number(entity.daily_budget ?? 0);
+      if (!currentMinor) throw new Error("Orçamento diário não disponível");
       const nextMinor = Math.round(currentMinor * (1 + pct / 100));
-      await updateCampaignDailyBudget(metaAccessToken, input.metaCampaignId, nextMinor);
-      return { budgetBeforeMinor: currentMinor, budgetAfterMinor: nextMinor, percent: pct };
+      if (level === "adset") {
+        await updateAdSetDailyBudget(metaAccessToken, input.metaCampaignId, nextMinor);
+      } else {
+        await updateCampaignDailyBudget(metaAccessToken, input.metaCampaignId, nextMinor);
+      }
+      return { budgetBeforeMinor: currentMinor, budgetAfterMinor: nextMinor, percent: pct, level };
     }
     case "notify_email": {
       const to = String(payload.recipientEmail ?? "");
