@@ -355,6 +355,11 @@ export async function runBigQueryExport(): Promise<BigQueryExportSummary> {
   if (!isBigQueryEnabled()) {
     return { enabled: false, exported: {}, errors: {} };
   }
+  // Kill-switch de plataforma sem redeploy (flag `analytics.bigqueryExport`), somado ao env.
+  const { isPlatformFeatureEnabled } = await import("@/lib/feature-flags/service");
+  if (!(await isPlatformFeatureEnabled("analytics.bigqueryExport"))) {
+    return { enabled: false, exported: {}, errors: {} };
+  }
 
   const tables = await ensureBigQuerySchema();
   const state = await loadState();

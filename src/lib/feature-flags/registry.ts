@@ -61,6 +61,18 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
             description: "Consulta histórico real da agência, campanhas sincronizadas e benchmarks no Commander."
           },
           {
+            id: "campaigns.commander.ruleProposals",
+            label: "Propostas de regra por conversa",
+            description:
+              "Aresta Commander→Engine: 'crie uma regra que…' no chat vira proposta com simulação de 30 dias e botão de criar (modo aprovação)."
+          },
+          {
+            id: "campaigns.commander.parametersContext",
+            label: "Metas no contexto do chat",
+            description:
+              "Inclui as metas do cliente (Parameters: CPA alvo, ROAS mínimo…) no contexto do chat, alinhando respostas e propostas."
+          },
+          {
             id: "campaigns.commander.scientists",
             label: "Scientists",
             description: "Capacidades de pesquisa real que o Commander pode selecionar e orquestrar.",
@@ -221,6 +233,62 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
             description: "Permite que o MCP execute ações (com confirmação). Padrão: só leitura."
           }
         ]
+      }
+    ]
+  },
+  {
+    id: "engine",
+    label: "Orion Engine",
+    description: "Executor do ecossistema: regras, automações e fila de aprovação.",
+    children: [
+      {
+        id: "engine.executionsTab",
+        label: "Histórico de execuções na regra",
+        description: "Painel expansível 'Ver execuções' na lista de regras de automação."
+      },
+      {
+        id: "engine.executionLearnings",
+        label: "Execuções viram aprendizados (Engine→Brain)",
+        description:
+          "Disparos recorrentes da mesma regra+campanha geram aprendizado sugerido no Brain a cada sync."
+      },
+      {
+        id: "engine.ruleSuggestions",
+        label: "Regras sugeridas pelo Brain (Brain→Engine)",
+        description:
+          "O brain-pipeline propõe regras a partir das metas e dados do tenant, com simulação de 30 dias anexada, no feed de sugestões."
+      }
+    ]
+  },
+  {
+    id: "laboratory",
+    label: "Orion Laboratory",
+    description: "Geração de conhecimento: experiments, hipóteses e aprendizados.",
+    children: [
+      {
+        id: "laboratory.experimentLearnings",
+        label: "Experimento concluído vira aprendizado",
+        description:
+          "Ao concluir uma pesquisa do Labs ou um A/B (vencedor/conclusão), publica aprendizado sugerido vinculado ao experimento."
+      }
+    ]
+  },
+  {
+    id: "analytics",
+    label: "Plano analítico (BigQuery)",
+    description:
+      "Export incremental e consumidores analíticos. Requer também ENABLE_BIGQUERY_ANALYTICS + credenciais no ambiente.",
+    children: [
+      {
+        id: "analytics.bigqueryExport",
+        label: "Export incremental para BigQuery",
+        description: "Cron horário que exporta snapshots, eventos, learnings e execuções (append-only)."
+      },
+      {
+        id: "analytics.nicheBenchmarks",
+        label: "Benchmarks por nicho",
+        description:
+          "Materializa agregados de 90 dias por nicho (opt-in, mínimo 2 contas) e exibe no niche-insights."
       }
     ]
   },

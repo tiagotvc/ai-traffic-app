@@ -75,21 +75,30 @@ export async function askCommander(input: {
   draft: AskDraftSummary;
   insights?: AskInsightSummary[];
   memoryEnabled: boolean;
+  /** Flag `campaigns.commander.ruleProposals` — desligada, o chat nunca propõe regra. */
+  ruleProposalsEnabled?: boolean;
+  /** Flag `campaigns.commander.parametersContext` — metas do cliente no contexto. */
+  parametersEnabled?: boolean;
 }): Promise<AskCommanderResult> {
+  const ruleProposalsEnabled = input.ruleProposalsEnabled !== false;
   const lines: string[] = [
     "Você é o Orion Commander — o comando estratégico de tráfego pago da plataforma Orion.",
     "Responda em português do Brasil, direto e acionável, no máximo 3 parágrafos curtos.",
     "Use APENAS o contexto abaixo. Se faltar informação, diga o que falta e como obter.",
     "Nunca invente métricas ou resultados.",
     "",
-    "Se — e somente se — o usuário pedir para criar uma regra/automação (ex.: 'crie uma regra",
-    "que pause campanhas com CPA acima de 50'), preencha `ruleProposal` traduzindo o pedido:",
-    "métricas: cpl, cpa, ctr (em %), spend (R$ na janela de 7 dias), conversions, roas;",
-    "operadores: gt, lt, gte; `groups` = listas de condições em E, combinadas em OU;",
-    "`minSpend` = gasto mínimo em R$ para avaliar a campanha (use null se não citado);",
-    "ações: pause_campaign, alert_only, adjust_budget_percent (+budgetPercent), reactivate_campaign,",
-    "scale_gradual (+budgetPercent). No `answer`, explique a regra proposta em 1 parágrafo e avise",
-    "que ela será criada em modo de aprovação. Caso contrário, retorne ruleProposal = null.",
+    ...(ruleProposalsEnabled
+      ? [
+          "Se — e somente se — o usuário pedir para criar uma regra/automação (ex.: 'crie uma regra",
+          "que pause campanhas com CPA acima de 50'), preencha `ruleProposal` traduzindo o pedido:",
+          "métricas: cpl, cpa, ctr (em %), spend (R$ na janela de 7 dias), conversions, roas;",
+          "operadores: gt, lt, gte; `groups` = listas de condições em E, combinadas em OU;",
+          "`minSpend` = gasto mínimo em R$ para avaliar a campanha (use null se não citado);",
+          "ações: pause_campaign, alert_only, adjust_budget_percent (+budgetPercent), reactivate_campaign,",
+          "scale_gradual (+budgetPercent). No `answer`, explique a regra proposta em 1 parágrafo e avise",
+          "que ela será criada em modo de aprovação. Caso contrário, retorne ruleProposal = null."
+        ]
+      : ["Sempre retorne ruleProposal = null (criação de regras está desativada)."]),
     "",
     `Cliente: ${input.clientName}`,
     "",
@@ -106,7 +115,7 @@ export async function askCommander(input: {
   // Commander › Parameters (Fase 4): metas estratégicas do cliente no contexto — o
   // Commander coordena a partir dos parâmetros, e propostas de regra nascem alinhadas
   // a eles. Best-effort: sem metas configuradas, a seção simplesmente não aparece.
-  try {
+  if (input.parametersEnabled !== false) try {
     const { getParameters } = await import("@/lib/commander/parameters");
     const params = await getParameters(input.tenantId, { clientId: input.clientId });
     if (params.goals) {
@@ -179,9 +188,10 @@ export async function askCommander(input: {
         schema: AnswerSchema,
         temperature: 0.4
       });
-      const ruleProposal = data.ruleProposal
-        ? await buildRuleProposal(input.tenantId, input.clientId, data.ruleProposal)
-        : null;
+      const ruleProposal =
+        ruleProposalsEnabled && data.ruleProposal
+          ? await buildRuleProposal(input.tenantId, input.clientId, data.ruleProposal)
+          : null;
       return { ...meta, answer: data.answer, ruleProposal };
     } catch (err) {
       lastError = err;

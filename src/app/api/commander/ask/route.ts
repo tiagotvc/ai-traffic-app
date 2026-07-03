@@ -50,9 +50,11 @@ export async function POST(req: Request) {
     const body = BodySchema.parse(await req.json().catch(() => ({})));
 
     const context = { userId: user.id, isPlatformAdmin: platformAdmin };
-    const [commanderPlatform, memoryFlag] = await Promise.all([
+    const [commanderPlatform, memoryFlag, ruleProposalsFlag, parametersFlag] = await Promise.all([
       isPlatformFeatureEnabled("campaigns.commander", context),
-      isPlatformFeatureEnabled("campaigns.commander.memory", context)
+      isPlatformFeatureEnabled("campaigns.commander.memory", context),
+      isPlatformFeatureEnabled("campaigns.commander.ruleProposals", context),
+      isPlatformFeatureEnabled("campaigns.commander.parametersContext", context)
     ]);
     const allowed = canUseCommander({
       planSlug: entitlements.planSlug,
@@ -87,7 +89,9 @@ export async function POST(req: Request) {
       question: body.question,
       draft: body.draft,
       insights: body.insights,
-      memoryEnabled: memoryFlag
+      memoryEnabled: memoryFlag,
+      ruleProposalsEnabled: ruleProposalsFlag,
+      parametersEnabled: parametersFlag
     });
 
     await recordCreativeMemoryAiUsage({

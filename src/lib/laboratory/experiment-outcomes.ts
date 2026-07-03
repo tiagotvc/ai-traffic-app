@@ -4,6 +4,7 @@ import type { ClientExperiment } from "@/db/entities/ClientExperiment";
 import { repositories } from "@/db/repositories";
 import { createSuggestedLearning } from "@/lib/agency-brain/client-learning-service";
 import { emitDomainEvent } from "@/lib/events/domain-events";
+import { isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
 
 /**
  * Fase 3 do Laboratory (docs/orion-architecture §2.2): todo experimento concluído
@@ -24,6 +25,7 @@ export async function publishLabsExperimentOutcome(
   tenantId: string,
   experimentId: string
 ): Promise<void> {
+  if (!(await isPlatformFeatureEnabled("laboratory.experimentLearnings"))) return;
   const { labsExperiment: repo } = await repositories();
   const experiment = await repo.findOne({ where: { id: experimentId, tenantId } });
   if (!experiment || experiment.status !== "completed" || experiment.resultLearningId) return;
@@ -86,6 +88,7 @@ export async function publishAbExperimentOutcome(
   tenantId: string,
   experiment: ClientExperiment
 ): Promise<void> {
+  if (!(await isPlatformFeatureEnabled("laboratory.experimentLearnings"))) return;
   if (experiment.resultLearningId) return;
   if (!experiment.winner && !experiment.conclusion) return;
 

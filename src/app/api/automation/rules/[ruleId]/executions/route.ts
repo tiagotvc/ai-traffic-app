@@ -12,7 +12,17 @@ export async function GET(
   { params }: { params: Promise<{ ruleId: string }> }
 ) {
   const { ruleId } = await params;
-  const { tenant } = await getAppContext();
+  const { tenant, user, platformAdmin } = await getAppContext();
+
+  const { isPlatformFeatureEnabled } = await import("@/lib/feature-flags/service");
+  const enabled = await isPlatformFeatureEnabled("engine.executionsTab", {
+    userId: user.id,
+    isPlatformAdmin: platformAdmin
+  });
+  if (!enabled) {
+    return NextResponse.json({ ok: true, executions: [] });
+  }
+
   const repos = await repositories();
 
   const rule = await repos.automationRule.findOne({
