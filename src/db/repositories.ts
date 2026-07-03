@@ -5,6 +5,8 @@ import type { Alert } from "@/db/entities/Alert";
 import type { AuditLog } from "@/db/entities/AuditLog";
 import type { AutomationRule } from "@/db/entities/AutomationRule";
 import type { AutomationPendingAction } from "@/db/entities/AutomationPendingAction";
+import type { EngineExecution } from "@/db/entities/EngineExecution";
+import type { DomainEvent } from "@/db/entities/DomainEvent";
 import type { CampaignGoal } from "@/db/entities/CampaignGoal";
 import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
 import type { AdMetricSnapshot } from "@/db/entities/AdMetricSnapshot";
@@ -120,6 +122,8 @@ const ENTITY = {
   VideoUploadPart: "VideoUploadPart",
   AutomationRule: "AutomationRule",
   AutomationPendingAction: "AutomationPendingAction",
+  EngineExecution: "EngineExecution",
+  DomainEvent: "DomainEvent",
   ReportSchedule: "ReportSchedule",
   UserClient: "UserClient",
   TenantMember: "TenantMember",
@@ -230,6 +234,8 @@ export async function repositories() {
       ds,
       ENTITY.AutomationPendingAction
     ),
+    engineExecution: repositoryFor<EngineExecution>(ds, ENTITY.EngineExecution),
+    domainEvent: repositoryFor<DomainEvent>(ds, ENTITY.DomainEvent),
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),
     tenantMember: repositoryFor<TenantMember>(ds, ENTITY.TenantMember),

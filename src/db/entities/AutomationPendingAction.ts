@@ -8,6 +8,11 @@ export type PendingActionType =
   | "reactivate_campaign"
   | "scale_gradual_step";
 
+/**
+ * @deprecated Fase 1 da arquitetura (docs/orion-architecture §2.1): a fila de aprovação
+ * agora vive em `engine_executions` (status "pending"). Os dados foram copiados pela
+ * migration 0064; nada mais escreve aqui. Manter registrada até o drop da tabela.
+ */
 @Entity({ name: "automation_pending_actions" })
 @Index(["tenantId", "status", "createdAt"])
 @Index(["automationRuleId"])

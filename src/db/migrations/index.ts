@@ -65,6 +65,7 @@ import { AutomationExecutionModes_1735833000000 } from "./0060-AutomationExecuti
 import { CommanderPlanAccess_1735833100000 } from "./0061-CommanderPlanAccess";
 import { CanonicalPlanFamilies_1735833200000 } from "./0062-CanonicalPlanFamilies";
 import { CouponRedemptionUniqueConstraint_1735833300000 } from "./0063-CouponRedemptionUniqueConstraint";
+import { EngineExecutionsOutbox_1735833400000 } from "./0064-EngineExecutionsOutbox";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [

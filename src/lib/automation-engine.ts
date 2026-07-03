@@ -4,16 +4,13 @@ import { Between, In, Like } from "typeorm";
 
 import { repositories } from "@/db/repositories";
 import type { MetaCampaign } from "@/lib/meta-graph";
-import {
-  pauseCampaign,
-  activateCampaign,
-  updateCampaignDailyBudget,
-  fetchCampaign,
-  fetchCampaigns
-} from "@/lib/meta-graph";
+import { fetchCampaign, fetchCampaigns } from "@/lib/meta-graph";
 import { num } from "@/lib/goal-types";
 import { normalizeConditionGroups } from "@/lib/automation/rule-templates";
 import { getEntitlements } from "@/lib/billing/entitlements";
+// Efeitos externos (Meta/e-mail) passam pelo executor unificado do Engine; este arquivo
+// mantém a avaliação das condições e a projeção de UI/state-tracking via Alerts.
+import { enqueueApproval, executeAction } from "@/lib/engine/executor";
 
 function dateNDaysAgo(n: number) {
   const d = new Date();
@@ -86,8 +83,7 @@ export async function runScheduleAutomations(tenantId: string, metaAccessToken: 
   const {
     automationRule: ruleRepo,
     clientMetaSettings: settingsRepo,
-    alert: alertRepo,
-    automationPendingAction: pendingRepo
+    alert: alertRepo
   } = await repositories();
 
   const rules = await ruleRepo.find({ where: { tenantId, enabled: true } });
@@ -128,7 +124,20 @@ export async function runScheduleAutomations(tenantId: string, metaAccessToken: 
           const description = `${campaign.name ?? campaign.id} — fora de ${schedule.startHour}h–${schedule.endHour}h`;
           try {
             if (mode === "auto") {
-              await pauseCampaign(metaAccessToken, campaign.id);
+              const exec = await executeAction(
+                {
+                  tenantId,
+                  clientId: account.clientId,
+                  source: "rule",
+                  automationRuleId: rule.id,
+                  metaCampaignId: campaign.id,
+                  campaignName: campaign.name ?? null,
+                  actionType: "pause_campaign",
+                  description
+                },
+                metaAccessToken
+              );
+              if (!exec.ok) continue;
             }
             await alertRepo.save(
               alertRepo.create({
@@ -150,18 +159,16 @@ export async function runScheduleAutomations(tenantId: string, metaAccessToken: 
               })
             );
             if (mode === "approval") {
-              await pendingRepo.save(
-                pendingRepo.create({
-                  tenantId,
-                  automationRuleId: rule.id,
-                  clientId: account.clientId,
-                  metaCampaignId: campaign.id,
-                  campaignName: campaign.name ?? null,
-                  actionType: "pause_campaign",
-                  description,
-                  status: "pending"
-                })
-              );
+              await enqueueApproval({
+                tenantId,
+                clientId: account.clientId,
+                source: "rule",
+                automationRuleId: rule.id,
+                metaCampaignId: campaign.id,
+                campaignName: campaign.name ?? null,
+                actionType: "pause_campaign",
+                description
+              });
             }
           } catch {
             // skip
@@ -180,7 +187,20 @@ export async function runScheduleAutomations(tenantId: string, metaAccessToken: 
 
             const description = `${campaign.name ?? campaign.id} — dentro de ${schedule.startHour}h–${schedule.endHour}h`;
             if (mode === "auto") {
-              await activateCampaign(metaAccessToken, campaign.id);
+              const exec = await executeAction(
+                {
+                  tenantId,
+                  clientId: account.clientId,
+                  source: "rule",
+                  automationRuleId: rule.id,
+                  metaCampaignId: campaign.id,
+                  campaignName: campaign.name ?? null,
+                  actionType: "reactivate_campaign",
+                  description
+                },
+                metaAccessToken
+              );
+              if (!exec.ok) continue;
             }
             await alertRepo.save(
               alertRepo.create({
@@ -202,18 +222,16 @@ export async function runScheduleAutomations(tenantId: string, metaAccessToken: 
               })
             );
             if (mode === "approval") {
-              await pendingRepo.save(
-                pendingRepo.create({
-                  tenantId,
-                  automationRuleId: rule.id,
-                  clientId: account.clientId,
-                  metaCampaignId: campaign.id,
-                  campaignName: campaign.name ?? null,
-                  actionType: "reactivate_campaign",
-                  description,
-                  status: "pending"
-                })
-              );
+              await enqueueApproval({
+                tenantId,
+                clientId: account.clientId,
+                source: "rule",
+                automationRuleId: rule.id,
+                metaCampaignId: campaign.id,
+                campaignName: campaign.name ?? null,
+                actionType: "reactivate_campaign",
+                description
+              });
             }
           } catch {
             // skip
@@ -234,7 +252,7 @@ export async function runAutomationEngine(
     clientMetaSettings: settingsRepo,
     campaignMetricSnapshot: campRepo,
     alert: alertRepo,
-    automationPendingAction: pendingRepo
+    engineExecution: execRepo
   } = await repositories();
 
   const rules = await ruleRepo.find({ where: { tenantId, enabled: true } });
@@ -398,16 +416,19 @@ export async function runAutomationEngine(
           })
         );
         if (action.recipientEmail) {
-          try {
-            const { sendReportEmail } = await import("@/lib/report-notify");
-            await sendReportEmail({
-              to: action.recipientEmail,
-              subject: `[Orion] ${rule.name}`,
-              text: `${description}\n\nRegra: ${rule.name}`
-            });
-          } catch {
-            // best-effort — o Alert acima já registra o disparo mesmo se o e-mail falhar
-          }
+          // Best-effort — o Alert acima já registra o disparo; o executor grava o
+          // resultado do envio (executed/failed) no log unificado.
+          await executeAction({
+            tenantId,
+            clientId,
+            source: "rule",
+            automationRuleId: rule.id,
+            metaCampaignId,
+            campaignName: meta?.name ?? null,
+            actionType: "notify_email",
+            payload: { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}` },
+            description: `${description}\n\nRegra: ${rule.name}`
+          });
         }
         continue;
       }
@@ -416,7 +437,20 @@ export async function runAutomationEngine(
         const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
         try {
           if (mode === "auto") {
-            await pauseCampaign(metaAccessToken, metaCampaignId);
+            const exec = await executeAction(
+              {
+                tenantId,
+                clientId,
+                source: "rule",
+                automationRuleId: rule.id,
+                metaCampaignId,
+                campaignName: meta?.name ?? null,
+                actionType: "pause_campaign",
+                description
+              },
+              metaAccessToken
+            );
+            if (!exec.ok) continue;
           }
           await alertRepo.save(
             alertRepo.create({
@@ -437,18 +471,16 @@ export async function runAutomationEngine(
             })
           );
           if (mode === "approval") {
-            await pendingRepo.save(
-              pendingRepo.create({
-                tenantId,
-                automationRuleId: rule.id,
-                clientId,
-                metaCampaignId,
-                campaignName: meta?.name ?? null,
-                actionType: "pause_campaign",
-                description,
-                status: "pending"
-              })
-            );
+            await enqueueApproval({
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId,
+              campaignName: meta?.name ?? null,
+              actionType: "pause_campaign",
+              description
+            });
           }
         } catch {
           // skip
@@ -465,7 +497,21 @@ export async function runAutomationEngine(
           const next = Math.round(currentMinor * (1 + pct / 100));
           const description = `${meta?.name ?? metaCampaignId} — +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`;
           if (mode === "auto") {
-            await updateCampaignDailyBudget(metaAccessToken, metaCampaignId, next);
+            const exec = await executeAction(
+              {
+                tenantId,
+                clientId,
+                source: "rule",
+                automationRuleId: rule.id,
+                metaCampaignId,
+                campaignName: meta?.name ?? null,
+                actionType: "adjust_budget_percent",
+                payload: { budgetPercent: pct },
+                description
+              },
+              metaAccessToken
+            );
+            if (!exec.ok) continue;
           }
           await alertRepo.save(
             alertRepo.create({
@@ -486,19 +532,17 @@ export async function runAutomationEngine(
             })
           );
           if (mode === "approval") {
-            await pendingRepo.save(
-              pendingRepo.create({
-                tenantId,
-                automationRuleId: rule.id,
-                clientId,
-                metaCampaignId,
-                campaignName: meta?.name ?? null,
-                actionType: "adjust_budget_percent",
-                budgetPercent: String(pct),
-                description,
-                status: "pending"
-              })
-            );
+            await enqueueApproval({
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId,
+              campaignName: meta?.name ?? null,
+              actionType: "adjust_budget_percent",
+              payload: { budgetPercent: pct },
+              description
+            });
           }
         } catch {
           // skip
@@ -525,7 +569,7 @@ export async function runAutomationEngine(
 
           if (mode === "approval") {
             // Evita empilhar pendências duplicadas do mesmo passo enquanto a última não é resolvida.
-            const existingPending = await pendingRepo.findOne({
+            const existingPending = await execRepo.findOne({
               where: { tenantId, automationRuleId: rule.id, metaCampaignId, status: "pending", actionType: "scale_gradual_step" }
             });
             if (existingPending) continue;
@@ -538,7 +582,21 @@ export async function runAutomationEngine(
           const next = Math.round(currentMinor * (1 + pct / 100));
           const description = `${meta?.name ?? metaCampaignId} — passo ${nextStep}/${totalSteps}, +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`;
           if (mode === "auto") {
-            await updateCampaignDailyBudget(metaAccessToken, metaCampaignId, next);
+            const exec = await executeAction(
+              {
+                tenantId,
+                clientId,
+                source: "rule",
+                automationRuleId: rule.id,
+                metaCampaignId,
+                campaignName: meta?.name ?? null,
+                actionType: "scale_gradual_step",
+                payload: { budgetPercent: pct, step: nextStep, totalSteps },
+                description
+              },
+              metaAccessToken
+            );
+            if (!exec.ok) continue;
           }
           await alertRepo.save(
             alertRepo.create({
@@ -560,19 +618,17 @@ export async function runAutomationEngine(
             })
           );
           if (mode === "approval") {
-            await pendingRepo.save(
-              pendingRepo.create({
-                tenantId,
-                automationRuleId: rule.id,
-                clientId,
-                metaCampaignId,
-                campaignName: meta?.name ?? null,
-                actionType: "scale_gradual_step",
-                budgetPercent: String(pct),
-                description,
-                status: "pending"
-              })
-            );
+            await enqueueApproval({
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId,
+              campaignName: meta?.name ?? null,
+              actionType: "scale_gradual_step",
+              payload: { budgetPercent: pct, step: nextStep, totalSteps },
+              description
+            });
           }
         } catch {
           // skip
@@ -587,7 +643,20 @@ export async function runAutomationEngine(
         const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
         try {
           if (mode === "auto") {
-            await activateCampaign(metaAccessToken, metaCampaignId);
+            const exec = await executeAction(
+              {
+                tenantId,
+                clientId,
+                source: "rule",
+                automationRuleId: rule.id,
+                metaCampaignId,
+                campaignName: meta?.name ?? null,
+                actionType: "reactivate_campaign",
+                description
+              },
+              metaAccessToken
+            );
+            if (!exec.ok) continue;
           }
           await alertRepo.save(
             alertRepo.create({
@@ -608,18 +677,16 @@ export async function runAutomationEngine(
             })
           );
           if (mode === "approval") {
-            await pendingRepo.save(
-              pendingRepo.create({
-                tenantId,
-                automationRuleId: rule.id,
-                clientId,
-                metaCampaignId,
-                campaignName: meta?.name ?? null,
-                actionType: "reactivate_campaign",
-                description,
-                status: "pending"
-              })
-            );
+            await enqueueApproval({
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId,
+              campaignName: meta?.name ?? null,
+              actionType: "reactivate_campaign",
+              description
+            });
           }
         } catch {
           // skip

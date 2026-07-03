@@ -42,6 +42,8 @@ import { VideoUploadSession } from "./VideoUploadSession";
 import { VideoUploadPart } from "./VideoUploadPart";
 import { AutomationRule } from "./AutomationRule";
 import { AutomationPendingAction } from "./AutomationPendingAction";
+import { EngineExecution } from "./EngineExecution";
+import { DomainEvent } from "./DomainEvent";
 import { ReportSchedule } from "./ReportSchedule";
 import { UserClient } from "./UserClient";
 import { TenantMember } from "./TenantMember";
@@ -224,6 +226,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: VideoUploadPart, name: "VideoUploadPart" },
   { ctor: AutomationRule, name: "AutomationRule" },
   { ctor: AutomationPendingAction, name: "AutomationPendingAction" },
+  { ctor: EngineExecution, name: "EngineExecution" },
+  { ctor: DomainEvent, name: "DomainEvent" },
   { ctor: ReportSchedule, name: "ReportSchedule" },
   { ctor: UserClient, name: "UserClient" },
   { ctor: TenantMember, name: "TenantMember" },

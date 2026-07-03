@@ -339,12 +339,19 @@ frente antes da hora.
 
 ## 7. Roadmap de migração (incremental, sem big-bang)
 
-- **Fase 0 — agora (custo ~zero):** este doc como fonte de verdade; código novo nasce no
+- ✅ **Fase 0 — agora (custo ~zero):** este doc como fonte de verdade; código novo nasce no
   namespace certo; regra "tenantId direto em toda tabela nova"; congelar os nomes
   (Engine/Laboratory/Commander/Brain) na comunicação interna.
-- **Fase 1 — Engine unificado:** `executeAction()` + `engine_executions` absorvendo os 4
-  executores e a fila de pendências; `domain_events` (outbox) criado junto. É a maior
-  alavanca: destrava workflows, auditoria e o Engine→Brain completo.
+- ✅ **Fase 1 — Engine unificado (entregue 2026-07-02):** `executeAction()`/`enqueueApproval()`/
+  `approveExecution()` em [`src/lib/engine/executor.ts`](../../src/lib/engine/executor.ts) +
+  tabela `engine_executions` (migration 0064, copia a fila antiga com ids preservados) +
+  outbox `domain_events` ([`src/lib/events/domain-events.ts`](../../src/lib/events/domain-events.ts)).
+  Cobertos os 4 executores: motor de regras (agenda + métricas), fila de aprovação (rotas
+  `pending-actions` agora leem/escrevem `engine_executions`; `AutomationPendingAction`
+  deprecada), chat (`executeActionSuggestion` registra via `recordExternalExecution`) e
+  creator (`/api/meta/apply` idem). Eventos emitidos: `engine.action.executed/failed/
+  pending/approved/rejected`. Os `Alert`s continuam como projeção de UI + state-tracking
+  do motor (dedupe, passos de escalada, chaves de agenda) — decisão registrada no executor.
 - **Fase 2 — BigQuery cedo:** implementar `bigquery-service`, dataset + export
   incremental (snapshots + domain_events + learnings). Histórico começa a acumular
   imediatamente — o custo de adiar é irrecuperável (dados não exportados hoje não viram
@@ -361,6 +368,12 @@ Cada fase é utilizável sozinha e nenhuma exige downtime ou migração destruti
 
 ## Histórico
 
+- 2026-07-02 (b): **Fase 1 entregue** — executor unificado (`src/lib/engine/executor.ts`),
+  `engine_executions` absorve a fila de aprovação (migration 0064, idempotente, ids
+  preservados; semântica preservada: aprovação que falha na Meta mantém a pendência
+  `pending` e responde 502), outbox `domain_events` com eventos `engine.action.*`, e os
+  4 chamadores (regras, fila, chat, creator) registrando no log unificado. Shape das
+  respostas das rotas `pending-actions` mantido — zero mudança de UI.
 - 2026-07-02: Documento criado a partir do inventário completo do código (78 entidades,
   3 modelos de experimento, 2 famílias de scientists, 6 crons + Inngest). Decisões:
   Postgres segue operacional / BQ entra já como plano analítico; executor unificado é a

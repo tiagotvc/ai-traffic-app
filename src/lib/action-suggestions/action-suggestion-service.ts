@@ -200,6 +200,33 @@ export async function executeActionSuggestion(
   if (!row || row.status !== "PENDING") return { suggestion: null };
 
   const meta = await applySuggestionToMeta(tenantId, row);
+
+  // Log unificado do Engine (docs/orion-architecture §2.1): a execução vinda do chat
+  // entra em `engine_executions` como as demais fontes (best-effort, nunca bloqueia).
+  if (row.actionType === "pause_campaign" || row.actionType === "scale_budget") {
+    const payload = (row.actionPayload ?? {}) as {
+      metaCampaignId?: string;
+      budgetIncreasePercent?: number;
+    };
+    const { recordExternalExecution } = await import("@/lib/engine/executor");
+    await recordExternalExecution({
+      tenantId,
+      clientId,
+      source: "chat",
+      sourceId: row.id,
+      metaCampaignId: row.metaCampaignId ?? payload.metaCampaignId ?? null,
+      actionType: row.actionType,
+      payload:
+        row.actionType === "scale_budget"
+          ? { budgetPercent: payload.budgetIncreasePercent ?? 10 }
+          : null,
+      description: row.title,
+      ok: meta.applied,
+      result: meta.detail ? { detail: meta.detail } : null,
+      error: meta.error ?? null
+    });
+  }
+
   const note = meta.applied
     ? meta.detail ?? "Executado na Meta"
     : meta.error

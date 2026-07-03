@@ -55,6 +55,20 @@ export async function POST(req: Request) {
       })
     );
 
+    const { recordExternalExecution } = await import("@/lib/engine/executor");
+    await recordExternalExecution({
+      tenantId: tenant.id,
+      clientId: auditClientId,
+      source: "creator",
+      sourceId: rec.id,
+      metaCampaignId: actionType === "ALTER_BUDGET" ? String(targetId) : null,
+      actionType: "meta_apply",
+      payload: { actionType, targetId: String(targetId) },
+      description: `Recomendação aplicada: ${actionType} → ${String(targetId)}`,
+      ok: true,
+      result: rec.preview ? { preview: rec.preview } : null
+    });
+
     const email = session.user?.email;
     if (email) {
       await sendTransactionalEmail({
