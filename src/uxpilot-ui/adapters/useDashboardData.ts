@@ -585,27 +585,55 @@ export function useDashboardData() {
   );
 
   const persistDashboardCustomization = useCallback(
-    (next: { layout: DashboardLayoutPrefs; chartMetrics: MetricKey[] }) => {
+    async (next: { layout: DashboardLayoutPrefs; chartMetrics: MetricKey[] }): Promise<void> => {
+      // Aplicação otimista…
       setDashboardLayout(next.layout);
       setChartMetrics(next.chartMetrics);
       writeCachedChartMetrics(next.chartMetrics);
       if (!clientFilter) setUserChartMetrics(next.chartMetrics);
 
-      void fetch("/api/settings/dashboard-prefs", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          dashboardLayout: next.layout,
-          ...(clientFilter ? {} : { dashboardChartMetrics: next.chartMetrics })
-        })
-      });
-
-      if (clientFilter) {
-        void fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
+      try {
+        const res = await fetch("/api/settings/dashboard-prefs", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ defaultDashboardMetrics: next.chartMetrics })
+          body: JSON.stringify({
+            dashboardLayout: next.layout,
+            ...(clientFilter ? {} : { dashboardChartMetrics: next.chartMetrics })
+          })
         });
+        const json = (await res.json().catch(() => null)) as { ok?: boolean } | null;
+        if (!res.ok || !json?.ok) throw new Error(`PATCH dashboard-prefs ${res.status}`);
+
+        if (clientFilter) {
+          void fetch(`/api/clients/${encodeURIComponent(clientFilter)}/meta-settings`, {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ defaultDashboardMetrics: next.chartMetrics })
+          });
+        }
+      } catch (err) {
+        // …mas nunca mentimos: se o servidor não gravou, ressincroniza com o que ele tem
+        // (antes, o fire-and-forget deixava a UI "salva" e o reload revertia tudo).
+        console.error("[dashboard] falha ao salvar personalização — restaurando do servidor", err);
+        try {
+          const r = await fetch("/api/settings/dashboard-prefs");
+          const j = (await r.json().catch(() => null)) as {
+            ok?: boolean;
+            dashboardLayout?: DashboardLayoutPrefs;
+            dashboardChartMetrics?: string[];
+          } | null;
+          if (j?.ok) {
+            if (j.dashboardLayout) setDashboardLayout(j.dashboardLayout);
+            if (Array.isArray(j.dashboardChartMetrics)) {
+              const metrics = normalizeChartMetrics(j.dashboardChartMetrics);
+              setChartMetrics(metrics);
+              writeCachedChartMetrics(metrics);
+              if (!clientFilter) setUserChartMetrics(metrics);
+            }
+          }
+        } catch {
+          // sem rede — mantém o otimista; o próximo load resolve
+        }
       }
     },
     [clientFilter]

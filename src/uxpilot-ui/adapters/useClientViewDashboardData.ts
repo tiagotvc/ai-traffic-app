@@ -44,7 +44,7 @@ export function useClientViewDashboardData() {
     chartMetrics: DEFAULT_DASHBOARD_CHART_METRICS,
     toggleChartMetric: () => {},
     dashboardLayout: DEFAULT_DASHBOARD_LAYOUT,
-    persistDashboardCustomization: () => {},
+    persistDashboardCustomization: async () => {},
     clientMetric: "roas" as MetricKey,
     dominantPreset: undefined,
     isEmptyState: false,

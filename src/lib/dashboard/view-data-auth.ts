@@ -6,10 +6,6 @@ import {
   resolvePublishedViewByToken,
   type PublishedViewAccess
 } from "@/lib/dashboard/client-view-access";
-import {
-  assertDashboardCanvas,
-  DashboardCanvasForbiddenError
-} from "@/lib/dashboard/dashboard-widget-permissions";
 
 export type DashboardDataAuth =
   | { ok: true; tenantId: string; viewAccess: PublishedViewAccess | null }
@@ -25,13 +21,13 @@ export async function resolveDashboardDataAuth(req: Request): Promise<DashboardD
   }
 
   try {
-    const { tenant, entitlements } = await getAppContext();
-    assertDashboardCanvas(entitlements);
+    // O dashboard BÁSICO (summary/timeseries/table-data) é de todos os planos — o gate
+    // `allowDashboardCanvas` vale só para as features do canvas (layouts, widgets,
+    // templates, AI widgets), que fazem o assert nas próprias rotas. Dados são do
+    // próprio tenant; plano nunca deve esconder as métricas da conta.
+    const { tenant } = await getAppContext();
     return { ok: true, tenantId: tenant.id, viewAccess: null };
-  } catch (err) {
-    if (err instanceof DashboardCanvasForbiddenError) {
-      return { ok: false, status: 403, error: err.message };
-    }
+  } catch {
     return { ok: false, status: 401, error: "Unauthorized" };
   }
 }
