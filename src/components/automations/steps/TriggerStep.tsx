@@ -7,9 +7,11 @@ import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
 import {
   actionOptionsForLevel,
+  CONSECUTIVE_OPTIONS,
   LEVEL_OPTIONS,
   METRIC_OPTIONS,
   OP_OPTIONS,
+  WINDOW_OPTIONS,
   type Condition,
   type ConditionGroup,
   type Metric,
@@ -296,6 +298,33 @@ export function TriggerStep({ form, update }: Props) {
           />
           <p className="mt-2 font-body text-[11px] text-[var(--text-dimmer)]">
             O gasto mínimo evita disparos com pouca verba — a regra só age depois de a campanha gastar esse valor.
+          </p>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FilterSelectDropdown
+              creatorField
+              icon={<Clock size={14} />}
+              label="Janela de análise"
+              placeholder="Janela"
+              clearable={false}
+              value={String(form.windowDays ?? 7)}
+              onChange={(v) => update({ windowDays: Number(v) || 7 })}
+              options={WINDOW_OPTIONS}
+            />
+            <FilterSelectDropdown
+              creatorField
+              icon={<Clock size={14} />}
+              label="Precisa valer por"
+              placeholder="Dias seguidos"
+              clearable={false}
+              value={String(form.consecutiveDays ?? 1)}
+              onChange={(v) => update({ consecutiveDays: Number(v) || 1 })}
+              options={CONSECUTIVE_OPTIONS}
+            />
+          </div>
+          <p className="mt-2 font-body text-[11px] text-[var(--text-dimmer)]">
+            Exigir a condição por dias seguidos evita pausar algo bom por um único dia ruim
+            (ex.: conversões que chegam com atraso de 24–48h).
           </p>
         </div>
       )}

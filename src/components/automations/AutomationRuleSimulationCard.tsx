@@ -67,6 +67,7 @@ export function AutomationRuleSimulationCard({ form }: { form: RuleForm }) {
           condition: payload.condition,
           action: payload.action,
           clientId: payload.clientId,
+          level: "level" in payload ? payload.level : "campaign",
           days: 30
         })
       });
@@ -145,8 +146,13 @@ export function AutomationRuleSimulationCard({ form }: { form: RuleForm }) {
                       </div>
                     ) : form.action === "adjust_budget_percent" ? (
                       <div className="rounded-lg border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-2.5 py-2">
-                        <p className="font-heading text-base font-bold text-emerald-400">
-                          +{brl(result.totals.dailyBudgetIncrease)}
+                        <p
+                          className={`font-heading text-base font-bold ${
+                            result.totals.dailyBudgetIncrease >= 0 ? "text-emerald-400" : "text-rose-400"
+                          }`}
+                        >
+                          {result.totals.dailyBudgetIncrease >= 0 ? "+" : "−"}
+                          {brl(Math.abs(result.totals.dailyBudgetIncrease))}
                         </p>
                         <p className="font-body text-[10px] text-[var(--text-dimmer)]">orçamento/dia</p>
                       </div>
@@ -162,6 +168,22 @@ export function AutomationRuleSimulationCard({ form }: { form: RuleForm }) {
                       </div>
                     )}
                   </div>
+
+                  {/* Safety: aviso de agressividade — regra destrutiva pegando metade+ da conta. */}
+                  {(form.action === "pause_campaign" ||
+                    (form.action === "adjust_budget_percent" && (form.budgetPercent ?? 10) < 0)) &&
+                  result.evaluatedCampaigns >= 3 &&
+                  result.totals.campaignsTriggered / result.evaluatedCampaigns >= 0.5 ? (
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 font-body text-[11px] leading-relaxed text-amber-300">
+                      ⚠ Regra agressiva: dispararia em {result.totals.campaignsTriggered} de{" "}
+                      {result.evaluatedCampaigns} campanhas (
+                      {Math.round(
+                        (result.totals.campaignsTriggered / result.evaluatedCampaigns) * 100
+                      )}
+                      %). Considere subir os limites, exigir mais dias seguidos ou usar o modo
+                      de aprovação.
+                    </div>
+                  ) : null}
 
                   <ul className="space-y-1">
                     {result.campaigns.slice(0, 4).map((c) => (

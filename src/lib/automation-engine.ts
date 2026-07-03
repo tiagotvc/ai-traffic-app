@@ -6,7 +6,7 @@ import { repositories } from "@/db/repositories";
 import type { AutomationRule } from "@/db/entities/AutomationRule";
 import type { MetaCampaign } from "@/lib/meta-graph";
 import { fetchAdSet, fetchCampaign, fetchCampaigns } from "@/lib/meta-graph";
-import { num } from "@/lib/goal-types";
+import { describeHit, normalizeWindow, windowedHit, type WindowSpec } from "@/lib/automation/evaluate";
 import { normalizeConditionGroups } from "@/lib/automation/rule-templates";
 import { getEntitlements } from "@/lib/billing/entitlements";
 // Efeitos externos (Meta/e-mail) passam pelo executor unificado do Engine; este arquivo
@@ -272,6 +272,8 @@ export async function runAutomationEngine(
       op?: string;
       value?: number;
       minSpend?: number;
+      windowDays?: number;
+      consecutiveDays?: number;
     };
     const action = rule.action as {
       type?: string;
@@ -296,6 +298,10 @@ export async function runAutomationEngine(
       if (!settings?.automationEnabled) continue;
     }
 
+    // Janela configurável por regra (Sprint 2): janela móvel + dias consecutivos.
+    const windowSpec = normalizeWindow(cond);
+    const ruleSince = dateNDaysAgo(windowSpec.windowDays + windowSpec.consecutiveDays);
+
     // Nível 4: regras com escopo de conjunto/anúncio avaliam AdMetricSnapshot e agem na
     // entidade correspondente — caminho próprio, sem tocar o fluxo histórico de campanha.
     if ((rule.level ?? "campaign") !== "campaign") {
@@ -307,10 +313,11 @@ export async function runAutomationEngine(
           groups,
           action,
           minSpend: cond.minSpend,
+          windowSpec,
           accountIds,
           fallbackClientId: rule.clientId ?? accounts[0]?.clientId ?? null,
           automationTier,
-          since,
+          since: ruleSince,
           today
         });
       } catch {
@@ -320,7 +327,7 @@ export async function runAutomationEngine(
     }
 
     const rows = await campRepo.find({
-      where: { adAccountId: In(accountIds), day: Between(since, today) }
+      where: { adAccountId: In(accountIds), day: Between(ruleSince, today) }
     });
 
     const byCampaign = new Map<string, typeof rows>();
@@ -331,71 +338,18 @@ export async function runAutomationEngine(
     }
 
     for (const [metaCampaignId, snaps] of byCampaign) {
-      let spend = 0;
-      let conversions = 0;
-      let cplSum = 0;
-      let cplN = 0;
-      let roasSum = 0;
-      let roasN = 0;
-      let impressions = 0;
-      let clicks = 0;
-      for (const s of snaps) {
-        spend += num(s.spend);
-        conversions += num(s.conversions);
-        impressions += num(s.impressions);
-        clicks += num(s.clicks);
-        const leads = num(s.leads);
-        if (leads > 0) {
-          cplSum += num(s.spend) / leads;
-          cplN += 1;
-        }
-        const roas = num(s.roas);
-        if (roas > 0) {
-          roasSum += roas;
-          roasN += 1;
-        }
-      }
-      const cpl = cplN ? cplSum / cplN : 0;
-      const roas = roasN ? roasSum / roasN : 0;
-      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
-      const cpa = conversions > 0 ? spend / conversions : 0;
-
-      const metricValues: Record<string, number> = {
-        cpl,
-        cpa,
-        ctr,
-        spend,
-        conversions,
-        roas
-      };
-
-      if (cond.minSpend && spend < cond.minSpend) continue;
-
-      const evalClause = (c: { metric?: string; op?: string; value?: number }) => {
-        const metricVal = metricValues[c.metric ?? ""] ?? 0;
-        const threshold = c.value ?? 0;
-        return c.op === "gt"
-          ? metricVal > threshold
-          : c.op === "lt"
-            ? metricVal < threshold
-            : metricVal >= threshold;
-      };
-
-      const hit = groups.some((g) => g.every(evalClause));
+      // Âncora no último dia com dados (o sync pode ainda não ter escrito "hoje").
+      const endDay = snaps.reduce((max, s) => (s.day > max ? s.day : max), snaps[0]!.day);
+      const { hit, metricValues } = windowedHit({
+        rows: snaps,
+        groups,
+        minSpend: cond.minSpend,
+        spec: windowSpec,
+        endDay
+      });
       if (!hit) continue;
 
-      // Descrição legível dos grupos (ex.: "(cpl=52.30 (limite 50) e roas=1.80 (limite 2)) ou spend=120.00 (limite 100)").
-      const condDescription = groups
-        .map((g) => {
-          const text = g
-            .map((c) => {
-              const metricVal = metricValues[c.metric ?? ""] ?? 0;
-              return `${c.metric}=${metricVal.toFixed(2)} (limite ${c.value ?? 0})`;
-            })
-            .join(" e ");
-          return g.length > 1 && groups.length > 1 ? `(${text})` : text;
-        })
-        .join(" ou ");
+      const condDescription = describeHit(groups, metricValues);
 
       const meta = campaignMeta.get(metaCampaignId);
       const clientId = rule.clientId ?? accounts[0]?.clientId ?? null;
@@ -582,7 +536,7 @@ export async function runAutomationEngine(
           const campaign = await fetchCampaign(metaAccessToken, metaCampaignId);
           const currentMinor = Number(campaign.daily_budget ?? 0);
           if (!currentMinor) continue;
-          const next = Math.round(currentMinor * (1 + pct / 100));
+          const next = Math.max(100, Math.round(currentMinor * (1 + pct / 100)));
           const description = `${meta?.name ?? metaCampaignId} — +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`;
           if (mode === "auto") {
             const exec = await executeAction(
@@ -667,7 +621,7 @@ export async function runAutomationEngine(
           const campaign = await fetchCampaign(metaAccessToken, metaCampaignId);
           const currentMinor = Number(campaign.daily_budget ?? 0);
           if (!currentMinor) continue;
-          const next = Math.round(currentMinor * (1 + pct / 100));
+          const next = Math.max(100, Math.round(currentMinor * (1 + pct / 100)));
           const description = `${meta?.name ?? metaCampaignId} — passo ${nextStep}/${totalSteps}, +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`;
           if (mode === "auto") {
             const exec = await executeAction(
@@ -799,6 +753,7 @@ async function evaluateScopedRule(args: {
   groups: Array<Array<{ metric?: string; op?: string; value?: number }>>;
   action: { type?: string; budgetPercent?: number; recipientEmail?: string };
   minSpend?: number;
+  windowSpec: WindowSpec;
   accountIds: string[];
   fallbackClientId: string | null;
   automationTier: number;
@@ -825,87 +780,37 @@ async function evaluateScopedRule(args: {
   });
   if (!rows.length) return;
 
-  type Agg = {
-    spend: number;
-    conversions: number;
-    impressions: number;
-    clicks: number;
-    cplSum: number;
-    cplN: number;
-    roasSum: number;
-    roasN: number;
-    name: string | null;
-    metaCampaignId: string;
-  };
-  const byTarget = new Map<string, Agg>();
+  type TargetRows = { rows: typeof rows; name: string | null; metaCampaignId: string };
+  const byTarget = new Map<string, TargetRows>();
   for (const r of rows) {
     const targetId = level === "adset" ? r.metaAdsetId : r.metaAdId;
     if (!targetId) continue;
-    const agg = byTarget.get(targetId) ?? {
-      spend: 0,
-      conversions: 0,
-      impressions: 0,
-      clicks: 0,
-      cplSum: 0,
-      cplN: 0,
-      roasSum: 0,
-      roasN: 0,
-      name: null,
-      metaCampaignId: r.metaCampaignId
-    };
-    agg.spend += num(r.spend);
-    agg.conversions += num(r.conversions);
-    agg.impressions += num(r.impressions);
-    agg.clicks += num(r.clicks);
-    const leads = num(r.leads);
-    if (leads > 0) {
-      agg.cplSum += num(r.spend) / leads;
-      agg.cplN += 1;
-    }
-    const roas = num(r.roas);
-    if (roas > 0) {
-      agg.roasSum += roas;
-      agg.roasN += 1;
-    }
-    agg.name = (level === "adset" ? r.adsetName : r.adName) ?? agg.name;
-    byTarget.set(targetId, agg);
+    const target =
+      byTarget.get(targetId) ??
+      ({ rows: [], name: null, metaCampaignId: r.metaCampaignId } as TargetRows);
+    target.rows.push(r);
+    target.name = (level === "adset" ? r.adsetName : r.adName) ?? target.name;
+    byTarget.set(targetId, target);
   }
 
   const mode = effectiveExecutionMode(rule.executionMode, automationTier);
   const levelLabel = level === "adset" ? "conjunto" : "anúncio";
 
-  for (const [targetId, agg] of byTarget) {
-    const metricValues: Record<string, number> = {
-      cpl: agg.cplN ? agg.cplSum / agg.cplN : 0,
-      cpa: agg.conversions > 0 ? agg.spend / agg.conversions : 0,
-      ctr: agg.impressions > 0 ? (agg.clicks / agg.impressions) * 100 : 0,
-      spend: agg.spend,
-      conversions: agg.conversions,
-      roas: agg.roasN ? agg.roasSum / agg.roasN : 0
-    };
-    if (args.minSpend && agg.spend < args.minSpend) continue;
+  for (const [targetId, target] of byTarget) {
+    // Âncora no último dia com dados do alvo (mesma semântica do caminho de campanha).
+    const endDay = target.rows.reduce((max, s) => (s.day > max ? s.day : max), target.rows[0]!.day);
+    const { hit, metricValues } = windowedHit({
+      rows: target.rows,
+      groups,
+      minSpend: args.minSpend,
+      spec: args.windowSpec,
+      endDay
+    });
+    if (!hit) continue;
 
-    const evalClause = (c: { metric?: string; op?: string; value?: number }) => {
-      const metricVal = metricValues[c.metric ?? ""] ?? 0;
-      const threshold = c.value ?? 0;
-      return c.op === "gt"
-        ? metricVal > threshold
-        : c.op === "lt"
-          ? metricVal < threshold
-          : metricVal >= threshold;
-    };
-    if (!groups.some((g) => g.every(evalClause))) continue;
-
-    const condDescription = groups
-      .map((g) => {
-        const text = g
-          .map((c) => `${c.metric}=${(metricValues[c.metric ?? ""] ?? 0).toFixed(2)} (limite ${c.value ?? 0})`)
-          .join(" e ");
-        return g.length > 1 && groups.length > 1 ? `(${text})` : text;
-      })
-      .join(" ou ");
-    const targetName = agg.name ?? targetId;
-    const description = `${targetName} (${levelLabel} da campanha ${agg.metaCampaignId}) — ${condDescription}`;
+    const condDescription = describeHit(groups, metricValues);
+    const targetName = target.name ?? targetId;
+    const description = `${targetName} (${levelLabel} da campanha ${target.metaCampaignId}) — ${condDescription}`;
     const clientId = fallbackClientId;
 
     if (action.type === "alert_only") {
@@ -998,7 +903,7 @@ async function evaluateScopedRule(args: {
                 `Investigue a causa — fadiga de criativo, público saturado ou oferta.`,
               category: "GENERAL",
               confidenceScore: 55,
-              metaCampaignId: agg.metaCampaignId,
+              metaCampaignId: target.metaCampaignId,
               metricSnapshot: metricValues,
               evidence: { ruleId: rule.id, reason: condDescription, level, targetId },
               dedupeKey: `automation_hypothesis:${rule.id}:${targetId}`,
@@ -1089,7 +994,7 @@ async function evaluateScopedRule(args: {
         const adset = await fetchAdSet(metaAccessToken, targetId);
         const currentMinor = Number(adset.daily_budget ?? 0);
         if (!currentMinor) continue;
-        const next = Math.round(currentMinor * (1 + pct / 100));
+        const next = Math.max(100, Math.round(currentMinor * (1 + pct / 100)));
         const budgetDescription = `${targetName} — +${pct}% (R$ ${(currentMinor / 100).toFixed(2)} → R$ ${(next / 100).toFixed(2)}/dia)`;
         if (mode === "auto") {
           const exec = await executeAction(

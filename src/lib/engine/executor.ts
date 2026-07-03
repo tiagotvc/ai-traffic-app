@@ -8,6 +8,11 @@ import type {
 } from "@/db/entities/EngineExecution";
 import { emitDomainEvent } from "@/lib/events/domain-events";
 import {
+  applyBudgetFloor,
+  ruleDailyLimitReached,
+  SAFETY_RATE_LIMIT_ERROR
+} from "@/lib/engine/safety";
+import {
   activateAd,
   activateAdSet,
   activateCampaign,
@@ -97,7 +102,8 @@ async function performEngineAction(
           : await fetchCampaign(metaAccessToken, input.metaCampaignId);
       const currentMinor = Number(entity.daily_budget ?? 0);
       if (!currentMinor) throw new Error("Orçamento diário não disponível");
-      const nextMinor = Math.round(currentMinor * (1 + pct / 100));
+      // Safety: redução nunca derruba o orçamento abaixo do piso.
+      const nextMinor = applyBudgetFloor(currentMinor * (1 + pct / 100));
       if (level === "adset") {
         await updateAdSetDailyBudget(metaAccessToken, input.metaCampaignId, nextMinor);
       } else {
@@ -130,6 +136,39 @@ export async function executeAction(
   metaAccessToken?: string
 ): Promise<EngineActionResult> {
   const { engineExecution: repo } = await repositories();
+
+  // Safety: teto diário de ações automáticas por regra. Sem persistir linha nova a cada
+  // sync bloqueado — devolve a última falha de safety do dia, se houver.
+  if (input.source === "rule" && input.automationRuleId) {
+    if (await ruleDailyLimitReached(input.tenantId, input.automationRuleId)) {
+      const existing = await repo.findOne({
+        where: {
+          tenantId: input.tenantId,
+          automationRuleId: input.automationRuleId,
+          status: "failed",
+          error: SAFETY_RATE_LIMIT_ERROR
+        },
+        order: { createdAt: "DESC" }
+      });
+      const today = new Date().toISOString().slice(0, 10);
+      if (existing && existing.createdAt.toISOString().slice(0, 10) === today) {
+        return { ok: false, execution: existing, error: SAFETY_RATE_LIMIT_ERROR };
+      }
+      const execution = await repo.save(
+        repo.create({ ...baseColumns(input), status: "failed", error: SAFETY_RATE_LIMIT_ERROR })
+      );
+      await emitDomainEvent({
+        tenantId: input.tenantId,
+        clientId: input.clientId ?? null,
+        module: "engine",
+        type: "engine.action.safety_blocked",
+        sourceType: "engine_execution",
+        sourceId: execution.id,
+        payload: eventPayload(input, "failed")
+      });
+      return { ok: false, execution, error: SAFETY_RATE_LIMIT_ERROR };
+    }
+  }
 
   let result: Record<string, unknown> | undefined;
   let error: string | undefined;

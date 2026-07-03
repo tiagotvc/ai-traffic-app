@@ -25,7 +25,7 @@ export type AskInsightSummary = { title: string; description: string; source: st
 // Mesmo vocabulário do motor (`POST /api/automation/rules`). `schedule_toggle` fica de
 // fora (não simulável) e `notify_email` também (o modelo não conhece o e-mail de destino).
 const ProposalConditionItem = z.object({
-  metric: z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas"]),
+  metric: z.enum(["cpl", "cpa", "ctr", "spend", "conversions", "roas", "clicks", "cpm", "frequency"]),
   op: z.enum(["gt", "lt", "gte"]),
   value: z.number()
 });
@@ -42,7 +42,7 @@ const RuleProposalSchema = z.object({
     "reactivate_campaign",
     "scale_gradual"
   ]),
-  budgetPercent: z.number().min(1).max(50).nullable()
+  budgetPercent: z.number().min(-50).max(50).nullable()
 });
 
 const AnswerSchema = z.object({
@@ -91,11 +91,12 @@ export async function askCommander(input: {
       ? [
           "Se — e somente se — o usuário pedir para criar uma regra/automação (ex.: 'crie uma regra",
           "que pause campanhas com CPA acima de 50'), preencha `ruleProposal` traduzindo o pedido:",
-          "métricas: cpl, cpa, ctr (em %), spend (R$ na janela de 7 dias), conversions, roas;",
+          "métricas: cpl, cpa, ctr (em %), spend (R$ na janela), conversions, roas, clicks, cpm (R$), frequency;",
           "operadores: gt, lt, gte; `groups` = listas de condições em E, combinadas em OU;",
           "`minSpend` = gasto mínimo em R$ para avaliar a campanha (use null se não citado);",
           "ações: pause_campaign, alert_only, adjust_budget_percent (+budgetPercent), reactivate_campaign,",
-          "scale_gradual (+budgetPercent). No `answer`, explique a regra proposta em 1 parágrafo e avise",
+          "scale_gradual (+budgetPercent). budgetPercent negativo REDUZ o orçamento (ex.: -20).",
+          "No `answer`, explique a regra proposta em 1 parágrafo e avise",
           "que ela será criada em modo de aprovação. Caso contrário, retorne ruleProposal = null."
         ]
       : ["Sempre retorne ruleProposal = null (criação de regras está desativada)."]),

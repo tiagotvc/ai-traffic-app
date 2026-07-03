@@ -5,6 +5,7 @@ import { Between, In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import { num } from "@/lib/goal-types";
 import { normalizeConditionGroups } from "@/lib/automation/rule-templates";
+import { aggregateMetricValues, dnfHit, isoAddDays, normalizeWindow } from "@/lib/automation/evaluate";
 
 /**
  * Simulação (backtest) de uma regra de automação contra o histórico real do tenant.
@@ -25,6 +26,8 @@ export type SimulateRuleInput = {
     value?: number;
     minSpend?: number;
     schedule?: { startHour?: number; endHour?: number };
+    windowDays?: number;
+    consecutiveDays?: number;
   };
   action: { type: string; budgetPercent?: number };
   clientId?: string | null;
@@ -64,8 +67,6 @@ export type SimulateRuleResult =
         dailyBudgetIncrease: number;
       };
     };
-
-const WINDOW_DAYS = 7;
 
 function isoDaysAgo(n: number): string {
   const d = new Date();
@@ -124,8 +125,9 @@ export async function simulateRule(
     };
   }
 
-  // Precisa dos 7 dias anteriores ao primeiro dia simulado para a primeira janela.
-  const since = isoDaysAgo(days + WINDOW_DAYS);
+  const spec = normalizeWindow(input.condition);
+  // Histórico extra: janela móvel + dias consecutivos antes do primeiro dia simulado.
+  const since = isoDaysAgo(days + spec.windowDays + spec.consecutiveDays);
   const today = isoDaysAgo(0);
   const rows = await campRepo.find({
     where: { adAccountId: In(accountIds), day: Between(since, today) },
@@ -142,19 +144,6 @@ export async function simulateRule(
   const replayDays: string[] = [];
   for (let i = days - 1; i >= 0; i--) replayDays.push(isoDaysAgo(i));
 
-  const evalClause = (
-    c: { metric?: string; op?: string; value?: number },
-    metricValues: Record<string, number>
-  ) => {
-    const metricVal = metricValues[c.metric ?? ""] ?? 0;
-    const threshold = c.value ?? 0;
-    return c.op === "gt"
-      ? metricVal > threshold
-      : c.op === "lt"
-        ? metricVal < threshold
-        : metricVal >= threshold;
-  };
-
   const minSpend = input.condition.minSpend;
   const triggered: SimulatedCampaign[] = [];
   let alertDays = 0;
@@ -163,53 +152,34 @@ export async function simulateRule(
     let firstTriggerDay: string | null = null;
     let daysTriggered = 0;
 
-    for (const day of replayDays) {
-      const windowStart = new Date(`${day}T00:00:00Z`);
-      windowStart.setUTCDate(windowStart.getUTCDate() - WINDOW_DAYS);
-      const windowStartIso = windowStart.toISOString().slice(0, 10);
-      const window = snaps.filter((s) => s.day >= windowStartIso && s.day <= day);
+    // 1) Em quais dias a condição valeu (cada dia com a própria janela móvel)?
+    //    Avalia também os (consecutiveDays - 1) dias ANTES do período simulado, para o
+    //    primeiro dia do replay poder verificar a sequência completa.
+    const hitDays = new Set<string>();
+    const evalDays: string[] = [];
+    for (let k = spec.consecutiveDays - 1; k >= 1; k -= 1) {
+      evalDays.push(isoAddDays(replayDays[0]!, -k));
+    }
+    evalDays.push(...replayDays);
+    for (const day of evalDays) {
+      const windowStart = isoAddDays(day, -(spec.windowDays - 1));
+      const window = snaps.filter((sn) => sn.day >= windowStart && sn.day <= day);
       if (!window.length) continue;
+      const metricValues = aggregateMetricValues(window);
+      if (minSpend && metricValues.spend < minSpend) continue;
+      if (dnfHit(groups, metricValues)) hitDays.add(day);
+    }
 
-      // Mesma agregação do motor: soma spend/conversões/impressões/cliques; CPL e ROAS
-      // como média dos dias com valor.
-      let spend = 0;
-      let conversions = 0;
-      let impressions = 0;
-      let clicks = 0;
-      let cplSum = 0;
-      let cplN = 0;
-      let roasSum = 0;
-      let roasN = 0;
-      for (const s of window) {
-        spend += num(s.spend);
-        conversions += num(s.conversions);
-        impressions += num(s.impressions);
-        clicks += num(s.clicks);
-        const leads = num(s.leads);
-        if (leads > 0) {
-          cplSum += num(s.spend) / leads;
-          cplN += 1;
-        }
-        const roas = num(s.roas);
-        if (roas > 0) {
-          roasSum += roas;
-          roasN += 1;
+    // 2) Um "disparo" no dia D exige a condição valendo em D e nos N-1 dias anteriores.
+    for (const day of replayDays) {
+      let sequence = true;
+      for (let k = 0; k < spec.consecutiveDays; k += 1) {
+        if (!hitDays.has(isoAddDays(day, -k))) {
+          sequence = false;
+          break;
         }
       }
-      const metricValues: Record<string, number> = {
-        cpl: cplN ? cplSum / cplN : 0,
-        roas: roasN ? roasSum / roasN : 0,
-        ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
-        cpa: conversions > 0 ? spend / conversions : 0,
-        spend,
-        conversions
-      };
-
-      if (minSpend && spend < minSpend) continue;
-
-      const hit = groups.some((g) => g.every((c) => evalClause(c, metricValues)));
-      if (!hit) continue;
-
+      if (!sequence) continue;
       daysTriggered += 1;
       if (!firstTriggerDay) firstTriggerDay = day;
     }
