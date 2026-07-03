@@ -14,7 +14,7 @@ import {
  * Pipeline step-aware: roda só os cientistas do passo atual; concorrentes ficam em cache.
  */
 export function CampaignCreatorResearchCard() {
-  const researchEnabled = useCommanderScientistsAccess("campaigns.commander.scientists.campaigns");
+  const researchEnabled = useCommanderScientistsAccess("commander.scientists.campaigns");
   const { payload, clients, activeNode, draftId } = useCampaignDraft();
   const client = resolveDraftClient(payload.clientSlug, clients);
   const shellSignature = client ? `${client.id}|${payload.objective}` : null;

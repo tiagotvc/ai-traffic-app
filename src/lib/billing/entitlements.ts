@@ -143,8 +143,8 @@ export { resolveLimits };
  * Capacidades sem flag mapeada não têm bypass de admin — vêm direto do plano.
  */
 const PLATFORM_MASKED_LIMITS: Partial<Record<PlanLimitKey, string>> = {
-  allowCopilot: "campaigns.commander.scientists",
-  allowCommander: "campaigns.commander",
+  allowCopilot: "commander.scientists",
+  allowCommander: "commander.modules.campaigns",
   allowCreativeMemoryAi: "brain",
   allowAgencyBrainHypotheses: "brain.hypotheses",
   allowAgencyBrainDna: "brain.dna",

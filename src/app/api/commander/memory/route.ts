@@ -21,8 +21,8 @@ export async function GET(req: Request) {
   const { tenant, user, platformAdmin, entitlements } = await getAppContext();
   const context = { userId: user.id, isPlatformAdmin: platformAdmin };
   const [commanderPlatform, memoryFlag] = await Promise.all([
-    isPlatformFeatureEnabled("campaigns.commander", context),
-    isPlatformFeatureEnabled("campaigns.commander.memory", context)
+    isPlatformFeatureEnabled("commander.modules.campaigns", context),
+    isPlatformFeatureEnabled("commander.memory", context)
   ]);
   const commander = canUseCommander({
     planSlug: entitlements.planSlug,

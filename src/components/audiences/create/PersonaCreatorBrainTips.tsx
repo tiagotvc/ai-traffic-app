@@ -168,8 +168,8 @@ export function PersonaCreatorBrainTips({
   const insightsResult = insightsCtx?.insightsResult ?? null;
   const insightsLoading = insightsCtx?.insightsLoading ?? false;
   const clientSlug = insightsCtx?.clientSlug ?? null;
-  const brainEnabled = usePlatformFeature("audiences.brain");
-  const researchEnabled = useCommanderScientistsAccess("campaigns.commander.scientists.audiences");
+  const brainEnabled = usePlatformFeature("commander.modules.audiences");
+  const researchEnabled = useCommanderScientistsAccess("commander.scientists.audiences");
   const [modalOpen, setModalOpen] = useState(false);
 
   const checklist = useMemo(() => buildPersonaDraftScoreChecklist(scoreInput), [scoreInput]);

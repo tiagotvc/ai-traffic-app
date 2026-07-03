@@ -51,10 +51,10 @@ export async function POST(req: Request) {
 
     const context = { userId: user.id, isPlatformAdmin: platformAdmin };
     const [commanderPlatform, memoryFlag, ruleProposalsFlag, parametersFlag] = await Promise.all([
-      isPlatformFeatureEnabled("campaigns.commander", context),
-      isPlatformFeatureEnabled("campaigns.commander.memory", context),
-      isPlatformFeatureEnabled("campaigns.commander.ruleProposals", context),
-      isPlatformFeatureEnabled("campaigns.commander.parametersContext", context)
+      isPlatformFeatureEnabled("commander.modules.campaigns", context),
+      isPlatformFeatureEnabled("commander.memory", context),
+      isPlatformFeatureEnabled("commander.ruleProposals", context),
+      isPlatformFeatureEnabled("commander.parametersContext", context)
     ]);
     const allowed = canUseCommander({
       planSlug: entitlements.planSlug,

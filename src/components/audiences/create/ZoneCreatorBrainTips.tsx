@@ -32,8 +32,8 @@ export function ZoneCreatorBrainTips({
   geoLocations?: { label?: string; latitude: number; longitude: number; radius: number }[];
 }) {
   const t = useTranslations("audiences");
-  const brainEnabled = usePlatformFeature("audiences.brain");
-  const researchEnabled = useCommanderScientistsAccess("campaigns.commander.scientists.audiences");
+  const brainEnabled = usePlatformFeature("commander.modules.audiences");
+  const researchEnabled = useCommanderScientistsAccess("commander.scientists.audiences");
 
   const hasInput = Boolean((places && places.length) || (geoLocations && geoLocations.length));
   const signature = hasInput

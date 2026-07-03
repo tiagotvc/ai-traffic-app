@@ -524,6 +524,8 @@
     "client": "Cliente"
   },
   "nav": {
+    "commander": "Commander",
+    "rulesEngine": "Motor de regras",
     "dashboard": "Dashboard",
     "clients": "Clientes",
     "campaigns": "Campanhas",

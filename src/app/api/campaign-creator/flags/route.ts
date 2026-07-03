@@ -16,8 +16,8 @@ export async function GET() {
     aiGenerate,
     aiCopy
   ] = await Promise.all([
-    isPlatformFeatureEnabled("campaigns.commander", context),
-    isPlatformFeatureEnabled("campaigns.commander.memory", context),
+    isPlatformFeatureEnabled("commander.modules.campaigns", context),
+    isPlatformFeatureEnabled("commander.memory", context),
     isPlatformFeatureEnabled("campaigns.meta-app-development-notice"),
     isPlatformFeatureEnabled("campaigns.ai-generate"),
     isPlatformFeatureEnabled("campaigns.ai-copy")

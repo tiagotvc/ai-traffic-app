@@ -434,6 +434,15 @@ plano) e os Scientists na subárvore `campaigns.commander.scientists.*`.
 
 ## Histórico
 
+- 2026-07-03 (e): **Commander vira módulo raiz na configuração e no produto.** Árvore de
+  flags reorganizada: `campaigns.commander.*` → `commander.*` com o novo nó
+  `commander.modules.{campaigns,audiences}` ("onde o Commander atua"; absorve o antigo
+  `audiences.brain`) — migração por `FEATURE_ALIASES`, overrides salvos continuam
+  valendo; 19 arquivos de check-sites atualizados para os ids canônicos. Sidebar ganhou
+  dois itens de topo: **Commander** (`/commander`, página nova de configuração — status
+  de cada capacidade, toggles para admin da plataforma via
+  `/api/admin/platform/feature-flags`) e **Motor de regras** (`/automations` promovida;
+  saiu do grupo do Cérebro), gateados pelos módulos `commander` e `engine`.
 - 2026-07-03 (d): Feature flags de plataforma para todas as entregas recentes do
   ecossistema (tabela acima) — jobs (brain-pipeline, cron bq-export) avaliam as flags em
   modo global (sem contexto de usuário).

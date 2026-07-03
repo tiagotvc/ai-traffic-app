@@ -70,12 +70,9 @@ function isHypothesesActive(base: string): boolean {
   return base === "/agency-brain/hypotheses";
 }
 
-function isAutomationsActive(base: string): boolean {
-  return base === "/automations" || base.startsWith("/automations/");
-}
-
 function isAgencyBrainActive(base: string): boolean {
-  return isLearningsActive(base) || isHypothesesActive(base) || isAutomationsActive(base);
+  // Automações agora é item de topo próprio ("Motor de regras") — saiu deste grupo.
+  return isLearningsActive(base) || isHypothesesActive(base);
 }
 
 export function AgencyBrainNavGroup({
@@ -188,15 +185,6 @@ export function AgencyBrainNavGroup({
               </Link>
             );
           })}
-          {featureOn("brain.automations") ? (
-            <Link
-              href="/automations"
-              onClick={() => onNavigate?.()}
-              className={sidebarModuleClasses(undefined, isAutomationsActive(base))}
-            >
-              {t("automations")}
-            </Link>
-          ) : null}
         </div>
       ) : null}
     </div>

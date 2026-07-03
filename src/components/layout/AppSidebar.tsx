@@ -5,8 +5,10 @@ import {
   Home,
   LayoutGrid,
   Megaphone,
+  Sparkles,
   Trophy,
-  Users
+  Users,
+  Zap
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
@@ -127,7 +129,28 @@ export function AppSidebar({
       label: t("creatives"),
       icon: <Trophy size={18} strokeWidth={1.75} className="shrink-0" />,
       gate: "creatives"
-    }
+    },
+    // Módulos do ecossistema Orion como itens de topo (reorg 2026-07-03).
+    ...(moduleOn("commander")
+      ? [
+          {
+            id: "commander",
+            href: "/commander",
+            label: t("commander"),
+            icon: <Sparkles size={18} strokeWidth={1.75} className="shrink-0" />
+          } satisfies NavItem
+        ]
+      : []),
+    ...(moduleOn("engine")
+      ? [
+          {
+            id: "rulesEngine",
+            href: "/automations",
+            label: t("rulesEngine"),
+            icon: <Zap size={18} strokeWidth={1.75} className="shrink-0" />
+          } satisfies NavItem
+        ]
+      : [])
   ];
 
   type SidebarEntry =
@@ -147,6 +170,12 @@ export function AppSidebar({
       : []),
     ...(moduleOn("audiences") ? [{ kind: "audiences" as const }] : []),
     { kind: "item", item: items.find((i) => i.id === "creatives")! },
+    ...(items.some((i) => i.id === "commander")
+      ? [{ kind: "item" as const, item: items.find((i) => i.id === "commander")! }]
+      : []),
+    ...(items.some((i) => i.id === "rulesEngine")
+      ? [{ kind: "item" as const, item: items.find((i) => i.id === "rulesEngine")! }]
+      : []),
     ...(moduleOn("brain") ? [{ kind: "brain" as const }] : []),
     ...(moduleOn("reports") ? [{ kind: "reports" as const }] : [])
   ];

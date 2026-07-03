@@ -18,7 +18,7 @@ const QuerySchema = z.object({
 
 export async function GET(req: Request) {
   try {
-    await assertFeatureEnabled("campaigns.commander.memory");
+    await assertFeatureEnabled("commander.memory");
 
     const { tenant, user, metaAccessToken } = await getAppContext();
     if (!user) {

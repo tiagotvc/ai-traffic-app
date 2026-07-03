@@ -17,7 +17,7 @@ type LiveScientist = {
 
 export function useCommanderState(surface: "desktop" | "mobile" = "desktop") {
   const { payload, activeNode, draftId } = useCampaignDraft();
-  const researchEnabled = useCommanderScientistsAccess("campaigns.commander.scientists.campaigns");
+  const researchEnabled = useCommanderScientistsAccess("commander.scientists.campaigns");
   const [localState, setLocalState] = useState<CommanderState>(() =>
     commanderService.analyzeCampaignDraft(payload)
   );

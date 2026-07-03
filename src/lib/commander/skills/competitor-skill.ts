@@ -30,10 +30,10 @@ async function gatherExtraSources(
   country: string
 ): Promise<{ findings: ScientistSkillFinding[]; sources: string[] }> {
   const sources: Array<[string, string, () => Promise<ScientistSkillFinding[]>]> = [
-    ["campaigns.commander.scientists.competitor.google", "google_serp", () => googleSerpFindings(niche, country)],
-    ["campaigns.commander.scientists.competitor.trends", "google_trends", () => googleTrendsFindings(niche, country)],
-    ["campaigns.commander.scientists.competitor.youtube", "youtube", () => youtubeFindings(niche, country)],
-    ["campaigns.commander.scientists.competitor.maps", "google_maps", () => googleMapsFindings(niche, country)]
+    ["commander.scientists.competitor.google", "google_serp", () => googleSerpFindings(niche, country)],
+    ["commander.scientists.competitor.trends", "google_trends", () => googleTrendsFindings(niche, country)],
+    ["commander.scientists.competitor.youtube", "youtube", () => youtubeFindings(niche, country)],
+    ["commander.scientists.competitor.maps", "google_maps", () => googleMapsFindings(niche, country)]
   ];
   const findings: ScientistSkillFinding[] = [];
   const used: string[] = [];
@@ -98,7 +98,7 @@ function saturationFindings(ads: NormalizedAd[]): ScientistSkillFinding[] {
 
 export const competitorSkill: ScientistSkill = {
   id: "competitor",
-  flagId: "campaigns.commander.scientists.competitor",
+  flagId: "commander.scientists.competitor",
   canRun: (input) => Boolean(input.niche?.trim() || (input.competitors && input.competitors.length)),
   run: async (input): Promise<ScientistSkillResult> => {
     if (!isMetaAdLibraryConfigured()) {
