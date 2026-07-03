@@ -352,10 +352,21 @@ frente antes da hora.
   creator (`/api/meta/apply` idem). Eventos emitidos: `engine.action.executed/failed/
   pending/approved/rejected`. Os `Alert`s continuam como projeção de UI + state-tracking
   do motor (dedupe, passos de escalada, chaves de agenda) — decisão registrada no executor.
-- **Fase 2 — BigQuery cedo:** implementar `bigquery-service`, dataset + export
-  incremental (snapshots + domain_events + learnings). Histórico começa a acumular
-  imediatamente — o custo de adiar é irrecuperável (dados não exportados hoje não viram
-  benchmark amanhã).
+- ✅ **Fase 2 — BigQuery cedo (entregue 2026-07-02):** cliente lazy/env-gated em
+  [`bigquery-client.ts`](../../src/lib/analytics/bigquery-client.ts) e export incremental
+  em [`bq-export.ts`](../../src/lib/analytics/bq-export.ts) (cron horário
+  `/api/cron/bq-export`). Dataset `orion_analytics` com 4 tabelas — `campaign_snapshots`
+  (tenant resolvido via join, já que o snapshot é FK-scoped), `domain_events`, `learnings`,
+  `executions` — todas **particionadas por dia + clusterizadas por `tenant_id`**, criadas
+  automaticamente no primeiro export. Cursores: watermark de `updatedAt` por tabela em
+  `platform_settings` (`bq_export_state`); `domain_events` usa o próprio outbox
+  (`processedAt IS NULL`). Contrato append-only: linha atualizada re-exporta como nova
+  versão, consumidor deduplica por chave natural + `updated_at` máximo. Falha em uma
+  tabela não bloqueia as outras nem avança o watermark dela. Ligar em produção =
+  `ENABLE_BIGQUERY_ANALYTICS=true` + `BIGQUERY_CREDENTIALS_JSON` (+ opcionais
+  `BIGQUERY_PROJECT_ID`/`BIGQUERY_DATASET`/`BIGQUERY_LOCATION`, default
+  `southamerica-east1`). Desligado = no-op barato. Adiado conscientemente: `ad_snapshots`
+  (volume alto, exportar quando houver consumidor) e as views de dedup/benchmark (Fase 5).
 - **Fase 3 — Laboratory consolidado:** agregado `Experiment` (3 kinds), elo
   Hypothesis→Experiment→Learning fechado, `labs_experiments` para TypeORM.
 - **Fase 4 — Commander coordenador:** `getParameters()` unificado; Researcher extraído
@@ -368,6 +379,11 @@ Cada fase é utilizável sozinha e nenhuma exige downtime ou migração destruti
 
 ## Histórico
 
+- 2026-07-02 (c): **Fase 2 entregue** — plano analítico BigQuery ligável por env:
+  `@google-cloud/bigquery` adicionado, cliente lazy, schema bootstrap idempotente
+  (4 tabelas particionadas/clusterizadas), export incremental com watermarks +
+  outbox como cursor, cron horário. Postgres segue fonte de verdade; BQ nunca é lido
+  em request síncrono (leitura só na Fase 5).
 - 2026-07-02 (b): **Fase 1 entregue** — executor unificado (`src/lib/engine/executor.ts`),
   `engine_executions` absorve a fila de aprovação (migration 0064, idempotente, ids
   preservados; semântica preservada: aprovação que falha na Meta mantém a pendência

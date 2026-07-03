@@ -1,8 +1,11 @@
 export type BigQueryAnalyticsParams = { clientId: string; dateFrom?: string; dateTo?: string };
 
 /**
- * Provider tolerante a ausência de credenciais. A implementação real pode ser
- * injetada sem acoplar o Campaign Creator ao SDK do BigQuery.
+ * Provider tolerante a ausência de credenciais — a face de LEITURA do plano analítico.
+ * O lado de escrita já existe: export incremental em `bq-export.ts` (cron `bq-export`),
+ * cliente em `bigquery-client.ts`. Estes métodos de leitura serão implementados na
+ * Fase 5 (benchmarking/memória longa do Brain) consultando o dataset `orion_analytics`
+ * — nunca em caminho síncrono de request (docs/orion-architecture §5).
  */
 export class BigQueryService {
   readonly enabled = process.env.ENABLE_BIGQUERY_ANALYTICS === "true";
