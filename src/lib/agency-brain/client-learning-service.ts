@@ -3,6 +3,7 @@ import "server-only";
 import type { ClientLearning } from "@/db/entities/ClientLearning";
 import { repositories } from "@/db/repositories";
 import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
+import { emitDomainEvent } from "@/lib/events/domain-events";
 import type {
   CreateLearningInput,
   LearningDto,
@@ -264,6 +265,17 @@ export async function createSuggestedLearning(
     sourceId: dto.id,
     sourceType: "learning",
     metadata: { source: dto.source, confidenceScore: dto.confidenceScore }
+  });
+
+  // Outbox do ecossistema: o Laboratory publica o artefato "aprendizado sugerido".
+  await emitDomainEvent({
+    tenantId,
+    clientId,
+    module: "laboratory",
+    type: "laboratory.learning.suggested",
+    sourceType: "learning",
+    sourceId: dto.id,
+    payload: { title: dto.title, category: dto.category, source: dto.source }
   });
 
   return dto;

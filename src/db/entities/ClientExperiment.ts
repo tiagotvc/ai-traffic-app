@@ -30,6 +30,10 @@ export class ClientExperiment extends AppBaseEntity {
   @Column({ type: "uuid", nullable: true })
   hypothesisId?: string | null;
 
+  /** Elo Experiment→Learning (Fase 3): aprendizado publicado quando o A/B conclui. */
+  @Column({ type: "uuid", nullable: true })
+  resultLearningId?: string | null;
+
   @Column({ type: "text", nullable: true })
   metaCampaignId?: string | null;
 

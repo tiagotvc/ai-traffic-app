@@ -367,8 +367,20 @@ frente antes da hora.
   `BIGQUERY_PROJECT_ID`/`BIGQUERY_DATASET`/`BIGQUERY_LOCATION`, default
   `southamerica-east1`). Desligado = no-op barato. Adiado conscientemente: `ad_snapshots`
   (volume alto, exportar quando houver consumidor) e as views de dedup/benchmark (Fase 5).
-- **Fase 3 — Laboratory consolidado:** agregado `Experiment` (3 kinds), elo
-  Hypothesis→Experiment→Learning fechado, `labs_experiments` para TypeORM.
+- ✅ **Fase 3 — Laboratory consolidado (entregue 2026-07-03):** `labs_experiments`/
+  `labs_agent_runs` viraram entities TypeORM (`LabsExperiment`/`LabsAgentRun` —
+  `labs_findings`/`labs_hypotheses`/`labs_credits_usage` ficam com o scientists-worker
+  externo, de propósito); migration 0065 adiciona `hypothesis_id`/`result_learning_id`
+  (labs) e `resultLearningId` (client_experiments). **Elo Experiment→Learning fechado**:
+  [`experiment-outcomes.ts`](../../src/lib/laboratory/experiment-outcomes.ts) publica um
+  `ClientLearning` sugerido + `laboratory.experiment.completed` quando um experimento
+  conclui — ganchos no Inngest (`publish-outcome` após finalize), no mock-runner e no
+  `updateExperiment` (primeira vez que winner/conclusão é setado). Leitura unificada do
+  agregado em [`laboratory/experiments.ts`](../../src/lib/laboratory/experiments.ts)
+  (`kind: research | ab_test`; `simulation` é efêmero e persiste direto em hipóteses).
+  Outbox do Laboratory ligado: `laboratory.learning.suggested` (em
+  `createSuggestedLearning`) e `laboratory.hypothesis.suggested` (em
+  `createHypothesisFromDraft`) — ambos já fluem pro BigQuery via export da Fase 2.
 - **Fase 4 — Commander coordenador:** `getParameters()` unificado; Researcher extraído
   dos scientists; pipelines de `labs/` movem para `commander/`.
 - **Fase 5 — Brain central:** benchmarking por nicho via BQ (substitui agregação
@@ -379,6 +391,10 @@ Cada fase é utilizável sozinha e nenhuma exige downtime ou migração destruti
 
 ## Histórico
 
+- 2026-07-03: **Fase 3 entregue** — Laboratory consolidado: labs para TypeORM, elo
+  Hypothesis→Experiment→Learning fechado (todo experimento concluído publica learning
+  sugerido com dedupe + evento no outbox), leitura unificada do agregado com `kind`,
+  eventos `laboratory.*` emitidos nos pontos centrais de criação de artefatos.
 - 2026-07-02 (c): **Fase 2 entregue** — plano analítico BigQuery ligável por env:
   `@google-cloud/bigquery` adicionado, cliente lazy, schema bootstrap idempotente
   (4 tabelas particionadas/clusterizadas), export incremental com watermarks +

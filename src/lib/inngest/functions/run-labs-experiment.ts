@@ -29,6 +29,18 @@ export const runLabsExperiment = inngest.createFunction(
       await step.run("finalize", async () => {
         await finalizeOnWorker(experimentId);
       });
+
+      // Fase 3 (docs/orion-architecture §2.2): conclusão publica o aprendizado + evento.
+      await step.run("publish-outcome", async () => {
+        const { repositories } = await import("@/db/repositories");
+        const { labsExperiment } = await repositories();
+        const experiment = await labsExperiment.findOne({ where: { id: experimentId } });
+        if (!experiment) return;
+        const { publishLabsExperimentOutcome } = await import(
+          "@/lib/laboratory/experiment-outcomes"
+        );
+        await publishLabsExperimentOutcome(experiment.tenantId, experimentId);
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Labs experiment failed";
       await markLabsExperimentFailed(experimentId, message);

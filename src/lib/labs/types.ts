@@ -52,6 +52,9 @@ export type LabsExperimentDto = {
   maxDurationMinutes: number | null;
   dossier: Record<string, unknown> | null;
   errorMessage: string | null;
+  /** Elo Hypothesis→Experiment→Learning (Fase 3, docs/orion-architecture §2.2). */
+  hypothesisId: string | null;
+  resultLearningId: string | null;
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;

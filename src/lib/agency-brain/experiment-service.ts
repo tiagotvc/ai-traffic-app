@@ -106,6 +106,8 @@ export async function updateExperiment(
   const row = await repo.findOne({ where: { id: experimentId, tenantId, clientId } });
   if (!row) return null;
 
+  const hadOutcome = Boolean(row.winner || row.conclusion);
+
   if (input.title !== undefined) row.title = input.title;
   if (input.variantA !== undefined) row.variantA = input.variantA;
   if (input.variantB !== undefined) row.variantB = input.variantB;
@@ -119,6 +121,20 @@ export async function updateExperiment(
   if (input.conclusion !== undefined) row.conclusion = input.conclusion;
 
   const saved = await repo.save(row);
+
+  // Fase 3 (docs/orion-architecture §2.2): quando o A/B ganha vencedor/conclusão pela
+  // primeira vez, o Laboratory publica o aprendizado e o evento (best-effort).
+  if (!hadOutcome && (saved.winner || saved.conclusion)) {
+    try {
+      const { publishAbExperimentOutcome } = await import(
+        "@/lib/laboratory/experiment-outcomes"
+      );
+      await publishAbExperimentOutcome(tenantId, saved);
+    } catch (err) {
+      console.error("[experiments] publish outcome failed", err);
+    }
+  }
+
   return toExperimentDto(saved);
 }
 

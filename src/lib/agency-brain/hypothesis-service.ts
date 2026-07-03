@@ -13,6 +13,7 @@ import { createActionSuggestion } from "@/lib/action-suggestions/action-suggesti
 import type { SuggestedActionDraft } from "@/lib/action-suggestions/types";
 import { slugify } from "@/lib/app-context";
 import { recordTimelineEvent } from "@/lib/agency-brain/timeline-service";
+import { emitDomainEvent } from "@/lib/events/domain-events";
 import { rebuildClientDna } from "@/lib/agency-brain/dna-builder";
 import {
   applyConfidenceScoreSort,
@@ -151,6 +152,18 @@ export async function createHypothesisFromDraft(
     dedupeKey: draft.dedupeKey
   });
   const saved = await repo.save(row);
+
+  // Outbox do ecossistema: o Laboratory publica o artefato "hipótese sugerida".
+  await emitDomainEvent({
+    tenantId,
+    clientId,
+    module: "laboratory",
+    type: "laboratory.hypothesis.suggested",
+    sourceType: "hypothesis",
+    sourceId: saved.id,
+    payload: { title: saved.title, category: saved.category, source: saved.source }
+  });
+
   return toHypothesisDto(saved);
 }
 

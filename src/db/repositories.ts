@@ -7,6 +7,8 @@ import type { AutomationRule } from "@/db/entities/AutomationRule";
 import type { AutomationPendingAction } from "@/db/entities/AutomationPendingAction";
 import type { EngineExecution } from "@/db/entities/EngineExecution";
 import type { DomainEvent } from "@/db/entities/DomainEvent";
+import type { LabsExperiment } from "@/db/entities/LabsExperiment";
+import type { LabsAgentRun } from "@/db/entities/LabsAgentRun";
 import type { CampaignGoal } from "@/db/entities/CampaignGoal";
 import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
 import type { AdMetricSnapshot } from "@/db/entities/AdMetricSnapshot";
@@ -124,6 +126,8 @@ const ENTITY = {
   AutomationPendingAction: "AutomationPendingAction",
   EngineExecution: "EngineExecution",
   DomainEvent: "DomainEvent",
+  LabsExperiment: "LabsExperiment",
+  LabsAgentRun: "LabsAgentRun",
   ReportSchedule: "ReportSchedule",
   UserClient: "UserClient",
   TenantMember: "TenantMember",
@@ -236,6 +240,8 @@ export async function repositories() {
     ),
     engineExecution: repositoryFor<EngineExecution>(ds, ENTITY.EngineExecution),
     domainEvent: repositoryFor<DomainEvent>(ds, ENTITY.DomainEvent),
+    labsExperiment: repositoryFor<LabsExperiment>(ds, ENTITY.LabsExperiment),
+    labsAgentRun: repositoryFor<LabsAgentRun>(ds, ENTITY.LabsAgentRun),
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),
     tenantMember: repositoryFor<TenantMember>(ds, ENTITY.TenantMember),

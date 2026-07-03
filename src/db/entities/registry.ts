@@ -44,6 +44,8 @@ import { AutomationRule } from "./AutomationRule";
 import { AutomationPendingAction } from "./AutomationPendingAction";
 import { EngineExecution } from "./EngineExecution";
 import { DomainEvent } from "./DomainEvent";
+import { LabsExperiment } from "./LabsExperiment";
+import { LabsAgentRun } from "./LabsAgentRun";
 import { ReportSchedule } from "./ReportSchedule";
 import { UserClient } from "./UserClient";
 import { TenantMember } from "./TenantMember";
@@ -228,6 +230,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: AutomationPendingAction, name: "AutomationPendingAction" },
   { ctor: EngineExecution, name: "EngineExecution" },
   { ctor: DomainEvent, name: "DomainEvent" },
+  { ctor: LabsExperiment, name: "LabsExperiment" },
+  { ctor: LabsAgentRun, name: "LabsAgentRun" },
   { ctor: ReportSchedule, name: "ReportSchedule" },
   { ctor: UserClient, name: "UserClient" },
   { ctor: TenantMember, name: "TenantMember" },

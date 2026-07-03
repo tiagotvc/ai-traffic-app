@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getDataSource } from "@/db/data-source";
+import { repositories } from "@/db/repositories";
 import { SCIENTIST_CREDITS } from "@/lib/labs/types";
 
 const MOCK_SUMMARIES: Record<string, string> = {
@@ -80,19 +80,11 @@ export async function runLabsMockPipeline(
   experimentId: string,
   selectedScientists: string[]
 ): Promise<void> {
-  const ds = await getDataSource();
-  const rows = await ds.query<
-    { product: string; objective: string | null; estimated_credits: number }[]
-  >(`SELECT product, objective, estimated_credits FROM labs_experiments WHERE id = $1`, [
-    experimentId
-  ]);
-  const experiment = rows[0];
+  const { labsExperiment: repo, labsAgentRun: runRepo } = await repositories();
+  const experiment = await repo.findOne({ where: { id: experimentId } });
   if (!experiment) return;
 
-  await ds.query(
-    `UPDATE labs_experiments SET status = 'running', started_at = now() WHERE id = $1`,
-    [experimentId]
-  );
+  await repo.update({ id: experimentId }, { status: "running", startedAt: new Date() });
 
   let creditsUsed = 0;
 
@@ -102,29 +94,23 @@ export async function runLabsMockPipeline(
     const credits = SCIENTIST_CREDITS[scientistId] ?? 5;
     creditsUsed += credits;
 
-    await ds.query(`UPDATE labs_experiments SET status = $2 WHERE id = $1`, [
-      experimentId,
-      status
-    ]);
+    await repo.update({ id: experimentId }, { status });
 
     await sleep(1200);
 
-    await ds.query(
-      `INSERT INTO labs_agent_runs (experiment_id, scientist_id, status, summary, credits_used, duration_ms, completed_at)
-       VALUES ($1, $2, 'completed', $3, $4, $5, now())`,
-      [
+    await runRepo.save(
+      runRepo.create({
         experimentId,
         scientistId,
-        MOCK_SUMMARIES[scientistId] ?? `Análise mock do cientista ${scientistId}.`,
-        credits,
-        800 + i * 400
-      ]
+        status: "completed",
+        summary: MOCK_SUMMARIES[scientistId] ?? `Análise mock do cientista ${scientistId}.`,
+        creditsUsed: credits,
+        durationMs: 800 + i * 400,
+        completedAt: new Date()
+      })
     );
 
-    await ds.query(`UPDATE labs_experiments SET credits_used = $2 WHERE id = $1`, [
-      experimentId,
-      creditsUsed
-    ]);
+    await repo.update({ id: experimentId }, { creditsUsed });
   }
 
   const dossier = buildMockDossier(
@@ -134,10 +120,17 @@ export async function runLabsMockPipeline(
     experiment.objective
   );
 
-  await ds.query(
-    `UPDATE labs_experiments
-     SET status = 'completed', dossier = $2::jsonb, credits_used = $3, completed_at = now()
-     WHERE id = $1`,
-    [experimentId, JSON.stringify(dossier), creditsUsed]
-  );
+  experiment.status = "completed";
+  experiment.dossier = dossier;
+  experiment.creditsUsed = creditsUsed;
+  experiment.completedAt = new Date();
+  await repo.save(experiment);
+
+  // Fase 3: conclusão publica o aprendizado e o domain event (best-effort).
+  try {
+    const { publishLabsExperimentOutcome } = await import("@/lib/laboratory/experiment-outcomes");
+    await publishLabsExperimentOutcome(experiment.tenantId, experimentId);
+  } catch (err) {
+    console.error("[labs mock-runner] publish outcome failed", err);
+  }
 }
