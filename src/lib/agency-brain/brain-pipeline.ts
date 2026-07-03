@@ -124,5 +124,14 @@ export async function runAgencyBrainPipeline(tenantId: string, clientId?: string
     } catch {
       // aprendizados de automação são opcionais no pipeline
     }
+
+    // Aresta Brain→Engine (Fase 5): metas + padrões dos dados do tenant viram propostas
+    // de regra com simulação anexada, publicadas no feed de sugestões (best-effort).
+    try {
+      const { suggestAutomationRulesForClient } = await import("@/lib/brain/rule-suggestions");
+      await suggestAutomationRulesForClient(tenantId, c.id);
+    } catch {
+      // propostas de regra são opcionais no pipeline
+    }
   }
 }

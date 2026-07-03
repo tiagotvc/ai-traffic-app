@@ -6,7 +6,9 @@ export type ActionSuggestionType =
   | "pause_campaign"
   | "duplicate_audience"
   | "refresh_creative"
-  | "review_campaign";
+  | "review_campaign"
+  /** Aresta Brain→Engine: proposta de regra do Engine com simulação anexada (Fase 5). */
+  | "create_automation_rule";
 
 export type ActionSuggestionSource = "RULE" | "AI";
 export type ActionSuggestionStatus = "PENDING" | "EXECUTED" | "ACKNOWLEDGED" | "REJECTED";

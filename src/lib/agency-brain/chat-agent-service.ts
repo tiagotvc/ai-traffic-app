@@ -152,7 +152,14 @@ export async function generateChatAgentResponse(args: {
   }));
 
   if (!proposals.length && signalDrafts.length) {
-    proposals = signalDrafts.slice(0, 3).map((d, i) => ({
+    // O chat só propõe os tipos do ProposalSchema — `create_automation_rule`
+    // (Brain→Engine) vive no feed de sugestões, não aqui.
+    type ChatActionType = ChatAgentProposal["actionType"];
+    const chatDrafts = signalDrafts.filter(
+      (d): d is (typeof signalDrafts)[number] & { actionType: ChatActionType } =>
+        d.actionType !== "create_automation_rule"
+    );
+    proposals = chatDrafts.slice(0, 3).map((d, i) => ({
       title: d.title,
       description: d.description,
       actionType: d.actionType,

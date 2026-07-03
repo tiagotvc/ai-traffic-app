@@ -5589,7 +5589,8 @@
       "pause_campaign": "Pause campaign",
       "duplicate_audience": "Duplicate audience",
       "refresh_creative": "Refresh creative",
-      "review_campaign": "Review campaign"
+      "review_campaign": "Review campaign",
+      "create_automation_rule": "Create automation rule"
     }
   },
   "clientOverview": {

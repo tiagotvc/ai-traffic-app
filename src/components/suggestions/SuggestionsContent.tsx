@@ -65,7 +65,8 @@ const ACTION_TYPES: ActionSuggestionType[] = [
   "pause_campaign",
   "duplicate_audience",
   "refresh_creative",
-  "review_campaign"
+  "review_campaign",
+  "create_automation_rule"
 ];
 
 export function SuggestionsContent({ clientId }: { clientId: string }) {

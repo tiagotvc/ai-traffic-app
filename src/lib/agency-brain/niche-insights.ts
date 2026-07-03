@@ -72,10 +72,35 @@ export async function getNicheStarterInsights(niche: string | null | undefined):
 
   const staticPatterns = NICHE_STARTER_PATTERNS[key];
   const aggregated = await getAggregatedNichePatterns(key);
+  const benchmark = await getNicheBenchmarkPattern(key);
 
   return {
     niche: key,
-    patterns: [...staticPatterns, ...aggregated],
-    aggregated: aggregated.length > 0
+    patterns: [...staticPatterns, ...aggregated, ...benchmark],
+    aggregated: aggregated.length > 0 || benchmark.length > 0
   };
+}
+
+/**
+ * Benchmark quantitativo do nicho (Fase 5): lê o snapshot materializado pelo job de
+ * benchmarks (BigQuery → Postgres) — nunca consulta o BQ em caminho de request.
+ */
+async function getNicheBenchmarkPattern(niche: ClientNiche): Promise<string[]> {
+  try {
+    const { getNicheBenchmarks } = await import("@/lib/brain/niche-benchmarks");
+    const snapshot = await getNicheBenchmarks();
+    const bench = snapshot?.niches?.[niche];
+    if (!bench) return [];
+    const parts = [
+      bench.avgCpa != null ? `CPA médio R$ ${bench.avgCpa}` : null,
+      bench.avgCtr != null ? `CTR médio ${bench.avgCtr}%` : null,
+      bench.avgRoas != null ? `ROAS médio ${bench.avgRoas}` : null
+    ].filter(Boolean);
+    if (!parts.length) return [];
+    return [
+      `Benchmark do nicho (${snapshot!.windowDays}d, ${bench.clients} contas): ${parts.join(" · ")}.`
+    ];
+  } catch {
+    return [];
+  }
 }

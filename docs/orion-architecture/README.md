@@ -394,14 +394,32 @@ frente antes da hora.
   (Google/TikTok/Bing) entra aqui sem tocar scientist. Namespace: `labs/pipelines` e
   `labs/skills` moveram para `commander/pipelines`/`commander/skills` com stubs de
   re-export nos caminhos antigos (zero churn nos importadores).
-- **Fase 5 — Brain central:** benchmarking por nicho via BQ (substitui agregação
-  on-the-fly), memória longa no contexto do chat, e só então avaliar `brain_edges`
-  (grafo) e Brain→Engine (regras sugeridas com "teria economizado R$ X").
+- ✅ **Fase 5 — Brain central (entregue 2026-07-03):** **Brain→Engine fechada — o ciclo
+  completo do ecossistema está fechado.**
+  [`brain/rule-suggestions.ts`](../../src/lib/brain/rule-suggestions.ts): no brain-pipeline,
+  metas do cliente (Parameters) + métricas de 7d geram candidatos determinísticos (CPA acima
+  da meta → pausar; gasto sem conversão → pausar; ROAS 50%+ acima do mínimo → escalar), cada
+  um validado por `simulateRule` 30d — só vira proposta se teria disparado, com o impacto
+  ("teria evitado R$ X") na descrição. A proposta é uma `ClientActionSuggestion`
+  (`create_automation_rule`) no feed existente; executar cria a regra em **modo aprovação**
+  (clamp por tier + `maxAutomationRules`, evento `engine.rule.created`). Dedupe por
+  tipo+cliente e skip se já existe regra equivalente ativa.
+  **Benchmarking por nicho** ([`brain/niche-benchmarks.ts`](../../src/lib/brain/niche-benchmarks.ts)):
+  o cron `bq-export` (único leitor do BQ) materializa agregados de 90d por nicho em
+  `platform_settings` — opt-in por tenant, mínimo 2 clientes por nicho; `niche-insights`
+  agrega o benchmark quantitativo aos padrões ("CPA médio R$ X · CTR Y% · ROAS Z").
+  Adiado consciente: memória longa no chat (espera histórico BQ acumular) e `brain_edges`
+  (grafo — sem consumidor ainda, decisão do §6.4 mantida).
 
 Cada fase é utilizável sozinha e nenhuma exige downtime ou migração destrutiva.
 
 ## Histórico
 
+- 2026-07-03 (c): **Fase 5 entregue — roadmap completo.** Brain→Engine (regras sugeridas
+  goal-driven com simulação anexada, via feed de sugestões, criação em modo aprovação) e
+  benchmarking por nicho materializado (BQ lido só no cron, snapshot em platform_settings,
+  consumido pelo niche-insights). Todas as arestas do ecossistema
+  Labs→Brain→Commander→Engine→Brain estão fechadas.
 - 2026-07-03 (b): **Fase 4 entregue** — Commander coordenador: `getParameters()` como
   leitura unificada dos parâmetros estratégicos (1º consumidor: contexto do chat),
   Researcher como porta única de fontes externas, pipelines/skills no namespace do

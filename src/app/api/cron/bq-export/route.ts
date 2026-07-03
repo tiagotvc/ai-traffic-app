@@ -22,7 +22,24 @@ export async function POST(req: Request) {
 
   try {
     const summary = await runBigQueryExport();
-    return NextResponse.json({ ok: true, ...summary });
+
+    // Brain › Benchmarking (Fase 5): após o export, materializa os agregados por nicho
+    // no Postgres — é o ÚNICO ponto que lê o BigQuery (best-effort).
+    let benchmarks: { enabled: boolean; niches: number } | { error: string } = {
+      enabled: false,
+      niches: 0
+    };
+    if (summary.enabled) {
+      try {
+        const { refreshNicheBenchmarks } = await import("@/lib/brain/niche-benchmarks");
+        benchmarks = await refreshNicheBenchmarks();
+      } catch (err) {
+        benchmarks = { error: err instanceof Error ? err.message : "erro no benchmark" };
+        console.error("[cron bq-export] benchmark refresh failed", err);
+      }
+    }
+
+    return NextResponse.json({ ok: true, ...summary, benchmarks });
   } catch (err) {
     console.error("[cron bq-export]", err);
     return NextResponse.json(

@@ -13,6 +13,24 @@ export type ActionPayload = {
   budgetIncreasePercent?: number;
   manualUrl?: string;
   checklist?: string[];
+  /** `create_automation_rule` (Brain→Engine): payload do POST /api/automation/rules. */
+  rulePayload?: {
+    name: string;
+    condition: {
+      groups: Array<Array<{ metric: string; op: string; value: number }>>;
+      minSpend?: number;
+    };
+    action: { type: string; budgetPercent?: number };
+    executionMode: "approval";
+  };
+  /** Simulação de 30 dias anexada à proposta de regra. */
+  simulationSummary?: {
+    days: number;
+    campaignsTriggered: number;
+    alertDays: number;
+    avoidedSpend: number;
+    dailyBudgetIncrease: number;
+  };
 };
 
 export type ActionEvidence = {

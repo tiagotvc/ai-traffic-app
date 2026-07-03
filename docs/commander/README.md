@@ -114,7 +114,7 @@ simulação anexada, aprovada com 1 clique).
 | Labs → Brain (hipóteses) | ✅ funciona | testing-skill persiste `ClientHypothesis` (SUGGESTED) |
 | Brain → Commander (memória/benchmarks) | ✅ funciona | memória no contexto do chat + `CommanderMemorySummary` no painel/dock |
 | Commander ↔ usuário (chat) | ✅ funciona (2026-07-02) | `/api/commander/ask` + `useAskCommander` |
-| Brain → Engine (regras sugeridas) | 🔴 não existe | Fase 2 do Engine ([doc](../orion-engine/README.md)) — última aresta aberta |
+| Brain → Engine (regras sugeridas) | ✅ funciona (2026-07-03) | `suggestAutomationRulesForClient()` no brain-pipeline: metas (Parameters) + métricas 7d → proposta de regra com simulação de 30d ("teria evitado R$ X") no feed de sugestões; executar cria a regra em modo aprovação. **Todas as arestas do ecossistema estão fechadas.** |
 | Commander → Engine (criar regra por conversa) | ✅ funciona (2026-07-02) | `askCommander()` devolve `ruleProposal` (payload do `POST /api/automation/rules` + simulação de 30 dias anexada); `CommanderRuleProposalCard` no painel cria a regra em modo aprovação com 1 clique |
 | Engine → Brain (execuções viram aprendizado) | ✅ funciona (2026-07-02) | `automationExecutionsToLearningDrafts()` no brain-pipeline: regra disparando ≥2× na mesma campanha na janela vira `ClientLearning` SUGGESTED (dedupe por regra+campanha) |
 

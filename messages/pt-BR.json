@@ -5593,7 +5593,8 @@
       "pause_campaign": "Pausar campanha",
       "duplicate_audience": "Duplicar público",
       "refresh_creative": "Renovar criativo",
-      "review_campaign": "Revisar campanha"
+      "review_campaign": "Revisar campanha",
+      "create_automation_rule": "Criar regra de automação"
     }
   },
   "clientOverview": {
