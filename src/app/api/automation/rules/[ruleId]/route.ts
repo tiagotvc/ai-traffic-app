@@ -37,7 +37,8 @@ const PatchSchema = z.object({
         "schedule_toggle",
         "reactivate_campaign",
         "notify_email",
-        "scale_gradual"
+        "scale_gradual",
+        "create_hypothesis"
       ]),
       budgetPercent: z.number().min(1).max(50).optional(),
       steps: z.number().int().min(2).max(10).optional(),

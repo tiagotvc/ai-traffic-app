@@ -7,13 +7,13 @@ import {
   Megaphone,
   Sparkles,
   Trophy,
-  Users,
-  Zap
+  Users
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { AgencyBrainNavGroup } from "@/components/layout/AgencyBrainNavGroup";
 import { AudiencesNavGroup } from "@/components/layout/AudiencesNavGroup";
+import { EngineNavGroup } from "@/components/layout/EngineNavGroup";
 import { ReportsNavGroup } from "@/components/layout/ReportsNavGroup";
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import {
@@ -141,21 +141,12 @@ export function AppSidebar({
           } satisfies NavItem
         ]
       : []),
-    ...(moduleOn("engine")
-      ? [
-          {
-            id: "rulesEngine",
-            href: "/automations",
-            label: t("rulesEngine"),
-            icon: <Zap size={18} strokeWidth={1.75} className="shrink-0" />
-          } satisfies NavItem
-        ]
-      : [])
   ];
 
   type SidebarEntry =
     | { kind: "item"; item: NavItem }
     | { kind: "audiences" }
+    | { kind: "engine" }
     | { kind: "brain" }
     | { kind: "reports" };
 
@@ -173,9 +164,7 @@ export function AppSidebar({
     ...(items.some((i) => i.id === "commander")
       ? [{ kind: "item" as const, item: items.find((i) => i.id === "commander")! }]
       : []),
-    ...(items.some((i) => i.id === "rulesEngine")
-      ? [{ kind: "item" as const, item: items.find((i) => i.id === "rulesEngine")! }]
-      : []),
+    ...(moduleOn("engine") ? [{ kind: "engine" as const }] : []),
     ...(moduleOn("brain") ? [{ kind: "brain" as const }] : []),
     ...(moduleOn("reports") ? [{ kind: "reports" as const }] : [])
   ];
@@ -240,6 +229,18 @@ export function AppSidebar({
                 planLimitsReady={planLimitsReady}
                 platformFeatures={platformFeatures}
                 isPlatformAdmin={isPlatformAdmin}
+                pathname={pathname}
+                onNavigate={onNavigate}
+              />
+            );
+          }
+          if (entry.kind === "engine") {
+            return (
+              <EngineNavGroup
+                key="engine"
+                collapsed={effectiveCollapsed}
+                planLimitsReady={planLimitsReady}
+                platformFeatures={platformFeatures}
                 pathname={pathname}
                 onNavigate={onNavigate}
               />

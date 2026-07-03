@@ -433,6 +433,70 @@ export async function runAutomationEngine(
         continue;
       }
 
+      if (action.type === "create_hypothesis") {
+        // Regra→Laboratory: a regra não toca a campanha — publica uma hipótese SUGGESTED
+        // para o gestor investigar a causa. Não-destrutiva: ignora executionMode, como
+        // alert_only. O Alert (dedup diário) é a projeção de UI; a hipótese tem dedupe
+        // próprio (não recria enquanto a anterior estiver ativa).
+        const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
+        try {
+          await alertRepo.save(
+            alertRepo.create({
+              tenantId,
+              clientId,
+              type: "OTHER",
+              severity: "warning",
+              source: "automation",
+              automationRuleId: rule.id,
+              title: `Automação: hipótese criada (${rule.name})`,
+              description,
+              metaCampaignId,
+              dismissed: false,
+              dedupDay: today
+            })
+          );
+          if (clientId) {
+            const { createHypothesisFromDraft } = await import(
+              "@/lib/agency-brain/hypothesis-service"
+            );
+            const hypothesis = await createHypothesisFromDraft(
+              tenantId,
+              clientId,
+              {
+                title: `Investigar: ${meta?.name ?? metaCampaignId}`,
+                description:
+                  `A regra "${rule.name}" disparou (${condDescription}). ` +
+                  `Investigue a causa — fadiga de criativo, público saturado ou oferta — antes de mexer na campanha.`,
+                category: "GENERAL",
+                confidenceScore: 55,
+                metaCampaignId,
+                metricSnapshot: metricValues,
+                evidence: { ruleId: rule.id, reason: condDescription },
+                dedupeKey: `automation_hypothesis:${rule.id}:${metaCampaignId}`,
+                tags: ["automation", "engine"]
+              },
+              "RULE"
+            );
+            const { recordExternalExecution } = await import("@/lib/engine/executor");
+            await recordExternalExecution({
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId,
+              campaignName: meta?.name ?? null,
+              actionType: "create_hypothesis",
+              description,
+              ok: true,
+              result: hypothesis ? { hypothesisId: hypothesis.id } : { deduped: true }
+            });
+          }
+        } catch {
+          // skip (dedup diário do Alert ou falha pontual — próxima sync tenta de novo)
+        }
+        continue;
+      }
+
       if (action.type === "pause_campaign" && metaAccessToken) {
         const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
         try {

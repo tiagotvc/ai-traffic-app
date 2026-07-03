@@ -103,6 +103,36 @@ export function AutomationRuleCreatorView() {
       .catch(() => {});
   }, []);
 
+  // Template inteligente: quando um cliente é selecionado, recalcula os valores a partir
+  // das metas dele (goal_waste: gasto > 3× CPA/CPL alvo, sem conversão).
+  const smartKind = template?.smart;
+  const smartClientId = smartKind ? form.clientId : null;
+  useEffect(() => {
+    if (smartKind !== "goal_waste" || !smartClientId) return;
+    let mounted = true;
+    fetch(`/api/clients/${encodeURIComponent(smartClientId)}/goals`)
+      .then((r) => r.json())
+      .then((j: { goals?: { maxCpa?: number | null; maxCpl?: number | null } }) => {
+        if (!mounted) return;
+        const target = Number(j.goals?.maxCpa ?? j.goals?.maxCpl ?? 0);
+        if (!target) return;
+        const wasteLimit = Math.round(target * 3 * 100) / 100;
+        setForm((f) => ({
+          ...f,
+          groups: [
+            [
+              { metric: "spend", op: "gt", value: wasteLimit },
+              { metric: "conversions", op: "lt", value: 1 }
+            ]
+          ]
+        }));
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [smartKind, smartClientId]);
+
   const update = (patch: Partial<RuleForm>) => setForm((f) => ({ ...f, ...patch }));
 
   const isReview = step === STEPS.length;

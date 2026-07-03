@@ -193,6 +193,21 @@ do `POST /api/automation/rules` + simulação anexada), Commander publica *paylo
 Engine publica *log de execução* (que realimenta o Brain). Qualquer feature que precise de
 dois módulos "conversando" síncrono é sinal de fronteira errada.
 
+## Auditoria contra a régua de 5 níveis (2026-07-03)
+
+| Nível | Estado | Onde |
+|---|---|---|
+| 1 — Regra simples (SE CPA>50 → pausar) | ✅ | `AutomationRule` + motor |
+| 2 — Condições compostas (E) | ✅ | `conditions[]` / grupos |
+| 3 — Agrupamentos ((A e B) ou (C e D)) | ✅ | `groups` DNF (4 grupos × 5 cláusulas) |
+| 4 — Escopo | 🟡 | Conta inteira e por cliente ✅; campanha é a unidade de avaliação; **conjuntos/anúncios ❌** (exige avaliar `AdMetricSnapshot` — próxima fronteira) |
+| 5 — Histórico com motivo | ✅ | Aba "Execuções" na regra + página global `/automations/executions` (motivo = "cpa=62.00 (limite 50)") + `engine_executions` |
+| Templates | ✅ | 11 templates; **template inteligente** `smart-cut-waste` usa o CPA alvo do cliente (3× meta, sem conversão) |
+| Regra aciona IA | ✅ (2026-07-03) | Ação **`create_hypothesis`**: não toca a campanha — publica `ClientHypothesis` SUGGESTED no Laboratory com dedupe |
+| Eventos p/ plataforma | ✅ | `domain_events` (`engine.action.*`) + Engine→Brain (learnings) + Brain→Engine (regras sugeridas) |
+| Notificar WhatsApp/Slack | ❌ | E-mail ✅; WhatsApp tem infra nos relatórios v3 — reusar quando priorizado |
+| Gatilho por duração ("3 dias sem conversão") | ❌ | Janela fixa de 7d agregada; gatilho por sequência de dias é evolução do motor |
+
 ## Histórico
 
 - 2026-07-02: **Fase 1 concluída** (aba "Execuções" na lista de regras) e duas arestas do

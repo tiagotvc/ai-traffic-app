@@ -17,6 +17,7 @@ export type EngineActionType =
   | "scale_gradual_step"
   | "scale_budget"
   | "notify_email"
+  | "create_hypothesis"
   | "meta_apply";
 
 /**

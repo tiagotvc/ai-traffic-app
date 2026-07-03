@@ -11,7 +11,9 @@ export type ActionType =
   | "schedule_toggle"
   | "reactivate_campaign"
   | "notify_email"
-  | "scale_gradual";
+  | "scale_gradual"
+  /** Regra→Laboratory: não toca a campanha — publica uma hipótese para investigar. */
+  | "create_hypothesis";
 
 /** Uma condição métrica isolada (sem o gate de gasto mínimo, que é global da regra). */
 export type Condition = { metric: Metric; op: Op; value: number };
@@ -70,6 +72,12 @@ export type RuleTemplate = {
   soon?: boolean;
   /** Pré-preenchimento do stepper. Ausente quando `soon`. */
   form?: RuleForm;
+  /**
+   * Template inteligente: os valores do `form` são placeholders recalculados a partir
+   * das metas do cliente quando um cliente é selecionado no stepper.
+   * `goal_waste` = gasto > 3× CPA alvo (maxCpa/maxCpl) sem nenhuma conversão.
+   */
+  smart?: "goal_waste";
 };
 
 export const RULE_TONE_STYLES: Record<RuleTone, { bg: string; color: string }> = {
@@ -84,6 +92,53 @@ export const RULE_TONE_STYLES: Record<RuleTone, { bg: string; color: string }> =
 const DEFAULT_SCHEDULE: Schedule = { startHour: 8, endHour: 20 };
 
 export const RULE_TEMPLATES: RuleTemplate[] = [
+  {
+    id: "smart-cut-waste",
+    icon: Wallet,
+    title: "Cortar gasto sem retorno (meta do cliente)",
+    desc: "Template inteligente: usa o CPA alvo do cliente — pausa quando o gasto passa de 3× a meta sem nenhuma conversão.",
+    ifText: "Gasto > 3× CPA alvo e conversões < 1",
+    thenText: "Pausar campanha (com aprovação)",
+    tone: "violet",
+    smart: "goal_waste",
+    form: {
+      name: "Cortar gasto sem retorno (meta)",
+      kind: "metric",
+      groups: [
+        [
+          { metric: "spend", op: "gt", value: 150 },
+          { metric: "conversions", op: "lt", value: 1 }
+        ]
+      ],
+      minSpend: 0,
+      action: "pause_campaign",
+      executionMode: "approval",
+      schedule: DEFAULT_SCHEDULE
+    }
+  },
+  {
+    id: "hypothesis-low-ctr",
+    icon: TrendingDown,
+    title: "Investigar CTR baixo (hipótese)",
+    desc: "Não pausa nada: quando o CTR desaba com gasto relevante, cria uma hipótese no Laboratory para investigar fadiga de criativo.",
+    ifText: "CTR < 1% e gasto > R$ 100",
+    thenText: "Criar hipótese (Laboratory)",
+    tone: "sky",
+    form: {
+      name: "Investigar CTR baixo",
+      kind: "metric",
+      groups: [
+        [
+          { metric: "ctr", op: "lt", value: 1 },
+          { metric: "spend", op: "gt", value: 100 }
+        ]
+      ],
+      minSpend: 0,
+      action: "create_hypothesis",
+      executionMode: "auto",
+      schedule: DEFAULT_SCHEDULE
+    }
+  },
   {
     id: "pause-high-cpl",
     icon: PauseCircle,
@@ -327,7 +382,8 @@ export const ACTION_OPTIONS = [
   { value: "adjust_budget_percent", label: "Ajustar orçamento (%)" },
   { value: "scale_gradual", label: "Escalar orçamento gradualmente" },
   { value: "reactivate_campaign", label: "Reativar campanha" },
-  { value: "notify_email", label: "Notificar por e-mail" }
+  { value: "notify_email", label: "Notificar por e-mail" },
+  { value: "create_hypothesis", label: "Criar hipótese (Laboratory)" }
 ];
 
 export function actionLabel(type?: string): string {
@@ -339,6 +395,7 @@ export function actionLabel(type?: string): string {
   if (type === "notify_email") return "Notificar por e-mail";
   if (type === "scale_gradual") return "Escalar orçamento gradualmente";
   if (type === "scale_gradual_step") return "Escalar orçamento (passo)";
+  if (type === "create_hypothesis") return "Criar hipótese (Laboratory)";
   return type ?? "—";
 }
 

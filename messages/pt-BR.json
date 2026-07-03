@@ -526,6 +526,8 @@
   "nav": {
     "commander": "Commander",
     "rulesEngine": "Motor de regras",
+    "engineRules": "Regras",
+    "engineExecutions": "Execuções",
     "dashboard": "Dashboard",
     "clients": "Clientes",
     "campaigns": "Campanhas",
