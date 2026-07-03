@@ -381,8 +381,19 @@ frente antes da hora.
   Outbox do Laboratory ligado: `laboratory.learning.suggested` (em
   `createSuggestedLearning`) e `laboratory.hypothesis.suggested` (em
   `createHypothesisFromDraft`) — ambos já fluem pro BigQuery via export da Fase 2.
-- **Fase 4 — Commander coordenador:** `getParameters()` unificado; Researcher extraído
-  dos scientists; pipelines de `labs/` movem para `commander/`.
+- ✅ **Fase 4 — Commander coordenador (entregue 2026-07-03):**
+  [`parameters.ts`](../../src/lib/commander/parameters.ts) — `getParameters(tenantId,
+  {clientId, metaCampaignId, weeklySpend})` unifica a leitura de ClientGoal/CampaignGoal
+  (via `mergeGoals`), thresholds adaptativos (quando o chamador informa o gasto semanal),
+  RankingConfig, TenantAiPolicy e PlanLimits — as tabelas ficam onde estão, o contrato de
+  leitura é um só. Primeiro consumidor: o chat do Commander (metas do cliente entram no
+  contexto e as propostas de regra nascem alinhadas a elas).
+  [`researcher.ts`](../../src/lib/commander/researcher.ts) — porta única para fontes
+  externas (SearchAPI SERP/Trends/YouTube/Maps com orçamento diário, Meta Ad Library com
+  cache, reach estimate); o competitor-skill já consome só via Researcher — fonte nova
+  (Google/TikTok/Bing) entra aqui sem tocar scientist. Namespace: `labs/pipelines` e
+  `labs/skills` moveram para `commander/pipelines`/`commander/skills` com stubs de
+  re-export nos caminhos antigos (zero churn nos importadores).
 - **Fase 5 — Brain central:** benchmarking por nicho via BQ (substitui agregação
   on-the-fly), memória longa no contexto do chat, e só então avaliar `brain_edges`
   (grafo) e Brain→Engine (regras sugeridas com "teria economizado R$ X").
@@ -391,6 +402,10 @@ Cada fase é utilizável sozinha e nenhuma exige downtime ou migração destruti
 
 ## Histórico
 
+- 2026-07-03 (b): **Fase 4 entregue** — Commander coordenador: `getParameters()` como
+  leitura unificada dos parâmetros estratégicos (1º consumidor: contexto do chat),
+  Researcher como porta única de fontes externas, pipelines/skills no namespace do
+  Commander com re-exports.
 - 2026-07-03: **Fase 3 entregue** — Laboratory consolidado: labs para TypeORM, elo
   Hypothesis→Experiment→Learning fechado (todo experimento concluído publica learning
   sugerido com dedupe + evento no outbox), leitura unificada do agregado com `kind`,

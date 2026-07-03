@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { ScientistSkillFinding } from "./skills/types";
+import type { ScientistSkillFinding } from "@/lib/commander/skills/types";
 
 /**
  * Fontes extras do Marketing Scientist via searchapi (engines REST confirmados):

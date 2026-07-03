@@ -9,20 +9,19 @@ import { isMetaAdLibraryConfigured } from "@/lib/meta-ad-library/provider";
 import { resolveSearchTerms } from "@/lib/meta-ad-library/search-keywords";
 import type { NormalizedAd } from "@/lib/meta-ad-library/types";
 
-import { fetchAdLibraryCached } from "../cached-ad-library";
+// Fontes externas SEMPRE via Researcher (Fase 4): scientist não fala com fonte direto.
 import {
   canSpendSearchApi,
+  fetchAdLibraryCached,
   getCachedResearch,
-  recordSearchApiSpend,
-  researchCacheKey,
-  setCachedResearch
-} from "../market-research-cache";
-import {
   googleMapsFindings,
   googleSerpFindings,
   googleTrendsFindings,
+  recordSearchApiSpend,
+  researchCacheKey,
+  setCachedResearch,
   youtubeFindings
-} from "../searchapi-sources";
+} from "../researcher";
 import type { ScientistSkill, ScientistSkillFinding, ScientistSkillResult } from "./types";
 
 /** Fontes extras (gated por sub-flag). Cada uma = 1 chamada searchapi no cache-miss. */

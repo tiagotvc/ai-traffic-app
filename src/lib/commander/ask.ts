@@ -103,6 +103,37 @@ export async function askCommander(input: {
     input.draft.step ? `Passo atual do criador: ${input.draft.step}` : ""
   ];
 
+  // Commander › Parameters (Fase 4): metas estratégicas do cliente no contexto — o
+  // Commander coordena a partir dos parâmetros, e propostas de regra nascem alinhadas
+  // a eles. Best-effort: sem metas configuradas, a seção simplesmente não aparece.
+  try {
+    const { getParameters } = await import("@/lib/commander/parameters");
+    const params = await getParameters(input.tenantId, { clientId: input.clientId });
+    if (params.goals) {
+      const g = params.goals;
+      const goalParts = [
+        g.maxCpa != null ? `CPA máx R$ ${g.maxCpa}` : null,
+        g.maxCpl != null ? `CPL máx R$ ${g.maxCpl}` : null,
+        g.maxCpc != null ? `CPC máx R$ ${g.maxCpc}` : null,
+        g.minCtr != null ? `CTR mín ${g.minCtr}%` : null,
+        g.minRoas != null ? `ROAS mín ${g.minRoas}` : null,
+        g.maxSpendWithoutConversion != null
+          ? `gasto máx sem conversão R$ ${g.maxSpendWithoutConversion}`
+          : null
+      ].filter(Boolean);
+      if (goalParts.length) {
+        lines.push(
+          "",
+          "== Metas do cliente (Parameters) ==",
+          goalParts.join(" · "),
+          "Alinhe recomendações e propostas de regra a estas metas."
+        );
+      }
+    }
+  } catch {
+    // parâmetros são contexto opcional — nunca derrubam o chat
+  }
+
   if (input.insights?.length) {
     lines.push(
       "",
