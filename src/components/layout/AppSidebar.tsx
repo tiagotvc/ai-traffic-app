@@ -11,9 +11,8 @@ import {
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
-import { AgencyBrainNavGroup } from "@/components/layout/AgencyBrainNavGroup";
 import { AudiencesNavGroup } from "@/components/layout/AudiencesNavGroup";
-import { EngineNavGroup } from "@/components/layout/EngineNavGroup";
+import { CortexNavGroup } from "@/components/layout/CortexNavGroup";
 import { ReportsNavGroup } from "@/components/layout/ReportsNavGroup";
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import {
@@ -146,8 +145,7 @@ export function AppSidebar({
   type SidebarEntry =
     | { kind: "item"; item: NavItem }
     | { kind: "audiences" }
-    | { kind: "engine" }
-    | { kind: "brain" }
+    | { kind: "cortex" }
     | { kind: "reports" };
 
   const entries: SidebarEntry[] = [
@@ -164,8 +162,7 @@ export function AppSidebar({
     ...(items.some((i) => i.id === "commander")
       ? [{ kind: "item" as const, item: items.find((i) => i.id === "commander")! }]
       : []),
-    ...(moduleOn("engine") ? [{ kind: "engine" as const }] : []),
-    ...(moduleOn("brain") ? [{ kind: "brain" as const }] : []),
+    ...(moduleOn("engine") || moduleOn("brain") ? [{ kind: "cortex" as const }] : []),
     ...(moduleOn("reports") ? [{ kind: "reports" as const }] : [])
   ];
 
@@ -234,28 +231,15 @@ export function AppSidebar({
               />
             );
           }
-          if (entry.kind === "engine") {
+          if (entry.kind === "cortex") {
             return (
-              <EngineNavGroup
-                key="engine"
+              <CortexNavGroup
+                key="cortex"
                 collapsed={effectiveCollapsed}
                 planLimitsReady={planLimitsReady}
                 platformFeatures={platformFeatures}
-                pathname={pathname}
-                onNavigate={onNavigate}
-              />
-            );
-          }
-          if (entry.kind === "brain") {
-            return (
-              <AgencyBrainNavGroup
-                key="brain"
-                collapsed={effectiveCollapsed}
                 agencyBrainFeatures={brainFeatures}
-                platformFeatures={platformFeatures}
-                isPlatformAdmin={isPlatformAdmin}
                 pathname={pathname}
-                permissionsReady={planLimitsReady}
                 onNavigate={onNavigate}
               />
             );

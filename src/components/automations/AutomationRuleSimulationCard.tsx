@@ -10,6 +10,11 @@ type SimTotals = {
   alertDays: number;
   avoidedSpend: number;
   dailyBudgetIncrease: number;
+  falsePositives: number;
+  conversionsPreservedPct: number;
+  confidence: number;
+  confidenceReasons: string[];
+  confidenceRisks: string[];
 };
 
 type SimCampaign = {
@@ -87,7 +92,7 @@ export function AutomationRuleSimulationCard({ form }: { form: RuleForm }) {
           <FlaskConical size={14} />
         </span>
         <span className="font-heading text-sm font-semibold text-[var(--text-main)]">
-          Simular últimos 30 dias
+          Simulação Orion — últimos 30 dias
         </span>
       </div>
 
@@ -124,46 +129,95 @@ export function AutomationRuleSimulationCard({ form }: { form: RuleForm }) {
                 </p>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-lg border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-2.5 py-2">
-                      <p className="font-heading text-base font-bold text-[var(--text-main)]">
-                        {result.totals.campaignsTriggered}
-                      </p>
-                      <p className="font-body text-[10px] text-[var(--text-dimmer)]">
-                        campanha{result.totals.campaignsTriggered > 1 ? "s" : ""} teria
-                        {result.totals.campaignsTriggered > 1 ? "m" : ""} disparado
-                      </p>
-                    </div>
-                    {form.action === "pause_campaign" ? (
-                      <div className="rounded-lg border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-2.5 py-2">
-                        <p className="font-heading text-base font-bold text-emerald-400">
-                          {brl(result.totals.avoidedSpend)}
-                        </p>
-                        <p className="font-body text-[10px] text-[var(--text-dimmer)]">gasto evitado</p>
-                      </div>
-                    ) : form.action === "adjust_budget_percent" ? (
-                      <div className="rounded-lg border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-2.5 py-2">
-                        <p
-                          className={`font-heading text-base font-bold ${
-                            result.totals.dailyBudgetIncrease >= 0 ? "text-emerald-400" : "text-rose-400"
+                  <div className="rounded-lg border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] p-3">
+                    <p className="font-body text-[10px] uppercase tracking-wide text-[var(--text-dimmer)]">
+                      Se esta regra estivesse ativa nos últimos {result.days} dias:
+                    </p>
+                    <ul className="mt-2 space-y-1.5 font-body text-xs text-[var(--text-main)]">
+                      <li>
+                        🛑 Teria disparado em{" "}
+                        <strong>{result.totals.campaignsTriggered}</strong> de{" "}
+                        {result.evaluatedCampaigns} alvo
+                        {result.evaluatedCampaigns === 1 ? "" : "s"}
+                      </li>
+                      {form.action === "pause_campaign" ? (
+                        <li>
+                          💰 Economia estimada:{" "}
+                          <strong className="text-emerald-400">
+                            {brl(result.totals.avoidedSpend)}
+                          </strong>
+                        </li>
+                      ) : null}
+                      {form.action === "adjust_budget_percent" ? (
+                        <li>
+                          {result.totals.dailyBudgetIncrease >= 0 ? "📈" : "📉"} Orçamento:{" "}
+                          <strong
+                            className={
+                              result.totals.dailyBudgetIncrease >= 0
+                                ? "text-emerald-400"
+                                : "text-rose-400"
+                            }
+                          >
+                            {result.totals.dailyBudgetIncrease >= 0 ? "+" : "−"}
+                            {brl(Math.abs(result.totals.dailyBudgetIncrease))}/dia
+                          </strong>
+                        </li>
+                      ) : null}
+                      {form.action === "pause_campaign" ? (
+                        <>
+                          <li>
+                            📈 Conversões preservadas:{" "}
+                            <strong>{result.totals.conversionsPreservedPct}%</strong>
+                          </li>
+                          <li>
+                            ⚠️ Falsos positivos:{" "}
+                            <strong
+                              className={
+                                result.totals.falsePositives > 0 ? "text-amber-300" : undefined
+                              }
+                            >
+                              {result.totals.falsePositives}
+                            </strong>{" "}
+                            <span className="text-[var(--text-dimmer)]">
+                              (alvos que voltaram a converter após o gatilho)
+                            </span>
+                          </li>
+                        </>
+                      ) : (
+                        <li>
+                          🔔 {result.totals.alertDays} dia
+                          {result.totals.alertDays === 1 ? "" : "s"}-disparo no período
+                        </li>
+                      )}
+                    </ul>
+                    <div className="mt-3 border-t border-[var(--creator-card-border)] pt-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-body text-[10px] uppercase tracking-wide text-[var(--text-dimmer)]">
+                          🧠 Confiança Orion
+                        </span>
+                        <span
+                          className={`font-heading text-lg font-bold ${
+                            result.totals.confidence >= 75
+                              ? "text-emerald-400"
+                              : result.totals.confidence >= 55
+                                ? "text-amber-300"
+                                : "text-rose-400"
                           }`}
                         >
-                          {result.totals.dailyBudgetIncrease >= 0 ? "+" : "−"}
-                          {brl(Math.abs(result.totals.dailyBudgetIncrease))}
-                        </p>
-                        <p className="font-body text-[10px] text-[var(--text-dimmer)]">orçamento/dia</p>
+                          {result.totals.confidence}%
+                        </span>
                       </div>
-                    ) : (
-                      <div className="rounded-lg border border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)] px-2.5 py-2">
-                        <p className="font-heading text-base font-bold text-[var(--text-main)]">
-                          {result.totals.alertDays}
+                      {result.totals.confidenceReasons.map((r) => (
+                        <p key={r} className="font-body text-[10px] text-[var(--text-dim)]">
+                          ✔ {r}
                         </p>
-                        <p className="font-body text-[10px] text-[var(--text-dimmer)]">
-                          alerta{result.totals.alertDays > 1 ? "s" : ""} gerado
-                          {result.totals.alertDays > 1 ? "s" : ""}
+                      ))}
+                      {result.totals.confidenceRisks.map((r) => (
+                        <p key={r} className="font-body text-[10px] text-amber-300">
+                          ⚠ {r}
                         </p>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
 
                   {/* Safety: aviso de agressividade — regra destrutiva pegando metade+ da conta. */}

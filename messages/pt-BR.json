@@ -526,6 +526,9 @@
   "nav": {
     "commander": "Commander",
     "rulesEngine": "Motor de regras",
+    "cortex": "Orion Cortex",
+    "cortexOverview": "Visão geral",
+    "recommendations": "Recomendações",
     "engineRules": "Regras",
     "engineExecutions": "Execuções",
     "dashboard": "Dashboard",

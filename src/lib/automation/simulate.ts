@@ -46,6 +46,10 @@ export type SimulatedCampaign = {
   daysTriggered: number;
   /** Gasto real da campanha depois do primeiro disparo (o que a pausa teria evitado). */
   spendAfterTrigger: number;
+  /** Conversões reais DEPOIS do primeiro disparo — o que uma pausa teria perdido. */
+  conversionsAfterTrigger: number;
+  /** Falso positivo: recuperou (≥2 conversões) depois do gatilho — a pausa teria errado. */
+  falsePositive: boolean;
   /** Último orçamento diário conhecido (para estimar impacto de ajuste de orçamento). */
   lastDailyBudget: number | null;
 };
@@ -65,8 +69,30 @@ export type SimulateRuleResult =
         avoidedSpend: number;
         /** Só para `adjust_budget_percent`: acréscimo diário estimado de orçamento. */
         dailyBudgetIncrease: number;
+        /** Alvos que recuperaram (≥2 conversões) após o gatilho — pausas que teriam errado. */
+        falsePositives: number;
+        /** % das conversões do período que uma pausa NÃO teria perdido (100 = nenhuma perdida). */
+        conversionsPreservedPct: number;
+        /** Score determinístico 30–95 (volume de disparos × taxa de falso positivo). */
+        confidence: number;
+        confidenceReasons: string[];
+        confidenceRisks: string[];
       };
     };
+
+function emptyTotals() {
+  return {
+    campaignsTriggered: 0,
+    alertDays: 0,
+    avoidedSpend: 0,
+    dailyBudgetIncrease: 0,
+    falsePositives: 0,
+    conversionsPreservedPct: 100,
+    confidence: 50,
+    confidenceReasons: ["Sem dados suficientes no período."],
+    confidenceRisks: []
+  };
+}
 
 function isoDaysAgo(n: number): string {
   const d = new Date();
@@ -89,7 +115,7 @@ export async function simulateRule(
       days: input.days ?? 30,
       evaluatedCampaigns: 0,
       campaigns: [],
-      totals: { campaignsTriggered: 0, alertDays: 0, avoidedSpend: 0, dailyBudgetIncrease: 0 }
+      totals: emptyTotals()
     };
   }
 
@@ -113,7 +139,7 @@ export async function simulateRule(
       days,
       evaluatedCampaigns: 0,
       campaigns: [],
-      totals: { campaignsTriggered: 0, alertDays: 0, avoidedSpend: 0, dailyBudgetIncrease: 0 }
+      totals: emptyTotals()
     };
   }
 
@@ -125,7 +151,7 @@ export async function simulateRule(
       days,
       evaluatedCampaigns: 0,
       campaigns: [],
-      totals: { campaignsTriggered: 0, alertDays: 0, avoidedSpend: 0, dailyBudgetIncrease: 0 }
+      totals: emptyTotals()
     };
   }
 
@@ -202,8 +228,13 @@ export async function simulateRule(
   const minSpend = input.condition.minSpend;
   const triggered: SimulatedCampaign[] = [];
   let alertDays = 0;
+  let totalPeriodConversions = 0;
 
   for (const [metaCampaignId, snaps] of byCampaign) {
+    totalPeriodConversions += snaps
+      .filter((sn) => sn.day >= replayDays[0]!)
+      .reduce((sum, sn) => sum + num(sn.conversions), 0);
+
     let firstTriggerDay: string | null = null;
     let daysTriggered = 0;
 
@@ -244,6 +275,7 @@ export async function simulateRule(
 
     const after = snaps.filter((s) => s.day > firstTriggerDay!);
     const spendAfterTrigger = after.reduce((sum, s) => sum + num(s.spend), 0);
+    const conversionsAfterTrigger = after.reduce((sum, s) => sum + num(s.conversions), 0);
     const last = snaps[snaps.length - 1];
     triggered.push({
       metaCampaignId,
@@ -251,6 +283,9 @@ export async function simulateRule(
       firstTriggerDay,
       daysTriggered,
       spendAfterTrigger,
+      conversionsAfterTrigger,
+      // Recuperou de verdade (≥2 conversões) depois do gatilho: a pausa teria errado.
+      falsePositive: conversionsAfterTrigger >= 2,
       lastDailyBudget: last?.dailyBudget != null ? num(last.dailyBudget) : null
     });
   }
@@ -260,6 +295,40 @@ export async function simulateRule(
   const isPause = input.action.type === "pause_campaign";
   const isBudget = input.action.type === "adjust_budget_percent";
   const pct = input.action.budgetPercent ?? 10;
+
+  // Falso positivo e conversões preservadas só fazem sentido quando a ação removeria
+  // entrega (pausa). Para as demais ações, o score considera apenas o volume de dados.
+  const falsePositives = isPause ? triggered.filter((c) => c.falsePositive).length : 0;
+  const lostConversions = isPause
+    ? triggered.reduce((sum, c) => sum + c.conversionsAfterTrigger, 0)
+    : 0;
+  const conversionsPreservedPct =
+    totalPeriodConversions > 0
+      ? Math.round(((totalPeriodConversions - lostConversions) / totalPeriodConversions) * 1000) / 10
+      : 100;
+
+  // Score determinístico e explicável: parte de 95, desconta taxa de falso positivo e
+  // amostra pequena. Sem LLM — os números vêm do próprio replay.
+  const fpRate = triggered.length ? falsePositives / triggered.length : 0;
+  const samplePenalty =
+    triggered.length === 0 ? 30 : triggered.length < 3 ? 15 : triggered.length < 6 ? 8 : 0;
+  const confidence = Math.round(Math.min(95, Math.max(30, 95 - fpRate * 50 - samplePenalty)));
+
+  const confidenceReasons = [
+    `${alertDays} dia(s)-disparo em ${days} dias de histórico`,
+    `${triggered.length} de ${byCampaign.size} alvo(s) avaliados dispararam`,
+    ...(isPause && falsePositives === 0 && triggered.length > 0
+      ? ["Nenhum alvo recuperou depois do gatilho."]
+      : [])
+  ];
+  const confidenceRisks = [
+    ...(falsePositives > 0
+      ? [`${falsePositives} alvo(s) voltaram a converter após o gatilho (conversões tardias).`]
+      : []),
+    ...(triggered.length > 0 && triggered.length < 3
+      ? ["Poucos disparos históricos — considere observar por mais alguns dias."]
+      : [])
+  ];
 
   return {
     supported: true,
@@ -274,7 +343,12 @@ export async function simulateRule(
         : 0,
       dailyBudgetIncrease: isBudget
         ? triggered.reduce((sum, c) => sum + (c.lastDailyBudget ?? 0) * (pct / 100), 0)
-        : 0
+        : 0,
+      falsePositives,
+      conversionsPreservedPct,
+      confidence,
+      confidenceReasons,
+      confidenceRisks
     }
   };
 }

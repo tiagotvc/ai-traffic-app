@@ -27,6 +27,14 @@ export class Tenant extends AppBaseEntity {
   @Column({ type: "boolean", default: false })
   agencyBrainNicheShareOptIn!: boolean;
 
+  /**
+   * Modo observação do Orion Cortex: ligado, TODA ação destrutiva de automação é
+   * rebaixada para "só avisar" (alert) — o motor observa e recomenda, nunca executa.
+   * É o primeiro degrau da escada de confiança para quem tem medo de automação.
+   */
+  @Column({ type: "boolean", default: false })
+  automationObservationMode!: boolean;
+
   @Column({ type: "text", nullable: true })
   webhookAlertUrl?: string | null;
 

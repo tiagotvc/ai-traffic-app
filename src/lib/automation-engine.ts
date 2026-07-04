@@ -47,7 +47,14 @@ type ExecutionMode = "alert" | "approval" | "auto";
  * histórico), mesmo que a coluna `executionMode` diga outra coisa. É a rede de segurança
  * que garante que rebaixar o plano nunca "trava" uma regra numa fila que ninguém vê.
  */
-function effectiveExecutionMode(mode: string | undefined, automationTier: number): ExecutionMode {
+function effectiveExecutionMode(
+  mode: string | undefined,
+  automationTier: number,
+  observationMode = false
+): ExecutionMode {
+  // Modo observação do Cortex: qualquer regra destrutiva vira "só avisar" — o motor
+  // observa e recomenda, nunca executa. Prevalece sobre tudo.
+  if (observationMode) return "alert";
   const requested = mode === "alert" || mode === "approval" ? mode : "auto";
   return automationTier >= 2 ? requested : "auto";
 }
@@ -55,6 +62,12 @@ function effectiveExecutionMode(mode: string | undefined, automationTier: number
 async function tenantAutomationTier(tenantId: string): Promise<number> {
   const { limits } = await getEntitlements(tenantId);
   return limits.automationTier;
+}
+
+async function tenantObservationMode(tenantId: string): Promise<boolean> {
+  const { tenant: tenantRepo } = await repositories();
+  const tenant = await tenantRepo.findOne({ where: { id: tenantId } });
+  return Boolean(tenant?.automationObservationMode);
 }
 
 /**
@@ -94,13 +107,14 @@ export async function runScheduleAutomations(tenantId: string, metaAccessToken: 
   if (!scheduleRules.length) return;
 
   const automationTier = await tenantAutomationTier(tenantId);
+  const observationMode = await tenantObservationMode(tenantId);
   const hour = currentHourInBrazil();
   const today = new Date().toISOString().slice(0, 10);
 
   for (const rule of scheduleRules) {
     const schedule = (rule.condition as { schedule: { startHour: number; endHour: number } }).schedule;
     const withinWindow = isWithinSchedule(schedule, hour);
-    const mode = effectiveExecutionMode(rule.executionMode, automationTier);
+    const mode = effectiveExecutionMode(rule.executionMode, automationTier, observationMode);
 
     const accounts = await accountsForRule(tenantId, rule.clientId);
     if (!accounts.length) continue;
@@ -260,6 +274,7 @@ export async function runAutomationEngine(
   if (!rules.length) return;
 
   const automationTier = await tenantAutomationTier(tenantId);
+  const observationMode = await tenantObservationMode(tenantId);
   const since = dateNDaysAgo(7);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -319,6 +334,7 @@ export async function runAutomationEngine(
           accountIds,
           fallbackClientId: rule.clientId ?? accounts[0]?.clientId ?? null,
           automationTier,
+          observationMode,
           since: ruleSince,
           today
         });
@@ -355,7 +371,7 @@ export async function runAutomationEngine(
 
       const meta = campaignMeta.get(metaCampaignId);
       const clientId = rule.clientId ?? accounts[0]?.clientId ?? null;
-      const mode = effectiveExecutionMode(rule.executionMode, automationTier);
+      const mode = effectiveExecutionMode(rule.executionMode, automationTier, observationMode);
 
       if (action.type === "alert_only") {
         await alertRepo.save(
@@ -855,6 +871,7 @@ async function evaluateScopedRule(args: {
   accountIds: string[];
   fallbackClientId: string | null;
   automationTier: number;
+  observationMode: boolean;
   since: string;
   today: string;
 }): Promise<void> {
@@ -870,6 +887,7 @@ async function evaluateScopedRule(args: {
     since,
     today
   } = args;
+  const observationMode = args.observationMode;
   const level = rule.level as "adset" | "ad";
   const { adMetricSnapshot: adRepo, alert: alertRepo } = await repositories();
 
@@ -891,7 +909,7 @@ async function evaluateScopedRule(args: {
     byTarget.set(targetId, target);
   }
 
-  const mode = effectiveExecutionMode(rule.executionMode, automationTier);
+  const mode = effectiveExecutionMode(rule.executionMode, automationTier, observationMode);
   const levelLabel = level === "adset" ? "conjunto" : "anúncio";
 
   for (const [targetId, target] of byTarget) {

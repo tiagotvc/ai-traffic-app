@@ -68,6 +68,7 @@ import { CouponRedemptionUniqueConstraint_1735833300000 } from "./0063-CouponRed
 import { EngineExecutionsOutbox_1735833400000 } from "./0064-EngineExecutionsOutbox";
 import { LaboratoryExperimentLinks_1735833500000 } from "./0065-LaboratoryExperimentLinks";
 import { AutomationRuleLevel_1735833600000 } from "./0066-AutomationRuleLevel";
+import { AutomationObservationMode_1735833700000 } from "./0067-AutomationObservationMode";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
