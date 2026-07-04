@@ -209,8 +209,11 @@ dois módulos "conversando" síncrono é sinal de fronteira errada.
 | Safety | ✅ (2026-07-03) | [`engine/safety.ts`](../../src/lib/engine/safety.ts): teto de 10 ações automáticas/regra/dia (evento `engine.action.safety_blocked`), piso de orçamento, e **aviso de agressividade** no backtest (regra destrutiva pegando ≥50% da conta) — soma aos guardas existentes (kill switch, clamp por tier, aprovação, dedupe diário) |
 | Regra aciona IA | ✅ (2026-07-03) | Ação **`create_hypothesis`**: não toca a campanha — publica `ClientHypothesis` SUGGESTED no Laboratory com dedupe |
 | Eventos p/ plataforma | ✅ | `domain_events` (`engine.action.*`) + Engine→Brain (learnings) + Brain→Engine (regras sugeridas) |
-| Notificar WhatsApp/Slack | ❌ | E-mail ✅; WhatsApp tem infra nos relatórios v3 — reusar quando priorizado |
-| Gatilho por duração ("3 dias sem conversão") | ❌ | Janela fixa de 7d agregada; gatilho por sequência de dias é evolução do motor |
+| Notificar WhatsApp/Slack | ✅ (2026-07-04) | Ações `notify_whatsapp` (mesma Cloud API dos relatórios v3) e `notify_slack` (incoming webhook na regra) — não-destrutivas, valem em todos os escopos, registradas no log unificado |
+| Gatilho por duração ("3 dias sem conversão") | ✅ | `consecutiveDays` (Sprint 2) |
+| Abrir experimento | ✅ (2026-07-04) | Ação `create_experiment` (só campanha): cria hipótese + `ClientExperiment` A/B **vinculados** ("Configuração atual" × "Variação a definir") — o fluxo detectar→hipótese→experimento→learning fecha ponta a ponta |
+| Backtest por conjunto/anúncio | ✅ (2026-07-04) | O simulate aceita `level` e faz replay sobre `AdMetricSnapshot` agrupado por alvo — mesmo motor de janelas/sequências |
+| Learning phase (Meta) | ✅ (2026-07-04) | Safety: pausa/ajuste automático em conjunto **em fase de aprendizado** é bloqueado (`learning_stage_info` via Graph, best-effort); aprovação humana força a ação |
 
 ## Histórico
 

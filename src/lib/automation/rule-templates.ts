@@ -22,7 +22,11 @@ export type ActionType =
   | "notify_email"
   | "scale_gradual"
   /** Regra→Laboratory: não toca a campanha — publica uma hipótese para investigar. */
-  | "create_hypothesis";
+  | "create_hypothesis"
+  /** Regra→Laboratory: cria hipótese + experimento A/B vinculados (só campanha). */
+  | "create_experiment"
+  | "notify_whatsapp"
+  | "notify_slack";
 
 /** Escopo da regra (Nível 4): em que entidade a condição é avaliada e a ação aplicada. */
 export type RuleLevel = "campaign" | "adset" | "ad";
@@ -48,11 +52,18 @@ export function actionOptionsForLevel(level: RuleLevel | undefined) {
   if (l === "campaign") return ACTION_OPTIONS;
   if (l === "adset") {
     return ACTION_OPTIONS.filter(
-      (o) => !["reactivate_campaign", "scale_gradual"].includes(o.value)
+      (o) => !["reactivate_campaign", "scale_gradual", "create_experiment"].includes(o.value)
     );
   }
   return ACTION_OPTIONS.filter((o) =>
-    ["pause_campaign", "alert_only", "notify_email", "create_hypothesis"].includes(o.value)
+    [
+      "pause_campaign",
+      "alert_only",
+      "notify_email",
+      "notify_whatsapp",
+      "notify_slack",
+      "create_hypothesis"
+    ].includes(o.value)
   );
 }
 
@@ -90,6 +101,10 @@ export type RuleForm = {
   steps?: number;
   /** E-mail de destino. Usado quando `action === "notify_email"`. */
   recipientEmail?: string;
+  /** Telefone (E.164) para `notify_whatsapp`. */
+  recipientPhone?: string;
+  /** Incoming webhook para `notify_slack`. */
+  slackWebhookUrl?: string;
   /** Modo de execução das ações destrutivas. Default `auto` (comportamento histórico). */
   executionMode: ExecutionMode;
   /** Janela de horário. Usado quando `kind === "schedule"`. */
@@ -529,7 +544,10 @@ export const ACTION_OPTIONS = [
   { value: "scale_gradual", label: "Escalar orçamento gradualmente" },
   { value: "reactivate_campaign", label: "Reativar campanha" },
   { value: "notify_email", label: "Notificar por e-mail" },
-  { value: "create_hypothesis", label: "Criar hipótese (Laboratory)" }
+  { value: "create_hypothesis", label: "Criar hipótese (Laboratory)" },
+  { value: "create_experiment", label: "Abrir experimento (Laboratory)" },
+  { value: "notify_whatsapp", label: "Notificar por WhatsApp" },
+  { value: "notify_slack", label: "Notificar no Slack" }
 ];
 
 export function actionLabel(type?: string): string {
@@ -542,6 +560,9 @@ export function actionLabel(type?: string): string {
   if (type === "scale_gradual") return "Escalar orçamento gradualmente";
   if (type === "scale_gradual_step") return "Escalar orçamento (passo)";
   if (type === "create_hypothesis") return "Criar hipótese (Laboratory)";
+  if (type === "create_experiment") return "Abrir experimento (Laboratory)";
+  if (type === "notify_whatsapp") return "Notificar por WhatsApp";
+  if (type === "notify_slack") return "Notificar no Slack";
   return type ?? "—";
 }
 
@@ -670,6 +691,12 @@ export function ruleFormToPayload(form: RuleForm) {
         : {}),
       ...(form.action === "notify_email"
         ? { recipientEmail: form.recipientEmail?.trim() ?? "" }
+        : {}),
+      ...(form.action === "notify_whatsapp"
+        ? { recipientPhone: form.recipientPhone?.trim() ?? "" }
+        : {}),
+      ...(form.action === "notify_slack"
+        ? { slackWebhookUrl: form.slackWebhookUrl?.trim() ?? "" }
         : {})
     }
   };

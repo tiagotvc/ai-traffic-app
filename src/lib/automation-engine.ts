@@ -280,6 +280,8 @@ export async function runAutomationEngine(
       budgetPercent?: number;
       steps?: number;
       recipientEmail?: string;
+      recipientPhone?: string;
+      slackWebhookUrl?: string;
     };
 
     // Normaliza para grupos de cláusulas (E dentro do grupo, OU entre grupos), aceitando a
@@ -374,8 +376,12 @@ export async function runAutomationEngine(
         continue;
       }
 
-      if (action.type === "notify_email") {
-        // Não-destrutiva como `alert_only` — sempre dispara, não respeita executionMode
+      if (
+        action.type === "notify_email" ||
+        action.type === "notify_whatsapp" ||
+        action.type === "notify_slack"
+      ) {
+        // Não-destrutivas como `alert_only` — sempre disparam, não respeitam executionMode
         // (não há nada pra "aprovar" ou "auto-executar" além do próprio envio do alerta).
         const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
         await alertRepo.save(
@@ -393,9 +399,21 @@ export async function runAutomationEngine(
             dedupDay: today
           })
         );
-        if (action.recipientEmail) {
-          // Best-effort — o Alert acima já registra o disparo; o executor grava o
-          // resultado do envio (executed/failed) no log unificado.
+        // Best-effort — o Alert acima já registra o disparo; o executor grava o
+        // resultado do envio (executed/failed) no log unificado.
+        const notifyPayload =
+          action.type === "notify_email"
+            ? action.recipientEmail
+              ? { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}` }
+              : null
+            : action.type === "notify_whatsapp"
+              ? action.recipientPhone
+                ? { recipientPhone: action.recipientPhone }
+                : null
+              : action.slackWebhookUrl
+                ? { slackWebhookUrl: action.slackWebhookUrl }
+                : null;
+        if (notifyPayload) {
           await executeAction({
             tenantId,
             clientId,
@@ -403,8 +421,8 @@ export async function runAutomationEngine(
             automationRuleId: rule.id,
             metaCampaignId,
             campaignName: meta?.name ?? null,
-            actionType: "notify_email",
-            payload: { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}` },
+            actionType: action.type,
+            payload: notifyPayload,
             description: `${description}\n\nRegra: ${rule.name}`
           });
         }
@@ -471,6 +489,80 @@ export async function runAutomationEngine(
           }
         } catch {
           // skip (dedup diário do Alert ou falha pontual — próxima sync tenta de novo)
+        }
+        continue;
+      }
+
+      if (action.type === "create_experiment") {
+        // Regra→Laboratory (fluxo completo do texto da régua): detectou problema →
+        // hipótese + experimento A/B vinculados, prontos para o gestor definir a variação.
+        // Não-destrutiva: ignora executionMode. Dedupe: hipótese tem dedupe próprio e o
+        // experimento só nasce junto com uma hipótese nova (nada duplica a cada sync).
+        const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
+        try {
+          await alertRepo.save(
+            alertRepo.create({
+              tenantId,
+              clientId,
+              type: "OTHER",
+              severity: "warning",
+              source: "automation",
+              automationRuleId: rule.id,
+              title: `Automação: experimento aberto (${rule.name})`,
+              description,
+              metaCampaignId,
+              dismissed: false,
+              dedupDay: today
+            })
+          );
+          if (clientId) {
+            const { createHypothesisFromDraft } = await import(
+              "@/lib/agency-brain/hypothesis-service"
+            );
+            const hypothesis = await createHypothesisFromDraft(
+              tenantId,
+              clientId,
+              {
+                title: `Testar melhoria: ${meta?.name ?? metaCampaignId}`,
+                description:
+                  `A regra "${rule.name}" disparou (${condDescription}). ` +
+                  `Hipótese aberta com experimento A/B vinculado — defina a variação B e rode o teste.`,
+                category: "GENERAL",
+                confidenceScore: 55,
+                metaCampaignId,
+                metricSnapshot: metricValues,
+                evidence: { ruleId: rule.id, reason: condDescription },
+                dedupeKey: `automation_experiment:${rule.id}:${metaCampaignId}`,
+                tags: ["automation", "engine", "experiment"]
+              },
+              "RULE"
+            );
+            if (hypothesis) {
+              const { createExperiment } = await import("@/lib/agency-brain/experiment-service");
+              const experiment = await createExperiment(tenantId, clientId, {
+                title: `Teste: ${meta?.name ?? metaCampaignId} (${rule.name})`,
+                variantA: "Configuração atual",
+                variantB: "Variação a definir",
+                hypothesisId: hypothesis.id,
+                metaCampaignId
+              });
+              const { recordExternalExecution } = await import("@/lib/engine/executor");
+              await recordExternalExecution({
+                tenantId,
+                clientId,
+                source: "rule",
+                automationRuleId: rule.id,
+                metaCampaignId,
+                campaignName: meta?.name ?? null,
+                actionType: "create_experiment",
+                description,
+                ok: true,
+                result: { hypothesisId: hypothesis.id, experimentId: experiment.id }
+              });
+            }
+          }
+        } catch {
+          // dedup diário / falha pontual — próxima sync tenta de novo
         }
         continue;
       }
@@ -751,7 +843,13 @@ async function evaluateScopedRule(args: {
   metaAccessToken: string | undefined;
   rule: AutomationRule;
   groups: Array<Array<{ metric?: string; op?: string; value?: number }>>;
-  action: { type?: string; budgetPercent?: number; recipientEmail?: string };
+  action: {
+    type?: string;
+    budgetPercent?: number;
+    recipientEmail?: string;
+    recipientPhone?: string;
+    slackWebhookUrl?: string;
+  };
   minSpend?: number;
   windowSpec: WindowSpec;
   accountIds: string[];
@@ -836,7 +934,11 @@ async function evaluateScopedRule(args: {
       continue;
     }
 
-    if (action.type === "notify_email") {
+    if (
+      action.type === "notify_email" ||
+      action.type === "notify_whatsapp" ||
+      action.type === "notify_slack"
+    ) {
       try {
         await alertRepo.save(
           alertRepo.create({
@@ -853,7 +955,19 @@ async function evaluateScopedRule(args: {
             dedupDay: today
           })
         );
-        if (action.recipientEmail) {
+        const notifyPayload =
+          action.type === "notify_email"
+            ? action.recipientEmail
+              ? { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}`, level }
+              : null
+            : action.type === "notify_whatsapp"
+              ? action.recipientPhone
+                ? { recipientPhone: action.recipientPhone, level }
+                : null
+              : action.slackWebhookUrl
+                ? { slackWebhookUrl: action.slackWebhookUrl, level }
+                : null;
+        if (notifyPayload) {
           await executeAction({
             tenantId,
             clientId,
@@ -861,8 +975,8 @@ async function evaluateScopedRule(args: {
             automationRuleId: rule.id,
             metaCampaignId: targetId,
             campaignName: targetName,
-            actionType: "notify_email",
-            payload: { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}`, level },
+            actionType: action.type,
+            payload: notifyPayload,
             description: `${description}\n\nRegra: ${rule.name}`
           });
         }

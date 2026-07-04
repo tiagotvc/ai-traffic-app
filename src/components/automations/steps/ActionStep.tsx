@@ -100,6 +100,40 @@ export function ActionStep({ form, update }: Props) {
           placeholder="voce@agencia.com"
         />
       ) : null}
+
+      {form.action === "notify_whatsapp" ? (
+        <>
+          <FilterTextField
+            creatorField
+            icon={<Mail size={14} />}
+            label="WhatsApp de destino (com DDI)"
+            value={form.recipientPhone ?? ""}
+            onChange={(v) => update({ recipientPhone: v })}
+            placeholder="5511999998888"
+          />
+          <p className="font-body text-[11px] text-[var(--text-dimmer)]">
+            Usa a mesma integração WhatsApp Business dos relatórios (requer credenciais configuradas).
+          </p>
+        </>
+      ) : null}
+
+      {form.action === "notify_slack" ? (
+        <FilterTextField
+          creatorField
+          icon={<Mail size={14} />}
+          label="Webhook do Slack"
+          value={form.slackWebhookUrl ?? ""}
+          onChange={(v) => update({ slackWebhookUrl: v })}
+          placeholder="https://hooks.slack.com/services/…"
+        />
+      ) : null}
+
+      {form.action === "create_experiment" ? (
+        <p className="font-body text-[11px] text-[var(--text-dimmer)]">
+          Ao disparar, cria uma hipótese + um experimento A/B vinculados no Laboratory — você define a
+          variação B e acompanha o teste por lá. Nada é alterado na campanha.
+        </p>
+      ) : null}
     </div>
   );
 }

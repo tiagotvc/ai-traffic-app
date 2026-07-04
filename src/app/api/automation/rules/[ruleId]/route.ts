@@ -40,14 +40,25 @@ const PatchSchema = z.object({
         "reactivate_campaign",
         "notify_email",
         "scale_gradual",
-        "create_hypothesis"
+        "create_hypothesis",
+        "create_experiment",
+        "notify_whatsapp",
+        "notify_slack"
       ]),
       budgetPercent: z.number().min(-50).max(50).optional(),
       steps: z.number().int().min(2).max(10).optional(),
-      recipientEmail: z.string().email().optional()
+      recipientEmail: z.string().email().optional(),
+      recipientPhone: z.string().min(8).max(20).optional(),
+      slackWebhookUrl: z.string().url().optional()
     })
     .refine((a) => a.type !== "notify_email" || !!a.recipientEmail, {
       message: "Informe o e-mail de destino."
+    })
+    .refine((a) => a.type !== "notify_whatsapp" || !!a.recipientPhone, {
+      message: "Informe o telefone de destino."
+    })
+    .refine((a) => a.type !== "notify_slack" || !!a.slackWebhookUrl, {
+      message: "Informe o webhook do Slack."
     })
     .refine((a) => a.type !== "scale_gradual" || (a.budgetPercent ?? 10) > 0, {
       message: "Escala gradual exige percentual positivo."

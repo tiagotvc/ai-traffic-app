@@ -80,7 +80,7 @@ export async function simulateRule(
 ): Promise<SimulateRuleResult> {
   // Regras de agenda dependem de dados por hora, que os snapshots diários não têm.
   if (input.condition.schedule) return { supported: false, reason: "schedule" };
-  if (input.level && input.level !== "campaign") return { supported: false, reason: "level" };
+  const level = input.level === "adset" || input.level === "ad" ? input.level : "campaign";
 
   const groups = normalizeConditionGroups(input.condition);
   if (!groups.length) {
@@ -94,8 +94,12 @@ export async function simulateRule(
   }
 
   const days = Math.min(Math.max(input.days ?? 30, 7), 90);
-  const { adAccount: adRepo, campaignMetricSnapshot: campRepo, client: clientRepo } =
-    await repositories();
+  const {
+    adAccount: adRepo,
+    campaignMetricSnapshot: campRepo,
+    adMetricSnapshot: adSnapRepo,
+    client: clientRepo
+  } = await repositories();
 
   // Mesmo escopo do motor: contas do cliente da regra, ou todas as contas do tenant.
   const tenantClients = await clientRepo.find({ where: { tenantId } });
@@ -129,16 +133,67 @@ export async function simulateRule(
   // Histórico extra: janela móvel + dias consecutivos antes do primeiro dia simulado.
   const since = isoDaysAgo(days + spec.windowDays + spec.consecutiveDays);
   const today = isoDaysAgo(0);
-  const rows = await campRepo.find({
-    where: { adAccountId: In(accountIds), day: Between(since, today) },
-    order: { day: "ASC" }
-  });
 
-  const byCampaign = new Map<string, typeof rows>();
-  for (const r of rows) {
-    const list = byCampaign.get(r.metaCampaignId) ?? [];
-    list.push(r);
-    byCampaign.set(r.metaCampaignId, list);
+  // Linha unificada: o replay é idêntico para campanha, conjunto e anúncio — muda só a
+  // fonte (CampaignMetricSnapshot vs AdMetricSnapshot) e a chave de agrupamento.
+  type SimRow = {
+    day: string;
+    spend: string | number;
+    conversions: string | number;
+    impressions: string | number;
+    clicks: string | number;
+    leads: string | number;
+    roas: string | number;
+    reach: string | number;
+    name: string | null;
+    dailyBudget: string | null;
+  };
+  const byCampaign = new Map<string, SimRow[]>();
+
+  if (level === "campaign") {
+    const rows = await campRepo.find({
+      where: { adAccountId: In(accountIds), day: Between(since, today) },
+      order: { day: "ASC" }
+    });
+    for (const r of rows) {
+      const list = byCampaign.get(r.metaCampaignId) ?? [];
+      list.push({
+        day: r.day,
+        spend: r.spend,
+        conversions: r.conversions,
+        impressions: r.impressions,
+        clicks: r.clicks,
+        leads: r.leads,
+        roas: r.roas,
+        reach: r.reach,
+        name: r.campaignName ?? null,
+        dailyBudget: r.dailyBudget ?? null
+      });
+      byCampaign.set(r.metaCampaignId, list);
+    }
+  } else {
+    const rows = await adSnapRepo.find({
+      where: { adAccountId: In(accountIds), day: Between(since, today) },
+      order: { day: "ASC" }
+    });
+    for (const r of rows) {
+      const targetId = level === "adset" ? r.metaAdsetId : r.metaAdId;
+      if (!targetId) continue;
+      const list = byCampaign.get(targetId) ?? [];
+      list.push({
+        day: r.day,
+        spend: r.spend,
+        conversions: r.conversions,
+        impressions: r.impressions,
+        clicks: r.clicks,
+        leads: r.leads,
+        roas: r.roas,
+        reach: r.reach,
+        name: (level === "adset" ? r.adsetName : r.adName) ?? null,
+        dailyBudget: null // conjuntos/anúncios não têm orçamento no snapshot
+      });
+      byCampaign.set(targetId, list);
+    }
   }
 
   const replayDays: string[] = [];
@@ -192,7 +247,7 @@ export async function simulateRule(
     const last = snaps[snaps.length - 1];
     triggered.push({
       metaCampaignId,
-      campaignName: last?.campaignName ?? null,
+      campaignName: last?.name ?? null,
       firstTriggerDay,
       daysTriggered,
       spendAfterTrigger,

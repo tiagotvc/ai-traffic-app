@@ -23,6 +23,9 @@ export const BUDGET_FLOOR_MINOR = 100;
 export const SAFETY_RATE_LIMIT_ERROR =
   "Safety: teto diário de ações automáticas da regra atingido — retomamos amanhã.";
 
+export const SAFETY_LEARNING_PHASE_ERROR =
+  "Safety: conjunto em fase de aprendizado — ação automática bloqueada (aprove manualmente para forçar).";
+
 /** Aplica o piso de orçamento a um novo valor calculado. */
 export function applyBudgetFloor(nextMinor: number): number {
   return Math.max(BUDGET_FLOOR_MINOR, Math.round(nextMinor));

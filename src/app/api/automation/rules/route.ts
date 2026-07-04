@@ -50,14 +50,25 @@ const BodySchema = z.object({
         "reactivate_campaign",
         "notify_email",
         "scale_gradual",
-        "create_hypothesis"
+        "create_hypothesis",
+        "create_experiment",
+        "notify_whatsapp",
+        "notify_slack"
       ]),
       budgetPercent: z.number().min(-50).max(50).optional(),
       steps: z.number().int().min(2).max(10).optional(),
-      recipientEmail: z.string().email().optional()
+      recipientEmail: z.string().email().optional(),
+      recipientPhone: z.string().min(8).max(20).optional(),
+      slackWebhookUrl: z.string().url().optional()
     })
     .refine((a) => a.type !== "notify_email" || !!a.recipientEmail, {
       message: "Informe o e-mail de destino."
+    })
+    .refine((a) => a.type !== "notify_whatsapp" || !!a.recipientPhone, {
+      message: "Informe o telefone de destino."
+    })
+    .refine((a) => a.type !== "notify_slack" || !!a.slackWebhookUrl, {
+      message: "Informe o webhook do Slack."
     })
     .refine((a) => a.type !== "scale_gradual" || (a.budgetPercent ?? 10) > 0, {
       message: "Escala gradual exige percentual positivo."
@@ -72,9 +83,16 @@ const BodySchema = z.object({
     if (body.condition.schedule) return false; // gatilho de horário é só por campanha
     const type = body.action.type;
     if (level === "adset") {
-      return !["reactivate_campaign", "scale_gradual", "schedule_toggle"].includes(type);
+      return !["reactivate_campaign", "scale_gradual", "schedule_toggle", "create_experiment"].includes(type);
     }
-    return ["pause_campaign", "alert_only", "notify_email", "create_hypothesis"].includes(type);
+    return [
+      "pause_campaign",
+      "alert_only",
+      "notify_email",
+      "notify_whatsapp",
+      "notify_slack",
+      "create_hypothesis"
+    ].includes(type);
   },
   { message: "Ação não suportada para este escopo." }
 );
