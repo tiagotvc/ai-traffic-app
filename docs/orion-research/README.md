@@ -93,7 +93,36 @@ Mercado Livre ✅ já oficial, Product Hunt GraphQL) · V3 = mistura + crawlers 
 Engines do SearchAPI ainda não verificados (TikTok/LinkedIn/Reddit ads) entram como
 adapters novos após confirmar slug/response — 30 min cada.
 
+## Warehouse BigQuery (implementado 2026-07-04)
+
+Datasets (nomes por env, defaults abaixo — criados/idempotentes no primeiro uso, tabelas
+já existentes no console são reaproveitadas; inserts usam `ignoreUnknownValues`):
+
+| Dataset | Tabela | Alimentada por |
+|---|---|---|
+| `orion_raw` | `meta_campaign_insights` | Export horário dos snapshots da Meta (watermark) |
+| `orion_research` | `external_findings` | **Cache-first**: `runResearchSource` consulta (tenant, client, source, query, `expires_at > now`) ANTES de qualquer fonte; miss → fonte roda → salva com TTL 72h → retorna. SearchAPI nunca é chamado pela UI |
+| `orion_cortex` | `recommendations` | Hook em `createActionSuggestion` (toda recomendação) |
+| `orion_cortex` | `recommendation_events` | Hooks created/executed/acknowledged/rejected no ciclo de sugestão |
+| `orion_cortex` | `learnings` | Export horário (watermark) |
+| `orion_intelligence` | `global_learnings` | Agregação anônima no cron (opt-in, ≥2 clientes, 90d) |
+| `orion_analytics` | `domain_events`, `executions` | Export horário (telemetria operacional) |
+
+Env: `ENABLE_BIGQUERY_ANALYTICS`, `BIGQUERY_CREDENTIALS_JSON`, `BIGQUERY_PROJECT_ID`,
+`BIGQUERY_LOCATION` + `BIGQUERY_DATASET_RAW|CORTEX|RESEARCH|INTELLIGENCE` (defaults
+`orion_raw`/`orion_cortex`/`orion_research`/`orion_intelligence`).
+
+Jobs: **primeira sync do tenant** dispara `meta/first-sync.completed` (Inngest) →
+backfill 90d + deep analysis (brain-pipeline) em background; **cron diário 6h**
+(`/api/cron/daily-sync`) mantém snapshots atualizados (gated por `allowAutoSync`);
+**cron horário** (`bq-export`) empurra deltas + benchmarks + global_learnings.
+Postgres segue a fonte de verdade transacional; warehouse é sempre best-effort.
+
 ## Histórico
 
+- 2026-07-04 (b): **Warehouse implementado** — 5 datasets, DAOs (`bq-warehouse.ts`),
+  cache-first de pesquisa (`research-cache.ts` + wire no `runResearchSource`), export
+  retargetado (raw/cortex), hooks de recommendations/events, global_learnings,
+  job de análise inicial pós-conexão Meta e cron daily-sync.
 - 2026-07-04: Doc criado. Decisão Cortex (core) × Research (add-on por créditos);
   fundação entregue: `research_findings` + `RESEARCH_SOURCES` + `recordResearchFindings`.

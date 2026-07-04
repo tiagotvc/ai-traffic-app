@@ -245,13 +245,28 @@ export async function runResearchSource(args: {
   query: string;
   country?: string;
   researchJobId?: string | null;
-}): Promise<{ ran: boolean; findings: ResearchFindingDraft[]; reason?: string }> {
+}): Promise<{ ran: boolean; fromCache: boolean; findings: ResearchFindingDraft[]; reason?: string }> {
   const adapter = ADAPTERS[args.source];
-  if (!adapter) return { ran: false, findings: [], reason: "source_not_available" };
+  if (!adapter) return { ran: false, fromCache: false, findings: [], reason: "source_not_available" };
+
+  // Regra do warehouse: ANTES de qualquer fonte externa, consultar o cache em
+  // orion_research.external_findings (tenant + client + source + query, expires_at > now).
+  const { getCachedExternalFindings, saveExternalFindings } = await import(
+    "@/lib/analytics/research-cache"
+  );
+  const cached = await getCachedExternalFindings({
+    tenantId: args.tenantId,
+    clientId: args.clientId ?? null,
+    source: args.source,
+    query: args.query
+  });
+  if (cached?.length) {
+    return { ran: true, fromCache: true, findings: cached, reason: "cache_hit" };
+  }
 
   if (adapter.usesSearchApiBudget) {
     if (!(await canSpendSearchApi())) {
-      return { ran: false, findings: [], reason: "searchapi_budget_exhausted" };
+      return { ran: false, fromCache: false, findings: [], reason: "searchapi_budget_exhausted" };
     }
   }
 
@@ -262,7 +277,13 @@ export async function runResearchSource(args: {
   const withJob = args.researchJobId
     ? findings.map((f) => ({ ...f, researchJobId: args.researchJobId }))
     : findings;
+
+  // Persistência dupla: warehouse (cache/TTL + memória analítica) e Postgres (operacional).
+  await saveExternalFindings(
+    { tenantId: args.tenantId, clientId: args.clientId ?? null, source: args.source, query: args.query },
+    withJob
+  );
   await recordResearchFindings(args.tenantId, args.clientId ?? null, withJob);
 
-  return { ran: true, findings: withJob };
+  return { ran: true, fromCache: false, findings: withJob };
 }

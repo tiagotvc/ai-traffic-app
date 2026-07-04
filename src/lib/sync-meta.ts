@@ -340,5 +340,22 @@ export async function runMetaSync(input: {
     "@/lib/agency-brain/timeline-recorder"
   );
   await recordSyncCompletedTimelineEvents(input.tenantId, accounts.length);
+
+  // Primeira sincronização do tenant → dispara a análise inicial do Cortex em
+  // background (backfill 90d + deep analysis), via Inngest. Best-effort.
+  try {
+    const { syncRun: syncRunRepo } = await repositories();
+    const totalRuns = await syncRunRepo.count({ where: { tenantId: input.tenantId } });
+    if (totalRuns <= 1) {
+      const { inngest } = await import("@/lib/inngest/client");
+      await inngest.send({
+        name: "meta/first-sync.completed",
+        data: { tenantId: input.tenantId }
+      });
+    }
+  } catch {
+    // análise inicial é opcional — a próxima sync alimenta o pipeline normalmente
+  }
+
   return { accountsSynced: accounts.length };
 }
