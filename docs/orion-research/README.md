@@ -83,10 +83,10 @@ benchmark por nicho).
 **SearchAPI como agregador inicial** — já é o provedor das nossas fontes Google/YouTube
 (com orçamento mensal e cache compartilhado), e o catálogo dele cobre TikTok Ads
 Library, LinkedIn Ad Library, Amazon, Reddit e mais. Camada de encapsulamento:
-[](../../src/lib/commander/research-sources.ts) — cada fonte é um
- (mesma interface, devolve ), e
- é o bloco de construção dos Research Jobs: roda a fonte,
-respeita orçamento e persiste em . Trocar SearchAPI por API oficial
+[`research-sources.ts`](../../src/lib/commander/research-sources.ts) — cada fonte é um
+`ResearchSourceAdapter` (mesma interface, devolve `ResearchFindingDraft[]`), e
+`runResearchSource()` é o bloco de construção dos Research Jobs: roda a fonte,
+respeita orçamento e persiste em `research_findings`. Trocar SearchAPI por API oficial
 em qualquer fonte não muda nada acima desta camada.
 V1 = SearchAPI para validar · V2 = APIs oficiais nas fontes críticas (Reddit API,
 Mercado Livre ✅ já oficial, Product Hunt GraphQL) · V3 = mistura + crawlers próprios.
