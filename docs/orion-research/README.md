@@ -22,7 +22,7 @@
 
 | Fase | Fontes | Estado |
 |---|---|---|
-| 1 | Meta Ad Library, Google SERP, Google Trends, YouTube, Google Maps | ✅ implementadas (skills atuais); Notícias 🔜 |
+| 1 | Meta Ad Library, Google SERP, Google Trends, YouTube, Google Maps, **Google News**, **Mercado Livre** | ✅ 7 fontes operacionais via adapter unificado |
 | 2 | TikTok Creative Center, Reddit | criativos/tendências |
 | 3 | Shopify, Amazon, Mercado Livre | e-commerce ("produto em alta") |
 | 4 | LinkedIn, Blogs/Newsletters | B2B |
@@ -77,6 +77,21 @@ Camadas: **BigQuery** = memória bruta · **Learnings** = memória interpretada 
 **Cortex** = decisão sobre a memória · **Research** = sinais externos alimentando.
 Agregação cross-tenant sempre anonimizada e por opt-in (padrão já existente no
 benchmark por nicho).
+
+## Estratégia de integração (decisão 2026-07-04)
+
+**SearchAPI como agregador inicial** — já é o provedor das nossas fontes Google/YouTube
+(com orçamento mensal e cache compartilhado), e o catálogo dele cobre TikTok Ads
+Library, LinkedIn Ad Library, Amazon, Reddit e mais. Camada de encapsulamento:
+[](../../src/lib/commander/research-sources.ts) — cada fonte é um
+ (mesma interface, devolve ), e
+ é o bloco de construção dos Research Jobs: roda a fonte,
+respeita orçamento e persiste em . Trocar SearchAPI por API oficial
+em qualquer fonte não muda nada acima desta camada.
+V1 = SearchAPI para validar · V2 = APIs oficiais nas fontes críticas (Reddit API,
+Mercado Livre ✅ já oficial, Product Hunt GraphQL) · V3 = mistura + crawlers próprios.
+Engines do SearchAPI ainda não verificados (TikTok/LinkedIn/Reddit ads) entram como
+adapters novos após confirmar slug/response — 30 min cada.
 
 ## Histórico
 

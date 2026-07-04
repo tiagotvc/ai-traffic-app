@@ -75,12 +75,12 @@ export const RESEARCH_SOURCES: ResearchSourceDef[] = [
   { id: "google_trends", label: "Google Trends", phase: 1, creditCost: 1, available: true },
   { id: "youtube", label: "YouTube", phase: 1, creditCost: 1, available: true },
   { id: "google_maps", label: "Google Maps", phase: 1, creditCost: 1, available: true },
-  { id: "news", label: "Notícias", phase: 1, creditCost: 1, available: false },
+  { id: "news", label: "Notícias", phase: 1, creditCost: 1, available: true },
   { id: "tiktok_creative_center", label: "TikTok Creative Center", phase: 2, creditCost: 2, available: false },
   { id: "reddit", label: "Reddit", phase: 2, creditCost: 1, available: false },
   { id: "shopify", label: "Shopify Stores", phase: 3, creditCost: 2, available: false },
   { id: "amazon", label: "Amazon", phase: 3, creditCost: 2, available: false },
-  { id: "mercado_livre", label: "Mercado Livre", phase: 3, creditCost: 2, available: false },
+  { id: "mercado_livre", label: "Mercado Livre", phase: 3, creditCost: 1, available: true },
   { id: "linkedin", label: "LinkedIn", phase: 4, creditCost: 2, available: false }
 ];
 
