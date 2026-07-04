@@ -221,10 +221,11 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
       billingCycle
     );
 
+    const plan = await planRepo.findOne({ where: { id: planId } });
+
     // Confirmed sale → server-side conversion (Meta CAPI + GA4). Best-effort; never
     // blocks billing. Gateway-agnostic: both Asaas and Stripe reach this point.
     if (purchaseValueCents && purchaseValueCents > 0 && purchaseTxnId) {
-      const plan = await planRepo.findOne({ where: { id: planId } });
       await trackServerPurchase({
         transactionId: purchaseTxnId,
         valueCents: purchaseValueCents,
@@ -237,6 +238,54 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
         tenantId
       });
     }
+
+    // Boas-vindas: só na PRIMEIRA ativação (nunca em renovação/upgrade). Best-effort —
+    // e-mail nunca pode derrubar o processamento do webhook de pagamento.
+    if (isNewCustomer) {
+      await sendWelcomeEmailForNewSubscriber(tenantId, plan?.name ?? "Orion", billingCycle);
+    }
+  }
+}
+
+async function sendWelcomeEmailForNewSubscriber(
+  tenantId: string,
+  planName: string,
+  billingCycle: "monthly" | "yearly"
+): Promise<void> {
+  try {
+    const { billingCustomer: custRepo, tenantMember: memberRepo, user: userRepo } =
+      await repositories();
+
+    // E-mail de cobrança é a fonte mais confiável de "quem comprou"; se ainda não
+    // existir (ex.: Stripe sem BillingCustomer local), cai para o admin mais antigo do tenant.
+    const customer = await custRepo.findOne({ where: { tenantId } });
+    let to = customer?.email;
+    let name = customer?.name;
+
+    if (!to) {
+      const member = await memberRepo.findOne({
+        where: { tenantId, role: "admin" },
+        order: { createdAt: "ASC" }
+      });
+      if (member) {
+        const user = await userRepo.findOne({ where: { id: member.userId } });
+        to = user?.email;
+        name = user?.name ?? undefined;
+      }
+    }
+    if (!to) return;
+
+    const { sendWelcomeEmail } = await import("@/lib/messaging/welcome-email");
+    const { SITE_URL } = await import("@/lib/seo");
+    await sendWelcomeEmail({
+      to,
+      customerName: name?.trim() || to.split("@")[0]!,
+      planName,
+      billingCycle,
+      appUrl: `${SITE_URL}/dashboard`
+    });
+  } catch (err) {
+    console.error("[billing] welcome email failed", err);
   }
 }
 

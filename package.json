@@ -50,6 +50,7 @@
     "recharts": "latest",
     "redis": "^6.0.0",
     "reflect-metadata": "latest",
+    "resend": "^6.17.1",
     "server-only": "latest",
     "stripe": "^22.2.0",
     "tailwind-merge": "^2.6.0",
