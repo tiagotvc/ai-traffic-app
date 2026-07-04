@@ -46,6 +46,7 @@ import { EngineExecution } from "./EngineExecution";
 import { DomainEvent } from "./DomainEvent";
 import { LabsExperiment } from "./LabsExperiment";
 import { LabsAgentRun } from "./LabsAgentRun";
+import { ResearchFinding } from "./ResearchFinding";
 import { ReportSchedule } from "./ReportSchedule";
 import { UserClient } from "./UserClient";
 import { TenantMember } from "./TenantMember";
@@ -232,6 +233,7 @@ stabilizeTypeOrmEntityNames([
   { ctor: DomainEvent, name: "DomainEvent" },
   { ctor: LabsExperiment, name: "LabsExperiment" },
   { ctor: LabsAgentRun, name: "LabsAgentRun" },
+  { ctor: ResearchFinding, name: "ResearchFinding" },
   { ctor: ReportSchedule, name: "ReportSchedule" },
   { ctor: UserClient, name: "UserClient" },
   { ctor: TenantMember, name: "TenantMember" },
@@ -316,6 +318,7 @@ export const typeOrmEntities = [
   DomainEvent,
   LabsExperiment,
   LabsAgentRun,
+  ResearchFinding,
   ReportSchedule,
   UserClient,
   TenantMember,

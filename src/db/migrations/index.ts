@@ -69,6 +69,7 @@ import { EngineExecutionsOutbox_1735833400000 } from "./0064-EngineExecutionsOut
 import { LaboratoryExperimentLinks_1735833500000 } from "./0065-LaboratoryExperimentLinks";
 import { AutomationRuleLevel_1735833600000 } from "./0066-AutomationRuleLevel";
 import { AutomationObservationMode_1735833700000 } from "./0067-AutomationObservationMode";
+import { ResearchFindings_1735833800000 } from "./0068-ResearchFindings";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [

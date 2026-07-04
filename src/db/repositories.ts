@@ -9,6 +9,7 @@ import type { EngineExecution } from "@/db/entities/EngineExecution";
 import type { DomainEvent } from "@/db/entities/DomainEvent";
 import type { LabsExperiment } from "@/db/entities/LabsExperiment";
 import type { LabsAgentRun } from "@/db/entities/LabsAgentRun";
+import type { ResearchFinding } from "@/db/entities/ResearchFinding";
 import type { CampaignGoal } from "@/db/entities/CampaignGoal";
 import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
 import type { AdMetricSnapshot } from "@/db/entities/AdMetricSnapshot";
@@ -128,6 +129,7 @@ const ENTITY = {
   DomainEvent: "DomainEvent",
   LabsExperiment: "LabsExperiment",
   LabsAgentRun: "LabsAgentRun",
+  ResearchFinding: "ResearchFinding",
   ReportSchedule: "ReportSchedule",
   UserClient: "UserClient",
   TenantMember: "TenantMember",
@@ -242,6 +244,7 @@ export async function repositories() {
     domainEvent: repositoryFor<DomainEvent>(ds, ENTITY.DomainEvent),
     labsExperiment: repositoryFor<LabsExperiment>(ds, ENTITY.LabsExperiment),
     labsAgentRun: repositoryFor<LabsAgentRun>(ds, ENTITY.LabsAgentRun),
+    researchFinding: repositoryFor<ResearchFinding>(ds, ENTITY.ResearchFinding),
     reportSchedule: repositoryFor<ReportSchedule>(ds, ENTITY.ReportSchedule),
     userClient: repositoryFor<UserClient>(ds, ENTITY.UserClient),
     tenantMember: repositoryFor<TenantMember>(ds, ENTITY.TenantMember),
