@@ -4461,9 +4461,7 @@ h6,
 
 /* Marketing LP — design system tokens (dark theme, matches app) */
 .marketing-ds-root {
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124, 58, 237, 0.12), transparent 55%),
-    var(--surface-bg);
+  background: var(--surface-bg);
   color: var(--text-main);
 }
 
@@ -4495,25 +4493,40 @@ h6,
 }
 
 .marketing-ds-root .marketing-section {
-  @apply border-b border-[var(--border-color)] px-4 py-16 sm:px-6 sm:py-20;
+  @apply border-b border-[var(--border-color)] px-4 py-20 sm:px-6 sm:py-28;
 }
 
 .marketing-ds-root .marketing-section-alt {
   background: color-mix(in srgb, var(--surface-card) 40%, var(--surface-bg));
 }
 
+/* Highlight section — solid accent tint + accent hairline borders (no gradient blob). */
+.marketing-ds-root .marketing-section-highlight {
+  background: color-mix(in srgb, var(--ui-accent) 7%, var(--surface-bg));
+  border-top: 1px solid var(--ui-accent-border);
+  border-bottom: 1px solid var(--ui-accent-border);
+}
+
 .marketing-ds-root .marketing-section-title {
-  @apply font-heading text-xs font-semibold uppercase tracking-widest;
+  @apply font-mono text-[0.7rem] font-normal uppercase;
+  letter-spacing: 0.22em;
   color: var(--ui-accent);
 }
 
+/* Telemetry readout — mono, used for live labels, coordinates and data captions. */
+.marketing-ds-root .telemetry {
+  @apply font-mono uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-dim);
+}
+
 .marketing-ds-root .marketing-section-heading {
-  @apply mt-2 font-heading text-2xl font-bold sm:text-3xl;
+  @apply mt-2 font-heading text-2xl font-bold tracking-tight text-balance sm:text-3xl;
   color: var(--text-main);
 }
 
 .marketing-ds-root .marketing-section-sub {
-  @apply mt-3 text-sm leading-relaxed;
+  @apply mt-3 text-sm leading-relaxed text-pretty sm:text-base;
   color: var(--text-dim);
 }
 
@@ -4521,6 +4534,10 @@ h6,
   @apply rounded-2xl border p-5 transition;
   border-color: var(--border-color);
   background: var(--surface-card);
+}
+
+.marketing-ds-root .marketing-card:hover {
+  border-color: var(--ui-accent-border);
 }
 
 .marketing-ds-root .marketing-card-muted {

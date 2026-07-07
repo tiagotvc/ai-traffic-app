@@ -39,7 +39,7 @@ export function MarketingDashboardShowcase({
       )}
       data-theme="dark"
     >
-      <div className="overflow-hidden rounded-2xl border border-white/15 bg-[var(--surface-bg)] shadow-2xl shadow-black/45 ring-1 ring-white/10">
+      <div className="overflow-hidden rounded-2xl border border-white/15 bg-[var(--surface-bg)] shadow-lg shadow-black/25 ring-1 ring-white/10">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-[#141c26] px-4 py-2.5">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-200 ring-1 ring-emerald-400/30">
             <span className="relative flex h-1.5 w-1.5">

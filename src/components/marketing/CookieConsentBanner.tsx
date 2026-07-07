@@ -43,7 +43,7 @@ export function CookieConsentBanner() {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex justify-center p-3 sm:p-5 print:hidden">
       <div
-        className={`pointer-events-auto w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl shadow-black/40 transition-all duration-300 ease-out ${
+        className={`pointer-events-auto w-full max-w-2xl overflow-hidden rounded-2xl border shadow-xl shadow-black/25 transition-all duration-300 ease-out ${
           entered ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
         }`}
         style={{ borderColor: "var(--border-color)", background: "var(--surface-card)" }}
@@ -51,11 +51,11 @@ export function CookieConsentBanner() {
         aria-live="polite"
         aria-label={t("cookieTitle")}
       >
-        <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-sky-400" />
+        <div className="h-1 w-full bg-[var(--ui-accent)]" />
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-5">
           <span
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white"
-            style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
+            style={{ background: "var(--ui-accent)" }}
             aria-hidden
           >
             <Cookie size={22} strokeWidth={2} />

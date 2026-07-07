@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
-import { DM_Sans, Space_Grotesk } from "next/font/google";
+import { DM_Sans, Space_Grotesk, Space_Mono } from "next/font/google";
 
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { SITE_URL } from "@/lib/seo";
@@ -41,13 +41,21 @@ const dmSans = DM_Sans({
   display: "swap"
 });
 
+// Telemetry / data face — used on the marketing site for mono readouts and labels.
+const spaceMono = Space_Mono({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-mono",
+  display: "swap"
+});
+
 const themeInitScript = `(function(){try{var t=localStorage.getItem("ai-traffic-theme");document.documentElement.setAttribute("data-theme",t==="dark"?"dark":"light");}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="pt-BR"
-      className={`h-full ${spaceGrotesk.variable} ${dmSans.variable}`}
+      className={`h-full ${spaceGrotesk.variable} ${dmSans.variable} ${spaceMono.variable}`}
       data-theme="light"
       suppressHydrationWarning
     >

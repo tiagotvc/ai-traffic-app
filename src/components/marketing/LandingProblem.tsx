@@ -16,7 +16,9 @@ export function LandingProblem() {
         <MarketingReveal>
           <p className="marketing-section-title">{t("problemBadge")}</p>
           <h2 className="marketing-section-heading">{t("problemTitle")}</h2>
-          <p className="marketing-section-sub max-w-2xl">{t("problemSubtitle")}</p>
+          <p className="mt-4 max-w-3xl text-lg font-medium leading-relaxed text-[var(--text-main)] sm:text-xl">
+            {t("problemSubtitle")}
+          </p>
         </MarketingReveal>
 
         <MarketingStagger className="mt-10 grid gap-3 sm:grid-cols-2">

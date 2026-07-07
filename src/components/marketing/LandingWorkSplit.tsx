@@ -20,9 +20,7 @@ export function LandingWorkSplit() {
           <p className="marketing-section-sub mx-auto max-w-2xl">{t("workSplitSubtitle")}</p>
         </MarketingReveal>
 
-        <div className="mt-10 overflow-hidden rounded-2xl border border-[var(--border-color)]">
-          <div className="h-2 bg-gradient-to-r from-[var(--ui-accent)] via-violet-400 to-[var(--ui-accent)] bg-[length:200%_100%] animate-[marketing-gradient-slide_4s_ease-in-out_infinite]" />
-        </div>
+        <div className="mt-10 h-1 rounded-full bg-[var(--ui-accent)]" />
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <MarketingReveal delay={0.05}>
