@@ -1,0 +1,17 @@
+{
+  "name": "Orion Agency",
+  "short_name": "Orion",
+  "description": "Plataforma premium para agências de performance e gestão Meta Ads",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1419",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
 import { DM_Sans, Space_Grotesk, Space_Mono } from "next/font/google";
+import { getLocale } from "next-intl/server";
 
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { SITE_URL } from "@/lib/seo";
@@ -18,7 +19,10 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   openGraph: {
     siteName: "Orion Agency",
-    type: "website"
+    type: "website",
+    // Default preview image inherited by every page that doesn't set its own
+    // (landing overrides this with a page-specific OG image).
+    images: [{ url: "/og-landing.png", width: 1200, height: 630, alt: "Orion Agency" }]
   },
   twitter: {
     card: "summary_large_image"
@@ -51,10 +55,13 @@ const spaceMono = Space_Mono({
 
 const themeInitScript = `(function(){try{var t=localStorage.getItem("ai-traffic-theme");document.documentElement.setAttribute("data-theme",t==="dark"?"dark":"light");}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`;
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Render the correct <html lang> server-side so crawlers see the right
+  // language on English pages (SetHtmlLang only fixes it after hydration).
+  const locale = await getLocale();
   return (
     <html
-      lang="pt-BR"
+      lang={locale}
       className={`h-full ${spaceGrotesk.variable} ${dmSans.variable} ${spaceMono.variable}`}
       data-theme="light"
       suppressHydrationWarning

@@ -13,6 +13,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     for (const locale of routing.locales) {
       languages[locale] = `${SITE_URL}/${locale}${path}`;
     }
+    // x-default points crawlers at the default locale for unmatched languages,
+    // matching the alternates emitted in each page's metadata.
+    languages["x-default"] = `${SITE_URL}/${routing.defaultLocale}${path}`;
 
     return {
       url: `${SITE_URL}/${routing.defaultLocale}${path}`,
