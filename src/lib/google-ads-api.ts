@@ -2,8 +2,9 @@ import "server-only";
 
 import { getGoogleAdsDeveloperToken, getGoogleAdsLoginCustomerId } from "@/lib/google-env";
 
-/** Versão da Google Ads REST API. Bump aqui quando migrarmos de versão. */
-export const GOOGLE_ADS_API_VERSION = "v18";
+/** Versão da Google Ads REST API. Bump aqui quando migrarmos de versão.
+ *  O Google mantém só as ~3 versões mais recentes (o resto retorna 404). */
+export const GOOGLE_ADS_API_VERSION = "v24";
 
 const GOOGLE_ADS_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 
@@ -108,21 +109,29 @@ export async function getCustomerDetails(
 
 /**
  * Lista as contas acessíveis já com detalhes (nome, moeda, timezone). Best-effort:
- * contas que falharem individualmente (sem permissão de leitura via o login atual)
- * caem no fallback com só o ID.
+ * cada conta é consultada tentando dois contextos de login-customer-id — primeiro
+ * via MCC (contas sob a hierarquia do manager), depois como acesso direto
+ * (login-customer-id = a própria conta). Só cai no fallback só-com-id se ambos
+ * falharem (ex.: sem permissão de leitura).
  */
 export async function listAccessibleCustomerDetails(
   accessToken: string
 ): Promise<GoogleAdsCustomer[]> {
   const ids = await listAccessibleCustomers(accessToken);
+  const mcc = getGoogleAdsLoginCustomerId();
 
   const out = await Promise.all(
     ids.map(async (id) => {
-      try {
-        const details = await getCustomerDetails(accessToken, id);
-        if (details) return details;
-      } catch {
-        /* sem permissão de leitura via o login atual — devolve ID cru */
+      // Ordem: MCC (hierarquia) → self (acesso direto). Dedup evita chamada repetida
+      // quando a conta é a própria MCC.
+      const logins = [...new Set([mcc, id].filter(Boolean))];
+      for (const login of logins) {
+        try {
+          const details = await getCustomerDetails(accessToken, id, login);
+          if (details) return details;
+        } catch {
+          /* tenta o próximo contexto de login */
+        }
       }
       return {
         id,
