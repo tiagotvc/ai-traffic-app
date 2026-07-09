@@ -18,6 +18,41 @@ export type GoogleAdsCustomer = {
   manager: boolean;
 };
 
+export type GoogleAdsCampaignMetrics = {
+  campaignId: string;
+  name: string;
+  status: string;
+  channelType: string;
+  impressions: number;
+  clicks: number;
+  /** Custo na moeda da conta (cost_micros / 1e6). */
+  cost: number;
+  conversions: number;
+  conversionsValue: number;
+  /** Click-through rate como fração (0–1), como a API devolve. */
+  ctr: number;
+  /** CPC médio na moeda da conta (average_cpc micros / 1e6). */
+  averageCpc: number;
+};
+
+/** Intervalos GAQL predefinidos aceitos (evita aritmética de data/timezone). */
+const GAQL_DATE_RANGES = new Set([
+  "TODAY",
+  "YESTERDAY",
+  "LAST_7_DAYS",
+  "LAST_14_DAYS",
+  "LAST_30_DAYS",
+  "THIS_MONTH",
+  "LAST_MONTH",
+  "THIS_WEEK_MON_TODAY",
+  "THIS_WEEK_SUN_TODAY"
+]);
+
+export function normalizeGaqlDateRange(range?: string): string {
+  const up = (range ?? "").trim().toUpperCase();
+  return GAQL_DATE_RANGES.has(up) ? up : "LAST_30_DAYS";
+}
+
 export class GoogleAdsApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -144,4 +179,98 @@ export async function listAccessibleCustomerDetails(
   );
 
   return out;
+}
+
+type SearchRow = Record<string, Record<string, unknown>>;
+
+/**
+ * Roda uma query GAQL num único contexto de login-customer-id, seguindo o
+ * nextPageToken até esgotar as páginas.
+ */
+async function runGaqlSearch(
+  accessToken: string,
+  customerId: string,
+  query: string,
+  loginCustomerId: string
+): Promise<SearchRow[]> {
+  const rows: SearchRow[] = [];
+  let pageToken: string | undefined;
+
+  do {
+    const res = await fetch(`${GOOGLE_ADS_BASE}/customers/${customerId}/googleAds:search`, {
+      method: "POST",
+      headers: baseHeaders(accessToken, loginCustomerId),
+      body: JSON.stringify(pageToken ? { query, pageToken } : { query })
+    });
+
+    if (!res.ok) throw new GoogleAdsApiError(await parseError(res), res.status);
+
+    const json = (await res.json()) as { results?: SearchRow[]; nextPageToken?: string };
+    if (json.results?.length) rows.push(...json.results);
+    pageToken = json.nextPageToken;
+  } while (pageToken);
+
+  return rows;
+}
+
+const MICROS = 1_000_000;
+function num(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Métricas por campanha de uma conta, agregadas no intervalo (default LAST_30_DAYS).
+ * Tenta login-customer-id = MCC → self, como `listAccessibleCustomerDetails`, para
+ * cobrir contas dentro e fora da hierarquia da MCC.
+ *
+ * Só leitura (GoogleAdsService.Search) — funciona com o permissible use "Reporting".
+ */
+export async function getCampaignMetrics(
+  accessToken: string,
+  customerId: string,
+  opts?: { dateRange?: string }
+): Promise<GoogleAdsCampaignMetrics[]> {
+  const cid = customerId.replace(/\D/g, "");
+  const range = normalizeGaqlDateRange(opts?.dateRange);
+  const query =
+    "SELECT campaign.id, campaign.name, campaign.status, " +
+    "campaign.advertising_channel_type, metrics.impressions, metrics.clicks, " +
+    "metrics.cost_micros, metrics.conversions, metrics.conversions_value, " +
+    "metrics.ctr, metrics.average_cpc " +
+    `FROM campaign WHERE segments.date DURING ${range} ` +
+    "ORDER BY metrics.cost_micros DESC";
+
+  const mcc = getGoogleAdsLoginCustomerId();
+  const logins = [...new Set([mcc, cid].filter(Boolean))];
+
+  let lastErr: unknown;
+  for (const login of logins) {
+    try {
+      const rows = await runGaqlSearch(accessToken, cid, query, login);
+      return rows.map((row) => {
+        const c = (row.campaign ?? {}) as Record<string, unknown>;
+        const m = (row.metrics ?? {}) as Record<string, unknown>;
+        return {
+          campaignId: String(c.id ?? "").replace(/\D/g, ""),
+          name: String(c.name ?? ""),
+          status: String(c.status ?? ""),
+          channelType: String(c.advertisingChannelType ?? ""),
+          impressions: num(m.impressions),
+          clicks: num(m.clicks),
+          cost: num(m.costMicros) / MICROS,
+          conversions: num(m.conversions),
+          conversionsValue: num(m.conversionsValue),
+          ctr: num(m.ctr),
+          averageCpc: num(m.averageCpc) / MICROS
+        } satisfies GoogleAdsCampaignMetrics;
+      });
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  throw lastErr instanceof Error
+    ? lastErr
+    : new GoogleAdsApiError("Nenhum contexto de login válido para a conta", 400);
 }
