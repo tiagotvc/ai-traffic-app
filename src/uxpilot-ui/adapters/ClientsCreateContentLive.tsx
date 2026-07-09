@@ -466,6 +466,29 @@ export function ClientsCreateContentLive() {
                     )}
                   </section>
 
+                  {w.googleEnabled ? (
+                    <section className="campaign-creator-card space-y-3">
+                      <div>
+                        <h3 className="campaign-creator-section-title">{tW("googleSectionTitle")}</h3>
+                        <p className="mt-1 text-xs text-[var(--text-dim)]">{tW("googleSectionHint")}</p>
+                      </div>
+                      <select
+                        value={w.selectedGoogleCustomerId}
+                        onChange={(e) => w.setSelectedGoogleCustomerId(e.target.value)}
+                        className="w-full max-w-md rounded-xl ui-input text-sm"
+                      >
+                        <option value="">{tW("googleAccountNone")}</option>
+                        {w.googleAccounts
+                          .filter((a) => !a.manager)
+                          .map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.descriptiveName ? `${a.descriptiveName} (${a.id})` : a.id}
+                            </option>
+                          ))}
+                      </select>
+                    </section>
+                  ) : null}
+
                   {w.error ? (
                     <div className="ui-alert-danger px-4 py-3 text-sm">{w.error}</div>
                   ) : null}

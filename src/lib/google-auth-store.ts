@@ -107,3 +107,21 @@ export async function hasGoogleAdsConnected(userId: string): Promise<boolean> {
   const row = await repo.findOne({ where: { userId } });
   return !!(row?.refreshToken || row?.accessToken);
 }
+
+/**
+ * Access token Google para operações do workspace (ex.: dashboard de um cliente).
+ * Retorna o token do primeiro usuário do tenant com conexão válida — assim a
+ * visualização funciona para qualquer membro, não só quem conectou. Espelha o
+ * fallback de token do Meta (getWorkspaceMetaTokens).
+ */
+export async function getWorkspaceGoogleAccessToken(
+  tenantId: string
+): Promise<string | undefined> {
+  const { user: userRepo } = await repositories();
+  const users = await userRepo.find({ where: { tenantId }, select: { id: true } });
+  for (const u of users) {
+    const token = await getStoredGoogleAccessToken(u.id);
+    if (token) return token;
+  }
+  return undefined;
+}

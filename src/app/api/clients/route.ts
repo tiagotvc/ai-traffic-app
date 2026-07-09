@@ -28,6 +28,8 @@ const CreateClientSchema = z.object({
   metaPageId: z.string().min(1).optional(),
   metaPixelId: z.string().optional(),
   linkedMetaPixelIds: z.array(z.string()).optional(),
+  /** Conta Google Ads vinculada na criação (opcional, só dígitos). */
+  googleAdsCustomerId: z.string().nullable().optional(),
   /** Fluxo simplificado: ao vincular a BM, puxa automaticamente todos os ativos dela. */
   linkAllBmAssets: z.boolean().optional()
 });
@@ -64,6 +66,13 @@ export async function POST(req: Request) {
   await goalRepo.save(
     goalRepo.create({ clientId: saved.id, objective: "leads", enabled: false, windowDays: 1 })
   );
+
+  // Vínculo Google Ads opcional (gated pelo kill-switch — ignora se a flag estiver off).
+  const { isGoogleAdsEnabled } = await import("@/lib/google-env");
+  if (isGoogleAdsEnabled() && body.googleAdsCustomerId) {
+    saved.googleAdsCustomerId = body.googleAdsCustomerId.replace(/\D/g, "") || null;
+    await clientRepo.save(saved);
+  }
 
   const normalizedBm =
     body.metaBusinessId && body.metaBusinessId !== "unassigned" ? body.metaBusinessId : null;

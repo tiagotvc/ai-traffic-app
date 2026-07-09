@@ -43,6 +43,12 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
   const [error, setError] = useState<string | null>(null);
   const [metaAdsConnected, setMetaAdsConnected] = useState<boolean | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Google Ads (opcional, só quando a flag/rota respondem ok).
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+  const [googleAccounts, setGoogleAccounts] = useState<
+    Array<{ id: string; descriptiveName: string | null; manager: boolean }>
+  >([]);
+  const [selectedGoogleCustomerId, setSelectedGoogleCustomerId] = useState("");
 
   const loadBusinesses = useCallback(() => {
     fetch("/api/meta/businesses")
@@ -104,6 +110,16 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
       .then((r) => r.json())
       .then((j) => setMetaAdsConnected(!!j.connected))
       .catch(() => setMetaAdsConnected(false));
+    // Contas Google (só aparece se a flag estiver ligada e houver conexão → rota 200).
+    fetch("/api/google-ads/accounts")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j?.ok) {
+          setGoogleEnabled(true);
+          setGoogleAccounts(j.accounts ?? []);
+        }
+      })
+      .catch(() => {});
     if (opts?.metaConnected) {
       setStep(2);
     }
@@ -188,7 +204,8 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
           metaAdAccountIds: [...selected],
           metaPageId: selectedPageId.trim(),
           linkedMetaPixelIds,
-          metaPixelId: linkedMetaPixelIds[0] ?? undefined
+          metaPixelId: linkedMetaPixelIds[0] ?? undefined,
+          googleAdsCustomerId: selectedGoogleCustomerId || undefined
         })
       });
       const j = await res.json().catch(() => null);
@@ -245,6 +262,10 @@ export function useCreateClientWizard(locale: string, opts?: { metaConnected?: b
     selectBusiness,
     create,
     formatSpend,
-    reloadBusinesses: loadBusinesses
+    reloadBusinesses: loadBusinesses,
+    googleEnabled,
+    googleAccounts,
+    selectedGoogleCustomerId,
+    setSelectedGoogleCustomerId
   };
 }
