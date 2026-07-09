@@ -1,27 +1,33 @@
 import { NextResponse } from "next/server";
 
 import { getAppContext } from "@/lib/app-context";
-import { GOOGLE_ADS_SCOPES, isGoogleOAuthConfigured } from "@/lib/google-env";
+import { isGoogleAdsEnabled, isGoogleOAuthConfigured } from "@/lib/google-env";
+import {
+  buildGoogleAdsOAuthUrl,
+  createGoogleOAuthState,
+  setGoogleOAuthCookies
+} from "@/lib/google-ads-oauth";
 import { getAppBaseUrl } from "@/lib/app-url";
 
 /**
- * Stub Google Ads OAuth — redireciona para consent screen quando configurado.
- * Integração completa de campanhas/métricas virá na fase 2.
+ * Início do OAuth Google Ads. Gated pelo kill-switch (GOOGLE_ADS_ENABLED) — enquanto
+ * desligado, responde 404 para não expor a integração em produção.
  */
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const redirectTo = url.searchParams.get("redirectTo") ?? "/onboarding/connect";
-
+  if (!isGoogleAdsEnabled()) {
+    return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
+  }
+  // OAuth só precisa de client id + secret. O developer token é exigido depois,
+  // apenas nas chamadas à API (ex.: listar contas em /api/google-ads/accounts).
   if (!isGoogleOAuthConfigured()) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: "Configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET",
-        scopes: GOOGLE_ADS_SCOPES
-      },
+      { ok: false, error: "Google OAuth not configured" },
       { status: 503 }
     );
   }
+
+  const url = new URL(req.url);
+  const redirectTo = url.searchParams.get("redirectTo") ?? "/settings?tab=integrations";
 
   try {
     await getAppContext();
@@ -31,17 +37,8 @@ export async function GET(req: Request) {
     );
   }
 
-  const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!.trim(),
-    redirect_uri: `${getAppBaseUrl()}/api/google/oauth/callback`,
-    response_type: "code",
-    scope: GOOGLE_ADS_SCOPES,
-    access_type: "offline",
-    prompt: "consent",
-    state: Buffer.from(JSON.stringify({ redirectTo })).toString("base64url")
-  });
+  const state = createGoogleOAuthState();
+  await setGoogleOAuthCookies(state, redirectTo);
 
-  return NextResponse.redirect(
-    `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
-  );
+  return NextResponse.redirect(buildGoogleAdsOAuthUrl(state));
 }

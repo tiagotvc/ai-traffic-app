@@ -9,12 +9,14 @@ export function SettingsView({
   locale,
   metaOAuthConfigured,
   metaOAuthError,
-  connectMetaSlot
+  connectMetaSlot,
+  googleAdsEnabled = false
 }: {
   locale: string;
   metaOAuthConfigured: boolean;
   metaOAuthError: string | null;
   connectMetaSlot: ReactNode;
+  googleAdsEnabled?: boolean;
 }) {
   return (
     <UxPageMain gap="loose">
@@ -23,6 +25,7 @@ export function SettingsView({
         metaOAuthConfigured={metaOAuthConfigured}
         metaOAuthError={metaOAuthError}
         connectMetaSlot={connectMetaSlot}
+        googleAdsEnabled={googleAdsEnabled}
       />
     </UxPageMain>
   );

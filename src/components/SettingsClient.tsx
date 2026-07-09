@@ -63,6 +63,7 @@ export function SettingsClient({
   metaOAuthConfigured,
   metaOAuthError,
   connectMetaSlot,
+  googleAdsEnabled = false,
   embedded = false,
   bare = false,
   activeTab: controlledTab,
@@ -73,6 +74,7 @@ export function SettingsClient({
   metaOAuthConfigured: boolean;
   metaOAuthError?: string | null;
   connectMetaSlot: ReactNode;
+  googleAdsEnabled?: boolean;
   embedded?: boolean;
   bare?: boolean;
   activeTab?: SettingsTab;
@@ -451,6 +453,7 @@ export function SettingsClient({
           metaOAuthConfigured={metaOAuthConfigured}
           metaOAuthError={metaOAuthError}
           connectMetaSlot={connectMetaSlot}
+          googleAdsEnabled={googleAdsEnabled}
         />
       ) : null}
 

@@ -60,12 +60,14 @@ export function SettingsContentLive({
   locale,
   metaOAuthConfigured,
   metaOAuthError,
-  connectMetaSlot
+  connectMetaSlot,
+  googleAdsEnabled = false
 }: {
   locale: string;
   metaOAuthConfigured: boolean;
   metaOAuthError?: string | null;
   connectMetaSlot: ReactNode;
+  googleAdsEnabled?: boolean;
 }) {
   const t = useTranslations("settings");
   const tBilling = useTranslations("billingPage");
@@ -184,6 +186,7 @@ export function SettingsContentLive({
           metaOAuthConfigured={metaOAuthConfigured}
           metaOAuthError={metaOAuthError}
           connectMetaSlot={connectMetaSlot}
+          googleAdsEnabled={googleAdsEnabled}
           embedded
           bare
           activeTab={id as SettingsClientTab}
