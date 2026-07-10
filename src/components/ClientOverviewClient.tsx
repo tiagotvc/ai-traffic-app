@@ -18,6 +18,7 @@ import { Link } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { ClientGoogleAdsPanel } from "@/components/ClientGoogleAdsPanel";
+import { ClientGoogleBreakdowns } from "@/components/ClientGoogleBreakdowns";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { ChartContainer } from "@/components/ui/ChartContainer";
@@ -648,7 +649,10 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
       ) : null}
 
       {platform !== "meta" && googleAvailable ? (
-        <ClientGoogleAdsPanel clientId={clientId} />
+        <>
+          <ClientGoogleAdsPanel clientId={clientId} />
+          <ClientGoogleBreakdowns clientId={clientId} />
+        </>
       ) : null}
 
       <MetricPickerModal

@@ -275,6 +275,130 @@ export async function getCampaignMetrics(
     : new GoogleAdsApiError("Nenhum contexto de login válido para a conta", 400);
 }
 
+/** Dimensões de breakdown do Google Ads (algumas não existem no Meta). */
+export type GoogleAdsBreakdownDimension = "device" | "gender" | "age" | "search_term" | "keyword";
+
+export type GoogleAdsBreakdownRow = {
+  label: string;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  ctr: number;
+  averageCpc: number;
+};
+
+type BreakdownConfig = {
+  /** Campo GAQL selecionado (define a dimensão). */
+  field: string;
+  /** Resource GAQL (FROM). */
+  from: string;
+  /** true = ordena por custo e limita (dimensões de cardinalidade alta). */
+  topN?: boolean;
+  /** Extrai o rótulo da linha (REST camelCase). */
+  label: (row: Record<string, Record<string, unknown>>) => string;
+};
+
+function pick(obj: unknown, path: string[]): string {
+  let cur: unknown = obj;
+  for (const k of path) {
+    if (cur && typeof cur === "object") cur = (cur as Record<string, unknown>)[k];
+    else return "";
+  }
+  return cur == null ? "" : String(cur);
+}
+
+const BREAKDOWN_CONFIG: Record<GoogleAdsBreakdownDimension, BreakdownConfig> = {
+  device: {
+    field: "segments.device",
+    from: "campaign",
+    label: (r) => pick(r, ["segments", "device"])
+  },
+  gender: {
+    field: "ad_group_criterion.gender.type",
+    from: "gender_view",
+    label: (r) => pick(r, ["adGroupCriterion", "gender", "type"])
+  },
+  age: {
+    field: "ad_group_criterion.age_range.type",
+    from: "age_range_view",
+    label: (r) => pick(r, ["adGroupCriterion", "ageRange", "type"])
+  },
+  search_term: {
+    field: "search_term_view.search_term",
+    from: "search_term_view",
+    topN: true,
+    label: (r) => pick(r, ["searchTermView", "searchTerm"])
+  },
+  keyword: {
+    field: "ad_group_criterion.keyword.text",
+    from: "keyword_view",
+    topN: true,
+    label: (r) => pick(r, ["adGroupCriterion", "keyword", "text"])
+  }
+};
+
+/**
+ * Breakdown de uma dimensão do Google Ads, agregado por rótulo no intervalo.
+ * Dimensões como termos de pesquisa/palavras-chave não têm equivalente no Meta.
+ * Só leitura (funciona com o token "Reporting").
+ */
+export async function getBreakdown(
+  accessToken: string,
+  customerId: string,
+  dimension: GoogleAdsBreakdownDimension,
+  range: { since: string; until: string }
+): Promise<GoogleAdsBreakdownRow[]> {
+  if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
+    throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
+  }
+  const cid = customerId.replace(/\D/g, "");
+  const cfg = BREAKDOWN_CONFIG[dimension];
+  const tail = cfg.topN ? " ORDER BY metrics.cost_micros DESC LIMIT 100" : "";
+  const query =
+    `SELECT ${cfg.field}, metrics.impressions, metrics.clicks, metrics.cost_micros, ` +
+    `metrics.conversions FROM ${cfg.from} ` +
+    `WHERE segments.date BETWEEN '${range.since}' AND '${range.until}'${tail}`;
+
+  const mcc = getGoogleAdsLoginCustomerId();
+  const logins = [...new Set([mcc, cid].filter(Boolean))];
+
+  let lastErr: unknown;
+  for (const login of logins) {
+    try {
+      const rows = await runGaqlSearch(accessToken, cid, query, login);
+      // Agrega por rótulo (várias linhas por campanha/grupo).
+      const byLabel = new Map<string, GoogleAdsBreakdownRow>();
+      for (const row of rows) {
+        const label = cfg.label(row) || "—";
+        const m = (row.metrics ?? {}) as Record<string, unknown>;
+        let agg = byLabel.get(label);
+        if (!agg) {
+          agg = { label, impressions: 0, clicks: 0, cost: 0, conversions: 0, ctr: 0, averageCpc: 0 };
+          byLabel.set(label, agg);
+        }
+        agg.impressions += num(m.impressions);
+        agg.clicks += num(m.clicks);
+        agg.cost += num(m.costMicros) / MICROS;
+        agg.conversions += num(m.conversions);
+      }
+      return [...byLabel.values()]
+        .map((r) => ({
+          ...r,
+          ctr: r.impressions > 0 ? r.clicks / r.impressions : 0,
+          averageCpc: r.clicks > 0 ? r.cost / r.clicks : 0
+        }))
+        .sort((a, b) => b.cost - a.cost);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  throw lastErr instanceof Error
+    ? lastErr
+    : new GoogleAdsApiError("Nenhum contexto de login válido para a conta", 400);
+}
+
 export type GoogleAdsCampaignDailyMetrics = GoogleAdsCampaignMetrics & { date: string };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
