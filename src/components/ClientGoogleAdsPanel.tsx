@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -20,7 +20,7 @@ type GoogleCampaignRow = {
   averageCpc: number;
 };
 
-const RANGES = ["LAST_7_DAYS", "LAST_30_DAYS", "THIS_MONTH", "LAST_MONTH"] as const;
+const DAY_OPTIONS = [7, 30, 90] as const;
 
 function statusColor(status: string): string {
   if (status === "ENABLED") return "text-emerald-400";
@@ -34,24 +34,33 @@ export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
   const locale = useLocale();
   const [rows, setRows] = useState<GoogleCampaignRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [range, setRange] = useState<(typeof RANGES)[number]>("LAST_30_DAYS");
+  const [days, setDays] = useState<(typeof DAY_OPTIONS)[number]>(30);
+  const [syncing, startSync] = useTransition();
 
-  useEffect(() => {
-    let active = true;
+  const load = useCallback(() => {
     setRows(null);
     setError(null);
-    fetch(`/api/clients/${encodeURIComponent(clientId)}/google-ads/campaigns?range=${range}`)
+    return fetch(`/api/clients/${encodeURIComponent(clientId)}/google-ads/metrics?days=${days}`)
       .then((r) => r.json())
       .then((j) => {
-        if (!active) return;
         if (j.ok) setRows(j.campaigns ?? []);
         else setError(j.error ?? "error");
       })
-      .catch(() => active && setError("error"));
-    return () => {
-      active = false;
-    };
-  }, [clientId, range]);
+      .catch(() => setError("error"));
+  }, [clientId, days]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  function sync() {
+    startSync(async () => {
+      await fetch(`/api/clients/${encodeURIComponent(clientId)}/google-ads/sync?days=${days}`, {
+        method: "POST"
+      }).catch(() => undefined);
+      await load();
+    });
+  }
 
   return (
     <div className="ui-card p-4">
@@ -65,17 +74,27 @@ export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
           </svg>
           <div className="text-sm font-semibold">{t("googleAdsPanelTitle")}</div>
         </div>
-        <select
-          value={range}
-          onChange={(e) => setRange(e.target.value as (typeof RANGES)[number])}
-          className="rounded-xl ui-input text-xs"
-        >
-          {RANGES.map((r) => (
-            <option key={r} value={r}>
-              {t(`googleAdsRange_${r}` as Parameters<typeof t>[0])}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value) as (typeof DAY_OPTIONS)[number])}
+            className="rounded-xl ui-input text-xs"
+          >
+            {DAY_OPTIONS.map((d) => (
+              <option key={d} value={d}>
+                {t("googleAdsDays", { days: d })}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={sync}
+            disabled={syncing}
+            className="ui-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+          >
+            {syncing ? t("googleAdsSyncing") : t("googleAdsSync")}
+          </button>
+        </div>
       </div>
 
       <div className="mt-3 overflow-x-auto">
@@ -86,7 +105,7 @@ export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
             {error === "not_linked" ? t("googleAdsNotLinked") : t("googleAdsLoadError")}
           </div>
         ) : rows && rows.length === 0 ? (
-          <div className="text-xs text-[var(--text-dim)]">{t("googleAdsNoCampaigns")}</div>
+          <div className="text-xs text-[var(--text-dim)]">{t("googleAdsSyncHint")}</div>
         ) : (
           <table className="w-full min-w-[720px] text-xs">
             <thead>

@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   inventoryTimezoneMap,
+  loadGoogleMetricTotals,
   loadMetricTotals,
+  mergeMetricTotals,
   parseDashboardSearchParams,
   resolveDashboardScope
 } from "@/lib/dashboard-query";
@@ -29,13 +31,13 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
 
-  const { accountIds, adAccounts } = await resolveDashboardScope(
+  const { accountIds, adAccounts, clientIds } = await resolveDashboardScope(
     auth.tenantId,
     clientId,
     adAccountId
   );
 
-  if (!accountIds.length) {
+  if (!accountIds.length && !clientIds.length) {
     return NextResponse.json({
       ok: true,
       summary: {
@@ -58,11 +60,12 @@ export async function GET(req: Request) {
   }
 
   const tDb = Date.now();
-  const totals = await loadMetricTotals(accountIds, days, {
-    since: period.since,
-    until: period.until,
-    allTime: period.allTime
-  });
+  const rangeOpts = { since: period.since, until: period.until, allTime: period.allTime };
+  const [metaTotals, googleTotals] = await Promise.all([
+    loadMetricTotals(accountIds, days, rangeOpts),
+    loadGoogleMetricTotals(clientIds, days, rangeOpts)
+  ]);
+  const totals = mergeMetricTotals(metaTotals, googleTotals);
   const dbMs = Date.now() - tDb;
 
   const { spend, impressions, clicks, conversions, reach, messages, roas } = totals;

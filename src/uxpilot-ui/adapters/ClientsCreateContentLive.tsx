@@ -22,13 +22,27 @@ import {
   ClientCreateWizardNav
 } from "@/uxpilot-ui/adapters/ClientCreateSidebar";
 import { UxHorizontalStepper } from "@/uxpilot-ui/adapters/ux-wizard-primitives";
-import { useCreateClientWizard } from "@/uxpilot-ui/adapters/useCreateClientWizard";
+import {
+  useCreateClientWizard,
+  type StepKey
+} from "@/uxpilot-ui/adapters/useCreateClientWizard";
 
 const META_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Conexão Meta cancelada. Tente novamente.",
   invalid_state: "Sessão OAuth expirada. Conecte novamente.",
   oauth_failed: "Falha ao conectar Meta. Tente novamente."
 };
+
+function GoogleGlyph({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.5 3.4 14.5 2.6 12 2.6 6.9 2.6 2.7 6.8 2.7 12s4.2 9.4 9.3 9.4c5.4 0 8.9-3.8 8.9-9.1 0-.6-.1-1.1-.2-1.5H12z"
+      />
+    </svg>
+  );
+}
 
 export function ClientsCreateContentLive() {
   const tW = useTranslations("clientsHub.createWizard");
@@ -44,12 +58,20 @@ export function ClientsCreateContentLive() {
     return META_ERROR_MESSAGES[metaError] ?? tW("metaOAuthFailed");
   }, [metaError, tW]);
 
-  const steps = [
-    { number: 1 as const, label: tW("stepName") },
-    { number: 2 as const, label: tW("stepBm") },
-    { number: 3 as const, label: tW("stepAccounts") },
-    { number: 4 as const, label: tW("stepPagePixels") }
-  ];
+  const STEP_LABEL: Record<StepKey, string> = {
+    name: tW("stepName"),
+    platforms: tW("stepPlatforms"),
+    bm: tW("stepBm"),
+    accounts: tW("stepAccounts"),
+    pagePixels: tW("stepPagePixels"),
+    google: tW("stepGoogle")
+  };
+
+  const stepperSteps = w.steps.map((key, i) => ({
+    number: (i + 1) as number,
+    label: STEP_LABEL[key],
+    disabled: w.steps.slice(0, i).some((k) => !w.stepDone[k])
+  }));
 
   function onCreated(slug: string) {
     window.dispatchEvent(new Event("traffic:campaigns-reload"));
@@ -62,21 +84,16 @@ export function ClientsCreateContentLive() {
   }
 
   function goToStep(n: number) {
-    if (n === 1) w.setStep(1);
-    if (n === 2 && w.canContinueStep1) w.setStep(2);
-    if (n === 3 && w.canContinueStep2) w.setStep(3);
-    if (n === 4 && w.canContinueStep3) w.setStep(4);
+    w.goToIndex(n - 1);
   }
 
   function goBack() {
-    if (w.step > 1) w.setStep((w.step - 1) as 1 | 2 | 3 | 4);
+    if (w.stepIndex > 0) w.setStepIndex(w.stepIndex - 1);
     else router.push("/clients");
   }
 
   function goNext() {
-    if (w.step === 1 && w.canContinueStep1) w.setStep(2);
-    else if (w.step === 2 && w.canContinueStep2) w.setStep(3);
-    else if (w.step === 3 && w.canContinueStep3) w.setStep(4);
+    if (!w.isLast && w.canContinueCurrent) w.setStepIndex(w.stepIndex + 1);
   }
 
   function handleCreate() {
@@ -114,18 +131,8 @@ export function ClientsCreateContentLive() {
             <div className="campaign-creator-stepper w-full lg:max-w-none">
               <UxHorizontalStepper
                 size="mini"
-                steps={steps.map((s) => ({
-                  ...s,
-                  disabled:
-                    s.number === 2
-                      ? !w.canContinueStep1
-                      : s.number === 3
-                        ? !w.canContinueStep2
-                        : s.number === 4
-                          ? !w.canContinueStep3
-                          : false
-                }))}
-                current={w.step}
+                steps={stepperSteps}
+                current={w.stepIndex + 1}
                 onStepClick={goToStep}
               />
             </div>
@@ -135,7 +142,7 @@ export function ClientsCreateContentLive() {
         <main className="campaign-creator-main-scroll relative col-start-1 row-start-2 flex min-h-0 min-w-0 w-full flex-col overflow-y-auto py-3">
           <div className="campaign-creator-main-scroll__inner w-full pb-6">
             <div className="campaign-creator-section-stack">
-              {w.step === 1 ? (
+              {w.stepKey === "name" ? (
                 <div className="animate-fade-up space-y-4">
                   <div>
                     <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
@@ -144,36 +151,11 @@ export function ClientsCreateContentLive() {
                     <p className="mt-1 text-xs text-[var(--text-dim)]">{tW("titleHint")}</p>
                   </div>
 
-                  {w.metaAdsConnected === false ? (
-                    <div className="ui-alert-warning text-sm">
-                      <p>{tW("metaAdsRequiredHint")}</p>
-                      <Link
-                        href="/settings?tab=integrations"
-                        className="ui-link mt-1 inline-block text-xs font-semibold underline"
-                      >
-                        {tW("goConnectMetaAds")}
-                      </Link>
-                    </div>
-                  ) : null}
-
-                  {w.inventoryEmpty ? (
-                    <div className="campaign-creator-copy-card campaign-creator-copy-card--lead text-sm">
-                      <div className="campaign-creator-copy-card__content">
-                        <span className="text-[var(--text-dim)]">
-                          {tW("emptyInventory")}{" "}
-                          <Link href="/settings/meta-assets" className="font-semibold text-[var(--ui-accent)] underline">
-                            {tW("goMetaAssets")}
-                          </Link>
-                        </span>
-                      </div>
-                    </div>
-                  ) : null}
-
                   <section className="campaign-creator-card">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
-                        if (w.canContinueStep1) w.setStep(2);
+                        if (w.canContinueCurrent) w.setStepIndex(w.stepIndex + 1);
                       }}
                     >
                       <FilterTextField
@@ -189,7 +171,49 @@ export function ClientsCreateContentLive() {
                 </div>
               ) : null}
 
-              {w.step === 2 ? (
+              {w.stepKey === "platforms" ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      {tW("stepPlatformsTitle")}
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">{tW("stepPlatformsHint")}</p>
+                  </div>
+
+                  {w.platforms.has("meta") && w.metaAdsConnected === false ? (
+                    <div className="ui-alert-warning text-sm">
+                      <p>{tW("metaAdsRequiredHint")}</p>
+                      <Link
+                        href="/settings?tab=integrations"
+                        className="ui-link mt-1 inline-block text-xs font-semibold underline"
+                      >
+                        {tW("goConnectMetaAds")}
+                      </Link>
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <PlatformCard
+                      selected={w.platforms.has("meta")}
+                      onClick={() => w.togglePlatform("meta")}
+                      icon={<Facebook size={20} strokeWidth={1.75} className="text-[#0866FF]" />}
+                      title={tW("platformMeta")}
+                      description={tW("platformMetaDesc")}
+                    />
+                    {w.googleEnabled ? (
+                      <PlatformCard
+                        selected={w.platforms.has("google")}
+                        onClick={() => w.togglePlatform("google")}
+                        icon={<GoogleGlyph />}
+                        title={tW("platformGoogle")}
+                        description={tW("platformGoogleDesc")}
+                      />
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {w.stepKey === "bm" ? (
                 <div className="animate-fade-up space-y-4">
                   <div>
                     <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
@@ -261,7 +285,7 @@ export function ClientsCreateContentLive() {
                 </div>
               ) : null}
 
-              {w.step === 3 ? (
+              {w.stepKey === "accounts" ? (
                 <div className="animate-fade-up space-y-4">
                   <div>
                     <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
@@ -355,7 +379,7 @@ export function ClientsCreateContentLive() {
                 </div>
               ) : null}
 
-              {w.step === 4 ? (
+              {w.stepKey === "pagePixels" ? (
                 <div className="animate-fade-up space-y-4">
                   <div>
                     <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
@@ -466,28 +490,72 @@ export function ClientsCreateContentLive() {
                     )}
                   </section>
 
-                  {w.googleEnabled ? (
-                    <section className="campaign-creator-card space-y-3">
-                      <div>
-                        <h3 className="campaign-creator-section-title">{tW("googleSectionTitle")}</h3>
-                        <p className="mt-1 text-xs text-[var(--text-dim)]">{tW("googleSectionHint")}</p>
+                  {w.error ? (
+                    <div className="ui-alert-danger px-4 py-3 text-sm">{w.error}</div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {w.stepKey === "google" ? (
+                <div className="animate-fade-up space-y-4">
+                  <div>
+                    <h2 className="font-heading text-base font-semibold text-[var(--text-main)]">
+                      {tW("stepGoogleTitle")}
+                    </h2>
+                    <p className="mt-1 text-xs text-[var(--text-dim)]">{tW("stepGoogleHint")}</p>
+                  </div>
+
+                  <section className="campaign-creator-card space-y-3">
+                    {w.googleAccounts.filter((a) => !a.manager).length === 0 ? (
+                      <div className="ui-alert-warning text-xs">
+                        {tW("googleNoAccounts")}{" "}
+                        <Link href="/settings?tab=integrations" className="ui-link font-semibold">
+                          {tW("goConnectMetaAds")}
+                        </Link>
                       </div>
-                      <select
-                        value={w.selectedGoogleCustomerId}
-                        onChange={(e) => w.setSelectedGoogleCustomerId(e.target.value)}
-                        className="w-full max-w-md rounded-xl ui-input text-sm"
-                      >
-                        <option value="">{tW("googleAccountNone")}</option>
+                    ) : (
+                      <div className="campaign-creator-sidebar-card-inset max-h-[min(36rem,calc(100vh-12rem))] space-y-2 overflow-y-auto p-2">
                         {w.googleAccounts
                           .filter((a) => !a.manager)
-                          .map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.descriptiveName ? `${a.descriptiveName} (${a.id})` : a.id}
-                            </option>
-                          ))}
-                      </select>
-                    </section>
-                  ) : null}
+                          .map((a) => {
+                            const selected = w.selectedGoogleCustomerId === a.id;
+                            return (
+                              <button
+                                key={a.id}
+                                type="button"
+                                role="radio"
+                                aria-checked={selected}
+                                onClick={() => w.setSelectedGoogleCustomerId(selected ? "" : a.id)}
+                                className={cn(
+                                  "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row w-full",
+                                  selected
+                                    ? "campaign-creator-budget-choice-card--selected"
+                                    : "campaign-creator-budget-choice-card--unselected"
+                                )}
+                              >
+                                <ChoiceCardCheck selected={selected} />
+                                <span
+                                  className="campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline campaign-creator-budget-choice-card__icon--unselected"
+                                  aria-hidden
+                                >
+                                  <GoogleGlyph size={16} />
+                                </span>
+                                <span className="campaign-creator-budget-choice-card__content min-w-0">
+                                  <span className="campaign-creator-budget-choice-card__title-row">
+                                    <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline truncate">
+                                      {a.descriptiveName ?? a.id}
+                                    </span>
+                                  </span>
+                                  <span className="campaign-creator-budget-choice-card__description truncate">
+                                    ID: {a.id}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </section>
 
                   {w.error ? (
                     <div className="ui-alert-danger px-4 py-3 text-sm">{w.error}</div>
@@ -523,5 +591,54 @@ export function ClientsCreateContentLive() {
         </div>
       </div>
     </div>
+  );
+}
+
+function PlatformCard({
+  selected,
+  onClick,
+  icon,
+  title,
+  description
+}: {
+  selected: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn(
+        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row w-full",
+        selected
+          ? "campaign-creator-budget-choice-card--selected"
+          : "campaign-creator-budget-choice-card--unselected"
+      )}
+    >
+      <ChoiceCardCheck selected={selected} />
+      <span
+        className={cn(
+          "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline",
+          selected
+            ? "campaign-creator-budget-choice-card__icon--selected"
+            : "campaign-creator-budget-choice-card__icon--unselected"
+        )}
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <span className="campaign-creator-budget-choice-card__content">
+        <span className="campaign-creator-budget-choice-card__title-row">
+          <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
+            {title}
+          </span>
+        </span>
+        <span className="campaign-creator-budget-choice-card__description">{description}</span>
+      </span>
+    </button>
   );
 }

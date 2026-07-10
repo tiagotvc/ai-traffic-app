@@ -274,3 +274,64 @@ export async function getCampaignMetrics(
     ? lastErr
     : new GoogleAdsApiError("Nenhum contexto de login válido para a conta", 400);
 }
+
+export type GoogleAdsCampaignDailyMetrics = GoogleAdsCampaignMetrics & { date: string };
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Métricas por campanha E por dia (segments.date) num intervalo — base dos
+ * snapshots diários. `since`/`until` em 'YYYY-MM-DD'. Só leitura.
+ */
+export async function getCampaignMetricsDaily(
+  accessToken: string,
+  customerId: string,
+  range: { since: string; until: string }
+): Promise<GoogleAdsCampaignDailyMetrics[]> {
+  if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
+    throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
+  }
+  const cid = customerId.replace(/\D/g, "");
+  const query =
+    "SELECT campaign.id, campaign.name, campaign.status, " +
+    "campaign.advertising_channel_type, segments.date, metrics.impressions, " +
+    "metrics.clicks, metrics.cost_micros, metrics.conversions, " +
+    "metrics.conversions_value, metrics.ctr, metrics.average_cpc " +
+    `FROM campaign WHERE segments.date BETWEEN '${range.since}' AND '${range.until}' ` +
+    "ORDER BY segments.date";
+
+  const mcc = getGoogleAdsLoginCustomerId();
+  const logins = [...new Set([mcc, cid].filter(Boolean))];
+
+  let lastErr: unknown;
+  for (const login of logins) {
+    try {
+      const rows = await runGaqlSearch(accessToken, cid, query, login);
+      return rows.map((row) => {
+        const c = (row.campaign ?? {}) as Record<string, unknown>;
+        const m = (row.metrics ?? {}) as Record<string, unknown>;
+        const s = (row.segments ?? {}) as Record<string, unknown>;
+        return {
+          date: String(s.date ?? ""),
+          campaignId: String(c.id ?? "").replace(/\D/g, ""),
+          name: String(c.name ?? ""),
+          status: String(c.status ?? ""),
+          channelType: String(c.advertisingChannelType ?? ""),
+          impressions: num(m.impressions),
+          clicks: num(m.clicks),
+          cost: num(m.costMicros) / MICROS,
+          conversions: num(m.conversions),
+          conversionsValue: num(m.conversionsValue),
+          ctr: num(m.ctr),
+          averageCpc: num(m.averageCpc) / MICROS
+        } satisfies GoogleAdsCampaignDailyMetrics;
+      });
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  throw lastErr instanceof Error
+    ? lastErr
+    : new GoogleAdsApiError("Nenhum contexto de login válido para a conta", 400);
+}

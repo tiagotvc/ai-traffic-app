@@ -114,21 +114,35 @@ function ClientIntegrationsRow({
     detailParts.push(t("integrationPageLinked"));
   }
 
+  const anyConnected = client.metaConnected || client.googleConnected;
+
   return (
     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
-      <span
-        className={cn(
-          "inline-flex items-center gap-1.5 font-medium",
-          client.metaConnected ? "text-[var(--text-main)]" : "text-[var(--text-dim)]"
-        )}
-      >
-        <Facebook
-          size={12}
-          aria-hidden
-          className={client.metaConnected ? "text-[var(--ui-accent)]" : "text-[var(--text-dimmer)]"}
-        />
-        {client.metaConnected ? t("metaConnectedShort") : t("metaDisconnectedShort")}
-      </span>
+      {client.metaConnected ? (
+        <span className="inline-flex items-center gap-1.5 font-medium text-[var(--text-main)]">
+          <Facebook size={12} aria-hidden className="text-[var(--ui-accent)]" />
+          {t("metaConnectedShort")}
+        </span>
+      ) : null}
+      {client.googleConnected ? (
+        <>
+          {client.metaConnected ? (
+            <span className="text-[var(--text-dimmer)]" aria-hidden>
+              ·
+            </span>
+          ) : null}
+          <span className="inline-flex items-center gap-1.5 font-medium text-[var(--text-main)]">
+            <GoogleGlyph size={12} />
+            {t("googleConnectedShort")}
+          </span>
+        </>
+      ) : null}
+      {!anyConnected ? (
+        <span className="inline-flex items-center gap-1.5 font-medium text-[var(--text-dim)]">
+          <Facebook size={12} aria-hidden className="text-[var(--text-dimmer)]" />
+          {t("notConnectedShort")}
+        </span>
+      ) : null}
       {detailParts.map((part) => (
         <Fragment key={part}>
           <span className="text-[var(--text-dimmer)]" aria-hidden>
@@ -138,6 +152,17 @@ function ClientIntegrationsRow({
         </Fragment>
       ))}
     </div>
+  );
+}
+
+function GoogleGlyph({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.5 3.4 14.5 2.6 12 2.6 6.9 2.6 2.7 6.8 2.7 12s4.2 9.4 9.3 9.4c5.4 0 8.9-3.8 8.9-9.1 0-.6-.1-1.1-.2-1.5H12z"
+      />
+    </svg>
   );
 }
 

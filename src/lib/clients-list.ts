@@ -53,6 +53,7 @@ export type ClientListCard = {
   accounts: number;
   alertCount: number;
   metaConnected: boolean;
+  googleConnected: boolean;
   pixelCount: number;
   hasPage: boolean;
 };
@@ -68,7 +69,8 @@ export async function buildClientListCards(
     campaignMetricSnapshot: campRepo,
     campaignPreset: presetRepo,
     alert: alertRepo,
-    clientMetaSettings: metaSettingsRepo
+    clientMetaSettings: metaSettingsRepo,
+    googleCampaignMetricSnapshot: googleCampRepo
   } = await repositories();
 
   const clientIds = clients.map((c) => c.id);
@@ -83,7 +85,8 @@ export async function buildClientListCards(
   const accountIds = accounts.map((a) => a.id);
   const accountToClient = new Map(accounts.map((a) => [a.id, a.clientId]));
 
-  const [metricsAggRows, alertCountsRaw, presetRows, campaignIdsByClient] = await Promise.all([
+  const [metricsAggRows, alertCountsRaw, presetRows, campaignIdsByClient, googleAggRows] =
+    await Promise.all([
     accountIds.length && !period.allTime && period.since && period.until
       ? metricsRepo
           .createQueryBuilder("m")
@@ -133,6 +136,28 @@ export async function buildClientListCards(
           .groupBy("s.adAccountId")
           .addGroupBy("s.metaCampaignId")
           .getRawMany<{ adAccountId: string; metaCampaignId: string }>()
+      : Promise.resolve([]),
+    clientIds.length && !period.allTime && period.since && period.until
+      ? googleCampRepo
+          .createQueryBuilder("g")
+          .select("g.clientId", "clientId")
+          .addSelect("COALESCE(SUM(g.cost::numeric), 0)", "cost")
+          .addSelect("COALESCE(SUM(g.impressions::bigint), 0)", "impressions")
+          .addSelect("COALESCE(SUM(g.clicks::bigint), 0)", "clicks")
+          .addSelect("COALESCE(SUM(g.conversions::numeric), 0)", "conversions")
+          .addSelect("COALESCE(SUM(g.conversionsValue::numeric), 0)", "conversionsValue")
+          .where("g.clientId IN (:...clientIds)", { clientIds })
+          .andWhere("g.day >= :since", { since: period.since })
+          .andWhere("g.day <= :until", { until: period.until })
+          .groupBy("g.clientId")
+          .getRawMany<{
+            clientId: string;
+            cost: string;
+            impressions: string;
+            clicks: string;
+            conversions: string;
+            conversionsValue: string;
+          }>()
       : Promise.resolve([])
   ]);
 
@@ -152,6 +177,18 @@ export async function buildClientListCards(
   );
 
   const alertCountByClient = new Map(alertCountsRaw.map((r) => [r.clientId, Number(r.cnt) || 0]));
+  const googleByClient = new Map(
+    googleAggRows.map((r) => [
+      r.clientId,
+      {
+        spend: Number(r.cost) || 0,
+        impressions: Number(r.impressions) || 0,
+        clicks: Number(r.clicks) || 0,
+        conversions: Number(r.conversions) || 0,
+        conversionsValue: Number(r.conversionsValue) || 0
+      }
+    ])
+  );
   const presetByCampaign = new Map(presetRows.map((r) => [r.metaCampaignId, r.preset]));
 
   const clientCampaigns = new Map<string, Set<string>>();
@@ -211,6 +248,20 @@ export async function buildClientListCards(
       }
     }
 
+    // Soma as métricas Google Ads do cliente (silo separado, agregado por clientId).
+    const g = googleByClient.get(c.id);
+    if (g) {
+      spend += g.spend;
+      impressions += g.impressions;
+      clicks += g.clicks;
+      conversions += g.conversions;
+      const gRoas = g.spend > 0 && g.conversionsValue > 0 ? g.conversionsValue / g.spend : 0;
+      if (gRoas > 0) {
+        roasSum += gRoas;
+        roasCount += 1;
+      }
+    }
+
     const roas = roasCount ? roasSum / roasCount : 0;
     const metricsAgg = {
       spend,
@@ -243,6 +294,7 @@ export async function buildClientListCards(
       accounts: clientAccounts.length,
       alertCount: alertCountByClient.get(c.id) ?? 0,
       metaConnected: !!c.metaBusinessId || clientAccounts.length > 0,
+      googleConnected: !!c.googleAdsCustomerId,
       pixelCount,
       hasPage: !!c.metaPageId
     };

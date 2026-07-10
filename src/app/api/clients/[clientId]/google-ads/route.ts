@@ -70,8 +70,15 @@ export async function PATCH(
   const digits = body.customerId ? body.customerId.replace(/\D/g, "") : "";
 
   const { client: clientRepo } = await repositories();
+  const previous = client.googleAdsCustomerId ?? "";
   client.googleAdsCustomerId = digits || null;
   await clientRepo.save(client);
+
+  // Backfill inicial quando uma conta nova é vinculada (fire-and-forget).
+  if (digits && digits !== previous) {
+    const { syncGoogleAdsForClient } = await import("@/lib/google-ads-sync");
+    void syncGoogleAdsForClient(tenant.id, client.id, { days: 30 }).catch(() => undefined);
+  }
 
   return NextResponse.json({ ok: true, linkedCustomerId: client.googleAdsCustomerId });
 }

@@ -41,7 +41,7 @@ export async function resolveDashboardScope(
   }
 
   if (!clientIds?.length) {
-    return { accountIds: [] as string[], adAccounts: [] };
+    return { accountIds: [] as string[], adAccounts: [], clientIds: [] as string[] };
   }
 
   let accounts = await adAccountRepo.find({ where: { clientId: In(clientIds) } });
@@ -58,7 +58,8 @@ export async function resolveDashboardScope(
 
   return {
     accountIds: accounts.map((a) => a.id),
-    adAccounts: accounts
+    adAccounts: accounts,
+    clientIds
   };
 }
 
@@ -373,6 +374,140 @@ export async function loadAccountMetricWindows(
     out.set(r.adAccountId, { current: cur, previous: prev });
   }
   return out;
+}
+
+/**
+ * Totais Google Ads agregados por clientId (silo separado; snapshots por cliente).
+ * Devolve no mesmo formato MetricTotals — reach/messages não existem no Google.
+ */
+export async function loadGoogleMetricTotals(
+  clientIds: string[],
+  days = 30,
+  opts?: { since?: string | null; until?: string | null; allTime?: boolean }
+): Promise<MetricTotals> {
+  if (!clientIds.length) return emptyTotals();
+  const range = resolveDateRange(days, opts);
+  const { googleCampaignMetricSnapshot: repo } = await repositories();
+
+  const qb = repo
+    .createQueryBuilder("g")
+    .select("COALESCE(SUM(g.cost::numeric), 0)", "spend")
+    .addSelect("COALESCE(SUM(g.impressions::bigint), 0)", "impressions")
+    .addSelect("COALESCE(SUM(g.clicks::bigint), 0)", "clicks")
+    .addSelect("COALESCE(SUM(g.conversions::numeric), 0)", "conversions")
+    .addSelect("COALESCE(SUM(g.conversionsValue::numeric), 0)", "convValue")
+    .where("g.clientId IN (:...clientIds)", { clientIds });
+  if (range) {
+    qb.andWhere("g.day >= :start", { start: range.start }).andWhere("g.day <= :end", {
+      end: range.end
+    });
+  }
+
+  const row = await qb.getRawOne<{
+    spend: string;
+    impressions: string;
+    clicks: string;
+    conversions: string;
+    convValue: string;
+  }>();
+  const spend = Number(row?.spend) || 0;
+  const convValue = Number(row?.convValue) || 0;
+  return {
+    spend,
+    impressions: Number(row?.impressions) || 0,
+    clicks: Number(row?.clicks) || 0,
+    conversions: Number(row?.conversions) || 0,
+    reach: 0,
+    messages: 0,
+    roas: spend > 0 ? convValue / spend : 0
+  };
+}
+
+/** Série diária Google Ads agregada por dia (GROUP BY day) para os clientes dados. */
+export async function loadGoogleMetricSeriesByDay(
+  clientIds: string[],
+  days = 30,
+  opts?: { since?: string | null; until?: string | null; allTime?: boolean }
+): Promise<MetricDayRow[]> {
+  if (!clientIds.length) return [];
+  const range = resolveDateRange(days, opts);
+  if (!range && !opts?.allTime) return [];
+  const { googleCampaignMetricSnapshot: repo } = await repositories();
+
+  const qb = repo
+    .createQueryBuilder("g")
+    .select("g.day", "day")
+    .addSelect("COALESCE(SUM(g.cost::numeric), 0)", "spend")
+    .addSelect("COALESCE(SUM(g.impressions::bigint), 0)", "impressions")
+    .addSelect("COALESCE(SUM(g.clicks::bigint), 0)", "clicks")
+    .addSelect("COALESCE(SUM(g.conversions::numeric), 0)", "conversions")
+    .addSelect("COALESCE(SUM(g.conversionsValue::numeric), 0)", "convValue")
+    .where("g.clientId IN (:...clientIds)", { clientIds });
+  if (range) {
+    qb.andWhere("g.day >= :start", { start: range.start }).andWhere("g.day <= :end", {
+      end: range.end
+    });
+  }
+  qb.groupBy("g.day").orderBy("g.day", "ASC");
+
+  const rows = await qb.getRawMany<{
+    day: string;
+    spend: string;
+    impressions: string;
+    clicks: string;
+    conversions: string;
+    convValue: string;
+  }>();
+
+  return rows.map((d) => {
+    const spend = Number(d.spend) || 0;
+    const convValue = Number(d.convValue) || 0;
+    return {
+      day: normalizeDayKey(d.day),
+      spend,
+      impressions: Number(d.impressions) || 0,
+      clicks: Number(d.clicks) || 0,
+      conversions: Number(d.conversions) || 0,
+      reach: 0,
+      messages: 0,
+      roas: spend > 0 ? convValue / spend : 0
+    };
+  });
+}
+
+/** Soma dois conjuntos de totais (ex.: Meta + Google). */
+export function mergeMetricTotals(a: MetricTotals, b: MetricTotals): MetricTotals {
+  const roas = a.roas > 0 && b.roas > 0 ? (a.roas + b.roas) / 2 : a.roas || b.roas;
+  return {
+    spend: a.spend + b.spend,
+    impressions: a.impressions + b.impressions,
+    clicks: a.clicks + b.clicks,
+    conversions: a.conversions + b.conversions,
+    reach: a.reach + b.reach,
+    messages: a.messages + b.messages,
+    roas
+  };
+}
+
+/** Mescla duas séries diárias por dia (soma métricas; roas prefere Meta, cai no Google). */
+export function mergeMetricSeries(a: MetricDayRow[], b: MetricDayRow[]): MetricDayRow[] {
+  const byDay = new Map<string, MetricDayRow>();
+  for (const d of a) byDay.set(d.day, { ...d });
+  for (const d of b) {
+    const e = byDay.get(d.day);
+    if (!e) {
+      byDay.set(d.day, { ...d });
+      continue;
+    }
+    e.spend += d.spend;
+    e.impressions += d.impressions;
+    e.clicks += d.clicks;
+    e.conversions += d.conversions;
+    e.reach += d.reach;
+    e.messages += d.messages;
+    e.roas = e.roas > 0 && d.roas > 0 ? (e.roas + d.roas) / 2 : e.roas || d.roas;
+  }
+  return [...byDay.values()].sort((x, y) => x.day.localeCompare(y.day));
 }
 
 /** @deprecated Prefer loadMetricTotals / loadMetricSeriesByDay */

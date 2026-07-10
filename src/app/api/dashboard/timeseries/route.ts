@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
 import {
+  loadGoogleMetricSeriesByDay,
   loadMetricSeriesByDay,
+  mergeMetricSeries,
   parseDashboardSearchParams,
   resolveDashboardScope
 } from "@/lib/dashboard-query";
@@ -27,14 +29,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
   }
 
-  const { accountIds } = await resolveDashboardScope(auth.tenantId, clientId, adAccountId);
-  if (!accountIds.length) return NextResponse.json({ ok: true, series: [] });
+  const { accountIds, clientIds } = await resolveDashboardScope(auth.tenantId, clientId, adAccountId);
+  if (!accountIds.length && !clientIds.length) return NextResponse.json({ ok: true, series: [] });
 
-  const rows = await loadMetricSeriesByDay(accountIds, days, {
-    since: period.since,
-    until: period.until,
-    allTime: period.allTime
-  });
+  const rangeOpts = { since: period.since, until: period.until, allTime: period.allTime };
+  const [metaSeries, googleSeries] = await Promise.all([
+    loadMetricSeriesByDay(accountIds, days, rangeOpts),
+    loadGoogleMetricSeriesByDay(clientIds, days, rangeOpts)
+  ]);
+  const rows = mergeMetricSeries(metaSeries, googleSeries);
 
   const series = rows.map((d) => ({
     day: normalizeDayKey(d.day),
