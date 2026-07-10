@@ -871,6 +871,9 @@
   },
   "campaignsPage": {
     "breadcrumb": "Campanhas",
+    "platform_meta": "Meta",
+    "platform_google": "Google Ads",
+    "platform_both": "Ambos",
     "title": "Campanhas",
     "subtitle": "Gerencie todas as campanhas dos seus clientes.",
     "newCampaign": "Nova campanha",
