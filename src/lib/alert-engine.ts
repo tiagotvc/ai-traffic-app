@@ -4,6 +4,7 @@ import { Between, In } from "typeorm";
 
 import type { Alert, AlertSeverity, AlertType } from "@/db/entities/Alert";
 import type { CampaignMetricSnapshot } from "@/db/entities/CampaignMetricSnapshot";
+import type { GoogleCampaignMetricSnapshot } from "@/db/entities/GoogleCampaignMetricSnapshot";
 import type { ClientGoal } from "@/db/entities/ClientGoal";
 import type { CampaignGoal } from "@/db/entities/CampaignGoal";
 import { repositories } from "@/db/repositories";
@@ -78,6 +79,55 @@ function aggregateCampaignRows(rows: CampaignMetricSnapshot[]): Agg {
     }
   }
   return agg;
+}
+
+/** Agrega snapshots Google Ads (silo por cliente) no mesmo formato Agg. Só nível cliente. */
+function aggregateGoogleRows(rows: GoogleCampaignMetricSnapshot[]): Agg {
+  const agg: Agg = {
+    spend: 0,
+    impressions: 0,
+    clicks: 0,
+    conversions: 0,
+    leads: 0,
+    roasSum: 0,
+    roasCount: 0,
+    ctrSum: 0,
+    cpcSum: 0,
+    cpcCount: 0
+  };
+  for (const r of rows) {
+    const spend = num(r.cost);
+    const conv = num(r.conversions);
+    agg.spend += spend;
+    agg.impressions += num(r.impressions);
+    agg.clicks += num(r.clicks);
+    agg.conversions += conv;
+    // Google não separa "lead" de conversão — a conversão É a ação-alvo.
+    agg.leads += conv;
+    const cv = num(r.conversionsValue);
+    const roas = spend > 0 && cv > 0 ? cv / spend : 0;
+    if (roas > 0) {
+      agg.roasSum += roas;
+      agg.roasCount += 1;
+    }
+  }
+  return agg;
+}
+
+/** Soma dois Agg (Meta + Google) no rollup por cliente. */
+function mergeAgg(a: Agg, b: Agg): Agg {
+  return {
+    spend: a.spend + b.spend,
+    impressions: a.impressions + b.impressions,
+    clicks: a.clicks + b.clicks,
+    conversions: a.conversions + b.conversions,
+    leads: a.leads + b.leads,
+    roasSum: a.roasSum + b.roasSum,
+    roasCount: a.roasCount + b.roasCount,
+    ctrSum: a.ctrSum + b.ctrSum,
+    cpcSum: a.cpcSum + b.cpcSum,
+    cpcCount: a.cpcCount + b.cpcCount
+  };
 }
 
 function evaluateGoals(
@@ -266,7 +316,8 @@ export async function runAlertEngine(tenantId: string, campaignMeta?: Map<string
     clientGoal: clientGoalRepo,
     campaignGoal: campaignGoalRepo,
     campaignMetricSnapshot: campMetricsRepo,
-    adAccount: adAccountRepo
+    adAccount: adAccountRepo,
+    googleCampaignMetricSnapshot: googleCampRepo
   } = await repositories();
 
   const clients = await listClientsForTenant(tenantId);
@@ -279,16 +330,23 @@ export async function runAlertEngine(tenantId: string, campaignMeta?: Map<string
       : { enabled: false, windowDays: 1 };
 
     const accounts = await adAccountRepo.find({ where: { clientId: client.id } });
-    if (!accounts.length || !clientGoalRow?.enabled) continue;
+    if (!clientGoalRow?.enabled) continue;
+    // Antes pulava clientes sem conta Meta — agora segue se houver conta Google.
+    if (!accounts.length && !client.googleAdsCustomerId) continue;
 
     const accountIds = accounts.map((a) => a.id);
     const windowDays = clientGoals.windowDays ?? 1;
     const start = windowStart(windowDays);
     const end = dedupDay;
 
-    const allCampRows = await campMetricsRepo.find({
-      where: { adAccountId: In(accountIds), day: Between(start, end) }
-    });
+    const allCampRows = accountIds.length
+      ? await campMetricsRepo.find({
+          where: { adAccountId: In(accountIds), day: Between(start, end) }
+        })
+      : [];
+    const googleRows = client.googleAdsCustomerId
+      ? await googleCampRepo.find({ where: { clientId: client.id, day: Between(start, end) } })
+      : [];
 
     const byCampaign = new Map<string, CampaignMetricSnapshot[]>();
     for (const row of allCampRows) {
@@ -331,8 +389,9 @@ export async function runAlertEngine(tenantId: string, campaignMeta?: Map<string
       }
     }
 
-    if (clientGoalRow.enabled && allCampRows.length) {
-      const agg = aggregateCampaignRows(allCampRows);
+    if (clientGoalRow.enabled && (allCampRows.length || googleRows.length)) {
+      // Rollup por cliente inclui Meta + Google (Google só entra neste nível).
+      const agg = mergeAgg(aggregateCampaignRows(allCampRows), aggregateGoogleRows(googleRows));
       const goals = mergeGoals(
         { ...clientGoals, objective: clientGoalRow.objective },
         null
