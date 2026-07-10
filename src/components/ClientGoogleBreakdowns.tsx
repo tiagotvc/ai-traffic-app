@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
+import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 
 type BreakdownRow = {
   label: string;
@@ -76,6 +77,7 @@ export function ClientGoogleBreakdowns({ clientId }: { clientId: string }) {
   useEffect(() => load(), [load]);
 
   const maxCost = rows?.reduce((m, r) => Math.max(m, r.cost), 0) ?? 0;
+  const sort = useTableSort<BreakdownRow>(rows ?? [], "cost", "desc");
 
   return (
     <div className="ui-card p-4">
@@ -124,17 +126,17 @@ export function ClientGoogleBreakdowns({ clientId }: { clientId: string }) {
           <table className="w-full min-w-[640px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
-                <th className="py-2 pr-3">{t(`googleDim_${dimension}` as Parameters<typeof t>[0])}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("impressions")}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("clicks")}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("spend")}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("conversions")}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("ctr")}</th>
-                <th className="py-2 text-right">{tMetrics("cpc")}</th>
+                <SortableTh label={t(`googleDim_${dimension}` as Parameters<typeof t>[0])} sortKey="label" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
+                <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
               </tr>
             </thead>
             <tbody>
-              {rows?.map((row, i) => (
+              {sort.sorted.map((row, i) => (
                 <tr key={`${row.label}-${i}`} className="border-t border-[var(--border-color)]">
                   <td className="relative py-2 pr-3 font-medium text-[var(--text-main)]">
                     <span

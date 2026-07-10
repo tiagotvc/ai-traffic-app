@@ -541,6 +541,278 @@ export async function getAds(
   });
 }
 
+// ---- Conteúdo do anúncio (Fase A) ----
+
+export type GoogleAdsAdDetail = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  finalUrls: string[];
+  headlines: string[];
+  descriptions: string[];
+  path1: string;
+  path2: string;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  ctr: number;
+  averageCpc: number;
+};
+
+/** Extrai `.text` de uma lista de AdTextAsset (headlines/descriptions). */
+function textAssets(arr: unknown): string[] {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .map((a) => (a && typeof a === "object" ? String((a as Record<string, unknown>).text ?? "") : ""))
+    .filter(Boolean);
+}
+
+/**
+ * Conteúdo de um anúncio (títulos, descrições, caminhos, URL final), normalizado
+ * independente do tipo (RSA / texto expandido / display responsivo). Só leitura.
+ */
+export async function getAdDetail(
+  accessToken: string,
+  customerId: string,
+  adId: string,
+  range: { since: string; until: string }
+): Promise<GoogleAdsAdDetail | null> {
+  if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
+    throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
+  }
+  const id = adId.replace(/\D/g, "");
+  const query =
+    `SELECT ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.ad.type, ` +
+    `ad_group_ad.status, ad_group_ad.ad.final_urls, ` +
+    `ad_group_ad.ad.responsive_search_ad.headlines, ` +
+    `ad_group_ad.ad.responsive_search_ad.descriptions, ` +
+    `ad_group_ad.ad.responsive_search_ad.path1, ad_group_ad.ad.responsive_search_ad.path2, ` +
+    `ad_group_ad.ad.expanded_text_ad.headline_part1, ad_group_ad.ad.expanded_text_ad.headline_part2, ` +
+    `ad_group_ad.ad.expanded_text_ad.headline_part3, ad_group_ad.ad.expanded_text_ad.description, ` +
+    `ad_group_ad.ad.expanded_text_ad.description2, ad_group_ad.ad.expanded_text_ad.path1, ` +
+    `ad_group_ad.ad.expanded_text_ad.path2, ad_group_ad.ad.responsive_display_ad.headlines, ` +
+    `ad_group_ad.ad.responsive_display_ad.descriptions, ad_group_ad.ad.responsive_display_ad.long_headline, ` +
+    `${METRIC_SELECT} ` +
+    `FROM ad_group_ad WHERE ad_group_ad.ad.id = ${id} ` +
+    `AND segments.date BETWEEN '${range.since}' AND '${range.until}'`;
+
+  return queryWithLoginFallback(accessToken, customerId, query, (rows) => {
+    if (!rows.length) return null;
+    const agg = { impressions: 0, clicks: 0, cost: 0, conversions: 0 };
+    for (const row of rows) accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
+
+    const gaa = (rows[0].adGroupAd ?? {}) as Record<string, unknown>;
+    const ad = (gaa.ad ?? {}) as Record<string, unknown>;
+    const rsa = (ad.responsiveSearchAd ?? {}) as Record<string, unknown>;
+    const eta = (ad.expandedTextAd ?? {}) as Record<string, unknown>;
+    const rda = (ad.responsiveDisplayAd ?? {}) as Record<string, unknown>;
+
+    let headlines = textAssets(rsa.headlines);
+    let descriptions = textAssets(rsa.descriptions);
+    let path1 = String(rsa.path1 ?? "");
+    let path2 = String(rsa.path2 ?? "");
+
+    if (!headlines.length && eta.headlinePart1) {
+      headlines = [eta.headlinePart1, eta.headlinePart2, eta.headlinePart3]
+        .map((x) => String(x ?? ""))
+        .filter(Boolean);
+      descriptions = [eta.description, eta.description2].map((x) => String(x ?? "")).filter(Boolean);
+      path1 = String(eta.path1 ?? "");
+      path2 = String(eta.path2 ?? "");
+    }
+    if (!headlines.length && (rda.headlines || rda.longHeadline)) {
+      const long =
+        rda.longHeadline && typeof rda.longHeadline === "object"
+          ? String((rda.longHeadline as Record<string, unknown>).text ?? "")
+          : "";
+      headlines = [long, ...textAssets(rda.headlines)].filter(Boolean);
+      descriptions = textAssets(rda.descriptions);
+    }
+
+    const finalUrls = Array.isArray(ad.finalUrls) ? (ad.finalUrls as unknown[]).map(String) : [];
+
+    return finalizeRow({
+      id: String(ad.id ?? id),
+      name: String(ad.name ?? ""),
+      type: String(ad.type ?? ""),
+      status: String(gaa.status ?? ""),
+      finalUrls,
+      headlines,
+      descriptions,
+      path1,
+      path2,
+      impressions: agg.impressions,
+      clicks: agg.clicks,
+      cost: agg.cost,
+      conversions: agg.conversions,
+      ctr: 0,
+      averageCpc: 0
+    });
+  });
+}
+
+// ---- Palavras-chave e termos de pesquisa (Fase B) ----
+
+/** Escapa string para literal GAQL entre aspas simples. */
+function escapeGaqlString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+export type GoogleAdsKeywordRow = {
+  text: string;
+  matchType: string;
+  status: string;
+  campaignId: string;
+  campaignName: string;
+  adGroupId: string;
+  adGroupName: string;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  ctr: number;
+  averageCpc: number;
+};
+
+/** Palavras-chave (keyword_view), opcionalmente filtradas por campanha/grupo. Só leitura. */
+export async function getKeywords(
+  accessToken: string,
+  customerId: string,
+  opts: { campaignId?: string; adGroupId?: string; range: { since: string; until: string } }
+): Promise<GoogleAdsKeywordRow[]> {
+  const { range } = opts;
+  if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
+    throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
+  }
+  const where = [`segments.date BETWEEN '${range.since}' AND '${range.until}'`];
+  if (opts.campaignId) where.push(`campaign.id = ${opts.campaignId.replace(/\D/g, "")}`);
+  if (opts.adGroupId) where.push(`ad_group.id = ${opts.adGroupId.replace(/\D/g, "")}`);
+  const query =
+    `SELECT campaign.id, campaign.name, ad_group.id, ad_group.name, ` +
+    `ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type, ` +
+    `ad_group_criterion.status, ${METRIC_SELECT} ` +
+    `FROM keyword_view WHERE ${where.join(" AND ")} ORDER BY metrics.cost_micros DESC`;
+
+  return queryWithLoginFallback(accessToken, customerId, query, (rows) => {
+    const byKey = new Map<string, GoogleAdsKeywordRow>();
+    for (const row of rows) {
+      const c = (row.campaign ?? {}) as Record<string, unknown>;
+      const g = (row.adGroup ?? {}) as Record<string, unknown>;
+      const crit = (row.adGroupCriterion ?? {}) as Record<string, unknown>;
+      const kw = (crit.keyword ?? {}) as Record<string, unknown>;
+      const text = String(kw.text ?? "");
+      if (!text) continue;
+      const adGroupId = String(g.id ?? "").replace(/\D/g, "");
+      const key = `${adGroupId}:${text}`;
+      let agg = byKey.get(key);
+      if (!agg) {
+        agg = {
+          text,
+          matchType: String(kw.matchType ?? ""),
+          status: String(crit.status ?? ""),
+          campaignId: String(c.id ?? "").replace(/\D/g, ""),
+          campaignName: String(c.name ?? ""),
+          adGroupId,
+          adGroupName: String(g.name ?? ""),
+          impressions: 0,
+          clicks: 0,
+          cost: 0,
+          conversions: 0,
+          ctr: 0,
+          averageCpc: 0
+        };
+        byKey.set(key, agg);
+      }
+      accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
+    }
+    return [...byKey.values()].map(finalizeRow).sort((a, b) => b.cost - a.cost);
+  });
+}
+
+export type GoogleAdsSearchTermRow = {
+  searchTerm: string;
+  status: string;
+  triggeringKeyword: string;
+  matchType: string;
+  campaignName: string;
+  adGroupName: string;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  ctr: number;
+  averageCpc: number;
+};
+
+/**
+ * Termos de pesquisa (search_term_view) com a palavra-chave que os ativou e o status
+ * (ADDED/EXCLUDED/NONE). Filtráveis por campanha/grupo/keyword. Só leitura.
+ */
+export async function getSearchTerms(
+  accessToken: string,
+  customerId: string,
+  opts: {
+    campaignId?: string;
+    adGroupId?: string;
+    keyword?: string;
+    range: { since: string; until: string };
+  }
+): Promise<GoogleAdsSearchTermRow[]> {
+  const { range } = opts;
+  if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
+    throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
+  }
+  const where = [`segments.date BETWEEN '${range.since}' AND '${range.until}'`];
+  if (opts.campaignId) where.push(`campaign.id = ${opts.campaignId.replace(/\D/g, "")}`);
+  if (opts.adGroupId) where.push(`ad_group.id = ${opts.adGroupId.replace(/\D/g, "")}`);
+  if (opts.keyword) where.push(`segments.keyword.info.text = '${escapeGaqlString(opts.keyword)}'`);
+  const query =
+    `SELECT search_term_view.search_term, search_term_view.status, ` +
+    `segments.keyword.info.text, segments.keyword.info.match_type, ` +
+    `campaign.name, ad_group.name, ${METRIC_SELECT} ` +
+    `FROM search_term_view WHERE ${where.join(" AND ")} ` +
+    `ORDER BY metrics.cost_micros DESC LIMIT 200`;
+
+  return queryWithLoginFallback(accessToken, customerId, query, (rows) => {
+    const byKey = new Map<string, GoogleAdsSearchTermRow>();
+    for (const row of rows) {
+      const stv = (row.searchTermView ?? {}) as Record<string, unknown>;
+      const seg = (row.segments ?? {}) as Record<string, unknown>;
+      const kwInfo = ((seg.keyword ?? {}) as Record<string, unknown>).info as
+        | Record<string, unknown>
+        | undefined;
+      const c = (row.campaign ?? {}) as Record<string, unknown>;
+      const g = (row.adGroup ?? {}) as Record<string, unknown>;
+      const term = String(stv.searchTerm ?? "");
+      if (!term) continue;
+      const triggeringKeyword = String(kwInfo?.text ?? "");
+      const key = `${term}:${triggeringKeyword}`;
+      let agg = byKey.get(key);
+      if (!agg) {
+        agg = {
+          searchTerm: term,
+          status: String(stv.status ?? ""),
+          triggeringKeyword,
+          matchType: String(kwInfo?.matchType ?? ""),
+          campaignName: String(c.name ?? ""),
+          adGroupName: String(g.name ?? ""),
+          impressions: 0,
+          clicks: 0,
+          cost: 0,
+          conversions: 0,
+          ctr: 0,
+          averageCpc: 0
+        };
+        byKey.set(key, agg);
+      }
+      accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
+    }
+    return [...byKey.values()].map(finalizeRow).sort((a, b) => b.cost - a.cost);
+  });
+}
+
 export type GoogleAdsCampaignDailyMetrics = GoogleAdsCampaignMetrics & { date: string };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;

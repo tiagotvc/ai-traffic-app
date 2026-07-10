@@ -5,7 +5,24 @@ import { useLocale, useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewModal";
+import { SortableTh, type SortDir } from "@/components/campaigns/googleTableSort";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
+
+/** Ordena um nível do drill-down (campanhas, grupos ou anúncios) pela chave/direção compartilhada. */
+function sortLevel<T extends Record<string, unknown>>(arr: T[], key: string, dir: SortDir): T[] {
+  const out = [...arr];
+  out.sort((a, b) => {
+    const av = a[key];
+    const bv = b[key];
+    const c =
+      typeof av === "number" && typeof bv === "number"
+        ? av - bv
+        : String(av ?? "").localeCompare(String(bv ?? ""), undefined, { numeric: true });
+    return dir === "asc" ? c : -c;
+  });
+  return out;
+}
 
 type Metricish = {
   impressions: number;
@@ -56,6 +73,16 @@ export function ClientGoogleAdsPanel({
   const [openAdGroups, setOpenAdGroups] = useState<Set<string>>(new Set());
   const [adGroups, setAdGroups] = useState<Record<string, Loadable<AdGroupRow>>>({});
   const [ads, setAds] = useState<Record<string, Loadable<AdRow>>>({});
+  const [selectedAdId, setSelectedAdId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<string>("cost");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const toggleSort = (key: string) => {
+    if (key === sortKey) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
 
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
 
@@ -202,19 +229,19 @@ export function ClientGoogleAdsPanel({
           <table className="w-full min-w-[760px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
-                <th className="py-2 pr-3">{t("googleAdsColCampaign")}</th>
+                <SortableTh label={t("googleAdsColCampaign")} sortKey="name" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
                 <th className="py-2 pr-3">{t("googleAdsColStatus")}</th>
                 <th className="py-2 pr-3">{t("googleAdsColChannel")}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("impressions")}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("clicks")}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("spend")}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("conversions")}</th>
-                <th className="py-2 pr-3 text-right">{tMetrics("ctr")}</th>
-                <th className="py-2 text-right">{tMetrics("cpc")}</th>
+                <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+                <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+                <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+                <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+                <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
+                <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sortKey} dir={sortDir} onSort={toggleSort} align="right" />
               </tr>
             </thead>
             <tbody>
-              {rows?.map((row) => {
+              {sortLevel(rows ?? [], sortKey, sortDir).map((row) => {
                 const open = openCampaigns.has(row.campaignId);
                 const groups = adGroups[row.campaignId];
                 return (
@@ -247,7 +274,7 @@ export function ClientGoogleAdsPanel({
                       <SubStateRow key={`${row.campaignId}-0`} colSpan={COLS} text={t("googleNoAdGroups")} />
                     ) : null}
                     {open && Array.isArray(groups)
-                      ? groups.map((g) => {
+                      ? sortLevel(groups, sortKey, sortDir).map((g) => {
                           const gOpen = openAdGroups.has(g.id);
                           const groupAds = ads[g.id];
                           return (
@@ -280,10 +307,16 @@ export function ClientGoogleAdsPanel({
                                 <SubStateRow key={`${g.id}-0`} colSpan={COLS} text={t("googleNoAds")} />
                               ) : null}
                               {gOpen && Array.isArray(groupAds)
-                                ? groupAds.map((a) => (
+                                ? sortLevel(groupAds, sortKey, sortDir).map((a) => (
                                     <tr key={a.id} className="border-t border-[var(--border-color)]">
                                       <td className="py-2 pr-3 text-[var(--text-dim)]">
-                                        <span className="ml-10">{a.name || `#${a.id}`}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setSelectedAdId(a.id)}
+                                          className="ml-10 text-left hover:text-[var(--ui-accent)] hover:underline"
+                                        >
+                                          {a.name || `#${a.id}`}
+                                        </button>
                                       </td>
                                       <td className={`py-2 pr-3 ${statusColor(a.status)}`}>
                                         {a.status}
@@ -306,6 +339,13 @@ export function ClientGoogleAdsPanel({
           </table>
         )}
       </div>
+
+      <ClientGoogleAdPreviewModal
+        clientId={clientId}
+        adId={selectedAdId}
+        days={days}
+        onClose={() => setSelectedAdId(null)}
+      />
     </div>
   );
 }

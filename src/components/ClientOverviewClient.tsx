@@ -19,6 +19,7 @@ import { DsPageHeader } from "@/design-system";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { ClientGoogleAdsPanel } from "@/components/ClientGoogleAdsPanel";
 import { ClientGoogleBreakdowns } from "@/components/ClientGoogleBreakdowns";
+import { ClientGoogleKeywords } from "@/components/ClientGoogleKeywords";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { ChartContainer } from "@/components/ui/ChartContainer";
@@ -651,6 +652,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
       {platform !== "meta" && googleAvailable ? (
         <>
           <ClientGoogleAdsPanel clientId={clientId} />
+          <ClientGoogleKeywords clientId={clientId} />
           <ClientGoogleBreakdowns clientId={clientId} />
         </>
       ) : null}
