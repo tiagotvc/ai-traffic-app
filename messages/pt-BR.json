@@ -2336,6 +2336,8 @@
   "sync": {
     "now": "Sincronizar agora",
     "syncMeta": "Sincronizar Meta",
+    "syncGoogle": "Sincronizar Google",
+    "syncBoth": "Sincronizar",
     "syncing": "Sincronizando...",
     "nowClient": "Sincronizar cliente",
     "failed": "Falha ao sincronizar",

@@ -2333,6 +2333,8 @@
   "sync": {
     "now": "Sync now",
     "syncMeta": "Sync Meta",
+    "syncGoogle": "Sync Google",
+    "syncBoth": "Sync",
     "syncing": "Syncing...",
     "nowClient": "Sync client",
     "failed": "Sync failed",

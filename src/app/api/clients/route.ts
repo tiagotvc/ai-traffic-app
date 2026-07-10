@@ -165,7 +165,9 @@ export async function GET(req: Request) {
       clients: clients.map((c) => ({
         id: c.id,
         slug: slugify(c.name),
-        name: c.name
+        name: c.name,
+        googleConnected: !!c.googleAdsCustomerId,
+        metaConnected: !!c.metaBusinessId
       }))
     });
   }

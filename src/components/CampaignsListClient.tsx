@@ -10,7 +10,6 @@ import { Link } from "@/i18n/navigation";
 import { formatBRL, formatRoas } from "@/lib/format";
 
 type CampaignRow = {
-  platform?: "meta" | "google";
   metaCampaignId: string;
   campaignName: string;
   clientName: string;
@@ -20,8 +19,8 @@ type CampaignRow = {
   conversions: number;
   cpa: number | null;
   roas: number;
-  alertCount?: number;
-  hasAlert?: boolean;
+  alertCount: number;
+  hasAlert: boolean;
 };
 
 const LAST_CAMPAIGN_KEY = "traffic-ai-last-campaign";
@@ -40,50 +39,17 @@ export function CampaignsListClient() {
   const [onlyAlerts, setOnlyAlerts] = useState(false);
   const [loading, setLoading] = useState(true);
   const [creationPickerOpen, setCreationPickerOpen] = useState(false);
-  const [platform, setPlatform] = useState<"meta" | "google" | "both">("meta");
-  const [googleEnabled, setGoogleEnabled] = useState(false);
-
-  useEffect(() => {
-    // Seletor de plataforma só aparece com Google Ads ligado (rota 404 quando off).
-    fetch("/api/settings/google")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (j?.ok) setGoogleEnabled(true);
-      })
-      .catch(() => {});
-  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
     if (q.trim()) params.set("q", q.trim());
-    const wantMeta = platform !== "google";
-    // Google não tem alerta por campanha — com onlyAlerts, mostra só Meta.
-    const wantGoogle = platform !== "meta" && googleEnabled && !onlyAlerts;
-
-    const metaParams = new URLSearchParams(params);
-    if (onlyAlerts) metaParams.set("onlyAlerts", "1");
-
-    const metaP: Promise<CampaignRow[]> = wantMeta
-      ? fetch(`/api/command-center/campaigns?${metaParams}`)
-          .then((r) => r.json())
-          .then((j) => (j.rows ?? []) as CampaignRow[])
-      : Promise.resolve([]);
-    const googleP: Promise<CampaignRow[]> = wantGoogle
-      ? fetch(`/api/command-center/google-campaigns?${params}`)
-          .then((r) => (r.ok ? r.json() : { rows: [] }))
-          .then((j) =>
-            ((j.rows ?? []) as Array<CampaignRow & { campaignId: string }>).map((r) => ({
-              ...r,
-              metaCampaignId: r.campaignId
-            }))
-          )
-      : Promise.resolve([]);
-
-    Promise.all([metaP, googleP])
-      .then(([m, g]) => setRows([...m, ...g]))
+    if (onlyAlerts) params.set("onlyAlerts", "1");
+    fetch(`/api/command-center/campaigns?${params}`)
+      .then((r) => r.json())
+      .then((j) => setRows(j.rows ?? []))
       .finally(() => setLoading(false));
-  }, [q, onlyAlerts, platform, googleEnabled]);
+  }, [q, onlyAlerts]);
 
   useEffect(() => {
     load();
@@ -121,25 +87,6 @@ export function CampaignsListClient() {
           </button>
         }
       />
-
-      {googleEnabled ? (
-        <div className="flex items-center gap-1.5">
-          {(["meta", "google", "both"] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPlatform(p)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-                platform === p
-                  ? "border-transparent bg-[var(--ui-accent)] text-white"
-                  : "border-[var(--border-color)] text-[var(--text-dim)]"
-              }`}
-            >
-              {t(`platform_${p}` as Parameters<typeof t>[0])}
-            </button>
-          ))}
-        </div>
-      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <input
@@ -192,27 +139,15 @@ export function CampaignsListClient() {
                 </tr>
               ) : (
                 filtered.map((r) => (
-                  <tr
-                    key={`${r.platform ?? "meta"}:${r.metaCampaignId}`}
-                    className="border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]"
-                  >
+                  <tr key={r.metaCampaignId} className="border-t border-[var(--border-color)] hover:bg-[var(--row-hover)]">
                     <td className="px-4 py-3">
-                      {r.platform === "google" ? (
-                        <Link
-                          href={`/clients/${encodeURIComponent(r.clientSlug)}`}
-                          className="ui-link font-medium"
-                        >
-                          {r.campaignName}
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/campaigns/${r.metaCampaignId}?client=${encodeURIComponent(r.clientSlug)}`}
-                          onClick={() => rememberCampaign(r.metaCampaignId, r.clientSlug)}
-                          className="ui-link font-medium"
-                        >
-                          {r.campaignName}
-                        </Link>
-                      )}
+                      <Link
+                        href={`/campaigns/${r.metaCampaignId}?client=${encodeURIComponent(r.clientSlug)}`}
+                        onClick={() => rememberCampaign(r.metaCampaignId, r.clientSlug)}
+                        className="ui-link font-medium"
+                      >
+                        {r.campaignName}
+                      </Link>
                       <div className="text-[10px] text-[var(--text-dimmer)]">{r.metaCampaignId}</div>
                     </td>
                     <td className="px-3 py-3">{r.clientName}</td>

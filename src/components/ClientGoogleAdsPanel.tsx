@@ -35,7 +35,14 @@ function statusColor(status: string): string {
   return "text-[var(--text-dimmer)]";
 }
 
-export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
+export function ClientGoogleAdsPanel({
+  clientId,
+  showSyncButton = true
+}: {
+  clientId: string;
+  /** false quando o sync é feito por um botão externo (ex.: sync contextual do hub). */
+  showSyncButton?: boolean;
+}) {
   const t = useTranslations("client");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
@@ -70,6 +77,13 @@ export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  // Recarrega quando um sync externo (ex.: botão contextual do hub) termina.
+  useEffect(() => {
+    const onSync = () => void load();
+    window.addEventListener("traffic-sync-done", onSync);
+    return () => window.removeEventListener("traffic-sync-done", onSync);
   }, [load]);
 
   function sync() {
@@ -162,14 +176,16 @@ export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={sync}
-            disabled={syncing}
-            className="ui-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
-          >
-            {syncing ? t("googleAdsSyncing") : t("googleAdsSync")}
-          </button>
+          {showSyncButton ? (
+            <button
+              type="button"
+              onClick={sync}
+              disabled={syncing}
+              className="ui-btn-secondary px-3 py-1.5 text-xs disabled:opacity-60"
+            >
+              {syncing ? t("googleAdsSyncing") : t("googleAdsSync")}
+            </button>
+          ) : null}
         </div>
       </div>
 
