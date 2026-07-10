@@ -1,24 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 
-type GoogleCampaignRow = {
-  campaignId: string;
-  name: string;
-  status: string;
-  channelType: string;
+type Metricish = {
   impressions: number;
   clicks: number;
   cost: number;
   conversions: number;
-  conversionsValue: number;
   ctr: number;
   averageCpc: number;
 };
+
+type CampaignRow = Metricish & {
+  campaignId: string;
+  name: string;
+  status: string;
+  channelType: string;
+};
+type AdGroupRow = Metricish & { id: string; name: string; status: string };
+type AdRow = AdGroupRow & { type: string };
+
+type Loadable<T> = "loading" | "error" | T[];
 
 const DAY_OPTIONS = [7, 30, 90] as const;
 
@@ -32,22 +39,34 @@ export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
   const t = useTranslations("client");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
-  const [rows, setRows] = useState<GoogleCampaignRow[] | null>(null);
+  const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<(typeof DAY_OPTIONS)[number]>(30);
   const [syncing, startSync] = useTransition();
 
+  // Estado de expansão da hierarquia.
+  const [openCampaigns, setOpenCampaigns] = useState<Set<string>>(new Set());
+  const [openAdGroups, setOpenAdGroups] = useState<Set<string>>(new Set());
+  const [adGroups, setAdGroups] = useState<Record<string, Loadable<AdGroupRow>>>({});
+  const [ads, setAds] = useState<Record<string, Loadable<AdRow>>>({});
+
+  const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
+
   const load = useCallback(() => {
     setRows(null);
     setError(null);
-    return fetch(`/api/clients/${encodeURIComponent(clientId)}/google-ads/metrics?days=${days}`)
+    setOpenCampaigns(new Set());
+    setOpenAdGroups(new Set());
+    setAdGroups({});
+    setAds({});
+    return fetch(`${base}/metrics?days=${days}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) setRows(j.campaigns ?? []);
         else setError(j.error ?? "error");
       })
       .catch(() => setError("error"));
-  }, [clientId, days]);
+  }, [base, days]);
 
   useEffect(() => {
     void load();
@@ -55,12 +74,69 @@ export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
 
   function sync() {
     startSync(async () => {
-      await fetch(`/api/clients/${encodeURIComponent(clientId)}/google-ads/sync?days=${days}`, {
-        method: "POST"
-      }).catch(() => undefined);
+      await fetch(`${base}/sync?days=${days}`, { method: "POST" }).catch(() => undefined);
       await load();
     });
   }
+
+  function toggleCampaign(campaignId: string) {
+    setOpenCampaigns((prev) => {
+      const next = new Set(prev);
+      if (next.has(campaignId)) next.delete(campaignId);
+      else next.add(campaignId);
+      return next;
+    });
+    if (!adGroups[campaignId]) {
+      setAdGroups((prev) => ({ ...prev, [campaignId]: "loading" }));
+      fetch(`${base}/adgroups?campaignId=${campaignId}&days=${days}`)
+        .then((r) => r.json())
+        .then((j) =>
+          setAdGroups((prev) => ({ ...prev, [campaignId]: j.ok ? j.rows ?? [] : "error" }))
+        )
+        .catch(() => setAdGroups((prev) => ({ ...prev, [campaignId]: "error" })));
+    }
+  }
+
+  function toggleAdGroup(adGroupId: string) {
+    setOpenAdGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(adGroupId)) next.delete(adGroupId);
+      else next.add(adGroupId);
+      return next;
+    });
+    if (!ads[adGroupId]) {
+      setAds((prev) => ({ ...prev, [adGroupId]: "loading" }));
+      fetch(`${base}/ads?adGroupId=${adGroupId}&days=${days}`)
+        .then((r) => r.json())
+        .then((j) => setAds((prev) => ({ ...prev, [adGroupId]: j.ok ? j.rows ?? [] : "error" })))
+        .catch(() => setAds((prev) => ({ ...prev, [adGroupId]: "error" })));
+    }
+  }
+
+  function MetricCells({ m }: { m: Metricish }) {
+    return (
+      <>
+        <td className="py-2 pr-3 text-right">{formatNumber(m.impressions, locale)}</td>
+        <td className="py-2 pr-3 text-right">{formatNumber(m.clicks, locale)}</td>
+        <td className="py-2 pr-3 text-right">{formatBRL(m.cost, locale)}</td>
+        <td className="py-2 pr-3 text-right">{formatNumber(m.conversions, locale)}</td>
+        <td className="py-2 pr-3 text-right">{formatPercent(m.ctr * 100, 2, locale)}</td>
+        <td className="py-2 text-right">{formatBRL(m.averageCpc, locale)}</td>
+      </>
+    );
+  }
+
+  function SubStateRow({ colSpan, text }: { colSpan: number; text: string }) {
+    return (
+      <tr className="border-t border-[var(--border-color)]">
+        <td colSpan={colSpan} className="py-2 pl-10 text-[var(--text-dimmer)]">
+          {text}
+        </td>
+      </tr>
+    );
+  }
+
+  const COLS = 9;
 
   return (
     <div className="ui-card p-4">
@@ -107,7 +183,7 @@ export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
         ) : rows && rows.length === 0 ? (
           <div className="text-xs text-[var(--text-dim)]">{t("googleAdsSyncHint")}</div>
         ) : (
-          <table className="w-full min-w-[720px] text-xs">
+          <table className="w-full min-w-[760px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
                 <th className="py-2 pr-3">{t("googleAdsColCampaign")}</th>
@@ -122,21 +198,94 @@ export function ClientGoogleAdsPanel({ clientId }: { clientId: string }) {
               </tr>
             </thead>
             <tbody>
-              {rows?.map((row) => (
-                <tr key={row.campaignId} className="border-t border-[var(--border-color)]">
-                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]">{row.name}</td>
-                  <td className={`py-2 pr-3 font-semibold ${statusColor(row.status)}`}>
-                    {row.status}
-                  </td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{row.channelType}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(row.impressions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(row.clicks, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(row.cost, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(row.conversions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatPercent(row.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 text-right">{formatBRL(row.averageCpc, locale)}</td>
-                </tr>
-              ))}
+              {rows?.map((row) => {
+                const open = openCampaigns.has(row.campaignId);
+                const groups = adGroups[row.campaignId];
+                return (
+                  <Fragment key={row.campaignId}>
+                    <tr className="border-t border-[var(--border-color)]">
+                      <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
+                        <button
+                          type="button"
+                          onClick={() => toggleCampaign(row.campaignId)}
+                          className="inline-flex items-center gap-1 text-left hover:text-[var(--ui-accent)]"
+                        >
+                          {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                          <span>{row.name}</span>
+                        </button>
+                      </td>
+                      <td className={`py-2 pr-3 font-semibold ${statusColor(row.status)}`}>
+                        {row.status}
+                      </td>
+                      <td className="py-2 pr-3 text-[var(--text-dim)]">{row.channelType}</td>
+                      <MetricCells m={row} />
+                    </tr>
+
+                    {open && groups === "loading" ? (
+                      <SubStateRow key={`${row.campaignId}-l`} colSpan={COLS} text={t("loadingShort")} />
+                    ) : null}
+                    {open && groups === "error" ? (
+                      <SubStateRow key={`${row.campaignId}-e`} colSpan={COLS} text={t("googleAdsLoadError")} />
+                    ) : null}
+                    {open && Array.isArray(groups) && groups.length === 0 ? (
+                      <SubStateRow key={`${row.campaignId}-0`} colSpan={COLS} text={t("googleNoAdGroups")} />
+                    ) : null}
+                    {open && Array.isArray(groups)
+                      ? groups.map((g) => {
+                          const gOpen = openAdGroups.has(g.id);
+                          const groupAds = ads[g.id];
+                          return (
+                            <Fragment key={g.id}>
+                              <tr className="border-t border-[var(--border-color)] bg-[var(--surface-thead)]/30">
+                                <td className="py-2 pr-3 text-[var(--text-main)]">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleAdGroup(g.id)}
+                                    className="ml-5 inline-flex items-center gap-1 text-left hover:text-[var(--ui-accent)]"
+                                  >
+                                    {gOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                    <span>{g.name}</span>
+                                  </button>
+                                </td>
+                                <td className={`py-2 pr-3 ${statusColor(g.status)}`}>{g.status}</td>
+                                <td className="py-2 pr-3 text-[var(--text-dimmer)]">
+                                  {t("googleLevelAdGroup")}
+                                </td>
+                                <MetricCells m={g} />
+                              </tr>
+
+                              {gOpen && groupAds === "loading" ? (
+                                <SubStateRow key={`${g.id}-l`} colSpan={COLS} text={t("loadingShort")} />
+                              ) : null}
+                              {gOpen && groupAds === "error" ? (
+                                <SubStateRow key={`${g.id}-e`} colSpan={COLS} text={t("googleAdsLoadError")} />
+                              ) : null}
+                              {gOpen && Array.isArray(groupAds) && groupAds.length === 0 ? (
+                                <SubStateRow key={`${g.id}-0`} colSpan={COLS} text={t("googleNoAds")} />
+                              ) : null}
+                              {gOpen && Array.isArray(groupAds)
+                                ? groupAds.map((a) => (
+                                    <tr key={a.id} className="border-t border-[var(--border-color)]">
+                                      <td className="py-2 pr-3 text-[var(--text-dim)]">
+                                        <span className="ml-10">{a.name || `#${a.id}`}</span>
+                                      </td>
+                                      <td className={`py-2 pr-3 ${statusColor(a.status)}`}>
+                                        {a.status}
+                                      </td>
+                                      <td className="py-2 pr-3 text-[var(--text-dimmer)]">
+                                        {a.type}
+                                      </td>
+                                      <MetricCells m={a} />
+                                    </tr>
+                                  ))
+                                : null}
+                            </Fragment>
+                          );
+                        })
+                      : null}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         )}

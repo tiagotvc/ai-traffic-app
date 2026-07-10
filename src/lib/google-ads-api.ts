@@ -399,6 +399,148 @@ export async function getBreakdown(
     : new GoogleAdsApiError("Nenhum contexto de login válido para a conta", 400);
 }
 
+/** Roda uma GAQL tentando login-customer-id = MCC → self e mapeia o resultado. */
+async function queryWithLoginFallback<T>(
+  accessToken: string,
+  customerId: string,
+  query: string,
+  map: (rows: SearchRow[]) => T
+): Promise<T> {
+  const cid = customerId.replace(/\D/g, "");
+  const mcc = getGoogleAdsLoginCustomerId();
+  const logins = [...new Set([mcc, cid].filter(Boolean))];
+  let lastErr: unknown;
+  for (const login of logins) {
+    try {
+      return map(await runGaqlSearch(accessToken, cid, query, login));
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr instanceof Error
+    ? lastErr
+    : new GoogleAdsApiError("Nenhum contexto de login válido para a conta", 400);
+}
+
+export type GoogleAdsAdGroupRow = {
+  id: string;
+  name: string;
+  status: string;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  ctr: number;
+  averageCpc: number;
+};
+
+export type GoogleAdsAdRow = GoogleAdsAdGroupRow & { type: string };
+
+const METRIC_SELECT =
+  "metrics.impressions, metrics.clicks, metrics.cost_micros, metrics.conversions";
+
+function accMetrics(agg: { impressions: number; clicks: number; cost: number; conversions: number }, m: Record<string, unknown>) {
+  agg.impressions += num(m.impressions);
+  agg.clicks += num(m.clicks);
+  agg.cost += num(m.costMicros) / MICROS;
+  agg.conversions += num(m.conversions);
+}
+
+function finalizeRow<T extends { impressions: number; clicks: number; cost: number; ctr: number; averageCpc: number }>(r: T): T {
+  r.ctr = r.impressions > 0 ? r.clicks / r.impressions : 0;
+  r.averageCpc = r.clicks > 0 ? r.cost / r.clicks : 0;
+  return r;
+}
+
+/** Grupos de anúncios de uma campanha, agregados no intervalo. Só leitura. */
+export async function getAdGroups(
+  accessToken: string,
+  customerId: string,
+  campaignId: string,
+  range: { since: string; until: string }
+): Promise<GoogleAdsAdGroupRow[]> {
+  if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
+    throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
+  }
+  const cmp = campaignId.replace(/\D/g, "");
+  const query =
+    `SELECT ad_group.id, ad_group.name, ad_group.status, ${METRIC_SELECT} ` +
+    `FROM ad_group WHERE campaign.id = ${cmp} ` +
+    `AND segments.date BETWEEN '${range.since}' AND '${range.until}'`;
+
+  return queryWithLoginFallback(accessToken, customerId, query, (rows) => {
+    const byId = new Map<string, GoogleAdsAdGroupRow>();
+    for (const row of rows) {
+      const ag = (row.adGroup ?? {}) as Record<string, unknown>;
+      const id = String(ag.id ?? "").replace(/\D/g, "");
+      if (!id) continue;
+      let agg = byId.get(id);
+      if (!agg) {
+        agg = {
+          id,
+          name: String(ag.name ?? ""),
+          status: String(ag.status ?? ""),
+          impressions: 0,
+          clicks: 0,
+          cost: 0,
+          conversions: 0,
+          ctr: 0,
+          averageCpc: 0
+        };
+        byId.set(id, agg);
+      }
+      accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
+    }
+    return [...byId.values()].map(finalizeRow).sort((a, b) => b.cost - a.cost);
+  });
+}
+
+/** Anúncios de um grupo de anúncios, agregados no intervalo. Só leitura. */
+export async function getAds(
+  accessToken: string,
+  customerId: string,
+  adGroupId: string,
+  range: { since: string; until: string }
+): Promise<GoogleAdsAdRow[]> {
+  if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
+    throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
+  }
+  const ag = adGroupId.replace(/\D/g, "");
+  const query =
+    `SELECT ad_group_ad.ad.id, ad_group_ad.ad.name, ad_group_ad.ad.type, ` +
+    `ad_group_ad.status, ${METRIC_SELECT} ` +
+    `FROM ad_group_ad WHERE ad_group.id = ${ag} ` +
+    `AND segments.date BETWEEN '${range.since}' AND '${range.until}'`;
+
+  return queryWithLoginFallback(accessToken, customerId, query, (rows) => {
+    const byId = new Map<string, GoogleAdsAdRow>();
+    for (const row of rows) {
+      const gaa = (row.adGroupAd ?? {}) as Record<string, unknown>;
+      const ad = (gaa.ad ?? {}) as Record<string, unknown>;
+      const id = String(ad.id ?? "").replace(/\D/g, "");
+      if (!id) continue;
+      let agg = byId.get(id);
+      if (!agg) {
+        agg = {
+          id,
+          name: String(ad.name ?? ""),
+          type: String(ad.type ?? ""),
+          status: String(gaa.status ?? ""),
+          impressions: 0,
+          clicks: 0,
+          cost: 0,
+          conversions: 0,
+          ctr: 0,
+          averageCpc: 0
+        };
+        byId.set(id, agg);
+      }
+      accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
+    }
+    return [...byId.values()].map(finalizeRow).sort((a, b) => b.cost - a.cost);
+  });
+}
+
 export type GoogleAdsCampaignDailyMetrics = GoogleAdsCampaignMetrics & { date: string };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
