@@ -395,7 +395,7 @@ export async function loadGoogleMetricTotals(
     .addSelect("COALESCE(SUM(g.impressions::bigint), 0)", "impressions")
     .addSelect("COALESCE(SUM(g.clicks::bigint), 0)", "clicks")
     .addSelect("COALESCE(SUM(g.conversions::numeric), 0)", "conversions")
-    .addSelect("COALESCE(SUM(g.conversionsValue::numeric), 0)", "convValue")
+    .addSelect(`COALESCE(SUM(g."conversionsValue"::numeric), 0)`, "convValue")
     .where("g.clientId IN (:...clientIds)", { clientIds });
   if (range) {
     qb.andWhere("g.day >= :start", { start: range.start }).andWhere("g.day <= :end", {
@@ -403,13 +403,19 @@ export async function loadGoogleMetricTotals(
     });
   }
 
-  const row = await qb.getRawOne<{
+  let row: {
     spend: string;
     impressions: string;
     clicks: string;
     conversions: string;
     convValue: string;
-  }>();
+  } | undefined;
+  try {
+    row = await qb.getRawOne();
+  } catch {
+    // Silo Google não pode derrubar o dashboard (ex.: tabela ainda não migrada).
+    return emptyTotals();
+  }
   const spend = Number(row?.spend) || 0;
   const convValue = Number(row?.convValue) || 0;
   return {
@@ -441,7 +447,7 @@ export async function loadGoogleMetricSeriesByDay(
     .addSelect("COALESCE(SUM(g.impressions::bigint), 0)", "impressions")
     .addSelect("COALESCE(SUM(g.clicks::bigint), 0)", "clicks")
     .addSelect("COALESCE(SUM(g.conversions::numeric), 0)", "conversions")
-    .addSelect("COALESCE(SUM(g.conversionsValue::numeric), 0)", "convValue")
+    .addSelect(`COALESCE(SUM(g."conversionsValue"::numeric), 0)`, "convValue")
     .where("g.clientId IN (:...clientIds)", { clientIds });
   if (range) {
     qb.andWhere("g.day >= :start", { start: range.start }).andWhere("g.day <= :end", {
@@ -450,14 +456,19 @@ export async function loadGoogleMetricSeriesByDay(
   }
   qb.groupBy("g.day").orderBy("g.day", "ASC");
 
-  const rows = await qb.getRawMany<{
+  let rows: Array<{
     day: string;
     spend: string;
     impressions: string;
     clicks: string;
     conversions: string;
     convValue: string;
-  }>();
+  }> = [];
+  try {
+    rows = await qb.getRawMany();
+  } catch {
+    return [];
+  }
 
   return rows.map((d) => {
     const spend = Number(d.spend) || 0;

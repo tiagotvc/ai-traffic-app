@@ -145,7 +145,7 @@ export async function buildClientListCards(
           .addSelect("COALESCE(SUM(g.impressions::bigint), 0)", "impressions")
           .addSelect("COALESCE(SUM(g.clicks::bigint), 0)", "clicks")
           .addSelect("COALESCE(SUM(g.conversions::numeric), 0)", "conversions")
-          .addSelect("COALESCE(SUM(g.conversionsValue::numeric), 0)", "conversionsValue")
+          .addSelect(`COALESCE(SUM(g."conversionsValue"::numeric), 0)`, "conversionsValue")
           .where("g.clientId IN (:...clientIds)", { clientIds })
           .andWhere("g.day >= :since", { since: period.since })
           .andWhere("g.day <= :until", { until: period.until })
@@ -158,6 +158,8 @@ export async function buildClientListCards(
             conversions: string;
             conversionsValue: string;
           }>()
+          // Silo Google não pode derrubar a lista (ex.: tabela ainda não migrada).
+          .catch(() => [])
       : Promise.resolve([])
   ]);
 
