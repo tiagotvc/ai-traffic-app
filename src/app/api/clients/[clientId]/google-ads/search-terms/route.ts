@@ -4,12 +4,7 @@ import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { getWorkspaceGoogleAccessToken } from "@/lib/google-auth-store";
 import { getSearchTerms } from "@/lib/google-ads-api";
 import { isGoogleAdsConfigured, isGoogleAdsEnabled } from "@/lib/google-env";
-
-function isoDay(daysAgo: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
-}
+import { googleRangeFromParams } from "@/lib/google-ads-range";
 
 /**
  * Termos de pesquisa de um cliente Google Ads (com a keyword que ativou e o status),
@@ -30,7 +25,7 @@ export async function GET(
   const campaignId = url.searchParams.get("campaignId")?.replace(/\D/g, "") || undefined;
   const adGroupId = url.searchParams.get("adGroupId")?.replace(/\D/g, "") || undefined;
   const keyword = url.searchParams.get("keyword")?.trim() || undefined;
-  const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 30, 1), 365);
+  const { since, until } = googleRangeFromParams(url);
 
   const { clientId } = await params;
   const { tenant } = await getAppContext();
@@ -49,7 +44,7 @@ export async function GET(
       campaignId,
       adGroupId,
       keyword,
-      range: { since: isoDay(days), until: isoDay(0) }
+      range: { since, until }
     });
     return NextResponse.json({ ok: true, count: rows.length, rows });
   } catch (err) {

@@ -38,12 +38,14 @@ function displayUrl(finalUrls: string[], path1: string, path2: string): string {
 export function ClientGoogleAdPreviewModal({
   clientId,
   adId,
-  days = 30,
+  since,
+  until,
   onClose
 }: {
   clientId: string;
   adId: string | null;
-  days?: number;
+  since: string;
+  until: string;
   onClose: () => void;
 }) {
   const t = useTranslations("client");
@@ -63,7 +65,9 @@ export function ClientGoogleAdPreviewModal({
     setLoading(true);
     setError(null);
     setAd(null);
-    fetch(`/api/clients/${encodeURIComponent(clientId)}/google-ads/ad-detail?adId=${adId}&days=${days}`)
+    fetch(
+      `/api/clients/${encodeURIComponent(clientId)}/google-ads/ad-detail?adId=${adId}&since=${since}&until=${until}`
+    )
       .then((r) => r.json())
       .then((j) => {
         if (!active) return;
@@ -75,7 +79,7 @@ export function ClientGoogleAdPreviewModal({
     return () => {
       active = false;
     };
-  }, [clientId, adId, days]);
+  }, [clientId, adId, since, until]);
 
   const tiles: Array<{ label: string; value: string }> = ad
     ? [

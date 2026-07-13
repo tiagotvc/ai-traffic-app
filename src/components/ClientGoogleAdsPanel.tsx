@@ -7,6 +7,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewModal";
 import { SortableTh, type SortDir } from "@/components/campaigns/googleTableSort";
+import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 
 /** Ordena um nível do drill-down (campanhas, grupos ou anúncios) pela chave/direção compartilhada. */
@@ -44,8 +45,6 @@ type AdRow = AdGroupRow & { type: string };
 
 type Loadable<T> = "loading" | "error" | T[];
 
-const DAY_OPTIONS = [7, 30, 90] as const;
-
 function statusColor(status: string): string {
   if (status === "ENABLED") return "text-emerald-400";
   if (status === "PAUSED") return "text-amber-400";
@@ -65,7 +64,7 @@ export function ClientGoogleAdsPanel({
   const locale = useLocale();
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [days, setDays] = useState<(typeof DAY_OPTIONS)[number]>(30);
+  const [range, setRange] = useState(() => lastNDaysRange(30));
   const [syncing, startSync] = useTransition();
 
   // Estado de expansão da hierarquia.
@@ -93,14 +92,14 @@ export function ClientGoogleAdsPanel({
     setOpenAdGroups(new Set());
     setAdGroups({});
     setAds({});
-    return fetch(`${base}/metrics?days=${days}`)
+    return fetch(`${base}/metrics?since=${range.since}&until=${range.until}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) setRows(j.campaigns ?? []);
         else setError(j.error ?? "error");
       })
       .catch(() => setError("error"));
-  }, [base, days]);
+  }, [base, range]);
 
   useEffect(() => {
     void load();
@@ -114,6 +113,11 @@ export function ClientGoogleAdsPanel({
   }, [load]);
 
   function sync() {
+    // O backfill trabalha por janela de dias; deriva a partir do intervalo selecionado.
+    const days = Math.max(
+      1,
+      Math.round((Date.parse(range.until) - Date.parse(range.since)) / 86_400_000)
+    );
     startSync(async () => {
       await fetch(`${base}/sync?days=${days}`, { method: "POST" }).catch(() => undefined);
       await load();
@@ -129,7 +133,7 @@ export function ClientGoogleAdsPanel({
     });
     if (!adGroups[campaignId]) {
       setAdGroups((prev) => ({ ...prev, [campaignId]: "loading" }));
-      fetch(`${base}/adgroups?campaignId=${campaignId}&days=${days}`)
+      fetch(`${base}/adgroups?campaignId=${campaignId}&since=${range.since}&until=${range.until}`)
         .then((r) => r.json())
         .then((j) =>
           setAdGroups((prev) => ({ ...prev, [campaignId]: j.ok ? j.rows ?? [] : "error" }))
@@ -147,7 +151,7 @@ export function ClientGoogleAdsPanel({
     });
     if (!ads[adGroupId]) {
       setAds((prev) => ({ ...prev, [adGroupId]: "loading" }));
-      fetch(`${base}/ads?adGroupId=${adGroupId}&days=${days}`)
+      fetch(`${base}/ads?adGroupId=${adGroupId}&since=${range.since}&until=${range.until}`)
         .then((r) => r.json())
         .then((j) => setAds((prev) => ({ ...prev, [adGroupId]: j.ok ? j.rows ?? [] : "error" })))
         .catch(() => setAds((prev) => ({ ...prev, [adGroupId]: "error" })));
@@ -192,17 +196,7 @@ export function ClientGoogleAdsPanel({
           <div className="text-sm font-semibold">{t("googleAdsPanelTitle")}</div>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value) as (typeof DAY_OPTIONS)[number])}
-            className="rounded-xl ui-input text-xs"
-          >
-            {DAY_OPTIONS.map((d) => (
-              <option key={d} value={d}>
-                {t("googleAdsDays", { days: d })}
-              </option>
-            ))}
-          </select>
+          <GoogleDateRangePicker value={range} onChange={setRange} />
           {showSyncButton ? (
             <button
               type="button"
@@ -343,7 +337,8 @@ export function ClientGoogleAdsPanel({
       <ClientGoogleAdPreviewModal
         clientId={clientId}
         adId={selectedAdId}
-        days={days}
+        since={range.since}
+        until={range.until}
         onClose={() => setSelectedAdId(null)}
       />
     </div>

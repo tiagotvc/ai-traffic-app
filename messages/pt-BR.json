@@ -2434,6 +2434,7 @@
     "googleAdsLoadError": "Falha ao carregar campanhas do Google.",
     "googleAdsNotLinked": "Nenhuma conta Google Ads vinculada a este cliente.",
     "googleAdsDays": "Últimos {days} dias",
+    "googleRangeApply": "Aplicar",
     "googleAdsSync": "Sincronizar",
     "googleAdsSyncing": "Sincronizando…",
     "googleAdsSyncHint": "Sem dados sincronizados neste período. Clique em Sincronizar para buscar o histórico.",

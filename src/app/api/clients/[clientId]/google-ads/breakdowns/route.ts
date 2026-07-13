@@ -4,6 +4,7 @@ import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { getWorkspaceGoogleAccessToken } from "@/lib/google-auth-store";
 import { getBreakdown, type GoogleAdsBreakdownDimension } from "@/lib/google-ads-api";
 import { isGoogleAdsConfigured, isGoogleAdsEnabled } from "@/lib/google-env";
+import { googleRangeFromParams } from "@/lib/google-ads-range";
 
 const DIMENSIONS = new Set<GoogleAdsBreakdownDimension>([
   "device",
@@ -12,12 +13,6 @@ const DIMENSIONS = new Set<GoogleAdsBreakdownDimension>([
   "search_term",
   "keyword"
 ]);
-
-function isoDay(daysAgo: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
-}
 
 /**
  * Breakdown de dimensão do Google Ads para um cliente (só leitura, ao vivo).
@@ -39,7 +34,7 @@ export async function GET(
   if (!dimension || !DIMENSIONS.has(dimension)) {
     return NextResponse.json({ ok: false, error: "invalid_dimension" }, { status: 400 });
   }
-  const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 30, 1), 365);
+  const { since, until } = googleRangeFromParams(url);
 
   const { clientId } = await params;
   const { tenant } = await getAppContext();
@@ -58,10 +53,7 @@ export async function GET(
   }
 
   try {
-    const rows = await getBreakdown(token, customerId, dimension, {
-      since: isoDay(days),
-      until: isoDay(0)
-    });
+    const rows = await getBreakdown(token, customerId, dimension, { since, until });
     return NextResponse.json({ ok: true, dimension, count: rows.length, rows });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Falha ao buscar breakdown";

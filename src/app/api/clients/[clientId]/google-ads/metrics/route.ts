@@ -4,6 +4,7 @@ import { Between } from "typeorm";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { isGoogleAdsEnabled } from "@/lib/google-env";
+import { googleRangeFromParams } from "@/lib/google-ads-range";
 
 type Agg = {
   campaignId: string;
@@ -17,15 +18,9 @@ type Agg = {
   conversionsValue: number;
 };
 
-function isoDay(daysAgo: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
-}
-
 /**
  * Métricas de campanha Google Ads a partir dos snapshots (histórico, rápido).
- * Agrega por campanha no período. ?days=30 (default). Só leitura.
+ * Agrega por campanha no período (?since=&until= ou ?days=30). Só leitura.
  */
 export async function GET(
   req: Request,
@@ -46,11 +41,11 @@ export async function GET(
   }
 
   const url = new URL(req.url);
-  const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 30, 1), 365);
+  const { since, until } = googleRangeFromParams(url);
 
   const { googleCampaignMetricSnapshot: snapRepo } = await repositories();
   const snaps = await snapRepo.find({
-    where: { clientId: client.id, day: Between(isoDay(days), isoDay(0)) }
+    where: { clientId: client.id, day: Between(since, until) }
   });
 
   // Agrega por campanha; nome/status/canal vêm do dia mais recente.

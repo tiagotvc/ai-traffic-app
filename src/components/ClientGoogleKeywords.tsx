@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
+import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
 
 type Metricish = {
   impressions: number;
@@ -34,7 +35,6 @@ type CampaignOpt = { campaignId: string; name: string };
 type AdGroupOpt = { id: string; name: string };
 
 type Tab = "keywords" | "terms";
-const DAY_OPTIONS = [7, 30, 90] as const;
 
 const MATCH_LABELS: Record<string, { pt: string; en: string }> = {
   EXACT: { pt: "Exata", en: "Exact" },
@@ -70,7 +70,7 @@ export function ClientGoogleKeywords({ clientId }: { clientId: string }) {
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
 
   const [tab, setTab] = useState<Tab>("keywords");
-  const [days, setDays] = useState<(typeof DAY_OPTIONS)[number]>(30);
+  const [range, setRange] = useState(() => lastNDaysRange(30));
   const [campaignId, setCampaignId] = useState("");
   const [adGroupId, setAdGroupId] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
@@ -90,7 +90,7 @@ export function ClientGoogleKeywords({ clientId }: { clientId: string }) {
 
   // Campanhas para o dropdown (via snapshots).
   useEffect(() => {
-    fetch(`${base}/metrics?days=${days}`)
+    fetch(`${base}/metrics?since=${range.since}&until=${range.until}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) {
@@ -103,7 +103,7 @@ export function ClientGoogleKeywords({ clientId }: { clientId: string }) {
         }
       })
       .catch(() => {});
-  }, [base, days]);
+  }, [base, range]);
 
   // Grupos de anúncios dependentes da campanha selecionada.
   useEffect(() => {
@@ -112,7 +112,7 @@ export function ClientGoogleKeywords({ clientId }: { clientId: string }) {
       setAdGroupOpts([]);
       return;
     }
-    fetch(`${base}/adgroups?campaignId=${campaignId}&days=${days}`)
+    fetch(`${base}/adgroups?campaignId=${campaignId}&since=${range.since}&until=${range.until}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) {
@@ -122,11 +122,11 @@ export function ClientGoogleKeywords({ clientId }: { clientId: string }) {
         }
       })
       .catch(() => setAdGroupOpts([]));
-  }, [base, campaignId, days]);
+  }, [base, campaignId, range]);
 
   const load = useCallback(() => {
     setError(null);
-    const p = new URLSearchParams({ days: String(days) });
+    const p = new URLSearchParams({ since: range.since, until: range.until });
     if (campaignId) p.set("campaignId", campaignId);
     if (adGroupId) p.set("adGroupId", adGroupId);
     if (tab === "keywords") {
@@ -143,7 +143,7 @@ export function ClientGoogleKeywords({ clientId }: { clientId: string }) {
         .then((j) => (j.ok ? setTermRows(j.rows ?? []) : setError(j.error ?? "error")))
         .catch(() => setError("error"));
     }
-  }, [base, tab, days, campaignId, adGroupId, keyword]);
+  }, [base, tab, range, campaignId, adGroupId, keyword]);
 
   useEffect(() => void load(), [load]);
 
@@ -172,17 +172,7 @@ export function ClientGoogleKeywords({ clientId }: { clientId: string }) {
             </button>
           ))}
         </div>
-        <select
-          value={days}
-          onChange={(e) => setDays(Number(e.target.value) as (typeof DAY_OPTIONS)[number])}
-          className="rounded-xl ui-input text-xs"
-        >
-          {DAY_OPTIONS.map((d) => (
-            <option key={d} value={d}>
-              {t("googleAdsDays", { days: d })}
-            </option>
-          ))}
-        </select>
+        <GoogleDateRangePicker value={range} onChange={setRange} />
       </div>
 
       {/* Filtros */}

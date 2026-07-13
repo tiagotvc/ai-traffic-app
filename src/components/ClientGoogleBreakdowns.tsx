@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
+import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
 
 type BreakdownRow = {
   label: string;
@@ -19,7 +20,6 @@ type BreakdownRow = {
 
 type Dimension = "device" | "gender" | "age" | "search_term" | "keyword";
 const DIMENSIONS: Dimension[] = ["device", "gender", "age", "search_term", "keyword"];
-const DAY_OPTIONS = [7, 30, 90] as const;
 
 const DEVICE_LABELS: Record<string, { pt: string; en: string }> = {
   MOBILE: { pt: "Celular", en: "Mobile" },
@@ -51,7 +51,7 @@ export function ClientGoogleBreakdowns({ clientId }: { clientId: string }) {
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [dimension, setDimension] = useState<Dimension>("device");
-  const [days, setDays] = useState<(typeof DAY_OPTIONS)[number]>(30);
+  const [range, setRange] = useState(() => lastNDaysRange(30));
   const [rows, setRows] = useState<BreakdownRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +60,7 @@ export function ClientGoogleBreakdowns({ clientId }: { clientId: string }) {
     setRows(null);
     setError(null);
     fetch(
-      `/api/clients/${encodeURIComponent(clientId)}/google-ads/breakdowns?dimension=${dimension}&days=${days}`
+      `/api/clients/${encodeURIComponent(clientId)}/google-ads/breakdowns?dimension=${dimension}&since=${range.since}&until=${range.until}`
     )
       .then((r) => r.json())
       .then((j) => {
@@ -72,7 +72,7 @@ export function ClientGoogleBreakdowns({ clientId }: { clientId: string }) {
     return () => {
       active = false;
     };
-  }, [clientId, dimension, days]);
+  }, [clientId, dimension, range]);
 
   useEffect(() => load(), [load]);
 
@@ -83,17 +83,7 @@ export function ClientGoogleBreakdowns({ clientId }: { clientId: string }) {
     <div className="ui-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-semibold">{t("googleBreakdownsTitle")}</div>
-        <select
-          value={days}
-          onChange={(e) => setDays(Number(e.target.value) as (typeof DAY_OPTIONS)[number])}
-          className="rounded-xl ui-input text-xs"
-        >
-          {DAY_OPTIONS.map((d) => (
-            <option key={d} value={d}>
-              {t("googleAdsDays", { days: d })}
-            </option>
-          ))}
-        </select>
+        <GoogleDateRangePicker value={range} onChange={setRange} />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">

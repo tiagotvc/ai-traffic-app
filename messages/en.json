@@ -2431,6 +2431,7 @@
     "googleAdsLoadError": "Failed to load Google campaigns.",
     "googleAdsNotLinked": "No Google Ads account linked to this client.",
     "googleAdsDays": "Last {days} days",
+    "googleRangeApply": "Apply",
     "googleAdsSync": "Sync",
     "googleAdsSyncing": "Syncing…",
     "googleAdsSyncHint": "No synced data for this period. Click Sync to fetch history.",

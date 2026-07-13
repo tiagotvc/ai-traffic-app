@@ -4,12 +4,7 @@ import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { getWorkspaceGoogleAccessToken } from "@/lib/google-auth-store";
 import { getAds } from "@/lib/google-ads-api";
 import { isGoogleAdsConfigured, isGoogleAdsEnabled } from "@/lib/google-env";
-
-function isoDay(daysAgo: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
-}
+import { googleRangeFromParams } from "@/lib/google-ads-range";
 
 /** Anúncios de um grupo de anúncios Google Ads (só leitura, ao vivo). */
 export async function GET(
@@ -28,7 +23,7 @@ export async function GET(
   if (!adGroupId) {
     return NextResponse.json({ ok: false, error: "missing_adGroupId" }, { status: 400 });
   }
-  const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 30, 1), 365);
+  const { since, until } = googleRangeFromParams(url);
 
   const { clientId } = await params;
   const { tenant } = await getAppContext();
@@ -44,8 +39,8 @@ export async function GET(
 
   try {
     const rows = await getAds(token, client.googleAdsCustomerId, adGroupId, {
-      since: isoDay(days),
-      until: isoDay(0)
+      since,
+      until
     });
     return NextResponse.json({ ok: true, count: rows.length, rows });
   } catch (err) {
