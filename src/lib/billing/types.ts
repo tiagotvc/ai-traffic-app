@@ -118,7 +118,7 @@ export const FREE_LIMITS: PlanLimits = {
   allowDashboardAiWidgets: false,
   allowDashboardAiBuilder: false,
   allowDashboardSharing: false,
-  allowWhiteLabel: false,
+  allowWhiteLabel: true,
   maxAudiencePersonas: 2,
   allowRankingConfig: false,
   automationTier: 1
@@ -156,7 +156,7 @@ export const BASIC_LIMITS: PlanLimits = {
   allowDashboardAiWidgets: false,
   allowDashboardAiBuilder: false,
   allowDashboardSharing: false,
-  allowWhiteLabel: false,
+  allowWhiteLabel: true,
   maxAudiencePersonas: 5,
   allowRankingConfig: false,
   automationTier: 1

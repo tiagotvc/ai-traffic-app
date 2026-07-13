@@ -202,12 +202,17 @@ function seriesToSummaryRows(
 }
 
 function formatRangeLabel(range: Range, locale: string): string {
+  // Formata em UTC ancorando a data ISO ao meio-dia UTC. Sem isso, `new Date("2025-07-06")`
+  // vira meia-noite UTC e, no fuso local (ex.: BRT, UTC-3), volta para 05/07 — o rótulo
+  // exibia um dia a menos que o intervalo realmente consultado.
   const fmt = new Intl.DateTimeFormat(locale === "en" ? "en-US" : "pt-BR", {
     day: "2-digit",
-    month: "short"
+    month: "short",
+    timeZone: "UTC"
   });
+  const toUtcNoon = (iso: string) => new Date(`${String(iso).slice(0, 10)}T12:00:00Z`);
   try {
-    return `${fmt.format(new Date(range.since))} – ${fmt.format(new Date(range.until))}`;
+    return `${fmt.format(toUtcNoon(range.since))} – ${fmt.format(toUtcNoon(range.until))}`;
   } catch {
     return `${range.since} – ${range.until}`;
   }
