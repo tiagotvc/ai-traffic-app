@@ -13,10 +13,10 @@ export const LEGAL_CONTACT = {
   commercialEmail: SUPPORT_EMAIL,
   /** @deprecated usar supportEmail — alias para o e-mail único de contato. */
   privacyEmail: SUPPORT_EMAIL,
-  termsUpdatedDate: "16 de junho de 2026",
-  termsUpdatedDateEn: "June 16, 2026",
+  termsUpdatedDate: "17 de julho de 2026",
+  termsUpdatedDateEn: "July 17, 2026",
   /** Versão dos Termos/Privacidade para registrar o aceite do usuário. Bump ao alterar os documentos. */
-  termsVersion: "2026-06-16",
+  termsVersion: "2026-07-17",
   supportHours: "Segunda a sexta-feira, das 09h às 18h (horário de Brasília)",
   supportHoursEn: "Monday to Friday, 9:00 AM to 6:00 PM (Brasília time)",
   /** SLA de resposta exibido nas páginas de contato. */

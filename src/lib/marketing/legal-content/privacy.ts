@@ -18,12 +18,14 @@ const pt: LegalPageContent = {
     {
       title: "2. Quem somos",
       paragraphs: [
-        `O Orion Agency é uma plataforma de gestão e análise de campanhas de marketing digital na Meta (Facebook e Instagram), operada a partir de ${LEGAL_CONTACT.companyLocation}.`,
+        `O Orion Agency é uma plataforma de gestão e análise de campanhas de marketing digital na Meta (Facebook e Instagram) e no Google Ads, operada a partir de ${LEGAL_CONTACT.companyLocation}.`,
         "Nossos serviços incluem:"
       ],
       bullets: [
         "Criação e gestão de campanhas, conjuntos de anúncios e anúncios na Meta",
+        "Sincronização e análise de campanhas do Google Ads",
         "Análise e monitoramento de métricas de campanhas",
+        "Análise de palavras-chave e termos de busca, com recomendações de otimização",
         "Criação de públicos e personas",
         "Geração de relatórios e dashboards",
         "Recomendações, aprendizados e insights por inteligência artificial",
@@ -40,7 +42,7 @@ const pt: LegalPageContent = {
         "Titular: pessoa física a quem os dados se referem",
         "Controlador: responsável pelas decisões referentes ao tratamento dos dados",
         "Operador: quem realiza o tratamento em nome do controlador",
-        "Plataformas Parceiras: serviços integrados ao Orion Agency e autorizados por você, como a Meta"
+        "Plataformas Parceiras: serviços integrados ao Orion Agency e autorizados por você, como a Meta e o Google Ads"
       ]
     },
     {
@@ -88,7 +90,28 @@ const pt: LegalPageContent = {
       ]
     },
     {
-      title: "4.4 Dados de conversão (Conversions API)",
+      title: "4.4 Dados provenientes da integração com o Google Ads",
+      paragraphs: [
+        "Quando você conecta sua conta do Google, o Orion Agency acessa dados do Google Ads por meio da API oficial do Google Ads, utilizando exclusivamente o escopo https://www.googleapis.com/auth/adwords autorizado por você durante o consentimento OAuth. Podemos acessar:"
+      ],
+      bullets: [
+        "Contas do Google Ads às quais seu login tem acesso, inclusive contas administradas via MCC (Manager Account)",
+        "Identificação da conta: customer ID, nome, moeda, fuso horário e se é conta gerenciadora",
+        "Campanhas, grupos de anúncios, anúncios e seus status e configurações",
+        "Palavras-chave e termos de busca que acionaram seus anúncios",
+        "Métricas de desempenho (gastos, impressões, cliques, CTR, CPC, conversões, CPA e ROAS)",
+        "Recortes de desempenho por dispositivo, faixa etária e gênero, fornecidos pelo Google de forma agregada",
+        "Tokens de acesso e de atualização (OAuth), escopos concedidos e data de expiração"
+      ],
+      tail: [
+        "Finalidade do acesso: usamos esses dados exclusivamente para operar as funcionalidades que você contratou — exibir campanhas e métricas nos painéis, gerar relatórios e dashboards, calcular recomendações de palavras-chave e produzir aprendizados e insights por IA. Não utilizamos dados do Google Ads para publicidade própria, não os vendemos, não os transferimos a terceiros para fins independentes e não os utilizamos para treinar modelos de inteligência artificial, generalizados ou não.",
+        "Armazenamento e proteção: os dados sincronizados do Google Ads (contas, campanhas, palavras-chave, termos de busca, métricas e recomendações) são armazenados em nosso banco PostgreSQL (Supabase), isolados por workspace e acessíveis apenas a usuários autorizados da sua conta. Toda a comunicação com a API do Google ocorre por HTTPS/TLS. Os tokens OAuth ficam restritos ao seu usuário, são usados apenas para chamar a API do Google Ads em seu nome, nunca são expostos no navegador nem enviados a modelos de IA ou a terceiros.",
+        "Os recortes por faixa etária e gênero são estatísticas agregadas da audiência fornecidas pelo Google e não identificam pessoas individualmente. Os termos de busca são consultas de pesquisa fornecidas pelo Google Ads e devem ser tratados por você conforme as políticas do Google.",
+        "Você pode desconectar o Google a qualquer momento — veja a seção 'Integrações com o Google Ads' abaixo."
+      ]
+    },
+    {
+      title: "4.5 Dados de conversão (Conversions API)",
       paragraphs: [
         "Se você habilitar a Conversions API (CAPI), processamos eventos de conversão para envio server-side à Meta. Quando esses eventos incluem identificadores do cliente (como e-mail ou telefone), eles são convertidos em hash criptográfico (SHA-256) antes do envio, conforme exigido pela Meta — utilizados apenas para correspondência de eventos.",
         "Não armazenamos esses identificadores em texto claro, e a deduplicação é feita por identificador de evento (event_id)."
@@ -102,6 +125,7 @@ const pt: LegalPageContent = {
         "Gerenciar assinaturas e processar pagamentos",
         "Criar, sincronizar, exibir e analisar campanhas e métricas",
         "Gerar relatórios, dashboards, alertas e recomendações",
+        "Analisar palavras-chave e termos de busca do Google Ads e sugerir otimizações",
         "Operar recursos de automação, Agency Brain e cientistas de pesquisa",
         "Enviar eventos de conversão à Meta quando habilitado por você",
         "Detectar fraudes e monitorar segurança",
@@ -119,7 +143,8 @@ const pt: LegalPageContent = {
         "Recomendações não constituem consultoria profissional",
         "Não há garantia de resultados financeiros ou aumento de vendas",
         "Decisões finais permanecem sob responsabilidade do usuário",
-        "Não enviamos tokens de acesso da Meta aos modelos de IA — o contexto é montado no servidor com dados já sincronizados"
+        "Não enviamos tokens de acesso da Meta ou do Google aos modelos de IA — o contexto é montado no servidor com dados já sincronizados",
+        "Dados obtidos das APIs da Meta e do Google Ads não são utilizados para treinar modelos de inteligência artificial, próprios ou de terceiros"
       ]
     },
     {
@@ -153,7 +178,7 @@ const pt: LegalPageContent = {
       bullets: [
         "Infraestrutura: Vercel, Supabase (PostgreSQL) e Cloudflare",
         "Inteligência artificial: Google (Gemini) e Anthropic (Claude)",
-        "Plataforma de anúncios: Meta (APIs de anúncios, Conversions API e WhatsApp Business)",
+        "Plataformas de anúncios: Meta (APIs de anúncios, Conversions API e WhatsApp Business) e Google (API do Google Ads)",
         "Processamento de pagamentos: Asaas (Brasil) e Stripe (internacional)",
         "Comunicação: provedores de e-mail transacional",
         "Autoridades — quando exigido por lei ou decisão judicial"
@@ -172,7 +197,8 @@ const pt: LegalPageContent = {
       paragraphs: [
         "Os dados poderão ser mantidos enquanto a conta permanecer ativa, durante a vigência do contrato, pelo prazo necessário ao cumprimento de obrigações legais ou para exercício regular de direitos.",
         "Após esse período, os dados poderão ser excluídos, anonimizados ou agregados para fins estatísticos.",
-        `Para solicitar exclusão, envie e-mail para ${LEGAL_CONTACT.supportEmail} ou siga as instruções em /data-deletion. Você também pode revogar o acesso do app diretamente na Meta.`
+        `Para solicitar exclusão, envie e-mail para ${LEGAL_CONTACT.supportEmail} ou siga as instruções em /data-deletion. Você também pode revogar o acesso do app diretamente na Meta ou na sua Conta Google.`,
+        "Ao desconectar uma integração, os tokens de acesso correspondentes deixam de ser utilizados e são descartados, interrompendo novas sincronizações. Os dados já sincronizados podem ser excluídos mediante solicitação."
       ]
     },
     {
@@ -182,6 +208,7 @@ const pt: LegalPageContent = {
         "HTTPS/TLS",
         "Criptografia de senhas e dados sensíveis",
         "Hash (SHA-256) de identificadores enviados à Conversions API",
+        "Tokens OAuth (Meta e Google) restritos ao usuário, usados apenas em chamadas server-side às APIs oficiais e nunca expostos no navegador",
         "Controle de acesso por workspace",
         "Logs de auditoria e backups periódicos",
         "Monitoramento e proteção contra acessos não autorizados"
@@ -228,7 +255,26 @@ const pt: LegalPageContent = {
       ]
     },
     {
-      title: "17. Subprocessadores",
+      title: "17. Integrações com o Google Ads",
+      paragraphs: [
+        "O Orion Agency acessa dados do Google Ads por meio da API oficial do Google Ads, somente após o seu consentimento explícito via OAuth, e solicita apenas o escopo necessário para operar as funcionalidades que você contratou (https://www.googleapis.com/auth/adwords).",
+        "Uso limitado (Limited Use): o uso e a transferência, pelo Orion Agency, de informações recebidas das APIs do Google obedecem à Política de Dados do Usuário dos Serviços de API do Google (https://developers.google.com/terms/api-services-user-data-policy), incluindo os requisitos de Uso Limitado. Em particular:"
+      ],
+      bullets: [
+        "Usamos os dados do Google Ads apenas para fornecer e melhorar as funcionalidades visíveis a você na plataforma",
+        "Não transferimos esses dados a terceiros, exceto quando necessário para prestar o serviço, por exigência legal ou mediante o seu consentimento",
+        "Não usamos esses dados para publicidade própria, marketing, revenda ou criação de perfis para fins não relacionados ao serviço",
+        "Não usamos esses dados para treinar modelos de inteligência artificial",
+        "Não permitimos que pessoas leiam esses dados, salvo com o seu consentimento explícito, para fins de segurança, para cumprir a lei ou quando os dados estejam agregados e anonimizados"
+      ],
+      tail: [
+        "Você pode desconectar o Google a qualquer momento em Configurações → Integrações, ou revogar o acesso do aplicativo diretamente na sua Conta Google em https://myaccount.google.com/permissions. A revogação interrompe novos acessos, e você pode solicitar a exclusão dos dados já sincronizados conforme a seção 12 e as instruções em /data-deletion.",
+        "Ao conectar contas do Google Ads — próprias ou de clientes, inclusive via MCC — você declara possuir autorização do titular da conta para conceder esse acesso.",
+        "O Orion Agency não é afiliado ao Google e não é um produto oficial do Google. Ao usar a integração, você também está sujeito às políticas do Google — recomendamos a leitura da Política de Privacidade do Google (https://policies.google.com/privacy) e dos Termos de Serviço do Google Ads (https://policies.google.com/terms)."
+      ]
+    },
+    {
+      title: "18. Subprocessadores",
       paragraphs: [
         "O Orion Agency utiliza subprocessadores para operação dos serviços. Atualmente incluem:"
       ],
@@ -236,13 +282,14 @@ const pt: LegalPageContent = {
         "Vercel, Supabase e Cloudflare (infraestrutura e hospedagem)",
         "Google (Gemini) e Anthropic (Claude) — inteligência artificial",
         "Meta (APIs de anúncios, Conversions API e WhatsApp Business)",
+        "Google (API do Google Ads) — sincronização de campanhas e métricas",
         "Asaas e Stripe (pagamentos)",
         "Provedores de e-mail transacional"
       ],
       tail: ["A lista poderá ser atualizada periodicamente conforme a evolução da infraestrutura."]
     },
     {
-      title: "18. Alterações nesta Política",
+      title: "19. Alterações nesta Política",
       paragraphs: [
         "Esta Política poderá ser modificada a qualquer momento para refletir mudanças legais, novos recursos ou melhorias operacionais.",
         "A versão mais recente estará sempre disponível nesta página, com a data de atualização indicada no topo.",
@@ -250,7 +297,7 @@ const pt: LegalPageContent = {
       ]
     },
     {
-      title: "19. Contato",
+      title: "20. Contato",
       paragraphs: [
         "Dúvidas relacionadas à privacidade, proteção de dados ou exercício de direitos poderão ser encaminhadas pelo canal oficial do Orion Agency:",
         `Contato: ${LEGAL_CONTACT.supportEmail}`,
@@ -278,12 +325,14 @@ const en: LegalPageContent = {
     {
       title: "2. Who we are",
       paragraphs: [
-        `Orion Agency is a platform for managing and analyzing digital marketing campaigns on Meta (Facebook and Instagram), operated from ${LEGAL_CONTACT.companyLocation}.`,
+        `Orion Agency is a platform for managing and analyzing digital marketing campaigns on Meta (Facebook and Instagram) and Google Ads, operated from ${LEGAL_CONTACT.companyLocation}.`,
         "Our services include:"
       ],
       bullets: [
         "Creating and managing campaigns, ad sets, and ads on Meta",
+        "Syncing and analyzing Google Ads campaigns",
         "Analyzing and monitoring campaign metrics",
+        "Analyzing keywords and search terms, with optimization recommendations",
         "Building audiences and personas",
         "Generating reports and dashboards",
         "AI-powered learnings, suggestions, and insights",
@@ -300,7 +349,7 @@ const en: LegalPageContent = {
         "Data Subject: the natural person to whom the data refers",
         "Controller: entity responsible for processing decisions",
         "Processor: entity that processes data on behalf of the controller",
-        "Partner Platforms: services integrated with Orion Agency and authorized by you, such as Meta"
+        "Partner Platforms: services integrated with Orion Agency and authorized by you, such as Meta and Google Ads"
       ]
     },
     {
@@ -348,7 +397,28 @@ const en: LegalPageContent = {
       ]
     },
     {
-      title: "4.4 Conversion data (Conversions API)",
+      title: "4.4 Data from the Google Ads integration",
+      paragraphs: [
+        "When you connect your Google account, Orion Agency accesses Google Ads data through the official Google Ads API, using only the https://www.googleapis.com/auth/adwords scope you authorize during OAuth consent. We may access:"
+      ],
+      bullets: [
+        "Google Ads accounts your login can access, including accounts managed through an MCC (Manager Account)",
+        "Account identification: customer ID, name, currency, time zone, and whether it is a manager account",
+        "Campaigns, ad groups, ads, and their statuses and settings",
+        "Keywords and the search terms that triggered your ads",
+        "Performance metrics (spend, impressions, clicks, CTR, CPC, conversions, CPA, and ROAS)",
+        "Performance breakdowns by device, age range, and gender, provided by Google in aggregate form",
+        "Access and refresh tokens (OAuth), granted scopes, and expiration date"
+      ],
+      tail: [
+        "Purpose of access: we use this data solely to operate the features you contracted — displaying campaigns and metrics in dashboards, generating reports, computing keyword recommendations, and producing AI learnings and insights. We do not use Google Ads data for our own advertising, do not sell it, do not transfer it to third parties for independent purposes, and do not use it to train artificial intelligence models, generalized or otherwise.",
+        "Storage and protection: data synced from Google Ads (accounts, campaigns, keywords, search terms, metrics, and recommendations) is stored in our PostgreSQL database (Supabase), isolated per workspace and accessible only to authorized users of your account. All communication with Google's API occurs over HTTPS/TLS. OAuth tokens are scoped to your user, used only to call the Google Ads API on your behalf, and are never exposed in the browser or sent to AI models or third parties.",
+        "Age and gender breakdowns are aggregate audience statistics provided by Google and do not identify individuals. Search terms are search queries provided by Google Ads and must be handled by you in accordance with Google's policies.",
+        "You can disconnect Google at any time — see the 'Google Ads integrations' section below."
+      ]
+    },
+    {
+      title: "4.5 Conversion data (Conversions API)",
       paragraphs: [
         "If you enable the Conversions API (CAPI), we process conversion events for server-side delivery to Meta. When these events include customer identifiers (such as email or phone), they are cryptographically hashed (SHA-256) before sending, as required by Meta — used only for event matching.",
         "We do not store these identifiers in plain text, and deduplication is performed via an event identifier (event_id)."
@@ -362,6 +432,7 @@ const en: LegalPageContent = {
         "Manage subscriptions and process payments",
         "Create, sync, display, and analyze campaigns and metrics",
         "Generate reports, dashboards, alerts, and recommendations",
+        "Analyze Google Ads keywords and search terms and suggest optimizations",
         "Operate automation, Agency Brain, and research scientists",
         "Send conversion events to Meta when you enable it",
         "Detect fraud and monitor security",
@@ -379,7 +450,8 @@ const en: LegalPageContent = {
         "Recommendations do not constitute professional consulting",
         "There is no guarantee of financial results or sales growth",
         "Final decisions remain your responsibility",
-        "We do not send Meta access tokens to AI models — context is built on the server from synced data"
+        "We do not send Meta or Google access tokens to AI models — context is built on the server from synced data",
+        "Data obtained from the Meta and Google Ads APIs is not used to train artificial intelligence models, our own or third-party"
       ]
     },
     {
@@ -413,7 +485,7 @@ const en: LegalPageContent = {
       bullets: [
         "Infrastructure: Vercel, Supabase (PostgreSQL), and Cloudflare",
         "Artificial intelligence: Google (Gemini) and Anthropic (Claude)",
-        "Advertising platform: Meta (ads APIs, Conversions API, and WhatsApp Business)",
+        "Advertising platforms: Meta (ads APIs, Conversions API, and WhatsApp Business) and Google (Google Ads API)",
         "Payment processing: Asaas (Brazil) and Stripe (international)",
         "Communication: transactional email providers",
         "Authorities — when required by law or court order"
@@ -432,7 +504,8 @@ const en: LegalPageContent = {
       paragraphs: [
         "Data may be retained while your account is active, during the contract term, as required to comply with legal obligations, or for the regular exercise of rights.",
         "After that period, data may be deleted, anonymized, or aggregated for statistical purposes.",
-        `To request deletion, email ${LEGAL_CONTACT.supportEmail} or follow the instructions at /data-deletion. You can also revoke the app's access directly on Meta.`
+        `To request deletion, email ${LEGAL_CONTACT.supportEmail} or follow the instructions at /data-deletion. You can also revoke the app's access directly on Meta or in your Google Account.`,
+        "When you disconnect an integration, the corresponding access tokens stop being used and are discarded, halting further syncs. Already-synced data can be deleted upon request."
       ]
     },
     {
@@ -442,6 +515,7 @@ const en: LegalPageContent = {
         "HTTPS/TLS",
         "Encryption of passwords and sensitive data",
         "Hashing (SHA-256) of identifiers sent to the Conversions API",
+        "OAuth tokens (Meta and Google) scoped to the user, used only in server-side calls to official APIs and never exposed in the browser",
         "Workspace access controls",
         "Audit logs and periodic backups",
         "Monitoring and protection against unauthorized access"
@@ -486,19 +560,39 @@ const en: LegalPageContent = {
       ]
     },
     {
-      title: "17. Subprocessors",
+      title: "17. Google Ads integrations",
+      paragraphs: [
+        "Orion Agency accesses Google Ads data through the official Google Ads API, only after your explicit OAuth consent, and requests only the scope needed to operate the features you contracted (https://www.googleapis.com/auth/adwords).",
+        "Limited Use: Orion Agency's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy (https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements. Specifically:"
+      ],
+      bullets: [
+        "We use Google Ads data only to provide and improve features that are visible to you in the platform",
+        "We do not transfer this data to third parties except as necessary to provide the service, to comply with applicable law, or with your consent",
+        "We do not use this data for our own advertising, marketing, resale, or profiling unrelated to the service",
+        "We do not use this data to train artificial intelligence models",
+        "We do not allow humans to read this data, except with your explicit consent, for security purposes, to comply with applicable law, or when the data is aggregated and anonymized"
+      ],
+      tail: [
+        "You can disconnect Google at any time in Settings → Integrations, or revoke the app's access directly in your Google Account at https://myaccount.google.com/permissions. Revoking stops new access, and you may request deletion of already-synced data under section 12 and the instructions at /data-deletion.",
+        "By connecting Google Ads accounts — your own or your clients', including via MCC — you declare that you are authorized by the account holder to grant such access.",
+        "Orion Agency is not affiliated with Google and is not an official Google product. By using the integration, you are also subject to Google's policies — we recommend reading Google's Privacy Policy (https://policies.google.com/privacy) and the Google Ads Terms of Service (https://policies.google.com/terms)."
+      ]
+    },
+    {
+      title: "18. Subprocessors",
       paragraphs: ["Orion Agency uses subprocessors to operate the services. They currently include:"],
       bullets: [
         "Vercel, Supabase, and Cloudflare (infrastructure and hosting)",
         "Google (Gemini) and Anthropic (Claude) — artificial intelligence",
         "Meta (ads APIs, Conversions API, and WhatsApp Business)",
+        "Google (Google Ads API) — campaign and metrics sync",
         "Asaas and Stripe (payments)",
         "Transactional email providers"
       ],
       tail: ["This list may be updated periodically as infrastructure evolves."]
     },
     {
-      title: "18. Changes to this Policy",
+      title: "19. Changes to this Policy",
       paragraphs: [
         "This Policy may be modified at any time to reflect legal changes, new features, or operational improvements.",
         "The latest version will always be available on this page, with the update date shown at the top.",
@@ -506,7 +600,7 @@ const en: LegalPageContent = {
       ]
     },
     {
-      title: "19. Contact",
+      title: "20. Contact",
       paragraphs: [
         "Questions about privacy, data protection, or exercising your rights may be sent through Orion Agency's official channel:",
         `Contact: ${LEGAL_CONTACT.supportEmail}`,
