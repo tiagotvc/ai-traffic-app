@@ -68,6 +68,7 @@ import { CouponRedemptionUniqueConstraint_1735833300000 } from "./0063-CouponRed
 import { EngineExecutionsOutbox_1735833400000 } from "./0064-EngineExecutionsOutbox";
 import { LaboratoryExperimentLinks_1735833500000 } from "./0065-LaboratoryExperimentLinks";
 import { GoogleCampaignSnapshots1735833600000 } from "./0066-GoogleCampaignSnapshots";
+import { GoogleKeywordRecommendations1735833700000 } from "./0067-GoogleKeywordRecommendations";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -138,5 +139,6 @@ export const appMigrations = [
   CommanderPlanAccess_1735833100000,
   CanonicalPlanFamilies_1735833200000,
   CouponRedemptionUniqueConstraint_1735833300000,
-  GoogleCampaignSnapshots1735833600000
+  GoogleCampaignSnapshots1735833600000,
+  GoogleKeywordRecommendations1735833700000
 ];

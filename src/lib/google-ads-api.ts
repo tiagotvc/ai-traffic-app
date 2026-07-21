@@ -6,7 +6,7 @@ import { getGoogleAdsDeveloperToken, getGoogleAdsLoginCustomerId } from "@/lib/g
  *  O Google mantém só as ~3 versões mais recentes (o resto retorna 404). */
 export const GOOGLE_ADS_API_VERSION = "v24";
 
-const GOOGLE_ADS_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
+export const GOOGLE_ADS_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 
 export type GoogleAdsCustomer = {
   /** ID numérico (só dígitos, sem hífens). */
@@ -62,7 +62,7 @@ export class GoogleAdsApiError extends Error {
   }
 }
 
-function baseHeaders(accessToken: string, loginCustomerId?: string): Record<string, string> {
+export function baseHeaders(accessToken: string, loginCustomerId?: string): Record<string, string> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${accessToken}`,
     "developer-token": getGoogleAdsDeveloperToken(),
@@ -73,7 +73,7 @@ function baseHeaders(accessToken: string, loginCustomerId?: string): Record<stri
   return headers;
 }
 
-async function parseError(res: Response): Promise<string> {
+export async function parseError(res: Response): Promise<string> {
   const body = (await res.json().catch(() => null)) as {
     error?: { message?: string; details?: unknown };
   } | null;
@@ -347,7 +347,8 @@ export async function getBreakdown(
   accessToken: string,
   customerId: string,
   dimension: GoogleAdsBreakdownDimension,
-  range: { since: string; until: string }
+  range: { since: string; until: string },
+  opts?: { campaignId?: string }
 ): Promise<GoogleAdsBreakdownRow[]> {
   if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
     throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
@@ -355,10 +356,13 @@ export async function getBreakdown(
   const cid = customerId.replace(/\D/g, "");
   const cfg = BREAKDOWN_CONFIG[dimension];
   const tail = cfg.topN ? " ORDER BY metrics.cost_micros DESC LIMIT 100" : "";
+  const campaignFilter = opts?.campaignId
+    ? ` AND campaign.id = ${opts.campaignId.replace(/\D/g, "")}`
+    : "";
   const query =
     `SELECT ${cfg.field}, metrics.impressions, metrics.clicks, metrics.cost_micros, ` +
     `metrics.conversions FROM ${cfg.from} ` +
-    `WHERE segments.date BETWEEN '${range.since}' AND '${range.until}'${tail}`;
+    `WHERE segments.date BETWEEN '${range.since}' AND '${range.until}'${campaignFilter}${tail}`;
 
   const mcc = getGoogleAdsLoginCustomerId();
   const logins = [...new Set([mcc, cid].filter(Boolean))];
@@ -664,6 +668,7 @@ export type GoogleAdsKeywordRow = {
   text: string;
   matchType: string;
   status: string;
+  criterionId: string;
   campaignId: string;
   campaignName: string;
   adGroupId: string;
@@ -691,7 +696,8 @@ export async function getKeywords(
   if (opts.adGroupId) where.push(`ad_group.id = ${opts.adGroupId.replace(/\D/g, "")}`);
   const query =
     `SELECT campaign.id, campaign.name, ad_group.id, ad_group.name, ` +
-    `ad_group_criterion.keyword.text, ad_group_criterion.keyword.match_type, ` +
+    `ad_group_criterion.criterion_id, ad_group_criterion.keyword.text, ` +
+    `ad_group_criterion.keyword.match_type, ` +
     `ad_group_criterion.status, ${METRIC_SELECT} ` +
     `FROM keyword_view WHERE ${where.join(" AND ")} ORDER BY metrics.cost_micros DESC`;
 
@@ -712,6 +718,7 @@ export async function getKeywords(
           text,
           matchType: String(kw.matchType ?? ""),
           status: String(crit.status ?? ""),
+          criterionId: String(crit.criterionId ?? "").replace(/\D/g, ""),
           campaignId: String(c.id ?? "").replace(/\D/g, ""),
           campaignName: String(c.name ?? ""),
           adGroupId,
@@ -736,7 +743,9 @@ export type GoogleAdsSearchTermRow = {
   status: string;
   triggeringKeyword: string;
   matchType: string;
+  campaignId: string;
   campaignName: string;
+  adGroupId: string;
   adGroupName: string;
   impressions: number;
   clicks: number;
@@ -771,7 +780,7 @@ export async function getSearchTerms(
   const query =
     `SELECT search_term_view.search_term, search_term_view.status, ` +
     `segments.keyword.info.text, segments.keyword.info.match_type, ` +
-    `campaign.name, ad_group.name, ${METRIC_SELECT} ` +
+    `campaign.id, campaign.name, ad_group.id, ad_group.name, ${METRIC_SELECT} ` +
     `FROM search_term_view WHERE ${where.join(" AND ")} ` +
     `ORDER BY metrics.cost_micros DESC LIMIT 200`;
 
@@ -796,7 +805,9 @@ export async function getSearchTerms(
           status: String(stv.status ?? ""),
           triggeringKeyword,
           matchType: String(kwInfo?.matchType ?? ""),
+          campaignId: String(c.id ?? "").replace(/\D/g, ""),
           campaignName: String(c.name ?? ""),
+          adGroupId: String(g.id ?? "").replace(/\D/g, ""),
           adGroupName: String(g.name ?? ""),
           impressions: 0,
           clicks: 0,

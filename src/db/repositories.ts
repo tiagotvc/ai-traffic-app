@@ -81,6 +81,7 @@ import type { CapiEventLog } from "@/db/entities/CapiEventLog";
 import type { ReportTemplate } from "@/db/entities/ReportTemplate";
 import type { GoogleAuth } from "@/db/entities/GoogleAuth";
 import type { GoogleCampaignMetricSnapshot } from "@/db/entities/GoogleCampaignMetricSnapshot";
+import type { GoogleKeywordRecommendation } from "@/db/entities/GoogleKeywordRecommendation";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -167,7 +168,8 @@ const ENTITY = {
   CapiEventLog: "CapiEventLog",
   ReportTemplate: "ReportTemplate",
   GoogleAuth: "GoogleAuth",
-  GoogleCampaignMetricSnapshot: "GoogleCampaignMetricSnapshot"
+  GoogleCampaignMetricSnapshot: "GoogleCampaignMetricSnapshot",
+  GoogleKeywordRecommendation: "GoogleKeywordRecommendation"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -298,6 +300,10 @@ export async function repositories() {
     googleCampaignMetricSnapshot: repositoryFor<GoogleCampaignMetricSnapshot>(
       ds,
       ENTITY.GoogleCampaignMetricSnapshot
+    ),
+    googleKeywordRecommendation: repositoryFor<GoogleKeywordRecommendation>(
+      ds,
+      ENTITY.GoogleKeywordRecommendation
     )
   };
 }
