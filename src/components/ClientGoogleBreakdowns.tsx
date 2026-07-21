@@ -46,7 +46,14 @@ function prettyLabel(dimension: Dimension, raw: string, locale: string): string 
   return raw;
 }
 
-export function ClientGoogleBreakdowns({ clientId }: { clientId: string }) {
+export function ClientGoogleBreakdowns({
+  clientId,
+  campaignId
+}: {
+  clientId: string;
+  /** Quando fornecido, restringe os breakdowns a uma campanha (uso no drill). */
+  campaignId?: string;
+}) {
   const t = useTranslations("client");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
@@ -59,8 +66,9 @@ export function ClientGoogleBreakdowns({ clientId }: { clientId: string }) {
     let active = true;
     setRows(null);
     setError(null);
+    const campaignParam = campaignId ? `&campaignId=${encodeURIComponent(campaignId)}` : "";
     fetch(
-      `/api/clients/${encodeURIComponent(clientId)}/google-ads/breakdowns?dimension=${dimension}&since=${range.since}&until=${range.until}`
+      `/api/clients/${encodeURIComponent(clientId)}/google-ads/breakdowns?dimension=${dimension}&since=${range.since}&until=${range.until}${campaignParam}`
     )
       .then((r) => r.json())
       .then((j) => {
@@ -72,7 +80,7 @@ export function ClientGoogleBreakdowns({ clientId }: { clientId: string }) {
     return () => {
       active = false;
     };
-  }, [clientId, dimension, range]);
+  }, [clientId, dimension, range, campaignId]);
 
   useEffect(() => load(), [load]);
 

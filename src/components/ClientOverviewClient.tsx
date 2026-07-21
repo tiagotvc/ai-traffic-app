@@ -18,9 +18,8 @@ import { Link } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { ClientGoogleAdsPanel } from "@/components/ClientGoogleAdsPanel";
-import { ClientGoogleBreakdowns } from "@/components/ClientGoogleBreakdowns";
-import { ClientGoogleKeywords } from "@/components/ClientGoogleKeywords";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
+import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { ChartContainer } from "@/components/ui/ChartContainer";
 import { KpiCard } from "@/components/ui/KpiCard";
@@ -113,6 +112,31 @@ function campaignMetric(row: CampaignRow, key: MetricKey): number {
     default:
       return 0;
   }
+}
+
+/** Card exibido quando a plataforma selecionada não está conectada para o cliente. */
+function PlatformConnectCard({
+  platform,
+  clientId
+}: {
+  platform: "meta" | "google";
+  clientId: string;
+}) {
+  const t = useTranslations("clientOverview");
+  const title = platform === "meta" ? t("connectMetaTitle") : t("connectGoogleTitle");
+  const body = platform === "meta" ? t("connectMetaBody") : t("connectGoogleBody");
+  return (
+    <div className="ui-card flex flex-col items-start gap-2 p-6">
+      <div className="text-sm font-semibold text-[var(--text-main)]">{title}</div>
+      <p className="max-w-prose text-xs text-[var(--text-dim)]">{body}</p>
+      <Link
+        href={`/clients/${clientId}/settings`}
+        className="ui-link mt-1 text-xs font-semibold"
+      >
+        {t("connectCta")}
+      </Link>
+    </div>
+  );
 }
 
 export function ClientOverviewClient({ clientId }: { clientId: string }) {
@@ -386,21 +410,36 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
 
   const [platform, setPlatform] = useState<"meta" | "google" | "both">("meta");
   const [googleAvailable, setGoogleAvailable] = useState(false);
+  const [metaAvailable, setMetaAvailable] = useState(false);
+  const [connectionsLoaded, setConnectionsLoaded] = useState(false);
   useEffect(() => {
     let active = true;
-    fetch(`/api/clients/${encodeURIComponent(clientId)}/google-ads`)
+    // Meta vinculada = cliente tem ao menos uma conta de anúncio no status de sync.
+    const metaReq = fetch(`/api/sync/status?clientId=${encodeURIComponent(clientId)}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        if (active && j?.ok && j.linkedCustomerId) {
-          setGoogleAvailable(true);
-          setPlatform("both");
-        }
-      })
-      .catch(() => undefined);
+      .then((j) => Array.isArray(j?.accounts) && j.accounts.length > 0)
+      .catch(() => false);
+    // Google vinculado = existe linkedCustomerId.
+    const googleReq = fetch(`/api/clients/${encodeURIComponent(clientId)}/google-ads`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => Boolean(j?.ok && j.linkedCustomerId))
+      .catch(() => false);
+    void Promise.all([metaReq, googleReq]).then(([meta, google]) => {
+      if (!active) return;
+      setMetaAvailable(meta);
+      setGoogleAvailable(google);
+      // Plataforma inicial: só Google → "google"; ambas → "both"; caso contrário "meta".
+      setPlatform(meta && google ? "both" : google && !meta ? "google" : "meta");
+      setConnectionsLoaded(true);
+    });
     return () => {
       active = false;
     };
   }, [clientId]);
+
+  // Abas: Meta e Google sempre visíveis (descoberta); "Ambos" só quando as duas conectadas.
+  const platformTabs: Array<"meta" | "google" | "both"> =
+    metaAvailable && googleAvailable ? ["meta", "google", "both"] : ["meta", "google"];
 
   return (
     <div className="space-y-4">
@@ -412,13 +451,18 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           </Link>
         }
         title={name || t("client")}
+        actions={
+          metaAvailable && platform !== "google" ? (
+            <SyncRefreshButton clientId={clientId} />
+          ) : undefined
+        }
       />
 
       <ClientDetailTabs clientSlug={clientId} activeTab="overview" />
 
-      {googleAvailable ? (
+      {connectionsLoaded ? (
         <div className="flex items-center gap-1.5">
-          {(["meta", "google", "both"] as const).map((p) => (
+          {platformTabs.map((p) => (
             <button
               key={p}
               type="button"
@@ -437,7 +481,11 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
         </div>
       ) : null}
 
-      {platform !== "google" ? (
+      {connectionsLoaded && platform !== "google" && !metaAvailable ? (
+        <PlatformConnectCard platform="meta" clientId={clientId} />
+      ) : null}
+
+      {platform !== "google" && metaAvailable ? (
         <>
       {/* KPIs — adaptam ao tipo dominante das campanhas do cliente */}
       <div className="grid gap-3 sm:grid-cols-3">
@@ -649,11 +697,24 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
         </>
       ) : null}
 
+      {connectionsLoaded && platform !== "meta" && !googleAvailable ? (
+        <PlatformConnectCard platform="google" clientId={clientId} />
+      ) : null}
+
       {platform !== "meta" && googleAvailable ? (
         <>
-          <ClientGoogleAdsPanel clientId={clientId} />
-          <ClientGoogleKeywords clientId={clientId} />
-          <ClientGoogleBreakdowns clientId={clientId} />
+          <div className="flex justify-end">
+            <Link
+              href={`/clients/${clientId}/google/keywords`}
+              className="ui-link text-xs font-semibold"
+            >
+              {t("exploreGoogleKeywords")} →
+            </Link>
+          </div>
+          <ClientGoogleAdsPanel
+            clientId={clientId}
+            campaignHref={(campaignId) => `/clients/${clientId}/google/campaigns/${campaignId}`}
+          />
         </>
       ) : null}
 

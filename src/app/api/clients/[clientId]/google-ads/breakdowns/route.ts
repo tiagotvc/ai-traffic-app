@@ -35,6 +35,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "invalid_dimension" }, { status: 400 });
   }
   const { since, until } = googleRangeFromParams(url);
+  const campaignId = url.searchParams.get("campaignId") || undefined;
 
   const { clientId } = await params;
   const { tenant } = await getAppContext();
@@ -53,7 +54,7 @@ export async function GET(
   }
 
   try {
-    const rows = await getBreakdown(token, customerId, dimension, { since, until });
+    const rows = await getBreakdown(token, customerId, dimension, { since, until }, { campaignId });
     return NextResponse.json({ ok: true, dimension, count: rows.length, rows });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Falha ao buscar breakdown";
