@@ -120,6 +120,10 @@ export type KeywordRecommendation = {
   intent: KeywordActionIntent;
   /** Chave estável p/ deduplicação entre recomputes (mesma ação repetida atualiza). */
   dedupeKey: string;
+  /** Origem: regra determinística (default) ou classificação por IA. */
+  source?: "rule" | "ai_refined";
+  /** Justificativa da IA (quando `source === "ai_refined"`). */
+  aiJustification?: string;
 };
 
 export type KeywordEvalInput = {

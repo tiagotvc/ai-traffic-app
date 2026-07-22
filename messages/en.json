@@ -2505,6 +2505,7 @@
     "googleRecsColScore": "Priority",
     "googleRecsColWhy": "Reason",
     "googleRecsAuto": "Auto-applicable",
+    "googleRecsAi": "AI",
     "googleRecsCount": "{count} recommendation(s)",
     "googleRecAction_NEGATIVAR": "Add negative",
     "googleRecAction_ADICIONAR_KEYWORD": "Add keyword",

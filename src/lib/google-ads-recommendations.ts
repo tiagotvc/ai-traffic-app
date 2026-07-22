@@ -9,6 +9,7 @@ import {
   type EvalSearchTermRow,
   type KeywordRecommendation
 } from "@/lib/google-ads-keyword-eval";
+import { classifySearchTermIntent } from "@/lib/google-ads-keyword-ai";
 import { repositories } from "@/db/repositories";
 import type { GoogleKeywordRecommendation } from "@/db/entities/GoogleKeywordRecommendation";
 
@@ -59,11 +60,31 @@ export async function recomputeGoogleKeywordRecommendations(
   }
 
   const goalRow = await goalRepo.findOne({ where: { clientId } });
-  const goal = goalFromClientGoal(goalRow, daysBetween(range.since, range.until));
+  const windowDays = daysBetween(range.since, range.until);
+  const goal = goalFromClientGoal(goalRow, windowDays);
 
   // MANUAL_CPC ainda não é resolvido no M2a — recs de lance só entram quando a
   // orquestração passar as campanhas manuais (M2b). Set vazio = sem recs de lance.
-  const fresh = evaluateKeywords({ keywords, searchTerms, goal, manualCpcCampaignIds: new Set() });
+  const ruleRecs = evaluateKeywords({ keywords, searchTerms, goal, manualCpcCampaignIds: new Set() });
+
+  // Camada de INTENÇÃO por IA: pega os casos que as regras de performance não veem
+  // (ex.: termo faça-você-mesmo que ainda gastou pouco). Resiliente: se a IA falhar
+  // (sem chave/limite), segue só com as regras.
+  let aiRecs: KeywordRecommendation[] = [];
+  try {
+    aiRecs = await buildAiRecommendations(
+      { name: client?.name ?? "", niche: client?.niche },
+      keywords,
+      searchTerms
+    );
+  } catch (err) {
+    console.warn(
+      "[google-ads-recommendations] IA indisponível, seguindo só com regras:",
+      err instanceof Error ? err.message : err
+    );
+  }
+
+  const fresh = mergeRecommendations(ruleRecs, aiRecs);
 
   const existing = await recRepo.find({ where: { tenantId, clientId } });
   const byKey = new Map(existing.map((r) => [r.dedupeKey, r]));
@@ -118,10 +139,122 @@ function applyRec(
   row.signals = rec.signals;
   row.score = rec.score.toFixed(4);
   row.confidence = rec.confidence.toFixed(4);
-  row.source = "rule";
+  row.source = rec.source ?? "rule";
   row.intent = rec.intent;
   row.ruleJustification = rec.ruleJustification;
+  row.aiJustification = rec.aiJustification ?? null;
   row.autoApplyEligible = rec.autoApplyEligible;
   row.status = "PENDING";
   row.dedupeKey = rec.dedupeKey;
+}
+
+const normTerm = (s: string): string => s.trim().toLowerCase();
+const round2 = (v: number): number => Math.round(v * 100) / 100;
+
+/**
+ * Une recomendações determinísticas (performance) com as da IA (intenção). As regras
+ * têm prioridade: a IA só ADICIONA recomendações para pares (grupo, termo) que as
+ * regras não cobriram — evita conflito e duplicação. Reordena por prioridade.
+ */
+function mergeRecommendations(
+  ruleRecs: KeywordRecommendation[],
+  aiRecs: KeywordRecommendation[]
+): KeywordRecommendation[] {
+  const keys = new Set(ruleRecs.map((r) => r.dedupeKey));
+  const merged = [...ruleRecs];
+  for (const r of aiRecs) {
+    if (keys.has(r.dedupeKey)) continue;
+    keys.add(r.dedupeKey);
+    merged.push(r);
+  }
+  return merged.sort((a, b) => b.score * b.confidence - a.score * a.confidence);
+}
+
+/**
+ * Classifica a intenção dos termos de pesquisa via IA e converte em recomendações
+ * ADICIONAR_KEYWORD (intenção de compra) / NEGATIVAR (sem intenção). Uma decisão por
+ * termo é aplicada a cada grupo em que o termo apareceu. `source = "ai_refined"`,
+ * nunca auto-aplicável (revisão humana). Lança em falha (o chamador trata).
+ */
+async function buildAiRecommendations(
+  client: { name: string; niche?: string | null },
+  keywords: EvalKeywordRow[],
+  searchTerms: EvalSearchTermRow[]
+): Promise<KeywordRecommendation[]> {
+  // Termos únicos com métricas agregadas (a intenção é por texto, não por grupo).
+  const byTerm = new Map<string, { term: string; clicks: number; cost: number; conversions: number }>();
+  for (const t of searchTerms) {
+    if (!t.searchTerm || !t.adGroupId) continue;
+    const key = normTerm(t.searchTerm);
+    const agg = byTerm.get(key) ?? { term: t.searchTerm, clicks: 0, cost: 0, conversions: 0 };
+    agg.clicks += t.clicks;
+    agg.cost += t.cost;
+    agg.conversions += t.conversions;
+    byTerm.set(key, agg);
+  }
+  const terms = [...byTerm.values()].sort((a, b) => b.cost - a.cost);
+  if (terms.length === 0) return [];
+
+  const kwTexts = [
+    ...new Set(keywords.filter((k) => k.status === "ENABLED" && k.text).map((k) => k.text))
+  ];
+
+  const decisions = await classifySearchTermIntent({
+    clientName: client.name || "anunciante",
+    niche: client.niche,
+    keywords: kwTexts,
+    terms
+  });
+  const byDecision = new Map(decisions.map((d) => [normTerm(d.term), d]));
+
+  const recs: KeywordRecommendation[] = [];
+  for (const t of searchTerms) {
+    if (!t.searchTerm || !t.adGroupId) continue;
+    const d = byDecision.get(normTerm(t.searchTerm));
+    if (!d || d.decision === "IGNORE") continue;
+
+    const alreadyKeyword = t.status === "ADDED" || t.status === "ADDED_EXCLUDED";
+    const alreadyExcluded = t.status === "EXCLUDED" || t.status === "ADDED_EXCLUDED";
+    const conf = Math.max(0, Math.min(1, d.confidence));
+    const base = {
+      campaignId: t.campaignId,
+      campaignName: t.campaignName,
+      adGroupId: t.adGroupId,
+      adGroupName: t.adGroupName,
+      keywordText: t.searchTerm,
+      matchType: d.matchType,
+      score: conf,
+      confidence: conf,
+      ruleJustification: d.reason,
+      autoApplyEligible: false,
+      source: "ai_refined" as const,
+      aiJustification: d.reason
+    };
+
+    if (d.decision === "ADD_KEYWORD" && !alreadyKeyword) {
+      recs.push({
+        ...base,
+        actionType: "ADICIONAR_KEYWORD",
+        signals: { intent: "compra", aiConfidence: conf, clicks: t.clicks, cost: round2(t.cost), conversions: t.conversions },
+        intent: { kind: "ADD_KEYWORD", adGroupId: t.adGroupId, text: t.searchTerm, matchType: d.matchType },
+        dedupeKey: `ADICIONAR_KEYWORD:${t.adGroupId}:${normTerm(t.searchTerm)}`
+      });
+    } else if (d.decision === "ADD_NEGATIVE" && !alreadyExcluded) {
+      recs.push({
+        ...base,
+        actionType: "NEGATIVAR",
+        signals: { intent: "sem_compra", aiConfidence: conf, clicks: t.clicks, cost: round2(t.cost), conversions: t.conversions },
+        intent: {
+          kind: "ADD_NEGATIVE",
+          scope: "shared",
+          campaignId: t.campaignId,
+          adGroupId: t.adGroupId,
+          text: t.searchTerm,
+          matchType: d.matchType
+        },
+        dedupeKey: `NEGATIVAR:${t.adGroupId}:${normTerm(t.searchTerm)}`
+      });
+    }
+  }
+  return recs;
 }

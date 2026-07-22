@@ -19,6 +19,7 @@ type RecRow = {
   confidence: string;
   ruleJustification: string | null;
   autoApplyEligible: boolean;
+  source: string | null;
 };
 
 const ACTION_STYLE: Record<ActionType, string> = {
@@ -129,6 +130,11 @@ export function ClientGoogleRecommendations({
                     <span className={`inline-block rounded-full px-2 py-0.5 font-medium ${ACTION_STYLE[r.actionType]}`}>
                       {t(`googleRecAction_${r.actionType}`)}
                     </span>
+                    {r.source === "ai_refined" ? (
+                      <span className="ml-1.5 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-400">
+                        {t("googleRecsAi")}
+                      </span>
+                    ) : null}
                     {r.autoApplyEligible ? (
                       <span className="ml-1.5 text-[10px] uppercase tracking-wide text-[var(--text-dimmer)]">
                         {t("googleRecsAuto")}
