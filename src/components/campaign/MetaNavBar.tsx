@@ -74,7 +74,10 @@ export function MetaNavBar() {
   }, [selectedClient]);
 
   const client = encodeURIComponent(selectedClient);
-  const onCurrentClient = selectedClient === currentClient;
+  // Lista de campanhas (sem campanha na rota) mostra a caixa Cliente; dentro de uma
+  // campanha o cliente já é fixo, então some.
+  const isList = !metaCampaignId;
+  const onCurrentClient = !!metaCampaignId && selectedClient === currentClient;
   const adsets = (drill?.adsets ?? []) as AdsetLike[];
   const adsAll = (drill?.ads ?? []) as AdLike[];
   const adsScoped = adsetId ? adsAll.filter((a) => a.adsetId === adsetId) : adsAll;
@@ -97,6 +100,7 @@ export function MetaNavBar() {
     }
   }
   function goAdset(id: string) {
+    if (!metaCampaignId) return; // sem campanha (na lista) o nível conjunto é inerte
     if (!id) {
       router.push(`/campaigns/${metaCampaignId}?client=${client}`); // "Todos" → volta pra campanha
       return;
@@ -104,24 +108,26 @@ export function MetaNavBar() {
     router.push(`/campaigns/${metaCampaignId}/ads?client=${client}&adset=${id}`);
   }
   function goAd(id: string) {
-    if (!id) return;
+    if (!metaCampaignId || !id) return;
     const ad = adsAll.find((a) => a.id === id);
     const suffix = ad?.adsetId ? `&adset=${ad.adsetId}` : "";
     router.push(`/campaigns/${metaCampaignId}/ads?client=${client}${suffix}`);
   }
 
-  // Fora de uma campanha real (ex.: tela de "nova campanha") não faz sentido.
-  if (!metaCampaignId || metaCampaignId === "new") return null;
+  // Tela de "nova campanha" não faz sentido.
+  if (metaCampaignId === "new") return null;
 
   return (
     <div className="flex flex-wrap items-end gap-2 py-2">
-      <GoogleNavSelect
-        label={t("navClient")}
-        value={selectedClient}
-        options={clients}
-        onSelect={setSelectedClient}
-        icon={<Users size={14} />}
-      />
+      {isList ? (
+        <GoogleNavSelect
+          label={t("navClient")}
+          value={selectedClient}
+          options={clients}
+          onSelect={setSelectedClient}
+          icon={<Users size={14} />}
+        />
+      ) : null}
       <GoogleNavSelect
         label={t("navCampaign")}
         value={campaignValue}
