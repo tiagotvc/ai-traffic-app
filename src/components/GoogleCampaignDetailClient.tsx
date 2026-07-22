@@ -9,6 +9,7 @@ import { TableSkeleton } from "@/components/ui/Skeleton";
 import { GoogleCampaignChart } from "@/components/GoogleCampaignChart";
 import { ClientGoogleBreakdowns } from "@/components/ClientGoogleBreakdowns";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
+import { GoogleNavBar } from "@/components/google/GoogleNavBar";
 import { googleStatusLabel } from "@/components/google/googleStatus";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
@@ -51,7 +52,6 @@ export function GoogleCampaignDetailClient({
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
 
   const [range, setRange] = useGoogleDateRange(clientId);
-  const [campaignName, setCampaignName] = useState<string>("");
   const [channelType, setChannelType] = useState<string>("");
   const [campaignStatus, setCampaignStatus] = useState<string>("");
   const [rows, setRows] = useState<AdGroupRow[] | null>(null);
@@ -68,7 +68,6 @@ export function GoogleCampaignDetailClient({
           (x: { campaignId: string }) => x.campaignId === campaignId
         );
         if (c) {
-          setCampaignName(c.name ?? "");
           setChannelType(c.channelType ?? "");
           setCampaignStatus(c.status ?? "");
         }
@@ -99,7 +98,7 @@ export function GoogleCampaignDetailClient({
             ← {t("googleBackToCampaigns")}
           </Link>
         }
-        title={campaignName || t("googleAdsPanelTitle")}
+        title={<GoogleNavBar clientId={clientId} campaignId={campaignId} />}
         subtitle={channelType || undefined}
         actions={
           <div className="flex items-center gap-2">

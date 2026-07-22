@@ -2,16 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Layers, Megaphone } from "lucide-react";
 
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { ClientGoogleKeywords } from "@/components/ClientGoogleKeywords";
 import { ClientGoogleRecommendations } from "@/components/ClientGoogleRecommendations";
 import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewModal";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
-import { GoogleNavSelect } from "@/components/google/GoogleNavSelect";
+import { GoogleNavBar } from "@/components/google/GoogleNavBar";
 import { AddKeywordModal } from "@/components/google/AddKeywordModal";
 import { googleStatusColor, googleStatusLabel } from "@/components/google/googleStatus";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
@@ -31,9 +30,6 @@ type AdRow = {
   ctr: number;
   averageCpc: number;
 };
-type CampaignOpt = { campaignId: string; name: string };
-type AdGroupOpt = { id: string; name: string };
-
 /**
  * Tela dedicada de detalhe de um grupo de anúncios Google Ads. Concentra tudo no
  * contexto do grupo (recomendações, palavras-chave, termos, anúncios) com UM filtro
@@ -51,13 +47,10 @@ export function GoogleAdGroupDetailClient({
   const t = useTranslations("client");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
-  const router = useRouter();
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
   const scope = { campaignId, adGroupId };
 
   const [range, setRange] = useGoogleDateRange(clientId);
-  const [campaigns, setCampaigns] = useState<CampaignOpt[]>([]);
-  const [adGroups, setAdGroups] = useState<AdGroupOpt[]>([]);
   const [rows, setRows] = useState<AdRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedAdId, setSelectedAdId] = useState<string | null>(null);
@@ -65,37 +58,6 @@ export function GoogleAdGroupDetailClient({
   const [kwReload, setKwReload] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const { node: feedback, notify } = useGoogleActionFeedback();
-
-  // Campanhas (seletor de topo).
-  useEffect(() => {
-    fetch(`${base}/metrics?since=${range.since}&until=${range.until}`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.ok) {
-          setCampaigns(
-            (j.campaigns ?? []).map((c: { campaignId: string; name: string }) => ({
-              campaignId: c.campaignId,
-              name: c.name
-            }))
-          );
-        }
-      })
-      .catch(() => {});
-  }, [base, range]);
-
-  // Grupos da campanha (seletor de topo).
-  useEffect(() => {
-    fetch(`${base}/adgroups?campaignId=${campaignId}&since=${range.since}&until=${range.until}`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.ok) {
-          setAdGroups(
-            (j.rows ?? []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name }))
-          );
-        }
-      })
-      .catch(() => {});
-  }, [base, campaignId, range]);
 
   const loadAds = useCallback(() => {
     setRows(null);
@@ -113,15 +75,6 @@ export function GoogleAdGroupDetailClient({
   const inactiveCount = sort.sorted.length - activeAds.length;
   const visibleAds = showAll ? sort.sorted : activeAds;
 
-  function goCampaign(id: string) {
-    if (id && id !== campaignId) router.push(`/clients/${clientId}/google/campaigns/${id}`);
-  }
-  function goAdGroup(id: string) {
-    if (id && id !== adGroupId) {
-      router.push(`/clients/${clientId}/google/campaigns/${campaignId}/adgroups/${id}`);
-    }
-  }
-
   return (
     <div className="space-y-4">
       <DsPageHeader
@@ -131,23 +84,12 @@ export function GoogleAdGroupDetailClient({
           </Link>
         }
         title={
-          <div className="flex flex-wrap items-end gap-2">
-            <GoogleNavSelect
-              label={t("googleAdsColCampaign")}
-              value={campaignId}
-              options={campaigns.map((c) => ({ value: c.campaignId, label: c.name }))}
-              onSelect={goCampaign}
-              icon={<Megaphone size={14} />}
-            />
-            <GoogleNavSelect
-              label={t("googleColAdGroup")}
-              value={adGroupId}
-              options={adGroups.map((g) => ({ value: g.id, label: g.name }))}
-              onSelect={goAdGroup}
-              icon={<Layers size={14} />}
-              active
-            />
-          </div>
+          <GoogleNavBar
+            clientId={clientId}
+            campaignId={campaignId}
+            adGroupId={adGroupId}
+            onSelectAd={setSelectedAdId}
+          />
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
