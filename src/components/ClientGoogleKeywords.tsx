@@ -39,11 +39,20 @@ type TermRow = Metricish & {
   adGroupName: string;
 };
 type AdRow = Metricish & { id: string; name: string; status: string; type: string };
+type NegativeRow = {
+  text: string;
+  matchType: string;
+  status: string;
+  criterionId: string;
+  adGroupId: string;
+  campaignName: string;
+  adGroupName: string;
+};
 type CampaignOpt = { campaignId: string; name: string };
 type AdGroupOpt = { id: string; name: string };
 type AdOpt = { id: string; name: string };
 
-type Tab = "keywords" | "terms" | "ads";
+type Tab = "keywords" | "negatives" | "terms" | "ads";
 
 const MATCH_LABELS: Record<string, { pt: string; en: string }> = {
   EXACT: { pt: "Exata", en: "Exact" },
@@ -111,12 +120,15 @@ export function ClientGoogleKeywords({
   const [kwRows, setKwRows] = useState<KeywordRow[] | null>(null);
   const [termRows, setTermRows] = useState<TermRow[] | null>(null);
   const [adRows, setAdRows] = useState<AdRow[] | null>(null);
+  const [negRows, setNegRows] = useState<NegativeRow[] | null>(null);
   const [adsReload, setAdsReload] = useState(0);
   const [selectedAdId, setSelectedAdId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Abas: no explorador (não-escopado) inclui "Anúncios"; no drill só keywords/termos.
-  const tabs: Tab[] = scoped ? ["keywords", "terms"] : ["keywords", "terms", "ads"];
+  const tabs: Tab[] = scoped
+    ? ["keywords", "negatives", "terms"]
+    : ["keywords", "negatives", "terms", "ads"];
 
   // Debounce do filtro de texto (aba Termos).
   useEffect(() => {
@@ -207,6 +219,12 @@ export function ClientGoogleKeywords({
         .then((r) => r.json())
         .then((j) => (j.ok ? setKwRows(j.rows ?? []) : setError(j.error ?? "error")))
         .catch(() => setError("error"));
+    } else if (tab === "negatives") {
+      setNegRows(null);
+      fetch(`${base}/negative-keywords?${p}`)
+        .then((r) => r.json())
+        .then((j) => (j.ok ? setNegRows(j.rows ?? []) : setError(j.error ?? "error")))
+        .catch(() => setError("error"));
     } else {
       setTermRows(null);
       if (keyword) p.set("keyword", keyword);
@@ -242,31 +260,54 @@ export function ClientGoogleKeywords({
       ),
     [adRows, adId, statusFilter]
   );
+  const negFiltered = useMemo(
+    () =>
+      (negRows ?? []).filter(
+        (r) => (!matchFilter || r.matchType === matchFilter) && (!statusFilter || r.status === statusFilter)
+      ),
+    [negRows, matchFilter, statusFilter]
+  );
 
   // Opções dos filtros derivadas das linhas atuais (sempre coerentes com os dados).
   const matchOptions = useMemo(() => {
-    const src = tab === "keywords" ? kwRows : tab === "terms" ? termRows : null;
+    const src =
+      tab === "keywords" ? kwRows : tab === "terms" ? termRows : tab === "negatives" ? negRows : null;
     return [...new Set((src ?? []).map((r) => r.matchType).filter(Boolean))];
-  }, [tab, kwRows, termRows]);
+  }, [tab, kwRows, termRows, negRows]);
   const statusOptions = useMemo(() => {
     const src =
-      tab === "keywords" ? kwRows?.map((r) => r.status) : tab === "terms" ? termRows?.map((r) => r.status) : adRows?.map((r) => r.status);
+      tab === "keywords"
+        ? kwRows?.map((r) => r.status)
+        : tab === "terms"
+          ? termRows?.map((r) => r.status)
+          : tab === "negatives"
+            ? negRows?.map((r) => r.status)
+            : adRows?.map((r) => r.status);
     return [...new Set((src ?? []).filter(Boolean))];
-  }, [tab, kwRows, termRows, adRows]);
+  }, [tab, kwRows, termRows, negRows, adRows]);
   const statusMap = tab === "terms" ? TERM_STATUS : KW_STATUS;
 
   const kwSort = useTableSort<KeywordRow>(kwFiltered, "cost", "desc");
   const termSort = useTableSort<TermRow>(termFiltered, "cost", "desc");
   const adSort = useTableSort<AdRow>(adFiltered, "cost", "desc");
+  const negSort = useTableSort<NegativeRow>(negFiltered, "text", "asc");
 
   const rowsLoading =
-    tab === "keywords" ? kwRows === null : tab === "terms" ? termRows === null : adRows === null;
+    tab === "keywords"
+      ? kwRows === null
+      : tab === "terms"
+        ? termRows === null
+        : tab === "negatives"
+          ? negRows === null
+          : adRows === null;
   const rowsEmpty =
     tab === "keywords"
       ? kwFiltered.length === 0
       : tab === "terms"
         ? termFiltered.length === 0
-        : adFiltered.length === 0;
+        : tab === "negatives"
+          ? negFiltered.length === 0
+          : adFiltered.length === 0;
   const needsGroupForAds = tab === "ads" && !scoped && !adGroupId;
 
   return (
@@ -284,7 +325,15 @@ export function ClientGoogleKeywords({
                   : "border-[var(--border-color)] text-[var(--text-dim)]"
               }`}
             >
-              {t(tb === "keywords" ? "googleKeywordsTab" : tb === "terms" ? "googleTermsTab" : "googleAdsTitle")}
+              {t(
+                tb === "keywords"
+                  ? "googleKeywordsTab"
+                  : tb === "negatives"
+                    ? "googleNegativeKeywordsTab"
+                    : tb === "terms"
+                      ? "googleTermsTab"
+                      : "googleAdsTitle"
+              )}
             </button>
           ))}
         </div>
@@ -434,6 +483,40 @@ export function ClientGoogleKeywords({
                   <td className="py-2 pr-3 text-right">{formatNumber(r.conversions, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatPercent(r.ctr * 100, 2, locale)}</td>
                   <td className="py-2 text-right">{formatBRL(r.averageCpc, locale)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : tab === "negatives" ? (
+          <table className="w-full min-w-[520px] text-xs">
+            <thead>
+              <tr className="text-left text-[var(--text-dimmer)]">
+                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
+                <SortableTh label={t("googleNegativeKeywordsTab")} sortKey="text" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
+                <SortableTh label={t("googleColMatch")} sortKey="matchType" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
+                <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
+                <SortableTh label={t("googleColAdGroup")} sortKey="adGroupName" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
+              </tr>
+            </thead>
+            <tbody>
+              {negSort.sorted.map((r, i) => (
+                <tr key={`${r.criterionId}-${i}`} className="border-t border-[var(--border-color)]">
+                  <td className="py-2 pr-3 text-left">
+                    <GoogleRowActions
+                      clientId={clientId}
+                      resource="keyword"
+                      id={r.criterionId}
+                      adGroupId={r.adGroupId}
+                      status={r.status}
+                      onDone={load}
+                      notify={notify}
+                      onlyRemove
+                    />
+                  </td>
+                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]">{r.text}</td>
+                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(MATCH_LABELS, r.matchType, locale)}</td>
+                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(KW_STATUS, r.status, locale)}</td>
+                  <td className="py-2 pr-3 text-[var(--text-dimmer)]">{r.adGroupName}</td>
                 </tr>
               ))}
             </tbody>

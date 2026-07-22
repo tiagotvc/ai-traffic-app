@@ -738,6 +738,60 @@ export async function getKeywords(
   });
 }
 
+export type GoogleAdsNegativeKeywordRow = {
+  text: string;
+  matchType: string;
+  status: string;
+  criterionId: string;
+  campaignId: string;
+  campaignName: string;
+  adGroupId: string;
+  adGroupName: string;
+};
+
+/**
+ * Palavras-chave NEGATIVAS de nível de grupo (ad_group_criterion negative=true).
+ * O `keyword_view` só traz positivas (com métricas) — negativas não veiculam, então
+ * vêm do resource `ad_group_criterion`, sem métricas. Só leitura.
+ */
+export async function getNegativeKeywords(
+  accessToken: string,
+  customerId: string,
+  opts: { campaignId?: string; adGroupId?: string }
+): Promise<GoogleAdsNegativeKeywordRow[]> {
+  const where = ["ad_group_criterion.type = 'KEYWORD'", "ad_group_criterion.negative = true"];
+  if (opts.campaignId) where.push(`campaign.id = ${opts.campaignId.replace(/\D/g, "")}`);
+  if (opts.adGroupId) where.push(`ad_group.id = ${opts.adGroupId.replace(/\D/g, "")}`);
+  const query =
+    `SELECT campaign.id, campaign.name, ad_group.id, ad_group.name, ` +
+    `ad_group_criterion.criterion_id, ad_group_criterion.keyword.text, ` +
+    `ad_group_criterion.keyword.match_type, ad_group_criterion.status ` +
+    `FROM ad_group_criterion WHERE ${where.join(" AND ")}`;
+
+  return queryWithLoginFallback(accessToken, customerId, query, (rows) => {
+    const out: GoogleAdsNegativeKeywordRow[] = [];
+    for (const row of rows) {
+      const c = (row.campaign ?? {}) as Record<string, unknown>;
+      const g = (row.adGroup ?? {}) as Record<string, unknown>;
+      const crit = (row.adGroupCriterion ?? {}) as Record<string, unknown>;
+      const kw = (crit.keyword ?? {}) as Record<string, unknown>;
+      const text = String(kw.text ?? "");
+      if (!text) continue;
+      out.push({
+        text,
+        matchType: String(kw.matchType ?? ""),
+        status: String(crit.status ?? ""),
+        criterionId: String(crit.criterionId ?? "").replace(/\D/g, ""),
+        campaignId: String(c.id ?? "").replace(/\D/g, ""),
+        campaignName: String(c.name ?? ""),
+        adGroupId: String(g.id ?? "").replace(/\D/g, ""),
+        adGroupName: String(g.name ?? "")
+      });
+    }
+    return out.sort((a, b) => a.text.localeCompare(b.text));
+  });
+}
+
 export type GoogleAdsSearchTermRow = {
   searchTerm: string;
   status: string;

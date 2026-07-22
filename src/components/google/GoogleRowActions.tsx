@@ -67,7 +67,8 @@ export function GoogleRowActions({
   adGroupId,
   status,
   onDone,
-  notify
+  notify,
+  onlyRemove = false
 }: {
   clientId: string;
   resource: GoogleResource;
@@ -76,6 +77,8 @@ export function GoogleRowActions({
   status: string;
   onDone: () => void;
   notify: Notify;
+  /** Só o botão de excluir (ex.: palavra-chave negativa não tem pausar/ativar). */
+  onlyRemove?: boolean;
 }) {
   const t = useTranslations("client");
   const [pending, start] = useTransition();
@@ -127,7 +130,7 @@ export function GoogleRowActions({
 
   return (
     <span className="inline-flex items-center gap-1">
-      {status === "ENABLED" ? (
+      {onlyRemove ? null : status === "ENABLED" ? (
         <button
           type="button"
           disabled={pending}
