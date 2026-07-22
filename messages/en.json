@@ -1045,6 +1045,10 @@
   "campaignManager": {
     "loading": "Loading campaign…",
     "navCampaigns": "Campaigns",
+    "navCampaign": "Campaign",
+    "navAdset": "Ad set",
+    "navAd": "Ad",
+    "navAll": "All",
     "adsetsTitle": "Ad sets",
     "statusActive": "Active",
     "statusPaused": "Paused",
