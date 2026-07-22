@@ -10,6 +10,7 @@ import { ClientGoogleKeywords } from "@/components/ClientGoogleKeywords";
 import { ClientGoogleRecommendations } from "@/components/ClientGoogleRecommendations";
 import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewModal";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
+import { GoogleNavSelect } from "@/components/google/GoogleNavSelect";
 import { AddKeywordModal } from "@/components/google/AddKeywordModal";
 import { googleStatusColor, googleStatusLabel } from "@/components/google/googleStatus";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
@@ -120,9 +121,6 @@ export function GoogleAdGroupDetailClient({
     }
   }
 
-  const selectCls =
-    "max-w-[220px] truncate rounded-xl ui-input text-sm font-semibold";
-
   return (
     <div className="space-y-4">
       <DsPageHeader
@@ -132,34 +130,20 @@ export function GoogleAdGroupDetailClient({
           </Link>
         }
         title={
-          <div className="flex flex-wrap items-center gap-2">
-            <select
+          <div className="flex flex-wrap items-center gap-1">
+            <GoogleNavSelect
               value={campaignId}
-              onChange={(e) => goCampaign(e.target.value)}
-              className={selectCls}
-              aria-label={t("googleAdsColCampaign")}
-            >
-              {campaigns.length === 0 ? <option value={campaignId}>—</option> : null}
-              {campaigns.map((c) => (
-                <option key={c.campaignId} value={c.campaignId}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              options={campaigns.map((c) => ({ value: c.campaignId, label: c.name }))}
+              onSelect={goCampaign}
+              ariaLabel={t("googleAdsColCampaign")}
+            />
             <span className="text-[var(--text-dimmer)]">›</span>
-            <select
+            <GoogleNavSelect
               value={adGroupId}
-              onChange={(e) => goAdGroup(e.target.value)}
-              className={selectCls}
-              aria-label={t("googleColAdGroup")}
-            >
-              {adGroups.length === 0 ? <option value={adGroupId}>—</option> : null}
-              {adGroups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+              options={adGroups.map((g) => ({ value: g.id, label: g.name }))}
+              onSelect={goAdGroup}
+              ariaLabel={t("googleColAdGroup")}
+            />
           </div>
         }
         actions={
