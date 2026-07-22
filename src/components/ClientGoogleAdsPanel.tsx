@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
+import { ChevronRight } from "lucide-react";
+
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
+import { callGoogleMutate, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
+import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
-import { googleStatusLabel } from "@/components/google/googleStatus";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
@@ -25,15 +27,10 @@ type CampaignRow = {
   averageCpc: number;
 };
 
-function statusColor(status: string): string {
-  if (status === "ENABLED") return "text-emerald-400";
-  if (status === "PAUSED") return "text-amber-400";
-  return "text-[var(--text-dimmer)]";
-}
-
 /**
- * Lista de campanhas Google Ads do cliente. Cada campanha navega para a tela
- * dedicada de detalhe (drill por rota, não mais expansão inline).
+ * Lista de campanhas Google Ads do cliente. Espelha o design da tabela Meta:
+ * slider de status (ativa/pausada), linhas com hover, chevron de detalhe e linha
+ * de Total. Cada campanha navega para a tela dedicada de detalhe.
  */
 export function ClientGoogleAdsPanel({
   clientId,
@@ -95,6 +92,40 @@ export function ClientGoogleAdsPanel({
 
   const sort = useTableSort<CampaignRow>(rows ?? [], "cost", "desc");
   const { node: feedback, notify } = useGoogleActionFeedback();
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
+
+  function toggleStatus(campaignId: string, status: string) {
+    const op = status === "ENABLED" ? "pause" : "enable";
+    const next = status === "ENABLED" ? "PAUSED" : "ENABLED";
+    setStatusPendingId(campaignId);
+    // Update otimista do slider; reverte se o Google recusar.
+    setRows((prev) => prev?.map((r) => (r.campaignId === campaignId ? { ...r, status: next } : r)) ?? prev);
+    callGoogleMutate(clientId, { resource: "campaign", op, id: campaignId, dryRun: false })
+      .then((r) => {
+        if (r.ok) {
+          notify(t("googleActionOk"), "success");
+        } else {
+          setRows((prev) => prev?.map((rr) => (rr.campaignId === campaignId ? { ...rr, status } : rr)) ?? prev);
+          if (r.error === "write_blocked") notify(t("googleWriteBlocked"), "error");
+          else if (r.error === "not_connected") notify(t("googleReconnect"), "error");
+          else notify(r.message || t("googleActionFail"), "error");
+        }
+      })
+      .finally(() => setStatusPendingId(null));
+  }
+
+  const totals = (rows ?? []).reduce(
+    (acc, r) => {
+      acc.impressions += r.impressions;
+      acc.clicks += r.clicks;
+      acc.cost += r.cost;
+      acc.conversions += r.conversions;
+      return acc;
+    },
+    { impressions: 0, clicks: 0, cost: 0, conversions: 0 }
+  );
+  const totalCtr = totals.impressions > 0 ? totals.clicks / totals.impressions : 0;
+  const totalCpc = totals.clicks > 0 ? totals.cost / totals.clicks : 0;
 
   return (
     <div className="ui-card p-4">
@@ -135,12 +166,11 @@ export function ClientGoogleAdsPanel({
         ) : rows && rows.length === 0 ? (
           <div className="text-xs text-[var(--text-dim)]">{t("googleAdsSyncHint")}</div>
         ) : (
-          <table className="w-full min-w-[760px] text-xs">
+          <table className="w-full min-w-[820px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
-                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
-                <SortableTh label={t("googleAdsColCampaign")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
                 <th className="py-2 pr-3">{t("googleAdsColStatus")}</th>
+                <SortableTh label={t("googleAdsColCampaign")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
                 <th className="py-2 pr-3">{t("googleAdsColChannel")}</th>
                 <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
                 <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
@@ -148,31 +178,27 @@ export function ClientGoogleAdsPanel({
                 <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
                 <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
                 <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                <th className="py-2 pl-3" />
               </tr>
             </thead>
             <tbody>
               {sort.sorted.map((row) => (
-                <tr key={row.campaignId} className="border-t border-[var(--border-color)]">
-                  <td className="py-2 pr-3 text-left">
-                    <GoogleRowActions
-                      clientId={clientId}
-                      resource="campaign"
-                      id={row.campaignId}
-                      status={row.status}
-                      onDone={load}
-                      notify={notify}
+                <tr
+                  key={row.campaignId}
+                  className="group border-t border-[var(--border-color)] transition hover:bg-[var(--row-hover)]"
+                >
+                  <td className="py-2 pr-3">
+                    <CampaignStatusToggle
+                      active={row.status === "ENABLED"}
+                      disabled={statusPendingId === row.campaignId || row.status === "REMOVED"}
+                      ariaLabel={row.status === "ENABLED" ? t("googlePause") : t("googleActivate")}
+                      onChange={() => toggleStatus(row.campaignId, row.status)}
                     />
                   </td>
                   <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
-                    <Link
-                      href={hrefFor(row.campaignId)}
-                      className="text-left hover:text-[var(--ui-accent)]"
-                    >
+                    <Link href={hrefFor(row.campaignId)} className="hover:text-[var(--ui-accent)]">
                       {row.name}
                     </Link>
-                  </td>
-                  <td className={`py-2 pr-3 font-semibold ${statusColor(row.status)}`}>
-                    {googleStatusLabel(row.status, locale)}
                   </td>
                   <td className="py-2 pr-3 text-[var(--text-dim)]">{row.channelType}</td>
                   <td className="py-2 pr-3 text-right">{formatNumber(row.impressions, locale)}</td>
@@ -180,10 +206,33 @@ export function ClientGoogleAdsPanel({
                   <td className="py-2 pr-3 text-right">{formatBRL(row.cost, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatNumber(row.conversions, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatPercent(row.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 text-right">{formatBRL(row.averageCpc, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatBRL(row.averageCpc, locale)}</td>
+                  <td className="py-2 pl-3 text-right">
+                    <Link
+                      href={hrefFor(row.campaignId)}
+                      className="text-[var(--text-dimmer)] transition hover:text-[var(--ui-accent)]"
+                      aria-label={row.name}
+                    >
+                      <ChevronRight size={14} />
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-[var(--border-color)] font-semibold text-[var(--text-main)]">
+                <td className="py-2 pr-3" />
+                <td className="py-2 pr-3">{t("googleTotalRow", { count: sort.sorted.length })}</td>
+                <td className="py-2 pr-3" />
+                <td className="py-2 pr-3 text-right">{formatNumber(totals.impressions, locale)}</td>
+                <td className="py-2 pr-3 text-right">{formatNumber(totals.clicks, locale)}</td>
+                <td className="py-2 pr-3 text-right">{formatBRL(totals.cost, locale)}</td>
+                <td className="py-2 pr-3 text-right">{formatNumber(totals.conversions, locale)}</td>
+                <td className="py-2 pr-3 text-right">{formatPercent(totalCtr * 100, 2, locale)}</td>
+                <td className="py-2 pr-3 text-right">{formatBRL(totalCpc, locale)}</td>
+                <td className="py-2 pl-3" />
+              </tr>
+            </tfoot>
           </table>
         )}
       </div>

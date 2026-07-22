@@ -2455,6 +2455,7 @@
     "googleBackToCampaigns": "Back to campaigns",
     "googleBackToCampaign": "Back to campaign",
     "googleActionsCol": "Actions",
+    "googleTotalRow": "Total ({count})",
     "googleActionOk": "Change applied in Google.",
     "googleRemoveOk": "Item removed in Google.",
     "googleActionFail": "Could not apply the action.",
