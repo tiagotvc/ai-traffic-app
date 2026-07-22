@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
+import { googleStatusLabel } from "@/components/google/googleStatus";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
@@ -171,7 +172,7 @@ export function ClientGoogleAdsPanel({
                     </Link>
                   </td>
                   <td className={`py-2 pr-3 font-semibold ${statusColor(row.status)}`}>
-                    {row.status}
+                    {googleStatusLabel(row.status, locale)}
                   </td>
                   <td className="py-2 pr-3 text-[var(--text-dim)]">{row.channelType}</td>
                   <td className="py-2 pr-3 text-right">{formatNumber(row.impressions, locale)}</td>

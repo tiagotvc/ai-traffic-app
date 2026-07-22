@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { ClientGoogleKeywords } from "@/components/ClientGoogleKeywords";
@@ -11,8 +11,9 @@ import { ClientGoogleRecommendations } from "@/components/ClientGoogleRecommenda
 import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewModal";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
 import { AddKeywordModal } from "@/components/google/AddKeywordModal";
+import { googleStatusColor, googleStatusLabel } from "@/components/google/googleStatus";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
-import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
+import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 
@@ -28,17 +29,13 @@ type AdRow = {
   ctr: number;
   averageCpc: number;
 };
-
-function statusColor(status: string): string {
-  if (status === "ENABLED") return "text-emerald-400";
-  if (status === "PAUSED") return "text-amber-400";
-  return "text-[var(--text-dimmer)]";
-}
+type CampaignOpt = { campaignId: string; name: string };
+type AdGroupOpt = { id: string; name: string };
 
 /**
  * Tela dedicada de detalhe de um grupo de anúncios Google Ads. Concentra tudo no
- * contexto do grupo: recomendações de palavra-chave, palavras-chave, termos de
- * busca e anúncios — resolvendo o caminho antes confuso de "avaliar palavras-chave".
+ * contexto do grupo (recomendações, palavras-chave, termos, anúncios) com UM filtro
+ * de data global e seletores no topo para trocar de campanha/grupo sem voltar.
  */
 export function GoogleAdGroupDetailClient({
   clientId,
@@ -52,30 +49,51 @@ export function GoogleAdGroupDetailClient({
   const t = useTranslations("client");
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
+  const router = useRouter();
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
   const scope = { campaignId, adGroupId };
 
-  const [adGroupName, setAdGroupName] = useState("");
   const [range, setRange] = useGoogleDateRange(clientId);
+  const [campaigns, setCampaigns] = useState<CampaignOpt[]>([]);
+  const [adGroups, setAdGroups] = useState<AdGroupOpt[]>([]);
   const [rows, setRows] = useState<AdRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedAdId, setSelectedAdId] = useState<string | null>(null);
   const [addMode, setAddMode] = useState<"keyword" | "negative" | null>(null);
   const [kwReload, setKwReload] = useState(0);
+  const [showAll, setShowAll] = useState(false);
   const { node: feedback, notify } = useGoogleActionFeedback();
 
-  // Nome do grupo (busca por campanha e filtra pelo id).
+  // Campanhas (seletor de topo).
   useEffect(() => {
-    const r = lastNDaysRange(30);
-    fetch(`${base}/adgroups?campaignId=${campaignId}&since=${r.since}&until=${r.until}`)
-      .then((res) => res.json())
+    fetch(`${base}/metrics?since=${range.since}&until=${range.until}`)
+      .then((r) => r.json())
       .then((j) => {
-        if (!j.ok) return;
-        const g = (j.rows ?? []).find((x: { id: string }) => x.id === adGroupId);
-        if (g) setAdGroupName(g.name ?? "");
+        if (j.ok) {
+          setCampaigns(
+            (j.campaigns ?? []).map((c: { campaignId: string; name: string }) => ({
+              campaignId: c.campaignId,
+              name: c.name
+            }))
+          );
+        }
       })
       .catch(() => {});
-  }, [base, campaignId, adGroupId]);
+  }, [base, range]);
+
+  // Grupos da campanha (seletor de topo).
+  useEffect(() => {
+    fetch(`${base}/adgroups?campaignId=${campaignId}&since=${range.since}&until=${range.until}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) {
+          setAdGroups(
+            (j.rows ?? []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, [base, campaignId, range]);
 
   const loadAds = useCallback(() => {
     setRows(null);
@@ -89,21 +107,64 @@ export function GoogleAdGroupDetailClient({
   useEffect(() => void loadAds(), [loadAds]);
 
   const sort = useTableSort<AdRow>(rows ?? [], "cost", "desc");
+  const activeAds = sort.sorted.filter((a) => a.status === "ENABLED");
+  const inactiveCount = sort.sorted.length - activeAds.length;
+  const visibleAds = showAll ? sort.sorted : activeAds;
+
+  function goCampaign(id: string) {
+    if (id && id !== campaignId) router.push(`/clients/${clientId}/google/campaigns/${id}`);
+  }
+  function goAdGroup(id: string) {
+    if (id && id !== adGroupId) {
+      router.push(`/clients/${clientId}/google/campaigns/${campaignId}/adgroups/${id}`);
+    }
+  }
+
+  const selectCls =
+    "max-w-[220px] truncate rounded-xl ui-input text-sm font-semibold";
 
   return (
     <div className="space-y-4">
       <DsPageHeader
         breadcrumbs={
-          <Link
-            href={`/clients/${clientId}/google/campaigns/${campaignId}`}
-            className="ui-link"
-          >
+          <Link href={`/clients/${clientId}/google/campaigns/${campaignId}`} className="ui-link">
             ← {t("googleBackToCampaign")}
           </Link>
         }
-        title={adGroupName || t("googleColAdGroup")}
+        title={
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={campaignId}
+              onChange={(e) => goCampaign(e.target.value)}
+              className={selectCls}
+              aria-label={t("googleAdsColCampaign")}
+            >
+              {campaigns.length === 0 ? <option value={campaignId}>—</option> : null}
+              {campaigns.map((c) => (
+                <option key={c.campaignId} value={c.campaignId}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <span className="text-[var(--text-dimmer)]">›</span>
+            <select
+              value={adGroupId}
+              onChange={(e) => goAdGroup(e.target.value)}
+              className={selectCls}
+              aria-label={t("googleColAdGroup")}
+            >
+              {adGroups.length === 0 ? <option value={adGroupId}>—</option> : null}
+              {adGroups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <GoogleDateRangePicker value={range} onChange={setRange} />
             <button
               type="button"
               onClick={() => setAddMode("keyword")}
@@ -124,11 +185,11 @@ export function GoogleAdGroupDetailClient({
 
       {feedback}
 
-      {/* Avaliação de palavras-chave — agora no contexto do grupo. */}
-      <ClientGoogleRecommendations clientId={clientId} scope={scope} />
+      {/* Avaliação de palavras-chave — no contexto do grupo, com data global. */}
+      <ClientGoogleRecommendations clientId={clientId} scope={scope} range={range} />
 
       {/* Palavras-chave + termos de busca do grupo. */}
-      <ClientGoogleKeywords clientId={clientId} scope={scope} reloadSignal={kwReload} />
+      <ClientGoogleKeywords clientId={clientId} scope={scope} reloadSignal={kwReload} range={range} />
 
       <AddKeywordModal
         clientId={clientId}
@@ -140,14 +201,9 @@ export function GoogleAdGroupDetailClient({
         notify={notify}
       />
 
-      {/* Anúncios do grupo. */}
+      {/* Anúncios do grupo — só ativos por padrão, "Ver mais" revela os pausados. */}
       <div className="ui-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm font-semibold text-[var(--text-main)]">
-            {t("googleAdsTitle")}
-          </div>
-          <GoogleDateRangePicker value={range} onChange={setRange} />
-        </div>
+        <div className="text-sm font-semibold text-[var(--text-main)]">{t("googleAdsTitle")}</div>
         <div className="mt-3 overflow-x-auto">
           {rows === null && !error ? (
             <TableSkeleton />
@@ -155,57 +211,74 @@ export function GoogleAdGroupDetailClient({
             <div className="text-xs text-[var(--text-dim)]">
               {error === "not_linked" ? t("googleAdsNotLinked") : t("googleAdsLoadError")}
             </div>
-          ) : rows && rows.length === 0 ? (
+          ) : !rows || rows.length === 0 ? (
             <div className="text-xs text-[var(--text-dim)]">{t("googleNoAds")}</div>
           ) : (
-            <table className="w-full min-w-[760px] text-xs">
-              <thead>
-                <tr className="text-left text-[var(--text-dimmer)]">
-                  <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
-                  <SortableTh label={t("googleAdsTitle")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
-                  <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
-                  <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                </tr>
-              </thead>
-              <tbody>
-                {sort.sorted.map((a) => (
-                  <tr key={a.id} className="border-t border-[var(--border-color)]">
-                    <td className="py-2 pr-3 text-left">
-                      <GoogleRowActions
-                        clientId={clientId}
-                        resource="ad"
-                        id={a.id}
-                        adGroupId={adGroupId}
-                        status={a.status}
-                        onDone={loadAds}
-                        notify={notify}
-                      />
-                    </td>
-                    <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedAdId(a.id)}
-                        className="text-left hover:text-[var(--ui-accent)] hover:underline"
-                      >
-                        {a.name || `#${a.id}`}
-                      </button>
-                    </td>
-                    <td className={`py-2 pr-3 ${statusColor(a.status)}`}>{a.status}</td>
-                    <td className="py-2 pr-3 text-right">{formatNumber(a.impressions, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatNumber(a.clicks, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatBRL(a.cost, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatNumber(a.conversions, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatPercent(a.ctr * 100, 2, locale)}</td>
-                    <td className="py-2 text-right">{formatBRL(a.averageCpc, locale)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <>
+              {visibleAds.length === 0 ? (
+                <div className="text-xs text-[var(--text-dim)]">{t("googleNoActiveAds")}</div>
+              ) : (
+                <table className="w-full min-w-[760px] text-xs">
+                  <thead>
+                    <tr className="text-left text-[var(--text-dimmer)]">
+                      <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
+                      <SortableTh label={t("googleAdsTitle")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
+                      <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
+                      <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                      <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                      <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                      <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                      <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                      <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleAds.map((a) => (
+                      <tr key={a.id} className="border-t border-[var(--border-color)]">
+                        <td className="py-2 pr-3 text-left">
+                          <GoogleRowActions
+                            clientId={clientId}
+                            resource="ad"
+                            id={a.id}
+                            adGroupId={adGroupId}
+                            status={a.status}
+                            onDone={loadAds}
+                            notify={notify}
+                          />
+                        </td>
+                        <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAdId(a.id)}
+                            className="text-left hover:text-[var(--ui-accent)] hover:underline"
+                          >
+                            {a.name || `#${a.id}`}
+                          </button>
+                        </td>
+                        <td className={`py-2 pr-3 ${googleStatusColor(a.status)}`}>
+                          {googleStatusLabel(a.status, locale)}
+                        </td>
+                        <td className="py-2 pr-3 text-right">{formatNumber(a.impressions, locale)}</td>
+                        <td className="py-2 pr-3 text-right">{formatNumber(a.clicks, locale)}</td>
+                        <td className="py-2 pr-3 text-right">{formatBRL(a.cost, locale)}</td>
+                        <td className="py-2 pr-3 text-right">{formatNumber(a.conversions, locale)}</td>
+                        <td className="py-2 pr-3 text-right">{formatPercent(a.ctr * 100, 2, locale)}</td>
+                        <td className="py-2 text-right">{formatBRL(a.averageCpc, locale)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {inactiveCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAll((v) => !v)}
+                  className="ui-link mt-3 text-xs font-semibold"
+                >
+                  {showAll ? t("googleShowLess") : t("googleShowMoreAds", { count: inactiveCount })}
+                </button>
+              ) : null}
+            </>
           )}
         </div>
       </div>

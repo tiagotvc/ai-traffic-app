@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Check, X } from "lucide-react";
 
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
+import { GoogleDateRangePicker, type DateRange } from "@/components/GoogleDateRangePicker";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
 
@@ -39,17 +39,21 @@ function priority(r: RecRow): number {
 
 export function ClientGoogleRecommendations({
   clientId,
-  scope
+  scope,
+  range: propRange
 }: {
   clientId: string;
   /** Quando fornecido, filtra a fila pelo grupo/campanha (uso no drill). */
   scope?: { campaignId?: string; adGroupId?: string };
+  /** Quando fornecido, o intervalo é controlado externamente (filtro global da página). */
+  range?: DateRange;
 }) {
   const t = useTranslations("client");
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
   const { node: feedback, notify } = useGoogleActionFeedback();
 
-  const [range, setRange] = useGoogleDateRange(clientId);
+  const [ownRange, setOwnRange] = useGoogleDateRange(clientId);
+  const range = propRange ?? ownRange;
   const [rows, setRows] = useState<RecRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recomputing, setRecomputing] = useState(false);
@@ -130,7 +134,7 @@ export function ClientGoogleRecommendations({
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <GoogleDateRangePicker value={range} onChange={setRange} />
+          {propRange ? null : <GoogleDateRangePicker value={range} onChange={setOwnRange} />}
           <button
             type="button"
             onClick={recompute}

@@ -8,9 +8,10 @@ import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
 import { SearchTermActions } from "@/components/google/SearchTermActions";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
+import { googleStatusLabel } from "@/components/google/googleStatus";
 import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewModal";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
-import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
+import { GoogleDateRangePicker, type DateRange } from "@/components/GoogleDateRangePicker";
 
 type Metricish = {
   impressions: number;
@@ -89,13 +90,16 @@ function termStatusColor(status: string): string {
 export function ClientGoogleKeywords({
   clientId,
   scope,
-  reloadSignal
+  reloadSignal,
+  range: propRange
 }: {
   clientId: string;
   /** Quando fornecido, fixa campanha/grupo e esconde os dropdowns em cascata (uso no drill). */
   scope?: { campaignId: string; adGroupId?: string };
   /** Muda de valor para forçar recarregar (ex.: após adicionar palavra-chave). */
   reloadSignal?: number;
+  /** Quando fornecido, o intervalo é controlado externamente (filtro global da página). */
+  range?: DateRange;
 }) {
   const t = useTranslations("client");
   const tMetrics = useTranslations("metrics");
@@ -105,7 +109,8 @@ export function ClientGoogleKeywords({
   const scoped = !!scope;
 
   const [tab, setTab] = useState<Tab>("keywords");
-  const [range, setRange] = useGoogleDateRange(clientId);
+  const [ownRange, setOwnRange] = useGoogleDateRange(clientId);
+  const range = propRange ?? ownRange;
   const [campaignId, setCampaignId] = useState(scope?.campaignId ?? "");
   const [adGroupId, setAdGroupId] = useState(scope?.adGroupId ?? "");
   const [adId, setAdId] = useState("");
@@ -337,7 +342,7 @@ export function ClientGoogleKeywords({
             </button>
           ))}
         </div>
-        <GoogleDateRangePicker value={range} onChange={setRange} />
+        {propRange ? null : <GoogleDateRangePicker value={range} onChange={setOwnRange} />}
       </div>
 
       {/* Filtros em cascata + correspondência/status. */}
@@ -603,7 +608,7 @@ export function ClientGoogleKeywords({
                       {a.name || `#${a.id}`}
                     </button>
                   </td>
-                  <td className={`py-2 pr-3 ${statusColor(a.status)}`}>{a.status}</td>
+                  <td className={`py-2 pr-3 ${statusColor(a.status)}`}>{googleStatusLabel(a.status, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatNumber(a.impressions, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatNumber(a.clicks, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatBRL(a.cost, locale)}</td>

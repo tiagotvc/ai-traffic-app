@@ -9,6 +9,7 @@ import { TableSkeleton } from "@/components/ui/Skeleton";
 import { GoogleCampaignChart } from "@/components/GoogleCampaignChart";
 import { ClientGoogleBreakdowns } from "@/components/ClientGoogleBreakdowns";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
+import { googleStatusLabel } from "@/components/google/googleStatus";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
@@ -175,7 +176,7 @@ export function GoogleCampaignDetailClient({
                         {g.name}
                       </Link>
                     </td>
-                    <td className={`py-2 pr-3 font-semibold ${statusColor(g.status)}`}>{g.status}</td>
+                    <td className={`py-2 pr-3 font-semibold ${statusColor(g.status)}`}>{googleStatusLabel(g.status, locale)}</td>
                     <td className="py-2 pr-3 text-right">{formatNumber(g.impressions, locale)}</td>
                     <td className="py-2 pr-3 text-right">{formatNumber(g.clicks, locale)}</td>
                     <td className="py-2 pr-3 text-right">{formatBRL(g.cost, locale)}</td>
