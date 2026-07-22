@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Layers, Megaphone } from "lucide-react";
 
 import { Link, useRouter } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
@@ -130,19 +131,21 @@ export function GoogleAdGroupDetailClient({
           </Link>
         }
         title={
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex flex-wrap items-end gap-2">
             <GoogleNavSelect
+              label={t("googleAdsColCampaign")}
               value={campaignId}
               options={campaigns.map((c) => ({ value: c.campaignId, label: c.name }))}
               onSelect={goCampaign}
-              ariaLabel={t("googleAdsColCampaign")}
+              icon={<Megaphone size={14} />}
             />
-            <span className="text-[var(--text-dimmer)]">›</span>
             <GoogleNavSelect
+              label={t("googleColAdGroup")}
               value={adGroupId}
               options={adGroups.map((g) => ({ value: g.id, label: g.name }))}
               onSelect={goAdGroup}
-              ariaLabel={t("googleColAdGroup")}
+              icon={<Layers size={14} />}
+              active
             />
           </div>
         }

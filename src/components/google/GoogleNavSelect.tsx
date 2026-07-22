@@ -1,25 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 export type NavOption = { value: string; label: string };
 
 /**
- * Switcher estilo breadcrumb do Google Ads: mostra o item atual como texto + seta e
- * abre um menu com os irmãos para trocar rápido. Identidade visual Orion (tokens de
- * superfície/acento). Usado no topo da tela de grupo (campanha › grupo).
+ * Seletor de navegação no padrão do Google Ads: uma "caixa" com rótulo do nível em
+ * cima (ex.: Campanha), ícone + valor atual e seta; clicar abre o menu de irmãos.
+ * Identidade visual Orion (tokens de superfície/acento). A caixa ativa (nível atual
+ * da página) ganha um sublinhado de destaque.
  */
 export function GoogleNavSelect({
+  label,
   value,
   options,
   onSelect,
-  ariaLabel
+  icon,
+  active = false
 }: {
+  label: string;
   value: string;
   options: NavOption[];
   onSelect: (value: string) => void;
-  ariaLabel?: string;
+  icon?: ReactNode;
+  active?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -44,18 +49,25 @@ export function GoogleNavSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`inline-flex max-w-[16rem] items-center gap-1 rounded-lg border border-transparent px-2 py-1 text-lg font-semibold text-[var(--text-main)] transition hover:border-[var(--border-color)] hover:bg-[var(--surface-bg)] ${
-          open ? "border-[var(--border-color)] bg-[var(--surface-bg)]" : ""
+        className={`flex min-w-[11rem] max-w-[18rem] flex-col gap-0.5 rounded-lg border border-[var(--border-color)] bg-[var(--surface-card)] px-3 py-1.5 text-left transition hover:border-[var(--ui-accent)] ${
+          active ? "shadow-[inset_0_-2px_0_0_var(--ui-accent)]" : ""
         }`}
       >
-        <span className="truncate">{current?.label ?? "—"}</span>
-        <ChevronDown
-          size={16}
-          className={`shrink-0 text-[var(--text-dim)] transition-transform ${open ? "rotate-180" : ""}`}
-        />
+        <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-dimmer)]">
+          {label}
+        </span>
+        <span className="flex items-center gap-1.5">
+          {icon ? <span className="shrink-0 text-[var(--text-dim)]">{icon}</span> : null}
+          <span className="flex-1 truncate text-sm font-semibold text-[var(--text-main)]">
+            {current?.label ?? "—"}
+          </span>
+          <ChevronDown
+            size={15}
+            className={`shrink-0 text-[var(--text-dim)] transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </span>
       </button>
 
       {open ? (
@@ -63,6 +75,9 @@ export function GoogleNavSelect({
           role="listbox"
           className="absolute left-0 z-30 mt-1 max-h-72 w-72 overflow-auto rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-1 shadow-lg"
         >
+          {options.length === 0 ? (
+            <div className="px-3 py-1.5 text-xs text-[var(--text-dimmer)]">—</div>
+          ) : null}
           {options.map((o) => (
             <button
               key={o.value}
