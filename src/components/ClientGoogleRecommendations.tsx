@@ -54,6 +54,7 @@ export function ClientGoogleRecommendations({
   const [error, setError] = useState<string | null>(null);
   const [recomputing, setRecomputing] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "ADICIONAR_KEYWORD" | "NEGATIVAR">("all");
 
   const loadQueue = useCallback(() => {
     setError(null);
@@ -105,6 +106,17 @@ export function ClientGoogleRecommendations({
   }
 
   const sorted = rows ? [...rows].sort((a, b) => priority(b) - priority(a)) : null;
+  const visible = sorted ? sorted.filter((r) => filter === "all" || r.actionType === filter) : null;
+  const counts = {
+    all: sorted?.length ?? 0,
+    ADICIONAR_KEYWORD: sorted?.filter((r) => r.actionType === "ADICIONAR_KEYWORD").length ?? 0,
+    NEGATIVAR: sorted?.filter((r) => r.actionType === "NEGATIVAR").length ?? 0
+  };
+  const FILTERS: Array<{ key: typeof filter; label: string; n: number }> = [
+    { key: "all", label: t("googleRecsFilterAll"), n: counts.all },
+    { key: "ADICIONAR_KEYWORD", label: t("googleRecsFilterKeywords"), n: counts.ADICIONAR_KEYWORD },
+    { key: "NEGATIVAR", label: t("googleRecsFilterNegatives"), n: counts.NEGATIVAR }
+  ];
 
   return (
     <div className="ui-card p-4">
@@ -144,6 +156,26 @@ export function ClientGoogleRecommendations({
         ) : !sorted || sorted.length === 0 ? (
           <div className="text-xs text-[var(--text-dim)]">{t("googleRecsEmpty")}</div>
         ) : (
+          <>
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFilter(f.key)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                    filter === f.key
+                      ? "border-transparent bg-[var(--ui-accent)] text-white"
+                      : "border-[var(--border-color)] text-[var(--text-dim)]"
+                  }`}
+                >
+                  {f.label} ({f.n})
+                </button>
+              ))}
+            </div>
+            {!visible || visible.length === 0 ? (
+              <div className="text-xs text-[var(--text-dim)]">{t("googleRecsFilterEmpty")}</div>
+            ) : (
           <table className="w-full min-w-[720px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
@@ -156,7 +188,7 @@ export function ClientGoogleRecommendations({
               </tr>
             </thead>
             <tbody>
-              {sorted.map((r) => (
+              {(visible ?? []).map((r) => (
                 <tr key={r.id} className="border-t border-[var(--border-color)] align-top">
                   <td className="py-2 pr-3">
                     <div className="flex items-center gap-1">
@@ -212,6 +244,8 @@ export function ClientGoogleRecommendations({
               ))}
             </tbody>
           </table>
+            )}
+          </>
         )}
       </div>
     </div>

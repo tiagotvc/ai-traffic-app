@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronRight } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
@@ -171,10 +170,9 @@ export function GoogleCampaignDetailClient({
                     <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
                       <Link
                         href={groupHref(g.id)}
-                        className="inline-flex items-center gap-1 text-left hover:text-[var(--ui-accent)]"
+                        className="text-left hover:text-[var(--ui-accent)]"
                       >
-                        <ChevronRight size={13} />
-                        <span>{g.name}</span>
+                        {g.name}
                       </Link>
                     </td>
                     <td className={`py-2 pr-3 font-semibold ${statusColor(g.status)}`}>{g.status}</td>

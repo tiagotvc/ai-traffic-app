@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronRight } from "lucide-react";
 
 import { Link } from "@/i18n/navigation";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -166,10 +165,9 @@ export function ClientGoogleAdsPanel({
                   <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
                     <Link
                       href={hrefFor(row.campaignId)}
-                      className="inline-flex items-center gap-1 text-left hover:text-[var(--ui-accent)]"
+                      className="text-left hover:text-[var(--ui-accent)]"
                     >
-                      <ChevronRight size={13} />
-                      <span>{row.name}</span>
+                      {row.name}
                     </Link>
                   </td>
                   <td className={`py-2 pr-3 font-semibold ${statusColor(row.status)}`}>
