@@ -109,7 +109,7 @@ export function GoogleNavBar({
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-2">
+    <div className="flex flex-wrap items-end gap-2 py-2">
       <GoogleNavSelect
         label={t("googleAdsColCampaign")}
         value={campaignId}
