@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
+import { SearchTermActions } from "@/components/google/SearchTermActions";
 import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewModal";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
@@ -32,6 +33,7 @@ type TermRow = Metricish & {
   status: string;
   triggeringKeyword: string;
   matchType: string;
+  adGroupId: string;
   campaignName: string;
   adGroupName: string;
 };
@@ -449,6 +451,7 @@ export function ClientGoogleKeywords({
                 <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
                 <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
                 <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
+                <th className="py-2 pl-3 text-right">{t("googleActionsCol")}</th>
               </tr>
             </thead>
             <tbody>
@@ -463,7 +466,17 @@ export function ClientGoogleKeywords({
                   <td className="py-2 pr-3 text-right">{formatBRL(r.cost, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatNumber(r.conversions, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatPercent(r.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 text-right">{formatBRL(r.averageCpc, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatBRL(r.averageCpc, locale)}</td>
+                  <td className="py-2 pl-3 text-right">
+                    <SearchTermActions
+                      clientId={clientId}
+                      adGroupId={r.adGroupId}
+                      text={r.searchTerm}
+                      status={r.status}
+                      onDone={load}
+                      notify={notify}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
