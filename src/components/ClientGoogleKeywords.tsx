@@ -394,6 +394,7 @@ export function ClientGoogleKeywords({
           <table className="w-full min-w-[820px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
+                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
                 <SortableTh label={t("googleKeywordsTab")} sortKey="text" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
                 <SortableTh label={t("googleColMatch")} sortKey="matchType" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
                 <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
@@ -404,23 +405,12 @@ export function ClientGoogleKeywords({
                 <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
                 <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
                 <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <th className="py-2 pl-3 text-right">{t("googleActionsCol")}</th>
               </tr>
             </thead>
             <tbody>
               {kwSort.sorted.map((r, i) => (
                 <tr key={`${r.text}-${i}`} className="border-t border-[var(--border-color)]">
-                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]">{r.text}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(MATCH_LABELS, r.matchType, locale)}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(KW_STATUS, r.status, locale)}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dimmer)]">{r.adGroupName}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.impressions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.clicks, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(r.cost, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.conversions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatPercent(r.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(r.averageCpc, locale)}</td>
-                  <td className="py-2 pl-3 text-right">
+                  <td className="py-2 pr-3 text-left">
                     {r.criterionId && r.adGroupId ? (
                       <GoogleRowActions
                         clientId={clientId}
@@ -433,6 +423,16 @@ export function ClientGoogleKeywords({
                       />
                     ) : null}
                   </td>
+                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]">{r.text}</td>
+                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(MATCH_LABELS, r.matchType, locale)}</td>
+                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(KW_STATUS, r.status, locale)}</td>
+                  <td className="py-2 pr-3 text-[var(--text-dimmer)]">{r.adGroupName}</td>
+                  <td className="py-2 pr-3 text-right">{formatNumber(r.impressions, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatNumber(r.clicks, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatBRL(r.cost, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatNumber(r.conversions, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatPercent(r.ctr * 100, 2, locale)}</td>
+                  <td className="py-2 text-right">{formatBRL(r.averageCpc, locale)}</td>
                 </tr>
               ))}
             </tbody>
@@ -441,6 +441,7 @@ export function ClientGoogleKeywords({
           <table className="w-full min-w-[860px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
+                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
                 <SortableTh label={t("googleTermsTab")} sortKey="searchTerm" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
                 <SortableTh label={t("googleColTriggeringKeyword")} sortKey="triggeringKeyword" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
                 <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
@@ -451,23 +452,12 @@ export function ClientGoogleKeywords({
                 <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
                 <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
                 <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
-                <th className="py-2 pl-3 text-right">{t("googleActionsCol")}</th>
               </tr>
             </thead>
             <tbody>
               {termSort.sorted.map((r, i) => (
                 <tr key={`${r.searchTerm}-${r.triggeringKeyword}-${i}`} className="border-t border-[var(--border-color)]">
-                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]">{r.searchTerm}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{r.triggeringKeyword || "—"}</td>
-                  <td className={`py-2 pr-3 ${termStatusColor(r.status)}`}>{label(TERM_STATUS, r.status, locale)}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dimmer)]">{r.adGroupName}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.impressions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.clicks, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(r.cost, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.conversions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatPercent(r.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(r.averageCpc, locale)}</td>
-                  <td className="py-2 pl-3 text-right">
+                  <td className="py-2 pr-3 text-left">
                     <SearchTermActions
                       clientId={clientId}
                       adGroupId={r.adGroupId}
@@ -477,6 +467,16 @@ export function ClientGoogleKeywords({
                       notify={notify}
                     />
                   </td>
+                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]">{r.searchTerm}</td>
+                  <td className="py-2 pr-3 text-[var(--text-dim)]">{r.triggeringKeyword || "—"}</td>
+                  <td className={`py-2 pr-3 ${termStatusColor(r.status)}`}>{label(TERM_STATUS, r.status, locale)}</td>
+                  <td className="py-2 pr-3 text-[var(--text-dimmer)]">{r.adGroupName}</td>
+                  <td className="py-2 pr-3 text-right">{formatNumber(r.impressions, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatNumber(r.clicks, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatBRL(r.cost, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatNumber(r.conversions, locale)}</td>
+                  <td className="py-2 pr-3 text-right">{formatPercent(r.ctr * 100, 2, locale)}</td>
+                  <td className="py-2 text-right">{formatBRL(r.averageCpc, locale)}</td>
                 </tr>
               ))}
             </tbody>
@@ -485,6 +485,7 @@ export function ClientGoogleKeywords({
           <table className="w-full min-w-[760px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
+                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
                 <SortableTh label={t("googleAdsTitle")} sortKey="name" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} />
                 <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} />
                 <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
@@ -493,12 +494,22 @@ export function ClientGoogleKeywords({
                 <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
                 <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
                 <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <th className="py-2 pl-3 text-right">{t("googleActionsCol")}</th>
               </tr>
             </thead>
             <tbody>
               {adSort.sorted.map((a) => (
                 <tr key={a.id} className="border-t border-[var(--border-color)]">
+                  <td className="py-2 pr-3 text-left">
+                    <GoogleRowActions
+                      clientId={clientId}
+                      resource="ad"
+                      id={a.id}
+                      adGroupId={adGroupId}
+                      status={a.status}
+                      onDone={() => setAdsReload((n) => n + 1)}
+                      notify={notify}
+                    />
+                  </td>
                   <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
                     <button
                       type="button"
@@ -514,18 +525,7 @@ export function ClientGoogleKeywords({
                   <td className="py-2 pr-3 text-right">{formatBRL(a.cost, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatNumber(a.conversions, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatPercent(a.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(a.averageCpc, locale)}</td>
-                  <td className="py-2 pl-3 text-right">
-                    <GoogleRowActions
-                      clientId={clientId}
-                      resource="ad"
-                      id={a.id}
-                      adGroupId={adGroupId}
-                      status={a.status}
-                      onDone={() => setAdsReload((n) => n + 1)}
-                      notify={notify}
-                    />
-                  </td>
+                  <td className="py-2 text-right">{formatBRL(a.averageCpc, locale)}</td>
                 </tr>
               ))}
             </tbody>

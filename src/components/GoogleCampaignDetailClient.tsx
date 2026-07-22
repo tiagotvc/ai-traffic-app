@@ -143,6 +143,7 @@ export function GoogleCampaignDetailClient({
             <table className="w-full min-w-[760px] text-xs">
               <thead>
                 <tr className="text-left text-[var(--text-dimmer)]">
+                  <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
                   <SortableTh label={t("googleColAdGroup")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
                   <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
                   <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
@@ -151,12 +152,21 @@ export function GoogleCampaignDetailClient({
                   <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
                   <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
                   <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <th className="py-2 pl-3 text-right">{t("googleActionsCol")}</th>
                 </tr>
               </thead>
               <tbody>
                 {sort.sorted.map((g) => (
                   <tr key={g.id} className="border-t border-[var(--border-color)]">
+                    <td className="py-2 pr-3 text-left">
+                      <GoogleRowActions
+                        clientId={clientId}
+                        resource="adGroup"
+                        id={g.id}
+                        status={g.status}
+                        onDone={load}
+                        notify={notify}
+                      />
+                    </td>
                     <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
                       <Link
                         href={groupHref(g.id)}
@@ -172,17 +182,7 @@ export function GoogleCampaignDetailClient({
                     <td className="py-2 pr-3 text-right">{formatBRL(g.cost, locale)}</td>
                     <td className="py-2 pr-3 text-right">{formatNumber(g.conversions, locale)}</td>
                     <td className="py-2 pr-3 text-right">{formatPercent(g.ctr * 100, 2, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatBRL(g.averageCpc, locale)}</td>
-                    <td className="py-2 pl-3 text-right">
-                      <GoogleRowActions
-                        clientId={clientId}
-                        resource="adGroup"
-                        id={g.id}
-                        status={g.status}
-                        onDone={load}
-                        notify={notify}
-                      />
-                    </td>
+                    <td className="py-2 text-right">{formatBRL(g.averageCpc, locale)}</td>
                   </tr>
                 ))}
               </tbody>

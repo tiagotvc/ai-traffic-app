@@ -160,6 +160,7 @@ export function GoogleAdGroupDetailClient({
             <table className="w-full min-w-[760px] text-xs">
               <thead>
                 <tr className="text-left text-[var(--text-dimmer)]">
+                  <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
                   <SortableTh label={t("googleAdsTitle")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
                   <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
                   <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
@@ -168,12 +169,22 @@ export function GoogleAdGroupDetailClient({
                   <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
                   <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
                   <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                  <th className="py-2 pl-3 text-right">{t("googleActionsCol")}</th>
                 </tr>
               </thead>
               <tbody>
                 {sort.sorted.map((a) => (
                   <tr key={a.id} className="border-t border-[var(--border-color)]">
+                    <td className="py-2 pr-3 text-left">
+                      <GoogleRowActions
+                        clientId={clientId}
+                        resource="ad"
+                        id={a.id}
+                        adGroupId={adGroupId}
+                        status={a.status}
+                        onDone={loadAds}
+                        notify={notify}
+                      />
+                    </td>
                     <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
                       <button
                         type="button"
@@ -189,18 +200,7 @@ export function GoogleAdGroupDetailClient({
                     <td className="py-2 pr-3 text-right">{formatBRL(a.cost, locale)}</td>
                     <td className="py-2 pr-3 text-right">{formatNumber(a.conversions, locale)}</td>
                     <td className="py-2 pr-3 text-right">{formatPercent(a.ctr * 100, 2, locale)}</td>
-                    <td className="py-2 pr-3 text-right">{formatBRL(a.averageCpc, locale)}</td>
-                    <td className="py-2 pl-3 text-right">
-                      <GoogleRowActions
-                        clientId={clientId}
-                        resource="ad"
-                        id={a.id}
-                        adGroupId={adGroupId}
-                        status={a.status}
-                        onDone={loadAds}
-                        notify={notify}
-                      />
-                    </td>
+                    <td className="py-2 text-right">{formatBRL(a.averageCpc, locale)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -137,6 +137,7 @@ export function ClientGoogleAdsPanel({
           <table className="w-full min-w-[760px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
+                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
                 <SortableTh label={t("googleAdsColCampaign")} sortKey="name" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} />
                 <th className="py-2 pr-3">{t("googleAdsColStatus")}</th>
                 <th className="py-2 pr-3">{t("googleAdsColChannel")}</th>
@@ -146,12 +147,21 @@ export function ClientGoogleAdsPanel({
                 <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
                 <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
                 <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={sort.sortKey} dir={sort.sortDir} onSort={sort.toggle} align="right" />
-                <th className="py-2 pl-3 text-right">{t("googleActionsCol")}</th>
               </tr>
             </thead>
             <tbody>
               {sort.sorted.map((row) => (
                 <tr key={row.campaignId} className="border-t border-[var(--border-color)]">
+                  <td className="py-2 pr-3 text-left">
+                    <GoogleRowActions
+                      clientId={clientId}
+                      resource="campaign"
+                      id={row.campaignId}
+                      status={row.status}
+                      onDone={load}
+                      notify={notify}
+                    />
+                  </td>
                   <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
                     <Link
                       href={hrefFor(row.campaignId)}
@@ -170,17 +180,7 @@ export function ClientGoogleAdsPanel({
                   <td className="py-2 pr-3 text-right">{formatBRL(row.cost, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatNumber(row.conversions, locale)}</td>
                   <td className="py-2 pr-3 text-right">{formatPercent(row.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(row.averageCpc, locale)}</td>
-                  <td className="py-2 pl-3 text-right">
-                    <GoogleRowActions
-                      clientId={clientId}
-                      resource="campaign"
-                      id={row.campaignId}
-                      status={row.status}
-                      onDone={load}
-                      notify={notify}
-                    />
-                  </td>
+                  <td className="py-2 text-right">{formatBRL(row.averageCpc, locale)}</td>
                 </tr>
               ))}
             </tbody>
