@@ -6,7 +6,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
-import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
+import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
+import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 
 type BreakdownRow = {
   label: string;
@@ -58,7 +59,7 @@ export function ClientGoogleBreakdowns({
   const tMetrics = useTranslations("metrics");
   const locale = useLocale();
   const [dimension, setDimension] = useState<Dimension>("device");
-  const [range, setRange] = useState(() => lastNDaysRange(30));
+  const [range, setRange] = useGoogleDateRange(clientId);
   const [rows, setRows] = useState<BreakdownRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 

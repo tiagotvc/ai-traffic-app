@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
+import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
+import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 
 type ActionType = "NEGATIVAR" | "ADICIONAR_KEYWORD" | "PAUSAR" | "REDUZIR_LANCE" | "AUMENTAR_LANCE";
 
@@ -45,7 +46,7 @@ export function ClientGoogleRecommendations({
   const t = useTranslations("client");
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
 
-  const [range, setRange] = useState(() => lastNDaysRange(30));
+  const [range, setRange] = useGoogleDateRange(clientId);
   const [rows, setRows] = useState<RecRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recomputing, setRecomputing] = useState(false);

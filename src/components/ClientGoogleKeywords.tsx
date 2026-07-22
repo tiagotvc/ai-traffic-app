@@ -7,9 +7,10 @@ import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
 import { SearchTermActions } from "@/components/google/SearchTermActions";
+import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewModal";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
-import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
+import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 
 type Metricish = {
   impressions: number;
@@ -95,7 +96,7 @@ export function ClientGoogleKeywords({
   const scoped = !!scope;
 
   const [tab, setTab] = useState<Tab>("keywords");
-  const [range, setRange] = useState(() => lastNDaysRange(30));
+  const [range, setRange] = useGoogleDateRange(clientId);
   const [campaignId, setCampaignId] = useState(scope?.campaignId ?? "");
   const [adGroupId, setAdGroupId] = useState(scope?.adGroupId ?? "");
   const [adId, setAdId] = useState("");

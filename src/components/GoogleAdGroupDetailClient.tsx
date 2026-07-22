@@ -13,6 +13,7 @@ import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/G
 import { AddKeywordModal } from "@/components/google/AddKeywordModal";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
+import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 
 type AdRow = {
@@ -55,7 +56,7 @@ export function GoogleAdGroupDetailClient({
   const scope = { campaignId, adGroupId };
 
   const [adGroupName, setAdGroupName] = useState("");
-  const [range, setRange] = useState(() => lastNDaysRange(30));
+  const [range, setRange] = useGoogleDateRange(clientId);
   const [rows, setRows] = useState<AdRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedAdId, setSelectedAdId] = useState<string | null>(null);

@@ -10,8 +10,9 @@ import { TableSkeleton } from "@/components/ui/Skeleton";
 import { GoogleCampaignChart } from "@/components/GoogleCampaignChart";
 import { ClientGoogleBreakdowns } from "@/components/ClientGoogleBreakdowns";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
+import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
-import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
+import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 
 type AdGroupRow = {
@@ -49,7 +50,7 @@ export function GoogleCampaignDetailClient({
   const locale = useLocale();
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
 
-  const [range, setRange] = useState(() => lastNDaysRange(30));
+  const [range, setRange] = useGoogleDateRange(clientId);
   const [campaignName, setCampaignName] = useState<string>("");
   const [channelType, setChannelType] = useState<string>("");
   const [campaignStatus, setCampaignStatus] = useState<string>("");

@@ -7,8 +7,9 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { GoogleRowActions, useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
+import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
-import { GoogleDateRangePicker, lastNDaysRange } from "@/components/GoogleDateRangePicker";
+import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 import { formatBRL, formatNumber, formatPercent } from "@/lib/format";
 
 type CampaignRow = {
@@ -50,7 +51,7 @@ export function ClientGoogleAdsPanel({
   const locale = useLocale();
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [range, setRange] = useState(() => lastNDaysRange(30));
+  const [range, setRange] = useGoogleDateRange(clientId);
   const [syncing, startSync] = useTransition();
 
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
