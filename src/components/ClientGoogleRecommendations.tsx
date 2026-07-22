@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Check, X } from "lucide-react";
 
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { GoogleDateRangePicker } from "@/components/GoogleDateRangePicker";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
+import { useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
 
 type ActionType = "NEGATIVAR" | "ADICIONAR_KEYWORD" | "PAUSAR" | "REDUZIR_LANCE" | "AUMENTAR_LANCE";
 
@@ -45,11 +47,13 @@ export function ClientGoogleRecommendations({
 }) {
   const t = useTranslations("client");
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
+  const { node: feedback, notify } = useGoogleActionFeedback();
 
   const [range, setRange] = useGoogleDateRange(clientId);
   const [rows, setRows] = useState<RecRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recomputing, setRecomputing] = useState(false);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   const loadQueue = useCallback(() => {
     setError(null);
@@ -75,6 +79,30 @@ export function ClientGoogleRecommendations({
       .catch(() => setError("error"))
       .finally(() => setRecomputing(false));
   }, [base, range, loadQueue]);
+
+  async function decide(id: string, action: "accept" | "reject") {
+    setPendingId(id);
+    try {
+      const res = await fetch(`${base}/recommendations/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action })
+      });
+      const j = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
+      if (res.ok && j?.ok) {
+        notify(action === "accept" ? t("googleRecAccepted") : t("googleRecRejected"), "success");
+        loadQueue();
+      } else if (j?.error === "write_blocked") {
+        notify(t("googleWriteBlocked"), "error");
+      } else if (j?.error === "not_connected") {
+        notify(t("googleReconnect"), "error");
+      } else {
+        notify(j?.message || t("googleActionFail"), "error");
+      }
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   const sorted = rows ? [...rows].sort((a, b) => priority(b) - priority(a)) : null;
 
@@ -104,6 +132,8 @@ export function ClientGoogleRecommendations({
 
       <p className="mt-1 text-xs text-[var(--text-dimmer)]">{t("googleRecsHint")}</p>
 
+      {feedback ? <div className="mt-3">{feedback}</div> : null}
+
       <div className="mt-3 overflow-x-auto">
         {rows === null && !error ? (
           <TableSkeleton />
@@ -117,6 +147,7 @@ export function ClientGoogleRecommendations({
           <table className="w-full min-w-[720px] text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
+                <th className="py-2 pr-3 font-medium">{t("googleRecsColDecide")}</th>
                 <th className="py-2 pr-3 font-medium">{t("googleRecsColAction")}</th>
                 <th className="py-2 pr-3 font-medium">{t("googleRecsColTerm")}</th>
                 <th className="py-2 pr-3 font-medium">{t("googleColAdGroup")}</th>
@@ -127,6 +158,30 @@ export function ClientGoogleRecommendations({
             <tbody>
               {sorted.map((r) => (
                 <tr key={r.id} className="border-t border-[var(--border-color)] align-top">
+                  <td className="py-2 pr-3">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={pendingId === r.id}
+                        onClick={() => decide(r.id, "accept")}
+                        title={t("googleRecAccept")}
+                        aria-label={t("googleRecAccept")}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--border-color)] text-[var(--text-dim)] transition hover:border-emerald-500/40 hover:text-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Check size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={pendingId === r.id}
+                        onClick={() => decide(r.id, "reject")}
+                        title={t("googleRecReject")}
+                        aria-label={t("googleRecReject")}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--border-color)] text-[var(--text-dim)] transition hover:border-rose-500/40 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </td>
                   <td className="py-2 pr-3">
                     <span className={`inline-block rounded-full px-2 py-0.5 font-medium ${ACTION_STYLE[r.actionType]}`}>
                       {t(`googleRecAction_${r.actionType}`)}

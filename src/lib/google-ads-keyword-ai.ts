@@ -38,6 +38,9 @@ export type AiTermDecision = {
   reason: string;
 };
 
+/** Sugestão que o usuário REJEITOU antes — vira exemplo negativo p/ a IA aprender. */
+export type RejectedExample = { term: string; decision: "ADD_KEYWORD" | "ADD_NEGATIVE" };
+
 const ClassificationSchema = z.object({
   results: z.array(
     z.object({
@@ -54,11 +57,14 @@ const ClassificationSchema = z.object({
 const MAX_TERMS = 60;
 const MAX_KEYWORDS = 80;
 
+const MAX_REJECTED = 40;
+
 function buildPrompt(args: {
   clientName: string;
   niche?: string | null;
   keywords: string[];
   terms: SearchTermForAi[];
+  rejected?: RejectedExample[];
 }): string {
   const kws = args.keywords.slice(0, MAX_KEYWORDS);
   const termLines = args.terms
@@ -68,6 +74,17 @@ function buildPrompt(args: {
         `- "${t.term}" (cliques: ${t.clicks}, custo: ${t.cost.toFixed(2)}, conversões: ${t.conversions})`
     )
     .join("\n");
+
+  const rejected = (args.rejected ?? []).slice(0, MAX_REJECTED);
+  const rejectedBlock = rejected.length
+    ? [
+        "",
+        "O anunciante já REJEITOU estas sugestões antes — aprenda com o julgamento dele e NÃO sugira estas nem variações muito parecidas (respeite o padrão):",
+        rejected
+          .map((r) => `- "${r.term}" (havia sido sugerido como ${r.decision === "ADD_KEYWORD" ? "palavra-chave" : "negativa"})`)
+          .join("\n")
+      ].join("\n")
+    : "";
 
   return [
     "Você é um especialista em Google Ads avaliando TERMOS DE PESQUISA que acionaram os anúncios.",
@@ -87,6 +104,7 @@ function buildPrompt(args: {
     "- confidence de 0 a 1 (quão seguro você está da intenção).",
     "- reason: curto, em português, explicando a INTENÇÃO detectada.",
     "- Retorne o campo 'term' EXATAMENTE como recebido.",
+    rejectedBlock,
     "",
     "TERMOS DE PESQUISA:",
     termLines,
@@ -104,6 +122,7 @@ export async function classifySearchTermIntent(args: {
   niche?: string | null;
   keywords: string[];
   terms: SearchTermForAi[];
+  rejected?: RejectedExample[];
 }): Promise<AiTermDecision[]> {
   if (args.terms.length === 0) return [];
 

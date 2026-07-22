@@ -9,7 +9,7 @@ import {
   type EvalSearchTermRow,
   type KeywordRecommendation
 } from "@/lib/google-ads-keyword-eval";
-import { classifySearchTermIntent } from "@/lib/google-ads-keyword-ai";
+import { classifySearchTermIntent, type RejectedExample } from "@/lib/google-ads-keyword-ai";
 import { repositories } from "@/db/repositories";
 import type { GoogleKeywordRecommendation } from "@/db/entities/GoogleKeywordRecommendation";
 
@@ -70,12 +70,26 @@ export async function recomputeGoogleKeywordRecommendations(
   // Camada de INTENÇÃO por IA: pega os casos que as regras de performance não veem
   // (ex.: termo faça-você-mesmo que ainda gastou pouco). Resiliente: se a IA falhar
   // (sem chave/limite), segue só com as regras.
+  // Sugestões antes rejeitadas → exemplos negativos p/ a IA aprender o padrão.
+  const dismissed = await recRepo.find({
+    where: { tenantId, clientId, status: "DISMISSED" },
+    order: { createdAt: "DESC" },
+    take: 60
+  });
+  const rejected: RejectedExample[] = dismissed
+    .filter((r) => r.actionType === "ADICIONAR_KEYWORD" || r.actionType === "NEGATIVAR")
+    .map((r) => ({
+      term: r.keywordText,
+      decision: r.actionType === "NEGATIVAR" ? "ADD_NEGATIVE" : "ADD_KEYWORD"
+    }));
+
   let aiRecs: KeywordRecommendation[] = [];
   try {
     aiRecs = await buildAiRecommendations(
       { name: client?.name ?? "", niche: client?.niche },
       keywords,
-      searchTerms
+      searchTerms,
+      rejected
     );
   } catch (err) {
     console.warn(
@@ -179,7 +193,8 @@ function mergeRecommendations(
 async function buildAiRecommendations(
   client: { name: string; niche?: string | null },
   keywords: EvalKeywordRow[],
-  searchTerms: EvalSearchTermRow[]
+  searchTerms: EvalSearchTermRow[],
+  rejected: RejectedExample[]
 ): Promise<KeywordRecommendation[]> {
   // Termos únicos com métricas agregadas (a intenção é por texto, não por grupo).
   const byTerm = new Map<string, { term: string; clicks: number; cost: number; conversions: number }>();
@@ -203,7 +218,8 @@ async function buildAiRecommendations(
     clientName: client.name || "anunciante",
     niche: client.niche,
     keywords: kwTexts,
-    terms
+    terms,
+    rejected
   });
   const byDecision = new Map(decisions.map((d) => [normTerm(d.term), d]));
 
