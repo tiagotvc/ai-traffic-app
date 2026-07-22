@@ -113,6 +113,65 @@ function buildPrompt(args: {
   ].join("\n");
 }
 
+/** Relevância de uma palavra-chave ATIVA vs. o escopo do negócio. */
+export type AiKeywordRelevance = {
+  text: string;
+  relevant: boolean;
+  confidence: number;
+  reason: string;
+};
+
+const KeywordRelevanceSchema = z.object({
+  results: z.array(
+    z.object({
+      text: z.string(),
+      relevant: z.boolean(),
+      confidence: z.number().min(0).max(1).catch(0.6),
+      reason: z.string().max(240)
+    })
+  )
+});
+
+function buildRelevancePrompt(args: {
+  clientName: string;
+  niche?: string | null;
+  keywords: string[];
+}): string {
+  return [
+    "Você é um especialista em Google Ads revisando as PALAVRAS-CHAVE ATIVAS de uma conta.",
+    "",
+    `Anunciante: ${args.clientName}${args.niche ? ` — segmento: ${args.niche}` : ""}.`,
+    "Objetivo: identificar palavras-chave FORA do escopo do negócio — que atraem cliques irrelevantes e deveriam ser PAUSADAS.",
+    "Fora de escopo = tema não relacionado ao que o anunciante oferece; marca de terceiro/concorrente; termo genérico demais sem relação com o segmento; ou claramente sem sentido para o negócio.",
+    "Use o CONJUNTO de palavras-chave para inferir o que o anunciante oferece e marque relevant=false SÓ para as que claramente destoam (não seja agressivo).",
+    "Para cada palavra-chave: relevant (true/false), confidence 0-1, reason curto em português. Retorne 'text' EXATAMENTE como recebido.",
+    "",
+    "PALAVRAS-CHAVE:",
+    args.keywords.slice(0, MAX_TERMS).map((k) => `- "${k}"`).join("\n"),
+    "",
+    'Responda em JSON: {"results":[{"text","relevant","confidence","reason"}]}'
+  ].join("\n");
+}
+
+/**
+ * Classifica a relevância das palavras-chave ativas vs. o escopo do negócio. As
+ * marcadas `relevant=false` são candidatas a PAUSAR (fora de contexto, ex.: uma marca
+ * de terceiro numa conta de serviço). Lança em falha (o chamador trata).
+ */
+export async function classifyKeywordRelevance(args: {
+  clientName: string;
+  niche?: string | null;
+  keywords: string[];
+}): Promise<AiKeywordRelevance[]> {
+  if (args.keywords.length === 0) return [];
+  const { data } = await llmGenerateJson({
+    provider: "claude",
+    prompt: buildRelevancePrompt(args),
+    schema: KeywordRelevanceSchema
+  });
+  return data.results;
+}
+
 /**
  * Chama a IA e devolve a classificação por termo. Lança em falha (sem chave, limite,
  * schema) — o chamador deve capturar e seguir só com as regras determinísticas.

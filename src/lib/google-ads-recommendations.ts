@@ -9,7 +9,11 @@ import {
   type EvalSearchTermRow,
   type KeywordRecommendation
 } from "@/lib/google-ads-keyword-eval";
-import { classifySearchTermIntent, type RejectedExample } from "@/lib/google-ads-keyword-ai";
+import {
+  classifyKeywordRelevance,
+  classifySearchTermIntent,
+  type RejectedExample
+} from "@/lib/google-ads-keyword-ai";
 import { repositories } from "@/db/repositories";
 import type { GoogleKeywordRecommendation } from "@/db/entities/GoogleKeywordRecommendation";
 
@@ -208,69 +212,129 @@ async function buildAiRecommendations(
     byTerm.set(key, agg);
   }
   const terms = [...byTerm.values()].sort((a, b) => b.cost - a.cost);
-  if (terms.length === 0) return [];
-
+  const clientName = client.name || "anunciante";
   const kwTexts = [
     ...new Set(keywords.filter((k) => k.status === "ENABLED" && k.text).map((k) => k.text))
   ];
 
-  const decisions = await classifySearchTermIntent({
-    clientName: client.name || "anunciante",
-    niche: client.niche,
-    keywords: kwTexts,
-    terms,
-    rejected
-  });
-  const byDecision = new Map(decisions.map((d) => [normTerm(d.term), d]));
-
   const recs: KeywordRecommendation[] = [];
-  for (const t of searchTerms) {
-    if (!t.searchTerm || !t.adGroupId) continue;
-    const d = byDecision.get(normTerm(t.searchTerm));
-    if (!d || d.decision === "IGNORE") continue;
 
-    const alreadyKeyword = t.status === "ADDED" || t.status === "ADDED_EXCLUDED";
-    const alreadyExcluded = t.status === "EXCLUDED" || t.status === "ADDED_EXCLUDED";
-    const conf = Math.max(0, Math.min(1, d.confidence));
-    const base = {
-      campaignId: t.campaignId,
-      campaignName: t.campaignName,
-      adGroupId: t.adGroupId,
-      adGroupName: t.adGroupName,
-      keywordText: t.searchTerm,
-      matchType: d.matchType,
-      score: conf,
-      confidence: conf,
-      ruleJustification: d.reason,
-      autoApplyEligible: false,
-      source: "ai_refined" as const,
-      aiJustification: d.reason
-    };
-
-    if (d.decision === "ADD_KEYWORD" && !alreadyKeyword) {
-      recs.push({
-        ...base,
-        actionType: "ADICIONAR_KEYWORD",
-        signals: { intent: "compra", aiConfidence: conf, clicks: t.clicks, cost: round2(t.cost), conversions: t.conversions },
-        intent: { kind: "ADD_KEYWORD", adGroupId: t.adGroupId, text: t.searchTerm, matchType: d.matchType },
-        dedupeKey: `ADICIONAR_KEYWORD:${t.adGroupId}:${normTerm(t.searchTerm)}`
+  // --- Termos de pesquisa → ADICIONAR_KEYWORD / NEGATIVAR (por intenção de compra). ---
+  if (terms.length > 0) {
+    try {
+      const decisions = await classifySearchTermIntent({
+        clientName,
+        niche: client.niche,
+        keywords: kwTexts,
+        terms,
+        rejected
       });
-    } else if (d.decision === "ADD_NEGATIVE" && !alreadyExcluded) {
-      recs.push({
-        ...base,
-        actionType: "NEGATIVAR",
-        signals: { intent: "sem_compra", aiConfidence: conf, clicks: t.clicks, cost: round2(t.cost), conversions: t.conversions },
-        intent: {
-          kind: "ADD_NEGATIVE",
-          scope: "shared",
+      const byDecision = new Map(decisions.map((d) => [normTerm(d.term), d]));
+      for (const t of searchTerms) {
+        if (!t.searchTerm || !t.adGroupId) continue;
+        const d = byDecision.get(normTerm(t.searchTerm));
+        if (!d || d.decision === "IGNORE") continue;
+
+        const alreadyKeyword = t.status === "ADDED" || t.status === "ADDED_EXCLUDED";
+        const alreadyExcluded = t.status === "EXCLUDED" || t.status === "ADDED_EXCLUDED";
+        const conf = Math.max(0, Math.min(1, d.confidence));
+        const base = {
           campaignId: t.campaignId,
+          campaignName: t.campaignName,
           adGroupId: t.adGroupId,
-          text: t.searchTerm,
-          matchType: d.matchType
-        },
-        dedupeKey: `NEGATIVAR:${t.adGroupId}:${normTerm(t.searchTerm)}`
-      });
+          adGroupName: t.adGroupName,
+          keywordText: t.searchTerm,
+          matchType: d.matchType,
+          score: conf,
+          confidence: conf,
+          ruleJustification: d.reason,
+          autoApplyEligible: false,
+          source: "ai_refined" as const,
+          aiJustification: d.reason
+        };
+
+        if (d.decision === "ADD_KEYWORD" && !alreadyKeyword) {
+          recs.push({
+            ...base,
+            actionType: "ADICIONAR_KEYWORD",
+            signals: { intent: "compra", aiConfidence: conf, clicks: t.clicks, cost: round2(t.cost), conversions: t.conversions },
+            intent: { kind: "ADD_KEYWORD", adGroupId: t.adGroupId, text: t.searchTerm, matchType: d.matchType },
+            dedupeKey: `ADICIONAR_KEYWORD:${t.adGroupId}:${normTerm(t.searchTerm)}`
+          });
+        } else if (d.decision === "ADD_NEGATIVE" && !alreadyExcluded) {
+          recs.push({
+            ...base,
+            actionType: "NEGATIVAR",
+            signals: { intent: "sem_compra", aiConfidence: conf, clicks: t.clicks, cost: round2(t.cost), conversions: t.conversions },
+            intent: {
+              kind: "ADD_NEGATIVE",
+              scope: "shared",
+              campaignId: t.campaignId,
+              adGroupId: t.adGroupId,
+              text: t.searchTerm,
+              matchType: d.matchType
+            },
+            dedupeKey: `NEGATIVAR:${t.adGroupId}:${normTerm(t.searchTerm)}`
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(
+        "[google-ads-recommendations] IA (termos) indisponível:",
+        err instanceof Error ? err.message : err
+      );
     }
   }
+
+  // --- Palavras-chave ativas FORA de contexto → PAUSAR (ex.: marca de terceiro). ---
+  const enabledKws = keywords.filter((k) => k.status === "ENABLED" && k.text && k.adGroupId);
+  const uniqueEnabled = [...new Set(enabledKws.map((k) => k.text))].slice(0, 60);
+  if (uniqueEnabled.length > 0) {
+    try {
+      const relevance = await classifyKeywordRelevance({
+        clientName,
+        niche: client.niche,
+        keywords: uniqueEnabled
+      });
+      const irrelevant = new Map(
+        relevance.filter((r) => !r.relevant).map((r) => [normTerm(r.text), r])
+      );
+      for (const k of enabledKws) {
+        const r = irrelevant.get(normTerm(k.text));
+        if (!r) continue;
+        const conf = Math.max(0, Math.min(1, r.confidence));
+        recs.push({
+          actionType: "PAUSAR",
+          campaignId: k.campaignId,
+          campaignName: k.campaignName,
+          adGroupId: k.adGroupId,
+          adGroupName: k.adGroupName,
+          keywordText: k.text,
+          matchType: k.matchType,
+          signals: { intent: "fora_escopo", aiConfidence: conf },
+          score: conf,
+          confidence: conf,
+          ruleJustification: r.reason,
+          autoApplyEligible: false,
+          intent: {
+            kind: "PAUSE_KEYWORD",
+            adGroupId: k.adGroupId,
+            criterionId: k.criterionId,
+            text: k.text,
+            matchType: k.matchType
+          },
+          dedupeKey: `PAUSAR:${k.adGroupId}:${normTerm(k.text)}`,
+          source: "ai_refined",
+          aiJustification: r.reason
+        });
+      }
+    } catch (err) {
+      console.warn(
+        "[google-ads-recommendations] IA (relevância) indisponível:",
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+
   return recs;
 }
