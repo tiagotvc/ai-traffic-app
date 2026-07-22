@@ -1045,6 +1045,7 @@
   "campaignManager": {
     "loading": "Carregando campanha…",
     "navCampaigns": "Campanhas",
+    "navClient": "Cliente",
     "navCampaign": "Campanha",
     "navAdset": "Conjunto",
     "navAd": "Anúncio",

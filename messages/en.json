@@ -1045,6 +1045,7 @@
   "campaignManager": {
     "loading": "Loading campaign…",
     "navCampaigns": "Campaigns",
+    "navClient": "Client",
     "navCampaign": "Campaign",
     "navAdset": "Ad set",
     "navAd": "Ad",

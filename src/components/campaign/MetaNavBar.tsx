@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
-import { Image as ImageIcon, Layers, Megaphone } from "lucide-react";
+import { Image as ImageIcon, Layers, Megaphone, Users } from "lucide-react";
 
 import { useRouter } from "@/i18n/navigation";
 import { GoogleNavSelect, type NavOption } from "@/components/google/GoogleNavSelect";
@@ -13,12 +13,12 @@ type AdsetLike = { id: string; name?: string | null };
 type AdLike = { id: string; name?: string | null; adsetId?: string | null };
 
 /**
- * Barra de navegação Meta (Campanha › Conjunto › Anúncio), no mesmo padrão do
- * seletor do Google (reusa GoogleNavSelect). Autossuficiente: lê metaCampaignId da
- * rota e client/adset da query. Conjuntos/anúncios vêm do contexto de drilldown (sem
- * novo fetch); a lista de campanhas vem de /api/command-center/campaigns. Como o Meta
- * não tem rota por conjunto/anúncio, escolher um conjunto abre a aba Anúncios filtrada
- * e escolher um anúncio cai na aba Anúncios do conjunto correspondente.
+ * Barra de navegação Meta em cascata: Cliente › Campanha › Conjunto › Anúncio
+ * (reusa GoogleNavSelect). Começa pelo CLIENTE — só depois de escolher o cliente
+ * lista as campanhas dele (evita despejar tudo). Conjuntos/anúncios vêm do contexto
+ * de drilldown da campanha carregada. Autossuficiente: lê metaCampaignId da rota e
+ * client/adset da query. Como o Meta não tem rota por conjunto/anúncio, escolher um
+ * conjunto abre a aba Anúncios filtrada e escolher um anúncio cai na aba do conjunto.
  */
 export function MetaNavBar() {
   const t = useTranslations("campaignManager");
@@ -28,15 +28,37 @@ export function MetaNavBar() {
   const drill = useCampaignDrilldownOptional();
 
   const metaCampaignId = String(params?.metaCampaignId ?? "");
-  const clientSlug = searchParams.get("client") ?? "";
   const adsetId = searchParams.get("adset") || undefined;
-  const client = encodeURIComponent(clientSlug);
+  const currentClient = searchParams.get("client") || drill?.campaign?.clientSlug || "";
 
+  const [clients, setClients] = useState<NavOption[]>([]);
+  const [selectedClient, setSelectedClient] = useState(currentClient);
   const [campaigns, setCampaigns] = useState<NavOption[]>([]);
 
+  // Lista de clientes (para a caixa Cliente).
   useEffect(() => {
-    if (!clientSlug) return;
-    fetch(`/api/command-center/campaigns?clientId=${encodeURIComponent(clientSlug)}`)
+    fetch("/api/clients")
+      .then((r) => r.json())
+      .then((j) => {
+        setClients(
+          (j.clients ?? []).map((c: { slug: string; name: string }) => ({ value: c.slug, label: c.name }))
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  // Sincroniza o cliente selecionado com o da campanha atual (ao navegar).
+  useEffect(() => {
+    if (currentClient) setSelectedClient(currentClient);
+  }, [currentClient]);
+
+  // Campanhas do cliente selecionado (só carrega após ter um cliente).
+  useEffect(() => {
+    if (!selectedClient) {
+      setCampaigns([]);
+      return;
+    }
+    fetch(`/api/command-center/campaigns?clientId=${encodeURIComponent(selectedClient)}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.ok) {
@@ -49,24 +71,30 @@ export function MetaNavBar() {
         }
       })
       .catch(() => {});
-  }, [clientSlug]);
+  }, [selectedClient]);
 
+  const client = encodeURIComponent(selectedClient);
+  const onCurrentClient = selectedClient === currentClient;
   const adsets = (drill?.adsets ?? []) as AdsetLike[];
   const adsAll = (drill?.ads ?? []) as AdLike[];
   const adsScoped = adsetId ? adsAll.filter((a) => a.adsetId === adsetId) : adsAll;
 
-  // Garante que a campanha atual apareça com o nome mesmo antes da lista carregar.
+  // Valor da caixa Campanha: a campanha atual só quando estamos no cliente dela.
+  const campaignValue = onCurrentClient ? metaCampaignId : "";
   const hasCurrent = campaigns.some((c) => c.value === metaCampaignId);
-  const campaignOptions: NavOption[] = hasCurrent
-    ? campaigns
-    : [{ value: metaCampaignId, label: drill?.campaign?.name ?? metaCampaignId }, ...campaigns];
+  const campaignOptions: NavOption[] =
+    onCurrentClient && !hasCurrent
+      ? [{ value: metaCampaignId, label: drill?.campaign?.name ?? metaCampaignId }, ...campaigns]
+      : campaigns;
 
   const ALL: NavOption = { value: "", label: t("navAll") };
   const adsetOptions: NavOption[] = [ALL, ...adsets.map((a) => ({ value: a.id, label: a.name || `#${a.id}` }))];
   const adOptions: NavOption[] = [ALL, ...adsScoped.map((a) => ({ value: a.id, label: a.name || `#${a.id}` }))];
 
   function goCampaign(id: string) {
-    if (id && id !== metaCampaignId) router.push(`/campaigns/${id}?client=${client}`);
+    if (id && (id !== metaCampaignId || !onCurrentClient)) {
+      router.push(`/campaigns/${id}?client=${client}`);
+    }
   }
   function goAdset(id: string) {
     if (!id) {
@@ -88,12 +116,19 @@ export function MetaNavBar() {
   return (
     <div className="flex flex-wrap items-end gap-2 py-2">
       <GoogleNavSelect
+        label={t("navClient")}
+        value={selectedClient}
+        options={clients}
+        onSelect={setSelectedClient}
+        icon={<Users size={14} />}
+      />
+      <GoogleNavSelect
         label={t("navCampaign")}
-        value={metaCampaignId}
+        value={campaignValue}
         options={campaignOptions}
         onSelect={goCampaign}
         icon={<Megaphone size={14} />}
-        active={!adsetId}
+        active={onCurrentClient && !adsetId}
       />
       <GoogleNavSelect
         label={t("navAdset")}
