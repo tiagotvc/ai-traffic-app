@@ -324,23 +324,21 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             { value: "traffic", label: t("objectiveTraffic") }
           ]}
         />
-        {googleAvailable ? (
-          <FilterSelectDropdown
-            className="ui-filter-panel-field"
-            icon={<Building2 size={14} />}
-            label={t("filterPlatform")}
-            placeholder={t("platform_both")}
-            value={platform === "both" ? "" : platform}
-            onChange={(v) => setPlatform((v || "both") as "meta" | "google" | "both")}
-            options={[
-              { value: "meta", label: t("platform_meta") },
-              { value: "google", label: t("platform_google") }
-            ]}
-          />
-        ) : null}
+        <FilterSelectDropdown
+          className="ui-filter-panel-field"
+          icon={<Building2 size={14} />}
+          label={t("filterPlatform")}
+          placeholder={t("platform_both")}
+          value={platform === "both" ? "" : platform}
+          onChange={(v) => setPlatform((v || "both") as "meta" | "google" | "both")}
+          options={[
+            { value: "meta", label: t("platform_meta") },
+            { value: "google", label: t("platform_google") }
+          ]}
+        />
       </>
     ),
-    [t, qInput, statusFilter, objectiveFilter, googleAvailable, platform]
+    [t, qInput, statusFilter, objectiveFilter, platform]
   );
 
   const displayRows = useMemo(() => {
