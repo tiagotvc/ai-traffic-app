@@ -18,6 +18,7 @@ import { Link } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
 import { ClientGoogleAdsPanel } from "@/components/ClientGoogleAdsPanel";
+import { PlatformConnectCard } from "@/components/PlatformConnectCard";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
 import { SyncRefreshButton } from "@/components/SyncRefreshButton";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
@@ -112,31 +113,6 @@ function campaignMetric(row: CampaignRow, key: MetricKey): number {
     default:
       return 0;
   }
-}
-
-/** Card exibido quando a plataforma selecionada não está conectada para o cliente. */
-function PlatformConnectCard({
-  platform,
-  clientId
-}: {
-  platform: "meta" | "google";
-  clientId: string;
-}) {
-  const t = useTranslations("clientOverview");
-  const title = platform === "meta" ? t("connectMetaTitle") : t("connectGoogleTitle");
-  const body = platform === "meta" ? t("connectMetaBody") : t("connectGoogleBody");
-  return (
-    <div className="ui-card flex flex-col items-start gap-2 p-6">
-      <div className="text-sm font-semibold text-[var(--text-main)]">{title}</div>
-      <p className="max-w-prose text-xs text-[var(--text-dim)]">{body}</p>
-      <Link
-        href={`/clients/${clientId}/settings`}
-        className="ui-link mt-1 text-xs font-semibold"
-      >
-        {t("connectCta")}
-      </Link>
-    </div>
-  );
 }
 
 export function ClientOverviewClient({ clientId }: { clientId: string }) {

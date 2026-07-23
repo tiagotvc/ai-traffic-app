@@ -49,6 +49,7 @@ import { CampaignGroupPager } from "@/components/campaign/CampaignGroupPager";
 import { CampaignMetricsDataBanner } from "@/components/campaign/CampaignMetricsDataBanner";
 import { ClientGoogleAdsPanel } from "@/components/ClientGoogleAdsPanel";
 import { HubGoogleCampaigns } from "@/components/campaign/HubGoogleCampaigns";
+import { PlatformConnectCard } from "@/components/PlatformConnectCard";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTypeSelectCompact } from "@/components/campaign/CampaignTypeSelectCompact";
 import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
@@ -267,7 +268,12 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     [clients, clientFilter]
   );
   const googleAvailable = !!clientFilter && !!selectedClient?.googleConnected;
-  const showMeta = platform !== "google";
+  // Meta só entra em cena se: sem cliente específico (agregado) ou o cliente selecionado tem Meta.
+  const metaConnectedForClient = !clientFilter || !!selectedClient?.metaConnected;
+  const showMeta = platform !== "google" && metaConnectedForClient;
+  // CTAs de conexão: cliente selecionado sem a plataforma pedida — não busca nada, só oferece conectar.
+  const showMetaConnect = platform !== "google" && !!clientFilter && !selectedClient?.metaConnected;
+  const showGoogleConnect = platform !== "meta" && !!clientFilter && !selectedClient?.googleConnected;
   // Default por cliente (uma vez por cliente, após carregar a lista; não sobrescreve troca manual).
   const platformDefaultedFor = useRef<string | null>(null);
   useEffect(() => {
@@ -558,6 +564,15 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const load = useCallback(
     (opts?: { live?: boolean; refresh?: boolean }) => {
       abortRef.current?.abort();
+      // Sem Meta em cena (plataforma Google, ou cliente sem Meta conectado): não varre o Meta à toa.
+      if (!showMeta) {
+        setRows([]);
+        setTotal(0);
+        setTotals({ spend: 0, conversions: 0, leads: 0 });
+        setEnrichError(null);
+        setLoading(false);
+        return;
+      }
       const ac = new AbortController();
       abortRef.current = ac;
       const reqId = ++requestIdRef.current;
@@ -635,7 +650,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       sortKey,
       sortDir,
       groupByType,
-      periodUserActivated
+      periodUserActivated,
+      showMeta
     ]
   );
 
@@ -965,6 +981,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         <PageToolbar
           filterCreatorFields
           defaultFiltersOpen
+          periodAtEnd
           eyebrow={t("breadcrumb")}
           icon={<Megaphone size={16} />}
           title={t("title")}
@@ -1638,9 +1655,13 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       )
       ) : null}
 
+      {showMetaConnect ? <PlatformConnectCard platform="meta" clientId={clientFilter} /> : null}
+
       {platform !== "meta" && googleAvailable && clientFilter ? (
         <ClientGoogleAdsPanel clientId={clientFilter} showSyncButton={false} />
       ) : null}
+
+      {showGoogleConnect ? <PlatformConnectCard platform="google" clientId={clientFilter} /> : null}
 
       {platform !== "meta" && !clientFilter ? (
         <HubGoogleCampaigns period={period} q={q} />

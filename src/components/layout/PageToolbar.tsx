@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { PageFilterBar } from "@/components/layout/PageFilterBar";
+import { PeriodFilter } from "@/components/PeriodFilter";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
 import { FilterToggleButton } from "@/components/ui/FilterToggleButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
@@ -28,6 +29,7 @@ export function PageToolbar({
   showAccountFilter = true,
   filterCreatorFields = false,
   defaultFiltersOpen = false,
+  periodAtEnd = false,
   className
 }: {
   eyebrow?: string;
@@ -50,6 +52,8 @@ export function PageToolbar({
   filterCreatorFields?: boolean;
   /** Filtros já expandidos por padrão (ex.: lista de campanhas). */
   defaultFiltersOpen?: boolean;
+  /** Move o filtro de Período para o fim (depois dos pageFilters) em vez de ao lado do Cliente. */
+  periodAtEnd?: boolean;
   className?: string;
 }) {
   const t = useTranslations("dashboard");
@@ -114,10 +118,23 @@ export function PageToolbar({
                 periodFilterDisabled={periodFilterDisabled}
                 periodFilterDisabledHint={periodFilterDisabledHint}
                 showAccount={showAccountFilter}
+                showPeriod={!periodAtEnd}
                 compact
               />
             ) : null}
             {pageFilters}
+            {hasGlobalFilters && periodAtEnd ? (
+              <div className="ui-filter-panel-field">
+                <PeriodFilter
+                  value={strip!.period}
+                  onChange={strip!.setPeriod}
+                  creatorField={filterCreatorFields}
+                  variant="commandStrip"
+                  disabled={periodFilterDisabled}
+                  disabledHint={periodFilterDisabledHint}
+                />
+              </div>
+            ) : null}
           </PageFilterBar>
         ) : null}
       </div>
