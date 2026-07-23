@@ -48,6 +48,7 @@ import { CampaignExportModal, toCampaignExportRows } from "@/components/campaign
 import { CampaignGroupPager } from "@/components/campaign/CampaignGroupPager";
 import { CampaignMetricsDataBanner } from "@/components/campaign/CampaignMetricsDataBanner";
 import { ClientGoogleAdsPanel } from "@/components/ClientGoogleAdsPanel";
+import { HubGoogleCampaigns } from "@/components/campaign/HubGoogleCampaigns";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTypeSelectCompact } from "@/components/campaign/CampaignTypeSelectCompact";
 import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
@@ -1639,6 +1640,10 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
 
       {platform !== "meta" && googleAvailable && clientFilter ? (
         <ClientGoogleAdsPanel clientId={clientFilter} showSyncButton={false} />
+      ) : null}
+
+      {platform !== "meta" && !clientFilter ? (
+        <HubGoogleCampaigns period={period} q={q} />
       ) : null}
 
       <CampaignCreationModePicker

@@ -201,6 +201,7 @@ export function useDashboardData() {
   const [loading, setLoading] = useState(true);
   const [metaConnectionLoading, setMetaConnectionLoading] = useState(true);
   const [metaConnected, setMetaConnected] = useState(false);
+  const [platform, setPlatform] = useState<"meta" | "google" | "both">("both");
   const [note, setNote] = useState<string | null>(null);
 
   const selectedTz = useMemo(() => {
@@ -217,13 +218,14 @@ export function useDashboardData() {
     setLoading(true);
     try {
       const { current, previous } = resolveRanges(currentPeriod, tz);
+      const platformQ = platform !== "both" ? `&platform=${platform}` : "";
       const curQ = buildQuery(clientFilter, accountFilter, current);
       const prevQ = previous ? buildQuery(clientFilter, accountFilter, previous) : null;
 
       const [sRes, tRes, pRes] = await Promise.all([
-        fetch(`/api/dashboard/summary?${curQ}`),
-        fetch(`/api/dashboard/timeseries?${curQ}`),
-        prevQ ? fetch(`/api/dashboard/summary?${prevQ}`) : Promise.resolve(null)
+        fetch(`/api/dashboard/summary?${curQ}${platformQ}`),
+        fetch(`/api/dashboard/timeseries?${curQ}${platformQ}`),
+        prevQ ? fetch(`/api/dashboard/summary?${prevQ}${platformQ}`) : Promise.resolve(null)
       ]);
 
       const parseJson = async (res: Response) => {
@@ -291,7 +293,7 @@ export function useDashboardData() {
         .then((j) => setCriticalAlerts(j.alerts ?? []))
         .catch(() => {})
     ]);
-  }, [clientFilter, accountFilter, periodKey]);
+  }, [clientFilter, accountFilter, periodKey, platform]);
 
   const loadClients = useCallback(() => {
     const qs = periodStateToQuery(periodRef.current).toString();
@@ -704,6 +706,8 @@ export function useDashboardData() {
     loading,
     metaConnectionLoading,
     metaConnected,
+    platform,
+    setPlatform,
     note,
     summary,
     prevSummary,

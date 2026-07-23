@@ -33,9 +33,13 @@ export async function GET(req: Request) {
   if (!accountIds.length && !clientIds.length) return NextResponse.json({ ok: true, series: [] });
 
   const rangeOpts = { since: period.since, until: period.until, allTime: period.allTime };
+  // Filtro de plataforma (default "both"): zera o lado não selecionado passando escopo vazio.
+  const platform = url.searchParams.get("platform") || "both";
+  const metaAccountIds = platform === "google" ? [] : accountIds;
+  const googleClientIds = platform === "meta" ? [] : clientIds;
   const [metaSeries, googleSeries] = await Promise.all([
-    loadMetricSeriesByDay(accountIds, days, rangeOpts),
-    loadGoogleMetricSeriesByDay(clientIds, days, rangeOpts)
+    loadMetricSeriesByDay(metaAccountIds, days, rangeOpts),
+    loadGoogleMetricSeriesByDay(googleClientIds, days, rangeOpts)
   ]);
   const rows = mergeMetricSeries(metaSeries, googleSeries);
 

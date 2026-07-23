@@ -4,6 +4,7 @@ import { Between, In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import { getAppContext, listClientsForTenant, slugify } from "@/lib/app-context";
 import { isGoogleAdsEnabled } from "@/lib/google-env";
+import { parsePeriodFromSearchParams } from "@/lib/report-period";
 
 function isoDay(daysAgo: number): string {
   const d = new Date();
@@ -28,11 +29,15 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
-  const days = Math.min(Math.max(Number(url.searchParams.get("days")) || 90, 1), 365);
+  // Respeita o filtro de período do hub (period/since/until/days); all-time = sem recorte de data.
+  const parsed = parsePeriodFromSearchParams(url);
+  const dayFilter = parsed.allTime
+    ? undefined
+    : Between(parsed.since ?? isoDay(parsed.days ?? 90), parsed.until ?? isoDay(0));
 
   const { googleCampaignMetricSnapshot: repo } = await repositories();
   const snaps = await repo.find({
-    where: { clientId: In(clientIds), day: Between(isoDay(days), isoDay(0)) }
+    where: { clientId: In(clientIds), ...(dayFilter ? { day: dayFilter } : {}) }
   });
 
   type Agg = {

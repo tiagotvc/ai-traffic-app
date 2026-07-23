@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useMemo, type Dispatch, type SetStateAction } from "react";
 
 import { formatMetricValue, DEFAULT_DASHBOARD_CHART_METRICS, type MetricKey } from "@/lib/dashboard-metrics";
 import { DEFAULT_DASHBOARD_LAYOUT } from "@/lib/dashboard-layout-prefs";
@@ -23,6 +23,8 @@ export function useClientViewDashboardData() {
     loading: false,
     metaConnectionLoading: false,
     metaConnected: true,
+    platform: "both" as "meta" | "google" | "both",
+    setPlatform: (() => {}) as Dispatch<SetStateAction<"meta" | "google" | "both">>,
     note: null,
     summary: null,
     prevSummary: null,
