@@ -681,7 +681,13 @@ export type GoogleAdsKeywordRow = {
   averageCpc: number;
 };
 
-/** Palavras-chave (keyword_view), opcionalmente filtradas por campanha/grupo. Só leitura. */
+/**
+ * Palavras-chave POSITIVAS de um grupo/campanha. Fonte da VERDADE = `ad_group_criterion`
+ * (lista real cadastrada hoje: exclui negativas `negative=true` e REMOVIDAS), enriquecida
+ * com métricas do `keyword_view` no período. Assim a aba reflete exatamente as keywords
+ * que existem na conta — inclusive as sem atividade — e nunca mostra negativas/removidas.
+ * Só leitura.
+ */
 export async function getKeywords(
   accessToken: string,
   customerId: string,
@@ -691,18 +697,50 @@ export async function getKeywords(
   if (!ISO_DATE.test(range.since) || !ISO_DATE.test(range.until)) {
     throw new GoogleAdsApiError("Datas inválidas (use YYYY-MM-DD)", 400);
   }
-  const where = [`segments.date BETWEEN '${range.since}' AND '${range.until}'`];
-  if (opts.campaignId) where.push(`campaign.id = ${opts.campaignId.replace(/\D/g, "")}`);
-  if (opts.adGroupId) where.push(`ad_group.id = ${opts.adGroupId.replace(/\D/g, "")}`);
-  const query =
+  const campId = opts.campaignId ? opts.campaignId.replace(/\D/g, "") : "";
+  const agId = opts.adGroupId ? opts.adGroupId.replace(/\D/g, "") : "";
+
+  // 1) Lista real de palavras-chave positivas (sem métricas).
+  const listWhere = [
+    "ad_group_criterion.type = 'KEYWORD'",
+    "ad_group_criterion.negative = false",
+    "ad_group_criterion.status != 'REMOVED'"
+  ];
+  if (campId) listWhere.push(`campaign.id = ${campId}`);
+  if (agId) listWhere.push(`ad_group.id = ${agId}`);
+  const listQuery =
     `SELECT campaign.id, campaign.name, ad_group.id, ad_group.name, ` +
     `ad_group_criterion.criterion_id, ad_group_criterion.keyword.text, ` +
-    `ad_group_criterion.keyword.match_type, ` +
-    `ad_group_criterion.status, ${METRIC_SELECT} ` +
-    `FROM keyword_view WHERE ${where.join(" AND ")} ORDER BY metrics.cost_micros DESC`;
+    `ad_group_criterion.keyword.match_type, ad_group_criterion.status ` +
+    `FROM ad_group_criterion WHERE ${listWhere.join(" AND ")}`;
 
-  return queryWithLoginFallback(accessToken, customerId, query, (rows) => {
-    const byKey = new Map<string, GoogleAdsKeywordRow>();
+  // 2) Métricas do período por keyword (keyword_view), para juntar por criterion_id.
+  const mWhere = [`segments.date BETWEEN '${range.since}' AND '${range.until}'`];
+  if (campId) mWhere.push(`campaign.id = ${campId}`);
+  if (agId) mWhere.push(`ad_group.id = ${agId}`);
+  const metricsQuery =
+    `SELECT ad_group.id, ad_group_criterion.criterion_id, ${METRIC_SELECT} ` +
+    `FROM keyword_view WHERE ${mWhere.join(" AND ")}`;
+
+  type Agg = { impressions: number; clicks: number; cost: number; conversions: number };
+  const metricsPromise = queryWithLoginFallback(accessToken, customerId, metricsQuery, (rows) => {
+    const m = new Map<string, Agg>();
+    for (const row of rows) {
+      const g = (row.adGroup ?? {}) as Record<string, unknown>;
+      const crit = (row.adGroupCriterion ?? {}) as Record<string, unknown>;
+      const key = `${String(g.id ?? "").replace(/\D/g, "")}:${String(crit.criterionId ?? "").replace(/\D/g, "")}`;
+      let agg = m.get(key);
+      if (!agg) {
+        agg = { impressions: 0, clicks: 0, cost: 0, conversions: 0 };
+        m.set(key, agg);
+      }
+      accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
+    }
+    return m;
+  }).catch(() => new Map<string, Agg>());
+
+  const listPromise = queryWithLoginFallback(accessToken, customerId, listQuery, (rows) => {
+    const out: GoogleAdsKeywordRow[] = [];
     for (const row of rows) {
       const c = (row.campaign ?? {}) as Record<string, unknown>;
       const g = (row.adGroup ?? {}) as Record<string, unknown>;
@@ -710,32 +748,38 @@ export async function getKeywords(
       const kw = (crit.keyword ?? {}) as Record<string, unknown>;
       const text = String(kw.text ?? "");
       if (!text) continue;
-      const adGroupId = String(g.id ?? "").replace(/\D/g, "");
-      const key = `${adGroupId}:${text}`;
-      let agg = byKey.get(key);
-      if (!agg) {
-        agg = {
-          text,
-          matchType: String(kw.matchType ?? ""),
-          status: String(crit.status ?? ""),
-          criterionId: String(crit.criterionId ?? "").replace(/\D/g, ""),
-          campaignId: String(c.id ?? "").replace(/\D/g, ""),
-          campaignName: String(c.name ?? ""),
-          adGroupId,
-          adGroupName: String(g.name ?? ""),
-          impressions: 0,
-          clicks: 0,
-          cost: 0,
-          conversions: 0,
-          ctr: 0,
-          averageCpc: 0
-        };
-        byKey.set(key, agg);
-      }
-      accMetrics(agg, (row.metrics ?? {}) as Record<string, unknown>);
+      out.push({
+        text,
+        matchType: String(kw.matchType ?? ""),
+        status: String(crit.status ?? ""),
+        criterionId: String(crit.criterionId ?? "").replace(/\D/g, ""),
+        campaignId: String(c.id ?? "").replace(/\D/g, ""),
+        campaignName: String(c.name ?? ""),
+        adGroupId: String(g.id ?? "").replace(/\D/g, ""),
+        adGroupName: String(g.name ?? ""),
+        impressions: 0,
+        clicks: 0,
+        cost: 0,
+        conversions: 0,
+        ctr: 0,
+        averageCpc: 0
+      });
     }
-    return [...byKey.values()].map(finalizeRow).sort((a, b) => b.cost - a.cost);
+    return out;
   });
+
+  const [list, metrics] = await Promise.all([listPromise, metricsPromise]);
+  for (const r of list) {
+    const mm = metrics.get(`${r.adGroupId}:${r.criterionId}`);
+    if (mm) {
+      r.impressions = mm.impressions;
+      r.clicks = mm.clicks;
+      r.cost = mm.cost;
+      r.conversions = mm.conversions;
+    }
+    finalizeRow(r);
+  }
+  return list.sort((a, b) => b.cost - a.cost);
 }
 
 export type GoogleAdsNegativeKeywordRow = {
@@ -747,28 +791,36 @@ export type GoogleAdsNegativeKeywordRow = {
   campaignName: string;
   adGroupId: string;
   adGroupName: string;
+  /** Onde a negativa está: grupo, campanha ou lista compartilhada (negativa carregada). */
+  level: "adGroup" | "campaign" | "sharedSet";
+  sharedSetName?: string;
 };
 
 /**
- * Palavras-chave NEGATIVAS de nível de grupo (ad_group_criterion negative=true).
- * O `keyword_view` só traz positivas (com métricas) — negativas não veiculam, então
- * vêm do resource `ad_group_criterion`, sem métricas. Só leitura.
+ * Palavras-chave NEGATIVAS de TODOS os níveis: grupo (`ad_group_criterion`), campanha
+ * (`campaign_criterion`) e LISTAS COMPARTILHADAS (`shared_set`/`shared_criterion`, onde
+ * geralmente cai a lista pronta de negativas que se sobe ao criar a campanha). O
+ * `keyword_view` só traz positivas (com métricas) — negativas não veiculam. Só leitura;
+ * cada nível é resiliente (falha em um não derruba os outros).
  */
 export async function getNegativeKeywords(
   accessToken: string,
   customerId: string,
   opts: { campaignId?: string; adGroupId?: string }
 ): Promise<GoogleAdsNegativeKeywordRow[]> {
-  const where = ["ad_group_criterion.type = 'KEYWORD'", "ad_group_criterion.negative = true"];
-  if (opts.campaignId) where.push(`campaign.id = ${opts.campaignId.replace(/\D/g, "")}`);
-  if (opts.adGroupId) where.push(`ad_group.id = ${opts.adGroupId.replace(/\D/g, "")}`);
-  const query =
+  const campId = opts.campaignId ? opts.campaignId.replace(/\D/g, "") : "";
+  const agId = opts.adGroupId ? opts.adGroupId.replace(/\D/g, "") : "";
+
+  // 1) Nível de GRUPO.
+  const agWhere = ["ad_group_criterion.type = 'KEYWORD'", "ad_group_criterion.negative = true"];
+  if (campId) agWhere.push(`campaign.id = ${campId}`);
+  if (agId) agWhere.push(`ad_group.id = ${agId}`);
+  const agQuery =
     `SELECT campaign.id, campaign.name, ad_group.id, ad_group.name, ` +
     `ad_group_criterion.criterion_id, ad_group_criterion.keyword.text, ` +
     `ad_group_criterion.keyword.match_type, ad_group_criterion.status ` +
-    `FROM ad_group_criterion WHERE ${where.join(" AND ")}`;
-
-  return queryWithLoginFallback(accessToken, customerId, query, (rows) => {
+    `FROM ad_group_criterion WHERE ${agWhere.join(" AND ")}`;
+  const agRows = queryWithLoginFallback(accessToken, customerId, agQuery, (rows) => {
     const out: GoogleAdsNegativeKeywordRow[] = [];
     for (const row of rows) {
       const c = (row.campaign ?? {}) as Record<string, unknown>;
@@ -785,10 +837,115 @@ export async function getNegativeKeywords(
         campaignId: String(c.id ?? "").replace(/\D/g, ""),
         campaignName: String(c.name ?? ""),
         adGroupId: String(g.id ?? "").replace(/\D/g, ""),
-        adGroupName: String(g.name ?? "")
+        adGroupName: String(g.name ?? ""),
+        level: "adGroup" as const
       });
     }
-    return out.sort((a, b) => a.text.localeCompare(b.text));
+    return out;
+  }).catch(() => [] as GoogleAdsNegativeKeywordRow[]);
+
+  // 2) Nível de CAMPANHA.
+  const campWhere = ["campaign_criterion.type = 'KEYWORD'", "campaign_criterion.negative = true"];
+  if (campId) campWhere.push(`campaign.id = ${campId}`);
+  const campQuery =
+    `SELECT campaign.id, campaign.name, campaign_criterion.criterion_id, ` +
+    `campaign_criterion.keyword.text, campaign_criterion.keyword.match_type, ` +
+    `campaign_criterion.status FROM campaign_criterion WHERE ${campWhere.join(" AND ")}`;
+  const campRows = queryWithLoginFallback(accessToken, customerId, campQuery, (rows) => {
+    const out: GoogleAdsNegativeKeywordRow[] = [];
+    for (const row of rows) {
+      const c = (row.campaign ?? {}) as Record<string, unknown>;
+      const crit = (row.campaignCriterion ?? {}) as Record<string, unknown>;
+      const kw = (crit.keyword ?? {}) as Record<string, unknown>;
+      const text = String(kw.text ?? "");
+      if (!text) continue;
+      out.push({
+        text,
+        matchType: String(kw.matchType ?? ""),
+        status: String(crit.status ?? ""),
+        criterionId: String(crit.criterionId ?? "").replace(/\D/g, ""),
+        campaignId: String(c.id ?? "").replace(/\D/g, ""),
+        campaignName: String(c.name ?? ""),
+        adGroupId: "",
+        adGroupName: "",
+        level: "campaign" as const
+      });
+    }
+    return out;
+  }).catch(() => [] as GoogleAdsNegativeKeywordRow[]);
+
+  // 3) LISTAS COMPARTILHADAS de negativas anexadas à(s) campanha(s).
+  const sharedRows = getSharedNegativeKeywords(accessToken, customerId, campId).catch(
+    () => [] as GoogleAdsNegativeKeywordRow[]
+  );
+
+  const [ag, camp, shared] = await Promise.all([agRows, campRows, sharedRows]);
+  return [...ag, ...camp, ...shared].sort((a, b) => a.text.localeCompare(b.text));
+}
+
+/** Negativas de listas compartilhadas (shared_set) anexadas às campanhas. */
+async function getSharedNegativeKeywords(
+  accessToken: string,
+  customerId: string,
+  campId: string
+): Promise<GoogleAdsNegativeKeywordRow[]> {
+  // 3a) Quais listas de negativas estão anexadas (por campanha).
+  const cssWhere = [
+    "shared_set.type = 'NEGATIVE_KEYWORDS'",
+    "campaign_shared_set.status = 'ENABLED'"
+  ];
+  if (campId) cssWhere.push(`campaign.id = ${campId}`);
+  const cssQuery =
+    `SELECT campaign.id, campaign.name, shared_set.id, shared_set.name ` +
+    `FROM campaign_shared_set WHERE ${cssWhere.join(" AND ")}`;
+  const sets = await queryWithLoginFallback(accessToken, customerId, cssQuery, (rows) => {
+    const m = new Map<string, { name: string; campaignId: string; campaignName: string }>();
+    for (const row of rows) {
+      const c = (row.campaign ?? {}) as Record<string, unknown>;
+      const s = (row.sharedSet ?? {}) as Record<string, unknown>;
+      const id = String(s.id ?? "");
+      if (!id) continue;
+      if (!m.has(id)) {
+        m.set(id, {
+          name: String(s.name ?? ""),
+          campaignId: String(c.id ?? "").replace(/\D/g, ""),
+          campaignName: String(c.name ?? "")
+        });
+      }
+    }
+    return m;
+  });
+  if (sets.size === 0) return [];
+
+  // 3b) Critérios (negativas) dentro dessas listas.
+  const ids = [...sets.keys()].join(",");
+  const scQuery =
+    `SELECT shared_set.id, shared_criterion.criterion_id, shared_criterion.keyword.text, ` +
+    `shared_criterion.keyword.match_type FROM shared_criterion ` +
+    `WHERE shared_criterion.type = 'KEYWORD' AND shared_set.id IN (${ids})`;
+  return queryWithLoginFallback(accessToken, customerId, scQuery, (rows) => {
+    const out: GoogleAdsNegativeKeywordRow[] = [];
+    for (const row of rows) {
+      const s = (row.sharedSet ?? {}) as Record<string, unknown>;
+      const crit = (row.sharedCriterion ?? {}) as Record<string, unknown>;
+      const kw = (crit.keyword ?? {}) as Record<string, unknown>;
+      const text = String(kw.text ?? "");
+      if (!text) continue;
+      const set = sets.get(String(s.id ?? ""));
+      out.push({
+        text,
+        matchType: String(kw.matchType ?? ""),
+        status: "ENABLED",
+        criterionId: String(crit.criterionId ?? "").replace(/\D/g, ""),
+        campaignId: set?.campaignId ?? "",
+        campaignName: set?.campaignName ?? "",
+        adGroupId: "",
+        adGroupName: "",
+        level: "sharedSet" as const,
+        sharedSetName: set?.name
+      });
+    }
+    return out;
   });
 }
 
