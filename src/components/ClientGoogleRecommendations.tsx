@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { Check, X } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { Check, Info, X } from "lucide-react";
 
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { GoogleDateRangePicker, type DateRange } from "@/components/GoogleDateRangePicker";
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
+import { matchTypeLabel } from "@/components/google/googleMatchType";
 
 type ActionType = "NEGATIVAR" | "ADICIONAR_KEYWORD" | "PAUSAR" | "REDUZIR_LANCE" | "AUMENTAR_LANCE";
 
@@ -26,11 +27,16 @@ type RecRow = {
 };
 
 const ACTION_STYLE: Record<ActionType, string> = {
-  NEGATIVAR: "bg-amber-500/15 text-amber-400",
-  ADICIONAR_KEYWORD: "bg-emerald-500/15 text-emerald-400",
-  PAUSAR: "bg-rose-500/15 text-rose-400",
-  REDUZIR_LANCE: "bg-sky-500/15 text-sky-400",
-  AUMENTAR_LANCE: "bg-violet-500/15 text-violet-400"
+  NEGATIVAR:
+    "bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-600/25 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/25",
+  ADICIONAR_KEYWORD:
+    "bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-600/25 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/25",
+  PAUSAR:
+    "bg-rose-100 text-rose-800 ring-1 ring-inset ring-rose-600/25 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-400/25",
+  REDUZIR_LANCE:
+    "bg-sky-100 text-sky-800 ring-1 ring-inset ring-sky-600/25 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-400/25",
+  AUMENTAR_LANCE:
+    "bg-violet-100 text-violet-800 ring-1 ring-inset ring-violet-600/25 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-400/25"
 };
 
 function priority(r: RecRow): number {
@@ -49,6 +55,7 @@ export function ClientGoogleRecommendations({
   range?: DateRange;
 }) {
   const t = useTranslations("client");
+  const locale = useLocale();
   const base = `/api/clients/${encodeURIComponent(clientId)}/google-ads`;
   const { node: feedback, notify } = useGoogleActionFeedback();
 
@@ -219,11 +226,11 @@ export function ClientGoogleRecommendations({
                     </div>
                   </td>
                   <td className="py-2 pr-3">
-                    <span className={`inline-block rounded-full px-2 py-0.5 font-medium ${ACTION_STYLE[r.actionType]}`}>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${ACTION_STYLE[r.actionType]}`}>
                       {t(`googleRecAction_${r.actionType}`)}
                     </span>
                     {r.source === "ai_refined" ? (
-                      <span className="ml-1.5 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-400">
+                      <span className="ml-1.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
                         {t("googleRecsAi")}
                       </span>
                     ) : null}
@@ -236,14 +243,26 @@ export function ClientGoogleRecommendations({
                   <td className="py-2 pr-3 font-medium text-[var(--text-main)]">
                     {r.keywordText}
                     {r.matchType ? (
-                      <span className="ml-1 text-[var(--text-dimmer)]">· {r.matchType}</span>
+                      <span className="ml-1 text-[var(--text-dimmer)]">
+                        · {matchTypeLabel(r.matchType, locale)}
+                      </span>
                     ) : null}
                   </td>
                   <td className="py-2 pr-3 text-[var(--text-dimmer)]">{r.adGroupName || "—"}</td>
                   <td className="py-2 pr-3 text-right tabular-nums text-[var(--text-dim)]">
                     {Math.round(priority(r) * 100)}%
                   </td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{r.ruleJustification || "—"}</td>
+                  <td className="py-2 pr-3 text-[var(--text-dim)]">
+                    <span className="inline-flex items-start gap-1.5">
+                      <span>{r.ruleJustification || "—"}</span>
+                      <span
+                        className="mt-0.5 shrink-0 cursor-help text-[var(--text-dimmer)] transition-colors hover:text-[var(--ui-accent)]"
+                        title={t(`googleRecExplain_${r.actionType}`)}
+                      >
+                        <Info size={13} aria-hidden />
+                      </span>
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

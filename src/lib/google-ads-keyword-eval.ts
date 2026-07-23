@@ -145,6 +145,12 @@ function round4(v: number): number {
   return Math.round(v * 1e4) / 1e4;
 }
 
+const brlFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+/** Formata valores monetários das justificativas: 2 casas + moeda (ex.: R$ 32,84). */
+function money(v: number): string {
+  return Number.isFinite(v) ? brlFmt.format(v) : "—";
+}
+
 /** Confiança = volume de dados: mais cliques, janela maior e presença de conversão. */
 function confidenceFor(clicks: number, conversions: number, windowDays: number): number {
   const raw =
@@ -202,7 +208,7 @@ export function evaluateKeywords(input: KeywordEvalInput): KeywordRecommendation
         signals: { cost: round4(t.cost), clicks: t.clicks, conversions: t.conversions, threshold: round4(threshold) },
         score,
         confidence,
-        ruleJustification: `Gastou ${round4(t.cost)} em ${t.clicks} clique(s) sem nenhuma conversão (limite ${round4(threshold)}).`,
+        ruleJustification: `Gastou ${money(t.cost)} em ${t.clicks} clique(s) sem nenhuma conversão (limite ${money(threshold)}).`,
         autoApplyEligible: eligible("NEGATIVAR", score, confidence),
         intent: {
           kind: "ADD_NEGATIVE",
@@ -240,7 +246,7 @@ export function evaluateKeywords(input: KeywordEvalInput): KeywordRecommendation
         },
         score,
         confidence,
-        ruleJustification: `Converteu ${t.conversions}× (CPA ${Number.isFinite(cpa) ? round4(cpa) : "—"}) e ainda não é palavra-chave.`,
+        ruleJustification: `Converteu ${t.conversions}× (CPA ${money(cpa)}) e ainda não é palavra-chave.`,
         autoApplyEligible: eligible("ADICIONAR_KEYWORD", score, confidence),
         intent: { kind: "ADD_KEYWORD", adGroupId: t.adGroupId, text: t.searchTerm, matchType: "PHRASE" },
         dedupeKey: `ADICIONAR_KEYWORD:${t.adGroupId}:${normText(t.searchTerm)}`
@@ -272,7 +278,7 @@ export function evaluateKeywords(input: KeywordEvalInput): KeywordRecommendation
         signals: { cost: round4(k.cost), clicks: k.clicks, conversions: k.conversions, ctr: round4(k.ctr) },
         score,
         confidence,
-        ruleJustification: `Palavra-chave ativa gastou ${round4(k.cost)} em ${k.clicks} clique(s) sem converter.`,
+        ruleJustification: `Palavra-chave ativa gastou ${money(k.cost)} em ${k.clicks} clique(s) sem converter.`,
         autoApplyEligible: eligible("PAUSAR", score, confidence),
         intent: {
           kind: "PAUSE_KEYWORD",
@@ -305,7 +311,7 @@ export function evaluateKeywords(input: KeywordEvalInput): KeywordRecommendation
         signals: { cpa: round4(cpa), target: round4(goal.target), averageCpc: round4(k.averageCpc), newBid: round4(newBid) },
         score,
         confidence,
-        ruleJustification: `CPA ${round4(cpa)} acima do alvo ${round4(goal.target)}; reduzir lance de ${round4(k.averageCpc)} para ~${round4(newBid)}.`,
+        ruleJustification: `CPA ${money(cpa)} acima do alvo ${money(goal.target)}; reduzir lance de ${money(k.averageCpc)} para ~${money(newBid)}.`,
         autoApplyEligible: eligible("REDUZIR_LANCE", score, confidence),
         intent: {
           kind: "SET_BID",
@@ -339,7 +345,7 @@ export function evaluateKeywords(input: KeywordEvalInput): KeywordRecommendation
         signals: { cpa: round4(cpa), target: round4(goal.target), averageCpc: round4(k.averageCpc), newBid: round4(newBid) },
         score,
         confidence,
-        ruleJustification: `CPA ${round4(cpa)} bem abaixo do alvo ${round4(goal.target)}; aumentar lance de ${round4(k.averageCpc)} para ~${round4(newBid)}.`,
+        ruleJustification: `CPA ${money(cpa)} bem abaixo do alvo ${money(goal.target)}; aumentar lance de ${money(k.averageCpc)} para ~${money(newBid)}.`,
         autoApplyEligible: eligible("AUMENTAR_LANCE", score, confidence),
         intent: {
           kind: "SET_BID",
