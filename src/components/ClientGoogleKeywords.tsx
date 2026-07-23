@@ -446,20 +446,20 @@ export function ClientGoogleKeywords({
         ) : rowsEmpty ? (
           <div className="text-xs text-[var(--text-dim)]">{t("googleBreakdownEmpty")}</div>
         ) : tab === "keywords" ? (
-          <table className="w-full min-w-[820px] text-xs">
+          <table className="w-full min-w-[1040px] table-fixed text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
-                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
-                <SortableTh label={t("googleKeywordsTab")} sortKey="text" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
-                <SortableTh label={t("googleColMatch")} sortKey="matchType" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
-                <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
-                <SortableTh label={t("googleColAdGroup")} sortKey="adGroupName" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
-                <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
-                <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
+                <th className="w-[5%] py-2 pr-3 text-left">{t("googleActionsCol")}</th>
+                <SortableTh className="w-[16%]" label={t("googleKeywordsTab")} sortKey="text" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
+                <SortableTh className="w-[12%]" label={t("googleColMatch")} sortKey="matchType" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
+                <SortableTh className="w-[8%]" label={t("googleAdsColStatus")} sortKey="status" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
+                <SortableTh className="w-[11%]" label={t("googleColAdGroup")} sortKey="adGroupName" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} />
+                <SortableTh className="w-[9%]" label={tMetrics("impressions")} sortKey="impressions" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
+                <SortableTh className="w-[7%]" label={tMetrics("clicks")} sortKey="clicks" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
+                <SortableTh className="w-[8%]" label={tMetrics("spend")} sortKey="cost" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
+                <SortableTh className="w-[9%]" label={tMetrics("conversions")} sortKey="conversions" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
+                <SortableTh className="w-[6%]" label={tMetrics("ctr")} sortKey="ctr" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
+                <SortableTh className="w-[9%]" label={tMetrics("cpc")} sortKey="averageCpc" activeKey={kwSort.sortKey} dir={kwSort.sortDir} onSort={kwSort.toggle} align="right" />
               </tr>
             </thead>
             <tbody>
@@ -478,29 +478,29 @@ export function ClientGoogleKeywords({
                       />
                     ) : null}
                   </td>
-                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]">{r.text}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(MATCH_LABELS, r.matchType, locale)}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(KW_STATUS, r.status, locale)}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dimmer)]">{r.adGroupName}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.impressions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.clicks, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(r.cost, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.conversions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatPercent(r.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 text-right">{formatBRL(r.averageCpc, locale)}</td>
+                  <td className="truncate py-2 pr-3 font-medium text-[var(--text-main)]" title={r.text}>{r.text}</td>
+                  <td className="truncate py-2 pr-3 text-[var(--text-dim)]">{label(MATCH_LABELS, r.matchType, locale)}</td>
+                  <td className="truncate py-2 pr-3 text-[var(--text-dim)]">{label(KW_STATUS, r.status, locale)}</td>
+                  <td className="truncate py-2 pr-3 text-[var(--text-dimmer)]" title={r.adGroupName ?? undefined}>{r.adGroupName}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.impressions, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.clicks, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatBRL(r.cost, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.conversions, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatPercent(r.ctr * 100, 2, locale)}</td>
+                  <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatBRL(r.averageCpc, locale)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : tab === "negatives" ? (
-          <table className="w-full min-w-[520px] text-xs">
+          <table className="w-full min-w-[560px] table-fixed text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
-                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
-                <SortableTh label={t("googleNegativeKeywordsTab")} sortKey="text" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
-                <SortableTh label={t("googleColMatch")} sortKey="matchType" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
-                <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
-                <SortableTh label={t("googleColAdGroup")} sortKey="adGroupName" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
+                <th className="w-[8%] py-2 pr-3 text-left">{t("googleActionsCol")}</th>
+                <SortableTh className="w-[38%]" label={t("googleNegativeKeywordsTab")} sortKey="text" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
+                <SortableTh className="w-[16%]" label={t("googleColMatch")} sortKey="matchType" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
+                <SortableTh className="w-[12%]" label={t("googleAdsColStatus")} sortKey="status" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
+                <SortableTh className="w-[26%]" label={t("googleColAdGroup")} sortKey="adGroupName" activeKey={negSort.sortKey} dir={negSort.sortDir} onSort={negSort.toggle} />
               </tr>
             </thead>
             <tbody>
@@ -518,29 +518,29 @@ export function ClientGoogleKeywords({
                       onlyRemove
                     />
                   </td>
-                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]">{r.text}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(MATCH_LABELS, r.matchType, locale)}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{label(KW_STATUS, r.status, locale)}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dimmer)]">{r.adGroupName}</td>
+                  <td className="truncate py-2 pr-3 font-medium text-[var(--text-main)]" title={r.text}>{r.text}</td>
+                  <td className="truncate py-2 pr-3 text-[var(--text-dim)]">{label(MATCH_LABELS, r.matchType, locale)}</td>
+                  <td className="truncate py-2 pr-3 text-[var(--text-dim)]">{label(KW_STATUS, r.status, locale)}</td>
+                  <td className="truncate py-2 pr-3 text-[var(--text-dimmer)]" title={r.adGroupName ?? undefined}>{r.adGroupName}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : tab === "terms" ? (
-          <table className="w-full min-w-[860px] text-xs">
+          <table className="w-full min-w-[1080px] table-fixed text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
-                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
-                <SortableTh label={t("googleTermsTab")} sortKey="searchTerm" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
-                <SortableTh label={t("googleColTriggeringKeyword")} sortKey="triggeringKeyword" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
-                <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
-                <SortableTh label={t("googleColAdGroup")} sortKey="adGroupName" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
-                <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
-                <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
-                <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
-                <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
-                <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
-                <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
+                <th className="w-[5%] py-2 pr-3 text-left">{t("googleActionsCol")}</th>
+                <SortableTh className="w-[15%]" label={t("googleTermsTab")} sortKey="searchTerm" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
+                <SortableTh className="w-[14%]" label={t("googleColTriggeringKeyword")} sortKey="triggeringKeyword" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
+                <SortableTh className="w-[8%]" label={t("googleAdsColStatus")} sortKey="status" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
+                <SortableTh className="w-[11%]" label={t("googleColAdGroup")} sortKey="adGroupName" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
+                <SortableTh className="w-[9%]" label={tMetrics("impressions")} sortKey="impressions" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
+                <SortableTh className="w-[7%]" label={tMetrics("clicks")} sortKey="clicks" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
+                <SortableTh className="w-[8%]" label={tMetrics("spend")} sortKey="cost" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
+                <SortableTh className="w-[9%]" label={tMetrics("conversions")} sortKey="conversions" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
+                <SortableTh className="w-[6%]" label={tMetrics("ctr")} sortKey="ctr" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
+                <SortableTh className="w-[8%]" label={tMetrics("cpc")} sortKey="averageCpc" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
               </tr>
             </thead>
             <tbody>
@@ -556,33 +556,33 @@ export function ClientGoogleKeywords({
                       notify={notify}
                     />
                   </td>
-                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]">{r.searchTerm}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dim)]">{r.triggeringKeyword || "—"}</td>
-                  <td className={`py-2 pr-3 ${termStatusColor(r.status)}`}>{label(TERM_STATUS, r.status, locale)}</td>
-                  <td className="py-2 pr-3 text-[var(--text-dimmer)]">{r.adGroupName}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.impressions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.clicks, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(r.cost, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(r.conversions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatPercent(r.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 text-right">{formatBRL(r.averageCpc, locale)}</td>
+                  <td className="truncate py-2 pr-3 font-medium text-[var(--text-main)]" title={r.searchTerm}>{r.searchTerm}</td>
+                  <td className="truncate py-2 pr-3 text-[var(--text-dim)]" title={r.triggeringKeyword ?? undefined}>{r.triggeringKeyword || "—"}</td>
+                  <td className={`truncate py-2 pr-3 ${termStatusColor(r.status)}`}>{label(TERM_STATUS, r.status, locale)}</td>
+                  <td className="truncate py-2 pr-3 text-[var(--text-dimmer)]" title={r.adGroupName ?? undefined}>{r.adGroupName}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.impressions, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.clicks, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatBRL(r.cost, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.conversions, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatPercent(r.ctr * 100, 2, locale)}</td>
+                  <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatBRL(r.averageCpc, locale)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <table className="w-full min-w-[760px] text-xs">
+          <table className="w-full min-w-[860px] table-fixed text-xs">
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
-                <th className="py-2 pr-3 text-left">{t("googleActionsCol")}</th>
-                <SortableTh label={t("googleAdsTitle")} sortKey="name" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} />
-                <SortableTh label={t("googleAdsColStatus")} sortKey="status" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} />
-                <SortableTh label={tMetrics("impressions")} sortKey="impressions" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh label={tMetrics("clicks")} sortKey="clicks" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh label={tMetrics("spend")} sortKey="cost" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh label={tMetrics("conversions")} sortKey="conversions" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh label={tMetrics("ctr")} sortKey="ctr" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
-                <SortableTh label={tMetrics("cpc")} sortKey="averageCpc" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
+                <th className="w-[6%] py-2 pr-3 text-left">{t("googleActionsCol")}</th>
+                <SortableTh className="w-[24%]" label={t("googleAdsTitle")} sortKey="name" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} />
+                <SortableTh className="w-[10%]" label={t("googleAdsColStatus")} sortKey="status" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} />
+                <SortableTh className="w-[11%]" label={tMetrics("impressions")} sortKey="impressions" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
+                <SortableTh className="w-[9%]" label={tMetrics("clicks")} sortKey="clicks" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
+                <SortableTh className="w-[10%]" label={tMetrics("spend")} sortKey="cost" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
+                <SortableTh className="w-[11%]" label={tMetrics("conversions")} sortKey="conversions" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
+                <SortableTh className="w-[8%]" label={tMetrics("ctr")} sortKey="ctr" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
+                <SortableTh className="w-[11%]" label={tMetrics("cpc")} sortKey="averageCpc" activeKey={adSort.sortKey} dir={adSort.sortDir} onSort={adSort.toggle} align="right" />
               </tr>
             </thead>
             <tbody>
@@ -603,18 +603,19 @@ export function ClientGoogleKeywords({
                     <button
                       type="button"
                       onClick={() => setSelectedAdId(a.id)}
-                      className="text-left hover:text-[var(--ui-accent)] hover:underline"
+                      className="block w-full truncate text-left hover:text-[var(--ui-accent)] hover:underline"
+                      title={a.name || `#${a.id}`}
                     >
                       {a.name || `#${a.id}`}
                     </button>
                   </td>
-                  <td className={`py-2 pr-3 ${statusColor(a.status)}`}>{googleStatusLabel(a.status, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(a.impressions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(a.clicks, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatBRL(a.cost, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatNumber(a.conversions, locale)}</td>
-                  <td className="py-2 pr-3 text-right">{formatPercent(a.ctr * 100, 2, locale)}</td>
-                  <td className="py-2 text-right">{formatBRL(a.averageCpc, locale)}</td>
+                  <td className={`truncate py-2 pr-3 ${statusColor(a.status)}`}>{googleStatusLabel(a.status, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(a.impressions, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(a.clicks, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatBRL(a.cost, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(a.conversions, locale)}</td>
+                  <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatPercent(a.ctr * 100, 2, locale)}</td>
+                  <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatBRL(a.averageCpc, locale)}</td>
                 </tr>
               ))}
             </tbody>

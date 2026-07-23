@@ -70,14 +70,14 @@ export function SortableTh({
     <th
       onClick={() => onSort(sortKey)}
       className={cn(
-        "cursor-pointer select-none py-2 pr-3 transition-colors hover:text-[var(--text-main)]",
+        "cursor-pointer select-none overflow-hidden py-2 pr-3 transition-colors hover:text-[var(--text-main)]",
         align === "right" && "text-right",
         className
       )}
     >
       <span
         className={cn(
-          "inline-flex items-center gap-1",
+          "inline-flex max-w-full items-center gap-1 truncate align-bottom",
           align === "right" && "flex-row-reverse"
         )}
       >
