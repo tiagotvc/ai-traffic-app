@@ -216,6 +216,14 @@ async function buildAiRecommendations(
   const kwTexts = [
     ...new Set(keywords.filter((k) => k.status === "ENABLED" && k.text).map((k) => k.text))
   ];
+  // Termos que o anunciante já excluiu → exemplos p/ a IA aprender o padrão (concorrentes/fora de escopo).
+  const negatedExamples = [
+    ...new Set(
+      searchTerms
+        .filter((t) => (t.status === "EXCLUDED" || t.status === "ADDED_EXCLUDED") && t.searchTerm)
+        .map((t) => t.searchTerm)
+    )
+  ];
 
   const recs: KeywordRecommendation[] = [];
 
@@ -227,7 +235,8 @@ async function buildAiRecommendations(
         niche: client.niche,
         keywords: kwTexts,
         terms,
-        rejected
+        rejected,
+        negatedExamples
       });
       const byDecision = new Map(decisions.map((d) => [normTerm(d.term), d]));
       for (const t of searchTerms) {
