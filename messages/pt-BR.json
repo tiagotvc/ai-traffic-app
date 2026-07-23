@@ -2508,6 +2508,8 @@
     "googleAdNoContent": "Sem conteúdo disponível para este anúncio.",
     "googleKeywordsTab": "Palavras-chave",
     "googleNegativeKeywordsTab": "Palavras-chave negativas",
+    "googleNegLevelCampaign": "Campanha (todas)",
+    "googleNegLevelList": "Lista: {name}",
     "googleTermsTab": "Termos de pesquisa",
     "googleFilterAllCampaigns": "Todas as campanhas",
     "googleFilterAllAdGroups": "Todos os grupos",

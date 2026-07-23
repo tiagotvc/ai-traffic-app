@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Info, X } from "lucide-react";
 
@@ -9,6 +9,7 @@ import { GoogleDateRangePicker, type DateRange } from "@/components/GoogleDateRa
 import { useGoogleDateRange } from "@/components/google/useGoogleDateRange";
 import { useGoogleActionFeedback } from "@/components/google/GoogleRowActions";
 import { matchTypeLabel } from "@/components/google/googleMatchType";
+import { GoogleRecBadge } from "@/components/google/googleRecBadge";
 
 type ActionType = "NEGATIVAR" | "ADICIONAR_KEYWORD" | "PAUSAR" | "REDUZIR_LANCE" | "AUMENTAR_LANCE";
 
@@ -24,19 +25,6 @@ type RecRow = {
   ruleJustification: string | null;
   autoApplyEligible: boolean;
   source: string | null;
-};
-
-const ACTION_STYLE: Record<ActionType, string> = {
-  NEGATIVAR:
-    "bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-600/25 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-400/25",
-  ADICIONAR_KEYWORD:
-    "bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-600/25 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-400/25",
-  PAUSAR:
-    "bg-rose-100 text-rose-800 ring-1 ring-inset ring-rose-600/25 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-400/25",
-  REDUZIR_LANCE:
-    "bg-sky-100 text-sky-800 ring-1 ring-inset ring-sky-600/25 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-400/25",
-  AUMENTAR_LANCE:
-    "bg-violet-100 text-violet-800 ring-1 ring-inset ring-violet-600/25 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-400/25"
 };
 
 function priority(r: RecRow): number {
@@ -87,10 +75,34 @@ export function ClientGoogleRecommendations({
     const p = new URLSearchParams({ since: range.since, until: range.until });
     fetch(`${base}/recommendations?${p}`, { method: "POST" })
       .then((r) => r.json())
-      .then((j) => (j.ok ? loadQueue() : setError(j.error ?? "error")))
+      .then((j) => {
+        if (j.ok) {
+          loadQueue();
+          // Avisa os badges inline dos termos (ClientGoogleKeywords) que a fila mudou.
+          window.dispatchEvent(new Event("google-recs-updated"));
+        } else {
+          setError(j.error ?? "error");
+        }
+      })
       .catch(() => setError("error"))
       .finally(() => setRecomputing(false));
   }, [base, range, loadQueue]);
+
+  // Recalcula automaticamente quando o filtro de data muda (recs seguem o período da página).
+  const lastRangeRef = useRef<string>("");
+  useEffect(() => {
+    const key = `${range.since}|${range.until}`;
+    if (!range.since || !range.until) return;
+    if (lastRangeRef.current === "") {
+      // Primeira montagem: só registra o período; mostra a fila já persistida.
+      lastRangeRef.current = key;
+      return;
+    }
+    if (lastRangeRef.current === key) return;
+    lastRangeRef.current = key;
+    const id = setTimeout(() => recompute(), 800);
+    return () => clearTimeout(id);
+  }, [range.since, range.until, recompute]);
 
   async function decide(id: string, action: "accept" | "reject") {
     setPendingId(id);
@@ -226,9 +238,7 @@ export function ClientGoogleRecommendations({
                     </div>
                   </td>
                   <td className="py-2 pr-3">
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${ACTION_STYLE[r.actionType]}`}>
-                      {t(`googleRecAction_${r.actionType}`)}
-                    </span>
+                    <GoogleRecBadge actionType={r.actionType} />
                     {r.source === "ai_refined" ? (
                       <span className="ml-1.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
                         {t("googleRecsAi")}

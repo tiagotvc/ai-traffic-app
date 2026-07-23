@@ -26,7 +26,7 @@ export function SearchTermActions({
   adGroupId: string;
   text: string;
   status: string;
-  onDone: () => void;
+  onDone: (op: "add" | "addNegative") => void;
   notify: Notify;
 }) {
   const t = useTranslations("client");
@@ -47,7 +47,7 @@ export function SearchTermActions({
       });
       if (r.ok) {
         notify(t("googleAddOk"), "success");
-        onDone();
+        onDone(op);
       } else if (r.error === "write_blocked") {
         notify(t("googleWriteBlocked"), "error");
       } else if (r.error === "not_connected") {

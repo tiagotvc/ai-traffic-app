@@ -12,6 +12,7 @@ import { googleStatusLabel } from "@/components/google/googleStatus";
 import { ClientGoogleAdPreviewModal } from "@/components/ClientGoogleAdPreviewModal";
 import { SortableTh, useTableSort } from "@/components/campaigns/googleTableSort";
 import { GoogleDateRangePicker, type DateRange } from "@/components/GoogleDateRangePicker";
+import { GoogleRecBadge, type GoogleRecActionType } from "@/components/google/googleRecBadge";
 
 type Metricish = {
   impressions: number;
@@ -48,6 +49,8 @@ type NegativeRow = {
   adGroupId: string;
   campaignName: string;
   adGroupName: string;
+  level?: "adGroup" | "campaign" | "sharedSet";
+  sharedSetName?: string;
 };
 type CampaignOpt = { campaignId: string; name: string };
 type AdGroupOpt = { id: string; name: string };
@@ -82,10 +85,16 @@ function statusColor(status: string): string {
   return "text-[var(--text-dimmer)]";
 }
 function termStatusColor(status: string): string {
-  if (status === "EXCLUDED") return "text-amber-400";
-  if (status === "ADDED" || status === "ADDED_EXCLUDED") return "text-emerald-400";
+  if (status === "EXCLUDED") return "text-rose-600 dark:text-rose-400";
+  if (status === "ADDED_EXCLUDED") return "text-rose-600 dark:text-rose-400";
+  if (status === "ADDED") return "text-emerald-600 dark:text-emerald-400";
   return "text-[var(--text-dimmer)]";
 }
+/** Normaliza texto de termo/keyword para casar recomendação ↔ linha da tabela. */
+function normTerm(s: string): string {
+  return s.toLowerCase().trim().replace(/\s+/g, " ");
+}
+type TermRec = { actionType: GoogleRecActionType; reason: string | null };
 
 export function ClientGoogleKeywords({
   clientId,
@@ -129,6 +138,29 @@ export function ClientGoogleKeywords({
   const [adsReload, setAdsReload] = useState(0);
   const [selectedAdId, setSelectedAdId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Recomendações da IA/regras mapeadas por (grupo + termo) → badge inline na aba Termos.
+  const [recByTerm, setRecByTerm] = useState<Map<string, TermRec>>(new Map());
+  // Override otimista de status dos termos (negativar/adicionar): evita refetch ao vivo e marca na hora.
+  const [termOverrides, setTermOverrides] = useState<Map<string, string>>(new Map());
+  const markTermStatus = useCallback((row: TermRow, op: "add" | "addNegative") => {
+    const key = `${row.adGroupId}::${normTerm(row.searchTerm)}`;
+    setTermOverrides((prev) => {
+      const cur = prev.get(key) ?? row.status;
+      const excluded = cur === "EXCLUDED" || cur === "ADDED_EXCLUDED";
+      const added = cur === "ADDED" || cur === "ADDED_EXCLUDED";
+      const next =
+        op === "addNegative"
+          ? added
+            ? "ADDED_EXCLUDED"
+            : "EXCLUDED"
+          : excluded
+            ? "ADDED_EXCLUDED"
+            : "ADDED";
+      const m = new Map(prev);
+      m.set(key, next);
+      return m;
+    });
+  }, []);
 
   // Abas: no explorador (não-escopado) inclui "Anúncios"; no drill só keywords/termos.
   const tabs: Tab[] = scoped
@@ -235,13 +267,56 @@ export function ClientGoogleKeywords({
       if (keyword) p.set("keyword", keyword);
       fetch(`${base}/search-terms?${p}`)
         .then((r) => r.json())
-        .then((j) => (j.ok ? setTermRows(j.rows ?? []) : setError(j.error ?? "error")))
+        .then((j) => {
+          if (j.ok) {
+            setTermRows(j.rows ?? []);
+            setTermOverrides(new Map()); // dados frescos são a verdade; zera overrides otimistas
+          } else {
+            setError(j.error ?? "error");
+          }
+        })
         .catch(() => setError("error"));
     }
     // reloadSignal força recarregar após mutations (add keyword, etc.).
   }, [base, tab, range, campaignId, adGroupId, keyword, reloadSignal]);
 
   useEffect(() => void load(), [load]);
+
+  // Recomendações para a aba Termos: mesma inteligência do painel, surgida inline no termo.
+  const loadTermRecs = useCallback(() => {
+    if (tab !== "terms") return;
+    const p = new URLSearchParams({ status: "PENDING" });
+    if (campaignId) p.set("campaignId", campaignId);
+    if (adGroupId) p.set("adGroupId", adGroupId);
+    fetch(`${base}/recommendations?${p}`)
+      .then((r) => (r.ok ? r.json() : { ok: false }))
+      .then((j) => {
+        const m = new Map<string, TermRec>();
+        if (j?.ok && Array.isArray(j.rows)) {
+          for (const rec of j.rows as Array<Record<string, unknown>>) {
+            const action = rec.actionType as string;
+            if (action !== "NEGATIVAR" && action !== "ADICIONAR_KEYWORD") continue;
+            const key = `${rec.adGroupId ?? ""}::${normTerm(String(rec.keywordText ?? ""))}`;
+            if (!m.has(key)) {
+              m.set(key, {
+                actionType: action as GoogleRecActionType,
+                reason: (rec.aiJustification as string) || (rec.ruleJustification as string) || null
+              });
+            }
+          }
+        }
+        setRecByTerm(m);
+      })
+      .catch(() => setRecByTerm(new Map()));
+  }, [base, tab, campaignId, adGroupId]);
+
+  // Refaz ao mudar aba/escopo/data ou após um recompute (evento do painel).
+  useEffect(() => void loadTermRecs(), [loadTermRecs, reloadSignal, range.since, range.until]);
+  useEffect(() => {
+    const h = () => loadTermRecs();
+    window.addEventListener("google-recs-updated", h);
+    return () => window.removeEventListener("google-recs-updated", h);
+  }, [loadTermRecs]);
 
   // Filtros client-side de correspondência/status sobre as linhas carregadas.
   const kwFiltered = useMemo(
@@ -504,26 +579,39 @@ export function ClientGoogleKeywords({
               </tr>
             </thead>
             <tbody>
-              {negSort.sorted.map((r, i) => (
+              {negSort.sorted.map((r, i) => {
+                const lvl = r.level ?? "adGroup";
+                const scopeLabel =
+                  lvl === "campaign"
+                    ? t("googleNegLevelCampaign")
+                    : lvl === "sharedSet"
+                      ? t("googleNegLevelList", { name: r.sharedSetName || "" })
+                      : r.adGroupName;
+                return (
                 <tr key={`${r.criterionId}-${i}`} className="border-t border-[var(--border-color)]">
                   <td className="py-2 pr-3 text-left">
-                    <GoogleRowActions
-                      clientId={clientId}
-                      resource="keyword"
-                      id={r.criterionId}
-                      adGroupId={r.adGroupId}
-                      status={r.status}
-                      onDone={load}
-                      notify={notify}
-                      onlyRemove
-                    />
+                    {lvl === "adGroup" ? (
+                      <GoogleRowActions
+                        clientId={clientId}
+                        resource="keyword"
+                        id={r.criterionId}
+                        adGroupId={r.adGroupId}
+                        status={r.status}
+                        onDone={load}
+                        notify={notify}
+                        onlyRemove
+                      />
+                    ) : (
+                      <span className="text-[var(--text-dimmer)]">—</span>
+                    )}
                   </td>
                   <td className="truncate py-2 pr-3 font-medium text-[var(--text-main)]" title={r.text}>{r.text}</td>
                   <td className="truncate py-2 pr-3 text-[var(--text-dim)]">{label(MATCH_LABELS, r.matchType, locale)}</td>
                   <td className="truncate py-2 pr-3 text-[var(--text-dim)]">{label(KW_STATUS, r.status, locale)}</td>
-                  <td className="truncate py-2 pr-3 text-[var(--text-dimmer)]" title={r.adGroupName ?? undefined}>{r.adGroupName}</td>
+                  <td className="truncate py-2 pr-3 text-[var(--text-dimmer)]" title={scopeLabel || undefined}>{scopeLabel}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         ) : tab === "terms" ? (
@@ -531,8 +619,8 @@ export function ClientGoogleKeywords({
             <thead>
               <tr className="text-left text-[var(--text-dimmer)]">
                 <th className="w-[5%] py-2 pr-3 text-left">{t("googleActionsCol")}</th>
-                <SortableTh className="w-[15%]" label={t("googleTermsTab")} sortKey="searchTerm" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
-                <SortableTh className="w-[14%]" label={t("googleColTriggeringKeyword")} sortKey="triggeringKeyword" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
+                <SortableTh className="w-[18%]" label={t("googleTermsTab")} sortKey="searchTerm" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
+                <SortableTh className="w-[12%]" label={t("googleColTriggeringKeyword")} sortKey="triggeringKeyword" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
                 <SortableTh className="w-[8%]" label={t("googleAdsColStatus")} sortKey="status" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
                 <SortableTh className="w-[11%]" label={t("googleColAdGroup")} sortKey="adGroupName" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} />
                 <SortableTh className="w-[9%]" label={tMetrics("impressions")} sortKey="impressions" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
@@ -540,25 +628,48 @@ export function ClientGoogleKeywords({
                 <SortableTh className="w-[8%]" label={tMetrics("spend")} sortKey="cost" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
                 <SortableTh className="w-[9%]" label={tMetrics("conversions")} sortKey="conversions" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
                 <SortableTh className="w-[6%]" label={tMetrics("ctr")} sortKey="ctr" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
-                <SortableTh className="w-[8%]" label={tMetrics("cpc")} sortKey="averageCpc" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
+                <SortableTh className="w-[7%]" label={tMetrics("cpc")} sortKey="averageCpc" activeKey={termSort.sortKey} dir={termSort.sortDir} onSort={termSort.toggle} align="right" />
               </tr>
             </thead>
             <tbody>
-              {termSort.sorted.map((r, i) => (
-                <tr key={`${r.searchTerm}-${r.triggeringKeyword}-${i}`} className="border-t border-[var(--border-color)]">
+              {termSort.sorted.map((r, i) => {
+                const effStatus =
+                  termOverrides.get(`${r.adGroupId}::${normTerm(r.searchTerm)}`) ?? r.status;
+                const isExcluded = effStatus === "EXCLUDED" || effStatus === "ADDED_EXCLUDED";
+                return (
+                <tr
+                  key={`${r.searchTerm}-${r.triggeringKeyword}-${i}`}
+                  className={`border-t border-[var(--border-color)] ${isExcluded ? "bg-rose-500/5" : ""}`}
+                >
                   <td className="py-2 pr-3 text-left">
                     <SearchTermActions
                       clientId={clientId}
                       adGroupId={r.adGroupId}
                       text={r.searchTerm}
-                      status={r.status}
-                      onDone={load}
+                      status={effStatus}
+                      onDone={(op) => markTermStatus(r, op)}
                       notify={notify}
                     />
                   </td>
-                  <td className="truncate py-2 pr-3 font-medium text-[var(--text-main)]" title={r.searchTerm}>{r.searchTerm}</td>
+                  <td className="py-2 pr-3 font-medium text-[var(--text-main)]" title={r.searchTerm}>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className={`truncate ${isExcluded ? "text-rose-600 line-through dark:text-rose-400" : ""}`}>
+                        {r.searchTerm}
+                      </span>
+                      {(() => {
+                        const rec = recByTerm.get(`${r.adGroupId}::${normTerm(r.searchTerm)}`);
+                        return rec ? (
+                          <GoogleRecBadge
+                            actionType={rec.actionType}
+                            title={rec.reason ?? undefined}
+                            size="sm"
+                          />
+                        ) : null;
+                      })()}
+                    </span>
+                  </td>
                   <td className="truncate py-2 pr-3 text-[var(--text-dim)]" title={r.triggeringKeyword ?? undefined}>{r.triggeringKeyword || "—"}</td>
-                  <td className={`truncate py-2 pr-3 ${termStatusColor(r.status)}`}>{label(TERM_STATUS, r.status, locale)}</td>
+                  <td className={`truncate py-2 pr-3 ${termStatusColor(effStatus)}`}>{label(TERM_STATUS, effStatus, locale)}</td>
                   <td className="truncate py-2 pr-3 text-[var(--text-dimmer)]" title={r.adGroupName ?? undefined}>{r.adGroupName}</td>
                   <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.impressions, locale)}</td>
                   <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatNumber(r.clicks, locale)}</td>
@@ -567,7 +678,8 @@ export function ClientGoogleKeywords({
                   <td className="whitespace-nowrap py-2 pr-3 text-right tabular-nums">{formatPercent(r.ctr * 100, 2, locale)}</td>
                   <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatBRL(r.averageCpc, locale)}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         ) : (

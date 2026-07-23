@@ -2505,6 +2505,8 @@
     "googleAdNoContent": "No content available for this ad.",
     "googleKeywordsTab": "Keywords",
     "googleNegativeKeywordsTab": "Negative keywords",
+    "googleNegLevelCampaign": "Campaign (all)",
+    "googleNegLevelList": "List: {name}",
     "googleTermsTab": "Search terms",
     "googleFilterAllCampaigns": "All campaigns",
     "googleFilterAllAdGroups": "All ad groups",
