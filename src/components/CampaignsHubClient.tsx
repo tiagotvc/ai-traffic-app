@@ -999,10 +999,10 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             key={p}
             type="button"
             onClick={() => setPlatform(p)}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
+            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-xs font-medium transition active:scale-95 hover:bg-[var(--surface-bg)] ${
               platform === p
-                ? "border-transparent bg-[var(--ui-accent)] text-white"
-                : "border-[var(--border-color)] text-[var(--text-dim)]"
+                ? "border-[var(--ui-accent)] font-semibold text-[var(--ui-accent)]"
+                : "border-[var(--border-color)] text-[var(--text-dim)] hover:border-[var(--ui-accent)] hover:text-[var(--text-main)]"
             }`}
           >
             {p !== "google" ? <MetaGlyph /> : null}
