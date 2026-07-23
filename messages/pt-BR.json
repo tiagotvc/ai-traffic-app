@@ -874,6 +874,7 @@
     "platform_meta": "Meta",
     "platform_google": "Google Ads",
     "platform_both": "Ambos",
+    "filterPlatform": "Plataforma",
     "title": "Campanhas",
     "subtitle": "Gerencie todas as campanhas dos seus clientes.",
     "newCampaign": "Nova campanha",
