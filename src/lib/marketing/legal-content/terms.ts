@@ -19,13 +19,14 @@ const pt: LegalPageContent = {
     {
       title: "2. Sobre o Orion Agency",
       paragraphs: [
-        "O Orion Agency é uma plataforma SaaS (Software as a Service) desenvolvida para auxiliar gestores de tráfego, agências de marketing, anunciantes e empresas na análise, monitoramento, organização e otimização de campanhas publicitárias.",
+        "O Orion Agency é uma plataforma SaaS (Software as a Service) desenvolvida para auxiliar gestores de tráfego, agências de marketing, anunciantes e empresas na análise, monitoramento, organização e otimização de campanhas publicitárias na Meta (Facebook e Instagram) e no Google Ads.",
         "A Plataforma poderá disponibilizar funcionalidades como:"
       ],
       bullets: [
-        "Centralização de métricas de campanhas",
+        "Centralização de métricas de campanhas da Meta e do Google Ads",
         "Dashboards e relatórios",
         "Recomendações por inteligência artificial",
+        "Análise de palavras-chave e termos de busca do Google Ads",
         "Aprendizados automatizados",
         "Alertas de desempenho",
         "Histórico de alterações",
@@ -89,6 +90,24 @@ const pt: LegalPageContent = {
         "O Orion Agency poderá integrar-se a serviços externos, incluindo Meta Ads, Google Ads, Google Analytics, Google Tag Manager, TikTok Ads, LinkedIn Ads, Pinterest Ads, Shopify, WooCommerce e outras integrações futuras.",
         "Ao conectar uma conta externa, o usuário declara possuir autorização para conceder os acessos necessários.",
         "O usuário poderá revogar permissões diretamente junto às plataformas integradas ou nas configurações do Orion Agency."
+      ]
+    },
+    {
+      title: "9.1 Integração com o Google Ads",
+      paragraphs: [
+        "A integração com o Google Ads é opcional e depende do seu consentimento explícito via OAuth. Uma vez conectada, o Orion Agency acessa dados da sua conta do Google Ads por meio da API oficial do Google Ads, exclusivamente para operar as funcionalidades descritas nestes Termos. O detalhamento de quais dados acessamos, para qual finalidade e como os armazenamos e protegemos está na Política de Privacidade.",
+        "Ao conectar o Google Ads, você declara e concorda que:"
+      ],
+      bullets: [
+        "Possui autorização do titular de cada conta conectada — própria ou de cliente, inclusive contas acessadas via MCC — para conceder o acesso",
+        "É responsável pelo conteúdo, segmentação e conformidade dos seus anúncios com as Políticas de Publicidade do Google",
+        "Permanece sujeito aos Termos de Serviço do Google Ads e às demais políticas do Google",
+        "O Orion Agency não é afiliado ao Google, não é um produto oficial do Google e não intermedia sua relação contratual ou financeira com o Google",
+        "As faturas, cobranças e o investimento em mídia são pagos por você diretamente ao Google, não ao Orion Agency"
+      ],
+      tail: [
+        "Você pode desconectar o Google Ads a qualquer momento em Configurações → Integrações, ou revogar o acesso do aplicativo em https://myaccount.google.com/permissions. A revogação interrompe a sincronização e poderá desabilitar funcionalidades que dependem desses dados.",
+        "O Orion Agency não garante a disponibilidade contínua da API do Google Ads, nem se responsabiliza por alterações, limites de cota, reprovações de anúncios ou suspensões de contas aplicadas pelo Google."
       ]
     },
     {
@@ -224,13 +243,14 @@ const en: LegalPageContent = {
     {
       title: "2. About Orion Agency",
       paragraphs: [
-        "Orion Agency is a SaaS platform designed to help traffic managers, marketing agencies, advertisers, and businesses analyze, monitor, organize, and optimize advertising campaigns.",
+        "Orion Agency is a SaaS platform designed to help traffic managers, marketing agencies, advertisers, and businesses analyze, monitor, organize, and optimize advertising campaigns on Meta (Facebook and Instagram) and Google Ads.",
         "The Platform may include:"
       ],
       bullets: [
-        "Centralized campaign metrics",
+        "Centralized Meta and Google Ads campaign metrics",
         "Dashboards and reports",
         "AI-powered recommendations",
+        "Google Ads keyword and search term analysis",
         "Automated learnings",
         "Performance alerts",
         "Change history",
@@ -294,6 +314,24 @@ const en: LegalPageContent = {
         "Orion Agency may integrate with external services including Meta Ads, Google Ads, Google Analytics, Google Tag Manager, TikTok Ads, LinkedIn Ads, Pinterest Ads, Shopify, WooCommerce, and future integrations.",
         "By connecting an external account, you declare that you are authorized to grant the required access.",
         "You may revoke permissions directly on integrated platforms or in Orion Agency settings."
+      ]
+    },
+    {
+      title: "9.1 Google Ads Integration",
+      paragraphs: [
+        "The Google Ads integration is optional and depends on your explicit OAuth consent. Once connected, Orion Agency accesses your Google Ads account data through the official Google Ads API, solely to operate the features described in these Terms. Details on what data we access, for what purpose, and how we store and protect it are in the Privacy Policy.",
+        "By connecting Google Ads, you declare and agree that:"
+      ],
+      bullets: [
+        "You are authorized by the holder of each connected account — your own or a client's, including accounts accessed via MCC — to grant such access",
+        "You are responsible for your ads' content, targeting, and compliance with Google Advertising Policies",
+        "You remain subject to the Google Ads Terms of Service and Google's other policies",
+        "Orion Agency is not affiliated with Google, is not an official Google product, and does not mediate your contractual or financial relationship with Google",
+        "Invoices, charges, and media spend are paid by you directly to Google, not to Orion Agency"
+      ],
+      tail: [
+        "You may disconnect Google Ads at any time in Settings → Integrations, or revoke the app's access at https://myaccount.google.com/permissions. Revoking stops syncing and may disable features that depend on this data.",
+        "Orion Agency does not guarantee continuous availability of the Google Ads API, nor is it responsible for changes, quota limits, ad disapprovals, or account suspensions applied by Google."
       ]
     },
     {

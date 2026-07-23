@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { apiErrorResponse, requireAppShellContext } from "@/lib/api-auth";
-import { loadMetricTotals, resolveDashboardScope } from "@/lib/dashboard-query";
+import {
+  loadGoogleMetricTotals,
+  loadMetricTotals,
+  resolveDashboardScope
+} from "@/lib/dashboard-query";
 import { todayIso } from "@/lib/report-period";
 
 function mtdComparisonRanges() {
@@ -24,9 +28,9 @@ function mtdComparisonRanges() {
 export async function GET() {
   try {
     const { tenant } = await requireAppShellContext();
-    const { accountIds } = await resolveDashboardScope(tenant.id, null, null);
+    const { accountIds, clientIds } = await resolveDashboardScope(tenant.id, null, null);
 
-    if (!accountIds.length) {
+    if (!accountIds.length && !clientIds.length) {
       return NextResponse.json({
         ok: true,
         hasData: false,
@@ -39,13 +43,15 @@ export async function GET() {
 
     const { curSince, curUntil, prevSince, prevUntil } = mtdComparisonRanges();
 
-    const [current, previous] = await Promise.all([
+    const [current, previous, gCurrent, gPrevious] = await Promise.all([
       loadMetricTotals(accountIds, 31, { since: curSince, until: curUntil }),
-      loadMetricTotals(accountIds, 31, { since: prevSince, until: prevUntil })
+      loadMetricTotals(accountIds, 31, { since: prevSince, until: prevUntil }),
+      loadGoogleMetricTotals(clientIds, 31, { since: curSince, until: curUntil }),
+      loadGoogleMetricTotals(clientIds, 31, { since: prevSince, until: prevUntil })
     ]);
 
-    const currentSpend = current.spend;
-    const previousSpend = previous.spend;
+    const currentSpend = current.spend + gCurrent.spend;
+    const previousSpend = previous.spend + gPrevious.spend;
     const changePct =
       previousSpend > 0 ? ((currentSpend - previousSpend) / previousSpend) * 100 : null;
     const savings = Math.max(0, previousSpend - currentSpend);

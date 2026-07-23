@@ -25,7 +25,7 @@ import { PeriodFilter, periodStateToQuery, type PeriodState } from "@/components
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { CampaignDraftMobileCards, CampaignMobileCards, type CampaignRowLike } from "@/components/campaigns/CampaignMobileCards";
 import { PageToolbar } from "@/components/layout/PageToolbar";
-import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
+import { HubSyncButton } from "@/components/layout/HubSyncButton";
 import { IconActionButton } from "@/components/ui/IconActionButton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
@@ -47,6 +47,9 @@ import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { CampaignExportModal, toCampaignExportRows } from "@/components/campaign/CampaignExportModal";
 import { CampaignGroupPager } from "@/components/campaign/CampaignGroupPager";
 import { CampaignMetricsDataBanner } from "@/components/campaign/CampaignMetricsDataBanner";
+import { ClientGoogleAdsPanel } from "@/components/ClientGoogleAdsPanel";
+import { HubGoogleCampaigns } from "@/components/campaign/HubGoogleCampaigns";
+import { PlatformConnectCard } from "@/components/PlatformConnectCard";
 import { CampaignStatusToggle } from "@/components/campaign/CampaignStatusToggle";
 import { CampaignTypeSelectCompact } from "@/components/campaign/CampaignTypeSelectCompact";
 import { CampaignCreationModePicker } from "@/components/campaign-creator/CampaignCreationModePicker";
@@ -102,7 +105,13 @@ type CampaignRow = {
   draftTemplateId?: string;
 };
 
-type ClientOption = { id: string; slug: string; name: string };
+type ClientOption = {
+  id: string;
+  slug: string;
+  name: string;
+  googleConnected?: boolean;
+  metaConnected?: boolean;
+};
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
 type ObjectiveFilter = "ALL" | "leads" | "sales" | "traffic";
 
@@ -130,6 +139,28 @@ function isDraftRow(row: CampaignRow): boolean {
 
 function draftTemplateIdFromRow(row: Pick<CampaignRowLike, "metaCampaignId" | "draftTemplateId">): string {
   return row.draftTemplateId ?? row.metaCampaignId.replace(/^draft:/, "");
+}
+
+function MetaGlyph() {
+  return (
+    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="#0866FF"
+        d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"
+      />
+    </svg>
+  );
+}
+
+function GoogleGlyph() {
+  return (
+    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.5 3.4 14.5 2.6 12 2.6 6.9 2.6 2.7 6.8 2.7 12s4.2 9.4 9.3 9.4c5.4 0 8.9-3.8 8.9-9.1 0-.6-.1-1.1-.2-1.5H12z"
+      />
+    </svg>
+  );
 }
 
 export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: boolean } = {}) {
@@ -229,6 +260,31 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const requestIdRef = useRef(0);
   const selectedIdRef = useRef<string | null>(null);
   selectedIdRef.current = selectedId;
+
+  // Plataforma em exibição no hub (Meta/Google/Ambos) — só relevante com cliente selecionado.
+  const [platform, setPlatform] = useState<"meta" | "google" | "both">("meta");
+  const selectedClient = useMemo(
+    () => clients.find((c) => c.slug === clientFilter),
+    [clients, clientFilter]
+  );
+  const googleAvailable = !!clientFilter && !!selectedClient?.googleConnected;
+  // Meta só entra em cena se: sem cliente específico (agregado) ou o cliente selecionado tem Meta.
+  const metaConnectedForClient = !clientFilter || !!selectedClient?.metaConnected;
+  const showMeta = platform !== "google" && metaConnectedForClient;
+  // CTAs de conexão: cliente selecionado sem a plataforma pedida — não busca nada, só oferece conectar.
+  const showMetaConnect = platform !== "google" && !!clientFilter && !selectedClient?.metaConnected;
+  const showGoogleConnect = platform !== "meta" && !!clientFilter && !selectedClient?.googleConnected;
+  // Default por cliente (uma vez por cliente, após carregar a lista; não sobrescreve troca manual).
+  const platformDefaultedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!clients.length) return;
+    if (platformDefaultedFor.current === clientFilter) return;
+    platformDefaultedFor.current = clientFilter;
+    const sc = clients.find((c) => c.slug === clientFilter);
+    if (!clientFilter || !sc?.googleConnected) setPlatform("meta");
+    else if (sc.metaConnected) setPlatform("both");
+    else setPlatform("google");
+  }, [clients, clientFilter]);
 
   const reloadPresets = useCallback(() => {
     return fetch("/api/campaign-presets")
@@ -485,12 +541,20 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     fetch("/api/clients?minimal=1")
       .then((r) => r.json())
       .then((j) => {
-        const list = (j.clients ?? []) as Array<{ id: string; name: string; slug?: string }>;
+        const list = (j.clients ?? []) as Array<{
+          id: string;
+          name: string;
+          slug?: string;
+          googleConnected?: boolean;
+          metaConnected?: boolean;
+        }>;
         setClients(
           list.map((c) => ({
             id: c.id,
             name: c.name,
-            slug: c.slug ?? c.name.toLowerCase().replace(/\s+/g, "-")
+            slug: c.slug ?? c.name.toLowerCase().replace(/\s+/g, "-"),
+            googleConnected: c.googleConnected,
+            metaConnected: c.metaConnected
           }))
         );
       });
@@ -500,6 +564,15 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
   const load = useCallback(
     (opts?: { live?: boolean; refresh?: boolean }) => {
       abortRef.current?.abort();
+      // Sem Meta em cena (plataforma Google, ou cliente sem Meta conectado): não varre o Meta à toa.
+      if (!showMeta) {
+        setRows([]);
+        setTotal(0);
+        setTotals({ spend: 0, conversions: 0, leads: 0 });
+        setEnrichError(null);
+        setLoading(false);
+        return;
+      }
       const ac = new AbortController();
       abortRef.current = ac;
       const reqId = ++requestIdRef.current;
@@ -577,7 +650,8 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       sortKey,
       sortDir,
       groupByType,
-      periodUserActivated
+      periodUserActivated,
+      showMeta
     ]
   );
 
@@ -906,13 +980,21 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       {useUxChrome ? (
         <PageToolbar
           filterCreatorFields
+          defaultFiltersOpen
+          periodAtEnd
           eyebrow={t("breadcrumb")}
           icon={<Megaphone size={16} />}
           title={t("title")}
           subtitle={t("subtitleList")}
           showAccountFilter={false}
+          showSync={false}
           pageFilters={campaignsPageFilters}
-          actions={newCampaignSlot}
+          actions={
+            <>
+              {newCampaignSlot}
+              <HubSyncButton platform={platform} clientFilter={clientFilter} />
+            </>
+          }
         />
       ) : (
         <DsPageHeader
@@ -922,14 +1004,33 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           titleIcon={<Megaphone size={16} />}
           actions={
             <>
-              <MetaSyncButton clientFilter={clientFilter} />
+              <HubSyncButton platform={platform} clientFilter={clientFilter} />
               {newCampaignSlot}
             </>
           }
         />
       )}
 
-      {loading && shouldCampaignListFetchLive({ clientFilter, periodUserActivated }) ? (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {(["meta", "google", "both"] as const).map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setPlatform(p)}
+            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-xs font-medium transition active:scale-95 hover:bg-[var(--surface-bg)] ${
+              platform === p
+                ? "border-[var(--ui-accent)] font-semibold text-[var(--ui-accent)]"
+                : "border-[var(--border-color)] text-[var(--text-dim)] hover:border-[var(--ui-accent)] hover:text-[var(--text-main)]"
+            }`}
+          >
+            {p !== "google" ? <MetaGlyph /> : null}
+            {p !== "meta" ? <GoogleGlyph /> : null}
+            {t(`platform_${p}` as Parameters<typeof t>[0])}
+          </button>
+        ))}
+      </div>
+
+      {showMeta && loading && shouldCampaignListFetchLive({ clientFilter, periodUserActivated }) ? (
         <DsInfoBanner loading className="px-4 py-2.5 text-sm">
           {t("loadingMetaToday")}
         </DsInfoBanner>
@@ -942,7 +1043,9 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
         </div>
       ) : null}
 
-      <CampaignMetricsDataBanner dataUpdatedAt={dataUpdatedAt} clientFilter={clientFilter} />
+      {showMeta ? (
+        <CampaignMetricsDataBanner dataUpdatedAt={dataUpdatedAt} clientFilter={clientFilter} />
+      ) : null}
 
       {!useUxChrome ? (
       <div className="flex flex-wrap items-center gap-3 ui-card p-4">
@@ -1036,13 +1139,14 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       </div>
       ) : null}
 
-      {clientFilter ? (
+      {showMeta && clientFilter ? (
         <DsInfoBanner className="px-4 py-2.5 text-xs">
           {t("clientScopeHint", { client: clientLabel })}
         </DsInfoBanner>
       ) : null}
 
-      {groupByType ? (
+      {showMeta ? (
+        groupByType ? (
         <div className={`space-y-4 ${loading && rows.length > 0 ? "opacity-60 pointer-events-none" : ""}`}>
           {loading && rows.length === 0 ? (
             <TableSkeleton
@@ -1486,9 +1590,11 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
           </div>
         </div>
       </div>
-      )}
+      )
+      ) : null}
 
-      {selectedId && !useUxChrome ? (
+      {showMeta ? (
+        selectedId && !useUxChrome ? (
         <div ref={detailRef} className="space-y-2 scroll-mt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-heading text-sm font-semibold text-[var(--text-main)]">{t("detailTitle")}</h2>
@@ -1546,7 +1652,21 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
             )}
           </div>
         </div>
-      )}
+      )
+      ) : null}
+
+      {showMetaConnect ? <PlatformConnectCard platform="meta" clientId={clientFilter} /> : null}
+
+      {platform !== "meta" && googleAvailable && clientFilter ? (
+        <ClientGoogleAdsPanel clientId={clientFilter} showSyncButton={false} />
+      ) : null}
+
+      {showGoogleConnect ? <PlatformConnectCard platform="google" clientId={clientFilter} /> : null}
+
+      {platform !== "meta" && !clientFilter ? (
+        <HubGoogleCampaigns period={period} q={q} />
+      ) : null}
+
       <CampaignCreationModePicker
         open={creationPickerOpen}
         onClose={() => setCreationPickerOpen(false)}
@@ -1594,3 +1714,4 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
     </div>
   );
 }
+

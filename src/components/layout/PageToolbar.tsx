@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { PageFilterBar } from "@/components/layout/PageFilterBar";
+import { PeriodFilter } from "@/components/PeriodFilter";
 import { MetaSyncButton } from "@/components/layout/MetaSyncButton";
 import { FilterToggleButton } from "@/components/ui/FilterToggleButton";
 import { useCommandStripOptional } from "@/components/layout/CommandStripContext";
@@ -27,6 +28,8 @@ export function PageToolbar({
   showSync = true,
   showAccountFilter = true,
   filterCreatorFields = false,
+  defaultFiltersOpen = false,
+  periodAtEnd = false,
   className
 }: {
   eyebrow?: string;
@@ -47,11 +50,15 @@ export function PageToolbar({
   showAccountFilter?: boolean;
   /** Inset creator field styling inside the filter panel (Destaques / Reports pattern). */
   filterCreatorFields?: boolean;
+  /** Filtros já expandidos por padrão (ex.: lista de campanhas). */
+  defaultFiltersOpen?: boolean;
+  /** Move o filtro de Período para o fim (depois dos pageFilters) em vez de ao lado do Cliente. */
+  periodAtEnd?: boolean;
   className?: string;
 }) {
   const t = useTranslations("dashboard");
   const strip = useCommandStripOptional();
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(defaultFiltersOpen);
 
   const hasGlobalFilters = Boolean(showGlobalFilters && strip);
   const hasPageFilters = Boolean(pageFilters);
@@ -111,10 +118,23 @@ export function PageToolbar({
                 periodFilterDisabled={periodFilterDisabled}
                 periodFilterDisabledHint={periodFilterDisabledHint}
                 showAccount={showAccountFilter}
+                showPeriod={!periodAtEnd}
                 compact
               />
             ) : null}
             {pageFilters}
+            {hasGlobalFilters && periodAtEnd ? (
+              <div className="ui-filter-panel-field">
+                <PeriodFilter
+                  value={strip!.period}
+                  onChange={strip!.setPeriod}
+                  creatorField={filterCreatorFields}
+                  variant="commandStrip"
+                  disabled={periodFilterDisabled}
+                  disabledHint={periodFilterDisabledHint}
+                />
+              </div>
+            ) : null}
           </PageFilterBar>
         ) : null}
       </div>

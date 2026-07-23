@@ -242,6 +242,46 @@ export function SidebarUserBlock({
   const initial = userName.trim().charAt(0).toUpperCase() || "?";
   const isLight = theme === "light";
 
+  // Logo do workspace (white-label) usado como avatar. Buscado do tenant e atualizado
+  // quando o usuário salva um novo logo em Configurações (evento traffic:brand-updated).
+  const [brandLogo, setBrandLogo] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      fetch("/api/settings/tenant")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (alive) setBrandLogo(j?.tenant?.logoUrl || null);
+        })
+        .catch(() => {});
+    };
+    load();
+    const onUpdate = () => load();
+    window.addEventListener("traffic:brand-updated", onUpdate);
+    return () => {
+      alive = false;
+      window.removeEventListener("traffic:brand-updated", onUpdate);
+    };
+  }, []);
+
+  const renderAvatar = (sizeClass: string, radiusClass: string, textClass: string) =>
+    brandLogo ? (
+      // Logo sempre redondo, independente do formato do badge original.
+      <span
+        className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ${sizeClass}`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={brandLogo} alt="" className="h-full w-full object-contain" />
+      </span>
+    ) : (
+      <span
+        className={`flex shrink-0 items-center justify-center text-white ${sizeClass} ${radiusClass} ${textClass}`}
+        style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
+      >
+        {initial}
+      </span>
+    );
+
   const [planLoading, setPlanLoading] = useState(false);
   const [planLoaded, setPlanLoaded] = useState(false);
   const [planInfo, setPlanInfo] = useState<{
@@ -361,12 +401,7 @@ export function SidebarUserBlock({
           onClick={closeAndNavigate}
           className="flex min-w-0 flex-1 items-center gap-3"
         >
-          <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-heading text-sm font-bold text-white"
-            style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
-          >
-            {initial}
-          </span>
+          {renderAvatar("h-10 w-10", "rounded-xl", "font-heading text-sm font-bold")}
           <div className="min-w-0 flex-1">
             <p className="truncate font-body text-sm font-semibold text-[#f8fafc]">{userName}</p>
             {userEmail ? (
@@ -571,12 +606,7 @@ export function SidebarUserBlock({
           }`}
           title={userName}
         >
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-body text-xs font-semibold text-white"
-            style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
-          >
-            {initial}
-          </div>
+          {renderAvatar("h-9 w-9", "rounded-full", "font-body text-xs font-semibold")}
           {!collapsed ? (
             <>
               <div className="min-w-0 flex-1">

@@ -8,14 +8,18 @@ import { getClientBySlugOrId, slugify } from "@/lib/app-context";
 import { presetMetricsFor } from "@/lib/campaign-presets";
 import type { MetricKey } from "@/lib/dashboard-metrics";
 import {
+  loadGoogleMetricSeriesByDay,
+  loadGoogleMetricTotals,
   loadMetricSeriesByDay,
   loadMetricTotals,
+  mergeMetricSeries,
+  mergeMetricTotals,
   resolveDashboardScope
 } from "@/lib/dashboard-query";
 import { pctDelta, type Range } from "@/lib/dashboard-ranges";
 import { generateReportClaudeAnalysis } from "@/lib/report-ai-analysis";
 import { isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
-import { loadReportBreakdowns } from "@/lib/report-breakdown-data";
+import { loadGoogleReportBreakdowns, loadReportBreakdowns } from "@/lib/report-breakdown-data";
 import {
   generateReportNarrative,
   generateReportRecommendations
@@ -104,12 +108,16 @@ async function dominantPresetForClient(
 
 async function loadCampaignSpend(
   accountIds: string[],
-  range: Range
+  range: Range,
+  googleClientId?: string
 ): Promise<CampaignSpendRow[]> {
-  const { campaignMetricSnapshot: campRepo } = await repositories();
-  const rows = await campRepo.find({
-    where: { adAccountId: In(accountIds), day: Between(range.since, range.until) }
-  });
+  const { campaignMetricSnapshot: campRepo, googleCampaignMetricSnapshot: googleRepo } =
+    await repositories();
+  const rows = accountIds.length
+    ? await campRepo.find({
+        where: { adAccountId: In(accountIds), day: Between(range.since, range.until) }
+      })
+    : [];
 
   const byCampaign = new Map<
     string,
@@ -128,6 +136,27 @@ async function loadCampaignSpend(
     cur.clicks += num(r.clicks);
     if (r.campaignName) cur.name = r.campaignName;
     byCampaign.set(r.metaCampaignId, cur);
+  }
+
+  // Campanhas Google (chave prefixada g: para não colidir com IDs Meta).
+  if (googleClientId) {
+    const gRows = await googleRepo.find({
+      where: { clientId: googleClientId, day: Between(range.since, range.until) }
+    });
+    for (const r of gRows) {
+      const key = `g:${r.campaignId}`;
+      const cur = byCampaign.get(key) ?? {
+        name: r.campaignName ?? r.campaignId,
+        spend: 0,
+        conversions: 0,
+        clicks: 0
+      };
+      cur.spend += num(r.cost);
+      cur.conversions += num(r.conversions);
+      cur.clicks += num(r.clicks);
+      if (r.campaignName) cur.name = r.campaignName;
+      byCampaign.set(key, cur);
+    }
   }
 
   const totalSpend = [...byCampaign.values()].reduce((s, c) => s + c.spend, 0);
@@ -173,12 +202,17 @@ function seriesToSummaryRows(
 }
 
 function formatRangeLabel(range: Range, locale: string): string {
+  // Formata em UTC ancorando a data ISO ao meio-dia UTC. Sem isso, `new Date("2025-07-06")`
+  // vira meia-noite UTC e, no fuso local (ex.: BRT, UTC-3), volta para 05/07 — o rótulo
+  // exibia um dia a menos que o intervalo realmente consultado.
   const fmt = new Intl.DateTimeFormat(locale === "en" ? "en-US" : "pt-BR", {
     day: "2-digit",
-    month: "short"
+    month: "short",
+    timeZone: "UTC"
   });
+  const toUtcNoon = (iso: string) => new Date(`${String(iso).slice(0, 10)}T12:00:00Z`);
   try {
-    return `${fmt.format(new Date(range.since))} – ${fmt.format(new Date(range.until))}`;
+    return `${fmt.format(toUtcNoon(range.since))} – ${fmt.format(toUtcNoon(range.until))}`;
   } catch {
     return `${range.since} – ${range.until}`;
   }
@@ -249,26 +283,36 @@ export async function buildReportPreview(input: {
   let previousSeries: ReportPreviewPayload["previousSeries"] = [];
   let campaigns: CampaignSpendRow[] = [];
 
-  if (accountIds.length) {
-    const [curTotals, prevTotals, curSeries, prevSeriesRows, campaignRows] = await Promise.all([
-      loadMetricTotals(accountIds, undefined, {
-        since: input.current.since,
-        until: input.current.until,
-        allTime: false
-      }),
-      loadMetricTotals(accountIds, undefined, {
-        since: input.previous.since,
-        until: input.previous.until,
-        allTime: false
-      }),
+  const googleClientId = client.googleAdsCustomerId ? client.id : undefined;
+  if (accountIds.length || googleClientId) {
+    const gIds = [client.id];
+    const curOpts = { since: input.current.since, until: input.current.until, allTime: false };
+    const prevOpts = { since: input.previous.since, until: input.previous.until, allTime: false };
+    const [
+      curMeta,
+      prevMeta,
+      curSeriesMeta,
+      prevSeriesMeta,
+      campaignRows,
+      curG,
+      prevG,
+      curSeriesG,
+      prevSeriesG
+    ] = await Promise.all([
+      loadMetricTotals(accountIds, undefined, curOpts),
+      loadMetricTotals(accountIds, undefined, prevOpts),
       loadMetricSeriesByDay(accountIds, undefined, periodOpts(input.current)),
       loadMetricSeriesByDay(accountIds, undefined, periodOpts(input.previous)),
-      loadCampaignSpend(accountIds, input.current)
+      loadCampaignSpend(accountIds, input.current, googleClientId),
+      loadGoogleMetricTotals(gIds, undefined, curOpts),
+      loadGoogleMetricTotals(gIds, undefined, prevOpts),
+      loadGoogleMetricSeriesByDay(gIds, undefined, periodOpts(input.current)),
+      loadGoogleMetricSeriesByDay(gIds, undefined, periodOpts(input.previous))
     ]);
-    summary = buildSummary(curTotals);
-    previousSummary = buildSummary(prevTotals);
-    series = seriesToSummaryRows(curSeries);
-    previousSeries = seriesToSummaryRows(prevSeriesRows);
+    summary = buildSummary(mergeMetricTotals(curMeta, curG));
+    previousSummary = buildSummary(mergeMetricTotals(prevMeta, prevG));
+    series = seriesToSummaryRows(mergeMetricSeries(curSeriesMeta, curSeriesG));
+    previousSeries = seriesToSummaryRows(mergeMetricSeries(prevSeriesMeta, prevSeriesG));
     campaigns = campaignRows;
   }
 
@@ -366,6 +410,22 @@ export async function buildReportPreview(input: {
         until: input.current.until,
         locale: input.locale,
         accessToken: input.metaAccessToken
+      });
+    } catch {
+      breakdowns = [];
+    }
+  }
+
+  // Fallback Google (device/gênero/idade) quando não há breakdown Meta e o cliente
+  // tem conta Google — cobre clientes Google-only.
+  if (!breakdowns.length && client.googleAdsCustomerId) {
+    try {
+      breakdowns = await loadGoogleReportBreakdowns({
+        tenantId: input.tenantId,
+        customerId: client.googleAdsCustomerId,
+        since: input.current.since,
+        until: input.current.until,
+        locale: input.locale
       });
     } catch {
       breakdowns = [];

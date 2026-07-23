@@ -377,9 +377,17 @@ export function formatPeriodLabel(
   if (period.preset === "last15") return labels.last15;
   if (period.preset === "last30") return labels.last30;
   if (period.preset === "custom" && period.since && period.until) {
-    const fmt = new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric" });
+    // Ancorar ao meio-dia UTC + formatar em UTC evita o deslocamento de -1 dia que
+    // `new Date("YYYY-MM-DD")` causa em fusos atrás do UTC (ex.: BRT).
+    const fmt = new Intl.DateTimeFormat(locale, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC"
+    });
+    const toUtcNoon = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00Z`);
     try {
-      return `${fmt.format(new Date(period.since))} → ${fmt.format(new Date(period.until))}`;
+      return `${fmt.format(toUtcNoon(period.since))} → ${fmt.format(toUtcNoon(period.until))}`;
     } catch {
       return labels.custom;
     }

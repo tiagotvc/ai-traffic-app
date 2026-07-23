@@ -6,7 +6,9 @@ import { getAppContext } from "@/lib/app-context";
 
 const PatchSchema = z.object({
   brandName: z.string().min(1).optional(),
-  logoUrl: z.string().optional(),
+  // Aceita URL http(s) OU data URI (logo enviado como imagem). Backstop ~800KB — o
+  // cliente já redimensiona/comprime para bem menos (ver MAX_LOGO_DATA_URL_LENGTH).
+  logoUrl: z.string().max(800_000).optional(),
   agencyBrainNicheShareOptIn: z.boolean().optional()
 });
 

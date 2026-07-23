@@ -111,7 +111,11 @@ export function NavigationLoadingOverlay() {
         if (next != null) {
           const url = new URL(String(next), window.location.href);
           if (url.origin === window.location.origin && url.pathname !== window.location.pathname) {
-            begin(url.pathname);
+            // `pushState` pode ser chamado durante a fase de commit do React (dentro de um
+            // useInsertionEffect), onde agendar setState é proibido. Adia para um microtask,
+            // que roda após o commit — evita "useInsertionEffect must not schedule updates".
+            const path = url.pathname;
+            queueMicrotask(() => begin(path));
           }
         }
       } catch {

@@ -15,6 +15,7 @@ import {
   Lock,
   Plug,
   Sparkles,
+  Upload,
   User,
   Users
 } from "lucide-react";
@@ -34,6 +35,7 @@ import {
   type SettingsNavItem
 } from "@/components/settings/SettingsSectionNav";
 import { WorkspaceTeamSection } from "@/components/WorkspaceTeamSection";
+import { fileToResizedDataUrl, LogoImageError } from "@/lib/logo-image";
 import type { Entitlements } from "@/lib/billing/types";
 
 type SettingsTab = "account" | "team" | "integrations" | "webhooks" | "data";
@@ -63,6 +65,7 @@ export function SettingsClient({
   metaOAuthConfigured,
   metaOAuthError,
   connectMetaSlot,
+  googleAdsEnabled = false,
   embedded = false,
   bare = false,
   activeTab: controlledTab,
@@ -73,6 +76,7 @@ export function SettingsClient({
   metaOAuthConfigured: boolean;
   metaOAuthError?: string | null;
   connectMetaSlot: ReactNode;
+  googleAdsEnabled?: boolean;
   embedded?: boolean;
   bare?: boolean;
   activeTab?: SettingsTab;
@@ -93,6 +97,8 @@ export function SettingsClient({
 
   const [brandName, setBrandName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -137,6 +143,29 @@ export function SettingsClient({
       })
       .catch(() => setMessage(t("loadFailed")));
   }, [t]);
+
+  async function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite reenviar o mesmo arquivo
+    if (!file) return;
+    setLogoError(null);
+    setLogoUploading(true);
+    try {
+      const dataUrl = await fileToResizedDataUrl(file, 256);
+      setLogoUrl(dataUrl);
+    } catch (err) {
+      const code = err instanceof LogoImageError ? err.code : "";
+      setLogoError(
+        code === "too_large"
+          ? t("logoTooLarge")
+          : code === "invalid_type"
+            ? t("logoInvalidType")
+            : t("logoUploadFailed")
+      );
+    } finally {
+      setLogoUploading(false);
+    }
+  }
 
   useEffect(() => {
     if (allowWhiteLabelProp !== undefined) {
@@ -395,15 +424,55 @@ export function SettingsClient({
                       placeholder={t("brandNamePlaceholder")}
                     />
                   </DsFormField>
-                  <DsFormField label={t("logoUrl")}>
-                    <FilterTextField
-                      creatorField
-                      icon={<ImageIcon size={13} />}
-                      label={t("logoUrl")}
-                      value={logoUrl}
-                      onChange={setLogoUrl}
-                      placeholder="https://exemplo.com/logo.png"
-                    />
+                  <DsFormField label={t("logoLabel")}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--creator-card-border,var(--border-color))] bg-[var(--creator-card-bg-inset,var(--surface-bg))]">
+                        {logoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={logoUrl} alt="" className="h-full w-full object-contain" />
+                        ) : (
+                          <ImageIcon size={18} className="text-[var(--text-dimmer)]" aria-hidden />
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-col gap-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label
+                            className={`ui-btn-secondary inline-flex items-center gap-1.5 text-xs ${
+                              logoUploading ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                            }`}
+                          >
+                            <Upload size={13} aria-hidden />
+                            {logoUrl ? t("logoReplace") : t("logoUpload")}
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                              className="hidden"
+                              disabled={logoUploading}
+                              onChange={handleLogoFile}
+                            />
+                          </label>
+                          {logoUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLogoUrl("");
+                                setLogoError(null);
+                              }}
+                              className="text-xs text-[var(--text-dim)] transition-colors hover:text-[var(--danger)]"
+                            >
+                              {t("logoRemove")}
+                            </button>
+                          ) : null}
+                        </div>
+                        <p
+                          className={`text-[11px] ${
+                            logoError ? "text-rose-500" : "text-[var(--text-dim)]"
+                          }`}
+                        >
+                          {logoUploading ? tCommon("loading") : logoError ?? t("logoHint")}
+                        </p>
+                      </div>
+                    </div>
                   </DsFormField>
                 </div>
                 <SettingsFooterSave
@@ -421,6 +490,10 @@ export function SettingsClient({
                         return;
                       }
                       setMessage(json?.ok ? t("saved") : json?.error ?? t("saveFailed"));
+                      if (json?.ok && typeof window !== "undefined") {
+                        // Atualiza o avatar do sidebar sem recarregar a página.
+                        window.dispatchEvent(new Event("traffic:brand-updated"));
+                      }
                     });
                   }}
                   disabled={isPending}
@@ -451,6 +524,7 @@ export function SettingsClient({
           metaOAuthConfigured={metaOAuthConfigured}
           metaOAuthError={metaOAuthError}
           connectMetaSlot={connectMetaSlot}
+          googleAdsEnabled={googleAdsEnabled}
         />
       ) : null}
 

@@ -13,6 +13,7 @@ export type ClientRow = {
   accounts: number;
   alertCount: number;
   metaConnected?: boolean;
+  googleConnected?: boolean;
   pixelCount?: number;
   hasPage?: boolean;
   metrics?: Partial<Record<MetricKey, number>>;

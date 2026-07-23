@@ -17,6 +17,7 @@ import {
 } from "@/components/dashboard/DashboardInsightPanels";
 import { MetricPrism } from "@/components/dashboard/MetricPrism";
 import { ActiveScopeFilterBadges } from "@/components/layout/ActiveScopeFilterBadges";
+import { PlatformFilterPills } from "@/components/campaign/PlatformFilterPills";
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { DsCard, DsInfoBanner } from "@/design-system";
@@ -347,6 +348,17 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
             </button>
           ) : null
         }
+      />
+
+      <PlatformFilterPills
+        className="-mt-2 mb-4"
+        value={data.platform}
+        onChange={data.setPlatform}
+        labels={{
+          meta: t("platform_meta"),
+          google: t("platform_google"),
+          both: t("platform_both")
+        }}
       />
 
       {data.note ? <DsInfoBanner className="px-4 py-2.5 text-sm">{data.note}</DsInfoBanner> : null}

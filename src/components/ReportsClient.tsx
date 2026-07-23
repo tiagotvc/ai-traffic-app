@@ -72,6 +72,12 @@ export function ReportsClient() {
   const [pendingAiGenerate, setPendingAiGenerate] = useState(false);
   const hasGeneratedRef = useRef(false);
   const skipFilterReloadRef = useRef(false);
+  // Espelha previewMode sem entrar no array de deps do effect de reload — senão o
+  // ciclo null→single de loadPreview re-dispara o effect em loop infinito.
+  const previewModeRef = useRef<PreviewMode>(null);
+  // Ajusta o período padrão apenas quando o TIPO de relatório muda, não a cada
+  // alteração manual de data.
+  const prevReportTypeRef = useRef<"simple" | "complete" | null>(null);
 
   const [reportsFlags, setReportsFlags] = useState<{
     v1: boolean;
@@ -89,6 +95,10 @@ export function ReportsClient() {
   }, []);
 
   const periodQuery = useMemo(() => periodStateToQuery(period).toString(), [period]);
+
+  useEffect(() => {
+    previewModeRef.current = previewMode;
+  }, [previewMode]);
 
   const selectedClient = useMemo(
     () => strip?.clientOptions.find((c) => c.slug === clientSlug) ?? null,
@@ -214,11 +224,11 @@ export function ReportsClient() {
       skipFilterReloadRef.current = false;
       return;
     }
-    if (previewMode === "consolidated") {
+    if (previewModeRef.current === "consolidated") {
       void loadConsolidated();
       return;
     }
-    if (previewMode === "single" && selectedClient) {
+    if (previewModeRef.current === "single" && selectedClient) {
       void loadPreview();
     }
   }, [
@@ -229,7 +239,6 @@ export function ReportsClient() {
     period.until,
     selectedMetrics,
     reportType,
-    previewMode,
     loadConsolidated,
     loadPreview,
     selectedClient
@@ -237,6 +246,11 @@ export function ReportsClient() {
 
   useEffect(() => {
     if (!strip) return;
+    const typeChanged = prevReportTypeRef.current !== reportType;
+    prevReportTypeRef.current = reportType;
+    // Só define um período padrão quando o TIPO de relatório muda. Sem isso, o
+    // effect revertia a data escolhida manualmente a cada alteração (loop/revert).
+    if (!typeChanged) return;
     if (reportType === "complete" && period.preset !== "last30" && period.preset !== "custom") {
       strip.setPeriod({ preset: "last30", since: "", until: "" });
     } else if (reportType === "simple" && period.preset === "last30") {
@@ -332,12 +346,9 @@ export function ReportsClient() {
     kind: "single" | "consolidated";
     metrics?: string[];
     periodPreset?: string | null;
+    explicit?: boolean;
   }) {
     skipFilterReloadRef.current = true;
-
-    const nextMetrics = config.metrics?.length
-      ? (config.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[])
-      : undefined;
 
     if (config.kind === "consolidated") {
       const nextPeriod: PeriodState | undefined = config.periodPreset
@@ -348,11 +359,20 @@ export function ReportsClient() {
       return;
     }
 
+    // Um template só sobrescreve métricas/período quando é escolhido explicitamente.
+    // Ao apenas gerar a prévia (template padrão), respeitamos as métricas e o período
+    // já selecionados pelo usuário na barra de filtros.
+    const nextMetrics =
+      config.explicit && config.metrics?.length
+        ? (config.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[])
+        : undefined;
+    const nextPeriodPreset = config.explicit ? config.periodPreset : null;
+
     if (config.reportType) setReportType(config.reportType);
     if (nextMetrics?.length) setSelectedMetrics(nextMetrics);
-    if (config.periodPreset && strip) {
+    if (nextPeriodPreset && strip) {
       strip.setPeriod({
-        preset: config.periodPreset as PeriodState["preset"],
+        preset: nextPeriodPreset as PeriodState["preset"],
         since: "",
         until: ""
       });
@@ -361,7 +381,7 @@ export function ReportsClient() {
     void loadPreview({
       reportType: config.reportType,
       metrics: nextMetrics,
-      periodPreset: config.periodPreset
+      periodPreset: nextPeriodPreset
     });
   }
 

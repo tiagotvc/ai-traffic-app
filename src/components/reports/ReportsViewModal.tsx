@@ -49,6 +49,8 @@ type Props = {
     kind: "single" | "consolidated";
     metrics?: string[];
     periodPreset?: string | null;
+    /** true quando o usuário escolhe um template de fato (não o padrão auto-selecionado). */
+    explicit?: boolean;
   }) => void;
   onGenerateAi: (prompt: string) => Promise<boolean>;
   aiBusy?: boolean;
@@ -124,6 +126,9 @@ export function ReportsViewModal({
   const [step, setStep] = useState<ModalStep>("mode");
   const [mode, setMode] = useState<GenerationMode | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  // O usuário clicou de fato num template? Se não (só o padrão auto-selecionado),
+  // a geração respeita as métricas/período já selecionados na barra de filtros.
+  const [templateTouched, setTemplateTouched] = useState(false);
   const [reportType, setReportType] = useState<"simple" | "complete">(currentReportType);
   const [savedTemplates, setSavedTemplates] = useState<SavedTpl[]>([]);
   const [saveName, setSaveName] = useState("");
@@ -135,10 +140,12 @@ export function ReportsViewModal({
       setStep("mode");
       setMode(null);
       setSelectedTemplate(null);
+      setTemplateTouched(false);
       setReportType(currentReportType);
       setPrompt("");
       return;
     }
+    setTemplateTouched(false);
     setReportType(currentReportType);
   }, [open, currentReportType]);
 
@@ -192,7 +199,8 @@ export function ReportsViewModal({
         templateId: selectedSaved.id,
         kind: "single",
         metrics: c.metrics,
-        periodPreset: c.periodPreset
+        periodPreset: c.periodPreset,
+        explicit: true
       });
       onClose();
       return;
@@ -205,7 +213,8 @@ export function ReportsViewModal({
         templateId: selectedBuiltin.id,
         kind: "single",
         metrics: c?.metrics,
-        periodPreset: c?.periodPreset
+        periodPreset: c?.periodPreset,
+        explicit: templateTouched
       });
       onClose();
       return;
@@ -357,6 +366,7 @@ export function ReportsViewModal({
                   badge={tpl.id === "performance" ? t("templateMostUsed") : undefined}
                   onSelect={() => {
                     setSelectedTemplate(tpl.id);
+                    setTemplateTouched(true);
                     if (tpl.reportType) setReportType(tpl.reportType);
                   }}
                 />
@@ -372,7 +382,10 @@ export function ReportsViewModal({
                   count: tpl.config.metrics?.length ?? 0
                 })}
                 icon={FileText}
-                onSelect={() => setSelectedTemplate(tpl.id)}
+                onSelect={() => {
+                  setSelectedTemplate(tpl.id);
+                  setTemplateTouched(true);
+                }}
               />
             ))}
           </div>

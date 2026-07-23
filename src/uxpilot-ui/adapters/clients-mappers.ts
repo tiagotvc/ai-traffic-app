@@ -14,6 +14,7 @@ export type UxClientCard = {
   color: string;
   accounts: number;
   metaConnected: boolean;
+  googleConnected: boolean;
   pixelCount: number;
   hasPage: boolean;
   dominantPreset: string;
@@ -51,6 +52,7 @@ export function toUxClientCards(clients: ClientRow[], locale: string): UxClientC
       accounts: c.accounts,
       dominantPreset: c.dominantPreset ?? "default",
       metaConnected: c.metaConnected ?? c.accounts > 0,
+      googleConnected: c.googleConnected ?? false,
       pixelCount: c.pixelCount ?? 0,
       hasPage: c.hasPage ?? false,
       budgetLabel: "Investimento",

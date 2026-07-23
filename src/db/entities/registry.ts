@@ -61,6 +61,8 @@ import { RefundRequest } from "./RefundRequest";
 import { DiscountCoupon } from "./DiscountCoupon";
 import { CouponRedemption } from "./CouponRedemption";
 import { GoogleAuth } from "./GoogleAuth";
+import { GoogleCampaignMetricSnapshot } from "./GoogleCampaignMetricSnapshot";
+import { GoogleKeywordRecommendation } from "./GoogleKeywordRecommendation";
 import { ClientLearning } from "./ClientLearning";
 import { ClientActionSuggestion } from "./ClientActionSuggestion";
 import { ClientHypothesis } from "./ClientHypothesis";
@@ -141,6 +143,8 @@ export {
   DiscountCoupon,
   CouponRedemption,
   GoogleAuth,
+  GoogleCampaignMetricSnapshot,
+  GoogleKeywordRecommendation,
   ClientLearning,
   ClientActionSuggestion,
   ClientHypothesis,
@@ -247,6 +251,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: DiscountCoupon, name: "DiscountCoupon" },
   { ctor: CouponRedemption, name: "CouponRedemption" },
   { ctor: GoogleAuth, name: "GoogleAuth" },
+  { ctor: GoogleCampaignMetricSnapshot, name: "GoogleCampaignMetricSnapshot" },
+  { ctor: GoogleKeywordRecommendation, name: "GoogleKeywordRecommendation" },
   { ctor: ClientLearning, name: "ClientLearning" },
   { ctor: ClientActionSuggestion, name: "ClientActionSuggestion" },
   { ctor: ClientHypothesis, name: "ClientHypothesis" },
@@ -331,6 +337,8 @@ export const typeOrmEntities = [
   DiscountCoupon,
   CouponRedemption,
   GoogleAuth,
+  GoogleCampaignMetricSnapshot,
+  GoogleKeywordRecommendation,
   ClientLearning,
   ClientActionSuggestion,
   ClientHypothesis,

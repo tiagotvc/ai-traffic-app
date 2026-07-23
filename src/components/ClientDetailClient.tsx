@@ -87,6 +87,13 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
   const [clientNiche, setClientNiche] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(true);
+  // null enquanto a flag Google Ads estiver off (rota responde 404).
+  const [googleAds, setGoogleAds] = useState<{
+    accounts: Array<{ id: string; descriptiveName: string | null; manager: boolean }>;
+    linkedCustomerId: string | null;
+    connected: boolean;
+  } | null>(null);
+  const [googleSel, setGoogleSel] = useState<string>("");
   const [isPending, startTransition] = useTransition();
 
   const notify = useCallback((type: Feedback["type"], text: string) => {
@@ -152,6 +159,19 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
         setClientMetaBusinessId(bm);
         setBmFilter(bm);
       });
+    fetch(`/api/clients/${encodeURIComponent(clientId)}/google-ads`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j?.ok) {
+          setGoogleAds({
+            accounts: j.accounts ?? [],
+            linkedCustomerId: j.linkedCustomerId ?? null,
+            connected: !!j.connected
+          });
+          setGoogleSel(j.linkedCustomerId ?? "");
+        }
+      })
+      .catch(() => undefined);
     fetch(`/api/clients/${encodeURIComponent(clientId)}/meta-settings`)
       .then((r) => r.json())
       .then((j) => {
@@ -525,6 +545,70 @@ export function ClientDetailClient({ clientId }: { clientId: string }) {
             />
           </div>
         </UxFormCard>
+
+        {googleAds ? (
+          <UxFormCard>
+            <div className="text-sm font-semibold" style={{ color: "var(--text-main)" }}>
+              {t("googleAdsAccountLabel")}
+            </div>
+            <p className="mt-1 text-xs" style={{ color: "var(--text-dim)" }}>
+              {t("googleAdsAccountHint")}
+            </p>
+            {googleAds.connected ? (
+              <div className="mt-3">
+                <select
+                  value={googleSel}
+                  onChange={(e) => setGoogleSel(e.target.value)}
+                  className="mt-1 w-full max-w-md rounded-xl ui-input text-sm"
+                >
+                  <option value="">{t("googleAdsAccountNone")}</option>
+                  {googleAds.accounts
+                    .filter((a) => !a.manager)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.descriptiveName ? `${a.descriptiveName} (${a.id})` : a.id}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            ) : (
+              <div className="mt-3 text-xs text-[var(--text-dim)]">
+                {t("googleAdsNotConnected")}{" "}
+                <Link href="/settings?tab=integrations" className="ui-link">
+                  {t("googleAdsConnectCta")}
+                </Link>
+              </div>
+            )}
+            <div className="mt-3 flex justify-end">
+              <UxSaveButton
+                disabled={isPending || !googleAds.connected}
+                onClick={() => {
+                  startTransition(async () => {
+                    const res = await fetch(
+                      `/api/clients/${encodeURIComponent(clientId)}/google-ads`,
+                      {
+                        method: "PATCH",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ customerId: googleSel || null })
+                      }
+                    );
+                    const j = await res.json();
+                    if (j.ok) {
+                      setGoogleAds((prev) =>
+                        prev ? { ...prev, linkedCustomerId: j.linkedCustomerId ?? null } : prev
+                      );
+                    }
+                    notify(
+                      j.ok ? "success" : "error",
+                      j.ok ? t("googleAdsSaved") : j.error ?? t("loadError")
+                    );
+                  });
+                }}
+                label={isPending ? "…" : t("saveGoogleAds")}
+              />
+            </div>
+          </UxFormCard>
+        ) : null}
 
         {!isProtectedClient(data.name, data.slug) ? (
           <div className="ui-card ui-alert-danger p-4">

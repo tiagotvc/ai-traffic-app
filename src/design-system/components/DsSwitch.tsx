@@ -10,12 +10,12 @@ const trackClass: Record<DsSwitchSize, string> = {
 };
 
 const knobClass: Record<DsSwitchSize, string> = {
-  sm: "h-3.5 w-3.5",
-  md: "h-4 w-4"
+  sm: "h-[15px] w-[15px]",
+  md: "h-[18px] w-[18px]"
 };
 
 const knobTranslate: Record<DsSwitchSize, { on: string; off: string }> = {
-  sm: { on: "translateX(15px)", off: "translateX(2px)" },
+  sm: { on: "translateX(14px)", off: "translateX(2px)" },
   md: { on: "translateX(18px)", off: "translateX(2px)" }
 };
 
@@ -85,13 +85,13 @@ export function DsSwitch({
     >
       <span
         className={cn(
-          "pointer-events-none absolute top-[2px] rounded-full transition-transform duration-200",
+          "pointer-events-none absolute top-1/2 rounded-full transition-transform duration-200",
           knobClass[size]
         )}
         style={{
           background: "var(--toggle-knob)",
           boxShadow: "var(--toggle-knob-shadow)",
-          transform: checked ? knobTranslate[size].on : knobTranslate[size].off
+          transform: `translateY(-50%) ${checked ? knobTranslate[size].on : knobTranslate[size].off}`
         }}
       />
     </button>

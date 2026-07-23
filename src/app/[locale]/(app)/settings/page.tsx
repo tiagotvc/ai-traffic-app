@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { ConnectMetaButton } from "@/components/ConnectMetaButton";
 import { isMetaOAuthConfigured } from "@/lib/meta-env";
+import { isGoogleAdsEnabled } from "@/lib/google-env";
 import { SettingsView } from "@/uxpilot-ui/adapters/SettingsView";
 
 export default async function SettingsPage({
@@ -20,6 +21,7 @@ export default async function SettingsPage({
       metaOAuthConfigured={metaOAuthConfigured}
       metaOAuthError={metaOAuthError}
       connectMetaSlot={<ConnectMetaButton locale={locale} />}
+      googleAdsEnabled={isGoogleAdsEnabled()}
     />
   );
 }

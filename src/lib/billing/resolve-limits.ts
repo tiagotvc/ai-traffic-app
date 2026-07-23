@@ -31,7 +31,10 @@ export function resolveLimits(plan: PlanLimitsSource): PlanLimits {
     allowDashboardAiWidgets: raw.allowDashboardAiWidgets ?? false,
     allowDashboardAiBuilder: raw.allowDashboardAiBuilder ?? false,
     allowDashboardSharing: raw.allowDashboardSharing ?? false,
-    allowWhiteLabel: raw.allowWhiteLabel ?? false,
+    // White-label (nome + logo custom em relatórios) é liberado em todos os planos —
+    // não é mais um gate pago. Forçado true aqui p/ valer inclusive em planos cujo
+    // registro no banco ainda tenha allowWhiteLabel=false.
+    allowWhiteLabel: true,
     maxAudiencePersonas: raw.maxAudiencePersonas ?? -1,
     allowRankingConfig: raw.allowRankingConfig ?? true,
     automationTier: raw.automationTier ?? 1

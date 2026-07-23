@@ -62,12 +62,15 @@ export function SettingsIntegrationsTab({
   locale,
   metaOAuthConfigured,
   metaOAuthError,
-  connectMetaSlot
+  connectMetaSlot,
+  googleAdsEnabled = false
 }: {
   locale: string;
   metaOAuthConfigured: boolean;
   metaOAuthError?: string | null;
   connectMetaSlot: ReactNode;
+  /** Resolvido no servidor (isGoogleAdsEnabled). Decide o card sem flash de "em breve". */
+  googleAdsEnabled?: boolean;
 }) {
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
@@ -76,6 +79,9 @@ export function SettingsIntegrationsTab({
   const [wsMeta, setWsMeta] = useState<WorkspaceMetaInfo | null>(null);
   const [wsMetaMessage, setWsMetaMessage] = useState<string | null>(null);
   const [wsMetaPending, startWsMetaTransition] = useTransition();
+  // null = status ainda carregando (badge "carregando"); o card já é escolhido pela prop.
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
+  const [googleMessage, setGoogleMessage] = useState<string | null>(null);
 
   const loadWorkspaceMeta = useCallback(() => {
     fetch("/api/settings/workspace-meta")
@@ -94,7 +100,16 @@ export function SettingsIntegrationsTab({
       })
       .catch(() => setMetaConnected(false));
     loadWorkspaceMeta();
-  }, [loadWorkspaceMeta]);
+    // Só busca o status de conexão quando a integração está ligada (evita 404 desnecessário).
+    if (googleAdsEnabled) {
+      fetch("/api/settings/google")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (j?.ok) setGoogleConnected(!!j.connected);
+        })
+        .catch(() => undefined);
+    }
+  }, [loadWorkspaceMeta, googleAdsEnabled]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -107,6 +122,13 @@ export function SettingsIntegrationsTab({
     }
     if (metaOAuthError === "PROFILE_MISMATCH") {
       setMessage(t("metaErrorProfileMismatch"));
+    }
+    if (params.get("googleConnected") === "1") {
+      setGoogleConnected(true);
+      setGoogleMessage(t("googleAdsConnectedMsg"));
+    }
+    if (params.get("googleError")) {
+      setGoogleMessage(t("googleAdsErrorMsg"));
     }
   }, [locale, t, metaOAuthError]);
 
@@ -262,21 +284,73 @@ export function SettingsIntegrationsTab({
             </span>
           }
         />
-        <ComingSoonCard
-          name={t("integrationGoogleAdsTitle")}
-          description={t("integrationGoogleAdsDesc")}
-          badgeTone="sky"
-          icon={
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-thead)]">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
-                <path
-                  fill="#EA4335"
-                  d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.5 3.4 14.5 2.6 12 2.6 6.9 2.6 2.7 6.8 2.7 12s4.2 9.4 9.3 9.4c5.4 0 8.9-3.8 8.9-9.1 0-.6-.1-1.1-.2-1.5H12z"
-                />
-              </svg>
-            </span>
-          }
-        />
+        {googleAdsEnabled ? (
+          <article className="rounded-xl border border-[var(--border-color)] bg-[var(--surface-card)] p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-thead)]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
+                  <path
+                    fill="#EA4335"
+                    d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.5 3.4 14.5 2.6 12 2.6 6.9 2.6 2.7 6.8 2.7 12s4.2 9.4 9.3 9.4c5.4 0 8.9-3.8 8.9-9.1 0-.6-.1-1.1-.2-1.5H12z"
+                  />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-heading text-sm font-semibold text-[var(--text-main)]">
+                    {t("integrationGoogleAdsTitle")}
+                  </h3>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      googleConnected
+                        ? "bg-emerald-500/15 text-emerald-400"
+                        : "bg-[var(--surface-thead)] text-[var(--text-dimmer)]"
+                    )}
+                  >
+                    {googleConnected === null
+                      ? tCommon("loading")
+                      : googleConnected
+                        ? t("metaConnected")
+                        : t("metaDisconnected")}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--text-dim)]">
+                  {t("googleAdsConnectHint")}
+                </p>
+                <div className="mt-3">
+                  <a
+                    href={`/api/google/oauth/start?redirectTo=${encodeURIComponent(
+                      `/${locale}/settings?tab=integrations`
+                    )}`}
+                    className="ui-btn-accent inline-flex px-3 py-1.5 text-xs"
+                  >
+                    {googleConnected ? t("googleAdsReconnect") : t("googleAdsConnect")}
+                  </a>
+                </div>
+                {googleMessage ? (
+                  <p className="mt-2 text-[11px] text-[var(--text-dimmer)]">{googleMessage}</p>
+                ) : null}
+              </div>
+            </div>
+          </article>
+        ) : (
+          <ComingSoonCard
+            name={t("integrationGoogleAdsTitle")}
+            description={t("integrationGoogleAdsDesc")}
+            badgeTone="sky"
+            icon={
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-thead)]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
+                  <path
+                    fill="#EA4335"
+                    d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.6-5.6-5.8S8.9 5.8 12 5.8c1.8 0 3 .8 3.7 1.4l2.5-2.4C16.5 3.4 14.5 2.6 12 2.6 6.9 2.6 2.7 6.8 2.7 12s4.2 9.4 9.3 9.4c5.4 0 8.9-3.8 8.9-9.1 0-.6-.1-1.1-.2-1.5H12z"
+                  />
+                </svg>
+              </span>
+            }
+          />
+        )}
       </div>
     </DsFlatSection>
   );
