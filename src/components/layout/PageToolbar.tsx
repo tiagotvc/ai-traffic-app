@@ -27,6 +27,7 @@ export function PageToolbar({
   showSync = true,
   showAccountFilter = true,
   filterCreatorFields = false,
+  defaultFiltersOpen = false,
   className
 }: {
   eyebrow?: string;
@@ -47,11 +48,13 @@ export function PageToolbar({
   showAccountFilter?: boolean;
   /** Inset creator field styling inside the filter panel (Destaques / Reports pattern). */
   filterCreatorFields?: boolean;
+  /** Filtros já expandidos por padrão (ex.: lista de campanhas). */
+  defaultFiltersOpen?: boolean;
   className?: string;
 }) {
   const t = useTranslations("dashboard");
   const strip = useCommandStripOptional();
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(defaultFiltersOpen);
 
   const hasGlobalFilters = Boolean(showGlobalFilters && strip);
   const hasPageFilters = Boolean(pageFilters);

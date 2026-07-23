@@ -941,6 +941,7 @@ export function CampaignsHubClient({ useUxChrome = false }: { useUxChrome?: bool
       {useUxChrome ? (
         <PageToolbar
           filterCreatorFields
+          defaultFiltersOpen
           eyebrow={t("breadcrumb")}
           icon={<Megaphone size={16} />}
           title={t("title")}
