@@ -714,6 +714,7 @@ export function useDashboardData() {
     metaConnected,
     platform,
     setPlatform,
+    clientFilter,
     note,
     summary,
     prevSummary,

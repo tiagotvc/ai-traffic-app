@@ -18,6 +18,7 @@ import {
 import { MetricPrism } from "@/components/dashboard/MetricPrism";
 import { ActiveScopeFilterBadges } from "@/components/layout/ActiveScopeFilterBadges";
 import { PlatformFilterPills } from "@/components/campaign/PlatformFilterPills";
+import { HubSyncButton } from "@/components/layout/HubSyncButton";
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { DsCard, DsInfoBanner } from "@/design-system";
@@ -336,19 +337,24 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
           </>
         }
         showGlobalFilters
-        showSync
+        showSync={false}
         actions={
-          !readOnly && !data.isEmptyState && !isMobile ? (
-            <button
-              type="button"
-              onClick={() => setCustomizeOpen(true)}
-              className="flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
-              style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
-            >
-              <Settings2 size={14} />
-              {t("layoutCustomize")}
-            </button>
-          ) : null
+          <>
+            {!readOnly ? (
+              <HubSyncButton platform={data.platform} clientFilter={data.clientFilter || undefined} />
+            ) : null}
+            {!readOnly && !data.isEmptyState && !isMobile ? (
+              <button
+                type="button"
+                onClick={() => setCustomizeOpen(true)}
+                className="flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-colors hover:bg-[var(--surface-bg)]"
+                style={{ borderColor: "var(--border-color)", color: "var(--text-dim)" }}
+              >
+                <Settings2 size={14} />
+                {t("layoutCustomize")}
+              </button>
+            ) : null}
+          </>
         }
       />
 

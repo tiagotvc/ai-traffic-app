@@ -25,6 +25,7 @@ export function useClientViewDashboardData() {
     metaConnected: true,
     platform: "both" as "meta" | "google" | "both",
     setPlatform: (() => {}) as Dispatch<SetStateAction<"meta" | "google" | "both">>,
+    clientFilter: "",
     note: null,
     summary: null,
     prevSummary: null,
