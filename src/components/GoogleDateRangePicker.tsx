@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -57,11 +57,17 @@ function monthCells(monthKey: string): (string | null)[] {
 export function GoogleDateRangePicker({
   value,
   onChange,
-  className = ""
+  className = "",
+  renderTrigger,
+  align = "right"
 }: {
   value: DateRange;
   onChange: (range: DateRange) => void;
   className?: string;
+  /** Gatilho custom (ex.: badge do dashboard). Recebe estado/label e o toggle. */
+  renderTrigger?: (args: { open: boolean; toggle: () => void; label: string }) => ReactNode;
+  /** Lado de alinhamento do popover. */
+  align?: "left" | "right";
 }) {
   const t = useTranslations("client");
   const locale = useLocale();
@@ -150,17 +156,23 @@ export function GoogleDateRangePicker({
 
   return (
     <div ref={rootRef} className={`relative ${className}`}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 rounded-xl ui-input text-xs"
-      >
-        <CalendarDays size={13} className="text-[var(--text-dim)]" />
-        <span>{triggerLabel}</span>
-      </button>
+      {renderTrigger ? (
+        renderTrigger({ open, toggle: () => setOpen((o) => !o), label: triggerLabel })
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="inline-flex items-center gap-1.5 rounded-xl ui-input text-xs"
+        >
+          <CalendarDays size={13} className="text-[var(--text-dim)]" />
+          <span>{triggerLabel}</span>
+        </button>
+      )}
 
       {open ? (
-        <div className="absolute right-0 z-30 mt-1 w-[19rem] rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3 shadow-xl">
+        <div
+          className={`absolute ${align === "left" ? "left-0" : "right-0"} z-30 mt-1 w-[19rem] rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-3 shadow-xl`}
+        >
           <div className="flex flex-wrap gap-1.5">
             {PRESETS.map((n) => (
               <button
