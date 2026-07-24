@@ -194,6 +194,8 @@ export function useDashboardData() {
   const [brainSummaryLoading, setBrainSummaryLoading] = useState(true);
   const [ageBreakdown, setAgeBreakdown] = useState<AgeBreakdownRow[]>([]);
   const [ageBreakdownLoading, setAgeBreakdownLoading] = useState(true);
+  const [genderBreakdown, setGenderBreakdown] = useState<AgeBreakdownRow[]>([]);
+  const [genderBreakdownLoading, setGenderBreakdownLoading] = useState(true);
   const [campaignSnapshots, setCampaignSnapshots] = useState<CampaignSnapshot[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [adLibraryInsights, setAdLibraryInsights] = useState<DashboardAdLibraryInsights | null>(null);
@@ -358,19 +360,23 @@ export function useDashboardData() {
 
   const loadAgeBreakdown = useCallback(() => {
     setAgeBreakdownLoading(true);
+    setGenderBreakdownLoading(true);
     const { current } = resolveRanges(periodRef.current, selectedTz);
     const curQ = buildQuery(clientFilter, accountFilter, current);
     void fetch(`/api/dashboard/age-breakdown?${curQ}`)
       .then((r) => r.json())
       .then((j) => {
-        if (j.ok && Array.isArray(j.rows)) {
-          setAgeBreakdown(j.rows as AgeBreakdownRow[]);
-        } else {
-          setAgeBreakdown([]);
-        }
+        setAgeBreakdown(j.ok && Array.isArray(j.rows) ? (j.rows as AgeBreakdownRow[]) : []);
       })
       .catch(() => setAgeBreakdown([]))
       .finally(() => setAgeBreakdownLoading(false));
+    void fetch(`/api/dashboard/age-breakdown?${curQ}&dimension=gender`)
+      .then((r) => r.json())
+      .then((j) => {
+        setGenderBreakdown(j.ok && Array.isArray(j.rows) ? (j.rows as AgeBreakdownRow[]) : []);
+      })
+      .catch(() => setGenderBreakdown([]))
+      .finally(() => setGenderBreakdownLoading(false));
   }, [clientFilter, accountFilter, periodKey, selectedTz]);
 
   const loadCampaignSnapshots = useCallback(() => {
@@ -722,6 +728,8 @@ export function useDashboardData() {
     brainSummaryLoading,
     ageBreakdown,
     ageBreakdownLoading,
+    genderBreakdown,
+    genderBreakdownLoading,
     campaignSnapshots,
     campaignsLoading,
     adLibraryInsights,

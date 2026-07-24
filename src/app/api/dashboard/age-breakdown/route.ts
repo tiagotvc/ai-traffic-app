@@ -10,13 +10,15 @@ export async function GET(req: Request) {
   const { tenant, user } = await getAppContext();
   const url = new URL(req.url);
   const { clientId, adAccountId, days } = parseDashboardSearchParams(url);
+  const dimension = url.searchParams.get("dimension") === "gender" ? "gender" : "age";
 
   const rows = await loadAgeBreakdown({
     tenantId: tenant.id,
     userId: user.id,
     clientId,
     adAccountId,
-    days
+    days,
+    dimension
   });
 
   return NextResponse.json({ ok: true, rows });

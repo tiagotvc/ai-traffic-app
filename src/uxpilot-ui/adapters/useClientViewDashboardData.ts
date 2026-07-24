@@ -39,6 +39,8 @@ export function useClientViewDashboardData() {
     brainSummaryLoading: false,
     ageBreakdown: [],
     ageBreakdownLoading: false,
+    genderBreakdown: [],
+    genderBreakdownLoading: false,
     campaignSnapshots: [],
     campaignsLoading: false,
     adLibraryInsights: null,

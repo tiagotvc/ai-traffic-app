@@ -215,7 +215,9 @@ export function DashboardContentLive({ readOnly = false }: { readOnly?: boolean 
         <div key={key} className="flex min-h-[400px] min-w-0 w-full">
           <AgeBreakdownCard
             rows={data.ageBreakdown ?? []}
+            genderRows={data.genderBreakdown ?? []}
             isLoading={data.ageBreakdownLoading}
+            genderLoading={data.genderBreakdownLoading}
             embedded={false}
           />
         </div>

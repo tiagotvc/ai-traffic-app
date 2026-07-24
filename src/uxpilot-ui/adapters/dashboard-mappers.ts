@@ -511,22 +511,28 @@ export function toDashboardFunnelSteps(args: {
     return formatMetricValue("ctr", (to / from) * 100, locale);
   };
 
-  // Meta funnel order: impressions → reach → clicks → conversions (each step narrows).
-  return [
+  // Funil: impressões → [alcance] → cliques → conversões (cada etapa estreita).
+  // O alcance (reach) só existe no Meta; no Google essa etapa não se aplica, então a
+  // omitimos quando não há dado (evita a etapa vazia "—" que o usuário via no Google).
+  const steps: DashboardFunnelStep[] = [
     {
       id: "impressions",
       label: labels.impressions,
       value: formatMetricValue("impressions", impressions, locale),
       numeric: impressions,
       rateFromPrev: null
-    },
-    {
+    }
+  ];
+  if (reach > 0) {
+    steps.push({
       id: "reach",
       label: labels.pageViews,
-      value: reach > 0 ? formatMetricValue("reach", reach, locale) : "—",
+      value: formatMetricValue("reach", reach, locale),
       numeric: reach,
       rateFromPrev: rate(impressions, reach)
-    },
+    });
+  }
+  steps.push(
     {
       id: "clicks",
       label: labels.clicks,
@@ -541,7 +547,8 @@ export function toDashboardFunnelSteps(args: {
       numeric: conversions,
       rateFromPrev: rate(clicks, conversions)
     }
-  ];
+  );
+  return steps;
 }
 
 export function toDashboardCampaignStatus(args: {
