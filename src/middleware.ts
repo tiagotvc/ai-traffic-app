@@ -66,6 +66,6 @@ export default auth((req) => {
 export const config = {
   // Exclude large video upload — middleware body buffering truncates multipart payloads.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|brand/|.*\\.(?:png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|mp4|webm|pdf)$|api/creative-assets/video).*)"
+    "/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|brand/|.*\\.(?:png|jpe?g|gif|svg|webp|ico|woff2?|ttf|eot|mp4|webm|pdf)$|api/creative-assets/video).*)"
   ]
 };

@@ -4,6 +4,9 @@ import createNextIntlPlugin from "next-intl/plugin";
 const nextConfig = {
   reactStrictMode: true,
   devIndicators: false,
+  // Libera acesso ao dev server via túnel (cloudflared/ngrok) para testar OAuth do Meta localmente
+  // com HTTPS — necessário pq o app publicado exige redirect_uri https.
+  allowedDevOrigins: ["*.trycloudflare.com"],
   serverExternalPackages: ["typeorm", "pg", "reflect-metadata"],
   experimental: {
     serverMinification: false,
