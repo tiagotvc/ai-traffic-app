@@ -254,36 +254,54 @@ export async function runFullResearch(
 
   const mergedSections = mergeSectionsUnique(sections);
 
+  // Cientistas de "pós-fase": consomem os achados dos demais (ou métricas reais, no caso do
+  // Performance) em vez de pesquisar do zero. Rodam depois dos cientistas-base, na ordem abaixo,
+  // respeitando o cap de slots do plano (`maxScientists`).
+  const POST_SCIENTISTS: { id: string; label: string; icon: string }[] = [
+    { id: "testing", label: "Testes", icon: "Beaker" },
+    { id: "hypothesis", label: "Hipóteses", icon: "Lightbulb" },
+    { id: "confidence", label: "Confiança", icon: "ShieldCheck" },
+    { id: "performance", label: "Performance", icon: "Gauge" }
+  ];
+
   const slotCap = typeof maxScientists === "number" && maxScientists > 0 ? maxScientists : Infinity;
-  const testingHasSlot = baseSteps.length < slotCap;
-  if (testingHasSlot && shouldRunTesting(scope, options)) {
-    emit({ phase: "scientist_start", scientistId: "testing", label: "Testes", icon: "Beaker" });
+  let usedSlots = baseSteps.length;
+  if (shouldRunTesting(scope, options)) {
     const priorSections =
       draftId && clientId ? mergeSectionsUnique([...mergedSections, ...(await getDraftResearchSections(draftId, clientId))]) : mergedSections;
     const priorFindings = priorSections.map((s) => ({ label: s.label, findings: s.findings }));
-    const testing = await runScientistSkill("testing", { ...input, priorFindings });
-    const testingRan = testing.ran && testing.findings.length > 0;
-    if (testingRan) {
-      mergedSections.push({
-        scientistId: "testing",
-        label: "Testes",
-        icon: "Beaker",
-        summary: testing.summary,
-        confidence: testing.confidence,
-        findings: testing.findings as ScientistSkillFinding[],
-        sources: testing.sources
+
+    for (const post of POST_SCIENTISTS) {
+      if (usedSlots >= slotCap) {
+        skipped.push(post.id);
+        continue;
+      }
+      usedSlots += 1;
+      emit({ phase: "scientist_start", scientistId: post.id, label: post.label, icon: post.icon });
+      const res = await runScientistSkill(post.id, { ...input, priorFindings });
+      const ran = res.ran && res.findings.length > 0;
+      if (ran) {
+        mergedSections.push({
+          scientistId: post.id,
+          label: post.label,
+          icon: post.icon,
+          summary: res.summary,
+          confidence: res.confidence,
+          findings: res.findings as ScientistSkillFinding[],
+          sources: res.sources
+        });
+      } else {
+        skipped.push(post.id);
+      }
+      emit({
+        phase: "scientist_done",
+        scientistId: post.id,
+        label: post.label,
+        icon: post.icon,
+        ran,
+        findings: res.findings.length
       });
-    } else {
-      skipped.push("testing");
     }
-    emit({
-      phase: "scientist_done",
-      scientistId: "testing",
-      label: "Testes",
-      icon: "Beaker",
-      ran: testingRan,
-      findings: testing.findings.length
-    });
   }
 
   const label = dossierLabel(scope, options);

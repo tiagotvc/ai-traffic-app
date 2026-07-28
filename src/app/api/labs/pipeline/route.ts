@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
+import { getClientCampaignMetrics } from "@/lib/agency-brain/metrics-input";
 import { assertCommanderScientistsAccess } from "@/lib/billing/entitlements";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
 import { persistTestingHypotheses } from "@/lib/labs/persist-hypotheses";
@@ -54,6 +55,18 @@ export async function POST(req: Request) {
   // Resolve o cliente (preenche nicho/país a partir do cadastro).
   const client = body.clientSlug ? await getClientBySlugOrId(tenant.id, body.clientSlug) : null;
 
+  // Métricas reais recentes (só se houver cliente) — alimentam o Performance Scientist.
+  const campaignMetrics = client
+    ? (await getClientCampaignMetrics(tenant.id, client.id, 7).catch(() => [])).map((r) => ({
+        campaignName: r.campaignName,
+        spend: r.spend,
+        conversions: r.conversions,
+        ctr: r.ctr,
+        cpa: r.cpa ?? 0,
+        roas: r.roas
+      }))
+    : [];
+
   const input = {
     niche: client?.niche ?? body.niche ?? null,
     marketCountry: client?.marketCountry ?? body.marketCountry ?? null,
@@ -61,7 +74,8 @@ export async function POST(req: Request) {
     region: body.region ?? null,
     places: body.places ?? [],
     geoLocations: body.geoLocations ?? [],
-    competitors: body.competitors ?? []
+    competitors: body.competitors ?? [],
+    campaignMetrics
   };
 
   // "full" = dossiê completo (marketing + geo + Testing Scientist).

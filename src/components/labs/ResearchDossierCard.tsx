@@ -8,10 +8,12 @@ import {
   ChevronDown,
   ChevronUp,
   FlaskConical,
+  Gauge,
   Lightbulb,
   Loader2,
   MapPin,
   Minus,
+  ShieldCheck,
   TrendingUp,
   Users,
   type LucideIcon
@@ -25,7 +27,10 @@ const ICONS: Record<string, LucideIcon> = {
   TrendingUp,
   Users,
   MapPin,
-  Beaker
+  Beaker,
+  Lightbulb,
+  ShieldCheck,
+  Gauge
 };
 
 export type LiveStep = {
