@@ -73,7 +73,7 @@
     "tailwindcss": "^3.4.17",
     "ts-node": "latest",
     "tsx": "latest",
-    "typescript": "latest",
+    "typescript": "^6",
     "vitest": "latest"
   }
 }

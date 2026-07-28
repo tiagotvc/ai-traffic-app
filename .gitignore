@@ -10,3 +10,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# O gerenciador do projeto e pnpm (ver packageManager no package.json e pnpm-lock.yaml).
+# package-lock.json gerado por engano (npm) ja causou build quebrado na Vercel por
+# lockfile desatualizado — nao versionar de novo.
+package-lock.json
+
