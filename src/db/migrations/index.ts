@@ -70,6 +70,7 @@ import { LaboratoryExperimentLinks_1735833500000 } from "./0065-LaboratoryExperi
 import { AutomationRuleLevel_1735833600000 } from "./0066-AutomationRuleLevel";
 import { AutomationObservationMode_1735833700000 } from "./0067-AutomationObservationMode";
 import { ResearchFindings_1735833800000 } from "./0068-ResearchFindings";
+import { CommanderDisabledCapabilities_1735920000000 } from "./0069-CommanderDisabledCapabilities";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -139,5 +140,11 @@ export const appMigrations = [
   AutomationExecutionModes_1735833000000,
   CommanderPlanAccess_1735833100000,
   CanonicalPlanFamilies_1735833200000,
-  CouponRedemptionUniqueConstraint_1735833300000
+  CouponRedemptionUniqueConstraint_1735833300000,
+  EngineExecutionsOutbox_1735833400000,
+  LaboratoryExperimentLinks_1735833500000,
+  AutomationRuleLevel_1735833600000,
+  AutomationObservationMode_1735833700000,
+  ResearchFindings_1735833800000,
+  CommanderDisabledCapabilities_1735920000000
 ];

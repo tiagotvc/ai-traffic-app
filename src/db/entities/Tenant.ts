@@ -35,6 +35,14 @@ export class Tenant extends AppBaseEntity {
   @Column({ type: "boolean", default: false })
   automationObservationMode!: boolean;
 
+  /**
+   * Preferência do usuário (não é feature flag de plataforma): ids de capacidades/Scientists
+   * do Commander que ele desligou por conta própria (ex.: "não quero que o Commander opine
+   * sobre X"). Efetivo só quando a plataforma também permite (os dois lados têm que topar).
+   */
+  @Column({ type: "jsonb", default: () => "'[]'" })
+  commanderDisabledCapabilities!: string[];
+
   @Column({ type: "text", nullable: true })
   webhookAlertUrl?: string | null;
 

@@ -24,14 +24,16 @@ export async function GET(req: Request) {
     isPlatformFeatureEnabled("commander.modules.campaigns", context),
     isPlatformFeatureEnabled("commander.memory", context)
   ]);
+  const userDisabled = new Set(tenant.commanderDisabledCapabilities ?? []);
   const commander = canUseCommander({
     planSlug: entitlements.planSlug,
     allowCommander: entitlements.limits.allowCommander,
     platformEnabled: commanderPlatform,
     environmentEnabled: process.env.ENABLE_COMMANDER !== "false",
-    platformAdmin
+    platformAdmin,
+    userEnabled: !userDisabled.has("commander")
   });
-  if (!commander || !memoryFlag) {
+  if (!commander || !memoryFlag || userDisabled.has("commander.memory")) {
     return NextResponse.json({ ok: false, error: "Memória do Commander indisponível" }, { status: 403 });
   }
 

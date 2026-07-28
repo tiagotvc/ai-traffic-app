@@ -23,18 +23,20 @@ export async function GET() {
     isPlatformFeatureEnabled("campaigns.ai-copy")
   ]);
   const entitlements = await getEntitlements(tenant.id, { platformAdmin, userId: user.id });
+  const userDisabled = new Set(tenant.commanderDisabledCapabilities ?? []);
   const commander = canUseCommander({
     planSlug: entitlements.planSlug,
     allowCommander: entitlements.limits.allowCommander,
     platformEnabled: commanderPlatform,
     environmentEnabled: process.env.ENABLE_COMMANDER !== "false",
-    platformAdmin
+    platformAdmin,
+    userEnabled: !userDisabled.has("commander") && !userDisabled.has("commander.modules.campaigns")
   });
 
   return NextResponse.json({
     ok: true,
     commander,
-    commanderMemory: commander && commanderMemory,
+    commanderMemory: commander && commanderMemory && !userDisabled.has("commander.memory"),
     metaAppDevelopmentNotice,
     aiGenerate,
     aiCopy

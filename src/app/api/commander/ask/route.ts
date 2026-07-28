@@ -56,12 +56,14 @@ export async function POST(req: Request) {
       isPlatformFeatureEnabled("commander.ruleProposals", context),
       isPlatformFeatureEnabled("commander.parametersContext", context)
     ]);
+    const userDisabled = new Set(tenant.commanderDisabledCapabilities ?? []);
     const allowed = canUseCommander({
       planSlug: entitlements.planSlug,
       allowCommander: entitlements.limits.allowCommander,
       platformEnabled: commanderPlatform,
       environmentEnabled: process.env.ENABLE_COMMANDER !== "false",
-      platformAdmin
+      platformAdmin,
+      userEnabled: !userDisabled.has("commander")
     });
     if (!allowed) {
       return NextResponse.json({ ok: false, error: "Commander indisponível no seu plano" }, { status: 403 });
@@ -89,9 +91,9 @@ export async function POST(req: Request) {
       question: body.question,
       draft: body.draft,
       insights: body.insights,
-      memoryEnabled: memoryFlag,
-      ruleProposalsEnabled: ruleProposalsFlag,
-      parametersEnabled: parametersFlag
+      memoryEnabled: memoryFlag && !userDisabled.has("commander.memory"),
+      ruleProposalsEnabled: ruleProposalsFlag && !userDisabled.has("commander.ruleProposals"),
+      parametersEnabled: parametersFlag && !userDisabled.has("commander.parametersContext")
     });
 
     await recordCreativeMemoryAiUsage({
@@ -114,7 +116,7 @@ export async function POST(req: Request) {
       ruleProposal: result.ruleProposal,
       provider: result.provider,
       modelUsed: result.modelUsed,
-      memoryUsed: memoryFlag
+      memoryUsed: memoryFlag && !userDisabled.has("commander.memory")
     });
   } catch (err) {
     if (err instanceof z.ZodError) {
