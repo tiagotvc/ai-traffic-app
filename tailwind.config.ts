@@ -38,7 +38,8 @@ export default {
       },
       fontFamily: {
         heading: ["var(--font-heading)", "ui-sans-serif", "system-ui", "sans-serif"],
-        body: ["var(--font-body)", "ui-sans-serif", "system-ui", "sans-serif"]
+        body: ["var(--font-body)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"]
       },
       boxShadow: {
         card: "0 1px 8px rgba(0, 0, 0, 0.05)",

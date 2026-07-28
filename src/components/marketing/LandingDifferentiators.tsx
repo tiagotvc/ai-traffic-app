@@ -114,7 +114,7 @@ export function LandingDifferentiators() {
   const t = useTranslations("marketing");
 
   return (
-    <section id="product" className="marketing-section">
+    <section id="product" className="marketing-section marketing-section-highlight">
       <div className="mx-auto max-w-6xl">
         <MarketingReveal className="mx-auto max-w-2xl text-center">
           <p className="marketing-section-title">{t("diffBadge")}</p>
@@ -143,7 +143,7 @@ export function LandingDifferentiators() {
                     <h3 className="mt-1.5 font-heading text-2xl font-bold leading-tight tracking-tight text-[var(--text-main)] sm:text-3xl">
                       {t(`${key}Title`)}
                     </h3>
-                    <p className="mt-3 text-base leading-relaxed text-[var(--text-dim)]">{t(`${key}Body`)}</p>
+                    <p className="mt-3 text-pretty text-base leading-relaxed text-[var(--text-dim)]">{t(`${key}Body`)}</p>
                     <ul className="mt-5 space-y-2.5">
                       {Array.from({ length: points }, (_, p) => `${key}Point${p + 1}`).map((pk) => (
                         <li key={pk} className="flex items-start gap-2.5 text-sm text-[var(--text-main)]">
@@ -155,11 +155,7 @@ export function LandingDifferentiators() {
                   </div>
 
                   <div className="relative">
-                    <div
-                      className="pointer-events-none absolute -inset-4 rounded-3xl blur-2xl"
-                      style={{ background: "radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)" }}
-                    />
-                    <div className="relative rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-5 shadow-2xl shadow-black/30 ring-1 ring-[var(--ui-accent-border)]">
+                    <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-5 shadow-lg shadow-black/20 ring-1 ring-[var(--ui-accent-border)]">
                       <Visual />
                     </div>
                   </div>

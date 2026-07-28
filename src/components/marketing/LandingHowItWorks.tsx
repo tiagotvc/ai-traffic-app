@@ -29,13 +29,12 @@ export function LandingHowItWorks() {
             className="pointer-events-none absolute left-[16%] right-[16%] top-10 hidden h-px bg-gradient-to-r from-transparent via-[var(--ui-accent-border)] to-transparent md:block"
             aria-hidden
           />
-          {STEPS.map(({ key, icon: Icon }, i) => (
+          {STEPS.map(({ key, icon: Icon }) => (
             <MarketingStaggerItem key={key}>
-              <div className="marketing-card relative h-full text-center">
-                <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] font-heading text-sm font-bold text-[var(--ui-accent)] ring-1 ring-[var(--ui-accent-border)]">
-                  {String(i + 1).padStart(2, "0")}
+              <div className="marketing-card relative h-full text-center transition-transform duration-300 will-change-transform motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.03]">
+                <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)] ring-1 ring-[var(--ui-accent-border)]">
+                  <Icon className="h-5 w-5" strokeWidth={1.75} />
                 </span>
-                <Icon className="mx-auto mb-3 h-5 w-5 text-[var(--ui-accent)]" />
                 <h3 className="font-heading text-base font-semibold text-[var(--text-main)]">{t(`${key}Title`)}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--text-dim)]">{t(`${key}Body`)}</p>
                 <p className="mt-3 text-xs font-medium text-[var(--ui-accent)]">{t(`${key}Hint`)}</p>

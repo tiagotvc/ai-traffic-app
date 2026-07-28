@@ -5,16 +5,15 @@ import { BillingAtmosphere } from "@/components/billing/BillingAtmosphere";
 import { PlanComparisonTable } from "@/components/billing/PlanComparisonTable";
 import { LandingCapabilities } from "@/components/marketing/LandingCapabilities";
 import { LandingCta } from "@/components/marketing/LandingMission";
-import { LandingDashboardSection } from "@/components/marketing/LandingDashboardSection";
 import { LandingDifferentiators } from "@/components/marketing/LandingDifferentiators";
 import { LandingFaq } from "@/components/marketing/LandingFaq";
+import { LandingHeroSequence } from "@/components/marketing/LandingHeroSequence";
 import { LandingHowItWorks } from "@/components/marketing/LandingHowItWorks";
 import { LandingLegalStrip } from "@/components/marketing/LandingLegalStrip";
 import { LandingProblem } from "@/components/marketing/LandingProblem";
 import { LandingProof } from "@/components/marketing/LandingProof";
 import { LandingStickyCta } from "@/components/marketing/LandingStickyCta";
 import { LandingWorkSplit } from "@/components/marketing/LandingWorkSplit";
-import { MarketingHero } from "@/components/marketing/MarketingHero";
 import { MarketingReveal } from "@/components/marketing/motion/MarketingReveal";
 import { StackCostComparison } from "@/components/marketing/StackCostComparison";
 import { Link } from "@/i18n/navigation";
@@ -24,9 +23,7 @@ export async function LandingPage() {
 
   return (
     <>
-      <MarketingHero />
-
-      <LandingDashboardSection />
+      <LandingHeroSequence />
 
       <LandingProblem />
 

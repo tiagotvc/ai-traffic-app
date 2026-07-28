@@ -196,7 +196,8 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <div className="border-t border-[var(--border-color)] py-4 text-center text-xs text-[var(--text-dimmer)]">
-          {t("footerCopyright", { year: new Date().getFullYear() })}
+          <p>{t("footerCopyright", { year: new Date().getFullYear() })}</p>
+          <p className="mt-1">{t("footerCompany")}</p>
         </div>
       </footer>
 

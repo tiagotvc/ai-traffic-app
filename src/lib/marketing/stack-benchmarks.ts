@@ -14,15 +14,19 @@ export type StackBenchmarkTool = {
   sourceUrl: string;
 };
 
-/** Preços públicos pesquisados em jun/2026 — planos de entrada típicos para gestores/agências. */
+/**
+ * Custo de mercado por FUNÇÃO (não por marca) que a Orion cobre.
+ * Preços de ENTRADA realistas (jun/2026) — ilustrativos, não substituição literal.
+ * Câmbio USD→BRL ~5,85.
+ */
 export const STACK_BENCHMARK_TOOLS: Record<string, StackBenchmarkTool> = {
   supermetricsStarter: {
     id: "supermetricsStarter",
     labelKey: "benchSupermetricsStarter",
     sourceKey: "benchSupermetricsStarterSource",
     mapsToKey: "benchSupermetricsStarterMapsTo",
-    monthlyUsdCents: 3900,
-    monthlyBrlCents: 22815,
+    monthlyUsdCents: 2050,
+    monthlyBrlCents: 12000,
     sourceUrl: "https://supermetrics.com/pricing"
   },
   supermetricsGrowth: {
@@ -30,8 +34,8 @@ export const STACK_BENCHMARK_TOOLS: Record<string, StackBenchmarkTool> = {
     labelKey: "benchSupermetricsGrowth",
     sourceKey: "benchSupermetricsGrowthSource",
     mapsToKey: "benchSupermetricsGrowthMapsTo",
-    monthlyUsdCents: 19900,
-    monthlyBrlCents: 116415,
+    monthlyUsdCents: 5130,
+    monthlyBrlCents: 30000,
     sourceUrl: "https://supermetrics.com/pricing"
   },
   supermetricsPro: {
@@ -39,8 +43,8 @@ export const STACK_BENCHMARK_TOOLS: Record<string, StackBenchmarkTool> = {
     labelKey: "benchSupermetricsPro",
     sourceKey: "benchSupermetricsProSource",
     mapsToKey: "benchSupermetricsProMapsTo",
-    monthlyUsdCents: 49900,
-    monthlyBrlCents: 291915,
+    monthlyUsdCents: 10250,
+    monthlyBrlCents: 60000,
     sourceUrl: "https://supermetrics.com/pricing"
   },
   dashthisSolo: {
@@ -48,35 +52,35 @@ export const STACK_BENCHMARK_TOOLS: Record<string, StackBenchmarkTool> = {
     labelKey: "benchDashthisSolo",
     sourceKey: "benchDashthisSoloSource",
     mapsToKey: "benchDashthisSoloMapsTo",
-    monthlyUsdCents: 4900,
-    monthlyBrlCents: 28665,
-    sourceUrl: "https://dashthis.com/pricing"
+    monthlyUsdCents: 1540,
+    monthlyBrlCents: 9000,
+    sourceUrl: "https://lookerstudio.google.com"
   },
   dashthisPro: {
     id: "dashthisPro",
     labelKey: "benchDashthisPro",
     sourceKey: "benchDashthisProSource",
     mapsToKey: "benchDashthisProMapsTo",
-    monthlyUsdCents: 12900,
-    monthlyBrlCents: 75465,
-    sourceUrl: "https://dashthis.com/pricing"
+    monthlyUsdCents: 3080,
+    monthlyBrlCents: 18000,
+    sourceUrl: "https://lookerstudio.google.com"
   },
   dashthisBusiness: {
     id: "dashthisBusiness",
     labelKey: "benchDashthisBusiness",
     sourceKey: "benchDashthisBusinessSource",
     mapsToKey: "benchDashthisBusinessMapsTo",
-    monthlyUsdCents: 22900,
-    monthlyBrlCents: 133965,
-    sourceUrl: "https://dashthis.com/pricing"
+    monthlyUsdCents: 5470,
+    monthlyBrlCents: 32000,
+    sourceUrl: "https://lookerstudio.google.com"
   },
   zapierPro: {
     id: "zapierPro",
     labelKey: "benchZapierPro",
     sourceKey: "benchZapierProSource",
     mapsToKey: "benchZapierProMapsTo",
-    monthlyUsdCents: 2999,
-    monthlyBrlCents: 17544,
+    monthlyUsdCents: 1540,
+    monthlyBrlCents: 9000,
     sourceUrl: "https://zapier.com/pricing"
   },
   zapierTeam: {
@@ -84,8 +88,8 @@ export const STACK_BENCHMARK_TOOLS: Record<string, StackBenchmarkTool> = {
     labelKey: "benchZapierTeam",
     sourceKey: "benchZapierTeamSource",
     mapsToKey: "benchZapierTeamMapsTo",
-    monthlyUsdCents: 10350,
-    monthlyBrlCents: 60548,
+    monthlyUsdCents: 3420,
+    monthlyBrlCents: 20000,
     sourceUrl: "https://zapier.com/pricing"
   },
   zapierScale: {
@@ -93,8 +97,8 @@ export const STACK_BENCHMARK_TOOLS: Record<string, StackBenchmarkTool> = {
     labelKey: "benchZapierScale",
     sourceKey: "benchZapierScaleSource",
     mapsToKey: "benchZapierScaleMapsTo",
-    monthlyUsdCents: 13000,
-    monthlyBrlCents: 76050,
+    monthlyUsdCents: 5130,
+    monthlyBrlCents: 30000,
     sourceUrl: "https://zapier.com/pricing"
   },
   chatgptPlus: {
@@ -102,8 +106,8 @@ export const STACK_BENCHMARK_TOOLS: Record<string, StackBenchmarkTool> = {
     labelKey: "benchChatgptPlus",
     sourceKey: "benchChatgptPlusSource",
     mapsToKey: "benchChatgptPlusMapsTo",
-    monthlyUsdCents: 2000,
-    monthlyBrlCents: 11700,
+    monthlyUsdCents: 1880,
+    monthlyBrlCents: 11000,
     sourceUrl: "https://openai.com/chatgpt/pricing"
   },
   chatgptTeam2: {
@@ -111,8 +115,8 @@ export const STACK_BENCHMARK_TOOLS: Record<string, StackBenchmarkTool> = {
     labelKey: "benchChatgptTeam2",
     sourceKey: "benchChatgptTeam2Source",
     mapsToKey: "benchChatgptTeam2MapsTo",
-    monthlyUsdCents: 6000,
-    monthlyBrlCents: 35100,
+    monthlyUsdCents: 3080,
+    monthlyBrlCents: 18000,
     sourceUrl: "https://openai.com/chatgpt/pricing"
   },
   chatgptTeam5: {
@@ -120,86 +124,31 @@ export const STACK_BENCHMARK_TOOLS: Record<string, StackBenchmarkTool> = {
     labelKey: "benchChatgptTeam5",
     sourceKey: "benchChatgptTeam5Source",
     mapsToKey: "benchChatgptTeam5MapsTo",
-    monthlyUsdCents: 15000,
-    monthlyBrlCents: 87750,
+    monthlyUsdCents: 5130,
+    monthlyBrlCents: 30000,
     sourceUrl: "https://openai.com/chatgpt/pricing"
-  },
-  motionPro: {
-    id: "motionPro",
-    labelKey: "benchMotionPro",
-    sourceKey: "benchMotionProSource",
-    mapsToKey: "benchMotionProMapsTo",
-    monthlyUsdCents: 9900,
-    monthlyBrlCents: 57915,
-    sourceUrl: "https://www.usemotion.com/pricing"
   },
   notionTeam: {
     id: "notionTeam",
     labelKey: "benchNotionTeam",
     sourceKey: "benchNotionTeamSource",
     mapsToKey: "benchNotionTeamMapsTo",
-    monthlyUsdCents: 5000,
-    monthlyBrlCents: 29250,
+    monthlyUsdCents: 2050,
+    monthlyBrlCents: 12000,
     sourceUrl: "https://www.notion.so/pricing"
-  },
-  canvaPro: {
-    id: "canvaPro",
-    labelKey: "benchCanvaPro",
-    sourceKey: "benchCanvaProSource",
-    mapsToKey: "benchCanvaProMapsTo",
-    monthlyUsdCents: 1500,
-    monthlyBrlCents: 8775,
-    sourceUrl: "https://www.canva.com/pricing"
-  },
-  biAnalyst: {
-    id: "biAnalyst",
-    labelKey: "benchBiAnalyst",
-    sourceKey: "benchBiAnalystSource",
-    mapsToKey: "benchBiAnalystMapsTo",
-    monthlyUsdCents: 4500,
-    monthlyBrlCents: 26325,
-    sourceUrl: "https://lookerstudio.google.com"
   }
 };
 
 /**
- * Stack típico por plano Orion — ferramentas com função semelhante ao que o plano entrega na v1.
+ * Funções cobertas por plano Orion (4–5 por plano). Uma linha = uma função, não uma marca.
  * Individual: sem automações. Advanced+: inclui automações e live Meta.
  */
 export const PLAN_STACK_TOOL_IDS: Record<string, string[]> = {
-  basic: ["dashthisSolo", "chatgptPlus", "motionPro", "canvaPro"],
-  advanced: [
-    "supermetricsStarter",
-    "dashthisPro",
-    "zapierTeam",
-    "chatgptTeam2",
-    "motionPro",
-    "notionTeam"
-  ],
-  "advanced-pro": [
-    "supermetricsGrowth",
-    "dashthisPro",
-    "zapierTeam",
-    "chatgptTeam2",
-    "motionPro",
-    "notionTeam"
-  ],
-  agency: [
-    "supermetricsGrowth",
-    "dashthisBusiness",
-    "zapierScale",
-    "chatgptTeam5",
-    "motionPro",
-    "notionTeam"
-  ],
-  "agency-pro": [
-    "supermetricsPro",
-    "dashthisBusiness",
-    "zapierScale",
-    "chatgptTeam5",
-    "motionPro",
-    "notionTeam"
-  ]
+  basic: ["supermetricsStarter", "dashthisSolo", "chatgptPlus", "notionTeam"],
+  advanced: ["supermetricsStarter", "dashthisPro", "zapierTeam", "chatgptTeam2", "notionTeam"],
+  "advanced-pro": ["supermetricsGrowth", "dashthisPro", "zapierTeam", "chatgptTeam2", "notionTeam"],
+  agency: ["supermetricsGrowth", "dashthisBusiness", "zapierScale", "chatgptTeam5", "notionTeam"],
+  "agency-pro": ["supermetricsPro", "dashthisBusiness", "zapierScale", "chatgptTeam5", "notionTeam"]
 };
 
 /** Chave i18n marketing.orionIncludes* por slug de plano na vitrine. */

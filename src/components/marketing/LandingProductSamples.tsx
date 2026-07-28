@@ -40,7 +40,7 @@ export function LandingProductSamples() {
                     {t(shot.descKey)}
                   </p>
                 </div>
-                <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-2 shadow-2xl shadow-black/30 ring-1 ring-[var(--ui-accent-border)]">
+                <div className="overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--surface-card)] p-2 shadow-lg shadow-black/20 ring-1 ring-[var(--ui-accent-border)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={shot.src}
