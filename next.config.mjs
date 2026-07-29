@@ -9,6 +9,11 @@ const nextConfig = {
   // com HTTPS — necessário pq o app publicado exige redirect_uri https.
   allowedDevOrigins: ["*.trycloudflare.com"],
   serverExternalPackages: ["typeorm", "pg", "reflect-metadata"],
+  // DriverPackageNotInstalledError em produção: o file tracing da Vercel não estava
+  // detectando o require dinâmico do driver "pg" dentro do TypeORM. Forca a inclusao.
+  outputFileTracingIncludes: {
+    "/**": ["./node_modules/pg/**", "./node_modules/pg-*/**", "./node_modules/pgpass/**"]
+  },
   experimental: {
     serverMinification: false,
     // Middleware/proxy buffers POST bodies; default ~10MB truncates large uploads.
