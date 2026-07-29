@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { ConfidencePill } from "@/components/agency-brain/insights/ConfidencePill";
@@ -42,6 +43,7 @@ export function LearningFeedCard({
   const expanded = controlledExpanded ?? internalExpanded;
   const imp = impactConfig[learning.impactLevel];
   const isSuggested = learning.reviewStatus === "SUGGESTED";
+  const isApproved = learning.reviewStatus === "APPROVED";
 
   function handleToggle() {
     if (onToggle) onToggle();
@@ -52,6 +54,7 @@ export function LearningFeedCard({
     <div
       className={cn(
         "campaign-creator-card campaign-creator-card--compact animate-fade-up cursor-pointer overflow-hidden p-0 transition-all duration-200",
+        isApproved && "border-emerald-500/25 bg-emerald-500/[0.07]",
         expanded && "border-[var(--ui-accent-border)] shadow-[0_0_0_1px_var(--ui-accent-border),0_8px_24px_rgba(0,0,0,0.08)]"
       )}
       onClick={handleToggle}
@@ -75,6 +78,11 @@ export function LearningFeedCard({
               {isSuggested ? (
                 <span className="ds-table-compact-badge ds-table-compact-badge--neutral">
                   {t("badgeSuggested")}
+                </span>
+              ) : isApproved ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 size={12} strokeWidth={2.5} />
+                  {t(`learningStatus.${learning.status}`).toUpperCase()}
                 </span>
               ) : (
                 <span

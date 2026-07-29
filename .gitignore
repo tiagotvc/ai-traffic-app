@@ -15,3 +15,6 @@ pnpm-debug.log*
 # lockfile desatualizado — nao versionar de novo.
 package-lock.json
 
+
+.vercel
+.env*
