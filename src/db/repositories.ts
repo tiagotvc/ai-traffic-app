@@ -80,6 +80,7 @@ import type { ContactMessage } from "@/db/entities/ContactMessage";
 import type { McpToken } from "@/db/entities/McpToken";
 import type { CapiEventLog } from "@/db/entities/CapiEventLog";
 import type { ReportTemplate } from "@/db/entities/ReportTemplate";
+import type { EmailLog } from "@/db/entities/EmailLog";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -165,7 +166,8 @@ const ENTITY = {
   ContactMessage: "ContactMessage",
   McpToken: "McpToken",
   CapiEventLog: "CapiEventLog",
-  ReportTemplate: "ReportTemplate"
+  ReportTemplate: "ReportTemplate",
+  EmailLog: "EmailLog"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -292,6 +294,7 @@ export async function repositories() {
     contactMessage: repositoryFor<ContactMessage>(ds, ENTITY.ContactMessage),
     mcpToken: repositoryFor<McpToken>(ds, ENTITY.McpToken),
     capiEventLog: repositoryFor<CapiEventLog>(ds, ENTITY.CapiEventLog),
-    reportTemplate: repositoryFor<ReportTemplate>(ds, ENTITY.ReportTemplate)
+    reportTemplate: repositoryFor<ReportTemplate>(ds, ENTITY.ReportTemplate),
+    emailLog: repositoryFor<EmailLog>(ds, ENTITY.EmailLog)
   };
 }

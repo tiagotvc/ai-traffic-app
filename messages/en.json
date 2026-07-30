@@ -6208,7 +6208,8 @@
     "usersAddonNote": "Internal note (admin)",
     "usersSaveAddons": "Save addons",
     "usersAddonExtra": "extra",
-    "navContacts": "Contacts"
+    "navContacts": "Contacts",
+    "navEmailLogs": "Emails"
   },
   "creativesPerf": {
     "breadcrumb": "Creatives",

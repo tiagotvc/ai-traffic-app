@@ -71,6 +71,7 @@ import { AutomationRuleLevel_1735833600000 } from "./0066-AutomationRuleLevel";
 import { AutomationObservationMode_1735833700000 } from "./0067-AutomationObservationMode";
 import { ResearchFindings_1735833800000 } from "./0068-ResearchFindings";
 import { CommanderDisabledCapabilities_1735920000000 } from "./0069-CommanderDisabledCapabilities";
+import { EmailLogs_1735930000000 } from "./0070-EmailLogs";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -146,5 +147,6 @@ export const appMigrations = [
   AutomationRuleLevel_1735833600000,
   AutomationObservationMode_1735833700000,
   ResearchFindings_1735833800000,
-  CommanderDisabledCapabilities_1735920000000
+  CommanderDisabledCapabilities_1735920000000,
+  EmailLogs_1735930000000
 ];

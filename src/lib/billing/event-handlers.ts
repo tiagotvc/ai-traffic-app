@@ -276,14 +276,27 @@ async function sendWelcomeEmailForNewSubscriber(
     if (!to) return;
 
     const { sendWelcomeEmail } = await import("@/lib/messaging/welcome-email");
+    const { recordEmailLog } = await import("@/lib/messaging/email-log");
     const { SITE_URL } = await import("@/lib/seo");
-    await sendWelcomeEmail({
+    const payload = {
       to,
       customerName: name?.trim() || to.split("@")[0]!,
       planName,
       billingCycle,
       appUrl: `${SITE_URL}/dashboard`
+    };
+    const result = await sendWelcomeEmail(payload);
+    await recordEmailLog({
+      tenantId,
+      kind: "welcome",
+      to,
+      payload,
+      sent: result.sent,
+      error: result.error ?? null
     });
+    if (!result.sent) {
+      console.error("[billing] welcome email not sent:", result.error);
+    }
   } catch (err) {
     console.error("[billing] welcome email failed", err);
   }
