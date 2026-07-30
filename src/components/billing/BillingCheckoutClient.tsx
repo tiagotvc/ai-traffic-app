@@ -353,7 +353,7 @@ export function BillingCheckoutClient() {
             setAccountExists(true);
             setError(t("checkoutAccountExists"));
           } else {
-            setError(t("checkoutError"));
+            setError(typeof j.error === "string" && j.error ? j.error : t("checkoutError"));
           }
           return;
         }
@@ -456,7 +456,7 @@ export function BillingCheckoutClient() {
     );
   }
 
-  if (pixData && pricing) {
+  if (pixData && displayPricing) {
     return (
       <BillingPixPayment
         invoiceId={pixData.invoiceId}
@@ -464,20 +464,20 @@ export function BillingCheckoutClient() {
         pixCopyPaste={pixData.pixCopyPaste}
         plan={plan}
         cycle={cycle}
-        pricing={pricing}
+        pricing={displayPricing}
         currency={currency}
         locale={locale}
       />
     );
   }
 
-  if (cardInvoiceId && pricing) {
+  if (cardInvoiceId && displayPricing) {
     return (
       <BillingCardProcessing
         invoiceId={cardInvoiceId}
         plan={plan}
         cycle={cycle}
-        pricing={pricing}
+        pricing={displayPricing}
         currency={currency}
         locale={locale}
       />
