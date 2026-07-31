@@ -18,6 +18,7 @@ import {
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { CommanderReviewChecklist } from "@/components/campaign-creator/commander/CommanderReviewChecklist";
+import { LearningResetNotice } from "@/components/campaign-creator/LearningResetNotice";
 import { ZoneGeoReviewPanel } from "@/components/campaign-creator/ZoneGeoReviewPanel";
 import { countPublishEntities, getActiveAdset, resolveAdTargetAdsets } from "@/lib/campaign-draft";
 import type { PlacementConfig } from "@/lib/campaign-placements";
@@ -223,6 +224,8 @@ export function ReviewStep() {
 
   return (
     <div className="campaign-creator-section space-y-5">
+      {/* Última chance de o usuário ver o custo da edição antes de salvar. */}
+      <LearningResetNotice scope="all" />
       {isAiDraft && rationale ? (
         <section className="campaign-creator-card campaign-creator-copy-card">
           <div className="flex min-w-0 flex-1 items-start gap-2.5">

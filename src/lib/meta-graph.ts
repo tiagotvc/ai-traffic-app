@@ -2078,3 +2078,78 @@ export async function updateAdSetDailyBudget(
 export async function renameEntity(accessToken: string, entityId: string, name: string) {
   return metaPost(`/${encodeURIComponent(entityId)}`, accessToken, { name });
 }
+
+/**
+ * Edição de entidades já publicadas. Só entram campos que a Meta aceita alterar
+ * depois da criação — `objective` da campanha, por exemplo, é imutável, e por isso
+ * não aparece aqui. Campos ausentes no patch não são enviados (a Meta interpreta
+ * chave presente como alteração, inclusive string vazia).
+ */
+function compactPatch(patch: Record<string, string | undefined>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(patch).filter(([, v]) => v !== undefined) as Array<[string, string]>
+  );
+}
+
+export async function updateCampaignFields(
+  accessToken: string,
+  campaignId: string,
+  fields: { name?: string; dailyBudgetMinorUnits?: number }
+) {
+  const body = compactPatch({
+    name: fields.name,
+    daily_budget:
+      fields.dailyBudgetMinorUnits === undefined
+        ? undefined
+        : String(Math.max(0, Math.round(fields.dailyBudgetMinorUnits)))
+  });
+  if (!Object.keys(body).length) return null;
+  return metaPost(`/${encodeURIComponent(campaignId)}`, accessToken, body);
+}
+
+export async function updateAdSetFields(
+  accessToken: string,
+  adSetId: string,
+  fields: {
+    name?: string;
+    dailyBudgetMinorUnits?: number;
+    /** Objeto de targeting já no formato da API (draftTargetingToApi + placements). */
+    targeting?: Record<string, unknown>;
+    startTime?: string | null;
+    endTime?: string | null;
+  }
+) {
+  const body = compactPatch({
+    name: fields.name,
+    daily_budget:
+      fields.dailyBudgetMinorUnits === undefined
+        ? undefined
+        : String(Math.max(0, Math.round(fields.dailyBudgetMinorUnits))),
+    targeting: fields.targeting === undefined ? undefined : JSON.stringify(fields.targeting),
+    start_time: fields.startTime === undefined ? undefined : (fields.startTime ?? ""),
+    end_time: fields.endTime === undefined ? undefined : (fields.endTime ?? "")
+  });
+  if (!Object.keys(body).length) return null;
+  return metaPost(`/${encodeURIComponent(adSetId)}`, accessToken, body);
+}
+
+/**
+ * Troca o criativo de um anúncio publicado. A Meta não altera um criativo no
+ * lugar: cria-se um novo em /adcreatives e aponta-se o anúncio para ele. Isso
+ * reinicia a fase de aprendizado do anúncio.
+ */
+export async function updateAdFields(
+  accessToken: string,
+  adId: string,
+  fields: { name?: string; creativeId?: string }
+) {
+  const body = compactPatch({
+    name: fields.name,
+    creative:
+      fields.creativeId === undefined
+        ? undefined
+        : JSON.stringify({ creative_id: fields.creativeId })
+  });
+  if (!Object.keys(body).length) return null;
+  return metaPost(`/${encodeURIComponent(adId)}`, accessToken, body);
+}

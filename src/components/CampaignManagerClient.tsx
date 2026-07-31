@@ -820,6 +820,13 @@ export function CampaignManagerClient({
                     onClick={() => setBudgetDrawerOpen(true)}
                   />
                   <QuickAction
+                    iconPath={ICONS.pencil}
+                    label={t("editCampaign")}
+                    href={`/campaigns/new?mode=edit&fromCampaign=${encodeURIComponent(campaign.id)}${
+                      slug ? `&client=${encodeURIComponent(slug)}` : ""
+                    }`}
+                  />
+                  <QuickAction
                     iconPath={ICONS.copy}
                     label={t("duplicate")}
                     onClick={() => openPanel({ clientSlug: slug })}

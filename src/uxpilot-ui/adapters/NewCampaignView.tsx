@@ -16,7 +16,13 @@ import {
 } from "@/lib/campaign-creator/creation-flow-session";
 
 function shouldShowModePicker(mode: string | null, fromCampaign: string | null) {
-  if (mode === "ai" || mode === "add-ad" || mode === "add-adset" || mode === "manual") {
+  if (
+    mode === "ai" ||
+    mode === "add-ad" ||
+    mode === "add-adset" ||
+    mode === "edit" ||
+    mode === "manual"
+  ) {
     return false;
   }
   if (fromCampaign) return false;
@@ -58,6 +64,14 @@ function NewCampaignContent() {
     [mode, fromCampaign, client]
   );
 
+  const initialEdit = useMemo(
+    () =>
+      mode === "edit" && fromCampaign
+        ? { fromCampaignId: fromCampaign, clientSlug: client }
+        : undefined,
+    [mode, fromCampaign, client]
+  );
+
   if (shouldShowModePicker(mode, fromCampaign)) {
     return (
       <CampaignCreationModePicker
@@ -81,6 +95,7 @@ function NewCampaignContent() {
       initialClientSlug={client}
       initialAddAd={initialAddAd}
       initialAddAdset={initialAddAdset}
+      initialEdit={initialEdit}
       variant="uxpilot"
     />
   );
