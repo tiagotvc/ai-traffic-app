@@ -70,10 +70,22 @@ export async function POST(req: Request) {
       throw err;
     }
 
+    const clientContext = client
+      ? [
+          client.niche ? `Nicho/segmento: ${client.niche}` : null,
+          typeof client.aiContext === "string" && client.aiContext.trim()
+            ? `Contexto adicional: ${client.aiContext.trim().slice(0, 400)}`
+            : null
+        ]
+          .filter(Boolean)
+          .join("\n") || null
+      : null;
+
     const { verdict, meta } = await generateCommanderVerdict({
       domain,
       contextSummary: body.contextSummary,
-      checklist: body.checklist ?? []
+      checklist: body.checklist ?? [],
+      clientContext
     });
 
     if (client) {

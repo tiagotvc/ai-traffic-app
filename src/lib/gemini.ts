@@ -239,6 +239,11 @@ export async function geminiGenerateRecommendations(args: {
   return { ...data, ...meta };
 }
 
+/**
+ * Como `anthropicGenerateJson` (2 tentativas): se o texto não vier em JSON válido ou não
+ * bater com o schema, tenta de novo uma vez pedindo pra corrigir — em vez de derrubar a
+ * chamada inteira por um detalhe de formatação (ex.: campo passou do tamanho máximo).
+ */
 export async function geminiGenerateJson<T>(args: {
   prompt: string;
   apiKey: string;
@@ -247,15 +252,36 @@ export async function geminiGenerateJson<T>(args: {
   modelId?: string;
   modelChain?: string[];
 }): Promise<GeminiGenerateJsonResult<T>> {
-  const { text, ...meta } = await geminiGenerateTextWithFallback({
-    apiKey: args.apiKey,
-    prompt: args.prompt,
-    temperature: args.temperature ?? 0.25,
-    modelId: args.modelId,
-    modelChain: args.modelChain
-  });
+  let lastError: unknown;
 
-  const parsed = extractJson(text);
-  const data = args.schema.parse(parsed);
-  return { data, ...meta };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const prompt =
+      attempt === 0
+        ? args.prompt
+        : `${args.prompt}\n\nA tentativa anterior não passou na validação (${
+            lastError instanceof Error ? lastError.message.slice(0, 300) : "erro de formato"
+          }). Corrija e responda de novo respeitando exatamente os limites e nomes de campo pedidos.`;
+
+    const { text, ...meta } = await geminiGenerateTextWithFallback({
+      apiKey: args.apiKey,
+      prompt,
+      temperature: args.temperature ?? 0.25,
+      modelId: args.modelId,
+      modelChain: args.modelChain
+    });
+
+    try {
+      const parsed = extractJson(text);
+      const data = args.schema.parse(parsed);
+      return { data, ...meta };
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0 && (err instanceof z.ZodError || err instanceof SyntaxError)) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Gemini JSON parse failed");
 }

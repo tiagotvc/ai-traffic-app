@@ -13,25 +13,56 @@ import { buildCommanderReviewChecklist, buildCommanderReviewOpportunities } from
 
 import { CommanderConfidenceBadge } from "./CommanderParts";
 
+const GENDER_LABEL: Record<string, string> = {
+  all: "todos os gêneros",
+  male: "homens",
+  female: "mulheres"
+};
+
 /** Resumo textual de tudo que foi preenchido — vira o contexto do veredito de IA. */
 function buildVerdictContext(payload: CampaignDraftPayload): string {
   const adset = getActiveAdset(payload);
   const ad = getActiveAd(payload);
   const mediaCount = ad.imageHashes.length + ad.videoIds.length;
+  const titles = ad.titles.filter(Boolean);
+  const bodies = ad.bodies.filter(Boolean);
+  const interestLabels = adset.targeting.interests.map((i) => i.label).filter(Boolean);
+  const genderLabel = GENDER_LABEL[adset.targeting.gender] ?? adset.targeting.gender;
+
   return [
     `Objetivo: ${payload.objective}`,
     `Nome da campanha: ${payload.campaign.name || "não definido"}`,
     `Orçamento diário: R$ ${payload.campaign.dailyBudgetBRL.toFixed(2)}`,
     `Conjunto ativo: ${adset.name || "não definido"}`,
-    `Segmentação: idade ${adset.targeting.ageMin}-${adset.targeting.ageMax}, ` +
-      `${adset.targeting.customAudienceIds.length ? "com" : "sem"} público personalizado, ` +
-      `${adset.targeting.interests.length} interesse(s)`,
     `Criativo dinâmico: ${adset.dynamicCreative ? "ativado" : "desativado"}`,
     adset.pixelId
       ? `Conversão: pixel configurado, evento "${adset.conversionEvent || "não definido"}"`
       : "Conversão: pixel não configurado",
-    `Anúncio ativo: ${ad.name || "não definido"}, ${mediaCount > 0 ? "com mídia" : "sem mídia"}, ` +
-      `${ad.titles.filter(Boolean).length} título(s), ${ad.bodies.filter(Boolean).length} texto(s)`,
+    "",
+    "== Público-alvo desse anúncio ==",
+    `Idade: ${adset.targeting.ageMin}-${adset.targeting.ageMax} anos`,
+    `Gênero: ${genderLabel}`,
+    interestLabels.length ? `Interesses: ${interestLabels.join(", ")}` : "Interesses: nenhum configurado",
+    adset.targeting.customAudienceIds.length
+      ? "Usa público personalizado (remarketing/lookalike)"
+      : "Sem público personalizado",
+    "",
+    "== Texto do anúncio (avalie a qualidade do copy de verdade, não só se está preenchido) ==",
+    `Mídia: ${mediaCount > 0 ? "com imagem/vídeo" : "sem mídia"}`,
+    titles.length
+      ? titles.map((t, i) => `Título ${i + 1}: "${t}"`).join("\n")
+      : "(nenhum título preenchido)",
+    bodies.length
+      ? bodies.map((b, i) => `Texto ${i + 1}: "${b}"`).join("\n")
+      : "(nenhum texto preenchido)",
+    ad.callToAction ? `Call to action: ${ad.callToAction}` : "Call to action: não definido",
+    ad.linkUrl ? `Link de destino: ${ad.linkUrl}` : "Link de destino: não definido",
+    "",
+    "IMPORTANTE: cheque se o texto do anúncio (título/corpo) faz sentido para ESSE público-alvo",
+    "específico (idade + gênero + interesses acima) — um copy genérico ou que fala com o público",
+    "errado (ex.: linguagem/tom que não combina com a faixa etária ou gênero configurados) é um",
+    "problema real, mesmo que o texto em si esteja bem escrito.",
+    "",
     `Total no rascunho: ${payload.adsets.length} conjunto(s), ${payload.ads.length} anúncio(s)`
   ].join("\n");
 }

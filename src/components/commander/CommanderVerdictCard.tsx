@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Loader2, RotateCw, Sparkles, XCircle } from "lucide-react";
+import { CheckCircle2, Lightbulb, Loader2, RotateCw, Sparkles, XCircle } from "lucide-react";
 
 import type { CommanderVerdictResult } from "./useCommanderVerdict";
 
@@ -91,6 +91,22 @@ export function CommanderVerdictCard({
                 {verdict.fixes.map((fix, i) => (
                   <li key={i} className="text-[11px] leading-snug text-[var(--text-dim)]">
                     • {fix}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {verdict.suggestions?.length ? (
+            <div className="mt-3 border-t border-[var(--creator-card-border)] pt-2.5">
+              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--text-dimmer)]">
+                <Lightbulb size={11} className="text-[var(--ui-accent)]" />
+                Sugestões pra vender mais
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {verdict.suggestions.map((suggestion, i) => (
+                  <li key={i} className="text-[11px] leading-snug text-[var(--text-dim)]">
+                    • {suggestion}
                   </li>
                 ))}
               </ul>

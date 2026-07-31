@@ -9,6 +9,7 @@ export type CommanderVerdictResult = {
   headline: string;
   reasons: string[];
   fixes: string[];
+  suggestions: string[];
   confidence: number;
 };
 

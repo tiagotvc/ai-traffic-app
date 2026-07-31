@@ -79,9 +79,10 @@ export async function aiGenerateJson<T>(args: {
       });
       return { data: args.schema.parse(extractJson(text)), usage };
     }
+    const basePrompt = args.system ? `${args.system}\n\n${args.prompt}` : args.prompt;
     const { data, usage } = await geminiGenerateJson({
       apiKey: geminiKey!,
-      prompt: args.system ? `${args.system}\n\n${args.prompt}` : args.prompt,
+      prompt: `${basePrompt}\n\nIMPORTANTE: retorne APENAS um objeto JSON válido, sem markdown, sem explicações e sem texto fora do JSON.`,
       schema: args.schema,
       temperature: args.temperature,
       modelId: model
