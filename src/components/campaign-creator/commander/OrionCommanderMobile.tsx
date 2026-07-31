@@ -4,22 +4,21 @@ import { ChevronDown, ChevronUp, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { CommanderObservingIndicator } from "@/components/commander/CommanderObservingIndicator";
 import { useCommanderAccess } from "@/hooks/useCommanderAccess";
 import { useCommanderMemory } from "@/hooks/useCommanderMemory";
 
 import {
-  CommanderAdvanceWarning,
   CommanderConfidenceBadge,
   CommanderInsightsSummary,
   CommanderMemorySummary,
-  CommanderNextActionCard,
   CommanderPipeline
 } from "./CommanderParts";
 import { useCommanderState } from "./useCommanderState";
 
 export function OrionCommanderCompactCard() {
   const { state, researchMode, activeScientists } = useCommanderState("mobile");
-  const { payload, setActiveNode } = useCampaignDraft();
+  const { payload } = useCampaignDraft();
   const { memory } = useCommanderAccess();
   const { campaigns: memoryCampaigns, loading: memoryLoading } = useCommanderMemory(
     payload.clientSlug,
@@ -50,7 +49,7 @@ export function OrionCommanderCompactCard() {
           />
 
           <div className="min-h-0 overflow-y-auto border-t border-[var(--border-color)] px-4 py-4 ds-scroll">
-            <CommanderAdvanceWarning state={state} onNavigate={setActiveNode} className="mb-3" />
+            <CommanderObservingIndicator className="mb-3" />
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-dimmer)]">
                 Pipeline de análise
@@ -78,10 +77,6 @@ export function OrionCommanderCompactCard() {
                     <CommanderMemorySummary campaigns={memoryCampaigns} loading={memoryLoading} />
                   </div>
                 ) : null}
-                <h4 className="mb-2 mt-5 text-xs font-semibold text-[var(--text-main)]">
-                  Próxima ação sugerida
-                </h4>
-                <CommanderNextActionCard state={state} />
               </>
             ) : null}
           </div>

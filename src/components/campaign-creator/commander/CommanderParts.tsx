@@ -18,22 +18,12 @@ import { useState } from "react";
 import { DsModal } from "@/design-system";
 import type { CommanderMemoryCampaign } from "@/hooks/useCommanderMemory";
 import { actionLabel, conditionText } from "@/lib/automation/rule-templates";
-import type { CreatorNode } from "@/lib/campaign-draft";
 import type {
   CommanderInsight,
   CommanderPipelineStep,
   CommanderRuleProposal,
   CommanderState
 } from "@/lib/commander/types";
-
-/**
- * Mapa insight → step do wizard, pro botão "Corrigir agora" navegar direto.
- * Hoje só existe um insight tipo "warning" (id "budget", campo vive no CampaignStep).
- * Se surgir um segundo insight tipo warning, adicionar aqui.
- */
-const INSIGHT_NODE_MAP: Record<string, CreatorNode> = {
-  budget: "campaign"
-};
 
 function formatCurrencyBRL(value: number): string {
   return `R$ ${value.toFixed(2)}`;
@@ -325,67 +315,6 @@ export function CommanderMemorySummary({
         )}
       </DsModal>
     </>
-  );
-}
-
-/**
- * Aviso puramente informativo — nunca bloqueia navegação. Aparece quando o Commander
- * marca a campanha como "warning" (algo importante faltando). "Corrigir agora" só
- * navega pro step relevante via setActiveNode; o botão Próximo do wizard continua
- * funcionando normalmente independente deste aviso estar visível ou não.
- */
-export function CommanderAdvanceWarning({
-  state,
-  onNavigate,
-  className = ""
-}: {
-  state: CommanderState;
-  onNavigate: (node: CreatorNode) => void;
-  className?: string;
-}) {
-  if (state.status !== "warning") return null;
-  const warning = state.insights.find((insight) => insight.type === "warning");
-  if (!warning) return null;
-  const targetNode = INSIGHT_NODE_MAP[warning.id];
-
-  return (
-    <div className={`rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 ${className}`}>
-      <div className="flex gap-2">
-        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-[var(--amber-bright)]" />
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-[var(--amber)]">Não recomendamos avançar ainda</p>
-          <p className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
-            Motivo: {warning.description}
-          </p>
-          {targetNode ? (
-            <button
-              type="button"
-              onClick={() => onNavigate(targetNode)}
-              className="mt-2 text-[11px] font-semibold text-[var(--amber-bright)] hover:underline"
-            >
-              Corrigir agora
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function CommanderNextActionCard({ state }: { state: CommanderState }) {
-  if (!state.nextAction) return null;
-  return (
-    <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] p-3">
-      <div className="flex gap-2">
-        <Sparkles size={16} className="mt-0.5 shrink-0 text-[var(--amber-bright)]" />
-        <div>
-          <p className="text-xs font-semibold text-[var(--amber)]">{state.nextAction.label}</p>
-          <p className="mt-1 text-[11px] leading-snug text-[var(--text-dim)]">
-            {state.nextAction.description}
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 

@@ -5,15 +5,14 @@ import { useState } from "react";
 
 import { DsButton, DsInput } from "@/design-system";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
+import { CommanderObservingIndicator } from "@/components/commander/CommanderObservingIndicator";
 import { useCommanderAccess } from "@/hooks/useCommanderAccess";
 import { useCommanderMemory } from "@/hooks/useCommanderMemory";
 
 import {
-  CommanderAdvanceWarning,
   CommanderConfidenceBadge,
   CommanderInsightsSummary,
   CommanderMemorySummary,
-  CommanderNextActionCard,
   CommanderPipeline,
   CommanderRuleProposalCard
 } from "./CommanderParts";
@@ -22,7 +21,7 @@ import { useCommanderState } from "./useCommanderState";
 
 export function OrionCommanderPanel() {
   const { state, analyzing, researchMode, activeScientists } = useCommanderState("desktop");
-  const { payload, setActiveNode } = useCampaignDraft();
+  const { payload } = useCampaignDraft();
   const { memory } = useCommanderAccess();
   const { campaigns: memoryCampaigns, loading: memoryLoading } = useCommanderMemory(
     payload.clientSlug,
@@ -138,7 +137,7 @@ export function OrionCommanderPanel() {
         <CommanderPipeline steps={state.pipeline} />
       </div>
 
-      <CommanderAdvanceWarning state={state} onNavigate={setActiveNode} className="mt-3" />
+      <CommanderObservingIndicator className="mt-3" />
 
       {state.insights.length > 0 ? (
         <div className="mt-5">
@@ -151,11 +150,6 @@ export function OrionCommanderPanel() {
           <CommanderMemorySummary campaigns={memoryCampaigns} loading={memoryLoading} />
         </div>
       ) : null}
-
-      <div className="mt-5">
-        <h4 className="mb-2 text-xs font-semibold text-[var(--text-main)]">Próxima ação sugerida</h4>
-        <CommanderNextActionCard state={state} />
-      </div>
     </section>
   );
 }
