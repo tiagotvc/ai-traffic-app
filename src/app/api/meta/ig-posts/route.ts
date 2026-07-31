@@ -8,6 +8,7 @@ import {
   fetchInstagramFromPages,
   fetchInstagramPostsForAds
 } from "@/lib/meta-graph";
+import { META_INSTAGRAM_BASIC_GRANTED } from "@/lib/meta-permissions";
 
 /**
  * Lists an Instagram account's published media so it can be promoted as an ad
@@ -16,6 +17,15 @@ import {
  * authorized Instagram accounts.
  */
 export async function GET(req: Request) {
+  // `instagram_basic` reprovada no App Review: a Graph API recusaria /{ig}/media de
+  // qualquer forma. Responde direto, sem gastar chamada nem vazar erro cru da Meta.
+  if (!META_INSTAGRAM_BASIC_GRANTED) {
+    return NextResponse.json(
+      { ok: false, error: "instagram_basic_not_granted", posts: [] },
+      { status: 403 }
+    );
+  }
+
   const { tenant, metaAccessToken } = await getAppContext();
   if (!metaAccessToken) {
     return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });

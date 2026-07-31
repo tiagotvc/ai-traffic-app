@@ -3454,6 +3454,7 @@
     "creativeSourceFacebook": "Post do Facebook",
     "creativeSourceInstagram": "Post do Instagram",
     "creativeSourceExistingLocked": "Posts existentes só podem ser promovidos com objetivo de Engajamento ou Reconhecimento.",
+    "creativeSourceInstagramUnavailable": "Promover post existente do Instagram está indisponível: a permissão instagram_basic não foi aprovada pela Meta. Escolha outra origem do criativo.",
     "existingIgPostTitle": "Post do Instagram",
     "existingIgPostHint": "Promove um post já publicado do Instagram. A mídia e a legenda são usadas como estão — funciona em modo de desenvolvimento.",
     "existingIgPostNoAccount": "Nenhuma conta de Instagram conectada à Página deste cliente. Conecte uma na Meta.",

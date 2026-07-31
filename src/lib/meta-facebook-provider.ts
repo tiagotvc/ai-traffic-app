@@ -1,13 +1,20 @@
 import type { OAuthConfig } from "next-auth/providers";
 
+import { META_INSTAGRAM_BASIC_GRANTED } from "@/lib/meta-permissions";
+
 /**
  * Scopes Marketing API — sem `email` (Meta rejeita em apps de ads).
  * `pages_read_user_content` é necessário para listar posts publicados da Página
- * (promover post existente); `instagram_basic` para listar mídias do Instagram.
+ * (promover post existente). `instagram_basic` só entra se o App Review tiver
+ * aprovado — pedir permissão negada faz a Meta rejeitar o consentimento.
  * Em modo de desenvolvimento, admins/testers do app recebem esses scopes sem App Review.
  */
-export const META_FACEBOOK_SCOPES =
-  "public_profile,ads_read,ads_management,business_management,pages_show_list,pages_read_engagement,pages_read_user_content,instagram_basic";
+const BASE_SCOPES =
+  "public_profile,ads_read,ads_management,business_management,pages_show_list,pages_read_engagement,pages_read_user_content";
+
+export const META_FACEBOOK_SCOPES = META_INSTAGRAM_BASIC_GRANTED
+  ? `${BASE_SCOPES},instagram_basic`
+  : BASE_SCOPES;
 
 type MetaFacebookProfile = {
   id: string;

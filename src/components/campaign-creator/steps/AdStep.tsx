@@ -27,6 +27,7 @@ import { CreatorAiModalShell } from "@/components/campaign-creator/CreatorModalS
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { CreativePickerModal } from "@/components/campaign-creator/CreativePickerModal";
 import { ExistingPostCard } from "@/components/campaign-creator/ExistingPostPickerModal";
+import { META_INSTAGRAM_BASIC_GRANTED } from "@/lib/meta-permissions";
 import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfigModal";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
@@ -678,13 +679,21 @@ export function AdStep() {
           <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
             <h4 className="campaign-creator-section-title">{t("creativeSourceTitle")}</h4>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("creativeSourceTitle")}>
-              {(
-                [
-                  { value: "new", label: t("creativeSourceNew"), gated: false },
-                  { value: "existing_post", label: t("creativeSourceFacebook"), gated: true },
-                  { value: "existing_ig_post", label: t("creativeSourceInstagram"), gated: true }
-                ] as const
-              ).map((opt) => {
+              {[
+                { value: "new" as const, label: t("creativeSourceNew"), gated: false },
+                { value: "existing_post" as const, label: t("creativeSourceFacebook"), gated: true },
+                // Sem `instagram_basic` aprovado no App Review não dá pra listar as mídias
+                // do Instagram — a opção some em vez de levar o usuário a um erro.
+                ...(META_INSTAGRAM_BASIC_GRANTED
+                  ? [
+                      {
+                        value: "existing_ig_post" as const,
+                        label: t("creativeSourceInstagram"),
+                        gated: true
+                      }
+                    ]
+                  : [])
+              ].map((opt) => {
                 const blocked = opt.gated && !existingPostAllowed;
                 const selected = ad.creativeSource === opt.value;
                 return (
@@ -721,15 +730,23 @@ export function AdStep() {
                 <div className="ui-alert-warning text-xs">{t("existingPostObjectiveIncompatible")}</div>
               ) : null}
               {ad.creativeSource === "existing_ig_post" ? (
-                <ExistingPostCard
-                  platform="instagram"
-                  clientId={payload.clientSlug}
-                  adAccountId={payload.adAccountId}
-                  pageId={ad.pageId}
-                  selectedPostId={ad.existingIgMediaId}
-                  onSelect={(id) => patchAd({ existingIgMediaId: id })}
-                  disabled={clientRequired}
-                />
+                // Rascunhos salvos antes da negativa do App Review ainda chegam aqui
+                // com "existing_ig_post" — avisa em vez de estourar erro da Graph API.
+                !META_INSTAGRAM_BASIC_GRANTED ? (
+                  <div className="ui-alert-warning text-xs">
+                    {t("creativeSourceInstagramUnavailable")}
+                  </div>
+                ) : (
+                  <ExistingPostCard
+                    platform="instagram"
+                    clientId={payload.clientSlug}
+                    adAccountId={payload.adAccountId}
+                    pageId={ad.pageId}
+                    selectedPostId={ad.existingIgMediaId}
+                    onSelect={(id) => patchAd({ existingIgMediaId: id })}
+                    disabled={clientRequired}
+                  />
+                )
               ) : (
                 <ExistingPostCard
                   platform="facebook"

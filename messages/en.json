@@ -3449,6 +3449,7 @@
     "creativeSourceFacebook": "Facebook post",
     "creativeSourceInstagram": "Instagram post",
     "creativeSourceExistingLocked": "Existing posts can only be promoted with an Engagement or Awareness objective.",
+    "creativeSourceInstagramUnavailable": "Promoting an existing Instagram post is unavailable: Meta did not approve the instagram_basic permission. Pick another creative source.",
     "existingIgPostTitle": "Instagram post",
     "existingIgPostHint": "Promote an already-published Instagram post. Its media and caption are used as-is — works in Development Mode.",
     "existingIgPostNoAccount": "No Instagram account connected to this client's Page. Connect one on Meta.",
