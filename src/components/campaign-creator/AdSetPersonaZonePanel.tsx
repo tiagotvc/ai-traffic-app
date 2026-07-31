@@ -33,6 +33,15 @@ export function AdSetPersonaZonePanel({
 
   return (
     <div className="space-y-3">
+      {/* Deixa explícito que persona e zona MONTAM um público novo, em oposição
+          ao "Carregar público salvo" logo acima, que reaproveita um pronto. */}
+      <div>
+        <h4 className="campaign-creator-section-title">{t("buildAudienceTitle")}</h4>
+        <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-dim)]">
+          {t("buildAudienceHint")}
+        </p>
+      </div>
+
       <div className="campaign-creator-adset-two-col campaign-creator-adset-two-col--compact">
         <div className="campaign-creator-card campaign-creator-card--compact">
           <h4 className="campaign-creator-budget-header__title">{t("selectPersona")}</h4>

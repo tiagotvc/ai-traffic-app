@@ -179,6 +179,78 @@ function extractInheritedAdDefaults(
   };
 }
 
+/**
+ * Converte um anúncio publicado (+ criativo) para o formato do rascunho.
+ * Usado tanto na cópia de campanha quanto no modo edição — a diferença é só
+ * `metaAdId` (preenchido na edição, para saber qual anúncio atualizar) e o
+ * conjunto alvo.
+ */
+function mapAdFromMeta(
+  creativeData: CreativeSnapshot | null,
+  sourceAd: { id?: string; name?: string } | undefined,
+  opts: { draftId: string; targetAdsetIds: string[]; metaAdId: string | null }
+): CampaignDraftPayload["ads"][number] {
+  const feed = creativeData?.creative?.asset_feed_spec as
+    | {
+        images?: Array<{ hash?: string }>;
+        videos?: Array<{ video_id?: string }>;
+        titles?: Array<{ text?: string }>;
+        bodies?: Array<{ text?: string }>;
+        link_urls?: Array<{ website_url?: string }>;
+      }
+    | undefined;
+  const imageHashes = feed?.images?.map((i) => i.hash).filter(Boolean) as string[] | undefined;
+  const videoIds = feed?.videos?.map((v) => v.video_id).filter(Boolean) as string[] | undefined;
+  const titles =
+    feed?.titles?.map((t) => t.text).filter(Boolean) ??
+    (creativeData?.creative?.title ? [creativeData.creative.title] : []);
+  const bodies =
+    feed?.bodies?.map((b) => b.text).filter(Boolean) ??
+    (creativeData?.creative?.body ? [creativeData.creative.body] : []);
+  const storyVideo = (
+    creativeData?.creative?.object_story_spec as { video_data?: { video_id?: string } } | undefined
+  )?.video_data?.video_id;
+  const allVideoIds = [...(videoIds ?? [])];
+  if (storyVideo && !allVideoIds.includes(storyVideo)) allVideoIds.push(storyVideo);
+  const format = allVideoIds.length ? ("video" as const) : ("single_image" as const);
+  const routing = extractCreativeRouting(creativeData?.creative ?? null);
+  const story = creativeData?.creative?.object_story_spec as
+    | { page_id?: string; instagram_actor_id?: string }
+    | undefined;
+
+  return {
+    id: opts.draftId,
+    name: sourceAd?.name ?? "Anúncio importado",
+    metaAdId: opts.metaAdId,
+    pageId: routing.pageId || story?.page_id || "",
+    instagramActorId: story?.instagram_actor_id ?? null,
+    pixelId: null,
+    format,
+    imageHashes: format === "video" ? [] : (imageHashes ?? []),
+    videoIds: format === "video" ? allVideoIds : [],
+    titles: titles as string[],
+    bodies: bodies as string[],
+    destinationType: routing.destinationType,
+    linkUrl: routing.linkUrl,
+    leadFormId: routing.leadFormId,
+    urlParams: routing.urlParams,
+    callToAction: routing.callToAction,
+    whatsappWelcomeMessage: routing.whatsappWelcomeMessage,
+    messageTemplate: routing.messageTemplate,
+    utm: defaultUtm(),
+    metaCreativeId: creativeData?.creative?.id ?? null,
+    sourceMetaAdId: sourceAd?.id ?? null,
+    // Começa reaproveitando o criativo publicado: só vira criativo novo se o
+    // usuário editar texto/mídia, e é isso que dispara o aviso de reaprendizado.
+    reuseMetaCreative: Boolean(creativeData?.creative?.id),
+    creativeSource: "new",
+    existingPostId: null,
+    existingIgMediaId: null,
+    targetAdsetIds: opts.targetAdsetIds,
+    tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
+  };
+}
+
 export async function GET(
   req: Request,
   ctx: { params: Promise<{ metaCampaignId: string }> }
@@ -198,6 +270,104 @@ export async function GET(
     const clientCtx = await resolveCampaignClientContext(tenant.id, metaCampaignId);
     const adAccountId = clientCtx?.metaAdAccountId ?? null;
     const adsets = await fetchAdSetsForCampaign(token, metaCampaignId);
+
+    if (mode === "edit") {
+      if (!adsets.length) {
+        return NextResponse.json({ ok: false, error: "Campanha sem conjuntos" }, { status: 404 });
+      }
+
+      const objective =
+        OBJECTIVE_REVERSE[campaign.objective ?? ""] ?? defaultCampaignDraft("pt-BR").objective;
+      const budgetLevel = campaign.daily_budget ? ("campaign" as const) : ("adset" as const);
+      const dailyBudgetBRL = campaign.daily_budget
+        ? Number(campaign.daily_budget) / 100
+        : adsets[0]?.daily_budget
+          ? Number(adsets[0].daily_budget) / 100
+          : 150;
+
+      const draftAdsets: CampaignDraftPayload["adsets"] = [];
+      const draftAds: CampaignDraftPayload["ads"] = [];
+
+      for (const [i, adset] of adsets.entries()) {
+        const detail = await fetchAdSetDetail(token, adset.id);
+        const inherited = extractInheritedAdsetFromMeta(detail, adset.name ?? `Conjunto ${i + 1}`);
+        const localAdsetId = `edit_adset_${i}_${adset.id}`;
+
+        draftAdsets.push({
+          ...inherited,
+          id: localAdsetId,
+          metaAdsetId: adset.id,
+          name: adset.name ?? `Conjunto ${i + 1}`,
+          schedule: {
+            start: detail.start_time ?? null,
+            end: detail.end_time ?? null
+          },
+          targeting: mapMetaTargetingToDraft(detail.targeting),
+          placements: mapPlacementsFromTargeting(detail.targeting)
+        } as CampaignDraftPayload["adsets"][number]);
+
+        const ads = await fetchAdsForAdSet(token, adset.id);
+        for (const [j, metaAd] of ads.entries()) {
+          let creativeData: CreativeSnapshot | null = null;
+          try {
+            creativeData = await fetchAdWithCreative(token, metaAd.id);
+          } catch {
+            /* anúncio sem criativo legível — segue com os campos vazios */
+          }
+          draftAds.push(
+            mapAdFromMeta(creativeData, metaAd, {
+              draftId: `edit_ad_${i}_${j}_${metaAd.id}`,
+              targetAdsetIds: [localAdsetId],
+              metaAdId: metaAd.id
+            })
+          );
+        }
+      }
+
+      if (!draftAds.length) {
+        return NextResponse.json(
+          { ok: false, error: "Campanha sem anúncios para editar" },
+          { status: 404 }
+        );
+      }
+
+      const patch: Partial<CampaignDraftPayload> = {
+        objective,
+        buyingType: mapMetaBuyingType(campaign.buying_type),
+        clientSlug: clientCtx?.clientSlug ?? "",
+        adAccountId: adAccountId ?? "",
+        campaign: {
+          name: campaign.name ?? "",
+          budgetLevel,
+          dailyBudgetBRL,
+          bidStrategy: "lowest_cost",
+          specialAdCategories: [],
+          abTestEnabled: false
+        },
+        adsets: draftAdsets,
+        ads: draftAds,
+        activeAdsetId: draftAdsets[0]!.id,
+        activeAdId: draftAds[0]!.id,
+        adAssignment: "single",
+        selectedAdsetIdForAds: draftAdsets[0]!.id,
+        visitedNodes: ["campaign", "adset", "ad", "review"],
+        copyFromCampaignEnabled: false,
+        copyFromCampaignId: null,
+        meta: {
+          publishMode: "edit",
+          targetMetaCampaignId: metaCampaignId
+        }
+      };
+
+      return NextResponse.json({
+        ok: true,
+        patch,
+        adAccountId,
+        clientSlug: clientCtx?.clientSlug ?? null,
+        campaignName: campaign.name ?? "",
+        counts: { adsets: draftAdsets.length, ads: draftAds.length }
+      });
+    }
 
     if (mode === "add-adset") {
       const templateAdset = adsets[0];
@@ -408,6 +578,7 @@ export async function GET(
         : 150;
 
     const inheritedFromAdset = extractInheritedAdsetFromMeta(adsetDetail, selectedAdset.name ?? "Conjunto importado");
+    const copiedAdsetId = `imported_adset_${Date.now()}`;
 
     const patch: Partial<CampaignDraftPayload> = {
       objective,
@@ -424,7 +595,7 @@ export async function GET(
       },
       adsets: [
         {
-          id: `imported_adset_${Date.now()}`,
+          id: copiedAdsetId,
           ...inheritedFromAdset,
           name: selectedAdset.name ?? "Conjunto importado",
           schedule: { start: null, end: null },
@@ -432,35 +603,14 @@ export async function GET(
           placements: mapPlacementsFromTargeting(targeting)
         } as CampaignDraftPayload["adsets"][number]
       ],
+      // Mesma montagem do modo edição; aqui sem `metaAdId`, porque copiar cria um
+      // anúncio novo. Mira o conjunto copiado em vez de "__all__".
       ads: [
-        {
-          id: `imported_ad_${Date.now()}`,
-          name: firstAd?.name ?? "Anúncio importado",
-          pageId,
-          instagramActorId: story?.instagram_actor_id ?? null,
-          pixelId: null,
-          format,
-          imageHashes: format === "video" ? [] : (imageHashes ?? []),
-          videoIds: format === "video" ? allVideoIds : [],
-          titles: titles as string[],
-          bodies: bodies as string[],
-          destinationType: routing.destinationType,
-          linkUrl: routing.linkUrl,
-          leadFormId: routing.leadFormId,
-          urlParams: routing.urlParams,
-          callToAction: routing.callToAction,
-          whatsappWelcomeMessage: routing.whatsappWelcomeMessage,
-          messageTemplate: routing.messageTemplate,
-          utm: defaultUtm(),
-          metaCreativeId: creativeData?.creative?.id ?? null,
-          sourceMetaAdId: firstAd?.id ?? null,
-          reuseMetaCreative: Boolean(creativeData?.creative?.id),
-          creativeSource: "new",
-          existingPostId: null,
-          existingIgMediaId: null,
-          targetAdsetIds: ["__all__"],
-          tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
-        }
+        mapAdFromMeta(creativeData, firstAd, {
+          draftId: `imported_ad_${Date.now()}`,
+          targetAdsetIds: [copiedAdsetId],
+          metaAdId: null
+        })
       ],
       copyFromCampaignEnabled: true,
       copyFromCampaignId: metaCampaignId

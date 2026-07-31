@@ -54,8 +54,6 @@ export type CreatorNode = "campaign" | "adset" | "ad" | "review";
 
 export type AdAssignmentMode = "single" | "all_adsets";
 
-export type VariationAxis = "location" | "ageRange" | "customAudience" | "interests" | "gender";
-
 export const MessagingChannelSchema = z.enum(["whatsapp", "messenger", "instagram"]);
 export type MessagingChannel = z.infer<typeof MessagingChannelSchema>;
 
@@ -148,7 +146,8 @@ export const AdSetDraftItemSchema = z.object({
   }),
   targeting: DraftTargetingSchema,
   placements: PlacementConfigSchema.default(defaultPlacements()),
-  variantLabel: z.string().optional()
+  /** Id do conjunto na Meta quando o rascunho edita algo já publicado (publishMode "edit"). */
+  metaAdsetId: z.string().nullable().default(null)
 });
 
 export const AdDraftItemSchema = z.object({
@@ -183,24 +182,13 @@ export const AdDraftItemSchema = z.object({
   /** Instagram media id used as source_instagram_media_id when creativeSource is "existing_ig_post". */
   existingIgMediaId: z.string().nullable().default(null),
   targetAdsetIds: z.array(z.string()).default(["__all__"]),
+  /** Id do anúncio na Meta quando o rascunho edita algo já publicado (publishMode "edit"). */
+  metaAdId: z.string().nullable().default(null),
   tracking: z.object({
     websiteEvents: z.boolean().default(false),
     appEvents: z.boolean().default(false),
     offlineEvents: z.boolean().default(false)
   })
-});
-
-export const AdSetBatchSchema = z.object({
-  enabled: z.boolean().default(false),
-  extraCount: z.number().min(0).max(10).default(0),
-  variationAxes: z.array(z.enum(["location", "ageRange", "customAudience", "interests", "gender"])).default([]),
-  locationVariants: z.array(TargetingItemSchema).default([]),
-  ageRanges: z
-    .array(z.object({ label: z.string(), ageMin: z.number(), ageMax: z.number() }))
-    .default([]),
-  audienceVariants: z.array(z.array(z.string())).default([]),
-  interestVariants: z.array(z.array(TargetingItemSchema)).default([]),
-  genderVariants: z.array(z.enum(["all", "male", "female"])).default([])
 });
 
 export const CampaignDraftPayloadV2Schema = z.object({
@@ -224,7 +212,6 @@ export const CampaignDraftPayloadV2Schema = z.object({
     specialAdCategories: z.array(z.string()).default([]),
     abTestEnabled: z.boolean().default(false)
   }),
-  adsetBatch: AdSetBatchSchema,
   adsets: z.array(AdSetDraftItemSchema).min(1),
   ads: z.array(AdDraftItemSchema).min(1),
   meta: z
@@ -233,7 +220,8 @@ export const CampaignDraftPayloadV2Schema = z.object({
       adsetIds: z.array(z.string()).optional(),
       adIds: z.array(z.string()).optional(),
       publishedAt: z.string().optional(),
-      publishMode: z.enum(["add_ad", "add_adset"]).optional(),
+      // "edit": o rascunho representa uma campanha JÁ publicada e o publish vira update.
+      publishMode: z.enum(["add_ad", "add_adset", "edit"]).optional(),
       targetMetaAdsetId: z.string().optional(),
       targetMetaCampaignId: z.string().optional(),
       targetAdsetName: z.string().optional(),
@@ -294,7 +282,6 @@ export type CampaignDraftPayload = z.infer<typeof CampaignDraftPayloadV2Schema>;
 export type AdSetDraftItem = z.infer<typeof AdSetDraftItemSchema>;
 export type AdDraftItem = z.infer<typeof AdDraftItemSchema>;
 export type DraftTargeting = z.infer<typeof DraftTargetingSchema>;
-export type AdSetBatchConfig = z.infer<typeof AdSetBatchSchema>;
 export type PlacementConfigDraft = PlacementConfig;
 export type UtmFieldsDraft = UtmFields;
 
@@ -326,6 +313,7 @@ export function defaultAdSetItem(
   return {
     id: newDraftId(),
     name: name ?? (isEn ? "New Ad Set" : "Novo conjunto de anúncios"),
+    metaAdsetId: null,
     targetingMode: "compiler",
     personaId: null,
     zoneId: null,
@@ -342,7 +330,16 @@ export function defaultAdSetItem(
   };
 }
 
-export function defaultAdItem(locale: string, name?: string): AdDraftItem {
+/**
+ * `targetAdsetIds`: por padrão o anúncio nasce no conjunto que está sendo criado —
+ * quem chama passa o id do conjunto ativo. Sem isso cai em `["__all__"]`, que só
+ * faz sentido para rascunhos legados (onde "todos os conjuntos" era o default).
+ */
+export function defaultAdItem(
+  locale: string,
+  name?: string,
+  targetAdsetIds: string[] = ["__all__"]
+): AdDraftItem {
   const isEn = locale === "en";
   return {
     id: newDraftId(),
@@ -353,12 +350,11 @@ export function defaultAdItem(locale: string, name?: string): AdDraftItem {
     format: "single_image",
     imageHashes: [],
     videoIds: [],
-    titles: isEn
-      ? ["Perfect smile in 30 days", "Dental implants — free evaluation"]
-      : ["Sorriso perfeito em 30 dias", "Implantes com avaliação"],
-    bodies: isEn
-      ? ["Special offer for first visit.", "Expert team and human care."]
-      : ["Condições especiais para primeira consulta.", "Equipe especialista."],
+    // Sem copy de exemplo: o anúncio nasce em branco e o usuário escreve o dele
+    // (os campos caem no placeholder). O check de títulos passa a exigir de fato
+    // que ele preencha, em vez de aprovar texto genérico esquecido no rascunho.
+    titles: [],
+    bodies: [],
     destinationType: "website",
     linkUrl: "",
     leadFormId: null,
@@ -373,7 +369,8 @@ export function defaultAdItem(locale: string, name?: string): AdDraftItem {
     creativeSource: "new",
     existingPostId: null,
     existingIgMediaId: null,
-    targetAdsetIds: ["__all__"],
+    targetAdsetIds,
+    metaAdId: null,
     tracking: { websiteEvents: false, appEvents: false, offlineEvents: false }
   };
 }
@@ -382,7 +379,7 @@ export function defaultCampaignDraft(locale: string): CampaignDraftPayload {
   const isEn = locale === "en";
   const defaultObjective: CampaignObjectiveKey = "traffic";
   const adset = defaultAdSetItem(locale, undefined, defaultObjective);
-  const ad = defaultAdItem(locale);
+  const ad = defaultAdItem(locale, undefined, [adset.id]);
   return CampaignDraftPayloadV2Schema.parse({
     version: 2,
     clientSlug: "",
@@ -394,8 +391,9 @@ export function defaultCampaignDraft(locale: string): CampaignDraftPayload {
     visitedNodes: ["campaign"],
     activeAdsetId: adset.id,
     activeAdId: ad.id,
-    adAssignment: "all_adsets",
-    selectedAdsetIdForAds: null,
+    // O anúncio pertence ao conjunto que está sendo criado, não a todos.
+    adAssignment: "single",
+    selectedAdsetIdForAds: adset.id,
     campaign: {
       name: isEn ? "New Campaign" : "Nova campanha",
       budgetLevel: "adset",
@@ -403,16 +401,6 @@ export function defaultCampaignDraft(locale: string): CampaignDraftPayload {
       bidStrategy: "lowest_cost",
       specialAdCategories: [],
       abTestEnabled: false
-    },
-    adsetBatch: {
-      enabled: false,
-      extraCount: 0,
-      variationAxes: [],
-      locationVariants: [],
-      ageRanges: [],
-      audienceVariants: [],
-      interestVariants: [],
-      genderVariants: []
     },
     adsets: [adset],
     ads: [ad]
@@ -663,111 +651,6 @@ export function countPublishEntities(d: CampaignDraftPayload): {
   return { adsets: d.adsets.length, ads, creatives: ads };
 }
 
-export function buildAdSetVariants(
-  base: AdSetDraftItem,
-  batch: AdSetBatchConfig,
-  baseName: string
-): AdSetDraftItem[] {
-  const results: AdSetDraftItem[] = [{ ...base, name: base.name || baseName }];
-
-  if (!batch.enabled || batch.extraCount <= 0) return results;
-
-  const axes = batch.variationAxes;
-  const variants: Partial<AdSetDraftItem>[] = [];
-
-  if (axes.includes("location") && batch.locationVariants.length > 0) {
-    for (const loc of batch.locationVariants) {
-      variants.push({
-        variantLabel: loc.label,
-        name: `${baseName} — ${loc.label}`,
-        targeting: {
-          ...base.targeting,
-          locations: [loc, ...base.targeting.locations.filter((l) => l.value !== loc.value)]
-        }
-      });
-    }
-  }
-
-  if (axes.includes("ageRange") && batch.ageRanges.length > 0) {
-    for (const range of batch.ageRanges) {
-      variants.push({
-        variantLabel: range.label,
-        name: `${baseName} — ${range.label}`,
-        targeting: {
-          ...base.targeting,
-          ageMin: range.ageMin,
-          ageMax: range.ageMax
-        }
-      });
-    }
-  }
-
-  if (axes.includes("customAudience") && batch.audienceVariants.length > 0) {
-    for (const audIds of batch.audienceVariants) {
-      const label = audIds.length === 1 ? `Público ${audIds[0]!.slice(-6)}` : `${audIds.length} públicos`;
-      variants.push({
-        variantLabel: label,
-        name: `${baseName} — ${label}`,
-        targeting: { ...base.targeting, customAudienceIds: audIds }
-      });
-    }
-  }
-
-  if (axes.includes("interests") && batch.interestVariants.length > 0) {
-    for (const ints of batch.interestVariants) {
-      const label = ints[0]?.label ?? "Interesses";
-      variants.push({
-        variantLabel: label,
-        name: `${baseName} — ${label}`,
-        targeting: { ...base.targeting, interests: ints }
-      });
-    }
-  }
-
-  if (axes.includes("gender") && batch.genderVariants.length > 0) {
-    for (const g of batch.genderVariants) {
-      const label = g === "all" ? "Todos" : g === "male" ? "Masculino" : "Feminino";
-      variants.push({
-        variantLabel: label,
-        name: `${baseName} — ${label}`,
-        targeting: { ...base.targeting, gender: g }
-      });
-    }
-  }
-
-  const needed = batch.extraCount;
-  const picked = variants.slice(0, needed);
-  while (picked.length < needed) {
-    const i = picked.length + 1;
-    picked.push({ variantLabel: `Variação ${i}`, name: `${baseName} — Variação ${i}` });
-  }
-
-  for (const v of picked) {
-    results.push({
-      ...base,
-      id: newDraftId(),
-      name: v.name ?? `${baseName} — Extra`,
-      variantLabel: v.variantLabel,
-      targeting: v.targeting ?? { ...base.targeting }
-    });
-  }
-
-  return results;
-}
-
-export function syncAdsetsFromBatch(d: CampaignDraftPayload): CampaignDraftPayload {
-  if (!d.adsetBatch.enabled || d.adsetBatch.extraCount <= 0) {
-    const primary = getActiveAdset(d);
-    return { ...d, adsets: [primary] };
-  }
-  const base = getActiveAdset(d);
-  const built = buildAdSetVariants(base, d.adsetBatch, d.campaign.name || base.name);
-  const activeId = d.activeAdsetId && built.some((a) => a.id === d.activeAdsetId)
-    ? d.activeAdsetId
-    : built[0]!.id;
-  return { ...d, adsets: built, activeAdsetId: activeId };
-}
-
 export function draftTargetingToApi(t: DraftTargeting) {
   const countries = t.locations
     .filter((l) => l.meta?.type === "country")
@@ -882,6 +765,50 @@ export function validateAdSetStep(d: CampaignDraftPayload): string | null {
     }
   }
   return null;
+}
+
+/** Rascunho que representa uma campanha já publicada — publicar vira atualizar. */
+export function isEditDraft(d: CampaignDraftPayload): boolean {
+  return d.meta?.publishMode === "edit";
+}
+
+/**
+ * Campos do anúncio que compõem o criativo na Meta. Mexer em qualquer um deles
+ * num anúncio publicado obriga a criar um criativo novo — não há edição no lugar.
+ */
+const CREATIVE_FIELDS = [
+  "titles",
+  "bodies",
+  "imageHashes",
+  "videoIds",
+  "format",
+  "linkUrl",
+  "callToAction",
+  "destinationType",
+  "leadFormId",
+  "urlParams",
+  "utm",
+  "pageId",
+  "instagramActorId",
+  "whatsappWelcomeMessage",
+  "messageTemplate",
+  "creativeSource",
+  "existingPostId",
+  "existingIgMediaId"
+] as const satisfies ReadonlyArray<keyof AdDraftItem>;
+
+export function patchTouchesCreative(patch: Partial<AdDraftItem>): boolean {
+  return CREATIVE_FIELDS.some((f) => f in patch);
+}
+
+/**
+ * Anúncios cujo criativo será recriado ao salvar. A Meta não edita criativo
+ * publicado, então esses anúncios voltam para a fase de aprendizado — é o que
+ * os avisos na interface precisam comunicar antes de o usuário salvar.
+ */
+export function adsThatWillResetLearning(d: CampaignDraftPayload): AdDraftItem[] {
+  if (!isEditDraft(d)) return [];
+  return d.ads.filter((ad) => ad.metaAdId?.trim() && !ad.reuseMetaCreative);
 }
 
 export function isAddAdDraft(d: CampaignDraftPayload): boolean {

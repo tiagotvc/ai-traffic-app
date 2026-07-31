@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 
 import { mapMetaTargetingToDraft } from "@/lib/meta-adset-import";
 import type { DraftTargeting } from "@/lib/campaign-draft";
@@ -23,7 +23,17 @@ type Props = {
   modalMode?: boolean;
   selectedId?: string | null;
   applying?: boolean;
-  onApply: (targeting: DraftTargeting, audienceName: string, audienceId?: string) => void;
+  /**
+   * `storage` diz de onde veio o público (Meta ou biblioteca da Orion). Quem
+   * aplica usa isso para marcar o método de segmentação correspondente em vez de
+   * deixar os dois lados preenchidos ao mesmo tempo.
+   */
+  onApply: (
+    targeting: DraftTargeting,
+    audienceName: string,
+    audienceId?: string,
+    storage?: "meta" | "local"
+  ) => void;
 };
 
 export function SavedTargetingPicker({
@@ -101,9 +111,40 @@ export function SavedTargetingPicker({
 
   const selected = items.find((a) => a.id === selectedId);
 
+  /** Sem `storage` definido, o item veio da Meta (é o formato antigo da rota). */
+  const groups = useMemo(
+    () => ({
+      meta: filtered.filter((a) => (a.storage ?? "meta") === "meta"),
+      local: filtered.filter((a) => a.storage === "local")
+    }),
+    [filtered]
+  );
+
+  const [openGroup, setOpenGroup] = useState<"meta" | "local" | null>(null);
+
+  /**
+   * Grupo aberto de fato. Respeita o clique do usuário, mas se a busca só casa no
+   * outro grupo abre aquele — senão digitar o nome de um público da Orion com o
+   * grupo da Meta aberto parece "não encontrei nada".
+   */
+  const effectiveOpen = useMemo<"meta" | "local" | null>(() => {
+    const has = { meta: groups.meta.length > 0, local: groups.local.length > 0 };
+    if (openGroup && has[openGroup]) return openGroup;
+    if (filter.trim()) return has.meta ? "meta" : has.local ? "local" : null;
+    if (openGroup) return openGroup;
+    // Sem escolha do usuário: abre o grupo do público já aplicado.
+    if (selected?.storage === "local" && has.local) return "local";
+    return has.meta ? "meta" : has.local ? "local" : null;
+  }, [openGroup, groups, filter, selected]);
+
   function apply() {
     if (!selected) return;
-    onApply(mapMetaTargetingToDraft(selected.targeting), selected.name, selected.id);
+    onApply(
+      mapMetaTargetingToDraft(selected.targeting),
+      selected.name,
+      selected.id,
+      selected.storage ?? "meta"
+    );
   }
 
   const listMaxHeight = modalMode ? "max-h-72" : compact ? "max-h-28" : "max-h-48";
@@ -138,45 +179,87 @@ export function SavedTargetingPicker({
             disabled={disabled || applying}
           />
 
-          <div
-            className={`space-y-0.5 overflow-y-auto rounded-lg border border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] p-1 ${listMaxHeight}`}
-          >
-            {filtered.length === 0 ? (
-              <p className="px-2 py-2 text-center text-xs text-[var(--text-dim)]">
-                {t("savedAudiencesNoMatch")}
-              </p>
-            ) : (
-              filtered.map((a) => (
-                <label
-                  key={a.id}
-                  className={`flex cursor-pointer items-center gap-2 rounded-md px-2 transition ${
-                    compact || modalMode ? "py-1 text-xs" : "items-start rounded-lg py-1.5 text-xs"
-                  } ${
-                    selectedId === a.id
-                      ? "bg-[var(--ui-accent-muted)]"
-                      : "hover:bg-[var(--surface-bg)]"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="saved-targeting"
-                    checked={selectedId === a.id}
-                    disabled={disabled || applying}
-                    onChange={() => setSelectedId(a.id)}
-                    className="shrink-0 accent-[var(--ui-accent)]"
-                  />
-                  <span className="min-w-0 flex-1 truncate font-medium text-[var(--text-main)]">
-                    {a.name}
-                    {a.storage === "local" ? (
-                      <span className="ml-1.5 rounded bg-[var(--ui-accent-muted)] px-1 py-0.5 text-[10px] font-normal text-[var(--ui-accent)]">
-                        {t("savedTargetingLocalBadge")}
+          {filtered.length === 0 ? (
+            <p className="rounded-lg border border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] px-2 py-3 text-center text-xs text-[var(--text-dim)]">
+              {t("savedAudiencesNoMatch")}
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {(["meta", "local"] as const).map((key) => {
+                const list = groups[key];
+                if (!list.length) return null;
+                const open = effectiveOpen === key;
+                return (
+                  <div
+                    key={key}
+                    className="overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))]"
+                  >
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      onClick={() => setOpenGroup(open ? null : key)}
+                      className="flex w-full items-center gap-2 px-2.5 py-2 text-left transition hover:bg-[var(--surface-bg)]"
+                    >
+                      <ChevronRight
+                        size={14}
+                        strokeWidth={2.5}
+                        aria-hidden
+                        className={`shrink-0 text-[var(--text-dim)] transition-transform ${open ? "rotate-90" : ""}`}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold text-[var(--text-main)]">
+                          {key === "meta"
+                            ? t("savedTargetingGroupMeta")
+                            : t("savedTargetingGroupOrion")}
+                        </span>
+                        {/* A origem decide o método de segmentação — dizer isso aqui
+                            evita a troca de método parecer que aconteceu sozinha. */}
+                        <span className="mt-0.5 block truncate text-[10px] text-[var(--text-dim)]">
+                          {key === "meta"
+                            ? t("savedTargetingGroupMetaHint")
+                            : t("savedTargetingGroupOrionHint")}
+                        </span>
                       </span>
+                      <span className="shrink-0 rounded-full bg-[var(--ui-accent-muted)] px-2 py-0.5 text-[10px] font-semibold text-[var(--ui-accent)]">
+                        {list.length}
+                      </span>
+                    </button>
+
+                    {open ? (
+                      <div className={`space-y-0.5 overflow-y-auto border-t border-[var(--border-color)] p-1 ${listMaxHeight}`}>
+                        {list.map((a) => (
+                          <label
+                            key={a.id}
+                            className={`flex cursor-pointer items-center gap-2 rounded-md px-2 transition ${
+                              compact || modalMode
+                                ? "py-1 text-xs"
+                                : "items-start rounded-lg py-1.5 text-xs"
+                            } ${
+                              selectedId === a.id
+                                ? "bg-[var(--ui-accent-muted)]"
+                                : "hover:bg-[var(--surface-bg)]"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="saved-targeting"
+                              checked={selectedId === a.id}
+                              disabled={disabled || applying}
+                              onChange={() => setSelectedId(a.id)}
+                              className="shrink-0 accent-[var(--ui-accent)]"
+                            />
+                            <span className="min-w-0 flex-1 truncate font-medium text-[var(--text-main)]">
+                              {a.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     ) : null}
-                  </span>
-                </label>
-              ))
-            )}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <button
             type="button"

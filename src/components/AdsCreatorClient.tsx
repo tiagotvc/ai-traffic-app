@@ -46,16 +46,9 @@ export function AdsCreatorClient({
   const [campaignName, setCampaignName] = useState(
     locale === "en" ? "Orion Agency — Campaign" : "Orion Agency — Campanha"
   );
-  const [titles, setTitles] = useState(
-    locale === "en"
-      ? "Perfect smile in 30 days\nDental implants — free evaluation\nBook now"
-      : "Sorriso perfeito em 30 dias\nImplantes com avaliação\nAgende agora"
-  );
-  const [descriptions, setDescriptions] = useState(
-    locale === "en"
-      ? "Special offer for first visit.\nExpert team and human care.\nChat with us on WhatsApp."
-      : "Condições especiais para primeira consulta.\nEquipe especialista.\nFale no WhatsApp."
-  );
+  // Sem copy de exemplo — o usuário escreve a dele (uma variação por linha).
+  const [titles, setTitles] = useState("");
+  const [descriptions, setDescriptions] = useState("");
   const [dailyBudget, setDailyBudget] = useState("150");
   const [objective, setObjective] = useState<"leads" | "sales" | "traffic">("leads");
   const [adAccountId, setAdAccountId] = useState("");

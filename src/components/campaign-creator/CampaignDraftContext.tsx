@@ -70,11 +70,14 @@ export function CampaignDraftProvider({
   initialClientSlug,
   initialAddAd,
   initialAddAdset,
+  initialEdit,
   initialActiveNode
 }: {
   children: ReactNode;
   initialDraftId?: string;
   initialClientSlug?: string;
+  /** Abre o assistente sobre uma campanha já publicada (publishMode "edit"). */
+  initialEdit?: { fromCampaignId: string; clientSlug?: string };
   initialAddAd?: {
     fromCampaignId: string;
     adsetId: string;
@@ -101,9 +104,11 @@ export function CampaignDraftProvider({
     initialActiveNode ?? (initialAddAd ? "ad" : initialAddAdset ? "adset" : "campaign")
   );
   const [objectiveChosen, setObjectiveChosen] = useState(
-    !!initialDraftId || !!initialAddAd || !!initialAddAdset
+    !!initialDraftId || !!initialAddAd || !!initialAddAdset || !!initialEdit
   );
-  const [addAdLoading, setAddAdLoading] = useState(!!initialAddAd || !!initialAddAdset);
+  const [addAdLoading, setAddAdLoading] = useState(
+    !!initialAddAd || !!initialAddAdset || !!initialEdit
+  );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -165,6 +170,32 @@ export function CampaignDraftProvider({
       })
       .catch(() => {});
   }, [initialDraftId, initialActiveNode]);
+
+  const editFetchedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!initialEdit) return;
+    if (editFetchedRef.current === initialEdit.fromCampaignId) return;
+    editFetchedRef.current = initialEdit.fromCampaignId;
+    setAddAdLoading(true);
+    fetch(
+      `/api/campaigns/${encodeURIComponent(initialEdit.fromCampaignId)}/creator-snapshot?mode=edit`
+    )
+      .then((r) => r.json())
+      .then((j: { ok?: boolean; patch?: Partial<CampaignDraftPayload> }) => {
+        if (!j.ok || !j.patch) return;
+        // parse garante os defaults dos campos que o snapshot não preenche.
+        const next = parseCampaignDraftPayload({
+          ...defaultCampaignDraft(locale),
+          ...j.patch
+        });
+        setPayload(next);
+        setObjectiveChosen(true);
+        setActiveNode("campaign");
+      })
+      .catch(() => {})
+      .finally(() => setAddAdLoading(false));
+  }, [initialEdit, locale]);
 
   const addAdFetchedRef = useRef<string | null>(null);
 
