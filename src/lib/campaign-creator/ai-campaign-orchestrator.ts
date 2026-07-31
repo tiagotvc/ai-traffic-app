@@ -322,12 +322,15 @@ export async function generateAiCampaignDraft(args: {
   const adsetId = newDraftId();
   const adId = newDraftId();
   const baseAdset = defaultAdSetItem(locale, strategy.adsetName);
-  const baseAd = defaultAdItem(locale, strategy.adName);
+  const baseAd = defaultAdItem(locale, strategy.adName, [adsetId]);
 
   draft.adsets = [{ ...baseAdset, id: adsetId, name: strategy.adsetName }];
   draft.ads = [{ ...baseAd, id: adId, name: strategy.adName }];
   draft.activeAdsetId = adsetId;
   draft.activeAdId = adId;
+  // O conjunto padrão foi descartado acima; sem isto sobra a referência a um id
+  // que não existe mais no rascunho.
+  draft.selectedAdsetIdForAds = adsetId;
   draft.visitedNodes = ["campaign", "adset", "ad", "review"];
   draft.objective = strategy.objective as CampaignObjectiveKey;
 

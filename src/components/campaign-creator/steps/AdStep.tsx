@@ -8,8 +8,6 @@ import {
   Download,
   FileText,
   Image,
-  Layers,
-  LayoutGrid,
   Link2,
   MessageCircle,
   MousePointerClick,
@@ -17,9 +15,7 @@ import {
   Settings,
   Sparkles,
   Tag,
-  Target,
-  UserCircle,
-  type LucideIcon
+  UserCircle
 } from "lucide-react";
 
 import { ChoiceCardCheck } from "@/components/campaign-creator/BudgetChoiceCard";
@@ -27,6 +23,7 @@ import { CreatorAiModalShell } from "@/components/campaign-creator/CreatorModalS
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { CreativePickerModal } from "@/components/campaign-creator/CreativePickerModal";
 import { ExistingPostCard } from "@/components/campaign-creator/ExistingPostPickerModal";
+import { LearningResetNotice } from "@/components/campaign-creator/LearningResetNotice";
 import { META_INSTAGRAM_BASIC_GRANTED } from "@/lib/meta-permissions";
 import { ImportAdConfigModal } from "@/components/campaign-creator/ImportAdConfigModal";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
@@ -44,7 +41,7 @@ import { usePublishAssets } from "@/hooks/usePublishAssets";
 import { applyImportedToAd, cloneAdWithPreset, type ImportedAdConfig } from "@/lib/campaign-ad-import";
 import { META_AD_COPY_LIMITS } from "@/lib/meta-ad-creative";
 import { MetaTextVariantsInput } from "@/components/campaign-creator/MetaTextVariantsInput";
-import { adsetsWithReuseCreativeCompatibility, adUsesExistingPost, getActiveAd, getActiveAdset, defaultAdItem, newDraftId, objectiveAllowsExistingPost } from "@/lib/campaign-draft";
+import { adsetsWithReuseCreativeCompatibility, adUsesExistingPost, getActiveAd, getActiveAdset, defaultAdItem, isEditDraft, newDraftId, objectiveAllowsExistingPost, patchTouchesCreative } from "@/lib/campaign-draft";
 import type { AdDraftItem } from "@/lib/campaign-draft";
 import { defaultUtm } from "@/lib/campaign-utm";
 import { allowedCtasForObjective, type MetaCtaValue } from "@/lib/meta-cta";
@@ -52,54 +49,6 @@ import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCr
 import { cn } from "@/lib/cn";
 
 const AD_COPY_AI_CREDITS = { kind: "campaign_generate" as const, calls: 1 };
-
-function AdAssignmentChoiceCard({
-  selected,
-  label,
-  description,
-  icon: Icon,
-  onSelect
-}: {
-  selected: boolean;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      onClick={onSelect}
-      className={cn(
-        "campaign-creator-budget-choice-card campaign-creator-budget-choice-card--row",
-        selected
-          ? "campaign-creator-budget-choice-card--selected"
-          : "campaign-creator-budget-choice-card--unselected"
-      )}
-    >
-      <ChoiceCardCheck selected={selected} />
-      <span
-        className={cn(
-          "campaign-creator-budget-choice-card__icon campaign-creator-budget-choice-card__icon--inline",
-          selected
-            ? "campaign-creator-budget-choice-card__icon--selected"
-            : "campaign-creator-budget-choice-card__icon--unselected"
-        )}
-        aria-hidden
-      >
-        <Icon size={18} strokeWidth={1.75} />
-      </span>
-      <span className="campaign-creator-budget-choice-card__content">
-        <span className="campaign-creator-budget-choice-card__label campaign-creator-budget-choice-card__label--inline">
-          {label}
-        </span>
-        <span className="campaign-creator-budget-choice-card__description">{description}</span>
-      </span>
-    </button>
-  );
-}
 
 export function AdStep() {
   const t = useTranslations("campaignCreator");
@@ -189,11 +138,6 @@ export function AdStep() {
     [pixels]
   );
 
-  const adsetOptions = useMemo(
-    () => payload.adsets.map((a) => ({ value: a.id, label: a.name })),
-    [payload.adsets]
-  );
-
   const destinationTypeOptions = useMemo(() => {
     const options = [
       { value: "website", label: t("destWebsite") },
@@ -242,7 +186,17 @@ export function AdStep() {
   function patchAd(patch: Partial<AdDraftItem>) {
     updatePayload((p) => ({
       ...p,
-      ads: p.ads.map((a) => (a.id === ad.id ? { ...a, ...patch } : a))
+      ads: p.ads.map((a) => {
+        if (a.id !== ad.id) return a;
+        const next = { ...a, ...patch };
+        // Num anúncio já publicado, mexer no criativo obriga a Meta a gerar um
+        // criativo novo — soltar o reaproveitamento aqui é o que dispara tanto a
+        // recriação ao salvar quanto o aviso de reinício do aprendizado.
+        if (isEditDraft(p) && a.metaAdId?.trim() && patchTouchesCreative(patch)) {
+          next.reuseMetaCreative = false;
+        }
+        return next;
+      })
     }));
   }
 
@@ -480,60 +434,6 @@ export function AdStep() {
             </button>
           </div>
 
-          {!addAdMode ? (
-            <section className="campaign-creator-card campaign-creator-budget-side-card">
-              <h4 className="campaign-creator-section-title">{t("adAssignmentTitle")}</h4>
-              <div
-                className="grid grid-cols-1 gap-2 sm:grid-cols-2"
-                role="radiogroup"
-                aria-label={t("adAssignmentTitle")}
-              >
-                <AdAssignmentChoiceCard
-                  selected={payload.adAssignment === "all_adsets"}
-                  label={t("adAssignmentAll")}
-                  description={t("adAssignmentAllHint")}
-                  icon={LayoutGrid}
-                  onSelect={() =>
-                    updatePayload((p) => ({
-                      ...p,
-                      adAssignment: "all_adsets",
-                      ads: p.ads.map((a) => ({ ...a, targetAdsetIds: ["__all__"] }))
-                    }))
-                  }
-                />
-                <AdAssignmentChoiceCard
-                  selected={payload.adAssignment === "single"}
-                  label={t("adAssignmentSingle")}
-                  description={t("adAssignmentSingleHint")}
-                  icon={Target}
-                  onSelect={() => updatePayload({ adAssignment: "single" })}
-                />
-              </div>
-              {payload.adAssignment === "single" ? (
-                <div className="campaign-creator-budget-special-inline">
-                  <FilterSelectDropdown
-                    className="ui-filter-panel-field"
-                    valueClassName="max-w-none"
-                    icon={<Layers size={13} />}
-                    label={t("treeAdset")}
-                    placeholder={t("treeAdset")}
-                    value={payload.selectedAdsetIdForAds ?? payload.adsets[0]?.id ?? ""}
-                    onChange={(id) =>
-                      updatePayload((p) => ({
-                        ...p,
-                        selectedAdsetIdForAds: id,
-                        ads: p.ads.map((a) =>
-                          a.id === ad.id ? { ...a, targetAdsetIds: [id] } : a
-                        )
-                      }))
-                    }
-                    options={adsetOptions}
-                    clearable={false}
-                  />
-                </div>
-              ) : null}
-            </section>
-          ) : null}
 
           <section className="campaign-creator-card campaign-creator-budget-side-card space-y-3">
             <h4 className="campaign-creator-section-title">{t("identitySection")}</h4>
@@ -819,6 +719,7 @@ export function AdStep() {
 
             {copyMode === "manual" || !aiCopyEnabled ? (
               <div className="space-y-4">
+                <LearningResetNotice scope="ad" />
                 <MetaTextVariantsInput
                   label={tAds("titleLabel")}
                   values={ad.titles.length ? ad.titles : [""]}

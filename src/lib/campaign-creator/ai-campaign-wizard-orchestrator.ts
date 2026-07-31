@@ -292,7 +292,7 @@ export async function generateAiCampaignFromWizard(args: {
   const adsetId = newDraftId();
   const adId = newDraftId();
   const baseAdset = defaultAdSetItem(locale, orionNames.adsetName);
-  const baseAd = defaultAdItem(locale, isEn ? "Ad 1" : "Anúncio 1");
+  const baseAd = defaultAdItem(locale, isEn ? "Ad 1" : "Anúncio 1", [adsetId]);
 
   const hasCompilerPair = !!(personaId && zoneId);
   const metaAudienceId = args.body.selectedMetaAudienceId ?? null;
@@ -326,6 +326,9 @@ export async function generateAiCampaignFromWizard(args: {
   draft.ads = [{ ...baseAd, id: adId }];
   draft.activeAdsetId = adsetId;
   draft.activeAdId = adId;
+  // O conjunto padrão foi descartado acima; sem isto sobra a referência a um id
+  // que não existe mais no rascunho.
+  draft.selectedAdsetIdForAds = adsetId;
   draft.visitedNodes = ["campaign", "adset", "ad"];
 
   const copy = await generateAdCopy({
