@@ -314,12 +314,6 @@ export function AdSetStep() {
   function compilerTargetingSections() {
     return (
       <div className="campaign-creator-budget-body space-y-3">
-        <AdSetCompilerLeadCards
-          appliedAudienceName={adset.metaSavedAudienceName ?? null}
-          disabled={clientRequired}
-          onOpenSavedAudience={() => setSavedAudienceModalOpen(true)}
-        />
-
         <AdSetPersonaZonePanel
           personaId={adset.personaId}
           zoneId={adset.zoneId}
@@ -400,21 +394,37 @@ export function AdSetStep() {
   }
 
   /**
-   * Saved audience = full Meta/Orion preset (geo, age, interests, custom audiences).
-   * Persona + zone = library entities compiled at publish; loading a preset fills draft
-   * targeting and keeps compiler mode so persona/zone pickers remain optional refinements.
+   * Carregar um público salvo define o método de segmentação pela ORIGEM do
+   * público: preset da Meta marca "Segmentação Meta"; público da biblioteca da
+   * Orion marca "Segmentação Orion". Cada caso limpa o estado do outro lado —
+   * antes o método era sempre `compiler`, o que deixava um público da Meta
+   * marcado como Orion e os dois conjuntos de campos preenchidos ao mesmo tempo.
    */
   function handleApplySavedAudience(
     next: DraftTargeting,
     audienceName: string,
-    audienceId?: string
+    audienceId?: string,
+    storage: "meta" | "local" = "meta"
   ) {
-    patchAdset({
-      targetingMode: "compiler",
-      metaSavedAudienceId: audienceId ?? null,
-      metaSavedAudienceName: audienceName,
-      targeting: next
-    });
+    const fromMeta = storage === "meta";
+    patchAdset(
+      fromMeta
+        ? {
+            targetingMode: "advanced",
+            metaSavedAudienceId: audienceId ?? null,
+            metaSavedAudienceName: audienceName,
+            // Persona/zona são da biblioteca Orion — não sobrevivem a um preset da Meta.
+            personaId: null,
+            zoneId: null,
+            targeting: next
+          }
+        : {
+            targetingMode: "compiler",
+            metaSavedAudienceId: null,
+            metaSavedAudienceName: null,
+            targeting: next
+          }
+    );
     if (!adset.name.trim() || isDefaultAdsetName(adset.name)) {
       patchAdset({ name: audienceName.slice(0, 120) });
     }
@@ -681,6 +691,14 @@ export function AdSetStep() {
                   onSelect={() => selectTargetingMethod("advanced")}
                 />
               </div>
+
+              {/* Reaproveitar público salvo vale para os dois métodos — é a origem do
+                  público que define qual método fica marcado, não o contrário. */}
+              <AdSetCompilerLeadCards
+                appliedAudienceName={adset.metaSavedAudienceName ?? null}
+                disabled={clientRequired}
+                onOpenSavedAudience={() => setSavedAudienceModalOpen(true)}
+              />
 
               {targetingMethod === "compiler" ? compilerTargetingSections() : null}
 
