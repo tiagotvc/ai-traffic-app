@@ -7,6 +7,8 @@ export type LlmGenerateMeta = {
   modelRequested: string;
   modelUsed: string;
   fallbackFrom?: string;
+  /** tokens reais da chamada (quando o provedor retorna) — telemetria de custo. */
+  usage?: { inputTokens: number; outputTokens: number; costUsd?: number };
 };
 
 export type LlmGenerateJsonResult<T> = LlmGenerateMeta & { data: T };

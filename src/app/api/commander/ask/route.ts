@@ -104,7 +104,8 @@ export async function POST(req: Request) {
       modelMeta: {
         modelRequested: result.modelRequested,
         modelUsed: result.modelUsed,
-        fallbackFrom: result.fallbackFrom
+        fallbackFrom: result.fallbackFrom,
+        usage: result.usage
       }
     });
 

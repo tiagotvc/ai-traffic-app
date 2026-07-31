@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { AiTokenUsage } from "@/lib/gemini";
+
 /**
  * Cliente Claude (Anthropic Messages API) via `fetch` cru — espelha o padrão do
  * `gemini.ts` (sem SDK/dependência nova). Usado pelo roteador de IA.
@@ -28,13 +30,19 @@ export function getAnthropicApiKey(): string | undefined {
   return process.env.ANTHROPIC_API_KEY?.trim() || undefined;
 }
 
+export function estimateClaudeCostUsd(model: string, inputTokens: number, outputTokens: number): number | undefined {
+  const pricing = CLAUDE_PRICING[model];
+  if (!pricing) return undefined;
+  return (inputTokens / 1_000_000) * pricing.in + (outputTokens / 1_000_000) * pricing.out;
+}
+
 export async function claudeGenerateText(args: {
   apiKey: string;
   model: string;
   prompt: string;
   system?: string;
   maxTokens?: number;
-}): Promise<string> {
+}): Promise<{ text: string; usage?: AiTokenUsage }> {
   const res = await fetch(ANTHROPIC_URL, {
     method: "POST",
     headers: {
@@ -53,6 +61,7 @@ export async function claudeGenerateText(args: {
   const json = (await res.json()) as {
     content?: Array<{ type?: string; text?: string }>;
     stop_reason?: string;
+    usage?: { input_tokens?: number; output_tokens?: number };
     error?: { message?: string; type?: string };
   };
 
@@ -70,5 +79,12 @@ export async function claudeGenerateText(args: {
     .join("\n");
 
   if (!text) throw new Error("Claude returned empty response");
-  return text;
+
+  const inputTokens = json.usage?.input_tokens ?? 0;
+  const outputTokens = json.usage?.output_tokens ?? 0;
+  const usage: AiTokenUsage | undefined = json.usage
+    ? { inputTokens, outputTokens, costUsd: estimateClaudeCostUsd(args.model, inputTokens, outputTokens) }
+    : undefined;
+
+  return { text, usage };
 }

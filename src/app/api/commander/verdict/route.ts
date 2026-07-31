@@ -85,7 +85,8 @@ export async function POST(req: Request) {
         modelMeta: {
           modelRequested: meta.model,
           modelUsed: meta.model,
-          fallbackFrom: meta.fellBackFrom?.model
+          fallbackFrom: meta.fellBackFrom?.model,
+          usage: meta.usage
         }
       });
     }

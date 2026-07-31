@@ -169,7 +169,10 @@ export async function recordAiCreditUsage(args: {
         modelRequested: args.modelMeta.modelRequested,
         modelUsed: args.modelMeta.modelUsed,
         fallbackFrom: args.modelMeta.fallbackFrom ?? null,
-        creditsCharged: credits
+        creditsCharged: credits,
+        inputTokens: args.modelMeta.usage?.inputTokens ?? null,
+        outputTokens: args.modelMeta.usage?.outputTokens ?? null,
+        estimatedCostUsd: args.modelMeta.usage?.costUsd ?? null
       },
       justification: `${KIND_LABEL[args.kind]}: ${args.createdCount} item(ns) via ${args.modelMeta.modelUsed} (${credits} crédito(s))`,
       status: "APPLIED",

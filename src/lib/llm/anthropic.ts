@@ -1,8 +1,9 @@
 import { z } from "zod";
 
+import { estimateClaudeCostUsd } from "@/lib/ai/claude";
 import { extractJsonFromLlmText } from "@/lib/llm/extract-json";
 import { getAnthropicModel } from "@/lib/llm/keys";
-import type { LlmError, LlmGenerateJsonResult } from "@/lib/llm/types";
+import type { LlmError, LlmGenerateJsonResult, LlmGenerateMeta } from "@/lib/llm/types";
 
 function isRetryableAnthropicStatus(status: number): boolean {
   return status === 429 || status === 503 || status === 500 || status === 529;
@@ -13,7 +14,10 @@ async function callAnthropicRaw(args: {
   model: string;
   prompt: string;
   temperature: number;
-}): Promise<{ ok: true; text: string } | { ok: false; status: number; body: unknown }> {
+}): Promise<
+  | { ok: true; text: string; usage?: LlmGenerateMeta["usage"] }
+  | { ok: false; status: number; body: unknown }
+> {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -33,6 +37,7 @@ async function callAnthropicRaw(args: {
 
   const json = (await res.json()) as {
     content?: Array<{ type?: string; text?: string }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
     error?: { message?: string };
   };
 
@@ -50,7 +55,13 @@ async function callAnthropicRaw(args: {
     return { ok: false, status: 502, body: { error: "Claude returned empty response" } };
   }
 
-  return { ok: true, text };
+  const inputTokens = json.usage?.input_tokens ?? 0;
+  const outputTokens = json.usage?.output_tokens ?? 0;
+  const usage: LlmGenerateMeta["usage"] = json.usage
+    ? { inputTokens, outputTokens, costUsd: estimateClaudeCostUsd(args.model, inputTokens, outputTokens) }
+    : undefined;
+
+  return { ok: true, text, usage };
 }
 
 function formatZodIssues(err: z.ZodError): string {
@@ -105,7 +116,8 @@ export async function anthropicGenerateJson<T>(args: {
         data,
         provider: "claude",
         modelRequested: model,
-        modelUsed: model
+        modelUsed: model,
+        usage: result.usage
       };
     } catch (err) {
       lastError = err;

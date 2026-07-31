@@ -35,10 +35,30 @@ export function getGeminiModelFallbackChain(requestedModel?: string): string[] {
   return [...new Set([primary, ...fromEnv])];
 }
 
+export type AiTokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  /** Estimativa em USD (referência de custo, não é o valor cobrado real do provedor). */
+  costUsd?: number;
+};
+
+/** USD por 1M tokens (input/output) — referência de custo para o roteador. */
+export const GEMINI_PRICING: Record<string, { in: number; out: number }> = {
+  "gemini-2.5-flash": { in: 0.3, out: 2.5 },
+  "gemini-2.5-flash-lite": { in: 0.1, out: 0.4 }
+};
+
+export function estimateGeminiCostUsd(model: string, inputTokens: number, outputTokens: number): number | undefined {
+  const pricing = GEMINI_PRICING[model];
+  if (!pricing) return undefined;
+  return (inputTokens / 1_000_000) * pricing.in + (outputTokens / 1_000_000) * pricing.out;
+}
+
 export type GeminiGenerateMeta = {
   modelRequested: string;
   modelUsed: string;
   fallbackFrom?: string;
+  usage?: AiTokenUsage;
 };
 
 export type GeminiGenerateJsonResult<T> = GeminiGenerateMeta & { data: T };
@@ -118,7 +138,10 @@ async function callGeminiRaw(args: {
   model: string;
   prompt: string;
   temperature: number;
-}): Promise<{ ok: true; text: string } | { ok: false; status: number; body: unknown }> {
+}): Promise<
+  | { ok: true; text: string; usage?: AiTokenUsage }
+  | { ok: false; status: number; body: unknown }
+> {
   const url = geminiGenerateContentUrl(args.model);
   url.searchParams.set("key", args.apiKey);
 
@@ -133,6 +156,7 @@ async function callGeminiRaw(args: {
 
   const json = (await res.json()) as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
     error?: { message?: string };
   };
 
@@ -148,7 +172,13 @@ async function callGeminiRaw(args: {
     return { ok: false, status: 502, body: { error: "Gemini returned empty response" } };
   }
 
-  return { ok: true, text };
+  const inputTokens = json.usageMetadata?.promptTokenCount ?? 0;
+  const outputTokens = json.usageMetadata?.candidatesTokenCount ?? 0;
+  const usage: AiTokenUsage | undefined = json.usageMetadata
+    ? { inputTokens, outputTokens, costUsd: estimateGeminiCostUsd(args.model, inputTokens, outputTokens) }
+    : undefined;
+
+  return { ok: true, text, usage };
 }
 
 async function geminiGenerateTextWithFallback(args: {
@@ -178,7 +208,8 @@ async function geminiGenerateTextWithFallback(args: {
         text: result.text,
         modelRequested,
         modelUsed: model,
-        fallbackFrom: model !== modelRequested ? modelRequested : undefined
+        fallbackFrom: model !== modelRequested ? modelRequested : undefined,
+        usage: result.usage
       };
     }
 
