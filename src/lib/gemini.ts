@@ -133,6 +133,12 @@ function isRetryableGeminiStatus(status: number): boolean {
   return status === 429 || status === 503 || status === 500;
 }
 
+/** Sem timeout, uma chamada travada no Gemini segura a request até o platform matar. */
+function geminiTimeoutMs(): number {
+  const parsed = Number(process.env.GEMINI_TIMEOUT_MS ?? "60000");
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60000;
+}
+
 async function callGeminiRaw(args: {
   apiKey: string;
   model: string;
@@ -145,14 +151,24 @@ async function callGeminiRaw(args: {
   const url = geminiGenerateContentUrl(args.model);
   url.searchParams.set("key", args.apiKey);
 
-  const res = await fetch(url.toString(), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: args.prompt }] }],
-      generationConfig: { temperature: args.temperature }
-    })
-  });
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: args.prompt }] }],
+        generationConfig: { temperature: args.temperature }
+      }),
+      signal: AbortSignal.timeout(geminiTimeoutMs())
+    });
+  } catch (err) {
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      // 503 = retryable: cai para o próximo modelo da cadeia em vez de derrubar a request.
+      return { ok: false, status: 503, body: { error: "Gemini request timeout" } };
+    }
+    throw err;
+  }
 
   const json = (await res.json()) as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;

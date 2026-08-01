@@ -2957,6 +2957,7 @@
     "aiAudienceDiscardPreview": "Gerar nova prévia",
     "aiAudienceGenerating": "Pesquisando na Meta…",
     "aiAudienceFailed": "Não foi possível gerar o público. Tente novamente.",
+    "aiAudienceTimeout": "A busca na Meta demorou demais e foi interrompida. Tente novamente ou reduza os termos do briefing.",
     "aiAudienceSaveFailed": "Falha ao salvar público.",
     "aiAudienceBriefTooShort": "Preencha o que você vende e quem você quer alcançar (mín. 3 caracteres cada) antes de salvar.",
     "aiAudienceSavedLocal": "Público salvo na biblioteca Orion Agency (a Meta não permite criar públicos salvos via API).",

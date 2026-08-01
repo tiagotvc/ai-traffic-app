@@ -18,22 +18,32 @@ async function callAnthropicRaw(args: {
   | { ok: true; text: string; usage?: LlmGenerateMeta["usage"] }
   | { ok: false; status: number; body: unknown }
 > {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": args.apiKey,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model: args.model,
-      max_tokens: 8192,
-      temperature: args.temperature,
-      system:
-        "Responda somente com um objeto JSON válido, sem markdown, sem explicações e sem texto fora do JSON.",
-      messages: [{ role: "user", content: args.prompt }]
-    })
-  });
+  const timeoutMs = Number(process.env.ANTHROPIC_TIMEOUT_MS ?? "60000") || 60000;
+  let res: Response;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": args.apiKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: args.model,
+        max_tokens: 8192,
+        temperature: args.temperature,
+        system:
+          "Responda somente com um objeto JSON válido, sem markdown, sem explicações e sem texto fora do JSON.",
+        messages: [{ role: "user", content: args.prompt }]
+      }),
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch (err) {
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      return { ok: false, status: 503, body: { error: "Anthropic request timeout" } };
+    }
+    throw err;
+  }
 
   const json = (await res.json()) as {
     content?: Array<{ type?: string; text?: string }>;

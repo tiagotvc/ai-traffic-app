@@ -113,6 +113,32 @@ export type AiAudienceTargetingFormHandle = {
   save: () => void;
 };
 
+type AiGenerateResponse = { ok?: boolean; error?: string } & Record<string, unknown>;
+
+/**
+ * A busca na Meta pode estourar o limite da função e voltar 504 em HTML — `res.json()` cru
+ * lançava dentro do `startTransition` e o formulário ficava travado em "Pesquisando na Meta…".
+ */
+async function postAiGenerate(
+  url: string,
+  payload: unknown,
+  timeoutMessage: string,
+  failureMessage: string
+): Promise<AiGenerateResponse> {
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const json = (await res.json().catch(() => null)) as AiGenerateResponse | null;
+    if (json) return json;
+    return { ok: false, error: res.status === 504 || res.status === 408 ? timeoutMessage : failureMessage };
+  } catch {
+    return { ok: false, error: timeoutMessage };
+  }
+}
+
 export const AiAudienceTargetingForm = forwardRef<AiAudienceTargetingFormHandle, AiAudienceTargetingFormProps>(
 function AiAudienceTargetingForm({
   clientSlug,
@@ -581,15 +607,15 @@ function AiAudienceTargetingForm({
     setSuggestion(null);
     setPersonaPreview(null);
     startTransition(async () => {
-      const res = await fetch(apiBase, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
+      const j = await postAiGenerate(
+        apiBase,
+        {
           ...(isPersonaLibrary ? buildPersonaBriefPayload() : buildBriefPayload()),
           phase: isPersonaLibrary ? "preview" : "persona"
-        })
-      });
-      const j = await res.json();
+        },
+        t("aiAudienceTimeout"),
+        t("aiAudiencePreviewFailed")
+      );
       if (j.ok && j.persona) {
         setPersonaPreview(j.persona as AudiencePersonaPreview);
       } else {
@@ -606,18 +632,18 @@ function AiAudienceTargetingForm({
     setSuggestion(null);
     setTargetingWarning(null);
     startTransition(async () => {
-      const res = await fetch(apiBase, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
+      const j = await postAiGenerate(
+        apiBase,
+        {
           ...(isPersonaLibrary
             ? buildPersonaBriefPayload(avoidSegmentIds)
             : buildBriefPayload(avoidSegmentIds)),
           phase: "targeting",
           persona: personaPreview
-        })
-      });
-      const j = await res.json();
+        },
+        t("aiAudienceTimeout"),
+        t("aiAudienceFailed")
+      );
       if (j.ok && j.suggestion) {
         const next = j.suggestion as AudienceTargetingSuggestion;
         setSuggestion(next);

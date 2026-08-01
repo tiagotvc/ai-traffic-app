@@ -193,6 +193,27 @@ type AudiencePersonaSearchPlanShape = {
   demographicQueries: string[];
 };
 
+/**
+ * IDs da Meta são numéricos: o modelo devolve tanto `["6003…"]` quanto `[6003…]` ou
+ * `[{ id: "6003…" }]`. Sem normalizar, um `z.array(z.string())` cru derruba a request
+ * inteira com SCHEMA_ERROR ("formato inesperado") depois de todo o trabalho na Meta.
+ */
+export function normalizeRankedIdsRaw(raw: unknown): unknown {
+  return {
+    rankedIds: clampUniqueStrings(
+      pickStringArray(
+        unwrapLlmObject(raw),
+        "rankedIds",
+        "ranked_ids",
+        "ids",
+        "rankedSegmentIds",
+        "segmentIds"
+      ),
+      80
+    )
+  };
+}
+
 export function normalizeAudiencePickRaw(raw: unknown): unknown {
   const record = unwrapLlmObject(raw);
   return {

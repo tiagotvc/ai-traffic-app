@@ -19,6 +19,10 @@ import { createUserPersona, getUserPersona, updateUserPersona } from "@/lib/user
 import { finalizeFlexibleSpecTargeting } from "@/lib/meta-targeting-prune";
 import { enrichTargetingWithMetaNames } from "@/lib/meta-segment-replacement";
 
+// A fase "targeting" faz dezenas de buscas na Meta + 2 chamadas de IA; sem isso a plataforma
+// mata a função no default e o cliente recebe um 504 em HTML (não-JSON).
+export const maxDuration = 300;
+
 const BriefFieldsSchema = AudienceTargetingBriefSchema.extend({
   provider: z.enum(["gemini", "claude"]).optional()
 });

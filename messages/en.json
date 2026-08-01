@@ -2952,6 +2952,7 @@
     "aiAudienceDiscardPreview": "Generate new preview",
     "aiAudienceGenerating": "Searching Meta…",
     "aiAudienceFailed": "Could not generate audience. Try again.",
+    "aiAudienceTimeout": "The Meta search took too long and was cancelled. Try again or trim the briefing terms.",
     "aiAudienceSaveFailed": "Failed to save audience.",
     "aiAudienceBriefTooShort": "Fill in what you sell and who you want to reach (min. 3 characters each) before saving.",
     "aiAudienceSavedLocal": "Audience saved to the Orion Agency library (Meta no longer allows creating saved audiences via API).",
