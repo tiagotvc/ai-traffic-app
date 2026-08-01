@@ -24,7 +24,6 @@ import { calculateCheckoutPricing, formatMoney } from "@/lib/billing/pricing";
 import {
   buildMarketingPlanFallback,
   MARKETING_VITRINE_SLUGS,
-  mergePlanWithOfficialPricing,
   type MarketingPlanRow
 } from "@/lib/marketing/orion-plan-catalog";
 import {
@@ -55,8 +54,7 @@ export function StackCostComparison({ className }: { className?: string }) {
 
         const merged = MARKETING_VITRINE_SLUGS.map((slug) => {
           const fromApi = apiPlans.find((p) => p.slug === slug);
-          if (fromApi) return mergePlanWithOfficialPricing(fromApi);
-          return buildMarketingPlanFallback(slug);
+          return fromApi ?? buildMarketingPlanFallback(slug);
         });
 
         setPlans(merged);

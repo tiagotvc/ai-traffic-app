@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      await assertCreativeMemoryAiAccess(tenant.id, client?.id, "chat");
+      await assertCreativeMemoryAiAccess(tenant.id, client?.id, "commander_verdict");
     } catch (err) {
       const creditsRes = aiCreditsErrorResponse(err);
       if (creditsRes) return creditsRes;
@@ -89,16 +89,21 @@ export async function POST(req: Request) {
     });
 
     if (client) {
+      const domainLabel = domain === "campaign" ? "campanha" : domain === "persona" ? "persona" : "zona";
       await recordCreativeMemoryAiUsage({
         tenantId: tenant.id,
         clientId: client.id,
-        kind: "chat",
+        kind: "commander_verdict",
         createdCount: 1,
         modelMeta: {
           modelRequested: meta.model,
           modelUsed: meta.model,
           fallbackFrom: meta.fellBackFrom?.model,
           usage: meta.usage
+        },
+        content: {
+          question: `Veredito de ${domainLabel} — ${body.contextSummary.slice(0, 400)}`,
+          answer: [verdict.headline, ...verdict.reasons].join(" · ")
         }
       });
     }

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { classifyAudienceAiError } from "@/lib/audience-api-helpers";
 import { finalizeFlexibleSpecTargeting } from "@/lib/meta-targeting-prune";
 import { enrichTargetingWithMetaNames } from "@/lib/meta-segment-replacement";
@@ -40,6 +41,13 @@ export async function POST(req: Request) {
 
   const body = CreateSchema.parse(await req.json().catch(() => ({})));
 
+  const charge = await chargeOrRespond({
+    tenantId: tenant.id,
+    kind: "persona_save",
+    requireCreativeMemory: false
+  });
+  if (!charge.ok) return charge.response;
+
   try {
     let targeting = body.targeting;
     let removedSegments: Array<{ id: string; name?: string }> | undefined;
@@ -67,6 +75,13 @@ export async function POST(req: Request) {
       gender: body.gender,
       targeting,
       sourcePrompt: body.sourcePrompt
+    });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: null,
+      kind: "persona_save",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
     });
 
     return NextResponse.json({ ok: true, persona, removedSegments });

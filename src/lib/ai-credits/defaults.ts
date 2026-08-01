@@ -14,10 +14,25 @@ export const DEFAULT_AI_CREDIT_WEIGHTS: AiCreditWeights = {
   actions: 1,
   hypotheses: 1,
   recommendations: 1,
-  audience_suggestions: 1,
-  campaign_generate: 2,
+  audience_suggestions: 2,
+  campaign_generate: 5,
   creator_brain: 1,
-  generic: 1
+  generic: 1,
+  campaign_publish: 1,
+  adset_publish: 1,
+  ad_publish: 1,
+  persona_save: 1,
+  zone_save: 1,
+  creative_upload: 2,
+  persona_generate: 3,
+  zone_generate: 3,
+  ad_copy_generate: 2,
+  creative_variant_generate: 4,
+  persona_insights: 2,
+  geo_insights: 3,
+  report_ai_config: 3,
+  commander_verdict: 2,
+  market_learnings: 2
 };
 
 export const PLATFORM_SETTING_KEYS = {

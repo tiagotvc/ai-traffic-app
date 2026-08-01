@@ -5,13 +5,13 @@ import {
   Home,
   LayoutGrid,
   Megaphone,
-  Sparkles,
   Trophy,
   Users
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { AudiencesNavGroup } from "@/components/layout/AudiencesNavGroup";
+import { CommanderNavGroup } from "@/components/layout/CommanderNavGroup";
 import { CortexNavGroup } from "@/components/layout/CortexNavGroup";
 import { ReportsNavGroup } from "@/components/layout/ReportsNavGroup";
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
@@ -128,23 +128,13 @@ export function AppSidebar({
       label: t("creatives"),
       icon: <Trophy size={18} strokeWidth={1.75} className="shrink-0" />,
       gate: "creatives"
-    },
-    // Módulos do ecossistema Orion como itens de topo (reorg 2026-07-03).
-    ...(moduleOn("commander")
-      ? [
-          {
-            id: "commander",
-            href: "/commander",
-            label: t("commander"),
-            icon: <Sparkles size={18} strokeWidth={1.75} className="shrink-0" />
-          } satisfies NavItem
-        ]
-      : []),
+    }
   ];
 
   type SidebarEntry =
     | { kind: "item"; item: NavItem }
     | { kind: "audiences" }
+    | { kind: "commander" }
     | { kind: "cortex" }
     | { kind: "reports" };
 
@@ -159,9 +149,9 @@ export function AppSidebar({
       : []),
     ...(moduleOn("audiences") ? [{ kind: "audiences" as const }] : []),
     { kind: "item", item: items.find((i) => i.id === "creatives")! },
-    ...(items.some((i) => i.id === "commander")
-      ? [{ kind: "item" as const, item: items.find((i) => i.id === "commander")! }]
-      : []),
+    // Módulos do ecossistema Orion como submenus (reorg 2026-08-01: Commander vira
+    // submenu com Visão geral/Cientistas/Configurações, igual Públicos e Relatórios).
+    ...(moduleOn("commander") ? [{ kind: "commander" as const }] : []),
     ...(moduleOn("engine") || moduleOn("brain") ? [{ kind: "cortex" as const }] : []),
     ...(moduleOn("reports") ? [{ kind: "reports" as const }] : [])
   ];
@@ -231,11 +221,25 @@ export function AppSidebar({
               />
             );
           }
+          if (entry.kind === "commander") {
+            return (
+              <CommanderNavGroup
+                key="commander"
+                collapsed={effectiveCollapsed}
+                planLimits={planLimits}
+                planLimitsReady={planLimitsReady}
+                platformFeatures={platformFeatures}
+                pathname={pathname}
+                onNavigate={onNavigate}
+              />
+            );
+          }
           if (entry.kind === "cortex") {
             return (
               <CortexNavGroup
                 key="cortex"
                 collapsed={effectiveCollapsed}
+                planLimits={planLimits}
                 planLimitsReady={planLimitsReady}
                 platformFeatures={platformFeatures}
                 agencyBrainFeatures={brainFeatures}

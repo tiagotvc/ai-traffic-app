@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { resolveMetaTokensForApi } from "@/lib/campaign-detail-api";
 import {
@@ -257,6 +258,14 @@ export async function POST(
     /* usa draft */
   }
 
+  const charge = await chargeOrRespond({
+    tenantId: tenant.id,
+    clientId: client.id,
+    kind: "adset_publish",
+    requireCreativeMemory: false
+  });
+  if (!charge.ok) return charge.response;
+
   try {
     const result = await publishAdsetToCampaign({
       accessToken: metaAccessToken,
@@ -274,6 +283,13 @@ export async function POST(
       isCampaignBudget,
       tenantId: tenant.id,
       userId: user?.id
+    });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: client.id,
+      kind: "adset_publish",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
     });
 
     return NextResponse.json({ ok: true, ...result });

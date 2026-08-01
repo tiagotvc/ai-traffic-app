@@ -264,7 +264,7 @@ export function PersonaPicker({
         subtitle={t("createPersonaWithAiHint")}
         titleIcon={<Sparkles size={16} />}
         width="xl"
-        aiCredits={{ kind: "audience_suggestions", calls: 2 }}
+        aiCredits={{ kind: "persona_generate", calls: 2 }}
         onClear={() => personaFormRef.current?.reset()}
         clearDisabled={!personaFormState.canClear || personaFormState.pending || personaFormState.creating}
         onCancel={() => setShowCreate(false)}

@@ -72,7 +72,7 @@ export function ZoneCreateModeSheet({
           description={t("zoneCreateAiHint")}
           icon={Sparkles}
           onSelect={() => setSelected("ai")}
-          aiCredits={{ kind: "audience_suggestions", calls: 1 }}
+          aiCredits={{ kind: "zone_generate", calls: 1 }}
         />
       </CreationModeChoiceGrid>
     </CreatorModalShell>

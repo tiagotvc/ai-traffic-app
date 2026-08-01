@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import {
   Brain,
   FlaskConical,
@@ -9,25 +8,14 @@ import {
   MapPin,
   Megaphone,
   ShieldCheck,
-  Sparkles,
   TrendingUp,
   Users,
   Zap
 } from "lucide-react";
 
-import { AppPageShell } from "@/components/layout/AppPageShell";
-import { PageToolbar } from "@/components/layout/PageToolbar";
-import { Link } from "@/i18n/navigation";
+import type { ResolvedMap } from "./useCommanderPreferences";
 
-/**
- * Tela do Orion Commander para o usuário final. Mostra o que o Commander faz por você
- * (onde atua, memória/contexto usados, Scientists disponíveis) e deixa VOCÊ decidir o
- * que quer ligado — é preferência sua (`/api/commander/preferences`), independente das
- * feature flags de plataforma (essas definem o que EXISTE; aqui é o que você QUER).
- * Uma capacidade só fica ativa de fato quando os dois lados topam.
- */
-
-type StatusRow = {
+export type StatusRow = {
   id: string;
   label: string;
   description: string;
@@ -35,7 +23,7 @@ type StatusRow = {
   tone?: string;
 };
 
-const CAPABILITY_ROWS: StatusRow[] = [
+export const CAPABILITY_ROWS: StatusRow[] = [
   {
     id: "commander.modules.campaigns",
     label: "Criador de campanha",
@@ -68,7 +56,7 @@ const CAPABILITY_ROWS: StatusRow[] = [
   }
 ];
 
-const SCIENTIST_ROWS: StatusRow[] = [
+export const SCIENTIST_ROWS: StatusRow[] = [
   {
     id: "commander.scientists.competitor",
     label: "Marketing Scientist",
@@ -144,9 +132,7 @@ const SCIENTIST_ROWS: StatusRow[] = [
   }
 ];
 
-type ResolvedMap = Record<string, boolean | undefined>;
-
-function StatusList({
+export function StatusList({
   rows,
   resolved,
   disabled,
@@ -219,154 +205,5 @@ function StatusList({
         );
       })}
     </div>
-  );
-}
-
-export function CommanderSettingsView() {
-  const [resolved, setResolved] = useState<ResolvedMap>({});
-  const [disabled, setDisabled] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    Promise.all([
-      fetch("/api/me/entitlements").then((r) => r.json()),
-      fetch("/api/commander/preferences").then((r) => r.json())
-    ])
-      .then(([entitlements, prefs]: [{ platformFeatures?: ResolvedMap }, { disabled?: string[] }]) => {
-        if (cancelled) return;
-        if (entitlements.platformFeatures) setResolved(entitlements.platformFeatures);
-        setDisabled(new Set(prefs.disabled ?? []));
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const toggle = useCallback(async (id: string, next: boolean) => {
-    setSavingId(id);
-    setDisabled((prev) => {
-      const copy = new Set(prev);
-      if (next) copy.delete(id);
-      else copy.add(id);
-      return copy;
-    });
-    try {
-      const res = await fetch("/api/commander/preferences", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, enabled: next })
-      });
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; disabled?: string[] } | null;
-      if (res.ok && json?.disabled) setDisabled(new Set(json.disabled));
-    } finally {
-      setSavingId(null);
-    }
-  }, []);
-
-  const commanderPlatformOn = resolved["commander"] !== false;
-  const commanderUserOn = !disabled.has("commander");
-  const commanderOn = commanderPlatformOn && commanderUserOn;
-
-  return (
-    <AppPageShell as="main" gap="loose" className="flex-1 overflow-y-auto">
-      <div className="space-y-6">
-        <PageToolbar
-          icon={<Sparkles size={16} />}
-          title="Orion Commander"
-          subtitle="A IA de coordenação do ecossistema: conversa, pesquisa e propõe ações. Você decide o que fica ligado."
-          showGlobalFilters={false}
-          showSync={false}
-        />
-
-        <div className="campaign-creator-card flex flex-wrap items-center gap-3 p-4">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
-            <Sparkles size={17} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-heading text-sm font-semibold text-[var(--text-main)]">Commander</span>
-              <span
-                className={
-                  commanderOn
-                    ? "ds-table-compact-badge ds-table-compact-badge--success"
-                    : "ds-table-compact-badge ds-table-compact-badge--neutral"
-                }
-              >
-                {loading ? "…" : commanderOn ? "Ativo" : "Desligado"}
-              </span>
-            </div>
-            <p className="mt-1 font-body text-[11px] text-[var(--text-dimmer)]">
-              Quando ativo, conversa com você, consulta o histórico das suas campanhas e pode propor
-              automações — sempre em modo aprovação, nada roda sozinho sem seu OK. Desligar aqui desliga
-              tudo abaixo de uma vez.
-            </p>
-          </div>
-          <label
-            className={`flex shrink-0 cursor-pointer items-center gap-2 font-body text-xs text-[var(--text-dim)] ${
-              !commanderPlatformOn ? "cursor-not-allowed opacity-40" : ""
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={commanderUserOn}
-              disabled={loading || !commanderPlatformOn || savingId === "commander"}
-              onChange={(e) => toggle("commander", e.target.checked)}
-              className="accent-[var(--ui-accent)]"
-            />
-            Quero isso ligado
-          </label>
-        </div>
-
-        <div>
-          <h3 className="campaign-creator-orion-section-label mb-3">Onde e como atua</h3>
-          <StatusList
-            rows={CAPABILITY_ROWS}
-            resolved={resolved}
-            disabled={disabled}
-            loading={loading}
-            savingId={savingId}
-            onToggle={toggle}
-          />
-        </div>
-
-        <div>
-          <h3 className="campaign-creator-orion-section-label mb-3">Scientists disponíveis</h3>
-          <p className="mb-3 font-body text-[11px] text-[var(--text-dimmer)]">
-            Cada Scientist é uma capacidade de pesquisa real que o Commander pode acionar sozinho quando
-            faz sentido, ou você pode pedir diretamente no chat. Não quer que ele opine sobre algo
-            específico? Desligue aqui.
-          </p>
-          <StatusList
-            rows={SCIENTIST_ROWS}
-            resolved={resolved}
-            disabled={disabled}
-            loading={loading}
-            savingId={savingId}
-            onToggle={toggle}
-          />
-        </div>
-
-        <div className="campaign-creator-card flex flex-wrap items-center justify-between gap-3 p-4">
-          <p className="font-body text-xs text-[var(--text-dim)]">
-            As regras que o Commander propõe são criadas no <strong>Motor de regras</strong>, sempre em
-            modo aprovação.
-          </p>
-          <Link
-            href="/automations"
-            className="ui-btn-accent inline-flex h-8 items-center justify-center gap-1.5 px-3 font-heading text-xs font-semibold"
-          >
-            <Zap size={13} />
-            Abrir Motor de regras
-          </Link>
-        </div>
-      </div>
-    </AppPageShell>
   );
 }

@@ -13,6 +13,7 @@ import {
 import { validateClientAdAccount, classifyAudienceAiError, fetchCustomAudiencesOptional } from "@/lib/audience-api-helpers";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
 import { assertCopilotAccess } from "@/lib/billing/entitlements";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { assertCreativeMemoryAiAccess } from "@/lib/creative-memory/ai-usage";
 import { classifyLlmError } from "@/lib/llm/generate-json";
 import { getApiKeyForProvider, getLlmProvidersStatus } from "@/lib/llm/keys";
@@ -167,6 +168,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Meta não conectada" }, { status: 400 });
     }
 
+    const charge = await chargeOrRespond({
+      tenantId: tenant.id,
+      clientId: client.id,
+      kind: "audience_suggestions",
+      requireCreativeMemory: false
+    });
+    if (!charge.ok) return charge.response;
+
     const audiences = await fetchCustomAudiencesOptional(metaAccessToken, adAccountId);
     const suggestion = await generateAudienceTargetingSuggestion({
       accessToken: metaAccessToken,
@@ -184,6 +193,13 @@ export async function POST(req: Request) {
         name: a.name,
         subtype: a.subtype
       }))
+    });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: client.id,
+      kind: "audience_suggestions",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
     });
 
     return NextResponse.json({

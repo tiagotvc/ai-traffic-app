@@ -72,6 +72,10 @@ export function AudiencesNavGroup({
   }
 
   const allowed = !planLimitsReady || isNavItemAllowed("audiences", planLimits);
+  // Orion Persona® (Biblioteca de Personas + Zonas) é Advanced/Agency — travado no
+  // Individual mesmo com o grupo "Públicos" liberado (o criador de público comum
+  // continua aberto pra todos, só a biblioteca de personas salvas é que tranca).
+  const personaLocked = planLimitsReady && planLimits.maxAudiencePersonas === 0;
 
   const [expanded, setExpanded] = useState(inAudiences);
 
@@ -156,6 +160,32 @@ export function AudiencesNavGroup({
                 : item.id === "zones"
                   ? isAudiencesZonesActive(base)
                   : isAudiencesMetaActive(base);
+            const locked = personaLocked && (item.id === "personas" || item.id === "zones");
+            if (locked) {
+              return (
+                <Link
+                  key={item.id}
+                  href="/billing"
+                  onClick={() => onNavigate?.()}
+                  className={`${sidebarModuleClasses(undefined, false)} flex items-center justify-between gap-1.5 opacity-70`}
+                >
+                  <span className="truncate">{t(item.navKey)}</span>
+                  <svg
+                    className="h-3 w-3 shrink-0 text-amber-400/90"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                    />
+                  </svg>
+                </Link>
+              );
+            }
             return (
               <Link
                 key={item.id}

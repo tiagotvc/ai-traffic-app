@@ -19,7 +19,7 @@ import { useCommanderState } from "./useCommanderState";
 export function OrionCommanderCompactCard() {
   const { state, researchMode, activeScientists } = useCommanderState("mobile");
   const { payload } = useCampaignDraft();
-  const { memory } = useCommanderAccess();
+  const { memory, structuralInsights } = useCommanderAccess();
   const { campaigns: memoryCampaigns, loading: memoryLoading } = useCommanderMemory(
     payload.clientSlug,
     memory
@@ -67,7 +67,7 @@ export function OrionCommanderCompactCard() {
 
             {level === 2 ? (
               <>
-                {state.insights.length > 0 ? (
+                {structuralInsights && state.insights.length > 0 ? (
                   <div className="mt-5">
                     <CommanderInsightsSummary insights={state.insights} />
                   </div>

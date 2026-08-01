@@ -85,6 +85,7 @@ import { McpToken } from "./McpToken";
 import { CapiEventLog } from "./CapiEventLog";
 import { ReportTemplate } from "./ReportTemplate";
 import { EmailLog } from "./EmailLog";
+import { PlanFeatureVisibility } from "./PlanFeatureVisibility";
 import { stabilizeTypeOrmEntityNames } from "../stabilize-entity-names";
 
 export {
@@ -165,7 +166,8 @@ export {
   McpToken,
   CapiEventLog,
   ReportTemplate,
-  EmailLog
+  EmailLog,
+  PlanFeatureVisibility
 };
 
 export type { AlertType, AlertSeverity } from "./Alert";
@@ -273,7 +275,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: McpToken, name: "McpToken" },
   { ctor: CapiEventLog, name: "CapiEventLog" },
   { ctor: ReportTemplate, name: "ReportTemplate" },
-  { ctor: EmailLog, name: "EmailLog" }
+  { ctor: EmailLog, name: "EmailLog" },
+  { ctor: PlanFeatureVisibility, name: "PlanFeatureVisibility" }
 ]);
 
 export const typeOrmEntities = [
@@ -359,5 +362,6 @@ export const typeOrmEntities = [
   McpToken,
   CapiEventLog,
   ReportTemplate,
-  EmailLog
+  EmailLog,
+  PlanFeatureVisibility
 ] as const;

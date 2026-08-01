@@ -18,7 +18,10 @@ import {
   YEARLY_PIX_DISCOUNT_PERCENT,
   type PricingBreakdown
 } from "@/lib/billing/pricing";
-import { MARKETING_FEATURE_ROWS } from "@/lib/billing/plan-comparison";
+import {
+  visiblePlanDisplayRows,
+  type PlanFeatureVisibilityRow
+} from "@/lib/billing/plan-display-registry";
 
 export function BillingBackLink({ href = "/billing/plans", label }: { href?: string; label?: string }) {
   const t = useTranslations("billingPage");
@@ -181,35 +184,26 @@ export function PlanLimitsCard({
   usage,
   compact = false,
   variant = "portal",
-  planSlug
+  planSlug,
+  featureVisibility
 }: {
   limits: PlanLimits;
   usage?: TenantUsage;
   compact?: boolean;
   variant?: "portal" | "marketing";
   planSlug?: string;
+  featureVisibility?: PlanFeatureVisibilityRow[];
 }) {
   const t = useTranslations("billingPage");
   const isMarketing = variant === "marketing";
 
   if (isMarketing && planSlug) {
-    const highlightKeys = compact
-      ? ["clients", "adAccounts", "aiCredits", "copilot"]
-      : [
-          "clients",
-          "adAccounts",
-          "campaignCreator",
-          "audienceCreator",
-          "aiCredits",
-          "copilot",
-          "reports"
-        ];
-    const highlights = MARKETING_FEATURE_ROWS.filter((row) => highlightKeys.includes(row.key));
+    const highlights = visiblePlanDisplayRows(compact ? "compact" : "full", featureVisibility);
 
     return (
       <ul className={`${compact ? "space-y-2 text-xs" : "space-y-2.5 text-sm"}`}>
         {highlights.map((row) => {
-          const value = row.values[planSlug];
+          const value = row.value(limits);
           const available = value !== false;
           return (
             <li key={row.key} className="flex items-start justify-between gap-3">
@@ -465,13 +459,15 @@ export function PlanCard({
   cycle,
   featured = false,
   variant = "portal",
-  compact = false
+  compact = false,
+  featureVisibility
 }: {
   plan: PlanCardData;
   cycle: "monthly" | "yearly";
   featured?: boolean;
   variant?: "portal" | "marketing";
   compact?: boolean;
+  featureVisibility?: PlanFeatureVisibilityRow[];
 }) {
   const t = useTranslations("billingPage");
   const tier = planTier(plan.slug);
@@ -521,7 +517,13 @@ export function PlanCard({
       </div>
 
       <div className={`${compact ? "my-4 pt-4" : "my-6 pt-5"} border-t ${dividerClass}`}>
-        <PlanLimitsCard limits={plan.limits} compact variant={variant} planSlug={plan.slug} />
+        <PlanLimitsCard
+          limits={plan.limits}
+          compact
+          variant={variant}
+          planSlug={plan.slug}
+          featureVisibility={featureVisibility}
+        />
       </div>
 
       <div className="mt-auto">

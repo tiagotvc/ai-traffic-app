@@ -10,11 +10,8 @@ import {
   type PlanCardData
 } from "@/components/billing/PlanLimitsCard";
 import { BillingPlansSkeleton } from "@/components/billing/BillingSkeletons";
-import {
-  ensureMarketingPaidPlans,
-  mergePlanWithOfficialPricing,
-  resolveMarketingVitrinePlans
-} from "@/lib/marketing/orion-plan-catalog";
+import type { PlanFeatureVisibilityRow } from "@/lib/billing/plan-display-registry";
+import { resolveMarketingVitrinePlans } from "@/lib/marketing/orion-plan-catalog";
 import { isBrBillingMode } from "@/lib/billing/currency";
 import { YEARLY_DISCOUNT_PERCENT } from "@/lib/billing/pricing";
 import { DsPageHeader } from "@/design-system";
@@ -38,6 +35,7 @@ export function BillingPlansClient({
   const isBr = isBrBillingMode(locale);
   const isMarketing = variant === "marketing";
   const [plans, setPlans] = useState<PlanCardData[]>([]);
+  const [featureVisibility, setFeatureVisibility] = useState<PlanFeatureVisibilityRow[]>([]);
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
   void layout;
@@ -46,8 +44,8 @@ export function BillingPlansClient({
     fetch("/api/billing/plans")
       .then((r) => r.json())
       .then((j) => {
-        const rows = (j.plans ?? []) as PlanCardData[];
-        setPlans(ensureMarketingPaidPlans(rows.map((p) => mergePlanWithOfficialPricing(p) as PlanCardData)));
+        setPlans((j.plans ?? []) as PlanCardData[]);
+        setFeatureVisibility((j.featureVisibility ?? []) as PlanFeatureVisibilityRow[]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -97,6 +95,7 @@ export function BillingPlansClient({
               featured={p.slug === "advanced"}
               variant={variant}
               compact={compact}
+              featureVisibility={featureVisibility}
             />
           ))}
         </div>

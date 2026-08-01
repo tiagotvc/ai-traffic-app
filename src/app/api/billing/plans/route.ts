@@ -5,11 +5,11 @@ import { resolveLimits } from "@/lib/billing/resolve-limits";
 import { getAvailableProviders } from "@/lib/billing/providers";
 
 export async function GET() {
-  const { plan: planRepo } = await repositories();
-  const plans = await planRepo.find({
-    where: { isActive: true },
-    order: { sortOrder: "ASC" }
-  });
+  const { plan: planRepo, planFeatureVisibility: visibilityRepo } = await repositories();
+  const [plans, featureVisibility] = await Promise.all([
+    planRepo.find({ where: { isActive: true }, order: { sortOrder: "ASC" } }),
+    visibilityRepo.find({ order: { sortOrder: "ASC" } })
+  ]);
   return NextResponse.json({
     ok: true,
     plans: plans.map((p) => ({
@@ -23,6 +23,12 @@ export async function GET() {
       currency: p.currency,
       limits: resolveLimits(p),
       externalPrices: p.externalPrices
+    })),
+    featureVisibility: featureVisibility.map((v) => ({
+      featureKey: v.featureKey,
+      showCompact: v.showCompact,
+      showFull: v.showFull,
+      sortOrder: v.sortOrder
     })),
     providers: getAvailableProviders()
   });

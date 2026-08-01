@@ -72,6 +72,12 @@ import { AutomationObservationMode_1735833700000 } from "./0067-AutomationObserv
 import { ResearchFindings_1735833800000 } from "./0068-ResearchFindings";
 import { CommanderDisabledCapabilities_1735920000000 } from "./0069-CommanderDisabledCapabilities";
 import { EmailLogs_1735930000000 } from "./0070-EmailLogs";
+import { RetirePlusPlans_1735930100000 } from "./0071-RetirePlusPlans";
+import { BackfillCanonicalPlanLimits_1735930200000 } from "./0072-BackfillCanonicalPlanLimits";
+import { PlanFeatureVisibility_1735930300000 } from "./0073-PlanFeatureVisibility";
+import { CreditPoolExpansion_1735940000000 } from "./0074-CreditPoolExpansion";
+import { PlanPriceIncrease_1735940100000 } from "./0075-PlanPriceIncrease";
+import { FixAdvancedAllowCopilot_1735950000000 } from "./0076-FixAdvancedAllowCopilot";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -148,5 +154,11 @@ export const appMigrations = [
   AutomationObservationMode_1735833700000,
   ResearchFindings_1735833800000,
   CommanderDisabledCapabilities_1735920000000,
-  EmailLogs_1735930000000
+  EmailLogs_1735930000000,
+  RetirePlusPlans_1735930100000,
+  BackfillCanonicalPlanLimits_1735930200000,
+  PlanFeatureVisibility_1735930300000,
+  CreditPoolExpansion_1735940000000,
+  PlanPriceIncrease_1735940100000,
+  FixAdvancedAllowCopilot_1735950000000
 ];

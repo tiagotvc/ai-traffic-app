@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 import { Brain } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 
+import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import { sidebarItemClasses, sidebarModuleClasses } from "@/components/layout/sidebar-nav-styles";
 import type { AgencyBrainFeatureFlags } from "@/lib/agency-brain/domain/modules";
 import type { ResolvedFeatureMap } from "@/lib/feature-flags/types";
 import { isFeatureEnabled } from "@/lib/feature-flags/registry";
 import { isModuleEnabledInShell } from "@/lib/feature-flags/modules";
+import type { PlanLimits } from "@/lib/billing/types";
 
 const STORAGE_KEY = "cortex-nav-expanded";
 
@@ -29,6 +31,7 @@ function ChevronIcon({ d }: { d: string }) {
 
 type Props = {
   collapsed: boolean;
+  planLimits?: PlanLimits;
   planLimitsReady?: boolean;
   platformFeatures?: ResolvedFeatureMap;
   agencyBrainFeatures?: AgencyBrainFeatureFlags;
@@ -43,6 +46,7 @@ type Props = {
  */
 export function CortexNavGroup({
   collapsed,
+  planLimits,
   planLimitsReady = true,
   platformFeatures,
   agencyBrainFeatures,
@@ -73,6 +77,21 @@ export function CortexNavGroup({
   const engineOn = isModuleEnabledInShell(platformFeatures, "engine", { ready: planLimitsReady });
   const brainOn = isModuleEnabledInShell(platformFeatures, "brain", { ready: planLimitsReady });
   if (!engineOn && !brainOn) return null;
+
+  // Orion Cortex é Advanced/Agency — no Individual mostra cadeado em vez de sumir
+  // (a plataforma tem o módulo ligado, só o plano do tenant que não inclui).
+  const planLocked = planLimitsReady && planLimits ? !planLimits.allowCreativeMemoryAi : false;
+  if (planLocked) {
+    return (
+      <NavUpgradeLink
+        label={t("cortex")}
+        collapsed={collapsed}
+        active={inCortex}
+        icon={<Brain size={18} strokeWidth={1.75} className="shrink-0" />}
+        onNavigate={onNavigate}
+      />
+    );
+  }
 
   const brainAllowed = agencyBrainFeatures?.allowCreativeMemoryAi ?? true;
   const featureOn = (id: string) =>

@@ -10,7 +10,26 @@ export type AiCreditKind =
   | "audience_suggestions"
   | "campaign_generate"
   | "creator_brain"
-  | "generic";
+  | "generic"
+  // Criação manual (sem IA) — publicar/salvar consome crédito, iterar/editar não.
+  | "campaign_publish"
+  | "adset_publish"
+  | "ad_publish"
+  | "persona_save"
+  | "zone_save"
+  | "creative_upload"
+  // Criação assistida por IA.
+  | "persona_generate"
+  | "zone_generate"
+  | "ad_copy_generate"
+  | "creative_variant_generate"
+  // Análise por IA sem gate de crédito hoje.
+  | "persona_insights"
+  | "geo_insights"
+  | "report_ai_config"
+  // Divergem de "chat"/"learnings" pra permitir peso próprio.
+  | "commander_verdict"
+  | "market_learnings";
 
 export type AiCreditWeights = Record<AiCreditKind, number>;
 

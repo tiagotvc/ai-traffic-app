@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 
 import { useAgencyBrainAi } from "@/components/agency-brain/AgencyBrainAiContext";
+import { AiCreditMeterBar } from "@/components/ui/AiCreditMeterBar";
 
 export function AgencyBrainAiBar({ variant = "default" }: { variant?: "default" | "compact" | "uxpilot" }) {
   const t = useTranslations("agencyBrain");
@@ -77,7 +78,7 @@ export function AgencyBrainAiBar({ variant = "default" }: { variant?: "default" 
   return (
     <div className="ui-card flex flex-wrap items-center gap-3 px-4 py-3">
       {usage ? (
-        <div className="text-sm text-[var(--text-dim)]">
+        <div className="flex min-w-[160px] flex-1 flex-col gap-1.5 text-sm text-[var(--text-dim)]">
           {usage.remaining > 0 ? (
             <span>
               {t("aiUsage", {
@@ -90,6 +91,10 @@ export function AgencyBrainAiBar({ variant = "default" }: { variant?: "default" 
               {t("aiUsageEmpty", { max: usage.maxAiRequestsPerMonth })}
             </span>
           )}
+          <AiCreditMeterBar
+            used={usage.aiRequestsThisMonth}
+            max={usage.maxAiRequestsPerMonth}
+          />
         </div>
       ) : null}
 

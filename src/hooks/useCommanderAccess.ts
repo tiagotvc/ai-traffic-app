@@ -6,11 +6,14 @@ type CommanderFlags = {
   ready: boolean;
   commander: boolean;
   memory: boolean;
+  /** "Modo direto" desligado (padrão) = mostra dicas básicas de preenchimento. */
+  structuralInsights: boolean;
 };
 const FALLBACK: CommanderFlags = {
   ready: false,
   commander: false,
-  memory: false
+  memory: false,
+  structuralInsights: true
 };
 
 /** Fail-closed: durante o carregamento ou em erro, mantém a experiência anterior. */
@@ -25,7 +28,8 @@ export function useCommanderAccess(): CommanderFlags {
         setFlags({
           ready: true,
           commander: json?.commander === true,
-          memory: json?.commanderMemory === true
+          memory: json?.commanderMemory === true,
+          structuralInsights: json?.commanderStructuralInsights !== false
         });
       })
       .catch(() => {

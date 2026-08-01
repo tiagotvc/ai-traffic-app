@@ -106,6 +106,10 @@ export async function POST(req: Request) {
         modelUsed: result.modelUsed,
         fallbackFrom: result.fallbackFrom,
         usage: result.usage
+      },
+      content: {
+        question: body.question,
+        answer: result.answer
       }
     });
 
