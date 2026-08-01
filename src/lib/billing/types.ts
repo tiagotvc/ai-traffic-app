@@ -125,20 +125,21 @@ export const FREE_LIMITS: PlanLimits = {
 };
 
 export const BASIC_LIMITS: PlanLimits = {
-  maxClients: 3,
+  maxClients: 5,
   maxAdAccounts: 10,
   maxMembers: 2,
-  maxAutomationRules: 3,
-  maxAiRequestsPerMonth: 30,
-  maxScheduledReports: 1,
+  maxAutomationRules: 5,
+  maxAiRequestsPerMonth: 200,
+  maxScheduledReports: 0,
   allowCopilot: false,
   allowCommander: false,
   maxScientists: 0,
   allowAutoSync: true,
   allowLiveMeta: false,
-  allowCreativeMemoryAi: true,
-  allowAgencyBrainHypotheses: true,
-  allowAgencyBrainDna: true,
+  // Orion Cortex é exclusivo Advanced/Agency — sem acesso nenhum no Individual.
+  allowCreativeMemoryAi: false,
+  allowAgencyBrainHypotheses: false,
+  allowAgencyBrainDna: false,
   allowAgencyBrainTimeline: false,
   allowAgencyBrainExperiments: false,
   allowAgencyBrainActionPlans: false,
@@ -157,17 +158,18 @@ export const BASIC_LIMITS: PlanLimits = {
   allowDashboardAiBuilder: false,
   allowDashboardSharing: false,
   allowWhiteLabel: false,
-  maxAudiencePersonas: 5,
+  // Orion Persona® (biblioteca de personas/zonas) é exclusivo Advanced/Agency — 0 = trancado.
+  maxAudiencePersonas: 0,
   allowRankingConfig: false,
   automationTier: 1
 };
 
 export const ADVANCED_LIMITS: PlanLimits = {
   maxClients: 10,
-  maxAdAccounts: 30,
+  maxAdAccounts: 15,
   maxMembers: 5,
   maxAutomationRules: 10,
-  maxAiRequestsPerMonth: 100,
+  maxAiRequestsPerMonth: 500,
   maxScheduledReports: 5,
   allowCopilot: true,
   allowCommander: true,
@@ -201,11 +203,11 @@ export const ADVANCED_LIMITS: PlanLimits = {
 };
 
 export const AGENCY_LIMITS: PlanLimits = {
-  maxClients: 50,
-  maxAdAccounts: 150,
+  maxClients: 20,
+  maxAdAccounts: 30,
   maxMembers: 15,
   maxAutomationRules: 50,
-  maxAiRequestsPerMonth: 500,
+  maxAiRequestsPerMonth: 1100,
   maxScheduledReports: 20,
   allowCopilot: true,
   allowCommander: true,

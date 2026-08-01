@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAppContext, getMetaAccessTokenForAdAccount } from "@/lib/app-context";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import {
   AudiencePersonaPreviewPayloadSchema,
   AudienceTargetingBriefSchema,
@@ -145,6 +146,13 @@ export async function POST(req: Request) {
 
   if (body.phase === "save") {
     try {
+      const charge = await chargeOrRespond({
+        tenantId: tenant.id,
+        kind: "persona_save",
+        requireCreativeMemory: false
+      });
+      if (!charge.ok) return charge.response;
+
       let targeting = body.targeting;
       let removedSegments: Array<{ id: string; name?: string }> | undefined;
       if (metaAccessToken && body.adAccountId) {
@@ -166,6 +174,13 @@ export async function POST(req: Request) {
         gender: body.gender,
         targeting,
         sourcePrompt: body.sourcePrompt
+      });
+      await recordAiCreditUsage({
+        tenantId: tenant.id,
+        clientId: null,
+        kind: "persona_save",
+        createdCount: 1,
+        creditsCharged: charge.creditsCharged
       });
       return NextResponse.json({ ok: true, persona, removedSegments });
     } catch (e) {
@@ -311,6 +326,14 @@ export async function POST(req: Request) {
       if (!existing) {
         return NextResponse.json({ ok: false, error: "Persona não encontrada" }, { status: 404 });
       }
+
+      const charge = await chargeOrRespond({
+        tenantId: tenant.id,
+        kind: "persona_generate",
+        requireCreativeMemory: false
+      });
+      if (!charge.ok) return charge.response;
+
       const updated = await updateUserPersona(existing, {
         name: body.suggestion.name || body.persona.personaName || body.suggestion.title,
         description: body.suggestion.summary,
@@ -320,6 +343,13 @@ export async function POST(req: Request) {
         targeting: namedTargeting,
         sourcePrompt: buildSourcePrompt(body)
       });
+      await recordAiCreditUsage({
+        tenantId: tenant.id,
+        clientId: null,
+        kind: "persona_generate",
+        createdCount: 1,
+        creditsCharged: charge.creditsCharged
+      });
       return NextResponse.json({
         ok: true,
         persona: updated,
@@ -327,6 +357,13 @@ export async function POST(req: Request) {
         removedSegments: removed.length ? removed : undefined
       });
     }
+
+    const charge = await chargeOrRespond({
+      tenantId: tenant.id,
+      kind: "persona_generate",
+      requireCreativeMemory: false
+    });
+    if (!charge.ok) return charge.response;
 
     const savedPersona = await createUserPersona({
       tenantId: tenant.id,
@@ -338,6 +375,13 @@ export async function POST(req: Request) {
       gender: body.persona.suggestedGender ?? brief.gender,
       targeting: namedTargeting,
       sourcePrompt: buildSourcePrompt(body)
+    });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: null,
+      kind: "persona_generate",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
     });
 
     return NextResponse.json({

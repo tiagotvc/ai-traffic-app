@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { getAppContext, getClientBySlugOrId, getMetaAccessTokenForAdAccount } from "@/lib/app-context";
 import { CampaignDraftPayloadSchema, adUsesExistingPost } from "@/lib/campaign-draft";
 import { getOrCreateClientMetaSettings } from "@/lib/client-meta-settings";
@@ -87,6 +88,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
     }
 
+    const charge = await chargeOrRespond({
+      tenantId: tenant.id,
+      clientId: client.id,
+      kind: "campaign_publish",
+      requireCreativeMemory: false
+    });
+    if (!charge.ok) return charge.response;
+
     const draft = body.draft;
     const token =
       (await getMetaAccessTokenForAdAccount(tenant.id, user.id, draft.adAccountId)) ??
@@ -168,6 +177,13 @@ export async function POST(req: Request) {
       }
 
       await auditCreate(tenant.id, client.id, body, result, true);
+      await recordAiCreditUsage({
+        tenantId: tenant.id,
+        clientId: client.id,
+        kind: "campaign_publish",
+        createdCount: 1,
+        creditsCharged: charge.creditsCharged
+      });
       return NextResponse.json({ ok: true, ...result, publishSource: publish.source });
     } catch (err) {
       const code = err instanceof MetaCreativeValidationError ? err.code : undefined;
@@ -197,6 +213,14 @@ export async function POST(req: Request) {
   if (!client) {
     return NextResponse.json({ ok: false, error: "Cliente não encontrado" }, { status: 404 });
   }
+
+  const legacyCharge = await chargeOrRespond({
+    tenantId: tenant.id,
+    clientId: client.id,
+    kind: "campaign_publish",
+    requireCreativeMemory: false
+  });
+  if (!legacyCharge.ok) return legacyCharge.response;
 
   let publish;
   try {
@@ -251,6 +275,13 @@ export async function POST(req: Request) {
     });
 
     await auditCreate(tenant.id, client.id, body, result, true);
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: client.id,
+      kind: "campaign_publish",
+      createdCount: 1,
+      creditsCharged: legacyCharge.creditsCharged
+    });
     return NextResponse.json({ ok: true, ...result, publishSource: publish.source });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";

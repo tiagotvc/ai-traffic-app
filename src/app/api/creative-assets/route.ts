@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { uploadAdImage } from "@/lib/meta-graph";
 
@@ -39,6 +40,14 @@ export async function POST(req: Request) {
   const client = await getClientBySlugOrId(tenant.id, body.clientId);
   if (!client) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
+  const charge = await chargeOrRespond({
+    tenantId: tenant.id,
+    clientId: client.id,
+    kind: "creative_upload",
+    requireCreativeMemory: false
+  });
+  if (!charge.ok) return charge.response;
+
   const uploaded = await uploadAdImage(metaAccessToken, body.adAccountId, body.imageUrl, body.label);
   const hash = Object.values(uploaded.images ?? {})[0]?.hash;
 
@@ -51,6 +60,13 @@ export async function POST(req: Request) {
       label: body.label
     })
   );
+  await recordAiCreditUsage({
+    tenantId: tenant.id,
+    clientId: client.id,
+    kind: "creative_upload",
+    createdCount: 1,
+    creditsCharged: charge.creditsCharged
+  });
 
   return NextResponse.json({ ok: true, asset, hash });
 }

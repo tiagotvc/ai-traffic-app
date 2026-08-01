@@ -5,7 +5,6 @@ import { PlanLimitError } from "@/lib/billing/entitlements";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import type { GeminiGenerateMeta } from "@/lib/gemini";
 
-import { CM_AI_ACTION_TYPES } from "./defaults";
 import { getAiCreditWeights, getAiCreditsFeatureFlags, isAiCreditsV2Enabled } from "./feature-flags";
 import { getClientAiSettings, getTenantAiPolicy } from "./policy-service";
 import {
@@ -121,30 +120,102 @@ export async function assertAiCreditsAccess(args: {
   return { creditsCharged, v2: true as const };
 }
 
-const KIND_TO_ACTION: Record<
-  "learnings" | "actions" | "hypotheses" | "chat",
-  (typeof CM_AI_ACTION_TYPES)[number]
-> = {
+/** actionType é coluna texto livre (não enum do Postgres) — seguro adicionar valores novos. */
+const KIND_TO_ACTION: Record<AiCreditKind, string> = {
+  chat: "AB_AI_CHAT",
+  chat_with_proposals: "AB_AI_CHAT_AGENT",
   learnings: "CM_AI_LEARNINGS",
   actions: "CM_AI_ACTIONS",
   hypotheses: "AB_AI_HYPOTHESES",
-  chat: "AB_AI_CHAT"
+  recommendations: "AI_RECOMMENDATION",
+  audience_suggestions: "AUDIENCE_SUGGESTIONS",
+  campaign_generate: "CAMPAIGN_AI_GENERATE",
+  creator_brain: "CM_AI_ACTIONS",
+  generic: "GENERIC_AI",
+  campaign_publish: "CAMPAIGN_PUBLISH",
+  adset_publish: "ADSET_PUBLISH",
+  ad_publish: "AD_PUBLISH",
+  persona_save: "PERSONA_SAVE",
+  zone_save: "ZONE_SAVE",
+  creative_upload: "CREATIVE_UPLOAD",
+  persona_generate: "PERSONA_AI_GENERATE",
+  zone_generate: "ZONE_AI_GENERATE",
+  ad_copy_generate: "AD_COPY_AI_GENERATE",
+  creative_variant_generate: "CREATIVE_VARIANT_AI_GENERATE",
+  persona_insights: "PERSONA_AI_INSIGHTS",
+  geo_insights: "GEO_AI_INSIGHTS",
+  report_ai_config: "REPORT_AI_CONFIG",
+  commander_verdict: "COMMANDER_VERDICT",
+  market_learnings: "AB_AI_MARKET_LEARNINGS"
 };
 
-const KIND_LABEL: Record<"learnings" | "actions" | "hypotheses" | "chat", string> = {
+const KIND_TARGET: Record<AiCreditKind, string> = {
+  chat: "agency_brain",
+  chat_with_proposals: "agency_brain",
+  learnings: "creative_memory",
+  actions: "creative_memory",
+  hypotheses: "agency_brain",
+  recommendations: "generic",
+  audience_suggestions: "audience_targeting",
+  campaign_generate: "campaign_creator",
+  creator_brain: "campaign_creator",
+  generic: "generic",
+  campaign_publish: "meta_campaign",
+  adset_publish: "meta_adset",
+  ad_publish: "meta_ad",
+  persona_save: "persona",
+  zone_save: "zone",
+  creative_upload: "creative_asset",
+  persona_generate: "persona",
+  zone_generate: "zone",
+  ad_copy_generate: "campaign_creator",
+  creative_variant_generate: "campaign_creator",
+  persona_insights: "persona",
+  geo_insights: "zone",
+  report_ai_config: "reports",
+  commander_verdict: "commander",
+  market_learnings: "agency_brain"
+};
+
+const KIND_LABEL: Record<AiCreditKind, string> = {
+  chat: "Agency Brain (chat)",
+  chat_with_proposals: "Agency Brain (chat com propostas)",
   learnings: "Memória Criativa (learnings)",
   actions: "Memória Criativa (actions)",
   hypotheses: "Agency Brain (hypotheses)",
-  chat: "Agency Brain (chat)"
+  recommendations: "Recomendação",
+  audience_suggestions: "Segmentação de público",
+  campaign_generate: "Campanha gerada com IA",
+  creator_brain: "Insight do Criador de Campanha",
+  generic: "IA",
+  campaign_publish: "Campanha publicada",
+  adset_publish: "Conjunto publicado",
+  ad_publish: "Anúncio publicado",
+  persona_save: "Persona salva",
+  zone_save: "Zona salva",
+  creative_upload: "Criativo enviado",
+  persona_generate: "Persona gerada com IA",
+  zone_generate: "Zona gerada com IA",
+  ad_copy_generate: "Copy gerada com IA",
+  creative_variant_generate: "Variação de criativo gerada com IA",
+  persona_insights: "Insight de persona",
+  geo_insights: "Geo Scientist",
+  report_ai_config: "Relatório por IA",
+  commander_verdict: "Veredito do Commander",
+  market_learnings: "Aprendizados de mercado"
 };
 
 export async function recordAiCreditUsage(args: {
   tenantId: string;
-  clientId: string;
-  kind: "learnings" | "actions" | "hypotheses" | "chat";
+  clientId: string | null;
+  kind: AiCreditKind;
   createdCount: number;
-  modelMeta: GeminiGenerateMeta;
+  /** Ausente pra ações manuais (sem chamada de LLM) — publicar campanha, salvar persona, etc. */
+  modelMeta?: GeminiGenerateMeta;
   creditsCharged?: number;
+  /** O que foi perguntado/pesquisado e a resposta real da IA — pro histórico visível
+   * ao usuário em /commander (nunca expõe qual provedor/modelo respondeu). */
+  content?: { question?: string; answer?: string };
 }) {
   const v2 = await isAiCreditsV2Enabled();
   let credits = args.creditsCharged ?? 1;
@@ -161,20 +232,23 @@ export async function recordAiCreditUsage(args: {
     recRepo.create({
       tenantId: args.tenantId,
       clientId: args.clientId,
-      targetId: args.kind === "hypotheses" || args.kind === "chat" ? "agency_brain" : "creative_memory",
+      targetId: KIND_TARGET[args.kind],
       actionType: KIND_TO_ACTION[args.kind],
       payload: {
         kind: args.kind,
         createdCount: args.createdCount,
-        modelRequested: args.modelMeta.modelRequested,
-        modelUsed: args.modelMeta.modelUsed,
-        fallbackFrom: args.modelMeta.fallbackFrom ?? null,
+        modelRequested: args.modelMeta?.modelRequested ?? null,
+        modelUsed: args.modelMeta?.modelUsed ?? null,
+        fallbackFrom: args.modelMeta?.fallbackFrom ?? null,
         creditsCharged: credits,
-        inputTokens: args.modelMeta.usage?.inputTokens ?? null,
-        outputTokens: args.modelMeta.usage?.outputTokens ?? null,
-        estimatedCostUsd: args.modelMeta.usage?.costUsd ?? null
+        inputTokens: args.modelMeta?.usage?.inputTokens ?? null,
+        outputTokens: args.modelMeta?.usage?.outputTokens ?? null,
+        estimatedCostUsd: args.modelMeta?.usage?.costUsd ?? null,
+        question: args.content?.question?.slice(0, 500) ?? null,
+        answer: args.content?.answer?.slice(0, 1000) ?? null
       },
-      justification: `${KIND_LABEL[args.kind]}: ${args.createdCount} item(ns) via ${args.modelMeta.modelUsed} (${credits} crédito(s))`,
+      // Nunca menciona o provedor/modelo — o usuário não deve saber qual IA respondeu.
+      justification: `${KIND_LABEL[args.kind]}: ${args.createdCount} item(ns) (${credits} crédito(s))`,
       status: "APPLIED",
       creditsCharged: credits
     })

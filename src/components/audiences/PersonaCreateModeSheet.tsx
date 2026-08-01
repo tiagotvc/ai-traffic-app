@@ -75,7 +75,7 @@ export function PersonaCreateModeSheet({
           description={t("personaCreateAiHint")}
           icon={Sparkles}
           onSelect={() => setSelected("ai")}
-          aiCredits={{ kind: "audience_suggestions", calls: 1 }}
+          aiCredits={{ kind: "persona_generate", calls: 1 }}
         />
         <CreationModeChoiceCard
           selected={selected === "existing"}

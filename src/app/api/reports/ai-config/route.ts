@@ -4,7 +4,6 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { aiGenerateJson } from "@/lib/ai/generate";
 import { aiCreditsErrorResponse, assertAiCreditsAccess } from "@/lib/ai-credits/credits-service";
-import { isAiCreditsV2Enabled } from "@/lib/ai-credits/feature-flags";
 import { getAppContext, slugify } from "@/lib/app-context";
 
 /**
@@ -39,7 +38,7 @@ export async function POST(req: Request) {
     try {
       const access = await assertAiCreditsAccess({
         tenantId: tenant.id,
-        kind: "generic",
+        kind: "report_ai_config",
         requireCreativeMemory: false
       });
       creditCost = access.creditsCharged;
@@ -77,26 +76,23 @@ export async function POST(req: Request) {
     const clientSlug =
       data.clientSlug && options.some((o) => o.slug === data.clientSlug) ? data.clientSlug : null;
 
-    const v2 = await isAiCreditsV2Enabled();
-    if (v2) {
-      const { aiRecommendation: recRepo } = await repositories();
-      await recRepo.save(
-        recRepo.create({
-          tenantId: tenant.id,
-          clientId: null,
-          targetId: "reports",
-          actionType: "CM_AI_ACTIONS",
-          payload: {
-            kind: "report_ai_config",
-            promptPreview: prompt.slice(0, 120),
-            creditsCharged: creditCost
-          },
-          justification: `Relatório por IA: configuração (${creditCost} crédito(s))`,
-          status: "APPLIED",
+    const { aiRecommendation: recRepo } = await repositories();
+    await recRepo.save(
+      recRepo.create({
+        tenantId: tenant.id,
+        clientId: null,
+        targetId: "reports",
+        actionType: "REPORT_AI_CONFIG",
+        payload: {
+          kind: "report_ai_config",
+          promptPreview: prompt.slice(0, 120),
           creditsCharged: creditCost
-        })
-      );
-    }
+        },
+        justification: `Relatório por IA: configuração (${creditCost} crédito(s))`,
+        status: "APPLIED",
+        creditsCharged: creditCost
+      })
+    );
 
     return NextResponse.json({
       ok: true,

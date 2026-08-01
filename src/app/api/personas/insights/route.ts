@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { aiGenerateJson } from "@/lib/ai/generate";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { getAppContext, getClientBySlugOrId, getMetaAccessTokenForAdAccount } from "@/lib/app-context";
 import { extractPersonaTargetingItems } from "@/lib/audience-targeting-shared";
 import { assertFeatureEnabled, FeatureDisabledError, isPlatformFeatureEnabled } from "@/lib/feature-flags/service";
@@ -114,7 +115,14 @@ export async function POST(req: Request) {
   // 4) Recomendações por IA (router) com explicabilidade.
   let ai: z.infer<typeof AiSchema> | null = null;
   let provider: string | null = null;
+  const charge = await chargeOrRespond({
+    tenantId: tenant.id,
+    clientId: client.id,
+    kind: "persona_insights",
+    requireCreativeMemory: false
+  });
   try {
+    if (!charge.ok) throw new Error("sem crédito disponível");
     const prompt = [
       "Você é analista sênior de mídia paga. Avalie a COERÊNCIA de uma persona contra os DADOS REAIS",
       "da conta Meta do cliente. Responda só com JSON.",
@@ -148,6 +156,15 @@ export async function POST(req: Request) {
     });
     ai = res.data;
     provider = res.meta.provider;
+    if (charge.ok) {
+      await recordAiCreditUsage({
+        tenantId: tenant.id,
+        clientId: client.id,
+        kind: "persona_insights",
+        createdCount: 1,
+        creditsCharged: charge.creditsCharged
+      });
+    }
   } catch {
     ai = null;
   }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
+import { chargeOrRespond, recordAiCreditUsage } from "@/lib/ai-credits";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { AdDraftItemSchema } from "@/lib/campaign-draft";
 import { defaultPlacements } from "@/lib/campaign-placements";
@@ -72,6 +73,14 @@ export async function POST(
   const adsetDetail = await fetchAdSetDetail(metaAccessToken, metaAdsetId);
   const settings = await getOrCreateClientMetaSettings(client.id);
 
+  const charge = await chargeOrRespond({
+    tenantId: tenant.id,
+    clientId: client.id,
+    kind: "ad_publish",
+    requireCreativeMemory: false
+  });
+  if (!charge.ok) return charge.response;
+
   try {
     const inheritedAdset = extractInheritedAdsetFromMeta(adsetDetail, adsetDetail.name ?? "Conjunto");
     const result = await publishAdToAdset({
@@ -90,6 +99,13 @@ export async function POST(
       settings,
       callToAction: settings.defaultCta,
       campaignName: body.campaignName
+    });
+    await recordAiCreditUsage({
+      tenantId: tenant.id,
+      clientId: client.id,
+      kind: "ad_publish",
+      createdCount: 1,
+      creditsCharged: charge.creditsCharged
     });
 
     return NextResponse.json({ ok: true, ...result, adsetId: metaAdsetId });

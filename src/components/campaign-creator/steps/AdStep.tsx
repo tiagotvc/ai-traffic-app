@@ -48,7 +48,7 @@ import { allowedCtasForObjective, type MetaCtaValue } from "@/lib/meta-cta";
 import { CampaignCreatorUxMobileSummary } from "@/uxpilot-ui/adapters/CampaignCreatorUxMobileSummary";
 import { cn } from "@/lib/cn";
 
-const AD_COPY_AI_CREDITS = { kind: "campaign_generate" as const, calls: 1 };
+const AD_COPY_AI_CREDITS = { kind: "ad_copy_generate" as const, calls: 1 };
 
 export function AdStep() {
   const t = useTranslations("campaignCreator");
