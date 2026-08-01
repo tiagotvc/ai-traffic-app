@@ -187,9 +187,9 @@ function PersonaCreatorUxPageContent() {
         ? navChecklist.business && navChecklist.profile
         : personaSection === "launch"
           ? navChecklist.behaviors && navChecklist.lifestyle
-          : personaSection === "refinement"
-            ? navChecklist.exclusions
-            : true;
+          : // "refinement" só tem campos de refinamento (exclusões, objetivos): são
+            // opcionais e não podem travar o avanço.
+            true;
   const canNext = !isReviewStep && sectionComplete;
 
   const goToSection = (key: PersonaCreatorSectionKey) => {
