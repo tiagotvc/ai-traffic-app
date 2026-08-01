@@ -2,26 +2,24 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { Target } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 
-import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import { sidebarItemClasses, sidebarModuleClasses } from "@/components/layout/sidebar-nav-styles";
 import {
-  AUDIENCES_NAV,
-  AUDIENCES_NAV_ITEMS,
-  isAudiencesActive,
-  isAudiencesMetaActive,
-  isAudiencesPersonasActive,
-  isAudiencesZonesActive
-} from "@/lib/audiences/nav";
+  COMMANDER_NAV,
+  COMMANDER_NAV_ITEMS,
+  isCommanderActive,
+  isCommanderOverviewActive,
+  isCommanderScientistsActive,
+  isCommanderSettingsActive
+} from "@/lib/commander/nav";
 import type { ResolvedFeatureMap } from "@/lib/feature-flags/types";
 import { isModuleEnabledInShell } from "@/lib/feature-flags/modules";
-import { isNavItemAllowed } from "@/lib/billing/nav-permissions";
 import type { PlanLimits } from "@/lib/billing/types";
 import { FREE_LIMITS } from "@/lib/billing/types";
 
-const STORAGE_KEY = "audiences-nav-expanded";
+const STORAGE_KEY = "commander-nav-expanded";
 
 function NavIcon({ d }: { d: string }) {
   return (
@@ -37,8 +35,26 @@ function NavIcon({ d }: { d: string }) {
   );
 }
 
-function AudiencesNavIcon() {
-  return <Target size={18} strokeWidth={1.75} className="shrink-0" />;
+function CommanderNavIcon() {
+  return <Sparkles size={18} strokeWidth={1.75} className="shrink-0" />;
+}
+
+function LockIcon() {
+  return (
+    <svg
+      className="h-3 w-3 shrink-0 text-amber-400/90"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+      />
+    </svg>
+  );
 }
 
 type Props = {
@@ -46,41 +62,27 @@ type Props = {
   planLimits?: PlanLimits;
   planLimitsReady?: boolean;
   platformFeatures?: ResolvedFeatureMap;
-  isPlatformAdmin?: boolean;
   pathname: string;
   onNavigate?: () => void;
 };
 
-export function AudiencesNavGroup({
+export function CommanderNavGroup({
   collapsed,
   planLimits = FREE_LIMITS,
   planLimitsReady = true,
   platformFeatures,
-  isPlatformAdmin = false,
   pathname,
   onNavigate
 }: Props) {
   const t = useTranslations("nav");
   const base = pathname.replace(/^\/(pt-BR|en)/, "") || "/";
-  const inAudiences = base.startsWith("/audiences");
-  const parentActive = isAudiencesActive(base);
+  const inCommander = isCommanderActive(base);
+  const parentActive = isCommanderOverviewActive(base);
 
-  if (
-    !isModuleEnabledInShell(platformFeatures, "audiences", { ready: planLimitsReady })
-  ) {
-    return null;
-  }
-
-  const allowed = !planLimitsReady || isNavItemAllowed("audiences", planLimits);
-  // Orion Persona® (Biblioteca de Personas + Zonas) é Advanced/Agency — travado no
-  // Individual mesmo com o grupo "Públicos" liberado (o criador de público comum
-  // continua aberto pra todos, só a biblioteca de personas salvas é que tranca).
-  const personaLocked = planLimitsReady && planLimits.maxAudiencePersonas === 0;
-
-  const [expanded, setExpanded] = useState(inAudiences);
+  const [expanded, setExpanded] = useState(inCommander);
 
   useEffect(() => {
-    if (inAudiences) {
+    if (inCommander) {
       setExpanded(true);
       return;
     }
@@ -91,7 +93,15 @@ export function AudiencesNavGroup({
     } catch {
       /* ignore */
     }
-  }, [inAudiences]);
+  }, [inCommander]);
+
+  if (!isModuleEnabledInShell(platformFeatures, "commander", { ready: planLimitsReady })) {
+    return null;
+  }
+
+  // Cientistas é Advanced/Agency — no Individual o item some da navegação normal e
+  // vira um link travado (mesmo tratamento do submenu Orion Persona® em Públicos).
+  const scientistsAllowed = !planLimitsReady || planLimits.allowCopilot;
 
   function toggleExpanded() {
     const next = !expanded;
@@ -103,26 +113,15 @@ export function AudiencesNavGroup({
     }
   }
 
-  if (!allowed) {
-    return (
-      <NavUpgradeLink
-        label={t(AUDIENCES_NAV.navKey)}
-        collapsed={collapsed}
-        icon={<AudiencesNavIcon />}
-        onNavigate={onNavigate}
-      />
-    );
-  }
-
   if (collapsed) {
     return (
       <Link
-        href={AUDIENCES_NAV.route}
-        title={t(AUDIENCES_NAV.navKey)}
+        href={COMMANDER_NAV.route}
+        title={t(COMMANDER_NAV.navKey)}
         onClick={() => onNavigate?.()}
         className={sidebarItemClasses(parentActive, true)}
       >
-        <AudiencesNavIcon />
+        <CommanderNavIcon />
       </Link>
     );
   }
@@ -131,13 +130,13 @@ export function AudiencesNavGroup({
     <div className="space-y-0.5">
       <div className="flex items-start gap-0.5">
         <Link
-          href={AUDIENCES_NAV.route}
+          href={COMMANDER_NAV.route}
           onClick={() => onNavigate?.()}
           className={`${sidebarItemClasses(parentActive)} min-w-0 flex-1 !pr-1`}
         >
-          <AudiencesNavIcon />
+          <CommanderNavIcon />
           <span className="min-w-0 flex-1 whitespace-normal text-left leading-snug">
-            {t(AUDIENCES_NAV.navKey)}
+            {t(COMMANDER_NAV.navKey)}
           </span>
         </Link>
         <button
@@ -153,14 +152,14 @@ export function AudiencesNavGroup({
 
       {expanded ? (
         <div className="ml-4 space-y-0.5 border-l border-white/10 pl-2">
-          {AUDIENCES_NAV_ITEMS.map((item) => {
+          {COMMANDER_NAV_ITEMS.map((item) => {
             const active =
-              item.id === "personas"
-                ? isAudiencesPersonasActive(base)
-                : item.id === "zones"
-                  ? isAudiencesZonesActive(base)
-                  : isAudiencesMetaActive(base);
-            const locked = personaLocked && (item.id === "personas" || item.id === "zones");
+              item.id === "overview"
+                ? isCommanderOverviewActive(base)
+                : item.id === "scientists"
+                  ? isCommanderScientistsActive(base)
+                  : isCommanderSettingsActive(base);
+            const locked = item.id === "scientists" && !scientistsAllowed;
             if (locked) {
               return (
                 <Link
@@ -170,19 +169,7 @@ export function AudiencesNavGroup({
                   className={`${sidebarModuleClasses(undefined, false)} flex items-center justify-between gap-1.5 opacity-70`}
                 >
                   <span className="truncate">{t(item.navKey)}</span>
-                  <svg
-                    className="h-3 w-3 shrink-0 text-amber-400/90"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-                    />
-                  </svg>
+                  <LockIcon />
                 </Link>
               );
             }

@@ -1,11 +1,12 @@
 "use client";
 
-import { Loader2, Send, Sparkles } from "lucide-react";
+import { Loader2, Send, Settings, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import { DsButton, DsInput } from "@/design-system";
 import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
 import { CommanderObservingIndicator } from "@/components/commander/CommanderObservingIndicator";
+import { Link } from "@/i18n/navigation";
 import { useCommanderAccess } from "@/hooks/useCommanderAccess";
 import { useCommanderMemory } from "@/hooks/useCommanderMemory";
 
@@ -22,7 +23,7 @@ import { useCommanderState } from "./useCommanderState";
 export function OrionCommanderPanel() {
   const { state, analyzing, researchMode, activeScientists } = useCommanderState("desktop");
   const { payload } = useCampaignDraft();
-  const { memory } = useCommanderAccess();
+  const { memory, structuralInsights } = useCommanderAccess();
   const { campaigns: memoryCampaigns, loading: memoryLoading } = useCommanderMemory(
     payload.clientSlug,
     memory
@@ -61,7 +62,17 @@ export function OrionCommanderPanel() {
             </h3>
           </div>
         </div>
-        <CommanderConfidenceBadge value={state.confidence} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          <CommanderConfidenceBadge value={state.confidence} />
+          <Link
+            href="/commander"
+            aria-label="Configurar o Commander"
+            title="Configurar o Commander"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[var(--text-dimmer)] transition-colors hover:bg-[var(--surface-bg)] hover:text-[var(--text-main)]"
+          >
+            <Settings size={13} />
+          </Link>
+        </div>
       </div>
 
       <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-dim)]">
@@ -139,7 +150,7 @@ export function OrionCommanderPanel() {
 
       <CommanderObservingIndicator className="mt-3" />
 
-      {state.insights.length > 0 ? (
+      {structuralInsights && state.insights.length > 0 ? (
         <div className="mt-5">
           <CommanderInsightsSummary insights={state.insights} />
         </div>

@@ -1,5 +1,5 @@
-import { CommanderSettingsView } from "@/components/commander/CommanderSettingsView";
+import { CommanderOverviewView } from "@/components/commander/CommanderOverviewView";
 
 export default function CommanderPage() {
-  return <CommanderSettingsView />;
+  return <CommanderOverviewView />;
 }

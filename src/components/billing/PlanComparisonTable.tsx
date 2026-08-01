@@ -8,13 +8,12 @@ import { BillingCtaLink, type PlanCardData } from "@/components/billing/PlanLimi
 import { BillingCycleToggle } from "@/components/billing/BillingCycleToggle";
 import { resolveBillingCurrency, planListCents, resolvePlanMonthlyCents } from "@/lib/billing/currency";
 import { calculateCheckoutPricing, formatMoney } from "@/lib/billing/pricing";
-import { mergePlanWithOfficialPricing } from "@/lib/marketing/orion-plan-catalog";
 import {
   COMPARISON_PLAN_SLUG_ORDER,
-  MARKETING_FEATURE_ROWS,
-  PLUS_SLUGS,
-  type MarketingFeatureValue
-} from "@/lib/billing/plan-comparison";
+  visiblePlanDisplayRows,
+  type MarketingFeatureValue,
+  type PlanFeatureVisibilityRow
+} from "@/lib/billing/plan-display-registry";
 
 function renderFeatureCell(value: MarketingFeatureValue | undefined) {
   if (typeof value === "boolean") {
@@ -28,13 +27,14 @@ function renderFeatureCell(value: MarketingFeatureValue | undefined) {
 }
 
 /**
- * Comparativo completo dos 6 planos pagos (mesma tabela que existia só no checkout) — agora
+ * Comparativo completo dos 3 planos pagos (mesma tabela que existia só no checkout) — agora
  * também na landing, pra quem ainda não criou conta poder comparar recursos antes de assinar.
  */
 export function PlanComparisonTable() {
   const locale = useLocale();
   const currency = resolveBillingCurrency(locale);
   const [plans, setPlans] = useState<PlanCardData[]>([]);
+  const [featureVisibility, setFeatureVisibility] = useState<PlanFeatureVisibilityRow[]>([]);
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
 
@@ -42,8 +42,8 @@ export function PlanComparisonTable() {
     fetch("/api/billing/plans")
       .then((r) => r.json())
       .then((j) => {
-        const rows = (j.plans ?? []) as PlanCardData[];
-        setPlans(rows.map((p) => mergePlanWithOfficialPricing(p) as PlanCardData));
+        setPlans((j.plans ?? []) as PlanCardData[]);
+        setFeatureVisibility((j.featureVisibility ?? []) as PlanFeatureVisibilityRow[]);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -77,11 +77,6 @@ export function PlanComparisonTable() {
               </th>
               {orderedPlans.map((p) => (
                 <th key={p.id} className="px-3 py-3 text-center align-top">
-                  {PLUS_SLUGS.has(p.slug) ? (
-                    <span className="mb-1 inline-block rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-black text-black">
-                      PLUS
-                    </span>
-                  ) : null}
                   <div className="font-semibold text-[var(--text-main)]">{p.name}</div>
                   <div className="mt-0.5 text-sm font-black text-[var(--text-main)]">
                     {formatMoney(priceFor(p), currency)}
@@ -100,12 +95,12 @@ export function PlanComparisonTable() {
             </tr>
           </thead>
           <tbody>
-            {MARKETING_FEATURE_ROWS.map((row, i) => (
+            {visiblePlanDisplayRows("full", featureVisibility).map((row, i) => (
               <tr key={row.key} className={i % 2 === 0 ? "bg-[var(--surface-row-alt)]" : undefined}>
                 <td className="sticky left-0 z-10 bg-[var(--creator-card-bg)] px-3 py-2 text-[var(--text-dim)]">{row.label}</td>
                 {orderedPlans.map((p) => (
                   <td key={p.id} className="px-3 py-2 text-center text-[var(--text-main)]">
-                    {renderFeatureCell(row.values[p.slug])}
+                    {renderFeatureCell(row.value(p.limits))}
                   </td>
                 ))}
               </tr>

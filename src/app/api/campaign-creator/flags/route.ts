@@ -37,6 +37,12 @@ export async function GET() {
     ok: true,
     commander,
     commanderMemory: commander && commanderMemory && !userDisabled.has("commander.memory"),
+    // "Modo direto" (config em /commander): dicas óbvias de preenchimento ("adicione
+    // uma mídia") só valem a pena pra quem tá começando — o padrão já vem desligado
+    // pra Advanced/Agency (que já conhecem o fluxo) e ligado só pro Individual. O
+    // toggle em Configurações inverte esse padrão pra quem quiser o oposto (XOR).
+    commanderStructuralInsights:
+      (entitlements.planSlug === "basic") !== userDisabled.has("commander.insights.structural"),
     metaAppDevelopmentNotice,
     aiGenerate,
     aiCopy
