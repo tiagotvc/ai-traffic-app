@@ -1,5 +1,6 @@
 import "server-only";
 
+import { In } from "typeorm";
 import { repositories } from "@/db/repositories";
 import type { PaymentProvider } from "./types";
 import { getAsaasFinanceBalance } from "@/lib/asaas/finance";
@@ -149,4 +150,70 @@ export async function listFinanceInvoices(input: {
     take: input.limit ?? 50
   });
   return rows;
+}
+
+export type AdminSubscriptionRow = {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  customerName: string | null;
+  customerEmail: string | null;
+  planId: string;
+  planName: string;
+  planSlug: string;
+  status: string;
+  provider: PaymentProvider | null;
+  billingCycle: string;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+};
+
+/** Assinaturas ativas pra o painel admin — junta Subscription com Plan/Tenant/BillingCustomer
+ * (nenhum desses dados vive na própria Subscription) num só round-trip por tabela. */
+export async function listActiveSubscriptions(): Promise<AdminSubscriptionRow[]> {
+  const {
+    subscription: subRepo,
+    plan: planRepo,
+    tenant: tenantRepo,
+    billingCustomer: bcRepo
+  } = await repositories();
+
+  const subs = await subRepo.find({
+    where: { status: "active" },
+    order: { currentPeriodEnd: "ASC" }
+  });
+  if (!subs.length) return [];
+
+  const planIds = [...new Set(subs.map((s) => s.planId))];
+  const tenantIds = subs.map((s) => s.tenantId);
+
+  const [plans, tenants, customers] = await Promise.all([
+    planRepo.find({ where: { id: In(planIds) } }),
+    tenantRepo.find({ where: { id: In(tenantIds) } }),
+    bcRepo.find({ where: { tenantId: In(tenantIds) } })
+  ]);
+  const planById = new Map(plans.map((p) => [p.id, p]));
+  const tenantById = new Map(tenants.map((t) => [t.id, t]));
+  const customerByTenant = new Map(customers.map((c) => [c.tenantId, c]));
+
+  return subs.map((s) => {
+    const plan = planById.get(s.planId);
+    const tenant = tenantById.get(s.tenantId);
+    const customer = customerByTenant.get(s.tenantId);
+    return {
+      id: s.id,
+      tenantId: s.tenantId,
+      tenantName: tenant?.name ?? "—",
+      customerName: customer?.name ?? null,
+      customerEmail: customer?.email ?? null,
+      planId: s.planId,
+      planName: plan?.name ?? "—",
+      planSlug: plan?.slug ?? "—",
+      status: s.status,
+      provider: s.paymentProvider ?? null,
+      billingCycle: s.billingCycle,
+      currentPeriodEnd: s.currentPeriodEnd ? s.currentPeriodEnd.toISOString() : null,
+      cancelAtPeriodEnd: s.cancelAtPeriodEnd
+    };
+  });
 }
