@@ -399,48 +399,53 @@ export async function runAutomationEngine(
       ) {
         // Não-destrutivas como `alert_only` — sempre disparam, não respeitam executionMode
         // (não há nada pra "aprovar" ou "auto-executar" além do próprio envio do alerta).
-        const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
-        await alertRepo.save(
-          alertRepo.create({
-            tenantId,
-            clientId,
-            type: "OTHER",
-            severity: "warning",
-            source: "automation",
-            automationRuleId: rule.id,
-            title: `Automação: ${rule.name}`,
-            description,
-            metaCampaignId,
-            dismissed: false,
-            dedupDay: today
-          })
-        );
-        // Best-effort — o Alert acima já registra o disparo; o executor grava o
-        // resultado do envio (executed/failed) no log unificado.
-        const notifyPayload =
-          action.type === "notify_email"
-            ? action.recipientEmail
-              ? { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}` }
-              : null
-            : action.type === "notify_whatsapp"
-              ? action.recipientPhone
-                ? { recipientPhone: action.recipientPhone }
+        try {
+          const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
+          await alertRepo.save(
+            alertRepo.create({
+              tenantId,
+              clientId,
+              type: "OTHER",
+              severity: "warning",
+              source: "automation",
+              automationRuleId: rule.id,
+              title: `Automação: ${rule.name}`,
+              description,
+              metaCampaignId,
+              dismissed: false,
+              dedupDay: today
+            })
+          );
+          // Best-effort — o Alert acima já registra o disparo; o executor grava o
+          // resultado do envio (executed/failed) no log unificado.
+          const notifyPayload =
+            action.type === "notify_email"
+              ? action.recipientEmail
+                ? { recipientEmail: action.recipientEmail, subject: `[Orion] ${rule.name}` }
                 : null
-              : action.slackWebhookUrl
-                ? { slackWebhookUrl: action.slackWebhookUrl }
-                : null;
-        if (notifyPayload) {
-          await executeAction({
-            tenantId,
-            clientId,
-            source: "rule",
-            automationRuleId: rule.id,
-            metaCampaignId,
-            campaignName: meta?.name ?? null,
-            actionType: action.type,
-            payload: notifyPayload,
-            description: `${description}\n\nRegra: ${rule.name}`
-          });
+              : action.type === "notify_whatsapp"
+                ? action.recipientPhone
+                  ? { recipientPhone: action.recipientPhone }
+                  : null
+                : action.slackWebhookUrl
+                  ? { slackWebhookUrl: action.slackWebhookUrl }
+                  : null;
+          if (notifyPayload) {
+            await executeAction({
+              tenantId,
+              clientId,
+              source: "rule",
+              automationRuleId: rule.id,
+              metaCampaignId,
+              campaignName: meta?.name ?? null,
+              actionType: action.type,
+              payload: notifyPayload,
+              description: `${description}\n\nRegra: ${rule.name}`
+            });
+          }
+        } catch {
+          // dedup diário do Alert (índice único não inclui automationRuleId — outra regra
+          // pode já ter alertado esta campanha hoje) ou falha pontual; não derruba o motor.
         }
         continue;
       }
@@ -584,6 +589,9 @@ export async function runAutomationEngine(
       }
 
       if (action.type === "pause_campaign" && metaAccessToken) {
+        // Já pausada (por esta regra ou manualmente) — evita re-pausar via API a cada sync
+        // enquanto a condição continuar batendo (mesma guarda que reactivate_campaign já tem).
+        if (meta?.status === "PAUSED") continue;
         const description = `${meta?.name ?? metaCampaignId} — ${condDescription}`;
         try {
           if (mode === "auto") {

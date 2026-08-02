@@ -52,8 +52,7 @@ export function aggregateMetricValues(rows: DailyMetricRow[]): Record<string, nu
   let impressions = 0;
   let clicks = 0;
   let reach = 0;
-  let cplSum = 0;
-  let cplN = 0;
+  let leadsTotal = 0;
   let roasSum = 0;
   let roasN = 0;
   for (const r of rows) {
@@ -62,11 +61,7 @@ export function aggregateMetricValues(rows: DailyMetricRow[]): Record<string, nu
     impressions += num(r.impressions);
     clicks += num(r.clicks);
     reach += num(r.reach);
-    const leads = num(r.leads);
-    if (leads > 0) {
-      cplSum += num(r.spend) / leads;
-      cplN += 1;
-    }
+    leadsTotal += num(r.leads);
     const roas = num(r.roas);
     if (roas > 0) {
       roasSum += roas;
@@ -77,7 +72,10 @@ export function aggregateMetricValues(rows: DailyMetricRow[]): Record<string, nu
     spend,
     conversions,
     clicks,
-    cpl: cplN ? cplSum / cplN : 0,
+    // Gasto/leads da janela inteira — não a média dos dias com lead. Isso importa no pior
+    // caso: gasto alto e ZERO leads no período todo antes dava cpl=0 (parecia ótimo, porque
+    // nenhum dia com lead entrava na média) em vez de refletir o desperdício total.
+    cpl: leadsTotal > 0 ? spend / leadsTotal : spend > 0 ? Infinity : 0,
     cpa: conversions > 0 ? spend / conversions : 0,
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
     roas: roasN ? roasSum / roasN : 0,
@@ -147,7 +145,10 @@ export function describeHit(
   return groups
     .map((g) => {
       const text = g
-        .map((c) => `${c.metric}=${(metricValues[c.metric ?? ""] ?? 0).toFixed(2)} (limite ${c.value ?? 0})`)
+        .map((c) => {
+          const v = metricValues[c.metric ?? ""] ?? 0;
+          return `${c.metric}=${v === Infinity ? "∞ (sem leads)" : v.toFixed(2)} (limite ${c.value ?? 0})`;
+        })
         .join(" e ");
       return g.length > 1 && groups.length > 1 ? `(${text})` : text;
     })
