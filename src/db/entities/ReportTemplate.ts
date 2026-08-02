@@ -5,6 +5,8 @@ export type ReportTemplateConfig = {
   reportType: "simple" | "complete";
   metrics: string[];
   periodPreset?: string | null;
+  chartStyle?: "area" | "line" | "bar" | "composed";
+  chartSeriesStyles?: Record<string, "bar" | "line" | "area">;
 };
 
 /** Template de relatório (R3.11) — salva tipo + métricas + período padrão por tenant. */

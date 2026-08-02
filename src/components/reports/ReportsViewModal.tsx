@@ -7,6 +7,7 @@ import {
   LayoutList,
   PenLine,
   Sparkles,
+  Trophy,
   type LucideIcon
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -32,10 +33,11 @@ import {
   builtinToConfig,
   type BuiltinTemplateId
 } from "@/lib/reports/templates";
-import { DsButton } from "@/design-system";
+import { DsButton, DsSegmentedControl, type DsSegmentedOption } from "@/design-system";
 
 type ModalStep = "mode" | "standard" | "ai";
 type GenerationMode = "standard" | "ai";
+type ChartStyleChoice = "auto" | "area" | "line" | "bar" | "composed";
 
 type SavedTpl = { id: string; name: string; config: ReportTemplateConfig };
 
@@ -49,8 +51,13 @@ type Props = {
     kind: "single" | "consolidated";
     metrics?: string[];
     periodPreset?: string | null;
+    chartStyle?: "area" | "line" | "bar" | "composed";
+    chartSeriesStyles?: Record<string, "bar" | "line" | "area">;
   }) => void;
-  onGenerateAi: (prompt: string) => Promise<boolean>;
+  onGenerateAi: (
+    prompt: string,
+    chartStyleOverride?: "area" | "line" | "bar" | "composed"
+  ) => Promise<boolean>;
   aiBusy?: boolean;
   currentReportType: "simple" | "complete";
   currentConfig: ReportTemplateConfig;
@@ -129,6 +136,7 @@ export function ReportsViewModal({
   const [saveName, setSaveName] = useState("");
   const [saveBusy, setSaveBusy] = useState(false);
   const [prompt, setPrompt] = useState("");
+  const [chartStyleChoice, setChartStyleChoice] = useState<ChartStyleChoice>("auto");
 
   useEffect(() => {
     if (!open) {
@@ -137,6 +145,7 @@ export function ReportsViewModal({
       setSelectedTemplate(null);
       setReportType(currentReportType);
       setPrompt("");
+      setChartStyleChoice("auto");
       return;
     }
     setReportType(currentReportType);
@@ -192,7 +201,9 @@ export function ReportsViewModal({
         templateId: selectedSaved.id,
         kind: "single",
         metrics: c.metrics,
-        periodPreset: c.periodPreset
+        periodPreset: c.periodPreset,
+        chartStyle: c.chartStyle,
+        chartSeriesStyles: c.chartSeriesStyles
       });
       onClose();
       return;
@@ -205,7 +216,9 @@ export function ReportsViewModal({
         templateId: selectedBuiltin.id,
         kind: "single",
         metrics: c?.metrics,
-        periodPreset: c?.periodPreset
+        periodPreset: c?.periodPreset,
+        chartStyle: c?.chartStyle,
+        chartSeriesStyles: c?.chartSeriesStyles
       });
       onClose();
       return;
@@ -214,7 +227,8 @@ export function ReportsViewModal({
 
   async function handleAiGenerate() {
     if (!prompt.trim() || aiBusy) return;
-    const ok = await onGenerateAi(prompt.trim());
+    const override = chartStyleChoice === "auto" ? undefined : chartStyleChoice;
+    const ok = await onGenerateAi(prompt.trim(), override);
     if (ok) {
       void refreshCredits();
       onClose();
@@ -262,21 +276,43 @@ export function ReportsViewModal({
         primaryLoading={aiBusy}
         showPrimaryCheck={false}
       >
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              void handleAiGenerate();
-            }
-          }}
-          placeholder={t("aiGeneratePlaceholder")}
-          rows={4}
-          className="ui-input w-full resize-none text-sm"
-          disabled={aiBusy}
-          autoFocus
-        />
+        <div className="space-y-3">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                void handleAiGenerate();
+              }
+            }}
+            placeholder={t("aiGeneratePlaceholder")}
+            rows={4}
+            className="ui-input w-full resize-none text-sm"
+            disabled={aiBusy}
+            autoFocus
+          />
+          <div>
+            <span className="mb-1.5 block text-xs font-medium text-[var(--text-dim)]">
+              {t("aiChartStyleLabel")}
+            </span>
+            <DsSegmentedControl
+              value={chartStyleChoice}
+              onChange={setChartStyleChoice}
+              ariaLabel={t("aiChartStyleLabel")}
+              className="w-full"
+              options={
+                [
+                  { value: "auto", label: t("chartStyleAuto") },
+                  { value: "line", label: t("chartStyleLine") },
+                  { value: "area", label: t("chartStyleArea") },
+                  { value: "bar", label: t("chartStyleBar") },
+                  { value: "composed", label: t("chartStyleComposed") }
+                ] satisfies DsSegmentedOption<ChartStyleChoice>[]
+              }
+            />
+          </div>
+        </div>
       </CreatorAiModalShell>
     );
   }
@@ -338,7 +374,8 @@ export function ReportsViewModal({
             aria-label={t("templatesTitle")}
           >
             {BUILTIN_REPORT_TEMPLATES.map((tpl) => {
-              const Icon = tpl.kind === "consolidated" ? LayoutList : BarChart2;
+              const Icon =
+                tpl.kind === "consolidated" ? LayoutList : tpl.id === "creatives" ? Trophy : BarChart2;
               const title =
                 tpl.kind === "consolidated"
                   ? t("consolidatedButton")

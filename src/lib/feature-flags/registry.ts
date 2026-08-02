@@ -216,7 +216,7 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
   },
   {
     id: "brain",
-    label: "Agency Brain",
+    label: "Agency Cortex",
     description: "Módulo de inteligência/memória da agência.",
     children: [
       { id: "brain.learnings", label: "Aprendizados", description: "Feed e curadoria de aprendizados." },
@@ -237,7 +237,7 @@ export const FEATURE_REGISTRY: FeatureNode[] = [
         id: "brain.mcp",
         label: "Servidor MCP",
         description:
-          "Expõe o Agency Brain via MCP (Model Context Protocol) para ferramentas de IA externas.",
+          "Expõe o Agency Cortex via MCP (Model Context Protocol) para ferramentas de IA externas.",
         children: [
           {
             id: "brain.mcp.write",

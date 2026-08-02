@@ -27,7 +27,7 @@ const pt: LegalPageContent = {
         "Criação de públicos e personas",
         "Geração de relatórios e dashboards",
         "Recomendações, aprendizados e insights por inteligência artificial",
-        "Recursos de automação e otimização (Agency Brain e cientistas de pesquisa)",
+        "Recursos de automação e otimização (Agency Cortex e cientistas de pesquisa)",
         "Envio server-side de eventos de conversão para a Meta (Conversions API)"
       ]
     },
@@ -102,7 +102,7 @@ const pt: LegalPageContent = {
         "Gerenciar assinaturas e processar pagamentos",
         "Criar, sincronizar, exibir e analisar campanhas e métricas",
         "Gerar relatórios, dashboards, alertas e recomendações",
-        "Operar recursos de automação, Agency Brain e cientistas de pesquisa",
+        "Operar recursos de automação, Agency Cortex e cientistas de pesquisa",
         "Enviar eventos de conversão à Meta quando habilitado por você",
         "Detectar fraudes e monitorar segurança",
         "Melhorar nossos serviços e atender solicitações de suporte",
@@ -287,7 +287,7 @@ const en: LegalPageContent = {
         "Building audiences and personas",
         "Generating reports and dashboards",
         "AI-powered learnings, suggestions, and insights",
-        "Automation and optimization features (Agency Brain and research scientists)",
+        "Automation and optimization features (Agency Cortex and research scientists)",
         "Server-side conversion events to Meta (Conversions API)"
       ]
     },
@@ -362,7 +362,7 @@ const en: LegalPageContent = {
         "Manage subscriptions and process payments",
         "Create, sync, display, and analyze campaigns and metrics",
         "Generate reports, dashboards, alerts, and recommendations",
-        "Operate automation, Agency Brain, and research scientists",
+        "Operate automation, Agency Cortex, and research scientists",
         "Send conversion events to Meta when you enable it",
         "Detect fraud and monitor security",
         "Improve our services and handle support requests",

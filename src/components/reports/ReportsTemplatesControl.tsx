@@ -10,6 +10,8 @@ export type ReportTemplateConfig = {
   reportType: "simple" | "complete";
   metrics: string[];
   periodPreset?: string | null;
+  chartStyle?: "area" | "line" | "bar" | "composed";
+  chartSeriesStyles?: Record<string, "bar" | "line" | "area">;
 };
 
 type Tpl = { id: string; name: string; config: ReportTemplateConfig };

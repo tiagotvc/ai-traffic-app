@@ -12,7 +12,7 @@ export function BrainBreadcrumb({
   return (
     <nav className="mb-6 text-sm text-[var(--text-dim)]" aria-label="Breadcrumb">
       <Link href={parentHref} className="ui-link font-medium">
-        Agency Brain
+        Agency Cortex
       </Link>
       <span className="mx-2 text-[var(--text-dimmer)]">/</span>
       <span className="text-[var(--text-dim)]">{title}</span>

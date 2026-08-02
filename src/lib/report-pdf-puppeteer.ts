@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { MetricKey } from "@/lib/dashboard-metrics";
+import type { SeriesStyle } from "@/lib/dashboard/slot-visual-config";
 import { getAppBaseUrl } from "@/lib/app-url";
 import type { PeriodPreset } from "@/lib/report-period";
 import { createReportPrintToken } from "@/lib/report-print-token";
@@ -57,6 +58,8 @@ export async function renderReportPdfWithPuppeteer(input: {
   since?: string;
   until?: string;
   selectedMetrics?: MetricKey[];
+  chartStyle?: "area" | "line" | "bar" | "composed";
+  chartSeriesStyles?: Partial<Record<MetricKey, SeriesStyle>>;
 }): Promise<Uint8Array> {
   const token = createReportPrintToken({
     tenantId: input.tenantId,
@@ -68,7 +71,9 @@ export async function renderReportPdfWithPuppeteer(input: {
     preset: input.preset,
     since: input.since,
     until: input.until,
-    selectedMetrics: input.selectedMetrics
+    selectedMetrics: input.selectedMetrics,
+    chartStyle: input.chartStyle,
+    chartSeriesStyles: input.chartSeriesStyles
   });
 
   const locale = input.locale.startsWith("en") ? "en" : "pt-BR";

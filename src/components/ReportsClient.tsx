@@ -8,8 +8,10 @@ import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { GlobalScopeFilters } from "@/components/layout/GlobalScopeFilters";
 import { PageFilterBar } from "@/components/layout/PageFilterBar";
+import { ReportChartTypePicker } from "@/components/reports/ReportChartTypePicker";
 import { ReportMetricPicker } from "@/components/reports/ReportMetricPicker";
-import { ReportPreview } from "@/components/reports/ReportPreview";
+import { ReportPreview, type ReportChartStyle } from "@/components/reports/ReportPreview";
+import type { SeriesStyle } from "@/lib/dashboard/slot-visual-config";
 import {
   exportConsolidatedCsv,
   ReportsConsolidatedPreview,
@@ -58,6 +60,8 @@ export function ReportsClient() {
 
   const [reportType, setReportType] = useState<"simple" | "complete">("simple");
   const [selectedMetrics, setSelectedMetrics] = useState<MetricKey[]>(DEFAULT_REPORT_METRICS);
+  const [chartStyle, setChartStyle] = useState<ReportChartStyle>("line");
+  const [chartSeriesStyles, setChartSeriesStyles] = useState<Partial<Record<MetricKey, SeriesStyle>>>({});
   const [kpiOrder, setKpiOrder] = useState<MetricKey[]>([]);
   const [kpiEditMode, setKpiEditMode] = useState(false);
   const [preview, setPreview] = useState<ReportPreviewPayload | null>(null);
@@ -72,6 +76,12 @@ export function ReportsClient() {
   const [pendingAiGenerate, setPendingAiGenerate] = useState(false);
   const hasGeneratedRef = useRef(false);
   const skipFilterReloadRef = useRef(false);
+  // loadPreview/loadConsolidated resetam previewMode pra null e voltam pro valor final
+  // (single/consolidated) a cada chamada — se o effect de reload dependesse do state
+  // previewMode direto, essa oscilação interna virava um gatilho pra si mesma e o
+  // effect refazia o fetch pra sempre (loop infinito). Lido via ref, o effect só reage
+  // a mudança real de filtro.
+  const previewModeRef = useRef<PreviewMode>(null);
 
   const [reportsFlags, setReportsFlags] = useState<{
     v1: boolean;
@@ -205,8 +215,15 @@ export function ReportsClient() {
         setPreviewLoading(false);
       }
     },
-    [selectedClient, period, reportType, locale, t, tMetrics, selectedMetrics, adAccountId]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t/tMetrics só formatam mensagem de
+    // erro/label, nunca devem por si só disparar um novo fetch (next-intl não garante referência
+    // estável entre renders, e isso já causou um loop de recarregamento nesta tela).
+    [selectedClient, period, reportType, locale, selectedMetrics, adAccountId]
   );
+
+  useEffect(() => {
+    previewModeRef.current = previewMode;
+  }, [previewMode]);
 
   useEffect(() => {
     if (!hasGeneratedRef.current) return;
@@ -214,13 +231,17 @@ export function ReportsClient() {
       skipFilterReloadRef.current = false;
       return;
     }
-    if (previewMode === "consolidated") {
+    if (previewModeRef.current === "consolidated") {
       void loadConsolidated();
       return;
     }
-    if (previewMode === "single" && selectedClient) {
+    if (previewModeRef.current === "single" && selectedClient) {
       void loadPreview();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- previewMode é lido via ref
+    // (previewModeRef) de propósito: loadPreview/loadConsolidated oscilam esse state
+    // internamente (null -> single/consolidated) a cada chamada, e depender dele aqui
+    // recriava o próprio gatilho do effect, causando um loop infinito de fetch.
   }, [
     clientSlug,
     adAccountId,
@@ -229,7 +250,6 @@ export function ReportsClient() {
     period.until,
     selectedMetrics,
     reportType,
-    previewMode,
     loadConsolidated,
     loadPreview,
     selectedClient
@@ -256,6 +276,10 @@ export function ReportsClient() {
     qs.set("type", reportType);
     qs.set("locale", locale);
     qs.set("metrics", kpiMetrics.join(","));
+    qs.set("chartStyle", chartStyle);
+    if (Object.keys(chartSeriesStyles).length) {
+      qs.set("chartSeriesStyles", JSON.stringify(chartSeriesStyles));
+    }
     if (preview.breakdowns?.length) {
       const types = preview.breakdowns.map((b) => b.type);
       const layout = mergeBreakdownLayout(types, loadReportBreakdownLayout());
@@ -278,7 +302,9 @@ export function ReportsClient() {
     adAccountId,
     selectedMetrics,
     preview?.client.goalMetric,
-    tMetrics
+    tMetrics,
+    chartStyle,
+    chartSeriesStyles
   ]);
 
   useEffect(() => {
@@ -288,7 +314,10 @@ export function ReportsClient() {
     void loadPreview();
   }, [pendingAiGenerate, selectedClient, loadPreview]);
 
-  async function generateByAi(prompt: string): Promise<boolean> {
+  async function generateByAi(
+    prompt: string,
+    chartStyleOverride?: ReportChartStyle
+  ): Promise<boolean> {
     if (!prompt.trim() || !strip) return false;
     setAiBusy(true);
     setMessage(null);
@@ -308,6 +337,7 @@ export function ReportsClient() {
         periodPreset: string;
         reportType: "simple" | "complete";
         metrics: string[];
+        chartStyle?: ReportChartStyle;
       };
       if (c.clientSlug) strip.setClientFilter(c.clientSlug);
       if (c.periodPreset)
@@ -317,6 +347,13 @@ export function ReportsClient() {
         const valid = c.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[];
         if (valid.length) setSelectedMetrics(valid.slice(0, 6));
       }
+      if (chartStyleOverride) {
+        setChartStyle(chartStyleOverride);
+      } else if (c.chartStyle) {
+        setChartStyle(c.chartStyle);
+      }
+      const warnings = Array.isArray(j.warnings) ? (j.warnings as string[]) : [];
+      if (warnings.length) setMessage(warnings.join(" "));
       setPendingAiGenerate(true);
       return true;
     } catch {
@@ -332,6 +369,8 @@ export function ReportsClient() {
     kind: "single" | "consolidated";
     metrics?: string[];
     periodPreset?: string | null;
+    chartStyle?: ReportChartStyle;
+    chartSeriesStyles?: Record<string, SeriesStyle>;
   }) {
     skipFilterReloadRef.current = true;
 
@@ -350,6 +389,10 @@ export function ReportsClient() {
 
     if (config.reportType) setReportType(config.reportType);
     if (nextMetrics?.length) setSelectedMetrics(nextMetrics);
+    if (config.chartStyle) setChartStyle(config.chartStyle);
+    if (config.chartSeriesStyles) {
+      setChartSeriesStyles(config.chartSeriesStyles as Partial<Record<MetricKey, SeriesStyle>>);
+    }
     if (config.periodPreset && strip) {
       strip.setPeriod({
         preset: config.periodPreset as PeriodState["preset"],
@@ -389,7 +432,9 @@ export function ReportsClient() {
   const currentTemplateConfig: ReportTemplateConfig = {
     reportType,
     metrics: selectedMetrics,
-    periodPreset: period.preset
+    periodPreset: period.preset,
+    chartStyle,
+    chartSeriesStyles: chartSeriesStyles as Record<string, SeriesStyle>
   };
 
   return (
@@ -447,6 +492,17 @@ export function ReportsClient() {
               ) : null}
               {reportsFlags.v1 ? (
                 <ReportMetricPicker selected={selectedMetrics} onChange={setSelectedMetrics} />
+              ) : null}
+              {reportsFlags.v1 ? (
+                <ReportChartTypePicker
+                  chartStyle={chartStyle}
+                  chartSeriesStyles={chartSeriesStyles}
+                  chartMetrics={selectedMetrics.slice(0, 3)}
+                  onChange={(style, seriesStyles) => {
+                    setChartStyle(style);
+                    setChartSeriesStyles(seriesStyles);
+                  }}
+                />
               ) : null}
             </PageFilterBar>
           </>
@@ -510,6 +566,8 @@ export function ReportsClient() {
                 reportType={reportType}
                 periodQuery={periodQuery}
                 adAccountId={adAccountId || undefined}
+                chartStyle={chartStyle}
+                chartSeriesStyles={chartSeriesStyles}
               />
             ) : null}
           </div>

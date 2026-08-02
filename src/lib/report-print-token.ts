@@ -3,6 +3,7 @@ import "server-only";
 import crypto from "node:crypto";
 
 import type { MetricKey } from "@/lib/dashboard-metrics";
+import type { SeriesStyle } from "@/lib/dashboard/slot-visual-config";
 import type { PeriodPreset } from "@/lib/report-period";
 import { getAuthSecret } from "@/lib/auth-secret";
 
@@ -17,6 +18,8 @@ export type ReportPrintTokenPayload = {
   since?: string;
   until?: string;
   selectedMetrics?: MetricKey[];
+  chartStyle?: "area" | "line" | "bar" | "composed";
+  chartSeriesStyles?: Partial<Record<MetricKey, SeriesStyle>>;
   exp: number;
 };
 

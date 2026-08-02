@@ -54,6 +54,23 @@ function startTunnel() {
   });
 }
 
+/** Espera o Next responder de verdade antes de anunciar a URL — sem isso, quem
+ * abre o link assim que o túnel fica no ar pode pegar o servidor ainda subindo
+ * (primeira compilação do Turbopack) e ver um 404/erro transitório. */
+async function waitForServer(timeoutMs = 60000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await fetch(`http://localhost:${PORT}/`, { redirect: "manual" });
+      if (res.status < 500) return true;
+    } catch {
+      /* servidor ainda não está escutando — tenta de novo */
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return false;
+}
+
 function startNext(url) {
   // Passa a URL nova direto no env do processo filho — não basta reescrever o .env
   // no disco, porque este script já carregou o .env antigo em process.env via
@@ -81,6 +98,15 @@ async function main() {
 
   console.log("[dev-tunnel] subindo next dev...");
   const nextProc = startNext(url);
+
+  const ready = await waitForServer();
+  if (ready) {
+    console.log(`\n[dev-tunnel] tudo pronto — acesse: ${url}\n`);
+  } else {
+    console.log(
+      "\n[dev-tunnel] o Next demorou mais que o esperado pra responder — espere mais um pouco antes de acessar.\n"
+    );
+  }
 
   const shutdown = () => {
     tunnelProc.kill();

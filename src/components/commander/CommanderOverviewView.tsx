@@ -1,12 +1,60 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, Sparkles, Zap } from "lucide-react";
+import { Activity, ArrowRight, Sparkles, Zap } from "lucide-react";
 
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PageToolbar } from "@/components/layout/PageToolbar";
-import { AutomationsClient } from "@/components/AutomationsClient";
+import { Link } from "@/i18n/navigation";
 import { useCommanderPreferences } from "@/components/commander/useCommanderPreferences";
+
+type RuleSummary = { id: string; enabled: boolean };
+
+/**
+ * Resumo enxuto — a criação/edição de regras de verdade (wizard com Gatilho/Ação/Revisão,
+ * incluindo o backtest "economia estimada") vive em /automations. Duplicar aquele fluxo aqui
+ * dentro já causou duas versões divergentes da mesma feature (uma delas sem o backtest).
+ */
+function RulesTabSummary() {
+  const [rules, setRules] = useState<RuleSummary[] | null>(null);
+
+  useEffect(() => {
+    fetch("/api/automation/rules")
+      .then((r) => r.json())
+      .then((j) => setRules((j.rules ?? []) as RuleSummary[]))
+      .catch(() => setRules([]));
+  }, []);
+
+  const active = rules?.filter((r) => r.enabled).length ?? 0;
+  const paused = rules ? rules.length - active : 0;
+
+  return (
+    <div className="campaign-creator-card flex flex-wrap items-center gap-4 p-4">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">
+        <Zap size={17} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="font-heading text-sm font-semibold text-[var(--text-main)]">
+          Regras de automação
+        </div>
+        <p className="mt-1 font-body text-[11px] text-[var(--text-dimmer)]">
+          {rules === null
+            ? "Carregando…"
+            : rules.length === 0
+              ? "Nenhuma regra criada ainda."
+              : `${active} ativa${active === 1 ? "" : "s"} · ${paused} pausada${paused === 1 ? "" : "s"} de ${rules.length} no total.`}
+        </p>
+      </div>
+      <Link
+        href="/automations"
+        className="ui-btn-accent-outline inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
+      >
+        Ver regras
+        <ArrowRight size={13} />
+      </Link>
+    </div>
+  );
+}
 
 type ActivityRow = {
   id: string;
@@ -176,7 +224,7 @@ export function CommanderOverviewView() {
           })}
         </div>
 
-        {innerTab === "rules" ? <AutomationsClient /> : <HistoryPanel />}
+        {innerTab === "rules" ? <RulesTabSummary /> : <HistoryPanel />}
       </div>
     </AppPageShell>
   );

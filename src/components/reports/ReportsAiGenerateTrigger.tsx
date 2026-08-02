@@ -10,7 +10,7 @@ import { useAiCredits } from "@/hooks/useAiCredits";
 import type { AiCreditKind } from "@/lib/ai-credits/types";
 
 export const REPORT_AI_CREDITS = {
-  kind: "generic" as const satisfies AiCreditKind,
+  kind: "report_ai_config" as const satisfies AiCreditKind,
   calls: 1
 };
 

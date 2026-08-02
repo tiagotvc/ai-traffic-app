@@ -1,12 +1,14 @@
 import "server-only";
 
+import { In } from "typeorm";
+
 import { repositories } from "@/db/repositories";
 import { isDemoClient, isSystemDefaultClient } from "@/lib/demo-data";
 import { getEntitlements } from "@/lib/billing/entitlements";
 
-import { CM_AI_ACTION_TYPES } from "./defaults";
+import { AI_CREDIT_KIND_LABEL, CM_AI_ACTION_TYPES } from "./defaults";
 import { getTenantAiPolicy } from "./policy-service";
-import type { AiCreditsUsageDto } from "./types";
+import type { AiCreditKind, AiCreditsUsageDto } from "./types";
 
 function monthStart(): Date {
   const d = new Date();
@@ -128,4 +130,43 @@ export async function buildAiCreditsUsage(tenantId: string): Promise<AiCreditsUs
     atLimit,
     byClient
   };
+}
+
+export type CreditUsageLogEntry = {
+  id: string;
+  createdAt: Date;
+  kind: string | null;
+  label: string;
+  creditsCharged: number;
+  clientName: string | null;
+};
+
+/** Histórico de uso de crédito pra exibir em "Uso de Crédito" (settings) — todo tipo, não só IA. */
+export async function getRecentCreditUsageLog(
+  tenantId: string,
+  limit = 30
+): Promise<CreditUsageLogEntry[]> {
+  const { aiRecommendation: recRepo, client: clientRepo } = await repositories();
+  const rows = await recRepo.find({
+    where: { tenantId },
+    order: { createdAt: "DESC" },
+    take: limit
+  });
+
+  const clientIds = [...new Set(rows.map((r) => r.clientId).filter((id): id is string => Boolean(id)))];
+  const clients = clientIds.length ? await clientRepo.find({ where: { id: In(clientIds) } }) : [];
+  const nameById = new Map(clients.map((c) => [c.id, c.name]));
+
+  return rows.map((r) => {
+    const payload = r.payload as Record<string, unknown> | null;
+    const kind = (payload?.kind as AiCreditKind | undefined) ?? null;
+    return {
+      id: r.id,
+      createdAt: r.createdAt,
+      kind,
+      label: kind ? (AI_CREDIT_KIND_LABEL[kind] ?? kind) : r.actionType,
+      creditsCharged: r.creditsCharged,
+      clientName: r.clientId ? (nameById.get(r.clientId) ?? null) : null
+    };
+  });
 }

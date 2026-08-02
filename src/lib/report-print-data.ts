@@ -4,6 +4,7 @@ import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { repositories } from "@/db/repositories";
 import { resolveRanges } from "@/lib/dashboard-ranges";
 import type { MetricKey } from "@/lib/dashboard-metrics";
+import type { SeriesStyle } from "@/lib/dashboard/slot-visual-config";
 import { DEFAULT_REPORT_METRICS } from "@/lib/report-preview-types";
 import { buildReportPreview } from "@/lib/report-preview-data";
 import {
@@ -28,7 +29,24 @@ export type ReportPrintQuery = {
   since?: string;
   until?: string;
   metrics?: string;
+  chartStyle?: string;
+  chartSeriesStyles?: string;
 };
+
+type ReportChartStyleValue = "area" | "line" | "bar" | "composed";
+
+function parseChartStyle(raw?: string): ReportChartStyleValue {
+  return raw === "area" || raw === "bar" || raw === "composed" ? raw : "line";
+}
+
+function parseChartSeriesStyles(raw?: string): Partial<Record<MetricKey, SeriesStyle>> {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Partial<Record<MetricKey, SeriesStyle>>;
+  } catch {
+    return {};
+  }
+}
 
 export function periodQueryFromParts(input: {
   preset: PeriodPreset;
@@ -152,6 +170,8 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       reportType: token.reportType,
       locale: token.locale,
       selectedMetrics: token.selectedMetrics ?? selectedMetrics,
+      chartStyle: token.chartStyle ?? parseChartStyle(query.chartStyle),
+      chartSeriesStyles: token.chartSeriesStyles ?? parseChartSeriesStyles(query.chartSeriesStyles),
       periodQuery: periodQueryFromParts({ preset, since, until }),
       adAccountId,
       brandName: tenant?.brandName ?? tenant?.name ?? null,
@@ -189,6 +209,8 @@ export async function loadReportPrintBundle(query: ReportPrintQuery) {
       reportType: reportType as "simple" | "complete",
       locale,
       selectedMetrics,
+      chartStyle: parseChartStyle(query.chartStyle),
+      chartSeriesStyles: parseChartSeriesStyles(query.chartSeriesStyles),
       periodQuery: periodQueryFromParts({ preset, since, until }),
       adAccountId,
       brandName: tenant.brandName ?? tenant.name,

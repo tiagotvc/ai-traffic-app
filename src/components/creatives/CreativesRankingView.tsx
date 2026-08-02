@@ -112,7 +112,10 @@ export function CreativesRankingView({
         setLoadError(e.message || t("errorLoad"));
       })
       .finally(() => setLoading(false));
-  }, [clientId, periodQuery, adAccountId, accountsLoading, initialGroups, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t só formata a mensagem de erro; não
+    // deve disparar novo fetch (next-intl não garante t estável entre renders, e isso já causou
+    // um loop de recarregamento nesta tela).
+  }, [clientId, periodQuery, adAccountId, accountsLoading, initialGroups]);
 
   useEffect(() => {
     load();

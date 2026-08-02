@@ -28,7 +28,9 @@ export default async function ReportPrintPage({
     period: pick(raw.period),
     since: pick(raw.since),
     until: pick(raw.until),
-    metrics: pick(raw.metrics)
+    metrics: pick(raw.metrics),
+    chartStyle: pick(raw.chartStyle),
+    chartSeriesStyles: pick(raw.chartSeriesStyles)
   };
 
   const breakdownLayout = parseBreakdownLayoutParam(pick(raw.breakdownLayout));
@@ -58,6 +60,8 @@ export default async function ReportPrintPage({
           brandName={bundle.brandName ?? undefined}
           logoUrl={bundle.logoUrl ?? undefined}
           variant="print"
+          chartStyle={bundle.chartStyle}
+          chartSeriesStyles={bundle.chartSeriesStyles}
         />
       </ReportPrintReady>
     </>

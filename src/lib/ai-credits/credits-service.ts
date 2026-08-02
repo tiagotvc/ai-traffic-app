@@ -5,6 +5,7 @@ import { PlanLimitError } from "@/lib/billing/entitlements";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import type { GeminiGenerateMeta } from "@/lib/gemini";
 
+import { AI_CREDIT_KIND_LABEL } from "./defaults";
 import { getAiCreditWeights, getAiCreditsFeatureFlags, isAiCreditsV2Enabled } from "./feature-flags";
 import { getClientAiSettings, getTenantAiPolicy } from "./policy-service";
 import {
@@ -177,33 +178,7 @@ const KIND_TARGET: Record<AiCreditKind, string> = {
   market_learnings: "agency_brain"
 };
 
-const KIND_LABEL: Record<AiCreditKind, string> = {
-  chat: "Agency Brain (chat)",
-  chat_with_proposals: "Agency Brain (chat com propostas)",
-  learnings: "Memória Criativa (learnings)",
-  actions: "Memória Criativa (actions)",
-  hypotheses: "Agency Brain (hypotheses)",
-  recommendations: "Recomendação",
-  audience_suggestions: "Segmentação de público",
-  campaign_generate: "Campanha gerada com IA",
-  creator_brain: "Insight do Criador de Campanha",
-  generic: "IA",
-  campaign_publish: "Campanha publicada",
-  adset_publish: "Conjunto publicado",
-  ad_publish: "Anúncio publicado",
-  persona_save: "Persona salva",
-  zone_save: "Zona salva",
-  creative_upload: "Criativo enviado",
-  persona_generate: "Persona gerada com IA",
-  zone_generate: "Zona gerada com IA",
-  ad_copy_generate: "Copy gerada com IA",
-  creative_variant_generate: "Variação de criativo gerada com IA",
-  persona_insights: "Insight de persona",
-  geo_insights: "Geo Scientist",
-  report_ai_config: "Relatório por IA",
-  commander_verdict: "Veredito do Commander",
-  market_learnings: "Aprendizados de mercado"
-};
+const KIND_LABEL = AI_CREDIT_KIND_LABEL;
 
 export async function recordAiCreditUsage(args: {
   tenantId: string;
