@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { repositories } from "@/db/repositories";
 import { requireBillingAdmin } from "@/lib/billing/admin-auth";
-import { getBillingProvider } from "@/lib/billing/providers";
+import { processRefundRequest } from "@/lib/billing/refund-service";
 
 export async function GET() {
   const gate = await requireBillingAdmin();
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const email = gate.email;
   try {
     const body = actionSchema.parse(await req.json());
-    const { refundRequest: refRepo, invoice: invRepo, user: userRepo } = await repositories();
+    const { refundRequest: refRepo, user: userRepo } = await repositories();
     const row = await refRepo.findOne({ where: { id: body.id } });
     if (!row || row.status !== "pending") {
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
@@ -41,21 +41,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, refund: row });
     }
 
-    const inv = await invRepo.findOne({ where: { id: row.invoiceId } });
-    if (!inv?.externalPaymentId) {
-      return NextResponse.json({ ok: false, error: "No payment id" }, { status: 400 });
+    const result = await processRefundRequest(row.id, admin?.id ?? null, body.note ?? null);
+    if (!result.ok) {
+      return NextResponse.json({ ok: false, error: result.error }, { status: 400 });
     }
-    const provider = getBillingProvider(row.provider);
-    const result = await provider.refundPayment(inv.externalPaymentId);
-    inv.status = "refunded";
-    await invRepo.save(inv);
-    row.status = "processed";
-    row.externalRefundId = result.id;
-    row.reviewedByUserId = admin?.id ?? null;
-    row.reviewedAt = new Date();
-    row.reviewNote = body.note ?? null;
-    await refRepo.save(row);
-    return NextResponse.json({ ok: true, refund: row });
+    return NextResponse.json({ ok: true, refund: result.refund });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : "Error" },

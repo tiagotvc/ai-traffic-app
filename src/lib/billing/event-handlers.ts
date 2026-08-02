@@ -3,6 +3,7 @@ import "server-only";
 import { repositories } from "@/db/repositories";
 import type { Subscription } from "@/db/entities/Subscription";
 import { emitAsaasNotaFiscal, authorizeAsaasNotaFiscal } from "@/lib/asaas/nota-fiscal";
+import { getBillingProvider } from "@/lib/billing/providers";
 import { trackServerPurchase } from "@/lib/server-analytics";
 import { enqueueBillingJob } from "./jobs";
 import { recordCouponRedemption } from "./coupons";
@@ -66,6 +67,14 @@ export async function activateProSubscription(
       cancelAtPeriodEnd: false
     });
   } else {
+    // Troca de plano (upgrade/downgrade): o checkout sempre cria uma assinatura NOVA no
+    // provedor — sem cancelar a antiga aqui, ela fica órfã cobrando pra sempre (o tenant
+    // paga duas vezes) e some do nosso rastro, já que este é o único lugar que guarda o
+    // externalSubscriptionId. Só dispara quando o id realmente mudou (renovação normal
+    // reusa o mesmo id de assinatura, nada a cancelar).
+    const previousProvider = sub.paymentProvider;
+    const previousExternalId = sub.externalSubscriptionId;
+
     if (!isRenewal) sub.currentPeriodStart = now;
     sub.planId = planId;
     sub.status = "active";
@@ -78,6 +87,22 @@ export async function activateProSubscription(
     if (!isRenewal) {
       sub.canceledAt = null;
       sub.cancelAtPeriodEnd = false;
+    }
+
+    if (
+      previousProvider &&
+      previousExternalId &&
+      externalSubscriptionId &&
+      previousExternalId !== externalSubscriptionId
+    ) {
+      try {
+        await getBillingProvider(previousProvider).cancelSubscription(previousExternalId, false);
+      } catch (err) {
+        console.error(
+          `[billing] falha ao cancelar assinatura anterior na troca de plano (tenant=${tenantId}, old=${previousExternalId})`,
+          err
+        );
+      }
     }
   }
   await subRepo.save(sub);
@@ -360,6 +385,66 @@ export async function processSubscriptionCanceled(payload: Record<string, unknow
   await downgradeOrDeferCancellation(tenantId, "subscription_canceled");
 }
 
+/**
+ * Reembolso/chargeback efetivado → o tenant perde os acessos pagos AGORA, sem esperar fim de
+ * período: mesmo tratamento de um cancelamento fora de banda (downgrade imediato pro plano
+ * free), nunca o caminho "defer" que `downgradeOrDeferCancellation` usa pra cancelamento
+ * gracioso — dinheiro já voltou, não faz sentido esperar. Log bem verboso de propósito: é
+ * dinheiro saindo da conta do tenant, precisa ser fácil de auditar depois quem/quando/por quê.
+ */
+export async function downgradeTenantForRefund(
+  tenantId: string,
+  context: { reason: string; invoiceId?: string | null; requestId?: string | null; externalRefundId?: string | null }
+): Promise<void> {
+  const logCtx = `tenantId=${tenantId} reason=${context.reason} invoiceId=${context.invoiceId ?? "-"} requestId=${context.requestId ?? "-"} externalRefundId=${context.externalRefundId ?? "-"}`;
+  console.log(`[billing-refund] iniciando downgrade por reembolso — ${logCtx}`);
+
+  const { subscription: subRepo, plan: planRepo } = await repositories();
+  const sub = await subRepo.findOne({ where: { tenantId } });
+  if (!sub) {
+    console.warn(`[billing-refund] nenhuma subscription encontrada pro tenant, nada a fazer — ${logCtx}`);
+    return;
+  }
+
+  const before = {
+    planId: sub.planId,
+    status: sub.status,
+    externalSubscriptionId: sub.externalSubscriptionId,
+    cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+    currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null
+  };
+  console.log(`[billing-refund] estado ANTES do downgrade — ${logCtx} before=${JSON.stringify(before)}`);
+
+  if (sub.status === "canceled") {
+    console.log(`[billing-refund] subscription já estava canceled, nada a fazer — ${logCtx}`);
+    return;
+  }
+
+  const freePlan = await planRepo.findOne({ where: { slug: "free" } });
+  if (!freePlan) {
+    console.error(`[billing-refund] FALHA: plano free não encontrado, downgrade não aplicado — ${logCtx}`);
+    return;
+  }
+
+  const now = new Date();
+  sub.planId = freePlan.id;
+  sub.status = "canceled";
+  sub.canceledAt = now;
+  sub.externalSubscriptionId = null;
+  sub.cancelAtPeriodEnd = false;
+  sub.gracePeriodEndsAt = null;
+  await subRepo.save(sub);
+
+  const after = {
+    planId: sub.planId,
+    status: sub.status,
+    canceledAt: sub.canceledAt.toISOString()
+  };
+  console.log(
+    `[billing-refund] downgrade aplicado com sucesso — ${logCtx} before=${JSON.stringify(before)} after=${JSON.stringify(after)}`
+  );
+}
+
 /** PAYMENT_REFUNDED / PAYMENT_PARTIALLY_REFUNDED (Asaas) e charge.refunded / refund.created (Stripe). */
 export async function processPaymentRefunded(payload: Record<string, unknown>) {
   const invoiceId = payload.invoiceId as string | undefined;
@@ -373,11 +458,18 @@ export async function processPaymentRefunded(payload: Record<string, unknown>) {
   if (!inv) return;
   inv.status = partial ? "partially_refunded" : "refunded";
   await invRepo.save(inv);
-  // Decisão de negócio (suspender ou não a assinatura) fica para revisão manual — só registramos
-  // o estado da fatura e deixamos bem visível no log/aba de eventos do billing.
   console.warn(
-    `[billing-jobs] REEMBOLSO registrado invoiceId=${invoiceId} tenantId=${inv.tenantId} partial=${partial} — revisar assinatura manualmente`
+    `[billing-jobs] REEMBOLSO registrado invoiceId=${invoiceId} tenantId=${inv.tenantId} partial=${partial}`
   );
+  // Reembolso parcial (desconto pontual, cortesia) não derruba o acesso sozinho — só o
+  // reembolso total do valor da fatura significa "esta cobrança nunca deveria ter existido".
+  if (!partial) {
+    await downgradeTenantForRefund(inv.tenantId, {
+      reason: "payment_refunded_webhook",
+      invoiceId: inv.id,
+      externalRefundId: (payload.refundId as string | undefined) ?? null
+    });
+  }
 }
 
 /** PAYMENT_CHARGEBACK_REQUESTED (Asaas) e charge.dispute.created (Stripe). */
@@ -392,9 +484,11 @@ export async function processPaymentChargeback(payload: Record<string, unknown>)
   if (!inv) return;
   inv.status = "chargeback";
   await invRepo.save(inv);
-  console.warn(
-    `[billing-jobs] CHARGEBACK registrado invoiceId=${invoiceId} tenantId=${inv.tenantId} — revisar assinatura manualmente`
-  );
+  console.warn(`[billing-jobs] CHARGEBACK registrado invoiceId=${invoiceId} tenantId=${inv.tenantId}`);
+  await downgradeTenantForRefund(inv.tenantId, {
+    reason: "payment_chargeback_webhook",
+    invoiceId: inv.id
+  });
 }
 
 /** SUBSCRIPTION_INACTIVATED (Asaas) — o próprio provedor decidiu inativar, não é iniciativa nossa. */
