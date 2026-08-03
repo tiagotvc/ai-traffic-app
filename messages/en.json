@@ -6001,6 +6001,8 @@
     "financeActiveSubs": "active subscriptions",
     "financePending": "Pending",
     "financeRefunded": "Refunded",
+    "financeFees": "Fees paid to provider",
+    "financeNetRevenue": "Net revenue",
     "financeProviderBalance": "Provider balance",
     "financeOpenDashboard": "Open dashboard",
     "financeRecentInvoices": "Recent invoices",

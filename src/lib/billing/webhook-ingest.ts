@@ -152,6 +152,13 @@ async function buildJobPayload(event: WebhookEvent): Promise<Record<string, unkn
       const inv = payment.id
         ? await invRepo.findOne({ where: { externalPaymentId: payment.id as string } })
         : null;
+      // netValue é o valor líquido já com a taxa da Asaas descontada — dá pra calcular a
+      // taxa sem chamada extra à API. Só presente quando o pagamento já foi processado
+      // (ausente em PAYMENT_CREATED, por exemplo), daí o cálculo condicional.
+      const grossCents = Math.round(Number(payment.value ?? 0) * 100);
+      const netCents =
+        typeof payment.netValue === "number" ? Math.round(payment.netValue * 100) : undefined;
+
       return {
         tenantId: tenantId ?? inv?.tenantId,
         invoiceId: inv?.id,
@@ -159,7 +166,9 @@ async function buildJobPayload(event: WebhookEvent): Promise<Record<string, unkn
         planId: inv?.planId,
         billingCycle: inv?.billingCycle ?? "monthly",
         provider: "asaas",
-        amountCents: Math.round(Number(payment.value ?? 0) * 100),
+        amountCents: grossCents,
+        netCents,
+        feeCents: netCents != null ? grossCents - netCents : undefined,
         externalCustomerId: customerId,
         externalSubscriptionId: payment.subscription ?? null,
         paymentStatus: payment.status ?? null,

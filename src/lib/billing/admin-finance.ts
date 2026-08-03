@@ -69,6 +69,25 @@ export async function getFinanceSummary(filter?: PeriodFilter) {
     count: string;
   }>();
 
+  // Taxa cobrada pela provedora (Asaas: gross - netValue do próprio payment, capturado no
+  // webhook; Stripe ainda não popula feeCents — precisaria da Balance Transaction, feito
+  // quando houver receita real no Stripe pra validar contra).
+  const feeQb = invRepo
+    .createQueryBuilder("inv")
+    .select("inv.provider", "provider")
+    .addSelect("inv.currency", "currency")
+    .addSelect("SUM(inv.feeCents)", "feeCents")
+    .where("inv.status = :paid", { paid: "paid" })
+    .andWhere("inv.feeCents IS NOT NULL")
+    .groupBy("inv.provider")
+    .addGroupBy("inv.currency");
+
+  const feeRows = await feeQb.getRawMany<{
+    provider: PaymentProvider;
+    currency: string;
+    feeCents: string;
+  }>();
+
   const activeSubs = await subRepo.find({ where: { status: "active" } });
   const plans = await planRepo.find();
   const planMap = new Map(plans.map((p) => [p.id, p]));
@@ -94,8 +113,8 @@ export async function getFinanceSummary(filter?: PeriodFilter) {
   }
 
   const providers = {
-    asaas: buildProviderBlock("asaas", "BRL", revenueRows, pendingRows, refundedRows, mrrByProvider),
-    stripe: buildProviderBlock("stripe", "USD", revenueRows, pendingRows, refundedRows, mrrByProvider)
+    asaas: buildProviderBlock("asaas", "BRL", revenueRows, pendingRows, refundedRows, feeRows, mrrByProvider),
+    stripe: buildProviderBlock("stripe", "USD", revenueRows, pendingRows, refundedRows, feeRows, mrrByProvider)
   };
 
   return { providers, generatedAt: new Date().toISOString() };
@@ -107,13 +126,16 @@ function buildProviderBlock(
   revenueRows: Array<{ provider: string; currency: string; revenueCents: string; count: string }>,
   pendingRows: Array<{ provider: string; currency: string; pendingCents: string; count: string }>,
   refundedRows: Array<{ provider: string; currency: string; refundedCents: string; count: string }>,
+  feeRows: Array<{ provider: string; currency: string; feeCents: string }>,
   mrrByProvider: Record<string, { cents: number; currency: string; count: number }>
 ) {
   const rev = revenueRows.find((r) => r.provider === provider);
   const pend = pendingRows.find((r) => r.provider === provider);
   const ref = refundedRows.find((r) => r.provider === provider);
+  const fee = feeRows.find((r) => r.provider === provider);
   const mrrKey = Object.keys(mrrByProvider).find((k) => k.startsWith(`${provider}:`));
   const mrr = mrrKey ? mrrByProvider[mrrKey] : null;
+  const feeCents = Number(fee?.feeCents ?? 0);
 
   return {
     provider,
@@ -124,6 +146,11 @@ function buildProviderBlock(
     pendingCount: Number(pend?.count ?? 0),
     refundedCents: Number(ref?.refundedCents ?? 0),
     refundedCount: Number(ref?.count ?? 0),
+    // feeCents só reflete faturas que a provedora informou o valor líquido no momento do
+    // pagamento (hoje: Asaas). Faturas mais antigas, pagas antes desse campo existir, entram
+    // como 0 aqui — não é "sem taxa", é "não capturamos essa taxa".
+    feeCents,
+    netRevenueCents: Number(rev?.revenueCents ?? 0) - feeCents,
     mrrCents: mrr?.cents ?? 0,
     activeSubscriptions: mrr?.count ?? 0
   };

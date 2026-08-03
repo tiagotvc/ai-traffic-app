@@ -168,6 +168,8 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
       }
       if (typeof payload.amountCents === "number") inv.amountCents = payload.amountCents;
       if (typeof payload.taxCents === "number") inv.taxCents = payload.taxCents;
+      if (typeof payload.feeCents === "number") inv.feeCents = payload.feeCents;
+      if (typeof payload.netCents === "number") inv.netCents = payload.netCents;
       if (provider === "asaas") inv.nfStatus = "pending";
       await invRepo.save(inv);
 
@@ -217,7 +219,9 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
         status: "paid",
         paidAt: new Date(),
         nfStatus: provider === "asaas" ? "pending" : "not_applicable",
-        description: "Assinatura Orion Agency"
+        description: "Assinatura Orion Agency",
+        feeCents: typeof payload.feeCents === "number" ? payload.feeCents : null,
+        netCents: typeof payload.netCents === "number" ? payload.netCents : null
       })
     );
 

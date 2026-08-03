@@ -6005,6 +6005,8 @@
     "financeActiveSubs": "assinaturas ativas",
     "financePending": "Pendente",
     "financeRefunded": "Reembolsado",
+    "financeFees": "Taxas pagas à provedora",
+    "financeNetRevenue": "Receita líquida",
     "financeProviderBalance": "Saldo na provedora",
     "financeOpenDashboard": "Abrir dashboard",
     "financeRecentInvoices": "Últimas faturas",
