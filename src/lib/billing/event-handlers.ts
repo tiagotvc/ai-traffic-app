@@ -5,7 +5,7 @@ import type { Subscription } from "@/db/entities/Subscription";
 import { emitAsaasNotaFiscal, authorizeAsaasNotaFiscal } from "@/lib/asaas/nota-fiscal";
 import { getBillingProvider } from "@/lib/billing/providers";
 import { trackServerPurchase } from "@/lib/server-analytics";
-import { enqueueBillingJob } from "./jobs";
+import { enqueueBillingJob, recordBillingEvent } from "./jobs";
 import { recordCouponRedemption } from "./coupons";
 
 export const GRACE_DAYS = 3;
@@ -328,6 +328,51 @@ async function sendWelcomeEmailForNewSubscriber(
     }
   } catch (err) {
     console.error("[billing] welcome email failed", err);
+  }
+}
+
+/** Aviso de fim de trial — só no último dia (ver comentário em suspendOverdueSubscriptions).
+ * Best-effort e idempotente: um tenant só passa pelo trial uma vez, então a idempotencyKey
+ * não precisa da data — só do tenantId — pra nunca duplicar mesmo que o cron rode várias
+ * vezes na mesma janela de 24h. */
+async function sendTrialEndingReminder(tenantId: string): Promise<void> {
+  const { isNew: shouldSend } = await recordBillingEvent({
+    provider: "asaas",
+    eventType: "trial_ending_reminder_sent",
+    idempotencyKey: `trial-ending-reminder:${tenantId}`,
+    tenantId
+  });
+  if (!shouldSend) return;
+
+  const { tenantMember: memberRepo, user: userRepo } = await repositories();
+  const member = await memberRepo.findOne({
+    where: { tenantId, role: "admin" },
+    order: { createdAt: "ASC" }
+  });
+  if (!member) return;
+  const user = await userRepo.findOne({ where: { id: member.userId } });
+  const to = user?.email;
+  if (!to) return;
+
+  const { sendTrialEndingEmail } = await import("@/lib/messaging/trial-ending-email");
+  const { recordEmailLog } = await import("@/lib/messaging/email-log");
+  const { SITE_URL } = await import("@/lib/seo");
+  const payload = {
+    to,
+    customerName: user?.name?.trim() || to.split("@")[0]!,
+    appUrl: `${SITE_URL}/settings?tab=plan`
+  };
+  const result = await sendTrialEndingEmail(payload);
+  await recordEmailLog({
+    tenantId,
+    kind: "trial_ending",
+    to,
+    payload,
+    sent: result.sent,
+    error: result.error ?? null
+  });
+  if (!result.sent) {
+    console.error("[billing] trial-ending email not sent:", result.error);
   }
 }
 
@@ -656,6 +701,27 @@ export async function suspendOverdueSubscriptions() {
 
   const freePlan = await planRepo.findOne({ where: { slug: "free" } });
   if (freePlan) {
+    // Aviso do último dia: só isso, de propósito (produto decidiu não mandar nada nos dias
+    // anteriores pra não consumir a cota mensal do Resend à toa) — dispara ENQUANTO a
+    // assinatura ainda está trialing (antes do bloco de suspensão logo abaixo), pra quem
+    // vai vencer dentro das próximas 24h. Idempotente via recordBillingEvent: o cron roda
+    // de hora em hora, então sem isso mandaria o mesmo aviso várias vezes no mesmo dia.
+    const endingToday = await subRepo
+      .createQueryBuilder("s")
+      .where("s.planId = :planId", { planId: freePlan.id })
+      .andWhere("s.status = :status", { status: "trialing" })
+      .andWhere("s.currentPeriodEnd IS NOT NULL")
+      .andWhere("s.currentPeriodEnd >= :now", { now })
+      .andWhere("s.currentPeriodEnd < :in24h", { in24h: addDays(now, 1) })
+      .getMany();
+    for (const sub of endingToday) {
+      try {
+        await sendTrialEndingReminder(sub.tenantId);
+      } catch (err) {
+        console.error(`[billing-jobs] falha ao enviar aviso de fim de trial tenantId=${sub.tenantId}`, err);
+      }
+    }
+
     const expiredTrials = await subRepo
       .createQueryBuilder("s")
       .where("s.planId = :planId", { planId: freePlan.id })

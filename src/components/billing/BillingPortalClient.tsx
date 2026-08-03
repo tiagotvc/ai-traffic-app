@@ -16,6 +16,7 @@ import {
 import { BillingInvoicesTable } from "@/components/billing/BillingInvoicesTable";
 import { BillingPortalSkeleton } from "@/components/billing/BillingSkeletons";
 import { BillingLimitsPanel } from "@/components/billing/BillingLimitsPanel";
+import { daysUntil } from "@/components/billing/billing-ui";
 import type { Entitlements, PlanLimits } from "@/lib/billing/types";
 
 type InvoiceRow = {
@@ -261,6 +262,14 @@ export function BillingPortalClient({
         year: "numeric"
       })
     : null;
+
+  const isTrialing = sub?.status === "trialing";
+  const trialDaysLeft = isTrialing ? daysUntil(sub?.currentPeriodEnd) : null;
+  const trialTotalDays = sub?.plan?.trialDays ?? 7;
+  const trialPct =
+    trialDaysLeft != null
+      ? Math.min(100, Math.max(8, Math.round(((trialTotalDays - trialDaysLeft) / trialTotalDays) * 100)))
+      : 0;
   const tabs = [
     { key: "plan" as const, label: t("tabPlan") },
     {
@@ -283,6 +292,26 @@ export function BillingPortalClient({
                 <span className="text-[var(--text-dim)]">
                   · {t("nextRenewal")} {renewalDateStr}
                 </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {isTrialing && trialDaysLeft != null ? (
+            <div className="rounded-lg border border-[rgba(124,58,237,0.15)] bg-[rgba(124,58,237,0.06)] p-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-[var(--violet)]">{t("demoProgress")}</span>
+                <span className="font-bold text-violet-700">{t("trialDaysLeft", { days: trialDaysLeft })}</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgba(124,58,237,0.1)]">
+                <div
+                  className="h-full rounded-full bg-violet-500 transition-all"
+                  style={{ width: `${trialPct}%` }}
+                />
+              </div>
+              {renewalDateStr ? (
+                <p className="mt-1.5 text-[11px] text-violet-700">
+                  {t("trialEnds")} <span className="font-semibold">{renewalDateStr}</span>
+                </p>
               ) : null}
             </div>
           ) : null}

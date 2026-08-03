@@ -208,7 +208,8 @@ export async function getEntitlements(
     limits,
     usage,
     isPaid,
-    canWrite: canWrite && sub.status !== "suspended"
+    canWrite: canWrite && sub.status !== "suspended",
+    currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null
   };
 
   return entitlements;

@@ -3,6 +3,7 @@ import "server-only";
 import { repositories } from "@/db/repositories";
 import type { EmailLogKind } from "@/db/entities/EmailLog";
 import type { WelcomeEmailInput } from "@/lib/messaging/welcome-email";
+import type { TrialEndingEmailInput } from "@/lib/messaging/trial-ending-email";
 
 /** Registra uma tentativa de envio (sucesso ou falha) — nunca lança, best-effort. */
 export async function recordEmailLog(input: {
@@ -40,6 +41,20 @@ export async function resendEmailLog(logId: string): Promise<{ sent: boolean; er
   if (log.kind === "welcome") {
     const { sendWelcomeEmail } = await import("@/lib/messaging/welcome-email");
     const result = await sendWelcomeEmail(log.payload as unknown as WelcomeEmailInput);
+    await recordEmailLog({
+      tenantId: log.tenantId,
+      kind: log.kind,
+      to: log.to,
+      payload: log.payload,
+      sent: result.sent,
+      error: result.error ?? null
+    });
+    return result;
+  }
+
+  if (log.kind === "trial_ending") {
+    const { sendTrialEndingEmail } = await import("@/lib/messaging/trial-ending-email");
+    const result = await sendTrialEndingEmail(log.payload as unknown as TrialEndingEmailInput);
     await recordEmailLog({
       tenantId: log.tenantId,
       kind: log.kind,

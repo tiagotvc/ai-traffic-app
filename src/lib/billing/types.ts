@@ -284,4 +284,6 @@ export type Entitlements = {
   usage: TenantUsage;
   isPaid: boolean;
   canWrite: boolean;
+  /** ISO. Fim do ciclo atual (ou do trial, quando status === "trialing") — usado pro aviso de contagem regressiva. */
+  currentPeriodEnd: string | null;
 };

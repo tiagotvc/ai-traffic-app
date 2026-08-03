@@ -5885,6 +5885,8 @@
     "renews": "Renews on",
     "trialEnds": "Trial ends on",
     "trialDaysLeft": "{days} days left",
+    "trialBannerLabel": "You're on the free trial",
+    "trialBannerToday": "ends today",
     "subStatusTrialing": "Trial period",
     "subStatusActive": "Active",
     "subStatusPastDue": "Past due",

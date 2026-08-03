@@ -5889,6 +5889,8 @@
     "renews": "Renova em",
     "trialEnds": "Trial termina em",
     "trialDaysLeft": "{days} dias restantes",
+    "trialBannerLabel": "Você está no período gratuito",
+    "trialBannerToday": "termina hoje",
     "subStatusTrialing": "Período de teste",
     "subStatusActive": "Ativo",
     "subStatusPastDue": "Em atraso",
