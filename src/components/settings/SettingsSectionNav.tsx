@@ -64,7 +64,7 @@ export function SettingsSectionNav<T extends string>({
   ariaLabel: string;
 }) {
   return (
-    <nav className="settings-section-nav" aria-label={ariaLabel}>
+    <nav className="settings-section-nav flex min-h-0 flex-col lg:h-full" aria-label={ariaLabel}>
       <div
         className="settings-section-nav__list settings-section-nav__list--mobile -mx-1 flex gap-0.5 overflow-x-auto pb-0.5 lg:hidden"
         role="tablist"
@@ -80,8 +80,11 @@ export function SettingsSectionNav<T extends string>({
         ))}
       </div>
 
+      {/* min-h-0 é o que permite esse flex item encolher e rolar em vez de só empurrar a
+          altura do pai — sem isso, itens abaixo da dobra ficam cortados sem jeito de rolar
+          até eles quando o nav está dentro de um container de altura fixa. */}
       <div
-        className="settings-section-nav__list settings-section-nav__list--desktop hidden flex-col gap-0.5 lg:flex"
+        className="settings-section-nav__list settings-section-nav__list--desktop hidden min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto lg:flex"
         role="tablist"
       >
         {items.map((item) => (

@@ -512,7 +512,7 @@ export function AdminFeatureFlagsClient() {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden pt-4 lg:flex-row lg:gap-8">
-        <aside className="w-full shrink-0 lg:w-52 xl:w-56">
+        <aside className="w-full min-h-0 shrink-0 overflow-hidden lg:w-52 lg:h-full xl:w-56">
           <SettingsSectionNav
             items={navItems}
             active={activeModule}

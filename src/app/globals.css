@@ -1741,12 +1741,14 @@ h6,
   }
 
   /* ─── Settings section nav (compact sidebar) ─── */
-  .settings-section-nav__list--mobile {
+  .settings-section-nav__list--mobile,
+  .settings-section-nav__list--desktop {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
 
-  .settings-section-nav__list--mobile::-webkit-scrollbar {
+  .settings-section-nav__list--mobile::-webkit-scrollbar,
+  .settings-section-nav__list--desktop::-webkit-scrollbar {
     display: none;
   }
 
