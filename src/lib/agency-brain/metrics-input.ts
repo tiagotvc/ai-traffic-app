@@ -274,6 +274,24 @@ export async function getClientCampaignMetrics(
   return rows;
 }
 
+/** Mesma agregação de `getClientCampaignMetrics`, mas por intervalo explícito (não "últimos N dias"). */
+export async function getClientCampaignMetricsForRange(
+  clientId: string,
+  since: string,
+  until: string
+): Promise<CampaignMetricsRow[]> {
+  const { adAccount, campaignMetricSnapshot } = await repositories();
+  const accounts = await adAccount.find({ where: { clientId } });
+  if (!accounts.length) return [];
+
+  const accountIds = accounts.map((a) => a.id);
+  const snapshots = await campaignMetricSnapshot.find({
+    where: { adAccountId: In(accountIds), day: Between(since, until) }
+  });
+
+  return rowsFromAgg(aggregateSnapshotsByCampaign(snapshots, since, until));
+}
+
 export async function getClientCampaignMetricsWithComparison(
   tenantId: string,
   clientId: string,

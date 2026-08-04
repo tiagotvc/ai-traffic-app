@@ -112,6 +112,37 @@ export function thisQuarterRange(timeZone = DEFAULT_REPORT_TZ) {
   return { since, until, days };
 }
 
+/** Ontem, como intervalo de 1 dia (mesmo formato de `thisWeekRange`/`thisMonthRange`). */
+export function yesterdayRange() {
+  const y = yesterdayIso();
+  return { since: y, until: y, days: 1 };
+}
+
+/** Semana anterior completa (segunda a domingo). */
+export function lastWeekRange(timeZone = DEFAULT_REPORT_TZ) {
+  const until = addDaysIso(startOfWeekIso(timeZone), -1);
+  const since = addDaysIso(until, -6);
+  return { since, until, days: 7 };
+}
+
+/** Mês anterior completo (1º dia ao último dia). Não existe preset pronto pra isso hoje. */
+export function lastMonthRange(timeZone = DEFAULT_REPORT_TZ) {
+  const until = addDaysIso(startOfMonthIso(timeZone), -1);
+  const since = `${until.slice(0, 7)}-01`;
+  const days = Math.round((Date.parse(until) - Date.parse(since)) / 86_400_000) + 1;
+  return { since, until, days };
+}
+
+/** Trimestre anterior completo — mesma ideia de `lastMonthRange`, um nível acima. */
+export function lastQuarterRange(timeZone = DEFAULT_REPORT_TZ) {
+  const until = addDaysIso(startOfQuarterIso(timeZone), -1);
+  const untilMonth = Number(until.slice(5, 7));
+  const quarterStartMonth = Math.floor((untilMonth - 1) / 3) * 3 + 1;
+  const since = `${until.slice(0, 4)}-${String(quarterStartMonth).padStart(2, "0")}-01`;
+  const days = Math.round((Date.parse(until) - Date.parse(since)) / 86_400_000) + 1;
+  return { since, until, days };
+}
+
 export function parsePeriodFromSearchParams(url: URL): ParsedPeriod {
   const period = url.searchParams.get("period")?.trim() as PeriodPreset | undefined;
   const sinceParam = url.searchParams.get("since")?.trim();

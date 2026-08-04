@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Building2 } from "lucide-react";
 
 import { useAgencyBrainClient } from "@/components/agency-brain/AgencyBrainClientContext";
+import { CommanderLauncherButton } from "@/components/commander/CommanderLauncherButton";
 import { AgencyBrainCreatorShell } from "@/components/agency-brain/AgencyBrainCreatorShell";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
@@ -196,6 +197,10 @@ export function BrainFeedPage({ variant }: { variant: FeedVariant }) {
 
   return (
     <AgencyBrainCreatorShell>
+      <CommanderLauncherButton
+        clientSlug={clientSlug || undefined}
+        clientName={clients.find((c) => c.slug === clientSlug)?.name}
+      />
       <BrainFeedHero variant={variant} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">

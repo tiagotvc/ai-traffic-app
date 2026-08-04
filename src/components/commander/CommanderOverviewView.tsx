@@ -7,6 +7,7 @@ import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { Link } from "@/i18n/navigation";
 import { useCommanderPreferences } from "@/components/commander/useCommanderPreferences";
+import { CommanderProactiveAlerts } from "@/components/commander/CommanderProactiveAlerts";
 
 type RuleSummary = { id: string; enabled: boolean };
 
@@ -160,6 +161,8 @@ export function CommanderOverviewView() {
           showGlobalFilters={false}
           showSync={false}
         />
+
+        <CommanderProactiveAlerts />
 
         <div className="campaign-creator-card flex flex-wrap items-center gap-3 p-4">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ui-accent-muted)] text-[var(--ui-accent)]">

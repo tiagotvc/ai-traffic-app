@@ -374,6 +374,7 @@ export async function runAutomationEngine(
       const mode = effectiveExecutionMode(rule.executionMode, automationTier, observationMode);
 
       if (action.type === "alert_only") {
+        const campaignLabel = meta?.name ?? metaCampaignId;
         await alertRepo.save(
           alertRepo.create({
             tenantId,
@@ -383,10 +384,13 @@ export async function runAutomationEngine(
             source: "automation",
             automationRuleId: rule.id,
             title: `Automação: ${rule.name}`,
-            description: `${meta?.name ?? metaCampaignId} — ${condDescription}`,
+            description: `${campaignLabel} — ${condDescription}`,
             metaCampaignId,
             dismissed: false,
-            dedupDay: today
+            dedupDay: today,
+            // Ponte pro chat do Commander — só aqui porque é a única ação onde nada
+            // mais aconteceu além do alerta em si (ver Camada 4 do plano).
+            commanderPrompt: `Notei isto na campanha ${campaignLabel}: ${condDescription}. Quer que eu investigue?`
           })
         );
         continue;

@@ -82,6 +82,7 @@ import type { CapiEventLog } from "@/db/entities/CapiEventLog";
 import type { ReportTemplate } from "@/db/entities/ReportTemplate";
 import type { EmailLog } from "@/db/entities/EmailLog";
 import type { PlanFeatureVisibility } from "@/db/entities/PlanFeatureVisibility";
+import type { CommanderConversation } from "@/db/entities/CommanderConversation";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -169,7 +170,8 @@ const ENTITY = {
   CapiEventLog: "CapiEventLog",
   ReportTemplate: "ReportTemplate",
   EmailLog: "EmailLog",
-  PlanFeatureVisibility: "PlanFeatureVisibility"
+  PlanFeatureVisibility: "PlanFeatureVisibility",
+  CommanderConversation: "CommanderConversation"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -298,6 +300,7 @@ export async function repositories() {
     capiEventLog: repositoryFor<CapiEventLog>(ds, ENTITY.CapiEventLog),
     reportTemplate: repositoryFor<ReportTemplate>(ds, ENTITY.ReportTemplate),
     emailLog: repositoryFor<EmailLog>(ds, ENTITY.EmailLog),
-    planFeatureVisibility: repositoryFor<PlanFeatureVisibility>(ds, ENTITY.PlanFeatureVisibility)
+    planFeatureVisibility: repositoryFor<PlanFeatureVisibility>(ds, ENTITY.PlanFeatureVisibility),
+    commanderConversation: repositoryFor<CommanderConversation>(ds, ENTITY.CommanderConversation)
   };
 }

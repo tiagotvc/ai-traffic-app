@@ -64,6 +64,7 @@ export const PLAN_DISPLAY_ROWS: PlanDisplayRow[] = [
   { key: "members", label: "Usuários por workspace", value: (l) => formatLimitValue(l.maxMembers) },
   { key: "persona", label: "Orion Persona®", value: (l) => l.maxAudiencePersonas !== 0 },
   { key: "cortex", label: "Orion Cortex", value: (l) => l.allowCreativeMemoryAi },
+  { key: "commanderChat", label: "Commander — Chat", value: (l) => l.allowCommander },
   {
     key: "copilot",
     label: "Commander — Scientists",

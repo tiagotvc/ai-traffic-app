@@ -2,12 +2,12 @@ import "server-only";
 
 import { z } from "zod";
 
-import { getClientCampaignMetrics } from "@/lib/agency-brain/metrics-input";
+import { getClientCampaignMetrics, getClientCampaignMetricsForRange } from "@/lib/agency-brain/metrics-input";
+import { parsePeriodPhrase } from "@/lib/commander/period-phrase";
 import { simulateRule } from "@/lib/automation/simulate";
 import type { CommanderRuleProposal } from "@/lib/commander/types";
-import { llmGenerateJson } from "@/lib/llm/generate-json";
-import { getApiKeyForProvider } from "@/lib/llm/keys";
-import type { LlmGenerateMeta, LlmProviderId } from "@/lib/llm/types";
+import { aiGenerateJson } from "@/lib/ai/generate";
+import type { AiProvider } from "@/lib/ai/types";
 
 /** Resumo compacto do rascunho enviado pelo client (nunca o payload inteiro). */
 export type AskDraftSummary = {
@@ -21,6 +21,8 @@ export type AskDraftSummary = {
 };
 
 export type AskInsightSummary = { title: string; description: string; source: string };
+
+export type AskHistoryTurn = { role: "user" | "assistant"; content: string };
 
 // Mesmo vocabulário do motor (`POST /api/automation/rules`). `schedule_toggle` fica de
 // fora (não simulável) e `notify_email` também (o modelo não conhece o e-mail de destino).
@@ -52,7 +54,12 @@ const AnswerSchema = z.object({
   ruleProposal: RuleProposalSchema.nullable()
 });
 
-export type AskCommanderResult = LlmGenerateMeta & {
+export type AskCommanderResult = {
+  provider: AiProvider;
+  modelRequested: string;
+  modelUsed: string;
+  fallbackFrom?: string;
+  usage?: { inputTokens: number; outputTokens: number; costUsd?: number };
   answer: string;
   ruleProposal: CommanderRuleProposal | null;
 };
@@ -65,7 +72,10 @@ function formatBudget(value?: number): string {
  * Responde uma pergunta do usuário no contexto do criador de campanha.
  * Contexto = rascunho (resumo) + dossiê dos Scientists (se houver) + memória do Brain
  * (métricas reais dos últimos 7 dias, só quando a flag `campaigns.commander.memory` permite).
- * Provider: Claude quando há chave, senão Gemini; fallback pro outro em erro.
+ * Provider: resolvido pelo roteador de IA (`aiGenerateJson`), mesma convenção dos
+ * Scientists e do veredito — `agent_proposal` porque o chat pode emitir uma proposta de
+ * regra acionável, o que pede o tier de mais acertividade (Claude quando habilitado);
+ * fallback cross-provider já é resolvido dentro do roteador.
  */
 export async function askCommander(input: {
   tenantId: string;
@@ -74,6 +84,8 @@ export async function askCommander(input: {
   question: string;
   draft: AskDraftSummary;
   insights?: AskInsightSummary[];
+  /** Últimas trocas da conversa persistida (mais antiga primeiro) — memória multi-turn. */
+  history?: AskHistoryTurn[];
   memoryEnabled: boolean;
   /** Flag `campaigns.commander.ruleProposals` — desligada, o chat nunca propõe regra. */
   ruleProposalsEnabled?: boolean;
@@ -155,11 +167,15 @@ export async function askCommander(input: {
   }
 
   if (input.memoryEnabled) {
-    const rows = await getClientCampaignMetrics(input.tenantId, input.clientId, 7);
+    const periodMatch = parsePeriodPhrase(input.question);
+    const rows = periodMatch
+      ? await getClientCampaignMetricsForRange(input.clientId, periodMatch.since, periodMatch.until)
+      : await getClientCampaignMetrics(input.tenantId, input.clientId, 7);
+    const periodLabel = periodMatch ? periodMatch.label : "últimos 7 dias";
     const top = [...rows].sort((a, b) => b.spend - a.spend).slice(0, 5);
     lines.push(
       "",
-      "== Memória (campanhas reais dos últimos 7 dias) ==",
+      `== Memória (campanhas reais — ${periodLabel}) ==`,
       top.length
         ? top
             .map(
@@ -172,33 +188,36 @@ export async function askCommander(input: {
     );
   }
 
+  if (input.history?.length) {
+    lines.push(
+      "",
+      "== Histórico da conversa (mais antiga primeiro) ==",
+      ...input.history.map((h) => `${h.role === "user" ? "Usuário" : "Commander"}: ${h.content}`)
+    );
+  }
+
   lines.push("", `== Pergunta do usuário ==`, input.question.trim());
   const prompt = lines.filter((l) => l !== "").join("\n");
 
-  // Padrão do produto: default Claude + fallback Gemini (docs/copilot §3.3).
-  const providers: LlmProviderId[] = getApiKeyForProvider("claude")
-    ? ["claude", "gemini"]
-    : ["gemini"];
-
-  let lastError: unknown;
-  for (const provider of providers) {
-    try {
-      const { data, ...meta } = await llmGenerateJson({
-        provider,
-        prompt,
-        schema: AnswerSchema,
-        temperature: 0.4
-      });
-      const ruleProposal =
-        ruleProposalsEnabled && data.ruleProposal
-          ? await buildRuleProposal(input.tenantId, input.clientId, data.ruleProposal)
-          : null;
-      return { ...meta, answer: data.answer, ruleProposal };
-    } catch (err) {
-      lastError = err;
-    }
-  }
-  throw lastError;
+  const { data, meta } = await aiGenerateJson({
+    task: { kind: "agent_proposal", complexity: "medium", label: "commander.ask" },
+    prompt,
+    schema: AnswerSchema,
+    temperature: 0.4
+  });
+  const ruleProposal =
+    ruleProposalsEnabled && data.ruleProposal
+      ? await buildRuleProposal(input.tenantId, input.clientId, data.ruleProposal)
+      : null;
+  return {
+    provider: meta.provider,
+    modelRequested: meta.model,
+    modelUsed: meta.model,
+    fallbackFrom: meta.fellBackFrom ? `${meta.fellBackFrom.provider}:${meta.fellBackFrom.model}` : undefined,
+    usage: meta.usage,
+    answer: data.answer,
+    ruleProposal
+  };
 }
 
 /**

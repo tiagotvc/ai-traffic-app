@@ -74,4 +74,12 @@ export class Alert extends AppBaseEntity {
 
   @Column({ type: "uuid", nullable: true })
   automationRuleId?: string | null;
+
+  /**
+   * Pergunta pronta pro chat do Commander (ex.: "Notei uma queda de CTR na campanha X,
+   * quer que eu investigue?") — ponte entre um alerta do motor e uma conversa. Só
+   * preenchida pra alertas `alert_only` (a única ação onde nada mais aconteceu ainda).
+   */
+  @Column({ type: "text", nullable: true })
+  commanderPrompt?: string | null;
 }

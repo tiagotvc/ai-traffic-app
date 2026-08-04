@@ -7,6 +7,7 @@ export { DsChoiceCard } from "./components/DsChoiceCard";
 export { DsCheckerCard } from "./components/DsCheckerCard";
 export { DsEyebrow } from "./components/DsEyebrow";
 export { DsModal } from "./components/DsModal";
+export { DsSlideOver } from "./components/DsSlideOver";
 export { DsSwitch } from "./components/DsSwitch";
 export { DsFlatChip } from "./components/DsFlatChip";
 export { DsFlatDivider } from "./components/DsFlatDivider";

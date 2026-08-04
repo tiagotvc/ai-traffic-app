@@ -48,6 +48,7 @@ import { LabsExperiment } from "./LabsExperiment";
 import { LabsAgentRun } from "./LabsAgentRun";
 import { ResearchFinding } from "./ResearchFinding";
 import { ReportSchedule } from "./ReportSchedule";
+import { CommanderConversation } from "./CommanderConversation";
 import { UserClient } from "./UserClient";
 import { TenantMember } from "./TenantMember";
 import { TenantInvite } from "./TenantInvite";
@@ -276,7 +277,8 @@ stabilizeTypeOrmEntityNames([
   { ctor: CapiEventLog, name: "CapiEventLog" },
   { ctor: ReportTemplate, name: "ReportTemplate" },
   { ctor: EmailLog, name: "EmailLog" },
-  { ctor: PlanFeatureVisibility, name: "PlanFeatureVisibility" }
+  { ctor: PlanFeatureVisibility, name: "PlanFeatureVisibility" },
+  { ctor: CommanderConversation, name: "CommanderConversation" }
 ]);
 
 export const typeOrmEntities = [
@@ -363,5 +365,6 @@ export const typeOrmEntities = [
   CapiEventLog,
   ReportTemplate,
   EmailLog,
-  PlanFeatureVisibility
+  PlanFeatureVisibility,
+  CommanderConversation
 ] as const;

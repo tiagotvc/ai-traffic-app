@@ -17,6 +17,7 @@ import { useCommandStripPage } from "@/components/layout/useCommandStripPage";
 import { Link } from "@/i18n/navigation";
 import { DsPageHeader } from "@/design-system";
 import { ClientDetailTabs } from "@/components/client/ClientDetailTabs";
+import { CommanderLauncherButton } from "@/components/commander/CommanderLauncherButton";
 import { MetricPickerModal } from "@/components/MetricPickerModal";
 import { periodStateToQuery, type PeriodState } from "@/components/PeriodFilter";
 import { ChartContainer } from "@/components/ui/ChartContainer";
@@ -383,6 +384,7 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-4">
+      <CommanderLauncherButton clientSlug={clientId} clientName={name || undefined} />
       {/* Header */}
       <DsPageHeader
         breadcrumbs={

@@ -7,11 +7,14 @@ import { createPortal } from "react-dom";
 export function UxModalPortal({
   open,
   onClose,
-  children
+  children,
+  variant = "center"
 }: {
   open: boolean;
   onClose?: () => void;
   children: ReactNode;
+  /** "center" = modal (padrão); "right" = painel lateral ancorado à direita, sem padding/blur. */
+  variant?: "center" | "right";
 }) {
   const [mounted, setMounted] = useState(false);
 
@@ -30,9 +33,14 @@ export function UxModalPortal({
 
   if (!open || !mounted || typeof document === "undefined") return null;
 
+  const containerClass =
+    variant === "right"
+      ? "fixed inset-0 z-[200] flex items-stretch justify-end"
+      : "fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-sm";
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-sm"
+      className={containerClass}
       style={{ background: "var(--modal-overlay)" }}
       role="dialog"
       aria-modal="true"

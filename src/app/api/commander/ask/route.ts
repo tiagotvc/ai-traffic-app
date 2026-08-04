@@ -5,6 +5,7 @@ import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { billingErrorResponse } from "@/lib/billing/api-errors";
 import { askCommander } from "@/lib/commander/ask";
 import { canUseCommander } from "@/lib/commander/access";
+import { appendCommanderTurn, getCommanderHistoryForPrompt } from "@/lib/commander/conversation";
 import {
   aiCreditsErrorResponse,
   assertCreativeMemoryAiAccess,
@@ -84,6 +85,8 @@ export async function POST(req: Request) {
       throw err;
     }
 
+    const history = await getCommanderHistoryForPrompt(tenant.id, client.id);
+
     const result = await askCommander({
       tenantId: tenant.id,
       clientId: client.id,
@@ -91,9 +94,18 @@ export async function POST(req: Request) {
       question: body.question,
       draft: body.draft,
       insights: body.insights,
+      history,
       memoryEnabled: memoryFlag && !userDisabled.has("commander.memory"),
       ruleProposalsEnabled: ruleProposalsFlag && !userDisabled.has("commander.ruleProposals"),
       parametersEnabled: parametersFlag && !userDisabled.has("commander.parametersContext")
+    });
+
+    await appendCommanderTurn({
+      tenantId: tenant.id,
+      clientId: client.id,
+      question: body.question,
+      answer: result.answer,
+      ruleProposal: result.ruleProposal as unknown as Record<string, unknown> | null
     });
 
     await recordCreativeMemoryAiUsage({

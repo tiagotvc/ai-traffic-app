@@ -1,52 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { useCampaignDraft } from "@/components/campaign-creator/CampaignDraftContext";
-import { adHasMedia, getActiveAd, getActiveAdset } from "@/lib/campaign-draft";
-import type { CommanderInsight, CommanderRuleProposal } from "@/lib/commander/types";
+import type { CommanderRuleProposal } from "@/lib/commander/types";
+
+export type CommanderChatDraftSummary = {
+  objective?: string;
+  campaignName?: string;
+  dailyBudgetBRL?: number;
+  adsetName?: string;
+  hasMedia?: boolean;
+  personaSelected?: boolean;
+  step?: string;
+};
+
+export type CommanderChatInsight = { title: string; description: string; source: string };
+
+export type CommanderChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  ruleProposal?: CommanderRuleProposal | null;
+  createdAt: string;
+};
 
 /**
- * Chat do Commander: monta o resumo compacto do rascunho + top insights da sessão e
- * pergunta ao `/api/commander/ask`. Uma resposta por vez (a última substitui a anterior).
- * Quando a resposta traz uma proposta de regra (aresta Commander→Engine), expõe
- * `proposal` + `createRule` para o usuário aprovar a criação no painel.
+ * Chat do Commander: memória multi-turn persistida por cliente (`CommanderConversation`).
+ * Desacoplado do criador de campanha — recebe `clientSlug` explícito; `draft`/`insights`
+ * são opcionais (só existem dentro do fluxo de criação de campanha). Fora dali, o chat
+ * roda sem esse contexto extra, só com o histórico da conversa.
  */
-export function useAskCommander(insights: CommanderInsight[]) {
-  const { payload, activeNode } = useCampaignDraft();
+export function useAskCommander(params: {
+  clientSlug: string | undefined;
+  insights?: CommanderChatInsight[];
+  draft?: CommanderChatDraftSummary;
+}) {
+  const { clientSlug, insights = [], draft = {} } = params;
+  const [messages, setMessages] = useState<CommanderChatMessage[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [asking, setAsking] = useState(false);
-  const [answer, setAnswer] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [proposal, setProposal] = useState<CommanderRuleProposal | null>(null);
-  const [creatingRule, setCreatingRule] = useState(false);
-  const [ruleCreated, setRuleCreated] = useState(false);
+  const [creatingRuleIndex, setCreatingRuleIndex] = useState<number | null>(null);
+  const [ruleCreatedIndexes, setRuleCreatedIndexes] = useState<Set<number>>(new Set());
   const [ruleError, setRuleError] = useState<string | null>(null);
+  const [ruleErrorIndex, setRuleErrorIndex] = useState<number | null>(null);
 
-  const canAsk = Boolean(payload.clientSlug);
+  const canAsk = Boolean(clientSlug);
+
+  useEffect(() => {
+    setMessages([]);
+    setHydrated(false);
+    if (!clientSlug) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/commander/conversation?clientSlug=${encodeURIComponent(clientSlug)}`);
+        const data = (await res.json().catch(() => null)) as
+          | { ok?: boolean; messages?: CommanderChatMessage[] }
+          | null;
+        if (!cancelled && res.ok && data?.ok) setMessages(data.messages ?? []);
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientSlug]);
 
   const ask = async (question: string) => {
     const trimmed = question.trim();
-    if (!trimmed || asking || !canAsk) return;
+    if (!trimmed || asking || !canAsk || !clientSlug) return;
     setAsking(true);
     setError(null);
+    setMessages((prev) => [...prev, { role: "user", content: trimmed, createdAt: new Date().toISOString() }]);
     try {
-      const adset = getActiveAdset(payload);
-      const ad = getActiveAd(payload);
       const res = await fetch("/api/commander/ask", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           question: trimmed,
-          clientSlug: payload.clientSlug,
-          draft: {
-            objective: payload.objective || undefined,
-            campaignName: payload.campaign.name || undefined,
-            dailyBudgetBRL: payload.campaign.dailyBudgetBRL || undefined,
-            adsetName: adset.name || undefined,
-            hasMedia: adHasMedia(ad),
-            personaSelected: Boolean(adset.personaId),
-            step: activeNode ?? undefined
-          },
+          clientSlug,
+          draft,
           insights: insights.slice(0, 6).map((i) => ({
             title: i.title.slice(0, 200),
             description: i.description.slice(0, 500),
@@ -61,10 +95,15 @@ export function useAskCommander(insights: CommanderInsight[]) {
         setError(data?.error ?? "Não foi possível responder agora.");
         return;
       }
-      setAnswer(data.answer);
-      setProposal(data.ruleProposal ?? null);
-      setRuleCreated(false);
-      setRuleError(null);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.answer!,
+          ruleProposal: data.ruleProposal ?? null,
+          createdAt: new Date().toISOString()
+        }
+      ]);
     } catch {
       setError("Não foi possível responder agora.");
     } finally {
@@ -72,10 +111,29 @@ export function useAskCommander(insights: CommanderInsight[]) {
     }
   };
 
-  const createRule = async () => {
-    if (!proposal || creatingRule || ruleCreated) return;
-    setCreatingRule(true);
+  const resetConversation = async () => {
+    if (!clientSlug) return;
+    setMessages([]);
+    setError(null);
     setRuleError(null);
+    setRuleCreatedIndexes(new Set());
+    try {
+      await fetch("/api/commander/conversation/reset", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clientSlug })
+      });
+    } catch {
+      /* melhor esforço — a conversa já foi limpa localmente */
+    }
+  };
+
+  const createRule = async (messageIndex: number) => {
+    const proposal = messages[messageIndex]?.ruleProposal;
+    if (!proposal || creatingRuleIndex !== null || ruleCreatedIndexes.has(messageIndex)) return;
+    setCreatingRuleIndex(messageIndex);
+    setRuleError(null);
+    setRuleErrorIndex(null);
     try {
       const res = await fetch("/api/automation/rules", {
         method: "POST",
@@ -91,15 +149,30 @@ export function useAskCommander(insights: CommanderInsight[]) {
       const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
       if (!res.ok || !data?.ok) {
         setRuleError(data?.error ?? "Não foi possível criar a regra.");
+        setRuleErrorIndex(messageIndex);
         return;
       }
-      setRuleCreated(true);
+      setRuleCreatedIndexes((prev) => new Set(prev).add(messageIndex));
     } catch {
       setRuleError("Não foi possível criar a regra.");
+      setRuleErrorIndex(messageIndex);
     } finally {
-      setCreatingRule(false);
+      setCreatingRuleIndex(null);
     }
   };
 
-  return { ask, asking, answer, error, canAsk, proposal, createRule, creatingRule, ruleCreated, ruleError };
+  return {
+    ask,
+    asking,
+    messages,
+    hydrated,
+    error,
+    canAsk,
+    createRule,
+    creatingRuleIndex,
+    ruleCreatedIndexes,
+    ruleError,
+    ruleErrorIndex,
+    resetConversation
+  };
 }
