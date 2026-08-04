@@ -460,7 +460,11 @@ async function main() {
           clientId,
           spec.name,
           TENANT_ID,
-          JSON.stringify({ note: "Cliente demo para demonstração da plataforma." }),
+          JSON.stringify({
+            note: "Conta de demonstração comercial da plataforma (dados fictícios para showcase).",
+            showcaseSeed: true,
+            seedScript: "scripts/seed-demo-agency-clients.mjs"
+          }),
           spec.niche
         ]
       );
