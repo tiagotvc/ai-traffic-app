@@ -97,7 +97,7 @@ export function LandingHeroSequence() {
 
 function DashboardSection({ t }: { t: T }) {
   return (
-    <section id="dashboard" className="marketing-section relative overflow-hidden">
+    <section id="dashboard" className="marketing-section relative overflow-hidden !pb-10 sm:!pb-14">
       <div className="relative mx-auto max-w-6xl">
         <MarketingReveal className="mx-auto max-w-3xl text-center">
           <p className="marketing-section-title">{t("dashSectionBadge")}</p>
