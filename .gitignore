@@ -19,3 +19,8 @@ package-lock.json
 
 .vercel
 .env*
+
+# Material de marketing (marca, posts, exemplos de ads) - nao versionar
+docs/brand/
+docs/marketing/
+exemplos-ads/
