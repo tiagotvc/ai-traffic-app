@@ -19,10 +19,24 @@ export function LandingStickyCta() {
   if (!visible) return null;
 
   return (
-    <div className="marketing-sticky-cta">
-      <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent block w-full py-2.5 text-center text-sm font-semibold">
-        {t("startFree")}
-      </Link>
-    </div>
+    <>
+      <div className="marketing-sticky-cta md:hidden">
+        <Link
+          href="/login?callbackUrl=/dashboard"
+          className="marketing-fab-cta block w-full rounded-xl py-3 text-center text-sm font-bold"
+        >
+          {t("startFree")}
+        </Link>
+      </div>
+
+      <div className="fixed bottom-6 left-1/2 z-50 hidden -translate-x-1/2 md:block">
+        <Link
+          href="/login?callbackUrl=/dashboard"
+          className="marketing-fab-cta inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold"
+        >
+          {t("startFree")}
+        </Link>
+      </div>
+    </>
   );
 }

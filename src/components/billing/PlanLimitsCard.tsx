@@ -460,7 +460,8 @@ export function PlanCard({
   featured = false,
   variant = "portal",
   compact = false,
-  featureVisibility
+  featureVisibility,
+  highlighted = false
 }: {
   plan: PlanCardData;
   cycle: "monthly" | "yearly";
@@ -468,6 +469,7 @@ export function PlanCard({
   variant?: "portal" | "marketing";
   compact?: boolean;
   featureVisibility?: PlanFeatureVisibilityRow[];
+  highlighted?: boolean;
 }) {
   const t = useTranslations("billingPage");
   const tier = planTier(plan.slug);
@@ -487,7 +489,12 @@ export function PlanCard({
       : User;
 
   return (
-    <div className={`relative flex flex-col rounded-xl border transition ${compact ? "p-4" : "p-5"} ${cardStyle}`}>
+    <div
+      id={`pricing-plan-${plan.slug}`}
+      className={`relative flex flex-col rounded-xl border transition ${compact ? "p-4" : "p-5"} ${cardStyle} ${
+        highlighted ? "ring-2 ring-[var(--ui-accent-ring)] shadow-xl shadow-[var(--ui-accent-glow)]" : ""
+      }`}
+    >
       {isPopular && !isPremium ? (
         <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[var(--ui-accent)] px-3 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--ui-accent-btn-text)] shadow-md">
           {t("mostPopular")}

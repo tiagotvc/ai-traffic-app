@@ -12,6 +12,7 @@ import {
 import { BillingPlansSkeleton } from "@/components/billing/BillingSkeletons";
 import type { PlanFeatureVisibilityRow } from "@/lib/billing/plan-display-registry";
 import { resolveMarketingVitrinePlans } from "@/lib/marketing/orion-plan-catalog";
+import { PRICING_HIGHLIGHT_KEY } from "@/lib/marketing/pricing-highlight";
 import { isBrBillingMode } from "@/lib/billing/currency";
 import { YEARLY_DISCOUNT_PERCENT } from "@/lib/billing/pricing";
 import { DsPageHeader } from "@/design-system";
@@ -38,6 +39,7 @@ export function BillingPlansClient({
   const [featureVisibility, setFeatureVisibility] = useState<PlanFeatureVisibilityRow[]>([]);
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(true);
+  const [highlightSlug, setHighlightSlug] = useState<string | null>(null);
   void layout;
 
   useEffect(() => {
@@ -57,6 +59,22 @@ export function BillingPlansClient({
   }, [variant]);
 
   const displayPlans = isMarketing ? resolveMarketingVitrinePlans(plans) : plans;
+
+  // Carries the plan chosen in the stack-cost comparison picker down here: scrolls
+  // the matching card into view and briefly highlights it instead of dropping the
+  // user at the top of the grid to re-scan for what they already picked.
+  useEffect(() => {
+    if (!isMarketing || loading || typeof window === "undefined") return;
+    const slug = window.sessionStorage.getItem(PRICING_HIGHLIGHT_KEY);
+    if (!slug) return;
+    window.sessionStorage.removeItem(PRICING_HIGHLIGHT_KEY);
+    const el = document.getElementById(`pricing-plan-${slug}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightSlug(slug);
+    const timeout = window.setTimeout(() => setHighlightSlug(null), 2400);
+    return () => window.clearTimeout(timeout);
+  }, [isMarketing, loading]);
 
   if (loading) {
     return <BillingPlansSkeleton />;
@@ -96,6 +114,7 @@ export function BillingPlansClient({
               variant={variant}
               compact={compact}
               featureVisibility={featureVisibility}
+              highlighted={p.slug === highlightSlug}
             />
           ))}
         </div>
