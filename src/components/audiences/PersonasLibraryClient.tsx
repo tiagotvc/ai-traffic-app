@@ -7,7 +7,6 @@ import { useTranslations } from "next-intl";
 import { PersonaCreateModeSheet } from "@/components/audiences/PersonaCreateModeSheet";
 import { PersonaDetailPanel, formatPersonaGender } from "@/components/audiences/PersonaDetailPanel";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
-import { DsInfoBanner } from "@/design-system";
 import { useRouter } from "@/i18n/navigation";
 
 export type PersonaSummary = {
@@ -119,8 +118,6 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
           {t("newPersona")}
         </button>
       </div>
-
-      <DsInfoBanner className="px-4 py-2.5 text-sm">{t("personasLibraryAureumAlert")}</DsInfoBanner>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 

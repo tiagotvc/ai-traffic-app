@@ -237,20 +237,6 @@ function PersonaCreatorUxPageContent() {
               </>
             }
             titleIcon={<Users size={16} aria-hidden />}
-            badge={
-              isManual ? undefined : (
-              <span
-                className="rounded-full px-2.5 py-0.5 font-heading text-[11px] font-semibold lg:text-xs"
-                style={{
-                  background: "var(--ui-accent-muted)",
-                  color: "var(--ui-accent)",
-                  border: "1px solid var(--ui-accent-border)"
-                }}
-              >
-                {t("personaAureumBadge")}
-              </span>
-              )
-            }
           />
           <button
             type="button"
