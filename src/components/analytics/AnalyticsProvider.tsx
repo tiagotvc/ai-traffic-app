@@ -4,7 +4,11 @@ import { Suspense, useEffect, useState } from "react";
 import Script from "next/script";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { COOKIE_CONSENT_EVENT, getCookieConsent } from "@/lib/cookie-consent";
+import {
+  COOKIE_CONSENT_EVENT,
+  getCookieConsent,
+  syncConsentCookieFromStorage
+} from "@/lib/cookie-consent";
 import { trackPageView } from "@/lib/analytics";
 import { ConversionBeacon } from "@/components/analytics/ConversionBeacon";
 
@@ -36,7 +40,12 @@ export function AnalyticsProvider() {
   const [consented, setConsented] = useState(false);
 
   useEffect(() => {
-    const sync = () => setConsented(getCookieConsent() === "accepted");
+    const sync = () => {
+      // Espelha a escolha no cookie: visitantes que aceitaram antes do cookie existir
+      // não veem o banner de novo, então este é o único momento de regravá-lo.
+      syncConsentCookieFromStorage();
+      setConsented(getCookieConsent() === "accepted");
+    };
     sync(); // initial (handles returning visitors who already accepted)
     window.addEventListener(COOKIE_CONSENT_EVENT, sync);
     return () => window.removeEventListener(COOKIE_CONSENT_EVENT, sync);

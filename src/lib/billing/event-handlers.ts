@@ -252,8 +252,22 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
 
     const plan = await planRepo.findOne({ where: { id: planId } });
 
+    const { resolveTenantContact, syncTenantStatusToSheet } = await import(
+      "@/lib/crm/tenant-sheet-sync"
+    );
+    const contact = await resolveTenantContact(tenantId);
+
+    // Registro comercial interno (planilha) — sempre, independente do banner.
+    await syncTenantStatusToSheet(tenantId, "assinante", {
+      planName: plan?.name ?? null,
+      valueCents: purchaseValueCents ?? null,
+      billingCycle
+    });
+
     // Confirmed sale → server-side conversion (Meta CAPI + GA4). Best-effort; never
     // blocks billing. Gateway-agnostic: both Asaas and Stripe reach this point.
+    // LGPD: só sai se o comprador consentiu — o webhook roda sem navegador, então o
+    // consentimento vem congelado em `users.analyticsConsent`.
     if (purchaseValueCents && purchaseValueCents > 0 && purchaseTxnId) {
       await trackServerPurchase({
         transactionId: purchaseTxnId,
@@ -264,7 +278,16 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
         billingCycle,
         provider,
         isNewCustomer,
-        tenantId
+        tenantId,
+        hasAnalyticsConsent: contact?.hasAnalyticsConsent ?? false,
+        ...(contact?.email || contact?.phone
+          ? {
+              userData: {
+                ...(contact.email ? { email: contact.email } : {}),
+                ...(contact.phone ? { phone: contact.phone } : {})
+              }
+            }
+          : {})
       });
     }
 
@@ -389,6 +412,11 @@ export async function processPaymentOverdue(payload: Record<string, unknown>) {
   }
   await subRepo.save(sub);
 
+  await (await import("@/lib/crm/tenant-sheet-sync")).syncTenantStatusToSheet(
+    tenantId,
+    "inadimplente"
+  );
+
   const invoiceId = payload.invoiceId as string | undefined;
   if (invoiceId) {
     const inv = await invRepo.findOne({ where: { id: invoiceId } });
@@ -425,6 +453,10 @@ async function downgradeOrDeferCancellation(tenantId: string, logPrefix: string)
   sub.canceledAt = now;
   sub.externalSubscriptionId = null;
   await subRepo.save(sub);
+  await (await import("@/lib/crm/tenant-sheet-sync")).syncTenantStatusToSheet(
+    tenantId,
+    "cancelado"
+  );
   console.log(`[billing-jobs] ${logPrefix}: downgrade imediato aplicado tenantId=${tenantId}`);
 }
 
@@ -549,6 +581,10 @@ export async function processSubscriptionInactivated(payload: Record<string, unk
   if (!sub || sub.status === "canceled") return;
   sub.status = "suspended";
   await subRepo.save(sub);
+  await (await import("@/lib/crm/tenant-sheet-sync")).syncTenantStatusToSheet(
+    tenantId,
+    "suspenso"
+  );
   console.warn(`[billing-jobs] subscription_inactivated: suspenso pelo provedor tenantId=${tenantId}`);
 }
 
@@ -755,7 +791,41 @@ export async function ensureFreeSubscription(tenantId: string): Promise<Subscrip
     currentPeriodStart: new Date(),
     currentPeriodEnd: addDays(new Date(), freePlan.trialDays || 7)
   });
-  return subRepo.save(sub);
+  const saved = await subRepo.save(sub);
+
+  // O trial começa aqui, não no cadastro: a assinatura só nasce no primeiro
+  // carregamento autenticado (ver app-context). São dois eventos distintos.
+  await notifyTrialStarted(tenantId);
+
+  return saved;
+}
+
+/** StartTrial (Meta, só com consentimento) + status na planilha (sempre). */
+async function notifyTrialStarted(tenantId: string): Promise<void> {
+  try {
+    const { resolveTenantContact, syncTenantStatusToSheet } = await import(
+      "@/lib/crm/tenant-sheet-sync"
+    );
+    const contact = await resolveTenantContact(tenantId);
+
+    await syncTenantStatusToSheet(tenantId, "trial");
+
+    if (contact?.hasAnalyticsConsent) {
+      const { sendMetaServerEvent } = await import("@/lib/analytics/meta-server-events");
+      await sendMetaServerEvent({
+        eventName: "StartTrial",
+        eventId: `trial_${tenantId}`,
+        userData: {
+          email: contact.email,
+          externalId: tenantId,
+          ...(contact.phone ? { phone: contact.phone } : {})
+        },
+        customData: { content_name: "free_trial" }
+      });
+    }
+  } catch (err) {
+    console.error(`[billing] falha ao registrar início de trial tenant=${tenantId}:`, err);
+  }
 }
 
 /** PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVATED — só marca a autorização como ativa. A

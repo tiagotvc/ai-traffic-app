@@ -12,8 +12,20 @@ import {
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { LegalModal, type LegalModalType } from "@/components/auth/LegalModal";
 import { cn } from "@/lib/cn";
+import type { Attribution } from "@/lib/analytics/attribution";
 
 const initialState: AuthFormState = {};
+
+/** Campos escondidos que levam a origem da campanha até a server action. */
+function AttributionFields({ attribution }: { attribution: Attribution }) {
+  return (
+    <>
+      {Object.entries(attribution).map(([key, value]) => (
+        <input key={key} type="hidden" name={key} value={value} />
+      ))}
+    </>
+  );
+}
 
 export function LoginForm({
   locale,
@@ -22,7 +34,8 @@ export function LoginForm({
   metaOAuthConfigured,
   switchAccount = false,
   currentUserEmail = null,
-  accountSuspended = false
+  accountSuspended = false,
+  attribution = {}
 }: {
   locale: string;
   callbackUrl: string;
@@ -31,6 +44,8 @@ export function LoginForm({
   switchAccount?: boolean;
   currentUserEmail?: string | null;
   accountSuspended?: boolean;
+  /** Origem da campanha vinda pela URL; segue como campo escondido até a action. */
+  attribution?: Attribution;
 }) {
   const t = useTranslations("auth");
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -152,6 +167,7 @@ export function LoginForm({
             googleConfigured={googleOAuthConfigured}
             metaConfigured={metaOAuthConfigured}
             variant="premium"
+            attribution={attribution}
           />
           <div className="my-5 flex items-center gap-3 text-xs text-violet-300/50">
             <div className="h-px flex-1 bg-white/10" />
@@ -184,6 +200,7 @@ export function LoginForm({
         <form action={registerAction} className="space-y-3.5">
           <input type="hidden" name="locale" value={locale} />
           <input type="hidden" name="callbackUrl" value={callbackUrl} />
+          <AttributionFields attribution={attribution} />
           <Field label={t("name")} name="name" type="text" autoComplete="name" />
           <Field label={t("email")} name="email" type="email" autoComplete="email" />
           <Field

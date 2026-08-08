@@ -48,6 +48,8 @@ export const getAppShellContext = cache(async () => {
     facebookId
   });
   let tenant;
+  /** Vira true só no render em que a conta social é criada — dispara a conversão uma vez. */
+  let signedUpNow = false;
 
   const existingMembership = user ? await getUserWorkspaceMembership(user.id) : null;
 
@@ -98,6 +100,10 @@ export const getAppShellContext = cache(async () => {
           tenantId: metaTenant.id
         });
         await userRepo.save(user);
+        // Cadastro social genuinamente novo (tenant próprio). O caminho de convite
+        // acima é membro entrando num tenant existente — não é aquisição, e contar
+        // como conversão sujaria a otimização das campanhas.
+        signedUpNow = true;
       } else {
         user.tenantId = metaTenant.id;
         await userRepo.save(user);
@@ -125,6 +131,10 @@ export const getAppShellContext = cache(async () => {
   }
 
   await ensureTenantMember(tenant.id, user.id);
+
+  if (signedUpNow) {
+    await recordSocialSignup(user, tenant.id, session.user.name ?? null, facebookId);
+  }
 
   const platformAdmin = await isPlatformAdmin(user.id);
   if (!platformAdmin) {
@@ -159,3 +169,55 @@ export const getTenantContextSlim = cache(async () => {
   const { user, tenant } = await getAppShellContext();
   return { userId: user.id, tenantId: tenant.id, user, tenant };
 });
+
+/**
+ * Registra o cadastro por login social (Google/Facebook), que antes não gerava
+ * conversão nenhuma. Roda uma única vez, no render em que a conta é criada.
+ *
+ * Nunca lança: se o rastreio falhar, o usuário ainda tem que conseguir entrar.
+ */
+async function recordSocialSignup(
+  user: { id: string; email: string },
+  tenantId: string,
+  displayName: string | null,
+  facebookId?: string
+): Promise<void> {
+  try {
+    const [{ onUserSignedUp }, { consumePendingAttribution }, consent, metaCookies, { headers }] =
+      await Promise.all([
+        import("@/lib/analytics/signup-events"),
+        import("@/lib/analytics/oauth-attribution"),
+        import("@/lib/server-consent").then((m) => m.hasServerAnalyticsConsent()),
+        import("@/lib/server-consent").then((m) => m.readMetaBrowserCookies()),
+        import("next/headers")
+      ]);
+
+    const attribution = await consumePendingAttribution();
+    const h = await headers();
+
+    // Congela o consentimento no usuário: o webhook de cobrança roda sem navegador
+    // e não teria como checar o cookie antes de mandar Purchase pra Meta.
+    const { user: userRepo } = await repositories();
+    await userRepo.update(user.id, {
+      analyticsConsent: consent ? "accepted" : "rejected",
+      analyticsConsentAt: new Date(),
+      ...(attribution ? { signupAttribution: attribution } : {})
+    });
+
+    await onUserSignedUp({
+      userId: user.id,
+      email: user.email,
+      name: displayName,
+      tenantId,
+      method: facebookId ? "facebook" : "google",
+      attribution,
+      hasAnalyticsConsent: consent,
+      ...metaCookies,
+      clientIpAddress: h.get("x-forwarded-for")?.split(",")[0]?.trim(),
+      clientUserAgent: h.get("user-agent") ?? undefined
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[getAppShellContext] falha ao registrar cadastro social:", err);
+  }
+}

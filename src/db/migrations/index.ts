@@ -80,6 +80,7 @@ import { PlanPriceIncrease_1735940100000 } from "./0075-PlanPriceIncrease";
 import { FixAdvancedAllowCopilot_1735950000000 } from "./0076-FixAdvancedAllowCopilot";
 import { FixAgencyAllowCopilot_1735960000000 } from "./0077-FixAgencyAllowCopilot";
 import { FixFreePlanLimitsDrift_1735970000000 } from "./0078-FixFreePlanLimitsDrift";
+import { SignupAttributionAndConsent_1735980000000 } from "./0079-SignupAttributionAndConsent";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -164,5 +165,6 @@ export const appMigrations = [
   PlanPriceIncrease_1735940100000,
   FixAdvancedAllowCopilot_1735950000000,
   FixAgencyAllowCopilot_1735960000000,
-  FixFreePlanLimitsDrift_1735970000000
+  FixFreePlanLimitsDrift_1735970000000,
+  SignupAttributionAndConsent_1735980000000
 ];

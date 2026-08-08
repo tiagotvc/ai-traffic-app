@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 
 import { LaptopMockup } from "@/components/marketing/LaptopMockup";
+import { SignupCta } from "@/components/marketing/SignupCta";
 import { MarketingReveal } from "@/components/marketing/motion/MarketingReveal";
 import { useReducedMotion } from "@/components/marketing/motion/useReducedMotion";
 import { Link } from "@/i18n/navigation";
@@ -71,9 +72,9 @@ export function LandingHeroSequence() {
           </motion.p>
 
           <motion.div className="mt-8 flex flex-wrap justify-center gap-3" {...rise(0.18)}>
-            <Link href="/login?callbackUrl=/dashboard" className="ui-btn-accent px-7 py-3.5 text-sm font-semibold">
+            <SignupCta location="hero" className="ui-btn-accent px-7 py-3.5 text-sm font-semibold">
               {t("startFree")}
-            </Link>
+            </SignupCta>
             <Link href="#product" className="ui-btn-secondary px-7 py-3.5 text-sm font-semibold">
               {t("heroProductCta")}
             </Link>

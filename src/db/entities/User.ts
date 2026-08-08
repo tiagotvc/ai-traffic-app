@@ -1,6 +1,7 @@
 import { Column, Entity, ManyToOne, JoinColumn } from "typeorm";
 import { AppBaseEntity } from "./_shared";
 import type { Tenant } from "./Tenant";
+import type { Attribution } from "@/lib/analytics/attribution";
 
 export type PlatformRole = "user" | "admin";
 
@@ -31,6 +32,21 @@ export class User extends AppBaseEntity {
   /** Versão dos termos aceita (ver LEGAL_CONTACT.termsVersion). */
   @Column({ type: "text", nullable: true })
   termsAcceptedVersion?: string | null;
+
+  /** Parâmetros de campanha que trouxeram a pessoa até o cadastro (utm, fbclid, gclid). */
+  @Column({ type: "jsonb", nullable: true })
+  signupAttribution?: Attribution | null;
+
+  /**
+   * Escolha no banner de cookies, congelada no cadastro. Necessária porque o
+   * webhook de cobrança roda sem navegador e não teria como checar o cookie
+   * antes de mandar `Purchase` pra Meta.
+   */
+  @Column({ type: "text", nullable: true })
+  analyticsConsent?: "accepted" | "rejected" | null;
+
+  @Column({ type: "timestamptz", nullable: true })
+  analyticsConsentAt?: Date | null;
 
   @Column({ type: "uuid" })
   tenantId!: string;
