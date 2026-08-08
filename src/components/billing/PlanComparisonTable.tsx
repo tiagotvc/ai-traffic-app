@@ -1,26 +1,31 @@
 "use client";
 
 import { Check, Minus } from "lucide-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { BillingCtaLink, type PlanCardData } from "@/components/billing/PlanLimitsCard";
 import { BillingCycleToggle } from "@/components/billing/BillingCycleToggle";
-import { resolveBillingCurrency, planListCents, resolvePlanMonthlyCents } from "@/lib/billing/currency";
+import { planListCents, resolvePlanDisplayCurrency, resolvePlanMonthlyCents } from "@/lib/billing/currency";
 import { calculateCheckoutPricing, formatMoney } from "@/lib/billing/pricing";
+import { planDisplayName } from "@/lib/billing/plan-copy";
 import {
   COMPARISON_PLAN_SLUG_ORDER,
+  resolvePlanFeatureValue,
   visiblePlanDisplayRows,
   type MarketingFeatureValue,
   type PlanFeatureVisibilityRow
 } from "@/lib/billing/plan-display-registry";
 
-function renderFeatureCell(value: MarketingFeatureValue | undefined) {
+function renderFeatureCell(
+  value: MarketingFeatureValue | undefined,
+  labels: { included: string; notIncluded: string }
+) {
   if (typeof value === "boolean") {
     return value ? (
-      <Check size={14} className="mx-auto text-emerald-400" aria-label="Incluído" />
+      <Check size={14} className="mx-auto text-emerald-400" aria-label={labels.included} />
     ) : (
-      <Minus size={14} className="mx-auto text-white/20" aria-label="Não incluído" />
+      <Minus size={14} className="mx-auto text-white/20" aria-label={labels.notIncluded} />
     );
   }
   return <span>{value ?? "—"}</span>;
@@ -32,7 +37,7 @@ function renderFeatureCell(value: MarketingFeatureValue | undefined) {
  */
 export function PlanComparisonTable() {
   const locale = useLocale();
-  const currency = resolveBillingCurrency(locale);
+  const t = useTranslations("billingPage");
   const [plans, setPlans] = useState<PlanCardData[]>([]);
   const [featureVisibility, setFeatureVisibility] = useState<PlanFeatureVisibilityRow[]>([]);
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
@@ -56,13 +61,23 @@ export function PlanComparisonTable() {
   ).filter((p): p is PlanCardData => Boolean(p));
   if (!orderedPlans.length) return null;
 
-  const priceFor = (p: PlanCardData) =>
-    calculateCheckoutPricing({
+  // Moeda por plano (não pelo idioma): os planos são cobrados em BRL pelo Asaas.
+  const currencyFor = (p: PlanCardData) => resolvePlanDisplayCurrency(p, locale);
+
+  const priceFor = (p: PlanCardData) => {
+    const currency = currencyFor(p);
+    return calculateCheckoutPricing({
       priceMonthlyCents: resolvePlanMonthlyCents(p, currency),
       listCents: planListCents(p, cycle, currency),
       cycle,
       provider: currency === "BRL" ? "asaas" : "stripe"
     }).finalCents;
+  };
+
+  const cellLabels = {
+    included: t("comparisonIncludedAria"),
+    notIncluded: t("comparisonNotIncludedAria")
+  };
 
   return (
     <div className="space-y-6">
@@ -73,15 +88,17 @@ export function PlanComparisonTable() {
           <thead>
             <tr className="border-b border-[var(--creator-card-border)] bg-[var(--creator-card-bg-inset)]">
               <th className="sticky left-0 z-10 bg-[var(--creator-card-bg-inset)] px-3 py-3 text-left font-semibold text-[var(--text-dim)]">
-                Recursos
+                {t("comparisonFeaturesHeader")}
               </th>
               {orderedPlans.map((p) => (
                 <th key={p.id} className="px-3 py-3 text-center align-top">
-                  <div className="font-semibold text-[var(--text-main)]">{p.name}</div>
+                  <div className="font-semibold text-[var(--text-main)]">
+                    {planDisplayName(p.slug, p.name, t)}
+                  </div>
                   <div className="mt-0.5 text-sm font-black text-[var(--text-main)]">
-                    {formatMoney(priceFor(p), currency)}
+                    {formatMoney(priceFor(p), currencyFor(p))}
                     <span className="text-[10px] font-medium text-[var(--text-dimmer)]">
-                      /{cycle === "yearly" ? "ano" : "mês"}
+                      {cycle === "yearly" ? t("comparisonPerYear") : t("comparisonPerMonth")}
                     </span>
                   </div>
                   <BillingCtaLink
@@ -97,10 +114,12 @@ export function PlanComparisonTable() {
           <tbody>
             {visiblePlanDisplayRows("full", featureVisibility).map((row, i) => (
               <tr key={row.key} className={i % 2 === 0 ? "bg-[var(--surface-row-alt)]" : undefined}>
-                <td className="sticky left-0 z-10 bg-[var(--creator-card-bg)] px-3 py-2 text-[var(--text-dim)]">{row.label}</td>
+                <td className="sticky left-0 z-10 bg-[var(--creator-card-bg)] px-3 py-2 text-[var(--text-dim)]">
+                  {t(row.labelKey)}
+                </td>
                 {orderedPlans.map((p) => (
                   <td key={p.id} className="px-3 py-2 text-center text-[var(--text-main)]">
-                    {renderFeatureCell(row.value(p.limits))}
+                    {renderFeatureCell(resolvePlanFeatureValue(row.value(p.limits), t), cellLabels)}
                   </td>
                 ))}
               </tr>

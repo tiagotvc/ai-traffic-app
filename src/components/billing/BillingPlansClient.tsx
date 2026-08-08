@@ -123,7 +123,9 @@ export function BillingPlansClient({
       <p
         className="text-center text-xs text-[var(--text-dimmer)]"
       >
-        {isBr ? t("plansFootnoteBr") : t("plansFootnote")}{" "}
+        {/* Fora do Brasil não existe PIX nem NF: o Asaas cobra o cartão internacional
+            em reais, e a conversão fica por conta do banco do cliente. */}
+        {isBr ? t("plansFootnoteBr") : t("plansFootnoteIntl")}{" "}
         {!isMarketing ? (
           <Link href="/settings?tab=plan" className="ui-link">
             {t("backToPortal")}

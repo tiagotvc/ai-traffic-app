@@ -1,14 +1,20 @@
 import type { ExternalPrices, PlanLimits } from "@/lib/billing/types";
 import { AGENCY_LIMITS, ADVANCED_LIMITS, BASIC_LIMITS } from "@/lib/billing/types";
 
-/** Preços oficiais Orion (BRL) — fallback quando API ainda não refletiu a migração. */
+/**
+ * Preços oficiais Orion (BRL) — fallback quando a API ainda não refletiu a migração.
+ *
+ * Precisa acompanhar a tabela `plans`: enquanto estes valores estavam defasados
+ * (49,90/109,90/259,90), a vitrine mostrava preço menor que o cobrado sempre que a
+ * API demorava. Fonte da verdade: migração `0075-PlanPriceIncrease`.
+ */
 export const ORION_OFFICIAL_BRL_CENTS: Record<
   string,
   { name: string; monthlyCents: number; yearlyListCents: number }
 > = {
-  basic: { name: "Individual", monthlyCents: 4990, yearlyListCents: 59880 },
-  advanced: { name: "Advanced", monthlyCents: 10990, yearlyListCents: 131880 },
-  agency: { name: "Agency", monthlyCents: 25990, yearlyListCents: 311880 }
+  basic: { name: "Individual", monthlyCents: 5990, yearlyListCents: 71880 },
+  advanced: { name: "Advanced", monthlyCents: 13990, yearlyListCents: 167880 },
+  agency: { name: "Agency", monthlyCents: 37990, yearlyListCents: 455880 }
 };
 
 export const MARKETING_PAID_PLAN_SLUGS = ["basic", "advanced", "agency"] as const;
@@ -25,6 +31,8 @@ export type MarketingPlanRow = {
   name: string;
   priceMonthlyCents: number;
   priceYearlyCents: number;
+  /** Moeda em que o plano é cobrado — os pagos são sempre BRL (Asaas). */
+  currency?: string;
   externalPrices?: ExternalPrices | null;
   limits?: PlanLimits;
   description?: string | null;
@@ -51,6 +59,8 @@ export function buildMarketingPlanFallback(slug: MarketingPlanSlug): MarketingPl
     name: official.name,
     priceMonthlyCents: official.monthlyCents,
     priceYearlyCents: official.yearlyListCents,
+    // Sem isto a vitrine em inglês trocava só o símbolo e exibia "$59.90".
+    currency: "BRL",
     limits: fallbackLimits(slug),
     externalPrices: {
       asaas: {
