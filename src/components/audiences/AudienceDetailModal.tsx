@@ -7,6 +7,7 @@ import {
   CalendarDays,
   Clock,
   Hash,
+  Info,
   Layers,
   MapPin,
   Shield,
@@ -196,6 +197,20 @@ export function AudienceDetailModal({ open, onClose, summary, clientSlug, adAcco
               </span>
             </div>
           </div>
+
+          {detail?.description ? (
+            <div className="campaign-creator-card campaign-creator-card--compact flex items-start gap-3 p-3">
+              <Info size={14} className="mt-0.5 shrink-0 text-[var(--ui-accent)]" />
+              <div className="min-w-0">
+                <span className="block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-dimmer)]">
+                  {t("detailDescription")}
+                </span>
+                <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-[var(--text-main)]">
+                  {detail.description}
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           <MetaCard icon={Activity} label={t("detailSize")} value={size} highlight />
 

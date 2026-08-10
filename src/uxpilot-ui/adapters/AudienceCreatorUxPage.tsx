@@ -19,6 +19,7 @@ import {
   X
 } from "lucide-react";
 
+import { AudienceScopeBar } from "@/components/audiences/AudienceScopeBar";
 import { TosBanner } from "@/components/audiences/create/TosBanner";
 import { AudienceCreatorBrainTips } from "@/components/audiences/create/AudienceCreatorBrainTips";
 import { AudienceCreatorSidebarProgressCard } from "@/components/audiences/create/AudienceCreatorSidebarProgressCard";
@@ -41,13 +42,8 @@ type GenderKey = "male" | "female" | "all";
 
 const STEP_ORDER: AudienceStepKey[] = ["setup", "rules", "review"];
 
-type HubClient = { slug: string; name: string };
-
 type Props = {
   ctx: AudienceCreateContext;
-  clients: HubClient[];
-  clientSlug: string;
-  onClientChange: (slug: string) => void;
   onBack: () => void;
   bareShell?: boolean;
 };
@@ -578,6 +574,7 @@ export function AudienceCreatorUxPage({ ctx, onBack, bareShell }: Props) {
             <X size={20} strokeWidth={2} className="text-[var(--text-dim)]" />
           </button>
         </div>
+        <AudienceScopeBar variant="inline" className="mt-3" />
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_1fr] gap-x-8 overflow-x-visible overflow-y-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]">

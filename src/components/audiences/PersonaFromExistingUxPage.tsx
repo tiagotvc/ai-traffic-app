@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { ChevronLeft, Loader2, Users, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AudienceScopeBar } from "@/components/audiences/AudienceScopeBar";
+import { useAudienceScope } from "@/components/audiences/AudienceScopeContext";
 import { FilterTextField } from "@/components/FilterTextField";
 import { mapMetaTargetingToDraft } from "@/lib/meta-adset-import";
 import type { DraftTargeting } from "@/lib/campaign-draft";
@@ -37,8 +39,8 @@ export function PersonaFromExistingUxPage() {
   const t = useTranslations("audiences");
   const tCc = useTranslations("campaignCreator");
   const router = useRouter();
-  const [clientSlug, setClientSlug] = useState("");
-  const [adAccountId, setAdAccountId] = useState("");
+  const scope = useAudienceScope();
+  const { clientSlug, adAccountId, scopeKey } = scope;
   const [personaName, setPersonaName] = useState("");
   const [audiences, setAudiences] = useState<SavedAudience[]>([]);
   const [loadingAudiences, setLoadingAudiences] = useState(false);
@@ -47,25 +49,12 @@ export function PersonaFromExistingUxPage() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  // Trocar de cliente/conta invalida a seleção anterior — senão um público do
+  // cliente A continuaria selecionado (e seria importado) sob o cliente B.
   useEffect(() => {
-    fetch("/api/audiences/hub")
-      .then((r) => r.json())
-      .then(
-        (j: {
-          clients?: Array<{
-            slug: string;
-            defaultAdAccountId: string | null;
-            adAccounts: { metaAdAccountId: string }[];
-          }>;
-        }) => {
-          const first = j.clients?.find((c) => c.defaultAdAccountId || c.adAccounts.length > 0);
-          if (!first) return;
-          setClientSlug(first.slug);
-          setAdAccountId(first.defaultAdAccountId ?? first.adAccounts[0]?.metaAdAccountId ?? "");
-        }
-      )
-      .catch(() => {});
-  }, []);
+    setSelectedId(null);
+    setFilter("");
+  }, [scopeKey]);
 
   useEffect(() => {
     if (!clientSlug || !adAccountId) {
@@ -140,7 +129,11 @@ export function PersonaFromExistingUxPage() {
           body: JSON.stringify({
             adAccountId: adAccountId || undefined,
             name: personaName.trim(),
-            description: t("personaExistingSourceDescription"),
+            description: t("personaExistingSourceDescriptionRich", {
+              audience: selected.name,
+              client: scope.clientName,
+              account: scope.accountLabel
+            }),
             ageMin: payload.ageMin,
             ageMax: payload.ageMax,
             gender: payload.gender,
@@ -188,6 +181,7 @@ export function PersonaFromExistingUxPage() {
             <X size={20} strokeWidth={2} className="text-[var(--text-dim)]" />
           </button>
         </div>
+        <AudienceScopeBar variant="inline" className="mt-3" />
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[1fr] gap-x-8 overflow-hidden px-4 lg:grid-cols-[minmax(0,1fr)_16rem] lg:pl-8 lg:pr-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
