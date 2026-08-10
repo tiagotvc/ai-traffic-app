@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
 import { finalizeFlexibleSpecTargeting } from "@/lib/meta-targeting-prune";
+import { MAX_TAG_LENGTH, MAX_TAGS_PER_PERSONA } from "@/lib/persona-tags";
 import {
   deleteUserPersona,
   getUserPersona,
@@ -17,7 +18,8 @@ const PatchSchema = z.object({
   ageMax: z.number().int().min(13).max(65).optional(),
   gender: z.enum(["all", "male", "female"]).optional(),
   targeting: z.record(z.string(), z.unknown()).optional(),
-  sourcePrompt: z.string().nullable().optional()
+  sourcePrompt: z.string().nullable().optional(),
+  tags: z.array(z.string().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS_PER_PERSONA).optional()
 });
 
 export async function GET(

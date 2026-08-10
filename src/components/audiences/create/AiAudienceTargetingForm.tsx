@@ -46,6 +46,7 @@ import {
 import { AiCreditCostHint } from "@/components/ui/AiCreditCostHint";
 import { FilterSelectDropdown, type FilterSelectOption } from "@/components/FilterSelectDropdown";
 import { FilterTextField } from "@/components/FilterTextField";
+import { PersonaTagsInput } from "@/components/audiences/PersonaTagsInput";
 import { DsModal } from "@/design-system/components/DsModal";
 import { cn } from "@/lib/cn";
 import { usePersonaCreatorScoreOptional } from "@/components/audiences/create/PersonaCreatorScoreContext";
@@ -188,6 +189,7 @@ function AiAudienceTargetingForm({
   const [demoAgeMax, setDemoAgeMax] = useState(ageMax);
   const [demoGender, setDemoGender] = useState(gender);
   const [savePersonaName, setSavePersonaName] = useState("");
+  const [personaTags, setPersonaTags] = useState<string[]>([]);
   const [addSegmentsOpen, setAddSegmentsOpen] = useState(false);
   const [customAudiencesOpen, setCustomAudiencesOpen] = useState(false);
   const [segmentActionError, setSegmentActionError] = useState<string | null>(null);
@@ -514,7 +516,8 @@ function AiAudienceTargetingForm({
           ageMax: effectiveAgeMax,
           gender: effectiveGender,
           targeting,
-          sourcePrompt: description
+          sourcePrompt: description,
+          tags: personaTags
         })
       });
       const j = (await res.json()) as {
@@ -1446,6 +1449,18 @@ function AiAudienceTargetingForm({
               disabled={disabled || creating}
             />
             <p className="text-[10px] text-[var(--text-dimmer)]">{tAud("personaManualSaveNameHint")}</p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+              {tAud("tagsLabel")}
+            </label>
+            <PersonaTagsInput
+              value={personaTags}
+              onChange={setPersonaTags}
+              disabled={disabled || creating}
+            />
+            <p className="text-[10px] text-[var(--text-dimmer)]">{tAud("tagsHint")}</p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
