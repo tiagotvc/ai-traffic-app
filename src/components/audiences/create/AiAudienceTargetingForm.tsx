@@ -520,9 +520,19 @@ function AiAudienceTargetingForm({
       const j = (await res.json()) as {
         ok?: boolean;
         error?: string;
+        code?: string;
+        max?: number;
+        planName?: string;
         persona?: { id: string; name: string };
       };
       if (!j.ok) {
+        // Cota de personas do plano: mensagem traduzida em vez do texto cru da API.
+        if (j.code === "PLAN_LIMIT") {
+          reportError(
+            tAud("personaLimitReached", { max: j.max ?? 0, plan: j.planName ?? "" })
+          );
+          return;
+        }
         reportError(j.error ?? tAud("savePersonaFailed"));
         return;
       }

@@ -106,7 +106,11 @@ export const FREE_LIMITS: PlanLimits = {
   allowAgencyBrainActionPlans: false,
   allowAgencyBrainChat: false,
   allowNavCampaigns: true,
-  allowNavAudiences: false,
+  // Públicos liberado: sem ele o Free não consegue criar público personalizado
+  // (remarketing) na Meta, embora o criador de campanha já permita selecionar um.
+  // O Orion Persona não é travado por aqui — quem limita é `maxAudiencePersonas`
+  // (2 no Free, 0 no Individual, que é o valor que aciona o cadeado no menu).
+  allowNavAudiences: true,
   allowNavCreatives: true,
   allowNavReports: false,
   allowNavAlerts: true,

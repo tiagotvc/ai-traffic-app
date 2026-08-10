@@ -4144,6 +4144,7 @@
     "previewZone": "Gerar lugares",
     "geocodeZone": "Geocodificar",
     "savePersona": "Salvar persona",
+    "personaLimitReached": "Você atingiu o limite de {max} personas do plano {plan}. Faça upgrade para criar mais.",
     "savePersonaFailed": "Não foi possível salvar a persona.",
     "personaSaveName": "Nome da persona",
     "personaSaveNameHint": "Escolha um nome para salvar na biblioteca. A sugestão da IA aparece como placeholder — você pode usar outro.",
