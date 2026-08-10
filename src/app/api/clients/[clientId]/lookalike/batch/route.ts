@@ -4,6 +4,7 @@ import { z } from "zod";
 import { repositories } from "@/db/repositories";
 import { getAppContext, getClientBySlugOrId } from "@/lib/app-context";
 import { checkCustomAudienceTos } from "@/lib/audience-api-helpers";
+import { buildAudienceDescription } from "@/lib/audience-provenance";
 import { createLookalikeBatch } from "@/lib/meta-audience-create";
 
 const ItemSchema = z.object({
@@ -60,7 +61,24 @@ export async function POST(
     jobs.push(job);
   }
 
-  const results = await createLookalikeBatch(metaAccessToken, body.adAccountId, body.items);
+  const itemsWithProvenance = body.items.map((item) => ({
+    ...item,
+    description: buildAudienceDescription({
+      clientName: client.name,
+      kind: "lookalike",
+      detail: [
+        `Semelhança: ${Math.round(item.ratio * 100)}%`,
+        `País: ${item.country}`,
+        `Origem: ${item.originAudienceId}`
+      ]
+    })
+  }));
+
+  const results = await createLookalikeBatch(
+    metaAccessToken,
+    body.adAccountId,
+    itemsWithProvenance
+  );
 
   const createdIds: string[] = [];
   for (let i = 0; i < results.length; i++) {

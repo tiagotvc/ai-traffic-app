@@ -4,6 +4,10 @@ import { z } from "zod";
 import { getAppContext } from "@/lib/app-context";
 import { checkCustomAudienceTos, validateClientAdAccount } from "@/lib/audience-api-helpers";
 import {
+  buildAudienceDescription,
+  createWithDescriptionFallback
+} from "@/lib/audience-provenance";
+import {
   createEngagementCustomAudience,
   findEngagementAction,
   type EngagementSourceType
@@ -76,14 +80,37 @@ export async function POST(req: Request) {
     );
   }
 
+  const SOURCE_LABELS: Record<EngagementSourceType, string> = {
+    page: "Página do Facebook",
+    ig_business: "Instagram",
+    video: "Vídeo",
+    lead: "Formulário de cadastro"
+  };
+  const description = buildAudienceDescription({
+    clientName: validation.clientName,
+    kind: "engagement",
+    detail: [
+      `Origem: ${SOURCE_LABELS[body.sourceType as EngagementSourceType]}`,
+      `Evento: ${body.eventName}`,
+      ...(actionDef.fixedRetentionSeconds === undefined
+        ? [`Retenção: ${body.retentionDays} dias`]
+        : [])
+    ]
+  });
+
   try {
-    const created = await createEngagementCustomAudience(metaAccessToken, body.adAccountId, {
-      name: body.name,
-      sourceType: body.sourceType,
-      sourceIds,
-      eventName: body.eventName,
-      retentionDays: body.retentionDays
-    });
+    const created = await createWithDescriptionFallback(
+      (desc) =>
+        createEngagementCustomAudience(metaAccessToken, body.adAccountId, {
+          name: body.name,
+          sourceType: body.sourceType,
+          sourceIds,
+          eventName: body.eventName,
+          retentionDays: body.retentionDays,
+          description: desc
+        }),
+      description
+    );
     return NextResponse.json({ ok: true, audienceId: created.id });
   } catch (e) {
     return NextResponse.json(

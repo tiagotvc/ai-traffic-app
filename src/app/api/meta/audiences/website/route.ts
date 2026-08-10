@@ -3,6 +3,10 @@ import { z } from "zod";
 
 import { getAppContext } from "@/lib/app-context";
 import { checkCustomAudienceTos, validateClientAdAccount } from "@/lib/audience-api-helpers";
+import {
+  buildAudienceDescription,
+  createWithDescriptionFallback
+} from "@/lib/audience-provenance";
 import { createWebsiteCustomAudience, WEBSITE_MAX_RETENTION_DAYS } from "@/lib/meta-audience-create";
 
 const BodySchema = z.object({
@@ -35,14 +39,29 @@ export async function POST(req: Request) {
     );
   }
 
+  const description = buildAudienceDescription({
+    clientName: validation.clientName,
+    kind: "website",
+    detail: [
+      `Evento: ${body.eventName}`,
+      `Retenção: ${body.retentionDays} dias`,
+      ...(body.urlContains ? [`URL contém: ${body.urlContains}`] : [])
+    ]
+  });
+
   try {
-    const created = await createWebsiteCustomAudience(metaAccessToken, body.adAccountId, {
-      name: body.name,
-      pixelId: body.pixelId,
-      eventName: body.eventName,
-      retentionDays: body.retentionDays,
-      urlContains: body.urlContains
-    });
+    const created = await createWithDescriptionFallback(
+      (desc) =>
+        createWebsiteCustomAudience(metaAccessToken, body.adAccountId, {
+          name: body.name,
+          pixelId: body.pixelId,
+          eventName: body.eventName,
+          retentionDays: body.retentionDays,
+          urlContains: body.urlContains,
+          description: desc
+        }),
+      description
+    );
     return NextResponse.json({ ok: true, audienceId: created.id });
   } catch (e) {
     return NextResponse.json(

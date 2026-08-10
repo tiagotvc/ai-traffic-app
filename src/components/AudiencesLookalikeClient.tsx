@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, Filter, Plus, RefreshCw, Target, Users, Building2, BarChart2 } from "lucide-react";
+import { Eye, Filter, Plus, RefreshCw, Target, Users } from "lucide-react";
 
+import { AudienceScopeBar } from "@/components/audiences/AudienceScopeBar";
+import { useAudienceScope } from "@/components/audiences/AudienceScopeContext";
 import { FilterSearchInput } from "@/components/FilterSearchInput";
 import { FilterSelectDropdown } from "@/components/FilterSelectDropdown";
 import { PageFilterBar } from "@/components/layout/PageFilterBar";
@@ -21,19 +23,6 @@ import { formatMetaGraphErrorMessage } from "@/lib/meta-graph-errors";
 
 const AUDIENCES_ICON_PATH =
   "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z";
-
-type HubClient = {
-  id: string;
-  slug: string;
-  name: string;
-  metaPixelId: string | null;
-  defaultAdAccountId: string | null;
-  adAccounts: { metaAdAccountId: string; label: string }[];
-  defaultCustomAudienceIds: string[];
-  defaultExcludedAudienceIds: string[];
-};
-
-type AccountOpt = { metaAdAccountId: string; label: string };
 
 function kindBadge(kind: string) {
   if (kind === "lookalike") return "brand" as const;
@@ -61,12 +50,10 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
   const t = useTranslations("audiences");
   const tm = useTranslations("audiencesMisc");
   const router = useRouter();
+  const scope = useAudienceScope();
+  const { clientSlug, adAccountId, metaConnected, client } = scope;
   const [isPending, startTransition] = useTransition();
-  const [hubLoading, setHubLoading] = useState(true);
   const [audiencesLoading, setAudiencesLoading] = useState(false);
-  const [accountsLoading, setAccountsLoading] = useState(false);
-  const [metaConnected, setMetaConnected] = useState(false);
-  const [clients, setClients] = useState<HubClient[]>([]);
   const [lookalikeJobs, setLookalikeJobs] = useState<
     Array<{ id: string; name: string; status: string; ratioPct: number; country: string }>
   >([]);
@@ -75,27 +62,22 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
   >([]);
 
   const [audiences, setAudiences] = useState<SavedAudienceSummary[]>([]);
-  const [accounts, setAccounts] = useState<AccountOpt[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const [clientSlug, setClientSlug] = useState("");
-  const [adAccountId, setAdAccountId] = useState("");
   const [listTab, setListTab] = useState<"saved" | "excluded" | "templates">("saved");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
   const [detailAudience, setDetailAudience] = useState<SavedAudienceSummary | null>(null);
-  const clientsRef = useRef(clients);
-  clientsRef.current = clients;
 
   const openCreateView = useCallback(() => {
     router.push("/audiences/meta/create");
   }, [router]);
 
+  // Clientes/contas vêm do AudienceScopeProvider; aqui só buscamos o que é
+  // exclusivo desta tela (jobs de lookalike e grupos de template).
   const loadContext = useCallback(async () => {
-    setHubLoading(true);
-    setError(null);
     try {
       const res = await fetch("/api/audiences/hub");
       const j = await res.json();
@@ -103,15 +85,10 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         setError(formatMetaGraphErrorMessage(j.error ?? "Erro ao carregar"));
         return;
       }
-      setMetaConnected(!!j.metaConnected);
-      setClients(j.clients ?? []);
       setLookalikeJobs(j.lookalikeJobs ?? []);
       setTemplateGroups(j.templateGroups ?? []);
-      setClientSlug((prev) => prev || j.clients?.[0]?.slug || "");
     } catch {
       setError("Erro ao carregar públicos");
-    } finally {
-      setHubLoading(false);
     }
   }, []);
 
@@ -153,35 +130,8 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
   }, [loadContext]);
 
   useEffect(() => {
-    if (!clientSlug) {
-      setAccounts([]);
-      setAdAccountId("");
-      return;
-    }
-    setAdAccountId("");
-    setAccountsLoading(true);
-    fetch(`/api/meta/ad-accounts?clientId=${encodeURIComponent(clientSlug)}`)
-      .then((r) => r.json())
-      .then((j) => {
-        const list = (j.accounts ?? []) as AccountOpt[];
-        setAccounts(list);
-        const client = clientsRef.current.find((c) => c.slug === clientSlug);
-        const nextAccount =
-          client?.defaultAdAccountId ?? j.defaultAdAccountId ?? list[0]?.metaAdAccountId ?? "";
-        setAdAccountId(nextAccount);
-      })
-      .catch(() => {
-        setAccounts([]);
-        setAdAccountId("");
-      })
-      .finally(() => setAccountsLoading(false));
-  }, [clientSlug]);
-
-  useEffect(() => {
     void loadAudiences();
   }, [loadAudiences]);
-
-  const client = clients.find((c) => c.slug === clientSlug) ?? clients[0];
 
   useEffect(() => {
     setPage(1);
@@ -222,51 +172,9 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ defaultCustomAudienceIds: [...current] })
       });
-      if (res.ok) {
-        setClients((prev) =>
-          prev.map((c) =>
-            c.slug === client.slug ? { ...c, defaultCustomAudienceIds: [...current] } : c
-          )
-        );
-      }
+      if (res.ok) scope.reload();
     });
   };
-
-  const selectors = (
-    <div className="flex flex-wrap items-center gap-2">
-      <FilterSelectDropdown
-        icon={<Building2 size={14} />}
-        label={t("selectClient")}
-        placeholder={t("selectClient")}
-        value={clientSlug}
-        onChange={setClientSlug}
-        disabled={hubLoading}
-        clearable={false}
-        options={clients.map((c) => ({ value: c.slug, label: c.name }))}
-      />
-      {accounts.length > 1 ? (
-        <FilterSelectDropdown
-          icon={<BarChart2 size={14} />}
-          label={t("selectAdAccount")}
-          placeholder={t("selectAdAccount")}
-          value={adAccountId}
-          onChange={setAdAccountId}
-          disabled={accountsLoading}
-          clearable={false}
-          options={accounts.map((a) => ({ value: a.metaAdAccountId, label: a.label }))}
-        />
-      ) : null}
-      {client && !adAccountId && !accountsLoading ? (
-        <p className="text-xs text-amber-700">
-          {t("noAdAccount")}{" "}
-          <Link href={`/clients/${client.slug}`} className="underline">
-            {t("linkAccount")}
-          </Link>
-        </p>
-      ) : null}
-    </div>
-  );
-
 
   return (
     <div className={useUxChrome ? "flex min-h-0 flex-1 flex-col gap-5" : "space-y-5"}>
@@ -328,33 +236,9 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         </div>
       </div>
 
+      <AudienceScopeBar variant="bar" />
+
       <PageFilterBar className="mt-0">
-        <FilterSelectDropdown
-          creatorField
-          className="ui-filter-panel-field ui-filter-panel-field--client"
-          icon={<Building2 size={14} />}
-          label={t("selectClient")}
-          placeholder={t("selectClient")}
-          value={clientSlug}
-          onChange={setClientSlug}
-          disabled={hubLoading}
-          clearable={false}
-          options={clients.map((c) => ({ value: c.slug, label: c.name }))}
-        />
-        {accounts.length > 1 ? (
-          <FilterSelectDropdown
-            creatorField
-            className="ui-filter-panel-field ui-filter-panel-field--ad-account"
-            icon={<BarChart2 size={14} />}
-            label={t("selectAdAccount")}
-            placeholder={t("selectAdAccount")}
-            value={adAccountId}
-            onChange={setAdAccountId}
-            disabled={accountsLoading}
-            clearable={false}
-            options={accounts.map((a) => ({ value: a.metaAdAccountId, label: a.label }))}
-          />
-        ) : null}
         <FilterSelectDropdown
           creatorField
           className="ui-filter-panel-field"
@@ -384,14 +268,6 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
           </div>
         ) : null}
       </PageFilterBar>
-      {client && !adAccountId && !accountsLoading ? (
-        <p className="text-xs text-amber-700">
-          {t("noAdAccount")}{" "}
-          <Link href={`/clients/${client.slug}`} className="underline">
-            {t("linkAccount")}
-          </Link>
-        </p>
-      ) : null}
       </>
       ) : null}
 
@@ -424,7 +300,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
       />
       ) : null}
 
-      {!hubLoading && !metaConnected ? (
+      {!scope.loading && !metaConnected ? (
         <div className="ui-alert-warning text-sm">
           {t("metaRequired")}{" "}
           <Link href="/settings" className="ui-link">
@@ -454,7 +330,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
             </DsInfoBanner>
           ) : null}
 
-          {hubLoading || accountsLoading ? (
+          {scope.loading ? (
             <div className="ui-campaign-table-shell ui-campaign-table-shell--compact overflow-x-hidden pb-3">
               <div className="ui-campaign-table-shell__header">
                 <div className="ui-campaign-table-shell__title">
@@ -629,7 +505,9 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
         </>
       ) : (
       <div className="space-y-4">
-          <div className="ui-card p-4">{selectors}</div>
+          <div className="ui-card p-4">
+            <AudienceScopeBar variant="bar" />
+          </div>
 
           {listTab !== "templates" ? (
             <DsInfoBanner className="px-4 py-2.5 text-sm">
@@ -679,7 +557,7 @@ export function AudiencesLookalikeClient({ useUxChrome = false }: { useUxChrome?
               </div>
             ) : null}
 
-            {hubLoading || accountsLoading ? (
+            {scope.loading ? (
               <TableSkeleton bare rows={4} columns={["media", "badge", "select", "wide"]} />
             ) : !clientSlug || !adAccountId ? (
               <p className="py-8 text-center text-sm text-[var(--text-dim)]">{t("selectClientFirst")}</p>

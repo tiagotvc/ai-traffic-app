@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { Plus, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AudienceScopeBar } from "@/components/audiences/AudienceScopeBar";
+import { useAudienceScope } from "@/components/audiences/AudienceScopeContext";
 import { PersonaCreateModeSheet } from "@/components/audiences/PersonaCreateModeSheet";
 import { PersonaDetailPanel, formatPersonaGender } from "@/components/audiences/PersonaDetailPanel";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
@@ -21,12 +23,7 @@ export type PersonaSummary = {
   updatedAt: string;
 };
 
-type Props = {
-  clientSlug?: string;
-  adAccountId?: string;
-};
-
-export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId: adAccountIdProp }: Props) {
+export function PersonasLibraryClient() {
   const t = useTranslations("audiences");
   const tm = useTranslations("audiencesMisc");
   const router = useRouter();
@@ -35,38 +32,8 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
   const [error, setError] = useState<string | null>(null);
   const [showCreateMode, setShowCreateMode] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<PersonaSummary | null>(null);
-  const [clientSlug, setClientSlug] = useState(clientSlugProp ?? "");
-  const [adAccountId, setAdAccountId] = useState(adAccountIdProp ?? "");
+  const { clientSlug, adAccountId } = useAudienceScope();
   const [, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (clientSlugProp && adAccountIdProp) {
-      setClientSlug(clientSlugProp);
-      setAdAccountId(adAccountIdProp);
-      return;
-    }
-    fetch("/api/audiences/hub")
-      .then((r) => r.json())
-      .then(
-        (j: {
-          clients?: Array<{
-            slug: string;
-            defaultAdAccountId: string | null;
-            adAccounts: { metaAdAccountId: string }[];
-          }>;
-        }) => {
-          const first = j.clients?.find(
-            (c) => c.defaultAdAccountId || c.adAccounts.length > 0
-          );
-          if (!first) return;
-          setClientSlug(first.slug);
-          setAdAccountId(
-            first.defaultAdAccountId ?? first.adAccounts[0]?.metaAdAccountId ?? ""
-          );
-        }
-      )
-      .catch(() => {});
-  }, [clientSlugProp, adAccountIdProp]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -118,6 +85,8 @@ export function PersonasLibraryClient({ clientSlug: clientSlugProp, adAccountId:
           {t("newPersona")}
         </button>
       </div>
+
+      <AudienceScopeBar variant="bar" />
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createWithDescriptionFallback } from "@/lib/audience-provenance";
 import {
   createLookalikeAudience,
   fetchAdVideos,
@@ -322,6 +323,7 @@ export async function createWebsiteCustomAudience(
     eventName: string;
     retentionDays: number;
     urlContains?: string;
+    description?: string;
   }
 ): Promise<{ id: string }> {
   const days = Math.min(Math.max(1, input.retentionDays), WEBSITE_MAX_RETENTION_DAYS);
@@ -332,7 +334,8 @@ export async function createWebsiteCustomAudience(
   return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, {
     name: input.name,
     retention_days: String(days),
-    rule: JSON.stringify(rule)
+    rule: JSON.stringify(rule),
+    ...(input.description ? { description: input.description } : {})
   });
 }
 
@@ -345,6 +348,7 @@ export async function createEngagementCustomAudience(
     sourceIds: string[];
     eventName: string;
     retentionDays: number;
+    description?: string;
   }
 ): Promise<{ id: string }> {
   const actionDef = findEngagementAction(input.sourceType, input.eventName);
@@ -365,6 +369,7 @@ export async function createEngagementCustomAudience(
     rule: JSON.stringify(rule),
     prefill: "1"
   };
+  if (input.description) params.description = input.description;
   if (input.sourceType === "video") params.subtype = "VIDEO";
 
   return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, params);
@@ -377,6 +382,7 @@ export async function createCombinedCustomAudience(
     name: string;
     includeAudienceIds: string[];
     excludeAudienceIds?: string[];
+    description?: string;
   }
 ): Promise<{ id: string }> {
   if (!input.includeAudienceIds.length) {
@@ -388,7 +394,8 @@ export async function createCombinedCustomAudience(
   return metaPost(`/${encodeURIComponent(actId(adAccountId))}/customaudiences`, accessToken, {
     name: input.name,
     subtype: "CUSTOM",
-    rule: JSON.stringify(rule)
+    rule: JSON.stringify(rule),
+    ...(input.description ? { description: input.description } : {})
   });
 }
 
@@ -460,7 +467,13 @@ export async function fetchAdAccountApps(
 export async function createLookalikeBatch(
   accessToken: string,
   adAccountId: string,
-  items: Array<{ name: string; originAudienceId: string; ratio: number; country: string }>,
+  items: Array<{
+    name: string;
+    originAudienceId: string;
+    ratio: number;
+    country: string;
+    description?: string;
+  }>,
   onProgress?: (index: number, result: { id: string } | { error: string }) => void
 ): Promise<Array<{ name: string; originAudienceId: string; ratio: number; country: string; id?: string; error?: string }>> {
   const results: Array<{
@@ -475,12 +488,17 @@ export async function createLookalikeBatch(
   for (let i = 0; i < items.length; i++) {
     const item = items[i]!;
     try {
-      const created = await createLookalikeAudience(accessToken, adAccountId, {
-        name: item.name,
-        originAudienceId: item.originAudienceId,
-        ratio: item.ratio,
-        country: item.country
-      });
+      const created = await createWithDescriptionFallback(
+        (desc) =>
+          createLookalikeAudience(accessToken, adAccountId, {
+            name: item.name,
+            originAudienceId: item.originAudienceId,
+            ratio: item.ratio,
+            country: item.country,
+            description: desc
+          }),
+        item.description ?? ""
+      );
       results.push({ ...item, id: created.id });
       onProgress?.(i, created);
     } catch (e) {
