@@ -112,7 +112,11 @@ export const FREE_LIMITS: PlanLimits = {
   // (2 no Free, 0 no Individual, que é o valor que aciona o cadeado no menu).
   allowNavAudiences: true,
   allowNavCreatives: true,
-  allowNavReports: false,
+  // Liberado durante o trial: o Free é temporário (trialDays), e ao vencer o cron
+  // marca a assinatura como "suspended" — o acesso cai junto, sem precisar de
+  // prazo próprio. `maxScheduledReports` segue 0: dá para gerar e ver relatórios,
+  // não para agendar envio recorrente.
+  allowNavReports: true,
   allowNavAlerts: true,
   allowNavAutomations: false,
   allowDashboardCanvas: false,
