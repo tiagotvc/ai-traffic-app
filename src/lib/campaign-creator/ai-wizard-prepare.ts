@@ -10,8 +10,8 @@ import {
 } from "@/lib/audience-targeting-ai";
 import type { AudiencePersonaPreview } from "@/lib/audience-targeting-shared";
 import { AiCampaignWizardGenerateSchema, wizardNeedsAudiencePrep, wizardNeedsRegionsPrep } from "@/lib/campaign-creator/ai-campaign-wizard-types";
-import { isTemporaryLlmError } from "@/lib/llm/generate-json";
 import { getApiKeyForProvider, getLlmProvidersStatus } from "@/lib/llm/keys";
+import { withProviderFallback } from "@/lib/llm/provider-fallback";
 import type { LlmProviderId } from "@/lib/llm/types";
 import { fetchCustomAudiences } from "@/lib/meta-graph";
 import { normalizeMetaRadiusKm } from "@/lib/zone-geo-shared";
@@ -78,33 +78,8 @@ export function assertWizardProviderConfigured(preferred: LlmProviderId = "claud
   return provider;
 }
 
-export async function withProviderFallback<T>(
-  preferred: LlmProviderId,
-  fn: (provider: LlmProviderId) => Promise<T>
-): Promise<{ result: T; provider: LlmProviderId }> {
-  const status = getLlmProvidersStatus();
-  const order: LlmProviderId[] =
-    preferred === "claude"
-      ? [...(status.claude ? (["claude"] as const) : []), ...(status.gemini ? (["gemini"] as const) : [])]
-      : [...(status.gemini ? (["gemini"] as const) : []), ...(status.claude ? (["claude"] as const) : [])];
-
-  if (!order.length) {
-    throw new Error("IA não configurada. Defina ANTHROPIC_API_KEY ou GEMINI_API_KEY no servidor.");
-  }
-
-  let lastErr: unknown;
-  for (const provider of order) {
-    try {
-      const result = await fn(provider);
-      return { result, provider };
-    } catch (e) {
-      lastErr = e;
-      if (order.length > 1 && isTemporaryLlmError(e)) continue;
-      throw e;
-    }
-  }
-  throw lastErr instanceof Error ? lastErr : new Error("Serviço de IA temporariamente indisponível.");
-}
+// Reexportado para não quebrar os imports existentes deste módulo.
+export { withProviderFallback };
 
 function audienceBriefFromBody(body: WizardBody) {
   const businessDescription = body.businessDescription?.trim() ?? "";
