@@ -81,6 +81,7 @@ import { FixAdvancedAllowCopilot_1735950000000 } from "./0076-FixAdvancedAllowCo
 import { FixAgencyAllowCopilot_1735960000000 } from "./0077-FixAgencyAllowCopilot";
 import { FixFreePlanLimitsDrift_1735970000000 } from "./0078-FixFreePlanLimitsDrift";
 import { SignupAttributionAndConsent_1735980000000 } from "./0079-SignupAttributionAndConsent";
+import { UserPersonaTags_1735990000000 } from "./0080-UserPersonaTags";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -166,5 +167,6 @@ export const appMigrations = [
   FixAdvancedAllowCopilot_1735950000000,
   FixAgencyAllowCopilot_1735960000000,
   FixFreePlanLimitsDrift_1735970000000,
-  SignupAttributionAndConsent_1735980000000
+  SignupAttributionAndConsent_1735980000000,
+  UserPersonaTags_1735990000000
 ];

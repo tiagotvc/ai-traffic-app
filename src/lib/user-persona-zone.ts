@@ -2,6 +2,7 @@ import "server-only";
 
 import { repositories } from "@/db/repositories";
 import { assertLimit } from "@/lib/billing/entitlements";
+import { normalizeTags } from "@/lib/persona-tags";
 import type { PersonaGender, UserPersona } from "@/db/entities/UserPersona";
 import type { UserZone, ZoneGeoRules } from "@/db/entities/UserZone";
 
@@ -37,6 +38,7 @@ export async function createUserPersona(args: {
   gender?: PersonaGender;
   targeting: Record<string, unknown>;
   sourcePrompt?: string | null;
+  tags?: string[];
 }): Promise<UserPersona> {
   await assertLimit(args.tenantId, "maxAudiencePersonas");
   const { userPersona } = await repositories();
@@ -49,7 +51,8 @@ export async function createUserPersona(args: {
     ageMax: args.ageMax ?? 65,
     gender: args.gender ?? "all",
     targeting: args.targeting,
-    sourcePrompt: args.sourcePrompt ?? null
+    sourcePrompt: args.sourcePrompt ?? null,
+    tags: normalizeTags(args.tags)
   });
   return userPersona.save(row);
 }
@@ -57,11 +60,14 @@ export async function createUserPersona(args: {
 export async function updateUserPersona(
   row: UserPersona,
   patch: Partial<
-    Pick<UserPersona, "name" | "description" | "ageMin" | "ageMax" | "gender" | "targeting" | "sourcePrompt">
+    Pick<
+      UserPersona,
+      "name" | "description" | "ageMin" | "ageMax" | "gender" | "targeting" | "sourcePrompt" | "tags"
+    >
   >
 ): Promise<UserPersona> {
   const { userPersona } = await repositories();
-  Object.assign(row, patch);
+  Object.assign(row, patch, patch.tags ? { tags: normalizeTags(patch.tags) } : {});
   return userPersona.save(row);
 }
 

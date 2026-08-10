@@ -6,7 +6,9 @@ import { useTranslations } from "next-intl";
 
 import { AudienceScopeBar } from "@/components/audiences/AudienceScopeBar";
 import { useAudienceScope } from "@/components/audiences/AudienceScopeContext";
+import { PersonaTagsInput } from "@/components/audiences/PersonaTagsInput";
 import { FilterTextField } from "@/components/FilterTextField";
+import { normalizeTag } from "@/lib/persona-tags";
 import { mapMetaTargetingToDraft } from "@/lib/meta-adset-import";
 import type { DraftTargeting } from "@/lib/campaign-draft";
 import { PageTitleBlock } from "@/design-system/components/PageTitleBlock";
@@ -48,13 +50,38 @@ export function PersonaFromExistingUxPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<Array<{ tag: string; count: number }>>([]);
+
+  // Tags já usadas na biblioteca, para autocompletar sem criar variações.
+  useEffect(() => {
+    fetch("/api/personas")
+      .then((r) => r.json())
+      .then((j: { ok?: boolean; personas?: Array<{ tags?: string[] }> }) => {
+        if (!j.ok) return;
+        const counts = new Map<string, number>();
+        for (const p of j.personas ?? []) {
+          for (const tag of p.tags ?? []) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+        }
+        setTagSuggestions(
+          [...counts.entries()]
+            .map(([tag, count]) => ({ tag, count }))
+            .sort((a, b) => b.count - a.count)
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   // Trocar de cliente/conta invalida a seleção anterior — senão um público do
   // cliente A continuaria selecionado (e seria importado) sob o cliente B.
+  // A tag do cliente é pré-preenchida aqui (o usuário pode remover): é o que
+  // permite saber depois de onde a persona veio, já que a biblioteca é global.
   useEffect(() => {
     setSelectedId(null);
     setFilter("");
-  }, [scopeKey]);
+    const clientTag = normalizeTag(scope.clientName);
+    setTags(clientTag ? [clientTag] : []);
+  }, [scopeKey, scope.clientName]);
 
   useEffect(() => {
     if (!clientSlug || !adAccountId) {
@@ -134,6 +161,7 @@ export function PersonaFromExistingUxPage() {
               client: scope.clientName,
               account: scope.accountLabel
             }),
+            tags,
             ageMin: payload.ageMin,
             ageMax: payload.ageMax,
             gender: payload.gender,
@@ -205,6 +233,18 @@ export function PersonaFromExistingUxPage() {
                 value={personaName}
                 onChange={setPersonaName}
               />
+
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-[var(--text-dim)]">
+                  {t("tagsLabel")}
+                </label>
+                <PersonaTagsInput
+                  value={tags}
+                  onChange={setTags}
+                  suggestions={tagSuggestions}
+                />
+                <p className="mt-1 text-[11px] text-[var(--text-dimmer)]">{t("tagsHint")}</p>
+              </div>
 
               {!clientSlug || !adAccountId ? (
                 <p className="ui-alert-warning text-xs">{tCc("savedAudiencesNeedAccount")}</p>
