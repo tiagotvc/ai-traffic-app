@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { Plus, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { AudienceScopeBar } from "@/components/audiences/AudienceScopeBar";
+// O escopo segue resolvido pelo provider (usado pelo painel de detalhe para
+// sugerir segmentos), mas a barra não é exibida aqui: a biblioteca de personas
+// é global do workspace e um seletor de cliente daria a entender que filtra.
 import { useAudienceScope } from "@/components/audiences/AudienceScopeContext";
 import { PersonaCreateModeSheet } from "@/components/audiences/PersonaCreateModeSheet";
 import { PersonaDetailPanel, formatPersonaGender } from "@/components/audiences/PersonaDetailPanel";
@@ -85,8 +87,6 @@ export function PersonasLibraryClient() {
           {t("newPersona")}
         </button>
       </div>
-
-      <AudienceScopeBar variant="bar" />
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
