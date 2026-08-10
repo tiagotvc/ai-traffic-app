@@ -4139,6 +4139,7 @@
     "previewZone": "Generate places",
     "geocodeZone": "Geocode",
     "savePersona": "Save persona",
+    "personaLimitReached": "You have reached the {max}-persona limit of the {plan} plan. Upgrade to create more.",
     "savePersonaFailed": "Could not save persona.",
     "personaSaveName": "Persona name",
     "personaSaveNameHint": "Choose a name for your library. The AI suggestion appears as a placeholder — you can use your own.",

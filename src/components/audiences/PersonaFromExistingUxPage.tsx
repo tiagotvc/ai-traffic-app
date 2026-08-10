@@ -171,6 +171,10 @@ export function PersonaFromExistingUxPage() {
         });
         const j = await res.json();
         if (!j.ok) {
+          if (j.code === "PLAN_LIMIT") {
+            setError(t("personaLimitReached", { max: j.max ?? 0, plan: j.planName ?? "" }));
+            return;
+          }
           setError(j.error ?? t("savePersonaFailed"));
           return;
         }
