@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { MetaEventName } from "@/lib/analytics/meta-event-names";
 import { hashUserData, type CapiUserDataRaw } from "@/lib/meta-capi-hash";
 
 /**
@@ -17,15 +18,11 @@ import { hashUserData, type CapiUserDataRaw } from "@/lib/meta-capi-hash";
 
 const META_API_VERSION = "v20.0";
 
-export type MetaServerEventName =
-  | "Lead"
-  | "CompleteRegistration"
-  | "StartTrial"
-  | "Subscribe"
-  | "Purchase";
+/** @deprecated Use `MetaEventName` de [[src/lib/analytics/meta-event-names.ts]]. */
+export type MetaServerEventName = MetaEventName;
 
 export type MetaServerEvent = {
-  eventName: MetaServerEventName;
+  eventName: MetaEventName;
   /** Id determinístico (ex.: `signup_${userId}`) — dedup contra o Pixel e contra retry. */
   eventId: string;
   userData?: CapiUserDataRaw;

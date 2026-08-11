@@ -20,6 +20,20 @@ export const ATTRIBUTION_PARAMS = [
 export type AttributionParam = (typeof ATTRIBUTION_PARAMS)[number];
 export type Attribution = Partial<Record<AttributionParam, string>>;
 
+/**
+ * O que fica gravado em `users.signupAttribution` (jsonb): a atribuição da URL mais os
+ * cookies do Pixel capturados no cadastro.
+ *
+ * Os cookies ficam aqui porque a venda é confirmada por webhook, horas ou dias depois,
+ * sem navegador nenhum — sem persistir, o `Purchase` sai só com hash de e-mail/telefone
+ * e a Meta não consegue creditar a conversão ao clique do anúncio. É jsonb, então não
+ * exige migration para crescer.
+ */
+export type SignupAttributionBlob = Attribution & {
+  fbp?: string;
+  fbc?: string;
+};
+
 /** Valores longos demais são lixo/ataque — corta pra não inflar o banco. */
 const MAX_LEN = 255;
 

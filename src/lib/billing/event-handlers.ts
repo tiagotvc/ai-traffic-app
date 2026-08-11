@@ -280,6 +280,10 @@ export async function processPaymentReceived(payload: Record<string, unknown>) {
         isNewCustomer,
         tenantId,
         hasAnalyticsConsent: contact?.hasAnalyticsConsent ?? false,
+        // Cookies do Pixel gravados no cadastro: sem eles a Meta não liga a venda ao
+        // clique do anúncio e a campanha fica sem crédito da conversão que pagou.
+        ...(contact?.fbp ? { fbp: contact.fbp } : {}),
+        ...(contact?.fbc ? { fbc: contact.fbc } : {}),
         ...(contact?.email || contact?.phone
           ? {
               userData: {
@@ -818,7 +822,9 @@ async function notifyTrialStarted(tenantId: string): Promise<void> {
         userData: {
           email: contact.email,
           externalId: tenantId,
-          ...(contact.phone ? { phone: contact.phone } : {})
+          ...(contact.phone ? { phone: contact.phone } : {}),
+          ...(contact.fbp ? { fbp: contact.fbp } : {}),
+          ...(contact.fbc ? { fbc: contact.fbc } : {})
         },
         customData: { content_name: "free_trial" }
       });
