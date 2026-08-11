@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BillingCycleToggle } from "@/components/billing/BillingCycleToggle";
 import {
@@ -53,7 +53,13 @@ export function BillingPlansClient({
   }, []);
 
   // Viewed the pricing table — funnel "interest" step (GA4 + Meta ViewContent).
+  // A guarda por `variant` evita repetição: o efeito remonta a cada navegação de volta
+  // à página (e roda duas vezes em dev por causa do StrictMode), o que multiplicava o
+  // mesmo ViewContent. Mesma ideia do `beginCheckoutFiredFor` no checkout.
+  const viewPricingFiredFor = useRef<string | null>(null);
   useEffect(() => {
+    if (viewPricingFiredFor.current === variant) return;
+    viewPricingFiredFor.current = variant;
     trackEvent("view_pricing", { surface: variant });
     void trackMetaEvent("ViewContent", { customData: { content_name: `pricing_${variant}` } });
   }, [variant]);

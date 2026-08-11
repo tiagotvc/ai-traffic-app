@@ -18,6 +18,9 @@ export type TenantContact = {
   phone?: string | null;
   /** Consentimento congelado no cadastro; o webhook não tem cookie pra consultar. */
   hasAnalyticsConsent: boolean;
+  /** Cookies do Pixel gravados no cadastro — atribuição do `Purchase` server-side. */
+  fbp?: string;
+  fbc?: string;
 };
 
 export async function resolveTenantContact(tenantId: string): Promise<TenantContact | null> {
@@ -40,11 +43,15 @@ export async function resolveTenantContact(tenantId: string): Promise<TenantCont
   const email = customer?.email ?? adminUser?.email;
   if (!email) return null;
 
+  const attribution = adminUser?.signupAttribution ?? null;
+
   return {
     email,
     name: customer?.name ?? adminUser?.name ?? null,
     phone: customer?.phone ?? null,
-    hasAnalyticsConsent: adminUser?.analyticsConsent === "accepted"
+    hasAnalyticsConsent: adminUser?.analyticsConsent === "accepted",
+    ...(attribution?.fbp ? { fbp: attribution.fbp } : {}),
+    ...(attribution?.fbc ? { fbc: attribution.fbc } : {})
   };
 }
 

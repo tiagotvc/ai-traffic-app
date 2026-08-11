@@ -52,11 +52,48 @@ export async function queueSignupSheetSync(row: SignupSheetRow): Promise<void> {
   }
 }
 
+/**
+ * Guarda `fbp`/`fbc` junto da atribuição já gravada (jsonb, sem migration). A venda é
+ * confirmada por webhook, sem navegador — se estes cookies não ficarem registrados
+ * agora, o `Purchase` nunca terá como ser creditado ao clique do anúncio.
+ *
+ * Best-effort e não destrutivo: preserva a atribuição existente e nunca sobrescreve um
+ * cookie já gravado (o primeiro clique é o que trouxe a pessoa).
+ */
+async function persistMetaCookies(
+  userId: string,
+  cookies: { fbp?: string; fbc?: string }
+): Promise<void> {
+  if (!cookies.fbp && !cookies.fbc) return;
+  try {
+    const { user: userRepo } = await (await import("@/db/repositories")).repositories();
+    const user = await userRepo.findOne({ where: { id: userId } });
+    if (!user) return;
+
+    const current = user.signupAttribution ?? {};
+    const merged = {
+      ...current,
+      ...(cookies.fbp && !current.fbp ? { fbp: cookies.fbp } : {}),
+      ...(cookies.fbc && !current.fbc ? { fbc: cookies.fbc } : {})
+    };
+    if (JSON.stringify(merged) === JSON.stringify(current)) return;
+
+    await userRepo.update(userId, { signupAttribution: merged });
+  } catch (err) {
+    console.error("[signup-events] falha ao persistir cookies do Pixel:", err);
+  }
+}
+
 export async function onUserSignedUp(input: SignupEventInput): Promise<void> {
   const tasks: Promise<unknown>[] = [];
 
+  // Sem o cookie do Pixel, reconstrói o fbc a partir do fbclid da URL — recupera boa
+  // parte da correspondência de quem chegou por anúncio antes de aceitar cookies.
+  const fbc = input.fbc ?? buildFbcFromFbclid(input.attribution?.fbclid);
+
   // Pista 1 — Meta. Só com consentimento.
   if (input.hasAnalyticsConsent) {
+    tasks.push(persistMetaCookies(input.userId, { ...(input.fbp ? { fbp: input.fbp } : {}), ...(fbc ? { fbc } : {}) }));
     tasks.push(
       sendMetaServerEvent({
         eventName: "CompleteRegistration",
@@ -68,10 +105,7 @@ export async function onUserSignedUp(input: SignupEventInput): Promise<void> {
           ...(input.clientIpAddress ? { clientIpAddress: input.clientIpAddress } : {}),
           ...(input.clientUserAgent ? { clientUserAgent: input.clientUserAgent } : {}),
           ...(input.fbp ? { fbp: input.fbp } : {}),
-          // Sem o cookie do Pixel, reconstrói o fbc a partir do fbclid da URL.
-          ...(input.fbc ?? buildFbcFromFbclid(input.attribution?.fbclid)
-            ? { fbc: input.fbc ?? buildFbcFromFbclid(input.attribution?.fbclid) }
-            : {})
+          ...(fbc ? { fbc } : {})
         },
         customData: {
           content_name: "account_signup",

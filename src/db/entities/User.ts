@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne, JoinColumn } from "typeorm";
 import { AppBaseEntity } from "./_shared";
 import type { Tenant } from "./Tenant";
-import type { Attribution } from "@/lib/analytics/attribution";
+import type { SignupAttributionBlob } from "@/lib/analytics/attribution";
 
 export type PlatformRole = "user" | "admin";
 
@@ -33,9 +33,13 @@ export class User extends AppBaseEntity {
   @Column({ type: "text", nullable: true })
   termsAcceptedVersion?: string | null;
 
-  /** Parâmetros de campanha que trouxeram a pessoa até o cadastro (utm, fbclid, gclid). */
+  /**
+   * Parâmetros de campanha que trouxeram a pessoa até o cadastro (utm, fbclid, gclid)
+   * mais os cookies do Pixel (`fbp`/`fbc`) — estes últimos alimentam o `Purchase`
+   * server-side, que roda no webhook sem navegador. Ver `SignupAttributionBlob`.
+   */
   @Column({ type: "jsonb", nullable: true })
-  signupAttribution?: Attribution | null;
+  signupAttribution?: SignupAttributionBlob | null;
 
   /**
    * Escolha no banner de cookies, congelada no cadastro. Necessária porque o
