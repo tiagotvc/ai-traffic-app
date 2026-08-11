@@ -3677,6 +3677,10 @@
       "creatives": {
         "title": "Top criativos",
         "desc": "Quais anúncios estão funcionando: CTR, CPA, frequência e o ranking de melhores/piores criativos."
+      },
+      "whatsapp": {
+        "title": "Mensagens (WhatsApp)",
+        "desc": "Para campanha de conversa: mensagens, custo por mensagem, gasto, CTR, cliques e CPC. Sem ROAS nem conversões."
       }
     },
     "scheduledTitle": "Relatórios agendados",

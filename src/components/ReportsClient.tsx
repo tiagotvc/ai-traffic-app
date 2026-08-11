@@ -414,13 +414,21 @@ export function ReportsClient() {
     chartStyle?: ReportChartStyle;
     chartSeriesStyles?: Record<string, SeriesStyle>;
   }) {
-    skipFilterReloadRef.current = true;
-
     const nextMetrics = config.metrics?.length
       ? (config.metrics.filter((m) => m in METRIC_BY_KEY) as MetricKey[])
       : undefined;
 
+    // O "pula um reload" só vale se esta chamada de fato mexer num filtro — é ele que
+    // dispara o effect que faria o segundo fetch. Marcar sempre deixava a flag pendurada
+    // quando nada mudava (template não escolhido não traz config), e ela era consumida
+    // pela PRÓXIMA troca de filtro do usuário, que então não recarregava a prévia.
+    skipFilterReloadRef.current =
+      !!nextMetrics?.length ||
+      !!config.periodPreset ||
+      (!!config.reportType && config.reportType !== reportType);
+
     if (config.kind === "consolidated") {
+      skipFilterReloadRef.current = true;
       const nextPeriod: PeriodState | undefined = config.periodPreset
         ? { preset: config.periodPreset as PeriodState["preset"], since: "", until: "" }
         : undefined;

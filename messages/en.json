@@ -3672,6 +3672,10 @@
       "creatives": {
         "title": "Top creatives",
         "desc": "Which ads are working: CTR, CPA, frequency and the best/worst creative ranking."
+      },
+      "whatsapp": {
+        "title": "Messages (WhatsApp)",
+        "desc": "For conversation campaigns: messages, cost per message, spend, CTR, clicks and CPC. No ROAS or conversions."
       }
     },
     "scheduledTitle": "Scheduled reports",

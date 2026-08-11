@@ -5,6 +5,7 @@ import {
   Bookmark,
   FileText,
   LayoutList,
+  MessageCircle,
   PenLine,
   Sparkles,
   Trophy,
@@ -131,6 +132,10 @@ export function ReportsViewModal({
   const [step, setStep] = useState<ModalStep>("mode");
   const [mode, setMode] = useState<GenerationMode | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  // O passo "standard" pré-seleciona "performance" para o card não abrir vazio. Isso é
+  // destaque visual, não escolha do usuário — e sem separar os dois, a config desse template
+  // sobrescrevia as métricas que o usuário tinha acabado de montar na barra de filtros.
+  const [templateTouched, setTemplateTouched] = useState(false);
   const [reportType, setReportType] = useState<"simple" | "complete">(currentReportType);
   const [savedTemplates, setSavedTemplates] = useState<SavedTpl[]>([]);
   const [saveName, setSaveName] = useState("");
@@ -143,6 +148,7 @@ export function ReportsViewModal({
       setStep("mode");
       setMode(null);
       setSelectedTemplate(null);
+      setTemplateTouched(false);
       setReportType(currentReportType);
       setPrompt("");
       setChartStyleChoice("auto");
@@ -210,6 +216,15 @@ export function ReportsViewModal({
     }
 
     if (selectedBuiltin) {
+      // Template que o usuário não escolheu não impõe recorte: vale o que ele montou na
+      // barra de filtros (métricas, período, tipo de gráfico). Só o reportType segue, porque
+      // esse tem controle próprio aqui dentro do modal.
+      if (!templateTouched) {
+        onApplyStandard({ reportType, templateId: selectedBuiltin.id, kind: "single" });
+        onClose();
+        return;
+      }
+
       const c = builtinToConfig(selectedBuiltin);
       onApplyStandard({
         reportType: c?.reportType ?? reportType,
@@ -375,7 +390,13 @@ export function ReportsViewModal({
           >
             {BUILTIN_REPORT_TEMPLATES.map((tpl) => {
               const Icon =
-                tpl.kind === "consolidated" ? LayoutList : tpl.id === "creatives" ? Trophy : BarChart2;
+                tpl.kind === "consolidated"
+                  ? LayoutList
+                  : tpl.id === "creatives"
+                    ? Trophy
+                    : tpl.id === "whatsapp"
+                      ? MessageCircle
+                      : BarChart2;
               const title =
                 tpl.kind === "consolidated"
                   ? t("consolidatedButton")
@@ -394,6 +415,7 @@ export function ReportsViewModal({
                   badge={tpl.id === "performance" ? t("templateMostUsed") : undefined}
                   onSelect={() => {
                     setSelectedTemplate(tpl.id);
+                    setTemplateTouched(true);
                     if (tpl.reportType) setReportType(tpl.reportType);
                   }}
                 />
@@ -409,7 +431,10 @@ export function ReportsViewModal({
                   count: tpl.config.metrics?.length ?? 0
                 })}
                 icon={FileText}
-                onSelect={() => setSelectedTemplate(tpl.id)}
+                onSelect={() => {
+                  setSelectedTemplate(tpl.id);
+                  setTemplateTouched(true);
+                }}
               />
             ))}
           </div>

@@ -8,6 +8,7 @@ export type BuiltinTemplateId =
   | "monthly"
   | "alerts"
   | "creatives"
+  | "whatsapp"
   | "consolidated";
 
 type BuiltinChartStyle = "area" | "line" | "bar" | "composed";
@@ -70,6 +71,17 @@ export const BUILTIN_REPORT_TEMPLATES: BuiltinReportTemplate[] = [
     metrics: ["ctr", "cpa", "frequency", "conversions"] as MetricKey[],
     periodPreset: "last30",
     chartStyle: "bar"
+  },
+  {
+    id: "whatsapp",
+    kind: "single",
+    reportType: "simple",
+    // Campanha de mensagem não tem ROAS nem conversão: o resultado é a conversa aberta.
+    // Mesmo recorte do preset lead_whatsapp em campaign-presets.ts (messages/cpmsg/ctr/spend),
+    // com clicks e cpc para mostrar o custo do topo do funil que gera a conversa.
+    metrics: ["messages", "cpmsg", "spend", "ctr", "clicks", "cpc"] as MetricKey[],
+    periodPreset: "thisWeek",
+    chartStyle: "line"
   },
   { id: "consolidated", kind: "consolidated" }
 ];
