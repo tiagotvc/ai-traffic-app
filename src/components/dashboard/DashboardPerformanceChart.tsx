@@ -390,6 +390,14 @@ export function DashboardPerformanceChart({
         ? "h-full min-h-[280px]"
         : previewHeight ?? (isPage ? 250 : 200);
 
+  // Quando este bloco desenha a legenda, o gráfico não pode desenhar a dele também.
+  const showOwnLegend =
+    disableToggle &&
+    visual?.showLegend !== false &&
+    activeMetrics.length > 0 &&
+    chartStyle !== "pie" &&
+    chartStyle !== "donut";
+
   return (
     <div
       className={cn(
@@ -450,11 +458,7 @@ export function DashboardPerformanceChart({
         </div>
       ) : null}
 
-      {disableToggle &&
-      visual?.showLegend !== false &&
-      activeMetrics.length > 0 &&
-      chartStyle !== "pie" &&
-      chartStyle !== "donut" ? (
+      {showOwnLegend ? (
         <div
           className={cn(
             "mb-2 flex shrink-0 flex-wrap gap-3",
@@ -499,6 +503,7 @@ export function DashboardPerformanceChart({
               compactAxis={isMobile}
               dualAxisAlways={dualAxisAlways}
               lineVisual={lineVisual}
+              hideLegend={showOwnLegend}
             />
           </ChartContainer>
         ) : (
@@ -584,7 +589,8 @@ function PerformanceChartBody({
   metricSummary,
   compactAxis = false,
   dualAxisAlways = false,
-  lineVisual = "premium"
+  lineVisual = "premium",
+  hideLegend = false
 }: {
   data: ChartPoint[];
   activeMetrics: MetricKey[];
@@ -598,6 +604,8 @@ function PerformanceChartBody({
   compactAxis?: boolean;
   dualAxisAlways?: boolean;
   lineVisual?: LineVisual;
+  /** O container já desenha a própria legenda — evita a segunda, que estourava o card. */
+  hideLegend?: boolean;
 }) {
   const colorFor = (key: MetricKey) => resolveMetricColor(key, visual?.customColors);
   const lineWidth = strokeWeightToPx(visual?.lineStrokeWidth, 2.5);
@@ -1063,9 +1071,11 @@ function PerformanceChartBody({
           {reportRightYAxis}
           {reportTertiaryYAxis}
           {reportTooltip}
-          <Legend
-            wrapperStyle={{ fontSize: 11, color: "var(--text-dim)", paddingLeft: 0, paddingRight: 0 }}
-          />
+          {hideLegend ? null : (
+            <Legend
+              wrapperStyle={{ fontSize: 11, color: "var(--text-dim)", paddingLeft: 0, paddingRight: 0 }}
+            />
+          )}
           {activeMetrics.map((key) => (
             <Line
               key={key}

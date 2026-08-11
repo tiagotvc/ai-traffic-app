@@ -309,14 +309,18 @@ export function ReportPreview({
 
       <section className={`${sectionClass} report-pdf-grid-2 grid grid-cols-1 gap-3 lg:grid-cols-2`}>
         <ReportChartCard title={t("performanceChartTitle")}>
-          <div className="mt-3 h-56">
+          {/* Sem altura fixa: a legenda deste gráfico fica FORA da área do Recharts, então
+              travar o bloco em h-56 empurrava ela pra fora do card, que corta o excedente.
+              O gráfico cede a altura da legenda para o conjunto fechar nos mesmos ~224px
+              do card ao lado. */}
+          <div className="min-w-0">
             <DashboardPerformanceChart
               data={chartData}
               activeMetrics={chartMetrics}
               formatValue={(key, value) => formatMetricValue(key, value, locale)}
               metricLabels={metricLabelsMap}
               variant="preview"
-              previewHeight={224}
+              previewHeight={200}
               disableToggle
               chartStyle={chartStyle}
               lineVisual="report"
@@ -326,7 +330,7 @@ export function ReportPreview({
         </ReportChartCard>
 
         <ReportChartCard title={t("comparisonBarsTitle")}>
-          <div className="mt-3 h-56">
+          <div className="h-56">
             <ChartContainer height={224}>
               <BarChart data={comparisonChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
