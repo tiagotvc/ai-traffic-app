@@ -74,7 +74,7 @@ function BreakdownCard({
         isFullWidth ? "report-breakdown-card--full" : ""
       }`}
     >
-      <div>
+      <div className="report-print-keep-next">
         <div className="text-sm font-semibold text-[var(--text-main)]">{t(titleKey)}</div>
         <p className="mt-0.5 text-[10px] text-[var(--text-dim)]">{t("breakdownSpendShareHint")}</p>
       </div>
@@ -244,7 +244,7 @@ export function ReportAudienceBreakdown({
     <section
       className={`report-breakdown-section report-pdf-section ${isPrint ? "report-print-section" : ""}`}
     >
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+      <div className="report-print-keep-next mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="text-sm font-semibold text-[var(--text-main)]">{t("breakdownSectionTitle")}</div>
           <p className="mt-1 text-xs text-[var(--text-dim)]">{t("breakdownSectionSubtitle")}</p>

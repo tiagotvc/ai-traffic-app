@@ -352,7 +352,7 @@ export function ReportPreview({
       </section>
 
       <section className={`${sectionClass} report-pdf-block campaign-creator-card overflow-hidden !p-4`}>
-        <div className="text-sm font-semibold text-[var(--text-main)] report-print-avoid-break">
+        <div className="report-print-keep-next text-sm font-semibold text-[var(--text-main)] report-print-avoid-break">
           {t("spendByCampaignTitle")}
         </div>
         {campaignsWithSpend.length ? (
@@ -402,7 +402,7 @@ export function ReportPreview({
             </div>
 
             <div className={`min-w-0 ${isPrint ? "report-print-table-section" : ""}`}>
-              <div className="mb-2 text-xs font-medium text-[var(--text-dim)]">
+              <div className="report-print-keep-next mb-2 text-xs font-medium text-[var(--text-dim)]">
                 {t("campaignSpendTableTitle", { count: campaignsWithSpend.length })}
               </div>
               <div
@@ -583,19 +583,24 @@ export function ReportPreview({
       ) : null}
 
       <section className={`${sectionClass}`}>
-        <div className="mb-3">
-          <div className="text-sm font-semibold text-[var(--text-main)]">{t("creativesRankingTitle")}</div>
-          <p className="mt-1 text-xs text-[var(--text-dim)]">{t("creativesRankingSubtitle")}</p>
+        {/* Título e cards vêm de componentes diferentes, com uma div do ranking no meio.
+            Caixa única em vez de `break-after`, pra garantir que "Ranking de criativos"
+            não feche a folha com os criativos na seguinte. */}
+        <div className="report-print-keep-block">
+          <div className="report-print-keep-next mb-3">
+            <div className="text-sm font-semibold text-[var(--text-main)]">{t("creativesRankingTitle")}</div>
+            <p className="mt-1 text-xs text-[var(--text-dim)]">{t("creativesRankingSubtitle")}</p>
+          </div>
+          <CreativesRankingView
+            clientId={data.client.id}
+            clientSlug={data.client.slug}
+            periodQuery={periodQuery}
+            adAccountId={adAccountId ?? data.adAccount?.metaAdAccountId}
+            maxBest={3}
+            embedInReport
+            initialGroups={initialCreativeGroups}
+          />
         </div>
-        <CreativesRankingView
-          clientId={data.client.id}
-          clientSlug={data.client.slug}
-          periodQuery={periodQuery}
-          adAccountId={adAccountId ?? data.adAccount?.metaAdAccountId}
-          maxBest={3}
-          embedInReport
-          initialGroups={initialCreativeGroups}
-        />
       </section>
     </div>
   );
