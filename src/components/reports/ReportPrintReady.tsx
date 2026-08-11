@@ -48,7 +48,14 @@ export function ReportPrintReady({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div data-report-print-ready={ready ? "true" : "false"} data-reports-shell className="report-print-shell">
+    // O relatório é peça entregue ao cliente: sempre claro, qualquer que seja o tema do app.
+    // `data-theme="light"` no MESMO elemento do shell redefine os tokens para o subtree inteiro.
+    <div
+      data-report-print-ready={ready ? "true" : "false"}
+      data-reports-shell
+      data-theme="light"
+      className="report-print-shell"
+    >
       {children}
     </div>
   );

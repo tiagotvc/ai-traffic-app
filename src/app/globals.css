@@ -2690,6 +2690,28 @@ h6,
     --creator-choice-inactive-icon: var(--text-dimmer);
   }
 
+  /* Espelho light da regra acima, para quem força light local independente do tema do site
+     (o relatório: é peça entregue ao cliente, sempre claro). Sem isto, a regra descendente
+     "[data-theme=dark] [shell]" continua casando — o html segue dark e o shell é filho dele —
+     e os cards vinham escuros com o texto que o report-print.css força escuro: ilegível.
+     O prefixo :root é o mesmo truque da regra dark: empata a especificidade em (0,3,0). */
+  :root [data-theme="light"][data-campaign-creator-shell],
+  :root [data-theme="light"][data-creator-modal-shell],
+  :root [data-theme="light"][data-agency-brain-shell],
+  :root [data-theme="light"][data-reports-shell],
+  :root [data-theme="light"][data-dashboard-shell],
+  :root [data-theme="light"][data-admin-shell],
+  :root [data-theme="light"][data-audiences-shell] {
+    --creator-card-bg: #ffffff;
+    --creator-card-bg-inset: #e8edf3;
+    --creator-card-border: rgba(15, 23, 42, 0.12);
+    --creator-step-future-border: color-mix(in srgb, var(--ui-accent) 34%, var(--border-color));
+    --creator-step-future-text: color-mix(in srgb, var(--ui-accent) 48%, var(--text-dimmer));
+    --creator-choice-inactive-border: color-mix(in srgb, var(--ui-accent) 30%, var(--border-color));
+    --creator-choice-inactive-text: color-mix(in srgb, var(--ui-accent) 44%, var(--text-dimmer));
+    --creator-choice-inactive-icon: color-mix(in srgb, var(--ui-accent) 52%, var(--text-dimmer));
+  }
+
   [data-reports-shell] .report-pdf-kpi {
     border-color: var(--creator-card-border, var(--border-color));
     background: var(--creator-card-bg, var(--surface-card));

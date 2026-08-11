@@ -594,27 +594,36 @@ export function ReportsClient() {
                 </button>
               ) : null}
             </div>
-            {previewMode === "consolidated" && consolidated ? (
-              <ReportsConsolidatedPreview
-                data={consolidated}
-                locale={locale}
-                onExportCsv={downloadCsv}
-              />
-            ) : preview ? (
-              <ReportPreview
-                data={preview}
-                selectedMetrics={selectedMetrics}
-                kpiMetrics={kpiMetrics}
-                kpiEditMode={kpiEditMode}
-                onKpiEditModeChange={setKpiEditMode}
-                onKpiReorder={handleKpiReorder}
-                reportType={reportType}
-                periodQuery={periodQuery}
-                adAccountId={adAccountId || undefined}
-                chartStyle={chartStyle}
-                chartSeriesStyles={chartSeriesStyles}
-              />
-            ) : null}
+            {/* O relatório é peça entregue ao cliente: sempre claro, qualquer que seja o tema
+                do app. A prévia usa o mesmo tema do arquivo enviado, senão ela mostraria uma
+                coisa e o PDF sairia outra. A barra de ações acima fica fora, no tema do app. */}
+            <div
+              data-reports-shell
+              data-theme="light"
+              className="rounded-xl bg-[var(--surface-card)] p-4 text-[var(--text-main)] sm:p-6"
+            >
+              {previewMode === "consolidated" && consolidated ? (
+                <ReportsConsolidatedPreview
+                  data={consolidated}
+                  locale={locale}
+                  onExportCsv={downloadCsv}
+                />
+              ) : preview ? (
+                <ReportPreview
+                  data={preview}
+                  selectedMetrics={selectedMetrics}
+                  kpiMetrics={kpiMetrics}
+                  kpiEditMode={kpiEditMode}
+                  onKpiEditModeChange={setKpiEditMode}
+                  onKpiReorder={handleKpiReorder}
+                  reportType={reportType}
+                  periodQuery={periodQuery}
+                  adAccountId={adAccountId || undefined}
+                  chartStyle={chartStyle}
+                  chartSeriesStyles={chartSeriesStyles}
+                />
+              ) : null}
+            </div>
           </div>
         ) : !previewLoading ? (
           <div className="campaign-creator-card flex min-h-[420px] flex-col items-center justify-center !p-8 text-center">
