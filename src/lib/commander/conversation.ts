@@ -38,12 +38,19 @@ export async function appendCommanderTurn(input: {
   question: string;
   answer: string;
   ruleProposal?: Record<string, unknown> | null;
+  actionChips?: Record<string, unknown>[];
 }): Promise<void> {
   const { commanderConversation: repo } = await repositories();
   const now = new Date().toISOString();
   const newMessages: CommanderConversationMessage[] = [
     { role: "user", content: input.question, createdAt: now },
-    { role: "assistant", content: input.answer, ruleProposal: input.ruleProposal ?? null, createdAt: now }
+    {
+      role: "assistant",
+      content: input.answer,
+      ruleProposal: input.ruleProposal ?? null,
+      actionChips: input.actionChips ?? [],
+      createdAt: now
+    }
   ];
 
   const existing = await repo.findOne({ where: { tenantId: input.tenantId, clientId: input.clientId } });

@@ -10,6 +10,9 @@ import {
 } from "@/lib/billing/anonymous-checkout";
 import { resolveCheckoutProvider } from "@/lib/billing/providers";
 import { isValidPhone } from "@/lib/br-validation";
+import { repositories } from "@/db/repositories";
+import { getOrSetVisitorId } from "@/lib/funnel/visitor-id";
+import { recordFunnelEvent } from "@/lib/funnel/record-event";
 
 function clientIp(req: Request): string | undefined {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -99,6 +102,21 @@ export async function POST(req: Request) {
     const provider =
       body.provider ?? resolveCheckoutProvider(locale, body.paymentRegion ?? null);
 
+    // Funil (Camada 2): "completou checkout" — gravado aqui, não no client, porque só aqui
+    // já se sabe com certeza que o provedor aceitou a cobrança.
+    const recordCheckoutCompleted = async () => {
+      const [{ plan: planRepo }, visitorId] = await Promise.all([repositories(), getOrSetVisitorId()]);
+      const plan = await planRepo.findOne({ where: { id: body.planId } });
+      await recordFunnelEvent({
+        visitorId,
+        userId,
+        tenantId,
+        eventType: "completed_checkout",
+        planSlug: plan?.slug ?? null,
+        email: body.customer.email
+      });
+    };
+
     if (provider === "stripe") {
       const result = await startStripeCheckout({
         tenantId,
@@ -108,6 +126,7 @@ export async function POST(req: Request) {
         customer: { name: body.customer.name, email: body.customer.email }
       });
       if (pendingAnonymousUserId) await establishAnonymousSession(pendingAnonymousUserId);
+      await recordCheckoutCompleted();
       return NextResponse.json({
         ok: true,
         provider: "stripe",
@@ -147,6 +166,7 @@ export async function POST(req: Request) {
     // Só chega aqui se o provedor aceitou a cobrança (cartão aprovado / QR PIX emitido) —
     // startCheckout lança em caso de recusa e cai no catch sem estabelecer sessão.
     if (pendingAnonymousUserId) await establishAnonymousSession(pendingAnonymousUserId);
+    await recordCheckoutCompleted();
 
     return NextResponse.json({ ok: true, provider: "asaas", ...result });
   } catch (err) {

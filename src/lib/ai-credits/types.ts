@@ -23,6 +23,7 @@ export type AiCreditKind =
   | "zone_generate"
   | "ad_copy_generate"
   | "creative_variant_generate"
+  | "creative_studio_generate"
   // Análise por IA sem gate de crédito hoje.
   | "persona_insights"
   | "geo_insights"

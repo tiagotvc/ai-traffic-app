@@ -13,6 +13,7 @@ import { usePathname } from "next/navigation";
 import { AudiencesNavGroup } from "@/components/layout/AudiencesNavGroup";
 import { CommanderNavGroup } from "@/components/layout/CommanderNavGroup";
 import { CortexNavGroup } from "@/components/layout/CortexNavGroup";
+import { CreativeStudioNavGroup } from "@/components/layout/CreativeStudioNavGroup";
 import { ReportsNavGroup } from "@/components/layout/ReportsNavGroup";
 import { NavUpgradeLink } from "@/components/layout/NavUpgradeLink";
 import {
@@ -135,6 +136,7 @@ export function AppSidebar({
     | { kind: "item"; item: NavItem }
     | { kind: "audiences" }
     | { kind: "commander" }
+    | { kind: "creativeStudio" }
     | { kind: "cortex" }
     | { kind: "reports" };
 
@@ -149,6 +151,7 @@ export function AppSidebar({
       : []),
     ...(moduleOn("audiences") ? [{ kind: "audiences" as const }] : []),
     { kind: "item", item: items.find((i) => i.id === "creatives")! },
+    { kind: "creativeStudio" as const },
     // Módulos do ecossistema Orion como submenus (reorg 2026-08-01: Commander vira
     // submenu com Visão geral/Cientistas/Configurações, igual Públicos e Relatórios).
     ...(moduleOn("commander") ? [{ kind: "commander" as const }] : []),
@@ -229,6 +232,16 @@ export function AppSidebar({
                 planLimits={planLimits}
                 planLimitsReady={planLimitsReady}
                 platformFeatures={platformFeatures}
+                pathname={pathname}
+                onNavigate={onNavigate}
+              />
+            );
+          }
+          if (entry.kind === "creativeStudio") {
+            return (
+              <CreativeStudioNavGroup
+                key="creativeStudio"
+                collapsed={effectiveCollapsed}
                 pathname={pathname}
                 onNavigate={onNavigate}
               />

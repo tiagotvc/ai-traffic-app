@@ -10,7 +10,17 @@ import {
   yesterdayRange
 } from "@/lib/report-period";
 
-export type CommanderPeriodMatch = { since: string; until: string; label: string };
+export type CommanderPeriodMatch = {
+  since: string;
+  until: string;
+  label: string;
+  /** Presente quando o pedido não tem como ser atendido com dado diário de verdade (ex.:
+   * granularidade horária) — instrução extra pro modelo, ou pro chamador decidir buscar
+   * ao vivo na Meta em vez do snapshot sincronizado. */
+  note?: string;
+  /** Pedido explicitamente por HORA — sinaliza pro chamador tentar quebra horária ao vivo. */
+  isHourly?: boolean;
+};
 
 type PeriodRule = { pattern: RegExp; resolve: () => CommanderPeriodMatch };
 
@@ -82,6 +92,24 @@ const RULES: PeriodRule[] = [
 /** Frases comuns em pt-BR que implicam um período — sem match, devolve `null`. */
 export function parsePeriodPhrase(question: string): CommanderPeriodMatch | null {
   const text = question.toLowerCase();
+
+  // Sem granularidade horária — os dados são fechados por dia. Mapeia pro dia de hoje (a
+  // aproximação real mais próxima) e avisa o modelo pra ser transparente sobre isso.
+  const hoursMatch = text.match(/últimas?\s+(\d{1,3})\s+horas?|ultimas?\s+(\d{1,3})\s+horas?/);
+  if (hoursMatch) {
+    const t = todayIso();
+    return {
+      since: t,
+      until: t,
+      label: "hoje",
+      isHourly: true,
+      note:
+        "O usuário pediu por HORAS. Se a seção de memória abaixo tiver quebra por hora (dado ao " +
+        "vivo da Meta), use-a. Se não tiver (fetch ao vivo indisponível no momento), o que segue é " +
+        "o dia de hoje inteiro (ainda em andamento) — deixe isso claro uma vez, de forma direta e " +
+        "natural (não repita 'não tenho esse dado' como desculpa robótica)."
+    };
+  }
 
   const daysMatch = text.match(/últimos?\s+(\d{1,3})\s+dias|ultimos?\s+(\d{1,3})\s+dias/);
   if (daysMatch) {

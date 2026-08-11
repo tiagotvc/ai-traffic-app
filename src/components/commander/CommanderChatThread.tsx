@@ -1,15 +1,36 @@
 "use client";
 
-import { Loader2, RotateCcw, Send } from "lucide-react";
+import { Coins, Database, Loader2, MessageSquare, RotateCcw, Send, Sparkles } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { DsButton, DsInput } from "@/design-system";
-import { CommanderRuleProposalCard } from "@/components/campaign-creator/commander/CommanderParts";
+import {
+  CommanderActionChipCard,
+  CommanderRuleProposalCard
+} from "@/components/campaign-creator/commander/CommanderParts";
 import {
   useAskCommander,
+  type CommanderChatCredits,
   type CommanderChatDraftSummary,
   type CommanderChatInsight
 } from "@/components/campaign-creator/commander/useAskCommander";
+
+/** Ícone/cor por fase REAL emitida pelo servidor (`ask.ts`'s `emit`) — nada decorativo/fake. */
+function statusVisual(label: string | null): { icon: typeof Loader2; tone: string } {
+  if (label?.startsWith("Coletando") || label?.startsWith("Buscando")) {
+    return { icon: Database, tone: "text-sky-400" };
+  }
+  if (label?.startsWith("Consultando")) return { icon: Sparkles, tone: "text-[var(--amber-bright)]" };
+  return { icon: Loader2, tone: "text-[var(--amber-bright)]" };
+}
+
+/** Créditos do MÊS (total da conta), não por mensagem — por isso fica no rodapé, não na bolha. */
+function formatCreditsSummary(credits: CommanderChatCredits | null): string | null {
+  if (!credits) return null;
+  if (credits.limit < 0) return "créditos ilimitados no plano";
+  if (credits.remaining < 0) return "uso ilimitado neste ciclo";
+  return `${credits.remaining} crédito${credits.remaining === 1 ? "" : "s"} restante${credits.remaining === 1 ? "" : "s"} este mês`;
+}
 
 /**
  * UI do chat do Commander (input + histórico + proposta de regra), desacoplada do
@@ -39,6 +60,8 @@ export function CommanderChatThread({
   const {
     ask,
     asking,
+    statusLabel,
+    lastCredits,
     messages,
     hydrated,
     error: askError,
@@ -48,6 +71,11 @@ export function CommanderChatThread({
     ruleCreatedIndexes,
     ruleError,
     ruleErrorIndex,
+    applyActionChip,
+    applyingChipKey,
+    appliedChipKeys,
+    chipError,
+    chipErrorKey,
     resetConversation
   } = useAskCommander({ clientSlug, draft, insights });
 
@@ -58,6 +86,10 @@ export function CommanderChatThread({
     void ask(autoAsk);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoAsk, hydrated, canAsk]);
+
+  const status = statusVisual(statusLabel);
+  const StatusIcon = status.icon;
+  const creditsSummary = formatCreditsSummary(lastCredits);
 
   return (
     <div className={fill ? "flex h-full min-h-0 flex-col" : ""}>
@@ -97,28 +129,49 @@ export function CommanderChatThread({
               : "mt-2.5 flex max-h-[280px] flex-col gap-2 overflow-y-auto pr-0.5"
           }
         >
-          {messages.map((message, index) => (
-            <div key={`${message.role}-${index}-${message.createdAt}`}>
-              <div
-                className={`rounded-xl border p-3 text-[11px] leading-relaxed ${
-                  message.role === "user"
-                    ? "ml-4 border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-[var(--text-main)]"
-                    : "border-amber-500/20 bg-amber-500/[0.06] text-[var(--text-main)]"
-                }`}
-              >
-                {message.content}
+          {messages.map((message, index) => {
+            return (
+              <div key={`${message.role}-${index}-${message.createdAt}`}>
+                <div
+                  className={`rounded-xl border p-3 text-[11px] leading-relaxed ${
+                    message.role === "user"
+                      ? "ml-4 border-[var(--border-color)] bg-[var(--creator-card-bg-inset,var(--surface-bg))] text-[var(--text-main)]"
+                      : "border-amber-500/20 bg-amber-500/[0.06] text-[var(--text-main)]"
+                  }`}
+                >
+                  {message.content}
+                </div>
+                {message.ruleProposal ? (
+                  <CommanderRuleProposalCard
+                    proposal={message.ruleProposal}
+                    onCreate={() => void createRule(index)}
+                    creating={creatingRuleIndex === index}
+                    created={ruleCreatedIndexes.has(index)}
+                    error={ruleErrorIndex === index ? ruleError : null}
+                  />
+                ) : null}
+                {message.actionChips?.map((chip, chipIndex) => {
+                  const key = `${index}:${chipIndex}`;
+                  return (
+                    <CommanderActionChipCard
+                      key={key}
+                      chip={chip}
+                      onApply={() => void applyActionChip(index, chipIndex)}
+                      applying={applyingChipKey === key}
+                      applied={appliedChipKeys.has(key)}
+                      error={chipErrorKey === key ? chipError : null}
+                    />
+                  );
+                })}
               </div>
-              {message.ruleProposal ? (
-                <CommanderRuleProposalCard
-                  proposal={message.ruleProposal}
-                  onCreate={() => void createRule(index)}
-                  creating={creatingRuleIndex === index}
-                  created={ruleCreatedIndexes.has(index)}
-                  error={ruleErrorIndex === index ? ruleError : null}
-                />
-              ) : null}
+            );
+          })}
+          {asking ? (
+            <div className="flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3 text-[11px] leading-relaxed text-[var(--text-dim)]">
+              <StatusIcon size={12} className={`${status.tone} ${status.icon === Loader2 ? "animate-spin" : ""}`} />
+              {statusLabel ?? "Pensando…"}
             </div>
-          ))}
+          ) : null}
         </div>
       ) : emptyHint ? (
         <p className="mt-3 text-xs leading-relaxed text-[var(--text-dim)]">{emptyHint}</p>
@@ -131,14 +184,28 @@ export function CommanderChatThread({
       ) : null}
 
       {messages.length > 0 ? (
-        <button
-          type="button"
-          onClick={() => void resetConversation()}
-          className="mt-3 inline-flex shrink-0 items-center gap-1 self-start text-[11px] text-[var(--text-dimmer)] transition-colors hover:text-[var(--text-main)]"
-        >
-          <RotateCcw size={11} />
-          Reiniciar conversa
-        </button>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-[var(--creator-card-border)] pt-2.5 text-[11px] text-[var(--text-dimmer)]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {creditsSummary ? (
+              <span className="inline-flex items-center gap-1">
+                <Coins size={11} />
+                {creditsSummary}
+              </span>
+            ) : null}
+            <span className="inline-flex items-center gap-1">
+              <MessageSquare size={11} />
+              {messages.length} mensage{messages.length === 1 ? "m" : "ns"} nesta conversa
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void resetConversation()}
+            className="inline-flex shrink-0 items-center gap-1 transition-colors hover:text-[var(--text-main)]"
+          >
+            <RotateCcw size={11} />
+            Reiniciar conversa
+          </button>
+        </div>
       ) : null}
     </div>
   );

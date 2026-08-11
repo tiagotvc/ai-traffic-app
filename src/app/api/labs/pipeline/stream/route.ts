@@ -99,9 +99,10 @@ export async function POST(req: Request) {
                 wizardStep: body.activeNode ?? "campaign",
                 draftId: body.draftId ?? null,
                 clientId: client?.id ?? null,
-                maxScientists
+                maxScientists,
+                tenantId: tenant.id
               }
-            : { maxScientists };
+            : { maxScientists, clientId: client?.id ?? null, tenantId: tenant.id };
         const dossier = await runFullResearch(input, send, scope, options);
         if (scope === "zone" && (body.geoLocations?.length ?? 0) > 0) {
           const reach = await estimateGeoReach(tenant.id, metaAccessToken, body.geoLocations!);

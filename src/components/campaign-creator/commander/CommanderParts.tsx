@@ -19,6 +19,7 @@ import { DsModal } from "@/design-system";
 import type { CommanderMemoryCampaign } from "@/hooks/useCommanderMemory";
 import { actionLabel, conditionText } from "@/lib/automation/rule-templates";
 import type {
+  CommanderActionChip,
   CommanderInsight,
   CommanderPipelineStep,
   CommanderRuleProposal,
@@ -385,6 +386,61 @@ export function CommanderRuleProposalCard({
           >
             {creating ? <LoaderCircle size={12} className="animate-spin" /> : <Zap size={12} />}
             {proposal.executionMode === "auto" ? "Criar regra" : "Criar regra (com aprovação)"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const CHIP_ACTION_LABEL: Record<CommanderActionChip["actionType"], string> = {
+  pause_campaign: "Pausar agora",
+  reactivate_campaign: "Reativar agora",
+  adjust_budget_percent: "Ajustar orçamento"
+};
+
+/**
+ * Chip de ação pontual do Commander (aresta Commander→Engine, `source: "chat"`) — diferente
+ * da proposta de regra: é uma ação de agora sobre UMA campanha real desta conversa, um
+ * clique chama o mesmo executor que Automações usa, sem virar automação recorrente.
+ */
+export function CommanderActionChipCard({
+  chip,
+  onApply,
+  applying,
+  applied,
+  error
+}: {
+  chip: CommanderActionChip;
+  onApply: () => void;
+  applying: boolean;
+  applied: boolean;
+  error: string | null;
+}) {
+  return (
+    <div className="mt-2.5 rounded-xl border border-[var(--ui-accent-border)] bg-[var(--ui-accent-muted)] p-3">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--ui-accent)]">
+        <Zap size={12} />
+        Ação sugerida
+      </div>
+      <p className="mt-1.5 font-heading text-xs font-semibold text-[var(--text-main)]">{chip.title}</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-[var(--text-dim)]">{chip.evidence}</p>
+      {error ? <p className="mt-1.5 text-[11px] text-red-400">{error}</p> : null}
+      <div className="mt-2.5 flex items-center gap-2">
+        {applied ? (
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400">
+            <Check size={13} strokeWidth={2.5} />
+            Aplicado — registrado em Automações › Execuções.
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={applying}
+            className="ui-btn-accent inline-flex h-7 items-center justify-center gap-1.5 px-3 font-heading text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {applying ? <LoaderCircle size={12} className="animate-spin" /> : <Zap size={12} />}
+            {CHIP_ACTION_LABEL[chip.actionType]}
           </button>
         )}
       </div>

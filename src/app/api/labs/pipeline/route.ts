@@ -79,10 +79,11 @@ export async function POST(req: Request) {
   };
 
   // "full" = dossiê completo (marketing + geo + Testing Scientist).
+  const context = { tenantId: tenant.id, clientId: client?.id ?? null };
   const dossier =
     body.pipelineId === "full"
-      ? await runResearchWithTesting(input, maxScientists)
-      : await runResearchPipeline(body.pipelineId, input, maxScientists);
+      ? await runResearchWithTesting(input, maxScientists, context)
+      : await runResearchPipeline(body.pipelineId, input, maxScientists, context);
 
   if (!dossier) {
     return NextResponse.json({ ok: false, reason: "unknown_pipeline" }, { status: 400 });

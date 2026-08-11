@@ -62,3 +62,19 @@ export type CommanderRuleProposal = {
   executionMode: "alert" | "approval" | "auto";
   simulation: CommanderRuleProposalSimulation | null;
 };
+
+/**
+ * Ação sugerida pelo Commander (aresta Commander→Engine, `source: "chat"`) — diferente da
+ * proposta de regra: é uma ação de agora, uma vez só, sobre uma campanha específica com
+ * dado real desta conversa. Nunca vira automação recorrente.
+ */
+export type CommanderActionChipType = "pause_campaign" | "reactivate_campaign" | "adjust_budget_percent";
+
+export type CommanderActionChip = {
+  title: string;
+  evidence: string;
+  metaCampaignId: string;
+  campaignName: string;
+  actionType: CommanderActionChipType;
+  budgetPercent: number | null;
+};

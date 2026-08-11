@@ -50,10 +50,17 @@ export function BillingPlansClient({
       .finally(() => setLoading(false));
   }, []);
 
-  // Viewed the pricing table — funnel "interest" step (GA4 + Meta ViewContent).
+  // Viewed the pricing table — funnel "interest" step (GA4 + Meta ViewContent + nosso painel).
   useEffect(() => {
     trackEvent("view_pricing", { surface: variant });
     void trackMetaEvent("ViewContent", { customData: { content_name: `pricing_${variant}` } });
+    fetch("/api/track/funnel", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "viewed_pricing" })
+    }).catch(() => {
+      /* telemetria — melhor esforço */
+    });
   }, [variant]);
 
   const displayPlans = isMarketing ? resolveMarketingVitrinePlans(plans) : plans;

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireAppShellContext } from "@/lib/api-auth";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { CommanderScientistsView } from "@/components/commander/CommanderScientistsView";
+import { isMetaAdLibraryConfigured } from "@/lib/meta-ad-library/provider";
 
 /**
  * Cientistas é Advanced/Agency — bloqueado de verdade aqui no servidor (não só
@@ -22,5 +23,5 @@ export default async function CommanderScientistsPage({
     redirect(`/${locale}/commander`);
   }
 
-  return <CommanderScientistsView />;
+  return <CommanderScientistsView researchApiConfigured={isMetaAdLibraryConfigured()} />;
 }

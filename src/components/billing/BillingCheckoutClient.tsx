@@ -204,6 +204,13 @@ export function BillingCheckoutClient() {
     void trackMetaEvent("InitiateCheckout", {
       customData: { value, currency, content_name: plan.name, content_ids: [plan.id] }
     });
+    fetch("/api/track/funnel", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventType: "started_checkout", planSlug: plan.slug })
+    }).catch(() => {
+      /* telemetria — melhor esforço */
+    });
   }, [plan, displayPricing, currency, cycle]);
 
   useEffect(() => {

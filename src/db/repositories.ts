@@ -83,6 +83,9 @@ import type { ReportTemplate } from "@/db/entities/ReportTemplate";
 import type { EmailLog } from "@/db/entities/EmailLog";
 import type { PlanFeatureVisibility } from "@/db/entities/PlanFeatureVisibility";
 import type { CommanderConversation } from "@/db/entities/CommanderConversation";
+import type { ScientistRun } from "@/db/entities/ScientistRun";
+import type { FunnelEvent } from "@/db/entities/FunnelEvent";
+import type { CreativeLibraryItem } from "@/db/entities/CreativeLibraryItem";
 import type { DataSource, EntityTarget, ObjectLiteral, Repository } from "typeorm";
 import { EntityMetadataNotFoundError } from "typeorm";
 
@@ -171,7 +174,10 @@ const ENTITY = {
   ReportTemplate: "ReportTemplate",
   EmailLog: "EmailLog",
   PlanFeatureVisibility: "PlanFeatureVisibility",
-  CommanderConversation: "CommanderConversation"
+  CommanderConversation: "CommanderConversation",
+  ScientistRun: "ScientistRun",
+  FunnelEvent: "FunnelEvent",
+  CreativeLibraryItem: "CreativeLibraryItem"
 } as const;
 
 function repositoryFor<T extends ObjectLiteral>(
@@ -301,6 +307,9 @@ export async function repositories() {
     reportTemplate: repositoryFor<ReportTemplate>(ds, ENTITY.ReportTemplate),
     emailLog: repositoryFor<EmailLog>(ds, ENTITY.EmailLog),
     planFeatureVisibility: repositoryFor<PlanFeatureVisibility>(ds, ENTITY.PlanFeatureVisibility),
-    commanderConversation: repositoryFor<CommanderConversation>(ds, ENTITY.CommanderConversation)
+    commanderConversation: repositoryFor<CommanderConversation>(ds, ENTITY.CommanderConversation),
+    scientistRun: repositoryFor<ScientistRun>(ds, ENTITY.ScientistRun),
+    funnelEvent: repositoryFor<FunnelEvent>(ds, ENTITY.FunnelEvent),
+    creativeLibraryItem: repositoryFor<CreativeLibraryItem>(ds, ENTITY.CreativeLibraryItem)
   };
 }

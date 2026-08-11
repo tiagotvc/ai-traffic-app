@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
@@ -393,6 +394,15 @@ export function ClientOverviewClient({ clientId }: { clientId: string }) {
           </Link>
         }
         title={name || t("client")}
+        actions={
+          <Link
+            href={`/creative-studio?client=${clientId}`}
+            className="ui-btn-accent-outline inline-flex h-8 items-center gap-1.5 px-3 font-heading text-xs font-semibold"
+          >
+            <Sparkles size={13} />
+            Estúdio Criativo
+          </Link>
+        }
       />
 
       <ClientDetailTabs clientSlug={clientId} activeTab="overview" />

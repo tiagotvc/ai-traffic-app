@@ -1185,6 +1185,27 @@ export async function fetchCampaignInsightsDaily(
   return fetchGraphPaged<MetaCampaignInsightRow>(path, accessToken);
 }
 
+export type MetaHourlyInsightRow = MetaCampaignInsightRow & {
+  hourly_stats_aggregated_by_advertiser_time_zone?: string;
+};
+
+/**
+ * Quebra por HORA do dia de hoje (fuso da conta) — a Meta não guarda isso em snapshot
+ * sincronizado nosso (só granularidade diária), então isso é sempre uma chamada ao vivo.
+ * Usado só quando o usuário pergunta algo explicitamente por hora (ex.: "últimas 12 horas"),
+ * não em toda pergunta — é uma chamada a mais na API da Meta, com o próprio limite dela.
+ */
+export async function fetchCampaignInsightsHourlyToday(
+  accessToken: string,
+  adAccountId: string
+): Promise<MetaHourlyInsightRow[]> {
+  const fields = ["campaign_id", "campaign_name", ...INSIGHT_METRIC_FIELDS].join(",");
+  const path =
+    `/${encodeURIComponent(adAccountId)}/insights?level=campaign&fields=${encodeURIComponent(fields)}` +
+    `&breakdowns=hourly_stats_aggregated_by_advertiser_time_zone&date_preset=today&limit=500`;
+  return fetchGraphPaged<MetaHourlyInsightRow>(path, accessToken);
+}
+
 export async function fetchAdsetInsightsDaily(
   accessToken: string,
   adAccountId: string,

@@ -1,11 +1,11 @@
 "use client";
 
-import { Lock, Sparkles } from "lucide-react";
+import { AlertTriangle, Lock, Sparkles } from "lucide-react";
 
 import { AppPageShell } from "@/components/layout/AppPageShell";
 import { PageToolbar } from "@/components/layout/PageToolbar";
 import { Link } from "@/i18n/navigation";
-import { SCIENTIST_ROWS, StatusList } from "@/components/commander/CommanderStatusList";
+import { CommanderScientistLog } from "@/components/commander/CommanderScientistLog";
 import { useCommanderPreferences } from "@/components/commander/useCommanderPreferences";
 
 /**
@@ -13,7 +13,12 @@ import { useCommanderPreferences } from "@/components/commander/useCommanderPref
  * de renderizar isso quando o plano não inclui Scientists) — este componente ainda
  * checa de novo no client só pra cobrir a transição/loading, não é a defesa real.
  */
-export function CommanderScientistsView() {
+export function CommanderScientistsView({
+  researchApiConfigured = true
+}: {
+  /** Servidor já checou `isMetaAdLibraryConfigured()` — default true pra não piscar aviso falso durante SSR/hidratação. */
+  researchApiConfigured?: boolean;
+}) {
   const { resolved, disabled, scientistsAllowed, loading, savingId, toggle } = useCommanderPreferences();
 
   return (
@@ -53,11 +58,23 @@ export function CommanderScientistsView() {
           <div>
             <p className="mb-3 font-body text-[11px] text-[var(--text-dimmer)]">
               Cada Scientist é uma capacidade de pesquisa real que o Commander pode acionar sozinho
-              quando faz sentido, ou você pode pedir diretamente no chat. Não quer que ele opine sobre
+              quando faz sentido, ou você pode pedir diretamente no chat. Aqui você só liga/desliga —
+              o resultado da pesquisa aparece nas respostas do chat (no criador de campanha, na página
+              do cliente, ou em Aprendizados/Hipóteses), não nesta tela. Não quer que ele opine sobre
               algo específico? Desligue aqui.
             </p>
-            <StatusList
-              rows={SCIENTIST_ROWS}
+            {!researchApiConfigured ? (
+              <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3">
+                <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-500" />
+                <p className="font-body text-[11px] leading-relaxed text-[var(--text-dim)]">
+                  <span className="font-semibold text-[var(--text-main)]">Fonte de mercado não configurada no servidor.</span>{" "}
+                  Sem <code className="font-mono text-[10px]">SEARCHAPI_API_KEY</code> ou{" "}
+                  <code className="font-mono text-[10px]">META_AD_LIBRARY_ACCESS_TOKEN</code>, o Marketing
+                  Scientist perde a fonte principal (Meta Ad Library) e responde com dados mais limitados.
+                </p>
+              </div>
+            ) : null}
+            <CommanderScientistLog
               resolved={resolved}
               disabled={disabled}
               loading={loading}

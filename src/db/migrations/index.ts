@@ -83,6 +83,9 @@ import { FixFreePlanLimitsDrift_1735970000000 } from "./0078-FixFreePlanLimitsDr
 import { CommanderConversations_1735980000000 } from "./0079-CommanderConversations";
 import { AlertCommanderPrompt_1735990000000 } from "./0080-AlertCommanderPrompt";
 import { PlanFeatureVisibilityCommanderChat_1736000000000 } from "./0081-PlanFeatureVisibilityCommanderChat";
+import { ScientistRuns_1736010000000 } from "./0082-ScientistRuns";
+import { FunnelEvents_1736020000000 } from "./0083-FunnelEvents";
+import { CreativeLibraryItems_1739000000000 } from "./0084-CreativeLibraryItems";
 
 /** Fonte única das migrações, em ordem. Usada pelo runner (db:migrate) e pelo runtime. */
 export const appMigrations = [
@@ -170,5 +173,8 @@ export const appMigrations = [
   FixFreePlanLimitsDrift_1735970000000,
   CommanderConversations_1735980000000,
   AlertCommanderPrompt_1735990000000,
-  PlanFeatureVisibilityCommanderChat_1736000000000
+  PlanFeatureVisibilityCommanderChat_1736000000000,
+  ScientistRuns_1736010000000,
+  FunnelEvents_1736020000000,
+  CreativeLibraryItems_1739000000000
 ];

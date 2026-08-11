@@ -12,6 +12,7 @@ import {
   setDraftResearchSection
 } from "@/lib/campaign-creator/creator-brain-draft-cache";
 
+import { recordScientistRun } from "../scientist-runs";
 import { runScientistSkill } from "../skills";
 import type { ScientistSkillFinding, ScientistSkillInput } from "../skills/types";
 import { getPipeline, type PipelineStep } from "./registry";
@@ -27,6 +28,8 @@ export type FullResearchOptions = {
   wizardStep?: CreatorNode;
   draftId?: string | null;
   clientId?: string | null;
+  /** Presente = grava cada execução de Scientist em `scientist_runs` (best-effort). */
+  tenantId?: string | null;
   /**
    * Slots de cientistas por execução (capacidade do plano, `maxScientists`). Corta a lista de
    * cientistas que rodam por run, na ordem de prioridade do escopo (o Testing conta como slot).
@@ -126,7 +129,8 @@ function avgConfidence(sections: ResearchSection[]): number | undefined {
 export async function runResearchPipeline(
   pipelineId: string,
   input: ScientistSkillInput,
-  maxScientists?: number | null
+  maxScientists?: number | null,
+  context?: { tenantId?: string | null; clientId?: string | null }
 ): Promise<ResearchDossier | null> {
   const def = getPipeline(pipelineId);
   if (!def) return null;
@@ -135,6 +139,13 @@ export async function runResearchPipeline(
   const results = await Promise.all(
     steps.map(async (step) => ({ step, res: await runScientistSkill(step.scientistId, input) }))
   );
+
+  if (context?.tenantId) {
+    const tenantId = context.tenantId;
+    await Promise.all(
+      results.map(({ res }) => recordScientistRun({ tenantId, clientId: context.clientId, result: res }))
+    );
+  }
 
   const sections: ResearchSection[] = [];
   const skipped: string[] = [];
@@ -223,6 +234,9 @@ export async function runFullResearch(
 
       emit({ phase: "scientist_start", scientistId: step.scientistId, label: step.label, icon: step.icon });
       const res = await runScientistSkill(step.scientistId, input);
+      if (options?.tenantId) {
+        await recordScientistRun({ tenantId: options.tenantId, clientId, result: res });
+      }
       const ran = res.ran && res.findings.length > 0;
       if (ran) {
         const section: ResearchSection = {
@@ -279,6 +293,9 @@ export async function runFullResearch(
       usedSlots += 1;
       emit({ phase: "scientist_start", scientistId: post.id, label: post.label, icon: post.icon });
       const res = await runScientistSkill(post.id, { ...input, priorFindings });
+      if (options?.tenantId) {
+        await recordScientistRun({ tenantId: options.tenantId, clientId, result: res });
+      }
       const ran = res.ran && res.findings.length > 0;
       if (ran) {
         mergedSections.push({
@@ -320,7 +337,12 @@ export async function runFullResearch(
 /** Versão sem streaming (usada pelo endpoint não-SSE). */
 export async function runResearchWithTesting(
   input: ScientistSkillInput,
-  maxScientists?: number | null
+  maxScientists?: number | null,
+  context?: { tenantId?: string | null; clientId?: string | null }
 ): Promise<ResearchDossier> {
-  return runFullResearch(input, undefined, "full", { maxScientists });
+  return runFullResearch(input, undefined, "full", {
+    maxScientists,
+    tenantId: context?.tenantId,
+    clientId: context?.clientId
+  });
 }

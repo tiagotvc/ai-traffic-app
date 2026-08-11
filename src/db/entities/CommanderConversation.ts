@@ -5,6 +5,7 @@ export type CommanderConversationMessage = {
   role: "user" | "assistant";
   content: string;
   ruleProposal?: Record<string, unknown> | null;
+  actionChips?: Record<string, unknown>[];
   createdAt: string;
 };
 
